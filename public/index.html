@@ -44,12 +44,8 @@
       <button class="tab" data-tab="macro">MACRO</button>
     </nav>
 
-    <!-- HOME: headlines + daily brief + watchlist + alerts + segments -->
+    <!-- HOME: daily brief + watchlist + alerts + headlines + segments -->
     <div class="tabpane" data-pane="home">
-      <section class="panel">
-        <div class="ph"><span class="ph-t">📰 LIVE — IMPORTANT HEADLINES</span><span class="dimtext">tier-1 wire · ranked by materiality · refreshes every 10 min</span></div>
-        <div id="headlines" class="headlines"></div>
-      </section>
       <section class="panel">
         <div class="ph"><span class="ph-t">☀️ DAILY BRIEF — what happened · what's on today</span><span id="brief-updated" class="dimtext"></span></div>
         <div id="home-brief"></div>
@@ -64,6 +60,11 @@
         <div class="ph"><span class="ph-t">⚠ ALERTS</span><span class="ph-right"><span id="home-alert-count" class="pill">0</span></span></div>
         <div id="home-alerts" class="alerts"></div>
         <div id="home-alert-sub" class="dimtext" style="padding:0 12px 10px"></div>
+      </section>
+
+      <section class="panel">
+        <div class="ph"><span class="ph-t">📰 LIVE — IMPORTANT HEADLINES</span><span class="dimtext">tier-1 wire · ranked by materiality · refreshes every 10 min</span></div>
+        <div id="headlines" class="headlines"></div>
       </section>
 
       <section class="panel">
