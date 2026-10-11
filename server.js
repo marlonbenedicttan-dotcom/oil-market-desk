@@ -12,6 +12,11 @@ const PUBLIC = path.join(__dirname, 'public');
 const PORT = Number(process.env.PORT || 4173);
 const UA = { 'User-Agent': 'Mozilla/5.0 (oil-basis)' };
 
+// Annual macro snapshot (IMF WEO), refreshed by the scheduled scripts/fetch-macro.mjs job. The
+// IMF API is blocked from this host, so we serve the committed snapshot instead. Read once at
+// startup — it only changes on a commit, which redeploys us. Absent -> per-source fallback.
+const MACRO_SNAPSHOT = (() => { try { return JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'macro.json'), 'utf8')); } catch { return null; } })();
+
 // ---------------------------------------------------------------------------
 // Benchmark registry
 //   paper    = futures    -> Yahoo Finance symbol
@@ -1401,12 +1406,13 @@ async function getCountry(id) {
       fredDebt(c.iso3),
     ]);
     const chg = (arr) => { const f = (arr || []).find((v) => v != null); const l = [...(arr || [])].reverse().find((v) => v != null); return f && l ? ((l - f) / f) * 100 : null; };
-    // Debt/GDP from FRED (OECD mirror, current); growth/CPI/unemployment from the World Bank (annual).
-    const gdpGrowth = wbGdp.slice(-6);
-    const debtToGdp = fredDebtToGdp || wbDebt;
-    const cpi = wbCpi.slice(-25);
-    const inflation = cpi.length ? cpi[cpi.length - 1] : null;
-    const unemployment = wbUnemp;
+    // Annual macro: IMF WEO snapshot (comprehensive, current) -> FRED/OECD debt -> World Bank.
+    const snap = (MACRO_SNAPSHOT && MACRO_SNAPSHOT.countries && MACRO_SNAPSHOT.countries[id]) || null;
+    const gdpGrowth = snap?.gdpGrowth?.length ? snap.gdpGrowth : wbGdp.slice(-6);
+    const debtToGdp = snap?.debtToGdp || fredDebtToGdp || wbDebt;
+    const cpi = snap?.cpi?.length ? snap.cpi : wbCpi.slice(-25);
+    const inflation = snap?.inflation || (cpi.length ? cpi[cpi.length - 1] : null);
+    const unemployment = snap?.unemployment || wbUnemp;
     const perf = { index: chg(cs.index), fx: chg(cs.fx) };
     // Every price in the country card gets the same multi-horizon moves + a source/as-of.
     const fxDeltas = mapDeltas(fxDlMap);
@@ -1428,7 +1434,7 @@ async function getCountry(id) {
       index: { label: c.indexLabel, sym: c.index, ...idx, deltas: idxDeltas, asOf, source: 'Yahoo Finance' },
       macro, oilLink, perf, takeaways: takes, policy, policyNote: POLICY_NOTE[id] || null, links,
       cpi,   // annual CPI inflation % (IMF WEO, World Bank fallback)
-      fund: { gdpGrowth: gdpGrowth.slice(-6), debtToGdp, inflation, unemployment, source: (fredDebtToGdp ? 'Debt/GDP: FRED (OECD, annual)' : 'Debt/GDP: World Bank (annual)') + ' · growth/CPI/unemployment: World Bank (annual)' },
+      fund: { gdpGrowth: gdpGrowth.slice(-6), debtToGdp, inflation, unemployment, source: snap ? 'IMF WEO (annual snapshot)' : (fredDebtToGdp ? 'Debt/GDP: FRED (OECD) · others World Bank (annual)' : 'World Bank (annual)') },
     };
   });
 }
