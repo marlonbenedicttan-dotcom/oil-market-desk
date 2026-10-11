@@ -1241,14 +1241,24 @@ const wbLatest = async (iso3, ind) => { const s = await wbSeries(iso3, ind); ret
 // IMF World Economic Outlook (free, no key) — annual but much more current than the World
 // Bank, and refreshed ~twice a year. One fetch returns every country for an indicator.
 const IMF_IND = { debt: 'GGXWDG_NGDP', gdp: 'NGDP_RPCH', cpi: 'PCPIPCH', unemployment: 'LUR' };
+// Self-managed cache so a FAILED fetch is retried soon (5 min), while a SUCCESS is kept 24h.
+// `cached()` would have pinned an empty result for a full day — which is exactly the bug that
+// silently dropped us back to the World Bank on the live host.
+const imfCache = new Map();
 async function imfMap(ind) {
-  return cached('imf:' + ind, 24 * 3600e3, async () => {
+  const hit = imfCache.get(ind);
+  const ttl = hit && hit.ok ? 24 * 3600e3 : 5 * 60e3;
+  if (hit && Date.now() - hit.t < ttl) return hit.v;
+  let v = {};
+  for (let a = 0; a < 3 && !Object.keys(v).length; a++) {
     try {
       const r = await fetch(`https://www.imf.org/external/datamapper/api/v1/${ind}`, { headers: UA });
-      if (!r.ok) return {};
-      return (await r.json()).values?.[ind] || {};
-    } catch { return {}; }
-  });
+      if (r.ok) v = (await r.json()).values?.[ind] || {};
+    } catch {}
+    if (!Object.keys(v).length) await sleep(400);
+  }
+  imfCache.set(ind, { t: Date.now(), ok: Object.keys(v).length > 0, v });
+  return v;
 }
 // Latest value at or before maxYear — so an IMF projection is never shown as if it were data.
 const imfLatest = (map, code, maxYear) => { const s = map[code]; if (!s) return null; const yrs = Object.keys(s).map(Number).filter((y) => y <= maxYear).sort((a, b) => a - b); const y = yrs[yrs.length - 1]; return y ? { year: y, value: +(+s[y]).toFixed(2) } : null; };
@@ -1414,6 +1424,7 @@ async function getCountry(id) {
     const cpi = (() => { const s = imfSeries(imfCpi, icode, maxYear - 24, maxYear); return s.length ? s : wbCpi.slice(-25); })();
     const inflation = cpi.length ? cpi[cpi.length - 1] : null;
     const unemployment = imfLatest(imfUnemp, icode, maxYear) || wbUnemp;
+    const imfOk = !!(imfDebt[icode] || imfGdp[icode] || imfCpi[icode]);
     const perf = { index: chg(cs.index), fx: chg(cs.fx) };
     // Every price in the country card gets the same multi-horizon moves + a source/as-of.
     const fxDeltas = mapDeltas(fxDlMap);
@@ -1435,7 +1446,7 @@ async function getCountry(id) {
       index: { label: c.indexLabel, sym: c.index, ...idx, deltas: idxDeltas, asOf, source: 'Yahoo Finance' },
       macro, oilLink, perf, takeaways: takes, policy, policyNote: POLICY_NOTE[id] || null, links,
       cpi,   // annual CPI inflation % (IMF WEO, World Bank fallback)
-      fund: { gdpGrowth: gdpGrowth.slice(-6), debtToGdp, inflation, unemployment, source: 'IMF WEO (annual) · World Bank fallback' },
+      fund: { gdpGrowth: gdpGrowth.slice(-6), debtToGdp, inflation, unemployment, imfOk, source: imfOk ? 'IMF WEO (annual) · World Bank fallback' : 'World Bank (annual) — IMF unavailable from this host' },
     };
   });
 }
