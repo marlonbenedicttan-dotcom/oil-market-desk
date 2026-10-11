@@ -147,15 +147,15 @@ async function getMarket() {
   let curves = null; try { curves = await getCurves(); } catch {}
   const flags = [];
   const lagged = rows.filter((r) => r.spotLagDays != null && r.spotLagDays >= 3);
-  if (lagged.length) flags.push({ level: 'watch', text: `All physical spot series are ~${Math.max(...lagged.map((r) => r.spotLagDays))} business days stale (as of ${lagged[0].physicalDate}) while futures are live — the cash–futures basis may be distorted.` });
+  if (lagged.length) flags.push({ level: 'watch', text: `Real-barrel prices are about ${Math.max(...lagged.map((r) => r.spotLagDays))} days old while futures are live, so the real-vs-futures gap can look off.` });
   for (const r of rows) {
-    if (r.spotJumpPct != null && Math.abs(r.spotJumpPct) >= 8) flags.push({ level: 'watch', text: `${r.label}: spot swung ${sgn(r.spotJumpPct, 1)}% in a single day — verify the print.` });
+    if (r.spotJumpPct != null && Math.abs(r.spotJumpPct) >= 8) flags.push({ level: 'watch', text: `${r.label}: a real-barrel price jumped ${sgn(r.spotJumpPct, 1)}% in one day — worth double-checking.` });
   }
   for (const id of ['wti', 'brent']) {
     const r = by[id]; const c = curves?.[id];
     if (r && c && c.m1m2 != null && r.basis != null) {
       const ratio = Math.abs(r.basis) / (Math.abs(c.m1m2) || 1);
-      if (ratio > 3) flags.push({ level: 'watch', text: `${r.label}: cash–futures basis ${sgn(r.basis)} is ~${ratio.toFixed(0)}× the curve slope (M1−M2 ${sgn(c.m1m2)}) — likely an instrument/timing mismatch, NOT corroborated by the curve.` });
+      if (ratio > 3) flags.push({ level: 'watch', text: `${r.label}: the real-vs-futures gap (${sgn(r.basis)}) is far bigger than the month-to-month gap (${sgn(c.m1m2)}) — probably a timing mismatch, not a clean signal.` });
     }
   }
   return {
@@ -164,11 +164,11 @@ async function getMarket() {
     spreads,
     quality: { flags, curveAvailable: Boolean(curves) },
     notes: [
-      'Paper = front-month futures (live). Physical = spot/cash assessment (EIA), which LAGS and is a different instrument — read the basis with the data-quality flags.',
-      'Propane & jet fuel are spot-only — no free exchange futures.',
-      'Basis = physical − paper. Positive = physical premium (backwardation pressure).',
-      'The futures series is the front-month continuous (not roll-adjusted); the CURVE (M1−M2 / M1−M6) is the roll-free structure signal.',
-      'Dubai / WTI Midland / Mars require a paid feed.',
+      'Futures = live. Real barrels = an official assessment that LAGS and comes from a different source — read the data checks.',
+      'Propane & jet fuel have no futures — real-barrel price only.',
+      'A positive gap means real barrels cost more than futures (a tight market).',
+      'The futures line is the current month only (not spliced); "prices for months ahead" is the cleanest read.',
+      'Dubai / WTI Midland / Mars need a paid data source.',
     ],
   };
 }
@@ -607,24 +607,24 @@ async function getTightness() {
     const cracks = computeCracks(m);
     const ev = [];
     const push = (label, value, direction, note) => ev.push({ label, value, direction, note });
-    if (c?.brent) push('Brent curve M1−M2', sgn(c.brent.m1m2), c.brent.m1m2 > 0 ? 'TIGHT' : 'LOOSE', c.brent.shape);
-    if (c?.wti) push('WTI curve M1−M2', sgn(c.wti.m1m2), c.wti.m1m2 > 0 ? 'TIGHT' : 'LOOSE', c.wti.shape);
-    if (by.brent?.basis != null) push('Brent cash−futures', sgn(by.brent.basis), by.brent.basis > 0 ? 'TIGHT' : 'LOOSE', 'physical above futures');
-    if (cracks.diesel != null) push('Diesel crack', sgn(cracks.diesel), cracks.diesel > 15 ? 'TIGHT' : 'NEUTRAL', 'refining pull on crude');
-    if (inv?.items) { const cr = inv.items.find((i) => i.key === 'crude'); if (cr?.surprise != null) push('Crude vs seasonal', sgn(cr.surprise), cr.surprise < 0 ? 'TIGHT' : 'LOOSE', cr.surprise < 0 ? 'drew more than seasonal' : 'built vs seasonal'); }
+    if (c?.brent) push('Oil pricier now than next month', sgn(c.brent.m1m2), c.brent.m1m2 > 0 ? 'TIGHT' : 'LOOSE', c.brent.m1m2 > 0 ? 'buyers paying up for near-term barrels' : 'near-term barrels are cheap');
+    if (c?.wti) push('WTI pricier now than next month', sgn(c.wti.m1m2), c.wti.m1m2 > 0 ? 'TIGHT' : 'LOOSE', c.wti.m1m2 > 0 ? 'tight' : 'well supplied');
+    if (by.brent?.basis != null) push('Real Brent costs more than futures', sgn(by.brent.basis), by.brent.basis > 0 ? 'TIGHT' : 'LOOSE', by.brent.basis > 0 ? 'real barrels are scarce' : 'real barrels are easy to get');
+    if (cracks.diesel != null) push('Diesel refining profit', sgn(cracks.diesel), cracks.diesel > 15 ? 'TIGHT' : 'NEUTRAL', cracks.diesel > 15 ? 'refiners hungry for crude' : 'normal');
+    if (inv?.items) { const cr = inv.items.find((i) => i.key === 'crude'); if (cr?.surprise != null) push('US crude vs normal', sgn(cr.surprise), cr.surprise < 0 ? 'TIGHT' : 'LOOSE', cr.surprise < 0 ? 'bigger drop than usual' : 'built up vs usual'); }
     const idle = [...tankers.values()].filter((v) => (v.sog ?? 0) < 1).length;
-    if (ais.enabled) push('Idle tankers', String(idle), idle >= 15 ? 'TIGHT' : 'NEUTRAL', idle >= 15 ? 'floating storage building' : 'normal transit');
+    if (ais.enabled) push('Oil ships sitting still', String(idle), idle >= 15 ? 'TIGHT' : 'NEUTRAL', idle >= 15 ? 'possible floating storage' : 'normal');
     const flows = await getFlows().catch(() => null);
     if (flows) {
       const gulfDark = flows.dark.some((n) => /Persian|Hormuz|Oman|Arabian|Red Sea/.test(n));
-      push('Gulf AIS transit', gulfDark ? 'CONCEALED' : 'observed', gulfDark ? 'TIGHT' : 'NEUTRAL', gulfDark ? 'trackers off in the Gulf → flows hidden (disruption)' : 'visible in AIS');
+      push('Gulf ships', gulfDark ? 'GONE QUIET' : 'visible', gulfDark ? 'TIGHT' : 'NEUTRAL', gulfDark ? 'trackers switched off → real flows hidden' : 'visible on trackers');
     }
     const tight = ev.filter((e) => e.direction === 'TIGHT').length;
     const loose = ev.filter((e) => e.direction === 'LOOSE').length;
     const verdict = tight > loose
-      ? `PHYSICAL MARKET TIGHT — ${tight} of ${ev.length} independent signals point to tightness.`
-      : loose > tight ? `PHYSICAL MARKET LOOSE — ${loose} of ${ev.length} signals point to oversupply.`
-        : `MIXED — ${tight} tight / ${loose} loose.`;
+      ? `OIL IS TIGHT — ${tight} of ${ev.length} independent checks agree.`
+      : loose > tight ? `OIL IS WELL SUPPLIED — ${loose} of ${ev.length} checks say plenty.`
+        : `MIXED — ${tight} say tight, ${loose} say loose.`;
     return { evidence: ev, tight, loose, verdict };
   });
 }
@@ -666,12 +666,12 @@ async function getFlows() {
     const [m, c] = await Promise.all([getMarket(), getCurves()]);
     const cracks = computeCracks(m);
     const sig = [
-      { label: 'Brent M1−M6 backwardation', value: c?.brent?.m1m6, hot: (c?.brent?.m1m6 ?? 0) > 5 },
-      { label: 'Diesel crack', value: cracks.diesel, hot: (cracks.diesel ?? 0) > 20 },
-      { label: 'Brent−WTI physical', value: m.spreads?.brent_wti?.physical, hot: (m.spreads?.brent_wti?.physical ?? 0) > 5 },
+      { label: 'Oil pricier now than 6 months ahead', value: c?.brent?.m1m6, hot: (c?.brent?.m1m6 ?? 0) > 5 },
+      { label: 'Diesel refining profit', value: cracks.diesel, hot: (cracks.diesel ?? 0) > 20 },
+      { label: 'Brent vs WTI (real)', value: m.spreads?.brent_wti?.physical, hot: (m.spreads?.brent_wti?.physical ?? 0) > 5 },
     ];
     const n = sig.filter((s) => s.hot).length;
-    marketStress = { signals: sig, score: n, verdict: n >= 2 ? `Market is pricing SIGNIFICANT Gulf-flow stress (${n}/3 signals).` : `Market is pricing limited Gulf stress (${n}/3 signals).` };
+    marketStress = { signals: sig, score: n, verdict: n >= 2 ? `Prices are pricing in a serious Gulf supply problem (${n}/3).` : `Prices suggest only mild Gulf stress (${n}/3).` };
   } catch {}
 
   return { regions, exit: { total: exit.length, eastbound: east, westbound: west, moving, idle: exit.length - moving }, rates, routes, diversion, dark, anomalies: aisAnom, marketStress, enabled: ais.enabled };
@@ -899,11 +899,11 @@ async function buildDigest() {
   const m = await getMarket();
   const [c, inv, pos] = await Promise.all([getCurves().catch(() => null), getInventories().catch(() => null), getPositioning().catch(() => null)]);
   const L = [`OIL BASIS — daily digest (${new Date().toISOString()})`, ''];
-  L.push('BENCHMARKS  paper | physical | basis | spot-lag(bd)');
+  L.push('PRICES  futures | real | gap | age(days)');
   for (const b of m.benchmarks) L.push(`  ${b.label.padEnd(20)} ${(b.paper ?? '—').toString().padStart(9)} | ${(b.physical ?? '—').toString().padStart(9)} | ${(b.basis == null ? '—' : sgn(b.basis)).padStart(8)} | ${b.spotLagDays ?? '—'}`);
-  if (c?.wti) L.push('', `CURVE  WTI ${c.wti.shape} (M1−M2 ${sgn(c.wti.m1m2)}, M1−M6 ${sgn(c.wti.m1m6)})  |  Brent ${c.brent.shape} (M1−M2 ${sgn(c.brent.m1m2)})`);
-  if (pos?.latest) L.push('', `POSITIONING  ${pos.label}: ${pos.latest.net.toLocaleString()} (${pos.pct.toFixed(0)}th pct), WoW ${pos.wow >= 0 ? '+' : ''}${pos.wow.toLocaleString()}`);
-  if (inv?.items) { L.push('', 'INVENTORIES (Mbbl, WoW):'); inv.items.forEach((i) => L.push(`  ${i.label.padEnd(16)} ${i.value.toLocaleString().padStart(10)}  (${i.wow >= 0 ? '+' : ''}${i.wow.toLocaleString()})`)); }
+  if (c?.wti) L.push('', `PRICES FOR MONTHS AHEAD  WTI ${c.wti.shape} (this-vs-next ${sgn(c.wti.m1m2)}, vs 6mo ${sgn(c.wti.m1m6)})  |  Brent ${c.brent.shape} (this-vs-next ${sgn(c.brent.m1m2)})`);
+  if (pos?.latest) L.push('', `HEDGE-FUND BETS  ${pos.label}: ${pos.latest.net.toLocaleString()} (${pos.pct.toFixed(0)}/100 extreme), change this week ${pos.wow >= 0 ? '+' : ''}${pos.wow.toLocaleString()}`);
+  if (inv?.items) { L.push('', 'US STOCKPILES (million barrels, this week):'); inv.items.forEach((i) => L.push(`  ${i.label.padEnd(16)} ${i.value.toLocaleString().padStart(10)}  (${i.wow >= 0 ? '+' : ''}${i.wow.toLocaleString()})`)); }
   const alerts = await computeServerAlerts();
   if (alerts.length) { L.push('', 'ALERTS:'); alerts.forEach((x) => L.push(`  [${x.level.toUpperCase()}] ${x.text}`)); }
   L.push('', 'Sources: FRED/EIA, Yahoo, aisstream.io, CFTC. Not investment advice.');

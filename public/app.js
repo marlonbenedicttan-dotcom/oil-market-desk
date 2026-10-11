@@ -14,19 +14,18 @@ const ltCache = {};
 
 const GLOSSARY = `
   <dl>
-    <dt>Paper</dt><dd>The front-month <b>futures</b> contract — financial exposure, settled on expiry.</dd>
-    <dt>Physical</dt><dd>The <b>spot/cash</b> price for actual barrels (assessed by price-reporting agencies).</dd>
-    <dt>Basis</dt><dd><b>Physical − Paper.</b> Positive = physical above futures (backwardation → tight). Negative = contango → well supplied.</dd>
-    <dt>Backwardation / Contango</dt><dd>Backwardation: prompt barrels pricier than later (tight). Contango: the reverse (oversupply, storage pays).</dd>
-    <dt>Crack spread</dt><dd>Refining margin: product (gasoline/diesel) × 42 gallons minus crude, per barrel.</dd>
-    <dt>Brent − WTI</dt><dd>The spread between the two crude benchmarks; a wide physical spread signals export pull.</dd>
-    <dt>Term structure (curve)</dt><dd>The prices of futures for successive delivery months — shown as bars (M1, M2, M3…). <b>Backwardation</b> = later months cheaper = tight now. <b>Contango</b> = later months dearer = well supplied. It's the single best physical signal.</dd>
-    <dt>% performance</dt><dd>Change vs the start of the window (10Y = since ~10 years ago), not just day-on-day.</dd>
-    <dt>Percentile</dt><dd>Where today's value ranks within the last 2 years (80th+ = historically high, 20th- = low).</dd>
-    <dt>Inventories</dt><dd>EIA weekly US stocks. Draws (negative) are bullish for crude; builds are bearish.</dd>
-    <dt>Positioning</dt><dd>CFTC speculative net length. Extremes often precede reversals.</dd>
-    <dt>Chokepoints</dt><dd>Straits where tanker congestion lifts freight (Hormuz, Malacca, Suez, Panama…).</dd>
-    <dt>Worldscale / freight</dt><dd>The tanker-rate index (paid data); here we use live AIS ship behaviour as a free proxy.</dd>
+    <dt>Futures ("paper")</dt><dd>A contract to buy oil later — a financial bet, not real barrels.</dd>
+    <dt>Real barrels ("physical")</dt><dd>The going rate to actually deliver oil now.</dd>
+    <dt>The gap</dt><dd>Real price − futures price. Positive = real barrels cost <b>more</b> than futures → market is <b>tight</b>. Negative = the opposite (plenty of oil).</dd>
+    <dt>Pricier now than later</dt><dd>Called “backwardation” — a sign oil is scarce today. The opposite means well supplied.</dd>
+    <dt>Refining profit</dt><dd>What a refiner earns turning crude into fuel (a “crack spread”). Higher = better for refiners.</dd>
+    <dt>Brent vs WTI</dt><dd>The two main oil types. A wide gap means seaborne Brent is in demand for export.</dd>
+    <dt>Prices for later months</dt><dd>The list of prices for each future month — the shape tells you if oil is tight or well supplied.</dd>
+    <dt>% change</dt><dd>How much a price moved over the chosen window, not just today.</dd>
+    <dt>How extreme</dt><dd>Where today’s number sits vs the last 2 years (90+/100 = near a record).</dd>
+    <dt>Stockpiles</dt><dd>Weekly US oil inventories. A surprise <b>drop</b> is bullish for oil; a surprise <b>build</b> is bearish.</dd>
+    <dt>Hedge-fund bets</dt><dd>How much more big funds are betting oil rises vs falls.</dd>
+    <dt>Oil-field flames</dt><dd>Satellites see the gas burned off at oil fields — fewer flames = fields shutting down.</dd>
   </dl>`;
 
 function showError(msg) { const el = $('error'); el.classList.remove('hidden'); el.textContent = '⚠ ' + msg; }
@@ -63,9 +62,9 @@ function crackSpreads(m) {
   const w = by.wti, rb = by.rbob, ho = by.ulsd;
   const out = [];
   const add = (label, value) => { if (value != null && !Number.isNaN(value)) out.push({ label, value }); };
-  if (rb && w) { add('Gasoline crack (paper)', rb.paper != null && w.paper != null ? rb.paper * GAL - w.paper : null); add('Gasoline crack (physical)', rb.physical != null && w.physical != null ? rb.physical * GAL - w.physical : null); }
-  if (ho && w) { add('Diesel crack (paper)', ho.paper != null && w.paper != null ? ho.paper * GAL - w.paper : null); add('Diesel crack (physical)', ho.physical != null && w.physical != null ? ho.physical * GAL - w.physical : null); }
-  if (rb && ho && w && rb.paper != null && ho.paper != null && w.paper != null) add('3-2-1 crack (paper)', ((2 * rb.paper + ho.paper) * GAL) / 3 - w.paper);
+  if (rb && w) { add('Gasoline refining profit', rb.paper != null && w.paper != null ? rb.paper * GAL - w.paper : null); add('Gasoline profit (real barrels)', rb.physical != null && w.physical != null ? rb.physical * GAL - w.physical : null); }
+  if (ho && w) { add('Diesel refining profit', ho.paper != null && w.paper != null ? ho.paper * GAL - w.paper : null); add('Diesel profit (real barrels)', ho.physical != null && w.physical != null ? ho.physical * GAL - w.physical : null); }
+  if (rb && ho && w && rb.paper != null && ho.paper != null && w.paper != null) add('3-2-1 refining profit', ((2 * rb.paper + ho.paper) * GAL) / 3 - w.paper);
   return out;
 }
 
@@ -80,31 +79,31 @@ function benchCard(b) {
   const stale = b.spotLagDays != null && b.spotLagDays >= 3;
   return `
     <div class="card clickable" data-id="${b.id}" title="Click for 10-year performance">
-      <h3 title="${b.label}">${b.label} <span>${b.unit}${spotOnly ? ' · spot' : ''}</span></h3>
-      <div class="row"><span class="k">Paper (futures)</span><span class="v">${spotOnly ? '<span class="k">— none</span>' : fmt(b.paper, b.dp)}</span></div>
-      <div class="row"><span class="k">Physical <em>${b.physicalDate || ''}</em>${stale ? ` <span class="qb">${b.spotLagDays}d lag</span>` : ''}</span><span class="v">${fmt(b.physical, b.dp)}</span></div>
-      <div class="row"><span class="k">Basis <span class="qi" title="Physical − Paper">ⓘ</span></span><span class="v basis ${cls(b.basis)}">${b.basis == null ? '—' : signed(b.basis, b.dp)}</span></div>
-      <div class="row"><span class="k">Today</span><span class="v ${cls(day)}">${day == null ? '—' : `${signed(day, b.dp)} (${pctf(dayPct)})`}</span></div>
+      <h3 title="${b.label}">${b.label} <span>${b.unit}${spotOnly ? ' · only real' : ''}</span></h3>
+      <div class="row"><span class="k">Futures price</span><span class="v">${spotOnly ? '<span class="k">— none</span>' : fmt(b.paper, b.dp)}</span></div>
+      <div class="row"><span class="k">Real barrels <em>${b.physicalDate || ''}</em>${stale ? ` <span class="qb">${b.spotLagDays}d old</span>` : ''}</span><span class="v">${fmt(b.physical, b.dp)}</span></div>
+      <div class="row"><span class="k">Gap (real − futures) <span class="qi" title="Real price minus futures price">ⓘ</span></span><span class="v basis ${cls(b.basis)}">${b.basis == null ? '—' : signed(b.basis, b.dp)}</span></div>
+      <div class="row"><span class="k">Change today</span><span class="v ${cls(day)}">${day == null ? '—' : `${signed(day, b.dp)} (${pctf(dayPct)})`}</span></div>
     </div>`;
 }
 function spreadCard(s) {
   return `<div class="card"><h3>${s.label} <span>${s.unit}</span></h3>
-      <div class="row"><span class="k">Paper spread</span><span class="v ${cls(s.paper)}">${signed(s.paper, s.dp)}</span></div>
-      <div class="row"><span class="k">Physical spread</span><span class="v ${cls(s.physical)}">${signed(s.physical, s.dp)}</span></div>
-      <div class="row"><span class="k">Paper − Physical</span><span class="v ${cls(s.paper - s.physical)}">${signed(s.paper - s.physical, s.dp)}</span></div></div>`;
+      <div class="row"><span class="k">Futures gap</span><span class="v ${cls(s.paper)}">${signed(s.paper, s.dp)}</span></div>
+      <div class="row"><span class="k">Real-barrel gap</span><span class="v ${cls(s.physical)}">${signed(s.physical, s.dp)}</span></div>
+      <div class="row"><span class="k">Difference</span><span class="v ${cls(s.paper - s.physical)}">${signed(s.paper - s.physical, s.dp)}</span></div></div>`;
 }
 function crackCard(c) {
-  const read = c.value > 20 ? 'strong' : c.value > 8 ? 'healthy' : 'weak';
+  const read = c.value > 20 ? 'very good' : c.value > 8 ? 'ok' : 'poor';
   return `<div class="card"><h3>${c.label} <span>$/bbl</span></h3>
-      <div class="row"><span class="k">Margin</span><span class="v basis ${cls(c.value)}">${signed(c.value)}</span></div>
+      <div class="row"><span class="k">Profit / barrel</span><span class="v basis ${cls(c.value)}">${signed(c.value)}</span></div>
       <div class="row"><span class="k">Read</span><span class="v dimtext" style="font-weight:400">${read}</span></div></div>`;
 }
 function renderCards(m) {
   const cracks = crackSpreads(m);
   $('cards').innerHTML = `
-    <div class="group"><div class="gtitle">BENCHMARKS <span class="dimtext">— click a card for 10Y performance</span></div><div class="cards">${m.benchmarks.map(benchCard).join('')}</div></div>
-    ${Object.keys(m.spreads).length ? `<div class="group"><div class="gtitle">CRUDE SPREADS</div><div class="cards">${Object.values(m.spreads).map((s) => spreadCard(s)).join('')}</div></div>` : ''}
-    ${cracks.length ? `<div class="group"><div class="gtitle">CRACK SPREADS (REFINING MARGINS)</div><div class="cards">${cracks.map(crackCard).join('')}</div></div>` : ''}`;
+    <div class="group"><div class="gtitle">PRICES <span class="dimtext">— click a card for 10 years of history</span></div><div class="cards">${m.benchmarks.map(benchCard).join('')}</div></div>
+    ${Object.keys(m.spreads).length ? `<div class="group"><div class="gtitle">OIL-TYPE GAPS</div><div class="cards">${Object.values(m.spreads).map((s) => spreadCard(s)).join('')}</div></div>` : ''}
+    ${cracks.length ? `<div class="group"><div class="gtitle">REFINING PROFITS</div><div class="cards">${cracks.map(crackCard).join('')}</div></div>` : ''}`;
 }
 
 // ---------------------------------------------------------------------------
@@ -115,45 +114,44 @@ function marketInsights(m) {
   for (const b of m.benchmarks) {
     if (b.basis == null) continue;
     const above = b.basis >= 0;
-    out.push(`<b>${b.label}</b>: physical ${fmt(b.physical, b.dp)} is ${Math.abs(b.basis).toFixed(b.dp)} ${above ? 'ABOVE' : 'BELOW'} paper — ${above ? 'tight physical market (backwardation).' : 'loose market (contango); storage pays.'}`);
+    out.push(`<b>${b.label}</b>: real barrels cost ${fmt(b.physical, b.dp)} — <b>${Math.abs(b.basis).toFixed(b.dp)} ${above ? 'more' : 'less'}</b> than futures. ${above ? 'Real barrels are scarce (bullish for oil).' : 'Real barrels are easy to get (bearish for oil).'}`);
   }
   const s = m.spreads.brent_wti;
-  if (s) { const d = s.physical - s.paper; out.push(`<b>Brent−WTI</b>: physical ${signed(s.physical)} vs paper ${signed(s.paper)} — physical ${Math.abs(d).toFixed(2)} ${d >= 0 ? 'wider' : 'narrower'}. ${d > 3 ? 'Brent bid → export pull.' : d < -3 ? 'WTI bid → US tightness.' : 'Broadly aligned.'}`); }
+  if (s) { const d = s.physical - s.paper; out.push(`<b>Brent vs WTI</b>: the real gap is ${signed(s.physical)} vs ${signed(s.paper)} for futures — ${d > 3 ? 'Brent (seaborne) is in strong export demand.' : d < -3 ? 'US oil looks relatively tight.' : 'the two are broadly in line.'}`); }
   const d321 = crackSpreads(m).find((c) => c.label.startsWith('3-2-1'));
-  if (d321) out.push(`<b>3-2-1 refining margin</b> ${signed(d321.value)} $/bbl — ${d321.value > 20 ? 'very strong; refiners pull more crude.' : d321.value > 10 ? 'healthy.' : 'thin; run cuts possible.'}`);
+  if (d321) out.push(`<b>Refining profit</b> ${signed(d321.value)} a barrel — ${d321.value > 20 ? 'excellent; refiners will run flat out.' : d321.value > 10 ? 'decent.' : 'thin; refiners may cut back.'}`);
   return out;
 }
 function tankerInsights(t) {
   const out = []; const s = t.status || {};
-  if (!s.enabled) { out.push('Live tanker tracking is off. Add a free AIS key to enable.'); return out; }
+  if (!s.enabled) { out.push('Live ship tracking is off. Add a free key to switch it on.'); return out; }
   const list = t.tankers || [];
-  if (!list.length) { out.push(`Connected to AIS (${(s.messages || 0).toLocaleString()} messages) — identifying tankers…`); return out; }
+  if (!list.length) { out.push(`Connected to ship trackers (${(s.messages || 0).toLocaleString()} signals) — identifying ships…`); return out; }
   const idlers = list.filter((v) => (v.sog ?? 0) < 1).length;
   const avg = list.reduce((a, v) => a + (v.sog || 0), 0) / list.length;
-  out.push(`<b>${list.length} tankers</b> tracked: ${list.length - idlers} under way, ${idlers} nearly stationary.`);
-  out.push(`Stationary clusters hint at floating storage or congestion; fast, laden tankers usually tighten freight (higher Worldscale).`);
-  out.push(`Average speed ${avg.toFixed(1)} kn — ${avg > 8 ? 'brisk (active trade).' : avg < 4 ? 'sluggish.' : 'moderate activity.'}`);
-  out.push('<span class="note">Freight indices (Baltic/Worldscale) are paid; AIS activity is a free proxy.</span>');
+  out.push(`<b>${list.length} oil ships</b> tracked: ${list.length - idlers} under way, ${idlers} sitting still.`);
+  out.push('Ships sitting still can mean floating storage or congestion; lots of fast-moving ships usually means busier trade.');
+  out.push(`Average speed ${avg.toFixed(1)} knots — ${avg > 8 ? 'brisk (busy trade).' : avg < 4 ? 'slow.' : 'moderate.'}`);
   return out;
 }
 function computeAlerts(m, t) {
   const out = []; const by = Object.fromEntries(m.benchmarks.map((b) => [b.id, b]));
-  if (by.brent?.basis != null && Math.abs(by.brent.basis) > 10) out.push({ level: 'high', text: `Brent basis is extreme (${signed(by.brent.basis)}) — physical dislocation.` });
-  if (by.wti?.basis != null && Math.abs(by.wti.basis) > 3.5) out.push({ level: 'med', text: `WTI basis ${signed(by.wti.basis)} — wider than normal.` });
+  if (by.brent?.basis != null && Math.abs(by.brent.basis) > 10) out.push({ level: 'high', text: `Brent real-vs-futures gap is extreme (${signed(by.brent.basis)}).` });
+  if (by.wti?.basis != null && Math.abs(by.wti.basis) > 3.5) out.push({ level: 'med', text: `WTI real-vs-futures gap is wide (${signed(by.wti.basis)}).` });
   const s = m.spreads.brent_wti;
-  if (s && Math.abs(s.physical - s.paper) > 5) out.push({ level: 'med', text: `Brent−WTI physical vs paper diverged by ${signed(s.physical - s.paper)}.` });
-  const diesel = crackSpreads(m).find((c) => c.label.startsWith('Diesel crack (paper)'));
-  if (diesel && diesel.value > 28) out.push({ level: 'high', text: `Diesel crack ${signed(diesel.value)} — very strong refining margins.` });
-  if (diesel && diesel.value < 6) out.push({ level: 'high', text: `Diesel crack only ${signed(diesel.value)} — refiner run cuts likely.` });
+  if (s && Math.abs(s.physical - s.paper) > 5) out.push({ level: 'med', text: `Brent vs WTI: the real gap and the futures gap have split by ${signed(s.physical - s.paper)}.` });
+  const diesel = crackSpreads(m).find((c) => c.label.startsWith('Diesel refining profit'));
+  if (diesel && diesel.value > 28) out.push({ level: 'high', text: `Diesel refining profit is very high (${signed(diesel.value)} a barrel).` });
+  if (diesel && diesel.value < 6) out.push({ level: 'high', text: `Diesel refining profit is very low (${signed(diesel.value)}) — refiners may cut back.` });
   const idlers = (t.tankers || []).filter((v) => (v.sog ?? 0) < 1).length;
-  if (t.status?.enabled && idlers >= 15) out.push({ level: 'med', text: `${idlers} tankers nearly stationary — watch floating storage.` });
+  if (t.status?.enabled && idlers >= 15) out.push({ level: 'med', text: `${idlers} oil ships sitting still — watch for floating storage building.` });
   return out;
 }
 function renderAlerts(alerts) {
   $('alert-count').textContent = String(alerts.length);
   $('alert-count').className = 'pill ' + (alerts.some((a) => a.level === 'high') ? 'warn' : alerts.length ? '' : 'ok');
   $('alerts').innerHTML = alerts.length ? alerts.map((a) => `<div class="alert ${a.level}"><span class="badge">${a.level === 'high' ? 'HIGH' : 'WATCH'}</span> ${a.text}</div>`).join('') : '<div class="alert none">✅ No alerts — markets within normal ranges.</div>';
-  if ('Notification' in window && Notification.permission === 'granted') for (const a of alerts) if (a.level === 'high' && !seenAlerts.has(a.text)) { seenAlerts.add(a.text); try { new Notification('Oil Basis alert', { body: a.text }); } catch {} }
+  if ('Notification' in window && Notification.permission === 'granted') for (const a of alerts) if (a.level === 'high' && !seenAlerts.has(a.text)) { seenAlerts.add(a.text); try { new Notification('Oil market alert', { body: a.text }); } catch {} }
 }
 function renderInsights(m, t) {
   $('market-insights').innerHTML = marketInsights(m).map((x) => `<li>${x}</li>`).join('');
@@ -195,19 +193,19 @@ function buildMetricOptions(m) {
   const prev = sel.value || localStorage.getItem('oilbasis.metric');
   const opts = [];
   for (const b of m.benchmarks) {
-    if (b.paper == null) opts.push(`<option value="${b.id}">${b.label} (spot only)</option>`);
-    else { opts.push(`<option value="${b.id}">${b.label} — paper vs physical</option>`); opts.push(`<option value="basis:${b.id}">${b.label} basis (phys − paper)</option>`); }
+    if (b.paper == null) opts.push(`<option value="${b.id}">${b.label} (real price only)</option>`);
+    else { opts.push(`<option value="${b.id}">${b.label} — futures vs real</option>`); opts.push(`<option value="basis:${b.id}">${b.label} gap (real − futures)</option>`); }
   }
-  for (const key of Object.keys(m.spreads)) opts.push(`<option value="spread:${key}">${m.spreads[key].label} (paper & physical)</option>`);
+  for (const key of Object.keys(m.spreads)) opts.push(`<option value="spread:${key}">${m.spreads[key].label} (futures & real)</option>`);
   sel.innerHTML = opts.join('');
   if (prev && [...sel.options].some((o) => o.value === prev)) sel.value = prev;
 }
 function line(label, arr, color) { return { label, data: arr, borderColor: color, backgroundColor: color + '22', borderWidth: 2, pointRadius: 0, tension: 0.25, spanGaps: true, fill: false }; }
 function datasetsFor(metric, h, m) {
   const b = m.benchmarks.find((x) => x.id === metric);
-  if (b) { const s = h.series[metric]; const sets = []; if (b.paper != null) sets.push(line(`${b.label} paper`, s.paper, '#4aa3ff')); sets.push(line(`${b.label} physical`, s.physical, '#ff9e00')); return sets; }
-  if (metric.startsWith('basis:')) { const id = metric.slice(6); return [line(`${id} basis`, h.basis[id], '#00c853')]; }
-  if (metric.startsWith('spread:')) { const s = h.spreads[metric.slice(7)]; return [line('paper', s.paper, '#4aa3ff'), line('physical', s.physical, '#ff9e00')]; }
+  if (b) { const s = h.series[metric]; const sets = []; if (b.paper != null) sets.push(line(`${b.label} futures`, s.paper, '#4aa3ff')); sets.push(line(`${b.label} real`, s.physical, '#ff9e00')); return sets; }
+  if (metric.startsWith('basis:')) { const id = metric.slice(6); return [line(`${id} gap`, h.basis[id], '#00c853')]; }
+  if (metric.startsWith('spread:')) { const s = h.spreads[metric.slice(7)]; return [line('futures', s.paper, '#4aa3ff'), line('real', s.physical, '#ff9e00')]; }
   return [];
 }
 function chartOpts() {
@@ -315,7 +313,7 @@ async function loadTankers() {
 // ---------------------------------------------------------------------------
 const pctClass = (p) => (p == null ? '' : p >= 80 ? 'hot' : p <= 20 ? 'cold' : '');
 function ctxRow(k, pct, value) {
-  return `<div class="ctx-row"><span class="ctx-k">${k}</span><span class="ctx-bar"><i style="width:${pct == null ? 0 : pct}%"></i></span><span class="ctx-p ${pctClass(pct)}">${pct == null ? '—' : pct.toFixed(0) + 'th pct'}</span><span class="ctx-v">${value}</span></div>`;
+  return `<div class="ctx-row"><span class="ctx-k">${k}</span><span class="ctx-bar"><i style="width:${pct == null ? 0 : pct}%"></i></span><span class="ctx-p ${pctClass(pct)}">${pct == null ? '—' : pct.toFixed(0) + '/100'}</span><span class="ctx-v">${value}</span></div>`;
 }
 function renderContext(m, a) {
   if (!a) { $('context').innerHTML = '<div class="dimtext" style="padding:10px 12px">loading…</div>'; return; }
@@ -323,16 +321,16 @@ function renderContext(m, a) {
   for (const b of m.benchmarks) {
     const an = a.benchmarks?.[b.id];
     if (!an || an.basisPct == null) continue;
-    rows.push(ctxRow(`${b.label} basis`, an.basisPct, `<span class="${cls(b.basis)}">${signed(b.basis, b.dp)}</span>`));
+    rows.push(ctxRow(`${b.label}: real vs futures`, an.basisPct, `<span class="${cls(b.basis)}">${signed(b.basis, b.dp)}</span>`));
   }
-  if (a.spread?.pct != null) rows.push(ctxRow('Brent−WTI physical', a.spread.pct, signed(a.spread.brentWtiPhysical, 2)));
-  const arb = a.arb ? `<div class="arb">EXPORT ARB (WTI → Europe): spread ${signed(a.arb.spread, 2)} − freight ${a.arb.freight.toFixed(2)} = <b class="${a.arb.open ? 'pos' : 'neg'}">${signed(a.arb.net, 2)} → ${a.arb.open ? 'OPEN' : 'CLOSED'}</b></div>` : '';
+  if (a.spread?.pct != null) rows.push(ctxRow('Brent vs WTI (real)', a.spread.pct, signed(a.spread.brentWtiPhysical, 2)));
+  const arb = a.arb ? `<div class="arb">Cost to ship US oil to Europe: gap ${signed(a.arb.spread, 2)} − shipping ${a.arb.freight.toFixed(2)} = <b class="${a.arb.open ? 'pos' : 'neg'}">${signed(a.arb.net, 2)} → ${a.arb.open ? 'worth doing' : 'not worth it'}</b></div>` : '';
   const vols = m.benchmarks.map((b) => { const an = a.benchmarks?.[b.id]; return an && an.vol30 != null ? `<span class="choke"><b>${an.vol30.toFixed(1)}%</b> ${b.label.replace(/\s*\(.*\)/, '')}</span>` : ''; }).filter(Boolean).join('');
-  const volStrip = vols ? `<div class="chokes"><div class="chokes-h">REALISED 30D VOLATILITY (ANNUALISED)</div>${vols}</div>` : '';
+  const volStrip = vols ? `<div class="chokes"><div class="chokes-h">HOW JUMPY PRICES HAVE BEEN (last 30 days, yearly pace)</div>${vols}</div>` : '';
   const qf = data?.quality?.flags || [];
-  const quality = `<div class="qflags"><div class="chokes-h">DATA QUALITY</div>${
+  const quality = `<div class="qflags"><div class="chokes-h">DATA CHECKS</div>${
     qf.length ? qf.map((f) => `<div class="qflag ${f.level}">⚠ ${f.text}</div>`).join('')
-      : '<div class="qflag ok">✓ No data-quality issues flagged. Physical vs futures aligned.</div>'}</div>`;
+      : '<div class="qflag ok">✓ Everything checks out — real prices and futures line up.</div>'}</div>`;
   $('context').innerHTML = rows.join('') + arb + volStrip + quality;
 }
 function renderInventories(d) {
@@ -404,61 +402,77 @@ function renderChokepoints(d) {
   $('chokepoints').innerHTML = '<div class="chokes-h dimtext">TANKERS IN CHOKEPOINTS (live)</div>' +
     d.chokepoints.map((c) => `<span class="choke"><b>${c.count}</b> ${c.name}</span>`).join('');
 }
+const MONTHS = { F: 'Jan', G: 'Feb', H: 'Mar', J: 'Apr', K: 'May', M: 'Jun', N: 'Jul', Q: 'Aug', U: 'Sep', V: 'Oct', X: 'Nov', Z: 'Dec' };
+const mname = (l) => `${MONTHS[l[0]] || l[0]} '${l.slice(1)}`;
 function curveBlock(name, c) {
   if (!c?.contracts || c.contracts.length < 2) return '';
   const prices = c.contracts.map((x) => x.price);
   const max = Math.max(...prices), min = Math.min(...prices);
   const rows = c.contracts.slice(0, 9).map((x) => {
     const w = ((x.price - min) / (max - min || 1)) * 100;
-    return `<div class="cbar"><span class="cl">${x.label}</span><span class="cb"><i style="width:${Math.max(w, 4)}%"></i></span><span class="cp">${x.price.toFixed(2)}</span></div>`;
+    return `<div class="cbar"><span class="cl">${mname(x.label)}</span><span class="cb"><i style="width:${Math.max(w, 4)}%"></i></span><span class="cp">${x.price.toFixed(2)}</span></div>`;
   }).join('');
-  return `<div class="curve-blk"><div class="curve-h">${name} — <b class="${c.m1m2 >= 0 ? 'pos' : 'neg'}">${c.shape}</b> · M1−M2 <b class="${cls(c.m1m2)}">${signed(c.m1m2, 2)}</b>${c.m1m6 != null ? ` · M1−M6 <b class="${cls(c.m1m6)}">${signed(c.m1m6, 2)}</b>` : ''}${c.rollYieldAnn != null ? ` · roll ${signed(c.rollYieldAnn, 1)}%/yr` : ''}</div>${rows}</div>`;
+  const shape = c.shape === 'Backwardation' ? 'pricier NOW than later → tight' : 'cheaper now than later → well supplied';
+  return `<div class="curve-blk"><div class="curve-h">${name} — <b class="${c.m1m2 >= 0 ? 'pos' : 'neg'}">${shape}</b> · this month vs next <b class="${cls(c.m1m2)}">${signed(c.m1m2, 2)}</b>${c.m1m6 != null ? ` · vs 6 months ahead <b class="${cls(c.m1m6)}">${signed(c.m1m6, 2)}</b>` : ''}</div>${rows}</div>`;
 }
-function renderCurve(d) { if (!d) return; $('curve').innerHTML = curveBlock('WTI (CL)', d.wti) + curveBlock('Brent (BZ)', d.brent); }
+function renderCurve(d) { if (!d) return; $('curve').innerHTML = curveBlock('WTI', d.wti) + curveBlock('Brent', d.brent); }
 function renderAnalogue(a) {
   if (!a || a.error) { $('analogue').innerHTML = `<div class="dimtext" style="padding:10px 12px">${a?.error || 'loading…'}</div>`; return; }
   const rows = a.horizons.map((h) => (h.n
-    ? `<tr><td>${h.h}d</td><td>${h.n}</td><td class="${cls(h.median)}">${signed(h.median, 2)}</td><td>${h.q25.toFixed(2)} … ${h.q75.toFixed(2)}</td><td>${h.pctUp.toFixed(0)}%</td></tr>`
-    : `<tr><td>${h.h}d</td><td colspan="4" class="dimtext">no analogues</td></tr>`)).join('');
+    ? `<tr><td>${h.h} days</td><td>${h.n}</td><td class="${cls(h.median)}">${signed(h.median, 2)}</td><td>${h.q25.toFixed(2)} … ${h.q75.toFixed(2)}</td><td>${h.pctUp.toFixed(0)}%</td></tr>`
+    : `<tr><td>${h.h} days</td><td colspan="4" class="dimtext">never this extreme</td></tr>`)).join('');
   const h20 = a.horizons.find((x) => x.h === 20);
   let verdict = '';
   if (h20 && h20.n) {
-    const side = a.pct >= 80 ? (h20.median < 0 ? 'mean-reversion DOWN' : 'momentum UP') : a.pct <= 20 ? (h20.median > 0 ? 'mean-reversion UP' : 'momentum DOWN') : 'no strong edge';
-    verdict = `<b>TRADE IDEA:</b> at the ${a.pct.toFixed(0)}th pctile, 20-day history favours <b>${side}</b> — median ${signed(h20.median, 2)}, ${h20.pctUp.toFixed(0)}% up, IQR ${h20.q25.toFixed(2)} … ${h20.q75.toFixed(2)}.`;
+    const side = a.pct >= 80 ? (h20.median < 0 ? 'came back <b>DOWN</b>' : 'kept going <b>UP</b>') : a.pct <= 20 ? (h20.median > 0 ? 'bounced <b>UP</b>' : 'kept going <b>DOWN</b>') : 'had no clear pattern';
+    verdict = `<b>WHAT USUALLY HAPPENED:</b> when this was as extreme, over the next 20 days it ${side} — a typical move of ${signed(h20.median, 2)}, rising ${h20.pctUp.toFixed(0)}% of the time.`;
   }
   $('analogue').innerHTML =
-    `<div class="an-head">Current = <b>${a.current.toFixed(2)}</b> · ${a.pct.toFixed(0)}th pctile · z ${a.z.toFixed(2)} · <b>${a.analogN}</b> analogous days in ${a.years}y</div>` +
-    `<table class="antable"><thead><tr><th>Horizon</th><th>N</th><th>Median fwd</th><th>IQR</th><th>P(up)</th></tr></thead><tbody>${rows}</tbody></table>` +
+    `<div class="an-head">Right now: <b>${a.current.toFixed(2)}</b> — this rare (${a.pct.toFixed(0)}/100) has only happened <b>${a.analogN}</b> times in the last ${a.years} years.</div>` +
+    `<table class="antable"><thead><tr><th>Looking ahead</th><th>Times seen</th><th>Typical move</th><th>Usual range</th><th>Went up</th></tr></thead><tbody>${rows}</tbody></table>` +
     `<div class="an-verdict">${verdict}</div>`;
 }
 async function loadAnalogue() {
   try { renderAnalogue(await getJSON('/api/analogue?metric=' + encodeURIComponent($('an-metric').value))); }
   catch (e) { showError(e.message); }
 }
-function renderBottomLine(m, tn, fl) {
+function renderBottomLine(m, tn, fl, flares, sar) {
   if (!m || !tn) return;
   const total = tn.evidence?.length || 1;
   const stress = fl?.marketStress?.score ?? 0;
   const gulfDark = (fl?.dark || []).some((n) => /Persian|Hormuz|Oman|Arabian|Red Sea/.test(n));
-  const score = Math.round(Math.min(100, (tn.tight / total) * 60 + (stress / 3) * 30 + (gulfDark ? 10 : 0)));
+  let flareNote = '', flareTight = 0;
+  if (flares?.trend?.length >= 2) {
+    const today = flares.trend[flares.trend.length - 1].count;
+    const prev = flares.trend.slice(0, -1);
+    const avg = prev.reduce((a, b) => a + b.count, 0) / prev.length;
+    const pct = Math.round(((today - avg) / avg) * 100);
+    if (pct <= -15) { flareTight = 8; flareNote = `Oil-field flames are <b>down ${Math.abs(pct)}%</b> — production being shut in.`; }
+    else if (pct >= 15) flareNote = `Oil-field flames are <b>up ${pct}%</b> — production rising.`;
+    else flareNote = `Oil-field flames steady (${today} seen).`;
+  } else if (flares?.total != null) {
+    flareNote = `Satellites see <b>${flares.total}</b> oil-field flames in the Gulf.`;
+  }
+  const score = Math.round(Math.min(100, (tn.tight / total) * 55 + (stress / 3) * 27 + (gulfDark ? 10 : 0) + flareTight));
   const label = score >= 70 ? 'HIGH' : score >= 40 ? 'ELEVATED' : 'LOW';
   const by = Object.fromEntries(m.benchmarks.map((b) => [b.id, b]));
-  const backwardated = (by.brent?.basis ?? 0) > 0;
-  const meaning = `${backwardated ? 'Physical oil is <b>tight</b> — near-term barrels are scarce' : 'Physical oil looks <b>loose</b>'}, and Gulf shipping is ${gulfDark ? '<b>disrupted / going dark</b>' : 'flowing normally'}. ${score >= 70 ? 'The market is pricing a real supply squeeze — oil has strong support, but expect sharp swings.' : score >= 40 ? 'Some tightness, but not extreme.' : 'No major tightness right now.'}`;
-  const watch = ['<b>EIA inventory release</b> — Wednesdays, 10:30am ET (the week\u2019s biggest catalyst)'];
-  if (backwardated) watch.push('The <b>curve</b> (Brent M1−M2) — if it flattens, tightness is easing');
-  if (gulfDark) watch.push('The <b>next Sentinel-1 radar pass</b> over the Gulf (Tankers tab) — our AIS-independent look');
-  watch.push('The <b>Cape vs Suez</b> rerouting (Tankers tab) — ships avoiding the Red Sea');
-  const impact = backwardated || score >= 60
-    ? 'Typically <b>favours</b> oil producers (XOM, CVX, COP, EOG) and refiners (VLO, PSX, MPC) while <b>squeezing</b> fuel users like airlines (DAL, UAL) and trucking.'
-    : 'Typically <b>eases</b> pressure on fuel users (airlines, trucking) and weighs on producers.';
-  const companies = backwardated || score >= 60 ? ['COP', 'EOG', 'OXY', 'VLO', 'PSX', 'MPC'] : ['DAL', 'UAL', 'AAL', 'LUV'];
+  const tight = (by.brent?.basis ?? 0) > 0;
+  const meaning = `Real barrels are ${tight ? '<b>scarce and pricier than futures</b> (a tight market)' : '<b>plentiful</b> (a well-supplied market)'}, and Gulf shipping is ${gulfDark ? '<b>going dark — ships switching off trackers</b>' : 'flowing normally'}. ${sar?.latest ? `Our last radar look at the Gulf was ${new Date(sar.latest.time).toLocaleDateString()}. ` : ''}${flareNote} ${score >= 70 ? 'Bottom line: strong upward pressure on oil, but expect sharp swings.' : score >= 40 ? 'Some tightness, but not extreme.' : 'No major tightness right now.'}`;
+  const watch = ['<b>Weekly US oil stocks</b> — every Wednesday, 10:30am New York time (the week\u2019s biggest mover)'];
+  if (tight) watch.push('The <b>price gap between this month and next</b> — if it shrinks, tightness is fading');
+  if (gulfDark) watch.push('The <b>next satellite radar pass</b> over the Gulf (Ships tab) — our tracker-independent look');
+  watch.push('Whether ships are <b>avoiding the Red Sea</b> and going around Africa (Ships tab)');
+  if (flares) watch.push('The <b>oil-field flames</b> (Ships tab) — fewer flames = production being cut');
+  const impact = tight || score >= 60
+    ? 'Typically <b>helps</b> oil producers and refiners, and <b>hurts</b> heavy fuel users like airlines and trucking.'
+    : 'Typically <b>eases</b> the squeeze on airlines and trucking, and <b>weighs on</b> producers.';
+  const companies = tight || score >= 60 ? ['COP', 'EOG', 'OXY', 'VLO', 'PSX', 'MPC'] : ['DAL', 'UAL', 'AAL', 'LUV'];
   $('bottomline').innerHTML = `
     <div class="bl">
-      <div class="bl-score ${label.toLowerCase()}"><div class="bl-num">${score}<span>/100</span></div><div class="bl-lbl">GULF FLOW STRESS<div class="bl-tag">${label}</div></div></div>
+      <div class="bl-score ${label.toLowerCase()}"><div class="bl-num">${score}<span>/100</span></div><div class="bl-lbl">OIL MARKET STRESS<div class="bl-tag">${label}</div></div></div>
       <div class="bl-sec"><div class="gtitle">WHAT IT MEANS</div><p>${meaning}</p></div>
       <div class="bl-sec"><div class="gtitle">WHAT TO WATCH NEXT</div><ul>${watch.map((w) => `<li>${w}</li>`).join('')}</ul></div>
-      <div class="bl-sec"><div class="gtitle">WHO IT AFFECTS</div><p>${impact}</p><div class="bl-chips">${companies.map((c) => `<span class="chip">${c}</span>`).join('')}</div></div>
+      <div class="bl-sec"><div class="gtitle">WHO IT HELPS / HURTS</div><p>${impact}</p><div class="bl-chips">${companies.map((c) => `<span class="chip">${c}</span>`).join('')}</div></div>
     </div>`;
 }
 function renderTightness(d) {
@@ -474,39 +488,39 @@ function renderFlows(d) {
   const e = d.exit; const total = (e.eastbound + e.westbound) || 1;
   const ew = (e.eastbound / total * 100).toFixed(0), ww = (e.westbound / total * 100).toFixed(0);
   const darkNote = (d.dark && d.dark.length)
-    ? `<div class="qflag watch" style="margin:8px 12px">⚠ <b>No AIS activity</b> in: ${d.dark.join(', ')} — the feed is dark here (possible disruption / dark fleet, or limited coverage).</div>`
+    ? `<div class="qflag watch" style="margin:8px 12px">⚠ <b>No ship signals</b> in: ${d.dark.join(', ')} — this area has gone quiet (ships may be switching off trackers, or the feed is limited).</div>`
     : '';
   const ms = d.marketStress;
-  const stressHtml = ms ? `<div class="chokes-h dimtext" style="padding:10px 12px 0">MARKET-IMPLIED GULF STRESS — ships go dark, but prices can't lie</div>
+  const stressHtml = ms ? `<div class="chokes-h dimtext" style="padding:10px 12px 0">WHAT PRICES ARE SAYING (ships go dark, but prices can't)</div>
     <div style="padding:6px 12px 0"><div class="verdict ${ms.score >= 2 ? 'tight' : 'mixed'}">${ms.verdict}</div>
     ${ms.signals.map((s) => `<div class="ev"><span class="ev-l">${s.label}</span><span class="ev-v ${s.hot ? 'pos' : ''}">${s.value != null ? (s.value >= 0 ? '+' : '') + Number(s.value).toFixed(2) : '—'}</span><span class="tag ${s.hot ? 'tight' : 'neutral'}">${s.hot ? 'STRESS' : 'ok'}</span><span class="ev-n dimtext">${s.hot ? 'pricing disruption' : 'normal'}</span></div>`).join('')}</div>` : '';
   const an = d.anomalies || {};
-  const anHtml = `<div class="chokes-h dimtext" style="padding:0 12px">AIS ANOMALIES (visible vessels, M.E. only)</div>
-    <div class="chokes"><span class="choke"><b>${an.spoof || 0}</b> spoof / teleport</span><span class="choke"><b>${an.darkGap || 0}</b> dark gaps → inferred transits</span></div>`;
+  const anHtml = `<div class="chokes-h dimtext" style="padding:0 12px">TRACKER ODDITIES (ships we can still see)</div>
+    <div class="chokes"><span class="choke"><b>${an.spoof || 0}</b> fake jumps (spoofing)</span><span class="choke"><b>${an.darkGap || 0}</b> went silent (hidden trips)</span></div>`;
   const routes = (d.routes || []).map((r) => `<span class="choke ${r.perMin === 0 ? 'cold' : ''}"><b>${r.count}</b> ${r.name} <span class="dimtext">${r.perMin}/min</span></span>`).join('');
-  const routesHtml = `<div class="chokes-h dimtext" style="padding:0 12px">ROUTE MIX — are tankers dodging chokepoints?</div><div class="chokes">${routes}</div>`;
-  const divHtml = d.diversion ? `<div class="qflag watch" style="margin:8px 12px">🧭 ROUTING: ${d.diversion}</div>` : '';
+  const routesHtml = `<div class="chokes-h dimtext" style="padding:0 12px">ARE SHIPS DODGING CHOKEPOINTS?</div><div class="chokes">${routes}</div>`;
+  const divHtml = d.diversion ? `<div class="qflag watch" style="margin:8px 12px">🧭 ${d.diversion}</div>` : '';
   $('flows').innerHTML =
-    `<div class="chokes-h dimtext">MIDDLE-EAST FLOWS (live AIS)</div>
+    `<div class="chokes-h dimtext">MIDDLE-EAST SHIPPING (live)</div>
      <div class="chokes">${regions}</div>
-     <div class="chokes-h dimtext" style="padding:0 12px">AIS ACTIVITY (reports/min · 5-min window)</div>
+     <div class="chokes-h dimtext" style="padding:0 12px">SHIP-TRACKER SIGNALS (per minute · last 5 min)</div>
      <div class="chokes">${rates}</div>
      ${darkNote}
      ${routesHtml}
      ${divHtml}
      ${stressHtml}
      ${anHtml}
-     <div class="flowbar"><div class="dimtext">Gulf of Oman / Arabian Sea — direction of travel</div>
-       <div class="fb"><span class="fb-e" style="width:${ew}%">${e.eastbound} east → Asia</span><span class="fb-w" style="width:${ww}%">${e.westbound} west → Suez</span></div>
-       <div class="dimtext">${e.total} tankers in the exit corridor · ${e.moving} under way · ${e.idle} idle</div></div>`;
+     <div class="flowbar"><div class="dimtext">Where ships leaving the Gulf are heading</div>
+       <div class="fb"><span class="fb-e" style="width:${ew}%">${e.eastbound} heading east → Asia</span><span class="fb-w" style="width:${ww}%">${e.westbound} heading west → Suez</span></div>
+       <div class="dimtext">${e.total} ships in the exit zone · ${e.moving} moving · ${e.idle} idle</div></div>`;
 }
 function renderProducts(d) {
   if (!d?.items) { $('products').innerHTML = ''; return; }
   const cards = d.items.map((i) => {
-    const read = i.crack == null ? '—' : i.crack > 25 ? 'very strong' : i.crack > 12 ? 'strong' : i.crack > 5 ? 'ok' : 'weak';
-    return `<div class="card"><h3>${i.label} <span>crack $/bbl</span></h3>
-      <div class="row"><span class="k">Crack</span><span class="v basis ${cls(i.crack)}">${signed(i.crack, 2)}</span></div>
-      <div class="row"><span class="k">2-yr pctile</span><span class="v">${i.pct != null ? i.pct.toFixed(0) + 'th' : '—'}</span></div>
+    const read = i.crack == null ? '—' : i.crack > 25 ? 'excellent' : i.crack > 12 ? 'good' : i.crack > 5 ? 'ok' : 'poor';
+    return `<div class="card"><h3>${i.label} <span>profit / barrel</span></h3>
+      <div class="row"><span class="k">Profit / barrel</span><span class="v basis ${cls(i.crack)}">${signed(i.crack, 2)}</span></div>
+      <div class="row"><span class="k">How extreme</span><span class="v">${i.pct != null ? i.pct.toFixed(0) + '/100' : '—'}</span></div>
       <div class="row"><span class="k">Read <span class="qi" title="${i.note}">ⓘ</span></span><span class="v dimtext" style="font-weight:400">${read}</span></div></div>`;
   }).join('');
   $('products').innerHTML = `<div class="cards">${cards}</div>`;
@@ -584,13 +598,13 @@ async function loadReroute() { try { renderReroute(await getJSON('/api/reroute')
 function renderRegime(m, a, c) {
   const by = Object.fromEntries(m.benchmarks.map((b) => [b.id, b]));
   const parts = [];
-  if (c?.brent) parts.push(`<b>${c.brent.shape.toUpperCase()}</b>`);
+  if (c?.brent) parts.push(c.brent.shape === 'Backwardation' ? 'oil is pricier <b>now</b> than later → <b>tight</b>' : 'oil is cheaper now than later → <b>well supplied</b>');
   const bb = by.brent?.basis;
-  if (bb != null) parts.push(bb > 0 ? 'physical <span class="pos">tight</span>' : 'physical <span class="neg">loose</span>');
-  if (a?.arb) parts.push(`export arb <b class="${a.arb.open ? 'pos' : 'neg'}">${a.arb.open ? 'OPEN' : 'CLOSED'}</b>`);
+  if (bb != null) parts.push(bb > 0 ? 'real barrels cost <span class="pos">more</span> than futures' : 'real barrels cost <span class="neg">less</span> than futures');
+  if (a?.arb) parts.push(`shipping US oil to Europe is <b class="${a.arb.open ? 'pos' : 'neg'}">${a.arb.open ? 'worth it' : 'not worth it'}</b>`);
   const dq = (m.quality?.flags || []).length;
-  if (dq) parts.push(`<span class="warn">⚠ ${dq} data caveat${dq > 1 ? 's' : ''}</span>`);
-  $('regime').innerHTML = `<span class="regime-k">REGIME</span> ${parts.join(' · ')}`;
+  if (dq) parts.push(`<span class="warn">⚠ ${dq} data check${dq > 1 ? 's' : ''}</span>`);
+  $('regime').innerHTML = `<span class="regime-k">RIGHT NOW</span> ${parts.join(' · ')}`;
 }
 function kpiTile(label, value, sub, klass) {
   return `<div class="kpi"><div class="kpi-l">${label}</div><div class="kpi-v ${klass || ''}">${value}</div><div class="kpi-s dimtext">${sub}</div></div>`;
@@ -598,14 +612,15 @@ function kpiTile(label, value, sub, klass) {
 function renderKPIs(m, a, c, pos) {
   const by = Object.fromEntries(m.benchmarks.map((b) => [b.id, b]));
   const d321 = crackSpreads(m).find((x) => x.label.startsWith('3-2-1'));
-  const pct = (id) => (a?.benchmarks?.[id]?.basisPct != null ? Math.round(a.benchmarks[id].basisPct) + 'th pct' : '—');
+  const extreme = (id) => { const v = a?.benchmarks?.[id]?.basisPct; return v == null ? '—' : `${Math.round(v)}/100 extreme vs 2 years`; };
+  const shape = c?.brent?.shape === 'Backwardation' ? 'oil pricier now than later' : 'oil cheaper now than later';
   const t = [];
-  if (by.brent) t.push(kpiTile('BRENT BASIS', signed(by.brent.basis, 2), `${pct('brent')} · phys−paper`, cls(by.brent.basis)));
-  if (by.wti) t.push(kpiTile('WTI BASIS', signed(by.wti.basis, 2), `${pct('wti')} · phys−paper`, cls(by.wti.basis)));
-  if (m.spreads.brent_wti) t.push(kpiTile('BRENT − WTI', signed(m.spreads.brent_wti.physical, 2), 'physical spread', cls(m.spreads.brent_wti.physical)));
-  if (d321) t.push(kpiTile('3-2-1 CRACK', signed(d321.value, 2), d321.value > 18 ? 'strong' : d321.value > 8 ? 'healthy' : 'weak', cls(d321.value)));
-  if (c?.brent?.m1m2 != null) t.push(kpiTile('BRENT M1−M2', signed(c.brent.m1m2, 2), c.brent.shape, cls(c.brent.m1m2)));
-  if (pos?.latest) t.push(kpiTile('WTI SPEC NET', pos.latest.net.toLocaleString(), `${pos.pct.toFixed(0)}th pct · CFTC`, cls(pos.latest.net)));
+  if (by.brent) t.push(kpiTile('BRENT — REAL vs FUTURES', signed(by.brent.basis, 2), extreme('brent'), cls(by.brent.basis)));
+  if (by.wti) t.push(kpiTile('WTI — REAL vs FUTURES', signed(by.wti.basis, 2), extreme('wti'), cls(by.wti.basis)));
+  if (m.spreads.brent_wti) t.push(kpiTile('BRENT vs WTI', signed(m.spreads.brent_wti.physical, 2), 'real-barrel gap', cls(m.spreads.brent_wti.physical)));
+  if (d321) t.push(kpiTile('REFINING PROFIT', signed(d321.value, 2), d321.value > 18 ? 'very good' : d321.value > 8 ? 'ok' : 'poor', cls(d321.value)));
+  if (c?.brent?.m1m2 != null) t.push(kpiTile('PRICE NOW vs NEXT MONTH', signed(c.brent.m1m2, 2), shape, cls(c.brent.m1m2)));
+  if (pos?.latest) t.push(kpiTile('HEDGE-FUND NET BET', pos.latest.net.toLocaleString(), `${pos.pct.toFixed(0)}/100 extreme vs 3 years`, cls(pos.latest.net)));
   $('kpis').innerHTML = t.join('');
 }
 function showTab(name) {
@@ -643,7 +658,7 @@ async function loadExtra() {
     renderFlows(fl);
     renderProducts(pr);
     renderSatellite(sar, flr);
-    renderBottomLine(data, tn, fl);
+    renderBottomLine(data, tn, fl, flr, sar);
     renderKPIs(data, an, cv, pos);
     renderRegime(data, an, cv);
   } catch (e) { showError(e.message); }
