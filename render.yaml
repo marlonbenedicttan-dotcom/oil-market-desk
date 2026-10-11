@@ -1,10 +1,11 @@
-# Render Blueprint — deploy "Oil Market Desk" from GitHub in one click.
+# Render Blueprint — deploy "Oil Market Desk" from GitHub in one click (free).
 # Docs: https://render.com/docs/blueprint-spec
 services:
   - type: web
     name: oil-market-desk
     env: docker
-    plan: starter          # "free" works but sleeps; the dashboard then only updates on visit
+    plan: free             # free tier (sleeps after 15 min idle, wakes on visit)
+    autoDeploy: true
     healthCheckPath: /
     envVars:
       - key: AISSTREAM_KEY
@@ -13,3 +14,5 @@ services:
         sync: false
       - key: DIGEST_HOUR
         value: "7"
+      - key: NOTIFY
+        value: "off"       # desktop notifications are macOS-only
