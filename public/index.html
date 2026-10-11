@@ -18,6 +18,7 @@
     </div>
     <div class="meta">
       <span id="updated">loading…</span>
+      <span id="countdown" class="dimtext"></span>
       <button id="refresh">↻ Refresh</button>
     </div>
   </header>
@@ -25,17 +26,15 @@
   <main>
     <div id="error" class="errbar hidden"></div>
 
-    <section class="panel" id="insights-panel">
-      <div class="panel-head"><h2>🧭 Insights — what it means</h2></div>
+    <section class="panel">
+      <div class="panel-head">
+        <h2>🧭 Insights — what it means</h2>
+        <button id="help-btn" class="ghost">What do these mean?</button>
+      </div>
+      <div id="glossary" class="glossary hidden"></div>
       <div class="insights">
-        <div class="col">
-          <h3 class="gtitle">For oil prices</h3>
-          <ul id="market-insights" class="ins-list"></ul>
-        </div>
-        <div class="col">
-          <h3 class="gtitle">For tanker &amp; freight</h3>
-          <ul id="tanker-insights" class="ins-list"></ul>
-        </div>
+        <div class="col"><h3 class="gtitle">For oil prices</h3><ul id="market-insights" class="ins-list"></ul></div>
+        <div class="col"><h3 class="gtitle">For tanker &amp; freight</h3><ul id="tanker-insights" class="ins-list"></ul></div>
       </div>
       <div class="panel-head" style="margin-top:16px"><h2>⚠ Alerts</h2><span id="alert-count" class="pill">0</span></div>
       <div id="alerts" class="alerts"></div>
@@ -56,8 +55,9 @@
         <h2>🚢 Tanker traffic</h2>
         <span id="ais-status" class="pill">—</span>
       </div>
+      <div id="ais-sub" class="dimtext"></div>
       <div id="ais-help" class="help hidden"></div>
-      <div id="map"></div>
+      <div id="map"><div id="map-empty" class="map-empty hidden">Waiting for tanker positions…</div></div>
       <div id="tanker-list" class="tanker-list"></div>
     </section>
 
