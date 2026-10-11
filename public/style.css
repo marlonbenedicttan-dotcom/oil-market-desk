@@ -124,6 +124,45 @@ select { background: var(--panel2); color: var(--text); border: 1px solid var(--
 footer { color: var(--dim); font-size: 11px; line-height: 1.7; border-top: 1px solid var(--line); padding-top: 10px; }
 footer li { margin-bottom: 2px; }
 
+/* Context / percentile */
+.ctx { padding: 8px 12px; display: grid; gap: 6px; }
+.ctx-row { display: grid; grid-template-columns: 170px 1fr 92px 96px; align-items: center; gap: 10px; font-size: 12px; }
+.ctx-k { color: var(--dim); }
+.ctx-bar { height: 8px; background: #0f1318; border: 1px solid var(--line); position: relative; }
+.ctx-bar i { position: absolute; left: 0; top: 0; bottom: 0; background: var(--amber2); }
+.ctx-p { text-align: right; letter-spacing: 1px; color: var(--dim); font-variant-numeric: tabular-nums; }
+.ctx-p.hot { color: var(--red); }
+.ctx-p.cold { color: var(--green); }
+.ctx-v { text-align: right; font-variant-numeric: tabular-nums; }
+.arb { margin-top: 8px; padding: 6px 9px; border: 1px solid var(--line); background: var(--panel2); letter-spacing: .5px; font-size: 12px; }
+.pos-sub { padding: 0 12px 6px; }
+.spark { margin: 0 12px 10px; display: block; }
+
+/* Tables (inventories) */
+.tbl { padding: 10px 12px; font-size: 12px; }
+.t.inv { display: grid; grid-template-columns: 1fr 100px 90px 90px; gap: 8px; padding: 4px 0; border-bottom: 1px solid var(--line); font-variant-numeric: tabular-nums; }
+.t.inv.h { color: var(--amber); font-size: 10px; letter-spacing: 1px; border-bottom: 1px solid var(--line2); }
+.t.inv .num { text-align: right; }
+.inv-l { color: #c9d4df; }
+
+/* Sectors */
+.sector-read { padding: 2px 8px; }
+.sectors { padding: 6px 12px 12px; display: grid; gap: 12px; }
+.eq-name { font-size: 11px; letter-spacing: 1px; color: var(--amber2); margin-bottom: 5px; }
+.eq-list { display: flex; flex-wrap: wrap; gap: 8px; }
+.eq { border: 1px solid var(--line); padding: 3px 8px; font-size: 12px; font-variant-numeric: tabular-nums; }
+.eq b { color: var(--dim); }
+.eq em { font-style: normal; }
+.eq.pos { border-color: #14512f; }
+.eq.neg { border-color: #5a2020; }
+
+/* Chokepoints */
+.chokes { display: flex; flex-wrap: wrap; gap: 8px; padding: 10px 12px; }
+.chokes-h { width: 100%; font-size: 10px; letter-spacing: 1px; margin-bottom: 2px; }
+.choke { border: 1px solid var(--line); padding: 3px 8px; font-size: 12px; }
+.choke b { color: var(--amber); }
+.disc { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--line); font-size: 10.5px; }
+
 .glossary { background: var(--panel2); border: 1px solid var(--line); padding: 12px 14px; margin: 12px; }
 .glossary dl { margin: 0; display: grid; grid-template-columns: max-content 1fr; gap: 5px 16px; }
 .glossary dt { color: var(--amber); font-weight: 700; }

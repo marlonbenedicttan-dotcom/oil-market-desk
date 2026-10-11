@@ -16,6 +16,7 @@
       <span id="clock" class="clock">--:--:--</span>
       <span id="updated" class="dimtext">loading…</span>
       <span id="countdown" class="dimtext"></span>
+      <a id="csv" class="ghost" href="/api/export.csv">⬇ CSV</a>
       <button id="refresh" class="ghost">↻ REFRESH</button>
     </div>
   </header>
@@ -35,18 +36,36 @@
       <div id="alerts" class="alerts"></div>
     </section>
 
+    <section class="panel">
+      <div class="ph"><span class="ph-t">MARKET CONTEXT</span><span class="dimtext">2-YEAR PERCENTILE — IS THIS NORMAL?</span></div>
+      <div id="context" class="ctx"></div>
+    </section>
+
     <div id="cards"></div>
 
     <section class="panel">
       <div class="ph">
         <span class="ph-t">HISTORY</span>
-        <div class="controls">
-          <select id="metric"></select>
-          <select id="range"><option value="6m">6M</option><option value="10y">10Y</option></select>
-        </div>
+        <div class="controls"><select id="metric"></select><select id="range"><option value="6m">6M</option><option value="10y">10Y</option></select></div>
       </div>
       <div class="chart-wrap"><canvas id="chart"></canvas></div>
       <div id="lt-summary" class="dimtext lt-summary"></div>
+    </section>
+
+    <section class="panel">
+      <div class="ph"><span class="ph-t">INVENTORIES</span><span id="inv-date" class="dimtext">EIA · weekly</span></div>
+      <div id="inventories" class="tbl"></div>
+    </section>
+
+    <section class="panel">
+      <div class="ph"><span class="ph-t">POSITIONING</span><span class="dimtext">CFTC · managed money net</span></div>
+      <div id="positioning" class="ctx"></div>
+    </section>
+
+    <section class="panel">
+      <div class="ph"><span class="ph-t">SECTOR IMPACT &amp; EQUITIES</span><span id="eq-date" class="dimtext"></span></div>
+      <div id="sector-read" class="sector-read"></div>
+      <div id="sectors" class="sectors"></div>
     </section>
 
     <section class="panel">
@@ -54,6 +73,7 @@
       <div id="ais-sub" class="dimtext"></div>
       <div id="ais-help" class="help hidden"></div>
       <div id="map"><div id="map-empty" class="map-empty hidden">WAITING FOR TANKER POSITIONS…</div></div>
+      <div id="chokepoints" class="chokes"></div>
       <div id="tanker-list" class="tanker-list"></div>
     </section>
 

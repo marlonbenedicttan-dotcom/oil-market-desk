@@ -6,7 +6,7 @@ const cls = (n) => (n == null ? '' : n >= 0 ? 'pos' : 'neg');
 const GAL = 42;
 const ago = (iso) => { if (!iso) return ''; const s = Math.round((Date.now() - new Date(iso)) / 1000); return s < 60 ? `${s}s ago` : s < 3600 ? `${Math.round(s / 60)}m ago` : `${Math.round(s / 3600)}h ago`; };
 
-let data, history;
+let data, history, analytics;
 let tankerInfo = { status: {}, count: 0, tankers: [] };
 let nextRefresh = 60;
 const seenAlerts = new Set();
@@ -21,6 +21,10 @@ const GLOSSARY = `
     <dt>Crack spread</dt><dd>Refining margin: product (gasoline/diesel) × 42 gallons minus crude, per barrel.</dd>
     <dt>Brent − WTI</dt><dd>The spread between the two crude benchmarks; a wide physical spread signals export pull.</dd>
     <dt>% performance</dt><dd>Change vs the start of the window (10Y = since ~10 years ago), not just day-on-day.</dd>
+    <dt>Percentile</dt><dd>Where today's value ranks within the last 2 years (80th+ = historically high, 20th- = low).</dd>
+    <dt>Inventories</dt><dd>EIA weekly US stocks. Draws (negative) are bullish for crude; builds are bearish.</dd>
+    <dt>Positioning</dt><dd>CFTC speculative net length. Extremes often precede reversals.</dd>
+    <dt>Chokepoints</dt><dd>Straits where tanker congestion lifts freight (Hormuz, Malacca, Suez, Panama…).</dd>
     <dt>Worldscale / freight</dt><dd>The tanker-rate index (paid data); here we use live AIS ship behaviour as a free proxy.</dd>
   </dl>`;
 
@@ -227,7 +231,8 @@ async function loadMarket() {
   renderInsights(data, tankerInfo); renderAlerts(computeAlerts(data, tankerInfo)); renderTicker(data);
   await renderChart();   // ← the fix: render AFTER data exists
   $('updated').textContent = 'prices ' + new Date(data.updated).toLocaleTimeString();
-  $('notes').innerHTML = '<ul>' + data.notes.map((n) => `<li>${n}</li>`).join('') + '</ul>';
+  $('notes').innerHTML = '<ul>' + data.notes.map((n) => `<li>${n}</li>`).join('') + '</ul>' +
+    '<div class="disc">Sources: FRED/EIA (spot), Yahoo (futures), aisstream.io (AIS), CFTC (positioning). For information only — <b>not investment advice</b>. Figures may be delayed or indicative.</div>';
 }
 
 // ---------------------------------------------------------------------------
@@ -267,11 +272,104 @@ async function loadTankers() {
 }
 
 // ---------------------------------------------------------------------------
+// New panels: context, inventories, positioning, sectors, chokepoints
+// ---------------------------------------------------------------------------
+const pctClass = (p) => (p == null ? '' : p >= 80 ? 'hot' : p <= 20 ? 'cold' : '');
+function ctxRow(k, pct, value) {
+  return `<div class="ctx-row"><span class="ctx-k">${k}</span><span class="ctx-bar"><i style="width:${pct == null ? 0 : pct}%"></i></span><span class="ctx-p ${pctClass(pct)}">${pct == null ? '—' : pct.toFixed(0) + 'th pct'}</span><span class="ctx-v">${value}</span></div>`;
+}
+function renderContext(m, a) {
+  if (!a) { $('context').innerHTML = '<div class="dimtext" style="padding:10px 12px">loading…</div>'; return; }
+  const rows = [];
+  for (const b of m.benchmarks) {
+    const an = a.benchmarks?.[b.id];
+    if (!an || an.basisPct == null) continue;
+    rows.push(ctxRow(`${b.label} basis`, an.basisPct, `<span class="${cls(b.basis)}">${signed(b.basis, b.dp)}</span>`));
+  }
+  if (a.spread?.pct != null) rows.push(ctxRow('Brent−WTI physical', a.spread.pct, signed(a.spread.brentWtiPhysical, 2)));
+  const arb = a.arb ? `<div class="arb">EXPORT ARB (WTI → Europe): spread ${signed(a.arb.spread, 2)} − freight ${a.arb.freight.toFixed(2)} = <b class="${a.arb.open ? 'pos' : 'neg'}">${signed(a.arb.net, 2)} → ${a.arb.open ? 'OPEN' : 'CLOSED'}</b></div>` : '';
+  $('context').innerHTML = rows.join('') + arb;
+}
+function renderInventories(d) {
+  if (!d || !d.items?.length) { $('inventories').innerHTML = '<div class="dimtext" style="padding:10px 12px">EIA key needed, or no data.</div>'; return; }
+  $('inv-date').textContent = 'EIA · week of ' + d.items[0].period;
+  const fmtN = (v) => (v == null ? '—' : (v >= 0 ? '+' : '') + v.toLocaleString(undefined, { maximumFractionDigits: 0 }));
+  const rows = d.items.map((i) => `<div class="t inv"><span class="inv-l">${i.label}</span><span class="num">${i.value.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span><span class="num ${cls(i.wow)}">${fmtN(i.wow)}</span><span class="num ${cls(i.chg4)}">${fmtN(i.chg4)}</span></div>`).join('');
+  $('inventories').innerHTML = `<div class="t inv h"><span class="inv-l">SERIES (Mbbl)</span><span class="num">LEVEL</span><span class="num">WoW</span><span class="num">4-WK</span></div>` + rows;
+}
+function sparkline(vals, w = 240, h = 40) {
+  const xs = vals.filter((v) => v != null);
+  if (xs.length < 2) return '';
+  const min = Math.min(...xs), max = Math.max(...xs), rng = max - min || 1;
+  const pts = xs.map((v, i) => `${(i / (xs.length - 1)) * w},${h - ((v - min) / rng) * h}`).join(' ');
+  return `<svg width="${w}" height="${h}" class="spark"><polyline points="${pts}" fill="none" stroke="#ff9e00" stroke-width="1.5"/></svg>`;
+}
+function renderPositioning(p) {
+  if (!p || p.error) { $('positioning').innerHTML = '<div class="dimtext" style="padding:10px 12px">no data</div>'; return; }
+  $('positioning').innerHTML =
+    ctxRow(p.label, p.pct, `${p.latest.net.toLocaleString()} ct`) +
+    `<div class="pos-sub dimtext">WoW ${p.wow >= 0 ? '+' : ''}${p.wow.toLocaleString()} contracts · as of ${p.latest.date}</div>` +
+    sparkline(p.history.map((h) => h.net));
+}
+function sectorRead(m, a, t) {
+  const by = Object.fromEntries(m.benchmarks.map((b) => [b.id, b]));
+  const cracks = crackSpreads(m);
+  const d321 = cracks.find((c) => c.label.startsWith('3-2-1'));
+  const diesel = cracks.find((c) => c.label.startsWith('Diesel crack (paper)'));
+  const lines = [];
+  const back = (by.brent?.basis ?? 0) > 0 || (by.wti?.basis ?? 0) > 0;
+  lines.push(back
+    ? 'Backwardated, tight physical market → favours <b>E&amp;P</b> (COP, EOG, OXY, FANG) cash flow; storage plays unattractive.'
+    : 'Contango → storage economics improve; supportive for <b>floating-storage tankers</b>.');
+  if (d321) lines.push(`3-2-1 crack ${signed(d321.value)} → ${d321.value > 18 ? '<b>refiners</b> (VLO, PSX, MPC, DINO) earning strong margins.' : d321.value > 8 ? 'refiners modestly profitable.' : 'weak margins → pressure on <b>refiners</b>.'}`);
+  if (diesel) lines.push(`Diesel crack ${signed(diesel.value)} → diesel-levered refiners ${diesel.value > 25 ? 'outperforming' : 'under pressure'}.`);
+  if (a?.arb) lines.push(a.arb.open
+    ? `Export arb OPEN (net ${signed(a.arb.net)}) → USGC barrels pulled to Europe, supportive for <b>crude tanker rates</b> (FRO, DHT, STNG, INSW).`
+    : 'Export arb closed → less long-haul crude demand, softer freight.');
+  const idlers = (t.tankers || []).filter((v) => (v.sog ?? 0) < 1).length;
+  if (t.status?.enabled) lines.push(`${idlers} tankers idle → ${idlers > 12 ? 'rising floating storage (watch tanker names).' : 'normal transit.'}`);
+  lines.push('High crude + wide cracks squeeze <b>airlines</b> (DAL, UAL, AAL) and <b>petrochemicals</b> (LYB) via input costs.');
+  return lines;
+}
+function renderSectors(eq, m, a, t) {
+  $('sector-read').innerHTML = '<ul class="ins-list">' + sectorRead(m, a, t).map((x) => `<li>${x}</li>`).join('') + '</ul>';
+  if (!eq) { $('sectors').innerHTML = ''; return; }
+  $('eq-date').textContent = 'quotes ' + new Date().toLocaleTimeString('en-GB');
+  $('sectors').innerHTML = eq.groups.map((g) => {
+    const qs = g.quotes.map((q) => `<span class="eq ${cls(q.pct)}"><b>${q.symbol}</b> ${q.price != null ? q.price.toFixed(q.price < 10 ? 3 : 2) : '—'} <em>${q.pct != null ? pctf(q.pct) : ''}</em></span>`).join('');
+    return `<div class="eq-group"><div class="eq-name">${g.name} <span class="dimtext">— ${g.why}</span></div><div class="eq-list">${qs}</div></div>`;
+  }).join('');
+}
+function renderChokepoints(d) {
+  if (!d?.chokepoints) return;
+  $('chokepoints').innerHTML = '<div class="chokes-h dimtext">TANKERS IN CHOKEPOINTS (live)</div>' +
+    d.chokepoints.map((c) => `<span class="choke"><b>${c.count}</b> ${c.name}</span>`).join('');
+}
+async function loadExtra() {
+  try {
+    const [inv, pos, eq, chk, an] = await Promise.all([
+      getJSON('/api/inventories').catch(() => null),
+      getJSON('/api/positioning').catch(() => null),
+      getJSON('/api/equities').catch(() => null),
+      getJSON('/api/chokepoints').catch(() => null),
+      getJSON('/api/analytics').catch(() => null),
+    ]);
+    analytics = an;
+    renderContext(data, an);
+    renderInventories(inv);
+    renderPositioning(pos);
+    renderSectors(eq, data, an, tankerInfo);
+    renderChokepoints(chk);
+  } catch (e) { showError(e.message); }
+}
+
+// ---------------------------------------------------------------------------
 // Boot
 // ---------------------------------------------------------------------------
 async function refreshAll() {
   try { await loadMarket(); } catch (e) { showError(e.message); console.error(e); }
   try { await loadTankers(); } catch (e) { showError(e.message); console.error(e); }
+  await loadExtra();
 }
 $('refresh').addEventListener('click', () => { nextRefresh = 60; refreshAll(); });
 $('metric').addEventListener('change', () => { localStorage.setItem('oilbasis.metric', $('metric').value); renderChart(); });
@@ -294,5 +392,5 @@ $('cards').addEventListener('click', (e) => {
   await loadHistory().catch((e) => showError(e.message));
   await refreshAll();
   setInterval(loadTankers, 15000);
-  setInterval(() => { nextRefresh -= 5; if (nextRefresh <= 0) { nextRefresh = 60; loadMarket().catch((e) => showError(e.message)); } $('countdown').textContent = `auto ${nextRefresh}s`; }, 5000);
+  setInterval(() => { nextRefresh -= 5; if (nextRefresh <= 0) { nextRefresh = 60; refreshAll(); } $('countdown').textContent = `auto ${nextRefresh}s`; }, 5000);
 })();

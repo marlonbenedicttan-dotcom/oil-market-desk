@@ -219,16 +219,179 @@ async function getLongterm(b, years = 10) {
 }
 
 // ---------------------------------------------------------------------------
+// EIA weekly inventories (free key)
+// ---------------------------------------------------------------------------
+const INV_SERIES = {
+  crude: { id: 'WCESTUS1', label: 'Crude (ex-SPR)' },
+  cushing: { id: 'W_EPC0_SAX_YCUOK_MBBL', label: 'Cushing' },
+  gasoline: { id: 'WGTSTUS1', label: 'Gasoline' },
+  distillate: { id: 'WDISTUS1', label: 'Distillate' },
+  spr: { id: 'WCSSTUS1', label: 'SPR' },
+};
+async function eiaStocks(id, weeks = 320) {
+  const key = process.env.EIA_API_KEY;
+  if (!key) return [];
+  const p = new URLSearchParams();
+  p.set('api_key', key); p.set('frequency', 'weekly');
+  p.append('data[0]', 'value'); p.append('facets[series][]', id);
+  p.set('start', new Date(Date.now() - weeks * 7 * 864e5).toISOString().slice(0, 10));
+  p.append('sort[0][column]', 'period'); p.append('sort[0][direction]', 'asc'); p.set('length', '1000');
+  const res = await fetch(`https://api.eia.gov/v2/petroleum/stoc/wstk/data/?${p}`, { headers: UA });
+  if (!res.ok) throw new Error(`eia stocks ${id} -> ${res.status}`);
+  return ((await res.json()).response?.data || []).map((r) => ({ period: r.period, value: parseFloat(r.value) }));
+}
+async function getInventories() {
+  return cached('inventories', 6 * 3600e3, async () => {
+    const results = await Promise.all(Object.entries(INV_SERIES).map(async ([k, s]) => [k, await eiaStocks(s.id)]));
+    const items = [];
+    for (const [k, arr] of results) {
+      if (!arr.length) continue;
+      const last = arr[arr.length - 1];
+      const prev = arr[arr.length - 2];
+      const wk4 = arr[arr.length - 5];
+      items.push({
+        key: k, label: INV_SERIES[k].label, period: last.period, value: last.value,
+        wow: prev ? last.value - prev.value : null,
+        chg4: wk4 ? last.value - wk4.value : null,
+      });
+    }
+    return { items, fetched: new Date().toISOString() };
+  });
+}
+
+// ---------------------------------------------------------------------------
+// CFTC positioning (WTI managed money / non-commercial net)
+// ---------------------------------------------------------------------------
+async function getPositioning() {
+  return cached('positioning', 6 * 3600e3, async () => {
+    const where = "contract_market_name='CRUDE OIL, LIGHT SWEET-WTI'";
+    const url = `https://publicreporting.cftc.gov/resource/6dca-aqww.json?$limit=220&$order=report_date_as_yyyy_mm_dd%20DESC&$where=${encodeURIComponent(where)}`;
+    const res = await fetch(url, { headers: UA });
+    if (!res.ok) throw new Error('cftc ' + res.status);
+    const rows = (await res.json()).map((r) => ({
+      date: (r.report_date_as_yyyy_mm_dd || '').slice(0, 10),
+      net: (Number(r.noncomm_positions_long_all) || 0) - (Number(r.noncomm_positions_short_all) || 0),
+    })).reverse();
+    if (!rows.length) return { error: 'no data' };
+    const latest = rows[rows.length - 1];
+    const prev = rows[rows.length - 2];
+    const nets = rows.map((r) => r.net);
+    return {
+      label: 'WTI spec net (non-comm)', unit: 'contracts',
+      latest, wow: prev ? latest.net - prev.net : null,
+      pct: (nets.filter((n) => n <= latest.net).length / nets.length) * 100,
+      history: rows.slice(-156),
+    };
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Sector watchlist (Yahoo quotes)
+// ---------------------------------------------------------------------------
+const SECTORS = [
+  { name: 'Integrated majors', why: 'broad crude beta', tickers: ['XOM', 'CVX', 'SHEL', 'BP', 'TTE'] },
+  { name: 'E&P (upstream)', why: 'levered to crude & backwardation', tickers: ['COP', 'EOG', 'OXY', 'FANG', 'DVN'] },
+  { name: 'Refiners', why: 'driven by crack spreads', tickers: ['VLO', 'PSX', 'MPC', 'DINO'] },
+  { name: 'Tankers / shipping', why: 'freight & floating storage', tickers: ['FRO', 'DHT', 'INSW', 'STNG', 'TNK'] },
+  { name: 'Oil services', why: 'upstream capex cycle', tickers: ['SLB', 'HAL', 'BKR'] },
+  { name: 'Airlines', why: 'jet fuel is a cost', tickers: ['DAL', 'UAL', 'AAL', 'LUV'] },
+  { name: 'Macro / proxies', why: 'context', tickers: ['DX-Y.NYB', 'XLE', 'CL=F', 'BZ=F'] },
+];
+async function quote(sym) {
+  try {
+    const { price, series } = await cached('q:' + sym, 60_000, () => yahooSeries(sym, '5d', '1d'));
+    const dates = Object.keys(series).sort();
+    const last = dates.length ? series[dates[dates.length - 1]] : price;
+    const prev = dates.length > 1 ? series[dates[dates.length - 2]] : price;
+    return { symbol: sym, price: last ?? price ?? null, chg: last != null && prev != null ? last - prev : null, pct: last != null && prev ? ((last - prev) / prev) * 100 : null };
+  } catch { return { symbol: sym, price: null, chg: null, pct: null }; }
+}
+async function getEquities() {
+  return cached('equities', 60_000, async () => ({
+    groups: await Promise.all(SECTORS.map(async (s) => ({ ...s, quotes: await Promise.all(s.tickers.map(quote)) }))),
+  }));
+}
+
+// ---------------------------------------------------------------------------
+// Chokepoint tanker counts (live, from AIS)
+// ---------------------------------------------------------------------------
+const CHOKEPOINTS = [
+  { name: 'Strait of Hormuz', box: [[24, 54], [28, 58]] },
+  { name: 'Strait of Malacca', box: [[1, 98], [6, 104]] },
+  { name: 'Suez / Red Sea', box: [[12, 32], [30, 44]] },
+  { name: 'Panama Canal', box: [[7, -82], [10, -78]] },
+  { name: 'Danish Straits', box: [[54, 10], [58, 13]] },
+  { name: 'Turkish Straits', box: [[40, 27], [42, 30]] },
+];
+const inBox = (lat, lon, box) => { const [[a, b], [c, d]] = box; return lat >= Math.min(a, c) && lat <= Math.max(a, c) && lon >= Math.min(b, d) && lon <= Math.max(b, d); };
+function getChokepoints() {
+  const list = [...tankers.values()];
+  return { chokepoints: CHOKEPOINTS.map((c) => ({ name: c.name, count: list.filter((v) => v.lat != null && inBox(v.lat, v.lon, c.box)).length })) };
+}
+
+// ---------------------------------------------------------------------------
+// Analytics: percentile context + realised volatility + freight arb
+// ---------------------------------------------------------------------------
+const percentile = (arr, v) => { const xs = arr.filter((x) => x != null); return xs.length ? (xs.filter((x) => x <= v).length / xs.length) * 100 : null; };
+function realizedVol(arr, win = 30) {
+  const xs = arr.filter((x) => x != null);
+  if (xs.length < win + 1) return null;
+  const r = [];
+  for (let i = xs.length - win; i < xs.length; i++) r.push(Math.log(xs[i] / xs[i - 1]));
+  const m = r.reduce((a, b) => a + b, 0) / r.length;
+  const varp = r.reduce((a, b) => a + (b - m) ** 2, 0) / (r.length - 1);
+  return Math.sqrt(varp) * Math.sqrt(252) * 100;
+}
+const FREIGHT_DEFAULT = 2.0; // $/bbl USGC -> NW Europe estimate
+async function getAnalytics(freight = FREIGHT_DEFAULT) {
+  return cached('analytics:' + freight, 6 * 3600e3, async () => {
+    const twoYear = {};
+    for (const b of BENCHMARKS) {
+      const paperMap = (await cached(`a2p:${b.paper || b.id}`, 6 * 3600e3, () => (b.paper ? yahooSeries(b.paper, '2y', '1d') : Promise.resolve({ series: {} })))).series;
+      const physMap = await cached(`a2f:${b.physical}`, 6 * 3600e3, () => spotSeries(b, 740));
+      twoYear[b.id] = { paperMap, physMap };
+    }
+    const benchmarks = {};
+    for (const b of BENCHMARKS) {
+      const { paperMap, physMap } = twoYear[b.id];
+      const dates = [...new Set([...Object.keys(paperMap), ...Object.keys(physMap)])].sort();
+      const basisArr = dates.map((d) => (paperMap[d] != null && physMap[d] != null ? physMap[d] - paperMap[d] : null));
+      const current = [...basisArr].reverse().find((x) => x != null);
+      benchmarks[b.id] = {
+        basisPct: current != null ? percentile(basisArr, current) : null,
+        vol30: realizedVol(dates.map((d) => (paperMap[d] != null ? paperMap[d] : null)), 30),
+      };
+    }
+    const bm = (id) => twoYear[id]?.physMap || {};
+    const spreadArr = (() => {
+      const brent = bm('brent'), wti = bm('wti');
+      const dates = [...new Set([...Object.keys(brent), ...Object.keys(wti)])].sort();
+      return dates.map((d) => (brent[d] != null && wti[d] != null ? brent[d] - wti[d] : null));
+    })();
+    const currentSpread = [...spreadArr].reverse().find((x) => x != null);
+    return {
+      benchmarks,
+      spread: { brentWtiPhysical: currentSpread, pct: currentSpread != null ? percentile(spreadArr, currentSpread) : null },
+      arb: currentSpread != null ? { spread: currentSpread, freight, net: currentSpread - freight, open: currentSpread - freight > 0 } : null,
+    };
+  });
+}
+
+// ---------------------------------------------------------------------------
 // Live tanker tracking via aisstream.io (free key required)
 // ---------------------------------------------------------------------------
 const tankers = new Map();
 const tankerMMSI = new Set();
 const ais = { enabled: false, connected: false, messages: 0, startedAt: null, lastMessage: null, error: null };
 const DEFAULT_BOXES = [
-  [[18, -98], [31, -80]],
-  [[48, -8], [62, 4]],
-  [[-5, 95], [10, 110]],
-  [[22, 46], [31, 62]],
+  [[18, -98], [31, -80]],   // US Gulf of Mexico
+  [[48, -8], [62, 4]],      // North Sea / Rotterdam
+  [[-5, 95], [10, 110]],    // Malacca / Singapore
+  [[22, 46], [31, 62]],     // Persian Gulf / Hormuz
+  [[12, 32], [30, 44]],     // Red Sea / Suez
+  [[5, -84], [11, -76]],    // Panama Canal
+  [[53, 8], [59, 14]],      // Danish Straits
+  [[39, 26], [43, 31]],     // Turkish Straits
 ];
 
 function startAIS() {
@@ -284,6 +447,21 @@ const server = http.createServer(async (req, res) => {
       const b = BENCHMARKS.find((x) => x.id === id);
       if (!b) return sendJSON(res, 404, { error: 'unknown benchmark' });
       return sendJSON(res, 200, await getLongterm(b, years));
+    }
+    if (url.pathname === '/api/inventories') return sendJSON(res, 200, await getInventories());
+    if (url.pathname === '/api/positioning') return sendJSON(res, 200, await getPositioning());
+    if (url.pathname === '/api/equities') return sendJSON(res, 200, await getEquities());
+    if (url.pathname === '/api/chokepoints') return sendJSON(res, 200, getChokepoints());
+    if (url.pathname === '/api/analytics') return sendJSON(res, 200, await getAnalytics(Number(url.searchParams.get('freight')) || FREIGHT_DEFAULT));
+    if (url.pathname === '/api/export.csv') {
+      const [m, a] = await Promise.all([getMarket(), getAnalytics()]);
+      const rows = [['benchmark', 'unit', 'paper', 'physical', 'physical_date', 'basis', 'basis_pctile_2y', 'vol30_ann_pct']];
+      for (const b of m.benchmarks) {
+        const an = a.benchmarks[b.id] || {};
+        rows.push([b.label, b.unit, b.paper ?? '', b.physical ?? '', b.physicalDate ?? '', b.basis ?? '', an.basisPct != null ? an.basisPct.toFixed(1) : '', an.vol30 != null ? an.vol30.toFixed(1) : '']);
+      }
+      res.writeHead(200, { 'content-type': 'text/csv', 'content-disposition': 'attachment; filename="oil-basis.csv"' });
+      return res.end(rows.map((r) => r.join(',')).join('\n'));
     }
     if (url.pathname === '/api/tankers') {
       const list = [...tankers.values()];
