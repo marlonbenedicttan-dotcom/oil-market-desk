@@ -1,13 +1,18 @@
 # Oil Basis 🛢️
 
-A dashboard that puts **paper** (futures) and **physical** (spot/cash) crude oil prices side by side, computes the **basis**, and tracks **live tanker traffic**.
+A dashboard that puts **paper** (futures) and **physical** (spot/cash) prices side by side across energy benchmarks, computes the **basis**, and tracks **live tanker traffic**.
 
-```
-WTI:   paper (futures)   physical (spot)   basis
-Brent: paper (futures)   physical (spot)   basis
-Brent − WTI spread (paper & physical)
-+ a live tanker map
-```
+| Benchmark | Paper (futures) | Physical (spot) |
+|---|---|---|
+| WTI (Cushing) | `CL=F` | EIA `DCOILWTICO` |
+| Brent | `BZ=F` | EIA `DCOILBRENTEU` |
+| RBOB Gasoline | `RB=F` | Gulf Coast `DGASUSGULF` |
+| ULSD / Heating Oil | `HO=F` | NY Harbor `DHOILNYH` |
+| Natural Gas | `NG=F` | Henry Hub `DHHNGSP` |
+
+Plus the **Brent − WTI** spread (paper & physical) and a live tanker map.
+
+Adding a benchmark = one row in the `BENCHMARKS` table in `server.js`.
 
 ## What "basis" means
 

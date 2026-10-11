@@ -34,6 +34,8 @@ button:hover { border-color: var(--accent); }
 main { max-width: 1100px; margin: 0 auto; padding: 24px; display: grid; gap: 20px; }
 
 .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; }
+.group { margin-bottom: 8px; }
+.gtitle { font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: var(--dim); margin: 0 0 10px; }
 .card {
   background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 16px;
 }

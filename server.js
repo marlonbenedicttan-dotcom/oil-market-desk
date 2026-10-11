@@ -1,5 +1,5 @@
-// Oil Basis — paper vs physical crude (WTI & Brent) + live tanker tracking.
-// Zero runtime dependencies: uses Node's built-in HTTP, fetch and WebSocket.
+// Oil Basis — paper vs physical spreads across energy benchmarks + live tankers.
+// Zero runtime dependencies: Node's built-in HTTP, fetch and WebSocket.
 import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -8,36 +8,43 @@ import { fileURLToPath } from 'node:url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC = path.join(__dirname, 'public');
 const PORT = Number(process.env.PORT || 4173);
-
 const UA = { 'User-Agent': 'Mozilla/5.0 (oil-basis)' };
 
 // ---------------------------------------------------------------------------
-// Price sources
-//   paper    = futures    -> Yahoo Finance  (CL=F WTI, BZ=F Brent)
-//   physical = spot/cash  -> FRED / EIA      (DCOILWTICO, DCOILBRENTEU)
+// Benchmark registry
+//   paper    = futures    -> Yahoo Finance symbol
+//   physical = spot/cash  -> FRED / EIA series id
+// Add a row to add a benchmark (both feeds must exist for free).
+// ---------------------------------------------------------------------------
+const BENCHMARKS = [
+  { id: 'wti',    label: 'WTI (Cushing)',   group: 'Crude',   unit: '$/bbl',   dp: 2, paper: 'CL=F', physical: 'DCOILWTICO' },
+  { id: 'brent',  label: 'Brent',           group: 'Crude',   unit: '$/bbl',   dp: 2, paper: 'BZ=F', physical: 'DCOILBRENTEU' },
+  { id: 'rbob',   label: 'RBOB Gasoline',   group: 'Refined', unit: '$/gal',   dp: 3, paper: 'RB=F', physical: 'DGASUSGULF' },
+  { id: 'ulsd',   label: 'ULSD / Heating',  group: 'Refined', unit: '$/gal',   dp: 3, paper: 'HO=F', physical: 'DHOILNYH' },
+  { id: 'natgas', label: 'Natural Gas',     group: 'Gas',     unit: '$/MMBtu', dp: 2, paper: 'NG=F', physical: 'DHHNGSP' },
+];
+
+// ---------------------------------------------------------------------------
+// Feeds
 // ---------------------------------------------------------------------------
 const YF = 'https://query1.finance.yahoo.com/v8/finance/chart/';
 
 async function yahooSeries(symbol, range = '6mo', interval = '1d') {
   const res = await fetch(`${YF}${encodeURIComponent(symbol)}?range=${range}&interval=${interval}`, { headers: UA });
   if (!res.ok) throw new Error(`yahoo ${symbol} -> ${res.status}`);
-  const json = await res.json();
-  const r = json.chart?.result?.[0];
+  const r = (await res.json()).chart?.result?.[0];
   if (!r) throw new Error(`yahoo ${symbol} -> no result`);
   const ts = r.timestamp || [];
   const close = r.indicators?.quote?.[0]?.close || [];
   const series = {};
-  ts.forEach((t, i) => {
-    if (close[i] != null) series[new Date(t * 1000).toISOString().slice(0, 10)] = close[i];
-  });
+  ts.forEach((t, i) => { if (close[i] != null) series[new Date(t * 1000).toISOString().slice(0, 10)] = close[i]; });
   return { symbol, price: r.meta.regularMarketPrice, series };
 }
 
-async function fredSeries(series, days = 220) {
+async function fredSeries(id, days = 220) {
   const cosd = new Date(Date.now() - days * 864e5).toISOString().slice(0, 10);
-  const url = `https://fred.stlouisfed.org/graph/fredgraph.csv?id=${series}&cosd=${cosd}`;
-  const res = await fetch(url, { headers: UA });
-  if (!res.ok) throw new Error(`fred ${series} -> ${res.status}`);
+  const res = await fetch(`https://fred.stlouisfed.org/graph/fredgraph.csv?id=${id}&cosd=${cosd}`, { headers: UA });
+  if (!res.ok) throw new Error(`fred ${id} -> ${res.status}`);
   const text = await res.text();
   const out = {};
   for (const line of text.trim().split('\n').slice(1)) {
@@ -65,151 +72,125 @@ async function cached(key, ttlMs, fn) {
   return v;
 }
 
+const paperFor = (b) => cached('p:' + b.paper, 45_000, () => yahooSeries(b.paper, '5d', '1d'));
+const physFor = (b) => cached('f:' + b.physical, 3_600_000, () => fredSeries(b.physical, 14));
+const hPaperFor = (b) => cached('hp:' + b.paper, 3_600_000, () => yahooSeries(b.paper, '6mo', '1d'));
+const hPhysFor = (b) => cached('hf:' + b.physical, 3_600_000, () => fredSeries(b.physical));
+
+// ---------------------------------------------------------------------------
+// Market snapshot
+// ---------------------------------------------------------------------------
 async function getMarket() {
-  const [wtiPaper, brentPaper, wtiPhys, brentPhys] = await Promise.all([
-    cached('wtiPaper', 45_000, () => yahooSeries('CL=F', '5d', '1d')),
-    cached('brentPaper', 45_000, () => yahooSeries('BZ=F', '5d', '1d')),
-    cached('wtiPhys', 3_600_000, () => fredSeries('DCOILWTICO', 14)),
-    cached('brentPhys', 3_600_000, () => fredSeries('DCOILBRENTEU', 14)),
-  ]);
-
-  const wp = wtiPaper.price;
-  const bp = brentPaper.price;
-  const ws = lastEntry(wtiPhys);
-  const bs = lastEntry(brentPhys);
-
+  const rows = await Promise.all(BENCHMARKS.map(async (b) => {
+    const [p, f] = await Promise.all([paperFor(b), physFor(b)]);
+    const phys = lastEntry(f);
+    return {
+      id: b.id, label: b.label, group: b.group, unit: b.unit, dp: b.dp,
+      paper: p.price, physical: phys.value, physicalDate: phys.date,
+      basis: phys.value - p.price,
+    };
+  }));
+  const by = Object.fromEntries(rows.map((r) => [r.id, r]));
+  const spreads = {};
+  if (by.brent && by.wti) {
+    spreads.brent_wti = {
+      label: 'Brent − WTI', unit: '$/bbl', dp: 2,
+      paper: by.brent.paper - by.wti.paper,
+      physical: by.brent.physical - by.wti.physical,
+    };
+  }
   return {
     updated: new Date().toISOString(),
-    wti: {
-      label: 'WTI',
-      paper: wp,
-      physical: ws.value,
-      physicalDate: ws.date,
-      basis: ws.value - wp,
-    },
-    brent: {
-      label: 'Brent',
-      paper: bp,
-      physical: bs.value,
-      physicalDate: bs.date,
-      basis: bs.value - bp,
-    },
-    spread: {
-      paper: bp - wp,
-      physical: bs.value - ws.value,
-    },
+    benchmarks: rows,
+    spreads,
     notes: [
-      'Paper = front-month futures (Yahoo). Rolls on expiry, which can jump the basis.',
-      'Physical = spot/cash assessment (EIA via FRED), published with a ~1 day lag.',
-      "Basis = physical - paper. Positive = physical premium (backwardation pressure).",
+      'Paper = front-month futures; rolls on expiry, which can jump the basis.',
+      'Physical = spot/cash assessment (EIA via FRED), published with ~1 day lag.',
+      'Refined-product/Gas spot proxies: Gulf Coast gasoline, NY Harbor heating oil, Henry Hub gas.',
+      'Basis = physical − paper. Positive = physical premium (backwardation pressure).',
     ],
   };
 }
 
+// ---------------------------------------------------------------------------
+// History
+// ---------------------------------------------------------------------------
 async function getHistory() {
-  const [wtiPaper, brentPaper, wtiPhys, brentPhys] = await Promise.all([
-    cached('hWtiPaper', 3_600_000, () => yahooSeries('CL=F', '6mo', '1d')),
-    cached('hBrentPaper', 3_600_000, () => yahooSeries('BZ=F', '6mo', '1d')),
-    cached('hWtiPhys', 3_600_000, () => fredSeries('DCOILWTICO')),
-    cached('hBrentPhys', 3_600_000, () => fredSeries('DCOILBRENTEU')),
-  ]);
+  const maps = {};
+  await Promise.all(BENCHMARKS.map(async (b) => {
+    const [p, f] = await Promise.all([hPaperFor(b), hPhysFor(b)]);
+    maps[b.id] = { paper: p.series, physical: f };
+  }));
 
-  const dates = [...new Set([
-    ...Object.keys(wtiPaper.series),
-    ...Object.keys(brentPaper.series),
-    ...Object.keys(wtiPhys),
-    ...Object.keys(brentPhys),
-  ])].sort().slice(-120);
+  const allDates = new Set();
+  for (const b of BENCHMARKS) {
+    Object.keys(maps[b.id].paper).forEach((d) => allDates.add(d));
+    Object.keys(maps[b.id].physical).forEach((d) => allDates.add(d));
+  }
+  const dates = [...allDates].sort().slice(-120);
+  const at = (o, d) => (o[d] != null ? o[d] : null);
 
-  const at = (obj, d) => (obj[d] != null ? obj[d] : null);
-  return {
-    dates,
-    wti: {
-      paper: dates.map((d) => at(wtiPaper.series, d)),
-      physical: dates.map((d) => at(wtiPhys, d)),
-    },
-    brent: {
-      paper: dates.map((d) => at(brentPaper.series, d)),
-      physical: dates.map((d) => at(brentPhys, d)),
-    },
-    basis: {
-      wti: dates.map((d) => (at(wtiPhys, d) != null && at(wtiPaper.series, d) != null ? at(wtiPhys, d) - at(wtiPaper.series, d) : null)),
-      brent: dates.map((d) => (at(brentPhys, d) != null && at(brentPaper.series, d) != null ? at(brentPhys, d) - at(brentPaper.series, d) : null)),
-    },
-    spread: {
-      paper: dates.map((d) => (at(brentPaper.series, d) != null && at(wtiPaper.series, d) != null ? at(brentPaper.series, d) - at(wtiPaper.series, d) : null)),
-      physical: dates.map((d) => (at(brentPhys, d) != null && at(wtiPhys, d) != null ? at(brentPhys, d) - at(wtiPhys, d) : null)),
-    },
-  };
+  const series = {};
+  const basis = {};
+  for (const b of BENCHMARKS) {
+    const pm = maps[b.id].paper;
+    const fm = maps[b.id].physical;
+    series[b.id] = { paper: dates.map((d) => at(pm, d)), physical: dates.map((d) => at(fm, d)) };
+    basis[b.id] = dates.map((d) => (at(fm, d) != null && at(pm, d) != null ? at(fm, d) - at(pm, d) : null));
+  }
+
+  const spreads = {};
+  if (maps.brent && maps.wti) {
+    spreads.brent_wti = {
+      paper: dates.map((d) => (at(maps.brent.paper, d) != null && at(maps.wti.paper, d) != null ? at(maps.brent.paper, d) - at(maps.wti.paper, d) : null)),
+      physical: dates.map((d) => (at(maps.brent.physical, d) != null && at(maps.wti.physical, d) != null ? at(maps.brent.physical, d) - at(maps.wti.physical, d) : null)),
+    };
+  }
+
+  return { dates, series, basis, spreads };
 }
 
 // ---------------------------------------------------------------------------
 // Live tanker tracking via aisstream.io (free key required)
-//   Tanker ship types are 80-89. We learn MMSIs from ShipStaticData, then
-//   keep the latest PositionReport for each tanker.
 // ---------------------------------------------------------------------------
-const tankers = new Map(); // mmsi -> position
+const tankers = new Map();
 const tankerMMSI = new Set();
 const ais = { enabled: false, connected: false, messages: 0, startedAt: null, lastMessage: null, error: null };
-
 const DEFAULT_BOXES = [
-  [[18, -98], [31, -80]],  // US Gulf of Mexico
-  [[48, -8], [62, 4]],     // North Sea / Rotterdam
-  [[-5, 95], [10, 110]],   // Malacca / Singapore
-  [[22, 46], [31, 62]],    // Persian Gulf
+  [[18, -98], [31, -80]],
+  [[48, -8], [62, 4]],
+  [[-5, 95], [10, 110]],
+  [[22, 46], [31, 62]],
 ];
 
 function startAIS() {
   const key = process.env.AISSTREAM_KEY;
-  if (!key) {
-    ais.error = 'No AISSTREAM_KEY set — add one (free) to enable live tankers.';
-    return;
-  }
+  if (!key) { ais.error = 'No AISSTREAM_KEY set — add one (free) to enable live tankers.'; return; }
   ais.enabled = true;
   ais.startedAt ||= new Date().toISOString();
   const boxes = process.env.AIS_BOXES ? JSON.parse(process.env.AIS_BOXES) : DEFAULT_BOXES;
 
   const ws = new WebSocket('wss://stream.aisstream.io/v0/stream');
   ws.addEventListener('open', () => {
-    ais.connected = true;
-    ais.error = null;
-    ws.send(JSON.stringify({
-      APIKey: key,
-      BoundingBoxes: boxes,
-      FilterMessageTypes: ['PositionReport', 'ShipStaticData'],
-    }));
+    ais.connected = true; ais.error = null;
+    ws.send(JSON.stringify({ APIKey: key, BoundingBoxes: boxes, FilterMessageTypes: ['PositionReport', 'ShipStaticData'] }));
     console.log('[ais] connected, subscribed to', boxes.length, 'regions');
   });
   ws.addEventListener('message', (ev) => {
-    let msg;
-    try { msg = JSON.parse(ev.data); } catch { return; }
+    let msg; try { msg = JSON.parse(ev.data); } catch { return; }
     const meta = msg.MetaData || {};
-    ais.messages += 1;
-    ais.lastMessage = new Date().toISOString();
+    ais.messages += 1; ais.lastMessage = new Date().toISOString();
     if (msg.MessageType === 'ShipStaticData') {
-      const type = msg.Message?.ShipStaticData?.Type;
-      if (typeof type === 'number' && type >= 80 && type <= 89) tankerMMSI.add(meta.MMSI);
+      const t = msg.Message?.ShipStaticData?.Type;
+      if (typeof t === 'number' && t >= 80 && t <= 89) tankerMMSI.add(meta.MMSI);
     } else if (msg.MessageType === 'PositionReport') {
       if (!tankerMMSI.has(meta.MMSI)) return;
       const p = msg.Message?.PositionReport || {};
-      tankers.set(meta.MMSI, {
-        mmsi: meta.MMSI,
-        name: (meta.ShipName || '').trim(),
-        lat: meta.latitude,
-        lon: meta.longitude,
-        sog: p.Sog,
-        cog: p.Cog,
-        heading: p.TrueHeading,
-        ts: meta.time_utc,
-      });
+      tankers.set(meta.MMSI, { mmsi: meta.MMSI, name: (meta.ShipName || '').trim(), lat: meta.latitude, lon: meta.longitude, sog: p.Sog, cog: p.Cog, ts: meta.time_utc });
       if (tankers.size > 6000) tankers.delete(tankers.keys().next().value);
     }
   });
-  ws.addEventListener('close', () => {
-    ais.connected = false;
-    console.log('[ais] closed, reconnecting in 5s');
-    setTimeout(startAIS, 5000);
-  });
+  ws.addEventListener('close', () => { ais.connected = false; console.log('[ais] closed, reconnecting in 5s'); setTimeout(startAIS, 5000); });
   ws.addEventListener('error', (e) => { ais.error = String(e.message || e); });
 }
 
@@ -217,36 +198,21 @@ function startAIS() {
 // HTTP server
 // ---------------------------------------------------------------------------
 const MIME = { '.html': 'text/html', '.css': 'text/css', '.js': 'text/javascript', '.json': 'application/json', '.svg': 'image/svg+xml', '.ico': 'image/x-icon' };
-
-function sendJSON(res, code, obj) {
-  const body = JSON.stringify(obj);
-  res.writeHead(code, { 'content-type': 'application/json', 'cache-control': 'no-store' });
-  res.end(body);
-}
+const sendJSON = (res, code, obj) => { res.writeHead(code, { 'content-type': 'application/json', 'cache-control': 'no-store' }); res.end(JSON.stringify(obj)); };
 
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, `http://${req.headers.host}`);
-
   try {
     if (url.pathname === '/api/market') return sendJSON(res, 200, await getMarket());
     if (url.pathname === '/api/history') return sendJSON(res, 200, await getHistory());
     if (url.pathname === '/api/tankers') {
       const list = [...tankers.values()];
-      return sendJSON(res, 200, {
-        status: ais,
-        count: list.length,
-        tankers: list.slice(0, 2000),
-      });
+      return sendJSON(res, 200, { status: ais, count: list.length, tankers: list.slice(0, 2000) });
     }
-
-    // static files
     let file = url.pathname === '/' ? '/index.html' : url.pathname;
     file = path.normalize(file).replace(/^(\.\.[/\\])+/, '');
     const full = path.join(PUBLIC, file);
-    if (!full.startsWith(PUBLIC) || !fs.existsSync(full) || fs.statSync(full).isDirectory()) {
-      res.writeHead(404).end('not found');
-      return;
-    }
+    if (!full.startsWith(PUBLIC) || !fs.existsSync(full) || fs.statSync(full).isDirectory()) { res.writeHead(404).end('not found'); return; }
     res.writeHead(200, { 'content-type': MIME[path.extname(full)] || 'application/octet-stream' });
     fs.createReadStream(full).pipe(res);
   } catch (err) {
@@ -256,7 +222,7 @@ const server = http.createServer(async (req, res) => {
 
 server.listen(PORT, () => {
   console.log(`\n  🛢️  Oil Basis running at  http://localhost:${PORT}`);
-  console.log(`     prices: FRED (spot) + Yahoo (futures)`);
+  console.log(`     ${BENCHMARKS.length} benchmarks: ${BENCHMARKS.map((b) => b.label).join(', ')}`);
   console.log(`     tankers: ${process.env.AISSTREAM_KEY ? 'aisstream.io' : 'disabled (set AISSTREAM_KEY)'}\n`);
   startAIS();
 });

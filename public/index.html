@@ -14,7 +14,7 @@
     <div class="brand">
       <span class="dot"></span>
       <h1>Oil Basis</h1>
-      <span class="sub">paper vs physical · WTI &amp; Brent</span>
+      <span class="sub">paper vs physical · energy benchmarks</span>
     </div>
     <div class="meta">
       <span id="updated">loading…</span>
@@ -23,19 +23,12 @@
   </header>
 
   <main>
-    <section class="cards" id="cards"></section>
+    <div id="cards"></div>
 
     <section class="panel">
       <div class="panel-head">
         <h2>History</h2>
-        <select id="metric">
-          <option value="wti">WTI — paper vs physical</option>
-          <option value="brent">Brent — paper vs physical</option>
-          <option value="basisWti">WTI basis (physical − paper)</option>
-          <option value="basisBrent">Brent basis (physical − paper)</option>
-          <option value="spreadPaper">Brent − WTI (paper)</option>
-          <option value="spreadPhysical">Brent − WTI (physical)</option>
-        </select>
+        <select id="metric"></select>
       </div>
       <div class="chart-wrap"><canvas id="chart"></canvas></div>
     </section>
