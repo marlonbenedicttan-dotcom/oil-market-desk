@@ -1055,30 +1055,36 @@ async function loadCountry() {
   if (!c || c.error) { el.innerHTML = `<div class="macro-note">${label.toUpperCase()}</div><div class="dimtext" style="padding:6px 12px">data unavailable for this country</div>`; return; }
   const num = (v, dp) => (v == null ? '—' : Number(v).toFixed(dp));
   const fxId = COUNTRY_FX_ID[c.fx.sym];
-  let html = '';
-  if (c.macro && c.macro.fields) html += '<div class="kpis">' + c.macro.fields.map((f) => macroTile(f.k.toUpperCase(), f.v == null ? '—' : `${f.v}${f.suf || ''}`, f.asOf ? `as of ${f.asOf}` : '')).join('') + '</div>';
-  else html += `<div class="macro-note">⚠ No current free official macro for ${c.label} — the market data, fundamentals and headlines below are shown instead.</div>`;
-  html += `<div class="macro-note">MARKET</div><div class="kpis">`
-    + macroTile(c.fx.label, num(c.fx.price, c.fx.price != null && c.fx.price < 10 ? 4 : 2), c.fx.pct != null ? pctf(c.fx.pct) + ' today' : '', cls(c.fx.pct), fxId ? 'fx:' + fxId : '')
-    + (c.index.label && !/not free/i.test(c.index.label) ? macroTile(c.index.label, num(c.index.price, c.index.price != null && c.index.price < 1000 ? 1 : 0), c.index.pct != null ? pctf(c.index.pct) + ' today' : '', cls(c.index.pct)) : '')
-    + (c.policy ? macroTile('CENTRAL BANK RATE', c.policy.latest.value + '%', 'as of ' + c.policy.latest.date) : '')
-    + '</div>';
   const f = c.fund || {};
   const gdp = f.gdpGrowth || [];
-  html += `<div class="macro-note">FUNDAMENTALS · ${f.source || 'World Bank'}</div><div class="kpis">`
-    + macroTile('GDP GROWTH (LATEST)', gdp.length ? gdp[gdp.length - 1].value + '%' : '—', gdp.length ? String(gdp[gdp.length - 1].year) : 'n/a')
-    + macroTile('DEBT / GDP', f.debtToGdp && f.debtToGdp.year >= 2018 ? f.debtToGdp.value + '%' : '—', f.debtToGdp ? `${f.debtToGdp.year}${f.debtToGdp.year < 2018 ? ' — too old to rely on' : ''}` : 'not available')
-    + macroTile('INFLATION (CPI)', f.inflation ? f.inflation.value + '%' : '—', f.inflation ? String(f.inflation.year) : 'n/a')
-    + macroTile('UNEMPLOYMENT', f.unemployment ? f.unemployment.value + '%' : '—', f.unemployment ? String(f.unemployment.year) : 'n/a')
+  const card = (l, v, s, k) => `<div class="bb-card"${fxId && l === c.fx.label ? ` data-metric="fx:${fxId}" style="cursor:pointer"` : ''}><div class="bb-l">${l}</div><div class="bb-v ${k || ''}">${v}</div><div class="bb-s">${s || ''}</div></div>`;
+  let html = `<div class="bb-head">${c.label.toUpperCase()} <span class="dimtext">· ${(c.region || '').toUpperCase()}</span></div>`;
+
+  html += '<div class="bb-sec">MARKET</div><div class="bb-grid">'
+    + card(c.fx.label, num(c.fx.price, c.fx.price != null && c.fx.price < 10 ? 4 : 2), c.fx.pct != null ? pctf(c.fx.pct) + ' today' : '—', cls(c.fx.pct))
+    + (c.index.label && !/not free/i.test(c.index.label) ? card(c.index.label, num(c.index.price, c.index.price != null && c.index.price < 1000 ? 1 : 0), c.index.pct != null ? pctf(c.index.pct) + ' today' : '—', cls(c.index.pct)) : '')
     + '</div>';
-  if (gdp.length > 1) html += `<div class="dimtext" style="padding:2px 12px 8px">real GDP growth by year — ${gdp.map((g) => `${g.year}: ${g.value}%`).join(' · ')}</div>`;
+
+  html += '<div class="bb-sec">RATES &amp; INFLATION</div><div class="bb-grid">';
+  if (c.policy) html += card('CENTRAL BANK RATE', c.policy.latest.value + '%', 'as of ' + c.policy.latest.date, '');
+  if (c.macro && c.macro.fields) for (const mf of c.macro.fields) html += card(mf.k.toUpperCase(), mf.v == null ? '—' : `${mf.v}${mf.suf || ''}`, mf.asOf ? 'as of ' + mf.asOf : '', '');
+  html += card('CPI (LATEST)', f.inflation ? f.inflation.value + '%' : '—', f.inflation ? String(f.inflation.year) : 'n/a', '') + '</div>';
+
+  html += '<div class="bb-sec">GROWTH &amp; DEBT</div><div class="bb-grid">'
+    + card('GDP GROWTH', gdp.length ? gdp[gdp.length - 1].value + '%' : '—', gdp.length ? String(gdp[gdp.length - 1].year) : 'n/a', '')
+    + card('DEBT / GDP', f.debtToGdp && f.debtToGdp.year >= 2018 ? f.debtToGdp.value + '%' : '—', f.debtToGdp ? `${f.debtToGdp.year}${f.debtToGdp.year < 2018 ? ' — old' : ''}` : 'not available', '')
+    + card('UNEMPLOYMENT', f.unemployment ? f.unemployment.value + '%' : '—', f.unemployment ? String(f.unemployment.year) : 'n/a', '')
+    + '</div>';
+
   if (!c.policy && c.policyNote) html += `<div class="macro-note">🏦 ${c.policyNote}</div>`;
-  if (c.takeaways && c.takeaways.length) html += '<div class="macro-note">🔑 KEY TAKEAWAYS</div><ul class="ins-list">' + c.takeaways.map((t) => `<li>${t}</li>`).join('') + '</ul>';
+  if (gdp.length > 1) html += `<div class="dimtext" style="padding:2px 12px 8px">real GDP growth by year — ${gdp.map((g) => `${g.year}: ${g.value}%`).join(' · ')}</div>`;
+
   if (c.oilLink != null) {
     const read = c.oilLink > 0.2 ? 'the currency weakens when oil rises (importer strain)' : c.oilLink < -0.2 ? 'the currency firms with oil (exporter benefit)' : 'no strong currency–oil link right now';
-    html += `<div class="macro-note">OIL LINKAGE — ${c.label} is a net oil ${c.oil}. 3-month correlation of its currency vs Brent: <b>${c.oilLink}</b> — ${read}.</div>`;
+    html += `<div class="bb-sec">OIL LINKAGE</div><div class="macro-note">${c.label} is a net oil ${c.oil}. 3-month correlation of its currency vs Brent: <b>${c.oilLink}</b> — ${read}.</div>`;
   }
-  html += '<div class="gtitle">CROSS-ASSET — HOW THIS REGION IS AFFECTED</div>' + crossAssetBlock((i) => (i.regions || []).includes(macroRegion));
+  if (c.takeaways && c.takeaways.length) html += '<div class="bb-sec">KEY TAKEAWAYS</div><ul class="ins-list">' + c.takeaways.map((t) => `<li>${t}</li>`).join('') + '</ul>';
+  html += '<div class="bb-sec">CROSS-ASSET — HOW THIS REGION IS AFFECTED</div>' + crossAssetBlock((i) => (i.regions || []).includes(macroRegion));
   el.innerHTML = html;
   loadMacroNews();
   loadCountryChart();

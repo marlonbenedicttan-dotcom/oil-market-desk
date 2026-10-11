@@ -389,3 +389,14 @@ footer li { margin-bottom: 2px; }
 .glossary dd { margin: 0; color: #c9d4df; }
 @media (max-width: 620px) { .glossary dl { grid-template-columns: 1fr; } .glossary dt { margin-top: 6px; } }
 .news-k { font-style: normal; color: var(--amber); font-size: 10px; letter-spacing: .5px; margin-right: 6px; border: 1px solid var(--line2); padding: 0 4px; }
+/* Bloomberg-style country card dashboard */
+.bb-head { padding: 8px 12px; font-size: 12px; letter-spacing: 2px; color: var(--amber); }
+.bb-sec { padding: 9px 12px 3px; font-size: 10px; letter-spacing: 2px; color: var(--dim); }
+.bb-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 1px; background: var(--line); }
+.bb-card { background: #0c0f13; padding: 8px 10px; }
+.bb-card:hover { background: #10151b; }
+.bb-l { font-size: 10px; letter-spacing: 1px; color: var(--dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bb-v { font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; margin: 2px 0; }
+.bb-s { font-size: 10px; color: var(--dim); }
+.bb-v.pos { color: var(--green); }
+.bb-v.neg { color: var(--red); }
