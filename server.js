@@ -1174,8 +1174,8 @@ async function getRegionTickers(region) {
   return cached('rq:' + region, 120e3, async () => {
     const q = async (sym) => { try { const { price, series } = await cached('q:' + sym, 120e3, () => yahooSeries(sym, '5d', '1d')); const d = Object.keys(series).sort(); const a = series[d[d.length - 1]], b = series[d[d.length - 2]]; return { price: a ?? price ?? null, pct: a != null && b ? ((a - b) / b) * 100 : null }; } catch { return { price: null, pct: null }; } };
     const items = (await Promise.all(list.map(async (c) => {
-      const arr = [{ id: c.id, label: c.fxLabel.replace(/\s*·.*/, ''), ...(await q(c.fx)) }];
-      if (c.index) arr.push({ id: c.id, label: c.indexLabel, ...(await q(c.index)) });
+      const arr = [{ id: c.id, label: c.fxLabel.replace(/\s*·.*/, ''), kind: 'fx', ...(await q(c.fx)) }];
+      if (c.index) arr.push({ id: c.id, label: c.indexLabel, kind: 'index', ...(await q(c.index)) });
       return arr;
     }))).flat();
     return { region, items };

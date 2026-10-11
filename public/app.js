@@ -1019,7 +1019,24 @@ function renderMacroRegion() {
     if ([...sel.options].some((o) => o.value === macroCountry)) sel.value = macroCountry;
   }
   loadMacroTickers();
+  loadRegionCurrencies();
   loadCountry().then(prefetchRegion);   // then warm the rest of the region in the background
+}
+// CURRENCIES board is scoped to the chosen region (not the global majors).
+async function loadRegionCurrencies() {
+  const el = $('macro-fx');
+  if (!el) return;
+  el.innerHTML = '<div class="dimtext" style="padding:8px 12px">loading…</div>';
+  const req = macroRegion;
+  let items = null;
+  try { items = (await getJSON('/api/region-quotes?id=' + req)).items || []; } catch {}
+  if (req !== macroRegion) return;
+  const scope = $('fx-scope'); if (scope) scope.textContent = req.toUpperCase();
+  const seen = new Set();
+  const fx = (items || []).filter((i) => i.kind === 'fx').filter((i) => { if (seen.has(i.label)) return false; seen.add(i.label); return true; });
+  el.innerHTML = fx.length
+    ? '<div class="kpis">' + fx.map((f) => macroTile(f.label, f.price == null ? '—' : Number(f.price).toFixed(f.price < 10 ? 4 : 2), f.pct != null ? pctf(f.pct) : '', cls(f.pct))).join('') + '</div><div class="macro-note">the chosen region\'s currencies</div>'
+    : '<div class="dimtext" style="padding:8px 12px">no currencies for this region</div>';
 }
 async function loadMacroTickers() {
   // the macro tape shows EVERY macro ticker (all regions) so it is never sparse
@@ -1223,7 +1240,6 @@ function renderMacroDash(md, corr, events) {
   if (!md || md.error) return;
   macroMd = md;
   renderMacroRegion();
-  $('macro-fx').innerHTML = `<div class="kpis">${(md.fx || []).map((f) => macroTile(f.label, f.price != null ? f.price.toFixed(f.price < 10 ? 4 : 2) : '—', f.pct != null ? pctf(f.pct) : '', cls(f.pct), 'fx:' + f.id)).join('')}</div><div class="macro-note">click a currency for its YTD / 5Y / 10Y chart</div>`;
   if ($('macro-links')) {
     const rows = (md.links || []).map((l) => {
       if (l.corr == null) return macroTile(l.pair, '—', l.commodity + ' · no data', '');
@@ -1235,7 +1251,7 @@ function renderMacroDash(md, corr, events) {
   }
   const c = corr || {};
   const cTile = (label, v, note) => macroTile(label, v != null ? v : '—', note, v != null ? (v < 0 ? 'neg' : 'pos') : '');
-  $('macro-corr').innerHTML = `<div class="kpis">${cTile('OIL vs US DOLLAR', c.oilVsDollar, 'usually negative')}${cTile('OIL vs VIX', c.oilVsVix, 'risk-off link')}${cTile('OIL vs S&P 500', c.oilVsSp500, 'risk-on link')}</div>`;
+  const mcorr = $('macro-corr'); if (mcorr) mcorr.innerHTML = `<div class="kpis">${cTile('OIL vs US DOLLAR', c.oilVsDollar, 'usually negative')}${cTile('OIL vs VIX', c.oilVsVix, 'risk-off link')}${cTile('OIL vs S&P 500', c.oilVsSp500, 'risk-on link')}</div>`;
   $('macro-events').innerHTML = (events || []).map((e) => `<div class="read-line">📅 <b>${e.name}</b>${e.date ? ` — ${e.date}` : ''} <span class="dimtext">${e.note || ''}</span></div>`).join('');
 }
 function renderRegime(m, a, c) {
