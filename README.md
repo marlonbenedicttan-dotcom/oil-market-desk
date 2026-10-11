@@ -1,3 +1,13 @@
+---
+title: Oil Market Desk
+emoji: 🛢️
+colorFrom: yellow
+colorTo: gray
+sdk: docker
+app_port: 7860
+pinned: false
+---
+
 # Oil Basis 🛢️
 
 A dashboard that puts **paper** (futures) and **physical** (spot/cash) prices side by side across energy benchmarks, computes the **basis**, and tracks **live tanker traffic**.
