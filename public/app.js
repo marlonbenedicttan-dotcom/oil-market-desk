@@ -148,6 +148,31 @@ function renderInsights(m, t) {
 }
 
 // ---------------------------------------------------------------------------
+// Ticker
+// ---------------------------------------------------------------------------
+function changeOf(arr) {
+  if (!arr) return null;
+  let last = null, prev = null;
+  for (let i = arr.length - 1; i >= 0; i--) {
+    if (arr[i] != null) { if (last == null) last = arr[i]; else { prev = arr[i]; break; } }
+  }
+  return last == null || prev == null ? null : last - prev;
+}
+function renderTicker(m) {
+  const items = m.benchmarks.map((b) => {
+    const s = history?.series?.[b.id];
+    const arr = b.paper != null ? s?.paper : s?.physical;
+    const val = b.paper != null ? b.paper : b.physical;
+    const chg = changeOf(arr);
+    const c = chg == null ? '' : chg >= 0 ? 'pos' : 'neg';
+    const arrow = chg == null ? '' : chg >= 0 ? '▲' : '▼';
+    const short = b.label.replace(/\s*\(.*\)/, '');
+    return `<span class="tk"><b>${short}</b><span class="tk-px">${val == null ? '—' : Number(val).toFixed(b.dp)}</span><span class="tk-chg ${c}">${chg == null ? '' : arrow + Math.abs(chg).toFixed(b.dp)}</span></span>`;
+  });
+  $('ticker').innerHTML = items.join('');
+}
+
+// ---------------------------------------------------------------------------
 // Chart
 // ---------------------------------------------------------------------------
 let chart;
@@ -185,7 +210,7 @@ async function loadHistory() { history = await getJSON('/api/history'); renderCh
 async function loadMarket() {
   data = await getJSON('/api/market');
   renderCards(data); buildMetricOptions(data);
-  renderInsights(data, tankerInfo); renderAlerts(computeAlerts(data, tankerInfo));
+  renderInsights(data, tankerInfo); renderAlerts(computeAlerts(data, tankerInfo)); renderTicker(data);
   $('updated').textContent = 'prices ' + new Date(data.updated).toLocaleTimeString();
   $('notes').innerHTML = '<ul>' + data.notes.map((n) => `<li>${n}</li>`).join('') + '</ul>';
 }
@@ -195,17 +220,18 @@ async function loadMarket() {
 // ---------------------------------------------------------------------------
 let map, layer;
 function initMap() {
-  map = L.map('map', { worldCopyJump: true, minZoom: 1, attributionControl: true }).setView([25, 30], 2);
-  const dark = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { attribution: '© OpenStreetMap © CARTO', maxZoom: 18, subdomains: 'abcd' });
+  map = L.map('map', { worldCopyJump: true, minZoom: 1 }).setView([25, 40], 2);
+  const esri = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', { attribution: 'Tiles © Esri', maxZoom: 16 });
+  esri.addTo(map);
+  L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', { maxZoom: 16 }).addTo(map);
   let fellBack = false;
-  dark.on('tileerror', () => {
+  esri.on('tileerror', () => {
     if (fellBack) return; fellBack = true;
-    map.removeLayer(dark);
-    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap', maxZoom: 19 }).addTo(map);
+    map.eachLayer((l) => { if (l instanceof L.TileLayer && l !== layer) map.removeLayer(l); });
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap', maxZoom: 18 }).addTo(map);
   });
-  dark.addTo(map);
   layer = L.layerGroup().addTo(map);
-  setTimeout(() => map.invalidateSize(), 200); // guard against 0-size init
+  setTimeout(() => map.invalidateSize(), 200);
 }
 
 async function loadTankers() {
@@ -253,6 +279,8 @@ $('help-btn').addEventListener('click', () => { const g = $('glossary'); g.inner
 
 (async function boot() {
   try { initMap(); } catch (e) { console.error(e); }
+  const tick = () => { $('clock').textContent = new Date().toLocaleTimeString('en-GB'); };
+  tick(); setInterval(tick, 1000);
   if ('Notification' in window && Notification.permission === 'default') { try { await Notification.requestPermission(); } catch {} }
   await loadHistory().catch((e) => showError(e.message));
   await refreshAll();

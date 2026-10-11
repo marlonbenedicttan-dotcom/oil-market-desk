@@ -3,61 +3,50 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Oil Basis — Paper vs Physical</title>
+  <title>OIL BASIS — Paper vs Physical</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <link rel="stylesheet" href="style.css" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 </head>
 <body>
-  <header>
-    <div class="brand">
-      <span class="dot"></span>
-      <h1>Oil Basis</h1>
-      <span class="sub">paper vs physical · energy benchmarks</span>
-    </div>
+  <header class="topbar">
+    <div class="brand"><span class="logo">▚</span><h1>OIL BASIS</h1><span class="sub">PAPER vs PHYSICAL · ENERGY BENCHMARKS</span></div>
     <div class="meta">
-      <span id="updated">loading…</span>
+      <span id="clock" class="clock">--:--:--</span>
+      <span id="updated" class="dimtext">loading…</span>
       <span id="countdown" class="dimtext"></span>
-      <button id="refresh">↻ Refresh</button>
+      <button id="refresh" class="ghost">↻ REFRESH</button>
     </div>
   </header>
+  <div id="ticker" class="ticker"></div>
 
   <main>
     <div id="error" class="errbar hidden"></div>
 
     <section class="panel">
-      <div class="panel-head">
-        <h2>🧭 Insights — what it means</h2>
-        <button id="help-btn" class="ghost">What do these mean?</button>
-      </div>
+      <div class="ph"><span class="ph-t">🧭 INSIGHTS</span><button id="help-btn" class="ghost small">GLOSSARY</button></div>
       <div id="glossary" class="glossary hidden"></div>
       <div class="insights">
-        <div class="col"><h3 class="gtitle">For oil prices</h3><ul id="market-insights" class="ins-list"></ul></div>
-        <div class="col"><h3 class="gtitle">For tanker &amp; freight</h3><ul id="tanker-insights" class="ins-list"></ul></div>
+        <div class="col"><div class="gtitle">OIL PRICES</div><ul id="market-insights" class="ins-list"></ul></div>
+        <div class="col"><div class="gtitle">TANKER &amp; FREIGHT</div><ul id="tanker-insights" class="ins-list"></ul></div>
       </div>
-      <div class="panel-head" style="margin-top:16px"><h2>⚠ Alerts</h2><span id="alert-count" class="pill">0</span></div>
+      <div class="ph sub-head"><span class="ph-t">⚠ ALERTS</span><span id="alert-count" class="pill">0</span></div>
       <div id="alerts" class="alerts"></div>
     </section>
 
     <div id="cards"></div>
 
     <section class="panel">
-      <div class="panel-head">
-        <h2>History</h2>
-        <select id="metric"></select>
-      </div>
+      <div class="ph"><span class="ph-t">HISTORY</span><select id="metric"></select></div>
       <div class="chart-wrap"><canvas id="chart"></canvas></div>
     </section>
 
     <section class="panel">
-      <div class="panel-head">
-        <h2>🚢 Tanker traffic</h2>
-        <span id="ais-status" class="pill">—</span>
-      </div>
+      <div class="ph"><span class="ph-t">🚢 TANKER TRAFFIC</span><span id="ais-status" class="pill">—</span></div>
       <div id="ais-sub" class="dimtext"></div>
       <div id="ais-help" class="help hidden"></div>
-      <div id="map"><div id="map-empty" class="map-empty hidden">Waiting for tanker positions…</div></div>
+      <div id="map"><div id="map-empty" class="map-empty hidden">WAITING FOR TANKER POSITIONS…</div></div>
       <div id="tanker-list" class="tanker-list"></div>
     </section>
 
