@@ -16,7 +16,7 @@ src/lib.js        pure helpers (unit-tested): sgn, inBox, haversineNm, isoWeek,
 public/index.html tabs + panels
 public/app.js     all front-end rendering + charting
 public/style.css  Bloomberg-terminal dark theme
-tests/            node:test (lib unit tests + API smoke tests) — 23 tests, `npm test`
+tests/            node:test (lib unit tests + API smoke tests) — 25 tests, `npm test`
 Dockerfile, render.yaml, scripts/share.sh   deploy + free tunnel
 ```
 
@@ -81,6 +81,6 @@ Dockerfile, render.yaml, scripts/share.sh   deploy + free tunnel
 ## Conventions / gotchas
 - Keep it **compact, plain-English, honest**. Explain *what it means* and *what to watch*.
 - **Never** put secrets in the repo. `.env`, `.state.json`, `.reroute.json`, `.flares.json`, `digest.log` are git-ignored.
-- After edits: `npm test` (23 tests) then `git push` (auto-deploys). Bump the `?v=` query on `style.css`/`app.js` in `index.html` if a cache issue appears.
+- After edits: `npm test` (25 tests) then `git push` (auto-deploys). Bump the `?v=` query on `style.css`/`app.js` in `index.html` if a cache issue appears.
 - The service worker (`public/sw.js`) is **network-first** — don't make it cache-first again (caused stale-CSS pain).
 - `server.js` is large (~1,100 lines); keep pure logic in `src/lib.js` so it stays testable.
