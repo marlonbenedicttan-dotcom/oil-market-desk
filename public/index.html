@@ -41,6 +41,7 @@
       <button class="tab" data-tab="fundamentals">SUPPLY &amp; DEMAND</button>
       <button class="tab" data-tab="sectors">FUELS &amp; STOCKS</button>
       <button class="tab" data-tab="tankers">SHIPS &amp; SATELLITES</button>
+      <button class="tab" data-tab="macro">MACRO</button>
     </nav>
 
     <!-- BIG PICTURE -->
@@ -147,9 +148,32 @@
       </section>
     </div>
 
+    <!-- MACRO -->
+    <div class="tabpane hidden" data-pane="macro">
+      <section class="panel">
+        <div class="ph"><span class="ph-t">INTEREST RATES</span><span class="dimtext">US Treasury yields &amp; the policy rate</span></div>
+        <div id="macro-rates" class="macro"></div>
+      </section>
+      <section class="panel">
+        <div class="ph"><span class="ph-t">INFLATION &amp; GROWTH</span><span class="dimtext">US CPI, GDP, unemployment</span></div>
+        <div id="macro-growth" class="macro"></div>
+      </section>
+      <section class="panel">
+        <div class="ph"><span class="ph-t">CURRENCIES</span><span class="dimtext">major FX, day change</span></div>
+        <div id="macro-fx" class="macro"></div>
+      </section>
+      <section class="panel">
+        <div class="ph"><span class="ph-t">OIL'S LINKS</span><span class="dimtext">how oil moves with the dollar, VIX &amp; S&amp;P (3-month)</span></div>
+        <div id="macro-corr" class="macro"></div>
+      </section>
+      <section class="panel">
+        <div class="ph"><span class="ph-t">UPCOMING CATALYSTS</span></div>
+        <div id="macro-events" class="macro"></div>
+      </section>
+    </div>
+
     <footer id="notes"></footer>
   </main>
-
   <script src="app.js?v=3"></script>
 </body>
 </html>

@@ -321,6 +321,7 @@ async function getPositioning() {
     const rows = (await res.json()).map((r) => ({
       date: (r.report_date_as_yyyy_mm_dd || '').slice(0, 10),
       net: (Number(r.noncomm_positions_long_all) || 0) - (Number(r.noncomm_positions_short_all) || 0),
+      oi: Number(r.open_interest_all) || 0,
     })).reverse();
     if (!rows.length) return { error: 'no data' };
     const latest = rows[rows.length - 1];
@@ -330,6 +331,7 @@ async function getPositioning() {
       label: 'WTI spec net (non-comm)', unit: 'contracts',
       latest, wow: prev ? latest.net - prev.net : null,
       pct: (nets.filter((n) => n <= latest.net).length / nets.length) * 100,
+      oi: latest.oi, oiChange: prev ? latest.oi - prev.oi : null,
       history: rows.slice(-156),
     };
   });
@@ -453,6 +455,80 @@ async function getMacro() {
       } catch { return { id: m.id, label: m.label, price: null, pct: null }; }
     })),
   }));
+}
+
+// ---------------------------------------------------------------------------
+// Macro dashboard (rates, inflation, growth, FX) — the start of the expansion
+// ---------------------------------------------------------------------------
+const FX_SYMS = [
+  { id: 'dxy', label: 'US dollar (DXY)', sym: 'DX-Y.NYB' },
+  { id: 'eurusd', label: 'EUR / USD', sym: 'EURUSD=X' },
+  { id: 'usdjpy', label: 'USD / JPY', sym: 'USDJPY=X' },
+  { id: 'gbpusd', label: 'GBP / USD', sym: 'GBPUSD=X' },
+  { id: 'usdcny', label: 'USD / CNY', sym: 'USDCNY=X' },
+];
+async function getMacroDash() {
+  return cached('macrodash', 3 * 3600e3, async () => {
+    const [dgs2, dgs10, ff, cpi, gdp, unrate] = await Promise.all([
+      fredSeries('DGS2', 40), fredSeries('DGS10', 40), fredSeries('FEDFUNDS', 400),
+      fredSeries('CPIAUCSL', 800), fredSeries('A191RL1Q225SBEA', 1400), fredSeries('UNRATE', 400),
+    ]);
+    const last = (o) => { const d = Object.keys(o).sort(); return d.length ? { date: d[d.length - 1], value: o[d[d.length - 1]] } : null; };
+    const cpiDates = Object.keys(cpi).sort();
+    const cpiLast = cpiDates.length ? cpi[cpiDates[cpiDates.length - 1]] : null;
+    const cpiPrevYr = cpiDates.length > 12 ? cpi[cpiDates[cpiDates.length - 13]] : null;
+    const r2 = last(dgs2), r10 = last(dgs10), ffr = last(ff), g = last(gdp), u = last(unrate);
+    const fx = await Promise.all(FX_SYMS.map(async (m) => {
+      try {
+        const { price, series } = await cached('q:' + m.sym, 120e3, () => yahooSeries(m.sym, '5d', '1d'));
+        const d = Object.keys(series).sort();
+        const a = series[d[d.length - 1]], b = series[d[d.length - 2]];
+        return { id: m.id, label: m.label, price: a ?? price ?? null, pct: a != null && b ? ((a - b) / b) * 100 : null };
+      } catch { return { id: m.id, label: m.label, price: null, pct: null }; }
+    }));
+    return {
+      rates: { us2y: r2?.value ?? null, us10y: r10?.value ?? null, spread: r10 && r2 ? +(r10.value - r2.value).toFixed(2) : null, fedfunds: ffr?.value ?? null, asOf: r10?.date ?? null },
+      inflation: { cpiYoY: cpiLast != null && cpiPrevYr != null ? +(((cpiLast / cpiPrevYr) - 1) * 100).toFixed(1) : null, asOf: cpiDates[cpiDates.length - 1] ?? null },
+      growth: { gdpQoQ: g?.value ?? null, unemployment: u?.value ?? null, asOf: g?.date ?? null },
+      fx,
+    };
+  });
+}
+
+// Correlation of oil with the dollar, VIX and S&P (3-month daily returns).
+async function getCorrelations() {
+  return cached('corr', 3600e3, async () => {
+    const syms = { oil: 'CL=F', dollar: 'DX-Y.NYB', vix: '^VIX', sp500: '^GSPC' };
+    const series = {};
+    for (const [k, s] of Object.entries(syms)) { try { series[k] = (await cached('qc:' + s, 3600e3, () => yahooSeries(s, '3mo', '1d'))).series; } catch { series[k] = {}; } }
+    const dates = Object.keys(series.oil).sort();
+    const arrs = {}; for (const k of Object.keys(syms)) arrs[k] = dates.map((d) => (series[k][d] != null ? series[k][d] : null));
+    const rr = {}; for (const k of Object.keys(syms)) { rr[k] = []; for (let i = 1; i < dates.length; i++) { const a = arrs[k][i], b = arrs[k][i - 1]; rr[k].push(a != null && b != null ? Math.log(a / b) : null); } }
+    const corr = (x, y) => {
+      const pairs = []; for (let i = 0; i < x.length; i++) if (x[i] != null && y[i] != null) pairs.push([x[i], y[i]]);
+      const n = pairs.length; if (n < 10) return null;
+      const mx = pairs.reduce((a, p) => a + p[0], 0) / n, my = pairs.reduce((a, p) => a + p[1], 0) / n;
+      let sxy = 0, sxx = 0, syy = 0; for (const [a, b] of pairs) { sxy += (a - mx) * (b - my); sxx += (a - mx) ** 2; syy += (b - my) ** 2; }
+      return sxx && syy ? +(sxy / Math.sqrt(sxx * syy)).toFixed(2) : null;
+    };
+    return { oilVsDollar: corr(rr.oil, rr.dollar), oilVsVix: corr(rr.oil, rr.vix), oilVsSp500: corr(rr.oil, rr.sp500) };
+  });
+}
+
+// Upcoming catalysts (recurring).
+function getEvents() {
+  const now = new Date();
+  const iso = (d) => d.toISOString().slice(0, 10);
+  // Next Wednesday = EIA weekly report (10:30 ET).
+  const wed = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+  wed.setUTCDate(wed.getUTCDate() + ((3 - wed.getUTCDay() + 7) % 7 || 7));
+  // Next contract expiry (approx: ~20th of the current/next month).
+  const exp = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + (now.getUTCDate() > 20 ? 1 : 0), 20));
+  return [
+    { name: 'US oil stockpiles (EIA)', date: iso(wed), note: "the week's biggest catalyst · 10:30am New York" },
+    { name: 'WTI/Brent front-month expiry (approx.)', date: iso(exp), note: 'futures roll to the next month' },
+    { name: 'OPEC+ monthly meeting', date: null, note: 'date varies — check the OPEC calendar' },
+  ];
 }
 
 // ---------------------------------------------------------------------------
@@ -1016,6 +1092,9 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname === '/api/positioning') return sendJSON(res, 200, await getPositioning());
     if (url.pathname === '/api/equities') return sendJSON(res, 200, await getEquities());
     if (url.pathname === '/api/macro') return sendJSON(res, 200, await getMacro());
+    if (url.pathname === '/api/macrodash') return sendJSON(res, 200, await getMacroDash().catch((e) => ({ error: String(e.message) })));
+    if (url.pathname === '/api/correlations') return sendJSON(res, 200, await getCorrelations().catch((e) => ({ error: String(e.message) })));
+    if (url.pathname === '/api/events') return sendJSON(res, 200, getEvents());
     if (url.pathname === '/api/chokepoints') return sendJSON(res, 200, getChokepoints());
     if (url.pathname === '/api/curve') return sendJSON(res, 200, await getCurves());
     if (url.pathname === '/api/curvehistory') return sendJSON(res, 200, await getCurveHistory(url.searchParams.get('root') || 'CL').catch((e) => ({ error: String(e.message) })));

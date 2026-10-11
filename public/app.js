@@ -382,6 +382,7 @@ function renderPositioning(p) {
     `<div class="read-line">How many more bets hedge funds hold that crude will <b>rise</b> vs <b>fall</b>. Extreme highs often come before a pullback.</div>` +
     ctxRow('Hedge-fund net position (WTI)', p.pct, `${p.latest.net.toLocaleString()} contracts`) +
     `<div class="pos-sub dimtext">Changed ${p.wow >= 0 ? '+' : ''}${p.wow.toLocaleString()} contracts this week · as of ${p.latest.date}</div>` +
+    (p.oi ? `<div class="read-line">Open interest: <b>${p.oi.toLocaleString()}</b> contracts (${p.oiChange >= 0 ? '+' : ''}${p.oiChange.toLocaleString()} this week). Price up + OI up = fresh conviction; price up + OI down = short-covering.</div>` : '') +
     sparkline(p.history.map((h) => h.net));
 }
 function sectorRead(m, a, t) {
@@ -624,6 +625,22 @@ function renderReroute(d) {
     scales: { x: { ticks: { color: '#7c8a99', maxTicksLimit: 6 }, grid: { color: '#151a20' } }, y: { ticks: { color: '#7c8a99' }, grid: { color: '#151a20' } } } } });
 }
 async function loadReroute() { try { renderReroute(await getJSON('/api/reroute')); } catch {} }
+function macroTile(label, value, sub, klass) {
+  return `<div class="kpi"><div class="kpi-l">${label}</div><div class="kpi-v ${klass || ''}">${value}</div><div class="kpi-s dimtext">${sub || ''}</div></div>`;
+}
+function renderMacroDash(md, corr, events) {
+  const rates = $('macro-rates');
+  if (!rates) return;
+  if (!md || md.error) { rates.innerHTML = '<div class="dimtext" style="padding:10px 12px">loading…</div>'; return; }
+  const r = md.rates, inf = md.inflation, g = md.growth;
+  rates.innerHTML = `<div class="kpis">${macroTile('US 2-YEAR', r.us2y != null ? r.us2y + '%' : '—', 'short-term rate')}${macroTile('US 10-YEAR', r.us10y != null ? r.us10y + '%' : '—', 'long-term rate')}${macroTile('2s10s SPREAD', r.spread != null ? signed(r.spread, 2) : '—', r.spread < 0 ? 'inverted — recession signal' : 'normal', cls(r.spread))}${macroTile('FED FUNDS', r.fedfunds != null ? r.fedfunds + '%' : '—', 'policy rate')}</div>`;
+  $('macro-growth').innerHTML = `<div class="kpis">${macroTile('US INFLATION (CPI YoY)', inf.cpiYoY != null ? inf.cpiYoY + '%' : '—', inf.asOf || '')}${macroTile('US GDP (QoQ, annualised)', g.gdpQoQ != null ? g.gdpQoQ + '%' : '—', g.asOf || '')}${macroTile('UNEMPLOYMENT', g.unemployment != null ? g.unemployment + '%' : '—', '')}</div>`;
+  $('macro-fx').innerHTML = `<div class="kpis">${(md.fx || []).map((f) => macroTile(f.label, f.price != null ? f.price.toFixed(f.price < 10 ? 4 : 2) : '—', f.pct != null ? pctf(f.pct) : '', cls(f.pct))).join('')}</div>`;
+  const c = corr || {};
+  const cTile = (label, v, note) => macroTile(label, v != null ? v : '—', note, v != null ? (v < 0 ? 'neg' : 'pos') : '');
+  $('macro-corr').innerHTML = `<div class="kpis">${cTile('OIL vs US DOLLAR', c.oilVsDollar, 'usually negative')}${cTile('OIL vs VIX', c.oilVsVix, 'risk-off link')}${cTile('OIL vs S&P 500', c.oilVsSp500, 'risk-on link')}</div>`;
+  $('macro-events').innerHTML = (events || []).map((e) => `<div class="read-line">📅 <b>${e.name}</b>${e.date ? ` — ${e.date}` : ''} <span class="dimtext">${e.note || ''}</span></div>`).join('');
+}
 function renderRegime(m, a, c) {
   const by = Object.fromEntries(m.benchmarks.map((b) => [b.id, b]));
   const parts = [];
@@ -690,6 +707,11 @@ async function loadExtra() {
       getJSON('/api/sar').catch(() => null),
     ]);
     const macro = await getJSON('/api/macro').catch(() => null);
+    const [md, corr, ev] = await Promise.all([
+      getJSON('/api/macrodash').catch(() => null),
+      getJSON('/api/correlations').catch(() => null),
+      getJSON('/api/events').catch(() => null),
+    ]);
     analytics = an;
     renderContext(data, an, macro);
     renderInventories(inv);
@@ -704,6 +726,7 @@ async function loadExtra() {
     renderBottomLine(data, tn, fl, flr, sar);
     renderKPIs(data, an, cv, pos);
     renderRegime(data, an, cv);
+    renderMacroDash(md, corr, ev);
   } catch (e) { showError(e.message); }
 }
 
