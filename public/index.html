@@ -38,8 +38,15 @@
     <div id="cards"></div>
 
     <section class="panel">
-      <div class="ph"><span class="ph-t">HISTORY</span><select id="metric"></select></div>
+      <div class="ph">
+        <span class="ph-t">HISTORY</span>
+        <div class="controls">
+          <select id="metric"></select>
+          <select id="range"><option value="6m">6M</option><option value="10y">10Y</option></select>
+        </div>
+      </div>
       <div class="chart-wrap"><canvas id="chart"></canvas></div>
+      <div id="lt-summary" class="dimtext lt-summary"></div>
     </section>
 
     <section class="panel">

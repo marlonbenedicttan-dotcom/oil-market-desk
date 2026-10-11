@@ -179,6 +179,46 @@ async function getHistory() {
 }
 
 // ---------------------------------------------------------------------------
+// Long-term (multi-year) history, bucketed by month, with % performance
+// ---------------------------------------------------------------------------
+function monthly(map) {
+  const out = {};
+  for (const d of Object.keys(map).sort()) out[d.slice(0, 7)] = map[d];
+  return out;
+}
+
+function pctOver(arr, n) {
+  const idx = [];
+  arr.forEach((v, i) => { if (v != null) idx.push(i); });
+  if (!idx.length) return null;
+  const lastIdx = idx[idx.length - 1];
+  const last = arr[lastIdx];
+  const target = lastIdx - n;
+  let baseIdx = idx[0];
+  for (const i of idx) { if (i <= target) baseIdx = i; }
+  const base = arr[baseIdx];
+  return base ? ((last - base) / base) * 100 : null;
+}
+
+async function getLongterm(b, years = 10) {
+  const interval = years >= 3 ? '1mo' : '1wk';
+  const paperMap = b.paper
+    ? (await cached(`ltp:${b.paper}:${years}`, 6 * 3600e3, () => yahooSeries(b.paper, `${years}y`, interval))).series
+    : {};
+  const physRaw = await cached(`ltf:${b.physical}:${years}`, 6 * 3600e3, () => spotSeries(b, years * 366 + 30));
+  const p = monthly(paperMap);
+  const f = monthly(physRaw);
+  const months = [...new Set([...Object.keys(p), ...Object.keys(f)])].sort();
+  const at = (o, m) => (o[m] != null ? o[m] : null);
+  const series = { paper: months.map((m) => at(p, m)), physical: months.map((m) => at(f, m)) };
+  const summ = (arr) => ({ total: pctOver(arr, arr.length), last5y: pctOver(arr, 60), last1y: pctOver(arr, 12) });
+  return {
+    id: b.id, label: b.label, unit: b.unit, dp: b.dp, years, months, series,
+    summary: { paper: summ(series.paper), physical: summ(series.physical) },
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Live tanker tracking via aisstream.io (free key required)
 // ---------------------------------------------------------------------------
 const tankers = new Map();
@@ -238,6 +278,13 @@ const server = http.createServer(async (req, res) => {
   try {
     if (url.pathname === '/api/market') return sendJSON(res, 200, await getMarket());
     if (url.pathname === '/api/history') return sendJSON(res, 200, await getHistory());
+    if (url.pathname === '/api/longterm') {
+      const id = url.searchParams.get('id');
+      const years = Math.min(15, Math.max(1, Number(url.searchParams.get('years')) || 10));
+      const b = BENCHMARKS.find((x) => x.id === id);
+      if (!b) return sendJSON(res, 404, { error: 'unknown benchmark' });
+      return sendJSON(res, 200, await getLongterm(b, years));
+    }
     if (url.pathname === '/api/tankers') {
       const list = [...tankers.values()];
       return sendJSON(res, 200, { status: ais, count: list.length, tankers: list.slice(0, 2000) });

@@ -21,6 +21,7 @@ Adding a benchmark = one row in the `BENCHMARKS` table in `server.js`.
 ## Features
 
 - **Basis** — paper vs physical per benchmark, sign-colored.
+- **Performance** — day % change on every card, plus a **10-year history** view (click any benchmark card, or use the 6M/10Y toggle).
 - **Crack spreads** — gasoline, diesel and 3-2-1 refining margins ($/bbl), from product × 42 − crude.
 - **Insights** — a plain-English panel reading the numbers for prices *and* shipping.
 - **Alerts** — flags when a basis, spread or crack breaks a threshold (with desktop notifications).
