@@ -189,6 +189,31 @@ footer li { margin-bottom: 2px; }
 .qflag { font-size: 12px; padding: 5px 8px; border-left: 3px solid var(--amber); background: var(--panel2); }
 .qflag.ok { border-left-color: var(--green); color: var(--dim); }
 
+/* Hero (regime + KPIs) */
+.hero { background: #0a0c0f; border: 1px solid var(--line); }
+.regime { padding: 9px 12px; border-bottom: 1px solid var(--line); font-size: 13px; letter-spacing: .4px; }
+.regime-k { color: var(--amber); font-size: 10px; letter-spacing: 2px; margin-right: 8px; }
+.regime .warn { color: var(--amber); }
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); }
+.kpi { padding: 10px 14px; border-right: 1px solid var(--line); }
+.kpi:last-child { border-right: 0; }
+.kpi-l { font-size: 10px; letter-spacing: 1.5px; color: var(--dim); }
+.kpi-v { font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; margin: 2px 0; }
+.kpi-s { font-size: 10px; }
+
+/* Tabs */
+.tabs { display: flex; border: 1px solid var(--line); background: var(--panel); overflow-x: auto; }
+.tab { background: transparent; border: 0; border-right: 1px solid var(--line); color: var(--dim); padding: 9px 16px; font-size: 11px; letter-spacing: 1.5px; cursor: pointer; white-space: nowrap; }
+.tab:hover { color: var(--text); }
+.tab.active { color: var(--amber); background: #0c0f13; box-shadow: inset 0 -2px 0 var(--amber); }
+.tabpane { display: grid; gap: 14px; }
+
+/* Collapsible */
+.fold summary { padding: 8px 12px; cursor: pointer; color: var(--dim); font-size: 11px; letter-spacing: 1px; }
+.fold summary:hover { color: var(--amber); }
+.fold[open] summary { border-bottom: 1px solid var(--line); }
+.note-body { padding: 8px 14px 12px; }
+
 .glossary { background: var(--panel2); border: 1px solid var(--line); padding: 12px 14px; margin: 12px; }
 .glossary dl { margin: 0; display: grid; grid-template-columns: max-content 1fr; gap: 5px 16px; }
 .glossary dt { color: var(--amber); font-weight: 700; }

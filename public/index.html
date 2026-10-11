@@ -11,14 +11,13 @@
 </head>
 <body>
   <header class="topbar">
-    <div class="brand"><span class="logo">▚</span><h1>OIL BASIS</h1><span class="sub">PAPER vs PHYSICAL · ENERGY BENCHMARKS</span></div>
+    <div class="brand"><span class="logo">▚</span><h1>OIL BASIS</h1><span class="sub">PAPER vs PHYSICAL · ENERGY DESK</span></div>
     <div class="meta">
       <span id="clock" class="clock">--:--:--</span>
       <span id="updated" class="dimtext">loading…</span>
-      <span id="countdown" class="dimtext"></span>
-      <a id="csv" class="ghost" href="/api/export.csv">⬇ CSV</a>
+      <a class="ghost" href="/api/export.csv">⬇ CSV</a>
       <a class="ghost" href="/api/digest" target="_blank">DIGEST</a>
-      <button id="refresh" class="ghost">↻ REFRESH</button>
+      <button id="refresh" class="ghost">↻</button>
     </div>
   </header>
   <div id="ticker" class="ticker"></div>
@@ -26,69 +25,98 @@
   <main>
     <div id="error" class="errbar hidden"></div>
 
-    <section class="panel">
-      <div class="ph"><span class="ph-t">🧭 INSIGHTS</span><button id="help-btn" class="ghost small">GLOSSARY</button></div>
-      <div id="glossary" class="glossary hidden"></div>
-      <div class="insights">
-        <div class="col"><div class="gtitle">OIL PRICES</div><ul id="market-insights" class="ins-list"></ul></div>
-        <div class="col"><div class="gtitle">TANKER &amp; FREIGHT</div><ul id="tanker-insights" class="ins-list"></ul></div>
-      </div>
-      <div class="ph sub-head"><span class="ph-t">⚠ ALERTS</span><span id="alert-count" class="pill">0</span></div>
-      <div id="alerts" class="alerts"></div>
+    <!-- HERO: regime + key KPIs -->
+    <section class="hero">
+      <div id="regime" class="regime">—</div>
+      <div id="kpis" class="kpis"></div>
     </section>
 
-    <section class="panel">
-      <div class="ph"><span class="ph-t">MARKET CONTEXT</span><span class="dimtext">2-YEAR PERCENTILE — IS THIS NORMAL?</span></div>
-      <div id="context" class="ctx"></div>
-    </section>
+    <!-- TABS -->
+    <nav class="tabs" id="tabs">
+      <button class="tab active" data-tab="overview">OVERVIEW</button>
+      <button class="tab" data-tab="curve">CURVE &amp; HISTORY</button>
+      <button class="tab" data-tab="fundamentals">FUNDAMENTALS</button>
+      <button class="tab" data-tab="sectors">SECTORS</button>
+      <button class="tab" data-tab="tankers">TANKERS</button>
+    </nav>
 
-    <section class="panel">
-      <div class="ph"><span class="ph-t">TERM STRUCTURE</span><span class="dimtext">FUTURES CURVE — THE PHYSICAL TELL</span></div>
-      <div id="curve" class="curve"></div>
-    </section>
+    <!-- OVERVIEW -->
+    <div class="tabpane" data-pane="overview">
+      <div id="cards"></div>
 
-    <div id="cards"></div>
+      <section class="panel">
+        <div class="ph"><span class="ph-t">🧭 READ — WHAT IT MEANS</span><button id="help-btn" class="ghost small">GLOSSARY</button></div>
+        <div id="glossary" class="glossary hidden"></div>
+        <div class="insights">
+          <div class="col"><div class="gtitle">OIL PRICES</div><ul id="market-insights" class="ins-list"></ul></div>
+          <div class="col"><div class="gtitle">TANKER &amp; FREIGHT</div><ul id="tanker-insights" class="ins-list"></ul></div>
+        </div>
+        <div class="ph sub-head"><span class="ph-t">⚠ ALERTS</span><span id="alert-count" class="pill">0</span></div>
+        <div id="alerts" class="alerts"></div>
+      </section>
 
-    <section class="panel">
-      <div class="ph">
-        <span class="ph-t">HISTORY</span>
-        <div class="controls"><select id="metric"></select><select id="range"><option value="6m">6M</option><option value="10y">10Y</option></select></div>
-      </div>
-      <div class="chart-wrap"><canvas id="chart"></canvas></div>
-      <div id="lt-summary" class="dimtext lt-summary"></div>
-    </section>
+      <section class="panel">
+        <div class="ph"><span class="ph-t">MARKET CONTEXT</span><span class="dimtext">2-YEAR PERCENTILE · VOL · DATA QUALITY</span></div>
+        <div id="context" class="ctx"></div>
+      </section>
+    </div>
 
-    <section class="panel">
-      <div class="ph"><span class="ph-t">INVENTORIES</span><span id="inv-date" class="dimtext">EIA · weekly</span></div>
-      <div id="inventories" class="tbl"></div>
-    </section>
+    <!-- CURVE & HISTORY -->
+    <div class="tabpane hidden" data-pane="curve">
+      <section class="panel">
+        <div class="ph"><span class="ph-t">TERM STRUCTURE</span><span class="dimtext">FUTURES CURVE — THE PHYSICAL TELL</span></div>
+        <div id="curve" class="curve"></div>
+      </section>
 
-    <section class="panel">
-      <div class="ph"><span class="ph-t">POSITIONING</span><span class="dimtext">CFTC · managed money net</span></div>
-      <div id="positioning" class="ctx"></div>
-    </section>
+      <section class="panel">
+        <div class="ph">
+          <span class="ph-t">HISTORY</span>
+          <div class="controls"><select id="metric"></select><select id="range"><option value="6m">6M</option><option value="10y">10Y</option></select></div>
+        </div>
+        <div class="chart-wrap"><canvas id="chart"></canvas></div>
+        <div id="lt-summary" class="dimtext lt-summary"></div>
+      </section>
 
-    <section class="panel">
-      <div class="ph"><span class="ph-t">ANALOGUE / EXPECTED MOVE</span>
-        <select id="an-metric"><option value="basis:brent">Brent basis</option><option value="basis:wti">WTI basis</option><option value="spread:brent_wti">Brent−WTI (physical)</option></select>
-      </div>
-      <div id="analogue" class="analogue"></div>
-    </section>
+      <section class="panel">
+        <div class="ph"><span class="ph-t">ANALOGUE / EXPECTED MOVE</span>
+          <select id="an-metric"><option value="basis:brent">Brent basis</option><option value="basis:wti">WTI basis</option><option value="spread:brent_wti">Brent−WTI (physical)</option></select>
+        </div>
+        <div id="analogue" class="analogue"></div>
+      </section>
+    </div>
 
-    <section class="panel">
-      <div class="ph"><span class="ph-t">SECTOR IMPACT &amp; EQUITIES</span><span id="eq-date" class="dimtext"></span></div>
-      <div id="sector-read" class="sector-read"></div>
-      <div id="sectors" class="sectors"></div>
-    </section>
+    <!-- FUNDAMENTALS -->
+    <div class="tabpane hidden" data-pane="fundamentals">
+      <section class="panel">
+        <div class="ph"><span class="ph-t">INVENTORIES</span><span id="inv-date" class="dimtext">EIA · weekly</span></div>
+        <div id="inventories" class="tbl"></div>
+      </section>
+      <section class="panel">
+        <div class="ph"><span class="ph-t">POSITIONING</span><span class="dimtext">CFTC · managed money net</span></div>
+        <div id="positioning" class="ctx"></div>
+      </section>
+    </div>
 
-    <section class="panel">
-      <div class="ph"><span class="ph-t">🚢 TANKER TRAFFIC</span><span id="ais-status" class="pill">—</span></div>
-      <div id="ais-sub" class="dimtext"></div>
-      <div id="ais-help" class="help hidden"></div>
-      <div id="map"><div id="map-empty" class="map-empty hidden">WAITING FOR TANKER POSITIONS…</div></div>
-      <div id="chokepoints" class="chokes"></div>
-      <div id="tanker-list" class="tanker-list"></div>
-    </section>
+    <!-- SECTORS -->
+    <div class="tabpane hidden" data-pane="sectors">
+      <section class="panel">
+        <div class="ph"><span class="ph-t">SECTOR IMPACT &amp; EQUITIES</span><span id="eq-date" class="dimtext"></span></div>
+        <div id="sector-read" class="sector-read"></div>
+        <div id="sectors" class="sectors"></div>
+      </section>
+    </div>
+
+    <!-- TANKERS -->
+    <div class="tabpane hidden" data-pane="tankers">
+      <section class="panel">
+        <div class="ph"><span class="ph-t">🚢 TANKER TRAFFIC</span><span id="ais-status" class="pill">—</span></div>
+        <div id="ais-sub" class="dimtext"></div>
+        <div id="ais-help" class="help hidden"></div>
+        <div id="map"><div id="map-empty" class="map-empty hidden">WAITING FOR TANKER POSITIONS…</div></div>
+        <div id="chokepoints" class="chokes"></div>
+        <details class="fold"><summary>Vessel list</summary><div id="tanker-list" class="tanker-list"></div></details>
+      </section>
+    </div>
 
     <footer id="notes"></footer>
   </main>

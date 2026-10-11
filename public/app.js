@@ -232,8 +232,9 @@ async function loadMarket() {
   renderInsights(data, tankerInfo); renderAlerts(computeAlerts(data, tankerInfo)); renderTicker(data);
   await renderChart();   // ← the fix: render AFTER data exists
   $('updated').textContent = 'prices ' + new Date(data.updated).toLocaleTimeString();
-  $('notes').innerHTML = '<ul>' + data.notes.map((n) => `<li>${n}</li>`).join('') + '</ul>' +
-    '<div class="disc">Sources: FRED/EIA (spot), Yahoo (futures), aisstream.io (AIS), CFTC (positioning). For information only — <b>not investment advice</b>. Figures may be delayed or indicative.</div>';
+  $('notes').innerHTML = `<details class="fold"><summary>SOURCES, NOTES &amp; DISCLAIMER</summary><div class="note-body"><ul>` +
+    data.notes.map((n) => `<li>${n}</li>`).join('') + '</ul>' +
+    '<div class="disc">Sources: FRED/EIA (spot), Yahoo (futures), aisstream.io (AIS), CFTC (positioning). For information only — <b>not investment advice</b>. Figures may be delayed or indicative.</div></div></details>';
 }
 
 // ---------------------------------------------------------------------------
@@ -387,6 +388,40 @@ async function loadAnalogue() {
   try { renderAnalogue(await getJSON('/api/analogue?metric=' + encodeURIComponent($('an-metric').value))); }
   catch (e) { showError(e.message); }
 }
+function renderRegime(m, a, c) {
+  const by = Object.fromEntries(m.benchmarks.map((b) => [b.id, b]));
+  const parts = [];
+  if (c?.brent) parts.push(`<b>${c.brent.shape.toUpperCase()}</b>`);
+  const bb = by.brent?.basis;
+  if (bb != null) parts.push(bb > 0 ? 'physical <span class="pos">tight</span>' : 'physical <span class="neg">loose</span>');
+  if (a?.arb) parts.push(`export arb <b class="${a.arb.open ? 'pos' : 'neg'}">${a.arb.open ? 'OPEN' : 'CLOSED'}</b>`);
+  const dq = (m.quality?.flags || []).length;
+  if (dq) parts.push(`<span class="warn">⚠ ${dq} data caveat${dq > 1 ? 's' : ''}</span>`);
+  $('regime').innerHTML = `<span class="regime-k">REGIME</span> ${parts.join(' · ')}`;
+}
+function kpiTile(label, value, sub, klass) {
+  return `<div class="kpi"><div class="kpi-l">${label}</div><div class="kpi-v ${klass || ''}">${value}</div><div class="kpi-s dimtext">${sub}</div></div>`;
+}
+function renderKPIs(m, a, c, pos) {
+  const by = Object.fromEntries(m.benchmarks.map((b) => [b.id, b]));
+  const d321 = crackSpreads(m).find((x) => x.label.startsWith('3-2-1'));
+  const pct = (id) => (a?.benchmarks?.[id]?.basisPct != null ? Math.round(a.benchmarks[id].basisPct) + 'th pct' : '—');
+  const t = [];
+  if (by.brent) t.push(kpiTile('BRENT BASIS', signed(by.brent.basis, 2), `${pct('brent')} · phys−paper`, cls(by.brent.basis)));
+  if (by.wti) t.push(kpiTile('WTI BASIS', signed(by.wti.basis, 2), `${pct('wti')} · phys−paper`, cls(by.wti.basis)));
+  if (m.spreads.brent_wti) t.push(kpiTile('BRENT − WTI', signed(m.spreads.brent_wti.physical, 2), 'physical spread', cls(m.spreads.brent_wti.physical)));
+  if (d321) t.push(kpiTile('3-2-1 CRACK', signed(d321.value, 2), d321.value > 18 ? 'strong' : d321.value > 8 ? 'healthy' : 'weak', cls(d321.value)));
+  if (c?.brent?.m1m2 != null) t.push(kpiTile('BRENT M1−M2', signed(c.brent.m1m2, 2), c.brent.shape, cls(c.brent.m1m2)));
+  if (pos?.latest) t.push(kpiTile('WTI SPEC NET', pos.latest.net.toLocaleString(), `${pos.pct.toFixed(0)}th pct · CFTC`, cls(pos.latest.net)));
+  $('kpis').innerHTML = t.join('');
+}
+function showTab(name) {
+  document.querySelectorAll('.tab').forEach((t) => t.classList.toggle('active', t.dataset.tab === name));
+  document.querySelectorAll('.tabpane').forEach((p) => p.classList.toggle('hidden', p.dataset.pane !== name));
+  if (name === 'curve' && chart) setTimeout(() => chart.resize(), 50);
+  if (name === 'tankers' && map) setTimeout(() => map.invalidateSize(), 60);
+}
+
 async function loadExtra() {
   try {
     const [inv, pos, eq, chk, an, cv] = await Promise.all([
@@ -404,6 +439,8 @@ async function loadExtra() {
     renderSectors(eq, data, an, tankerInfo);
     renderChokepoints(chk);
     renderCurve(cv);
+    renderKPIs(data, an, cv, pos);
+    renderRegime(data, an, cv);
   } catch (e) { showError(e.message); }
 }
 
@@ -419,6 +456,7 @@ $('refresh').addEventListener('click', () => { nextRefresh = 60; refreshAll(); }
 $('metric').addEventListener('change', () => { localStorage.setItem('oilbasis.metric', $('metric').value); renderChart(); });
 $('range').addEventListener('change', renderChart);
 $('an-metric').addEventListener('change', loadAnalogue);
+$('tabs').addEventListener('click', (e) => { const b = e.target.closest('.tab'); if (b) showTab(b.dataset.tab); });
 $('help-btn').addEventListener('click', () => { const g = $('glossary'); g.innerHTML = GLOSSARY; g.classList.toggle('hidden'); });
 $('cards').addEventListener('click', (e) => {
   const card = e.target.closest('.card[data-id]');
@@ -438,5 +476,5 @@ $('cards').addEventListener('click', (e) => {
   await refreshAll();
   loadAnalogue();
   setInterval(loadTankers, 15000);
-  setInterval(() => { nextRefresh -= 5; if (nextRefresh <= 0) { nextRefresh = 60; refreshAll(); } $('countdown').textContent = `auto ${nextRefresh}s`; }, 5000);
+  setInterval(() => { nextRefresh -= 5; if (nextRefresh <= 0) { nextRefresh = 60; refreshAll(); } const cd = $('countdown'); if (cd) cd.textContent = `auto ${nextRefresh}s`; }, 5000);
 })();
