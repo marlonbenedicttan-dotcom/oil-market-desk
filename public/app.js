@@ -44,13 +44,14 @@ let macroRegion = 'us';        // selected macro region
 let macroCountries = null;     // /api/countries — country lists per region
 let macroCountry = 'us';       // selected country
 let transmission = null;       // /api/transmission — cross-asset logic
-let activeTab = 'commodities'; // which tab is showing (drives the ticker's content)
+let activeTab = 'home';        // which tab is showing (drives the ticker's content)
 let macroTickers = null;       // this region's macro tickers (currencies + indices) for the tape
 let macroChart = null;         // per-country index vs currency chart
 const countryCache = {};       // id -> { t, data } so switching is instant
 const COUNTRY_FX_ID = { 'DX-Y.NYB': 'dxy', 'EURUSD=X': 'eurusd', 'GBPUSD=X': 'gbpusd', 'USDJPY=X': 'usdjpy', 'USDCNY=X': 'usdcny', 'USDINR=X': 'usdinr', 'AUDUSD=X': 'audusd' };
 let chartDp = 2;        // decimals for the current chart (set in renderChart)
 const seenAlerts = new Set();
+let serverAlerts = [];  // /api/alerts — the server's alert engine (basis extremes, data checks, idle ships)
 const ltCache = {};
 
 const GLOSSARY = `
@@ -186,6 +187,16 @@ function setCardsTitle() {
   const mk = markets.find((x) => x.id === currentMarket);
   const el = $('cards-title');
   if (el) el.textContent = 'INSTRUMENTS — ' + (mk ? mk.label.toUpperCase() : 'ALL');
+}
+
+// Home: the pinned instruments, across every segment, in one board.
+function renderWatchlist() {
+  const el = $('home-watch');
+  if (!el || !data) return;
+  const items = watchlist().map((id) => data.benchmarks.find((b) => b.id === id)).filter(Boolean);
+  el.innerHTML = items.length
+    ? `<div class="tiles">${items.map(tileHtml).join('')}</div>`
+    : '<div class="dimtext" style="padding:12px">Nothing pinned yet — open <b>COMMODITIES</b> and click <b>☆</b> on any instrument to pin it here.</div>';
 }
 
 // ---------------------------------------------------------------------------
@@ -494,6 +505,29 @@ function renderAlerts(alerts) {
   $('alerts').innerHTML = alerts.length ? alerts.map((a) => `<div class="alert ${a.level}"><span class="badge">${a.level === 'high' ? 'HIGH' : 'WATCH'}</span> ${a.text}</div>`).join('') : '<div class="alert none">✅ No alerts — markets within normal ranges.</div>';
   if ('Notification' in window && Notification.permission === 'granted') for (const a of alerts) if (a.level === 'high' && !seenAlerts.has(a.text)) { seenAlerts.add(a.text); try { new Notification('Oil market alert', { body: a.text }); } catch {} }
 }
+// Home: every alert firing, from both engines, severity-sorted.
+const ALERT_RANK = { high: 0, med: 1, watch: 2 };
+function allAlerts() {
+  const out = serverAlerts.map((a) => ({ level: a.level, text: a.text }));
+  if (data) for (const a of computeAlerts(data, tankerInfo)) out.push({ level: a.level, text: a.text });
+  return out.sort((x, y) => (ALERT_RANK[x.level] ?? 3) - (ALERT_RANK[y.level] ?? 3));
+}
+function renderHomeAlerts() {
+  const el = $('home-alerts');
+  if (!el) return;
+  const list = data ? allAlerts() : [];
+  const c = $('home-alert-count');
+  if (c) { c.textContent = String(list.length); c.className = 'pill ' + (list.some((a) => a.level === 'high') ? 'warn' : list.length ? '' : 'ok'); }
+  const sub = $('home-alert-sub');
+  if (sub) sub.textContent = 'server checks (basis extremes, data quality, idle ships) + your own thresholds · edit thresholds in COMMODITIES → MORE DETAIL';
+  el.innerHTML = list.length
+    ? list.map((a) => `<div class="alert ${a.level}"><span class="badge">${a.level === 'high' ? 'HIGH' : a.level === 'watch' ? 'CHECK' : 'WATCH'}</span> ${a.text}</div>`).join('')
+    : '<div class="alert none">✅ No alerts — markets within normal ranges.</div>';
+}
+async function loadAlerts() {
+  try { serverAlerts = (await getJSON('/api/alerts')).current || []; } catch { serverAlerts = []; }
+  renderHomeAlerts();
+}
 function renderInsights(m, t) {
   $('market-insights').innerHTML = marketInsights(m).map((x) => `<li>${x}</li>`).join('');
   $('tanker-insights').innerHTML = tankerInsights(t).map((x) => `<li>${x}</li>`).join('');
@@ -677,6 +711,7 @@ async function loadMarket() {
   data = await getJSON('/api/market');
   renderCards(data); buildMetricOptions(data); buildBpOptions();
   renderMarketState(); renderSnapshot(); setCardsTitle(); renderTicker(data);
+  renderWatchlist(); renderHomeAlerts();
   await renderChart();   // ← render AFTER data exists
   loadMarketRead();      // populate the adaptive Big Picture (hero line + panels)
   loadNews();
@@ -720,6 +755,7 @@ async function loadTankers() {
   const rows = tankerInfo.tankers.slice(0, 60).map((v) => `<div class="t"><span>${v.name || '(' + v.mmsi + ')'}</span><span>${(v.sog ?? 0).toFixed(1)} kn</span><span>${v.lat.toFixed(1)}, ${v.lon.toFixed(1)}</span></div>`).join('');
   $('tanker-list').innerHTML = `<div class="t h"><span>VESSEL (${tankerInfo.count} TRACKED)</span><span>SPEED</span><span>POSITION</span></div>` + rows;
   if (data) renderAdaptive();   // refresh the ship row of the adaptive Big Picture
+  renderHomeAlerts();           // idle-ship count feeds the alerts board
 }
 
 // ---------------------------------------------------------------------------
@@ -1390,6 +1426,7 @@ async function loadExtra() {
     renderMarketState();
     renderAdaptive();
     loadTransmission();
+    loadAlerts();
   } catch (e) { showError(e.message); }
 }
 
@@ -1439,7 +1476,13 @@ $('tabs').addEventListener('click', (e) => { const b = e.target.closest('.tab');
 $('help-btn').addEventListener('click', () => { const g = $('glossary'); g.innerHTML = GLOSSARY; g.classList.toggle('hidden'); });
 $('cards').addEventListener('click', (e) => {
   const star = e.target.closest('.star');
-  if (star) { toggleWatch(star.dataset.star); renderCards(data); return; }
+  if (star) { toggleWatch(star.dataset.star); renderCards(data); renderWatchlist(); return; }
+  const tile = e.target.closest('.tile[data-id]');
+  if (tile) pickMetric(tile.dataset.id, '6m');
+});
+$('home-watch')?.addEventListener('click', (e) => {
+  const star = e.target.closest('.star');
+  if (star) { toggleWatch(star.dataset.star); renderWatchlist(); if (data) renderCards(data); return; }
   const tile = e.target.closest('.tile[data-id]');
   if (tile) pickMetric(tile.dataset.id, '6m');
 });

@@ -16,7 +16,7 @@
   <meta name="theme-color" content="#ff9e00" />
   <link rel="icon" href="/icon.svg" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <link rel="stylesheet" href="style.css?v=13" />
+  <link rel="stylesheet" href="style.css?v=14" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 </head>
@@ -44,12 +44,32 @@
 
     <!-- TABS -->
     <nav class="tabs" id="tabs">
-      <button class="tab active" data-tab="commodities">COMMODITIES</button>
+      <button class="tab active" data-tab="home">HOME</button>
+      <button class="tab" data-tab="commodities">COMMODITIES</button>
       <button class="tab" data-tab="macro">MACRO</button>
     </nav>
 
+    <!-- HOME: watchlist + alerts + segments at a glance -->
+    <div class="tabpane" data-pane="home">
+      <section class="panel">
+        <div class="ph"><span class="ph-t">📌 WATCHLIST — your pinned instruments</span><span class="dimtext">★ on any instrument pins it here · click a tile for its chart</span></div>
+        <div id="home-watch"></div>
+      </section>
+
+      <section class="panel">
+        <div class="ph"><span class="ph-t">⚠ ALERTS</span><span class="ph-right"><span id="home-alert-count" class="pill">0</span></span></div>
+        <div id="home-alerts" class="alerts"></div>
+        <div id="home-alert-sub" class="dimtext" style="padding:0 12px 10px"></div>
+      </section>
+
+      <section class="panel">
+        <div class="ph"><span class="ph-t">🔎 SEGMENTS AT A GLANCE</span><span class="dimtext">click a segment to open it</span></div>
+        <div id="marketstate" class="marketstate"></div>
+      </section>
+    </div>
+
     <!-- COMMODITIES -->
-    <div class="tabpane" data-pane="commodities">
+    <div class="tabpane hidden" data-pane="commodities">
 
       <!-- 1. WHERE ARE WE -->
       <section class="panel">
@@ -225,6 +245,7 @@
     <div class="onboard-box">
       <h2>👋 Welcome to Commodity Desk</h2>
       <ul>
+        <li><b>Home</b> — your pinned <b>watchlist</b>, <b>alerts</b> that are firing, and every segment at a glance. Star any instrument to pin it here.</li>
         <li><b>Commodities</b> — pick a segment (crude, refined, gas, metals, grains, softs) and the whole page follows it: prices, curve, what it means, trade ideas, supply, positioning, and live ships for crude.</li>
         <li><b>Macro</b> — interest rates, inflation, growth, currencies and the links between them.</li>
       </ul>
@@ -233,6 +254,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=22"></script>
+  <script src="app.js?v=23"></script>
 </body>
 </html>

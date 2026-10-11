@@ -65,6 +65,7 @@ main { max-width: 1240px; margin: 0 auto; padding: 14px; display: grid; gap: 14p
 .group { margin-bottom: 8px; }
 .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(215px, 1fr)); gap: 10px; }
 .tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px; }
+#home-watch .tiles { padding: 10px 12px; }
 .tile { display: grid; grid-template-columns: 1fr auto; grid-template-areas: "name star" "px px" "spark spark"; align-items: baseline; column-gap: 8px; row-gap: 1px; background: var(--panel); border: 1px solid var(--line); color: var(--text); padding: 7px 10px; cursor: pointer; font-family: var(--mono); text-align: left; }
 .tile:hover { border-color: var(--amber); }
 .t-name { grid-area: name; min-width: 0; color: #c9d4df; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

@@ -22,7 +22,10 @@ after(() => { child?.kill(); });
 test('serves the dashboard', async () => {
   const r = await fetch(`http://localhost:${PORT}/`);
   assert.equal(r.status, 200);
-  assert.match(await r.text(), /COMMODITY DESK/);
+  const html = await r.text();
+  assert.match(html, /COMMODITY DESK/);
+  assert.match(html, /data-pane="home"/);   // watchlist + alerts home screen
+  assert.match(html, /id="home-watch"/);
 });
 
 test('pure endpoints always respond 200', async () => {
@@ -40,6 +43,14 @@ for (const p of ['/api/market', '/api/curve', '/api/tightness', '/api/products',
     assert.ok([200, 500].includes(r.status), `${p} -> ${r.status}`);
   });
 }
+
+test('/api/alerts returns the server alert engine output', async () => {
+  const r = await fetch(`http://localhost:${PORT}/api/alerts`);
+  assert.equal(r.status, 200);
+  const j = await r.json();
+  assert.ok(Array.isArray(j.current), 'current must be an array');
+  for (const a of j.current) assert.ok(a.key && a.level && a.text, 'each alert needs key + level + text');
+});
 
 test('/api/markets groups benchmarks into 7 segments (WTI+Brent=Crude, fuels=Refined)', async () => {
   const r = await fetch(`http://localhost:${PORT}/api/markets`);
