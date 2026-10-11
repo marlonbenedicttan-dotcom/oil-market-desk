@@ -41,6 +41,19 @@ for (const p of ['/api/market', '/api/curve', '/api/tightness', '/api/products',
   });
 }
 
+test('/api/markets groups benchmarks into markets (WTI+Brent = Crude)', async () => {
+  const r = await fetch(`http://localhost:${PORT}/api/markets`);
+  assert.equal(r.status, 200);
+  const ms = await r.json();
+  assert.equal(ms.length, 8);
+  const crude = ms.find((m) => m.id === 'crude');
+  assert.deepEqual(crude.components.map((c) => c.id), ['wti', 'brent']);
+  assert.equal(crude.hasBasis, true);
+  assert.equal(ms.find((m) => m.id === 'precious').components.length, 4);
+  assert.equal(ms.find((m) => m.id === 'grains').hasBasis, false);
+  assert.ok(ms.every((m) => m.primary && m.hasCOT));
+});
+
 test('/api/fx lists chartable currencies', async () => {
   const r = await fetch(`http://localhost:${PORT}/api/fx`);
   assert.equal(r.status, 200);

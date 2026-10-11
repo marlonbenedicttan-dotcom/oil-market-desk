@@ -45,6 +45,35 @@ const BENCHMARKS = [
 ];
 
 // ---------------------------------------------------------------------------
+// Markets — the grouping the Big Picture is built around. Benchmarks are the
+// data layer (one instrument each); a market bundles related benchmarks, e.g.
+// WTI + Brent make one "Crude oil" market. The capability flags decide which
+// panels apply (Phase C makes the panels adapt; Phase A only uses the grouping).
+//   primary = instrument used for the headline price/number
+// ---------------------------------------------------------------------------
+const MARKETS = [
+  { id: 'crude',      label: 'Crude oil',         group: 'Crude',       primary: 'wti',    components: ['wti', 'brent'],                             hasBasis: true,  hasInventories: true,  hasShips: true },
+  { id: 'gasoline',   label: 'Gasoline',          group: 'Refined',     primary: 'rbob',   components: ['rbob'],                                     hasBasis: true,  hasInventories: true,  hasShips: true },
+  { id: 'distillate', label: 'Diesel, jet & LPG', group: 'Refined',     primary: 'ulsd',   components: ['ulsd', 'jet', 'propane'],                   hasBasis: true,  hasInventories: true,  hasShips: true },
+  { id: 'gas',        label: 'Natural gas',       group: 'Gas',         primary: 'natgas', components: ['natgas'],                                   hasBasis: true,  hasInventories: true,  hasShips: false },
+  { id: 'precious',   label: 'Precious metals',   group: 'Metals',      primary: 'gold',   components: ['gold', 'silver', 'platinum', 'palladium'],  hasBasis: false, hasInventories: false, hasShips: false },
+  { id: 'industrial', label: 'Industrial metals', group: 'Metals',      primary: 'copper', components: ['copper'],                                   hasBasis: false, hasInventories: false, hasShips: false },
+  { id: 'grains',     label: 'Grains',            group: 'Agriculture', primary: 'corn',   components: ['corn', 'wheat', 'soybean'],                 hasBasis: false, hasInventories: false, hasShips: false },
+  { id: 'softs',      label: 'Softs',             group: 'Agriculture', primary: 'sugar',  components: ['sugar', 'coffee', 'cocoa', 'cotton', 'palm'], hasBasis: false, hasInventories: false, hasShips: false },
+];
+function getMarkets() {
+  return MARKETS.map((m) => ({
+    ...m,
+    components: m.components.map((id) => {
+      const b = BENCHMARKS.find((x) => x.id === id);
+      return { id, label: b?.label || id, unit: b?.unit || '', dp: b?.dp ?? 2, paper: b?.paper || null };
+    }),
+    hasCurve: m.components.some((id) => CURVE_SPEC[id]),
+    hasCOT: true, // CFTC covers every one of these markets
+  }));
+}
+
+// ---------------------------------------------------------------------------
 // Feeds
 // ---------------------------------------------------------------------------
 const YF = 'https://query1.finance.yahoo.com/v8/finance/chart/';
@@ -1252,6 +1281,7 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname === '/api/market') return sendJSON(res, 200, await getMarket());
     if (url.pathname === '/api/history') return sendJSON(res, 200, await getHistory());
     if (url.pathname === '/api/fx') return sendJSON(res, 200, FX_SYMS.map((f) => ({ id: f.id, label: f.label, dp: f.dp })));
+    if (url.pathname === '/api/markets') return sendJSON(res, 200, getMarkets());
     if (url.pathname === '/api/longterm') {
       const id = url.searchParams.get('id');
       const years = Math.min(15, Math.max(1, Number(url.searchParams.get('years')) || 10));
