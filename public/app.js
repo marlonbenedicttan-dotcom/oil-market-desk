@@ -22,6 +22,7 @@ let transmission = null;       // /api/transmission — cross-asset logic
 let activeTab = 'commodities'; // which tab is showing (drives the ticker's content)
 let macroTickers = null;       // this region's macro tickers (currencies + indices) for the tape
 let macroChart = null;         // per-country index vs currency chart
+const countryCache = {};       // id -> { t, data } so switching is instant
 const COUNTRY_FX_ID = { 'DX-Y.NYB': 'dxy', 'EURUSD=X': 'eurusd', 'GBPUSD=X': 'gbpusd', 'USDJPY=X': 'usdjpy', 'USDCNY=X': 'usdcny', 'USDINR=X': 'usdinr', 'AUDUSD=X': 'audusd' };
 let chartDp = 2;        // decimals for the current chart (set in renderChart)
 const seenAlerts = new Set();
@@ -1018,7 +1019,7 @@ function renderMacroRegion() {
     if ([...sel.options].some((o) => o.value === macroCountry)) sel.value = macroCountry;
   }
   loadMacroTickers();
-  loadCountry();
+  loadCountry().then(prefetchRegion);   // then warm the rest of the region in the background
 }
 async function loadMacroTickers() {
   // the macro tape shows EVERY macro ticker (all regions) so it is never sparse
@@ -1027,6 +1028,21 @@ async function loadMacroTickers() {
   if (items) macroTickers = items;
   if (data) renderTicker(data);
 }
+// Cached fetch: instant if we already have it (or prefetched).
+async function fetchCountry(id) {
+  const hit = countryCache[id];
+  if (hit && Date.now() - hit.t < 5 * 60e3) return hit.data;
+  try { const data = await getJSON('/api/country?id=' + encodeURIComponent(id)); countryCache[id] = { t: Date.now(), data }; return data; }
+  catch { return countryCache[id] ? countryCache[id].data : null; }
+}
+// Warm every other country in the region in the background → switching is instant.
+async function prefetchRegion() {
+  const list = (macroCountries && macroCountries[macroRegion]) || [];
+  const ids = list.map((c) => c.id).filter((id) => id !== macroCountry);
+  let i = 0;
+  const worker = async () => { while (i < ids.length) { const id = ids[i++]; await fetchCountry(id); } };
+  await Promise.all([worker(), worker(), worker()]);
+}
 async function loadCountry() {
   const el = $('macro-region-panel');
   if (!el) return;
@@ -1034,7 +1050,7 @@ async function loadCountry() {
   const sel = $('macro-country');
   const label = (sel && sel.selectedOptions[0] ? sel.selectedOptions[0].textContent : req).trim();
   el.innerHTML = `<div class="macro-note">${label.toUpperCase()}</div><div class="dimtext" style="padding:6px 12px">loading…</div>`;
-  let c; try { c = await getJSON('/api/country?id=' + encodeURIComponent(req)); } catch { c = null; }
+  const c = await fetchCountry(req);
   if (req !== macroCountry) return;
   if (!c || c.error) { el.innerHTML = `<div class="macro-note">${label.toUpperCase()}</div><div class="dimtext" style="padding:6px 12px">data unavailable for this country</div>`; return; }
   const num = (v, dp) => (v == null ? '—' : Number(v).toFixed(dp));
