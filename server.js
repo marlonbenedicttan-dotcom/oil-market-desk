@@ -5,7 +5,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { execFile } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { sgn, businessDaysSince, inBox, haversineNm, horizonDeltas, isoWeek, monthly, pctOver, percentile, realizedVol, computeCracks, backAdjust, pearson, logReturns, curveTightness, inventoryTightness, weightedScore, seasonalGrade, seasonalAhead } from './src/lib.js';
+import { sgn, businessDaysSince, inBox, haversineNm, horizonDeltas, isoWeek, monthly, pctOver, percentile, realizedVol, computeCracks, backAdjust, pearson, logReturns, curveTightness, inventoryTightness, weightedScore, seasonalGrade, seasonalAhead, contractMonthsBetween } from './src/lib.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC = path.join(__dirname, 'public');
@@ -939,6 +939,11 @@ async function curveFor(id) {
 }
 function buildCurve(c) {
   if (c.length < 2) return { contracts: c, available: false };
+  // Adjacent calendar spreads (this month − next, next − the one after, …).
+  const calendar = [];
+  for (let i = 0; i + 1 < c.length && i < 6; i++) {
+    calendar.push({ from: c[i].label, to: c[i + 1].label, months: contractMonthsBetween(c[i].label, c[i + 1].label), value: c[i].price - c[i + 1].price });
+  }
   return {
     available: true,
     contracts: c,
@@ -946,7 +951,12 @@ function buildCurve(c) {
     m1m6: c.length > 5 ? c[0].price - c[5].price : null,
     m1m12: c.length > 11 ? c[0].price - c[11].price : null,
     shape: c[0].price >= c[1].price ? 'Backwardation' : 'Contango',
-    rollYieldAnn: c[1].price ? Math.log(c[0].price / c[1].price) * 12 * 100 : null,
+    // Implied roll yield: a long rolled from the front into the next month. Positive
+    // in backwardation (sell the dearer front, buy the cheaper next — you get paid).
+    rollMonthly: c[0].price - c[1].price,
+    rollMonthlyPct: c[0].price ? +(((c[0].price - c[1].price) / c[0].price) * 100).toFixed(2) : null,
+    rollYieldAnn: c[1].price ? +(Math.log(c[0].price / c[1].price) * 12 * 100).toFixed(1) : null,
+    calendar,
   };
 }
 // The curve for any one commodity (used by the "prices for months ahead" picker).
@@ -960,7 +970,7 @@ async function getCurveFor(id) {
 async function getCurves() {
   return cached('curves', 120_000, async () => {
     const [wti, brent] = await Promise.all([curveFor('wti'), curveFor('brent')]);
-    return { wti: buildCurve(wti), brent: buildCurve(brent) };
+    return { wti: { unit: '$/bbl', dp: 2, ...buildCurve(wti) }, brent: { unit: '$/bbl', dp: 2, ...buildCurve(brent) } };
   });
 }
 

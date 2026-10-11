@@ -143,6 +143,16 @@ export function seasonalAhead(median, fromMd, toMd) {
   return a && b ? +(((b - a) / a) * 100).toFixed(1) : null;
 }
 
+// Months between two futures contract labels like 'Z26' (month code + 2-digit year).
+// Used to annualise an implied roll yield correctly when the listed months skip.
+export function contractMonthsBetween(a, b) {
+  const MC = { F: 1, G: 2, H: 3, J: 4, K: 5, M: 6, N: 7, Q: 8, U: 9, V: 10, X: 11, Z: 12 };
+  if (!a || !b) return null;
+  const idx = (l) => (MC[l[0]] ?? 0) + (2000 + Number(l.slice(1))) * 12;
+  const ia = idx(a), ib = idx(b);
+  return ia && ib ? Math.abs(ib - ia) : null;
+}
+
 export function computeCracks(m) {
   const by = Object.fromEntries(m.benchmarks.map((b) => [b.id, b]));
   const w = by.wti, rb = by.rbob, ho = by.ulsd, jet = by.jet, G = 42;

@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { sgn, inBox, haversineNm, isoWeek, monthly, pctOver, percentile, realizedVol, computeCracks, backAdjust, pearson, logReturns, horizonDeltas, curveTightness, inventoryTightness, weightedScore, seasonalGrade, seasonalAhead } from '../src/lib.js';
+import { sgn, inBox, haversineNm, isoWeek, monthly, pctOver, percentile, realizedVol, computeCracks, backAdjust, pearson, logReturns, horizonDeltas, curveTightness, inventoryTightness, weightedScore, seasonalGrade, seasonalAhead, contractMonthsBetween } from '../src/lib.js';
 
 test('sgn formats with sign', () => {
   assert.equal(sgn(4.39), '+4.39');
@@ -124,6 +124,14 @@ test('seasonalAhead gives the normal move along the median path', () => {
   const median = { '06-15': 100, '07-15': 110 };
   assert.equal(seasonalAhead(median, '06-15', '07-15'), 10);
   assert.equal(seasonalAhead(median, '06-15', '09-01'), null); // unknown target day
+});
+
+test('contractMonthsBetween measures the gap between futures months', () => {
+  assert.equal(contractMonthsBetween('F26', 'G26'), 1);       // Jan → Feb 2026
+  assert.equal(contractMonthsBetween('Z26', 'F27'), 1);       // Dec 2026 → Jan 2027
+  assert.equal(contractMonthsBetween('F26', 'F27'), 12);
+  assert.equal(contractMonthsBetween('F26', 'H26'), 2);       // Jan → Mar
+  assert.equal(contractMonthsBetween(null, 'F26'), null);
 });
 
 test('computeCracks builds refining margins', () => {

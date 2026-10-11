@@ -191,6 +191,18 @@ test('/api/seasonal carries a 5-year grade + forward bias', async () => {
   assert.ok('ahead' in j);
 });
 
+test('/api/curve carries numeric carry + calendar spreads', async () => {
+  const r = await fetch(`http://localhost:${PORT}/api/curve`);
+  assert.equal(r.status, 200);
+  const j = await r.json();
+  assert.ok(j.wti && j.wti.contracts, 'wti curve present');
+  assert.equal(j.wti.unit, '$/bbl');
+  assert.ok(Array.isArray(j.wti.calendar) && j.wti.calendar.length >= 1);
+  assert.ok(j.wti.calendar.every((s) => s.from && s.to && typeof s.value === 'number'));
+  assert.ok(typeof j.wti.rollMonthly === 'number');
+  assert.ok('rollYieldAnn' in j.wti);
+});
+
 test('/api/termstructure returns a curve, 404 for unknown', async () => {
   const r = await fetch(`http://localhost:${PORT}/api/termstructure?id=wti`);
   assert.equal(r.status, 200);

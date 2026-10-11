@@ -185,6 +185,10 @@ footer li { margin-bottom: 2px; }
 .cb { height: 8px; background: #0f1318; border: 1px solid var(--line); position: relative; }
 .cb i { position: absolute; left: 0; top: 0; bottom: 0; background: #2f6fb0; }
 .cp { text-align: right; font-variant-numeric: tabular-nums; }
+.curve-carry { font-size: 12px; margin: 2px 0 4px; color: #c9d4df; }
+.curve-cal { font-size: 11px; margin: 0 0 6px; display: flex; flex-wrap: wrap; gap: 2px 10px; align-items: baseline; }
+.cal-sp { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.cal-m { color: var(--dim); }
 
 /* Seasonality (vs 5-yr day-of-year band) */
 .seasonal { padding: 10px 12px; }
