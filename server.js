@@ -52,10 +52,9 @@ const BENCHMARKS = [
 //   primary = instrument used for the headline price/number
 // ---------------------------------------------------------------------------
 const MARKETS = [
-  { id: 'crude',      label: 'Crude oil',         group: 'Crude',       primary: 'wti',    components: ['wti', 'brent'],                             hasBasis: true,  hasInventories: true,  hasShips: true },
-  { id: 'gasoline',   label: 'Gasoline',          group: 'Refined',     primary: 'rbob',   components: ['rbob'],                                     hasBasis: true,  hasInventories: true,  hasShips: true },
-  { id: 'distillate', label: 'Diesel, jet & LPG', group: 'Refined',     primary: 'ulsd',   components: ['ulsd', 'jet', 'propane'],                   hasBasis: true,  hasInventories: true,  hasShips: true },
-  { id: 'gas',        label: 'Natural gas',       group: 'Gas',         primary: 'natgas', components: ['natgas'],                                   hasBasis: true,  hasInventories: true,  hasShips: false },
+  { id: 'crude',      label: 'Crude oil',       group: 'Crude',   primary: 'wti',    components: ['wti', 'brent'],                             hasBasis: true,  hasInventories: true,  hasShips: true },
+  { id: 'refined',    label: 'Refined products', group: 'Refined', primary: 'rbob',   components: ['rbob', 'ulsd', 'jet', 'propane'],           hasBasis: true,  hasInventories: true,  hasShips: true },
+  { id: 'gas',        label: 'Natural gas',      group: 'Gas',     primary: 'natgas', components: ['natgas'],                                   hasBasis: true,  hasInventories: true,  hasShips: false },
   { id: 'precious',   label: 'Precious metals',   group: 'Metals',      primary: 'gold',   components: ['gold', 'silver', 'platinum', 'palladium'],  hasBasis: false, hasInventories: false, hasShips: false },
   { id: 'industrial', label: 'Industrial metals', group: 'Metals',      primary: 'copper', components: ['copper'],                                   hasBasis: false, hasInventories: false, hasShips: false },
   { id: 'grains',     label: 'Grains',            group: 'Agriculture', primary: 'corn',   components: ['corn', 'wheat', 'soybean'],                 hasBasis: false, hasInventories: false, hasShips: false },
@@ -180,7 +179,7 @@ async function getMarket() {
     const paper = p.price ?? null;
     return {
       id: b.id, label: b.label, group: b.group, unit: b.unit, dp: b.dp,
-      paper, physical, physicalDate: last, curve: Boolean(CURVE_SPEC[b.id]),
+      paper, physical, physicalDate: last, curve: Boolean(CURVE_SPEC[b.id]), cot: Boolean(COT_NAMES[b.id]),
       basis: paper != null && physical != null ? physical - paper : null,
       spotLagDays: businessDaysSince(last),
       spotJumpPct: physical != null && prevPhys ? ((physical - prevPhys) / prevPhys) * 100 : null,
@@ -423,9 +422,21 @@ async function getInventories() {
 // ---------------------------------------------------------------------------
 // CFTC positioning (WTI managed money / non-commercial net)
 // ---------------------------------------------------------------------------
-async function getPositioning() {
-  return cached('positioning', 6 * 3600e3, async () => {
-    const where = "contract_market_name='CRUDE OIL, LIGHT SWEET-WTI'";
+// CFTC Commitments-of-Traders contract names per benchmark (free, no key).
+const COT_NAMES = {
+  wti: 'CRUDE OIL, LIGHT SWEET-WTI', brent: 'CRUDE OIL, BRENT',
+  rbob: 'GASOLINE RBOB', ulsd: 'NY HARBOR ULSD', natgas: 'NATURAL GAS',
+  gold: 'GOLD', silver: 'SILVER', copper: 'COPPER', platinum: 'PLATINUM', palladium: 'PALLADIUM',
+  corn: 'CORN', wheat: 'WHEAT-SRW', soybean: 'SOYBEANS',
+  sugar: 'SUGAR NO. 11', coffee: 'COFFEE C', cocoa: 'COCOA', cotton: 'COTTON NO. 2',
+  palm: 'MALAYSIAN PALM OIL CALENDAR SW',
+};
+async function getPositioning(id = 'wti') {
+  const name = COT_NAMES[id];
+  const b = BENCHMARKS.find((x) => x.id === id);
+  if (!name) return { error: 'no CFTC series for ' + id };
+  return cached('positioning:' + id, 6 * 3600e3, async () => {
+    const where = `contract_market_name='${name}'`;
     const url = `https://publicreporting.cftc.gov/resource/6dca-aqww.json?$limit=220&$order=report_date_as_yyyy_mm_dd%20DESC&$where=${encodeURIComponent(where)}`;
     const res = await fetch(url, { headers: UA });
     if (!res.ok) throw new Error('cftc ' + res.status);
@@ -439,7 +450,7 @@ async function getPositioning() {
     const prev = rows[rows.length - 2];
     const nets = rows.map((r) => r.net);
     return {
-      label: 'WTI spec net (non-comm)', unit: 'contracts',
+      id, label: `${b?.label || id} spec net (non-comm)`, unit: 'contracts',
       latest, wow: prev ? latest.net - prev.net : null,
       pct: (nets.filter((n) => n <= latest.net).length / nets.length) * 100,
       oi: latest.oi, oiChange: prev ? latest.oi - prev.oi : null,
@@ -872,6 +883,119 @@ async function getCurves() {
 }
 
 // ---------------------------------------------------------------------------
+// Per-market read — the engine behind a commodity-aware Big Picture.
+// Assembles price trend, range position, volatility, curve, CFTC positioning and
+// macro links for the selected market, then writes a plain-English verdict.
+// Data we do NOT have free (basis/inventories for metals & ags) is labelled, never faked.
+// ---------------------------------------------------------------------------
+const MARKET_CONTENT = {
+  crude:      { tightQ: 'IS CRUDE TIGHT?', catalysts: ['OPEC+ monthly meeting', 'EIA weekly US oil stocks (Wed 10:30am New York)', 'refinery run rates & product cracks'], watch: ['Whether the real-vs-futures gap widens (physical tightness)', 'Ships avoiding the Red Sea and going around Africa'],
+    sectorsUp: ['Oil & gas producers', 'Oil services & drilling', 'Refiners'], sectorsDown: ['Airlines', 'Trucking & logistics', 'Chemicals & plastics'],
+    tickersUp: ['XOM', 'CVX', 'COP', 'SLB', 'VLO'], tickersDown: ['DAL', 'UAL', 'AAL', 'FDX', 'LYB'],
+    ideas: 'Backwardated, tight crude normally favours producers, oil services and refiners, and squeezes fuel-cost-heavy businesses — airlines, logistics and petrochemicals.' },
+  refined:    { tightQ: 'ARE REFINED FUELS TIGHT?', catalysts: ['US summer driving season', 'heating-season demand', 'refinery outages & turnarounds', 'jet-fuel demand as travel recovers'], watch: ['Whether the diesel/gasoline cracks stay unusually wide', 'Refinery utilisation & unplanned outages'],
+    sectorsUp: ['Refiners', 'Refined-product tankers'], sectorsDown: ['Airlines', 'Trucking & logistics', 'Consumers at the pump'],
+    tickersUp: ['VLO', 'PSX', 'MPC', 'DINO'], tickersDown: ['DAL', 'UAL', 'FDX', 'UPS'],
+    ideas: 'Wide cracks mean refiners earn more per barrel — good for refiners and product tankers, painful for airlines, truckers and drivers.' },
+  gas:        { tightQ: 'IS NATURAL GAS TIGHT?', catalysts: ['weather (heating & cooling demand)', 'EIA gas storage (Thursday)', 'LNG export volumes'], watch: ['Storage vs the 5-year average', 'LNG feedgas demand'],
+    sectorsUp: ['Gas producers', 'Gas pipelines & midstream'], sectorsDown: ['Utilities', 'Heavy industry & fertiliser'],
+    tickersUp: ['EQT', 'AR', 'CTRA', 'WMB'], tickersDown: ['UTG', 'CF'],
+    ideas: 'Tight gas (low storage) lifts producers and midstream; it raises fuel and feedstock costs for utilities, industry and fertiliser makers.' },
+  precious:   { tightQ: 'ARE PRECIOUS METALS STRETCHED?', catalysts: ['the Fed rate path & real yields', 'the US dollar', 'ETF flows & central-bank buying'], watch: ['Real yields — the main gold driver', 'The gold/silver ratio'],
+    sectorsUp: ['Gold & silver miners', 'Royalty & streaming'], sectorsDown: ['No direct loser — a store of value, not an input'],
+    tickersUp: ['NEM', 'AEM', 'GDX', 'WPM'], tickersDown: [],
+    ideas: 'Precious metals are a store of value, not an input — a strong run usually means fear or falling real yields. Mainly helps miners; there is no direct corporate loser.' },
+  industrial: { tightQ: 'IS COPPER TIGHT?', catalysts: ['China demand & stimulus', 'mine supply & strikes', 'exchange warehouse stocks'], watch: ['China property & grid spending', 'Low exchange inventories'],
+    sectorsUp: ['Copper miners', 'Electrification & grid suppliers'], sectorsDown: ['Construction', 'Autos & machinery'],
+    tickersUp: ['FCX', 'SCCO', 'RIO', 'BHP'], tickersDown: ['CAT', 'DE'],
+    ideas: 'Copper is a growth barometer — tight copper helps miners and signals firm industrial demand; it raises costs for construction, autos and machinery.' },
+  grains:     { tightQ: 'ARE GRAINS TIGHT?', catalysts: ['USDA WASDE report (monthly)', 'crop weather (US, Brazil, Black Sea)', 'weekly export sales'], watch: ['US crop conditions & the WASDE print', 'Black-Sea export flows'],
+    sectorsUp: ['Farm equipment & inputs', 'Grain traders & processors'], sectorsDown: ['Food makers', 'Livestock & protein (feed cost)', 'Ethanol'],
+    tickersUp: ['DE', 'ADM', 'BG', 'CF'], tickersDown: ['TSN', 'KHC', 'MDLZ'],
+    ideas: 'Tight grain is a farmer/producer win and a food-inflation problem — it lifts inputs and processors, and squeezes food makers and livestock feeders.' },
+  softs:      { tightQ: 'ARE SOFTS TIGHT?', catalysts: ['harvest weather (Brazil, West Africa, SE Asia)', 'El Niño / La Niña', 'export & shipping'], watch: ['Brazil & West-African harvests', 'Weather anomalies (El Niño / La Niña)'],
+    sectorsUp: ['Soft-commodity traders & processors', 'Sugar & coffee producers'], sectorsDown: ['Food & beverage makers', 'Chocolate & confectionery'],
+    tickersUp: ['ADM', 'BG'], tickersDown: ['SBUX', 'HSY', 'MDLZ'],
+    ideas: 'Poor harvests lift softs (good for producers & traders) and raise input costs for food, beverage and confectionery companies.' },
+};
+function rollingVolPctile(values, win = 30) {
+  const r = [];
+  for (let i = 1; i < values.length; i++) { const a = values[i], b = values[i - 1]; r.push(a != null && b != null && b !== 0 ? Math.log(a / b) : null); }
+  const vols = [];
+  for (let i = win; i <= r.length; i++) {
+    const seg = r.slice(i - win, i).filter((x) => x != null);
+    if (seg.length < win - 3) continue;
+    const mean = seg.reduce((a, b) => a + b, 0) / seg.length;
+    vols.push(Math.sqrt(seg.reduce((a, b) => a + (b - mean) ** 2, 0) / (seg.length - 1)) * Math.sqrt(252) * 100);
+  }
+  if (vols.length < 20) return null;
+  const cur = vols[vols.length - 1];
+  return (vols.filter((v) => v <= cur).length / vols.length) * 100;
+}
+function marketVerdict(r) {
+  const ext = (p) => (p == null ? null : Math.abs(p - 50) / 50);
+  const ps = [];
+  if (r.range.pos != null) ps.push([0.40, ext(r.range.pos)]);
+  if (r.cot?.pctile != null) ps.push([0.35, ext(r.cot.pctile)]);
+  if (r.vol.pctile != null) ps.push([0.25, ext(r.vol.pctile)]);
+  const ws = ps.reduce((a, p) => a + p[0], 0);
+  const score = ws ? Math.round((100 * ps.reduce((a, p) => a + p[0] * p[1], 0)) / ws) : null;
+  const label = score == null ? '—' : score >= 80 ? 'EXTREME' : score >= 60 ? 'STRETCHED' : score >= 35 ? 'NORMAL' : 'CALM';
+  const bits = [];
+  if (r.perf.m6 != null) bits.push(`<b>${r.label}</b> is ${r.perf.m6 >= 0 ? 'up' : 'down'} <b>${Math.abs(r.perf.m6).toFixed(0)}%</b> over 6 months`);
+  if (r.range.pos != null) bits.push(r.range.pos >= 70 ? 'near the top of its 2-year range' : r.range.pos <= 30 ? 'near the bottom of its 2-year range' : 'mid its 2-year range');
+  if (r.vol.v30 != null) bits.push(`${r.vol.v30.toFixed(0)}% volatility — ${(r.vol.pctile ?? 50) >= 70 ? 'jumpier than usual' : (r.vol.pctile ?? 50) <= 30 ? 'calmer than usual' : 'about normal'}`);
+  const meaning = bits.join(' · ') + '.';
+  const cotNote = r.cot ? `Speculative funds are net ${r.cot.net >= 0 ? 'long' : 'short'} (${r.cot.pctile.toFixed(0)}th percentile of the past 3 years)${Math.abs(r.cot.pctile - 50) > 40 ? ' — a crowded bet that can unwind sharply' : ''}.` : '';
+  const curveNote = r.curve ? `Futures are in <b>${r.curve.shape.toLowerCase()}</b> — ${r.curve.m1m2 >= 0 ? 'buyers paying up for near-term supply' : 'near-term supply looks comfortable'}.` : '';
+  const macroNote = r.macro?.usd != null ? `It tends to move ${r.macro.usd < 0 ? 'against' : 'with'} the US dollar (3-month correlation ${r.macro.usd}).` : '';
+  const c = MARKET_CONTENT[r.id] || {};
+  return {
+    score, label, meaning, notes: [cotNote, curveNote, macroNote].filter(Boolean),
+    tightQ: c.tightQ || `IS ${r.label.toUpperCase()} STRETCHED?`, watch: c.watch || [], catalysts: c.catalysts || [],
+    sectorsUp: c.sectorsUp || [], sectorsDown: c.sectorsDown || [], tickersUp: c.tickersUp || [], tickersDown: c.tickersDown || [], ideas: c.ideas || '',
+  };
+}
+async function getMarketRead(id) {
+  const m = MARKETS.find((x) => x.id === id);
+  if (!m) return { error: 'unknown market' };
+  return cached('mread:' + id, 600_000, async () => {
+    const primary = BENCHMARKS.find((b) => b.id === m.primary);
+    let priceMap = {};
+    try { priceMap = primary.paper ? (await yc(primary.paper, '2y')).series : await cached('mrf:' + primary.physical, 3600e3, () => spotSeries(primary, 740)); } catch {}
+    const values = Object.keys(priceMap).sort().map((d) => priceMap[d]);
+    const last = [...values].reverse().find((v) => v != null) ?? null;
+    let prev = null; for (let i = values.length - 2; i >= 0; i--) if (values[i] != null) { prev = values[i]; break; }
+    const dayPct = last != null && prev ? ((last - prev) / prev) * 100 : null;
+    const vol30 = realizedVol(values, 30);
+    let curve = null;
+    if (CURVE_SPEC[m.primary]) { try { const c = await getCurveFor(m.primary); if (c.available) curve = { shape: c.shape, m1m2: c.m1m2, m1m6: c.m1m6 }; } catch {} }
+    let cot = null;
+    try { const p = await getPositioning(m.primary); if (!p.error && p.latest) cot = { net: p.latest.net, pctile: p.pct, wow: p.wow, oi: p.oi, oiChange: p.oiChange }; } catch {}
+    const sym = primary.paper || primary.physical;
+    const macro = {};
+    for (const [k, s] of Object.entries({ usd: 'DX-Y.NYB', vix: '^VIX', spx: '^GSPC' })) { try { macro[k] = await pairCorr(sym, s); } catch { macro[k] = null; } }
+    let basis = null;
+    try {
+      const row = (await getMarket()).benchmarks.find((b) => b.id === m.primary);
+      const an = (await getAnalytics()).benchmarks?.[m.primary];
+      if (row?.basis != null) basis = { value: row.basis, pctile: an?.basisPct ?? null };
+    } catch {}
+    const read = {
+      id, label: m.label, group: m.group, primary: m.primary, unit: primary.unit, dp: primary.dp,
+      hasBasis: m.hasBasis, hasInventories: m.hasInventories, hasShips: m.hasShips,
+      price: last, dayPct,
+      perf: { m1: pctOver(values, 21), m3: pctOver(values, 63), m6: pctOver(values, 126), y1: pctOver(values, 252) },
+      range: { pos: last != null ? percentile(values, last) : null },
+      vol: { v30: vol30, pctile: rollingVolPctile(values, 30) },
+      curve, cot, macro, basis,
+    };
+    read.verdict = marketVerdict(read);
+    return read;
+  });
+}
+
+// ---------------------------------------------------------------------------
 // Analogue / expected-move engine
 // ---------------------------------------------------------------------------
 async function metricDaily(metric, years) {
@@ -1282,6 +1406,11 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname === '/api/history') return sendJSON(res, 200, await getHistory());
     if (url.pathname === '/api/fx') return sendJSON(res, 200, FX_SYMS.map((f) => ({ id: f.id, label: f.label, dp: f.dp })));
     if (url.pathname === '/api/markets') return sendJSON(res, 200, getMarkets());
+    if (url.pathname === '/api/marketread') {
+      const id = url.searchParams.get('id');
+      if (!MARKETS.some((x) => x.id === id)) return sendJSON(res, 404, { error: 'unknown market' });
+      return sendJSON(res, 200, await getMarketRead(id).catch((e) => ({ error: String(e.message) })));
+    }
     if (url.pathname === '/api/longterm') {
       const id = url.searchParams.get('id');
       const years = Math.min(15, Math.max(1, Number(url.searchParams.get('years')) || 10));
@@ -1300,7 +1429,7 @@ const server = http.createServer(async (req, res) => {
     }
     if (url.pathname === '/api/reroute') return sendJSON(res, 200, { series: rerouteSeries, current: rerouteSeries[rerouteSeries.length - 1] || null });
     if (url.pathname === '/api/inventories') return sendJSON(res, 200, await getInventories());
-    if (url.pathname === '/api/positioning') return sendJSON(res, 200, await getPositioning());
+    if (url.pathname === '/api/positioning') return sendJSON(res, 200, await getPositioning(url.searchParams.get('id') || 'wti').catch((e) => ({ error: String(e.message) })));
     if (url.pathname === '/api/equities') return sendJSON(res, 200, await getEquities());
     if (url.pathname === '/api/macro') return sendJSON(res, 200, await getMacro());
     if (url.pathname === '/api/macrodash') return sendJSON(res, 200, await getMacroDash().catch((e) => ({ error: String(e.message) })));

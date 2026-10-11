@@ -11,6 +11,9 @@ let tankerInfo = { status: {}, count: 0, tankers: [] };
 let nextRefresh = 60;
 let fxList = [];        // chartable currencies (from /api/fx)
 let markets = [];       // commodity markets (from /api/markets) — Big Picture groups
+let currentMarket = 'crude';   // which segment the page is showing
+let marketRead = null;         // /api/marketread payload for currentMarket
+let lastFx = null;             // latest FX quotes (for the top ticker)
 let chartDp = 2;        // decimals for the current chart (set in renderChart)
 const seenAlerts = new Set();
 const ltCache = {};
@@ -212,6 +215,150 @@ function renderSnapshot() {
 }
 
 // ---------------------------------------------------------------------------
+// Adaptive Big Picture — the panels follow the selected market
+// ---------------------------------------------------------------------------
+function setTitle(id, text) { const e = $(id); if (e) e.textContent = text; }
+function marketAlerts(r) {
+  const out = [];
+  if (r.range.pos != null && r.range.pos >= 90) out.push({ level: 'high', text: `${r.label} is near its 2-year high (${r.range.pos.toFixed(0)}/100 percentile).` });
+  else if (r.range.pos != null && r.range.pos <= 10) out.push({ level: 'med', text: `${r.label} is near its 2-year low (${r.range.pos.toFixed(0)}/100 percentile).` });
+  if (r.vol?.pctile != null && r.vol.pctile >= 90) out.push({ level: 'med', text: `${r.label} volatility is unusually high (${r.vol.v30.toFixed(0)}% annualised, ${r.vol.pctile.toFixed(0)}th pctile).` });
+  if (r.cot && Math.abs(r.cot.pctile - 50) >= 45) out.push({ level: 'med', text: `Hedge funds are ${r.cot.pctile > 50 ? 'crowded long' : 'crowded short'} in ${r.label} (${r.cot.pctile.toFixed(0)}th pctile) — watch for an unwind.` });
+  return out;
+}
+function insightsFor(r) {
+  const out = [];
+  if (r.dayPct != null) out.push(`<b>${r.label}</b> moved <b>${pctf(r.dayPct)}</b> today${r.perf.m1 != null ? ` and <b>${pctf(r.perf.m1)}</b> over a month` : ''}.`);
+  if (r.perf.m6 != null) out.push(`6-month trend <b>${pctf(r.perf.m6)}</b>${r.perf.y1 != null ? ` · 1-year <b>${pctf(r.perf.y1)}</b>` : ''}.`);
+  if (r.curve) out.push(`Futures are in <b>${r.curve.shape.toLowerCase()}</b> — ${r.curve.m1m2 >= 0 ? 'the market pays up for near-term supply (tight)' : 'near-term supply looks comfortable'}.`);
+  if (r.cot) out.push(`Hedge funds are net <b>${r.cot.net >= 0 ? 'long' : 'short'}</b> at the <b>${r.cot.pctile.toFixed(0)}th percentile</b> of 3 years.`);
+  if (r.basis) out.push(`Real barrels trade <b>${signed(r.basis.value, r.dp)}</b> vs futures${r.basis.pctile != null ? ` (${r.basis.pctile.toFixed(0)}th pct)` : ''}.`);
+  return out;
+}
+function renderMarketContext(r) {
+  const mk = markets.find((x) => x.id === r.id);
+  const comps = (mk?.components || []).map((c) => data.benchmarks.find((b) => b.id === c.id)).filter(Boolean);
+  const rows = comps.map((b) => {
+    const a = b.paper != null ? history?.series?.[b.id]?.paper : history?.series?.[b.id]?.physical;
+    const n = (a || []).filter((x) => x != null);
+    if (n.length < 5) return '';
+    const v = n[n.length - 1], lo = Math.min(...n), hi = Math.max(...n);
+    const pct = hi > lo ? ((v - lo) / (hi - lo)) * 100 : null;
+    const vol = bpVol(a);
+    return ctxRow(`${b.label} — in its 6-month range`, pct, vol == null ? '' : `${vol.toFixed(0)}% vol`);
+  }).filter(Boolean).join('');
+  const macro = r.macro ? `<div class="chokes"><div class="chokes-h">LINK TO BROADER MARKETS (3-month correlation)</div><span class="choke"><b>${r.macro.usd ?? '—'}</b> vs US dollar</span><span class="choke"><b>${r.macro.vix ?? '—'}</b> vs VIX</span><span class="choke"><b>${r.macro.spx ?? '—'}</b> vs S&amp;P 500</span></div>` : '';
+  const dc = `<div class="qflags"><div class="chokes-h">DATA CHECKS</div>${r.hasBasis ? '<div class="qflag ok">✓ Real (spot) prices are available for this market.</div>' : '<div class="qflag watch">⚠ No free real-barrel/spot price or inventories for this market — price, curve, positioning and macro are shown instead (never faked).</div>'}</div>`;
+  $('context').innerHTML = rows + macro + dc;
+}
+// Hero board: one quick-read tile per segment.
+function renderMarketState() {
+  const el = $('marketstate');
+  if (!el || !markets.length || !data) return;
+  el.innerHTML = markets.map((m) => {
+    const b = data.benchmarks.find((x) => x.id === m.primary);
+    if (!b) return '';
+    const s = history?.series?.[b.id];
+    const arr = b.paper != null ? s?.paper : s?.physical;
+    const n = (arr || []).filter((x) => x != null);
+    const val = b.paper != null ? b.paper : b.physical;
+    const day = pctOf(arr);
+    const six = n.length > 1 ? ((n[n.length - 1] - n[0]) / n[0]) * 100 : null;
+    const lo = n.length ? Math.min(...n) : null, hi = n.length ? Math.max(...n) : null;
+    const pos = val != null && lo != null && hi > lo ? ((val - lo) / (hi - lo)) * 100 : null;
+    return `<button class="ms-tile${m.id === currentMarket ? ' active' : ''}" data-market="${m.id}" title="${m.label} — click to open">
+      <span class="ms-name">${m.label}</span>
+      <span class="ms-px">${val == null ? '—' : Number(val).toFixed(b.dp)}</span>
+      <span class="ms-chg ${cls(day)}">${day == null ? '—' : pctf(day)}</span>
+      <span class="ms-sub dimtext">${six == null ? '' : `${pctf(six)} 6m`}${pos == null ? '' : ` · ${pos.toFixed(0)}/100 range`}</span>
+    </button>`;
+  }).join('');
+}
+function regLine(r) {
+  const bits = [];
+  if (r.perf?.m6 != null) bits.push(`${r.label} ${r.perf.m6 >= 0 ? 'up' : 'down'} ${Math.abs(r.perf.m6).toFixed(0)}% in 6 months`);
+  if (r.range?.pos != null) bits.push(r.range.pos >= 70 ? 'near 2-year highs' : r.range.pos <= 30 ? 'near 2-year lows' : 'mid-range');
+  if (r.curve) bits.push(r.curve.shape.toLowerCase());
+  if (r.cot) bits.push(`funds ${r.cot.pctile > 60 ? 'crowded long' : r.cot.pctile < 40 ? 'crowded short' : 'balanced'}`);
+  return `MARKET STATE — ${bits.join(' · ')}.`;
+}
+// Show only the segment-specific blocks (ships for crude, fuels/stocks for refined, …).
+function toggleMarketBlocks() {
+  document.querySelectorAll('.market-only').forEach((el) => {
+    const list = (el.dataset.when || '').split(',').map((s) => s.trim());
+    el.classList.toggle('hidden', !(list.includes('*') || list.includes(currentMarket)));
+  });
+  if (currentMarket === 'crude') {
+    if (map) setTimeout(() => map.invalidateSize(), 80);
+    if (rerouteChart) setTimeout(() => rerouteChart.resize(), 80);
+  }
+  if (currentMarket === 'refined' && crackHistChart) setTimeout(() => crackHistChart.resize(), 80);
+}
+async function loadMarketRead() {
+  try { marketRead = await getJSON('/api/marketread?id=' + encodeURIComponent(currentMarket)); } catch { marketRead = null; }
+  renderAdaptive();
+}
+function renderAdaptive() {
+  const mk = markets.find((x) => x.id === currentMarket);
+  setTitle('tightness-title', '⚡ ' + (mk ? `IS ${mk.label.toUpperCase()} TIGHT / STRETCHED?` : 'READING…'));
+  setTitle('tightness-sub', 'range · volatility · positioning · curve');
+  setTitle('ins1-title', mk ? mk.label.toUpperCase() : 'MARKET');
+  setTitle('ins2-title', mk && !mk.hasShips ? 'POSITIONING & MACRO' : 'SHIPS & FREIGHT');
+  if (!marketRead || marketRead.id !== currentMarket || marketRead.error) {
+    $('bottomline').innerHTML = '<div class="dimtext" style="padding:10px 12px">reading the market…</div>';
+    $('tightness').innerHTML = '<div class="dimtext" style="padding:10px 12px">loading…</div>';
+    return;
+  }
+  const r = marketRead, v = r.verdict;
+  const score = v.score;
+  const kl = score == null ? 'elevated' : score >= 70 ? 'high' : score >= 40 ? 'elevated' : 'low';
+  const vk = score == null ? 'mixed' : score >= 55 ? 'tight' : score >= 35 ? 'mixed' : 'loose';
+  if ($('regime')) $('regime').textContent = regLine(r);
+  const next = [...(v.catalysts || []).map((c) => `Watch: <b>${c}</b>`), ...(v.watch || [])];
+  const chips = [...(v.tickersUp || []).map((t) => `<span class="chip up">▲ ${t}</span>`), ...(v.tickersDown || []).map((t) => `<span class="chip down">▼ ${t}</span>`)].join('');
+  $('bottomline').innerHTML = `<div class="bl">
+      <div class="bl-score ${kl}"><div class="bl-num">${score == null ? '—' : score}<span>/100</span></div><div class="bl-lbl">${r.label.toUpperCase()} STRETCH<div class="bl-tag">${v.label}</div></div></div>
+      <div class="bl-sec"><div class="gtitle">WHAT HAPPENED</div><p>${v.meaning} ${(v.notes || []).join(' ')}</p></div>
+      <div class="bl-sec"><div class="gtitle">WHAT'S NEXT</div><ul>${next.map((w) => `<li>${w}</li>`).join('')}</ul></div>
+      <div class="bl-sec"><div class="gtitle">TRADE IDEAS — BENEFITS / TROUBLE</div>
+        <p>${v.ideas || ''}</p>
+        <div class="ti"><div class="ti-row"><span class="ti-k pos">BENEFITS</span><span class="ti-v">${(v.sectorsUp || []).join(' · ')}</span></div><div class="ti-row"><span class="ti-k neg">TROUBLE</span><span class="ti-v">${(v.sectorsDown || []).join(' · ')}</span></div></div>
+        <div class="bl-chips">${chips}</div>
+      </div>
+    </div>`;
+  const ev = [];
+  const push = (label, value, dir, note) => ev.push({ label, value, dir, note });
+  if (r.range.pos != null) push('Price vs its 2-year range', `${r.range.pos.toFixed(0)}/100`, r.range.pos >= 70 ? 'HIGH' : r.range.pos <= 30 ? 'LOW' : 'MID', r.range.pos >= 70 ? 'expensive vs 2 years' : r.range.pos <= 30 ? 'cheap vs 2 years' : 'mid-range');
+  if (r.vol.v30 != null) push('Volatility (30-day, annualised)', r.vol.v30.toFixed(1) + '%', (r.vol.pctile ?? 50) >= 70 ? 'HIGH' : (r.vol.pctile ?? 50) <= 30 ? 'LOW' : 'MID', `${(r.vol.pctile ?? 50).toFixed(0)}th pctile — ${(r.vol.pctile ?? 50) >= 70 ? 'jumpier than usual' : (r.vol.pctile ?? 50) <= 30 ? 'calmer than usual' : 'normal'}`);
+  if (r.cot) push('Hedge-fund net position', `${r.cot.pctile.toFixed(0)}/100`, Math.abs(r.cot.pctile - 50) >= 40 ? 'CROWDED' : 'MID', `net ${r.cot.net.toLocaleString()} contracts`);
+  if (r.curve) push('Curve — near vs later', r.curve.shape, r.curve.m1m2 >= 0 ? 'TIGHT' : 'LOOSE', r.curve.m1m2 >= 0 ? 'near-term prices higher' : 'near-term supply comfortable');
+  if (r.basis) push('Real vs futures', signed(r.basis.value, r.dp), r.basis.value >= 0 ? 'TIGHT' : 'LOOSE', r.basis.pctile != null ? `${r.basis.pctile.toFixed(0)}th pctile` : 'physical vs paper');
+  if (r.macro?.usd != null) push('Link to the US dollar', `${r.macro.usd}`, 'MID', '3-month correlation (negative = moves against the dollar)');
+  $('tightness').innerHTML = `<div class="verdict ${vk}">${r.label}: ${v.label}${score == null ? '' : ` — ${score}/100 stretched`}</div><div class="ev-list">${ev.map((e) => `<div class="ev"><span class="ev-l">${e.label}</span><span class="ev-v">${e.value}</span><span class="tag ${e.dir.toLowerCase()}">${e.dir}</span><span class="ev-n dimtext">${e.note}</span></div>`).join('')}</div>`;
+  $('market-insights').innerHTML = insightsFor(r).map((x) => `<li>${x}</li>`).join('');
+  if (r.hasShips) {
+    $('tanker-insights').innerHTML = tankerInsights(tankerInfo).map((x) => `<li>${x}</li>`).join('');
+  } else {
+    const pm = [];
+    if (r.cot) pm.push(`Hedge funds are net <b>${r.cot.net >= 0 ? 'long' : 'short'}</b> at the <b>${r.cot.pctile.toFixed(0)}th percentile</b> of 3 years${Math.abs(r.cot.pctile - 50) > 40 ? ' — a crowded bet' : ''}.`);
+    if (r.cot?.oiChange != null) pm.push(`Open interest ${r.cot.oiChange >= 0 ? 'rose' : 'fell'} <b>${Math.abs(r.cot.oiChange).toLocaleString()}</b> contracts this week.`);
+    if (r.macro) pm.push(`3-month correlation — dollar <b>${r.macro.usd ?? '—'}</b>, VIX <b>${r.macro.vix ?? '—'}</b>, S&amp;P 500 <b>${r.macro.spx ?? '—'}</b>.`);
+    if (r.basis) pm.push(`Real barrels trade <b>${signed(r.basis.value, r.dp)}</b> vs futures.`);
+    $('tanker-insights').innerHTML = pm.map((x) => `<li>${x}</li>`).join('') || '<li>No extra context for this segment.</li>';
+  }
+  renderAlerts(marketAlerts(r));
+  renderMarketContext(r);
+}
+function selectMarket(id) {
+  currentMarket = id;
+  renderSnapshot();
+  renderMarketState();
+  toggleMarketBlocks();
+  renderAdaptive();
+  loadMarketRead();
+}
+
+// ---------------------------------------------------------------------------
 // Insights & alerts
 // ---------------------------------------------------------------------------
 function marketInsights(m) {
@@ -280,7 +427,7 @@ function renderInsights(m, t) {
 // Ticker
 // ---------------------------------------------------------------------------
 function renderTicker(m) {
-  $('ticker').innerHTML = m.benchmarks.map((b) => {
+  const parts = m.benchmarks.map((b) => {
     const s = history?.series?.[b.id];
     const arr = b.paper != null ? s?.paper : s?.physical;
     const val = b.paper != null ? b.paper : b.physical;
@@ -289,7 +436,10 @@ function renderTicker(m) {
     const arrow = chg == null ? '' : chg >= 0 ? '▲' : '▼';
     const short = b.label.replace(/\s*\(.*\)/, '');
     return `<span class="tk"><b>${short}</b><span class="tk-px">${val == null ? '—' : Number(val).toFixed(b.dp)}</span><span class="tk-chg ${c}">${chg == null ? '' : `${arrow}${Math.abs(chg).toFixed(b.dp)} ${pctf(pc)}`}</span></span>`;
-  }).join('');
+  });
+  // include every currency too
+  for (const f of (lastFx || [])) parts.push(`<span class="tk"><b>${f.label.replace(/\s*·.*/, '')}</b><span class="tk-px">${f.price == null ? '—' : Number(f.price).toFixed(f.price < 10 ? 4 : 2)}</span><span class="tk-chg ${cls(f.pct)}">${f.pct == null ? '' : pctf(f.pct)}</span></span>`);
+  $('ticker').innerHTML = parts.join('');
 }
 
 // ---------------------------------------------------------------------------
@@ -434,9 +584,10 @@ async function renderChart() {
 async function loadHistory() { history = await getJSON('/api/history'); }
 async function loadMarket() {
   data = await getJSON('/api/market');
-  renderCards(data); buildMetricOptions(data); buildBpOptions(); buildCurveOptions(); renderSnapshot();
-  renderInsights(data, tankerInfo); renderAlerts(computeAlerts(data, tankerInfo)); renderTicker(data);
-  await renderChart();   // ← the fix: render AFTER data exists
+  renderCards(data); buildMetricOptions(data); buildBpOptions(); buildCurveOptions(); buildPosOptions();
+  renderMarketState(); renderSnapshot(); renderTicker(data);
+  await renderChart();   // ← render AFTER data exists
+  loadMarketRead();      // populate the adaptive Big Picture (hero line + panels)
   $('updated').textContent = 'prices ' + new Date(data.updated).toLocaleTimeString();
   $('notes').innerHTML = `<details class="fold"><summary>SOURCES, NOTES &amp; DISCLAIMER</summary><div class="note-body"><ul>` +
     data.notes.map((n) => `<li>${n}</li>`).join('') + '</ul>' +
@@ -476,7 +627,7 @@ async function loadTankers() {
   $('map-empty').classList.toggle('hidden', tankerInfo.count > 0);
   const rows = tankerInfo.tankers.slice(0, 60).map((v) => `<div class="t"><span>${v.name || '(' + v.mmsi + ')'}</span><span>${(v.sog ?? 0).toFixed(1)} kn</span><span>${v.lat.toFixed(1)}, ${v.lon.toFixed(1)}</span></div>`).join('');
   $('tanker-list').innerHTML = `<div class="t h"><span>VESSEL (${tankerInfo.count} TRACKED)</span><span>SPEED</span><span>POSITION</span></div>` + rows;
-  if (data) { renderInsights(data, tankerInfo); renderAlerts(computeAlerts(data, tankerInfo)); }
+  if (data) renderAdaptive();   // refresh the ship row of the adaptive Big Picture
 }
 
 // ---------------------------------------------------------------------------
@@ -536,13 +687,28 @@ function sparkline(vals, w = 240, h = 40) {
   return `<svg width="${w}" height="${h}" class="spark"><polyline points="${pts}" fill="none" stroke="#ff9e00" stroke-width="1.5"/></svg>`;
 }
 function renderPositioning(p) {
-  if (!p || p.error) { $('positioning').innerHTML = '<div class="dimtext" style="padding:10px 12px">no data</div>'; return; }
+  if (!p || p.error || !p.latest) { $('positioning').innerHTML = '<div class="dimtext" style="padding:10px 12px">no data for this one</div>'; return; }
+  const name = (p.label || 'this market').replace(' spec net (non-comm)', '');
   $('positioning').innerHTML =
-    `<div class="read-line">How many more bets hedge funds hold that crude will <b>rise</b> vs <b>fall</b>. Extreme highs often come before a pullback.</div>` +
-    ctxRow('Hedge-fund net position (WTI)', p.pct, `${p.latest.net.toLocaleString()} contracts`) +
+    `<div class="read-line">How many more bets hedge funds hold that <b>${name}</b> will <b>rise</b> vs <b>fall</b>. Extreme highs often come before a pullback.</div>` +
+    ctxRow(`Net spec position — ${name}`, p.pct, `${p.latest.net.toLocaleString()} contracts`) +
     `<div class="pos-sub dimtext">Changed ${p.wow >= 0 ? '+' : ''}${p.wow.toLocaleString()} contracts this week · as of ${p.latest.date}</div>` +
     (p.oi ? `<div class="read-line">Open interest: <b>${p.oi.toLocaleString()}</b> contracts (${p.oiChange >= 0 ? '+' : ''}${p.oiChange.toLocaleString()} this week). Price up + OI up = fresh conviction; price up + OI down = short-covering.</div>` : '') +
     sparkline(p.history.map((h) => h.net));
+}
+function buildPosOptions() {
+  const sel = $('pos-metric');
+  if (!sel || !markets.length) return;
+  const prev = sel.value || 'wti';
+  const groups = {};
+  for (const m of markets) { if (!m.hasCOT) continue; (groups[m.group] ||= []).push(m); }
+  sel.innerHTML = Object.entries(groups).map(([g, list]) => `<optgroup label="${g.toUpperCase()}">${list.map((m) => `<option value="${m.primary}">${m.label}</option>`).join('')}</optgroup>`).join('');
+  if ([...sel.options].some((o) => o.value === prev)) sel.value = prev;
+}
+async function loadPositioning() {
+  const sel = $('pos-metric');
+  if (!sel) return;
+  try { renderPositioning(await getJSON('/api/positioning?id=' + encodeURIComponent(sel.value))); } catch {}
 }
 function sectorRead(m, a, t) {
   const by = Object.fromEntries(m.benchmarks.map((b) => [b.id, b]));
@@ -887,22 +1053,24 @@ async function loadCurveHistory() {
 function showTab(name) {
   document.querySelectorAll('.tab').forEach((t) => t.classList.toggle('active', t.dataset.tab === name));
   document.querySelectorAll('.tabpane').forEach((p) => p.classList.toggle('hidden', p.dataset.pane !== name));
-  if (name === 'commodities') { loadCurveHistory(); if (chart) setTimeout(() => chart.resize(), 50); if (curveHistChart) setTimeout(() => curveHistChart.resize(), 60); }
-  if (name === 'sectors' && crackHistChart) setTimeout(() => crackHistChart.resize(), 60);
-  if (name === 'tankers' && map) setTimeout(() => map.invalidateSize(), 60);
+  if (name === 'commodities') {
+    loadCurveHistory();
+    if (chart) setTimeout(() => chart.resize(), 50);
+    if (curveHistChart) setTimeout(() => curveHistChart.resize(), 60);
+    if (map) setTimeout(() => map.invalidateSize(), 80);
+    if (crackHistChart && currentMarket === 'refined') setTimeout(() => crackHistChart.resize(), 80);
+  }
 }
 
 async function loadExtra() {
   if (!data) return; // need prices first
   try {
-    const [inv, pos, eq, chk, an, cv, tn, fl, pr] = await Promise.all([
+    const [inv, eq, chk, an, cv, fl, pr] = await Promise.all([
       getJSON('/api/inventories').catch(() => null),
-      getJSON('/api/positioning').catch(() => null),
       getJSON('/api/equities').catch(() => null),
       getJSON('/api/chokepoints').catch(() => null),
       getJSON('/api/analytics').catch(() => null),
       getJSON('/api/curve').catch(() => null),
-      getJSON('/api/tightness').catch(() => null),
       getJSON('/api/flows').catch(() => null),
       getJSON('/api/products').catch(() => null),
     ]);
@@ -910,27 +1078,24 @@ async function loadExtra() {
       getJSON('/api/flares').catch(() => null),
       getJSON('/api/sar').catch(() => null),
     ]);
-    const macro = await getJSON('/api/macro').catch(() => null);
     const [md, corr, ev] = await Promise.all([
       getJSON('/api/macrodash').catch(() => null),
       getJSON('/api/correlations').catch(() => null),
       getJSON('/api/events').catch(() => null),
     ]);
     analytics = an;
-    renderContext(data, an, macro);
     renderInventories(inv);
-    renderPositioning(pos);
     renderSectors(eq, data, an, tankerInfo);
     renderChokepoints(chk);
     if (!$('curve-metric') || $('curve-metric').value === 'crude') renderCurve(cv);
-    renderTightness(tn);
     renderFlows(fl);
     renderProducts(pr);
     renderSatellite(sar, flr);
-    renderBottomLine(data, tn, fl, flr, sar);
-    renderKPIs(data, an, cv, pos);
-    renderRegime(data, an, cv);
     renderMacroDash(md, corr, ev);
+    if (md?.fx) { lastFx = md.fx; renderTicker(data); }
+    loadPositioning();
+    renderMarketState();
+    renderAdaptive();
   } catch (e) { showError(e.message); }
 }
 
@@ -944,7 +1109,9 @@ async function refreshLive() {
 $('refresh').addEventListener('click', () => { nextRefresh = 60; refreshLive(); loadExtra(); });
 $('metric').addEventListener('change', () => { localStorage.setItem('oilbasis.metric', $('metric').value); chartAnchor = null; renderChart(); });
 $('range').addEventListener('change', () => { chartAnchor = null; renderChart(); });
-$('bp-metric')?.addEventListener('change', renderSnapshot);
+$('bp-metric')?.addEventListener('change', () => selectMarket($('bp-metric').value));
+$('pos-metric')?.addEventListener('change', loadPositioning);
+$('marketstate')?.addEventListener('click', (e) => { const t = e.target.closest('[data-market]'); if (t) { showTab('commodities'); selectMarket(t.dataset.market); } });
 $('curve-metric')?.addEventListener('change', () => loadCurveFor($('curve-metric').value));
 $('chart').addEventListener('click', (ev) => {
   if (!chart) return;

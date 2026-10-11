@@ -41,17 +41,35 @@ for (const p of ['/api/market', '/api/curve', '/api/tightness', '/api/products',
   });
 }
 
-test('/api/markets groups benchmarks into markets (WTI+Brent = Crude)', async () => {
+test('/api/markets groups benchmarks into 7 segments (WTI+Brent=Crude, fuels=Refined)', async () => {
   const r = await fetch(`http://localhost:${PORT}/api/markets`);
   assert.equal(r.status, 200);
   const ms = await r.json();
-  assert.equal(ms.length, 8);
+  assert.equal(ms.length, 7);
   const crude = ms.find((m) => m.id === 'crude');
   assert.deepEqual(crude.components.map((c) => c.id), ['wti', 'brent']);
   assert.equal(crude.hasBasis, true);
+  assert.deepEqual(ms.find((m) => m.id === 'refined').components.map((c) => c.id), ['rbob', 'ulsd', 'jet', 'propane']);
   assert.equal(ms.find((m) => m.id === 'precious').components.length, 4);
   assert.equal(ms.find((m) => m.id === 'grains').hasBasis, false);
   assert.ok(ms.every((m) => m.primary && m.hasCOT));
+});
+
+test('/api/marketread returns a per-segment read (404 for unknown)', async () => {
+  const r = await fetch(`http://localhost:${PORT}/api/marketread?id=grains`);
+  assert.equal(r.status, 200);
+  const j = await r.json();
+  assert.equal(j.id, 'grains');
+  assert.ok(j.verdict && typeof j.verdict.score !== 'undefined');
+  assert.ok(Array.isArray(j.verdict.sectorsUp) && Array.isArray(j.verdict.tickersDown));
+  assert.equal((await fetch(`http://localhost:${PORT}/api/marketread?id=nope`)).status, 404);
+});
+
+test('/api/positioning works for any covered market', async () => {
+  const r = await fetch(`http://localhost:${PORT}/api/positioning?id=gold`);
+  assert.equal(r.status, 200);
+  const j = await r.json();
+  assert.ok(j.error == null && j.latest && typeof j.pct === 'number');
 });
 
 test('/api/fx lists chartable currencies', async () => {

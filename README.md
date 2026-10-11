@@ -12,7 +12,7 @@ pinned: false
 
 **🔴 Live demo:** https://oil-market-desk.onrender.com
 
-A dashboard that puts **paper** (futures) and **physical** (spot/cash) prices side by side across energy benchmarks, computes the **basis**, and tracks **live tanker traffic**.
+A **two-tab** dashboard — **COMMODITIES** and **MACRO** — that puts **paper** (futures) and **physical** (spot/cash) prices side by side across energy benchmarks, computes the **basis**, tracks **live tanker traffic**, and gives each commodity **segment** its own adaptive read: what happened, what's next, and trade ideas.
 
 | Benchmark | Paper (futures) | Physical (spot) |
 |---|---|---|
@@ -32,13 +32,18 @@ Adding a benchmark = one row in the `BENCHMARKS` table in `server.js`.
 
 ## Features
 
-- **Basis** — paper vs physical per benchmark, sign-colored.
-- **Charts** — click any commodity, gap or currency to chart it over **1M · 3M · 6M · YTD · 1Y · 5Y · 10Y**. Hover a point for its **% change** on the window; click to drop an anchor and measure between two. Every tile carries a 6-month sparkline. The **prices-for-months-ahead** curve has a picker, so you can see any commodity's term structure — not just crude.
-- **Pick a market (Big Picture)** — the overview is not crude-only: choose any of the **20 commodities** (energy, metals, agriculture incl. palm oil) for a quick snapshot — price, today's move, 6-month change, jumpiness and where it sits in its range.
-- **Crack spreads** — gasoline, diesel and 3-2-1 refining margins ($/bbl), from product × 42 − crude.
-- **Insights** — a plain-English panel reading the numbers for prices *and* shipping.
-- **Alerts** — flags when a basis, spread or crack breaks a threshold (with desktop notifications).
-- **Live tanker map** — free AIS positions, filtered to tankers (types 80–89).
+The UI is **two tabs**: **COMMODITIES** and **MACRO**. Everything commodity-related lives in COMMODITIES; the macro side (rates, inflation/growth, currencies) in MACRO. A **global segment picker** sits on top — pick a segment and the whole tab follows it.
+
+- **Segments** — seven: **Crude oil** · **Refined products** · **Natural gas** · **Precious metals** · **Industrial metals** · **Grains** · **Softs**. Each bundles its related instruments (e.g. Crude = WTI + Brent; Refined = gasoline, diesel, jet, propane).
+- **Adaptive Big Picture** — the overview is not crude-only. Choosing a segment re-renders the panes: the Bottom Line becomes that segment's read with three actionable blocks — **WHAT HAPPENED** (data-driven), **WHAT'S NEXT** (catalysts) and **TRADE IDEAS — who benefits / who's in trouble** (sectors + example tickers). "Is oil tight?" becomes **"Is this segment tight/stretched?"**.
+- **Charts** — click any commodity, gap or currency to chart it over **1M · 3M · 6M · YTD · 1Y · 5Y · 10Y**. Hover a point for its **% change** on the window; click to drop an anchor and measure between two. Every tile carries a 6-month sparkline.
+- **Curves for every segment** — the **prices-for-months-ahead** term structure has a picker, so you can see any segment's curve, not just crude.
+- **Positioning for every segment** — CFTC hedge-fund positioning (net, percentile, open-interest change) via a verified COT map covering all seven segments.
+- **Ships & satellites for crude** — a live tanker map (free AIS, filtered to tankers) plus satellite radar passes and gas-flare detection, all oil-only.
+- **Fuels & stocks for refined** — gasoline/diesel/3-2-1 crack spreads and a sector stock watchlist under the Refined segment.
+- **Supply** — US oil stockpiles and gas storage under the energy segments.
+- **Basis** — paper vs physical for energy benchmarks, sign-colored (energy-only — there is no free real-vs-futures basis for metals/ags).
+- **Insights & alerts** — a plain-English panel plus threshold flags (with desktop notifications); both follow the selected segment.
 - **Global macro** — US & ECB rates, US inflation/growth, a **14-pair currencies board** (majors, EM & commodity currencies) where **every currency charts over time**, live **commodity↔currency link** checks (does AUD still track copper? does CAD still track oil?), and a copper/gold growth proxy.
 
 ## What "basis" means
@@ -111,6 +116,8 @@ View the latest digest any time at `http://localhost:4173/api/digest`.
 - Spot assessments publish with a **lag** and are a *different instrument* than the futures — read the on-screen **DATA QUALITY** flags.
 - Tanker positions are a live sample of AIS reports in the watched regions, not a complete global fleet picture.
 - Dubai / WTI Midland / Mars require a paid feed.
+- **No free real-vs-futures basis or inventories for metals/agriculture** — those need LME/USDA feeds, so they're deliberately not shown. **Ships & satellites are oil-only.**
+- **Palm oil** is free but **front-month only**, so it has no month-by-month curve.
 - **Macro is deliberately US-centric**: free non-US CPI/GDP feeds are stale, so only US data is shown rather than faking it. The currencies board and the commodity↔currency link correlations are live.
 - Not investment advice.
 

@@ -16,7 +16,7 @@
   <meta name="theme-color" content="#ff9e00" />
   <link rel="icon" href="/icon.svg" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <link rel="stylesheet" href="style.css?v=6" />
+  <link rel="stylesheet" href="style.css?v=7" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 </head>
@@ -37,61 +37,28 @@
   <main>
     <div id="error" class="errbar hidden"></div>
 
-    <!-- HERO: state + key numbers -->
+    <!-- HERO: the market-state board (one quick-read tile per segment) -->
     <section class="hero">
-      <div id="regime" class="regime">—</div>
-      <div id="kpis" class="kpis"></div>
+      <div id="marketstate" class="marketstate"></div>
+      <div id="regime" class="regime">MARKET STATE — loading…</div>
     </section>
 
     <!-- TABS -->
     <nav class="tabs" id="tabs">
-      <button class="tab active" data-tab="overview">BIG PICTURE</button>
-      <button class="tab" data-tab="commodities">COMMODITIES &amp; PRICES</button>
-      <button class="tab" data-tab="fundamentals">SUPPLY &amp; DEMAND</button>
-      <button class="tab" data-tab="sectors">FUELS &amp; STOCKS</button>
-      <button class="tab" data-tab="tankers">SHIPS &amp; SATELLITES</button>
+      <button class="tab active" data-tab="commodities">COMMODITIES</button>
       <button class="tab" data-tab="macro">MACRO</button>
     </nav>
 
-    <!-- BIG PICTURE -->
-    <div class="tabpane" data-pane="overview">
+    <!-- COMMODITIES -->
+    <div class="tabpane" data-pane="commodities">
+
       <section class="panel">
-        <div class="ph"><span class="ph-t">🔎 PICK A MARKET</span>
+        <div class="ph"><span class="ph-t">🔎 PICK A SEGMENT</span>
           <div class="controls"><select id="bp-metric"></select></div>
         </div>
         <div id="bp-snapshot" class="bp-snapshot"></div>
       </section>
 
-      <section class="panel">
-        <div class="ph"><span class="ph-t">🎯 THE BOTTOM LINE — WHAT IT MEANS &amp; WHAT TO WATCH</span><span class="dimtext">NOT INVESTMENT ADVICE</span></div>
-        <div id="bottomline" class="bottomline"></div>
-      </section>
-
-      <section class="panel">
-        <div class="ph"><span class="ph-t">⚡ IS OIL ACTUALLY TIGHT?</span><span class="dimtext">six independent checks</span></div>
-        <div id="tightness" class="tightness"></div>
-      </section>
-
-      <section class="panel">
-        <div class="ph"><span class="ph-t">🧭 WHAT IT MEANS</span><button id="help-btn" class="ghost small">PLAIN-ENGLISH GUIDE</button></div>
-        <div id="glossary" class="glossary hidden"></div>
-        <div class="insights">
-          <div class="col"><div class="gtitle">OIL PRICES</div><ul id="market-insights" class="ins-list"></ul></div>
-          <div class="col"><div class="gtitle">SHIPS &amp; FREIGHT</div><ul id="tanker-insights" class="ins-list"></ul></div>
-        </div>
-        <div class="ph sub-head"><span class="ph-t">⚠ THINGS TO FLAG</span><span class="ph-right"><button id="alert-settings" class="ghost small">⚙ THRESHOLDS</button><span id="alert-count" class="pill">0</span></span></div>
-        <div id="alert-thresholds" class="thresholds hidden"></div>
-        <div id="alerts" class="alerts"></div>
-      </section>
-
-      <section class="panel">
-        <div class="ph"><span class="ph-t">HOW EXTREME IS THIS?</span><span class="dimtext">vs the last 2 years · jumpiness · data checks</span></div>
-        <div id="context" class="ctx"></div>
-      </section>
-    </div>
-
-    <!-- COMMODITIES & PRICES (merged: picker + all charts) -->
-    <div class="tabpane hidden" data-pane="commodities">
       <section class="panel">
         <div class="ph"><span class="ph-t">PICK AN INSTRUMENT</span><span class="dimtext">click a tile for its chart · % = change today · ★ to pin</span></div>
         <div id="cards"></div>
@@ -111,7 +78,7 @@
           <div class="controls"><select id="curve-metric"></select></div>
         </div>
         <div id="curve" class="curve"></div>
-        <div class="dimtext" style="padding:0 12px 6px">pick a commodity — is it cheaper or pricier later? (the “curve”)</div>
+        <div class="dimtext" style="padding:0 12px 6px">pick a segment — is it cheaper or pricier later? (the “curve”)</div>
         <div id="curvehist-block">
           <div class="chokes-h dimtext" style="padding:8px 12px 0">IS OIL GETTING TIGHTER OR LOOSER? — WTI, this month vs next, over time (above 0 = tight)</div>
           <div class="chart-wrap" style="height:180px;padding:4px 12px 12px"><canvas id="curvehist"></canvas></div>
@@ -119,43 +86,34 @@
       </section>
 
       <section class="panel">
-        <div class="ph"><span class="ph-t">LAST TIME IT WAS THIS EXTREME</span>
-          <select id="an-metric"><option value="basis:brent">Brent gap</option><option value="basis:wti">WTI gap</option><option value="spread:brent_wti">Brent vs WTI (real)</option></select>
+        <div class="ph"><span class="ph-t">🎯 WHAT IT MEANS — WHAT HAPPENED · WHAT'S NEXT · TRADE IDEAS</span><span class="dimtext">NOT INVESTMENT ADVICE</span></div>
+        <div id="bottomline" class="bottomline"></div>
+      </section>
+
+      <section class="panel">
+        <div class="ph"><span class="ph-t" id="tightness-title">⚡ IS OIL ACTUALLY TIGHT?</span><span class="dimtext" id="tightness-sub">six independent checks</span></div>
+        <div id="tightness" class="tightness"></div>
+      </section>
+
+      <section class="panel">
+        <div class="ph"><span class="ph-t">🧭 READING THE NUMBERS</span><button id="help-btn" class="ghost small">PLAIN-ENGLISH GUIDE</button></div>
+        <div id="glossary" class="glossary hidden"></div>
+        <div class="insights">
+          <div class="col"><div class="gtitle" id="ins1-title">OIL PRICES</div><ul id="market-insights" class="ins-list"></ul></div>
+          <div class="col"><div class="gtitle" id="ins2-title">SHIPS &amp; FREIGHT</div><ul id="tanker-insights" class="ins-list"></ul></div>
         </div>
-        <div id="analogue" class="analogue"></div>
+        <div class="ph sub-head"><span class="ph-t">⚠ THINGS TO FLAG</span><span class="ph-right"><button id="alert-settings" class="ghost small">⚙ THRESHOLDS</button><span id="alert-count" class="pill">0</span></span></div>
+        <div id="alert-thresholds" class="thresholds hidden"></div>
+        <div id="alerts" class="alerts"></div>
       </section>
-    </div>
 
-    <!-- SUPPLY & DEMAND -->
-    <div class="tabpane hidden" data-pane="fundamentals">
       <section class="panel">
-        <div class="ph"><span class="ph-t">US OIL STOCKPILES</span><span id="inv-date" class="dimtext">updated weekly</span></div>
-        <div id="inventories" class="tbl"></div>
+        <div class="ph"><span class="ph-t">HOW EXTREME IS THIS?</span><span class="dimtext">vs 2 years · jumpiness · positioning · macro</span></div>
+        <div id="context" class="ctx"></div>
       </section>
-      <section class="panel">
-        <div class="ph"><span class="ph-t">HEDGE-FUND BETS</span><span class="dimtext">how big funds are positioned</span></div>
-        <div id="positioning" class="ctx"></div>
-      </section>
-    </div>
 
-    <!-- FUELS & STOCKS -->
-    <div class="tabpane hidden" data-pane="sectors">
-      <section class="panel">
-        <div class="ph"><span class="ph-t">FUELS — DIESEL · JET · GASOLINE</span><span class="dimtext">refining profits per barrel</span></div>
-        <div id="products" class="products"></div>
-        <div class="chokes-h dimtext" style="padding:0 12px">REFINING PROFIT OVER TIME ($/bbl, last 6 months)</div>
-        <div class="chart-wrap" style="height:190px;padding:4px 12px 12px"><canvas id="crackhist"></canvas></div>
-      </section>
-      <section class="panel">
-        <div class="ph"><span class="ph-t">WHO IT HELPS / HURTS</span><span id="eq-date" class="dimtext"></span></div>
-        <div id="sector-read" class="sector-read"></div>
-        <div id="sectors" class="sectors"></div>
-      </section>
-    </div>
-
-    <!-- SHIPS & SATELLITES -->
-    <div class="tabpane hidden" data-pane="tankers">
-      <section class="panel">
+      <!-- CRUDE segment only: ships & satellites -->
+      <section class="panel market-only" data-when="crude">
         <div class="ph"><span class="ph-t">🚢 SHIPS — LIVE TRACKING</span><span id="ais-status" class="pill">—</span></div>
         <div id="ais-sub" class="dimtext"></div>
         <div id="ais-help" class="help hidden"></div>
@@ -165,10 +123,43 @@
         <div class="chart-wrap" style="height:150px;padding:4px 12px 12px"><canvas id="reroute"></canvas></div>
         <details class="fold"><summary>Ship list</summary><div id="tanker-list" class="tanker-list"></div></details>
       </section>
-
-      <section class="panel">
+      <section class="panel market-only" data-when="crude">
         <div class="ph"><span class="ph-t">🛰️ SATELLITES — SEEING WITHOUT TRACKERS</span><span class="dimtext">radar picture + heat from space</span></div>
         <div id="satellite" class="satellite"></div>
+      </section>
+
+      <!-- REFINED segment only: fuels (cracks) + stocks -->
+      <section class="panel market-only" data-when="refined">
+        <div class="ph"><span class="ph-t">FUELS — DIESEL · JET · GASOLINE</span><span class="dimtext">refining profits per barrel</span></div>
+        <div id="products" class="products"></div>
+        <div class="chokes-h dimtext" style="padding:0 12px">REFINING PROFIT OVER TIME ($/bbl, last 6 months)</div>
+        <div class="chart-wrap" style="height:190px;padding:4px 12px 12px"><canvas id="crackhist"></canvas></div>
+      </section>
+      <section class="panel market-only" data-when="refined">
+        <div class="ph"><span class="ph-t">WHO IT HELPS / HURTS</span><span id="eq-date" class="dimtext"></span></div>
+        <div id="sector-read" class="sector-read"></div>
+        <div id="sectors" class="sectors"></div>
+      </section>
+
+      <!-- ENERGY segments: supply (stockpiles / storage) -->
+      <section class="panel market-only" data-when="crude,refined,gas">
+        <div class="ph"><span class="ph-t">SUPPLY — US STOCKPILES &amp; GAS STORAGE</span><span id="inv-date" class="dimtext">updated weekly</span></div>
+        <div id="inventories" class="tbl"></div>
+      </section>
+
+      <!-- Every segment: positioning (CFTC) -->
+      <section class="panel market-only" data-when="*">
+        <div class="ph"><span class="ph-t">HEDGE-FUND POSITIONING</span>
+          <div class="controls"><select id="pos-metric"></select></div>
+        </div>
+        <div id="positioning" class="ctx"></div>
+      </section>
+
+      <section class="panel">
+        <div class="ph"><span class="ph-t">LAST TIME IT WAS THIS EXTREME</span>
+          <select id="an-metric"><option value="basis:brent">Brent gap</option><option value="basis:wti">WTI gap</option><option value="spread:brent_wti">Brent vs WTI (real)</option></select>
+        </div>
+        <div id="analogue" class="analogue"></div>
       </section>
     </div>
 
@@ -206,17 +197,14 @@
     <div class="onboard-box">
       <h2>👋 Welcome to Commodity Desk</h2>
       <ul>
-        <li><b>Commodities</b> — energy, metals &amp; agriculture prices, with today's change.</li>
-        <li><b>Real vs futures</b> — what physical barrels cost vs the futures market (energy).</li>
-        <li><b>Big Picture</b> — one stress score, what it means, and what to watch next.</li>
-        <li><b>Ships &amp; Satellites</b> — live tracking, even when ships switch off their trackers.</li>
-        <li><b>Macro</b> — interest rates, inflation, growth &amp; currencies.</li>
+        <li><b>Commodities</b> — pick a segment (crude, refined, gas, metals, grains, softs) and the whole page follows it: prices, curve, what it means, trade ideas, supply, positioning, and live ships for crude.</li>
+        <li><b>Macro</b> — interest rates, inflation, growth, currencies and the links between them.</li>
       </ul>
       <button id="onboard-close">Got it →</button>
       <div class="dimtext">For information only — not investment advice.</div>
     </div>
   </div>
 
-  <script src="app.js?v=7"></script>
+  <script src="app.js?v=8"></script>
 </body>
 </html>

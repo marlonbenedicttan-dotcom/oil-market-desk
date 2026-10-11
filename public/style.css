@@ -204,6 +204,15 @@ footer li { margin-bottom: 2px; }
 .regime { padding: 9px 12px; border-bottom: 1px solid var(--line); font-size: 13px; letter-spacing: .4px; }
 .regime-k { color: var(--amber); font-size: 10px; letter-spacing: 2px; margin-right: 8px; }
 .regime .warn { color: var(--amber); }
+/* Hero: per-segment market-state board */
+.marketstate { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1px; background: var(--line); }
+.ms-tile { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 8px; background: #0c0f13; border: 0; border-left: 3px solid transparent; color: var(--text); text-align: left; padding: 8px 10px; cursor: pointer; font-family: var(--mono); }
+.ms-tile:hover { background: #10151b; }
+.ms-tile.active { border-left-color: var(--amber); background: #10151b; }
+.ms-name { flex: 1 1 100%; font-size: 11px; color: #c9d4df; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ms-px { font-weight: 700; font-size: 14px; font-variant-numeric: tabular-nums; }
+.ms-chg { font-size: 11px; font-variant-numeric: tabular-nums; }
+.ms-sub { flex: 1 1 100%; font-size: 10px; }
 .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); }
 .kpi { padding: 10px 14px; border-right: 1px solid var(--line); }
 .kpi:last-child { border-right: 0; }
@@ -309,6 +318,15 @@ footer li { margin-bottom: 2px; }
 .bl-sec ul { margin: 0; padding-left: 16px; } .bl-sec li { font-size: 12px; color: #c9d4df; margin-bottom: 5px; }
 .bl-chips { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 6px; }
 .chip { border: 1px solid var(--line2); padding: 2px 8px; font-size: 11px; color: var(--amber2); }
+.chip.up { color: var(--green); border-color: #14512f; }
+.chip.down { color: var(--red); border-color: #5a2020; }
+.ti { margin: 6px 0; }
+.ti-row { display: flex; gap: 8px; font-size: 11.5px; margin-bottom: 3px; }
+.ti-k { min-width: 64px; font-size: 9px; letter-spacing: 1px; }
+.ti-v { color: #c9d4df; }
+.tag.high, .tag.crowded { color: var(--amber); border-color: #5a4410; }
+.tag.low { color: #4aa3ff; border-color: #1c3a5a; }
+.tag.mid { color: var(--dim); }
 
 /* Mobile */
 @media (max-width: 640px) {
