@@ -2,5 +2,6 @@ node_modules/
 .env
 .state.json
 .reroute.json
+.flares.json
 .DS_Store
 *.log

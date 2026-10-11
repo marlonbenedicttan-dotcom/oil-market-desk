@@ -710,6 +710,60 @@ async function getProducts() {
 }
 
 // ---------------------------------------------------------------------------
+// Satellite (AIS-independent): NASA FIRMS gas flares + Sentinel-1 radar passes
+// ---------------------------------------------------------------------------
+const FLARE_FILE = path.join(__dirname, '.flares.json');
+const GULF_FLARE_REGIONS = [
+  { name: 'Saudi Arabia', box: [[24, 48], [28, 52]] },
+  { name: 'Kuwait', box: [[28.5, 46.5], [30, 48.5]] },
+  { name: 'Iraq (Basra)', box: [[29, 46], [31, 49]] },
+  { name: 'UAE', box: [[23, 51], [26, 56]] },
+  { name: 'Qatar', box: [[24.4, 50.6], [26, 51.8]] },
+  { name: 'Iran', box: [[28, 48], [32, 52]] },
+];
+async function getFlares() {
+  return cached('flares', 3 * 3600e3, async () => {
+    const res = await fetch('https://firms.modaps.eosdis.nasa.gov/data/active_fire/suomi-npp-viirs-c2/csv/SUOMI_VIIRS_C2_Global_24h.csv', { headers: UA });
+    if (!res.ok) throw new Error('firms ' + res.status);
+    const lines = (await res.text()).trim().split('\n');
+    const h = lines[0].split(',');
+    const iLat = h.indexOf('latitude'), iLon = h.indexOf('longitude');
+    const byRegion = {};
+    let total = 0;
+    for (let i = 1; i < lines.length; i++) {
+      const c = lines[i].split(',');
+      const lat = +c[iLat], lon = +c[iLon];
+      if (!inBox(lat, lon, [[23, 46], [33, 58]])) continue;
+      total++;
+      for (const r of GULF_FLARE_REGIONS) if (inBox(lat, lon, r.box)) { byRegion[r.name] = (byRegion[r.name] || 0) + 1; break; }
+    }
+    const today = new Date().toISOString().slice(0, 10);
+    let trend = [];
+    try { trend = JSON.parse(fs.readFileSync(FLARE_FILE, 'utf8')); } catch {}
+    const ex = trend.find((t) => t.date === today);
+    if (ex) ex.count = total; else trend.push({ date: today, count: total });
+    trend = trend.slice(-7);
+    try { fs.writeFileSync(FLARE_FILE, JSON.stringify(trend)); } catch {}
+    return { total, byRegion, trend, updated: new Date().toISOString() };
+  });
+}
+
+async function getSAR() {
+  return cached('sar', 3600e3, async () => {
+    const bbox = "POLYGON((54 24,58 24,58 28,54 28,54 24))";
+    const since = new Date(Date.now() - 7 * 864e5).toISOString();
+    const enc = (s) => s.replace(/ /g, '%20');
+    const filter = enc(`Collection/Name eq 'SENTINEL-1' and ContentDate/Start gt ${since} and OData.CSC.Intersects(area=geography'SRID=4326;${bbox}')`);
+    const url = `https://catalogue.dataspace.copernicus.eu/odata/v1/Products?$filter=${filter}&$top=6&$orderby=${enc('ContentDate/Start desc')}&$count=true`;
+    const res = await fetch(url, { headers: UA });
+    if (!res.ok) throw new Error('cdse ' + res.status);
+    const j = await res.json();
+    const items = (j.value || []).map((p) => ({ name: p.Name, time: p.ContentDate?.Start, platform: (p.Name || '').slice(0, 3) }));
+    return { passes: j['@odata.count'] ?? items.length, latest: items[0] || null, recent: items.slice(0, 6) };
+  });
+}
+
+// ---------------------------------------------------------------------------
 // Live tanker tracking via aisstream.io (free key required)
 // ---------------------------------------------------------------------------
 const tankers = new Map();
@@ -891,6 +945,8 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname === '/api/tightness') return sendJSON(res, 200, await getTightness().catch((e) => ({ error: String(e.message) })));
     if (url.pathname === '/api/flows') return sendJSON(res, 200, await getFlows());
     if (url.pathname === '/api/products') return sendJSON(res, 200, await getProducts().catch((e) => ({ error: String(e.message) })));
+    if (url.pathname === '/api/flares') return sendJSON(res, 200, await getFlares().catch((e) => ({ error: String(e.message) })));
+    if (url.pathname === '/api/sar') return sendJSON(res, 200, await getSAR().catch((e) => ({ error: String(e.message) })));
     if (url.pathname === '/api/analogue') return sendJSON(res, 200, await getAnalogue(url.searchParams.get('metric') || 'basis:brent', Math.min(15, Math.max(2, Number(url.searchParams.get('years')) || 10))));
     if (url.pathname === '/api/alerts') return sendJSON(res, 200, { current: await computeServerAlerts().catch(() => []) });
     if (url.pathname === '/api/digest') { res.writeHead(200, { 'content-type': 'text/plain' }); return res.end(lastDigest || await buildDigest()); }

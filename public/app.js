@@ -486,6 +486,21 @@ function renderProducts(d) {
   $('products').innerHTML = `<div class="cards">${cards}</div>`;
 }
 let rerouteChart;
+function renderSatellite(sar, flares) {
+  let html = '';
+  if (sar && !sar.error) {
+    const latest = sar.latest ? new Date(sar.latest.time).toLocaleString() : '—';
+    html += `<div class="read-line">🛰️ <b>Radar eyes (Sentinel-1 SAR)</b> — radar sees <b>every</b> ship regardless of AIS, day/night, through cloud. Last pass over the Gulf: <b>${latest}</b> · <b>${sar.passes}</b> passes in the last 7 days.<br><span class="dimtext">(Full dark-vessel detection = SAR image → ship detection → diff against AIS. Blueprint: github.com/kelu124/OrmuzOsint.)</span></div>`;
+    if (sar.recent?.length) html += `<div class="chokes">${sar.recent.map((r) => `<span class="choke">${r.platform} · ${new Date(r.time).toLocaleDateString()}</span>`).join('')}</div>`;
+  }
+  if (flares && !flares.error) {
+    const regions = Object.entries(flares.byRegion || {}).map(([k, v]) => `<span class="choke"><b>${v}</b> ${k}</span>`).join('');
+    html += `<div class="chokes-h dimtext" style="padding:8px 12px 0">GULF GAS-FLARE ACTIVITY (production proxy — flares fade when output is shut in)</div>
+      <div class="chokes"><span class="choke"><b>${flares.total}</b> detections / 24h</span>${regions}</div>`;
+    if (flares.trend?.length > 1) html += `<div class="dimtext" style="padding:4px 12px">flare counts by day: ${flares.trend.map((t) => `${t.date.slice(5)}:${t.count}`).join(' · ')}</div>`;
+  }
+  $('satellite').innerHTML = html || '<div class="dimtext" style="padding:10px 12px">no data</div>';
+}
 function renderReroute(d) {
   const cv = $('reroute');
   if (!cv || !d?.series?.length) return;
@@ -548,6 +563,10 @@ async function loadExtra() {
       getJSON('/api/flows').catch(() => null),
       getJSON('/api/products').catch(() => null),
     ]);
+    const [flr, sar] = await Promise.all([
+      getJSON('/api/flares').catch(() => null),
+      getJSON('/api/sar').catch(() => null),
+    ]);
     analytics = an;
     renderContext(data, an);
     renderInventories(inv);
@@ -558,6 +577,7 @@ async function loadExtra() {
     renderTightness(tn);
     renderFlows(fl);
     renderProducts(pr);
+    renderSatellite(sar, flr);
     renderKPIs(data, an, cv, pos);
     renderRegime(data, an, cv);
   } catch (e) { showError(e.message); }
