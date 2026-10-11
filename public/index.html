@@ -16,7 +16,7 @@
   <meta name="theme-color" content="#ff9e00" />
   <link rel="icon" href="/icon.svg" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <link rel="stylesheet" href="style.css?v=3" />
+  <link rel="stylesheet" href="style.css?v=4" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 </head>
@@ -46,8 +46,7 @@
     <!-- TABS -->
     <nav class="tabs" id="tabs">
       <button class="tab active" data-tab="overview">BIG PICTURE</button>
-      <button class="tab" data-tab="commodities">COMMODITIES</button>
-      <button class="tab" data-tab="curve">PRICE TRENDS</button>
+      <button class="tab" data-tab="commodities">COMMODITIES &amp; PRICES</button>
       <button class="tab" data-tab="fundamentals">SUPPLY &amp; DEMAND</button>
       <button class="tab" data-tab="sectors">FUELS &amp; STOCKS</button>
       <button class="tab" data-tab="tankers">SHIPS &amp; SATELLITES</button>
@@ -84,16 +83,22 @@
       </section>
     </div>
 
-    <!-- COMMODITIES -->
+    <!-- COMMODITIES & PRICES (merged: picker + all charts) -->
     <div class="tabpane hidden" data-pane="commodities">
       <section class="panel">
-        <div class="ph"><span class="ph-t">COMMODITIES</span><span class="dimtext">click a tile for its history · % = change today</span></div>
+        <div class="ph"><span class="ph-t">PICK AN INSTRUMENT</span><span class="dimtext">click a tile for its chart · % = change today · ★ to pin</span></div>
         <div id="cards"></div>
       </section>
-    </div>
 
-    <!-- PRICE TRENDS -->
-    <div class="tabpane hidden" data-pane="curve">
+      <section class="panel" id="chart-panel">
+        <div class="ph">
+          <span class="ph-t">PRICE HISTORY</span>
+          <div class="controls"><select id="metric"></select><select id="range"><option value="1m">1M</option><option value="3m">3M</option><option value="6m" selected>6M</option><option value="ytd">YTD</option><option value="1y">1Y</option><option value="5y">5Y</option><option value="10y">10Y</option></select></div>
+        </div>
+        <div class="chart-wrap"><canvas id="chart"></canvas></div>
+        <div id="lt-summary" class="dimtext lt-summary"></div>
+      </section>
+
       <section class="panel">
         <div class="ph"><span class="ph-t">PRICES FOR MONTHS AHEAD</span><span class="dimtext">is oil cheaper or pricier later? (the “curve”)</span></div>
         <div id="curve" class="curve"></div>
@@ -101,15 +106,6 @@
           <div class="chokes-h dimtext" style="padding:8px 12px 0">IS OIL GETTING TIGHTER OR LOOSER? — WTI, this month vs next, over time (above 0 = tight)</div>
           <div class="chart-wrap" style="height:180px;padding:4px 12px 12px"><canvas id="curvehist"></canvas></div>
         </div>
-      </section>
-
-      <section class="panel">
-        <div class="ph">
-          <span class="ph-t">PRICE HISTORY</span>
-          <div class="controls"><select id="metric"></select><select id="range"><option value="6m">6M</option><option value="ytd">YTD</option><option value="1y">1Y</option><option value="10y">10Y</option></select></div>
-        </div>
-        <div class="chart-wrap"><canvas id="chart"></canvas></div>
-        <div id="lt-summary" class="dimtext lt-summary"></div>
       </section>
 
       <section class="panel">
@@ -177,7 +173,7 @@
         <div id="macro-growth" class="macro"></div>
       </section>
       <section class="panel">
-        <div class="ph"><span class="ph-t">CURRENCIES</span><span class="dimtext">majors, EM &amp; commodity currencies · day change</span></div>
+        <div class="ph"><span class="ph-t">CURRENCIES</span><span class="dimtext">majors, EM &amp; commodity currencies · click one for its chart</span></div>
         <div id="macro-fx" class="macro"></div>
       </section>
       <section class="panel">
@@ -211,6 +207,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=4"></script>
+  <script src="app.js?v=5"></script>
 </body>
 </html>

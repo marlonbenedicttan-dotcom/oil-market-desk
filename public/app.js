@@ -9,6 +9,8 @@ const ago = (iso) => { if (!iso) return ''; const s = Math.round((Date.now() - n
 let data, history, analytics;
 let tankerInfo = { status: {}, count: 0, tankers: [] };
 let nextRefresh = 60;
+let fxList = [];        // chartable currencies (from /api/fx)
+let chartDp = 2;        // decimals for the current chart (set in renderChart)
 const seenAlerts = new Set();
 const ltCache = {};
 
@@ -105,17 +107,29 @@ function crackCard(c) {
 }
 function watchlist() { try { return JSON.parse(localStorage.getItem('oilbasis.watch') || '[]'); } catch { return []; } }
 function toggleWatch(id) { const w = watchlist(); const i = w.indexOf(id); if (i >= 0) w.splice(i, 1); else w.push(id); localStorage.setItem('oilbasis.watch', JSON.stringify(w)); }
+// Tiny inline trend line (last ~6 months of the fetched history), coloured by direction.
+function tileSpark(arr) {
+  const v = (arr || []).filter((x) => x != null);
+  if (v.length < 5) return '<svg class="spark" aria-hidden="true"></svg>';
+  const w = 100, h = 22, min = Math.min(...v), max = Math.max(...v), rng = max - min || 1;
+  const step = w / ((arr.length - 1) || 1);
+  let d = '';
+  arr.forEach((x, i) => { if (x == null) return; const px = (i * step).toFixed(1); const py = (h - 2 - ((x - min) / rng) * (h - 4)).toFixed(1); d += (d ? ' L' : 'M') + px + ',' + py; });
+  const up = v[v.length - 1] >= v[0];
+  return `<svg class="spark" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" aria-hidden="true"><path d="${d}" fill="none" stroke="${up ? 'var(--green)' : 'var(--red)'}" stroke-width="1.4"/></svg>`;
+}
 function tileHtml(b) {
   const s = history?.series?.[b.id];
   const arr = b.paper != null ? s?.paper : s?.physical;
   const val = b.paper != null ? b.paper : b.physical;
   const pc = pctOf(arr);
   const starred = watchlist().includes(b.id);
-  return `<div class="tile" data-id="${b.id}" title="${b.label} — click for history">
+  return `<div class="tile" data-id="${b.id}" title="${b.label} — click for the chart">
     <span class="t-name">${b.label}</span>
+    <span class="star ${starred ? 'on' : ''}" data-star="${b.id}" title="Pin to watchlist">${starred ? '★' : '☆'}</span>
     <span class="t-px">${val == null ? '—' : Number(val).toFixed(b.dp)}</span>
     <span class="t-chg ${cls(pc)}">${pc == null ? '' : pctf(pc)}</span>
-    <span class="star ${starred ? 'on' : ''}" data-star="${b.id}" title="Pin to watchlist">${starred ? '★' : '☆'}</span>
+    ${tileSpark(arr)}
   </div>`;
 }
 function renderCards(m) {
@@ -245,6 +259,7 @@ function buildMetricOptions(m) {
     else { opts.push(`<option value="${b.id}">${b.label} — futures vs real</option>`); opts.push(`<option value="basis:${b.id}">${b.label} gap (real − futures)</option>`); }
   }
   for (const key of Object.keys(m.spreads)) opts.push(`<option value="spread:${key}">${m.spreads[key].label} (futures & real)</option>`);
+  if (fxList.length) opts.push(`<optgroup label="CURRENCIES">${fxList.map((f) => `<option value="fx:${f.id}">${f.label}</option>`).join('')}</optgroup>`);
   sel.innerHTML = opts.join('');
   if (prev && [...sel.options].some((o) => o.value === prev)) sel.value = prev;
 }
@@ -262,64 +277,90 @@ function chartOpts() {
       legend: { labels: { color: '#7c8a99', boxWidth: 12, font: { family: 'monospace' } } },
       tooltip: {
         callbacks: {
+          title: (items) => (items && items.length ? String(items[0].label) : ''),
           label: (ctx) => {
             const v = ctx.parsed.y, ds = ctx.dataset.data;
-            const base = chartAnchor != null && ds[chartAnchor] != null ? ds[chartAnchor] : ds.find((x) => x != null);
-            const pct = base && v != null ? ((v - base) / base) * 100 : null;
-            const tag = chartAnchor != null ? 'Δ anchor' : 'Δ window';
-            return `${ctx.dataset.label}: ${v == null ? '—' : v.toFixed(2)}${pct != null ? `  (${tag} ${pct >= 0 ? '+' : ''}${pct.toFixed(1)}%)` : ''}`;
+            if (v == null) return `${ctx.dataset.label}: —`;
+            let out = `${ctx.dataset.label}: ${Number(v).toFixed(chartDp || 2)}`;
+            const first = ds.find((x) => x != null);
+            if (first) out += `   ${signed(((v - first) / first) * 100, 1)}% vs start`;
+            if (chartAnchor != null && ds[chartAnchor] != null) out += `  ·  ${signed(((v - ds[chartAnchor]) / ds[chartAnchor]) * 100, 1)}% vs ●`;
+            return out;
           },
         },
       },
     },
     scales: { x: { ticks: { color: '#7c8a99', maxTicksLimit: 10 }, grid: { color: '#151a20' } }, y: { ticks: { color: '#7c8a99' }, grid: { color: '#151a20' } } } };
 }
+// Resolver-shaped series → chart datasets (benchmark futures/real · a gap · a currency).
+function seriesLines(r) {
+  const has = (a) => a && a.some((v) => v != null);
+  if (r.kind === 'fx') return has(r.series.paper) ? [line(r.label, r.series.paper, '#c06bff')] : [];
+  if (r.kind === 'basis') return has(r.series.paper) ? [line(r.label, r.series.paper, '#00c853')] : [];
+  const out = [];
+  if (has(r.series.paper)) out.push(line(`${r.label} futures`, r.series.paper, '#4aa3ff'));
+  if (has(r.series.physical)) out.push(line(`${r.label} real`, r.series.physical, '#ff9e00'));
+  return out;
+}
+function chartSummary(r, label) {
+  const flat = (s) => (s && typeof s === 'object' ? s.total : s);
+  const f = (s) => (s == null ? '—' : signed(s, 1) + '%');
+  if (r.kind === 'fx' || r.kind === 'basis') return `${r.label} — ${f(flat(r.summary.paper))} over ${label}`;
+  const p = r.summary.paper, ph = r.summary.physical;
+  const extra = p && typeof p === 'object' && p.last5y != null ? ` (5y ${f(p.last5y)} · 1y ${f(p.last1y)})` : '';
+  return `${label} PERFORMANCE — futures ${f(flat(p))}${extra} · real ${f(flat(ph))}`;
+}
+function basisBands(arr) {
+  const s = (arr || []).filter((x) => x != null).sort((a, b) => a - b);
+  return s.length ? { p10: s[Math.floor(s.length * 0.1)], p90: s[Math.floor(s.length * 0.9)], median: s[Math.floor(s.length * 0.5)] } : null;
+}
+const RANGE_YEARS = { '5y': 5, '10y': 10 };
 async function renderChart() {
   if (!history || !data) return;
   const metric = $('metric').value;
   const range = $('range').value;
   const bench = data.benchmarks.find((b) => b.id === metric);
-  let labels, datasets, summary = '';
+  const isFx = metric.startsWith('fx:');
+  const isSpread = metric.startsWith('spread:');
+  let labels, datasets, summary = '', bands = null;
+  chartDp = bench ? bench.dp : 2;
 
-  if (range === '10y' && bench) {
-    let lt; try { lt = await getLongterm(bench.id, 10); } catch (e) { showError(e.message); return; }
-    labels = lt.months;
-    datasets = [];
-    if (lt.series.paper.some((v) => v != null)) datasets.push(line(`${bench.label} paper`, lt.series.paper, '#4aa3ff'));
-    datasets.push(line(`${bench.label} physical`, lt.series.physical, '#ff9e00'));
-    const p = lt.summary.paper, ph = lt.summary.physical;
-    summary = `10Y PERFORMANCE — paper ${pctf(p.total)} (5y ${pctf(p.last5y)}, 1y ${pctf(p.last1y)}) · physical ${pctf(ph.total)} (5y ${pctf(ph.last5y)}, 1y ${pctf(ph.last1y)})`;
-  } else if ((range === 'ytd' || range === '1y') && bench) {
-    const r = await getRange(bench.id, range);
-    labels = r.dates;
-    datasets = [];
-    if (r.series.paper.some((v) => v != null)) datasets.push(line(`${bench.label} paper`, r.series.paper, '#4aa3ff'));
-    datasets.push(line(`${bench.label} physical`, r.series.physical, '#ff9e00'));
-    summary = `${range.toUpperCase()} PERFORMANCE — paper ${pctf(r.summary.paper)} · physical ${pctf(r.summary.physical)}`;
-  } else {
+  if (range === '6m' && !isFx) {
+    // fast path: the shared 6-month daily history (every instrument at once) + seasonal band
     labels = history.dates;
     datasets = datasetsFor(metric, history, data);
-    if (range !== '6m' && !bench) summary = 'Range view is per-benchmark — pick a benchmark above.';
-    if (range === '6m' && bench) {
+    if (metric.startsWith('basis:')) bands = basisBands(history.basis[metric.slice(6)]);
+    if (bench) {
       try {
         const sea = await getSeasonal(bench.id);
         if (sea && !sea.error) {
-          const band = (label, arr) => ({ label, data: arr, borderColor: '#3a4d63', borderWidth: 1, borderDash: [4, 4], pointRadius: 0, tension: 0.25, spanGaps: true, fill: false });
+          const band = (lb, arr) => ({ label: lb, data: arr, borderColor: '#3a4d63', borderWidth: 1, borderDash: [4, 4], pointRadius: 0, tension: 0.25, spanGaps: true, fill: false });
           datasets.push(band('5-yr low', labels.map((d) => (sea.low[d.slice(5)] ?? null))));
           datasets.push(band('5-yr high', labels.map((d) => (sea.high[d.slice(5)] ?? null))));
         }
       } catch {}
     }
+  } else if (isSpread) {
+    labels = history.dates;
+    datasets = datasetsFor(metric, history, data);
+    summary = 'Range view is per-instrument — pick a benchmark or currency above.';
+  } else {
+    let r;
+    try { r = RANGE_YEARS[range] ? await getLongterm(metric, RANGE_YEARS[range]) : await getRange(metric, range); }
+    catch (e) { showError(e.message); return; }
+    if (!r || r.error || (!r.dates && !r.months)) { showError('No chart data for ' + metric.replace(/^fx:|^basis:/, '')); return; }
+    labels = r.dates || r.months;
+    chartDp = r.dp ?? chartDp;
+    datasets = seriesLines(r);
+    summary = chartSummary(r, RANGE_YEARS[range] ? RANGE_YEARS[range] + 'Y' : range.toUpperCase());
+    if (r.kind === 'basis') bands = basisBands(r.series.paper);
   }
 
-  $('lt-summary').textContent = (summary ? summary + '  ·  ' : '') + 'hover to see % change · click to set an anchor, then drag to measure between two points';
+  $('lt-summary').textContent = (summary ? summary + '  ·  ' : '') + 'hover any point for its % change · click to drop an anchor (●), hover again to measure between two';
   const chartData = { labels, datasets };
-  if (chart) {
-    chart.$bands = null;
-    if (metric.startsWith('basis:')) { const arr = (history.basis[metric.slice(6)] || []).filter((x) => x != null).sort((a, b) => a - b); if (arr.length) chart.$bands = { p10: arr[Math.floor(arr.length * 0.1)], p90: arr[Math.floor(arr.length * 0.9)], median: arr[Math.floor(arr.length * 0.5)] }; }
-    chart.data = chartData; chart.update(); return;
-  }
+  if (chart) { chart.$bands = bands; chart.data = chartData; chart.update(); return; }
   chart = new Chart($('chart'), { type: 'line', data: chartData, options: chartOpts(), plugins: [anchorLine, bandsPlugin] });
+  chart.$bands = bands;
 }
 
 async function loadHistory() { history = await getJSON('/api/history'); }
@@ -689,8 +730,8 @@ function renderReroute(d) {
     scales: { x: { ticks: { color: '#7c8a99', maxTicksLimit: 6 }, grid: { color: '#151a20' } }, y: { ticks: { color: '#7c8a99' }, grid: { color: '#151a20' } } } } });
 }
 async function loadReroute() { try { renderReroute(await getJSON('/api/reroute')); } catch {} }
-function macroTile(label, value, sub, klass) {
-  return `<div class="kpi"><div class="kpi-l">${label}</div><div class="kpi-v ${klass || ''}">${value}</div><div class="kpi-s dimtext">${sub || ''}</div></div>`;
+function macroTile(label, value, sub, klass, metric) {
+  return `<div class="kpi${metric ? ' clickable' : ''}"${metric ? ` data-metric="${metric}" title="Click for the chart"` : ''}><div class="kpi-l">${label}</div><div class="kpi-v ${klass || ''}">${value}</div><div class="kpi-s dimtext">${sub || ''}</div></div>`;
 }
 function renderMacroDash(md, corr, events) {
   const rates = $('macro-rates');
@@ -700,13 +741,13 @@ function renderMacroDash(md, corr, events) {
   rates.innerHTML = `<div class="kpis">${macroTile('US 2-YEAR', r.us2y != null ? r.us2y + '%' : '—', 'short-term rate')}${macroTile('US 10-YEAR', r.us10y != null ? r.us10y + '%' : '—', 'long-term rate')}${macroTile('2s10s SPREAD', r.spread != null ? signed(r.spread, 2) : '—', r.spread < 0 ? 'inverted — recession signal' : 'normal', cls(r.spread))}${macroTile('US FED FUNDS', r.fedfunds != null ? r.fedfunds + '%' : '—', 'policy rate')}${macroTile('ECB RATE', r.ecb != null ? r.ecb + '%' : '—', 'euro-area policy rate')}${macroTile('US–ECB GAP', r.rateGap != null ? signed(r.rateGap, 2) + 'pp' : '—', 'a wider gap tends to lift the dollar', cls(r.rateGap))}</div>`;
   const gold = gp.ratio != null ? macroTile('COPPER ÷ GOLD', (gp.ratio * 1000).toFixed(2), gp.chg != null ? `${pctf(gp.chg)} / 3m · ${gp.chg >= 0 ? 'growth optimism' : 'growth worry'}` : 'growth proxy (×1000)', cls(gp.chg)) : '';
   $('macro-growth').innerHTML = `<div class="kpis">${macroTile('US INFLATION (CPI YoY)', inf.cpiYoY != null ? inf.cpiYoY + '%' : '—', inf.asOf || '')}${macroTile('US GDP (QoQ, annualised)', g.gdpQoQ != null ? g.gdpQoQ + '%' : '—', g.asOf || '')}${macroTile('UNEMPLOYMENT', g.unemployment != null ? g.unemployment + '%' : '—', '')}${gold}</div>`;
-  $('macro-fx').innerHTML = `<div class="kpis">${(md.fx || []).map((f) => macroTile(f.label, f.price != null ? f.price.toFixed(f.price < 10 ? 4 : 2) : '—', f.pct != null ? pctf(f.pct) : '', cls(f.pct))).join('')}</div>`;
+  $('macro-fx').innerHTML = `<div class="kpis">${(md.fx || []).map((f) => macroTile(f.label, f.price != null ? f.price.toFixed(f.price < 10 ? 4 : 2) : '—', f.pct != null ? pctf(f.pct) : '', cls(f.pct), 'fx:' + f.id)).join('')}</div><div class="macro-note">click a currency for its YTD / 5Y / 10Y chart</div>`;
   if ($('macro-links')) {
     const rows = (md.links || []).map((l) => {
       if (l.corr == null) return macroTile(l.pair, '—', l.commodity + ' · no data', '');
       const holds = Math.sign(l.corr) === l.expect;
       const read = !holds ? 'link broken' : Math.abs(l.corr) >= 0.3 ? 'link holding' : 'link weak';
-      return macroTile(l.pair, signed(l.corr, 2), `${l.commodity} · ${read}`, holds ? 'pos' : 'neg');
+      return macroTile(l.pair, signed(l.corr, 2), `${l.commodity} · ${read}`, holds ? 'pos' : 'neg', 'fx:' + l.id);
     }).join('');
     $('macro-links').innerHTML = `<div class="kpis">${rows}</div><div class="dimtext" style="padding:6px 12px">Correlation of daily moves over the last 3 months. <span class="pos">Green</span> = the currency still tracks its commodity the usual way; <span class="neg">red</span> = the link has broken down right now. On a <b>USD/xxx</b> pair a negative number is the normal sign (a stronger dollar and a weaker commodity tend to move together).</div>`;
   }
@@ -758,7 +799,7 @@ async function loadCurveHistory() {
 function showTab(name) {
   document.querySelectorAll('.tab').forEach((t) => t.classList.toggle('active', t.dataset.tab === name));
   document.querySelectorAll('.tabpane').forEach((p) => p.classList.toggle('hidden', p.dataset.pane !== name));
-  if (name === 'curve') { loadCurveHistory(); if (chart) setTimeout(() => chart.resize(), 50); if (curveHistChart) setTimeout(() => curveHistChart.resize(), 60); }
+  if (name === 'commodities') { loadCurveHistory(); if (chart) setTimeout(() => chart.resize(), 50); if (curveHistChart) setTimeout(() => curveHistChart.resize(), 60); }
   if (name === 'sectors' && crackHistChart) setTimeout(() => crackHistChart.resize(), 60);
   if (name === 'tankers' && map) setTimeout(() => map.invalidateSize(), 60);
 }
@@ -829,21 +870,27 @@ $('alert-settings')?.addEventListener('click', () => {
   if (panel.classList.contains('hidden')) { renderThresholds(); panel.classList.remove('hidden'); }
   else panel.classList.add('hidden');
 });
+// Jump to the chart for any metric id (benchmark, basis:*, fx:*).
+function pickMetric(id, range = '6m') {
+  if (id && [...$('metric').options].some((o) => o.value === id)) $('metric').value = id;
+  localStorage.setItem('oilbasis.metric', id);
+  $('range').value = range;
+  chartAnchor = null;
+  showTab('commodities');
+  renderChart();
+  const cp = $('chart-panel');
+  if (cp) setTimeout(() => cp.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);
+}
 $('tabs').addEventListener('click', (e) => { const b = e.target.closest('.tab'); if (b) showTab(b.dataset.tab); });
 $('help-btn').addEventListener('click', () => { const g = $('glossary'); g.innerHTML = GLOSSARY; g.classList.toggle('hidden'); });
 $('cards').addEventListener('click', (e) => {
   const star = e.target.closest('.star');
   if (star) { toggleWatch(star.dataset.star); renderCards(data); return; }
   const tile = e.target.closest('.tile[data-id]');
-  if (!tile) return;
-  const id = tile.dataset.id;
-  if ([...$('metric').options].some((o) => o.value === id)) $('metric').value = id;
-  localStorage.setItem('oilbasis.metric', id);
-  $('range').value = '6m';
-  chartAnchor = null;
-  showTab('curve');
-  renderChart();
+  if (tile) pickMetric(tile.dataset.id, '6m');
 });
+$('macro-fx')?.addEventListener('click', (e) => { const el = e.target.closest('[data-metric]'); if (el) pickMetric(el.dataset.metric, '1y'); });
+$('macro-links')?.addEventListener('click', (e) => { const el = e.target.closest('[data-metric]'); if (el) pickMetric(el.dataset.metric, '1y'); });
 
 (async function boot() {
   try { initMap(); } catch (e) { console.error(e); }
@@ -858,6 +905,7 @@ $('cards').addEventListener('click', (e) => {
   $('onboarding')?.addEventListener('click', (e) => { if (e.target.id === 'onboarding') hideOnboard(); });
   if ('Notification' in window && Notification.permission === 'default') { try { await Notification.requestPermission(); } catch {} }
   await loadHistory().catch((e) => showError(e.message));
+  fxList = await getJSON('/api/fx').catch(() => []);
   await refreshLive();        // prices + ships (sets `data` first)
   await loadExtra();          // slow feeds (need `data`)
   loadAnalogue();

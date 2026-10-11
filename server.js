@@ -237,38 +237,78 @@ async function getHistory() {
 }
 
 // ---------------------------------------------------------------------------
-// Long-term (multi-year) history, bucketed by month, with % performance
+// Charting — one resolver for every chartable metric
+//   <benchId> | basis:<benchId> | fx:<fxId>   (spreads are handled from /api/history)
 // ---------------------------------------------------------------------------
-async function getLongterm(b, years = 10) {
+function resolveMetric(id) {
+  if (!id) return null;
+  if (id.startsWith('fx:')) { const f = FX_SYMS.find((x) => x.id === id.slice(3)); return f ? { kind: 'fx', f } : null; }
+  if (id.startsWith('basis:')) { const b = BENCHMARKS.find((x) => x.id === id.slice(6)); return b ? { kind: 'basis', b } : null; }
+  const b = BENCHMARKS.find((x) => x.id === id);
+  return b ? { kind: 'bench', b } : null;
+}
+// % change from the first to the last non-null value.
+const rowPct = (arr) => { const f = arr.find((x) => x != null); const l = [...arr].reverse().find((x) => x != null); return f && l ? ((l - f) / f) * 100 : null; };
+
+// Multi-year history, bucketed by month (or week for 1–2y), with % performance.
+async function getLongterm(id, years = 10) {
+  const m = resolveMetric(id);
+  if (!m) return { error: 'unknown metric' };
   const interval = years >= 3 ? '1mo' : '1wk';
-  const paperMap = b.paper
-    ? (await cached(`ltp:${b.paper}:${years}`, 6 * 3600e3, () => yahooSeries(b.paper, `${years}y`, interval))).series
-    : {};
-  const physRaw = await cached(`ltf:${b.physical}:${years}`, 6 * 3600e3, () => spotSeries(b, years * 366 + 30));
-  const p = monthly(paperMap);
-  const f = monthly(physRaw);
-  const months = [...new Set([...Object.keys(p), ...Object.keys(f)])].sort();
-  const at = (o, m) => (o[m] != null ? o[m] : null);
-  const series = { paper: months.map((m) => at(p, m)), physical: months.map((m) => at(f, m)) };
   const summ = (arr) => ({ total: pctOver(arr, arr.length), last5y: pctOver(arr, 60), last1y: pctOver(arr, 12) });
-  return {
-    id: b.id, label: b.label, unit: b.unit, dp: b.dp, years, months, series,
-    summary: { paper: summ(series.paper), physical: summ(series.physical) },
-  };
+
+  if (m.kind === 'fx') {
+    const f = m.f;
+    const raw = (await cached(`ltq:${f.sym}:${years}`, 6 * 3600e3, () => yahooSeries(f.sym, `${years}y`, interval))).series;
+    const p = monthly(raw);
+    const months = Object.keys(p).sort();
+    const paper = months.map((k) => p[k]);
+    return { id, label: f.label, unit: '', dp: f.dp, kind: 'fx', years, months, series: { paper, physical: months.map(() => null) }, summary: { paper: summ(paper), physical: null } };
+  }
+
+  const b = m.b;
+  const paperMap = b.paper ? (await cached(`ltp:${b.paper}:${years}`, 6 * 3600e3, () => yahooSeries(b.paper, `${years}y`, interval))).series : {};
+  const physRaw = await cached(`ltf:${b.physical}:${years}`, 6 * 3600e3, () => spotSeries(b, years * 366 + 30));
+  const p = monthly(paperMap), f = monthly(physRaw);
+  const months = [...new Set([...Object.keys(p), ...Object.keys(f)])].sort();
+  const at = (o, mm) => (o[mm] != null ? o[mm] : null);
+  const paper = months.map((mm) => at(p, mm));
+  const physical = months.map((mm) => at(f, mm));
+  if (m.kind === 'basis') {
+    const gap = months.map((mm) => (at(f, mm) != null && at(p, mm) != null ? at(f, mm) - at(p, mm) : null));
+    return { id, label: `${b.label} gap`, unit: b.unit, dp: b.dp, kind: 'basis', years, months, series: { paper: gap, physical: months.map(() => null) }, summary: { paper: summ(gap), physical: null } };
+  }
+  return { id, label: b.label, unit: b.unit, dp: b.dp, kind: 'bench', years, months, series: { paper, physical }, summary: { paper: summ(paper), physical: summ(physical) } };
 }
 
-// Daily ranges: 6m / ytd / 1y — for the chart's range selector.
-async function getRange(b, range) {
+// Daily ranges for the chart selector: 1m / 3m / 6m / ytd / 1y.
+async function getRange(id, range) {
+  const m = resolveMetric(id);
+  if (!m) return { error: 'unknown metric' };
   const daysMap = { '1m': 30, '3m': 92, '6m': 183, '1y': 366, ytd: Math.ceil((Date.now() - Date.UTC(new Date().getUTCFullYear(), 0, 1)) / 864e5) };
   const days = daysMap[range] || 183;
-  const yRange = range === 'ytd' ? 'ytd' : range === '1y' ? '1y' : range === '3m' ? '3mo' : '6mo';
+  const yRange = range === 'ytd' ? 'ytd' : range === '1y' ? '1y' : range === '3m' ? '3mo' : range === '1m' ? '1mo' : '6mo';
+
+  if (m.kind === 'fx') {
+    const f = m.f;
+    const map = (await cached(`rngq:${f.sym}:${range}`, 3600e3, () => yahooSeries(f.sym, yRange, '1d'))).series;
+    const dates = Object.keys(map).sort();
+    const paper = dates.map((d) => map[d]);
+    return { id, label: f.label, unit: '', dp: f.dp, kind: 'fx', range, dates, series: { paper, physical: dates.map(() => null) }, summary: { paper: rowPct(paper), physical: null } };
+  }
+
+  const b = m.b;
   const paperMap = b.paper ? (await cached(`rngp:${b.paper}:${range}`, 3600e3, () => yahooSeries(b.paper, yRange, '1d'))).series : {};
   const physMap = await cached(`rngf:${b.physical}:${range}`, 3600e3, () => spotSeries(b, days + 5));
   const dates = [...new Set([...Object.keys(paperMap), ...Object.keys(physMap)])].sort();
   const at = (o, d) => (o[d] != null ? o[d] : null);
-  const series = { paper: dates.map((d) => at(paperMap, d)), physical: dates.map((d) => at(physMap, d)) };
-  const pct = (arr) => { const f = arr.find((x) => x != null); const l = [...arr].reverse().find((x) => x != null); return f && l ? ((l - f) / f) * 100 : null; };
-  return { id: b.id, label: b.label, unit: b.unit, dp: b.dp, range, dates, series, summary: { paper: pct(series.paper), physical: pct(series.physical) } };
+  const paper = dates.map((d) => at(paperMap, d));
+  const physical = dates.map((d) => at(physMap, d));
+  if (m.kind === 'basis') {
+    const gap = dates.map((d) => (at(physMap, d) != null && at(paperMap, d) != null ? at(physMap, d) - at(paperMap, d) : null));
+    return { id, label: `${b.label} gap`, unit: b.unit, dp: b.dp, kind: 'basis', range, dates, series: { paper: gap, physical: dates.map(() => null) }, summary: { paper: rowPct(gap), physical: null } };
+  }
+  return { id, label: b.label, unit: b.unit, dp: b.dp, kind: 'bench', range, dates, series: { paper, physical }, summary: { paper: rowPct(paper), physical: rowPct(physical) } };
 }
 
 // ---------------------------------------------------------------------------
@@ -520,20 +560,20 @@ async function getSeasonal(b, years = 5) {
 // Macro dashboard (rates, inflation, growth, FX) — the start of the expansion
 // ---------------------------------------------------------------------------
 const FX_SYMS = [
-  { id: 'dxy', label: 'US dollar (DXY)', sym: 'DX-Y.NYB' },
-  { id: 'eurusd', label: 'EUR / USD', sym: 'EURUSD=X' },
-  { id: 'usdjpy', label: 'USD / JPY', sym: 'USDJPY=X' },
-  { id: 'gbpusd', label: 'GBP / USD', sym: 'GBPUSD=X' },
-  { id: 'usdcny', label: 'USD / CNY', sym: 'USDCNY=X' },
-  { id: 'audusd', label: 'AUD / USD · mining', sym: 'AUDUSD=X' },
-  { id: 'usdcad', label: 'USD / CAD · oil', sym: 'USDCAD=X' },
-  { id: 'usdnok', label: 'USD / NOK · oil', sym: 'USDNOK=X' },
-  { id: 'usdbrl', label: 'USD / BRL · agri', sym: 'USDBRL=X' },
-  { id: 'usdzar', label: 'USD / ZAR · gold', sym: 'USDZAR=X' },
-  { id: 'usdmxn', label: 'USD / MXN · oil', sym: 'USDMXN=X' },
-  { id: 'usdinr', label: 'USD / INR', sym: 'USDINR=X' },
-  { id: 'usdchf', label: 'USD / CHF', sym: 'USDCHF=X' },
-  { id: 'nzdusd', label: 'NZD / USD', sym: 'NZDUSD=X' },
+  { id: 'dxy', label: 'US dollar (DXY)', sym: 'DX-Y.NYB', dp: 2 },
+  { id: 'eurusd', label: 'EUR / USD', sym: 'EURUSD=X', dp: 4 },
+  { id: 'usdjpy', label: 'USD / JPY', sym: 'USDJPY=X', dp: 2 },
+  { id: 'gbpusd', label: 'GBP / USD', sym: 'GBPUSD=X', dp: 4 },
+  { id: 'usdcny', label: 'USD / CNY', sym: 'USDCNY=X', dp: 4 },
+  { id: 'audusd', label: 'AUD / USD · mining', sym: 'AUDUSD=X', dp: 4 },
+  { id: 'usdcad', label: 'USD / CAD · oil', sym: 'USDCAD=X', dp: 4 },
+  { id: 'usdnok', label: 'USD / NOK · oil', sym: 'USDNOK=X', dp: 3 },
+  { id: 'usdbrl', label: 'USD / BRL · agri', sym: 'USDBRL=X', dp: 3 },
+  { id: 'usdzar', label: 'USD / ZAR · gold', sym: 'USDZAR=X', dp: 3 },
+  { id: 'usdmxn', label: 'USD / MXN · oil', sym: 'USDMXN=X', dp: 3 },
+  { id: 'usdinr', label: 'USD / INR', sym: 'USDINR=X', dp: 2 },
+  { id: 'usdchf', label: 'USD / CHF', sym: 'USDCHF=X', dp: 4 },
+  { id: 'nzdusd', label: 'NZD / USD', sym: 'NZDUSD=X', dp: 4 },
 ];
 
 // Commodity ↔ currency links: does the currency still track its commodity?
@@ -1189,17 +1229,17 @@ const server = http.createServer(async (req, res) => {
   try {
     if (url.pathname === '/api/market') return sendJSON(res, 200, await getMarket());
     if (url.pathname === '/api/history') return sendJSON(res, 200, await getHistory());
+    if (url.pathname === '/api/fx') return sendJSON(res, 200, FX_SYMS.map((f) => ({ id: f.id, label: f.label, dp: f.dp })));
     if (url.pathname === '/api/longterm') {
       const id = url.searchParams.get('id');
       const years = Math.min(15, Math.max(1, Number(url.searchParams.get('years')) || 10));
-      const b = BENCHMARKS.find((x) => x.id === id);
-      if (!b) return sendJSON(res, 404, { error: 'unknown benchmark' });
-      return sendJSON(res, 200, await getLongterm(b, years));
+      if (!resolveMetric(id)) return sendJSON(res, 404, { error: 'unknown metric' });
+      return sendJSON(res, 200, await getLongterm(id, years).catch((e) => ({ error: String(e.message) })));
     }
     if (url.pathname === '/api/range') {
-      const b = BENCHMARKS.find((x) => x.id === url.searchParams.get('id'));
-      if (!b) return sendJSON(res, 404, { error: 'unknown benchmark' });
-      return sendJSON(res, 200, await getRange(b, url.searchParams.get('range') || 'ytd'));
+      const id = url.searchParams.get('id');
+      if (!resolveMetric(id)) return sendJSON(res, 404, { error: 'unknown metric' });
+      return sendJSON(res, 200, await getRange(id, url.searchParams.get('range') || 'ytd').catch((e) => ({ error: String(e.message) })));
     }
     if (url.pathname === '/api/seasonal') {
       const b = BENCHMARKS.find((x) => x.id === url.searchParams.get('id'));

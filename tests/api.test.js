@@ -41,6 +41,28 @@ for (const p of ['/api/market', '/api/curve', '/api/tightness', '/api/products',
   });
 }
 
+test('/api/fx lists chartable currencies', async () => {
+  const r = await fetch(`http://localhost:${PORT}/api/fx`);
+  assert.equal(r.status, 200);
+  const list = await r.json();
+  assert.ok(Array.isArray(list) && list.length >= 10);
+  assert.ok(list.every((f) => f.id && f.label && typeof f.dp === 'number'));
+});
+
+test('chart endpoints accept benchmarks, gaps and currencies', async () => {
+  for (const p of ['/api/range?id=wti&range=3m', '/api/range?id=fx:eurusd&range=1y', '/api/longterm?id=fx:usdjpy&years=5', '/api/longterm?id=basis:brent&years=5']) {
+    const r = await fetch(`http://localhost:${PORT}${p}`);
+    assert.equal(r.status, 200, `${p} -> ${r.status}`);
+    const j = await r.json();
+    assert.ok(j.error == null, `${p} returned ${JSON.stringify(j).slice(0, 80)}`);
+  }
+});
+
+test('unknown chart metric → 404', async () => {
+  const r = await fetch(`http://localhost:${PORT}/api/range?id=nope&range=1y`);
+  assert.equal(r.status, 404);
+});
+
 test('export.csv returns CSV', async () => {
   const r = await fetch(`http://localhost:${PORT}/api/export.csv`);
   assert.equal(r.status, 200);

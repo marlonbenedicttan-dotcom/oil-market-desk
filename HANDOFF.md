@@ -16,7 +16,7 @@ src/lib.js        pure helpers (unit-tested): sgn, inBox, haversineNm, isoWeek,
 public/index.html tabs + panels
 public/app.js     all front-end rendering + charting
 public/style.css  Bloomberg-terminal dark theme
-tests/            node:test (lib unit tests + API smoke tests) — 25 tests, `npm test`
+tests/            node:test (lib unit tests + API smoke tests) — 28 tests, `npm test`
 Dockerfile, render.yaml, scripts/share.sh   deploy + free tunnel
 ```
 
@@ -27,9 +27,12 @@ Dockerfile, render.yaml, scripts/share.sh   deploy + free tunnel
 - `physical: null` ⇒ futures-only (metals/ags): shows price + % change, no gap.
 - `paper: null` ⇒ spot-only (jet, propane): shows real price only.
 
+### Charting (the merged COMMODITIES & PRICES tab)
+The commodity tile grid and the old PRICE TRENDS charts are now **one tab**. Clicking a tile (or a currency/link tile on the MACRO tab) selects it and renders the chart below. `renderChart()` resolves **any** metric — benchmark · `basis:<bench>` · `fx:<fx>` — across ranges **1M / 3M / 6M / YTD / 1Y / 5Y / 10Y** (spreads stay 6M-only). Hovering a point shows its **% change vs the window start**; clicking drops an anchor (●) to measure between two points. 6M draws the 5-year seasonal band; gap views draw p10/p90/median bands. Tiles carry a 6-month sparkline.
+
 ### API endpoints
 `/api/market` (all instruments + gaps + quality flags), `/api/history` (6M daily, all instruments + basis),
-`/api/range?id=&range=6m|ytd|1y` , `/api/longterm?id=&years=` , `/api/curve` (futures curve),
+`/api/fx` (chartable currencies) , `/api/range?id=&range=1m|3m|6m|ytd|1y` , `/api/longterm?id=&years=` (both resolve `id` = benchmark | `basis:<bench>` | `fx:<fx>`) , `/api/curve` (futures curve),
 `/api/curvehistory?root=CL` , `/api/continuous?root=CL` , `/api/analytics` (percentiles/vol/arb),
 `/api/analogue?metric=` , `/api/inventories` (+ gas storage) , `/api/positioning` (+ open interest),
 `/api/equities` (sector watchlist) , `/api/macro` , `/api/macrodash` (rates + rateGap · inflation · growth · growthProxy copper÷gold · fx board · links commodity↔currency),
@@ -76,11 +79,11 @@ Dockerfile, render.yaml, scripts/share.sh   deploy + free tunnel
 ### Remaining polish
 - **Accessibility pass** (keyboard nav, contrast, aria labels).
 - **Regional refining margins** (USGC/NWE/Singapore) — needs regional product data (EIA has some).
-- Extend **on-demand charting** to any instrument (already works via `/api/range`).
+- ~~Extend on-demand charting to any instrument~~ ✔ done — every benchmark, gap and currency charts at 1M–10Y.
 
 ## Conventions / gotchas
 - Keep it **compact, plain-English, honest**. Explain *what it means* and *what to watch*.
 - **Never** put secrets in the repo. `.env`, `.state.json`, `.reroute.json`, `.flares.json`, `digest.log` are git-ignored.
-- After edits: `npm test` (25 tests) then `git push` (auto-deploys). Bump the `?v=` query on `style.css`/`app.js` in `index.html` if a cache issue appears.
+- After edits: `npm test` (28 tests) then `git push` (auto-deploys). Bump the `?v=` query on `style.css`/`app.js` in `index.html` if a cache issue appears.
 - The service worker (`public/sw.js`) is **network-first** — don't make it cache-first again (caused stale-CSS pain).
 - `server.js` is large (~1,100 lines); keep pure logic in `src/lib.js` so it stays testable.

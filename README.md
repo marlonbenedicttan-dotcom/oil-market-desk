@@ -33,12 +33,12 @@ Adding a benchmark = one row in the `BENCHMARKS` table in `server.js`.
 ## Features
 
 - **Basis** — paper vs physical per benchmark, sign-colored.
-- **Performance** — day % change on every card, plus a **10-year history** view (click any benchmark card, or use the 6M/10Y toggle).
+- **Charts** — click any commodity, gap or currency to chart it over **1M · 3M · 6M · YTD · 1Y · 5Y · 10Y**. Hover a point for its **% change** on the window; click to drop an anchor and measure between two. Every tile carries a 6-month sparkline.
 - **Crack spreads** — gasoline, diesel and 3-2-1 refining margins ($/bbl), from product × 42 − crude.
 - **Insights** — a plain-English panel reading the numbers for prices *and* shipping.
 - **Alerts** — flags when a basis, spread or crack breaks a threshold (with desktop notifications).
 - **Live tanker map** — free AIS positions, filtered to tankers (types 80–89).
-- **Global macro** — US & ECB rates, US inflation/growth, a **14-pair currencies board** (majors, EM & commodity currencies), live **commodity↔currency link** checks (does AUD still track copper? does CAD still track oil?), and a copper/gold growth proxy.
+- **Global macro** — US & ECB rates, US inflation/growth, a **14-pair currencies board** (majors, EM & commodity currencies) where **every currency charts over time**, live **commodity↔currency link** checks (does AUD still track copper? does CAD still track oil?), and a copper/gold growth proxy.
 
 ## What "basis" means
 
