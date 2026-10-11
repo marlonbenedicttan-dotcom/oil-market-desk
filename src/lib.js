@@ -61,7 +61,18 @@ export function realizedVol(arr, win = 30) {
   return Math.sqrt(varp) * Math.sqrt(252) * 100;
 }
 
-// Refining margins ($/bbl) from a market snapshot.
+// Back-adjust a stitched front-month series so contract rolls don't create jumps.
+// rollGaps: Map<index, gap> where a roll occurs *entering* that index (gap = old - new).
+export function backAdjust(values, rollGaps) {
+  const out = values.slice();
+  let acc = 0;
+  for (let i = out.length - 1; i >= 0; i--) {
+    out[i] = values[i] == null ? null : values[i] + acc;
+    if (rollGaps.has(i)) acc += rollGaps.get(i);
+  }
+  return out;
+}
+
 export function computeCracks(m) {
   const by = Object.fromEntries(m.benchmarks.map((b) => [b.id, b]));
   const w = by.wti, rb = by.rbob, ho = by.ulsd, jet = by.jet, G = 42;

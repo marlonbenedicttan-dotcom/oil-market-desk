@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { sgn, inBox, haversineNm, isoWeek, monthly, pctOver, percentile, realizedVol, computeCracks } from '../src/lib.js';
+import { sgn, inBox, haversineNm, isoWeek, monthly, pctOver, percentile, realizedVol, computeCracks, backAdjust } from '../src/lib.js';
 
 test('sgn formats with sign', () => {
   assert.equal(sgn(4.39), '+4.39');
@@ -39,6 +39,12 @@ test('percentile ranks a value within a series', () => {
 
 test('realizedVol returns null with too few points', () => {
   assert.equal(realizedVol([1, 2, 3], 30), null);
+});
+
+test('backAdjust removes roll jumps', () => {
+  const raw = [10, 11, 13, 14];
+  const gaps = new Map([[2, 1]]); // new − old = 13 − 12 = +1
+  assert.deepEqual(backAdjust(raw, gaps), [11, 12, 13, 14]);
 });
 
 test('computeCracks builds refining margins', () => {

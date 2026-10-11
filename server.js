@@ -5,7 +5,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { execFile } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { sgn, businessDaysSince, inBox, haversineNm, isoWeek, monthly, pctOver, percentile, realizedVol, computeCracks } from './src/lib.js';
+import { sgn, businessDaysSince, inBox, haversineNm, isoWeek, monthly, pctOver, percentile, realizedVol, computeCracks, backAdjust } from './src/lib.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC = path.join(__dirname, 'public');
@@ -170,7 +170,9 @@ async function getMarket() {
 async function getHistory() {
   const maps = {};
   await Promise.all(BENCHMARKS.map(async (b) => {
-    const [p, f] = await Promise.all([hPaperFor(b), hPhysFor(b)]);
+    const contRoot = b.id === 'wti' ? 'CL' : b.id === 'brent' ? 'BZ' : null;
+    const p = contRoot ? await getContinuous(contRoot) : await hPaperFor(b);
+    const f = await hPhysFor(b);
     maps[b.id] = { paper: p.series, physical: f };
   }));
 
@@ -369,6 +371,44 @@ async function getCurveHistory(root) {
       m1m2.push(+(series[future[0]][d] - series[future[1]][d]).toFixed(3));
     }
     return { root, dates, m1m2 };
+  });
+}
+
+// Back-adjusted continuous front-month series (removes roll jumps).
+async function getContinuous(root) {
+  return cached('cont:' + root, 6 * 3600e3, async () => {
+    const now = new Date();
+    const list = [];
+    for (let k = -24; k <= 2; k++) {
+      const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + k, 1));
+      const mk = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
+      list.push({ mk, symbol: `${root}${CURVE_MONTHS[d.getUTCMonth()]}${String(d.getUTCFullYear()).slice(2)}.NYM` });
+    }
+    const series = {};
+    for (const c of list) {
+      try { series[c.mk] = (await cached('cur:' + c.symbol, 6 * 3600e3, () => yahooSeries(c.symbol, '3y', '1d'))).series; } catch { series[c.mk] = {}; }
+    }
+    const months = Object.keys(series).filter((m) => Object.keys(series[m]).length).sort();
+    const allDates = [...new Set(months.flatMap((m) => Object.keys(series[m])))].sort();
+    const dates = [], raw = [], fronts = [];
+    for (const d of allDates) {
+      const dk = d.slice(0, 7);
+      const future = months.filter((m) => m > dk && series[m][d] != null);
+      if (!future.length) continue;
+      dates.push(d); fronts.push(future[0]); raw.push(series[future[0]][d]);
+    }
+    const gaps = new Map();
+    for (let i = 1; i < raw.length; i++) {
+      if (fronts[i] !== fronts[i - 1]) {
+        const a = series[fronts[i - 1]][dates[i]];
+        const b = series[fronts[i]][dates[i]];
+        if (a != null && b != null) gaps.set(i, b - a); // new − old
+      }
+    }
+    const adj = backAdjust(raw, gaps);
+    const out = {};
+    dates.forEach((d, i) => { out[d] = adj[i]; });
+    return { series: out };
   });
 }
 
@@ -961,6 +1001,7 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname === '/api/chokepoints') return sendJSON(res, 200, getChokepoints());
     if (url.pathname === '/api/curve') return sendJSON(res, 200, await getCurves());
     if (url.pathname === '/api/curvehistory') return sendJSON(res, 200, await getCurveHistory(url.searchParams.get('root') || 'CL').catch((e) => ({ error: String(e.message) })));
+    if (url.pathname === '/api/continuous') return sendJSON(res, 200, await getContinuous(url.searchParams.get('root') || 'CL').catch((e) => ({ error: String(e.message) })));
     if (url.pathname === '/api/tightness') return sendJSON(res, 200, await getTightness().catch((e) => ({ error: String(e.message) })));
     if (url.pathname === '/api/flows') return sendJSON(res, 200, await getFlows());
     if (url.pathname === '/api/products') return sendJSON(res, 200, await getProducts().catch((e) => ({ error: String(e.message) })));
