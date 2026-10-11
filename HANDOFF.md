@@ -146,6 +146,9 @@ Each country has a verified-live Yahoo `fx` + `index`, a World Bank `iso3`, an `
 - `server.js` is large; keep pure logic in `src/lib.js`.
 
 ## Roadmap — investor backlog (do these ONE AT A TIME; each = code + tests + deploy)
+> See **`INVESTOR-ROADMAP.md`** for the investor-value backlog (surface COT positioning, a
+> cross-asset regime board, a screener/leaderboard, custom alerts, an economic calendar) — written
+> after a full review. It supersedes this list in priority; #9 here is cosmetic.
 Agreed order (impact-weighted):
 1. ~~**Deltas + freshness everywhere** — every number shows chg vs 1d/1w/1m/YTD/1y, plus a source + as-of badge.~~ **DONE (2026-10-12)** — pure `horizonDeltas` in `src/lib.js`; `/api/history` carries per-instrument deltas, `/api/market` rows carry source + as-of, `/api/country` + `/api/region-quotes` carry deltas; instrument tiles, segment snapshot, top ticker, country cards and the region currency board all show a 1D/1W/1M/YTD/1Y strip + a source/as-of badge. Deltas come from a 2-year daily window (a plain 1y range leaves the 1Y move null). The macro marquee tape stays 1D; structure data (inventories/curve/COT) keeps its existing as-of labels.
 2. ~~**Fundamental "stretch" score** — rebuild the score from curve + basis + inventories-vs-seasonal (not just price range/vol), or rename it "price stretch".~~ **DONE (2026-10-12)** — split into two honest scores: **price stretch** (price range + vol, renamed) and **physical tightness** (curve + real-vs-futures basis + stocks-vs-seasonal, re-weighted over whatever exists; pure helpers `curveTightness`/`inventoryTightness`/`weightedScore` in `src/lib.js`). Precious metals are excluded from the curve input (their curve is rates/carry, not tightness) so they show "no free data" rather than a fake number. Metals/ags are curve-only; the panel notes what's missing.
