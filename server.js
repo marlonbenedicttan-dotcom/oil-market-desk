@@ -1220,12 +1220,12 @@ async function getCountry(id) {
     const quote = async (sym) => { try { const { price, series } = await cached('q:' + sym, 120e3, () => yahooSeries(sym, '5d', '1d')); const d = Object.keys(series).sort(); const a = series[d[d.length - 1]], b = series[d[d.length - 2]]; return { price: a ?? price ?? null, pct: a != null && b ? ((a - b) / b) * 100 : null }; } catch { return { price: null, pct: null }; } };
     const rk = COUNTRY_MACRO_REGION[id];
     // Everything independent runs CONCURRENTLY — the whole panel in one round trip.
-    const [fx, idx, gdpGrowth, debtToGdp, inflation, unemployment, cs, mn, oilLink, macroMd, policy] = await Promise.all([
+    const [fx, idx, gdpGrowth, debtToGdp, cpiSeries, unemployment, cs, mn, oilLink, macroMd, policy] = await Promise.all([
       quote(c.fx),
       c.index ? quote(c.index) : Promise.resolve({ price: null, pct: null }),
       wbSeries(c.iso3, 'NY.GDP.MKTP.KD.ZG'),
       wbLatest(c.iso3, 'GC.DOD.TOTL.GD.ZS'),
-      wbLatest(c.iso3, 'FP.CPI.TOTL.ZG'),
+      wbSeries(c.iso3, 'FP.CPI.TOTL.ZG'),
       wbLatest(c.iso3, 'SL.UEM.TOTL.ZS'),
       getCountrySeries(id, '1y').catch(() => ({})),
       getMacroNews(id).catch(() => ({ items: [] })),
@@ -1234,6 +1234,7 @@ async function getCountry(id) {
       getPolicyRate(BIS_AREA[id]).catch(() => null),
     ]);
     const chg = (arr) => { const f = (arr || []).find((v) => v != null); const l = [...(arr || [])].reverse().find((v) => v != null); return f && l ? ((l - f) / f) * 100 : null; };
+    const inflation = cpiSeries.length ? cpiSeries[cpiSeries.length - 1] : null;
     const perf = { index: chg(cs.index), fx: chg(cs.fx) };
     const macro = macroMd ? (macroMd.regions?.[rk] || null) : null;
     const takes = [];
@@ -1249,6 +1250,7 @@ async function getCountry(id) {
       id, label: c.label, region: c.region, iso3: c.iso3, oil: c.oil,
       fx: { label: c.fxLabel, sym: c.fx, ...fx }, index: { label: c.indexLabel, sym: c.index, ...idx },
       macro, oilLink, perf, takeaways: takes, policy, policyNote: POLICY_NOTE[id] || null,
+      cpi: cpiSeries.slice(-25),   // annual CPI inflation %, World Bank
       fund: { gdpGrowth: gdpGrowth.slice(-6), debtToGdp, inflation, unemployment, source: 'World Bank (annual)' },
     };
   });

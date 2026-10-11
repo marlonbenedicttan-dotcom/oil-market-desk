@@ -1083,6 +1083,7 @@ async function loadCountry() {
   loadMacroNews();
   loadCountryChart();
   renderPolicyChart(c.policy, c.policyNote);
+  renderCpiChart(c.cpi);
 }
 // Per-country chart: equity index and currency, both indexed to 100 so they compare.
 async function loadCountryChart() {
@@ -1123,6 +1124,21 @@ function renderPolicyChart(policy, policyNote) {
   const opts = { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false }, plugins: { legend: { display: false }, tooltip: { callbacks: { title: (it) => (it.length ? it[0].label : ''), label: (ctx) => `policy rate ${ctx.parsed.y}%` } } }, scales: { x: { ticks: { color: '#7c8a99', maxTicksLimit: 8 }, grid: { color: '#151a20' } }, y: { ticks: { color: '#7c8a99', callback: (v) => v + '%' }, grid: { color: '#151a20' } } } };
   if (policyChart) { policyChart.data = data; policyChart.update(); return; }
   policyChart = new Chart(cv, { type: 'line', data, options: opts });
+}
+// CPI — annual inflation % per country (World Bank), hover shows year + %.
+let cpiChart = null;
+function renderCpiChart(cpi) {
+  const cv = $('cpi-chart');
+  if (!cv) return;
+  const wrap = cv.parentElement;
+  const note = $('cpi-note');
+  if (!cpi || !cpi.length) { if (wrap) wrap.style.display = 'none'; if (note) note.textContent = 'no free CPI series for this country'; return; }
+  if (wrap) wrap.style.display = '';
+  if (note) note.textContent = `latest ${cpi[cpi.length - 1].value}% (${cpi[cpi.length - 1].year})`;
+  const data = { labels: cpi.map((d) => String(d.year)), datasets: [{ label: 'CPI YoY %', data: cpi.map((d) => d.value), borderColor: '#c06bff', backgroundColor: '#c06bff22', borderWidth: 2, pointRadius: 0, tension: 0.25, fill: false }] };
+  const opts = { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false }, plugins: { legend: { display: false }, tooltip: { callbacks: { title: (it) => (it.length ? it[0].label : ''), label: (ctx) => `inflation ${ctx.parsed.y}%` } } }, scales: { x: { ticks: { color: '#7c8a99', maxTicksLimit: 10 }, grid: { color: '#151a20' } }, y: { ticks: { color: '#7c8a99', callback: (v) => v + '%' }, grid: { color: '#151a20' } } } };
+  if (cpiChart) { cpiChart.data = data; cpiChart.update(); return; }
+  cpiChart = new Chart(cv, { type: 'line', data, options: opts });
 }
 // Cross-asset transmission block — shared by segments and macro regions.
 function crossAssetBlock(pred, title) {
@@ -1266,7 +1282,7 @@ function showTab(name) {
     if (map) setTimeout(() => map.invalidateSize(), 80);
     if (crackHistChart && currentMarket === 'refined') setTimeout(() => crackHistChart.resize(), 80);
   }
-  if (name === 'macro') { loadMacroTickers(); if (macroChart) setTimeout(() => macroChart.resize(), 60); if (policyChart) setTimeout(() => policyChart.resize(), 70); }
+  if (name === 'macro') { loadMacroTickers(); if (macroChart) setTimeout(() => macroChart.resize(), 60); if (policyChart) setTimeout(() => policyChart.resize(), 70); if (cpiChart) setTimeout(() => cpiChart.resize(), 80); }
   if (data) renderTicker(data);
 }
 
