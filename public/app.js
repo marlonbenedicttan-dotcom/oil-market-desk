@@ -1021,11 +1021,10 @@ function renderMacroRegion() {
   loadCountry();
 }
 async function loadMacroTickers() {
-  const req = macroRegion;                       // guard: newest region wins
+  // the macro tape shows EVERY macro ticker (all regions) so it is never sparse
   let items = null;
-  try { items = (await getJSON('/api/region-quotes?id=' + req)).items || []; } catch { items = null; }
-  if (req !== macroRegion) return;
-  macroTickers = items;
+  try { items = (await getJSON('/api/macro-tickers')).items || []; } catch { items = null; }
+  if (items) macroTickers = items;
   if (data) renderTicker(data);
 }
 async function loadCountry() {

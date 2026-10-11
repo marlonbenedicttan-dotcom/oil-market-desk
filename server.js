@@ -923,31 +923,31 @@ async function getCurves() {
 const MARKET_CONTENT = {
   crude:      { tightQ: 'IS CRUDE TIGHT?', catalysts: ['OPEC+ monthly meeting', 'EIA weekly US oil stocks (Wed 10:30am New York)', 'refinery run rates & product cracks'], watch: ['Whether the real-vs-futures gap widens (physical tightness)', 'Ships avoiding the Red Sea and going around Africa'],
     sectorsUp: ['Oil & gas producers', 'Oil services & drilling', 'Refiners'], sectorsDown: ['Airlines', 'Trucking & logistics', 'Chemicals & plastics'],
-    tickersUp: ['XOM', 'CVX', 'COP', 'SLB', 'VLO'], tickersDown: ['DAL', 'UAL', 'AAL', 'FDX', 'LYB'],
+    tickersUp: ['XOM', 'CVX', 'COP', 'SLB', 'XLE', 'OIH', 'PBR', 'SU'], tickersDown: ['DAL', 'UAL', 'AAL', 'FDX', 'JETS', 'LYB'],
     ideas: 'Backwardated, tight crude normally favours producers, oil services and refiners, and squeezes fuel-cost-heavy businesses — airlines, logistics and petrochemicals.' },
   refined:    { tightQ: 'ARE REFINED FUELS TIGHT?', catalysts: ['US summer driving season', 'heating-season demand', 'refinery outages & turnarounds', 'jet-fuel demand as travel recovers'], watch: ['Whether the diesel/gasoline cracks stay unusually wide', 'Refinery utilisation & unplanned outages'],
     sectorsUp: ['Refiners', 'Refined-product tankers'], sectorsDown: ['Airlines', 'Trucking & logistics', 'Consumers at the pump'],
-    tickersUp: ['VLO', 'PSX', 'MPC', 'DINO'], tickersDown: ['DAL', 'UAL', 'FDX', 'UPS'],
+    tickersUp: ['VLO', 'PSX', 'MPC', 'DINO', 'CRAK', '0386.HK'], tickersDown: ['DAL', 'UAL', 'FDX', 'UPS', 'JETS'],
     ideas: 'Wide cracks mean refiners earn more per barrel — good for refiners and product tankers, painful for airlines, truckers and drivers.' },
   gas:        { tightQ: 'IS NATURAL GAS TIGHT?', catalysts: ['weather (heating & cooling demand)', 'EIA gas storage (Thursday)', 'LNG export volumes'], watch: ['Storage vs the 5-year average', 'LNG feedgas demand'],
     sectorsUp: ['Gas producers', 'Gas pipelines & midstream'], sectorsDown: ['Utilities', 'Heavy industry & fertiliser'],
-    tickersUp: ['EQT', 'AR', 'CTRA', 'WMB'], tickersDown: ['UTG', 'CF'],
+    tickersUp: ['EQT', 'AR', 'CTRA', 'WMB', 'UNG', 'FCG', '0883.HK'], tickersDown: ['XLU', 'CF'],
     ideas: 'Tight gas (low storage) lifts producers and midstream; it raises fuel and feedstock costs for utilities, industry and fertiliser makers.' },
   precious:   { tightQ: 'ARE PRECIOUS METALS STRETCHED?', catalysts: ['the Fed rate path & real yields', 'the US dollar', 'ETF flows & central-bank buying'], watch: ['Real yields — the main gold driver', 'The gold/silver ratio'],
     sectorsUp: ['Gold & silver miners', 'Royalty & streaming'], sectorsDown: ['No direct loser — a store of value, not an input'],
-    tickersUp: ['NEM', 'AEM', 'GDX', 'WPM'], tickersDown: [],
+    tickersUp: ['NEM', 'AEM', 'GDX', 'GDXJ', 'WPM', 'GOLD', 'GFI', 'HMY'], tickersDown: ['SIG'],
     ideas: 'Precious metals are a store of value, not an input — a strong run usually means fear or falling real yields. Mainly helps miners; there is no direct corporate loser.' },
   industrial: { tightQ: 'IS COPPER TIGHT?', catalysts: ['China demand & stimulus', 'mine supply & strikes', 'exchange warehouse stocks'], watch: ['China property & grid spending', 'Low exchange inventories'],
     sectorsUp: ['Copper miners', 'Electrification & grid suppliers'], sectorsDown: ['Construction', 'Autos & machinery'],
-    tickersUp: ['FCX', 'SCCO', 'RIO', 'BHP'], tickersDown: ['CAT', 'DE'],
+    tickersUp: ['FCX', 'SCCO', 'RIO', 'BHP', 'COPX', 'PICK', 'VEDL.NS', '3993.HK'], tickersDown: ['CAT', 'DE', 'PKB'],
     ideas: 'Copper is a growth barometer — tight copper helps miners and signals firm industrial demand; it raises costs for construction, autos and machinery.' },
   grains:     { tightQ: 'ARE GRAINS TIGHT?', catalysts: ['USDA WASDE report (monthly)', 'crop weather (US, Brazil, Black Sea)', 'weekly export sales'], watch: ['US crop conditions & the WASDE print', 'Black-Sea export flows'],
     sectorsUp: ['Farm equipment & inputs', 'Grain traders & processors'], sectorsDown: ['Food makers', 'Livestock & protein (feed cost)', 'Ethanol'],
-    tickersUp: ['DE', 'ADM', 'BG', 'CF'], tickersDown: ['TSN', 'KHC', 'MDLZ'],
+    tickersUp: ['DE', 'ADM', 'BG', 'CF', 'MOS', 'MOO', 'DBA', 'F34.SI'], tickersDown: ['TSN', 'KHC', 'MDLZ'],
     ideas: 'Tight grain is a farmer/producer win and a food-inflation problem — it lifts inputs and processors, and squeezes food makers and livestock feeders.' },
   softs:      { tightQ: 'ARE SOFTS TIGHT?', catalysts: ['harvest weather (Brazil, West Africa, SE Asia)', 'El Niño / La Niña', 'export & shipping'], watch: ['Brazil & West-African harvests', 'Weather anomalies (El Niño / La Niña)'],
     sectorsUp: ['Soft-commodity traders & processors', 'Sugar & coffee producers'], sectorsDown: ['Food & beverage makers', 'Chocolate & confectionery'],
-    tickersUp: ['ADM', 'BG'], tickersDown: ['SBUX', 'HSY', 'MDLZ'],
+    tickersUp: ['ADM', 'BG', 'JO', 'SGG', 'NIB', 'BAL', 'F34.SI'], tickersDown: ['SBUX', 'HSY', 'MDLZ'],
     ideas: 'Poor harvests lift softs (good for producers & traders) and raise input costs for food, beverage and confectionery companies.' },
 };
 function rollingVolPctile(values, win = 30) {
@@ -1156,6 +1156,18 @@ async function getCountrySeries(id, range = '1y') {
   });
 }
 
+// Every macro ticker (all regions) — so the macro tape is never sparse.
+async function getMacroTickers() {
+  return cached('macrotickers', 120e3, async () => {
+    const q = async (sym) => { try { const { price, series } = await cached('q:' + sym, 120e3, () => yahooSeries(sym, '5d', '1d')); const d = Object.keys(series).sort(); const a = series[d[d.length - 1]], b = series[d[d.length - 2]]; return { price: a ?? price ?? null, pct: a != null && b ? ((a - b) / b) * 100 : null }; } catch { return { price: null, pct: null }; } };
+    const items = (await Promise.all(Object.values(ALL_COUNTRIES).map(async (c) => {
+      const arr = [{ id: c.id, label: c.fxLabel.replace(/\s*·.*/, ''), ...(await q(c.fx)) }];
+      if (c.index) arr.push({ id: c.id, label: c.indexLabel, ...(await q(c.index)) });
+      return arr;
+    }))).flat();
+    return { items };
+  });
+}
 // Tickers for ONE region — every country's currency + equity index (region tape).
 async function getRegionTickers(region) {
   const list = MACRO_COUNTRIES[region] || [];
@@ -1867,6 +1879,7 @@ const server = http.createServer(async (req, res) => {
       return sendJSON(res, 200, await getMacroNews(id).catch((e) => ({ error: String(e.message), items: [] })));
     }
     if (url.pathname === '/api/countries') return sendJSON(res, 200, MACRO_COUNTRIES);
+    if (url.pathname === '/api/macro-tickers') return sendJSON(res, 200, await getMacroTickers().catch((e) => ({ error: String(e.message), items: [] })));
     if (url.pathname === '/api/region-quotes') {
       const id = url.searchParams.get('id');
       if (!MACRO_COUNTRIES[id]) return sendJSON(res, 404, { error: 'unknown region' });
