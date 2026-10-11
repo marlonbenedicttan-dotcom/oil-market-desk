@@ -347,14 +347,46 @@ function renderChokepoints(d) {
   $('chokepoints').innerHTML = '<div class="chokes-h dimtext">TANKERS IN CHOKEPOINTS (live)</div>' +
     d.chokepoints.map((c) => `<span class="choke"><b>${c.count}</b> ${c.name}</span>`).join('');
 }
+function curveBlock(name, c) {
+  if (!c?.contracts || c.contracts.length < 2) return '';
+  const prices = c.contracts.map((x) => x.price);
+  const max = Math.max(...prices), min = Math.min(...prices);
+  const rows = c.contracts.slice(0, 9).map((x) => {
+    const w = ((x.price - min) / (max - min || 1)) * 100;
+    return `<div class="cbar"><span class="cl">${x.label}</span><span class="cb"><i style="width:${Math.max(w, 4)}%"></i></span><span class="cp">${x.price.toFixed(2)}</span></div>`;
+  }).join('');
+  return `<div class="curve-blk"><div class="curve-h">${name} — <b class="${c.m1m2 >= 0 ? 'pos' : 'neg'}">${c.shape}</b> · M1−M2 <b class="${cls(c.m1m2)}">${signed(c.m1m2, 2)}</b>${c.m1m6 != null ? ` · M1−M6 <b class="${cls(c.m1m6)}">${signed(c.m1m6, 2)}</b>` : ''}${c.rollYieldAnn != null ? ` · roll ${signed(c.rollYieldAnn, 1)}%/yr` : ''}</div>${rows}</div>`;
+}
+function renderCurve(d) { if (!d) return; $('curve').innerHTML = curveBlock('WTI (CL)', d.wti) + curveBlock('Brent (BZ)', d.brent); }
+function renderAnalogue(a) {
+  if (!a || a.error) { $('analogue').innerHTML = `<div class="dimtext" style="padding:10px 12px">${a?.error || 'loading…'}</div>`; return; }
+  const rows = a.horizons.map((h) => (h.n
+    ? `<tr><td>${h.h}d</td><td>${h.n}</td><td class="${cls(h.median)}">${signed(h.median, 2)}</td><td>${h.q25.toFixed(2)} … ${h.q75.toFixed(2)}</td><td>${h.pctUp.toFixed(0)}%</td></tr>`
+    : `<tr><td>${h.h}d</td><td colspan="4" class="dimtext">no analogues</td></tr>`)).join('');
+  const h20 = a.horizons.find((x) => x.h === 20);
+  let verdict = '';
+  if (h20 && h20.n) {
+    const rev = a.pct >= 80 ? (h20.median < 0 ? 'REVERTED' : 'continued HIGHER') : a.pct <= 20 ? (h20.median > 0 ? 'REVERTED UP' : 'continued LOWER') : 'showed no strong edge';
+    verdict = `At the ${a.pct.toFixed(0)}th percentile, over 20 days this metric historically <b>${rev}</b> (median ${signed(h20.median, 2)}, ${h20.pctUp.toFixed(0)}% up).`;
+  }
+  $('analogue').innerHTML =
+    `<div class="an-head">Current = <b>${a.current.toFixed(2)}</b> · ${a.pct.toFixed(0)}th pctile · z ${a.z.toFixed(2)} · <b>${a.analogN}</b> analogous days in ${a.years}y</div>` +
+    `<table class="antable"><thead><tr><th>Horizon</th><th>N</th><th>Median fwd</th><th>IQR</th><th>P(up)</th></tr></thead><tbody>${rows}</tbody></table>` +
+    `<div class="an-verdict">${verdict}</div>`;
+}
+async function loadAnalogue() {
+  try { renderAnalogue(await getJSON('/api/analogue?metric=' + encodeURIComponent($('an-metric').value))); }
+  catch (e) { showError(e.message); }
+}
 async function loadExtra() {
   try {
-    const [inv, pos, eq, chk, an] = await Promise.all([
+    const [inv, pos, eq, chk, an, cv] = await Promise.all([
       getJSON('/api/inventories').catch(() => null),
       getJSON('/api/positioning').catch(() => null),
       getJSON('/api/equities').catch(() => null),
       getJSON('/api/chokepoints').catch(() => null),
       getJSON('/api/analytics').catch(() => null),
+      getJSON('/api/curve').catch(() => null),
     ]);
     analytics = an;
     renderContext(data, an);
@@ -362,6 +394,7 @@ async function loadExtra() {
     renderPositioning(pos);
     renderSectors(eq, data, an, tankerInfo);
     renderChokepoints(chk);
+    renderCurve(cv);
   } catch (e) { showError(e.message); }
 }
 
@@ -376,6 +409,7 @@ async function refreshAll() {
 $('refresh').addEventListener('click', () => { nextRefresh = 60; refreshAll(); });
 $('metric').addEventListener('change', () => { localStorage.setItem('oilbasis.metric', $('metric').value); renderChart(); });
 $('range').addEventListener('change', renderChart);
+$('an-metric').addEventListener('change', loadAnalogue);
 $('help-btn').addEventListener('click', () => { const g = $('glossary'); g.innerHTML = GLOSSARY; g.classList.toggle('hidden'); });
 $('cards').addEventListener('click', (e) => {
   const card = e.target.closest('.card[data-id]');
@@ -393,6 +427,7 @@ $('cards').addEventListener('click', (e) => {
   if ('Notification' in window && Notification.permission === 'default') { try { await Notification.requestPermission(); } catch {} }
   await loadHistory().catch((e) => showError(e.message));
   await refreshAll();
+  loadAnalogue();
   setInterval(loadTankers, 15000);
   setInterval(() => { nextRefresh -= 5; if (nextRefresh <= 0) { nextRefresh = 60; refreshAll(); } $('countdown').textContent = `auto ${nextRefresh}s`; }, 5000);
 })();

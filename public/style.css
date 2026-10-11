@@ -163,6 +163,25 @@ footer li { margin-bottom: 2px; }
 .choke b { color: var(--amber); }
 .disc { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--line); font-size: 10.5px; }
 
+/* Term structure */
+.curve { padding: 10px 12px; display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+@media (max-width: 760px) { .curve { grid-template-columns: 1fr; } }
+.curve-h { font-size: 12px; margin-bottom: 6px; }
+.cbar { display: grid; grid-template-columns: 40px 1fr 64px; align-items: center; gap: 8px; font-size: 11px; margin: 2px 0; }
+.cl { color: var(--dim); }
+.cb { height: 8px; background: #0f1318; border: 1px solid var(--line); position: relative; }
+.cb i { position: absolute; left: 0; top: 0; bottom: 0; background: #2f6fb0; }
+.cp { text-align: right; font-variant-numeric: tabular-nums; }
+
+/* Analogue */
+.analogue { padding: 10px 12px; }
+.an-head { font-size: 12px; color: #c9d4df; margin-bottom: 8px; }
+.antable { width: 100%; border-collapse: collapse; font-size: 12px; font-variant-numeric: tabular-nums; }
+.antable th { text-align: left; color: var(--amber); font-size: 10px; letter-spacing: 1px; border-bottom: 1px solid var(--line2); padding: 4px 6px; }
+.antable td { padding: 5px 6px; border-bottom: 1px solid var(--line); }
+.antable td:not(:first-child), .antable th:not(:first-child) { text-align: right; }
+.an-verdict { margin-top: 8px; padding: 7px 9px; border: 1px solid var(--line); background: var(--panel2); font-size: 12px; }
+
 .glossary { background: var(--panel2); border: 1px solid var(--line); padding: 12px 14px; margin: 12px; }
 .glossary dl { margin: 0; display: grid; grid-template-columns: max-content 1fr; gap: 5px 16px; }
 .glossary dt { color: var(--amber); font-weight: 700; }

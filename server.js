@@ -378,6 +378,93 @@ async function getAnalytics(freight = FREIGHT_DEFAULT) {
 }
 
 // ---------------------------------------------------------------------------
+// Term structure (futures curve from Yahoo contract-month symbols)
+// ---------------------------------------------------------------------------
+const MONTH_CODE = ['F', 'G', 'H', 'J', 'K', 'M', 'N', 'Q', 'U', 'V', 'X', 'Z'];
+async function curveFor(root) {
+  const now = new Date();
+  const out = [];
+  for (let k = 0; k < 14; k++) {
+    const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + k, 1));
+    const symbol = `${root}${MONTH_CODE[d.getUTCMonth()]}${String(d.getUTCFullYear()).slice(2)}.NYM`;
+    try {
+      const q = await cached('cur:' + symbol, 300_000, () => yahooSeries(symbol, '5d', '1d'));
+      if (q.price != null) out.push({ label: symbol.slice(root.length, root.length + 3), price: q.price });
+    } catch {}
+  }
+  return out;
+}
+async function getCurves() {
+  return cached('curves', 120_000, async () => {
+    const build = (c) => {
+      if (c.length < 2) return { contracts: c };
+      return {
+        contracts: c,
+        m1m2: c[0].price - c[1].price,
+        m1m6: c.length > 5 ? c[0].price - c[5].price : null,
+        m1m12: c.length > 11 ? c[0].price - c[11].price : null,
+        shape: c[0].price >= c[1].price ? 'Backwardation' : 'Contango',
+        rollYieldAnn: c[1].price ? Math.log(c[0].price / c[1].price) * 12 * 100 : null,
+      };
+    };
+    const [wti, brent] = await Promise.all([curveFor('CL'), curveFor('BZ')]);
+    return { wti: build(wti), brent: build(brent) };
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Analogue / expected-move engine
+// ---------------------------------------------------------------------------
+async function metricDaily(metric, years) {
+  if (metric.startsWith('basis:')) {
+    const b = BENCHMARKS.find((x) => x.id === metric.slice(6));
+    if (!b || !b.paper) return null;
+    const pm = (await cached(`anp:${b.paper}:${years}`, 12 * 3600e3, () => yahooSeries(b.paper, `${years}y`, '1d'))).series;
+    const fm = await cached(`anf:${b.physical}:${years}`, 12 * 3600e3, () => spotSeries(b, years * 366));
+    const dates = Object.keys(pm).filter((d) => fm[d] != null).sort();
+    return { dates, values: dates.map((d) => fm[d] - pm[d]) };
+  }
+  if (metric === 'spread:brent_wti') {
+    const wti = BENCHMARKS.find((x) => x.id === 'wti'), brent = BENCHMARKS.find((x) => x.id === 'brent');
+    const wf = await cached(`anf:${wti.physical}:${years}`, 12 * 3600e3, () => spotSeries(wti, years * 366));
+    const bf = await cached(`anf:${brent.physical}:${years}`, 12 * 3600e3, () => spotSeries(brent, years * 366));
+    const dates = Object.keys(wf).filter((d) => bf[d] != null).sort();
+    return { dates, values: dates.map((d) => bf[d] - wf[d]) };
+  }
+  return null;
+}
+function summarizeFwd(h, fwds) {
+  if (!fwds.length) return { h, n: 0 };
+  const s = [...fwds].sort((a, b) => a - b);
+  const down = fwds.filter((x) => x < 0).length;
+  return {
+    h, n: fwds.length,
+    median: s[Math.floor(s.length / 2)], mean: fwds.reduce((a, b) => a + b, 0) / fwds.length,
+    q25: s[Math.floor(s.length * 0.25)], q75: s[Math.floor(s.length * 0.75)],
+    pctDown: (down / fwds.length) * 100, pctUp: ((fwds.length - down) / fwds.length) * 100,
+  };
+}
+async function getAnalogue(metric, years = 10) {
+  return cached(`an:${metric}:${years}`, 12 * 3600e3, async () => {
+    const series = await metricDaily(metric, years);
+    if (!series || series.values.length < 80) return { error: 'insufficient data', metric };
+    const { values } = series;
+    const cur = values[values.length - 1];
+    const sorted = [...values].sort((a, b) => a - b);
+    const pctOf = (v) => (sorted.filter((x) => x <= v).length / values.length) * 100;
+    const curPct = pctOf(cur);
+    const avg = values.reduce((a, b) => a + b, 0) / values.length;
+    const sd = Math.sqrt(values.reduce((a, b) => a + (b - avg) ** 2, 0) / values.length);
+    const z = sd ? (cur - avg) / sd : 0;
+    const analog = [];
+    for (let i = 0; i < values.length; i++) if (Math.abs(pctOf(values[i]) - curPct) <= 10) analog.push(i);
+    const horizons = [5, 20, 60].map((h) => summarizeFwd(h, analog.filter((i) => i + h < values.length).map((i) => values[i + h] - values[i])));
+    const baseline = [5, 20, 60].map((h) => { const f = []; for (let i = 0; i + h < values.length; i++) f.push(values[i + h] - values[i]); return summarizeFwd(h, f); });
+    return { metric, years, current: cur, pct: curPct, z, n: values.length, analogN: analog.length, horizons, baseline };
+  });
+}
+
+// ---------------------------------------------------------------------------
 // Live tanker tracking via aisstream.io (free key required)
 // ---------------------------------------------------------------------------
 const tankers = new Map();
@@ -452,6 +539,8 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname === '/api/positioning') return sendJSON(res, 200, await getPositioning());
     if (url.pathname === '/api/equities') return sendJSON(res, 200, await getEquities());
     if (url.pathname === '/api/chokepoints') return sendJSON(res, 200, getChokepoints());
+    if (url.pathname === '/api/curve') return sendJSON(res, 200, await getCurves());
+    if (url.pathname === '/api/analogue') return sendJSON(res, 200, await getAnalogue(url.searchParams.get('metric') || 'basis:brent', Math.min(15, Math.max(2, Number(url.searchParams.get('years')) || 10))));
     if (url.pathname === '/api/analytics') return sendJSON(res, 200, await getAnalytics(Number(url.searchParams.get('freight')) || FREIGHT_DEFAULT));
     if (url.pathname === '/api/export.csv') {
       const [m, a] = await Promise.all([getMarket(), getAnalytics()]);

@@ -41,6 +41,11 @@
       <div id="context" class="ctx"></div>
     </section>
 
+    <section class="panel">
+      <div class="ph"><span class="ph-t">TERM STRUCTURE</span><span class="dimtext">FUTURES CURVE — THE PHYSICAL TELL</span></div>
+      <div id="curve" class="curve"></div>
+    </section>
+
     <div id="cards"></div>
 
     <section class="panel">
@@ -60,6 +65,13 @@
     <section class="panel">
       <div class="ph"><span class="ph-t">POSITIONING</span><span class="dimtext">CFTC · managed money net</span></div>
       <div id="positioning" class="ctx"></div>
+    </section>
+
+    <section class="panel">
+      <div class="ph"><span class="ph-t">ANALOGUE / EXPECTED MOVE</span>
+        <select id="an-metric"><option value="basis:brent">Brent basis</option><option value="basis:wti">WTI basis</option><option value="spread:brent_wti">Brent−WTI (physical)</option></select>
+      </div>
+      <div id="analogue" class="analogue"></div>
     </section>
 
     <section class="panel">
