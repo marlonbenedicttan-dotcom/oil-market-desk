@@ -273,19 +273,37 @@ async function eiaStocks(id, weeks = 320) {
   if (!res.ok) throw new Error(`eia stocks ${id} -> ${res.status}`);
   return ((await res.json()).response?.data || []).map((r) => ({ period: r.period, value: parseFloat(r.value) }));
 }
+function isoWeek(d) {
+  const date = new Date(d + 'T00:00:00Z');
+  const day = (date.getUTCDay() + 6) % 7;
+  date.setUTCDate(date.getUTCDate() - day + 3);
+  const firstThu = new Date(Date.UTC(date.getUTCFullYear(), 0, 4));
+  const fday = (firstThu.getUTCDay() + 6) % 7;
+  firstThu.setUTCDate(firstThu.getUTCDate() - fday + 3);
+  return 1 + Math.round((date - firstThu) / (7 * 864e5));
+}
 async function getInventories() {
   return cached('inventories', 6 * 3600e3, async () => {
     const results = await Promise.all(Object.entries(INV_SERIES).map(async ([k, s]) => [k, await eiaStocks(s.id)]));
     const items = [];
     for (const [k, arr] of results) {
-      if (!arr.length) continue;
+      if (arr.length < 10) continue;
       const last = arr[arr.length - 1];
       const prev = arr[arr.length - 2];
       const wk4 = arr[arr.length - 5];
+      // WoW changes, then a same-week (ISO) 5-year seasonal average → surprise proxy for consensus.
+      const wows = [];
+      for (let i = 1; i < arr.length; i++) wows.push({ period: arr[i].period, wow: arr[i].value - arr[i - 1].value });
+      const targetWk = isoWeek(last.period);
+      const sameWeek = wows.filter((w) => isoWeek(w.period) === targetWk);
+      const seasonal = sameWeek.length >= 3 ? sameWeek.reduce((a, b) => a + b.wow, 0) / sameWeek.length : null;
+      const wow = prev ? last.value - prev.value : null;
       items.push({
         key: k, label: INV_SERIES[k].label, period: last.period, value: last.value,
-        wow: prev ? last.value - prev.value : null,
-        chg4: wk4 ? last.value - wk4.value : null,
+        wow, chg4: wk4 ? last.value - wk4.value : null,
+        seasonal: seasonal != null ? Math.round(seasonal) : null,
+        surprise: seasonal != null && wow != null ? Math.round(wow - seasonal) : null,
+        years: sameWeek.length,
       });
     }
     return { items, fetched: new Date().toISOString() };
@@ -554,8 +572,11 @@ function startAIS() {
 // Server-side alerts + daily digest (notifications, webhook, email)
 // ---------------------------------------------------------------------------
 const DIGEST_LOG = path.join(__dirname, 'digest.log');
+const STATE_FILE = path.join(__dirname, '.state.json');
 const alertSeen = new Map();
-let lastDigestDate = null;
+const loadState = () => { try { return JSON.parse(fs.readFileSync(STATE_FILE, 'utf8')); } catch { return {}; } };
+const savedState = loadState();
+let lastDigestDate = savedState.lastDigestDate || null;
 let lastDigest = '';
 
 async function computeServerAlerts() {
@@ -631,6 +652,7 @@ async function maybeSendDigest() {
     const today = now.toISOString().slice(0, 10);
     if (now.getHours() >= hr && lastDigestDate !== today) {
       lastDigestDate = today;
+      try { fs.writeFileSync(STATE_FILE, JSON.stringify({ lastDigestDate })); } catch {}
       lastDigest = await buildDigest();
       await deliver('digest', 'Oil Basis · daily digest', lastDigest);
     }

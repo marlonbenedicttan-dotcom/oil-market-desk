@@ -299,10 +299,14 @@ function renderContext(m, a) {
 }
 function renderInventories(d) {
   if (!d || !d.items?.length) { $('inventories').innerHTML = '<div class="dimtext" style="padding:10px 12px">EIA key needed, or no data.</div>'; return; }
-  $('inv-date').textContent = 'EIA · week of ' + d.items[0].period;
+  $('inv-date').textContent = 'EIA · week of ' + d.items[0].period + ' · vs 5yr seasonal';
   const fmtN = (v) => (v == null ? '—' : (v >= 0 ? '+' : '') + v.toLocaleString(undefined, { maximumFractionDigits: 0 }));
-  const rows = d.items.map((i) => `<div class="t inv"><span class="inv-l">${i.label}</span><span class="num">${i.value.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span><span class="num ${cls(i.wow)}">${fmtN(i.wow)}</span><span class="num ${cls(i.chg4)}">${fmtN(i.chg4)}</span></div>`).join('');
-  $('inventories').innerHTML = `<div class="t inv h"><span class="inv-l">SERIES (Mbbl)</span><span class="num">LEVEL</span><span class="num">WoW</span><span class="num">4-WK</span></div>` + rows;
+  const rows = d.items.map((i) => {
+    const sur = i.surprise;
+    const tag = sur == null ? '<span class="dimtext">—</span>' : `<span class="${sur < 0 ? 'pos' : 'neg'}">${fmtN(sur)} ${sur < 0 ? '◀ draw' : '▶ build'}</span>`;
+    return `<div class="t inv"><span class="inv-l">${i.label}</span><span class="num">${i.value.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span><span class="num ${cls(i.wow)}">${fmtN(i.wow)}</span><span class="num">${tag}</span></div>`;
+  }).join('');
+  $('inventories').innerHTML = `<div class="t inv h"><span class="inv-l">SERIES (Mbbl)</span><span class="num">LEVEL</span><span class="num">WoW</span><span class="num">SURPRISE vs 5yr</span></div>` + rows;
 }
 function sparkline(vals, w = 240, h = 40) {
   const xs = vals.filter((v) => v != null);
