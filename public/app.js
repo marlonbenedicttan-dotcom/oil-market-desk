@@ -14,6 +14,10 @@ let markets = [];       // commodity markets (from /api/markets) — Big Picture
 let currentMarket = 'crude';   // which segment the page is showing
 let marketRead = null;         // /api/marketread payload for currentMarket
 let lastFx = null;             // latest FX quotes (for the top ticker)
+let macroMd = null;            // /api/macrodash payload (macro tab)
+let macroRegion = 'us';        // selected macro region
+let transmission = null;       // /api/transmission — cross-asset logic
+const REGION_FX = { us: ['dxy'], eu: ['eurusd'], jp: ['usdjpy'], apac: ['usdcny', 'usdinr', 'usdjpy'] };
 let chartDp = 2;        // decimals for the current chart (set in renderChart)
 const seenAlerts = new Set();
 const ltCache = {};
@@ -137,14 +141,21 @@ function tileHtml(b) {
   </div>`;
 }
 function renderCards(m) {
+  if (!m) return;
+  const mk = markets.find((x) => x.id === currentMarket);
+  const ids = mk ? mk.components.map((c) => c.id) : m.benchmarks.map((b) => b.id);
+  const inSeg = m.benchmarks.filter((b) => ids.includes(b.id));
   const w = watchlist();
-  const watch = m.benchmarks.filter((b) => w.includes(b.id));
-  const groups = {};
-  for (const b of m.benchmarks) (groups[b.group] ||= []).push(b);
+  const watch = inSeg.filter((b) => w.includes(b.id));
   let html = '';
   if (watch.length) html += `<div class="group"><div class="gtitle">WATCHLIST</div><div class="tiles">${watch.map(tileHtml).join('')}</div></div>`;
-  html += Object.entries(groups).map(([g, list]) => `<div class="group"><div class="gtitle">${g.toUpperCase()}</div><div class="tiles">${list.map(tileHtml).join('')}</div></div>`).join('');
+  html += `<div class="tiles">${inSeg.map(tileHtml).join('')}</div>`;
   $('cards').innerHTML = html;
+}
+function setCardsTitle() {
+  const mk = markets.find((x) => x.id === currentMarket);
+  const el = $('cards-title');
+  if (el) el.textContent = 'INSTRUMENTS — ' + (mk ? mk.label.toUpperCase() : 'ALL');
 }
 
 // ---------------------------------------------------------------------------
@@ -348,14 +359,39 @@ function renderAdaptive() {
   }
   renderAlerts(marketAlerts(r));
   renderMarketContext(r);
+  setTitle('xa-seg', mk ? mk.label.toUpperCase() : '');
+  const xa = $('crossasset');
+  if (xa) xa.innerHTML = crossAssetBlock((i) => (i.segments || []).includes(currentMarket));
+}
+async function loadNews() {
+  const el = $('news');
+  if (!el) return;
+  el.innerHTML = '<div class="dimtext" style="padding:8px 12px">loading headlines…</div>';
+  try { renderNews(await getJSON('/api/news?id=' + encodeURIComponent(currentMarket))); }
+  catch { el.innerHTML = '<div class="dimtext" style="padding:8px 12px">headlines unavailable right now</div>'; }
+}
+function renderNews(n, elId = 'news', subId = 'news-sub') {
+  const el = $(elId);
+  if (!el) return;
+  const items = (n && n.items) || [];
+  const sub = $(subId);
+  const lbl = (n && n.label) || '';
+  if (sub) sub.textContent = lbl + ' · tier-1 wire · refreshes daily';
+  if (!items.length) { el.innerHTML = '<div class="dimtext" style="padding:8px 12px">No recent tier-1 headlines for this segment.</div>'; return; }
+  el.innerHTML = items.map((it) => `<a class="news-item" href="${it.url}" target="_blank" rel="noopener noreferrer"><span class="news-src">${it.source || 'wire'}</span><span class="news-t">${it.title}</span><span class="news-d dimtext">${ago(it.date)}</span></a>`).join('')
+    + '<div class="dimtext" style="padding:6px 12px;font-size:10px">Headlines via Google News · © the respective publishers · links open at the source.</div>';
 }
 function selectMarket(id) {
   currentMarket = id;
   renderSnapshot();
   renderMarketState();
   toggleMarketBlocks();
+  if (data) { renderCards(data); buildMetricOptions(data); }
+  setCardsTitle();
   renderAdaptive();
   loadMarketRead();
+  loadNews();
+  renderChart();
 }
 
 // ---------------------------------------------------------------------------
@@ -439,7 +475,8 @@ function renderTicker(m) {
   });
   // include every currency too
   for (const f of (lastFx || [])) parts.push(`<span class="tk"><b>${f.label.replace(/\s*·.*/, '')}</b><span class="tk-px">${f.price == null ? '—' : Number(f.price).toFixed(f.price < 10 ? 4 : 2)}</span><span class="tk-chg ${cls(f.pct)}">${f.pct == null ? '' : pctf(f.pct)}</span></span>`);
-  $('ticker').innerHTML = parts.join('');
+  const one = parts.join('');
+  $('ticker').innerHTML = `<div class="ticker-track">${one}${one}</div>`;   // two copies → seamless marquee
 }
 
 // ---------------------------------------------------------------------------
@@ -468,18 +505,23 @@ const anchorLine = {
 };
 function buildMetricOptions(m) {
   const sel = $('metric');
+  if (!sel || !m) return;
   const prev = sel.value || localStorage.getItem('oilbasis.metric');
+  const mk = markets.find((x) => x.id === currentMarket);
+  const ids = mk ? mk.components.map((c) => c.id) : m.benchmarks.map((b) => b.id);
   const opts = [];
   for (const b of m.benchmarks) {
-    if (history && !(b.id in history.series)) continue; // no history available (futures-only instruments)
+    if (!ids.includes(b.id)) continue;                 // chart stays inside the selected segment
+    if (history && !(b.id in history.series)) continue;
     if (b.paper == null) opts.push(`<option value="${b.id}">${b.label} (real price only)</option>`);
     else if (b.physical == null) opts.push(`<option value="${b.id}">${b.label} (futures)</option>`);
     else { opts.push(`<option value="${b.id}">${b.label} — futures vs real</option>`); opts.push(`<option value="basis:${b.id}">${b.label} gap (real − futures)</option>`); }
   }
-  for (const key of Object.keys(m.spreads)) opts.push(`<option value="spread:${key}">${m.spreads[key].label} (futures & real)</option>`);
+  if (currentMarket === 'crude') for (const key of Object.keys(m.spreads)) opts.push(`<option value="spread:${key}">${m.spreads[key].label} (futures & real)</option>`);
   if (fxList.length) opts.push(`<optgroup label="CURRENCIES">${fxList.map((f) => `<option value="fx:${f.id}">${f.label}</option>`).join('')}</optgroup>`);
   sel.innerHTML = opts.join('');
   if (prev && [...sel.options].some((o) => o.value === prev)) sel.value = prev;
+  else { const prim = mk?.primary; if (prim && [...sel.options].some((o) => o.value === prim)) sel.value = prim; }
 }
 function line(label, arr, color) { return { label, data: arr, borderColor: color, backgroundColor: color + '22', borderWidth: 2, pointRadius: 0, tension: 0.25, spanGaps: true, fill: false }; }
 function datasetsFor(metric, h, m) {
@@ -585,9 +627,10 @@ async function loadHistory() { history = await getJSON('/api/history'); }
 async function loadMarket() {
   data = await getJSON('/api/market');
   renderCards(data); buildMetricOptions(data); buildBpOptions(); buildCurveOptions(); buildPosOptions();
-  renderMarketState(); renderSnapshot(); renderTicker(data);
+  renderMarketState(); renderSnapshot(); setCardsTitle(); renderTicker(data);
   await renderChart();   // ← render AFTER data exists
   loadMarketRead();      // populate the adaptive Big Picture (hero line + panels)
+  loadNews();
   $('updated').textContent = 'prices ' + new Date(data.updated).toLocaleTimeString();
   $('notes').innerHTML = `<details class="fold"><summary>SOURCES, NOTES &amp; DISCLAIMER</summary><div class="note-body"><ul>` +
     data.notes.map((n) => `<li>${n}</li>`).join('') + '</ul>' +
@@ -987,14 +1030,50 @@ async function loadReroute() { try { renderReroute(await getJSON('/api/reroute')
 function macroTile(label, value, sub, klass, metric) {
   return `<div class="kpi${metric ? ' clickable' : ''}"${metric ? ` data-metric="${metric}" title="Click for the chart"` : ''}><div class="kpi-l">${label}</div><div class="kpi-v ${klass || ''}">${value}</div><div class="kpi-s dimtext">${sub || ''}</div></div>`;
 }
+function renderMacroRegion() {
+  const el = $('macro-region-panel');
+  if (!el || !macroMd) return;
+  const reg = (macroMd.regions || {})[macroRegion];
+  if (!reg) { el.innerHTML = ''; return; }
+  const tile = (k, v, suf, asOf) => macroTile(k.toUpperCase(), v == null ? '—' : `${v}${suf || ''}`, asOf ? `as of ${asOf}` : '');
+  let html = '<div class="kpis">' + reg.fields.map((f) => tile(f.k, f.v, f.suf, f.asOf)).join('') + '</div>';
+  const curIds = REGION_FX[macroRegion] || [];
+  const cur = (macroMd.fx || []).filter((f) => curIds.includes(f.id));
+  if (cur.length) html += '<div class="macro-note">KEY CURRENCIES</div><div class="kpis">' + cur.map((f) => macroTile(f.label, f.price != null ? f.price.toFixed(f.price < 10 ? 4 : 2) : '—', f.pct != null ? pctf(f.pct) : '', cls(f.pct), 'fx:' + f.id)).join('') + '</div>';
+  if (reg.note) html += `<div class="macro-note">⚠ ${reg.note}</div>`;
+  html += '<div class="gtitle">CROSS-ASSET — HOW THIS REGION IS AFFECTED</div>' + crossAssetBlock((i) => (i.regions || []).includes(macroRegion));
+  el.innerHTML = html;
+  loadMacroNews();
+}
+// Cross-asset transmission block — shared by segments and macro regions.
+function crossAssetBlock(pred, title) {
+  const ideas = ((transmission && transmission.ideas) || []).filter(pred);
+  if (!ideas.length) return '<div class="dimtext" style="padding:8px 12px">No strong cross-asset signal right now — moves are within normal ranges.</div>';
+  return ideas.map((i) => `
+    <div class="xa">
+      <div class="xa-trig">▸ ${i.trigger}</div>
+      <div class="xa-chain">${i.chain}</div>
+      <div class="ti"><div class="ti-row"><span class="ti-k pos">BENEFITS</span><span class="ti-v">${(i.benefits || []).join(' · ')}</span></div><div class="ti-row"><span class="ti-k neg">TROUBLE</span><span class="ti-v">${(i.hurt || []).join(' · ')}</span></div></div>
+      <div class="bl-chips">${(i.up || []).map((t) => `<span class="chip up">▲ ${t}</span>`).join('')}${(i.down || []).map((t) => `<span class="chip down">▼ ${t}</span>`).join('')}</div>
+    </div>`).join('')
+    + '<div class="macro-note">The moves above are real data; the chains are how assets usually link — a framework, not a forecast.</div>';
+}
+async function loadTransmission() {
+  try { transmission = await getJSON('/api/transmission'); } catch { transmission = null; }
+  renderAdaptive();
+  if (macroMd) renderMacroRegion();
+}
+async function loadMacroNews() {
+  const el = $('macro-news');
+  if (!el) return;
+  el.innerHTML = '<div class="dimtext" style="padding:8px 12px">loading headlines…</div>';
+  try { renderNews(await getJSON('/api/news?id=' + macroRegion), 'macro-news', 'macro-news-sub'); }
+  catch { el.innerHTML = '<div class="dimtext" style="padding:8px 12px">headlines unavailable right now</div>'; }
+}
 function renderMacroDash(md, corr, events) {
-  const rates = $('macro-rates');
-  if (!rates) return;
-  if (!md || md.error) { rates.innerHTML = '<div class="dimtext" style="padding:10px 12px">loading…</div>'; return; }
-  const r = md.rates, inf = md.inflation, g = md.growth, gp = md.growthProxy || {};
-  rates.innerHTML = `<div class="kpis">${macroTile('US 2-YEAR', r.us2y != null ? r.us2y + '%' : '—', 'short-term rate')}${macroTile('US 10-YEAR', r.us10y != null ? r.us10y + '%' : '—', 'long-term rate')}${macroTile('2s10s SPREAD', r.spread != null ? signed(r.spread, 2) : '—', r.spread < 0 ? 'inverted — recession signal' : 'normal', cls(r.spread))}${macroTile('US FED FUNDS', r.fedfunds != null ? r.fedfunds + '%' : '—', 'policy rate')}${macroTile('ECB RATE', r.ecb != null ? r.ecb + '%' : '—', 'euro-area policy rate')}${macroTile('US–ECB GAP', r.rateGap != null ? signed(r.rateGap, 2) + 'pp' : '—', 'a wider gap tends to lift the dollar', cls(r.rateGap))}</div>`;
-  const gold = gp.ratio != null ? macroTile('COPPER ÷ GOLD', (gp.ratio * 1000).toFixed(2), gp.chg != null ? `${pctf(gp.chg)} / 3m · ${gp.chg >= 0 ? 'growth optimism' : 'growth worry'}` : 'growth proxy (×1000)', cls(gp.chg)) : '';
-  $('macro-growth').innerHTML = `<div class="kpis">${macroTile('US INFLATION (CPI YoY)', inf.cpiYoY != null ? inf.cpiYoY + '%' : '—', inf.asOf || '')}${macroTile('US GDP (QoQ, annualised)', g.gdpQoQ != null ? g.gdpQoQ + '%' : '—', g.asOf || '')}${macroTile('UNEMPLOYMENT', g.unemployment != null ? g.unemployment + '%' : '—', '')}${gold}</div>`;
+  if (!md || md.error) return;
+  macroMd = md;
+  renderMacroRegion();
   $('macro-fx').innerHTML = `<div class="kpis">${(md.fx || []).map((f) => macroTile(f.label, f.price != null ? f.price.toFixed(f.price < 10 ? 4 : 2) : '—', f.pct != null ? pctf(f.pct) : '', cls(f.pct), 'fx:' + f.id)).join('')}</div><div class="macro-note">click a currency for its YTD / 5Y / 10Y chart</div>`;
   if ($('macro-links')) {
     const rows = (md.links || []).map((l) => {
@@ -1096,6 +1175,7 @@ async function loadExtra() {
     loadPositioning();
     renderMarketState();
     renderAdaptive();
+    loadTransmission();
   } catch (e) { showError(e.message); }
 }
 
@@ -1112,6 +1192,8 @@ $('range').addEventListener('change', () => { chartAnchor = null; renderChart();
 $('bp-metric')?.addEventListener('change', () => selectMarket($('bp-metric').value));
 $('pos-metric')?.addEventListener('change', loadPositioning);
 $('marketstate')?.addEventListener('click', (e) => { const t = e.target.closest('[data-market]'); if (t) { showTab('commodities'); selectMarket(t.dataset.market); } });
+$('macro-region')?.addEventListener('change', () => { macroRegion = $('macro-region').value; renderMacroRegion(); });
+$('macro-region-panel')?.addEventListener('click', (e) => { const el = e.target.closest('[data-metric]'); if (el) pickMetric(el.dataset.metric, '1y'); });
 $('curve-metric')?.addEventListener('change', () => loadCurveFor($('curve-metric').value));
 $('chart').addEventListener('click', (ev) => {
   if (!chart) return;
@@ -1151,6 +1233,11 @@ $('macro-links')?.addEventListener('click', (e) => { const el = e.target.closest
 
 (async function boot() {
   try { initMap(); } catch (e) { console.error(e); }
+  document.querySelectorAll('details.fold-panel').forEach((d) => d.addEventListener('toggle', () => {
+    if (!d.open) return;
+    if (map) setTimeout(() => map.invalidateSize(), 60);
+    if (rerouteChart) setTimeout(() => rerouteChart.resize(), 60);
+  }));
   const tick = () => { $('clock').textContent = new Date().toLocaleTimeString('en-GB'); };
   tick(); setInterval(tick, 1000);
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});

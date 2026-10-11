@@ -653,9 +653,10 @@ async function ratioTrend(symA, symB, range = '6mo', back = 63) {
 
 async function getMacroDash() {
   return cached('macrodash', 3 * 3600e3, async () => {
-    const [dgs2, dgs10, ff, cpi, gdp, unrate, ecb] = await Promise.all([
+    const [dgs2, dgs10, ff, cpi, gdp, unrate, ecb, hicp] = await Promise.all([
       fredSeries('DGS2', 40), fredSeries('DGS10', 40), fredSeries('FEDFUNDS', 400),
       fredSeries('CPIAUCSL', 800), fredSeries('A191RL1Q225SBEA', 1400), fredSeries('UNRATE', 400), fredSeries('ECBDFR', 400),
+      fredSeries('CP0000EZ19M086NEST', 800),
     ]);
     const last = (o) => { const d = Object.keys(o).sort(); return d.length ? { date: d[d.length - 1], value: o[d[d.length - 1]] } : null; };
     const cpiDates = Object.keys(cpi).sort();
@@ -679,19 +680,50 @@ async function getMacroDash() {
     // Copper ÷ gold — a classic free proxy for global growth appetite (up = risk-on).
     let growthProxy = { ratio: null, chg: null };
     try { growthProxy = await ratioTrend('HG=F', 'GC=F'); } catch {}
+    // Euro-area HICP YoY (current on FRED; ~2-month lag).
+    const hicpDates = Object.keys(hicp).sort();
+    const hicpLast = hicpDates.length ? hicp[hicpDates[hicpDates.length - 1]] : null;
+    const hicpPrev = hicpDates.length > 12 ? hicp[hicpDates[hicpDates.length - 13]] : null;
+    const euroCpi = hicpLast != null && hicpPrev != null ? +(((hicpLast / hicpPrev) - 1) * 100).toFixed(1) : null;
+    const usCpi = cpiLast != null && cpiPrevYr != null ? +(((cpiLast / cpiPrevYr) - 1) * 100).toFixed(1) : null;
+    const spread2s10s = r10 && r2 ? +(r10.value - r2.value).toFixed(2) : null;
+    // Only fields we can source ACCURATELY are filled; everything else stays null and is labelled.
+    const regions = {
+      us: { label: 'United States', fields: [
+        { k: 'Fed funds (policy)', v: ffr?.value ?? null, suf: '%', asOf: ffr?.date },
+        { k: 'US CPI YoY', v: usCpi ?? null, suf: '%', asOf: cpiDates[cpiDates.length - 1] },
+        { k: 'US GDP QoQ (annualised)', v: g?.value ?? null, suf: '%', asOf: g?.date },
+        { k: 'Unemployment', v: u?.value ?? null, suf: '%', asOf: u?.date },
+        { k: '2-year yield', v: r2?.value ?? null, suf: '%', asOf: r2?.date },
+        { k: '10-year yield', v: r10?.value ?? null, suf: '%', asOf: r10?.date },
+      ], note: '' },
+      eu: { label: 'Europe', fields: [
+        { k: 'ECB deposit rate', v: ecbLast?.value ?? null, suf: '%', asOf: ecbLast?.date },
+        { k: 'Euro-area HICP YoY', v: euroCpi, suf: '%', asOf: hicpDates[hicpDates.length - 1] },
+      ], note: 'Euro-area inflation & the ECB rate are current; euro unemployment on the free feed is years out of date, so it is not shown.' },
+      jp: { label: 'Japan', fields: [
+        { k: 'BoJ policy rate', v: null, suf: '%', asOf: null },
+        { k: 'Japan CPI YoY', v: null, suf: '%', asOf: null },
+      ], note: 'No current free source for Japan macro — the newest free CPI is from 2021, so we show headlines and the yen rather than stale numbers.' },
+      apac: { label: 'Asia-Pacific', fields: [
+        { k: 'Policy rate', v: null, suf: '%', asOf: null },
+        { k: 'China CPI YoY', v: null, suf: '%', asOf: null },
+      ], note: 'Free Asia macro is patchy and stale (China CPI/GDP lag by 1–3 years), so we show headlines and the region’s currencies rather than stale numbers.' },
+    };
     return {
       rates: {
         us2y: r2?.value ?? null, us10y: r10?.value ?? null,
-        spread: r10 && r2 ? +(r10.value - r2.value).toFixed(2) : null,
+        spread: spread2s10s,
         fedfunds: ffr?.value ?? null, ecb: ecbLast?.value ?? null,
         rateGap: ffr?.value != null && ecbLast?.value != null ? +(ffr.value - ecbLast.value).toFixed(2) : null,
         asOf: r10?.date ?? null,
       },
-      inflation: { cpiYoY: cpiLast != null && cpiPrevYr != null ? +(((cpiLast / cpiPrevYr) - 1) * 100).toFixed(1) : null, asOf: cpiDates[cpiDates.length - 1] ?? null },
+      inflation: { cpiYoY: usCpi, asOf: cpiDates[cpiDates.length - 1] ?? null },
       growth: { gdpQoQ: g?.value ?? null, unemployment: u?.value ?? null, asOf: g?.date ?? null },
       growthProxy,
       fx,
       links,
+      regions,
     };
   });
 }
@@ -992,6 +1024,136 @@ async function getMarketRead(id) {
     };
     read.verdict = marketVerdict(read);
     return read;
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Per-segment headlines. Tier-1 wire only, via Google News RSS — free, no key.
+// We surface the HEADLINE + SOURCE + LINK only (never the article text), with
+// attribution, and send the reader to the publisher. Cached 45 min.
+// ---------------------------------------------------------------------------
+const NEWS_QUERIES = {
+  // commodity segments
+  crude: 'crude oil OR OPEC OR "oil prices"',
+  refined: 'gasoline OR diesel OR "jet fuel" OR "refining margins"',
+  gas: '"natural gas" OR LNG OR "gas prices"',
+  precious: 'gold OR silver OR platinum OR palladium',
+  industrial: 'copper OR "base metals" OR aluminium',
+  grains: 'wheat OR corn OR soybeans OR WASDE',
+  softs: 'sugar OR coffee OR cocoa OR cotton OR "palm oil"',
+  // macro regions
+  us: 'US economy OR "Federal Reserve" OR US inflation OR "interest rates"',
+  eu: '"euro area" OR ECB OR "eurozone economy" OR European inflation',
+  jp: 'Japan economy OR "Bank of Japan" OR yen OR Japan inflation',
+  apac: 'China economy OR PBOC OR "China stimulus" OR Asia markets',
+};
+const NEWS_REGION_LABELS = { us: 'United States', eu: 'Europe', jp: 'Japan', apac: 'Asia-Pacific' };
+const newsLabel = (id) => MARKETS.find((x) => x.id === id)?.label || NEWS_REGION_LABELS[id] || id;
+const NEWS_TIER1 = '(site:reuters.com OR site:bloomberg.com OR site:ft.com OR site:apnews.com OR site:cnbc.com)';
+const decodeEnt = (s) => String(s || '').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&nbsp;/g, ' ').trim();
+async function getNews(id) {
+  const terms = NEWS_QUERIES[id];
+  if (!terms) return { id, error: 'unknown segment' };
+  return cached('news:' + id, 45 * 60e3, async () => {
+    const q = `(${terms}) ${NEWS_TIER1}`;
+    const url = `https://news.google.com/rss/search?q=${encodeURIComponent(q)}&hl=en-US&gl=US&ceid=US:en`;
+    const res = await fetch(url, { headers: UA });
+    if (!res.ok) throw new Error('news ' + res.status);
+    const xml = await res.text();
+    const items = [];
+    const re = /<item>([\s\S]*?)<\/item>/g;
+    let m;
+    while ((m = re.exec(xml)) && items.length < 10) {
+      const it = m[1];
+      const rawTitle = decodeEnt((it.match(/<title>([\s\S]*?)<\/title>/) || [])[1] || '');
+      const link = decodeEnt((it.match(/<link>([\s\S]*?)<\/link>/) || [])[1] || '');
+      const pub = (it.match(/<pubDate>([\s\S]*?)<\/pubDate>/) || [])[1] || '';
+      const source = decodeEnt((it.match(/<source[^>]*>([\s\S]*?)<\/source>/) || [])[1] || '');
+      const title = source && rawTitle.endsWith(' - ' + source) ? rawTitle.slice(0, -(source.length + 3)) : rawTitle;
+      const d = pub ? new Date(pub) : null;
+      if (title && link) items.push({ title, source, url: link, date: d && !isNaN(d) ? d.toISOString() : null });
+    }
+    return { id, label: newsLabel(id), items };
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Cross-asset transmission. Data-driven triggers (real %, pp moves) feeding a
+// coded rule set that reasons ACROSS segments and regions — e.g. oil↑ → inflation
+// expectations↑ → rates↑ → precious-metals headwind; oil↑ → oil-importing regions
+// squeezed. The triggers are data; the chains are an explicit framework, not a forecast.
+// ---------------------------------------------------------------------------
+const pctChg = (series, days) => {
+  const d = Object.keys(series).sort();
+  const vals = d.map((k) => series[k]);
+  const last = [...vals].reverse().find((v) => v != null);
+  const base = vals[Math.max(0, vals.length - 1 - days)];
+  return last != null && base ? ((last - base) / base) * 100 : null;
+};
+async function dirPct(sym, days) { try { return pctChg((await yc(sym, '3mo')).series, days); } catch { return null; } }
+async function getTransmission() {
+  return cached('transmission', 30 * 60e3, async () => {
+    const [oil1m, oil3m, dxy1m, gold1m, copper1m, corn1m, curves, md, dgs10] = await Promise.all([
+      dirPct('CL=F', 21), dirPct('CL=F', 63), dirPct('DX-Y.NYB', 21), dirPct('GC=F', 21), dirPct('HG=F', 21), dirPct('ZC=F', 21),
+      getCurves().catch(() => null), getMacroDash().catch(() => null), fredSeries('DGS10', 60).catch(() => ({})),
+    ]);
+    const d10 = Object.keys(dgs10).sort().map((k) => dgs10[k]);
+    const r10 = d10.length ? d10[d10.length - 1] : null;
+    const r10prev = d10.length > 21 ? d10[d10.length - 22] : null;
+    const rateChg = r10 != null && r10prev != null ? +(r10 - r10prev).toFixed(2) : null; // pp over ~1 month
+    const tight = curves?.brent?.shape === 'Backwardation';
+    const ideas = [];
+    const add = (o) => ideas.push(o);
+
+    if (oil1m != null && oil1m > 3) {
+      add({ id: 'oil-inflation-rates', trigger: `Oil ${oil1m >= 0 ? '+' : ''}${oil1m.toFixed(1)}% in a month${tight ? ' with the curve in backwardation (tight)' : ''}`,
+        chain: 'Higher oil lifts <b>inflation expectations</b> → central banks stay hawkish and bond <b>yields rise</b> → higher <b>real yields</b> are a headwind for precious metals, while the dollar firms. Energy costs squeeze users.',
+        benefits: ['Energy producers & services', 'Banks (steeper curve)'], hurt: ['Precious metals (via real yields)', 'Rate-sensitive growth & property', 'Airlines, trucking, chemicals'],
+        up: ['XOM', 'CVX', 'COP', 'SLB'], down: ['NEM', 'GDX', 'AAL', 'DAL'], segments: ['crude', 'refined', 'precious', 'industrial'], regions: ['us', 'eu', 'jp', 'apac'] });
+      add({ id: 'oil-importers', trigger: `Oil ${oil1m >= 0 ? '+' : ''}${oil1m.toFixed(1)}% in a month`,
+        chain: 'Oil is priced in dollars and imported by most of Europe & Asia — a rising oil bill widens their <b>trade deficit</b>, pressures their <b>currencies</b> and squeezes consumer spending, while exporters gain.',
+        benefits: ['Oil exporters (Norway, Canada, Brazil, Gulf, US shale)'], hurt: ['Big oil importers: Japan, euro area, India, Korea, China'],
+        up: ['SU', 'PBR', 'CNQ'], down: [], segments: ['crude'], regions: ['eu', 'jp', 'apac'] });
+    }
+    if (oil1m != null && oil1m < -3) {
+      add({ id: 'oil-deflation-rates', trigger: `Oil ${oil1m.toFixed(1)}% in a month`,
+        chain: 'Falling oil cools <b>inflation expectations</b> → room for lower rates → a tailwind for <b>precious metals</b> and rate-sensitive assets, and relief for fuel users; energy producers lose out.',
+        benefits: ['Airlines, trucking, chemicals', 'Precious metals (if yields fall)'], hurt: ['Energy producers & services'],
+        up: ['DAL', 'UAL', 'GDX'], down: ['XOM', 'COP', 'SLB'], segments: ['crude', 'refined', 'precious'], regions: ['us', 'eu', 'jp', 'apac'] });
+    }
+    if (dxy1m != null && Math.abs(dxy1m) > 1.5) {
+      const up = dxy1m > 0;
+      add({ id: 'dollar', trigger: `US dollar ${up ? '+' : ''}${dxy1m.toFixed(1)}% in a month`,
+        chain: up ? 'A firmer dollar makes dollar-priced commodities <b>more expensive</b> for the rest of the world — a broad headwind — and tightens global financial conditions, pressing emerging markets.'
+          : 'A softer dollar makes dollar-priced commodities <b>cheaper</b> for the world — a broad tailwind — and eases global financial conditions, supporting emerging markets.',
+        benefits: up ? ['US importers', 'dollar-funded carry'] : ['Commodities broadly', 'Emerging-market assets'], hurt: up ? ['Commodities', 'EM currencies & assets'] : ['US import prices (inflation risk)'],
+        up: up ? [] : ['GLD', 'EEM', 'FCX'], down: up ? ['GLD', 'EEM', 'FCX'] : [], segments: ['precious', 'industrial', 'grains', 'softs', 'crude'], regions: ['us'] });
+    }
+    if (rateChg != null && Math.abs(rateChg) >= 0.15) {
+      const up = rateChg > 0;
+      add({ id: 'rates', trigger: `US 10-year yield ${up ? '+' : ''}${rateChg.toFixed(2)}pp in a month`,
+        chain: up ? 'Rising long yields lift <b>real rates</b> — a direct headwind for precious metals — support the dollar, and pressure long-duration growth and property.' : 'Falling long yields cut <b>real rates</b> — supportive for precious metals — soften the dollar, and help long-duration growth.',
+        benefits: up ? ['Banks', 'Value / energy'] : ['Precious metals', 'Long-duration growth', 'Property'], hurt: up ? ['Precious metals', 'Growth & property'] : ['Banks'],
+        up: up ? ['XLF'] : ['GDX', 'NEM'], down: up ? ['GDX', 'NEM'] : ['XLF'], segments: ['precious', 'industrial'], regions: ['us'] });
+    }
+    if (gold1m != null && gold1m > 3 && rateChg != null && rateChg > 0.1) {
+      add({ id: 'gold-vs-yields', trigger: `Gold +${gold1m.toFixed(1)}% while 10-year yields also rose ${rateChg.toFixed(2)}pp`,
+        chain: 'Gold rising <b>despite</b> higher yields is unusual — it points to <b>demand-driven buying</b> (central banks, safe-haven/geopolitical), not the usual rates channel. Often a bigger, more persistent move.',
+        benefits: ['Gold & silver miners', 'Royalty/streamers'], hurt: ['—'], up: ['NEM', 'AEM', 'GDX', 'WPM'], down: [], segments: ['precious'], regions: ['us', 'apac'] });
+    }
+    if (copper1m != null && copper1m > 5) {
+      add({ id: 'copper-growth', trigger: `Copper +${copper1m.toFixed(1)}% in a month`,
+        chain: 'Copper is the <b>growth barometer</b> — a sharp rise signals firm industrial demand / stimulus, lifting cyclicals and rate expectations, and (via electrification) supporting grid & EV supply chains.',
+        benefits: ['Copper miners', 'Electrification & grid suppliers'], hurt: ['Cost-pressured construction & autos'],
+        up: ['FCX', 'SCCO', 'RIO', 'BHP'], down: [], segments: ['industrial', 'precious'], regions: ['apac'] });
+    }
+    if (corn1m != null && corn1m > 4) {
+      add({ id: 'food-inflation', trigger: `Grains +${corn1m.toFixed(1)}% in a month`,
+        chain: 'Higher grains feed <b>food inflation</b> — a regressive squeeze on consumers, especially in emerging Asia — while helping farmers, inputs and grain traders.',
+        benefits: ['Farm inputs & equipment', 'Grain traders & processors'], hurt: ['Food makers', 'Livestock (feed cost)', 'EM consumers'],
+        up: ['DE', 'ADM', 'BG', 'CF'], down: ['TSN', 'KHC'], segments: ['grains', 'softs'], regions: ['apac', 'eu'] });
+    }
+    return { ideas, signals: { oil1m, oil3m, dxy1m, gold1m, copper1m, corn1m, rateChg, brentShape: curves?.brent?.shape ?? null }, us10y: r10, generated: new Date().toISOString() };
   });
 }
 
@@ -1411,6 +1573,12 @@ const server = http.createServer(async (req, res) => {
       if (!MARKETS.some((x) => x.id === id)) return sendJSON(res, 404, { error: 'unknown market' });
       return sendJSON(res, 200, await getMarketRead(id).catch((e) => ({ error: String(e.message) })));
     }
+    if (url.pathname === '/api/news') {
+      const id = url.searchParams.get('id');
+      if (!NEWS_QUERIES[id]) return sendJSON(res, 404, { error: 'unknown segment' });
+      return sendJSON(res, 200, await getNews(id).catch((e) => ({ error: String(e.message), id, items: [] })));
+    }
+    if (url.pathname === '/api/transmission') return sendJSON(res, 200, await getTransmission().catch((e) => ({ error: String(e.message), ideas: [] })));
     if (url.pathname === '/api/longterm') {
       const id = url.searchParams.get('id');
       const years = Math.min(15, Math.max(1, Number(url.searchParams.get('years')) || 10));

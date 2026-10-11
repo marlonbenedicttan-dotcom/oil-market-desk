@@ -65,6 +65,29 @@ test('/api/marketread returns a per-segment read (404 for unknown)', async () =>
   assert.equal((await fetch(`http://localhost:${PORT}/api/marketread?id=nope`)).status, 404);
 });
 
+test('/api/news returns headlines for segments and macro regions (graceful if unavailable)', async () => {
+  for (const id of ['crude', 'us', 'eu', 'jp', 'apac']) {
+    const r = await fetch(`http://localhost:${PORT}/api/news?id=${id}`);
+    assert.equal(r.status, 200, `${id} -> ${r.status}`);
+    const j = await r.json();
+    assert.ok(Array.isArray(j.items), `${id}: items must be an array`);
+  }
+  assert.equal((await fetch(`http://localhost:${PORT}/api/news?id=nope`)).status, 404);
+});
+
+test('/api/transmission returns cross-asset logic with real triggers', async () => {
+  const r = await fetch(`http://localhost:${PORT}/api/transmission`);
+  assert.equal(r.status, 200);
+  const j = await r.json();
+  assert.ok(j.error == null, JSON.stringify(j).slice(0, 100));
+  assert.ok(Array.isArray(j.ideas));
+  for (const i of j.ideas) {
+    assert.ok(i.trigger && i.chain, 'each idea needs a trigger + chain');
+    assert.ok(Array.isArray(i.segments) && Array.isArray(i.regions));
+    assert.ok(j.signals && typeof j.signals === 'object');
+  }
+});
+
 test('/api/positioning works for any covered market', async () => {
   const r = await fetch(`http://localhost:${PORT}/api/positioning?id=gold`);
   assert.equal(r.status, 200);

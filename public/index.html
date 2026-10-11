@@ -16,7 +16,7 @@
   <meta name="theme-color" content="#ff9e00" />
   <link rel="icon" href="/icon.svg" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <link rel="stylesheet" href="style.css?v=7" />
+  <link rel="stylesheet" href="style.css?v=8" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 </head>
@@ -52,6 +52,7 @@
     <!-- COMMODITIES -->
     <div class="tabpane" data-pane="commodities">
 
+      <!-- 1. WHERE ARE WE -->
       <section class="panel">
         <div class="ph"><span class="ph-t">🔎 PICK A SEGMENT</span>
           <div class="controls"><select id="bp-metric"></select></div>
@@ -59,8 +60,20 @@
         <div id="bp-snapshot" class="bp-snapshot"></div>
       </section>
 
+      <!-- 2. THE SO-WHAT (read first) -->
       <section class="panel">
-        <div class="ph"><span class="ph-t">PICK AN INSTRUMENT</span><span class="dimtext">click a tile for its chart · % = change today · ★ to pin</span></div>
+        <div class="ph"><span class="ph-t">🎯 WHAT IT MEANS — WHAT HAPPENED · WHAT'S NEXT · TRADE IDEAS</span><span class="dimtext">NOT INVESTMENT ADVICE</span></div>
+        <div id="bottomline" class="bottomline"></div>
+      </section>
+
+      <section class="panel market-only" data-when="*">
+        <div class="ph"><span class="ph-t">🔗 HOW IT TRANSMITS — <span id="xa-seg"></span></span><span class="dimtext">cross-asset knock-on · a framework, not a forecast</span></div>
+        <div id="crossasset" class="macro"></div>
+      </section>
+
+      <!-- 3. THE MARKET (price & structure) -->
+      <section class="panel">
+        <div class="ph"><span class="ph-t" id="cards-title">INSTRUMENTS</span><span class="dimtext">click a tile for its chart · % = change today · ★ to pin</span></div>
         <div id="cards"></div>
       </section>
 
@@ -85,52 +98,15 @@
         </div>
       </section>
 
-      <section class="panel">
-        <div class="ph"><span class="ph-t">🎯 WHAT IT MEANS — WHAT HAPPENED · WHAT'S NEXT · TRADE IDEAS</span><span class="dimtext">NOT INVESTMENT ADVICE</span></div>
-        <div id="bottomline" class="bottomline"></div>
-      </section>
-
+      <!-- 4. EVIDENCE — the segment's own defining signal comes first -->
       <section class="panel">
         <div class="ph"><span class="ph-t" id="tightness-title">⚡ IS OIL ACTUALLY TIGHT?</span><span class="dimtext" id="tightness-sub">six independent checks</span></div>
         <div id="tightness" class="tightness"></div>
       </section>
 
-      <section class="panel">
-        <div class="ph"><span class="ph-t">🧭 READING THE NUMBERS</span><button id="help-btn" class="ghost small">PLAIN-ENGLISH GUIDE</button></div>
-        <div id="glossary" class="glossary hidden"></div>
-        <div class="insights">
-          <div class="col"><div class="gtitle" id="ins1-title">OIL PRICES</div><ul id="market-insights" class="ins-list"></ul></div>
-          <div class="col"><div class="gtitle" id="ins2-title">SHIPS &amp; FREIGHT</div><ul id="tanker-insights" class="ins-list"></ul></div>
-        </div>
-        <div class="ph sub-head"><span class="ph-t">⚠ THINGS TO FLAG</span><span class="ph-right"><button id="alert-settings" class="ghost small">⚙ THRESHOLDS</button><span id="alert-count" class="pill">0</span></span></div>
-        <div id="alert-thresholds" class="thresholds hidden"></div>
-        <div id="alerts" class="alerts"></div>
-      </section>
-
-      <section class="panel">
-        <div class="ph"><span class="ph-t">HOW EXTREME IS THIS?</span><span class="dimtext">vs 2 years · jumpiness · positioning · macro</span></div>
-        <div id="context" class="ctx"></div>
-      </section>
-
-      <!-- CRUDE segment only: ships & satellites -->
-      <section class="panel market-only" data-when="crude">
-        <div class="ph"><span class="ph-t">🚢 SHIPS — LIVE TRACKING</span><span id="ais-status" class="pill">—</span></div>
-        <div id="ais-sub" class="dimtext"></div>
-        <div id="ais-help" class="help hidden"></div>
-        <div id="map"><div id="map-empty" class="map-empty hidden">WAITING FOR SHIP POSITIONS…</div></div>
-        <div id="flows" class="flows"></div>
-        <div class="chokes-h dimtext" style="padding:8px 12px 0">ARE SHIPS AVOIDING CHOKEPOINTS? — around Africa vs the Red Sea, over time</div>
-        <div class="chart-wrap" style="height:150px;padding:4px 12px 12px"><canvas id="reroute"></canvas></div>
-        <details class="fold"><summary>Ship list</summary><div id="tanker-list" class="tanker-list"></div></details>
-      </section>
-      <section class="panel market-only" data-when="crude">
-        <div class="ph"><span class="ph-t">🛰️ SATELLITES — SEEING WITHOUT TRACKERS</span><span class="dimtext">radar picture + heat from space</span></div>
-        <div id="satellite" class="satellite"></div>
-      </section>
-
-      <!-- REFINED segment only: fuels (cracks) + stocks -->
+      <!-- REFINED only: refining margins (the sector's core signal) + who it helps/hurts -->
       <section class="panel market-only" data-when="refined">
-        <div class="ph"><span class="ph-t">FUELS — DIESEL · JET · GASOLINE</span><span class="dimtext">refining profits per barrel</span></div>
+        <div class="ph"><span class="ph-t">REFINING MARGINS — DIESEL · JET · GASOLINE</span><span class="dimtext">profit per barrel</span></div>
         <div id="products" class="products"></div>
         <div class="chokes-h dimtext" style="padding:0 12px">REFINING PROFIT OVER TIME ($/bbl, last 6 months)</div>
         <div class="chart-wrap" style="height:190px;padding:4px 12px 12px"><canvas id="crackhist"></canvas></div>
@@ -141,13 +117,6 @@
         <div id="sectors" class="sectors"></div>
       </section>
 
-      <!-- ENERGY segments: supply (stockpiles / storage) -->
-      <section class="panel market-only" data-when="crude,refined,gas">
-        <div class="ph"><span class="ph-t">SUPPLY — US STOCKPILES &amp; GAS STORAGE</span><span id="inv-date" class="dimtext">updated weekly</span></div>
-        <div id="inventories" class="tbl"></div>
-      </section>
-
-      <!-- Every segment: positioning (CFTC) -->
       <section class="panel market-only" data-when="*">
         <div class="ph"><span class="ph-t">HEDGE-FUND POSITIONING</span>
           <div class="controls"><select id="pos-metric"></select></div>
@@ -155,23 +124,73 @@
         <div id="positioning" class="ctx"></div>
       </section>
 
-      <section class="panel">
-        <div class="ph"><span class="ph-t">LAST TIME IT WAS THIS EXTREME</span>
-          <select id="an-metric"><option value="basis:brent">Brent gap</option><option value="basis:wti">WTI gap</option><option value="spread:brent_wti">Brent vs WTI (real)</option></select>
-        </div>
-        <div id="analogue" class="analogue"></div>
+      <section class="panel market-only" data-when="crude,refined,gas">
+        <div class="ph"><span class="ph-t">SUPPLY — US STOCKPILES &amp; GAS STORAGE</span><span id="inv-date" class="dimtext">updated weekly</span></div>
+        <div id="inventories" class="tbl"></div>
       </section>
+
+      <section class="panel market-only" data-when="*">
+        <div class="ph"><span class="ph-t">📰 IN THE NEWS</span><span id="news-sub" class="dimtext"></span></div>
+        <div id="news" class="news"></div>
+      </section>
+
+      <!-- CRUDE only, folded: ships & satellites -->
+      <details class="panel fold-panel market-only" data-when="crude">
+        <summary>🚢 SHIPS &amp; SATELLITES — live tracking &amp; the space look</summary>
+        <section class="fold-body">
+          <div class="ph"><span class="ph-t">🚢 SHIPS — LIVE TRACKING</span><span id="ais-status" class="pill">—</span></div>
+          <div id="ais-sub" class="dimtext"></div>
+          <div id="ais-help" class="help hidden"></div>
+          <div id="map"><div id="map-empty" class="map-empty hidden">WAITING FOR SHIP POSITIONS…</div></div>
+          <div id="flows" class="flows"></div>
+          <div class="chokes-h dimtext" style="padding:8px 12px 0">ARE SHIPS AVOIDING CHOKEPOINTS? — around Africa vs the Red Sea, over time</div>
+          <div class="chart-wrap" style="height:150px;padding:4px 12px 12px"><canvas id="reroute"></canvas></div>
+          <details class="fold"><summary>Ship list</summary><div id="tanker-list" class="tanker-list"></div></details>
+        </section>
+        <section class="fold-body">
+          <div class="ph"><span class="ph-t">🛰️ SATELLITES — SEEING WITHOUT TRACKERS</span><span class="dimtext">radar picture + heat from space</span></div>
+          <div id="satellite" class="satellite"></div>
+        </section>
+      </details>
+
+      <!-- Folded: secondary detail -->
+      <details class="panel fold-panel">
+        <summary>📖 MORE DETAIL — reading the numbers, flags, extremes &amp; history</summary>
+        <section class="fold-body">
+          <div class="ph"><span class="ph-t">🧭 READING THE NUMBERS</span><button id="help-btn" class="ghost small">PLAIN-ENGLISH GUIDE</button></div>
+          <div id="glossary" class="glossary hidden"></div>
+          <div class="insights">
+            <div class="col"><div class="gtitle" id="ins1-title">OIL PRICES</div><ul id="market-insights" class="ins-list"></ul></div>
+            <div class="col"><div class="gtitle" id="ins2-title">SHIPS &amp; FREIGHT</div><ul id="tanker-insights" class="ins-list"></ul></div>
+          </div>
+          <div class="ph sub-head"><span class="ph-t">⚠ THINGS TO FLAG</span><span class="ph-right"><button id="alert-settings" class="ghost small">⚙ THRESHOLDS</button><span id="alert-count" class="pill">0</span></span></div>
+          <div id="alert-thresholds" class="thresholds hidden"></div>
+          <div id="alerts" class="alerts"></div>
+        </section>
+        <section class="fold-body">
+          <div class="ph"><span class="ph-t">HOW EXTREME IS THIS?</span><span class="dimtext">vs 2 years · jumpiness · positioning · macro</span></div>
+          <div id="context" class="ctx"></div>
+        </section>
+        <section class="fold-body">
+          <div class="ph"><span class="ph-t">LAST TIME IT WAS THIS EXTREME</span>
+            <select id="an-metric"><option value="basis:brent">Brent gap</option><option value="basis:wti">WTI gap</option><option value="spread:brent_wti">Brent vs WTI (real)</option></select>
+          </div>
+          <div id="analogue" class="analogue"></div>
+        </section>
+      </details>
     </div>
 
     <!-- MACRO -->
     <div class="tabpane hidden" data-pane="macro">
       <section class="panel">
-        <div class="ph"><span class="ph-t">INTEREST RATES</span><span class="dimtext">US Treasury yields &amp; the policy rate</span></div>
-        <div id="macro-rates" class="macro"></div>
+        <div class="ph"><span class="ph-t">🌍 REGION</span>
+          <div class="controls"><select id="macro-region"><option value="us">United States</option><option value="eu">Europe</option><option value="jp">Japan</option><option value="apac">Asia-Pacific</option></select></div>
+        </div>
+        <div id="macro-region-panel" class="macro"></div>
       </section>
       <section class="panel">
-        <div class="ph"><span class="ph-t">INFLATION &amp; GROWTH</span><span class="dimtext">US CPI, GDP, unemployment</span></div>
-        <div id="macro-growth" class="macro"></div>
+        <div class="ph"><span class="ph-t">📰 REGIONAL NEWS</span><span id="macro-news-sub" class="dimtext"></span></div>
+        <div id="macro-news" class="news"></div>
       </section>
       <section class="panel">
         <div class="ph"><span class="ph-t">CURRENCIES</span><span class="dimtext">majors, EM &amp; commodity currencies · click one for its chart</span></div>
@@ -205,6 +224,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=8"></script>
+  <script src="app.js?v=9"></script>
 </body>
 </html>

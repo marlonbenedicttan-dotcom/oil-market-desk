@@ -49,6 +49,8 @@ The commodity tile grid and the price-trends charts are now **one tab**. Clickin
 `/api/market` (all instruments + gaps + quality flags),
 `/api/markets` (segment registry — the Big-Picture unit),
 `/api/marketread?id=<marketId>` (per-segment read + verdict + stretch score),
+`/api/news?id=<segment|us|eu|jp|apac>` (tier-1 wire headlines via Google News RSS — headline + source + link only, never article text; cached 45 min),
+`/api/transmission` (cross-asset: real-move triggers → coded transmission chains across segments & regions, e.g. oil↑→inflation→rates↑→precious-metals headwind; triggers are data, chains are a labelled framework),
 `/api/history` (6M daily, all instruments + basis),
 `/api/fx` (chartable currencies),
 `/api/range?id=&range=1m|3m|6m|ytd|1y` , `/api/longterm?id=&years=` (both resolve `id` = benchmark | `basis:<bench>` | `fx:<fx>`) ,

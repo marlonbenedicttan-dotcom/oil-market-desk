@@ -44,6 +44,8 @@ The UI is **two tabs**: **COMMODITIES** and **MACRO**. Everything commodity-rela
 - **Supply** — US oil stockpiles and gas storage under the energy segments.
 - **Basis** — paper vs physical for energy benchmarks, sign-colored (energy-only — there is no free real-vs-futures basis for metals/ags).
 - **Insights & alerts** — a plain-English panel plus threshold flags (with desktop notifications); both follow the selected segment.
+- **Cross-asset logic** — a coded transmission engine turns real moves into knock-on reads across segments *and* regions (oil↑ → inflation → rates↑ → precious-metals headwind; oil↑ → squeezes oil-importing Asia/Europe). Triggers are data; the chains are a labelled framework.
+- **In the news & regional macro** — every segment and each of the four macro regions (**US · Europe · Japan · Asia-Pacific**) carries a tier-1 wire headline strip (headlines + links only) and a region read. Only genuinely current data is shown (US and euro-area are current; Japan/APAC show headlines + currencies rather than stale numbers).
 - **Global macro** — US & ECB rates, US inflation/growth, a **14-pair currencies board** (majors, EM & commodity currencies) where **every currency charts over time**, live **commodity↔currency link** checks (does AUD still track copper? does CAD still track oil?), and a copper/gold growth proxy.
 
 ## What "basis" means
