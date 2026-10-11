@@ -206,6 +206,16 @@ function renderTicker(m) {
 // ---------------------------------------------------------------------------
 // Chart (6M and 10Y)
 // ---------------------------------------------------------------------------
+const bandsPlugin = {
+  id: 'bands',
+  beforeDatasetsDraw(c) {
+    const b = c.$bands;
+    if (!b) return;
+    const { top, bottom, left, right } = c.chartArea;
+    const draw = (y, color) => { const yy = c.scales.y.getPixelForValue(y); if (yy < top || yy > bottom) return; c.ctx.save(); c.ctx.strokeStyle = color; c.ctx.setLineDash([4, 4]); c.ctx.beginPath(); c.ctx.moveTo(left, yy); c.ctx.lineTo(right, yy); c.ctx.stroke(); c.ctx.restore(); };
+    draw(b.p10, '#2a3440'); draw(b.p90, '#2a3440'); draw(b.median, '#4aa3ff');
+  },
+};
 let chart;
 let chartAnchor = null;
 const anchorLine = {
@@ -287,8 +297,12 @@ async function renderChart() {
 
   $('lt-summary').textContent = (summary ? summary + '  ·  ' : '') + 'hover to see % change · click to set an anchor, then drag to measure between two points';
   const chartData = { labels, datasets };
-  if (chart) { chart.data = chartData; chart.update(); return; }
-  chart = new Chart($('chart'), { type: 'line', data: chartData, options: chartOpts(), plugins: [anchorLine] });
+  if (chart) {
+    chart.$bands = null;
+    if (metric.startsWith('basis:')) { const arr = (history.basis[metric.slice(6)] || []).filter((x) => x != null).sort((a, b) => a - b); if (arr.length) chart.$bands = { p10: arr[Math.floor(arr.length * 0.1)], p90: arr[Math.floor(arr.length * 0.9)], median: arr[Math.floor(arr.length * 0.5)] }; }
+    chart.data = chartData; chart.update(); return;
+  }
+  chart = new Chart($('chart'), { type: 'line', data: chartData, options: chartOpts(), plugins: [anchorLine, bandsPlugin] });
 }
 
 async function loadHistory() { history = await getJSON('/api/history'); }
@@ -562,6 +576,19 @@ function renderFlows(d) {
        <div class="fb"><span class="fb-e" style="width:${ew}%">${e.eastbound} heading east → Asia</span><span class="fb-w" style="width:${ww}%">${e.westbound} heading west → Suez</span></div>
        <div class="dimtext">${e.total} ships in the exit zone · ${e.moving} moving · ${e.idle} idle</div></div>`;
 }
+let crackHistChart;
+function renderCrackHistory(h) {
+  const cv = $('crackhist');
+  if (!cv || !h?.dates?.length) return;
+  const data = { labels: h.dates, datasets: [
+    { label: 'Diesel', data: h.diesel, borderColor: '#ff9e00', borderWidth: 2, pointRadius: 0, tension: 0.25 },
+    { label: 'Gasoline', data: h.gasoline, borderColor: '#4aa3ff', borderWidth: 2, pointRadius: 0, tension: 0.25 },
+    { label: '3-2-1', data: h.c321, borderColor: '#00c853', borderWidth: 1.5, pointRadius: 0, tension: 0.25 },
+  ] };
+  const opts = { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: '#7c8a99', boxWidth: 10, font: { family: 'monospace' } } } }, scales: { x: { ticks: { color: '#7c8a99', maxTicksLimit: 8 }, grid: { color: '#151a20' } }, y: { ticks: { color: '#7c8a99' }, grid: { color: '#151a20' } } } };
+  if (crackHistChart) { crackHistChart.data = data; crackHistChart.update(); return; }
+  crackHistChart = new Chart(cv, { type: 'line', data, options: opts });
+}
 function renderProducts(d) {
   if (!d?.items) { $('products').innerHTML = ''; return; }
   const cards = d.items.map((i) => {
@@ -572,6 +599,7 @@ function renderProducts(d) {
       <div class="row"><span class="k">Read <span class="qi" title="${i.note}">ⓘ</span></span><span class="v dimtext" style="font-weight:400">${read}</span></div></div>`;
   }).join('');
   $('products').innerHTML = `<div class="cards">${cards}</div>`;
+  renderCrackHistory(d.history);
 }
 let rerouteChart;
 function processSar() {
@@ -703,6 +731,7 @@ function showTab(name) {
   document.querySelectorAll('.tab').forEach((t) => t.classList.toggle('active', t.dataset.tab === name));
   document.querySelectorAll('.tabpane').forEach((p) => p.classList.toggle('hidden', p.dataset.pane !== name));
   if (name === 'curve') { loadCurveHistory(); if (chart) setTimeout(() => chart.resize(), 50); if (curveHistChart) setTimeout(() => curveHistChart.resize(), 60); }
+  if (name === 'sectors' && crackHistChart) setTimeout(() => crackHistChart.resize(), 60);
   if (name === 'tankers' && map) setTimeout(() => map.invalidateSize(), 60);
 }
 

@@ -843,6 +843,7 @@ async function getProducts() {
         { key: 'c321', label: '3-2-1 composite', crack: cracks.c321, pct: pct(series.c321, last(series.c321)), note: 'refining margin' },
       ],
       physical: { gasoline: cracks.gasolinePhys, diesel: cracks.dieselPhys, jet: cracks.jetPhys },
+      history: { dates: dates.slice(-180), gasoline: series.gasoline.slice(-180), diesel: series.diesel.slice(-180), c321: series.c321.slice(-180) },
     };
   });
 }
