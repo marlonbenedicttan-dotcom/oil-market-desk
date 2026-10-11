@@ -17,11 +17,13 @@ const UA = { 'User-Agent': 'Mozilla/5.0 (oil-basis)' };
 // Add a row to add a benchmark (both feeds must exist for free).
 // ---------------------------------------------------------------------------
 const BENCHMARKS = [
-  { id: 'wti',    label: 'WTI (Cushing)',   group: 'Crude',   unit: '$/bbl',   dp: 2, paper: 'CL=F', physical: 'DCOILWTICO' },
-  { id: 'brent',  label: 'Brent',           group: 'Crude',   unit: '$/bbl',   dp: 2, paper: 'BZ=F', physical: 'DCOILBRENTEU' },
-  { id: 'rbob',   label: 'RBOB Gasoline',   group: 'Refined', unit: '$/gal',   dp: 3, paper: 'RB=F', physical: 'DGASUSGULF' },
-  { id: 'ulsd',   label: 'ULSD / Heating',  group: 'Refined', unit: '$/gal',   dp: 3, paper: 'HO=F', physical: 'DHOILNYH' },
-  { id: 'natgas', label: 'Natural Gas',     group: 'Gas',     unit: '$/MMBtu', dp: 2, paper: 'NG=F', physical: 'DHHNGSP' },
+  { id: 'wti',    label: 'WTI (Cushing)',   group: 'Crude',   unit: '$/bbl',   dp: 2, paper: 'CL=F', physical: 'DCOILWTICO', source: 'fred' },
+  { id: 'brent',  label: 'Brent',           group: 'Crude',   unit: '$/bbl',   dp: 2, paper: 'BZ=F', physical: 'DCOILBRENTEU', source: 'fred' },
+  { id: 'rbob',   label: 'RBOB Gasoline',   group: 'Refined', unit: '$/gal',   dp: 3, paper: 'RB=F', physical: 'DGASUSGULF', source: 'fred' },
+  { id: 'ulsd',   label: 'ULSD / Heating',  group: 'Refined', unit: '$/gal',   dp: 3, paper: 'HO=F', physical: 'DHOILNYH', source: 'fred' },
+  { id: 'jet',    label: 'Jet Fuel (USGC)', group: 'Refined', unit: '$/gal',   dp: 3, paper: null,   physical: 'EER_EPJK_PF4_RGC_DPG', source: 'eia' },
+  { id: 'propane',label: 'Propane (Mt Belvieu)', group: 'Refined', unit: '$/gal', dp: 3, paper: null, physical: 'EER_EPLLPA_PF4_Y44MB_DPG', source: 'eia' },
+  { id: 'natgas', label: 'Natural Gas',     group: 'Gas',     unit: '$/MMBtu', dp: 2, paper: 'NG=F', physical: 'DHHNGSP', source: 'fred' },
 ];
 
 // ---------------------------------------------------------------------------
@@ -54,10 +56,33 @@ async function fredSeries(id, days = 220) {
   return out;
 }
 
+// EIA v2 spot prices — needs a free EIA_API_KEY. Returns {} if the key is absent.
+async function eiaSeries(id, days = 220) {
+  const key = process.env.EIA_API_KEY;
+  if (!key) return {};
+  const p = new URLSearchParams();
+  p.set('api_key', key);
+  p.set('frequency', 'daily');
+  p.append('data[0]', 'value');
+  p.append('facets[series][]', id);
+  p.set('start', new Date(Date.now() - days * 864e5).toISOString().slice(0, 10));
+  p.append('sort[0][column]', 'period');
+  p.append('sort[0][direction]', 'asc');
+  p.set('length', '5000');
+  const res = await fetch(`https://api.eia.gov/v2/petroleum/pri/spt/data/?${p}`, { headers: UA });
+  if (!res.ok) throw new Error(`eia ${id} -> ${res.status}`);
+  const json = await res.json();
+  const out = {};
+  for (const row of json.response?.data || []) out[row.period] = parseFloat(row.value);
+  return out;
+}
+
+const spotSeries = (b, days) => (b.source === 'eia' ? eiaSeries(b.physical, days) : fredSeries(b.physical, days));
+
 const lastEntry = (obj) => {
   const dates = Object.keys(obj).sort();
   const d = dates[dates.length - 1];
-  return { date: d, value: obj[d] };
+  return { date: d || null, value: d ? obj[d] : null };
 };
 
 // ---------------------------------------------------------------------------
@@ -72,10 +97,10 @@ async function cached(key, ttlMs, fn) {
   return v;
 }
 
-const paperFor = (b) => cached('p:' + b.paper, 45_000, () => yahooSeries(b.paper, '5d', '1d'));
-const physFor = (b) => cached('f:' + b.physical, 3_600_000, () => fredSeries(b.physical, 14));
-const hPaperFor = (b) => cached('hp:' + b.paper, 3_600_000, () => yahooSeries(b.paper, '6mo', '1d'));
-const hPhysFor = (b) => cached('hf:' + b.physical, 3_600_000, () => fredSeries(b.physical));
+const paperFor = (b) => (b.paper ? cached('p:' + b.paper, 45_000, () => yahooSeries(b.paper, '5d', '1d')) : Promise.resolve({ price: null }));
+const physFor = (b) => cached('f:' + b.physical, 3_600_000, () => spotSeries(b, 14));
+const hPaperFor = (b) => (b.paper ? cached('hp:' + b.paper, 3_600_000, () => yahooSeries(b.paper, '6mo', '1d')) : Promise.resolve({ series: {} }));
+const hPhysFor = (b) => cached('hf:' + b.physical, 3_600_000, () => spotSeries(b, 220));
 
 // ---------------------------------------------------------------------------
 // Market snapshot
@@ -84,10 +109,12 @@ async function getMarket() {
   const rows = await Promise.all(BENCHMARKS.map(async (b) => {
     const [p, f] = await Promise.all([paperFor(b), physFor(b)]);
     const phys = lastEntry(f);
+    const paper = p.price ?? null;
+    const physical = phys.value ?? null;
     return {
       id: b.id, label: b.label, group: b.group, unit: b.unit, dp: b.dp,
-      paper: p.price, physical: phys.value, physicalDate: phys.date,
-      basis: phys.value - p.price,
+      paper, physical, physicalDate: phys.date,
+      basis: paper != null && physical != null ? physical - paper : null,
     };
   }));
   const by = Object.fromEntries(rows.map((r) => [r.id, r]));
@@ -105,8 +132,9 @@ async function getMarket() {
     spreads,
     notes: [
       'Paper = front-month futures; rolls on expiry, which can jump the basis.',
-      'Physical = spot/cash assessment (EIA via FRED), published with ~1 day lag.',
-      'Refined-product/Gas spot proxies: Gulf Coast gasoline, NY Harbor heating oil, Henry Hub gas.',
+      'Physical = spot/cash (FRED / EIA), published with ~1 day lag.',
+      'Propane & jet fuel are spot-only — no free exchange futures.',
+      'Dubai / WTI Midland / Mars need a paid feed; not available for free.',
       'Basis = physical − paper. Positive = physical premium (backwardation pressure).',
     ],
   };
@@ -176,8 +204,13 @@ function startAIS() {
     ws.send(JSON.stringify({ APIKey: key, BoundingBoxes: boxes, FilterMessageTypes: ['PositionReport', 'ShipStaticData'] }));
     console.log('[ais] connected, subscribed to', boxes.length, 'regions');
   });
-  ws.addEventListener('message', (ev) => {
-    let msg; try { msg = JSON.parse(ev.data); } catch { return; }
+  ws.addEventListener('message', async (ev) => {
+    let msg;
+    try {
+      let text = ev.data;
+      if (typeof text !== 'string') text = text instanceof Blob ? await text.text() : Buffer.from(text).toString('utf8');
+      msg = JSON.parse(text);
+    } catch { return; }
     const meta = msg.MetaData || {};
     ais.messages += 1; ais.lastMessage = new Date().toISOString();
     if (msg.MessageType === 'ShipStaticData') {

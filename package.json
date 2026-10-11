@@ -4,7 +4,7 @@
   "description": "Paper vs physical crude oil (WTI & Brent) basis dashboard with live tanker tracking.",
   "type": "module",
   "scripts": {
-    "start": "node server.js"
+    "start": "node --env-file-if-exists=.env server.js"
   },
   "engines": {
     "node": ">=22"

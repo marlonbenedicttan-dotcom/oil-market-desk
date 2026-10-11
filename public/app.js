@@ -1,7 +1,7 @@
 const $ = (id) => document.getElementById(id);
 const fmt = (n, dp = 2, unit = '$') => (n == null ? '—' : unit + Number(n).toFixed(dp));
 const signed = (n, dp = 2) => (n == null ? '—' : (n >= 0 ? '+' : '') + Number(n).toFixed(dp));
-const cls = (n) => (n >= 0 ? 'pos' : 'neg');
+const cls = (n) => (n == null ? '' : n >= 0 ? 'pos' : 'neg');
 
 let data; // last /api/market payload
 
@@ -15,12 +15,13 @@ async function getJSON(url) {
 // Cards (grouped, built from the registry)
 // ---------------------------------------------------------------------------
 function benchCard(b) {
+  const spotOnly = b.paper == null;
   return `
     <div class="card">
-      <h3>${b.label} <span>${b.unit}</span></h3>
-      <div class="row"><span class="k">Paper (futures)</span><span class="v">${fmt(b.paper, b.dp)}</span></div>
+      <h3>${b.label} <span>${b.unit}${spotOnly ? ' · spot' : ''}</span></h3>
+      <div class="row"><span class="k">Paper (futures)</span><span class="v">${spotOnly ? '<span class="k">— none</span>' : fmt(b.paper, b.dp)}</span></div>
       <div class="row"><span class="k">Physical <em>${b.physicalDate || ''}</em></span><span class="v">${fmt(b.physical, b.dp)}</span></div>
-      <div class="row"><span class="k">Basis</span><span class="v basis ${cls(b.basis)}">${signed(b.basis, b.dp)}</span></div>
+      <div class="row"><span class="k">Basis</span><span class="v basis ${cls(b.basis)}">${b.basis == null ? '—' : signed(b.basis, b.dp)}</span></div>
     </div>`;
 }
 
@@ -67,8 +68,12 @@ function buildMetricOptions(m) {
   const prev = sel.value;
   const opts = [];
   for (const b of m.benchmarks) {
-    opts.push(`<option value="${b.id}">${b.label} — paper vs physical</option>`);
-    opts.push(`<option value="basis:${b.id}">${b.label} basis (phys − paper)</option>`);
+    if (b.paper == null) {
+      opts.push(`<option value="${b.id}">${b.label} (spot only)</option>`);
+    } else {
+      opts.push(`<option value="${b.id}">${b.label} — paper vs physical</option>`);
+      opts.push(`<option value="basis:${b.id}">${b.label} basis (phys − paper)</option>`);
+    }
   }
   for (const key of Object.keys(m.spreads)) {
     opts.push(`<option value="spread:${key}">${m.spreads[key].label} (paper & physical)</option>`);
@@ -85,7 +90,10 @@ function datasetsFor(metric, h, m) {
   const bench = m.benchmarks.find((b) => b.id === metric);
   if (bench) {
     const s = h.series[metric];
-    return [line(`${bench.label} paper`, s.paper, '#4aa3ff'), line(`${bench.label} physical`, s.physical, '#f0a02a')];
+    const sets = [];
+    if (bench.paper != null) sets.push(line(`${bench.label} paper`, s.paper, '#4aa3ff'));
+    sets.push(line(`${bench.label} physical`, s.physical, '#f0a02a'));
+    return sets;
   }
   if (metric.startsWith('basis:')) {
     const id = metric.slice(6);

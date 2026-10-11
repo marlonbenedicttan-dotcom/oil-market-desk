@@ -8,11 +8,15 @@ A dashboard that puts **paper** (futures) and **physical** (spot/cash) prices si
 | Brent | `BZ=F` | EIA `DCOILBRENTEU` |
 | RBOB Gasoline | `RB=F` | Gulf Coast `DGASUSGULF` |
 | ULSD / Heating Oil | `HO=F` | NY Harbor `DHOILNYH` |
+| Jet Fuel (spot only) | — | USGC `EER_EPJK_PF4_RGC_DPG` (EIA key) |
+| Propane (spot only) | — | Mt Belvieu `EER_EPLLPA_PF4_Y44MB_DPG` (EIA key) |
 | Natural Gas | `NG=F` | Henry Hub `DHHNGSP` |
 
 Plus the **Brent − WTI** spread (paper & physical) and a live tanker map.
 
 Adding a benchmark = one row in the `BENCHMARKS` table in `server.js`.
+
+> **Note on extra crude grades:** Dubai, WTI Midland and Mars are **not** available from free daily spot sources — EIA's public daily table carries only WTI Cushing and Brent for crude. Those grades need a paid feed (Kpler, Vortexa, Nasdaq Data Link, etc.).
 
 ## What "basis" means
 
