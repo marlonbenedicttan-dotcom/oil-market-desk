@@ -72,18 +72,21 @@ function crackSpreads(m) {
 // Cards
 // ---------------------------------------------------------------------------
 function benchCard(b) {
-  const spotOnly = b.paper == null;
+  const realOnly = b.paper == null;      // spot only (jet/propane)
+  const paperOnly = b.physical == null;  // futures only (metals/ags)
   const s = history?.series?.[b.id];
   const arr = b.paper != null ? s?.paper : s?.physical;
   const day = changeOf(arr), dayPct = pctOf(arr);
   const stale = b.spotLagDays != null && b.spotLagDays >= 3;
+  const rows = [];
+  rows.push(`<div class="row"><span class="k">Futures price</span><span class="v">${realOnly ? '<span class="k">— none</span>' : fmt(b.paper, b.dp)}</span></div>`);
+  if (!paperOnly) rows.push(`<div class="row"><span class="k">Real barrels <em>${b.physicalDate || ''}</em>${stale ? ` <span class="qb">${b.spotLagDays}d old</span>` : ''}</span><span class="v">${fmt(b.physical, b.dp)}</span></div>`);
+  if (!realOnly && !paperOnly) rows.push(`<div class="row"><span class="k">Gap (real − futures) <span class="qi" title="Real price minus futures price">ⓘ</span></span><span class="v basis ${cls(b.basis)}">${b.basis == null ? '—' : signed(b.basis, b.dp)}</span></div>`);
+  rows.push(`<div class="row"><span class="k">Change today</span><span class="v ${cls(day)}">${day == null ? '—' : `${signed(day, b.dp)} (${pctf(dayPct)})`}</span></div>`);
   return `
-    <div class="card clickable" data-id="${b.id}" title="Click for 10-year performance">
-      <h3 title="${b.label}">${b.label} <span>${b.unit}${spotOnly ? ' · only real' : ''}</span></h3>
-      <div class="row"><span class="k">Futures price</span><span class="v">${spotOnly ? '<span class="k">— none</span>' : fmt(b.paper, b.dp)}</span></div>
-      <div class="row"><span class="k">Real barrels <em>${b.physicalDate || ''}</em>${stale ? ` <span class="qb">${b.spotLagDays}d old</span>` : ''}</span><span class="v">${fmt(b.physical, b.dp)}</span></div>
-      <div class="row"><span class="k">Gap (real − futures) <span class="qi" title="Real price minus futures price">ⓘ</span></span><span class="v basis ${cls(b.basis)}">${b.basis == null ? '—' : signed(b.basis, b.dp)}</span></div>
-      <div class="row"><span class="k">Change today</span><span class="v ${cls(day)}">${day == null ? '—' : `${signed(day, b.dp)} (${pctf(dayPct)})`}</span></div>
+    <div class="card clickable" data-id="${b.id}" title="Click for history">
+      <h3 title="${b.label}">${b.label} <span>${b.unit}${realOnly ? ' · real only' : paperOnly ? ' · futures' : ''}</span></h3>
+      ${rows.join('')}
     </div>`;
 }
 function spreadCard(s) {
@@ -206,7 +209,9 @@ function buildMetricOptions(m) {
   const prev = sel.value || localStorage.getItem('oilbasis.metric');
   const opts = [];
   for (const b of m.benchmarks) {
+    if (history && !(b.id in history.series)) continue; // no history available (futures-only instruments)
     if (b.paper == null) opts.push(`<option value="${b.id}">${b.label} (real price only)</option>`);
+    else if (b.physical == null) opts.push(`<option value="${b.id}">${b.label} (futures)</option>`);
     else { opts.push(`<option value="${b.id}">${b.label} — futures vs real</option>`); opts.push(`<option value="basis:${b.id}">${b.label} gap (real − futures)</option>`); }
   }
   for (const key of Object.keys(m.spreads)) opts.push(`<option value="spread:${key}">${m.spreads[key].label} (futures & real)</option>`);
@@ -216,7 +221,7 @@ function buildMetricOptions(m) {
 function line(label, arr, color) { return { label, data: arr, borderColor: color, backgroundColor: color + '22', borderWidth: 2, pointRadius: 0, tension: 0.25, spanGaps: true, fill: false }; }
 function datasetsFor(metric, h, m) {
   const b = m.benchmarks.find((x) => x.id === metric);
-  if (b) { const s = h.series[metric]; const sets = []; if (b.paper != null) sets.push(line(`${b.label} futures`, s.paper, '#4aa3ff')); sets.push(line(`${b.label} real`, s.physical, '#ff9e00')); return sets; }
+  if (b) { const s = h.series[metric]; const sets = []; if (b.paper != null) sets.push(line(`${b.label} futures`, s.paper, '#4aa3ff')); if (b.physical != null) sets.push(line(`${b.label} real`, s.physical, '#ff9e00')); return sets; }
   if (metric.startsWith('basis:')) { const id = metric.slice(6); return [line(`${id} gap`, h.basis[id], '#00c853')]; }
   if (metric.startsWith('spread:')) { const s = h.spreads[metric.slice(7)]; return [line('futures', s.paper, '#4aa3ff'), line('real', s.physical, '#ff9e00')]; }
   return [];

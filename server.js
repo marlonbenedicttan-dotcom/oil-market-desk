@@ -19,6 +19,7 @@ const UA = { 'User-Agent': 'Mozilla/5.0 (oil-basis)' };
 // Add a row to add a benchmark (both feeds must exist for free).
 // ---------------------------------------------------------------------------
 const BENCHMARKS = [
+  // ---- Energy ----
   { id: 'wti',    label: 'WTI (Cushing)',   group: 'Crude',   unit: '$/bbl',   dp: 2, paper: 'CL=F', physical: 'DCOILWTICO', source: 'fred' },
   { id: 'brent',  label: 'Brent',           group: 'Crude',   unit: '$/bbl',   dp: 2, paper: 'BZ=F', physical: 'DCOILBRENTEU', source: 'fred' },
   { id: 'rbob',   label: 'RBOB Gasoline',   group: 'Refined', unit: '$/gal',   dp: 3, paper: 'RB=F', physical: 'DGASUSGULF', source: 'fred' },
@@ -26,6 +27,20 @@ const BENCHMARKS = [
   { id: 'jet',    label: 'Jet Fuel (USGC)', group: 'Refined', unit: '$/gal',   dp: 3, paper: null,   physical: 'EER_EPJK_PF4_RGC_DPG', source: 'eia' },
   { id: 'propane',label: 'Propane (Mt Belvieu)', group: 'Refined', unit: '$/gal', dp: 3, paper: null, physical: 'EER_EPLLPA_PF4_Y44MB_DPG', source: 'eia' },
   { id: 'natgas', label: 'Natural Gas',     group: 'Gas',     unit: '$/MMBtu', dp: 2, paper: 'NG=F', physical: 'DHHNGSP', source: 'fred' },
+  // ---- Metals (futures only — no free spot) ----
+  { id: 'gold',     label: 'Gold',      group: 'Metals', unit: '$/oz', dp: 2, paper: 'GC=F', physical: null },
+  { id: 'silver',   label: 'Silver',    group: 'Metals', unit: '$/oz', dp: 3, paper: 'SI=F', physical: null },
+  { id: 'copper',   label: 'Copper',    group: 'Metals', unit: '$/lb', dp: 4, paper: 'HG=F', physical: null },
+  { id: 'platinum', label: 'Platinum',  group: 'Metals', unit: '$/oz', dp: 2, paper: 'PL=F', physical: null },
+  { id: 'palladium',label: 'Palladium', group: 'Metals', unit: '$/oz', dp: 2, paper: 'PA=F', physical: null },
+  // ---- Agriculture (futures only) ----
+  { id: 'corn',    label: 'Corn',     group: 'Agriculture', unit: '¢/bu', dp: 1, paper: 'ZC=F', physical: null },
+  { id: 'wheat',   label: 'Wheat',    group: 'Agriculture', unit: '¢/bu', dp: 1, paper: 'ZW=F', physical: null },
+  { id: 'soybean', label: 'Soybeans', group: 'Agriculture', unit: '¢/bu', dp: 1, paper: 'ZS=F', physical: null },
+  { id: 'sugar',   label: 'Sugar',    group: 'Agriculture', unit: '¢/lb', dp: 2, paper: 'SB=F', physical: null },
+  { id: 'coffee',  label: 'Coffee',   group: 'Agriculture', unit: '¢/lb', dp: 2, paper: 'KC=F', physical: null },
+  { id: 'cocoa',   label: 'Cocoa',    group: 'Agriculture', unit: '$/t',  dp: 0, paper: 'CC=F', physical: null },
+  { id: 'cotton',  label: 'Cotton',   group: 'Agriculture', unit: '¢/lb', dp: 2, paper: 'CT=F', physical: null },
 ];
 
 // ---------------------------------------------------------------------------
@@ -79,7 +94,7 @@ async function eiaSeries(id, days = 220) {
   return out;
 }
 
-const spotSeries = (b, days) => (b.source === 'eia' ? eiaSeries(b.physical, days) : fredSeries(b.physical, days));
+const spotSeries = (b, days) => (!b.physical ? Promise.resolve({}) : b.source === 'eia' ? eiaSeries(b.physical, days) : fredSeries(b.physical, days));
 
 const lastEntry = (obj) => {
   const dates = Object.keys(obj).sort();
@@ -99,10 +114,10 @@ async function cached(key, ttlMs, fn) {
   return v;
 }
 
-const paperFor = (b) => (b.paper ? cached('p:' + b.paper, 45_000, () => yahooSeries(b.paper, '5d', '1d')) : Promise.resolve({ price: null }));
-const physFor = (b) => cached('f:' + b.physical, 3_600_000, () => spotSeries(b, 14));
+const paperFor = (b) => (b.paper ? cached('p:' + b.paper, 180_000, () => yahooSeries(b.paper, '5d', '1d')) : Promise.resolve({ price: null }));
+const physFor = (b) => (b.physical ? cached('f:' + b.physical, 3_600_000, () => spotSeries(b, 14)) : Promise.resolve({}));
 const hPaperFor = (b) => (b.paper ? cached('hp:' + b.paper, 3_600_000, () => yahooSeries(b.paper, '6mo', '1d')) : Promise.resolve({ series: {} }));
-const hPhysFor = (b) => cached('hf:' + b.physical, 3_600_000, () => spotSeries(b, 220));
+const hPhysFor = (b) => (b.physical ? cached('hf:' + b.physical, 3_600_000, () => spotSeries(b, 220)) : Promise.resolve({}));
 
 // ---------------------------------------------------------------------------
 // Market snapshot
@@ -185,15 +200,16 @@ async function getMarket() {
 // History
 // ---------------------------------------------------------------------------
 async function getHistory() {
+  const list = BENCHMARKS.filter((b) => b.physical);
   const maps = {};
-  await Promise.all(BENCHMARKS.map(async (b) => {
+  await Promise.all(list.map(async (b) => {
     const p = await hPaperFor(b);
     const f = await hPhysFor(b);
     maps[b.id] = { paper: p.series, physical: f };
   }));
 
   const allDates = new Set();
-  for (const b of BENCHMARKS) {
+  for (const b of list) {
     Object.keys(maps[b.id].paper).forEach((d) => allDates.add(d));
     Object.keys(maps[b.id].physical).forEach((d) => allDates.add(d));
   }
@@ -202,7 +218,7 @@ async function getHistory() {
 
   const series = {};
   const basis = {};
-  for (const b of BENCHMARKS) {
+  for (const b of list) {
     const pm = maps[b.id].paper;
     const fm = maps[b.id].physical;
     series[b.id] = { paper: dates.map((d) => at(pm, d)), physical: dates.map((d) => at(fm, d)) };
@@ -601,13 +617,13 @@ const FREIGHT_DEFAULT = 2.0; // $/bbl USGC -> NW Europe estimate
 async function getAnalytics(freight = FREIGHT_DEFAULT) {
   return cached('analytics:' + freight, 6 * 3600e3, async () => {
     const twoYear = {};
-    for (const b of BENCHMARKS) {
+    for (const b of BENCHMARKS.filter((x) => x.physical)) {
       const paperMap = (await cached(`a2p:${b.paper || b.id}`, 6 * 3600e3, () => (b.paper ? yahooSeries(b.paper, '2y', '1d') : Promise.resolve({ series: {} })))).series;
       const physMap = await cached(`a2f:${b.physical}`, 6 * 3600e3, () => spotSeries(b, 740));
       twoYear[b.id] = { paperMap, physMap };
     }
     const benchmarks = {};
-    for (const b of BENCHMARKS) {
+    for (const b of BENCHMARKS.filter((x) => x.physical)) {
       const { paperMap, physMap } = twoYear[b.id];
       const dates = [...new Set([...Object.keys(paperMap), ...Object.keys(physMap)])].sort();
       const basisArr = dates.map((d) => (paperMap[d] != null && physMap[d] != null ? physMap[d] - paperMap[d] : null));
