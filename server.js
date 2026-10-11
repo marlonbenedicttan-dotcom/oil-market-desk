@@ -200,7 +200,7 @@ async function getMarket() {
 // History
 // ---------------------------------------------------------------------------
 async function getHistory() {
-  const list = BENCHMARKS.filter((b) => b.physical);
+  const list = BENCHMARKS;
   const maps = {};
   await Promise.all(list.map(async (b) => {
     const p = await hPaperFor(b);

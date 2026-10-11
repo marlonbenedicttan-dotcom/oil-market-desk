@@ -22,7 +22,7 @@ after(() => { child?.kill(); });
 test('serves the dashboard', async () => {
   const r = await fetch(`http://localhost:${PORT}/`);
   assert.equal(r.status, 200);
-  assert.match(await r.text(), /OIL MARKET DESK/);
+  assert.match(await r.text(), /COMMODITY DESK/);
 });
 
 test('pure endpoints always respond 200', async () => {

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Oil Market Desk</title>
+  <title>Commodity Desk</title>
   <link rel="manifest" href="/manifest.json" />
   <meta name="theme-color" content="#ff9e00" />
   <link rel="icon" href="/icon.svg" />
@@ -14,7 +14,7 @@
 </head>
 <body>
   <header class="topbar">
-    <div class="brand"><span class="logo">▚</span><h1>OIL MARKET DESK</h1><span class="sub">REAL BARRELS vs FUTURES · WHAT IT MEANS</span></div>
+    <div class="brand"><span class="logo">▚</span><h1>COMMODITY DESK</h1><span class="sub">ENERGY · METALS · AGRICULTURE · MACRO</span></div>
     <div class="meta">
       <span id="clock" class="clock">--:--:--</span>
       <span id="updated" class="dimtext">loading…</span>
@@ -37,6 +37,7 @@
     <!-- TABS -->
     <nav class="tabs" id="tabs">
       <button class="tab active" data-tab="overview">BIG PICTURE</button>
+      <button class="tab" data-tab="commodities">COMMODITIES</button>
       <button class="tab" data-tab="curve">PRICE TRENDS</button>
       <button class="tab" data-tab="fundamentals">SUPPLY &amp; DEMAND</button>
       <button class="tab" data-tab="sectors">FUELS &amp; STOCKS</button>
@@ -56,8 +57,6 @@
         <div id="tightness" class="tightness"></div>
       </section>
 
-      <div id="cards"></div>
-
       <section class="panel">
         <div class="ph"><span class="ph-t">🧭 WHAT IT MEANS</span><button id="help-btn" class="ghost small">PLAIN-ENGLISH GUIDE</button></div>
         <div id="glossary" class="glossary hidden"></div>
@@ -73,6 +72,14 @@
       <section class="panel">
         <div class="ph"><span class="ph-t">HOW EXTREME IS THIS?</span><span class="dimtext">vs the last 2 years · jumpiness · data checks</span></div>
         <div id="context" class="ctx"></div>
+      </section>
+    </div>
+
+    <!-- COMMODITIES -->
+    <div class="tabpane hidden" data-pane="commodities">
+      <section class="panel">
+        <div class="ph"><span class="ph-t">COMMODITIES</span><span class="dimtext">click a tile for its history · % = change today</span></div>
+        <div id="cards"></div>
       </section>
     </div>
 

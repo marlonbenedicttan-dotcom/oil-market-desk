@@ -102,11 +102,24 @@ function crackCard(c) {
       <div class="row"><span class="k">Read</span><span class="v dimtext" style="font-weight:400">${read}</span></div></div>`;
 }
 function renderCards(m) {
-  const cracks = crackSpreads(m);
-  $('cards').innerHTML = `
-    <div class="group"><div class="gtitle">PRICES <span class="dimtext">— click a card for 10 years of history</span></div><div class="cards">${m.benchmarks.map(benchCard).join('')}</div></div>
-    ${Object.keys(m.spreads).length ? `<div class="group"><div class="gtitle">OIL-TYPE GAPS</div><div class="cards">${Object.values(m.spreads).map((s) => spreadCard(s)).join('')}</div></div>` : ''}
-    ${cracks.length ? `<div class="group"><div class="gtitle">REFINING PROFITS</div><div class="cards">${cracks.map(crackCard).join('')}</div></div>` : ''}`;
+  const groups = {};
+  for (const b of m.benchmarks) (groups[b.group] ||= []).push(b);
+  const html = Object.entries(groups).map(([g, list]) => {
+    const tiles = list.map((b) => {
+      const s = history?.series?.[b.id];
+      const arr = b.paper != null ? s?.paper : s?.physical;
+      const val = b.paper != null ? b.paper : b.physical;
+      const pc = pctOf(arr);
+      const paperOnly = b.physical == null;
+      return `<button class="tile" data-id="${b.id}" title="${b.label} — click for history">
+        <span class="t-name">${b.label}${paperOnly ? '' : ''}</span>
+        <span class="t-px">${val == null ? '—' : Number(val).toFixed(b.dp)}</span>
+        <span class="t-chg ${cls(pc)}">${pc == null ? '' : pctf(pc)}</span>
+      </button>`;
+    }).join('');
+    return `<div class="group"><div class="gtitle">${g.toUpperCase()}</div><div class="tiles">${tiles}</div></div>`;
+  }).join('');
+  $('cards').innerHTML = html;
 }
 
 // ---------------------------------------------------------------------------
@@ -762,11 +775,14 @@ $('alert-settings')?.addEventListener('click', () => {
 $('tabs').addEventListener('click', (e) => { const b = e.target.closest('.tab'); if (b) showTab(b.dataset.tab); });
 $('help-btn').addEventListener('click', () => { const g = $('glossary'); g.innerHTML = GLOSSARY; g.classList.toggle('hidden'); });
 $('cards').addEventListener('click', (e) => {
-  const card = e.target.closest('.card[data-id]');
-  if (!card) return;
-  $('metric').value = card.dataset.id;
-  localStorage.setItem('oilbasis.metric', card.dataset.id);
-  $('range').value = '10y';
+  const tile = e.target.closest('.tile[data-id]');
+  if (!tile) return;
+  const id = tile.dataset.id;
+  if ([...$('metric').options].some((o) => o.value === id)) $('metric').value = id;
+  localStorage.setItem('oilbasis.metric', id);
+  $('range').value = '6m';
+  chartAnchor = null;
+  showTab('curve');
   renderChart();
 });
 
