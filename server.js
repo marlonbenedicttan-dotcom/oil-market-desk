@@ -107,6 +107,23 @@ const hPhysFor = (b) => cached('hf:' + b.physical, 3_600_000, () => spotSeries(b
 // ---------------------------------------------------------------------------
 // Market snapshot
 // ---------------------------------------------------------------------------
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+// Rate-limit-friendly contract-month fetch: retries with backoff, only caches non-empty.
+async function contractSeries(symbol) {
+  const key = 'cur:' + symbol;
+  const hit = cache.get(key);
+  if (hit && Date.now() - hit.t < 6 * 3600e3) return hit.v;
+  for (let a = 0; a < 3; a++) {
+    try {
+      const r = await yahooSeries(symbol, '2y', '1d');
+      if (r && Object.keys(r.series).length) { cache.set(key, { t: Date.now(), v: r.series }); return r.series; }
+    } catch {}
+    await sleep(600);
+  }
+  return {};
+}
+
 async function getMarket() {
   const rows = await Promise.all(BENCHMARKS.map(async (b) => {
     const [p, f] = await Promise.all([paperFor(b), physFor(b)]);
@@ -358,7 +375,8 @@ async function getCurveHistory(root) {
     }
     const series = {};
     for (const c of list) {
-      try { series[c.mk] = (await cached('cur:' + c.symbol, 6 * 3600e3, () => yahooSeries(c.symbol, '2y', '1d'))).series; } catch { series[c.mk] = {}; }
+      series[c.mk] = await contractSeries(c.symbol);
+      await sleep(200);
     }
     const months = Object.keys(series).filter((m) => Object.keys(series[m]).length).sort();
     const allDates = [...new Set(months.flatMap((m) => Object.keys(series[m])))].sort().slice(-500);
@@ -386,7 +404,8 @@ async function getContinuous(root) {
     }
     const series = {};
     for (const c of list) {
-      try { series[c.mk] = (await cached('cur:' + c.symbol, 6 * 3600e3, () => yahooSeries(c.symbol, '3y', '1d'))).series; } catch { series[c.mk] = {}; }
+      series[c.mk] = await contractSeries(c.symbol);
+      await sleep(200);
     }
     const months = Object.keys(series).filter((m) => Object.keys(series[m]).length).sort();
     const allDates = [...new Set(months.flatMap((m) => Object.keys(series[m])))].sort();
