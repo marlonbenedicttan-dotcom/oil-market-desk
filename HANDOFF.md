@@ -1,4 +1,4 @@
-# HANDOFF — Commodity Desk (brief for the next agent)
+# HANDOFF — Marlon's Watchtower (brief for the next agent)
 
 ## What this is
 A free, self-hosted **commodity + global-macro dashboard**. Three tabs: **HOME** (watchlist + alerts + segments at a glance), **COMMODITIES** and **MACRO**. It gives each commodity segment and each macro country an adaptive, plain-English read with trade ideas — plus charts, curves, supply data, live ships and a news/fundamentals scanner.

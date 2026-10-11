@@ -525,7 +525,13 @@ function renderTicker(m) {
   for (const f of (lastFx || [])) push(f.label, `<span class="tk"><b>${f.label.replace(/\s*·.*/, '')}</b><span class="tk-px">${f.price == null ? '—' : Number(f.price).toFixed(f.price < 10 ? 4 : 2)}</span><span class="tk-chg ${cls(f.pct)}">${f.pct == null ? '' : pctf(f.pct)}</span></span>`);
   for (const t of (macroTickers || [])) push(t.label, `<span class="tk"><b>${t.label}</b><span class="tk-px">${t.price == null ? '—' : Number(t.price).toFixed(t.price < 10 ? 4 : 2)}</span><span class="tk-chg ${cls(t.pct)}">${t.pct == null ? '' : pctf(t.pct)}</span></span>`);
   const one = parts.join('');
-  $('ticker').innerHTML = `<div class="ticker-track">${one}${one}</div>`;   // two copies → seamless marquee
+  const ticker = $('ticker');
+  if (!ticker) return;
+  // Reuse the existing track element so the marquee animation never restarts (only its
+  // children are refreshed). Rebuilding #ticker.innerHTML would reset the scroll.
+  const track = ticker.querySelector('.ticker-track');
+  if (track) track.innerHTML = `${one}${one}`;
+  else ticker.innerHTML = `<div class="ticker-track">${one}${one}</div>`;   // two copies → seamless marquee
 }
 
 // ---------------------------------------------------------------------------

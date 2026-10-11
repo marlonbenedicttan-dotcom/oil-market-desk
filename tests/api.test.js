@@ -23,7 +23,7 @@ test('serves the dashboard', async () => {
   const r = await fetch(`http://localhost:${PORT}/`);
   assert.equal(r.status, 200);
   const html = await r.text();
-  assert.match(html, /COMMODITY DESK/);
+  assert.match(html, /MARLON'S WATCHTOWER/);
   assert.match(html, /data-pane="home"/);   // watchlist + alerts home screen
   assert.match(html, /id="home-watch"/);
   assert.match(html, /id="headlines"/);     // live headlines board now lives in HOME

@@ -1,4 +1,4 @@
-// Oil Basis — paper vs physical spreads across energy benchmarks + live tankers.
+// Marlon's Watchtower — paper vs physical spreads across energy benchmarks + live tankers.
 // Zero runtime dependencies: Node's built-in HTTP, fetch and WebSocket.
 import http from 'node:http';
 import fs from 'node:fs';
@@ -1965,7 +1965,7 @@ async function deliver(kind, subject, text) {
 async function buildDigest() {
   const m = await getMarket();
   const [c, inv, pos] = await Promise.all([getCurves().catch(() => null), getInventories().catch(() => null), getPositioning().catch(() => null)]);
-  const L = [`OIL BASIS — daily digest (${new Date().toISOString()})`, ''];
+  const L = [`MARLON'S WATCHTOWER — daily digest (${new Date().toISOString()})`, ''];
   L.push('PRICES  futures | real | gap | age(days)');
   for (const b of m.benchmarks) L.push(`  ${b.label.padEnd(20)} ${(b.paper ?? '—').toString().padStart(9)} | ${(b.physical ?? '—').toString().padStart(9)} | ${(b.basis == null ? '—' : sgn(b.basis)).padStart(8)} | ${b.spotLagDays ?? '—'}`);
   if (c?.wti) L.push('', `PRICES FOR MONTHS AHEAD  WTI ${c.wti.shape} (this-vs-next ${sgn(c.wti.m1m2)}, vs 6mo ${sgn(c.wti.m1m6)})  |  Brent ${c.brent.shape} (this-vs-next ${sgn(c.brent.m1m2)})`);
@@ -2023,7 +2023,7 @@ async function alertLoop() {
     const cooldown = Number(process.env.ALERT_COOLDOWN_H || 12) * 3600e3;
     const now = Date.now();
     for (const a of await computeServerAlerts()) {
-      if (now - (alertSeen.get(a.key) || 0) > cooldown) { alertSeen.set(a.key, now); await deliver('alert', `Oil Basis · ${a.level.toUpperCase()}`, a.text); }
+      if (now - (alertSeen.get(a.key) || 0) > cooldown) { alertSeen.set(a.key, now); await deliver('alert', `Marlon's Watchtower · ${a.level.toUpperCase()}`, a.text); }
     }
   } catch (e) { console.error('[alerts]', e.message); }
 }
@@ -2037,7 +2037,7 @@ async function maybeSendDigest() {
       lastDigestDate = today;
       state.lastDigestDate = today; saveState();
       lastDigest = await buildDigest();
-      await deliver('digest', 'Oil Basis · daily digest', lastDigest);
+      await deliver('digest', "Marlon's Watchtower · daily digest", lastDigest);
     }
   } catch (e) { console.error('[digest]', e.message); }
 }
@@ -2183,7 +2183,7 @@ const server = http.createServer(async (req, res) => {
 });
 
 server.listen(PORT, () => {
-  console.log(`\n  🛢️  Oil Basis running at  http://localhost:${PORT}`);
+  console.log(`\n  🛢️  Marlon's Watchtower running at  http://localhost:${PORT}`);
   console.log(`     ${BENCHMARKS.length} benchmarks: ${BENCHMARKS.map((b) => b.label).join(', ')}`);
   console.log(`     tankers: ${process.env.AISSTREAM_KEY ? 'aisstream.io' : 'disabled (set AISSTREAM_KEY)'}`);
   console.log(`     alerts:  ${[process.env.WEBHOOK_URL && 'webhook', process.env.SMTP_USER && 'email', process.platform === 'darwin' && process.env.NOTIFY !== 'off' && 'desktop'].filter(Boolean).join(', ') || 'desktop'}`);
