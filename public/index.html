@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Oil Basis — Paper vs Physical</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+</head>
+<body>
+  <header>
+    <div class="brand">
+      <span class="dot"></span>
+      <h1>Oil Basis</h1>
+      <span class="sub">paper vs physical · WTI &amp; Brent</span>
+    </div>
+    <div class="meta">
+      <span id="updated">loading…</span>
+      <button id="refresh">↻ Refresh</button>
+    </div>
+  </header>
+
+  <main>
+    <section class="cards" id="cards"></section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <h2>History</h2>
+        <select id="metric">
+          <option value="wti">WTI — paper vs physical</option>
+          <option value="brent">Brent — paper vs physical</option>
+          <option value="basisWti">WTI basis (physical − paper)</option>
+          <option value="basisBrent">Brent basis (physical − paper)</option>
+          <option value="spreadPaper">Brent − WTI (paper)</option>
+          <option value="spreadPhysical">Brent − WTI (physical)</option>
+        </select>
+      </div>
+      <div class="chart-wrap"><canvas id="chart"></canvas></div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <h2>🚢 Tanker traffic</h2>
+        <span id="ais-status" class="pill">—</span>
+      </div>
+      <div id="ais-help" class="help hidden"></div>
+      <div id="map"></div>
+      <div id="tanker-list" class="tanker-list"></div>
+    </section>
+
+    <footer id="notes"></footer>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
