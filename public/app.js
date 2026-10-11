@@ -70,11 +70,12 @@ function benchCard(b) {
   const s = history?.series?.[b.id];
   const arr = b.paper != null ? s?.paper : s?.physical;
   const day = changeOf(arr), dayPct = pctOf(arr);
+  const stale = b.spotLagDays != null && b.spotLagDays >= 3;
   return `
     <div class="card clickable" data-id="${b.id}" title="Click for 10-year performance">
       <h3 title="${b.label}">${b.label} <span>${b.unit}${spotOnly ? ' · spot' : ''}</span></h3>
       <div class="row"><span class="k">Paper (futures)</span><span class="v">${spotOnly ? '<span class="k">— none</span>' : fmt(b.paper, b.dp)}</span></div>
-      <div class="row"><span class="k">Physical <em>${b.physicalDate || ''}</em></span><span class="v">${fmt(b.physical, b.dp)}</span></div>
+      <div class="row"><span class="k">Physical <em>${b.physicalDate || ''}</em>${stale ? ` <span class="qb">${b.spotLagDays}d lag</span>` : ''}</span><span class="v">${fmt(b.physical, b.dp)}</span></div>
       <div class="row"><span class="k">Basis <span class="qi" title="Physical − Paper">ⓘ</span></span><span class="v basis ${cls(b.basis)}">${b.basis == null ? '—' : signed(b.basis, b.dp)}</span></div>
       <div class="row"><span class="k">Today</span><span class="v ${cls(day)}">${day == null ? '—' : `${signed(day, b.dp)} (${pctf(dayPct)})`}</span></div>
     </div>`;
@@ -290,7 +291,11 @@ function renderContext(m, a) {
   const arb = a.arb ? `<div class="arb">EXPORT ARB (WTI → Europe): spread ${signed(a.arb.spread, 2)} − freight ${a.arb.freight.toFixed(2)} = <b class="${a.arb.open ? 'pos' : 'neg'}">${signed(a.arb.net, 2)} → ${a.arb.open ? 'OPEN' : 'CLOSED'}</b></div>` : '';
   const vols = m.benchmarks.map((b) => { const an = a.benchmarks?.[b.id]; return an && an.vol30 != null ? `<span class="choke"><b>${an.vol30.toFixed(1)}%</b> ${b.label.replace(/\s*\(.*\)/, '')}</span>` : ''; }).filter(Boolean).join('');
   const volStrip = vols ? `<div class="chokes"><div class="chokes-h">REALISED 30D VOLATILITY (ANNUALISED)</div>${vols}</div>` : '';
-  $('context').innerHTML = rows.join('') + arb + volStrip;
+  const qf = data?.quality?.flags || [];
+  const quality = `<div class="qflags"><div class="chokes-h">DATA QUALITY</div>${
+    qf.length ? qf.map((f) => `<div class="qflag ${f.level}">⚠ ${f.text}</div>`).join('')
+      : '<div class="qflag ok">✓ No data-quality issues flagged. Physical vs futures aligned.</div>'}</div>`;
+  $('context').innerHTML = rows.join('') + arb + volStrip + quality;
 }
 function renderInventories(d) {
   if (!d || !d.items?.length) { $('inventories').innerHTML = '<div class="dimtext" style="padding:10px 12px">EIA key needed, or no data.</div>'; return; }

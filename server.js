@@ -105,16 +105,31 @@ const hPhysFor = (b) => cached('hf:' + b.physical, 3_600_000, () => spotSeries(b
 // ---------------------------------------------------------------------------
 // Market snapshot
 // ---------------------------------------------------------------------------
+const sgn = (x, dp = 2) => (x == null ? '—' : (x >= 0 ? '+' : '') + Number(x).toFixed(dp));
+function businessDaysSince(d) {
+  if (!d) return null;
+  let n = 0;
+  const cur = new Date(d + 'T00:00:00Z');
+  const now = new Date(new Date().toISOString().slice(0, 10) + 'T00:00:00Z');
+  while (cur < now) { cur.setUTCDate(cur.getUTCDate() + 1); const wd = cur.getUTCDay(); if (wd !== 0 && wd !== 6) n++; }
+  return n;
+}
+
 async function getMarket() {
   const rows = await Promise.all(BENCHMARKS.map(async (b) => {
     const [p, f] = await Promise.all([paperFor(b), physFor(b)]);
-    const phys = lastEntry(f);
+    const dates = Object.keys(f).sort();
+    const last = dates[dates.length - 1] ?? null;
+    const prev = dates[dates.length - 2] ?? null;
+    const physical = last != null ? f[last] : null;
+    const prevPhys = prev != null ? f[prev] : null;
     const paper = p.price ?? null;
-    const physical = phys.value ?? null;
     return {
       id: b.id, label: b.label, group: b.group, unit: b.unit, dp: b.dp,
-      paper, physical, physicalDate: phys.date,
+      paper, physical, physicalDate: last,
       basis: paper != null && physical != null ? physical - paper : null,
+      spotLagDays: businessDaysSince(last),
+      spotJumpPct: physical != null && prevPhys ? ((physical - prevPhys) / prevPhys) * 100 : null,
     };
   }));
   const by = Object.fromEntries(rows.map((r) => [r.id, r]));
@@ -126,16 +141,33 @@ async function getMarket() {
       physical: by.brent.physical - by.wti.physical,
     };
   }
+
+  // Data-quality checks: staleness, suspicious prints, and curve corroboration.
+  let curves = null; try { curves = await getCurves(); } catch {}
+  const flags = [];
+  const lagged = rows.filter((r) => r.spotLagDays != null && r.spotLagDays >= 3);
+  if (lagged.length) flags.push({ level: 'watch', text: `All physical spot series are ~${Math.max(...lagged.map((r) => r.spotLagDays))} business days stale (as of ${lagged[0].physicalDate}) while futures are live — the cash–futures basis may be distorted.` });
+  for (const r of rows) {
+    if (r.spotJumpPct != null && Math.abs(r.spotJumpPct) >= 8) flags.push({ level: 'watch', text: `${r.label}: spot swung ${sgn(r.spotJumpPct, 1)}% in a single day — verify the print.` });
+  }
+  for (const id of ['wti', 'brent']) {
+    const r = by[id]; const c = curves?.[id];
+    if (r && c && c.m1m2 != null && r.basis != null) {
+      const ratio = Math.abs(r.basis) / (Math.abs(c.m1m2) || 1);
+      if (ratio > 3) flags.push({ level: 'watch', text: `${r.label}: cash–futures basis ${sgn(r.basis)} is ~${ratio.toFixed(0)}× the curve slope (M1−M2 ${sgn(c.m1m2)}) — likely an instrument/timing mismatch, NOT corroborated by the curve.` });
+    }
+  }
   return {
     updated: new Date().toISOString(),
     benchmarks: rows,
     spreads,
+    quality: { flags, curveAvailable: Boolean(curves) },
     notes: [
-      'Paper = front-month futures; rolls on expiry, which can jump the basis.',
-      'Physical = spot/cash (FRED / EIA), published with ~1 day lag.',
+      'Paper = front-month futures (live). Physical = spot/cash assessment (EIA), which LAGS and is a different instrument — read the basis with the data-quality flags.',
       'Propane & jet fuel are spot-only — no free exchange futures.',
-      'Dubai / WTI Midland / Mars need a paid feed; not available for free.',
       'Basis = physical − paper. Positive = physical premium (backwardation pressure).',
+      'The futures series is the front-month continuous (not roll-adjusted); the CURVE (M1−M2 / M1−M6) is the roll-free structure signal.',
+      'Dubai / WTI Midland / Mars require a paid feed.',
     ],
   };
 }

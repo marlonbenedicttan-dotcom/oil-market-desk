@@ -182,6 +182,13 @@ footer li { margin-bottom: 2px; }
 .antable td:not(:first-child), .antable th:not(:first-child) { text-align: right; }
 .an-verdict { margin-top: 8px; padding: 7px 9px; border: 1px solid var(--line); background: var(--panel2); font-size: 12px; }
 
+/* Data quality */
+.qi, .qb { font-size: 10px; }
+.qb { color: var(--amber); border: 1px solid #5c4a1d; padding: 0 4px; margin-left: 6px; }
+.qflags { padding: 8px 12px 10px; display: grid; gap: 5px; }
+.qflag { font-size: 12px; padding: 5px 8px; border-left: 3px solid var(--amber); background: var(--panel2); }
+.qflag.ok { border-left-color: var(--green); color: var(--dim); }
+
 .glossary { background: var(--panel2); border: 1px solid var(--line); padding: 12px 14px; margin: 12px; }
 .glossary dl { margin: 0; display: grid; grid-template-columns: max-content 1fr; gap: 5px 16px; }
 .glossary dt { color: var(--amber); font-weight: 700; }
