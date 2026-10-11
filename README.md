@@ -99,6 +99,32 @@ View the latest digest any time at `http://localhost:4173/api/digest`.
 - Dubai / WTI Midland / Mars require a paid feed.
 - Not investment advice.
 
+## Deploy it online
+
+The app is a **long-running Node process** (live WebSocket to the ship feed + scheduled alerts), so it needs a **container host** — Render, Railway, or Fly.io. Serverless platforms (Vercel/Netlify) won't work.
+
+**Render (easiest):**
+1. Push this repo to GitHub (command below).
+2. On [render.com](https://render.com) → **New → Blueprint** → pick the repo (it reads `render.yaml`).
+3. Add the secret env vars **`AISSTREAM_KEY`** and **`EIA_API_KEY`** in the dashboard.
+4. Deploy — you get a public URL.
+
+**Docker (any host):**
+```sh
+docker build -t oil-market-desk .
+docker run -p 4173:4173 -e AISSTREAM_KEY=... -e EIA_API_KEY=... oil-market-desk
+```
+
+Notes for hosting:
+- **Desktop notifications are macOS-only** and turn themselves off on a server — use `WEBHOOK_URL` (Slack/Discord) or email for alerts there.
+- State files (`.state.json`, `.reroute.json`, `.flares.json`) are small and rebuild on restart if the disk is ephemeral.
+- Secrets come from environment variables — never commit `.env` (it's git-ignored).
+
+### Push to GitHub
+```sh
+gh repo create oil-market-desk --private --source=. --push
+```
+
 ## License
 
 MIT

@@ -1,0 +1,15 @@
+# Render Blueprint — deploy "Oil Market Desk" from GitHub in one click.
+# Docs: https://render.com/docs/blueprint-spec
+services:
+  - type: web
+    name: oil-market-desk
+    env: docker
+    plan: starter          # "free" works but sleeps; the dashboard then only updates on visit
+    healthCheckPath: /
+    envVars:
+      - key: AISSTREAM_KEY
+        sync: false        # enter in the Render dashboard
+      - key: EIA_API_KEY
+        sync: false
+      - key: DIGEST_HOUR
+        value: "7"
