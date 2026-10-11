@@ -7,5 +7,7 @@ COPY package.json ./
 COPY server.js ./
 COPY src ./src
 COPY public ./public
+COPY data ./data
+COPY scripts ./scripts
 EXPOSE 7860
 CMD ["node", "server.js"]
