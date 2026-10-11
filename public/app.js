@@ -672,6 +672,7 @@ function showTab(name) {
 }
 
 async function loadExtra() {
+  if (!data) return; // need prices first
   try {
     const [inv, pos, eq, chk, an, cv, tn, fl, pr] = await Promise.all([
       getJSON('/api/inventories').catch(() => null),
@@ -748,8 +749,8 @@ $('cards').addEventListener('click', (e) => {
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});
   if ('Notification' in window && Notification.permission === 'default') { try { await Notification.requestPermission(); } catch {} }
   await loadHistory().catch((e) => showError(e.message));
-  await loadExtra();          // slow feeds (cached server-side)
-  await refreshLive();        // prices + ships
+  await refreshLive();        // prices + ships (sets `data` first)
+  await loadExtra();          // slow feeds (need `data`)
   loadAnalogue();
   loadReroute();
   setInterval(loadTankers, 15000);                                  // ships
