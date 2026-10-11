@@ -658,11 +658,16 @@ function renderKPIs(m, a, c, pos) {
   if (pos?.latest) t.push(kpiTile('HEDGE-FUND NET BET', pos.latest.net.toLocaleString(), `${pos.pct.toFixed(0)}/100 extreme vs 3 years`, cls(pos.latest.net)));
   $('kpis').innerHTML = t.join('');
 }
+let curveHistLoaded = false;
+async function loadCurveHistory() {
+  if (curveHistLoaded) return;
+  curveHistLoaded = true;
+  try { renderCurveHistory(await getJSON('/api/curvehistory?root=CL')); } catch {}
+}
 function showTab(name) {
   document.querySelectorAll('.tab').forEach((t) => t.classList.toggle('active', t.dataset.tab === name));
   document.querySelectorAll('.tabpane').forEach((p) => p.classList.toggle('hidden', p.dataset.pane !== name));
-  if (name === 'curve' && chart) setTimeout(() => chart.resize(), 50);
-  if (name === 'curve' && curveHistChart) setTimeout(() => curveHistChart.resize(), 60);
+  if (name === 'curve') { loadCurveHistory(); if (chart) setTimeout(() => chart.resize(), 50); if (curveHistChart) setTimeout(() => curveHistChart.resize(), 60); }
   if (name === 'tankers' && map) setTimeout(() => map.invalidateSize(), 60);
 }
 
@@ -684,7 +689,6 @@ async function loadExtra() {
       getJSON('/api/sar').catch(() => null),
     ]);
     const macro = await getJSON('/api/macro').catch(() => null);
-    const ch = await getJSON('/api/curvehistory?root=CL').catch(() => null);
     analytics = an;
     renderContext(data, an, macro);
     renderInventories(inv);
@@ -692,7 +696,6 @@ async function loadExtra() {
     renderSectors(eq, data, an, tankerInfo);
     renderChokepoints(chk);
     renderCurve(cv);
-    renderCurveHistory(ch);
     renderTightness(tn);
     renderFlows(fl);
     renderProducts(pr);
