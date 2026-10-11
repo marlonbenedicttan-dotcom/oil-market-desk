@@ -315,7 +315,7 @@ const pctClass = (p) => (p == null ? '' : p >= 80 ? 'hot' : p <= 20 ? 'cold' : '
 function ctxRow(k, pct, value) {
   return `<div class="ctx-row"><span class="ctx-k">${k}</span><span class="ctx-bar"><i style="width:${pct == null ? 0 : pct}%"></i></span><span class="ctx-p ${pctClass(pct)}">${pct == null ? '—' : pct.toFixed(0) + '/100'}</span><span class="ctx-v">${value}</span></div>`;
 }
-function renderContext(m, a) {
+function renderContext(m, a, macro) {
   if (!a) { $('context').innerHTML = '<div class="dimtext" style="padding:10px 12px">loading…</div>'; return; }
   const rows = [];
   for (const b of m.benchmarks) {
@@ -331,7 +331,9 @@ function renderContext(m, a) {
   const quality = `<div class="qflags"><div class="chokes-h">DATA CHECKS</div>${
     qf.length ? qf.map((f) => `<div class="qflag ${f.level}">⚠ ${f.text}</div>`).join('')
       : '<div class="qflag ok">✓ Everything checks out — real prices and futures line up.</div>'}</div>`;
-  $('context').innerHTML = rows.join('') + arb + volStrip + quality;
+  const macroItems = (macro?.items || []).map((x) => `<span class="choke"><b class="${cls(x.pct)}">${x.pct != null ? pctf(x.pct) : '—'}</b> ${x.label}</span>`).join('');
+  const macroStrip = macroItems ? `<div class="chokes"><div class="chokes-h">MACRO CONTEXT (oil rarely moves alone)</div>${macroItems}</div>` : '';
+  $('context').innerHTML = rows.join('') + arb + volStrip + macroStrip + quality;
 }
 function renderInventories(d) {
   if (!d || !d.items?.length) { $('inventories').innerHTML = '<div class="dimtext" style="padding:10px 12px">EIA key needed, or no data.</div>'; return; }
@@ -653,8 +655,9 @@ async function loadExtra() {
       getJSON('/api/flares').catch(() => null),
       getJSON('/api/sar').catch(() => null),
     ]);
+    const macro = await getJSON('/api/macro').catch(() => null);
     analytics = an;
-    renderContext(data, an);
+    renderContext(data, an, macro);
     renderInventories(inv);
     renderPositioning(pos);
     renderSectors(eq, data, an, tankerInfo);
@@ -705,6 +708,7 @@ $('cards').addEventListener('click', (e) => {
   try { initMap(); } catch (e) { console.error(e); }
   const tick = () => { $('clock').textContent = new Date().toLocaleTimeString('en-GB'); };
   tick(); setInterval(tick, 1000);
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});
   if ('Notification' in window && Notification.permission === 'default') { try { await Notification.requestPermission(); } catch {} }
   await loadHistory().catch((e) => showError(e.message));
   await refreshAll();

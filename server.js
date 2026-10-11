@@ -341,6 +341,31 @@ async function getEquities() {
 }
 
 // ---------------------------------------------------------------------------
+// Macro context (oil doesn't move alone)
+// ---------------------------------------------------------------------------
+const MACRO = [
+  { id: 'dxy', label: 'US dollar', sym: 'DX-Y.NYB' },
+  { id: 'tnx', label: '10-yr rate', sym: '^TNX' },
+  { id: 'vix', label: 'VIX (fear)', sym: '^VIX' },
+  { id: 'spx', label: 'S&P 500', sym: '^GSPC' },
+  { id: 'gold', label: 'Gold', sym: 'GC=F' },
+  { id: 'copper', label: 'Copper', sym: 'HG=F' },
+];
+async function getMacro() {
+  return cached('macro', 120e3, async () => ({
+    items: await Promise.all(MACRO.map(async (m) => {
+      try {
+        const { price, series } = await cached('q:' + m.sym, 120e3, () => yahooSeries(m.sym, '5d', '1d'));
+        const dates = Object.keys(series).sort();
+        const last = dates.length ? series[dates[dates.length - 1]] : price;
+        const prev = dates.length > 1 ? series[dates[dates.length - 2]] : price;
+        return { id: m.id, label: m.label, price: last ?? price ?? null, pct: last != null && prev ? ((last - prev) / prev) * 100 : null };
+      } catch { return { id: m.id, label: m.label, price: null, pct: null }; }
+    })),
+  }));
+}
+
+// ---------------------------------------------------------------------------
 // Chokepoint tanker counts (live, from AIS)
 // ---------------------------------------------------------------------------
 const CHOKEPOINTS = [
@@ -898,6 +923,7 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname === '/api/inventories') return sendJSON(res, 200, await getInventories());
     if (url.pathname === '/api/positioning') return sendJSON(res, 200, await getPositioning());
     if (url.pathname === '/api/equities') return sendJSON(res, 200, await getEquities());
+    if (url.pathname === '/api/macro') return sendJSON(res, 200, await getMacro());
     if (url.pathname === '/api/chokepoints') return sendJSON(res, 200, getChokepoints());
     if (url.pathname === '/api/curve') return sendJSON(res, 200, await getCurves());
     if (url.pathname === '/api/tightness') return sendJSON(res, 200, await getTightness().catch((e) => ({ error: String(e.message) })));

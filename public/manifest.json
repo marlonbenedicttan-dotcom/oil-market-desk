@@ -1,0 +1,12 @@
+{
+  "name": "Oil Market Desk",
+  "short_name": "Oil Desk",
+  "description": "Real barrels vs futures — what it means, with live ships and satellites.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#000000",
+  "theme_color": "#ff9e00",
+  "icons": [
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}
