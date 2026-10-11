@@ -773,6 +773,17 @@ async function getSAR() {
   });
 }
 
+let sarImageCache = { t: 0, buf: null, type: null };
+async function getSarImage() {
+  if (sarImageCache.buf && Date.now() - sarImageCache.t < 3 * 3600e3) return sarImageCache;
+  const sar = await getSAR();
+  if (!sar.image) return null;
+  const res = await fetch(sar.image, { headers: UA });
+  if (!res.ok) return null;
+  sarImageCache = { t: Date.now(), buf: Buffer.from(await res.arrayBuffer()), type: res.headers.get('content-type') || 'image/png' };
+  return sarImageCache;
+}
+
 // ---------------------------------------------------------------------------
 // Live tanker tracking via aisstream.io (free key required)
 // ---------------------------------------------------------------------------
@@ -957,6 +968,12 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname === '/api/products') return sendJSON(res, 200, await getProducts().catch((e) => ({ error: String(e.message) })));
     if (url.pathname === '/api/flares') return sendJSON(res, 200, await getFlares().catch((e) => ({ error: String(e.message) })));
     if (url.pathname === '/api/sar') return sendJSON(res, 200, await getSAR().catch((e) => ({ error: String(e.message) })));
+    if (url.pathname === '/api/sar/image') {
+      const img = await getSarImage().catch(() => null);
+      if (!img) { res.writeHead(404).end('no image'); return; }
+      res.writeHead(200, { 'content-type': img.type, 'cache-control': 'no-cache' });
+      return res.end(img.buf);
+    }
     if (url.pathname === '/api/analogue') return sendJSON(res, 200, await getAnalogue(url.searchParams.get('metric') || 'basis:brent', Math.min(15, Math.max(2, Number(url.searchParams.get('years')) || 10))));
     if (url.pathname === '/api/alerts') return sendJSON(res, 200, { current: await computeServerAlerts().catch(() => []) });
     if (url.pathname === '/api/digest') { res.writeHead(200, { 'content-type': 'text/plain' }); return res.end(lastDigest || await buildDigest()); }

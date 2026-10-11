@@ -243,6 +243,12 @@ footer li { margin-bottom: 2px; }
 .sarimg { padding: 8px 12px; }
 .sarimg img { width: 100%; max-width: 520px; border: 1px solid var(--line); border-radius: 6px; display: block; background: #000; }
 .sarimg .dimtext { margin-top: 4px; }
+.legend { display: flex; flex-wrap: wrap; gap: 12px; padding: 6px 12px; }
+.legend .lg { color: var(--dim); font-size: 11.5px; display: inline-flex; align-items: center; gap: 6px; }
+.sw { width: 12px; height: 12px; display: inline-block; border: 1px solid var(--line2); }
+.sw.bright { background: #fff; }
+.sw.dark { background: #111; }
+.sw.circle { border: 2px solid var(--red); border-radius: 50%; background: transparent; }
 
 .glossary { background: var(--panel2); border: 1px solid var(--line); padding: 12px 14px; margin: 12px; }
 .glossary dl { margin: 0; display: grid; grid-template-columns: max-content 1fr; gap: 5px 16px; }

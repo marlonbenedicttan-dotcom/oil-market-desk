@@ -486,12 +486,50 @@ function renderProducts(d) {
   $('products').innerHTML = `<div class="cards">${cards}</div>`;
 }
 let rerouteChart;
+function processSar() {
+  const cv = $('sar-canvas');
+  if (!cv) return;
+  const img = new Image();
+  img.onload = () => {
+    const W = img.width, H = img.height;
+    cv.width = W; cv.height = H;
+    const ctx = cv.getContext('2d', { willReadFrequently: true });
+    ctx.drawImage(img, 0, 0);
+    let data;
+    try { data = ctx.getImageData(0, 0, W, H).data; } catch { const s = $('sar-count'); if (s) s.textContent = 'could not analyse image'; return; }
+    const T = 220;
+    const bin = new Uint8Array(W * H);
+    for (let i = 0; i < W * H; i++) bin[i] = (0.299 * data[i * 4] + 0.587 * data[i * 4 + 1] + 0.114 * data[i * 4 + 2]) > T ? 1 : 0;
+    const seen = new Uint8Array(W * H), stack = [], points = [];
+    for (let start = 0; start < W * H; start++) {
+      if (!bin[start] || seen[start]) continue;
+      stack.length = 0; stack.push(start); seen[start] = 1;
+      let area = 0, sx = 0, sy = 0;
+      while (stack.length) {
+        const p = stack.pop(), x = p % W, y = (p / W) | 0;
+        area++; sx += x; sy += y;
+        if (x > 0 && bin[p - 1] && !seen[p - 1]) { seen[p - 1] = 1; stack.push(p - 1); }
+        if (x < W - 1 && bin[p + 1] && !seen[p + 1]) { seen[p + 1] = 1; stack.push(p + 1); }
+        if (y > 0 && bin[p - W] && !seen[p - W]) { seen[p - W] = 1; stack.push(p - W); }
+        if (y < H - 1 && bin[p + W] && !seen[p + W]) { seen[p + W] = 1; stack.push(p + W); }
+      }
+      if (area >= 2 && area <= 40) points.push({ x: sx / area, y: sy / area });
+    }
+    ctx.lineWidth = 1.5; ctx.strokeStyle = '#ff3b30';
+    for (const p of points) { ctx.beginPath(); ctx.arc(p.x, p.y, 7, 0, Math.PI * 2); ctx.stroke(); }
+    $('sar-count').innerHTML = `<b>${points.length}</b> small bright objects circled — likely <b>oil platforms or ships</b>. (At this zoom a single tanker is under 1 pixel, so treat the count as indicative, not exact.)`;
+  };
+  img.onerror = () => { const s = $('sar-count'); if (s) s.textContent = 'image unavailable right now'; };
+  img.src = '/api/sar/image';
+}
+
 function renderSatellite(sar, flares) {
   let html = '';
   if (sar && !sar.error) {
     const latest = sar.latest ? new Date(sar.latest.time).toLocaleString() : '—';
-    html += `<div class="read-line">👁️ <b>Radar picture of the Gulf.</b> Satellites bounce radar off the sea from space — ships show up as <b>bright dots</b>, even the ones that switched off their tracker. This is the latest pass (<b>${latest}</b>); they re-scan the Gulf about <b>${sar.passes}</b> times a week.</div>`;
-    if (sar.image) html += `<div class="sarimg"><img src="${sar.image}" alt="Latest Sentinel-1 radar image of the Gulf" loading="lazy" /><div class="dimtext">Latest radar image of the Gulf (Sentinel-1). Bright specks = ships, oil platforms and coastlines. Reading exact ship counts needs the full-resolution image.</div></div>`;
+    html += `<div class="read-line">👁️ <b>How we can still see the Gulf from space.</b> This is <b>radar, not a photo</b> — so it works at night and through cloud. Latest pass: <b>${latest}</b>.</div>
+      <div class="legend"><span class="lg"><i class="sw bright"></i> bright = a solid object (ship, platform) or land</span><span class="lg"><i class="sw dark"></i> dark = open water</span><span class="lg"><i class="sw circle"></i> red circle = a small object we spotted</span></div>
+      <div class="sarimg"><canvas id="sar-canvas"></canvas><div id="sar-count" class="dimtext">reading the image…</div></div>`;
   }
   if (flares && !flares.error) {
     const regions = Object.entries(flares.byRegion || {}).map(([k, v]) => `<span class="choke"><b>${v}</b> ${k}</span>`).join('');
@@ -500,6 +538,7 @@ function renderSatellite(sar, flares) {
     if (flares.trend?.length > 1) html += `<div class="dimtext" style="padding:4px 12px 10px">flames seen per day: ${flares.trend.map((t) => `${t.date.slice(5)}: ${t.count}`).join(' · ')}</div>`;
   }
   $('satellite').innerHTML = html || '<div class="dimtext" style="padding:10px 12px">no data</div>';
+  if (sar && !sar.error) processSar();
 }
 function renderReroute(d) {
   const cv = $('reroute');
