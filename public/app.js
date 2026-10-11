@@ -350,13 +350,17 @@ function renderAdaptive() {
   }
   const r = marketRead, v = r.verdict;
   const score = v.score;
+  const ph = v.physical || { score: null, label: '—', parts: [], note: '' };
   const kl = score == null ? 'elevated' : score >= 70 ? 'high' : score >= 40 ? 'elevated' : 'low';
-  const vk = score == null ? 'mixed' : score >= 55 ? 'tight' : score >= 35 ? 'mixed' : 'loose';
+  const phCls = ph.score == null ? '' : ph.score >= 58 ? 'pos' : ph.score <= 42 ? 'neg' : '';
+  const vk = ph.score == null ? (score == null ? 'mixed' : score >= 55 ? 'tight' : score >= 35 ? 'mixed' : 'loose') : ph.score >= 58 ? 'tight' : ph.score <= 42 ? 'loose' : 'mixed';
   if ($('regime')) $('regime').textContent = regLine(r);
   const next = [...(v.catalysts || []).map((c) => `Watch: <b>${c}</b>`), ...(v.watch || [])];
   const chips = [...(v.tickersUp || []).map((t) => `<span class="chip up">▲ ${t}</span>`), ...(v.tickersDown || []).map((t) => `<span class="chip down">▼ ${t}</span>`)].join('');
   $('bottomline').innerHTML = `<div class="bl">
-      <div class="bl-score ${kl}"><div class="bl-num">${score == null ? '—' : score}<span>/100</span></div><div class="bl-lbl">${r.label.toUpperCase()} STRETCH<div class="bl-tag">${v.label}</div></div></div>
+      <div class="bl-score ${kl}"><div class="bl-num">${score == null ? '—' : score}<span>/100</span></div><div class="bl-lbl">PRICE STRETCH<div class="bl-tag">${v.label}</div></div>
+        <div class="bl-phys"><div class="bl-phys-k">PHYSICAL TIGHTNESS</div><div class="bl-phys-v ${phCls}">${ph.score == null ? 'no free data' : `${ph.score}<span>/100</span> ${ph.label}`}</div></div>
+      </div>
       <div class="bl-sec"><div class="gtitle">WHAT HAPPENED</div><p>${v.meaning} ${(v.notes || []).join(' ')}</p></div>
       <div class="bl-sec"><div class="gtitle">WHAT'S NEXT</div><ul>${next.map((w) => `<li>${w}</li>`).join('')}</ul></div>
       <div class="bl-sec"><div class="gtitle">TRADE IDEAS — BENEFITS / TROUBLE</div>
@@ -371,8 +375,13 @@ function renderAdaptive() {
   if (r.vol.v30 != null) push('Volatility (30-day, annualised)', r.vol.v30.toFixed(1) + '%', (r.vol.pctile ?? 50) >= 70 ? 'HIGH' : (r.vol.pctile ?? 50) <= 30 ? 'LOW' : 'MID', `${(r.vol.pctile ?? 50).toFixed(0)}th pctile — ${(r.vol.pctile ?? 50) >= 70 ? 'jumpier than usual' : (r.vol.pctile ?? 50) <= 30 ? 'calmer than usual' : 'normal'}`);
   if (r.curve) push('Curve — near vs later', r.curve.shape, r.curve.m1m2 >= 0 ? 'TIGHT' : 'LOOSE', r.curve.m1m2 >= 0 ? 'near-term prices higher' : 'near-term supply comfortable');
   if (r.basis) push('Real vs futures', signed(r.basis.value, r.dp), r.basis.value >= 0 ? 'TIGHT' : 'LOOSE', r.basis.pctile != null ? `${r.basis.pctile.toFixed(0)}th pctile` : 'physical vs paper');
+  if (r.inventory?.length) for (const it of r.inventory) push(`${it.label} vs seasonal`, it.surprise == null ? '—' : signed(it.surprise, 0), it.surprise < 0 ? 'TIGHT' : 'LOOSE', it.surprise < 0 ? 'a bigger draw than usual' : 'built up vs usual');
   if (r.macro?.usd != null) push('Link to the US dollar', `${r.macro.usd}`, 'MID', '3-month correlation (negative = moves against the dollar)');
-  $('tightness').innerHTML = `<div class="verdict ${vk}">${r.label}: ${v.label}${score == null ? '' : ` — ${score}/100 stretched`}</div><div class="ev-list">${ev.map((e) => `<div class="ev"><span class="ev-l">${e.label}</span><span class="ev-v">${e.value}</span><span class="tag ${e.dir.toLowerCase()}">${e.dir}</span><span class="ev-n dimtext">${e.note}</span></div>`).join('')}</div>`;
+  const physChips = (ph.parts && ph.parts.length) ? `<div class="phys-parts">${ph.parts.map((p) => `<span class="phys-part ${p.score >= 58 ? 'tight' : p.score <= 42 ? 'loose' : ''}">${p.label} <b>${p.score}</b> ${p.score >= 58 ? 'TIGHT' : p.score <= 42 ? 'LOOSE' : 'BALANCED'}</span>`).join('')}</div>` : '';
+  const physNote = ph.note ? `<div class="phys-note dimtext">${ph.note}</div>` : '';
+  const priceLine = score == null ? 'price stretch unavailable' : `price is <b>${v.label.toLowerCase()}</b> (${score}/100)`;
+  const physLine = ph.score == null ? 'physical tightness unavailable' : `the physical market is <b>${ph.label.toLowerCase()}</b> (${ph.score}/100)`;
+  $('tightness').innerHTML = `<div class="verdict ${vk}">${r.label}: ${priceLine} · ${physLine}.</div>${physChips}${physNote}<div class="ev-list">${ev.map((e) => `<div class="ev"><span class="ev-l">${e.label}</span><span class="ev-v">${e.value}</span><span class="tag ${e.dir.toLowerCase()}">${e.dir}</span><span class="ev-n dimtext">${e.note}</span></div>`).join('')}</div>`;
   $('market-insights').innerHTML = insightsFor(r).map((x) => `<li>${x}</li>`).join('');
   if (r.hasShips) {
     $('tanker-insights').innerHTML = tankerInsights(tankerInfo).map((x) => `<li>${x}</li>`).join('');

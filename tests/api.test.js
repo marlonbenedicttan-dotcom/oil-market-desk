@@ -65,6 +65,17 @@ test('/api/marketread returns a per-segment read (404 for unknown)', async () =>
   assert.equal((await fetch(`http://localhost:${PORT}/api/marketread?id=nope`)).status, 404);
 });
 
+test('/api/marketread splits price stretch from physical tightness', async () => {
+  const crude = await (await fetch(`http://localhost:${PORT}/api/marketread?id=crude`)).json();
+  assert.ok(crude.verdict.priceStretch && typeof crude.verdict.priceStretch.score !== 'undefined');
+  assert.ok(crude.verdict.physical && typeof crude.verdict.physical === 'object');
+  assert.ok('score' in crude.verdict.physical && Array.isArray(crude.verdict.physical.parts));
+  assert.ok(typeof crude.verdict.physical.note === 'string' && crude.verdict.physical.note.length > 0);
+  // grains have no free basis or inventories → never a basis component
+  const grains = await (await fetch(`http://localhost:${PORT}/api/marketread?id=grains`)).json();
+  assert.ok(grains.verdict.physical.parts.every((p) => p.key !== 'basis'));
+});
+
 test('/api/news returns headlines for segments and macro regions (graceful if unavailable)', async () => {
   for (const id of ['crude', 'us', 'eu', 'jp', 'apac']) {
     const r = await fetch(`http://localhost:${PORT}/api/news?id=${id}`);

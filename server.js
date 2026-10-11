@@ -5,7 +5,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { execFile } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { sgn, businessDaysSince, inBox, haversineNm, horizonDeltas, isoWeek, monthly, pctOver, percentile, realizedVol, computeCracks, backAdjust, pearson, logReturns } from './src/lib.js';
+import { sgn, businessDaysSince, inBox, haversineNm, horizonDeltas, isoWeek, monthly, pctOver, percentile, realizedVol, computeCracks, backAdjust, pearson, logReturns, curveTightness, inventoryTightness, weightedScore } from './src/lib.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC = path.join(__dirname, 'public');
@@ -433,7 +433,7 @@ async function getInventories() {
         const sameWeek = wows.filter((w) => isoWeek(w.period) === targetWk && w.period !== last.period);
         const seasonal = sameWeek.length >= 3 ? sameWeek.reduce((a, b) => a + b.wow, 0) / sameWeek.length : null;
         const wow = prev ? last.value - prev.value : null;
-        gas = { period: last.period, value: last.value, wow, seasonal: seasonal != null ? Math.round(seasonal) : null, surprise: seasonal != null && wow != null ? Math.round(wow - seasonal) : null };
+        gas = { period: last.period, value: last.value, wow, seasonal: seasonal != null ? Math.round(seasonal) : null, surprise: seasonal != null && wow != null ? Math.round(wow - seasonal) : null, seasonalMin: sameWeek.length >= 3 ? Math.round(Math.min(...sameWeek.map((w) => w.wow))) : null, seasonalMax: sameWeek.length >= 3 ? Math.round(Math.max(...sameWeek.map((w) => w.wow))) : null };
       }
     } catch {}
     return { items, gas, fetched: new Date().toISOString() };
@@ -986,6 +986,9 @@ function rollingVolPctile(values, win = 30) {
   return (vols.filter((v) => v <= cur).length / vols.length) * 100;
 }
 function marketVerdict(r) {
+  // PRICE STRETCH — how extended the price is vs its own 2-year range and volatility.
+  // Deliberately separate from physical tightness (below): a quiet market can be
+  // physically tight, and an extended price can be well supplied.
   const ext = (p) => (p == null ? null : Math.abs(p - 50) / 50);
   const ps = [];
   if (r.range.pos != null) ps.push([0.55, ext(r.range.pos)]);
@@ -993,6 +996,28 @@ function marketVerdict(r) {
   const ws = ps.reduce((a, p) => a + p[0], 0);
   const score = ws ? Math.round((100 * ps.reduce((a, p) => a + p[0] * p[1], 0)) / ws) : null;
   const label = score == null ? '—' : score >= 80 ? 'EXTREME' : score >= 60 ? 'STRETCHED' : score >= 35 ? 'NORMAL' : 'CALM';
+
+  // PHYSICAL TIGHTNESS — the fundamentals that actually say whether the market is
+  // tight: curve (near vs next), the real-vs-futures basis, and stocks vs the
+  // seasonal norm. Precious metals' curves track rates/carry, not physical tightness,
+  // so they are excluded; anything unavailable is left out, never faked.
+  const parts = [];
+  const curveOk = r.curve?.m1m2 != null && r.id !== 'precious';
+  if (curveOk) parts.push({ key: 'curve', label: 'Curve (near vs next)', weight: 0.4, score: curveTightness(r.curve.m1m2, r.price) });
+  if (r.basis?.pctile != null) parts.push({ key: 'basis', label: 'Real vs futures', weight: 0.3, score: Math.round(r.basis.pctile) });
+  const inv = r.inventory || [];
+  for (const it of inv) parts.push({ key: 'inv:' + it.key, label: `${it.label} vs seasonal`, weight: 0.3 / inv.length, score: inventoryTightness(it.surprise, it.seasonalMin, it.seasonalMax) });
+  const physical = weightedScore(parts);
+  const missing = [];
+  if (!curveOk) missing.push('curve');
+  if (r.hasBasis && r.basis == null) missing.push('basis');
+  if (r.hasInventories && !inv.length) missing.push('inventories');
+  physical.note = physical.score == null
+    ? (r.id === 'precious'
+      ? 'Precious metals have no free basis or inventories, and their curve tracks interest rates/carry rather than physical tightness — read price stretch, positioning and macro instead.'
+      : 'No free physical data for this segment right now — price stretch and positioning are the reads.')
+    : `From ${physical.parts.map((p) => p.label).join(' + ')}${missing.length ? ` · no free ${missing.join(' or ')}` : ''}.`;
+
   const bits = [];
   if (r.perf.m6 != null) bits.push(`<b>${r.label}</b> is ${r.perf.m6 >= 0 ? 'up' : 'down'} <b>${Math.abs(r.perf.m6).toFixed(0)}%</b> over 6 months`);
   if (r.range.pos != null) bits.push(r.range.pos >= 70 ? 'near the top of its 2-year range' : r.range.pos <= 30 ? 'near the bottom of its 2-year range' : 'mid its 2-year range');
@@ -1002,7 +1027,7 @@ function marketVerdict(r) {
   const macroNote = r.macro?.usd != null ? `It tends to move ${r.macro.usd < 0 ? 'against' : 'with'} the US dollar (3-month correlation ${r.macro.usd}).` : '';
   const c = MARKET_CONTENT[r.id] || {};
   return {
-    score, label, meaning, notes: [curveNote, macroNote].filter(Boolean),
+    score, label, priceStretch: { score, label }, physical, meaning, notes: [curveNote, macroNote].filter(Boolean),
     tightQ: c.tightQ || `IS ${r.label.toUpperCase()} STRETCHED?`, watch: c.watch || [], catalysts: c.catalysts || [],
     sectorsUp: c.sectorsUp || [], sectorsDown: c.sectorsDown || [], tickersUp: c.tickersUp || [], tickersDown: c.tickersDown || [], ideas: c.ideas || '',
   };
@@ -1030,6 +1055,18 @@ async function getMarketRead(id) {
       const an = (await getAnalytics()).benchmarks?.[m.primary];
       if (row?.basis != null) basis = { value: row.basis, pctile: an?.basisPct ?? null };
     } catch {}
+    // Stocks vs their seasonal norm — the segment's own inventory series (energy only).
+    let inventory = null;
+    if (m.hasInventories) {
+      try {
+        const inv = await getInventories();
+        const pick = [];
+        if (id === 'gas') { if (inv.gas?.surprise != null) pick.push({ key: 'gas', label: 'US gas storage', ...inv.gas }); }
+        else if (id === 'refined') { for (const k of ['gasoline', 'distillate']) { const it = inv.items.find((x) => x.key === k); if (it) pick.push(it); } }
+        else { const it = inv.items.find((x) => x.key === 'crude'); if (it) pick.push(it); }
+        inventory = pick.length ? pick : null;
+      } catch {}
+    }
     const read = {
       id, label: m.label, group: m.group, primary: m.primary, unit: primary.unit, dp: primary.dp,
       hasBasis: m.hasBasis, hasInventories: m.hasInventories, hasShips: m.hasShips,
@@ -1037,7 +1074,7 @@ async function getMarketRead(id) {
       perf: { m1: pctOver(values, 21), m3: pctOver(values, 63), m6: pctOver(values, 126), y1: pctOver(values, 252) },
       range: { pos: last != null ? percentile(values, last) : null },
       vol: { v30: vol30, pctile: rollingVolPctile(values, 30) },
-      curve, macro, basis,
+      curve, macro, basis, inventory,
     };
     const takes = [];
     if (read.perf.y1 != null) takes.push(`${read.label} is <b>${read.perf.y1 >= 0 ? 'up' : 'down'} ${Math.abs(read.perf.y1).toFixed(0)}%</b> over the last year${read.perf.m6 != null ? ` (6m ${read.perf.m6 >= 0 ? '+' : ''}${read.perf.m6.toFixed(0)}%)` : ''}.`);

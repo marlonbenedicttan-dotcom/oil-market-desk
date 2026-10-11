@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { sgn, inBox, haversineNm, isoWeek, monthly, pctOver, percentile, realizedVol, computeCracks, backAdjust, pearson, logReturns, horizonDeltas } from '../src/lib.js';
+import { sgn, inBox, haversineNm, isoWeek, monthly, pctOver, percentile, realizedVol, computeCracks, backAdjust, pearson, logReturns, horizonDeltas, curveTightness, inventoryTightness, weightedScore } from '../src/lib.js';
 
 test('sgn formats with sign', () => {
   assert.equal(sgn(4.39), '+4.39');
@@ -77,6 +77,34 @@ test('horizonDeltas never fakes a window it cannot compute', () => {
   assert.equal(horizonDeltas(['2025-03-01', '2025-06-01'], [100, 110]).ytd, null); // starts mid-year → no YTD base
   assert.equal(horizonDeltas(['2025-06-01', '2025-06-15'], [0, 5]).d1, null);      // zero base skipped, not divided
   assert.equal(horizonDeltas(['2025-06-01', '2025-06-10', '2025-06-15'], [10, null, 12]).d1, 20); // nulls skipped
+});
+
+test('curveTightness: backwardation reads tight, contango loose, flat neutral', () => {
+  assert.equal(curveTightness(0, 100), 50);
+  assert.ok(curveTightness(2, 100) > 70);    // +2% backwardation
+  assert.ok(curveTightness(-2, 100) < 30);   // contango
+  assert.equal(curveTightness(null, 100), null);
+  assert.equal(curveTightness(1, 0), null);  // no price → can't normalise
+});
+
+test('inventoryTightness: a bigger-than-usual draw reads tight', () => {
+  assert.equal(inventoryTightness(0, -1000, 1000), 50);
+  assert.ok(inventoryTightness(-1000, -1000, 1000) > 50); // drew more than usual
+  assert.ok(inventoryTightness(1000, -1000, 1000) < 50);  // built more than usual
+  assert.equal(inventoryTightness(null, -1, 1), null);
+});
+
+test('weightedScore averages the parts present and is null when none are', () => {
+  const a = weightedScore([
+    { key: 'c', label: 'Curve', weight: 0.4, score: 80 },
+    { key: 'b', label: 'Basis', weight: 0.3, score: 20 },
+    { key: 'i', label: 'Stocks', weight: 0.3, score: null }, // missing → skipped, weight re-normalised
+  ]);
+  assert.equal(a.score, 54); // (0.4*80 + 0.3*20) / 0.7 = 54.3 → 54
+  assert.deepEqual(a.parts.map((p) => p.key), ['c', 'b']);
+  assert.equal(a.label, 'BALANCED');
+  assert.equal(weightedScore([]).score, null);
+  assert.equal(weightedScore([]).label, '—');
 });
 
 test('computeCracks builds refining margins', () => {

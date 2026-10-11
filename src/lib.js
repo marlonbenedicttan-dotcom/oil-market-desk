@@ -137,3 +137,32 @@ export function computeCracks(m) {
   if (jet && w && jet.physical != null && w.physical != null) out.jetPhys = jet.physical * G - w.physical;
   return out;
 }
+
+// ---------------------------------------------------------------------------
+// Physical-tightness scoring (roadmap item 2). Each maps one physical signal to
+// 0-100 where 50 = neutral and >50 = tight; null when the input is missing, so a
+// caller can simply skip that component. Never invents a number.
+// ---------------------------------------------------------------------------
+// Curve: this month vs next, as a % of price. Backwardation (positive) = tight,
+// contango (negative) = comfortable. tanh keeps it bounded for any commodity scale.
+export function curveTightness(m1m2, price) {
+  if (m1m2 == null || !price) return null;
+  return Math.round(50 + 50 * Math.tanh(((m1m2 / price) * 100) / 2));
+}
+// Inventories vs the 5-year same-week norm: a bigger-than-usual draw (negative
+// surprise) = tight. Scaled by the same-week seasonal range so units don't matter.
+export function inventoryTightness(surprise, seasonalMin, seasonalMax) {
+  if (surprise == null) return null;
+  const halfRange = Math.max(Math.abs(seasonalMin ?? 0), Math.abs(seasonalMax ?? 0), 1);
+  return Math.round(50 - 50 * Math.tanh((surprise / halfRange) / 1.5));
+}
+// Weighted average of components ({ key, label, weight, score }); re-normalises over
+// whatever is present, and returns score null when nothing is available.
+export function weightedScore(parts) {
+  const use = (parts || []).filter((p) => p && p.score != null && p.weight > 0);
+  if (!use.length) return { score: null, label: '—', parts: [] };
+  const w = use.reduce((a, p) => a + p.weight, 0);
+  const score = Math.round(use.reduce((a, p) => a + p.weight * p.score, 0) / w);
+  const label = score >= 70 ? 'TIGHT' : score >= 58 ? 'LEANING TIGHT' : score >= 42 ? 'BALANCED' : score >= 30 ? 'LEANING LOOSE' : 'LOOSE';
+  return { score, label, parts: use.map((p) => ({ key: p.key, label: p.label, score: p.score })) };
+}

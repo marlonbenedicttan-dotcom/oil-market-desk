@@ -329,6 +329,17 @@ footer li { margin-bottom: 2px; }
 .bl-score.high .bl-num, .bl-score.high .bl-tag { color: var(--red); } .bl-score.high .bl-tag { border: 1px solid var(--red); }
 .bl-score.elevated .bl-num, .bl-score.elevated .bl-tag { color: var(--amber); } .bl-score.elevated .bl-tag { border: 1px solid var(--amber); }
 .bl-score.low .bl-num, .bl-score.low .bl-tag { color: var(--green); } .bl-score.low .bl-tag { border: 1px solid var(--green); }
+/* Physical tightness — the second, fundamentals-based score under price stretch */
+.bl-phys { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--line); }
+.bl-phys-k { font-size: 9px; letter-spacing: 1.5px; color: var(--dim); }
+.bl-phys-v { font-size: 18px; font-weight: 700; font-variant-numeric: tabular-nums; margin-top: 3px; }
+.bl-phys-v span { font-size: 11px; color: var(--dim); font-weight: 400; }
+.phys-parts { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 12px 8px; }
+.phys-part { border: 1px solid var(--line2); padding: 2px 8px; font-size: 11px; color: #c9d4df; }
+.phys-part b { color: var(--text); }
+.phys-part.tight { border-color: #14512f; color: var(--green); }
+.phys-part.loose { border-color: #5a2020; color: var(--red); }
+.phys-note { padding: 0 12px 8px; }
 .bl-sec { padding: 14px 16px; border-right: 1px solid var(--line); }
 .bl-sec:last-child { border-right: 0; }
 .bl-sec p { margin: 0; font-size: 12.5px; color: #c9d4df; line-height: 1.55; }
