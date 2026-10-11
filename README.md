@@ -10,6 +10,8 @@ pinned: false
 
 # Oil Basis 🛢️
 
+**🔴 Live demo:** https://oil-market-desk.onrender.com
+
 A dashboard that puts **paper** (futures) and **physical** (spot/cash) prices side by side across energy benchmarks, computes the **basis**, and tracks **live tanker traffic**.
 
 | Benchmark | Paper (futures) | Physical (spot) |
