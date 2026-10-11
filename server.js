@@ -1134,13 +1134,16 @@ async function wbSeries(iso3, ind) {
   });
 }
 const wbLatest = async (iso3, ind) => { const s = await wbSeries(iso3, ind); return s.length ? s[s.length - 1] : null; };
-// Lightweight: just the currencies of every country in a region (for the macro ticker).
-async function getRegionQuotes(region) {
-  const list = MACRO_COUNTRIES[region] || [];
-  return cached('rq:' + region, 120e3, async () => {
+// Every macro ticker — currency + equity index for all countries (macro tape).
+async function getMacroTickers() {
+  return cached('macrotickers', 120e3, async () => {
     const q = async (sym) => { try { const { price, series } = await cached('q:' + sym, 120e3, () => yahooSeries(sym, '5d', '1d')); const d = Object.keys(series).sort(); const a = series[d[d.length - 1]], b = series[d[d.length - 2]]; return { price: a ?? price ?? null, pct: a != null && b ? ((a - b) / b) * 100 : null }; } catch { return { price: null, pct: null }; } };
-    const items = await Promise.all(list.map(async (c) => ({ id: c.id, label: c.label, fx: { label: c.fxLabel, ...(await q(c.fx)) } })));
-    return { region, items };
+    const items = (await Promise.all(Object.values(ALL_COUNTRIES).map(async (c) => {
+      const arr = [{ id: c.id, label: c.fxLabel.replace(/\s*·.*/, ''), ...(await q(c.fx)) }];
+      if (c.index) arr.push({ id: c.id, label: c.indexLabel, ...(await q(c.index)) });
+      return arr;
+    }))).flat();
+    return { items };
   });
 }
 async function getCountry(id) {
@@ -1758,11 +1761,7 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname === '/api/transmission') return sendJSON(res, 200, await getTransmission().catch((e) => ({ error: String(e.message), ideas: [] })));
     if (url.pathname === '/api/headlines') return sendJSON(res, 200, await getHeadlines().catch((e) => ({ error: String(e.message), items: [] })));
     if (url.pathname === '/api/countries') return sendJSON(res, 200, MACRO_COUNTRIES);
-    if (url.pathname === '/api/region-quotes') {
-      const id = url.searchParams.get('id');
-      if (!MACRO_COUNTRIES[id]) return sendJSON(res, 404, { error: 'unknown region' });
-      return sendJSON(res, 200, await getRegionQuotes(id).catch((e) => ({ error: String(e.message), items: [] })));
-    }
+    if (url.pathname === '/api/macro-tickers') return sendJSON(res, 200, await getMacroTickers().catch((e) => ({ error: String(e.message), items: [] })));
     if (url.pathname === '/api/country') {
       const id = url.searchParams.get('id');
       if (!ALL_COUNTRIES[id]) return sendJSON(res, 404, { error: 'unknown country' });

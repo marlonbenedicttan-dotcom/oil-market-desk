@@ -20,7 +20,7 @@ let macroCountries = null;     // /api/countries — country lists per region
 let macroCountry = 'us';       // selected country
 let transmission = null;       // /api/transmission — cross-asset logic
 let activeTab = 'commodities'; // which tab is showing (drives the ticker's content)
-let regionQuotes = null;       // region currencies/indices for the macro ticker
+let macroTickers = null;       // every macro ticker (all regions) for the macro tape
 const COUNTRY_FX_ID = { 'DX-Y.NYB': 'dxy', 'EURUSD=X': 'eurusd', 'GBPUSD=X': 'gbpusd', 'USDJPY=X': 'usdjpy', 'USDCNY=X': 'usdcny', 'USDINR=X': 'usdinr', 'AUDUSD=X': 'audusd' };
 let chartDp = 2;        // decimals for the current chart (set in renderChart)
 const seenAlerts = new Set();
@@ -476,9 +476,9 @@ function renderTicker(m) {
   // include every currency too
   for (const f of (lastFx || [])) parts.push(`<span class="tk"><b>${f.label.replace(/\s*·.*/, '')}</b><span class="tk-px">${f.price == null ? '—' : Number(f.price).toFixed(f.price < 10 ? 4 : 2)}</span><span class="tk-chg ${cls(f.pct)}">${f.pct == null ? '' : pctf(f.pct)}</span></span>`);
   let one;
-  if (activeTab === 'macro' && regionQuotes && regionQuotes.length) {
-    // on the macro tab the ticker shows the REGION's currencies & markets, not commodities
-    one = regionQuotes.map((c) => `<span class="tk"><b>${c.label}</b><span class="tk-px">${c.fx.price == null ? '—' : Number(c.fx.price).toFixed(c.fx.price < 10 ? 4 : 2)}</span><span class="tk-chg ${cls(c.fx.pct)}">${c.fx.pct == null ? '' : pctf(c.fx.pct)}</span></span>`).join('');
+  if (activeTab === 'macro' && macroTickers && macroTickers.length) {
+    // on the macro tab the ticker becomes a broad macro tape: every currency & index
+    one = macroTickers.map((t) => `<span class="tk"><b>${t.label}</b><span class="tk-px">${t.price == null ? '—' : Number(t.price).toFixed(t.price < 10 ? 4 : 2)}</span><span class="tk-chg ${cls(t.pct)}">${t.pct == null ? '' : pctf(t.pct)}</span></span>`).join('');
   } else {
     one = parts.join('');
   }
@@ -1013,12 +1013,12 @@ function renderMacroRegion() {
     macroCountry = list[0] ? list[0].id : 'us';
     if ([...sel.options].some((o) => o.value === macroCountry)) sel.value = macroCountry;
   }
-  loadRegionQuotes();
+  loadMacroTickers();
   loadCountry();
 }
-async function loadRegionQuotes() {
-  try { regionQuotes = (await getJSON('/api/region-quotes?id=' + macroRegion)).items || []; }
-  catch { regionQuotes = null; }
+async function loadMacroTickers() {
+  try { macroTickers = (await getJSON('/api/macro-tickers')).items || []; }
+  catch { macroTickers = null; }
   if (data) renderTicker(data);
 }
 async function loadCountry() {
@@ -1195,7 +1195,7 @@ function showTab(name) {
     if (map) setTimeout(() => map.invalidateSize(), 80);
     if (crackHistChart && currentMarket === 'refined') setTimeout(() => crackHistChart.resize(), 80);
   }
-  if (name === 'macro') loadRegionQuotes();
+  if (name === 'macro') loadMacroTickers();
   if (data) renderTicker(data);
 }
 

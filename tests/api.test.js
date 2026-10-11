@@ -82,8 +82,8 @@ test('/api/countries, /api/country and /api/region-quotes', async () => {
   assert.equal(idn.label, 'Indonesia');
   assert.ok(idn.fx && idn.index && idn.fund && Array.isArray(idn.fund.gdpGrowth));
   assert.equal((await fetch(`http://localhost:${PORT}/api/country?id=nope`)).status, 404);
-  const rq = await (await fetch(`http://localhost:${PORT}/api/region-quotes?id=apac`)).json();
-  assert.ok(Array.isArray(rq.items) && rq.items.length >= 5);
+  const mt = await (await fetch(`http://localhost:${PORT}/api/macro-tickers`)).json();
+  assert.ok(Array.isArray(mt.items) && mt.items.length >= 20);
 });
 
 test('/api/headlines + /api/fundamentals respond', async () => {
