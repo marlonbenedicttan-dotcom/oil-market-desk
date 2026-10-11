@@ -324,7 +324,7 @@ function renderContext(m, a) {
     rows.push(ctxRow(`${b.label}: real vs futures`, an.basisPct, `<span class="${cls(b.basis)}">${signed(b.basis, b.dp)}</span>`));
   }
   if (a.spread?.pct != null) rows.push(ctxRow('Brent vs WTI (real)', a.spread.pct, signed(a.spread.brentWtiPhysical, 2)));
-  const arb = a.arb ? `<div class="arb">Cost to ship US oil to Europe: gap ${signed(a.arb.spread, 2)} − shipping ${a.arb.freight.toFixed(2)} = <b class="${a.arb.open ? 'pos' : 'neg'}">${signed(a.arb.net, 2)} → ${a.arb.open ? 'worth doing' : 'not worth it'}</b></div>` : '';
+  const arb = a.arb ? `<div class="arb">💡 <b>Export read (rough):</b> US crude is ${signed(a.arb.spread, 2)}/bbl cheaper than Brent. Even after an assumed ${a.arb.freight.toFixed(2)}/bbl shipping cost, that’s ${signed(a.arb.net, 2)}/bbl — ${a.arb.open ? 'a wide gap that <b>normally</b> pulls US barrels to Europe' : 'too thin to encourage exports'}. <span class="warn">A gap this wide is unusual — likely inflated by slightly old real-barrel prices, so treat it as a rough guide, not a real trade.</span></div>` : '';
   const vols = m.benchmarks.map((b) => { const an = a.benchmarks?.[b.id]; return an && an.vol30 != null ? `<span class="choke"><b>${an.vol30.toFixed(1)}%</b> ${b.label.replace(/\s*\(.*\)/, '')}</span>` : ''; }).filter(Boolean).join('');
   const volStrip = vols ? `<div class="chokes"><div class="chokes-h">HOW JUMPY PRICES HAVE BEEN (last 30 days, yearly pace)</div>${vols}</div>` : '';
   const qf = data?.quality?.flags || [];
@@ -457,7 +457,7 @@ function renderBottomLine(m, tn, fl, flares, sar) {
   const label = score >= 70 ? 'HIGH' : score >= 40 ? 'ELEVATED' : 'LOW';
   const by = Object.fromEntries(m.benchmarks.map((b) => [b.id, b]));
   const tight = (by.brent?.basis ?? 0) > 0;
-  const meaning = `Real barrels are ${tight ? '<b>scarce and pricier than futures</b> (a tight market)' : '<b>plentiful</b> (a well-supplied market)'}, and Gulf shipping is ${gulfDark ? '<b>going dark — ships switching off trackers</b>' : 'flowing normally'}. ${sar?.latest ? `Our last radar look at the Gulf was ${new Date(sar.latest.time).toLocaleDateString()}. ` : ''}${flareNote} ${score >= 70 ? 'Bottom line: strong upward pressure on oil, but expect sharp swings.' : score >= 40 ? 'Some tightness, but not extreme.' : 'No major tightness right now.'}`;
+  const meaning = `Real barrels are ${tight ? '<b>scarce and pricier than futures</b> (a tight market)' : '<b>plentiful</b> (a well-supplied market)'}, and Gulf shipping is ${gulfDark ? '<b>going dark — ships switching off trackers</b>' : 'flowing normally'}. ${sar?.latest ? `Our last radar look at the Gulf was ${new Date(sar.latest.time).toLocaleDateString()}. ` : ''}${flareNote} ${score >= 70 ? 'Bottom line: the market is pricing a real supply squeeze — expect sharp swings.' : score >= 40 ? 'Some tightness, but not extreme.' : 'No major tightness right now.'}`;
   const watch = ['<b>Weekly US oil stocks</b> — every Wednesday, 10:30am New York time (the week\u2019s biggest mover)'];
   if (tight) watch.push('The <b>price gap between this month and next</b> — if it shrinks, tightness is fading');
   if (gulfDark) watch.push('The <b>next satellite radar pass</b> over the Gulf (Ships tab) — our tracker-independent look');
@@ -598,13 +598,19 @@ async function loadReroute() { try { renderReroute(await getJSON('/api/reroute')
 function renderRegime(m, a, c) {
   const by = Object.fromEntries(m.benchmarks.map((b) => [b.id, b]));
   const parts = [];
-  if (c?.brent) parts.push(c.brent.shape === 'Backwardation' ? 'oil is pricier <b>now</b> than later → <b>tight</b>' : 'oil is cheaper now than later → <b>well supplied</b>');
+  if (c?.brent) parts.push(c.brent.shape === 'Backwardation'
+    ? '<span title="Prices are higher for sooner delivery — a sign oil is scarce right now.">oil is <b>tight</b> (worth more sooner)</span>'
+    : '<span title="Prices are lower for sooner delivery — plenty of oil available.">oil is <b>well supplied</b></span>');
   const bb = by.brent?.basis;
-  if (bb != null) parts.push(bb > 0 ? 'real barrels cost <span class="pos">more</span> than futures' : 'real barrels cost <span class="neg">less</span> than futures');
-  if (a?.arb) parts.push(`shipping US oil to Europe is <b class="${a.arb.open ? 'pos' : 'neg'}">${a.arb.open ? 'worth it' : 'not worth it'}</b>`);
+  if (bb != null) parts.push(bb > 0
+    ? '<span title="The real (physical) price of Brent is above the futures price.">real barrels cost <span class="pos">more</span> than futures</span>'
+    : '<span title="The real price is below the futures price.">real barrels cost <span class="neg">less</span> than futures</span>');
+  if (a?.arb) parts.push(a.arb.open
+    ? '<span title="US crude is cheaper than Brent by more than a rough shipping estimate — which normally encourages exports to Europe. Rough estimate only.">US oil is much cheaper than Brent → exports to Europe likely</span>'
+    : '<span title="US crude is not cheap enough vs Brent to cover rough shipping costs — exports less attractive.">US oil isn’t cheap enough to ship to Europe</span>');
   const dq = (m.quality?.flags || []).length;
-  if (dq) parts.push(`<span class="warn">⚠ ${dq} data check${dq > 1 ? 's' : ''}</span>`);
-  $('regime').innerHTML = `<span class="regime-k">RIGHT NOW</span> ${parts.join(' · ')}`;
+  if (dq) parts.push(`<span class="warn" title="Some real-barrel prices are a few days old, so the gap can look off.">⚠ ${dq} data check${dq > 1 ? 's' : ''}</span>`);
+  $('regime').innerHTML = `<span class="regime-k">MARKET STATE</span> ${parts.join(' · ')}`;
 }
 function kpiTile(label, value, sub, klass) {
   return `<div class="kpi"><div class="kpi-l">${label}</div><div class="kpi-v ${klass || ''}">${value}</div><div class="kpi-s dimtext">${sub}</div></div>`;
