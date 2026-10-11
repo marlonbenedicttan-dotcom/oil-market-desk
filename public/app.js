@@ -35,6 +35,7 @@ let data, history, analytics;
 let tankerInfo = { status: {}, count: 0, tankers: [] };
 let nextRefresh = 60;
 let fxList = [];        // chartable currencies (from /api/fx)
+let rateList = [];      // chartable rates (from /api/rates)
 let markets = [];       // commodity markets (from /api/markets) — Big Picture groups
 let currentMarket = 'crude';   // which segment the page is showing
 let marketRead = null;         // /api/marketread payload for currentMarket
@@ -706,6 +707,88 @@ async function renderChart() {
   chart.$bands = bands;
 }
 
+// ---------------------------------------------------------------------------
+// Compare / spread — overlay any two chartable series (commodities, currencies, rates).
+// ---------------------------------------------------------------------------
+const CMP_PRESETS = [
+  ['Brent − WTI', 'brent', 'wti', 'diff'],
+  ['Oil vs dollar', 'wti', 'fx:dxy', 'index'],
+  ['Gold vs dollar', 'gold', 'fx:dxy', 'index'],
+  ['Gold vs real yield', 'gold', 'rate:real10y', 'index'],
+  ['Copper vs oil', 'copper', 'wti', 'index'],
+];
+function cmpOptionsHtml() {
+  const opts = [];
+  for (const b of data.benchmarks) if (history && (b.id in history.series)) opts.push(`<option value="${b.id}">${b.label}</option>`);
+  if (fxList.length) opts.push(`<optgroup label="CURRENCIES">${fxList.map((f) => `<option value="fx:${f.id}">${f.label}</option>`).join('')}</optgroup>`);
+  if (rateList.length) opts.push(`<optgroup label="RATES">${rateList.map((r) => `<option value="rate:${r.id}">${r.label}</option>`).join('')}</optgroup>`);
+  return opts.join('');
+}
+let cmpBuilt = false;
+function buildCompareOptions() {
+  const a = $('cmp-a'), b = $('cmp-b');
+  if (!a || !b || !data || cmpBuilt) return;
+  const html = cmpOptionsHtml();
+  a.innerHTML = html; b.innerHTML = html;
+  a.value = 'brent'; b.value = 'wti';            // a sensible default pair
+  if ($('cmp-view')) $('cmp-view').value = 'diff';
+  cmpBuilt = true;
+}
+function renderCmpPresets() {
+  const el = $('cmp-presets');
+  if (el) el.innerHTML = CMP_PRESETS.map(([lab, a, b, v]) => `<button class="ghost small cmp-preset" data-a="${a}" data-b="${b}" data-v="${v}">${lab}</button>`).join('');
+}
+async function cmpSeries(metric, range) {
+  let r; try { r = await getRange(metric, range); } catch { return null; }
+  if (!r || r.error) return null;
+  const single = r.kind === 'fx' || r.kind === 'basis' || r.kind === 'rate';
+  const arr = single ? r.series.paper : (r.series.paper || r.series.physical);
+  const label = r.kind === 'bench' ? `${r.label}${r.series.paper ? ' futures' : ' real'}` : r.label;
+  return { dates: r.dates || r.months || [], arr: arr || [], label, dp: r.dp ?? 2, unit: r.unit || '', kind: r.kind };
+}
+let cmpChart = null;
+async function renderCompare() {
+  const cv = $('cmp-chart'), sum = $('cmp-summary');
+  if (!cv || !data) return;
+  const a = $('cmp-a')?.value, b = $('cmp-b')?.value, range = $('cmp-range')?.value || '6m', view = $('cmp-view')?.value || 'index';
+  if (!a || !b) return;
+  if (a === b) { if (sum) sum.textContent = 'Pick two different series to compare.'; return; }
+  const [A, B] = await Promise.all([cmpSeries(a, range), cmpSeries(b, range)]);
+  if (!A || !B || !A.arr.some((v) => v != null) || !B.arr.some((v) => v != null)) { if (sum) sum.textContent = 'No data for one of the series over this range.'; return; }
+  const axis = [...new Set([...A.dates, ...B.dates])].sort();
+  const align = (S) => { const m = new Map(); S.dates.forEach((d, i) => m.set(d, S.arr[i])); return axis.map((d) => (m.has(d) ? m.get(d) : null)); };
+  const a2 = align(A), b2 = align(B);
+  const first = (arr) => arr.find((v) => v != null);
+  const last = (arr) => [...arr].reverse().find((v) => v != null);
+  const pct = (arr) => { const f = first(arr), l = last(arr); return f && l ? ((l - f) / f) * 100 : null; };
+  const label = range.toUpperCase();
+  let datasets, summary;
+  if (view === 'diff') {
+    const diff = a2.map((v, i) => (v != null && b2[i] != null ? v - b2[i] : null));
+    chartDp = Math.max(A.dp, B.dp);
+    datasets = [line(`${A.label} − ${B.label}`, diff, '#ff9e00')];
+    const now = last(diff), f0 = first(diff);
+    const unitNote = A.unit && A.unit === B.unit ? ` ${A.unit}` : ' (units differ)';
+    summary = `${A.label} − ${B.label}: ${now == null ? '—' : signed(now, chartDp)}${unitNote}${now != null && f0 != null ? ` · ${signed(now - f0, chartDp)} over ${label}` : ''}`;
+  } else {
+    chartDp = 1;
+    const ba = first(a2), bb = first(b2);
+    const ia = a2.map((v) => (v == null || !ba ? null : (v / ba) * 100));
+    const ib = b2.map((v) => (v == null || !bb ? null : (v / bb) * 100));
+    datasets = [line(A.label, ia, '#4aa3ff'), line(B.label, ib, '#c06bff')];
+    const rateNote = (A.kind === 'rate' || B.kind === 'rate') ? ' · a yield is already a %, so this is its % change (not pp)' : '';
+    summary = `${A.label} ${pctf(pct(a2))} vs ${B.label} ${pctf(pct(b2))} over ${label} · both start at 100${rateNote}`;
+  }
+  if (sum) sum.textContent = summary;
+  const opts = { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false },
+    plugins: { legend: { labels: { color: '#7c8a99', boxWidth: 12, font: { family: 'monospace' } } },
+      tooltip: { callbacks: { title: (it) => (it.length ? String(it[0].label) : ''), label: (ctx) => `${ctx.dataset.label}: ${ctx.parsed.y == null ? '—' : Number(ctx.parsed.y).toFixed(chartDp)}` } } },
+    scales: { x: { ticks: { color: '#7c8a99', maxTicksLimit: 10 }, grid: { color: '#151a20' } }, y: { ticks: { color: '#7c8a99' }, grid: { color: '#151a20' } } } };
+  const chartData = { labels: axis, datasets };
+  if (cmpChart) { cmpChart.data = chartData; cmpChart.options = opts; cmpChart.update(); return; }
+  cmpChart = new Chart(cv, { type: 'line', data: chartData, options: opts, plugins: [] });
+}
+
 async function loadHistory() { history = await getJSON('/api/history'); }
 async function loadMarket() {
   data = await getJSON('/api/market');
@@ -713,6 +796,7 @@ async function loadMarket() {
   renderMarketState(); renderSnapshot(); setCardsTitle(); renderTicker(data);
   renderWatchlist(); renderHomeAlerts();
   await renderChart();   // ← render AFTER data exists
+  buildCompareOptions(); renderCompare();
   loadMarketRead();      // populate the adaptive Big Picture (hero line + panels)
   loadNews();
   $('updated').textContent = 'prices ' + new Date(data.updated).toLocaleTimeString();
@@ -1404,6 +1488,7 @@ function showTab(name) {
   if (name === 'commodities') {
     loadCurveHistory();
     if (chart) setTimeout(() => chart.resize(), 50);
+    if (cmpChart) setTimeout(() => cmpChart.resize(), 55);
     if (curveHistChart) setTimeout(() => curveHistChart.resize(), 60);
     if (map) setTimeout(() => map.invalidateSize(), 80);
     if (crackHistChart && currentMarket === 'refined') setTimeout(() => crackHistChart.resize(), 80);
@@ -1461,6 +1546,11 @@ async function refreshLive() {
 $('refresh').addEventListener('click', () => { nextRefresh = 60; refreshLive(); loadExtra(); });
 $('metric').addEventListener('change', () => { localStorage.setItem('oilbasis.metric', $('metric').value); chartAnchor = null; renderChart(); });
 $('range').addEventListener('change', () => { chartAnchor = null; renderChart(); });
+$('cmp-a')?.addEventListener('change', renderCompare);
+$('cmp-b')?.addEventListener('change', renderCompare);
+$('cmp-range')?.addEventListener('change', renderCompare);
+$('cmp-view')?.addEventListener('change', renderCompare);
+$('cmp-presets')?.addEventListener('click', (e) => { const btn = e.target.closest('.cmp-preset'); if (!btn) return; $('cmp-a').value = btn.dataset.a; $('cmp-b').value = btn.dataset.b; $('cmp-view').value = btn.dataset.v; renderCompare(); });
 $('bp-metric')?.addEventListener('change', () => selectMarket($('bp-metric').value));
 
 $('marketstate')?.addEventListener('click', (e) => { const t = e.target.closest('[data-market]'); if (t) { showTab('commodities'); selectMarket(t.dataset.market); } });
@@ -1529,6 +1619,8 @@ $('macro-links')?.addEventListener('click', (e) => { const el = e.target.closest
   if ('Notification' in window && Notification.permission === 'default') { try { await Notification.requestPermission(); } catch {} }
   await loadHistory().catch((e) => showError(e.message));
   fxList = await getJSON('/api/fx').catch(() => []);
+  rateList = await getJSON('/api/rates').catch(() => []);
+  renderCmpPresets();
   markets = await getJSON('/api/markets').catch(() => []);
   macroCountries = await getJSON('/api/countries').catch(() => null);
   await refreshLive();        // prices + ships (sets `data` first)

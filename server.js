@@ -294,6 +294,7 @@ function resolveMetric(id) {
   if (!id) return null;
   if (id.startsWith('fx:')) { const f = FX_SYMS.find((x) => x.id === id.slice(3)); return f ? { kind: 'fx', f } : null; }
   if (id.startsWith('basis:')) { const b = BENCHMARKS.find((x) => x.id === id.slice(6)); return b ? { kind: 'basis', b } : null; }
+  if (id.startsWith('rate:')) { const r = RATES.find((x) => x.id === id.slice(5)); return r ? { kind: 'rate', r } : null; }
   const b = BENCHMARKS.find((x) => x.id === id);
   return b ? { kind: 'bench', b } : null;
 }
@@ -314,6 +315,14 @@ async function getLongterm(id, years = 10) {
     const months = Object.keys(p).sort();
     const paper = months.map((k) => p[k]);
     return { id, label: f.label, unit: '', dp: f.dp, kind: 'fx', years, months, series: { paper, physical: months.map(() => null) }, summary: { paper: summ(paper), physical: null } };
+  }
+
+  if (m.kind === 'rate') {
+    const raw = await cached(`ltr:${m.r.fred}:${years}`, 6 * 3600e3, () => fredSeries(m.r.fred, years * 366 + 30));
+    const p = monthly(raw);
+    const months = Object.keys(p).sort();
+    const paper = months.map((k) => p[k]);
+    return { id, label: m.r.label, unit: '%', dp: m.r.dp, kind: 'rate', years, months, series: { paper, physical: months.map(() => null) }, summary: { paper: summ(paper), physical: null } };
   }
 
   const b = m.b;
@@ -345,6 +354,13 @@ async function getRange(id, range) {
     const dates = Object.keys(map).sort();
     const paper = dates.map((d) => map[d]);
     return { id, label: f.label, unit: '', dp: f.dp, kind: 'fx', range, dates, series: { paper, physical: dates.map(() => null) }, summary: { paper: rowPct(paper), physical: null } };
+  }
+
+  if (m.kind === 'rate') {
+    const map = await cached(`rngr:${m.r.fred}:${range}`, 6 * 3600e3, () => fredSeries(m.r.fred, days + 10));
+    const dates = Object.keys(map).sort();
+    const paper = dates.map((d) => map[d]);
+    return { id, label: m.r.label, unit: '%', dp: m.r.dp, kind: 'rate', range, dates, series: { paper, physical: dates.map(() => null) }, summary: { paper: rowPct(paper), physical: null } };
   }
 
   const b = m.b;
@@ -636,6 +652,12 @@ const FX_SYMS = [
   { id: 'usdinr', label: 'USD / INR', sym: 'USDINR=X', dp: 2 },
   { id: 'usdchf', label: 'USD / CHF', sym: 'USDCHF=X', dp: 4 },
   { id: 'nzdusd', label: 'NZD / USD', sym: 'NZDUSD=X', dp: 4 },
+];
+// Chartable rates (FRED, free, no key) — so you can overlay, e.g., gold vs the real yield.
+const RATES = [
+  { id: 'real10y', label: 'US 10-yr real yield', fred: 'DFII10', dp: 2 },
+  { id: 'nom10y', label: 'US 10-yr yield', fred: 'DGS10', dp: 2 },
+  { id: 'nom2y', label: 'US 2-yr yield', fred: 'DGS2', dp: 2 },
 ];
 
 // Commodity ↔ currency links: does the currency still track its commodity?
@@ -1989,6 +2011,7 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname === '/api/market') return sendJSON(res, 200, await getMarket());
     if (url.pathname === '/api/history') return sendJSON(res, 200, await getHistory());
     if (url.pathname === '/api/fx') return sendJSON(res, 200, FX_SYMS.map((f) => ({ id: f.id, label: f.label, dp: f.dp })));
+    if (url.pathname === '/api/rates') return sendJSON(res, 200, RATES.map((r) => ({ id: r.id, label: r.label, dp: r.dp })));
     if (url.pathname === '/api/markets') return sendJSON(res, 200, getMarkets());
     if (url.pathname === '/api/marketread') {
       const id = url.searchParams.get('id');

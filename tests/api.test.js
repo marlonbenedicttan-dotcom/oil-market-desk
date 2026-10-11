@@ -169,6 +169,18 @@ test('chart endpoints accept benchmarks, gaps and currencies', async () => {
   }
 });
 
+test('/api/rates + rate series are chartable (for gold vs real yields)', async () => {
+  const rates = await (await fetch(`http://localhost:${PORT}/api/rates`)).json();
+  assert.ok(Array.isArray(rates) && rates.length >= 1);
+  assert.ok(rates.every((r) => r.id && r.label && typeof r.dp === 'number'));
+  const r = await fetch(`http://localhost:${PORT}/api/range?id=rate:real10y&range=6m`);
+  assert.equal(r.status, 200);
+  const j = await r.json();
+  assert.equal(j.error, undefined, JSON.stringify(j).slice(0, 100));
+  assert.equal(j.kind, 'rate');
+  assert.ok(Array.isArray(j.dates) && Array.isArray(j.series.paper));
+});
+
 test('/api/termstructure returns a curve, 404 for unknown', async () => {
   const r = await fetch(`http://localhost:${PORT}/api/termstructure?id=wti`);
   assert.equal(r.status, 200);

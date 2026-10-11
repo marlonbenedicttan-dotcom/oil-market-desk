@@ -110,7 +110,8 @@ main { max-width: 1240px; margin: 0 auto; padding: 14px; display: grid; gap: 14p
 /* ---------- Chart ---------- */
 select { background: var(--panel2); color: var(--text); border: 1px solid var(--line2); padding: 4px 8px; font-size: 11px; font-family: var(--mono); }
 .chart-wrap { position: relative; height: 320px; padding: 8px; }
-.controls { display: flex; gap: 8px; }
+.controls { display: flex; gap: 8px; align-items: center; }
+.cmp-presets { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 12px 0; }
 .card.clickable { cursor: pointer; transition: border-color .12s; }
 .card.clickable:hover { border-color: var(--amber); }
 .card.clickable:hover h3 { color: var(--amber2); }

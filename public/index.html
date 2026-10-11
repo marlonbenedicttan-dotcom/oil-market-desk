@@ -16,7 +16,7 @@
   <meta name="theme-color" content="#ff9e00" />
   <link rel="icon" href="/icon.svg" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <link rel="stylesheet" href="style.css?v=15" />
+  <link rel="stylesheet" href="style.css?v=16" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 </head>
@@ -113,6 +113,20 @@
         </div>
         <div class="chart-wrap"><canvas id="chart"></canvas></div>
         <div id="lt-summary" class="dimtext lt-summary"></div>
+      </section>
+
+      <section class="panel" id="compare-panel">
+        <div class="ph">
+          <span class="ph-t">⚖️ COMPARE / SPREAD</span>
+          <div class="controls">
+            <select id="cmp-a"></select><span class="dimtext">vs</span><select id="cmp-b"></select>
+            <select id="cmp-range"><option value="1m">1M</option><option value="3m">3M</option><option value="6m" selected>6M</option><option value="ytd">YTD</option><option value="1y">1Y</option></select>
+            <select id="cmp-view"><option value="index" selected>Indexed to 100</option><option value="diff">Difference</option></select>
+          </div>
+        </div>
+        <div id="cmp-presets" class="cmp-presets"></div>
+        <div class="chart-wrap" style="height:280px"><canvas id="cmp-chart"></canvas></div>
+        <div id="cmp-summary" class="dimtext lt-summary"></div>
       </section>
 
       <section class="panel">
@@ -259,6 +273,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=24"></script>
+  <script src="app.js?v=25"></script>
 </body>
 </html>
