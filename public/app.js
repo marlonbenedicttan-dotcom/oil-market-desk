@@ -399,7 +399,8 @@ function renderInventories(d) {
   }).join('');
   $('inventories').innerHTML =
     (read ? `<div class="read-line">${read}</div>` : '') +
-    `<div class="t inv h"><span class="inv-l">SERIES (million barrels)</span><span class="num">LEVEL</span><span class="num">THIS WEEK</span><span class="num">vs NORMAL</span></div>` + rows;
+    `<div class="t inv h"><span class="inv-l">SERIES (million barrels)</span><span class="num">LEVEL</span><span class="num">THIS WEEK</span><span class="num">vs NORMAL</span></div>` + rows +
+    (d.gas ? `<div class="read-line" style="border-top:1px solid var(--line)">🔥 Natural gas storage: <b>${d.gas.value.toLocaleString()} BCF</b> (${d.gas.wow >= 0 ? '+' : ''}${d.gas.wow} this week${d.gas.surprise != null ? `, vs a normal ${d.gas.surprise >= 0 ? '+' : ''}${d.gas.surprise}` : ''}) — ${d.gas.wow < 0 ? 'a draw is bullish for gas' : 'a build is bearish for gas'}.</div>` : '');
 }
 function sparkline(vals, w = 240, h = 40) {
   const xs = vals.filter((v) => v != null);
@@ -820,6 +821,12 @@ $('cards').addEventListener('click', (e) => {
   const tick = () => { $('clock').textContent = new Date().toLocaleTimeString('en-GB'); };
   tick(); setInterval(tick, 1000);
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});
+  const showOnboard = () => $('onboarding')?.classList.remove('hidden');
+  const hideOnboard = () => { localStorage.setItem('oilbasis.seenOnboard', '1'); $('onboarding')?.classList.add('hidden'); };
+  if (!localStorage.getItem('oilbasis.seenOnboard')) showOnboard();
+  $('onboard-close')?.addEventListener('click', hideOnboard);
+  $('help-open')?.addEventListener('click', showOnboard);
+  $('onboarding')?.addEventListener('click', (e) => { if (e.target.id === 'onboarding') hideOnboard(); });
   if ('Notification' in window && Notification.permission === 'default') { try { await Notification.requestPermission(); } catch {} }
   await loadHistory().catch((e) => showError(e.message));
   await refreshLive();        // prices + ships (sets `data` first)

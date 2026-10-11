@@ -293,6 +293,18 @@ async function eiaStocks(id, weeks = 320) {
   if (!res.ok) throw new Error(`eia stocks ${id} -> ${res.status}`);
   return ((await res.json()).response?.data || []).map((r) => ({ period: r.period, value: parseFloat(r.value) }));
 }
+async function eiaWeekly(route, id, weeks = 320) {
+  const key = process.env.EIA_API_KEY;
+  if (!key) return [];
+  const p = new URLSearchParams();
+  p.set('api_key', key); p.set('frequency', 'weekly');
+  p.append('data[0]', 'value'); p.append('facets[series][]', id);
+  p.set('start', new Date(Date.now() - weeks * 7 * 864e5).toISOString().slice(0, 10));
+  p.append('sort[0][column]', 'period'); p.append('sort[0][direction]', 'asc'); p.set('length', '1000');
+  const res = await fetch(`https://api.eia.gov/v2/${route}/data/?${p}`, { headers: UA });
+  if (!res.ok) throw new Error(`eia ${id} -> ${res.status}`);
+  return ((await res.json()).response?.data || []).map((r) => ({ period: r.period, value: parseFloat(r.value) }));
+}
 async function getInventories() {
   return cached('inventories', 6 * 3600e3, async () => {
     const results = await Promise.all(Object.entries(INV_SERIES).map(async ([k, s]) => [k, await eiaStocks(s.id)]));
@@ -321,7 +333,20 @@ async function getInventories() {
         years: sameWeek.length,
       });
     }
-    return { items, fetched: new Date().toISOString() };
+    let gas = null;
+    try {
+      const garr = await eiaWeekly('natural-gas/stor/wkly', 'NW2_EPG0_SWO_R48_BCF');
+      if (garr.length > 5) {
+        const last = garr[garr.length - 1], prev = garr[garr.length - 2];
+        const wows = []; for (let i = 1; i < garr.length; i++) wows.push({ period: garr[i].period, wow: garr[i].value - garr[i - 1].value });
+        const targetWk = isoWeek(last.period);
+        const sameWeek = wows.filter((w) => isoWeek(w.period) === targetWk && w.period !== last.period);
+        const seasonal = sameWeek.length >= 3 ? sameWeek.reduce((a, b) => a + b.wow, 0) / sameWeek.length : null;
+        const wow = prev ? last.value - prev.value : null;
+        gas = { period: last.period, value: last.value, wow, seasonal: seasonal != null ? Math.round(seasonal) : null, surprise: seasonal != null && wow != null ? Math.round(wow - seasonal) : null };
+      }
+    } catch {}
+    return { items, gas, fetched: new Date().toISOString() };
   });
 }
 

@@ -29,6 +29,7 @@
       <a class="ghost" href="/api/export.csv">⬇ CSV</a>
       <a class="ghost" href="/api/digest" target="_blank">DAILY BRIEF</a>
       <button id="refresh" class="ghost">↻</button>
+      <button id="help-open" class="ghost" title="What am I looking at?">?</button>
     </div>
   </header>
   <div id="ticker" class="ticker"></div>
@@ -191,6 +192,21 @@
 
     <footer id="notes"></footer>
   </main>
+  <div id="onboarding" class="onboard hidden">
+    <div class="onboard-box">
+      <h2>👋 Welcome to Commodity Desk</h2>
+      <ul>
+        <li><b>Commodities</b> — energy, metals &amp; agriculture prices, with today's change.</li>
+        <li><b>Real vs futures</b> — what physical barrels cost vs the futures market (energy).</li>
+        <li><b>Big Picture</b> — one stress score, what it means, and what to watch next.</li>
+        <li><b>Ships &amp; Satellites</b> — live tracking, even when ships switch off their trackers.</li>
+        <li><b>Macro</b> — interest rates, inflation, growth &amp; currencies.</li>
+      </ul>
+      <button id="onboard-close">Got it →</button>
+      <div class="dimtext">For information only — not investment advice.</div>
+    </div>
+  </div>
+
   <script src="app.js?v=3"></script>
 </body>
 </html>
