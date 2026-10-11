@@ -117,9 +117,9 @@ function marketInsights(m) {
     out.push(`<b>${b.label}</b>: real barrels cost ${fmt(b.physical, b.dp)} — <b>${Math.abs(b.basis).toFixed(b.dp)} ${above ? 'more' : 'less'}</b> than futures. ${above ? 'Real barrels are scarce (bullish for oil).' : 'Real barrels are easy to get (bearish for oil).'}`);
   }
   const s = m.spreads.brent_wti;
-  if (s) { const d = s.physical - s.paper; out.push(`<b>Brent vs WTI</b>: the real gap is ${signed(s.physical)} vs ${signed(s.paper)} for futures — ${d > 3 ? 'Brent (seaborne) is in strong export demand.' : d < -3 ? 'US oil looks relatively tight.' : 'the two are broadly in line.'}`); }
+  if (s) { const d = s.physical - s.paper; out.push(`<b>Brent vs WTI</b>: the real gap is ${signed(s.physical)} vs ${signed(s.paper)} for futures — ${d > 3 ? 'Brent (seaborne) is in demand for export.' : d < -3 ? 'US oil looks relatively tight.' : 'the two are broadly in line.'}`); }
   const d321 = crackSpreads(m).find((c) => c.label.startsWith('3-2-1'));
-  if (d321) out.push(`<b>Refining profit</b> ${signed(d321.value)} a barrel — ${d321.value > 20 ? 'excellent; refiners will run flat out.' : d321.value > 10 ? 'decent.' : 'thin; refiners may cut back.'}`);
+  if (d321) out.push(`<b>Refining profit</b> ${signed(d321.value)} a barrel — ${d321.value > 20 ? 'excellent — refiners running hard.' : d321.value > 10 ? 'decent.' : 'thin; refiners may cut back.'}`);
   return out;
 }
 function tankerInsights(t) {
