@@ -435,6 +435,32 @@ async function loadAnalogue() {
   try { renderAnalogue(await getJSON('/api/analogue?metric=' + encodeURIComponent($('an-metric').value))); }
   catch (e) { showError(e.message); }
 }
+function renderBottomLine(m, tn, fl) {
+  if (!m || !tn) return;
+  const total = tn.evidence?.length || 1;
+  const stress = fl?.marketStress?.score ?? 0;
+  const gulfDark = (fl?.dark || []).some((n) => /Persian|Hormuz|Oman|Arabian|Red Sea/.test(n));
+  const score = Math.round(Math.min(100, (tn.tight / total) * 60 + (stress / 3) * 30 + (gulfDark ? 10 : 0)));
+  const label = score >= 70 ? 'HIGH' : score >= 40 ? 'ELEVATED' : 'LOW';
+  const by = Object.fromEntries(m.benchmarks.map((b) => [b.id, b]));
+  const backwardated = (by.brent?.basis ?? 0) > 0;
+  const meaning = `${backwardated ? 'Physical oil is <b>tight</b> — near-term barrels are scarce' : 'Physical oil looks <b>loose</b>'}, and Gulf shipping is ${gulfDark ? '<b>disrupted / going dark</b>' : 'flowing normally'}. ${score >= 70 ? 'The market is pricing a real supply squeeze — oil has strong support, but expect sharp swings.' : score >= 40 ? 'Some tightness, but not extreme.' : 'No major tightness right now.'}`;
+  const watch = ['<b>EIA inventory release</b> — Wednesdays, 10:30am ET (the week\u2019s biggest catalyst)'];
+  if (backwardated) watch.push('The <b>curve</b> (Brent M1−M2) — if it flattens, tightness is easing');
+  if (gulfDark) watch.push('The <b>next Sentinel-1 radar pass</b> over the Gulf (Tankers tab) — our AIS-independent look');
+  watch.push('The <b>Cape vs Suez</b> rerouting (Tankers tab) — ships avoiding the Red Sea');
+  const impact = backwardated || score >= 60
+    ? 'Typically <b>favours</b> oil producers (XOM, CVX, COP, EOG) and refiners (VLO, PSX, MPC) while <b>squeezing</b> fuel users like airlines (DAL, UAL) and trucking.'
+    : 'Typically <b>eases</b> pressure on fuel users (airlines, trucking) and weighs on producers.';
+  const companies = backwardated || score >= 60 ? ['COP', 'EOG', 'OXY', 'VLO', 'PSX', 'MPC'] : ['DAL', 'UAL', 'AAL', 'LUV'];
+  $('bottomline').innerHTML = `
+    <div class="bl">
+      <div class="bl-score ${label.toLowerCase()}"><div class="bl-num">${score}<span>/100</span></div><div class="bl-lbl">GULF FLOW STRESS<div class="bl-tag">${label}</div></div></div>
+      <div class="bl-sec"><div class="gtitle">WHAT IT MEANS</div><p>${meaning}</p></div>
+      <div class="bl-sec"><div class="gtitle">WHAT TO WATCH NEXT</div><ul>${watch.map((w) => `<li>${w}</li>`).join('')}</ul></div>
+      <div class="bl-sec"><div class="gtitle">WHO IT AFFECTS</div><p>${impact}</p><div class="bl-chips">${companies.map((c) => `<span class="chip">${c}</span>`).join('')}</div></div>
+    </div>`;
+}
 function renderTightness(d) {
   if (!d || d.error) { $('tightness').innerHTML = '<div class="dimtext" style="padding:10px 12px">loading…</div>'; return; }
   const k = d.tight > d.loose ? 'tight' : d.loose > d.tight ? 'loose' : 'mixed';
@@ -617,6 +643,7 @@ async function loadExtra() {
     renderFlows(fl);
     renderProducts(pr);
     renderSatellite(sar, flr);
+    renderBottomLine(data, tn, fl);
     renderKPIs(data, an, cv, pos);
     renderRegime(data, an, cv);
   } catch (e) { showError(e.message); }
