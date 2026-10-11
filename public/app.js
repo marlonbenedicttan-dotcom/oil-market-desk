@@ -439,6 +439,7 @@ function selectMarket(id) {
   setCardsTitle();
   renderCurveForSegment();   // the curve follows the segment
   loadCurveHistory();        // and so does the curve-over-time (or hides)
+  loadSeasonal();            // and the seasonality grade (gas/grains/softs)
   renderAdaptive();
   loadMarketRead();
   loadNews();
@@ -797,6 +798,7 @@ async function loadMarket() {
   renderWatchlist(); renderHomeAlerts();
   await renderChart();   // ← render AFTER data exists
   buildCompareOptions(); renderCompare();
+  loadSeasonal();
   loadMarketRead();      // populate the adaptive Big Picture (hero line + panels)
   loadNews();
   $('updated').textContent = 'prices ' + new Date(data.updated).toLocaleTimeString();
@@ -971,6 +973,40 @@ async function renderCurveForSegment() {
   const results = await Promise.all(comps.map((b) => getJSON('/api/termstructure?id=' + encodeURIComponent(b.id)).catch(() => null)));
   const html = results.filter((r) => r && r.available).map((r) => curveBlock(r.label, r)).join('');
   el.innerHTML = html || '<div class="dimtext" style="padding:10px 12px">No free month-by-month curve for this segment — only a front-month price.</div>';
+}
+// Seasonality — where the price sits vs its 5-year day-of-year band (gas/grains/softs).
+async function loadSeasonal() {
+  const el = $('seasonal');
+  if (!el || !data) return;
+  const mk = markets.find((x) => x.id === currentMarket);
+  const b = mk ? data.benchmarks.find((x) => x.id === mk.primary) : null;
+  if (!b) { el.innerHTML = ''; return; }
+  el.innerHTML = '<div class="dimtext" style="padding:10px 12px">reading 5-year seasonality…</div>';
+  let sea; try { sea = await getSeasonal(b.id); } catch { sea = null; }
+  renderSeasonal(sea, b);
+}
+function renderSeasonal(sea, b) {
+  const el = $('seasonal');
+  if (!el) return;
+  const sub = $('seasonal-sub');
+  if (sub) sub.textContent = b ? `${b.label} · 5-year, day-of-year` : '';
+  const g = sea && !sea.error ? sea.grade : null;
+  if (!g) { el.innerHTML = '<div class="dimtext" style="padding:10px 12px">No 5-year seasonal history for this instrument.</div>'; return; }
+  const dp = (b && b.dp) ?? 2;
+  const clamp = (x) => Math.max(0, Math.min(100, x));
+  const pos = clamp(g.pos);
+  const medPos = g.median != null && g.high > g.low ? clamp(((g.median - g.low) / (g.high - g.low)) * 100) : 50;
+  const ahead = sea.ahead;
+  const aheadTxt = ahead == null ? '' : ` It normally ${ahead >= 0 ? 'rises' : 'falls'} ~${Math.abs(ahead).toFixed(0)}% over the next month.`;
+  const price = b ? (b.paper != null ? b.paper : b.physical) : null;
+  el.innerHTML = `
+    <div class="seas-head"><span class="seas-grade">${g.label}</span><span class="seas-pos">${g.pos}/100 of its usual range for this time of year</span></div>
+    <div class="seas-bar">
+      <span class="seas-end">${Number(g.low).toFixed(dp)}</span>
+      <div class="seas-track"><i class="seas-med" style="left:${medPos}%"></i><b class="seas-now" style="left:${pos}%"></b></div>
+      <span class="seas-end">${Number(g.high).toFixed(dp)}</span>
+    </div>
+    <div class="read-line">Now <b>${price == null ? '—' : Number(price).toFixed(dp)}</b>${g.vsMedian != null ? ` — ${g.vsMedian >= 0 ? '+' : ''}${g.vsMedian}% vs the 5-year median` : ''}.${aheadTxt}</div>`;
 }
 function renderAnalogue(a) {
   if (!a || a.error) { $('analogue').innerHTML = `<div class="dimtext" style="padding:10px 12px">${a?.error || 'loading…'}</div>`; return; }

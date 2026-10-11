@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { sgn, inBox, haversineNm, isoWeek, monthly, pctOver, percentile, realizedVol, computeCracks, backAdjust, pearson, logReturns, horizonDeltas, curveTightness, inventoryTightness, weightedScore } from '../src/lib.js';
+import { sgn, inBox, haversineNm, isoWeek, monthly, pctOver, percentile, realizedVol, computeCracks, backAdjust, pearson, logReturns, horizonDeltas, curveTightness, inventoryTightness, weightedScore, seasonalGrade, seasonalAhead } from '../src/lib.js';
 
 test('sgn formats with sign', () => {
   assert.equal(sgn(4.39), '+4.39');
@@ -105,6 +105,25 @@ test('weightedScore averages the parts present and is null when none are', () =>
   assert.equal(a.label, 'BALANCED');
   assert.equal(weightedScore([]).score, null);
   assert.equal(weightedScore([]).label, '—');
+});
+
+test('seasonalGrade places today\u2019s price in the 5-yr band', () => {
+  const low = { '06-15': 100 }, high = { '06-15': 200 }, median = { '06-15': 150 };
+  const g = seasonalGrade(low, high, median, 150, '06-15');
+  assert.equal(g.pos, 50);
+  assert.equal(g.label, 'IN LINE');
+  assert.equal(g.vsMedian, 0);
+  assert.equal(seasonalGrade(low, high, median, 170, '06-15').label, 'ABOVE SEASONAL');
+  assert.equal(seasonalGrade(low, high, median, 210, '06-15').label, 'WELL ABOVE SEASONAL');
+  assert.equal(seasonalGrade(low, high, median, 90, '06-15').label, 'WELL BELOW SEASONAL');
+  assert.equal(seasonalGrade(low, high, median, null, '06-15'), null);
+  assert.equal(seasonalGrade(low, high, median, 150, '01-01'), null); // no band for that day
+});
+
+test('seasonalAhead gives the normal move along the median path', () => {
+  const median = { '06-15': 100, '07-15': 110 };
+  assert.equal(seasonalAhead(median, '06-15', '07-15'), 10);
+  assert.equal(seasonalAhead(median, '06-15', '09-01'), null); // unknown target day
 });
 
 test('computeCracks builds refining margins', () => {

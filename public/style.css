@@ -186,6 +186,18 @@ footer li { margin-bottom: 2px; }
 .cb i { position: absolute; left: 0; top: 0; bottom: 0; background: #2f6fb0; }
 .cp { text-align: right; font-variant-numeric: tabular-nums; }
 
+/* Seasonality (vs 5-yr day-of-year band) */
+.seasonal { padding: 10px 12px; }
+.seas-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 8px; flex-wrap: wrap; }
+.seas-grade { font-size: 13px; font-weight: 700; letter-spacing: 1px; color: var(--amber2); }
+.seas-pos { font-size: 11px; color: var(--dim); }
+.seas-bar { display: flex; align-items: center; gap: 8px; }
+.seas-end { font-size: 11px; color: var(--dim); font-variant-numeric: tabular-nums; min-width: 52px; }
+.seas-end:last-child { text-align: right; }
+.seas-track { position: relative; flex: 1; height: 10px; background: #0f1318; border: 1px solid var(--line); }
+.seas-med { position: absolute; top: -2px; bottom: -2px; width: 2px; background: var(--blue); }
+.seas-now { position: absolute; top: -4px; bottom: -4px; width: 3px; background: var(--amber); }
+
 /* Analogue */
 .analogue { padding: 10px 12px; }
 .an-head { font-size: 12px; color: #c9d4df; margin-bottom: 8px; }

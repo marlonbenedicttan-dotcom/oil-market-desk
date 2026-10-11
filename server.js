@@ -5,7 +5,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { execFile } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { sgn, businessDaysSince, inBox, haversineNm, horizonDeltas, isoWeek, monthly, pctOver, percentile, realizedVol, computeCracks, backAdjust, pearson, logReturns, curveTightness, inventoryTightness, weightedScore } from './src/lib.js';
+import { sgn, businessDaysSince, inBox, haversineNm, horizonDeltas, isoWeek, monthly, pctOver, percentile, realizedVol, computeCracks, backAdjust, pearson, logReturns, curveTightness, inventoryTightness, weightedScore, seasonalGrade, seasonalAhead } from './src/lib.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC = path.join(__dirname, 'public');
@@ -630,7 +630,14 @@ async function getSeasonal(b, years = 5) {
       const md = mds[i];
       low[md] = win[0]; high[md] = win[win.length - 1]; median[md] = win[Math.floor(win.length / 2)];
     }
-    return { low, high, median };
+    // Grade for today: where the latest price sits in this day-of-year's 5-yr band,
+    // plus the normal seasonal move over the next month.
+    const dates = Object.keys(map).sort();
+    const asOf = dates[dates.length - 1] || null;
+    const price = asOf ? map[asOf] : null;
+    const md = new Date().toISOString().slice(5, 10);
+    const toMd = new Date(Date.now() + 30 * 864e5).toISOString().slice(5, 10);
+    return { low, high, median, asOf, grade: seasonalGrade(low, high, median, price, md), ahead: seasonalAhead(median, md, toMd) };
   });
 }
 

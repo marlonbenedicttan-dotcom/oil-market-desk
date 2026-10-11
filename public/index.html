@@ -16,7 +16,7 @@
   <meta name="theme-color" content="#ff9e00" />
   <link rel="icon" href="/icon.svg" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <link rel="stylesheet" href="style.css?v=16" />
+  <link rel="stylesheet" href="style.css?v=17" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 </head>
@@ -136,6 +136,11 @@
           <div id="curvehist-title" class="chokes-h dimtext" style="padding:8px 12px 0"></div>
           <div class="chart-wrap" style="height:180px;padding:4px 12px 12px"><canvas id="curvehist"></canvas></div>
         </div>
+      </section>
+
+      <section class="panel market-only" data-when="gas,grains,softs">
+        <div class="ph"><span class="ph-t">🌱 SEASONALITY — vs the 5-year norm</span><span class="dimtext" id="seasonal-sub"></span></div>
+        <div id="seasonal" class="seasonal"></div>
       </section>
 
       <!-- 4. EVIDENCE — the segment's own defining signal comes first -->
@@ -273,6 +278,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=25"></script>
+  <script src="app.js?v=26"></script>
 </body>
 </html>

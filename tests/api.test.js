@@ -181,6 +181,16 @@ test('/api/rates + rate series are chartable (for gold vs real yields)', async (
   assert.ok(Array.isArray(j.dates) && Array.isArray(j.series.paper));
 });
 
+test('/api/seasonal carries a 5-year grade + forward bias', async () => {
+  const r = await fetch(`http://localhost:${PORT}/api/seasonal?id=corn`);
+  assert.equal(r.status, 200);
+  const j = await r.json();
+  assert.ok(j.error == null, JSON.stringify(j).slice(0, 80));
+  assert.ok(j.low && j.high && j.median, 'band present');
+  assert.ok(j.grade && typeof j.grade.pos === 'number' && j.grade.label, 'grade present');
+  assert.ok('ahead' in j);
+});
+
 test('/api/termstructure returns a curve, 404 for unknown', async () => {
   const r = await fetch(`http://localhost:${PORT}/api/termstructure?id=wti`);
   assert.equal(r.status, 200);

@@ -125,6 +125,24 @@ export function horizonDeltas(dates, values) {
   };
 }
 
+// ---------------------------------------------------------------------------
+// Seasonality (roadmap item 6). low/high/median are MM-DD-keyed maps from a 5-year
+// day-of-year band. Never invents a grade when the inputs are missing.
+// ---------------------------------------------------------------------------
+// Where the current price sits within the seasonal range for this day-of-year.
+export function seasonalGrade(low, high, median, price, md) {
+  const lo = low?.[md], hi = high?.[md], med = median?.[md] ?? null;
+  if (lo == null || hi == null || price == null || hi <= lo) return null;
+  const pos = ((price - lo) / (hi - lo)) * 100;
+  const label = pos >= 80 ? 'WELL ABOVE SEASONAL' : pos >= 60 ? 'ABOVE SEASONAL' : pos >= 40 ? 'IN LINE' : pos >= 20 ? 'BELOW SEASONAL' : 'WELL BELOW SEASONAL';
+  return { pos: Math.round(pos), label, low: lo, high: hi, median: med, vsMedian: med ? +(((price - med) / med) * 100).toFixed(1) : null };
+}
+// The normal seasonal move (the 5-year median path) between two day-of-year keys, as %.
+export function seasonalAhead(median, fromMd, toMd) {
+  const a = median?.[fromMd], b = median?.[toMd];
+  return a && b ? +(((b - a) / a) * 100).toFixed(1) : null;
+}
+
 export function computeCracks(m) {
   const by = Object.fromEntries(m.benchmarks.map((b) => [b.id, b]));
   const w = by.wti, rb = by.rbob, ho = by.ulsd, jet = by.jet, G = 42;
