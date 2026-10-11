@@ -120,6 +120,7 @@ test('/api/countries, /api/country and /api/region-quotes', async () => {
   assert.ok(idn.fx && idn.index && idn.fund && Array.isArray(idn.fund.gdpGrowth));
   assert.equal(idn.fx.source, 'Yahoo Finance');
   assert.ok(idn.fx.deltas && 'd1' in idn.fx.deltas, 'country fx carries multi-horizon deltas');
+  assert.ok(idn.fund.debtToGdp && idn.fund.debtToGdp.year >= 2018, 'debt/GDP is current (IMF WEO), not a stale year');
   assert.equal((await fetch(`http://localhost:${PORT}/api/country?id=nope`)).status, 404);
   const mt = await (await fetch(`http://localhost:${PORT}/api/region-quotes?id=apac`)).json();
   assert.ok(Array.isArray(mt.items) && mt.items.length >= 8);   // currencies (and indices where free)
