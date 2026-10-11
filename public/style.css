@@ -28,7 +28,7 @@ button { font-family: var(--mono); }
 .topbar {
   display: flex; justify-content: space-between; align-items: center;
   padding: 8px 14px; background: #05070a; border-bottom: 2px solid var(--amber);
-  position: sticky; top: 0; z-index: 1100;
+  position: sticky; top: 0; z-index: 9999;
 }
 .brand { display: flex; align-items: center; gap: 10px; }
 .logo { color: var(--amber); font-size: 18px; }
