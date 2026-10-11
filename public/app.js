@@ -288,7 +288,9 @@ function renderContext(m, a) {
   }
   if (a.spread?.pct != null) rows.push(ctxRow('Brent−WTI physical', a.spread.pct, signed(a.spread.brentWtiPhysical, 2)));
   const arb = a.arb ? `<div class="arb">EXPORT ARB (WTI → Europe): spread ${signed(a.arb.spread, 2)} − freight ${a.arb.freight.toFixed(2)} = <b class="${a.arb.open ? 'pos' : 'neg'}">${signed(a.arb.net, 2)} → ${a.arb.open ? 'OPEN' : 'CLOSED'}</b></div>` : '';
-  $('context').innerHTML = rows.join('') + arb;
+  const vols = m.benchmarks.map((b) => { const an = a.benchmarks?.[b.id]; return an && an.vol30 != null ? `<span class="choke"><b>${an.vol30.toFixed(1)}%</b> ${b.label.replace(/\s*\(.*\)/, '')}</span>` : ''; }).filter(Boolean).join('');
+  const volStrip = vols ? `<div class="chokes"><div class="chokes-h">REALISED 30D VOLATILITY (ANNUALISED)</div>${vols}</div>` : '';
+  $('context').innerHTML = rows.join('') + arb + volStrip;
 }
 function renderInventories(d) {
   if (!d || !d.items?.length) { $('inventories').innerHTML = '<div class="dimtext" style="padding:10px 12px">EIA key needed, or no data.</div>'; return; }
