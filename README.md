@@ -18,6 +18,14 @@ Adding a benchmark = one row in the `BENCHMARKS` table in `server.js`.
 
 > **Note on extra crude grades:** Dubai, WTI Midland and Mars are **not** available from free daily spot sources — EIA's public daily table carries only WTI Cushing and Brent for crude. Those grades need a paid feed (Kpler, Vortexa, Nasdaq Data Link, etc.).
 
+## Features
+
+- **Basis** — paper vs physical per benchmark, sign-colored.
+- **Crack spreads** — gasoline, diesel and 3-2-1 refining margins ($/bbl), from product × 42 − crude.
+- **Insights** — a plain-English panel reading the numbers for prices *and* shipping.
+- **Alerts** — flags when a basis, spread or crack breaks a threshold (with desktop notifications).
+- **Live tanker map** — free AIS positions, filtered to tankers (types 80–89).
+
 ## What "basis" means
 
 - **Paper price** = the front-month **futures** contract.
