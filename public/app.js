@@ -21,6 +21,7 @@ let macroCountry = 'us';       // selected country
 let transmission = null;       // /api/transmission — cross-asset logic
 let activeTab = 'commodities'; // which tab is showing (drives the ticker's content)
 let macroTickers = null;       // every macro ticker (all regions) for the macro tape
+let macroChart = null;         // per-country index vs currency chart
 const COUNTRY_FX_ID = { 'DX-Y.NYB': 'dxy', 'EURUSD=X': 'eurusd', 'GBPUSD=X': 'gbpusd', 'USDJPY=X': 'usdjpy', 'USDCNY=X': 'usdcny', 'USDINR=X': 'usdinr', 'AUDUSD=X': 'audusd' };
 let chartDp = 2;        // decimals for the current chart (set in renderChart)
 const seenAlerts = new Set();
@@ -1054,6 +1055,26 @@ async function loadCountry() {
   html += '<div class="gtitle">CROSS-ASSET — HOW THIS REGION IS AFFECTED</div>' + crossAssetBlock((i) => (i.regions || []).includes(macroRegion));
   el.innerHTML = html;
   loadMacroNews();
+  loadCountryChart();
+}
+// Per-country chart: equity index and currency, both indexed to 100 so they compare.
+async function loadCountryChart() {
+  const cv = $('macro-chart');
+  if (!cv) return;
+  let d;
+  try { d = await getJSON('/api/country-series?id=' + encodeURIComponent(macroCountry) + '&range=' + ($('macro-range') ? $('macro-range').value : '1y')); }
+  catch { return; }
+  if (!d || d.error || !d.dates || !d.dates.length) return;
+  const norm = (arr) => { const base = (arr || []).find((v) => v != null); return (arr || []).map((v) => (v == null || !base) ? null : (v / base) * 100); };
+  chartDp = 1; chartAnchor = null;
+  const datasets = [];
+  if (d.index && d.index.some((v) => v != null)) datasets.push(line(`${d.indexLabel} (indexed)`, norm(d.index), '#4aa3ff'));
+  if (d.fx && d.fx.some((v) => v != null)) datasets.push(line(`${d.fxLabel} (indexed)`, norm(d.fx), '#c06bff'));
+  const note = $('macro-chart-note');
+  if (note) note.textContent = `${d.label} — both lines start at 100; hover any point for its % change. ${d.indexLabel ? '' : 'Index unavailable free.'}`;
+  const data = { labels: d.dates, datasets };
+  if (macroChart) { macroChart.data = data; macroChart.update(); return; }
+  macroChart = new Chart(cv, { type: 'line', data, options: chartOpts(), plugins: [] });
 }
 // Cross-asset transmission block — shared by segments and macro regions.
 function crossAssetBlock(pred, title) {
@@ -1195,7 +1216,7 @@ function showTab(name) {
     if (map) setTimeout(() => map.invalidateSize(), 80);
     if (crackHistChart && currentMarket === 'refined') setTimeout(() => crackHistChart.resize(), 80);
   }
-  if (name === 'macro') loadMacroTickers();
+  if (name === 'macro') { loadMacroTickers(); if (macroChart) setTimeout(() => macroChart.resize(), 60); }
   if (data) renderTicker(data);
 }
 
@@ -1252,6 +1273,7 @@ $('marketstate')?.addEventListener('click', (e) => { const t = e.target.closest(
 $('macro-region')?.addEventListener('change', () => { macroRegion = $('macro-region').value; renderMacroRegion(); });
 $('macro-region-panel')?.addEventListener('click', (e) => { const el = e.target.closest('[data-metric]'); if (el) pickMetric(el.dataset.metric, '1y'); });
 $('macro-country')?.addEventListener('change', () => { macroCountry = $('macro-country').value; loadCountry(); });
+$('macro-range')?.addEventListener('change', loadCountryChart);
 $('chart').addEventListener('click', (ev) => {
   if (!chart) return;
   const pts = chart.getElementsAtEventForMode(ev, 'index', { intersect: false }, true);

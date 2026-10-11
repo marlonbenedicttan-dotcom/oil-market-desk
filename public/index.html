@@ -186,6 +186,13 @@
         <div id="macro-region-panel" class="macro"></div>
       </section>
       <section class="panel">
+        <div class="ph"><span class="ph-t">📈 INDEX vs CURRENCY (indexed to 100)</span>
+          <div class="controls"><select id="macro-range"><option value="3m">3M</option><option value="6m">6M</option><option value="1y" selected>1Y</option><option value="ytd">YTD</option><option value="5y">5Y</option></select></div>
+        </div>
+        <div class="chart-wrap"><canvas id="macro-chart"></canvas></div>
+        <div id="macro-chart-note" class="dimtext lt-summary"></div>
+      </section>
+      <section class="panel">
         <div class="ph"><span class="ph-t">📰 REGIONAL NEWS</span><span id="macro-news-sub" class="dimtext"></span></div>
         <div id="macro-news" class="news"></div>
       </section>
@@ -221,6 +228,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=10"></script>
+  <script src="app.js?v=11"></script>
 </body>
 </html>

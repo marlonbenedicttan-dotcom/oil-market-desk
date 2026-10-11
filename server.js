@@ -1134,6 +1134,21 @@ async function wbSeries(iso3, ind) {
   });
 }
 const wbLatest = async (iso3, ind) => { const s = await wbSeries(iso3, ind); return s.length ? s[s.length - 1] : null; };
+// Index + currency series for one country (for the macro chart). Distinct cache key.
+async function getCountrySeries(id, range = '1y') {
+  const c = ALL_COUNTRIES[id];
+  if (!c) return { error: 'unknown country' };
+  return cached(`cs:${id}:${range}`, 3600e3, async () => {
+    const cfg = { '1m': ['1mo', '1d'], '3m': ['3mo', '1d'], '6m': ['6mo', '1d'], ytd: ['ytd', '1d'], '1y': ['1y', '1d'], '5y': ['5y', '1mo'] }[range] || ['1y', '1d'];
+    let idxMap = {}, fxMap = {};
+    try { fxMap = (await cached(`csr:${cfg[0]}:${c.fx}`, 3600e3, () => yahooSeries(c.fx, cfg[0], cfg[1]))).series; } catch {}
+    if (c.index) { try { idxMap = (await cached(`csr:${cfg[0]}:${c.index}`, 3600e3, () => yahooSeries(c.index, cfg[0], cfg[1]))).series; } catch {} }
+    const dates = [...new Set([...Object.keys(idxMap), ...Object.keys(fxMap)])].sort();
+    const at = (o, d) => (o[d] != null ? o[d] : null);
+    return { id, label: c.label, range, dates, index: dates.map((d) => at(idxMap, d)), fx: dates.map((d) => at(fxMap, d)), indexLabel: c.index ? c.indexLabel : null, fxLabel: c.fxLabel };
+  });
+}
+
 // Every macro ticker — currency + equity index for all countries (macro tape).
 async function getMacroTickers() {
   return cached('macrotickers', 120e3, async () => {
@@ -1762,6 +1777,11 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname === '/api/headlines') return sendJSON(res, 200, await getHeadlines().catch((e) => ({ error: String(e.message), items: [] })));
     if (url.pathname === '/api/countries') return sendJSON(res, 200, MACRO_COUNTRIES);
     if (url.pathname === '/api/macro-tickers') return sendJSON(res, 200, await getMacroTickers().catch((e) => ({ error: String(e.message), items: [] })));
+    if (url.pathname === '/api/country-series') {
+      const id = url.searchParams.get('id');
+      if (!ALL_COUNTRIES[id]) return sendJSON(res, 404, { error: 'unknown country' });
+      return sendJSON(res, 200, await getCountrySeries(id, url.searchParams.get('range') || '1y').catch((e) => ({ error: String(e.message) })));
+    }
     if (url.pathname === '/api/country') {
       const id = url.searchParams.get('id');
       if (!ALL_COUNTRIES[id]) return sendJSON(res, 404, { error: 'unknown country' });
