@@ -33,7 +33,8 @@ Adding a benchmark = one row in the `BENCHMARKS` table in `server.js`.
 ## Features
 
 - **Basis** — paper vs physical per benchmark, sign-colored.
-- **Charts** — click any commodity, gap or currency to chart it over **1M · 3M · 6M · YTD · 1Y · 5Y · 10Y**. Hover a point for its **% change** on the window; click to drop an anchor and measure between two. Every tile carries a 6-month sparkline.
+- **Charts** — click any commodity, gap or currency to chart it over **1M · 3M · 6M · YTD · 1Y · 5Y · 10Y**. Hover a point for its **% change** on the window; click to drop an anchor and measure between two. Every tile carries a 6-month sparkline. The **prices-for-months-ahead** curve has a picker, so you can see any commodity's term structure — not just crude.
+- **Pick a market (Big Picture)** — the overview is not crude-only: choose any of the **20 commodities** (energy, metals, agriculture incl. palm oil) for a quick snapshot — price, today's move, 6-month change, jumpiness and where it sits in its range.
 - **Crack spreads** — gasoline, diesel and 3-2-1 refining margins ($/bbl), from product × 42 − crude.
 - **Insights** — a plain-English panel reading the numbers for prices *and* shipping.
 - **Alerts** — flags when a basis, spread or crack breaks a threshold (with desktop notifications).

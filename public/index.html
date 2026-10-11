@@ -16,7 +16,7 @@
   <meta name="theme-color" content="#ff9e00" />
   <link rel="icon" href="/icon.svg" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <link rel="stylesheet" href="style.css?v=4" />
+  <link rel="stylesheet" href="style.css?v=5" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 </head>
@@ -55,6 +55,13 @@
 
     <!-- BIG PICTURE -->
     <div class="tabpane" data-pane="overview">
+      <section class="panel">
+        <div class="ph"><span class="ph-t">🔎 PICK A MARKET</span>
+          <div class="controls"><select id="bp-metric"></select></div>
+        </div>
+        <div id="bp-snapshot" class="bp-snapshot"></div>
+      </section>
+
       <section class="panel">
         <div class="ph"><span class="ph-t">🎯 THE BOTTOM LINE — WHAT IT MEANS &amp; WHAT TO WATCH</span><span class="dimtext">NOT INVESTMENT ADVICE</span></div>
         <div id="bottomline" class="bottomline"></div>
@@ -100,8 +107,11 @@
       </section>
 
       <section class="panel">
-        <div class="ph"><span class="ph-t">PRICES FOR MONTHS AHEAD</span><span class="dimtext">is oil cheaper or pricier later? (the “curve”)</span></div>
+        <div class="ph"><span class="ph-t">PRICES FOR MONTHS AHEAD</span>
+          <div class="controls"><select id="curve-metric"></select></div>
+        </div>
         <div id="curve" class="curve"></div>
+        <div class="dimtext" style="padding:0 12px 6px">pick a commodity — is it cheaper or pricier later? (the “curve”)</div>
         <div id="curvehist-block">
           <div class="chokes-h dimtext" style="padding:8px 12px 0">IS OIL GETTING TIGHTER OR LOOSER? — WTI, this month vs next, over time (above 0 = tight)</div>
           <div class="chart-wrap" style="height:180px;padding:4px 12px 12px"><canvas id="curvehist"></canvas></div>
@@ -207,6 +217,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=5"></script>
+  <script src="app.js?v=6"></script>
 </body>
 </html>

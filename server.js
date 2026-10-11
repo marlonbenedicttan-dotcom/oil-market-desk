@@ -41,6 +41,7 @@ const BENCHMARKS = [
   { id: 'coffee',  label: 'Coffee',   group: 'Agriculture', unit: '¢/lb', dp: 2, paper: 'KC=F', physical: null },
   { id: 'cocoa',   label: 'Cocoa',    group: 'Agriculture', unit: '$/t',  dp: 0, paper: 'CC=F', physical: null },
   { id: 'cotton',  label: 'Cotton',   group: 'Agriculture', unit: '¢/lb', dp: 2, paper: 'CT=F', physical: null },
+  { id: 'palm',    label: 'Palm Oil', group: 'Agriculture', unit: '$/t',  dp: 0, paper: 'CPO=F', physical: null },
 ];
 
 // ---------------------------------------------------------------------------
@@ -150,7 +151,7 @@ async function getMarket() {
     const paper = p.price ?? null;
     return {
       id: b.id, label: b.label, group: b.group, unit: b.unit, dp: b.dp,
-      paper, physical, physicalDate: last,
+      paper, physical, physicalDate: last, curve: Boolean(CURVE_SPEC[b.id]),
       basis: paper != null && physical != null ? physical - paper : null,
       spotLagDays: businessDaysSince(last),
       spotJumpPct: physical != null && prevPhys ? ((physical - prevPhys) / prevPhys) * 100 : null,
@@ -789,34 +790,55 @@ async function getAnalytics(freight = FREIGHT_DEFAULT) {
 // Term structure (futures curve from Yahoo contract-month symbols)
 // ---------------------------------------------------------------------------
 const MONTH_CODE = ['F', 'G', 'H', 'J', 'K', 'M', 'N', 'Q', 'U', 'V', 'X', 'Z'];
-async function curveFor(root) {
+// Which commodities Yahoo serves as individual contract months, and the exchange
+// suffix each root uses. (Palm oil has no free contract months — only the front.)
+const CURVE_SPEC = {
+  wti: { root: 'CL', exch: 'NYM' }, brent: { root: 'BZ', exch: 'NYM' },
+  rbob: { root: 'RB', exch: 'NYM' }, ulsd: { root: 'HO', exch: 'NYM' }, natgas: { root: 'NG', exch: 'NYM' },
+  gold: { root: 'GC', exch: 'CMX' }, silver: { root: 'SI', exch: 'CMX' }, copper: { root: 'HG', exch: 'CMX' },
+  platinum: { root: 'PL', exch: 'CMX' }, palladium: { root: 'PA', exch: 'CMX' },
+  corn: { root: 'ZC', exch: 'CBT' }, wheat: { root: 'ZW', exch: 'CBT' }, soybean: { root: 'ZS', exch: 'CBT' },
+  coffee: { root: 'KC', exch: 'NYB' }, sugar: { root: 'SB', exch: 'NYB' }, cocoa: { root: 'CC', exch: 'NYB' }, cotton: { root: 'CT', exch: 'NYB' },
+};
+async function curveFor(id) {
+  const spec = CURVE_SPEC[id];
+  if (!spec) return [];
   const now = new Date();
   const out = [];
   for (let k = 0; k < 14; k++) {
     const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + k, 1));
-    const symbol = `${root}${MONTH_CODE[d.getUTCMonth()]}${String(d.getUTCFullYear()).slice(2)}.NYM`;
+    const symbol = `${spec.root}${MONTH_CODE[d.getUTCMonth()]}${String(d.getUTCFullYear()).slice(2)}.${spec.exch}`;
     try {
       const q = await cached('cur:' + symbol, 300_000, () => yahooSeries(symbol, '5d', '1d'));
-      if (q.price != null) out.push({ label: symbol.slice(root.length, root.length + 3), price: q.price });
+      if (q.price != null) out.push({ label: symbol.slice(spec.root.length, spec.root.length + 3), price: q.price });
     } catch {}
   }
   return out;
 }
+function buildCurve(c) {
+  if (c.length < 2) return { contracts: c, available: false };
+  return {
+    available: true,
+    contracts: c,
+    m1m2: c[0].price - c[1].price,
+    m1m6: c.length > 5 ? c[0].price - c[5].price : null,
+    m1m12: c.length > 11 ? c[0].price - c[11].price : null,
+    shape: c[0].price >= c[1].price ? 'Backwardation' : 'Contango',
+    rollYieldAnn: c[1].price ? Math.log(c[0].price / c[1].price) * 12 * 100 : null,
+  };
+}
+// The curve for any one commodity (used by the "prices for months ahead" picker).
+async function getCurveFor(id) {
+  return cached('ts:' + id, 300_000, async () => {
+    const b = BENCHMARKS.find((x) => x.id === id);
+    const c = await curveFor(id);
+    return { id, label: b?.label || id, unit: b?.unit || '', dp: b?.dp ?? 2, ...buildCurve(c) };
+  });
+}
 async function getCurves() {
   return cached('curves', 120_000, async () => {
-    const build = (c) => {
-      if (c.length < 2) return { contracts: c };
-      return {
-        contracts: c,
-        m1m2: c[0].price - c[1].price,
-        m1m6: c.length > 5 ? c[0].price - c[5].price : null,
-        m1m12: c.length > 11 ? c[0].price - c[11].price : null,
-        shape: c[0].price >= c[1].price ? 'Backwardation' : 'Contango',
-        rollYieldAnn: c[1].price ? Math.log(c[0].price / c[1].price) * 12 * 100 : null,
-      };
-    };
-    const [wti, brent] = await Promise.all([curveFor('CL'), curveFor('BZ')]);
-    return { wti: build(wti), brent: build(brent) };
+    const [wti, brent] = await Promise.all([curveFor('wti'), curveFor('brent')]);
+    return { wti: buildCurve(wti), brent: buildCurve(brent) };
   });
 }
 
@@ -1256,6 +1278,11 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname === '/api/events') return sendJSON(res, 200, getEvents());
     if (url.pathname === '/api/chokepoints') return sendJSON(res, 200, getChokepoints());
     if (url.pathname === '/api/curve') return sendJSON(res, 200, await getCurves());
+    if (url.pathname === '/api/termstructure') {
+      const id = url.searchParams.get('id');
+      if (!BENCHMARKS.some((x) => x.id === id)) return sendJSON(res, 404, { error: 'unknown benchmark' });
+      return sendJSON(res, 200, await getCurveFor(id).catch((e) => ({ error: String(e.message) })));
+    }
     if (url.pathname === '/api/curvehistory') return sendJSON(res, 200, await getCurveHistory(url.searchParams.get('root') || 'CL').catch((e) => ({ error: String(e.message) })));
     if (url.pathname === '/api/continuous') return sendJSON(res, 200, await getContinuous(url.searchParams.get('root') || 'CL').catch((e) => ({ error: String(e.message) })));
     if (url.pathname === '/api/tightness') return sendJSON(res, 200, await getTightness().catch((e) => ({ error: String(e.message) })));

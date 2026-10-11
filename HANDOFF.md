@@ -16,7 +16,7 @@ src/lib.js        pure helpers (unit-tested): sgn, inBox, haversineNm, isoWeek,
 public/index.html tabs + panels
 public/app.js     all front-end rendering + charting
 public/style.css  Bloomberg-terminal dark theme
-tests/            node:test (lib unit tests + API smoke tests) — 28 tests, `npm test`
+tests/            node:test (lib unit tests + API smoke tests) — 30 tests, `npm test`
 Dockerfile, render.yaml, scripts/share.sh   deploy + free tunnel
 ```
 
@@ -28,11 +28,12 @@ Dockerfile, render.yaml, scripts/share.sh   deploy + free tunnel
 - `paper: null` ⇒ spot-only (jet, propane): shows real price only.
 
 ### Charting (the merged COMMODITIES & PRICES tab)
+BIG PICTURE has a **PICK A MARKET** panel (any of the 20 commodities — price, day %, 6-month move, jumpiness, range position, sparkline). The **PRICES FOR MONTHS AHEAD** curve has a picker too: choose any commodity and it fetches that root's contract months (see `CURVE_SPEC` — each root has its own exchange suffix NYM/CMX/CBT/NYB).
 The commodity tile grid and the old PRICE TRENDS charts are now **one tab**. Clicking a tile (or a currency/link tile on the MACRO tab) selects it and renders the chart below. `renderChart()` resolves **any** metric — benchmark · `basis:<bench>` · `fx:<fx>` — across ranges **1M / 3M / 6M / YTD / 1Y / 5Y / 10Y** (spreads stay 6M-only). Hovering a point shows its **% change vs the window start**; clicking drops an anchor (●) to measure between two points. 6M draws the 5-year seasonal band; gap views draw p10/p90/median bands. Tiles carry a 6-month sparkline.
 
 ### API endpoints
 `/api/market` (all instruments + gaps + quality flags), `/api/history` (6M daily, all instruments + basis),
-`/api/fx` (chartable currencies) , `/api/range?id=&range=1m|3m|6m|ytd|1y` , `/api/longterm?id=&years=` (both resolve `id` = benchmark | `basis:<bench>` | `fx:<fx>`) , `/api/curve` (futures curve),
+`/api/fx` (chartable currencies) , `/api/range?id=&range=1m|3m|6m|ytd|1y` , `/api/longterm?id=&years=` (both resolve `id` = benchmark | `basis:<bench>` | `fx:<fx>`) , `/api/curve` (WTI+Brent curve) , `/api/termstructure?id=` (curve for any one commodity),
 `/api/curvehistory?root=CL` , `/api/continuous?root=CL` , `/api/analytics` (percentiles/vol/arb),
 `/api/analogue?metric=` , `/api/inventories` (+ gas storage) , `/api/positioning` (+ open interest),
 `/api/equities` (sector watchlist) , `/api/macro` , `/api/macrodash` (rates + rateGap · inflation · growth · growthProxy copper÷gold · fx board · links commodity↔currency),
@@ -62,7 +63,7 @@ The commodity tile grid and the old PRICE TRENDS charts are now **one tab**. Cli
 1. **Roll-adjusted futures & curve-history** need ~25 contract-month quotes; **Yahoo rate-limits these from Render's IP**, so on the host they can be sparse. They're **lazy-loaded** (PRICE TRENDS tab) and self-hide if sparse. The main chart uses the reliable front-month (`CL=F`/`BZ=F`).
 2. **Real-vs-futures gap** mixes a **lagged official spot** with live futures — flagged in "data checks". A clean fix is Dated Brent (paid).
 3. **Metals/agri** have no free spot → futures-only.
-4. **Coal & palm oil** need paid feeds.
+4. **Coal** needs a paid feed. **Palm oil** is now free via Yahoo `CPO=F` (CME USD Malaysian Crude Palm Oil) — but only the **front month**, so it has **no month-by-month curve** (unlike the 17 roots in `CURVE_SPEC`).
 5. **FRED international macro** (non-US CPI/GDP/rates) is **stale/discontinued** — only **US** + **ECB rate** are current. **FX is fully live** (Yahoo), including the **commodity↔currency link correlations** — so no international CPI/GDP is shown rather than faking it.
 6. **AIS in the Gulf is near-dark** (ships switch off) → we show activity levels + market-implied stress + reroute inference instead.
 7. Free tier **cold-starts** (~40s) after idle unless the cron ping runs.
@@ -84,6 +85,6 @@ The commodity tile grid and the old PRICE TRENDS charts are now **one tab**. Cli
 ## Conventions / gotchas
 - Keep it **compact, plain-English, honest**. Explain *what it means* and *what to watch*.
 - **Never** put secrets in the repo. `.env`, `.state.json`, `.reroute.json`, `.flares.json`, `digest.log` are git-ignored.
-- After edits: `npm test` (28 tests) then `git push` (auto-deploys). Bump the `?v=` query on `style.css`/`app.js` in `index.html` if a cache issue appears.
+- After edits: `npm test` (30 tests) then `git push` (auto-deploys). Bump the `?v=` query on `style.css`/`app.js` in `index.html` if a cache issue appears.
 - The service worker (`public/sw.js`) is **network-first** — don't make it cache-first again (caused stale-CSS pain).
 - `server.js` is large (~1,100 lines); keep pure logic in `src/lib.js` so it stays testable.

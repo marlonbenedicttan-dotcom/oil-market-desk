@@ -144,6 +144,61 @@ function renderCards(m) {
 }
 
 // ---------------------------------------------------------------------------
+// Big-picture snapshot — any commodity, not just crude
+// ---------------------------------------------------------------------------
+function buildBpOptions() {
+  const sel = $('bp-metric');
+  if (!sel || !data) return;
+  const prev = sel.value || 'wti';
+  const groups = {};
+  for (const b of data.benchmarks) (groups[b.group] ||= []).push(b);
+  sel.innerHTML = Object.entries(groups).map(([g, list]) => `<optgroup label="${g.toUpperCase()}">${list.map((b) => `<option value="${b.id}">${b.label}</option>`).join('')}</optgroup>`).join('');
+  if ([...sel.options].some((o) => o.value === prev)) sel.value = prev;
+}
+function bpVol(arr) {
+  const xs = (arr || []).filter((v) => v != null);
+  if (xs.length < 31) return null;
+  const r = [];
+  for (let i = xs.length - 30; i < xs.length; i++) r.push(Math.log(xs[i] / xs[i - 1]));
+  const m = r.reduce((a, b) => a + b, 0) / r.length;
+  const v = r.reduce((a, b) => a + (b - m) ** 2, 0) / (r.length - 1);
+  return Math.sqrt(v) * Math.sqrt(252) * 100;
+}
+function renderSnapshot() {
+  const el = $('bp-snapshot');
+  if (!el || !data) return;
+  const b = data.benchmarks.find((x) => x.id === $('bp-metric').value);
+  if (!b) { el.innerHTML = ''; return; }
+  const s = history?.series?.[b.id];
+  const arr = b.paper != null ? s?.paper : s?.physical;
+  const val = b.paper != null ? b.paper : b.physical;
+  const dp = b.dp;
+  const day = pctOf(arr);
+  const n = (arr || []).filter((x) => x != null);
+  const six = n.length > 1 ? ((n[n.length - 1] - n[0]) / n[0]) * 100 : null;
+  const min = n.length ? Math.min(...n) : null, max = n.length ? Math.max(...n) : null;
+  const pos = val != null && min != null && max > min ? ((val - min) / (max - min)) * 100 : null;
+  const vol = bpVol(arr);
+  const cells = [
+    ['PRICE', val == null ? '—' : `${Number(val).toFixed(dp)} <span class="dimtext">${b.unit}</span>`, ''],
+    ['TODAY', day == null ? '—' : pctf(day), cls(day)],
+    ['PAST 6 MONTHS', six == null ? '—' : pctf(six), cls(six)],
+    ['30-DAY JUMPINESS', vol == null ? '—' : vol.toFixed(1) + '%', ''],
+    ['IN 6-MONTH RANGE', pos == null ? '—' : `${pos.toFixed(0)}/100`, pctClass(pos)],
+    [b.physical != null ? 'REAL vs FUTURES' : 'SOURCE', b.physical != null ? signed(b.basis, dp) : 'futures only', cls(b.basis)],
+  ];
+  const bits = [];
+  if (day != null) bits.push(`${b.label} is ${day >= 0 ? 'up' : 'down'} <b>${Math.abs(day).toFixed(1)}%</b> today`);
+  if (six != null) bits.push(`${Math.abs(six).toFixed(0)}% ${six >= 0 ? 'higher' : 'lower'} over 6 months`);
+  if (pos != null) bits.push(pos >= 70 ? 'near the top of its range' : pos <= 30 ? 'near the bottom of its range' : 'mid-range');
+  if (vol != null) bits.push(vol > 35 ? 'very jumpy' : vol > 20 ? 'fairly jumpy' : 'calm');
+  if (b.basis != null) bits.push(`real barrels ${b.basis >= 0 ? 'above' : 'below'} futures by ${Math.abs(b.basis).toFixed(dp)}`);
+  el.innerHTML = `<div class="bp-grid">${cells.map(([k, v, c]) => `<div class="bp-cell"><div class="bp-k">${k}</div><div class="bp-v ${c || ''}">${v}</div></div>`).join('')}</div>`
+    + `<div class="bp-spark">${tileSpark(arr)}</div>`
+    + `<div class="read-line">${bits.join(' · ')}.</div>`;
+}
+
+// ---------------------------------------------------------------------------
 // Insights & alerts
 // ---------------------------------------------------------------------------
 function marketInsights(m) {
@@ -366,7 +421,7 @@ async function renderChart() {
 async function loadHistory() { history = await getJSON('/api/history'); }
 async function loadMarket() {
   data = await getJSON('/api/market');
-  renderCards(data); buildMetricOptions(data);
+  renderCards(data); buildMetricOptions(data); buildBpOptions(); buildCurveOptions(); renderSnapshot();
   renderInsights(data, tankerInfo); renderAlerts(computeAlerts(data, tankerInfo)); renderTicker(data);
   await renderChart();   // ← the fix: render AFTER data exists
   $('updated').textContent = 'prices ' + new Date(data.updated).toLocaleTimeString();
@@ -537,6 +592,28 @@ function renderCurveHistory(d) {
   curveHistChart = new Chart(cv, { type: 'line', data, options: opts });
 }
 function renderCurve(d) { if (!d) return; $('curve').innerHTML = curveBlock('WTI', d.wti) + curveBlock('Brent', d.brent); }
+function buildCurveOptions() {
+  const sel = $('curve-metric');
+  if (!sel || !data) return;
+  const prev = sel.value || 'compare';
+  const opts = ['<option value="compare">WTI &amp; Brent (compare)</option>'];
+  const groups = {};
+  for (const b of data.benchmarks) { if (!b.curve) continue; (groups[b.group] ||= []).push(b); }
+  for (const [g, list] of Object.entries(groups)) opts.push(`<optgroup label="${g.toUpperCase()}">${list.map((b) => `<option value="${b.id}">${b.label}</option>`).join('')}</optgroup>`);
+  sel.innerHTML = opts.join('');
+  if ([...sel.options].some((o) => o.value === prev)) sel.value = prev;
+}
+async function loadCurveFor(id) {
+  const el = $('curve');
+  if (!el) return;
+  if (!id || id === 'compare') { try { renderCurve(await getJSON('/api/curve')); } catch {} return; }
+  el.innerHTML = '<div class="dimtext" style="padding:10px 12px">loading curve…</div>';
+  try {
+    const c = await getJSON('/api/termstructure?id=' + encodeURIComponent(id));
+    if (c.error || !c.available) { el.innerHTML = '<div class="dimtext" style="padding:10px 12px">No free month-by-month curve for this one — only a front-month price. Try crude, fuels, gas, metals or softs.</div>'; return; }
+    el.innerHTML = curveBlock(c.label, c);
+  } catch { el.innerHTML = '<div class="dimtext" style="padding:10px 12px">curve unavailable</div>'; }
+}
 function renderAnalogue(a) {
   if (!a || a.error) { $('analogue').innerHTML = `<div class="dimtext" style="padding:10px 12px">${a?.error || 'loading…'}</div>`; return; }
   const rows = a.horizons.map((h) => (h.n
@@ -834,7 +911,7 @@ async function loadExtra() {
     renderPositioning(pos);
     renderSectors(eq, data, an, tankerInfo);
     renderChokepoints(chk);
-    renderCurve(cv);
+    if (!$('curve-metric') || $('curve-metric').value === 'compare') renderCurve(cv);
     renderTightness(tn);
     renderFlows(fl);
     renderProducts(pr);
@@ -856,6 +933,8 @@ async function refreshLive() {
 $('refresh').addEventListener('click', () => { nextRefresh = 60; refreshLive(); loadExtra(); });
 $('metric').addEventListener('change', () => { localStorage.setItem('oilbasis.metric', $('metric').value); chartAnchor = null; renderChart(); });
 $('range').addEventListener('change', () => { chartAnchor = null; renderChart(); });
+$('bp-metric')?.addEventListener('change', renderSnapshot);
+$('curve-metric')?.addEventListener('change', () => loadCurveFor($('curve-metric').value));
 $('chart').addEventListener('click', (ev) => {
   if (!chart) return;
   const pts = chart.getElementsAtEventForMode(ev, 'index', { intersect: false }, true);

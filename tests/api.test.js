@@ -58,6 +58,24 @@ test('chart endpoints accept benchmarks, gaps and currencies', async () => {
   }
 });
 
+test('/api/termstructure returns a curve, 404 for unknown', async () => {
+  const r = await fetch(`http://localhost:${PORT}/api/termstructure?id=wti`);
+  assert.equal(r.status, 200);
+  const c = await r.json();
+  assert.equal(c.id, 'wti');
+  assert.ok(Array.isArray(c.contracts));
+  assert.equal((await fetch(`http://localhost:${PORT}/api/termstructure?id=nope`)).status, 404);
+});
+
+test('market carries palm oil + per-benchmark curve flags', async () => {
+  const m = await (await fetch(`http://localhost:${PORT}/api/market`)).json();
+  const palm = m.benchmarks.find((b) => b.id === 'palm');
+  assert.ok(palm, 'palm oil present in the registry');
+  assert.equal(palm.unit, '$/t');
+  assert.equal(palm.curve, false); // no free contract months
+  assert.equal(m.benchmarks.find((b) => b.id === 'gold').curve, true);
+});
+
 test('unknown chart metric → 404', async () => {
   const r = await fetch(`http://localhost:${PORT}/api/range?id=nope&range=1y`);
   assert.equal(r.status, 404);
