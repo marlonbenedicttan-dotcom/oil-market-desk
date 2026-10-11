@@ -251,6 +251,20 @@ async function getLongterm(b, years = 10) {
   };
 }
 
+// Daily ranges: 6m / ytd / 1y — for the chart's range selector.
+async function getRange(b, range) {
+  const daysMap = { '1m': 30, '3m': 92, '6m': 183, '1y': 366, ytd: Math.ceil((Date.now() - Date.UTC(new Date().getUTCFullYear(), 0, 1)) / 864e5) };
+  const days = daysMap[range] || 183;
+  const yRange = range === 'ytd' ? 'ytd' : range === '1y' ? '1y' : range === '3m' ? '3mo' : '6mo';
+  const paperMap = b.paper ? (await cached(`rngp:${b.paper}:${range}`, 3600e3, () => yahooSeries(b.paper, yRange, '1d'))).series : {};
+  const physMap = await cached(`rngf:${b.physical}:${range}`, 3600e3, () => spotSeries(b, days + 5));
+  const dates = [...new Set([...Object.keys(paperMap), ...Object.keys(physMap)])].sort();
+  const at = (o, d) => (o[d] != null ? o[d] : null);
+  const series = { paper: dates.map((d) => at(paperMap, d)), physical: dates.map((d) => at(physMap, d)) };
+  const pct = (arr) => { const f = arr.find((x) => x != null); const l = [...arr].reverse().find((x) => x != null); return f && l ? ((l - f) / f) * 100 : null; };
+  return { id: b.id, label: b.label, unit: b.unit, dp: b.dp, range, dates, series, summary: { paper: pct(series.paper), physical: pct(series.physical) } };
+}
+
 // ---------------------------------------------------------------------------
 // EIA weekly inventories (free key)
 // ---------------------------------------------------------------------------
@@ -390,6 +404,18 @@ function regionRates() {
     regionHits[r.name] = arr;
     return { name: r.name, perMin: +(arr.length / 5).toFixed(1) };
   });
+}
+
+// Reroute Index: accumulate Cape-vs-Suez activity over time (rerouting builds up).
+const REROUTE_FILE = path.join(__dirname, '.reroute.json');
+let rerouteSeries = [];
+try { rerouteSeries = JSON.parse(fs.readFileSync(REROUTE_FILE, 'utf8')); } catch {}
+function snapshotReroute() {
+  const rates = regionRates();
+  const get = (n) => rates.find((r) => r.name === n)?.perMin ?? 0;
+  rerouteSeries.push({ t: Date.now(), cape: get('Cape of Good Hope'), suez: get('Red Sea / Suez'), malacca: get('Malacca / Singapore'), hormuz: get('Strait of Hormuz') });
+  if (rerouteSeries.length > 500) rerouteSeries = rerouteSeries.slice(-500);
+  try { fs.writeFileSync(REROUTE_FILE, JSON.stringify(rerouteSeries)); } catch {}
 }
 
 // AIS anomaly detection — vessels that "teleport" (spoofing) or vanish for hours (dark transit).
@@ -851,6 +877,12 @@ const server = http.createServer(async (req, res) => {
       if (!b) return sendJSON(res, 404, { error: 'unknown benchmark' });
       return sendJSON(res, 200, await getLongterm(b, years));
     }
+    if (url.pathname === '/api/range') {
+      const b = BENCHMARKS.find((x) => x.id === url.searchParams.get('id'));
+      if (!b) return sendJSON(res, 404, { error: 'unknown benchmark' });
+      return sendJSON(res, 200, await getRange(b, url.searchParams.get('range') || 'ytd'));
+    }
+    if (url.pathname === '/api/reroute') return sendJSON(res, 200, { series: rerouteSeries, current: rerouteSeries[rerouteSeries.length - 1] || null });
     if (url.pathname === '/api/inventories') return sendJSON(res, 200, await getInventories());
     if (url.pathname === '/api/positioning') return sendJSON(res, 200, await getPositioning());
     if (url.pathname === '/api/equities') return sendJSON(res, 200, await getEquities());
@@ -899,4 +931,6 @@ server.listen(PORT, () => {
   setInterval(alertLoop, 5 * 60_000);
   setInterval(maybeSendDigest, 60_000);
   setInterval(() => { state.tankerMMSI = [...tankerMMSI]; saveState(); }, 60_000);
+  setTimeout(() => { state.tankerMMSI = [...tankerMMSI]; saveState(); snapshotReroute(); }, 90_000);
+  setInterval(snapshotReroute, 5 * 60_000);
 });

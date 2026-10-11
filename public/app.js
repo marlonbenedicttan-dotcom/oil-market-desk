@@ -36,6 +36,12 @@ async function getLongterm(id, years = 10) {
   if (!ltCache[k]) ltCache[k] = await getJSON(`/api/longterm?id=${encodeURIComponent(id)}&years=${years}`);
   return ltCache[k];
 }
+const rangeCache = {};
+async function getRange(id, range) {
+  const k = id + range;
+  if (!rangeCache[k]) rangeCache[k] = await getJSON(`/api/range?id=${encodeURIComponent(id)}&range=${range}`);
+  return rangeCache[k];
+}
 
 // last two non-null points → day change + %
 function lastTwo(arr) {
@@ -237,10 +243,17 @@ async function renderChart() {
     datasets.push(line(`${bench.label} physical`, lt.series.physical, '#ff9e00'));
     const p = lt.summary.paper, ph = lt.summary.physical;
     summary = `10Y PERFORMANCE — paper ${pctf(p.total)} (5y ${pctf(p.last5y)}, 1y ${pctf(p.last1y)}) · physical ${pctf(ph.total)} (5y ${pctf(ph.last5y)}, 1y ${pctf(ph.last1y)})`;
+  } else if ((range === 'ytd' || range === '1y') && bench) {
+    const r = await getRange(bench.id, range);
+    labels = r.dates;
+    datasets = [];
+    if (r.series.paper.some((v) => v != null)) datasets.push(line(`${bench.label} paper`, r.series.paper, '#4aa3ff'));
+    datasets.push(line(`${bench.label} physical`, r.series.physical, '#ff9e00'));
+    summary = `${range.toUpperCase()} PERFORMANCE — paper ${pctf(r.summary.paper)} · physical ${pctf(r.summary.physical)}`;
   } else {
     labels = history.dates;
     datasets = datasetsFor(metric, history, data);
-    if (range === '10y' && !bench) summary = '10Y view is per-benchmark — pick a benchmark above.';
+    if (range !== '6m' && !bench) summary = 'Range view is per-benchmark — pick a benchmark above.';
   }
 
   $('lt-summary').textContent = (summary ? summary + '  ·  ' : '') + 'hover to see % change · click to set an anchor, then drag to measure between two points';
@@ -324,14 +337,23 @@ function renderContext(m, a) {
 }
 function renderInventories(d) {
   if (!d || !d.items?.length) { $('inventories').innerHTML = '<div class="dimtext" style="padding:10px 12px">EIA key needed, or no data.</div>'; return; }
-  $('inv-date').textContent = 'EIA · week of ' + d.items[0].period + ' · vs 5yr seasonal';
+  const LBL = { crude: 'Crude oil', cushing: 'Cushing (delivery hub)', gasoline: 'Gasoline', distillate: 'Diesel & heating oil', spr: 'Strategic reserve' };
+  $('inv-date').textContent = 'weekly US stockpiles · week of ' + d.items[0].period;
   const fmtN = (v) => (v == null ? '—' : (v >= 0 ? '+' : '') + v.toLocaleString(undefined, { maximumFractionDigits: 0 }));
+  const crude = d.items.find((i) => i.key === 'crude');
+  const read = crude?.surprise != null
+    ? (crude.surprise < 0 ? '🛢️ Crude stocks <b>fell more than usual</b> this week → bullish for oil.' : '🛢️ Crude stocks <b>built more than usual</b> → bearish for oil.')
+    : '';
   const rows = d.items.map((i) => {
     const sur = i.surprise;
-    const tag = sur == null ? '<span class="dimtext">—</span>' : `<span class="${sur < 0 ? 'pos' : 'neg'}">${fmtN(sur)} ${sur < 0 ? '◀ draw' : '▶ build'}</span>`;
-    return `<div class="t inv"><span class="inv-l">${i.label}</span><span class="num">${i.value.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span><span class="num ${cls(i.wow)}">${fmtN(i.wow)}</span><span class="num">${tag}</span></div>`;
+    const tag = sur == null ? '<span class="dimtext">—</span>'
+      : sur < 0 ? `<span class="pos">drew ${Math.abs(sur).toLocaleString()} more than usual</span>`
+        : `<span class="neg">built ${sur.toLocaleString()} vs usual</span>`;
+    return `<div class="t inv"><span class="inv-l">${LBL[i.key] || i.label}</span><span class="num">${i.value.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span><span class="num ${cls(i.wow)}">${fmtN(i.wow)}</span><span class="num">${tag}</span></div>`;
   }).join('');
-  $('inventories').innerHTML = `<div class="t inv h"><span class="inv-l">SERIES (Mbbl)</span><span class="num">LEVEL</span><span class="num">WoW</span><span class="num">SURPRISE vs 5yr</span></div>` + rows;
+  $('inventories').innerHTML =
+    (read ? `<div class="read-line">${read}</div>` : '') +
+    `<div class="t inv h"><span class="inv-l">SERIES (million barrels)</span><span class="num">LEVEL</span><span class="num">THIS WEEK</span><span class="num">vs NORMAL</span></div>` + rows;
 }
 function sparkline(vals, w = 240, h = 40) {
   const xs = vals.filter((v) => v != null);
@@ -343,8 +365,9 @@ function sparkline(vals, w = 240, h = 40) {
 function renderPositioning(p) {
   if (!p || p.error) { $('positioning').innerHTML = '<div class="dimtext" style="padding:10px 12px">no data</div>'; return; }
   $('positioning').innerHTML =
-    ctxRow(p.label, p.pct, `${p.latest.net.toLocaleString()} ct`) +
-    `<div class="pos-sub dimtext">WoW ${p.wow >= 0 ? '+' : ''}${p.wow.toLocaleString()} contracts · as of ${p.latest.date}</div>` +
+    `<div class="read-line">How many more bets hedge funds hold that crude will <b>rise</b> vs <b>fall</b>. Extreme highs often come before a pullback.</div>` +
+    ctxRow('Hedge-fund net position (WTI)', p.pct, `${p.latest.net.toLocaleString()} contracts`) +
+    `<div class="pos-sub dimtext">Changed ${p.wow >= 0 ? '+' : ''}${p.wow.toLocaleString()} contracts this week · as of ${p.latest.date}</div>` +
     sparkline(p.history.map((h) => h.net));
 }
 function sectorRead(m, a, t) {
@@ -462,6 +485,22 @@ function renderProducts(d) {
   }).join('');
   $('products').innerHTML = `<div class="cards">${cards}</div>`;
 }
+let rerouteChart;
+function renderReroute(d) {
+  const cv = $('reroute');
+  if (!cv || !d?.series?.length) return;
+  const s = d.series;
+  const labels = s.map((x) => new Date(x.t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+  const data = { labels, datasets: [
+    { label: 'Cape of Good Hope', data: s.map((x) => x.cape), borderColor: '#ff9e00', borderWidth: 2, pointRadius: 0, tension: 0.3, spanGaps: true },
+    { label: 'Red Sea / Suez', data: s.map((x) => x.suez), borderColor: '#4aa3ff', borderWidth: 2, pointRadius: 0, tension: 0.3, spanGaps: true },
+  ] };
+  if (rerouteChart) { rerouteChart.data = data; rerouteChart.update(); return; }
+  rerouteChart = new Chart(cv, { type: 'line', data, options: { responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { labels: { color: '#7c8a99', boxWidth: 10, font: { family: 'monospace' } } } },
+    scales: { x: { ticks: { color: '#7c8a99', maxTicksLimit: 6 }, grid: { color: '#151a20' } }, y: { ticks: { color: '#7c8a99' }, grid: { color: '#151a20' } } } } });
+}
+async function loadReroute() { try { renderReroute(await getJSON('/api/reroute')); } catch {} }
 function renderRegime(m, a, c) {
   const by = Object.fromEntries(m.benchmarks.map((b) => [b.id, b]));
   const parts = [];
@@ -563,6 +602,7 @@ $('cards').addEventListener('click', (e) => {
   await loadHistory().catch((e) => showError(e.message));
   await refreshAll();
   loadAnalogue();
+  loadReroute();
   setInterval(loadTankers, 15000);
   setInterval(() => { nextRefresh -= 5; if (nextRefresh <= 0) { nextRefresh = 60; refreshAll(); } const cd = $('countdown'); if (cd) cd.textContent = `auto ${nextRefresh}s`; }, 5000);
 })();

@@ -76,7 +76,7 @@
       <section class="panel">
         <div class="ph">
           <span class="ph-t">HISTORY</span>
-          <div class="controls"><select id="metric"></select><select id="range"><option value="6m">6M</option><option value="10y">10Y</option></select></div>
+          <div class="controls"><select id="metric"></select><select id="range"><option value="6m">6M</option><option value="ytd">YTD</option><option value="1y">1Y</option><option value="10y">10Y</option></select></div>
         </div>
         <div class="chart-wrap"><canvas id="chart"></canvas></div>
         <div id="lt-summary" class="dimtext lt-summary"></div>
@@ -124,6 +124,8 @@
         <div id="map"><div id="map-empty" class="map-empty hidden">WAITING FOR TANKER POSITIONS…</div></div>
         <div id="chokepoints" class="chokes"></div>
         <div id="flows" class="flows"></div>
+        <div class="chokes-h dimtext" style="padding:8px 12px 0">REROUTE INDEX — Cape vs Suez AIS activity over time (Cape up / Suez down = diversion building)</div>
+        <div class="chart-wrap" style="height:150px;padding:4px 12px 12px"><canvas id="reroute"></canvas></div>
         <details class="fold"><summary>Vessel list</summary><div id="tanker-list" class="tanker-list"></div></details>
       </section>
     </div>
