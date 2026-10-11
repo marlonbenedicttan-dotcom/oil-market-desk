@@ -1280,6 +1280,7 @@ async function loadCountry() {
   loadCountryChart();
   renderPolicyChart(c.policy, c.policyNote);
   renderCpiChart(c.cpi);
+  loadYields();
 }
 // Per-country chart: equity index and currency, both indexed to 100 so they compare.
 async function loadCountryChart() {
@@ -1323,6 +1324,8 @@ function renderPolicyChart(policy, policyNote) {
 }
 // CPI — annual inflation % per country (World Bank), hover shows year + %.
 let cpiChart = null;
+let yieldsChart = null;   // per-country bond yields (short + long)
+let usjpChart = null;     // US vs Japan 10-year
 function renderCpiChart(cpi) {
   const cv = $('cpi-chart');
   if (!cv) return;
@@ -1335,6 +1338,71 @@ function renderCpiChart(cpi) {
   const opts = { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false }, plugins: { legend: { display: false }, tooltip: { callbacks: { title: (it) => (it.length ? it[0].label : ''), label: (ctx) => `inflation ${ctx.parsed.y}%` } } }, scales: { x: { ticks: { color: '#7c8a99', maxTicksLimit: 10 }, grid: { color: '#151a20' } }, y: { ticks: { color: '#7c8a99', callback: (v) => v + '%' }, grid: { color: '#151a20' } } } };
   if (cpiChart) { cpiChart.data = data; cpiChart.update(); return; }
   cpiChart = new Chart(cv, { type: 'line', data, options: opts });
+}
+// Government bond yields for the selected country (short + long + term spread).
+function renderYields(d) {
+  const cv = $('yields-chart');
+  const wrap = cv ? cv.parentElement : null;
+  const note = $('yields-note');
+  const sum = $('yields-summary');
+  if (!d || d.error || (!d.short && !d.long)) {
+    if (wrap) wrap.style.display = 'none';
+    if (sum) sum.textContent = '';
+    if (note) note.textContent = (d && d.error) || 'no free bond-yield data for this country';
+    return;
+  }
+  if (wrap) wrap.style.display = '';
+  const parts = [];
+  if (d.short) parts.push(`${d.short.label} ${d.short.latest == null ? '—' : d.short.latest.toFixed(2) + '%'}`);
+  if (d.long) parts.push(`${d.long.label} ${d.long.latest == null ? '—' : d.long.latest.toFixed(2) + '%'}`);
+  if (d.spread != null) parts.push(`term spread ${d.spread >= 0 ? '+' : ''}${d.spread}pp`);
+  if (note) note.textContent = `${d.freq || ''}${d.asOf ? ' · as of ' + d.asOf : ''}`;
+  if (sum) sum.textContent = parts.join(' · ') + (d.long && !d.short ? ' · no free short-term rate' : '') + (d.short && !d.long ? ' · no free long-term rate' : '');
+  const dates = [...new Set([...(d.short?.dates || []), ...(d.long?.dates || [])])].sort();
+  const arr = (s) => { const m = new Map(); if (s) s.dates.forEach((dt, i) => m.set(dt, s.values[i])); return dates.map((dt) => (m.has(dt) ? m.get(dt) : null)); };
+  const datasets = [];
+  if (d.short) datasets.push(line(`${d.short.label} yield`, arr(d.short), '#4aa3ff'));
+  if (d.long) datasets.push(line(`${d.long.label} yield`, arr(d.long), '#ff9e00'));
+  const opts = { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false },
+    plugins: { legend: { labels: { color: '#7c8a99', boxWidth: 12, font: { family: 'monospace' } } },
+      tooltip: { callbacks: { title: (it) => (it.length ? String(it[0].label) : ''), label: (ctx) => `${ctx.dataset.label}: ${ctx.parsed.y == null ? '—' : Number(ctx.parsed.y).toFixed(2)}%` } } },
+    scales: { x: { ticks: { color: '#7c8a99', maxTicksLimit: 10 }, grid: { color: '#151a20' } }, y: { ticks: { color: '#7c8a99', callback: (v) => v + '%' }, grid: { color: '#151a20' } } } };
+  const chartData = { labels: dates, datasets };
+  if (yieldsChart) { yieldsChart.data = chartData; yieldsChart.options = opts; yieldsChart.update(); return; }
+  yieldsChart = new Chart(cv, { type: 'line', data: chartData, options: opts, plugins: [] });
+}
+async function loadYields() {
+  const cv = $('yields-chart');
+  if (!cv) return;
+  const req = macroCountry;
+  let d; try { d = await getJSON('/api/yields?id=' + encodeURIComponent(req)); } catch { d = null; }
+  if (req !== macroCountry) return;
+  renderYields(d);
+}
+// US vs Japan 10-year — the classic carry differential.
+function renderUsJp(us, jp) {
+  const cv = $('usjp-chart');
+  const note = $('usjp-note');
+  const sum = $('usjp-summary');
+  const ul = us && us.long, jl = jp && jp.long;
+  if (!cv || !ul || !jl) { if (sum) sum.textContent = 'US or Japan 10-year data unavailable right now.'; return; }
+  const dates = [...new Set([...ul.dates, ...jl.dates])].sort();
+  const arr = (s) => { const m = new Map(); s.dates.forEach((dt, i) => m.set(dt, s.values[i])); return dates.map((dt) => (m.has(dt) ? m.get(dt) : null)); };
+  const spread = ul.latest != null && jl.latest != null ? +(ul.latest - jl.latest).toFixed(2) : null;
+  if (note) note.textContent = `US daily · Japan monthly (OECD)${us.asOf ? ' · as of ' + us.asOf : ''}`;
+  if (sum) sum.textContent = `US 10-yr ${ul.latest == null ? '—' : ul.latest.toFixed(2) + '%'} · Japan 10-yr ${jl.latest == null ? '—' : jl.latest.toFixed(2) + '%'}${spread != null ? ` · US–Japan spread ${spread >= 0 ? '+' : ''}${spread}pp (the carry gap)` : ''}`;
+  const datasets = [line('US 10-yr', arr(ul), '#4aa3ff'), line('Japan 10-yr', arr(jl), '#c06bff')];
+  const opts = { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false },
+    plugins: { legend: { labels: { color: '#7c8a99', boxWidth: 12, font: { family: 'monospace' } } },
+      tooltip: { callbacks: { title: (it) => (it.length ? String(it[0].label) : ''), label: (ctx) => `${ctx.dataset.label}: ${ctx.parsed.y == null ? '—' : Number(ctx.parsed.y).toFixed(2)}%` } } },
+    scales: { x: { ticks: { color: '#7c8a99', maxTicksLimit: 10 }, grid: { color: '#151a20' } }, y: { ticks: { color: '#7c8a99', callback: (v) => v + '%' }, grid: { color: '#151a20' } } } };
+  const chartData = { labels: dates, datasets };
+  if (usjpChart) { usjpChart.data = chartData; usjpChart.options = opts; usjpChart.update(); return; }
+  usjpChart = new Chart(cv, { type: 'line', data: chartData, options: opts, plugins: [] });
+}
+async function loadUsJp() {
+  if (!$('usjp-chart')) return;
+  try { const [us, jp] = await Promise.all([getJSON('/api/yields?id=us'), getJSON('/api/yields?id=jp')]); renderUsJp(us, jp); } catch {}
 }
 // Cross-asset transmission block — shared by segments and macro regions.
 function crossAssetBlock(pred, title) {
@@ -1497,7 +1565,7 @@ function showTab(name) {
     if (map) setTimeout(() => map.invalidateSize(), 80);
     if (crackHistChart && currentMarket === 'refined') setTimeout(() => crackHistChart.resize(), 80);
   }
-  if (name === 'macro') { loadMacroTickers(); if (macroChart) setTimeout(() => macroChart.resize(), 60); if (policyChart) setTimeout(() => policyChart.resize(), 70); if (cpiChart) setTimeout(() => cpiChart.resize(), 80); }
+  if (name === 'macro') { loadMacroTickers(); if (macroChart) setTimeout(() => macroChart.resize(), 60); if (policyChart) setTimeout(() => policyChart.resize(), 70); if (cpiChart) setTimeout(() => cpiChart.resize(), 80); if (yieldsChart) setTimeout(() => yieldsChart.resize(), 85); if (usjpChart) setTimeout(() => usjpChart.resize(), 90); }
   if (data) renderTicker(data);
 }
 
@@ -1537,6 +1605,7 @@ async function loadExtra() {
     loadTransmission();
     loadAlerts();
     loadBrief();
+    loadUsJp();
   } catch (e) { showError(e.message); }
 }
 

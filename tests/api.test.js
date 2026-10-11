@@ -205,6 +205,18 @@ test('/api/curve carries numeric carry + calendar spreads', async () => {
   assert.ok('rollYieldAnn' in j.wti);
 });
 
+test('/api/yields returns short + long bond yields (US daily, Japan monthly)', async () => {
+  const us = await (await fetch(`http://localhost:${PORT}/api/yields?id=us`)).json();
+  assert.ok(us.short && us.long, 'US short + long present');
+  assert.equal(us.freq, 'daily');
+  assert.ok(typeof us.spread === 'number');
+  const jp = await (await fetch(`http://localhost:${PORT}/api/yields?id=jp`)).json();
+  assert.ok(jp.short && jp.long, 'Japan short + long present');
+  const none = await (await fetch(`http://localhost:${PORT}/api/yields?id=in`)).json();
+  assert.ok(none.error, 'India labelled as no free data, not faked');
+  assert.equal((await fetch(`http://localhost:${PORT}/api/yields?id=nope`)).status, 404);
+});
+
 test('/api/termstructure returns a curve, 404 for unknown', async () => {
   const r = await fetch(`http://localhost:${PORT}/api/termstructure?id=wti`);
   assert.equal(r.status, 200);

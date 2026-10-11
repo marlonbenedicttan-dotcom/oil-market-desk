@@ -1282,6 +1282,20 @@ async function getRegionTickers(region) {
 }
 // BIS central-bank policy rates (free). Area codes: euro area = XM; DE/FR use XM.
 const BIS_AREA = { us: 'US', ea: 'XM', de: 'XM', fr: 'XM', uk: 'GB', jp: 'JP', cn: 'CN', hk: 'HK', id: 'ID', th: 'TH', my: 'MY', ph: 'PH', in: 'IN', kr: 'KR', au: 'AU' };
+// Government bond yields (FRED). US is daily (2-yr & 10-yr Treasury); the rest are the
+// OECD monthly series (3-month interbank + 10-yr), which lag by a month or two.
+const BOND_YIELDS = {
+  us: { freq: 'daily', short: { id: 'DGS2', label: '2-yr' }, long: { id: 'DGS10', label: '10-yr' } },
+  jp: { freq: 'monthly · OECD, lagged', short: { id: 'IR3TIB01JPM156N', label: '3-mo' }, long: { id: 'IRLTLT01JPM156N', label: '10-yr' } },
+  de: { freq: 'monthly · OECD, lagged', short: { id: 'IR3TIB01DEM156N', label: '3-mo' }, long: { id: 'IRLTLT01DEM156N', label: '10-yr' } },
+  fr: { freq: 'monthly · OECD, lagged', short: { id: 'IR3TIB01FRM156N', label: '3-mo' }, long: { id: 'IRLTLT01FRM156N', label: '10-yr' } },
+  uk: { freq: 'monthly · OECD, lagged', short: { id: 'IR3TIB01GBM156N', label: '3-mo' }, long: { id: 'IRLTLT01GBM156N', label: '10-yr' } },
+  ea: { freq: 'monthly · OECD, lagged', short: { id: 'IR3TIB01EZM156N', label: '3-mo' }, long: { id: 'IRLTLT01EZM156N', label: '10-yr' } },
+  kr: { freq: 'monthly · OECD, lagged', short: { id: 'IR3TIB01KRM156N', label: '3-mo' }, long: { id: 'IRLTLT01KRM156N', label: '10-yr' } },
+  au: { freq: 'monthly · OECD, lagged', short: { id: 'IR3TIB01AUM156N', label: '3-mo' }, long: { id: 'IRLTLT01AUM156N', label: '10-yr' } },
+  cn: { freq: 'monthly · OECD, lagged', short: { id: 'IR3TIB01CNM156N', label: '3-mo' }, long: null },
+  id: { freq: 'monthly · OECD, lagged', short: { id: 'IR3TIB01IDM156N', label: '3-mo' }, long: null },
+};
 // Which commodities each country's currency actually tracks (for the linkage panel).
 const COUNTRY_COMMODITY_LINKS = {
   us: [['WTI crude', 'CL=F'], ['Copper', 'HG=F']],
@@ -1328,6 +1342,26 @@ async function getPolicyRate(area) {
       hist.sort((a, b) => (a.date < b.date ? -1 : 1));
       return { area, latest: hist[hist.length - 1], history: hist };
     } catch { return null; }
+  });
+}
+// Government bond yields for one country (short + long + term spread). FRED, cached 6h.
+async function getBondYields(id) {
+  const cfg = BOND_YIELDS[id];
+  const label = ALL_COUNTRIES[id]?.label || id;
+  if (!cfg) return { id, label, error: 'no free bond-yield data', freq: null, short: null, long: null, spread: null };
+  return cached('yields:' + id, 6 * 3600e3, async () => {
+    const days = 5 * 366 + 30;
+    const get = async (spec) => {
+      if (!spec) return null;
+      const map = await fredSeries(spec.id, days).catch(() => ({}));
+      const dates = Object.keys(map).sort();
+      if (!dates.length) return null;
+      const last = [...dates].reverse().find((d) => map[d] != null) || null;
+      return { label: spec.label, dates, values: dates.map((d) => map[d]), latest: last ? map[last] : null, date: last };
+    };
+    const [s, l] = await Promise.all([get(cfg.short), get(cfg.long)]);
+    const spread = s?.latest != null && l?.latest != null ? +(l.latest - s.latest).toFixed(2) : null;
+    return { id, label, freq: cfg.freq, short: s, long: l, spread, asOf: (l?.date || s?.date || null) };
   });
 }
 async function getCountry(id) {
@@ -2053,6 +2087,11 @@ const server = http.createServer(async (req, res) => {
       const id = url.searchParams.get('id');
       if (!MACRO_COUNTRIES[id]) return sendJSON(res, 404, { error: 'unknown region' });
       return sendJSON(res, 200, await getRegionTickers(id).catch((e) => ({ error: String(e.message), items: [] })));
+    }
+    if (url.pathname === '/api/yields') {
+      const id = url.searchParams.get('id');
+      if (!ALL_COUNTRIES[id]) return sendJSON(res, 404, { error: 'unknown country' });
+      return sendJSON(res, 200, await getBondYields(id).catch((e) => ({ error: String(e.message) })));
     }
     if (url.pathname === '/api/country-series') {
       const id = url.searchParams.get('id');
