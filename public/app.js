@@ -279,14 +279,6 @@ function marketAlerts(r) {
   if (r.vol?.pctile != null && r.vol.pctile >= 90) out.push({ level: 'med', text: `${r.label} volatility is unusually high (${r.vol.v30.toFixed(0)}% annualised, ${r.vol.pctile.toFixed(0)}th pctile).` });
   return out;
 }
-function insightsFor(r) {
-  const out = [];
-  if (r.dayPct != null) out.push(`<b>${r.label}</b> moved <b>${pctf(r.dayPct)}</b> today${r.perf.m1 != null ? ` and <b>${pctf(r.perf.m1)}</b> over a month` : ''}.`);
-  if (r.perf.m6 != null) out.push(`6-month trend <b>${pctf(r.perf.m6)}</b>${r.perf.y1 != null ? ` · 1-year <b>${pctf(r.perf.y1)}</b>` : ''}.`);
-  if (r.curve) out.push(`Futures are in <b>${r.curve.shape.toLowerCase()}</b> — ${r.curve.m1m2 >= 0 ? 'the market pays up for near-term supply (tight)' : 'near-term supply looks comfortable'}.`);
-  if (r.basis) out.push(`Real barrels trade <b>${signed(r.basis.value, r.dp)}</b> vs futures${r.basis.pctile != null ? ` (${r.basis.pctile.toFixed(0)}th pct)` : ''}.`);
-  return out;
-}
 function renderMarketContext(r) {
   const mk = markets.find((x) => x.id === r.id);
   const comps = (mk?.components || []).map((c) => data.benchmarks.find((b) => b.id === c.id)).filter(Boolean);
@@ -353,8 +345,6 @@ function renderAdaptive() {
   const mk = markets.find((x) => x.id === currentMarket);
   setTitle('tightness-title', '⚡ ' + (mk ? `IS ${mk.label.toUpperCase()} TIGHT / STRETCHED?` : 'READING…'));
   setTitle('tightness-sub', 'range · volatility · positioning · curve');
-  setTitle('ins1-title', mk ? mk.label.toUpperCase() : 'MARKET');
-  setTitle('ins2-title', mk && !mk.hasShips ? 'MACRO & LINKS' : 'SHIPS & FREIGHT');
   if (!marketRead || marketRead.id !== currentMarket || marketRead.error) {
     $('bottomline').innerHTML = '<div class="dimtext" style="padding:10px 12px">reading the market…</div>';
     $('tightness').innerHTML = '<div class="dimtext" style="padding:10px 12px">loading…</div>';
@@ -369,17 +359,19 @@ function renderAdaptive() {
   if ($('regime')) $('regime').textContent = regLine(r);
   const next = [...(v.catalysts || []).map((c) => `Watch: <b>${c}</b>`), ...(v.watch || [])];
   const chips = [...(v.tickersUp || []).map((t) => `<span class="chip up">▲ ${t}</span>`), ...(v.tickersDown || []).map((t) => `<span class="chip down">▼ ${t}</span>`)].join('');
+  const kp = (r.takeaways || []).length ? r.takeaways.map((t) => `<li>${t}</li>`).join('') : '<li class="dimtext">No key points yet.</li>';
   $('bottomline').innerHTML = `<div class="bl">
       <div class="bl-score ${kl}"><div class="bl-num">${score == null ? '—' : score}<span>/100</span></div><div class="bl-lbl">PRICE STRETCH<div class="bl-tag">${v.label}</div></div>
         <div class="bl-phys"><div class="bl-phys-k">PHYSICAL TIGHTNESS</div><div class="bl-phys-v ${phCls}">${ph.score == null ? 'no free data' : `${ph.score}<span>/100</span> ${ph.label}`}</div></div>
       </div>
       <div class="bl-sec"><div class="gtitle">WHAT HAPPENED</div><p>${v.meaning} ${(v.notes || []).join(' ')}</p></div>
+      <div class="bl-sec"><div class="gtitle">KEY POINTS</div><ul>${kp}</ul></div>
       <div class="bl-sec"><div class="gtitle">WHAT'S NEXT</div><ul>${next.map((w) => `<li>${w}</li>`).join('')}</ul></div>
-      <div class="bl-sec"><div class="gtitle">TRADE IDEAS — BENEFITS / TROUBLE</div>
-        <p>${v.ideas || ''}</p>
-        <div class="ti"><div class="ti-row"><span class="ti-k pos">BENEFITS</span><span class="ti-v">${(v.sectorsUp || []).join(' · ')}</span></div><div class="ti-row"><span class="ti-k neg">TROUBLE</span><span class="ti-v">${(v.sectorsDown || []).join(' · ')}</span></div></div>
-        <div class="bl-chips">${chips}</div>
-      </div>
+    </div>
+    <div class="bl-ti"><div class="gtitle">TRADE IDEAS — BENEFITS / TROUBLE</div>
+      <p>${v.ideas || ''}</p>
+      <div class="ti"><div class="ti-row"><span class="ti-k pos">BENEFITS</span><span class="ti-v">${(v.sectorsUp || []).join(' · ')}</span></div><div class="ti-row"><span class="ti-k neg">TROUBLE</span><span class="ti-v">${(v.sectorsDown || []).join(' · ')}</span></div></div>
+      <div class="bl-chips">${chips}</div>
     </div>`;
   const ev = [];
   const push = (label, value, dir, note) => ev.push({ label, value, dir, note });
@@ -394,23 +386,13 @@ function renderAdaptive() {
   const priceLine = score == null ? 'price stretch unavailable' : `price is <b>${v.label.toLowerCase()}</b> (${score}/100)`;
   const physLine = ph.score == null ? 'physical tightness unavailable' : `the physical market is <b>${ph.label.toLowerCase()}</b> (${ph.score}/100)`;
   $('tightness').innerHTML = `<div class="verdict ${vk}">${r.label}: ${priceLine} · ${physLine}.</div>${physChips}${physNote}<div class="ev-list">${ev.map((e) => `<div class="ev"><span class="ev-l">${e.label}</span><span class="ev-v">${e.value}</span><span class="tag ${e.dir.toLowerCase()}">${e.dir}</span><span class="ev-n dimtext">${e.note}</span></div>`).join('')}</div>`;
-  $('market-insights').innerHTML = insightsFor(r).map((x) => `<li>${x}</li>`).join('');
-  if (r.hasShips) {
-    $('tanker-insights').innerHTML = tankerInsights(tankerInfo).map((x) => `<li>${x}</li>`).join('');
-  } else {
-    const pm = [];
-    if (r.macro) pm.push(`3-month correlation — dollar <b>${r.macro.usd ?? '—'}</b>, VIX <b>${r.macro.vix ?? '—'}</b>, S&amp;P 500 <b>${r.macro.spx ?? '—'}</b>.`);
-    if (r.basis) pm.push(`Real barrels trade <b>${signed(r.basis.value, r.dp)}</b> vs futures.`);
-    $('tanker-insights').innerHTML = pm.map((x) => `<li>${x}</li>`).join('') || '<li>No extra context for this segment.</li>';
-  }
+  const si = $('ships-insights');
+  if (si) si.innerHTML = r.hasShips ? tankerInsights(tankerInfo).map((x) => `<li>${x}</li>`).join('') : '';
   renderAlerts(marketAlerts(r));
   renderMarketContext(r);
   setTitle('xa-seg', mk ? mk.label.toUpperCase() : '');
   const xa = $('crossasset');
   if (xa) xa.innerHTML = crossAssetBlock((i) => (i.segments || []).includes(currentMarket));
-  const tk = $('takeaways');
-  if (tk) tk.innerHTML = (r.takeaways || []).length ? '<ul class="ins-list">' + r.takeaways.map((t) => `<li>${t}</li>`).join('') + '</ul>' : '<div class="dimtext" style="padding:8px 12px">No takeaways yet.</div>';
-  setTitle('takeaways-sub', mk ? mk.label : '');
 }
 async function loadNews() {
   const el = $('news');
@@ -450,19 +432,6 @@ function selectMarket(id) {
 // ---------------------------------------------------------------------------
 // Insights & alerts
 // ---------------------------------------------------------------------------
-function marketInsights(m) {
-  const out = [];
-  for (const b of m.benchmarks) {
-    if (b.basis == null) continue;
-    const above = b.basis >= 0;
-    out.push(`<b>${b.label}</b>: real barrels cost ${fmt(b.physical, b.dp)} — <b>${Math.abs(b.basis).toFixed(b.dp)} ${above ? 'more' : 'less'}</b> than futures. ${above ? 'Real barrels are scarce (bullish for oil).' : 'Real barrels are easy to get (bearish for oil).'}`);
-  }
-  const s = m.spreads.brent_wti;
-  if (s) { const d = s.physical - s.paper; out.push(`<b>Brent vs WTI</b>: the real gap is ${signed(s.physical)} vs ${signed(s.paper)} for futures — ${d > 3 ? 'Brent (seaborne) is in demand for export.' : d < -3 ? 'US oil looks relatively tight.' : 'the two are broadly in line.'}`); }
-  const d321 = crackSpreads(m).find((c) => c.label.startsWith('3-2-1'));
-  if (d321) out.push(`<b>Refining profit</b> ${signed(d321.value)} a barrel — ${d321.value > 20 ? 'excellent — refiners running hard.' : d321.value > 10 ? 'decent.' : 'thin; refiners may cut back.'}`);
-  return out;
-}
 function tankerInsights(t) {
   const out = []; const s = t.status || {};
   if (!s.enabled) { out.push('Live ship tracking is off. Add a free key to switch it on.'); return out; }
@@ -529,10 +498,6 @@ function renderHomeAlerts() {
 async function loadAlerts() {
   try { serverAlerts = (await getJSON('/api/alerts')).current || []; } catch { serverAlerts = []; }
   renderHomeAlerts();
-}
-function renderInsights(m, t) {
-  $('market-insights').innerHTML = marketInsights(m).map((x) => `<li>${x}</li>`).join('');
-  $('tanker-insights').innerHTML = tankerInsights(t).map((x) => `<li>${x}</li>`).join('');
 }
 
 // ---------------------------------------------------------------------------
@@ -1444,7 +1409,7 @@ function renderHeadlines(h) {
   if (!el) return;
   const items = (h && h.items) || [];
   if (!items.length) { el.innerHTML = '<div class="dimtext" style="padding:8px 12px">No major commodity headlines right now.</div>'; return; }
-  el.innerHTML = '<div class="hl-h">📰 LIVE — IMPORTANT HEADLINES</div>' + items.map((i) => `<a class="hl ${i.effect === 'down' ? 'down' : 'up'}" href="${i.url}" target="_blank" rel="noopener noreferrer"><span class="hl-tag">${i.effect === 'down' ? '▼' : '▲'} ${i.kind}</span><span class="hl-t">${i.title}</span><span class="hl-s dimtext">${i.source}</span></a>`).join('');
+  el.innerHTML = items.map((i) => `<a class="hl ${i.effect === 'down' ? 'down' : 'up'}" href="${i.url}" target="_blank" rel="noopener noreferrer"><span class="hl-tag">${i.effect === 'down' ? '▼' : '▲'} ${i.kind}</span><span class="hl-t">${i.title}</span><span class="hl-s dimtext">${i.source}</span></a>`).join('');
 }
 async function loadMacroNews() {
   const el = $('macro-news');

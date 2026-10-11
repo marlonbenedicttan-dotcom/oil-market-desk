@@ -26,6 +26,8 @@ test('serves the dashboard', async () => {
   assert.match(html, /COMMODITY DESK/);
   assert.match(html, /data-pane="home"/);   // watchlist + alerts home screen
   assert.match(html, /id="home-watch"/);
+  assert.match(html, /id="headlines"/);     // live headlines board now lives in HOME
+  assert.doesNotMatch(html, /class="hero"/); // ...not pinned to the top of every page
 });
 
 test('pure endpoints always respond 200', async () => {

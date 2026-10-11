@@ -16,7 +16,7 @@
   <meta name="theme-color" content="#ff9e00" />
   <link rel="icon" href="/icon.svg" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <link rel="stylesheet" href="style.css?v=18" />
+  <link rel="stylesheet" href="style.css?v=19" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 </head>
@@ -37,11 +37,6 @@
   <main>
     <div id="error" class="errbar hidden"></div>
 
-    <!-- HERO: the market-state board (one quick-read tile per segment) -->
-    <section class="hero">
-      <div id="headlines" class="headlines"></div>
-    </section>
-
     <!-- TABS -->
     <nav class="tabs" id="tabs">
       <button class="tab active" data-tab="home">HOME</button>
@@ -49,8 +44,12 @@
       <button class="tab" data-tab="macro">MACRO</button>
     </nav>
 
-    <!-- HOME: watchlist + alerts + segments at a glance -->
+    <!-- HOME: headlines + daily brief + watchlist + alerts + segments -->
     <div class="tabpane" data-pane="home">
+      <section class="panel">
+        <div class="ph"><span class="ph-t">📰 LIVE — IMPORTANT HEADLINES</span><span class="dimtext">tier-1 wire · ranked by materiality · refreshes every 10 min</span></div>
+        <div id="headlines" class="headlines"></div>
+      </section>
       <section class="panel">
         <div class="ph"><span class="ph-t">☀️ DAILY BRIEF — what happened · what's on today</span><span id="brief-updated" class="dimtext"></span></div>
         <div id="home-brief"></div>
@@ -84,15 +83,10 @@
         <div id="bp-snapshot" class="bp-snapshot"></div>
       </section>
 
-      <!-- 2. THE SO-WHAT (read first) -->
+      <!-- 2. THE SO-WHAT (read first) — one read: what happened, key points, what's next, trade ideas -->
       <section class="panel">
-        <div class="ph"><span class="ph-t">🎯 WHAT IT MEANS — WHAT HAPPENED · WHAT'S NEXT · TRADE IDEAS</span><span class="dimtext">NOT INVESTMENT ADVICE</span></div>
+        <div class="ph"><span class="ph-t">🎯 THE READ — WHAT HAPPENED · KEY POINTS · WHAT'S NEXT · TRADE IDEAS</span><span class="dimtext">NOT INVESTMENT ADVICE</span></div>
         <div id="bottomline" class="bottomline"></div>
-      </section>
-
-      <section class="panel market-only" data-when="*">
-        <div class="ph"><span class="ph-t">🔑 KEY TAKEAWAYS — what moved it, and what's going on</span><span class="dimtext" id="takeaways-sub"></span></div>
-        <div id="takeaways" class="takeaways"></div>
       </section>
 
       <section class="panel market-only" data-when="*">
@@ -183,6 +177,7 @@
         <section class="fold-body">
           <div class="ph"><span class="ph-t">🚢 SHIPS — LIVE TRACKING</span><span id="ais-status" class="pill">—</span></div>
           <div id="ais-sub" class="dimtext"></div>
+          <ul id="ships-insights" class="ins-list" style="padding:4px 12px 6px 26px"></ul>
           <div id="ais-help" class="help hidden"></div>
           <div id="map"><div id="map-empty" class="map-empty hidden">WAITING FOR SHIP POSITIONS…</div></div>
           <div id="flows" class="flows"></div>
@@ -198,14 +193,10 @@
 
       <!-- Folded: secondary detail -->
       <details class="panel fold-panel">
-        <summary>📖 MORE DETAIL — reading the numbers, flags, extremes &amp; history</summary>
+        <summary>📖 MORE DETAIL — flags, extremes &amp; history</summary>
         <section class="fold-body">
-          <div class="ph"><span class="ph-t">🧭 READING THE NUMBERS</span><button id="help-btn" class="ghost small">PLAIN-ENGLISH GUIDE</button></div>
+          <div class="ph"><span class="ph-t">🧭 PLAIN-ENGLISH GUIDE</span><button id="help-btn" class="ghost small">OPEN GUIDE</button></div>
           <div id="glossary" class="glossary hidden"></div>
-          <div class="insights">
-            <div class="col"><div class="gtitle" id="ins1-title">OIL PRICES</div><ul id="market-insights" class="ins-list"></ul></div>
-            <div class="col"><div class="gtitle" id="ins2-title">SHIPS &amp; FREIGHT</div><ul id="tanker-insights" class="ins-list"></ul></div>
-          </div>
           <div class="ph sub-head"><span class="ph-t">⚠ THINGS TO FLAG</span><span class="ph-right"><button id="alert-settings" class="ghost small">⚙ THRESHOLDS</button><span id="alert-count" class="pill">0</span></span></div>
           <div id="alert-thresholds" class="thresholds hidden"></div>
           <div id="alerts" class="alerts"></div>
@@ -278,6 +269,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=27"></script>
+  <script src="app.js?v=28"></script>
 </body>
 </html>
