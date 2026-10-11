@@ -1079,9 +1079,19 @@ async function loadCountry() {
   if (!c.policy && c.policyNote) html += `<div class="macro-note">🏦 ${c.policyNote}</div>`;
   if (gdp.length > 1) html += `<div class="dimtext" style="padding:2px 12px 8px">real GDP growth by year — ${gdp.map((g) => `${g.year}: ${g.value}%`).join(' · ')}</div>`;
 
+  html += '<div class="bb-sec">COMMODITY LINKAGE — its currency vs…</div>';
+  if (c.links && c.links.length) {
+    html += '<div class="bb-grid">' + c.links.map((l) => {
+      const v = l.corr;
+      const sub = v == null ? 'no data' : (Math.abs(v) >= 0.3 ? 'linked' : 'weak');
+      return card(l.commodity, v == null ? '—' : v, '3-mo corr · ' + sub, v == null ? '' : (v < 0 ? 'neg' : 'pos'));
+    }).join('') + '</div>';
+  } else {
+    html += '<div class="macro-note">No tracked commodity is closely tied to this currency.</div>';
+  }
   if (c.oilLink != null) {
     const read = c.oilLink > 0.2 ? 'the currency weakens when oil rises (importer strain)' : c.oilLink < -0.2 ? 'the currency firms with oil (exporter benefit)' : 'no strong currency–oil link right now';
-    html += `<div class="bb-sec">OIL LINKAGE</div><div class="macro-note">${c.label} is a net oil ${c.oil}. 3-month correlation of its currency vs Brent: <b>${c.oilLink}</b> — ${read}.</div>`;
+    html += `<div class="macro-note">${c.label} is a net oil ${c.oil}; currency vs Brent 3-mo correlation <b>${c.oilLink}</b> — ${read}.</div>`;
   }
   if (c.takeaways && c.takeaways.length) html += '<div class="bb-sec">KEY TAKEAWAYS</div><ul class="ins-list">' + c.takeaways.map((t) => `<li>${t}</li>`).join('') + '</ul>';
   html += '<div class="bb-sec">CROSS-ASSET — HOW THIS REGION IS AFFECTED</div>' + crossAssetBlock((i) => (i.regions || []).includes(macroRegion));

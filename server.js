@@ -1183,6 +1183,24 @@ async function getRegionTickers(region) {
 }
 // BIS central-bank policy rates (free). Area codes: euro area = XM; DE/FR use XM.
 const BIS_AREA = { us: 'US', ea: 'XM', de: 'XM', fr: 'XM', uk: 'GB', jp: 'JP', cn: 'CN', hk: 'HK', id: 'ID', th: 'TH', my: 'MY', ph: 'PH', in: 'IN', kr: 'KR', au: 'AU' };
+// Which commodities each country's currency actually tracks (for the linkage panel).
+const COUNTRY_COMMODITY_LINKS = {
+  us: [['WTI crude', 'CL=F'], ['Copper', 'HG=F']],
+  ea: [['Brent crude', 'BZ=F']], de: [['Brent crude', 'BZ=F'], ['Copper', 'HG=F']], fr: [['Brent crude', 'BZ=F']],
+  uk: [['Brent crude', 'BZ=F']],
+  jp: [['WTI crude', 'CL=F'], ['Copper', 'HG=F']],
+  cn: [['Copper', 'HG=F'], ['Brent crude', 'BZ=F']], hk: [['Brent crude', 'BZ=F']],
+  sg: [['Brent crude', 'BZ=F']],
+  id: [['Palm oil', 'CPO=F'], ['Copper', 'HG=F'], ['Brent crude', 'BZ=F']],
+  th: [['Sugar', 'SB=F'], ['Brent crude', 'BZ=F']],
+  my: [['Palm oil', 'CPO=F'], ['Brent crude', 'BZ=F']],
+  ph: [['Sugar', 'SB=F'], ['Brent crude', 'BZ=F']],
+  vn: [['Coffee', 'KC=F'], ['Brent crude', 'BZ=F']],
+  in: [['WTI crude', 'CL=F'], ['Gold', 'GC=F']],
+  kr: [['WTI crude', 'CL=F'], ['Copper', 'HG=F']],
+  au: [['Copper', 'HG=F'], ['Gold', 'GC=F']],
+  tw: [['Copper', 'HG=F'], ['WTI crude', 'CL=F']],
+};
 // Where there is no policy rate, say why (accurately).
 const POLICY_NOTE = {
   sg: 'Singapore has no central-bank policy interest rate: the MAS runs monetary policy by managing the S$ exchange rate (the S$NEER), not a rate. Its market benchmark is SORA (Singapore Overnight Rate Average).',
@@ -1220,7 +1238,7 @@ async function getCountry(id) {
     const quote = async (sym) => { try { const { price, series } = await cached('q:' + sym, 120e3, () => yahooSeries(sym, '5d', '1d')); const d = Object.keys(series).sort(); const a = series[d[d.length - 1]], b = series[d[d.length - 2]]; return { price: a ?? price ?? null, pct: a != null && b ? ((a - b) / b) * 100 : null }; } catch { return { price: null, pct: null }; } };
     const rk = COUNTRY_MACRO_REGION[id];
     // Everything independent runs CONCURRENTLY — the whole panel in one round trip.
-    const [fx, idx, gdpGrowth, debtToGdp, cpiSeries, unemployment, cs, mn, oilLink, macroMd, policy] = await Promise.all([
+    const [fx, idx, gdpGrowth, debtToGdp, cpiSeries, unemployment, cs, mn, oilLink, macroMd, policy, links] = await Promise.all([
       quote(c.fx),
       c.index ? quote(c.index) : Promise.resolve({ price: null, pct: null }),
       wbSeries(c.iso3, 'NY.GDP.MKTP.KD.ZG'),
@@ -1232,6 +1250,7 @@ async function getCountry(id) {
       pairCorr(c.fx, 'CL=F').catch(() => null),
       rk ? getMacroDash().catch(() => null) : Promise.resolve(null),
       getPolicyRate(BIS_AREA[id]).catch(() => null),
+      (() => Promise.all((COUNTRY_COMMODITY_LINKS[id] || []).map(async ([commodity, csym]) => ({ commodity, corr: await pairCorr(c.fx, csym).catch(() => null) }))).catch(() => []))(),
     ]);
     const chg = (arr) => { const f = (arr || []).find((v) => v != null); const l = [...(arr || [])].reverse().find((v) => v != null); return f && l ? ((l - f) / f) * 100 : null; };
     const inflation = cpiSeries.length ? cpiSeries[cpiSeries.length - 1] : null;
@@ -1249,7 +1268,7 @@ async function getCountry(id) {
     return {
       id, label: c.label, region: c.region, iso3: c.iso3, oil: c.oil,
       fx: { label: c.fxLabel, sym: c.fx, ...fx }, index: { label: c.indexLabel, sym: c.index, ...idx },
-      macro, oilLink, perf, takeaways: takes, policy, policyNote: POLICY_NOTE[id] || null,
+      macro, oilLink, perf, takeaways: takes, policy, policyNote: POLICY_NOTE[id] || null, links,
       cpi: cpiSeries.slice(-25),   // annual CPI inflation %, World Bank
       fund: { gdpGrowth: gdpGrowth.slice(-6), debtToGdp, inflation, unemployment, source: 'World Bank (annual)' },
     };
