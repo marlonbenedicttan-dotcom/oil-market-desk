@@ -188,7 +188,9 @@ async function getHistory() {
   const maps = {};
   await Promise.all(BENCHMARKS.map(async (b) => {
     const contRoot = b.id === 'wti' ? 'CL' : b.id === 'brent' ? 'BZ' : null;
-    const p = contRoot ? await getContinuous(contRoot) : await hPaperFor(b);
+    let p = contRoot ? await getContinuous(contRoot) : await hPaperFor(b);
+    // If the roll-adjusted series is unavailable (e.g. contract data blocked), fall back to the plain front-month.
+    if (!p || Object.keys(p.series || {}).length < 30) p = await hPaperFor(b);
     const f = await hPhysFor(b);
     maps[b.id] = { paper: p.series, physical: f };
   }));

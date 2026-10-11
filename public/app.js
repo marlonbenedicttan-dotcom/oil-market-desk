@@ -435,7 +435,10 @@ function curveBlock(name, c) {
 let curveHistChart;
 function renderCurveHistory(d) {
   const cv = $('curvehist');
-  if (!cv || !d?.dates?.length) return;
+  const block = $('curvehist-block');
+  if (!cv) return;
+  if (!d?.dates?.length || d.dates.length < 20) { if (block) block.style.display = 'none'; return; }
+  if (block) block.style.display = '';
   const data = { labels: d.dates, datasets: [{ label: 'WTI: this month − next month', data: d.m1m2, borderColor: '#ff9e00', backgroundColor: '#ff9e0022', borderWidth: 2, pointRadius: 0, tension: 0.25, fill: false }] };
   const opts = { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: '#7c8a99', boxWidth: 10, font: { family: 'monospace' } } } }, scales: { x: { ticks: { color: '#7c8a99', maxTicksLimit: 8 }, grid: { color: '#151a20' } }, y: { ticks: { color: '#7c8a99' }, grid: { color: '#151a20' } } } };
   if (curveHistChart) { curveHistChart.data = data; curveHistChart.update(); return; }
