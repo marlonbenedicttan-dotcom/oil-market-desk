@@ -1238,32 +1238,18 @@ async function wbSeries(iso3, ind) {
   });
 }
 const wbLatest = async (iso3, ind) => { const s = await wbSeries(iso3, ind); return s.length ? s[s.length - 1] : null; };
-// IMF World Economic Outlook (free, no key) — annual but much more current than the World
-// Bank, and refreshed ~twice a year. One fetch returns every country for an indicator.
-const IMF_IND = { debt: 'GGXWDG_NGDP', gdp: 'NGDP_RPCH', cpi: 'PCPIPCH', unemployment: 'LUR' };
-// Self-managed cache so a FAILED fetch is retried soon (5 min), while a SUCCESS is kept 24h.
-// `cached()` would have pinned an empty result for a full day — which is exactly the bug that
-// silently dropped us back to the World Bank on the live host.
-const imfCache = new Map();
-async function imfMap(ind) {
-  const hit = imfCache.get(ind);
-  const ttl = hit && hit.ok ? 24 * 3600e3 : 5 * 60e3;
-  if (hit && Date.now() - hit.t < ttl) return hit.v;
-  let v = {};
-  for (let a = 0; a < 3 && !Object.keys(v).length; a++) {
-    try {
-      const r = await fetch(`https://www.imf.org/external/datamapper/api/v1/${ind}`, { headers: UA });
-      if (r.ok) v = (await r.json()).values?.[ind] || {};
-    } catch {}
-    if (!Object.keys(v).length) await sleep(400);
-  }
-  imfCache.set(ind, { t: Date.now(), ok: Object.keys(v).length > 0, v });
-  return v;
+// Debt/GDP: the IMF's own API (imf.org) is blocked from the deploy host (403 WAF — verified),
+// so use FRED's mirror of the OECD general-government-gross-debt series (GGGDTA<ISO2>A188N):
+// free, reachable, and current (2023–24). The lagged World Bank series is the fallback.
+const FRED_ISO2 = { USA: 'US', JPN: 'JP', DEU: 'DE', FRA: 'FR', GBR: 'GB', CHN: 'CN', IND: 'IN', IDN: 'ID', KOR: 'KR', AUS: 'AU', TWN: 'TW' };
+async function fredDebt(iso3) {
+  const cc = FRED_ISO2[iso3];
+  if (!cc) return null;
+  const map = await cached('fdebt:' + cc, 24 * 3600e3, () => fredSeries('GGGDTA' + cc + 'A188N', 40 * 366).catch(() => ({})));
+  const dates = Object.keys(map).sort();
+  const last = [...dates].reverse().find((d) => map[d] != null);
+  return last ? { year: +last.slice(0, 4), value: +(+map[last]).toFixed(2) } : null;
 }
-// Latest value at or before maxYear — so an IMF projection is never shown as if it were data.
-const imfLatest = (map, code, maxYear) => { const s = map[code]; if (!s) return null; const yrs = Object.keys(s).map(Number).filter((y) => y <= maxYear).sort((a, b) => a - b); const y = yrs[yrs.length - 1]; return y ? { year: y, value: +(+s[y]).toFixed(2) } : null; };
-const imfSeries = (map, code, fromYear, maxYear) => { const s = map[code]; if (!s) return []; return Object.keys(s).map(Number).filter((y) => y >= fromYear && y <= maxYear).sort((a, b) => a - b).map((y) => ({ year: y, value: +(+s[y]).toFixed(2) })); };
-const imfCode = (iso3) => (iso3 === 'EMU' ? 'EURO' : iso3);   // euro-area aggregate code
 // Index + currency series for one country (for the macro chart). Distinct cache key.
 async function getCountrySeries(id, range = '1y') {
   const c = ALL_COUNTRIES[id];
@@ -1397,7 +1383,7 @@ async function getCountry(id) {
     const quote = async (sym) => { try { const { price, series } = await cached('q:' + sym, 120e3, () => yahooSeries(sym, '5d', '1d')); const d = Object.keys(series).sort(); const a = series[d[d.length - 1]], b = series[d[d.length - 2]]; return { price: a ?? price ?? null, pct: a != null && b ? ((a - b) / b) * 100 : null }; } catch { return { price: null, pct: null }; } };
     const rk = COUNTRY_MACRO_REGION[id];
     // Everything independent runs CONCURRENTLY — the whole panel in one round trip.
-    const [fx, idx, wbGdp, wbDebt, wbCpi, wbUnemp, cs, mn, oilLink, macroMd, policy, links, fxDlMap, idxDlMap, imfGdp, imfDebt, imfCpi, imfUnemp] = await Promise.all([
+    const [fx, idx, wbGdp, wbDebt, wbCpi, wbUnemp, cs, mn, oilLink, macroMd, policy, links, fxDlMap, idxDlMap, fredDebtToGdp] = await Promise.all([
       quote(c.fx),
       c.index ? quote(c.index) : Promise.resolve({ price: null, pct: null }),
       wbSeries(c.iso3, 'NY.GDP.MKTP.KD.ZG'),
@@ -1412,19 +1398,15 @@ async function getCountry(id) {
       (() => Promise.all((COUNTRY_COMMODITY_LINKS[id] || []).map(async ([commodity, csym]) => ({ commodity, corr: await pairCorr(c.fx, csym).catch(() => null) }))).catch(() => []))(),
       deltaSeries(c.fx).then((r) => r.series).catch(() => ({})),
       c.index ? deltaSeries(c.index).then((r) => r.series).catch(() => ({})) : Promise.resolve({}),
-      imfMap(IMF_IND.gdp), imfMap(IMF_IND.debt), imfMap(IMF_IND.cpi), imfMap(IMF_IND.unemployment),
+      fredDebt(c.iso3),
     ]);
     const chg = (arr) => { const f = (arr || []).find((v) => v != null); const l = [...(arr || [])].reverse().find((v) => v != null); return f && l ? ((l - f) / f) * 100 : null; };
-    // Annual macro: prefer the IMF WEO (current) over the World Bank (lagged); completed
-    // years only, so a projection is never shown as data. Falls back per field.
-    const maxYear = new Date().getUTCFullYear() - 1;
-    const icode = imfCode(c.iso3);
-    const gdpGrowth = (() => { const s = imfSeries(imfGdp, icode, maxYear - 5, maxYear); return s.length ? s : wbGdp.slice(-6); })();
-    const debtToGdp = imfLatest(imfDebt, icode, maxYear) || wbDebt;
-    const cpi = (() => { const s = imfSeries(imfCpi, icode, maxYear - 24, maxYear); return s.length ? s : wbCpi.slice(-25); })();
+    // Debt/GDP from FRED (OECD mirror, current); growth/CPI/unemployment from the World Bank (annual).
+    const gdpGrowth = wbGdp.slice(-6);
+    const debtToGdp = fredDebtToGdp || wbDebt;
+    const cpi = wbCpi.slice(-25);
     const inflation = cpi.length ? cpi[cpi.length - 1] : null;
-    const unemployment = imfLatest(imfUnemp, icode, maxYear) || wbUnemp;
-    const imfOk = !!(imfDebt[icode] || imfGdp[icode] || imfCpi[icode]);
+    const unemployment = wbUnemp;
     const perf = { index: chg(cs.index), fx: chg(cs.fx) };
     // Every price in the country card gets the same multi-horizon moves + a source/as-of.
     const fxDeltas = mapDeltas(fxDlMap);
@@ -1446,7 +1428,7 @@ async function getCountry(id) {
       index: { label: c.indexLabel, sym: c.index, ...idx, deltas: idxDeltas, asOf, source: 'Yahoo Finance' },
       macro, oilLink, perf, takeaways: takes, policy, policyNote: POLICY_NOTE[id] || null, links,
       cpi,   // annual CPI inflation % (IMF WEO, World Bank fallback)
-      fund: { gdpGrowth: gdpGrowth.slice(-6), debtToGdp, inflation, unemployment, imfOk, source: imfOk ? 'IMF WEO (annual) · World Bank fallback' : 'World Bank (annual) — IMF unavailable from this host' },
+      fund: { gdpGrowth: gdpGrowth.slice(-6), debtToGdp, inflation, unemployment, source: (fredDebtToGdp ? 'Debt/GDP: FRED (OECD, annual)' : 'Debt/GDP: World Bank (annual)') + ' · growth/CPI/unemployment: World Bank (annual)' },
     };
   });
 }
@@ -2123,20 +2105,6 @@ const server = http.createServer(async (req, res) => {
       const id = url.searchParams.get('id');
       if (!MACRO_COUNTRIES[id]) return sendJSON(res, 404, { error: 'unknown region' });
       return sendJSON(res, 200, await getRegionTickers(id).catch((e) => ({ error: String(e.message), items: [] })));
-    }
-    if (url.pathname === '/api/probe') {
-      const browser = { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36', 'Accept': 'application/json, text/plain, */*', 'Accept-Language': 'en-US,en;q=0.9', 'Referer': 'https://www.imf.org/' };
-      const cands = [
-        ['imf_headers', 'https://www.imf.org/external/datamapper/api/v1/GGXWDG_NGDP', browser],
-        ['oecd_flow', 'https://stats.oecd.org/SDMX-JSON/dataflow/all/all/latest', UA],
-        ['oecd_new', 'https://sdmx.oecd.org/public/rest/dataflow/all/all/latest?format=jsondata', UA],
-        ['fred_usdebt', 'https://fred.stlouisfed.org/graph/fredgraph.csv?id=GFDEGDQ188S', UA],
-        ['fred_jpdebt', 'https://fred.stlouisfed.org/graph/fredgraph.csv?id=GGGDTAJPA188N', UA],
-        ['fred_iddebt', 'https://fred.stlouisfed.org/graph/fredgraph.csv?id=GGGDTAIDA188N', UA],
-      ];
-      const out = {};
-      await Promise.all(cands.map(async ([k, u, h]) => { const t0 = Date.now(); try { const r = await fetch(u, { headers: h }); const b = await r.text(); out[k] = { status: r.status, len: b.length, ms: Date.now() - t0, snip: b.slice(0, 50).replace(/\n/g, ' ') }; } catch (e) { out[k] = { error: String(e.message), ms: Date.now() - t0 }; } }));
-      return sendJSON(res, 200, out);
     }
     if (url.pathname === '/api/yields') {
       const id = url.searchParams.get('id');
