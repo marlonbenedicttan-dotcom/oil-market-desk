@@ -402,17 +402,26 @@ function renderFlows(d) {
   const e = d.exit; const total = (e.eastbound + e.westbound) || 1;
   const ew = (e.eastbound / total * 100).toFixed(0), ww = (e.westbound / total * 100).toFixed(0);
   const darkNote = (d.dark && d.dark.length)
-    ? `<div class="qflag watch" style="margin:8px 12px">⚠ <b>No AIS activity</b> in: ${d.dark.join(', ')} — the feed is dark here (possible disruption / dark fleet, or limited coverage). Flows cannot be measured from this feed.</div>`
+    ? `<div class="qflag watch" style="margin:8px 12px">⚠ <b>No AIS activity</b> in: ${d.dark.join(', ')} — the feed is dark here (possible disruption / dark fleet, or limited coverage).</div>`
     : '';
+  const ms = d.marketStress;
+  const stressHtml = ms ? `<div class="chokes-h dimtext" style="padding:10px 12px 0">MARKET-IMPLIED GULF STRESS — ships go dark, but prices can't lie</div>
+    <div style="padding:6px 12px 0"><div class="verdict ${ms.score >= 2 ? 'tight' : 'mixed'}">${ms.verdict}</div>
+    ${ms.signals.map((s) => `<div class="ev"><span class="ev-l">${s.label}</span><span class="ev-v ${s.hot ? 'pos' : ''}">${s.value != null ? (s.value >= 0 ? '+' : '') + Number(s.value).toFixed(2) : '—'}</span><span class="tag ${s.hot ? 'tight' : 'neutral'}">${s.hot ? 'STRESS' : 'ok'}</span><span class="ev-n dimtext">${s.hot ? 'pricing disruption' : 'normal'}</span></div>`).join('')}</div>` : '';
+  const an = d.anomalies || {};
+  const anHtml = `<div class="chokes-h dimtext" style="padding:0 12px">AIS ANOMALIES (visible vessels, M.E. only)</div>
+    <div class="chokes"><span class="choke"><b>${an.spoof || 0}</b> spoof / teleport</span><span class="choke"><b>${an.darkGap || 0}</b> dark gaps → inferred transits</span></div>`;
   $('flows').innerHTML =
     `<div class="chokes-h dimtext">MIDDLE-EAST FLOWS (live AIS)</div>
      <div class="chokes">${regions}</div>
      <div class="chokes-h dimtext" style="padding:0 12px">AIS ACTIVITY (reports/min · 5-min window)</div>
      <div class="chokes">${rates}</div>
+     ${darkNote}
+     ${stressHtml}
+     ${anHtml}
      <div class="flowbar"><div class="dimtext">Gulf of Oman / Arabian Sea — direction of travel</div>
        <div class="fb"><span class="fb-e" style="width:${ew}%">${e.eastbound} east → Asia</span><span class="fb-w" style="width:${ww}%">${e.westbound} west → Suez</span></div>
-       <div class="dimtext">${e.total} tankers in the exit corridor · ${e.moving} under way · ${e.idle} idle</div></div>
-     ${darkNote}`;
+       <div class="dimtext">${e.total} tankers in the exit corridor · ${e.moving} under way · ${e.idle} idle</div></div>`;
 }
 function renderProducts(d) {
   if (!d?.items) { $('products').innerHTML = ''; return; }

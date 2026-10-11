@@ -391,6 +391,33 @@ function regionRates() {
     return { name: r.name, perMin: +(arr.length / 5).toFixed(1) };
   });
 }
+
+// AIS anomaly detection — vessels that "teleport" (spoofing) or vanish for hours (dark transit).
+const ME_BOX = [[-5, 32], [30, 72]];
+const prevPos = new Map();
+const aisAnom = { spoof: 0, darkGap: 0 };
+function haversineNm(a1, o1, a2, o2) {
+  const R = 3440.065, r = (d) => (d * Math.PI) / 180;
+  const dφ = r(a2 - a1), dλ = r(o2 - o1);
+  const s = Math.sin(dφ / 2) ** 2 + Math.cos(r(a1)) * Math.cos(r(a2)) * Math.sin(dλ / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(s));
+}
+const inME = (lat, lon) => lat != null && lon != null && inBox(lat, lon, ME_BOX);
+function recordAisAnomaly(meta) {
+  const { MMSI: mmsi, latitude: lat, longitude: lon } = meta;
+  if (lat == null || lon == null) return;
+  const t = Date.now();
+  const prev = prevPos.get(mmsi);
+  if (prev && (inME(lat, lon) || inME(prev.lat, prev.lon))) {
+    const dtH = (t - prev.t) / 3.6e6;
+    const dnm = haversineNm(prev.lat, prev.lon, lat, lon);
+    const kn = dtH > 0 ? dnm / dtH : 1e9;
+    if (dtH < 24 && dnm > 20 && kn > 60) aisAnom.spoof++;      // faster than any ship → spoof/teleport
+    else if (dtH > 0.5 && dnm > 50) aisAnom.darkGap++;         // disappeared for hours while crossing → dark transit
+  }
+  prevPos.set(mmsi, { lat, lon, t });
+  if (prevPos.size > 20000) prevPos.delete(prevPos.keys().next().value);
+}
 function getChokepoints() {
   const list = [...tankers.values()];
   return { chokepoints: CHOKEPOINTS.map((c) => ({ name: c.name, count: list.filter((v) => v.lat != null && inBox(v.lat, v.lon, c.box)).length })) };
@@ -578,7 +605,7 @@ const FLOW_REGIONS = [
   { name: 'Arabian Sea', box: [[8, 55], [22, 72]] },
   { name: 'Red Sea', box: [[12, 32], [30, 44]] },
 ];
-function getFlows() {
+async function getFlows() {
   const list = [...tankers.values()];
   const regions = FLOW_REGIONS.map((r) => ({ name: r.name, count: list.filter((v) => v.lat != null && inBox(v.lat, v.lon, r.box)).length }));
   const exitBox = (v) => inBox(v.lat, v.lon, [[22, 56], [26, 62]]) || inBox(v.lat, v.lon, [[8, 55], [22, 72]]);
@@ -588,7 +615,22 @@ function getFlows() {
   const moving = exit.filter((v) => (v.sog ?? 0) >= 1).length;
   const rates = regionRates();
   const dark = rates.filter((r) => r.perMin === 0).map((r) => r.name);
-  return { regions, exit: { total: exit.length, eastbound: east, westbound: west, moving, idle: exit.length - moving }, rates, dark, enabled: ais.enabled };
+
+  // Market-implied Gulf stress: ships go dark, but prices price the lost barrels.
+  let marketStress = null;
+  try {
+    const [m, c] = await Promise.all([getMarket(), getCurves()]);
+    const cracks = computeCracks(m);
+    const sig = [
+      { label: 'Brent M1−M6 backwardation', value: c?.brent?.m1m6, hot: (c?.brent?.m1m6 ?? 0) > 5 },
+      { label: 'Diesel crack', value: cracks.diesel, hot: (cracks.diesel ?? 0) > 20 },
+      { label: 'Brent−WTI physical', value: m.spreads?.brent_wti?.physical, hot: (m.spreads?.brent_wti?.physical ?? 0) > 5 },
+    ];
+    const n = sig.filter((s) => s.hot).length;
+    marketStress = { signals: sig, score: n, verdict: n >= 2 ? `Market is pricing SIGNIFICANT Gulf-flow stress (${n}/3 signals).` : `Market is pricing limited Gulf stress (${n}/3 signals).` };
+  } catch {}
+
+  return { regions, exit: { total: exit.length, eastbound: east, westbound: west, moving, idle: exit.length - moving }, rates, dark, anomalies: aisAnom, marketStress, enabled: ais.enabled };
 }
 
 async function getProducts() {
@@ -669,6 +711,7 @@ function startAIS() {
       if (typeof t === 'number' && t >= 80 && t <= 89) tankerMMSI.add(meta.MMSI);
     } else if (msg.MessageType === 'PositionReport') {
       recordHit(meta.latitude, meta.longitude);
+      recordAisAnomaly(meta);
       if (!tankerMMSI.has(meta.MMSI)) return;
       const p = msg.Message?.PositionReport || {};
       tankers.set(meta.MMSI, { mmsi: meta.MMSI, name: (meta.ShipName || '').trim(), lat: meta.latitude, lon: meta.longitude, sog: p.Sog, cog: p.Cog, ts: meta.time_utc });
@@ -795,7 +838,7 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname === '/api/chokepoints') return sendJSON(res, 200, getChokepoints());
     if (url.pathname === '/api/curve') return sendJSON(res, 200, await getCurves());
     if (url.pathname === '/api/tightness') return sendJSON(res, 200, await getTightness().catch((e) => ({ error: String(e.message) })));
-    if (url.pathname === '/api/flows') return sendJSON(res, 200, getFlows());
+    if (url.pathname === '/api/flows') return sendJSON(res, 200, await getFlows());
     if (url.pathname === '/api/products') return sendJSON(res, 200, await getProducts().catch((e) => ({ error: String(e.message) })));
     if (url.pathname === '/api/analogue') return sendJSON(res, 200, await getAnalogue(url.searchParams.get('metric') || 'basis:brent', Math.min(15, Math.max(2, Number(url.searchParams.get('years')) || 10))));
     if (url.pathname === '/api/alerts') return sendJSON(res, 200, { current: await computeServerAlerts().catch(() => []) });
