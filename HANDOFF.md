@@ -17,7 +17,7 @@ src/lib.js        pure helpers (unit-tested): sgn, inBox, haversineNm, isoWeek, 
 public/index.html tabs + panels (2 tabs: COMMODITIES, MACRO)
 public/app.js     all front-end rendering, charts, adaptive logic
 public/style.css  Bloomberg-terminal dark theme
-tests/            node:test — 37 tests (lib unit tests + API smoke tests), `npm test`
+tests/            node:test — 41 tests (lib unit tests + API smoke tests), `npm test`
 Dockerfile, render.yaml, scripts/share.sh   deploy + free tunnel
 ```
 Keep pure logic in `src/lib.js` so it stays testable.
@@ -135,14 +135,14 @@ Each country has a verified-live Yahoo `fx` + `index`, a World Bank `iso3`, an `
 ## Conventions / gotchas
 - Keep it **compact, plain-English, honest**. Explain *what it means* and *what to watch*. **Never fake a number.**
 - **Never** put secrets in the repo. `.env`, `.state.json`, `.reroute.json`, `.flares.json`, `digest.log` are git-ignored.
-- After edits: `npm test` (**37 tests**) then `git push` (auto-deploys). Bump the `?v=` query in `index.html`.
+- After edits: `npm test` (**41 tests**) then `git push` (auto-deploys). Bump the `?v=` query in `index.html`.
 - The service worker (`public/sw.js`) is **network-first** — don't make it cache-first.
 - **Front-end request guards matter**: `loadCountry`/`loadCountryChart`/`loadMacroNews` capture `req` and bail if the selection changed, so a slow earlier response can't overwrite the newer choice. The client also caches country payloads (`countryCache`, 5 min) and **prefetches the region** so switching is instant.
 - `server.js` is large; keep pure logic in `src/lib.js`.
 
 ## Roadmap — investor backlog (do these ONE AT A TIME; each = code + tests + deploy)
 Agreed order (impact-weighted):
-1. **Deltas + freshness everywhere** — every number shows chg vs 1d/1w/1m/YTD/1y, plus a source + as-of badge. *(Highest value; upgrades every panel.)*
+1. ~~**Deltas + freshness everywhere** — every number shows chg vs 1d/1w/1m/YTD/1y, plus a source + as-of badge.~~ **DONE (2026-10-12)** — pure `horizonDeltas` in `src/lib.js`; `/api/history` carries per-instrument deltas, `/api/market` rows carry source + as-of, `/api/country` + `/api/region-quotes` carry deltas; instrument tiles, segment snapshot, top ticker, country cards and the region currency board all show a 1D/1W/1M/YTD/1Y strip + a source/as-of badge. Deltas come from a 2-year daily window (a plain 1y range leaves the 1Y move null). The macro marquee tape stays 1D; structure data (inventories/curve/COT) keeps its existing as-of labels.
 2. **Fundamental "stretch" score** — rebuild the score from curve + basis + inventories-vs-seasonal (not just price range/vol), or rename it "price stretch".
 3. **Watchlist + Alerts home screen** — pin instruments, one board, alerts firing (the alert engine + `/api/alerts`/`/api/digest` already exist but are buried).
 4. **On-screen daily brief** — "what happened / what's on today" in 60 seconds (digest backend exists).
@@ -158,4 +158,4 @@ Agreed order (impact-weighted):
 - Dead code: `renderKPIs`, `renderRegime`, `renderBottomLine`, `renderTightness`, `renderContext`, `computeAlerts` remain defined but unused after the adaptive rewrite — safe to delete.
 
 ## Recent work log (this build)
-Commodity Desk rebranded from the oil-only "Oil Basis"; merged COMMODITIES+PRICE TRENDS; ranges 1M–10Y with hover %; currencies chartable; Phase 3 global macro (rates, FX, commodity↔currency links, copper/gold). Then: `MARKETS` (7 segments), adaptive Big Picture (what happened / what's next / trade ideas), `/api/marketread`, CFTC positioning generalized then **removed from the UI**, `/api/termstructure`, palm oil, actionable trade ideas with ETFs + EM names, cross-asset transmission engine, 2-tab IA (ships/satellites under Crude; fuels/stocks under Refined; supply under energy), hero headlines board, fundamentals event-scanner, context-aware tickers, macro regions → countries with World Bank fundamentals + BIS policy rates + CPI charts + index-vs-currency chart, region-scoped currencies, country-specific commodity linkages, instant country switching (cache + prefetch), Bloomberg-style country cards. 37 tests.
+Commodity Desk rebranded from the oil-only "Oil Basis"; merged COMMODITIES+PRICE TRENDS; ranges 1M–10Y with hover %; currencies chartable; Phase 3 global macro (rates, FX, commodity↔currency links, copper/gold). Then: `MARKETS` (7 segments), adaptive Big Picture (what happened / what's next / trade ideas), `/api/marketread`, CFTC positioning generalized then **removed from the UI**, `/api/termstructure`, palm oil, actionable trade ideas with ETFs + EM names, cross-asset transmission engine, 2-tab IA (ships/satellites under Crude; fuels/stocks under Refined; supply under energy), hero headlines board, fundamentals event-scanner, context-aware tickers, macro regions → countries with World Bank fundamentals + BIS policy rates + CPI charts + index-vs-currency chart, region-scoped currencies, country-specific commodity linkages, instant country switching (cache + prefetch), Bloomberg-style country cards. Then **roadmap item 1 — deltas + freshness**: every price now shows 1D/1W/1M/YTD/1Y + a source/as-of badge (see the roadmap entry above). 41 tests.
