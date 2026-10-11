@@ -45,7 +45,6 @@ let macroRegion = 'us';        // selected macro region
 let macroCountries = null;     // /api/countries — country lists per region
 let macroCountry = 'us';       // selected country
 let transmission = null;       // /api/transmission — cross-asset logic
-let activeTab = 'home';        // which tab is showing (drives the ticker's content)
 let macroTickers = null;       // this region's macro tickers (currencies + indices) for the tape
 let macroChart = null;         // per-country index vs currency chart
 const countryCache = {};       // id -> { t, data } so switching is instant
@@ -504,7 +503,13 @@ async function loadAlerts() {
 // Ticker
 // ---------------------------------------------------------------------------
 function renderTicker(m) {
-  const parts = m.benchmarks.map((b) => {
+  if (!m) return;
+  // One constant tape: every commodity + every currency + every macro index, always
+  // the same regardless of which tab you're on. Deduped so shared names appear once.
+  const seen = new Set();
+  const parts = [];
+  const push = (label, html) => { const k = (label || '').replace(/\s*[·(].*/, '').trim(); if (!k || seen.has(k)) return; seen.add(k); parts.push(html); };
+  for (const b of m.benchmarks) {
     const s = history?.series?.[b.id];
     const arr = b.paper != null ? s?.paper : s?.physical;
     const val = b.paper != null ? b.paper : b.physical;
@@ -515,17 +520,11 @@ function renderTicker(m) {
     const d = headDeltas(b);
     const tip = d ? HORIZONS.map(([l, k]) => `${l} ${d[k] == null ? '—' : pctf(d[k])}`).join(' · ') : '';
     const fs = headSource(b);
-    return `<span class="tk" title="${short} · ${tip || 'no history'} — ${fs.source || ''} ${fs.asOf || ''}"><b>${short}</b><span class="tk-px">${val == null ? '—' : Number(val).toFixed(b.dp)}</span><span class="tk-chg ${c}">${chg == null ? '' : `${arrow}${Math.abs(chg).toFixed(b.dp)} ${pctf(pc)}`}</span></span>`;
-  });
-  // include every currency too
-  for (const f of (lastFx || [])) parts.push(`<span class="tk"><b>${f.label.replace(/\s*·.*/, '')}</b><span class="tk-px">${f.price == null ? '—' : Number(f.price).toFixed(f.price < 10 ? 4 : 2)}</span><span class="tk-chg ${cls(f.pct)}">${f.pct == null ? '' : pctf(f.pct)}</span></span>`);
-  let one;
-  if (activeTab === 'macro' && macroTickers && macroTickers.length) {
-    // on the macro tab the ticker becomes a broad macro tape: every currency & index
-    one = macroTickers.map((t) => `<span class="tk"><b>${t.label}</b><span class="tk-px">${t.price == null ? '—' : Number(t.price).toFixed(t.price < 10 ? 4 : 2)}</span><span class="tk-chg ${cls(t.pct)}">${t.pct == null ? '' : pctf(t.pct)}</span></span>`).join('');
-  } else {
-    one = parts.join('');
+    push(short, `<span class="tk" title="${short} · ${tip || 'no history'} — ${fs.source || ''} ${fs.asOf || ''}"><b>${short}</b><span class="tk-px">${val == null ? '—' : Number(val).toFixed(b.dp)}</span><span class="tk-chg ${c}">${chg == null ? '' : `${arrow}${Math.abs(chg).toFixed(b.dp)} ${pctf(pc)}`}</span></span>`);
   }
+  for (const f of (lastFx || [])) push(f.label, `<span class="tk"><b>${f.label.replace(/\s*·.*/, '')}</b><span class="tk-px">${f.price == null ? '—' : Number(f.price).toFixed(f.price < 10 ? 4 : 2)}</span><span class="tk-chg ${cls(f.pct)}">${f.pct == null ? '' : pctf(f.pct)}</span></span>`);
+  for (const t of (macroTickers || [])) push(t.label, `<span class="tk"><b>${t.label}</b><span class="tk-px">${t.price == null ? '—' : Number(t.price).toFixed(t.price < 10 ? 4 : 2)}</span><span class="tk-chg ${cls(t.pct)}">${t.pct == null ? '' : pctf(t.pct)}</span></span>`);
+  const one = parts.join('');
   $('ticker').innerHTML = `<div class="ticker-track">${one}${one}</div>`;   // two copies → seamless marquee
 }
 
@@ -1488,7 +1487,6 @@ async function loadCurveHistory() {
   try { renderCurveHistory(await getJSON('/api/curvehistory?root=' + spec.root)); } catch {}
 }
 function showTab(name) {
-  activeTab = name;
   document.querySelectorAll('.tab').forEach((t) => t.classList.toggle('active', t.dataset.tab === name));
   document.querySelectorAll('.tabpane').forEach((p) => p.classList.toggle('hidden', p.dataset.pane !== name));
   if (name === 'commodities') {
