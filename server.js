@@ -525,12 +525,20 @@ const FX_SYMS = [
   { id: 'usdjpy', label: 'USD / JPY', sym: 'USDJPY=X' },
   { id: 'gbpusd', label: 'GBP / USD', sym: 'GBPUSD=X' },
   { id: 'usdcny', label: 'USD / CNY', sym: 'USDCNY=X' },
+  { id: 'audusd', label: 'AUD / USD · mining', sym: 'AUDUSD=X' },
+  { id: 'usdcad', label: 'USD / CAD · oil', sym: 'USDCAD=X' },
+  { id: 'usdnok', label: 'USD / NOK · oil', sym: 'USDNOK=X' },
+  { id: 'usdbrl', label: 'USD / BRL · agri', sym: 'USDBRL=X' },
+  { id: 'usdmxn', label: 'USD / MXN', sym: 'USDMXN=X' },
+  { id: 'usdinr', label: 'USD / INR', sym: 'USDINR=X' },
+  { id: 'usdchf', label: 'USD / CHF', sym: 'USDCHF=X' },
+  { id: 'nzdusd', label: 'NZD / USD', sym: 'NZDUSD=X' },
 ];
 async function getMacroDash() {
   return cached('macrodash', 3 * 3600e3, async () => {
-    const [dgs2, dgs10, ff, cpi, gdp, unrate] = await Promise.all([
+    const [dgs2, dgs10, ff, cpi, gdp, unrate, ecb] = await Promise.all([
       fredSeries('DGS2', 40), fredSeries('DGS10', 40), fredSeries('FEDFUNDS', 400),
-      fredSeries('CPIAUCSL', 800), fredSeries('A191RL1Q225SBEA', 1400), fredSeries('UNRATE', 400),
+      fredSeries('CPIAUCSL', 800), fredSeries('A191RL1Q225SBEA', 1400), fredSeries('UNRATE', 400), fredSeries('ECBDFR', 400),
     ]);
     const last = (o) => { const d = Object.keys(o).sort(); return d.length ? { date: d[d.length - 1], value: o[d[d.length - 1]] } : null; };
     const cpiDates = Object.keys(cpi).sort();
@@ -546,7 +554,7 @@ async function getMacroDash() {
       } catch { return { id: m.id, label: m.label, price: null, pct: null }; }
     }));
     return {
-      rates: { us2y: r2?.value ?? null, us10y: r10?.value ?? null, spread: r10 && r2 ? +(r10.value - r2.value).toFixed(2) : null, fedfunds: ffr?.value ?? null, asOf: r10?.date ?? null },
+      rates: { us2y: r2?.value ?? null, us10y: r10?.value ?? null, spread: r10 && r2 ? +(r10.value - r2.value).toFixed(2) : null, fedfunds: ffr?.value ?? null, ecb: last(ecb)?.value ?? null, asOf: r10?.date ?? null },
       inflation: { cpiYoY: cpiLast != null && cpiPrevYr != null ? +(((cpiLast / cpiPrevYr) - 1) * 100).toFixed(1) : null, asOf: cpiDates[cpiDates.length - 1] ?? null },
       growth: { gdpQoQ: g?.value ?? null, unemployment: u?.value ?? null, asOf: g?.date ?? null },
       fx,
