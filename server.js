@@ -5,7 +5,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { execFile } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { sgn, businessDaysSince, inBox, haversineNm, isoWeek, monthly, pctOver, percentile, realizedVol, computeCracks, backAdjust, pearson, logReturns } from './src/lib.js';
+import { sgn, businessDaysSince, inBox, haversineNm, horizonDeltas, isoWeek, monthly, pctOver, percentile, realizedVol, computeCracks, backAdjust, pearson, logReturns } from './src/lib.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC = path.join(__dirname, 'public');
@@ -145,8 +145,11 @@ async function cached(key, ttlMs, fn) {
 
 const paperFor = (b) => (b.paper ? cached('p:' + b.paper, 180_000, () => yahooSeries(b.paper, '5d', '1d')) : Promise.resolve({ price: null }));
 const physFor = (b) => (b.physical ? cached('f:' + b.physical, 3_600_000, () => spotSeries(b, 14)) : Promise.resolve({}));
-const hPaperFor = (b) => (b.paper ? cached('hp:' + b.paper, 3_600_000, () => yahooSeries(b.paper, '6mo', '1d')) : Promise.resolve({ series: {} }));
-const hPhysFor = (b) => (b.physical ? cached('hf:' + b.physical, 3_600_000, () => spotSeries(b, 220)) : Promise.resolve({}));
+const hPaperFor = (b) => (b.paper ? cached('hp:' + b.paper, 3_600_000, () => yahooSeries(b.paper, '2y', '1d')) : Promise.resolve({ series: {} }));
+const hPhysFor = (b) => (b.physical ? cached('hf:' + b.physical, 3_600_000, () => spotSeries(b, 380)) : Promise.resolve({}));
+// ~2 years of daily prices for the multi-horizon deltas: a plain '1y' range starts a
+// day or two short of a full year, which would leave the 1-year move null.
+const deltaSeries = (sym) => (sym ? cached('dl2y:' + sym, 3_600_000, () => yahooSeries(sym, '2y', '1d')) : Promise.resolve({ series: {} }));
 
 // ---------------------------------------------------------------------------
 // Market snapshot
@@ -177,12 +180,18 @@ async function getMarket() {
     const physical = last != null ? f[last] : null;
     const prevPhys = prev != null ? f[prev] : null;
     const paper = p.price ?? null;
+    const pDates = Object.keys(p.series || {}).sort();
     return {
       id: b.id, label: b.label, group: b.group, unit: b.unit, dp: b.dp,
       paper, physical, physicalDate: last, curve: Boolean(CURVE_SPEC[b.id]), cot: Boolean(COT_NAMES[b.id]),
       basis: paper != null && physical != null ? physical - paper : null,
       spotLagDays: businessDaysSince(last),
       spotJumpPct: physical != null && prevPhys ? ((physical - prevPhys) / prevPhys) * 100 : null,
+      // Freshness: where each number comes from and how current it is (futures are live;
+      // real-barrel assessments lag). The UI shows these as a source + as-of badge.
+      paperDate: pDates[pDates.length - 1] ?? null,
+      paperSource: b.paper ? 'Yahoo Finance' : null,
+      physicalSource: b.physical ? (b.source === 'eia' ? 'EIA' : 'FRED') : null,
     };
   }));
   const by = Object.fromEntries(rows.map((r) => [r.id, r]));
@@ -228,6 +237,13 @@ async function getMarket() {
 // ---------------------------------------------------------------------------
 // History
 // ---------------------------------------------------------------------------
+// A dated price map → its move over every standard window (see horizonDeltas).
+// null for an empty/short map so callers can just show "—".
+function mapDeltas(map) {
+  const dates = Object.keys(map || {}).sort();
+  if (dates.length < 2) return null;
+  return { asOf: dates[dates.length - 1], ...horizonDeltas(dates, dates.map((d) => map[d])) };
+}
 async function getHistory() {
   const list = BENCHMARKS;
   const maps = {};
@@ -262,7 +278,12 @@ async function getHistory() {
     };
   }
 
-  return { dates, series, basis, spreads };
+  // Multi-horizon deltas, per instrument, from the FULL maps (the chart arrays are
+  // trimmed to 120 points, too short to reach a year back).
+  const deltas = {};
+  for (const b of list) deltas[b.id] = { paper: mapDeltas(maps[b.id].paper), physical: mapDeltas(maps[b.id].physical) };
+
+  return { dates, series, basis, spreads, deltas };
 }
 
 // ---------------------------------------------------------------------------
@@ -1173,9 +1194,11 @@ async function getRegionTickers(region) {
   const list = MACRO_COUNTRIES[region] || [];
   return cached('rq:' + region, 120e3, async () => {
     const q = async (sym) => { try { const { price, series } = await cached('q:' + sym, 120e3, () => yahooSeries(sym, '5d', '1d')); const d = Object.keys(series).sort(); const a = series[d[d.length - 1]], b = series[d[d.length - 2]]; return { price: a ?? price ?? null, pct: a != null && b ? ((a - b) / b) * 100 : null }; } catch { return { price: null, pct: null }; } };
+    // Multi-horizon moves from the same 2-year series the country panel uses.
+    const dl = (sym) => deltaSeries(sym).then((r) => mapDeltas(r.series)).catch(() => null);
     const items = (await Promise.all(list.map(async (c) => {
-      const arr = [{ id: c.id, label: c.fxLabel.replace(/\s*·.*/, ''), kind: 'fx', ...(await q(c.fx)) }];
-      if (c.index) arr.push({ id: c.id, label: c.indexLabel, kind: 'index', ...(await q(c.index)) });
+      const arr = [{ id: c.id, label: c.fxLabel.replace(/\s*·.*/, ''), kind: 'fx', ...(await q(c.fx)), deltas: await dl(c.fx) }];
+      if (c.index) arr.push({ id: c.id, label: c.indexLabel, kind: 'index', ...(await q(c.index)), deltas: await dl(c.index) });
       return arr;
     }))).flat();
     return { region, items };
@@ -1238,7 +1261,7 @@ async function getCountry(id) {
     const quote = async (sym) => { try { const { price, series } = await cached('q:' + sym, 120e3, () => yahooSeries(sym, '5d', '1d')); const d = Object.keys(series).sort(); const a = series[d[d.length - 1]], b = series[d[d.length - 2]]; return { price: a ?? price ?? null, pct: a != null && b ? ((a - b) / b) * 100 : null }; } catch { return { price: null, pct: null }; } };
     const rk = COUNTRY_MACRO_REGION[id];
     // Everything independent runs CONCURRENTLY — the whole panel in one round trip.
-    const [fx, idx, gdpGrowth, debtToGdp, cpiSeries, unemployment, cs, mn, oilLink, macroMd, policy, links] = await Promise.all([
+    const [fx, idx, gdpGrowth, debtToGdp, cpiSeries, unemployment, cs, mn, oilLink, macroMd, policy, links, fxDlMap, idxDlMap] = await Promise.all([
       quote(c.fx),
       c.index ? quote(c.index) : Promise.resolve({ price: null, pct: null }),
       wbSeries(c.iso3, 'NY.GDP.MKTP.KD.ZG'),
@@ -1251,10 +1274,16 @@ async function getCountry(id) {
       rk ? getMacroDash().catch(() => null) : Promise.resolve(null),
       getPolicyRate(BIS_AREA[id]).catch(() => null),
       (() => Promise.all((COUNTRY_COMMODITY_LINKS[id] || []).map(async ([commodity, csym]) => ({ commodity, corr: await pairCorr(c.fx, csym).catch(() => null) }))).catch(() => []))(),
+      deltaSeries(c.fx).then((r) => r.series).catch(() => ({})),
+      c.index ? deltaSeries(c.index).then((r) => r.series).catch(() => ({})) : Promise.resolve({}),
     ]);
     const chg = (arr) => { const f = (arr || []).find((v) => v != null); const l = [...(arr || [])].reverse().find((v) => v != null); return f && l ? ((l - f) / f) * 100 : null; };
     const inflation = cpiSeries.length ? cpiSeries[cpiSeries.length - 1] : null;
     const perf = { index: chg(cs.index), fx: chg(cs.fx) };
+    // Every price in the country card gets the same multi-horizon moves + a source/as-of.
+    const fxDeltas = mapDeltas(fxDlMap);
+    const idxDeltas = mapDeltas(idxDlMap);
+    const asOf = (Object.keys(fxDlMap || {}).sort().slice(-1)[0]) || (cs.dates || []).slice(-1)[0] || null;
     const macro = macroMd ? (macroMd.regions?.[rk] || null) : null;
     const takes = [];
     if (policy) takes.push(`Central bank policy rate <b>${policy.latest.value}%</b> (as of ${policy.latest.date}).`);
@@ -1267,7 +1296,8 @@ async function getCountry(id) {
     try { const mn = await getMacroNews(id); for (const it of (mn.items || []).slice(0, 2)) takes.push(`<b>${it.kind}</b>: ${it.title}.`); } catch {}
     return {
       id, label: c.label, region: c.region, iso3: c.iso3, oil: c.oil,
-      fx: { label: c.fxLabel, sym: c.fx, ...fx }, index: { label: c.indexLabel, sym: c.index, ...idx },
+      fx: { label: c.fxLabel, sym: c.fx, ...fx, deltas: fxDeltas, asOf, source: 'Yahoo Finance' },
+      index: { label: c.indexLabel, sym: c.index, ...idx, deltas: idxDeltas, asOf, source: 'Yahoo Finance' },
       macro, oilLink, perf, takeaways: takes, policy, policyNote: POLICY_NOTE[id] || null, links,
       cpi: cpiSeries.slice(-25),   // annual CPI inflation %, World Bank
       fund: { gdpGrowth: gdpGrowth.slice(-6), debtToGdp, inflation, unemployment, source: 'World Bank (annual)' },

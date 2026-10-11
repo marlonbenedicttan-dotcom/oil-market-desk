@@ -99,6 +99,32 @@ export function backAdjust(values, rollGaps) {
   return out;
 }
 
+// % change of the latest value vs the value nearest each horizon back — 1 day,
+// 1 week, 1 month, year-to-date and 1 year. dates must be ascending ISO yyyy-mm-dd
+// and parallel to values; nulls are skipped. A horizon with no earlier point, or a
+// zero base, → null (never faked). Rounded to 2 dp. Lets every price show its move
+// over all the usual windows at once, not just today.
+export function horizonDeltas(dates, values) {
+  const at = [];
+  for (let i = 0; i < dates.length; i++) if (values[i] != null) at.push(i);
+  const flat = { d1: null, w1: null, m1: null, ytd: null, y1: null };
+  if (at.length < 2) return flat;
+  const lastI = at[at.length - 1];
+  const last = values[lastI];
+  const lastDate = dates[lastI];
+  // The latest observation on or before a target date (the base for that window).
+  const baseBefore = (iso) => { let bi = null; for (const i of at) { if (i === lastI) break; if (dates[i] <= iso) bi = i; } return bi; };
+  const back = (days) => { const t = new Date(lastDate + 'T00:00:00Z'); t.setUTCDate(t.getUTCDate() - days); return t.toISOString().slice(0, 10); };
+  const pct = (i) => { const b = i == null ? null : values[i]; return b ? +(((last - b) / b) * 100).toFixed(2) : null; };
+  return {
+    d1: pct(at[at.length - 2]),
+    w1: pct(baseBefore(back(7))),
+    m1: pct(baseBefore(back(30))),
+    ytd: pct(baseBefore(lastDate.slice(0, 4) + '-01-01')),
+    y1: pct(baseBefore(back(365))),
+  };
+}
+
 export function computeCracks(m) {
   const by = Object.fromEntries(m.benchmarks.map((b) => [b.id, b]));
   const w = by.wti, rb = by.rbob, ho = by.ulsd, jet = by.jet, G = 42;

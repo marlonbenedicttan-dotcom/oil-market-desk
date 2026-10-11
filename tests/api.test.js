@@ -81,9 +81,12 @@ test('/api/countries, /api/country and /api/region-quotes', async () => {
   const idn = await (await fetch(`http://localhost:${PORT}/api/country?id=id`)).json();
   assert.equal(idn.label, 'Indonesia');
   assert.ok(idn.fx && idn.index && idn.fund && Array.isArray(idn.fund.gdpGrowth));
+  assert.equal(idn.fx.source, 'Yahoo Finance');
+  assert.ok(idn.fx.deltas && 'd1' in idn.fx.deltas, 'country fx carries multi-horizon deltas');
   assert.equal((await fetch(`http://localhost:${PORT}/api/country?id=nope`)).status, 404);
   const mt = await (await fetch(`http://localhost:${PORT}/api/region-quotes?id=apac`)).json();
   assert.ok(Array.isArray(mt.items) && mt.items.length >= 8);   // currencies (and indices where free)
+  assert.ok(mt.items.some((i) => i.deltas && 'd1' in i.deltas), 'region currencies carry deltas');
 });
 
 test('/api/headlines + /api/fundamentals respond', async () => {
@@ -147,6 +150,24 @@ test('market carries palm oil + per-benchmark curve flags', async () => {
   assert.equal(palm.unit, '$/t');
   assert.equal(palm.curve, false); // no free contract months
   assert.equal(m.benchmarks.find((b) => b.id === 'gold').curve, true);
+});
+
+test('/api/market rows carry a source + as-of for the freshness badge', async () => {
+  const m = await (await fetch(`http://localhost:${PORT}/api/market`)).json();
+  const wti = m.benchmarks.find((b) => b.id === 'wti');
+  assert.equal(wti.paperSource, 'Yahoo Finance');
+  assert.equal(wti.physicalSource, 'FRED');
+  assert.ok(wti.paperDate == null || /^\d{4}-\d{2}-\d{2}$/.test(wti.paperDate));
+  assert.equal(m.benchmarks.find((b) => b.id === 'gold').physicalSource, null); // futures-only → no spot to badge
+});
+
+test('/api/history carries 1D/1W/1M/YTD/1Y deltas per instrument', async () => {
+  const h = await (await fetch(`http://localhost:${PORT}/api/history`)).json();
+  assert.ok(h.deltas && h.deltas.wti, 'wti deltas present');
+  const d = h.deltas.wti.paper;
+  for (const k of ['d1', 'w1', 'm1', 'ytd', 'y1']) assert.ok(k in d, `${k} present`);
+  assert.ok(d.asOf == null || /^\d{4}-\d{2}-\d{2}$/.test(d.asOf));
+  assert.equal(h.deltas.gold.physical, null); // metals have no free spot series
 });
 
 test('unknown chart metric → 404', async () => {

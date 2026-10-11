@@ -6,6 +6,31 @@ const cls = (n) => (n == null ? '' : n >= 0 ? 'pos' : 'neg');
 const GAL = 42;
 const ago = (iso) => { if (!iso) return ''; const s = Math.round((Date.now() - new Date(iso)) / 1000); return s < 60 ? `${s}s ago` : s < 3600 ? `${Math.round(s / 60)}m ago` : `${Math.round(s / 3600)}h ago`; };
 
+// Every price shows its move over the usual windows at once, not just today.
+const HORIZONS = [['1D', 'd1'], ['1W', 'w1'], ['1M', 'm1'], ['YTD', 'ytd'], ['1Y', 'y1']];
+function deltaStrip(d) {
+  if (!d) return '';
+  const cells = HORIZONS.map(([lab, k]) => {
+    const v = d[k];
+    return `<span class="dl"><i>${lab}</i><b class="${cls(v)}">${v == null ? '—' : pctf(v)}</b></span>`;
+  }).join('');
+  return `<span class="dstrip" title="change over 1 day · 1 week · 1 month · year-to-date · 1 year">${cells}</span>`;
+}
+// Source + as-of badge: which feed a number comes from and how current it is.
+function freshBadge(source, asOf, lagDays) {
+  if (!source && !asOf) return '';
+  const lag = lagDays != null && lagDays >= 1 ? ` <em>${lagDays}d old</em>` : '';
+  return `<span class="fresh">${source || 'live'}${asOf ? ` · ${asOf}` : ''}${lag}</span>`;
+}
+// The series the headline number uses (futures where it exists, else the real/spot price).
+function headDeltas(b) { const dd = history?.deltas?.[b.id]; return dd ? (b.paper != null ? dd.paper : dd.physical) : null; }
+function headSource(b) {
+  return b.paper != null
+    ? { source: b.paperSource, asOf: b.paperDate, lag: null }
+    : { source: b.physicalSource, asOf: b.physicalDate, lag: b.spotLagDays };
+}
+function freshStrip(b) { const f = headSource(b); return freshBadge(f.source, f.asOf, f.lag); }
+
 let data, history, analytics;
 let tankerInfo = { status: {}, count: 0, tankers: [] };
 let nextRefresh = 60;
@@ -135,14 +160,14 @@ function tileHtml(b) {
   const s = history?.series?.[b.id];
   const arr = b.paper != null ? s?.paper : s?.physical;
   const val = b.paper != null ? b.paper : b.physical;
-  const pc = pctOf(arr);
   const starred = watchlist().includes(b.id);
+  const fs = headSource(b);
   return `<div class="tile" data-id="${b.id}" title="${b.label} — click for the chart">
     <span class="t-name">${b.label}</span>
     <span class="star ${starred ? 'on' : ''}" data-star="${b.id}" title="Pin to watchlist">${starred ? '★' : '☆'}</span>
     <span class="t-px">${val == null ? '—' : Number(val).toFixed(b.dp)}</span>
-    <span class="t-chg ${cls(pc)}">${pc == null ? '' : pctf(pc)}</span>
     ${tileSpark(arr)}
+    <span class="t-foot">${deltaStrip(headDeltas(b))}${freshBadge(fs.source, fs.asOf, fs.lag)}</span>
   </div>`;
 }
 function renderCards(m) {
@@ -225,6 +250,7 @@ function renderSnapshot() {
     ? `<div class="read-line">Brent − WTI spread: <b>${signed(data.spreads.brent_wti.paper, 2)}</b> futures · <b>${signed(data.spreads.brent_wti.physical, 2)}</b> real barrels.</div>` : '';
   el.innerHTML = `<div class="bp-head">${mk ? mk.label : b.label}</div>`
     + `<div class="bp-grid">${cells.map(([k, v, c]) => `<div class="bp-cell"><div class="bp-k">${k}</div><div class="bp-v ${c || ''}">${v}</div></div>`).join('')}</div>`
+    + `<div class="bp-deltas">${deltaStrip(headDeltas(b))}${freshStrip(b)}</div>`
     + compStrip + spreadLine
     + `<div class="bp-spark">${tileSpark(arr)}</div>`
     + `<div class="read-line">${bits.join(' · ')}.</div>`;
@@ -476,7 +502,10 @@ function renderTicker(m) {
     const c = chg == null ? '' : chg >= 0 ? 'pos' : 'neg';
     const arrow = chg == null ? '' : chg >= 0 ? '▲' : '▼';
     const short = b.label.replace(/\s*\(.*\)/, '');
-    return `<span class="tk"><b>${short}</b><span class="tk-px">${val == null ? '—' : Number(val).toFixed(b.dp)}</span><span class="tk-chg ${c}">${chg == null ? '' : `${arrow}${Math.abs(chg).toFixed(b.dp)} ${pctf(pc)}`}</span></span>`;
+    const d = headDeltas(b);
+    const tip = d ? HORIZONS.map(([l, k]) => `${l} ${d[k] == null ? '—' : pctf(d[k])}`).join(' · ') : '';
+    const fs = headSource(b);
+    return `<span class="tk" title="${short} · ${tip || 'no history'} — ${fs.source || ''} ${fs.asOf || ''}"><b>${short}</b><span class="tk-px">${val == null ? '—' : Number(val).toFixed(b.dp)}</span><span class="tk-chg ${c}">${chg == null ? '' : `${arrow}${Math.abs(chg).toFixed(b.dp)} ${pctf(pc)}`}</span></span>`;
   });
   // include every currency too
   for (const f of (lastFx || [])) parts.push(`<span class="tk"><b>${f.label.replace(/\s*·.*/, '')}</b><span class="tk-px">${f.price == null ? '—' : Number(f.price).toFixed(f.price < 10 ? 4 : 2)}</span><span class="tk-chg ${cls(f.pct)}">${f.pct == null ? '' : pctf(f.pct)}</span></span>`);
@@ -1007,8 +1036,8 @@ function renderReroute(d) {
     scales: { x: { ticks: { color: '#7c8a99', maxTicksLimit: 6 }, grid: { color: '#151a20' } }, y: { ticks: { color: '#7c8a99' }, grid: { color: '#151a20' } } } } });
 }
 async function loadReroute() { try { renderReroute(await getJSON('/api/reroute')); } catch {} }
-function macroTile(label, value, sub, klass, metric) {
-  return `<div class="kpi${metric ? ' clickable' : ''}"${metric ? ` data-metric="${metric}" title="Click for the chart"` : ''}><div class="kpi-l">${label}</div><div class="kpi-v ${klass || ''}">${value}</div><div class="kpi-s dimtext">${sub || ''}</div></div>`;
+function macroTile(label, value, sub, klass, metric, extra) {
+  return `<div class="kpi${metric ? ' clickable' : ''}"${metric ? ` data-metric="${metric}" title="Click for the chart"` : ''}><div class="kpi-l">${label}</div><div class="kpi-v ${klass || ''}">${value}</div><div class="kpi-s dimtext">${sub || ''}</div>${extra || ''}</div>`;
 }
 function renderMacroRegion() {
   const sel = $('macro-country');
@@ -1035,7 +1064,7 @@ async function loadRegionCurrencies() {
   const seen = new Set();
   const fx = (items || []).filter((i) => i.kind === 'fx').filter((i) => { if (seen.has(i.label)) return false; seen.add(i.label); return true; });
   el.innerHTML = fx.length
-    ? '<div class="kpis">' + fx.map((f) => macroTile(f.label, f.price == null ? '—' : Number(f.price).toFixed(f.price < 10 ? 4 : 2), f.pct != null ? pctf(f.pct) : '', cls(f.pct))).join('') + '</div><div class="macro-note">the chosen region\'s currencies</div>'
+    ? '<div class="kpis">' + fx.map((f) => macroTile(f.label, f.price == null ? '—' : Number(f.price).toFixed(f.price < 10 ? 4 : 2), f.pct != null ? pctf(f.pct) : '', cls(f.pct), null, f.deltas ? deltaStrip(f.deltas) : '')).join('') + '</div><div class="macro-note">the chosen region\'s currencies · moves over 1D/1W/1M/YTD/1Y</div>'
     : '<div class="dimtext" style="padding:8px 12px">no currencies for this region</div>';
 }
 async function loadMacroTickers() {
@@ -1074,12 +1103,12 @@ async function loadCountry() {
   const fxId = COUNTRY_FX_ID[c.fx.sym];
   const f = c.fund || {};
   const gdp = f.gdpGrowth || [];
-  const card = (l, v, s, k) => `<div class="bb-card"${fxId && l === c.fx.label ? ` data-metric="fx:${fxId}" style="cursor:pointer"` : ''}><div class="bb-l">${l}</div><div class="bb-v ${k || ''}">${v}</div><div class="bb-s">${s || ''}</div></div>`;
+  const card = (l, v, s, k, dl) => `<div class="bb-card"${fxId && l === c.fx.label ? ` data-metric="fx:${fxId}" style="cursor:pointer"` : ''}><div class="bb-l">${l}</div><div class="bb-v ${k || ''}">${v}</div><div class="bb-s">${s || ''}</div>${dl ? deltaStrip(dl) : ''}</div>`;
   let html = `<div class="bb-head">${c.label.toUpperCase()} <span class="dimtext">· ${(c.region || '').toUpperCase()}</span></div>`;
 
   html += '<div class="bb-sec">MARKET</div><div class="bb-grid">'
-    + card(c.fx.label, num(c.fx.price, c.fx.price != null && c.fx.price < 10 ? 4 : 2), c.fx.pct != null ? pctf(c.fx.pct) + ' today' : '—', cls(c.fx.pct))
-    + (c.index.label && !/not free/i.test(c.index.label) ? card(c.index.label, num(c.index.price, c.index.price != null && c.index.price < 1000 ? 1 : 0), c.index.pct != null ? pctf(c.index.pct) + ' today' : '—', cls(c.index.pct)) : '')
+    + card(c.fx.label, num(c.fx.price, c.fx.price != null && c.fx.price < 10 ? 4 : 2), (c.fx.pct != null ? pctf(c.fx.pct) + ' today' : '—') + freshBadge(c.fx.source, c.fx.asOf), cls(c.fx.pct), c.fx.deltas)
+    + (c.index.label && !/not free/i.test(c.index.label) ? card(c.index.label, num(c.index.price, c.index.price != null && c.index.price < 1000 ? 1 : 0), (c.index.pct != null ? pctf(c.index.pct) + ' today' : '—') + freshBadge(c.index.source, c.index.asOf), cls(c.index.pct), c.index.deltas) : '')
     + '</div>';
 
   html += '<div class="bb-sec">RATES &amp; INFLATION</div><div class="bb-grid">';

@@ -65,12 +65,13 @@ main { max-width: 1240px; margin: 0 auto; padding: 14px; display: grid; gap: 14p
 .group { margin-bottom: 8px; }
 .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(215px, 1fr)); gap: 10px; }
 .tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px; }
-.tile { display: grid; grid-template-columns: 1fr auto; grid-template-areas: "name star" "px chg" "spark spark"; align-items: baseline; column-gap: 8px; row-gap: 1px; background: var(--panel); border: 1px solid var(--line); color: var(--text); padding: 7px 10px; cursor: pointer; font-family: var(--mono); text-align: left; }
+.tile { display: grid; grid-template-columns: 1fr auto; grid-template-areas: "name star" "px px" "spark spark"; align-items: baseline; column-gap: 8px; row-gap: 1px; background: var(--panel); border: 1px solid var(--line); color: var(--text); padding: 7px 10px; cursor: pointer; font-family: var(--mono); text-align: left; }
 .tile:hover { border-color: var(--amber); }
 .t-name { grid-area: name; min-width: 0; color: #c9d4df; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .t-px { grid-area: px; font-variant-numeric: tabular-nums; font-weight: 700; font-size: 13px; }
 .t-chg { grid-area: chg; font-size: 11px; min-width: 46px; text-align: right; }
 .tile .spark { grid-area: spark; display: block; width: 100%; height: 22px; margin-top: 2px; opacity: .85; }
+.tile .t-foot { grid-column: 1 / -1; display: block; }
 .star { grid-area: star; justify-self: end; color: var(--dim); cursor: pointer; font-size: 13px; padding-left: 4px; }
 .star:hover { color: var(--amber2); }
 .star.on { color: var(--amber); }
@@ -222,6 +223,15 @@ footer li { margin-bottom: 2px; }
 .kpi.clickable { cursor: pointer; }
 .kpi.clickable:hover { background: #10151b; }
 .macro-note { padding: 6px 12px; font-size: 10px; color: var(--dim); }
+/* Multi-horizon deltas (1D/1W/1M/YTD/1Y) + source/as-of freshness badge */
+.dstrip { display: inline-flex; flex-wrap: wrap; gap: 1px 9px; margin-top: 4px; }
+.dl { display: inline-flex; flex-direction: column; align-items: flex-end; min-width: 36px; }
+.dl i { font-style: normal; font-size: 8px; letter-spacing: .5px; color: var(--dim); }
+.dl b { font-size: 10px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.fresh { display: block; margin-top: 3px; font-size: 9px; color: var(--dim); letter-spacing: .3px; }
+.fresh em { font-style: normal; color: var(--amber); }
+.bb-card .dstrip, .kpi .dstrip { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 1px 6px; }
+.bb-card .dl, .kpi .dl { align-items: flex-start; min-width: 0; }
 .fold-panel { background: var(--panel); border: 1px solid var(--line); }
 .fold-panel > summary { cursor: pointer; list-style: none; padding: 9px 12px; font-size: 11px; letter-spacing: 2px; color: var(--amber); }
 .fold-panel > summary::-webkit-details-marker { display: none; }
@@ -241,6 +251,7 @@ footer li { margin-bottom: 2px; }
 .bp-comp-l { color: var(--dim); margin-right: 6px; }
 .bp-comp em { font-style: normal; }
 .bp-spark { padding: 5px 12px 2px; }
+.bp-deltas { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; padding: 6px 12px 0; }
 .bp-spark svg { width: 100%; height: 42px; display: block; opacity: .9; }
 
 /* Tabs */

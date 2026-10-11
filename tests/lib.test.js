@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { sgn, inBox, haversineNm, isoWeek, monthly, pctOver, percentile, realizedVol, computeCracks, backAdjust, pearson, logReturns } from '../src/lib.js';
+import { sgn, inBox, haversineNm, isoWeek, monthly, pctOver, percentile, realizedVol, computeCracks, backAdjust, pearson, logReturns, horizonDeltas } from '../src/lib.js';
 
 test('sgn formats with sign', () => {
   assert.equal(sgn(4.39), '+4.39');
@@ -59,6 +59,24 @@ test('backAdjust removes roll jumps', () => {
   const raw = [10, 11, 13, 14];
   const gaps = new Map([[2, 1]]); // new − old = 13 − 12 = +1
   assert.deepEqual(backAdjust(raw, gaps), [11, 12, 13, 14]);
+});
+
+test('horizonDeltas computes 1D/1W/1M/YTD/1Y moves from a dated series', () => {
+  const dates  = ['2023-12-01','2024-01-01','2024-02-01','2024-03-01','2024-04-01','2024-05-01','2024-06-01','2024-07-01','2024-08-01','2024-09-01','2024-10-01','2024-11-01','2024-12-01','2025-01-01','2025-02-01','2025-03-01','2025-04-01','2025-05-01','2025-06-01','2025-06-15'];
+  const values = [50,52,54,56,58,60,62,64,66,68,70,72,74,80,82,84,86,88,90,95];
+  const d = horizonDeltas(dates, values);
+  assert.equal(d.d1, 5.56);   // 95 vs 90 (previous observation)
+  assert.equal(d.w1, 5.56);   // 95 vs 90 (latest point ≤ 7 days back)
+  assert.equal(d.m1, 7.95);   // 95 vs 88 (latest point ≤ 30 days back)
+  assert.equal(d.ytd, 18.75); // 95 vs 80 (year-to-date base)
+  assert.equal(d.y1, 53.23);  // 95 vs 62 (latest point ≤ 1 year back)
+});
+
+test('horizonDeltas never fakes a window it cannot compute', () => {
+  assert.deepEqual(horizonDeltas(['2025-01-01'], [100]), { d1: null, w1: null, m1: null, ytd: null, y1: null });
+  assert.equal(horizonDeltas(['2025-03-01', '2025-06-01'], [100, 110]).ytd, null); // starts mid-year → no YTD base
+  assert.equal(horizonDeltas(['2025-06-01', '2025-06-15'], [0, 5]).d1, null);      // zero base skipped, not divided
+  assert.equal(horizonDeltas(['2025-06-01', '2025-06-10', '2025-06-15'], [10, null, 12]).d1, 20); // nulls skipped
 });
 
 test('computeCracks builds refining margins', () => {
