@@ -2124,6 +2124,23 @@ const server = http.createServer(async (req, res) => {
       if (!MACRO_COUNTRIES[id]) return sendJSON(res, 404, { error: 'unknown region' });
       return sendJSON(res, 200, await getRegionTickers(id).catch((e) => ({ error: String(e.message), items: [] })));
     }
+    if (url.pathname === '/api/probe') {
+      const cands = {
+        imf_datamapper: 'https://www.imf.org/external/datamapper/api/v1/GGXWDG_NGDP',
+        imf_sdmx: 'https://dataservices.imf.org/REST/SDMX_JSON.svc/Dataflow',
+        oecd_stats: 'https://stats.oecd.org/SDMX-JSON/data/',
+        eurostat: 'https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0/data/nama_10_gdp?format=JSON',
+        fred: 'https://fred.stlouisfed.org/graph/fredgraph.csv?id=DGS10',
+        worldbank: 'https://api.worldbank.org/v2/country/USA/indicator/GC.DOD.TOTL.GD.ZS?format=json',
+      };
+      const out = {};
+      await Promise.all(Object.entries(cands).map(async ([k, u]) => {
+        const t0 = Date.now();
+        try { const r = await fetch(u, { headers: UA }); const body = await r.text(); out[k] = { status: r.status, len: body.length, ms: Date.now() - t0 }; }
+        catch (e) { out[k] = { error: String(e.message), ms: Date.now() - t0 }; }
+      }));
+      return sendJSON(res, 200, out);
+    }
     if (url.pathname === '/api/yields') {
       const id = url.searchParams.get('id');
       if (!ALL_COUNTRIES[id]) return sendJSON(res, 404, { error: 'unknown country' });
