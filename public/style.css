@@ -392,8 +392,8 @@ footer li { margin-bottom: 2px; }
 /* Bloomberg-style country card dashboard */
 .bb-head { padding: 8px 12px; font-size: 12px; letter-spacing: 2px; color: var(--amber); }
 .bb-sec { padding: 9px 12px 3px; font-size: 10px; letter-spacing: 2px; color: var(--dim); }
-.bb-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 1px; background: var(--line); }
-.bb-card { background: #0c0f13; padding: 8px 10px; }
+.bb-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+.bb-card { background: #0c0f13; padding: 8px 10px; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); }
 .bb-card:hover { background: #10151b; }
 .bb-l { font-size: 10px; letter-spacing: 1px; color: var(--dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .bb-v { font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; margin: 2px 0; }
