@@ -498,6 +498,24 @@ async function getMacro() {
   }));
 }
 
+// 5-year seasonal range by day-of-year (for the price chart band).
+async function getSeasonal(b, years = 5) {
+  return cached('season:' + b.id + ':' + years, 12 * 3600e3, async () => {
+    const map = b.paper ? (await cached('hp:' + b.paper, 12 * 3600e3, () => yahooSeries(b.paper, years + 'y', '1d'))).series : await spotSeries(b, years * 366);
+    if (!map || !Object.keys(map).length) return { error: 'no data' };
+    const byMD = {};
+    for (const d of Object.keys(map)) { const md = d.slice(5); (byMD[md] ||= []).push(map[d]); }
+    const mds = Object.keys(byMD).sort();
+    const low = {}, high = {}, median = {};
+    for (let i = 0; i < mds.length; i++) {
+      const win = mds.slice(Math.max(0, i - 3), i + 4).flatMap((k) => byMD[k]).sort((a, c) => a - c);
+      const md = mds[i];
+      low[md] = win[0]; high[md] = win[win.length - 1]; median[md] = win[Math.floor(win.length / 2)];
+    }
+    return { low, high, median };
+  });
+}
+
 // ---------------------------------------------------------------------------
 // Macro dashboard (rates, inflation, growth, FX) — the start of the expansion
 // ---------------------------------------------------------------------------
@@ -1128,6 +1146,11 @@ const server = http.createServer(async (req, res) => {
       const b = BENCHMARKS.find((x) => x.id === url.searchParams.get('id'));
       if (!b) return sendJSON(res, 404, { error: 'unknown benchmark' });
       return sendJSON(res, 200, await getRange(b, url.searchParams.get('range') || 'ytd'));
+    }
+    if (url.pathname === '/api/seasonal') {
+      const b = BENCHMARKS.find((x) => x.id === url.searchParams.get('id'));
+      if (!b) return sendJSON(res, 404, { error: 'unknown benchmark' });
+      return sendJSON(res, 200, await getSeasonal(b).catch((e) => ({ error: String(e.message) })));
     }
     if (url.pathname === '/api/reroute') return sendJSON(res, 200, { series: rerouteSeries, current: rerouteSeries[rerouteSeries.length - 1] || null });
     if (url.pathname === '/api/inventories') return sendJSON(res, 200, await getInventories());

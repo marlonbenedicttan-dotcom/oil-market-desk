@@ -41,6 +41,8 @@ async function getRange(id, range) {
   if (!rangeCache[k]) rangeCache[k] = await getJSON(`/api/range?id=${encodeURIComponent(id)}&range=${range}`);
   return rangeCache[k];
 }
+const seasonCache = {};
+async function getSeasonal(id) { if (!seasonCache[id]) seasonCache[id] = await getJSON('/api/seasonal?id=' + encodeURIComponent(id)); return seasonCache[id]; }
 
 // last two non-null points → day change + %
 function lastTwo(arr) {
@@ -101,24 +103,29 @@ function crackCard(c) {
       <div class="row"><span class="k">Profit / barrel</span><span class="v basis ${cls(c.value)}">${signed(c.value)}</span></div>
       <div class="row"><span class="k">Read</span><span class="v dimtext" style="font-weight:400">${read}</span></div></div>`;
 }
+function watchlist() { try { return JSON.parse(localStorage.getItem('oilbasis.watch') || '[]'); } catch { return []; } }
+function toggleWatch(id) { const w = watchlist(); const i = w.indexOf(id); if (i >= 0) w.splice(i, 1); else w.push(id); localStorage.setItem('oilbasis.watch', JSON.stringify(w)); }
+function tileHtml(b) {
+  const s = history?.series?.[b.id];
+  const arr = b.paper != null ? s?.paper : s?.physical;
+  const val = b.paper != null ? b.paper : b.physical;
+  const pc = pctOf(arr);
+  const starred = watchlist().includes(b.id);
+  return `<div class="tile" data-id="${b.id}" title="${b.label} — click for history">
+    <span class="t-name">${b.label}</span>
+    <span class="t-px">${val == null ? '—' : Number(val).toFixed(b.dp)}</span>
+    <span class="t-chg ${cls(pc)}">${pc == null ? '' : pctf(pc)}</span>
+    <span class="star ${starred ? 'on' : ''}" data-star="${b.id}" title="Pin to watchlist">${starred ? '★' : '☆'}</span>
+  </div>`;
+}
 function renderCards(m) {
+  const w = watchlist();
+  const watch = m.benchmarks.filter((b) => w.includes(b.id));
   const groups = {};
   for (const b of m.benchmarks) (groups[b.group] ||= []).push(b);
-  const html = Object.entries(groups).map(([g, list]) => {
-    const tiles = list.map((b) => {
-      const s = history?.series?.[b.id];
-      const arr = b.paper != null ? s?.paper : s?.physical;
-      const val = b.paper != null ? b.paper : b.physical;
-      const pc = pctOf(arr);
-      const paperOnly = b.physical == null;
-      return `<button class="tile" data-id="${b.id}" title="${b.label} — click for history">
-        <span class="t-name">${b.label}${paperOnly ? '' : ''}</span>
-        <span class="t-px">${val == null ? '—' : Number(val).toFixed(b.dp)}</span>
-        <span class="t-chg ${cls(pc)}">${pc == null ? '' : pctf(pc)}</span>
-      </button>`;
-    }).join('');
-    return `<div class="group"><div class="gtitle">${g.toUpperCase()}</div><div class="tiles">${tiles}</div></div>`;
-  }).join('');
+  let html = '';
+  if (watch.length) html += `<div class="group"><div class="gtitle">WATCHLIST</div><div class="tiles">${watch.map(tileHtml).join('')}</div></div>`;
+  html += Object.entries(groups).map(([g, list]) => `<div class="group"><div class="gtitle">${g.toUpperCase()}</div><div class="tiles">${list.map(tileHtml).join('')}</div></div>`).join('');
   $('cards').innerHTML = html;
 }
 
@@ -293,6 +300,16 @@ async function renderChart() {
     labels = history.dates;
     datasets = datasetsFor(metric, history, data);
     if (range !== '6m' && !bench) summary = 'Range view is per-benchmark — pick a benchmark above.';
+    if (range === '6m' && bench) {
+      try {
+        const sea = await getSeasonal(bench.id);
+        if (sea && !sea.error) {
+          const band = (label, arr) => ({ label, data: arr, borderColor: '#3a4d63', borderWidth: 1, borderDash: [4, 4], pointRadius: 0, tension: 0.25, spanGaps: true, fill: false });
+          datasets.push(band('5-yr low', labels.map((d) => (sea.low[d.slice(5)] ?? null))));
+          datasets.push(band('5-yr high', labels.map((d) => (sea.high[d.slice(5)] ?? null))));
+        }
+      } catch {}
+    }
   }
 
   $('lt-summary').textContent = (summary ? summary + '  ·  ' : '') + 'hover to see % change · click to set an anchor, then drag to measure between two points';
@@ -805,6 +822,8 @@ $('alert-settings')?.addEventListener('click', () => {
 $('tabs').addEventListener('click', (e) => { const b = e.target.closest('.tab'); if (b) showTab(b.dataset.tab); });
 $('help-btn').addEventListener('click', () => { const g = $('glossary'); g.innerHTML = GLOSSARY; g.classList.toggle('hidden'); });
 $('cards').addEventListener('click', (e) => {
+  const star = e.target.closest('.star');
+  if (star) { toggleWatch(star.dataset.star); renderCards(data); return; }
   const tile = e.target.closest('.tile[data-id]');
   if (!tile) return;
   const id = tile.dataset.id;

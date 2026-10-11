@@ -70,6 +70,9 @@ main { max-width: 1240px; margin: 0 auto; padding: 14px; display: grid; gap: 14p
 .t-name { color: #c9d4df; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .t-px { font-variant-numeric: tabular-nums; font-weight: 700; font-size: 12px; }
 .t-chg { font-size: 11px; min-width: 46px; text-align: right; }
+.star { color: var(--dim); cursor: pointer; font-size: 13px; padding-left: 4px; }
+.star:hover { color: var(--amber2); }
+.star.on { color: var(--amber); }
 .card { background: var(--panel); border: 1px solid var(--line); padding: 10px 12px; }
 .card h3 { margin: 0 0 8px; font-size: 12px; letter-spacing: .5px; display: flex; justify-content: space-between; align-items: baseline; }
 .card h3 span { color: var(--dim); font-weight: 400; font-size: 10px; }
