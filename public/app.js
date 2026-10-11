@@ -290,12 +290,12 @@ async function loadMarket() {
 // ---------------------------------------------------------------------------
 let map, layer;
 function initMap() {
-  map = L.map('map', { worldCopyJump: true, minZoom: 1 }).setView([25, 40], 2);
-  const esri = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', { attribution: 'Tiles © Esri', maxZoom: 16 });
+  map = L.map('map', { worldCopyJump: false, minZoom: 2, maxZoom: 16, maxBounds: [[-85, -180], [85, 180]], maxBoundsViscosity: 1.0 }).setView([25, 40], 2);
+  const esri = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', { attribution: 'Tiles © Esri', maxZoom: 16, noWrap: true });
   esri.addTo(map);
-  L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', { maxZoom: 16 }).addTo(map);
+  L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', { maxZoom: 16, noWrap: true }).addTo(map);
   let fellBack = false;
-  esri.on('tileerror', () => { if (fellBack) return; fellBack = true; map.eachLayer((l) => { if (l instanceof L.TileLayer && l !== layer) map.removeLayer(l); }); L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap', maxZoom: 18 }).addTo(map); });
+  esri.on('tileerror', () => { if (fellBack) return; fellBack = true; map.eachLayer((l) => { if (l instanceof L.TileLayer && l !== layer) map.removeLayer(l); }); L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap', maxZoom: 18, noWrap: true }).addTo(map); });
   layer = L.layerGroup().addTo(map);
   setTimeout(() => map.invalidateSize(), 200);
 }
@@ -414,8 +414,9 @@ function renderSectors(eq, m, a, t) {
   }).join('');
 }
 function renderChokepoints(d) {
-  if (!d?.chokepoints) return;
-  $('chokepoints').innerHTML = '<div class="chokes-h dimtext">TANKERS IN CHOKEPOINTS (live)</div>' +
+  const el = $('chokepoints');
+  if (!el || !d?.chokepoints) return;
+  el.innerHTML = '<div class="chokes-h dimtext">TANKERS IN CHOKEPOINTS (live)</div>' +
     d.chokepoints.map((c) => `<span class="choke"><b>${c.count}</b> ${c.name}</span>`).join('');
 }
 const MONTHS = { F: 'Jan', G: 'Feb', H: 'Mar', J: 'Apr', K: 'May', M: 'Jun', N: 'Jul', Q: 'Aug', U: 'Sep', V: 'Oct', X: 'Nov', Z: 'Dec' };
@@ -511,8 +512,8 @@ function renderFlows(d) {
     <div style="padding:6px 12px 0"><div class="verdict ${ms.score >= 2 ? 'tight' : 'mixed'}">${ms.verdict}</div>
     ${ms.signals.map((s) => `<div class="ev"><span class="ev-l">${s.label}</span><span class="ev-v ${s.hot ? 'pos' : ''}">${s.value != null ? (s.value >= 0 ? '+' : '') + Number(s.value).toFixed(2) : '—'}</span><span class="tag ${s.hot ? 'tight' : 'neutral'}">${s.hot ? 'STRESS' : 'ok'}</span><span class="ev-n dimtext">${s.hot ? 'pricing disruption' : 'normal'}</span></div>`).join('')}</div>` : '';
   const an = d.anomalies || {};
-  const anHtml = `<div class="chokes-h dimtext" style="padding:0 12px">TRACKER ODDITIES (ships we can still see)</div>
-    <div class="chokes"><span class="choke"><b>${an.spoof || 0}</b> fake jumps (spoofing)</span><span class="choke"><b>${an.darkGap || 0}</b> went silent (hidden trips)</span></div>`;
+  const anHtml = (an.spoof || an.darkGap) ? `<div class="chokes-h dimtext" style="padding:0 12px">TRACKER ODDITIES (ships we can still see)</div>
+    <div class="chokes"><span class="choke"><b>${an.spoof || 0}</b> fake jumps (spoofing)</span><span class="choke"><b>${an.darkGap || 0}</b> went silent (hidden trips)</span></div>` : '';
   const routes = (d.routes || []).map((r) => `<span class="choke ${r.perMin === 0 ? 'cold' : ''}"><b>${r.count}</b> ${r.name} <span class="dimtext">${r.perMin}/min</span></span>`).join('');
   const routesHtml = `<div class="chokes-h dimtext" style="padding:0 12px">ARE SHIPS DODGING CHOKEPOINTS?</div><div class="chokes">${routes}</div>`;
   const divHtml = d.diversion ? `<div class="qflag watch" style="margin:8px 12px">🧭 ${d.diversion}</div>` : '';
@@ -690,12 +691,11 @@ async function loadExtra() {
 // ---------------------------------------------------------------------------
 // Boot
 // ---------------------------------------------------------------------------
-async function refreshAll() {
+async function refreshLive() {
   try { await loadMarket(); } catch (e) { showError(e.message); console.error(e); }
   try { await loadTankers(); } catch (e) { showError(e.message); console.error(e); }
-  await loadExtra();
 }
-$('refresh').addEventListener('click', () => { nextRefresh = 60; refreshAll(); });
+$('refresh').addEventListener('click', () => { nextRefresh = 60; refreshLive(); loadExtra(); });
 $('metric').addEventListener('change', () => { localStorage.setItem('oilbasis.metric', $('metric').value); chartAnchor = null; renderChart(); });
 $('range').addEventListener('change', () => { chartAnchor = null; renderChart(); });
 $('chart').addEventListener('click', (ev) => {
@@ -730,9 +730,12 @@ $('cards').addEventListener('click', (e) => {
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});
   if ('Notification' in window && Notification.permission === 'default') { try { await Notification.requestPermission(); } catch {} }
   await loadHistory().catch((e) => showError(e.message));
-  await refreshAll();
+  await loadExtra();          // slow feeds (cached server-side)
+  await refreshLive();        // prices + ships
   loadAnalogue();
   loadReroute();
-  setInterval(loadTankers, 15000);
-  setInterval(() => { nextRefresh -= 5; if (nextRefresh <= 0) { nextRefresh = 60; refreshAll(); } const cd = $('countdown'); if (cd) cd.textContent = `auto ${nextRefresh}s`; }, 5000);
+  setInterval(loadTankers, 15000);                                  // ships
+  setInterval(loadReroute, 300000);                                 // reroute index
+  setInterval(loadExtra, 600000);                                   // slow feeds every 10 min
+  setInterval(() => { nextRefresh -= 5; if (nextRefresh <= 0) { nextRefresh = 60; refreshLive(); } const cd = $('countdown'); if (cd) cd.textContent = `auto ${nextRefresh}s`; }, 5000);
 })();

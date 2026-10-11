@@ -902,6 +902,8 @@ const sendJSON = (res, code, obj) => { res.writeHead(code, { 'content-type': 'ap
 
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, `http://${req.headers.host}`);
+  // Health check (no auth) for uptime monitors.
+  if (url.pathname === '/health') { res.writeHead(200, { 'content-type': 'application/json' }); return res.end(JSON.stringify({ ok: true, uptime: Math.round(process.uptime()) })); }
   // Optional basic auth — set AUTH_USER + AUTH_PASS to protect a public deployment.
   if (process.env.AUTH_USER && process.env.AUTH_PASS) {
     const hdr = req.headers.authorization || '';

@@ -272,6 +272,27 @@ footer li { margin-bottom: 2px; }
 .bl-chips { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 6px; }
 .chip { border: 1px solid var(--line2); padding: 2px 8px; font-size: 11px; color: var(--amber2); }
 
+/* Mobile */
+@media (max-width: 640px) {
+  .topbar { padding: 6px 10px; }
+  .brand .sub { display: none; }
+  .meta { gap: 8px; }
+  .brand h1 { font-size: 13px; letter-spacing: 1.5px; }
+  main { padding: 10px; gap: 10px; }
+  .kpis { grid-template-columns: 1fr 1fr; }
+  .kpi { border-bottom: 1px solid var(--line); }
+  .kpi-v { font-size: 18px; }
+  .tab { padding: 8px 10px; font-size: 10px; letter-spacing: 1px; }
+  .cards { grid-template-columns: 1fr; }
+  .ev { grid-template-columns: 1fr 64px 58px; }
+  .ev-n { display: none; }
+  .ctx-row { grid-template-columns: 1fr 60px 78px; }
+  .ctx-bar { display: none; }
+  .chart-wrap { height: 240px; }
+  #map { height: 300px; margin: 0 8px; }
+  .bl-num { font-size: 34px; }
+}
+
 .glossary { background: var(--panel2); border: 1px solid var(--line); padding: 12px 14px; margin: 12px; }
 .glossary dl { margin: 0; display: grid; grid-template-columns: max-content 1fr; gap: 5px 16px; }
 .glossary dt { color: var(--amber); font-weight: 700; }
