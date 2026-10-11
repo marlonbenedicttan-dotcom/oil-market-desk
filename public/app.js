@@ -52,6 +52,7 @@ const COUNTRY_FX_ID = { 'DX-Y.NYB': 'dxy', 'EURUSD=X': 'eurusd', 'GBPUSD=X': 'gb
 let chartDp = 2;        // decimals for the current chart (set in renderChart)
 const seenAlerts = new Set();
 let serverAlerts = [];  // /api/alerts — the server's alert engine (basis extremes, data checks, idle ships)
+const CHART_TTL = 15 * 60e3;   // chart series re-fetch at most every 15 min (they used to cache forever)
 const ltCache = {};
 
 const GLOSSARY = `
@@ -72,18 +73,25 @@ const GLOSSARY = `
 function showError(msg) { const el = $('error'); el.classList.remove('hidden'); el.textContent = '⚠ ' + msg; }
 async function getJSON(url) { const r = await fetch(url); if (!r.ok) throw new Error(`${url} -> HTTP ${r.status}`); return r.json(); }
 async function getLongterm(id, years = 10) {
-  const k = id + years;
-  if (!ltCache[k]) ltCache[k] = await getJSON(`/api/longterm?id=${encodeURIComponent(id)}&years=${years}`);
-  return ltCache[k];
+  const k = id + years; const hit = ltCache[k];
+  if (hit && Date.now() - hit.t < CHART_TTL) return hit.v;
+  const v = await getJSON(`/api/longterm?id=${encodeURIComponent(id)}&years=${years}`);
+  ltCache[k] = { t: Date.now(), v }; return v;
 }
 const rangeCache = {};
 async function getRange(id, range) {
-  const k = id + range;
-  if (!rangeCache[k]) rangeCache[k] = await getJSON(`/api/range?id=${encodeURIComponent(id)}&range=${range}`);
-  return rangeCache[k];
+  const k = id + range; const hit = rangeCache[k];
+  if (hit && Date.now() - hit.t < CHART_TTL) return hit.v;
+  const v = await getJSON(`/api/range?id=${encodeURIComponent(id)}&range=${range}`);
+  rangeCache[k] = { t: Date.now(), v }; return v;
 }
 const seasonCache = {};
-async function getSeasonal(id) { if (!seasonCache[id]) seasonCache[id] = await getJSON('/api/seasonal?id=' + encodeURIComponent(id)); return seasonCache[id]; }
+async function getSeasonal(id) {
+  const hit = seasonCache[id];
+  if (hit && Date.now() - hit.t < CHART_TTL) return hit.v;
+  const v = await getJSON('/api/seasonal?id=' + encodeURIComponent(id));
+  seasonCache[id] = { t: Date.now(), v }; return v;
+}
 
 // last two non-null points → day change + %
 function lastTwo(arr) {
@@ -761,6 +769,14 @@ async function renderCompare() {
 }
 
 async function loadHistory() { history = await getJSON('/api/history'); }
+// Re-pull the daily history and redraw everything that depends on it (the 1D/1W/1M/YTD/1Y
+// strips + sparklines), so they keep up as new daily bars arrive — not just at page load.
+async function reloadHistory() {
+  try { await loadHistory(); } catch { return; }
+  if (!data) return;
+  renderCards(data); renderSnapshot(); renderMarketState(); renderTicker(data); renderWatchlist();
+  if ($('range') && $('range').value === '6m') renderChart();
+}
 async function loadMarket() {
   data = await getJSON('/api/market');
   renderCards(data); buildMetricOptions(data); buildBpOptions();
@@ -1588,6 +1604,7 @@ function showTab(name) {
 
 async function loadExtra() {
   if (!data) return; // need prices first
+  reloadHistory();   // refresh the deltas + sparklines (fire-and-forget)
   try {
     const [inv, eq, chk, an, fl, pr] = await Promise.all([
       getJSON('/api/inventories').catch(() => null),
