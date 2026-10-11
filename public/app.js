@@ -1057,6 +1057,7 @@ async function loadCountry() {
     + macroTile('UNEMPLOYMENT', f.unemployment ? f.unemployment.value + '%' : '—', f.unemployment ? String(f.unemployment.year) : 'n/a')
     + '</div>';
   if (gdp.length > 1) html += `<div class="dimtext" style="padding:2px 12px 8px">real GDP growth by year — ${gdp.map((g) => `${g.year}: ${g.value}%`).join(' · ')}</div>`;
+  if (!c.policy && c.policyNote) html += `<div class="macro-note">🏦 ${c.policyNote}</div>`;
   if (c.takeaways && c.takeaways.length) html += '<div class="macro-note">🔑 KEY TAKEAWAYS</div><ul class="ins-list">' + c.takeaways.map((t) => `<li>${t}</li>`).join('') + '</ul>';
   if (c.oilLink != null) {
     const read = c.oilLink > 0.2 ? 'the currency weakens when oil rises (importer strain)' : c.oilLink < -0.2 ? 'the currency firms with oil (exporter benefit)' : 'no strong currency–oil link right now';
@@ -1066,7 +1067,7 @@ async function loadCountry() {
   el.innerHTML = html;
   loadMacroNews();
   loadCountryChart();
-  renderPolicyChart(c.policy);
+  renderPolicyChart(c.policy, c.policyNote);
 }
 // Per-country chart: equity index and currency, both indexed to 100 so they compare.
 async function loadCountryChart() {
@@ -1091,14 +1092,14 @@ async function loadCountryChart() {
 }
 // Central-bank policy rate history (stepped line; hover shows the rate).
 let policyChart = null;
-function renderPolicyChart(policy) {
+function renderPolicyChart(policy, policyNote) {
   const cv = $('policy-chart');
   if (!cv) return;
   const wrap = cv.parentElement;
   const note = $('policy-note');
   if (!policy || !policy.history || !policy.history.length) {
     if (wrap) wrap.style.display = 'none';
-    if (note) note.textContent = 'no free policy-rate series for this country';
+    if (note) note.textContent = policyNote || 'no free policy-rate series for this country';
     return;
   }
   if (wrap) wrap.style.display = '';

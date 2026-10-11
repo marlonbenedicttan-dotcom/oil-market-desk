@@ -1171,6 +1171,13 @@ async function getRegionTickers(region) {
 }
 // BIS central-bank policy rates (free). Area codes: euro area = XM; DE/FR use XM.
 const BIS_AREA = { us: 'US', ea: 'XM', de: 'XM', fr: 'XM', uk: 'GB', jp: 'JP', cn: 'CN', hk: 'HK', id: 'ID', th: 'TH', my: 'MY', ph: 'PH', in: 'IN', kr: 'KR', au: 'AU' };
+// Where there is no policy rate, say why (accurately).
+const POLICY_NOTE = {
+  sg: 'Singapore has no central-bank policy interest rate: the MAS runs monetary policy by managing the S$ exchange rate (the S$NEER), not a rate. Its market benchmark is SORA (Singapore Overnight Rate Average).',
+  tw: 'Taiwan’s policy rate (CBC discount rate) is not on the free BIS policy-rate feed.',
+  vn: 'Vietnam’s policy rate (SBV refinancing rate) is not on the free BIS policy-rate feed.',
+  ph: 'The BIS series currently carries no value for the Philippines policy rate.',
+};
 async function getPolicyRate(area) {
   if (!area) return null;
   return cached('bis:' + area, 6 * 3600e3, async () => {
@@ -1219,6 +1226,7 @@ async function getCountry(id) {
     const macro = macroMd ? (macroMd.regions?.[rk] || null) : null;
     const takes = [];
     if (policy) takes.push(`Central bank policy rate <b>${policy.latest.value}%</b> (as of ${policy.latest.date}).`);
+    else if (POLICY_NOTE[id]) takes.push(POLICY_NOTE[id]);
     if (perf.index != null && c.index) takes.push(`${c.indexLabel} <b>${perf.index >= 0 ? '+' : ''}${perf.index.toFixed(0)}%</b> over the last year.`);
     if (perf.fx != null) takes.push(`${c.fxLabel} <b>${perf.fx >= 0 ? '+' : ''}${perf.fx.toFixed(0)}%</b> over the last year${perf.fx >= 0 ? ' (a higher USD-pair = weaker local currency)' : ''}.`);
     if (inflation || unemployment) takes.push(`Inflation <b>${inflation ? inflation.value + '% (' + inflation.year + ')' : 'n/a'}</b> · unemployment <b>${unemployment ? unemployment.value + '% (' + unemployment.year + ')' : 'n/a'}</b>.`);
@@ -1228,7 +1236,7 @@ async function getCountry(id) {
     return {
       id, label: c.label, region: c.region, iso3: c.iso3, oil: c.oil,
       fx: { label: c.fxLabel, sym: c.fx, ...fx }, index: { label: c.indexLabel, sym: c.index, ...idx },
-      macro, oilLink, perf, takeaways: takes, policy,
+      macro, oilLink, perf, takeaways: takes, policy, policyNote: POLICY_NOTE[id] || null,
       fund: { gdpGrowth: gdpGrowth.slice(-6), debtToGdp, inflation, unemployment, source: 'World Bank (annual)' },
     };
   });
