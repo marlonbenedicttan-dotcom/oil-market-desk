@@ -2125,20 +2125,17 @@ const server = http.createServer(async (req, res) => {
       return sendJSON(res, 200, await getRegionTickers(id).catch((e) => ({ error: String(e.message), items: [] })));
     }
     if (url.pathname === '/api/probe') {
-      const cands = {
-        imf_datamapper: 'https://www.imf.org/external/datamapper/api/v1/GGXWDG_NGDP',
-        imf_sdmx: 'https://dataservices.imf.org/REST/SDMX_JSON.svc/Dataflow',
-        oecd_stats: 'https://stats.oecd.org/SDMX-JSON/data/',
-        eurostat: 'https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0/data/nama_10_gdp?format=JSON',
-        fred: 'https://fred.stlouisfed.org/graph/fredgraph.csv?id=DGS10',
-        worldbank: 'https://api.worldbank.org/v2/country/USA/indicator/GC.DOD.TOTL.GD.ZS?format=json',
-      };
+      const browser = { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36', 'Accept': 'application/json, text/plain, */*', 'Accept-Language': 'en-US,en;q=0.9', 'Referer': 'https://www.imf.org/' };
+      const cands = [
+        ['imf_headers', 'https://www.imf.org/external/datamapper/api/v1/GGXWDG_NGDP', browser],
+        ['oecd_flow', 'https://stats.oecd.org/SDMX-JSON/dataflow/all/all/latest', UA],
+        ['oecd_new', 'https://sdmx.oecd.org/public/rest/dataflow/all/all/latest?format=jsondata', UA],
+        ['fred_usdebt', 'https://fred.stlouisfed.org/graph/fredgraph.csv?id=GFDEGDQ188S', UA],
+        ['fred_jpdebt', 'https://fred.stlouisfed.org/graph/fredgraph.csv?id=GGGDTAJPA188N', UA],
+        ['fred_iddebt', 'https://fred.stlouisfed.org/graph/fredgraph.csv?id=GGGDTAIDA188N', UA],
+      ];
       const out = {};
-      await Promise.all(Object.entries(cands).map(async ([k, u]) => {
-        const t0 = Date.now();
-        try { const r = await fetch(u, { headers: UA }); const body = await r.text(); out[k] = { status: r.status, len: body.length, ms: Date.now() - t0 }; }
-        catch (e) { out[k] = { error: String(e.message), ms: Date.now() - t0 }; }
-      }));
+      await Promise.all(cands.map(async ([k, u, h]) => { const t0 = Date.now(); try { const r = await fetch(u, { headers: h }); const b = await r.text(); out[k] = { status: r.status, len: b.length, ms: Date.now() - t0, snip: b.slice(0, 50).replace(/\n/g, ' ') }; } catch (e) { out[k] = { error: String(e.message), ms: Date.now() - t0 }; } }));
       return sendJSON(res, 200, out);
     }
     if (url.pathname === '/api/yields') {
