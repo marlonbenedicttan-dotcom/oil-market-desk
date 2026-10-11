@@ -274,11 +274,15 @@ async function getInventories() {
       const targetWk = isoWeek(last.period);
       const sameWeek = wows.filter((w) => isoWeek(w.period) === targetWk);
       const seasonal = sameWeek.length >= 3 ? sameWeek.reduce((a, b) => a + b.wow, 0) / sameWeek.length : null;
+      const sMin = sameWeek.length >= 3 ? Math.min(...sameWeek.map((w) => w.wow)) : null;
+      const sMax = sameWeek.length >= 3 ? Math.max(...sameWeek.map((w) => w.wow)) : null;
       const wow = prev ? last.value - prev.value : null;
       items.push({
         key: k, label: INV_SERIES[k].label, period: last.period, value: last.value,
         wow, chg4: wk4 ? last.value - wk4.value : null,
         seasonal: seasonal != null ? Math.round(seasonal) : null,
+        seasonalMin: sMin != null ? Math.round(sMin) : null,
+        seasonalMax: sMax != null ? Math.round(sMax) : null,
         surprise: seasonal != null && wow != null ? Math.round(wow - seasonal) : null,
         years: sameWeek.length,
       });

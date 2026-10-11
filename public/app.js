@@ -134,18 +134,31 @@ function tankerInsights(t) {
   out.push(`Average speed ${avg.toFixed(1)} knots — ${avg > 8 ? 'brisk (busy trade).' : avg < 4 ? 'slow.' : 'moderate.'}`);
   return out;
 }
+const DEFAULT_THRESH = { brent: 10, wti: 3.5, diesel: 28, idlers: 15 };
+function thresholds() { try { return { ...DEFAULT_THRESH, ...(JSON.parse(localStorage.getItem('oilbasis.thresholds')) || {}) }; } catch { return DEFAULT_THRESH; } }
 function computeAlerts(m, t) {
+  const T = thresholds();
   const out = []; const by = Object.fromEntries(m.benchmarks.map((b) => [b.id, b]));
-  if (by.brent?.basis != null && Math.abs(by.brent.basis) > 10) out.push({ level: 'high', text: `Brent real-vs-futures gap is extreme (${signed(by.brent.basis)}).` });
-  if (by.wti?.basis != null && Math.abs(by.wti.basis) > 3.5) out.push({ level: 'med', text: `WTI real-vs-futures gap is wide (${signed(by.wti.basis)}).` });
+  if (by.brent?.basis != null && Math.abs(by.brent.basis) > T.brent) out.push({ level: 'high', text: `Brent real-vs-futures gap is extreme (${signed(by.brent.basis)}).` });
+  if (by.wti?.basis != null && Math.abs(by.wti.basis) > T.wti) out.push({ level: 'med', text: `WTI real-vs-futures gap is wide (${signed(by.wti.basis)}).` });
   const s = m.spreads.brent_wti;
   if (s && Math.abs(s.physical - s.paper) > 5) out.push({ level: 'med', text: `Brent vs WTI: the real gap and the futures gap have split by ${signed(s.physical - s.paper)}.` });
   const diesel = crackSpreads(m).find((c) => c.label.startsWith('Diesel refining profit'));
-  if (diesel && diesel.value > 28) out.push({ level: 'high', text: `Diesel refining profit is very high (${signed(diesel.value)} a barrel).` });
+  if (diesel && diesel.value > T.diesel) out.push({ level: 'high', text: `Diesel refining profit is very high (${signed(diesel.value)} a barrel).` });
   if (diesel && diesel.value < 6) out.push({ level: 'high', text: `Diesel refining profit is very low (${signed(diesel.value)}) — refiners may cut back.` });
   const idlers = (t.tankers || []).filter((v) => (v.sog ?? 0) < 1).length;
-  if (t.status?.enabled && idlers >= 15) out.push({ level: 'med', text: `${idlers} oil ships sitting still — watch for floating storage building.` });
+  if (t.status?.enabled && idlers >= T.idlers) out.push({ level: 'med', text: `${idlers} oil ships sitting still — watch for floating storage building.` });
   return out;
+}
+function renderThresholds() {
+  const T = thresholds();
+  const rows = [['brent', 'Brent gap alerts above', T.brent], ['wti', 'WTI gap alerts above', T.wti], ['diesel', 'Diesel profit alerts above', T.diesel], ['idlers', 'Idle-ships alerts above', T.idlers]];
+  $('alert-thresholds').innerHTML = rows.map(([k, label, v]) => `<label class="thr"><span>${label}</span><input type="number" step="0.5" data-k="${k}" value="${v}"></label>`).join('');
+  $('alert-thresholds').querySelectorAll('input').forEach((inp) => inp.addEventListener('change', () => {
+    const t2 = thresholds(); t2[inp.dataset.k] = Number(inp.value);
+    localStorage.setItem('oilbasis.thresholds', JSON.stringify(t2));
+    renderAlerts(computeAlerts(data, tankerInfo));
+  }));
 }
 function renderAlerts(alerts) {
   $('alert-count').textContent = String(alerts.length);
@@ -346,9 +359,10 @@ function renderInventories(d) {
     : '';
   const rows = d.items.map((i) => {
     const sur = i.surprise;
+    const range = i.seasonalMin != null ? ` <span class="dimtext">(usual ${i.seasonalMin.toLocaleString()} to ${i.seasonalMax.toLocaleString()})</span>` : '';
     const tag = sur == null ? '<span class="dimtext">—</span>'
-      : sur < 0 ? `<span class="pos">drew ${Math.abs(sur).toLocaleString()} more than usual</span>`
-        : `<span class="neg">built ${sur.toLocaleString()} vs usual</span>`;
+      : sur < 0 ? `<span class="pos">drew ${Math.abs(sur).toLocaleString()} more than usual</span>${range}`
+        : `<span class="neg">built ${sur.toLocaleString()} vs usual</span>${range}`;
     return `<div class="t inv"><span class="inv-l">${LBL[i.key] || i.label}</span><span class="num">${i.value.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span><span class="num ${cls(i.wow)}">${fmtN(i.wow)}</span><span class="num">${tag}</span></div>`;
   }).join('');
   $('inventories').innerHTML =
@@ -693,6 +707,11 @@ $('chart').addEventListener('click', (ev) => {
   chart.update('none');
 });
 $('an-metric').addEventListener('change', loadAnalogue);
+$('alert-settings')?.addEventListener('click', () => {
+  const panel = $('alert-thresholds');
+  if (panel.classList.contains('hidden')) { renderThresholds(); panel.classList.remove('hidden'); }
+  else panel.classList.add('hidden');
+});
 $('tabs').addEventListener('click', (e) => { const b = e.target.closest('.tab'); if (b) showTab(b.dataset.tab); });
 $('help-btn').addEventListener('click', () => { const g = $('glossary'); g.innerHTML = GLOSSARY; g.classList.toggle('hidden'); });
 $('cards').addEventListener('click', (e) => {
