@@ -20,6 +20,7 @@ const GLOSSARY = `
     <dt>Backwardation / Contango</dt><dd>Backwardation: prompt barrels pricier than later (tight). Contango: the reverse (oversupply, storage pays).</dd>
     <dt>Crack spread</dt><dd>Refining margin: product (gasoline/diesel) × 42 gallons minus crude, per barrel.</dd>
     <dt>Brent − WTI</dt><dd>The spread between the two crude benchmarks; a wide physical spread signals export pull.</dd>
+    <dt>Term structure (curve)</dt><dd>The prices of futures for successive delivery months — shown as bars (M1, M2, M3…). <b>Backwardation</b> = later months cheaper = tight now. <b>Contango</b> = later months dearer = well supplied. It's the single best physical signal.</dd>
     <dt>% performance</dt><dd>Change vs the start of the window (10Y = since ~10 years ago), not just day-on-day.</dd>
     <dt>Percentile</dt><dd>Where today's value ranks within the last 2 years (80th+ = historically high, 20th- = low).</dd>
     <dt>Inventories</dt><dd>EIA weekly US stocks. Draws (negative) are bullish for crude; builds are bearish.</dd>
@@ -376,8 +377,8 @@ function renderAnalogue(a) {
   const h20 = a.horizons.find((x) => x.h === 20);
   let verdict = '';
   if (h20 && h20.n) {
-    const rev = a.pct >= 80 ? (h20.median < 0 ? 'REVERTED' : 'continued HIGHER') : a.pct <= 20 ? (h20.median > 0 ? 'REVERTED UP' : 'continued LOWER') : 'showed no strong edge';
-    verdict = `At the ${a.pct.toFixed(0)}th percentile, over 20 days this metric historically <b>${rev}</b> (median ${signed(h20.median, 2)}, ${h20.pctUp.toFixed(0)}% up).`;
+    const side = a.pct >= 80 ? (h20.median < 0 ? 'mean-reversion DOWN' : 'momentum UP') : a.pct <= 20 ? (h20.median > 0 ? 'mean-reversion UP' : 'momentum DOWN') : 'no strong edge';
+    verdict = `<b>TRADE IDEA:</b> at the ${a.pct.toFixed(0)}th pctile, 20-day history favours <b>${side}</b> — median ${signed(h20.median, 2)}, ${h20.pctUp.toFixed(0)}% up, IQR ${h20.q25.toFixed(2)} … ${h20.q75.toFixed(2)}.`;
   }
   $('analogue').innerHTML =
     `<div class="an-head">Current = <b>${a.current.toFixed(2)}</b> · ${a.pct.toFixed(0)}th pctile · z ${a.z.toFixed(2)} · <b>${a.analogN}</b> analogous days in ${a.years}y</div>` +
@@ -387,6 +388,42 @@ function renderAnalogue(a) {
 async function loadAnalogue() {
   try { renderAnalogue(await getJSON('/api/analogue?metric=' + encodeURIComponent($('an-metric').value))); }
   catch (e) { showError(e.message); }
+}
+function renderTightness(d) {
+  if (!d || d.error) { $('tightness').innerHTML = '<div class="dimtext" style="padding:10px 12px">loading…</div>'; return; }
+  const k = d.tight > d.loose ? 'tight' : d.loose > d.tight ? 'loose' : 'mixed';
+  const rows = d.evidence.map((e) => `<div class="ev"><span class="ev-l">${e.label}</span><span class="ev-v ${e.direction === 'TIGHT' ? 'pos' : e.direction === 'LOOSE' ? 'neg' : ''}">${e.value}</span><span class="tag ${e.direction.toLowerCase()}">${e.direction}</span><span class="ev-n dimtext">${e.note}</span></div>`).join('');
+  $('tightness').innerHTML = `<div class="verdict ${k}">${d.verdict}</div><div class="ev-list">${rows}</div>`;
+}
+function renderFlows(d) {
+  if (!d?.regions) { $('flows').innerHTML = ''; return; }
+  const regions = d.regions.map((r) => `<span class="choke"><b>${r.count}</b> ${r.name}</span>`).join('');
+  const rates = (d.rates || []).map((r) => `<span class="choke ${r.perMin === 0 ? 'cold' : ''}"><b>${r.perMin}</b>/min ${r.name}</span>`).join('');
+  const e = d.exit; const total = (e.eastbound + e.westbound) || 1;
+  const ew = (e.eastbound / total * 100).toFixed(0), ww = (e.westbound / total * 100).toFixed(0);
+  const darkNote = (d.dark && d.dark.length)
+    ? `<div class="qflag watch" style="margin:8px 12px">⚠ <b>No AIS activity</b> in: ${d.dark.join(', ')} — the feed is dark here (possible disruption / dark fleet, or limited coverage). Flows cannot be measured from this feed.</div>`
+    : '';
+  $('flows').innerHTML =
+    `<div class="chokes-h dimtext">MIDDLE-EAST FLOWS (live AIS)</div>
+     <div class="chokes">${regions}</div>
+     <div class="chokes-h dimtext" style="padding:0 12px">AIS ACTIVITY (reports/min · 5-min window)</div>
+     <div class="chokes">${rates}</div>
+     <div class="flowbar"><div class="dimtext">Gulf of Oman / Arabian Sea — direction of travel</div>
+       <div class="fb"><span class="fb-e" style="width:${ew}%">${e.eastbound} east → Asia</span><span class="fb-w" style="width:${ww}%">${e.westbound} west → Suez</span></div>
+       <div class="dimtext">${e.total} tankers in the exit corridor · ${e.moving} under way · ${e.idle} idle</div></div>
+     ${darkNote}`;
+}
+function renderProducts(d) {
+  if (!d?.items) { $('products').innerHTML = ''; return; }
+  const cards = d.items.map((i) => {
+    const read = i.crack == null ? '—' : i.crack > 25 ? 'very strong' : i.crack > 12 ? 'strong' : i.crack > 5 ? 'ok' : 'weak';
+    return `<div class="card"><h3>${i.label} <span>crack $/bbl</span></h3>
+      <div class="row"><span class="k">Crack</span><span class="v basis ${cls(i.crack)}">${signed(i.crack, 2)}</span></div>
+      <div class="row"><span class="k">2-yr pctile</span><span class="v">${i.pct != null ? i.pct.toFixed(0) + 'th' : '—'}</span></div>
+      <div class="row"><span class="k">Read <span class="qi" title="${i.note}">ⓘ</span></span><span class="v dimtext" style="font-weight:400">${read}</span></div></div>`;
+  }).join('');
+  $('products').innerHTML = `<div class="cards">${cards}</div>`;
 }
 function renderRegime(m, a, c) {
   const by = Object.fromEntries(m.benchmarks.map((b) => [b.id, b]));
@@ -424,13 +461,16 @@ function showTab(name) {
 
 async function loadExtra() {
   try {
-    const [inv, pos, eq, chk, an, cv] = await Promise.all([
+    const [inv, pos, eq, chk, an, cv, tn, fl, pr] = await Promise.all([
       getJSON('/api/inventories').catch(() => null),
       getJSON('/api/positioning').catch(() => null),
       getJSON('/api/equities').catch(() => null),
       getJSON('/api/chokepoints').catch(() => null),
       getJSON('/api/analytics').catch(() => null),
       getJSON('/api/curve').catch(() => null),
+      getJSON('/api/tightness').catch(() => null),
+      getJSON('/api/flows').catch(() => null),
+      getJSON('/api/products').catch(() => null),
     ]);
     analytics = an;
     renderContext(data, an);
@@ -439,6 +479,9 @@ async function loadExtra() {
     renderSectors(eq, data, an, tankerInfo);
     renderChokepoints(chk);
     renderCurve(cv);
+    renderTightness(tn);
+    renderFlows(fl);
+    renderProducts(pr);
     renderKPIs(data, an, cv, pos);
     renderRegime(data, an, cv);
   } catch (e) { showError(e.message); }

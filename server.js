@@ -375,6 +375,22 @@ const CHOKEPOINTS = [
   { name: 'Turkish Straits', box: [[40, 27], [42, 30]] },
 ];
 const inBox = (lat, lon, box) => { const [[a, b], [c, d]] = box; return lat >= Math.min(a, c) && lat <= Math.max(a, c) && lon >= Math.min(b, d) && lon <= Math.max(b, d); };
+
+// Rolling AIS activity per region — a quiet region can itself be a signal (dark fleet / disruption).
+const regionHits = {};
+function recordHit(lat, lon) {
+  if (lat == null || lon == null) return;
+  const now = Date.now();
+  for (const r of FLOW_REGIONS) if (inBox(lat, lon, r.box)) (regionHits[r.name] ||= []).push(now);
+}
+function regionRates() {
+  const now = Date.now(), win = 5 * 60_000;
+  return FLOW_REGIONS.map((r) => {
+    const arr = (regionHits[r.name] || []).filter((t) => now - t < win);
+    regionHits[r.name] = arr;
+    return { name: r.name, perMin: +(arr.length / 5).toFixed(1) };
+  });
+}
 function getChokepoints() {
   const list = [...tankers.values()];
   return { chokepoints: CHOKEPOINTS.map((c) => ({ name: c.name, count: list.filter((v) => v.lat != null && inBox(v.lat, v.lon, c.box)).length })) };
@@ -516,6 +532,98 @@ async function getAnalogue(metric, years = 10) {
 }
 
 // ---------------------------------------------------------------------------
+// Physical tightness, mid-east flows, products
+// ---------------------------------------------------------------------------
+function computeCracks(m) {
+  const by = Object.fromEntries(m.benchmarks.map((b) => [b.id, b]));
+  const w = by.wti, rb = by.rbob, ho = by.ulsd, jet = by.jet, G = 42;
+  const out = {};
+  if (rb && w && rb.paper != null && w.paper != null) out.gasoline = rb.paper * G - w.paper;
+  if (ho && w && ho.paper != null && w.paper != null) out.diesel = ho.paper * G - w.paper;
+  if (rb && ho && w && rb.paper != null && ho.paper != null && w.paper != null) out.c321 = ((2 * rb.paper + ho.paper) * G) / 3 - w.paper;
+  if (rb && w && rb.physical != null && w.physical != null) out.gasolinePhys = rb.physical * G - w.physical;
+  if (ho && w && ho.physical != null && w.physical != null) out.dieselPhys = ho.physical * G - w.physical;
+  if (jet && w && jet.physical != null && w.physical != null) out.jetPhys = jet.physical * G - w.physical;
+  return out;
+}
+
+async function getTightness() {
+  return cached('tightness', 600_000, async () => {
+    const [m, c, inv] = await Promise.all([getMarket(), getCurves().catch(() => null), getInventories().catch(() => null)]);
+    const by = Object.fromEntries(m.benchmarks.map((b) => [b.id, b]));
+    const cracks = computeCracks(m);
+    const ev = [];
+    const push = (label, value, direction, note) => ev.push({ label, value, direction, note });
+    if (c?.brent) push('Brent curve M1−M2', sgn(c.brent.m1m2), c.brent.m1m2 > 0 ? 'TIGHT' : 'LOOSE', c.brent.shape);
+    if (c?.wti) push('WTI curve M1−M2', sgn(c.wti.m1m2), c.wti.m1m2 > 0 ? 'TIGHT' : 'LOOSE', c.wti.shape);
+    if (by.brent?.basis != null) push('Brent cash−futures', sgn(by.brent.basis), by.brent.basis > 0 ? 'TIGHT' : 'LOOSE', 'physical above futures');
+    if (cracks.diesel != null) push('Diesel crack', sgn(cracks.diesel), cracks.diesel > 15 ? 'TIGHT' : 'NEUTRAL', 'refining pull on crude');
+    if (inv?.items) { const cr = inv.items.find((i) => i.key === 'crude'); if (cr?.surprise != null) push('Crude vs seasonal', sgn(cr.surprise), cr.surprise < 0 ? 'TIGHT' : 'LOOSE', cr.surprise < 0 ? 'drew more than seasonal' : 'built vs seasonal'); }
+    const idle = [...tankers.values()].filter((v) => (v.sog ?? 0) < 1).length;
+    if (ais.enabled) push('Idle tankers', String(idle), idle >= 15 ? 'TIGHT' : 'NEUTRAL', idle >= 15 ? 'floating storage building' : 'normal transit');
+    const tight = ev.filter((e) => e.direction === 'TIGHT').length;
+    const loose = ev.filter((e) => e.direction === 'LOOSE').length;
+    const verdict = tight > loose
+      ? `PHYSICAL MARKET TIGHT — ${tight} of ${ev.length} independent signals point to tightness.`
+      : loose > tight ? `PHYSICAL MARKET LOOSE — ${loose} of ${ev.length} signals point to oversupply.`
+        : `MIXED — ${tight} tight / ${loose} loose.`;
+    return { evidence: ev, tight, loose, verdict };
+  });
+}
+
+const FLOW_REGIONS = [
+  { name: 'Persian Gulf', box: [[24, 48], [30, 57]] },
+  { name: 'Strait of Hormuz', box: [[24, 54], [28, 58]] },
+  { name: 'Gulf of Oman', box: [[22, 56], [26, 62]] },
+  { name: 'Arabian Sea', box: [[8, 55], [22, 72]] },
+  { name: 'Red Sea', box: [[12, 32], [30, 44]] },
+];
+function getFlows() {
+  const list = [...tankers.values()];
+  const regions = FLOW_REGIONS.map((r) => ({ name: r.name, count: list.filter((v) => v.lat != null && inBox(v.lat, v.lon, r.box)).length }));
+  const exitBox = (v) => inBox(v.lat, v.lon, [[22, 56], [26, 62]]) || inBox(v.lat, v.lon, [[8, 55], [22, 72]]);
+  const exit = list.filter((v) => v.lat != null && exitBox(v));
+  let east = 0, west = 0;
+  for (const v of exit) { if (v.cog == null) continue; if (v.cog >= 0 && v.cog < 180) east++; else west++; }
+  const moving = exit.filter((v) => (v.sog ?? 0) >= 1).length;
+  const rates = regionRates();
+  const dark = rates.filter((r) => r.perMin === 0).map((r) => r.name);
+  return { regions, exit: { total: exit.length, eastbound: east, westbound: west, moving, idle: exit.length - moving }, rates, dark, enabled: ais.enabled };
+}
+
+async function getProducts() {
+  return cached('products', 3 * 3600e3, async () => {
+    const m = await getMarket();
+    const cracks = computeCracks(m);
+    const G = 42;
+    const [wp, rp, hp] = await Promise.all([
+      cached('a2p:CL=F', 6 * 3600e3, () => yahooSeries('CL=F', '2y', '1d')).then((r) => r.series),
+      cached('a2p:RB=F', 6 * 3600e3, () => yahooSeries('RB=F', '2y', '1d')).then((r) => r.series),
+      cached('a2p:HO=F', 6 * 3600e3, () => yahooSeries('HO=F', '2y', '1d')).then((r) => r.series),
+    ]);
+    const dates = Object.keys(wp).sort();
+    const series = { gasoline: [], diesel: [], c321: [] };
+    for (const d of dates) {
+      if (wp[d] == null) continue;
+      series.gasoline.push(rp[d] != null ? rp[d] * G - wp[d] : null);
+      series.diesel.push(hp[d] != null ? hp[d] * G - wp[d] : null);
+      series.c321.push(rp[d] != null && hp[d] != null ? ((2 * rp[d] + hp[d]) * G) / 3 - wp[d] : null);
+    }
+    const last = (arr) => [...arr].reverse().find((x) => x != null);
+    const pct = (arr, v) => { const xs = arr.filter((x) => x != null); return xs.length && v != null ? (xs.filter((x) => x <= v).length / xs.length) * 100 : null; };
+    return {
+      items: [
+        { key: 'jet', label: 'Jet fuel', crack: cracks.jetPhys, pct: null, note: 'jet spot ×42 − WTI spot' },
+        { key: 'diesel', label: 'Diesel (ULSD)', crack: cracks.diesel, pct: pct(series.diesel, last(series.diesel)), note: 'futures crack' },
+        { key: 'gasoline', label: 'Gasoline (RBOB)', crack: cracks.gasoline, pct: pct(series.gasoline, last(series.gasoline)), note: 'futures crack' },
+        { key: 'c321', label: '3-2-1 composite', crack: cracks.c321, pct: pct(series.c321, last(series.c321)), note: 'refining margin' },
+      ],
+      physical: { gasoline: cracks.gasolinePhys, diesel: cracks.dieselPhys, jet: cracks.jetPhys },
+    };
+  });
+}
+
+// ---------------------------------------------------------------------------
 // Live tanker tracking via aisstream.io (free key required)
 // ---------------------------------------------------------------------------
 const tankers = new Map();
@@ -526,9 +634,10 @@ const DEFAULT_BOXES = [
   [[48, -8], [62, 4]],      // North Sea / Rotterdam
   [[-5, 95], [10, 110]],    // Malacca / Singapore
   [[22, 46], [31, 62]],     // Persian Gulf / Hormuz
+  [[22, 56], [26, 62]],     // Gulf of Oman
+  [[8, 55], [22, 72]],      // Arabian Sea
   [[12, 32], [30, 44]],     // Red Sea / Suez
   [[5, -84], [11, -76]],    // Panama Canal
-  [[53, 8], [59, 14]],      // Danish Straits
   [[39, 26], [43, 31]],     // Turkish Straits
 ];
 
@@ -537,6 +646,7 @@ function startAIS() {
   if (!key) { ais.error = 'No AISSTREAM_KEY set — add one (free) to enable live tankers.'; return; }
   ais.enabled = true;
   ais.startedAt ||= new Date().toISOString();
+  for (const m of state.tankerMMSI || []) tankerMMSI.add(m); // remember tankers across restarts
   const boxes = process.env.AIS_BOXES ? JSON.parse(process.env.AIS_BOXES) : DEFAULT_BOXES;
 
   const ws = new WebSocket('wss://stream.aisstream.io/v0/stream');
@@ -558,6 +668,7 @@ function startAIS() {
       const t = msg.Message?.ShipStaticData?.Type;
       if (typeof t === 'number' && t >= 80 && t <= 89) tankerMMSI.add(meta.MMSI);
     } else if (msg.MessageType === 'PositionReport') {
+      recordHit(meta.latitude, meta.longitude);
       if (!tankerMMSI.has(meta.MMSI)) return;
       const p = msg.Message?.PositionReport || {};
       tankers.set(meta.MMSI, { mmsi: meta.MMSI, name: (meta.ShipName || '').trim(), lat: meta.latitude, lon: meta.longitude, sog: p.Sog, cog: p.Cog, ts: meta.time_utc });
@@ -575,8 +686,9 @@ const DIGEST_LOG = path.join(__dirname, 'digest.log');
 const STATE_FILE = path.join(__dirname, '.state.json');
 const alertSeen = new Map();
 const loadState = () => { try { return JSON.parse(fs.readFileSync(STATE_FILE, 'utf8')); } catch { return {}; } };
-const savedState = loadState();
-let lastDigestDate = savedState.lastDigestDate || null;
+const state = loadState();
+const saveState = () => { try { fs.writeFileSync(STATE_FILE, JSON.stringify(state)); } catch {} };
+let lastDigestDate = state.lastDigestDate || null;
 let lastDigest = '';
 
 async function computeServerAlerts() {
@@ -652,7 +764,7 @@ async function maybeSendDigest() {
     const today = now.toISOString().slice(0, 10);
     if (now.getHours() >= hr && lastDigestDate !== today) {
       lastDigestDate = today;
-      try { fs.writeFileSync(STATE_FILE, JSON.stringify({ lastDigestDate })); } catch {}
+      state.lastDigestDate = today; saveState();
       lastDigest = await buildDigest();
       await deliver('digest', 'Oil Basis · daily digest', lastDigest);
     }
@@ -682,6 +794,9 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname === '/api/equities') return sendJSON(res, 200, await getEquities());
     if (url.pathname === '/api/chokepoints') return sendJSON(res, 200, getChokepoints());
     if (url.pathname === '/api/curve') return sendJSON(res, 200, await getCurves());
+    if (url.pathname === '/api/tightness') return sendJSON(res, 200, await getTightness().catch((e) => ({ error: String(e.message) })));
+    if (url.pathname === '/api/flows') return sendJSON(res, 200, getFlows());
+    if (url.pathname === '/api/products') return sendJSON(res, 200, await getProducts().catch((e) => ({ error: String(e.message) })));
     if (url.pathname === '/api/analogue') return sendJSON(res, 200, await getAnalogue(url.searchParams.get('metric') || 'basis:brent', Math.min(15, Math.max(2, Number(url.searchParams.get('years')) || 10))));
     if (url.pathname === '/api/alerts') return sendJSON(res, 200, { current: await computeServerAlerts().catch(() => []) });
     if (url.pathname === '/api/digest') { res.writeHead(200, { 'content-type': 'text/plain' }); return res.end(lastDigest || await buildDigest()); }
@@ -721,4 +836,5 @@ server.listen(PORT, () => {
   setTimeout(alertLoop, 12_000);
   setInterval(alertLoop, 5 * 60_000);
   setInterval(maybeSendDigest, 60_000);
+  setInterval(() => { state.tankerMMSI = [...tankerMMSI]; saveState(); }, 60_000);
 });

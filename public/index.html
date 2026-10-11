@@ -36,12 +36,17 @@
       <button class="tab active" data-tab="overview">OVERVIEW</button>
       <button class="tab" data-tab="curve">CURVE &amp; HISTORY</button>
       <button class="tab" data-tab="fundamentals">FUNDAMENTALS</button>
-      <button class="tab" data-tab="sectors">SECTORS</button>
+      <button class="tab" data-tab="sectors">PRODUCTS &amp; SECTORS</button>
       <button class="tab" data-tab="tankers">TANKERS</button>
     </nav>
 
     <!-- OVERVIEW -->
     <div class="tabpane" data-pane="overview">
+      <section class="panel">
+        <div class="ph"><span class="ph-t">⚡ PHYSICAL TIGHTNESS — THE EVIDENCE</span><span class="dimtext">COMPOSITE VERDICT</span></div>
+        <div id="tightness" class="tightness"></div>
+      </section>
+
       <div id="cards"></div>
 
       <section class="panel">
@@ -100,6 +105,10 @@
     <!-- SECTORS -->
     <div class="tabpane hidden" data-pane="sectors">
       <section class="panel">
+        <div class="ph"><span class="ph-t">PRODUCTS — DIESEL · JET · GASOLINE</span><span class="dimtext">CRACKS &amp; REFINING MARGINS</span></div>
+        <div id="products" class="products"></div>
+      </section>
+      <section class="panel">
         <div class="ph"><span class="ph-t">SECTOR IMPACT &amp; EQUITIES</span><span id="eq-date" class="dimtext"></span></div>
         <div id="sector-read" class="sector-read"></div>
         <div id="sectors" class="sectors"></div>
@@ -114,6 +123,7 @@
         <div id="ais-help" class="help hidden"></div>
         <div id="map"><div id="map-empty" class="map-empty hidden">WAITING FOR TANKER POSITIONS…</div></div>
         <div id="chokepoints" class="chokes"></div>
+        <div id="flows" class="flows"></div>
         <details class="fold"><summary>Vessel list</summary><div id="tanker-list" class="tanker-list"></div></details>
       </section>
     </div>
