@@ -432,6 +432,15 @@ function curveBlock(name, c) {
   const shape = c.shape === 'Backwardation' ? 'pricier NOW than later → tight' : 'cheaper now than later → well supplied';
   return `<div class="curve-blk"><div class="curve-h">${name} — <b class="${c.m1m2 >= 0 ? 'pos' : 'neg'}">${shape}</b> · this month vs next <b class="${cls(c.m1m2)}">${signed(c.m1m2, 2)}</b>${c.m1m6 != null ? ` · vs 6 months ahead <b class="${cls(c.m1m6)}">${signed(c.m1m6, 2)}</b>` : ''}</div>${rows}</div>`;
 }
+let curveHistChart;
+function renderCurveHistory(d) {
+  const cv = $('curvehist');
+  if (!cv || !d?.dates?.length) return;
+  const data = { labels: d.dates, datasets: [{ label: 'WTI: this month − next month', data: d.m1m2, borderColor: '#ff9e00', backgroundColor: '#ff9e0022', borderWidth: 2, pointRadius: 0, tension: 0.25, fill: false }] };
+  const opts = { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: '#7c8a99', boxWidth: 10, font: { family: 'monospace' } } } }, scales: { x: { ticks: { color: '#7c8a99', maxTicksLimit: 8 }, grid: { color: '#151a20' } }, y: { ticks: { color: '#7c8a99' }, grid: { color: '#151a20' } } } };
+  if (curveHistChart) { curveHistChart.data = data; curveHistChart.update(); return; }
+  curveHistChart = new Chart(cv, { type: 'line', data, options: opts });
+}
 function renderCurve(d) { if (!d) return; $('curve').innerHTML = curveBlock('WTI', d.wti) + curveBlock('Brent', d.brent); }
 function renderAnalogue(a) {
   if (!a || a.error) { $('analogue').innerHTML = `<div class="dimtext" style="padding:10px 12px">${a?.error || 'loading…'}</div>`; return; }
@@ -650,6 +659,7 @@ function showTab(name) {
   document.querySelectorAll('.tab').forEach((t) => t.classList.toggle('active', t.dataset.tab === name));
   document.querySelectorAll('.tabpane').forEach((p) => p.classList.toggle('hidden', p.dataset.pane !== name));
   if (name === 'curve' && chart) setTimeout(() => chart.resize(), 50);
+  if (name === 'curve' && curveHistChart) setTimeout(() => curveHistChart.resize(), 60);
   if (name === 'tankers' && map) setTimeout(() => map.invalidateSize(), 60);
 }
 
@@ -671,6 +681,7 @@ async function loadExtra() {
       getJSON('/api/sar').catch(() => null),
     ]);
     const macro = await getJSON('/api/macro').catch(() => null);
+    const ch = await getJSON('/api/curvehistory?root=CL').catch(() => null);
     analytics = an;
     renderContext(data, an, macro);
     renderInventories(inv);
@@ -678,6 +689,7 @@ async function loadExtra() {
     renderSectors(eq, data, an, tankerInfo);
     renderChokepoints(chk);
     renderCurve(cv);
+    renderCurveHistory(ch);
     renderTightness(tn);
     renderFlows(fl);
     renderProducts(pr);

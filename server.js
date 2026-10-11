@@ -344,6 +344,34 @@ async function getEquities() {
   }));
 }
 
+const CURVE_MONTHS = ['F', 'G', 'H', 'J', 'K', 'M', 'N', 'Q', 'U', 'V', 'X', 'Z'];
+async function getCurveHistory(root) {
+  return cached('curvehist:' + root, 6 * 3600e3, async () => {
+    const now = new Date();
+    const list = [];
+    for (let k = -18; k <= 6; k++) {
+      const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + k, 1));
+      const mk = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
+      list.push({ mk, symbol: `${root}${CURVE_MONTHS[d.getUTCMonth()]}${String(d.getUTCFullYear()).slice(2)}.NYM` });
+    }
+    const series = {};
+    for (const c of list) {
+      try { series[c.mk] = (await cached('cur:' + c.symbol, 6 * 3600e3, () => yahooSeries(c.symbol, '2y', '1d'))).series; } catch { series[c.mk] = {}; }
+    }
+    const months = Object.keys(series).filter((m) => Object.keys(series[m]).length).sort();
+    const allDates = [...new Set(months.flatMap((m) => Object.keys(series[m])))].sort().slice(-500);
+    const dates = [], m1m2 = [];
+    for (const d of allDates) {
+      const dk = d.slice(0, 7);
+      const future = months.filter((m) => m > dk && series[m][d] != null);
+      if (future.length < 2) continue;
+      dates.push(d);
+      m1m2.push(+(series[future[0]][d] - series[future[1]][d]).toFixed(3));
+    }
+    return { root, dates, m1m2 };
+  });
+}
+
 // ---------------------------------------------------------------------------
 // Macro context (oil doesn't move alone)
 // ---------------------------------------------------------------------------
@@ -932,6 +960,7 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname === '/api/macro') return sendJSON(res, 200, await getMacro());
     if (url.pathname === '/api/chokepoints') return sendJSON(res, 200, getChokepoints());
     if (url.pathname === '/api/curve') return sendJSON(res, 200, await getCurves());
+    if (url.pathname === '/api/curvehistory') return sendJSON(res, 200, await getCurveHistory(url.searchParams.get('root') || 'CL').catch((e) => ({ error: String(e.message) })));
     if (url.pathname === '/api/tightness') return sendJSON(res, 200, await getTightness().catch((e) => ({ error: String(e.message) })));
     if (url.pathname === '/api/flows') return sendJSON(res, 200, await getFlows());
     if (url.pathname === '/api/products') return sendJSON(res, 200, await getProducts().catch((e) => ({ error: String(e.message) })));
