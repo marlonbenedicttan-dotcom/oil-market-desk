@@ -1233,6 +1233,10 @@ async function loadCountry() {
   const el = $('macro-region-panel');
   if (!el) return;
   const req = macroCountry;                       // guard: newest country wins
+  const showUsJp = req === 'us' || req === 'jp';
+  const up = $('usjp-panel');
+  if (up) up.classList.toggle('hidden', !showUsJp);
+  if (showUsJp) loadUsJp();
   const sel = $('macro-country');
   const label = (sel && sel.selectedOptions[0] ? sel.selectedOptions[0].textContent : req).trim();
   el.innerHTML = `<div class="macro-note">${label.toUpperCase()}</div><div class="dimtext" style="padding:6px 12px">loading…</div>`;
@@ -1385,7 +1389,8 @@ async function loadYields() {
   if (req !== macroCountry) return;
   renderYields(d);
 }
-// US vs Japan 10-year — the classic carry differential.
+// US vs Japan 10-year — the classic carry differential. Japan is monthly, so its last
+// value is carried forward across the daily axis so every hover shows both + the spread.
 function renderUsJp(us, jp) {
   const cv = $('usjp-chart');
   const note = $('usjp-note');
@@ -1393,14 +1398,20 @@ function renderUsJp(us, jp) {
   const ul = us && us.long, jl = jp && jp.long;
   if (!cv || !ul || !jl) { if (sum) sum.textContent = 'US or Japan 10-year data unavailable right now.'; return; }
   const dates = [...new Set([...ul.dates, ...jl.dates])].sort();
-  const arr = (s) => { const m = new Map(); s.dates.forEach((dt, i) => m.set(dt, s.values[i])); return dates.map((dt) => (m.has(dt) ? m.get(dt) : null)); };
+  const raw = (s) => { const m = new Map(); s.dates.forEach((dt, i) => m.set(dt, s.values[i])); return dates.map((dt) => (m.has(dt) ? m.get(dt) : null)); };
+  const usArr = raw(ul);
+  const jpArr = []; { let last = null; for (const v of raw(jl)) { if (v != null) last = v; jpArr.push(last); } }
   const spread = ul.latest != null && jl.latest != null ? +(ul.latest - jl.latest).toFixed(2) : null;
-  if (note) note.textContent = `US daily · Japan monthly (OECD)${us.asOf ? ' · as of ' + us.asOf : ''}`;
+  if (note) note.textContent = `US daily · Japan monthly (OECD, carried forward)${us.asOf ? ' · as of ' + us.asOf : ''}`;
   if (sum) sum.textContent = `US 10-yr ${ul.latest == null ? '—' : ul.latest.toFixed(2) + '%'} · Japan 10-yr ${jl.latest == null ? '—' : jl.latest.toFixed(2) + '%'}${spread != null ? ` · US–Japan spread ${spread >= 0 ? '+' : ''}${spread}pp (the carry gap)` : ''}`;
-  const datasets = [line('US 10-yr', arr(ul), '#4aa3ff'), line('Japan 10-yr', arr(jl), '#c06bff')];
+  const datasets = [line('US 10-yr', usArr, '#4aa3ff'), line('Japan 10-yr', jpArr, '#c06bff')];
   const opts = { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false },
     plugins: { legend: { labels: { color: '#7c8a99', boxWidth: 12, font: { family: 'monospace' } } },
-      tooltip: { callbacks: { title: (it) => (it.length ? String(it[0].label) : ''), label: (ctx) => `${ctx.dataset.label}: ${ctx.parsed.y == null ? '—' : Number(ctx.parsed.y).toFixed(2)}%` } } },
+      tooltip: { callbacks: {
+        title: (it) => (it.length ? String(it[0].label) : ''),
+        label: (ctx) => `${ctx.dataset.label}: ${ctx.parsed.y == null ? '—' : Number(ctx.parsed.y).toFixed(2)}%`,
+        afterBody: (items) => { const u = items.find((i) => /US/.test(i.dataset.label)); const j = items.find((i) => /Japan/.test(i.dataset.label)); return (u && j && u.parsed.y != null && j.parsed.y != null) ? [`spread: ${(u.parsed.y - j.parsed.y).toFixed(2)}pp`] : []; },
+      } } },
     scales: { x: { ticks: { color: '#7c8a99', maxTicksLimit: 10 }, grid: { color: '#151a20' } }, y: { ticks: { color: '#7c8a99', callback: (v) => v + '%' }, grid: { color: '#151a20' } } } };
   const chartData = { labels: dates, datasets };
   if (usjpChart) { usjpChart.data = chartData; usjpChart.options = opts; usjpChart.update(); return; }
@@ -1611,7 +1622,6 @@ async function loadExtra() {
     loadTransmission();
     loadAlerts();
     loadBrief();
-    loadUsJp();
   } catch (e) { showError(e.message); }
 }
 
