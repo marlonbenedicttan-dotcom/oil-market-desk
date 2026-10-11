@@ -1287,6 +1287,26 @@ function renderFundamentals(f) {
     </div>`).join('')
     + '<div class="macro-note">Auto-tagged: a keyword matched a supply/demand event — a prompt to investigate, not a certainty. Links open at the source.</div>';
 }
+// On-screen daily brief (HOME) — what happened / what's on today, in 60 seconds.
+function renderBrief(b) {
+  const el = $('home-brief');
+  if (!el) return;
+  if (!b || b.error) { el.innerHTML = '<div class="dimtext" style="padding:12px">brief unavailable right now</div>'; return; }
+  const upd = $('brief-updated');
+  if (upd) upd.textContent = 'as of ' + new Date(b.updated).toLocaleString('en-GB');
+  const happened = (b.happened || []).map((x) => `<li>${x.text}</li>`).join('') || '<li class="dimtext">No notable moves.</li>';
+  const next = (b.next || []).map((e) => `<li><b>${e.name}</b>${e.date ? ` — ${e.date}` : ''} <span class="dimtext">${e.note || ''}</span></li>`).join('') || '<li class="dimtext">Nothing scheduled.</li>';
+  el.innerHTML = `<div class="brief-head">${b.headline || ''}</div>
+    <div class="brief-cols">
+      <div class="brief-col"><div class="gtitle">WHAT HAPPENED</div><ul class="ins-list">${happened}</ul></div>
+      <div class="brief-col"><div class="gtitle">WHAT'S ON TODAY / NEXT</div><ul class="ins-list">${next}</ul></div>
+    </div>`;
+}
+async function loadBrief() {
+  const el = $('home-brief');
+  if (el && !el.innerHTML) el.innerHTML = '<div class="dimtext" style="padding:12px">reading the day…</div>';
+  try { renderBrief(await getJSON('/api/brief')); } catch { renderBrief(null); }
+}
 // Live important headlines (hero board).
 async function loadHeadlines() {
   const el = $('headlines');
@@ -1427,6 +1447,7 @@ async function loadExtra() {
     renderAdaptive();
     loadTransmission();
     loadAlerts();
+    loadBrief();
   } catch (e) { showError(e.message); }
 }
 

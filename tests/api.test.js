@@ -44,6 +44,19 @@ for (const p of ['/api/market', '/api/curve', '/api/tightness', '/api/products',
   });
 }
 
+test('/api/brief returns the on-screen daily brief (headline + happened + next + alerts)', async () => {
+  const r = await fetch(`http://localhost:${PORT}/api/brief`);
+  assert.equal(r.status, 200);
+  const j = await r.json();
+  assert.equal(j.error, undefined, JSON.stringify(j).slice(0, 120));
+  assert.ok(typeof j.headline === 'string' && j.headline.length > 0);
+  assert.ok(Array.isArray(j.happened) && j.happened.length > 0);
+  assert.ok(j.happened.every((x) => x.text && x.kind));
+  assert.ok(Array.isArray(j.next) && j.next.length > 0);
+  assert.ok(j.next.every((e) => e.name));
+  assert.ok(Array.isArray(j.alerts));
+});
+
 test('/api/alerts returns the server alert engine output', async () => {
   const r = await fetch(`http://localhost:${PORT}/api/alerts`);
   assert.equal(r.status, 200);

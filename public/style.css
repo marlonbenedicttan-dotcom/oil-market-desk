@@ -215,6 +215,12 @@ footer li { margin-bottom: 2px; }
 .ms-px { font-weight: 700; font-size: 14px; font-variant-numeric: tabular-nums; }
 .ms-chg { font-size: 11px; font-variant-numeric: tabular-nums; }
 .ms-sub { flex: 1 1 100%; font-size: 10px; }
+/* Home: on-screen daily brief */
+.brief-head { padding: 10px 12px; font-size: 13.5px; color: var(--amber2); border-bottom: 1px solid var(--line); }
+.brief-cols { display: grid; grid-template-columns: 1fr 1fr; }
+.brief-col { padding: 0 4px 8px; }
+.brief-col:first-child { border-right: 1px solid var(--line); }
+@media (max-width: 760px) { .brief-cols { grid-template-columns: 1fr; } .brief-col:first-child { border-right: 0; border-bottom: 1px solid var(--line); } }
 .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); }
 .kpi { padding: 10px 14px; border-right: 1px solid var(--line); }
 .kpi:last-child { border-right: 0; }

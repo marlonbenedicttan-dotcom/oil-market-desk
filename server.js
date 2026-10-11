@@ -1904,6 +1904,47 @@ async function buildDigest() {
   return L.join('\n');
 }
 
+// ---------------------------------------------------------------------------
+// On-screen daily brief — a 60-second "what happened / what's on today" as JSON.
+// The raw text digest above stays for email/log; this is what the HOME tab renders.
+// ---------------------------------------------------------------------------
+async function buildBrief() {
+  return cached('brief', 300_000, async () => {
+    const [m, h, inv, curves, alerts] = await Promise.all([
+      getMarket(),
+      getHistory().catch(() => null),
+      getInventories().catch(() => null),
+      getCurves().catch(() => null),
+      computeServerAlerts().catch(() => []),
+    ]);
+    // Biggest 1-day moves across every instrument's headline series.
+    const movers = [];
+    for (const b of m.benchmarks) {
+      const dd = h?.deltas?.[b.id];
+      const d = b.paper != null ? dd?.paper : dd?.physical;
+      if (d?.d1 != null) movers.push({ id: b.id, label: b.label, group: b.group, dp: b.dp, d1: d.d1, m1: d.m1 ?? null, y1: d.y1 ?? null });
+    }
+    movers.sort((a, b) => Math.abs(b.d1) - Math.abs(a.d1));
+
+    const happened = [];
+    for (const mv of movers.slice(0, 3)) happened.push({ kind: 'move', id: mv.id, text: `${mv.label} is ${mv.d1 >= 0 ? 'up' : 'down'} <b>${Math.abs(mv.d1).toFixed(1)}%</b> today${mv.y1 != null ? ` — ${Math.abs(mv.y1).toFixed(0)}% ${mv.y1 >= 0 ? 'higher' : 'lower'} over a year` : ''}.` });
+    if (curves?.wti) happened.push({ kind: 'curve', id: 'wti', text: `WTI is in <b>${curves.wti.shape.toLowerCase()}</b> — this month ${curves.wti.m1m2 >= 0 ? 'above' : 'below'} next by <b>${sgn(curves.wti.m1m2)}</b>.` });
+    const crude = inv?.items?.find((i) => i.key === 'crude');
+    if (crude?.surprise != null) happened.push({ kind: 'stocks', id: 'wti', text: `US crude stocks ${crude.wow >= 0 ? 'built' : 'drew'} vs last week — <b>${Math.abs(crude.surprise).toLocaleString()}k bbl ${crude.surprise < 0 ? 'more drawn than usual (bullish)' : 'more built than usual (bearish)'}</b>.` });
+
+    const next = getEvents().map((e) => ({ name: e.name, date: e.date, note: e.note }));
+    const hi = alerts.find((a) => a.level === 'high');
+    const mv = movers[0];
+    const headline = (mv ? `Biggest move: ${mv.label} ${mv.d1 >= 0 ? 'up' : 'down'} ${Math.abs(mv.d1).toFixed(1)}%` : 'Quiet session so far')
+      + (hi ? ` · ${hi.text.replace(/\.$/, '')}` : '') + '.';
+    return {
+      updated: new Date().toISOString(), headline, happened, next,
+      alerts: alerts.map((a) => ({ level: a.level, text: a.text })),
+      movers: movers.slice(0, 6),
+    };
+  });
+}
+
 async function alertLoop() {
   try {
     const cooldown = Number(process.env.ALERT_COOLDOWN_H || 12) * 3600e3;
@@ -2035,6 +2076,7 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname === '/api/analogue') return sendJSON(res, 200, await getAnalogue(url.searchParams.get('metric') || 'basis:brent', Math.min(15, Math.max(2, Number(url.searchParams.get('years')) || 10))));
     if (url.pathname === '/api/alerts') return sendJSON(res, 200, { current: await computeServerAlerts().catch(() => []) });
     if (url.pathname === '/api/digest') { res.writeHead(200, { 'content-type': 'text/plain' }); return res.end(lastDigest || await buildDigest()); }
+    if (url.pathname === '/api/brief') return sendJSON(res, 200, await buildBrief().catch((e) => ({ error: String(e.message) })));
     if (url.pathname === '/api/analytics') return sendJSON(res, 200, await getAnalytics(Number(url.searchParams.get('freight')) || FREIGHT_DEFAULT));
     if (url.pathname === '/api/export.csv') {
       const [m, a] = await Promise.all([getMarket(), getAnalytics()]);
