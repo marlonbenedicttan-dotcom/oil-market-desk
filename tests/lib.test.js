@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { sgn, inBox, haversineNm, isoWeek, monthly, pctOver, percentile, realizedVol, computeCracks, backAdjust } from '../src/lib.js';
+import { sgn, inBox, haversineNm, isoWeek, monthly, pctOver, percentile, realizedVol, computeCracks, backAdjust, pearson, logReturns } from '../src/lib.js';
 
 test('sgn formats with sign', () => {
   assert.equal(sgn(4.39), '+4.39');
@@ -39,6 +39,20 @@ test('percentile ranks a value within a series', () => {
 
 test('realizedVol returns null with too few points', () => {
   assert.equal(realizedVol([1, 2, 3], 30), null);
+});
+
+test('logReturns computes log changes and keeps nulls', () => {
+  const r = logReturns({ a: 100, b: 110, c: 121 }, ['a', 'b', 'c', 'd']);
+  assert.equal(r.length, 3); // one return per adjacent date pair
+  assert.ok(Math.abs(r[0] - Math.log(1.1)) < 1e-9);
+  assert.equal(r[2], null); // d missing -> no return
+});
+
+test('pearson correlates two series (and needs enough points)', () => {
+  const up = Array.from({ length: 20 }, (_, i) => i);
+  assert.equal(pearson(up, up), 1);
+  assert.equal(pearson(up, up.map((v) => -v)), -1);
+  assert.equal(pearson([1, 2, 3], [1, 2, 3]), null); // too few points
 });
 
 test('backAdjust removes roll jumps', () => {

@@ -38,6 +38,7 @@ Adding a benchmark = one row in the `BENCHMARKS` table in `server.js`.
 - **Insights** — a plain-English panel reading the numbers for prices *and* shipping.
 - **Alerts** — flags when a basis, spread or crack breaks a threshold (with desktop notifications).
 - **Live tanker map** — free AIS positions, filtered to tankers (types 80–89).
+- **Global macro** — US & ECB rates, US inflation/growth, a **14-pair currencies board** (majors, EM & commodity currencies), live **commodity↔currency link** checks (does AUD still track copper? does CAD still track oil?), and a copper/gold growth proxy.
 
 ## What "basis" means
 
@@ -109,6 +110,7 @@ View the latest digest any time at `http://localhost:4173/api/digest`.
 - Spot assessments publish with a **lag** and are a *different instrument* than the futures — read the on-screen **DATA QUALITY** flags.
 - Tanker positions are a live sample of AIS reports in the watched regions, not a complete global fleet picture.
 - Dubai / WTI Midland / Mars require a paid feed.
+- **Macro is deliberately US-centric**: free non-US CPI/GDP feeds are stale, so only US data is shown rather than faking it. The currencies board and the commodity↔currency link correlations are live.
 - Not investment advice.
 
 ## Deploy it online
@@ -149,7 +151,7 @@ The server keeps all logic in `server.js` and pure helpers in `src/lib.js` (unit
 
 - Secrets come from environment variables (`.env` locally, dashboard env vars when hosted).
 - To protect a **public** deployment, set **`AUTH_USER`** and **`AUTH_PASS`** — the app then requires a browser login prompt.
-- The repo ships with a GitHub Actions workflow that runs the tests on every push.
+- A GitHub Actions workflow (`.github/workflows/test.yml`) runs the tests on every push — commit it with a push token that has `workflow` scope to enable CI.
 
 ## License
 

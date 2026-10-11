@@ -696,10 +696,20 @@ function renderMacroDash(md, corr, events) {
   const rates = $('macro-rates');
   if (!rates) return;
   if (!md || md.error) { rates.innerHTML = '<div class="dimtext" style="padding:10px 12px">loading…</div>'; return; }
-  const r = md.rates, inf = md.inflation, g = md.growth;
-  rates.innerHTML = `<div class="kpis">${macroTile('US 2-YEAR', r.us2y != null ? r.us2y + '%' : '—', 'short-term rate')}${macroTile('US 10-YEAR', r.us10y != null ? r.us10y + '%' : '—', 'long-term rate')}${macroTile('2s10s SPREAD', r.spread != null ? signed(r.spread, 2) : '—', r.spread < 0 ? 'inverted — recession signal' : 'normal', cls(r.spread))}${macroTile('US FED FUNDS', r.fedfunds != null ? r.fedfunds + '%' : '—', 'policy rate')}${macroTile('ECB RATE', r.ecb != null ? r.ecb + '%' : '—', 'euro-area policy rate')}</div>`;
-  $('macro-growth').innerHTML = `<div class="kpis">${macroTile('US INFLATION (CPI YoY)', inf.cpiYoY != null ? inf.cpiYoY + '%' : '—', inf.asOf || '')}${macroTile('US GDP (QoQ, annualised)', g.gdpQoQ != null ? g.gdpQoQ + '%' : '—', g.asOf || '')}${macroTile('UNEMPLOYMENT', g.unemployment != null ? g.unemployment + '%' : '—', '')}</div>`;
+  const r = md.rates, inf = md.inflation, g = md.growth, gp = md.growthProxy || {};
+  rates.innerHTML = `<div class="kpis">${macroTile('US 2-YEAR', r.us2y != null ? r.us2y + '%' : '—', 'short-term rate')}${macroTile('US 10-YEAR', r.us10y != null ? r.us10y + '%' : '—', 'long-term rate')}${macroTile('2s10s SPREAD', r.spread != null ? signed(r.spread, 2) : '—', r.spread < 0 ? 'inverted — recession signal' : 'normal', cls(r.spread))}${macroTile('US FED FUNDS', r.fedfunds != null ? r.fedfunds + '%' : '—', 'policy rate')}${macroTile('ECB RATE', r.ecb != null ? r.ecb + '%' : '—', 'euro-area policy rate')}${macroTile('US–ECB GAP', r.rateGap != null ? signed(r.rateGap, 2) + 'pp' : '—', 'a wider gap tends to lift the dollar', cls(r.rateGap))}</div>`;
+  const gold = gp.ratio != null ? macroTile('COPPER ÷ GOLD', (gp.ratio * 1000).toFixed(2), gp.chg != null ? `${pctf(gp.chg)} / 3m · ${gp.chg >= 0 ? 'growth optimism' : 'growth worry'}` : 'growth proxy (×1000)', cls(gp.chg)) : '';
+  $('macro-growth').innerHTML = `<div class="kpis">${macroTile('US INFLATION (CPI YoY)', inf.cpiYoY != null ? inf.cpiYoY + '%' : '—', inf.asOf || '')}${macroTile('US GDP (QoQ, annualised)', g.gdpQoQ != null ? g.gdpQoQ + '%' : '—', g.asOf || '')}${macroTile('UNEMPLOYMENT', g.unemployment != null ? g.unemployment + '%' : '—', '')}${gold}</div>`;
   $('macro-fx').innerHTML = `<div class="kpis">${(md.fx || []).map((f) => macroTile(f.label, f.price != null ? f.price.toFixed(f.price < 10 ? 4 : 2) : '—', f.pct != null ? pctf(f.pct) : '', cls(f.pct))).join('')}</div>`;
+  if ($('macro-links')) {
+    const rows = (md.links || []).map((l) => {
+      if (l.corr == null) return macroTile(l.pair, '—', l.commodity + ' · no data', '');
+      const holds = Math.sign(l.corr) === l.expect;
+      const read = !holds ? 'link broken' : Math.abs(l.corr) >= 0.3 ? 'link holding' : 'link weak';
+      return macroTile(l.pair, signed(l.corr, 2), `${l.commodity} · ${read}`, holds ? 'pos' : 'neg');
+    }).join('');
+    $('macro-links').innerHTML = `<div class="kpis">${rows}</div><div class="dimtext" style="padding:6px 12px">Correlation of daily moves over the last 3 months. <span class="pos">Green</span> = the currency still tracks its commodity the usual way; <span class="neg">red</span> = the link has broken down right now. On a <b>USD/xxx</b> pair a negative number is the normal sign (a stronger dollar and a weaker commodity tend to move together).</div>`;
+  }
   const c = corr || {};
   const cTile = (label, v, note) => macroTile(label, v != null ? v : '—', note, v != null ? (v < 0 ? 'neg' : 'pos') : '');
   $('macro-corr').innerHTML = `<div class="kpis">${cTile('OIL vs US DOLLAR', c.oilVsDollar, 'usually negative')}${cTile('OIL vs VIX', c.oilVsVix, 'risk-off link')}${cTile('OIL vs S&P 500', c.oilVsSp500, 'risk-on link')}</div>`;

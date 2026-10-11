@@ -61,6 +61,32 @@ export function realizedVol(arr, win = 30) {
   return Math.sqrt(varp) * Math.sqrt(252) * 100;
 }
 
+// Log changes of a dated series sampled on a fixed list of dates (nulls preserved).
+// Used to put two instruments on a comparable footing before correlating them.
+export function logReturns(series, dates) {
+  const arr = dates.map((d) => (series[d] != null ? series[d] : null));
+  const r = [];
+  for (let i = 1; i < arr.length; i++) {
+    const a = arr[i], b = arr[i - 1];
+    r.push(a != null && b != null && b !== 0 ? Math.log(a / b) : null);
+  }
+  return r;
+}
+
+// Pearson correlation of two equal-length series (pairs with a null on either side
+// are skipped). Rounded to 2 dp; null when there are too few overlapping points.
+export function pearson(x, y) {
+  const pairs = [];
+  for (let i = 0; i < x.length; i++) if (x[i] != null && y[i] != null) pairs.push([x[i], y[i]]);
+  const n = pairs.length;
+  if (n < 10) return null;
+  const mx = pairs.reduce((a, p) => a + p[0], 0) / n;
+  const my = pairs.reduce((a, p) => a + p[1], 0) / n;
+  let sxy = 0, sxx = 0, syy = 0;
+  for (const [a, b] of pairs) { sxy += (a - mx) * (b - my); sxx += (a - mx) ** 2; syy += (b - my) ** 2; }
+  return sxx && syy ? +(sxy / Math.sqrt(sxx * syy)).toFixed(2) : null;
+}
+
 // Back-adjust a stitched front-month series so contract rolls don't create jumps.
 // rollGaps: Map<index, gap> where a roll occurs *entering* that index (gap = old - new).
 export function backAdjust(values, rollGaps) {

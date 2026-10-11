@@ -1,7 +1,7 @@
 # HANDOFF — Commodity Desk (project brief for the next agent)
 
 ## What this is
-A free, self-hosted **commodity + macro dashboard**. Paper-vs-physical oil, refining margins, curve, inventories, positioning, ships (AIS), satellites, macro — plus metals & agriculture.
+A free, self-hosted **commodity + global-macro dashboard**. Paper-vs-physical oil, refining margins, curve, inventories, positioning, ships (AIS), satellites — plus metals & agriculture, a 14-pair currencies board, and live commodity↔currency link checks.
 
 - **Live:** https://oil-market-desk.onrender.com
 - **Repo:** https://github.com/marlonbenedicttan-dotcom/oil-market-desk (public)
@@ -32,7 +32,7 @@ Dockerfile, render.yaml, scripts/share.sh   deploy + free tunnel
 `/api/range?id=&range=6m|ytd|1y` , `/api/longterm?id=&years=` , `/api/curve` (futures curve),
 `/api/curvehistory?root=CL` , `/api/continuous?root=CL` , `/api/analytics` (percentiles/vol/arb),
 `/api/analogue?metric=` , `/api/inventories` (+ gas storage) , `/api/positioning` (+ open interest),
-`/api/equities` (sector watchlist) , `/api/macro` , `/api/macrodash` (rates/inflation/growth/FX),
+`/api/equities` (sector watchlist) , `/api/macro` , `/api/macrodash` (rates + rateGap · inflation · growth · growthProxy copper÷gold · fx board · links commodity↔currency),
 `/api/correlations` , `/api/events` , `/api/flows` , `/api/chokepoints` , `/api/reroute` , `/api/sar` , `/api/sar/image` , `/api/flares` ,
 `/api/alerts` , `/api/digest` , `/api/export.csv` , `/api/seasonal?id=` , `/api/products` (+ crack history) , `/health`.
 
@@ -60,16 +60,18 @@ Dockerfile, render.yaml, scripts/share.sh   deploy + free tunnel
 2. **Real-vs-futures gap** mixes a **lagged official spot** with live futures — flagged in "data checks". A clean fix is Dated Brent (paid).
 3. **Metals/agri** have no free spot → futures-only.
 4. **Coal & palm oil** need paid feeds.
-5. **FRED international macro** (non-US CPI/GDP/rates) is **stale/discontinued** — only **US** + **ECB rate** are current. **FX is fully live** (Yahoo).
+5. **FRED international macro** (non-US CPI/GDP/rates) is **stale/discontinued** — only **US** + **ECB rate** are current. **FX is fully live** (Yahoo), including the **commodity↔currency link correlations** — so no international CPI/GDP is shown rather than faking it.
 6. **AIS in the Gulf is near-dark** (ships switch off) → we show activity levels + market-implied stress + reroute inference instead.
 7. Free tier **cold-starts** (~40s) after idle unless the cron ping runs.
 
 ## Roadmap / next steps
-### Phase 3 — global macro (started)
-- **Currencies board is the reliable core** (expand FX: majors + EM + commodity currencies AUD/CAD/BRL/MXN/INR/…). ✔ works via Yahoo.
-- Rates: **US (2y/10y/fed funds) + ECB deposit** are current; add more only if a live free source is found (FRED international is stale).
-- Inflation/GDP: **US current**; label international as delayed or omit.
-- Idea: **commodity ↔ currency links** (AUD=mining, CAD=oil, BRL=ags, NOK=oil).
+### Phase 3 — global macro (core shipped)
+- **Currencies board** — 14 pairs via Yahoo: majors (DXY/EUR/JPY/GBP/CHF), EM (CNY/INR/MXN/ZAR) and **commodity currencies tagged with their link** (AUD=mining, CAD=oil, NOK=oil, BRL=ags, ZAR=gold, MXN=oil). ✔ live.
+- **Commodity ↔ currency links** — a live **3-month daily-return correlation** per pair, judged against the *normal* sign and shown as **holding / weak / broken** (see the MACRO tab). All free (Yahoo). Sign note: on a `USD/xxx` pair the normal oil/gold correlation is **negative** (stronger dollar ↔ weaker commodity).
+- **Rates** — US 2y/10y/fed funds **+ ECB deposit** are current, plus a **US–ECB policy-gap** tile (a classic dollar driver). More sovereigns need a live free source — **FRED international is stale/discontinued**.
+- **Inflation/GDP** — **US current** (CPI YoY, real GDP QoQ, unemployment). Non-US CPI/GDP on free feeds is stale → deliberately **not** shown.
+- **Growth proxy** — **copper ÷ gold** ratio + 3-month change (a free, live read on global risk-on / growth appetite).
+- Still open: more *current* non-US yields/CPI/GDP if a free source appears.
 
 ### Remaining polish
 - **Accessibility pass** (keyboard nav, contrast, aria labels).

@@ -5,7 +5,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { execFile } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { sgn, businessDaysSince, inBox, haversineNm, isoWeek, monthly, pctOver, percentile, realizedVol, computeCracks, backAdjust } from './src/lib.js';
+import { sgn, businessDaysSince, inBox, haversineNm, isoWeek, monthly, pctOver, percentile, realizedVol, computeCracks, backAdjust, pearson, logReturns } from './src/lib.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC = path.join(__dirname, 'public');
@@ -529,11 +529,47 @@ const FX_SYMS = [
   { id: 'usdcad', label: 'USD / CAD · oil', sym: 'USDCAD=X' },
   { id: 'usdnok', label: 'USD / NOK · oil', sym: 'USDNOK=X' },
   { id: 'usdbrl', label: 'USD / BRL · agri', sym: 'USDBRL=X' },
-  { id: 'usdmxn', label: 'USD / MXN', sym: 'USDMXN=X' },
+  { id: 'usdzar', label: 'USD / ZAR · gold', sym: 'USDZAR=X' },
+  { id: 'usdmxn', label: 'USD / MXN · oil', sym: 'USDMXN=X' },
   { id: 'usdinr', label: 'USD / INR', sym: 'USDINR=X' },
   { id: 'usdchf', label: 'USD / CHF', sym: 'USDCHF=X' },
   { id: 'nzdusd', label: 'NZD / USD', sym: 'NZDUSD=X' },
 ];
+
+// Commodity ↔ currency links: does the currency still track its commodity?
+// `expect` is the sign of the *normal* relationship for the QUOTED pair, e.g.
+// USD/CAD up = loonie weaker = oil down → -1. We compute the 3-month daily-return
+// correlation and let the UI judge whether the link is holding.
+const FX_LINKS = [
+  { id: 'aud', pair: 'AUD / USD · mining', sym: 'AUDUSD=X', commodity: 'Copper',    csym: 'HG=F', expect: 1 },
+  { id: 'cad', pair: 'USD / CAD · oil',    sym: 'USDCAD=X', commodity: 'WTI crude', csym: 'CL=F', expect: -1 },
+  { id: 'nok', pair: 'USD / NOK · oil',    sym: 'USDNOK=X', commodity: 'Brent crude', csym: 'BZ=F', expect: -1 },
+  { id: 'brl', pair: 'USD / BRL · agri',   sym: 'USDBRL=X', commodity: 'Soybeans',  csym: 'ZS=F', expect: -1 },
+  { id: 'zar', pair: 'USD / ZAR · gold',   sym: 'USDZAR=X', commodity: 'Gold',      csym: 'GC=F', expect: -1 },
+  { id: 'mxn', pair: 'USD / MXN · oil',    sym: 'USDMXN=X', commodity: 'WTI crude', csym: 'CL=F', expect: -1 },
+];
+
+// Cached Yahoo daily series, keyed by range so different windows never collide.
+const yc = (sym, range = '3mo') => cached(`yq:${range}:${sym}`, 3600e3, () => yahooSeries(sym, range, '1d'));
+
+// 3-month daily-return correlation of two symbols (null on any fetch failure).
+async function pairCorr(symA, symB, range = '3mo') {
+  const [a, b] = await Promise.all([yc(symA, range), yc(symB, range)]);
+  const dates = Object.keys(a.series).sort();
+  return pearson(logReturns(a.series, dates), logReturns(b.series, dates));
+}
+
+// Trend of a ratio (A ÷ B) over the window — e.g. copper ÷ gold as a growth proxy.
+async function ratioTrend(symA, symB, range = '6mo', back = 63) {
+  const [a, b] = await Promise.all([yc(symA, range), yc(symB, range)]);
+  const pts = [];
+  for (const d of Object.keys(a.series).sort()) if (a.series[d] != null && b.series[d] != null) pts.push(a.series[d] / b.series[d]);
+  if (pts.length < 2) return { ratio: null, chg: null };
+  const ratio = pts[pts.length - 1];
+  const base = pts[Math.max(0, pts.length - 1 - back)];
+  return { ratio, chg: base ? ((ratio - base) / base) * 100 : null };
+}
+
 async function getMacroDash() {
   return cached('macrodash', 3 * 3600e3, async () => {
     const [dgs2, dgs10, ff, cpi, gdp, unrate, ecb] = await Promise.all([
@@ -544,7 +580,7 @@ async function getMacroDash() {
     const cpiDates = Object.keys(cpi).sort();
     const cpiLast = cpiDates.length ? cpi[cpiDates[cpiDates.length - 1]] : null;
     const cpiPrevYr = cpiDates.length > 12 ? cpi[cpiDates[cpiDates.length - 13]] : null;
-    const r2 = last(dgs2), r10 = last(dgs10), ffr = last(ff), g = last(gdp), u = last(unrate);
+    const r2 = last(dgs2), r10 = last(dgs10), ffr = last(ff), g = last(gdp), u = last(unrate), ecbLast = last(ecb);
     const fx = await Promise.all(FX_SYMS.map(async (m) => {
       try {
         const { price, series } = await cached('q:' + m.sym, 120e3, () => yahooSeries(m.sym, '5d', '1d'));
@@ -553,11 +589,28 @@ async function getMacroDash() {
         return { id: m.id, label: m.label, price: a ?? price ?? null, pct: a != null && b ? ((a - b) / b) * 100 : null };
       } catch { return { id: m.id, label: m.label, price: null, pct: null }; }
     }));
+    // Do commodity currencies still track their commodity? (3-month daily returns)
+    const links = await Promise.all(FX_LINKS.map(async (l) => {
+      let corr = null;
+      try { corr = await pairCorr(l.sym, l.csym); } catch {}
+      return { id: l.id, pair: l.pair, commodity: l.commodity, expect: l.expect, corr };
+    }));
+    // Copper ÷ gold — a classic free proxy for global growth appetite (up = risk-on).
+    let growthProxy = { ratio: null, chg: null };
+    try { growthProxy = await ratioTrend('HG=F', 'GC=F'); } catch {}
     return {
-      rates: { us2y: r2?.value ?? null, us10y: r10?.value ?? null, spread: r10 && r2 ? +(r10.value - r2.value).toFixed(2) : null, fedfunds: ffr?.value ?? null, ecb: last(ecb)?.value ?? null, asOf: r10?.date ?? null },
+      rates: {
+        us2y: r2?.value ?? null, us10y: r10?.value ?? null,
+        spread: r10 && r2 ? +(r10.value - r2.value).toFixed(2) : null,
+        fedfunds: ffr?.value ?? null, ecb: ecbLast?.value ?? null,
+        rateGap: ffr?.value != null && ecbLast?.value != null ? +(ffr.value - ecbLast.value).toFixed(2) : null,
+        asOf: r10?.date ?? null,
+      },
       inflation: { cpiYoY: cpiLast != null && cpiPrevYr != null ? +(((cpiLast / cpiPrevYr) - 1) * 100).toFixed(1) : null, asOf: cpiDates[cpiDates.length - 1] ?? null },
       growth: { gdpQoQ: g?.value ?? null, unemployment: u?.value ?? null, asOf: g?.date ?? null },
+      growthProxy,
       fx,
+      links,
     };
   });
 }
@@ -567,18 +620,11 @@ async function getCorrelations() {
   return cached('corr', 3600e3, async () => {
     const syms = { oil: 'CL=F', dollar: 'DX-Y.NYB', vix: '^VIX', sp500: '^GSPC' };
     const series = {};
-    for (const [k, s] of Object.entries(syms)) { try { series[k] = (await cached('qc:' + s, 3600e3, () => yahooSeries(s, '3mo', '1d'))).series; } catch { series[k] = {}; } }
+    for (const [k, s] of Object.entries(syms)) { try { series[k] = (await yc(s, '3mo')).series; } catch { series[k] = {}; } }
     const dates = Object.keys(series.oil).sort();
-    const arrs = {}; for (const k of Object.keys(syms)) arrs[k] = dates.map((d) => (series[k][d] != null ? series[k][d] : null));
-    const rr = {}; for (const k of Object.keys(syms)) { rr[k] = []; for (let i = 1; i < dates.length; i++) { const a = arrs[k][i], b = arrs[k][i - 1]; rr[k].push(a != null && b != null ? Math.log(a / b) : null); } }
-    const corr = (x, y) => {
-      const pairs = []; for (let i = 0; i < x.length; i++) if (x[i] != null && y[i] != null) pairs.push([x[i], y[i]]);
-      const n = pairs.length; if (n < 10) return null;
-      const mx = pairs.reduce((a, p) => a + p[0], 0) / n, my = pairs.reduce((a, p) => a + p[1], 0) / n;
-      let sxy = 0, sxx = 0, syy = 0; for (const [a, b] of pairs) { sxy += (a - mx) * (b - my); sxx += (a - mx) ** 2; syy += (b - my) ** 2; }
-      return sxx && syy ? +(sxy / Math.sqrt(sxx * syy)).toFixed(2) : null;
-    };
-    return { oilVsDollar: corr(rr.oil, rr.dollar), oilVsVix: corr(rr.oil, rr.vix), oilVsSp500: corr(rr.oil, rr.sp500) };
+    const rr = {};
+    for (const k of Object.keys(syms)) rr[k] = logReturns(series[k], dates);
+    return { oilVsDollar: pearson(rr.oil, rr.dollar), oilVsVix: pearson(rr.oil, rr.vix), oilVsSp500: pearson(rr.oil, rr.sp500) };
   });
 }
 
