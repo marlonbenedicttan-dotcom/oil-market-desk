@@ -3,6 +3,7 @@
 import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
+import { execFile } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -550,6 +551,93 @@ function startAIS() {
 }
 
 // ---------------------------------------------------------------------------
+// Server-side alerts + daily digest (notifications, webhook, email)
+// ---------------------------------------------------------------------------
+const DIGEST_LOG = path.join(__dirname, 'digest.log');
+const alertSeen = new Map();
+let lastDigestDate = null;
+let lastDigest = '';
+
+async function computeServerAlerts() {
+  const m = await getMarket();
+  const a = await getAnalytics().catch(() => null);
+  const out = [];
+  for (const b of m.benchmarks) {
+    const an = a?.benchmarks?.[b.id];
+    if (an?.basisPct == null || b.basis == null) continue;
+    if (an.basisPct >= 95) out.push({ key: `basis_hi_${b.id}`, level: 'high', text: `${b.label} basis at the ${an.basisPct.toFixed(0)}th percentile — physical dislocation.` });
+    else if (an.basisPct <= 5) out.push({ key: `basis_lo_${b.id}`, level: 'med', text: `${b.label} basis at the ${an.basisPct.toFixed(0)}th percentile — unusually weak.` });
+  }
+  for (const f of m.quality?.flags || []) out.push({ key: 'dq_' + f.text.slice(0, 40), level: 'watch', text: f.text });
+  const list = [...tankers.values()];
+  const idlers = list.filter((v) => (v.sog ?? 0) < 1).length;
+  if (ais.enabled && idlers >= 15) out.push({ key: 'idlers_15', level: 'med', text: `${idlers} tankers sitting idle — possible floating-storage build.` });
+  return out;
+}
+
+async function sendEmail(subject, text) {
+  if (!process.env.SMTP_USER || !process.env.SMTP_PASS || !process.env.DIGEST_TO) return false;
+  let nodemailer;
+  try { nodemailer = (await import('nodemailer')).default; } catch { console.log('[mail] nodemailer not installed — run: npm i nodemailer'); return false; }
+  const t = nodemailer.createTransport({
+    host: process.env.SMTP_HOST || 'smtp.gmail.com', port: Number(process.env.SMTP_PORT || 465), secure: true,
+    auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
+  });
+  await t.sendMail({ from: process.env.SMTP_USER, to: process.env.DIGEST_TO, subject, text });
+  return true;
+}
+
+async function deliver(kind, subject, text) {
+  console.log(`[notify:${kind}] ${subject}`);
+  try { fs.appendFileSync(DIGEST_LOG, `\n=== ${new Date().toISOString()} [${kind}] ${subject} ===\n${text}\n`); } catch {}
+  if (process.platform === 'darwin' && process.env.NOTIFY !== 'off') {
+    execFile('osascript', ['-e', `display notification ${JSON.stringify(text.slice(0, 200))} with title ${JSON.stringify(subject)}`], () => {});
+  }
+  if (process.env.WEBHOOK_URL) {
+    fetch(process.env.WEBHOOK_URL, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ subject, text }) }).catch(() => {});
+  }
+  await sendEmail(subject, text).catch((e) => console.error('[mail]', e.message));
+}
+
+async function buildDigest() {
+  const m = await getMarket();
+  const [c, inv, pos] = await Promise.all([getCurves().catch(() => null), getInventories().catch(() => null), getPositioning().catch(() => null)]);
+  const L = [`OIL BASIS — daily digest (${new Date().toISOString()})`, ''];
+  L.push('BENCHMARKS  paper | physical | basis | spot-lag(bd)');
+  for (const b of m.benchmarks) L.push(`  ${b.label.padEnd(20)} ${(b.paper ?? '—').toString().padStart(9)} | ${(b.physical ?? '—').toString().padStart(9)} | ${(b.basis == null ? '—' : sgn(b.basis)).padStart(8)} | ${b.spotLagDays ?? '—'}`);
+  if (c?.wti) L.push('', `CURVE  WTI ${c.wti.shape} (M1−M2 ${sgn(c.wti.m1m2)}, M1−M6 ${sgn(c.wti.m1m6)})  |  Brent ${c.brent.shape} (M1−M2 ${sgn(c.brent.m1m2)})`);
+  if (pos?.latest) L.push('', `POSITIONING  ${pos.label}: ${pos.latest.net.toLocaleString()} (${pos.pct.toFixed(0)}th pct), WoW ${pos.wow >= 0 ? '+' : ''}${pos.wow.toLocaleString()}`);
+  if (inv?.items) { L.push('', 'INVENTORIES (Mbbl, WoW):'); inv.items.forEach((i) => L.push(`  ${i.label.padEnd(16)} ${i.value.toLocaleString().padStart(10)}  (${i.wow >= 0 ? '+' : ''}${i.wow.toLocaleString()})`)); }
+  const alerts = await computeServerAlerts();
+  if (alerts.length) { L.push('', 'ALERTS:'); alerts.forEach((x) => L.push(`  [${x.level.toUpperCase()}] ${x.text}`)); }
+  L.push('', 'Sources: FRED/EIA, Yahoo, aisstream.io, CFTC. Not investment advice.');
+  return L.join('\n');
+}
+
+async function alertLoop() {
+  try {
+    const cooldown = Number(process.env.ALERT_COOLDOWN_H || 12) * 3600e3;
+    const now = Date.now();
+    for (const a of await computeServerAlerts()) {
+      if (now - (alertSeen.get(a.key) || 0) > cooldown) { alertSeen.set(a.key, now); await deliver('alert', `Oil Basis · ${a.level.toUpperCase()}`, a.text); }
+    }
+  } catch (e) { console.error('[alerts]', e.message); }
+}
+
+async function maybeSendDigest() {
+  try {
+    const hr = Number(process.env.DIGEST_HOUR ?? 7);
+    const now = new Date();
+    const today = now.toISOString().slice(0, 10);
+    if (now.getHours() >= hr && lastDigestDate !== today) {
+      lastDigestDate = today;
+      lastDigest = await buildDigest();
+      await deliver('digest', 'Oil Basis · daily digest', lastDigest);
+    }
+  } catch (e) { console.error('[digest]', e.message); }
+}
+
+// ---------------------------------------------------------------------------
 // HTTP server
 // ---------------------------------------------------------------------------
 const MIME = { '.html': 'text/html', '.css': 'text/css', '.js': 'text/javascript', '.json': 'application/json', '.svg': 'image/svg+xml', '.ico': 'image/x-icon' };
@@ -573,6 +661,8 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname === '/api/chokepoints') return sendJSON(res, 200, getChokepoints());
     if (url.pathname === '/api/curve') return sendJSON(res, 200, await getCurves());
     if (url.pathname === '/api/analogue') return sendJSON(res, 200, await getAnalogue(url.searchParams.get('metric') || 'basis:brent', Math.min(15, Math.max(2, Number(url.searchParams.get('years')) || 10))));
+    if (url.pathname === '/api/alerts') return sendJSON(res, 200, { current: await computeServerAlerts().catch(() => []) });
+    if (url.pathname === '/api/digest') { res.writeHead(200, { 'content-type': 'text/plain' }); return res.end(lastDigest || await buildDigest()); }
     if (url.pathname === '/api/analytics') return sendJSON(res, 200, await getAnalytics(Number(url.searchParams.get('freight')) || FREIGHT_DEFAULT));
     if (url.pathname === '/api/export.csv') {
       const [m, a] = await Promise.all([getMarket(), getAnalytics()]);
@@ -602,6 +692,11 @@ const server = http.createServer(async (req, res) => {
 server.listen(PORT, () => {
   console.log(`\n  🛢️  Oil Basis running at  http://localhost:${PORT}`);
   console.log(`     ${BENCHMARKS.length} benchmarks: ${BENCHMARKS.map((b) => b.label).join(', ')}`);
-  console.log(`     tankers: ${process.env.AISSTREAM_KEY ? 'aisstream.io' : 'disabled (set AISSTREAM_KEY)'}\n`);
+  console.log(`     tankers: ${process.env.AISSTREAM_KEY ? 'aisstream.io' : 'disabled (set AISSTREAM_KEY)'}`);
+  console.log(`     alerts:  ${[process.env.WEBHOOK_URL && 'webhook', process.env.SMTP_USER && 'email', process.platform === 'darwin' && process.env.NOTIFY !== 'off' && 'desktop'].filter(Boolean).join(', ') || 'desktop'}`);
+  console.log(`     digest:  ${process.env.DIGEST_HOUR ?? 7}:00 daily → ${process.env.DIGEST_TO || process.env.WEBHOOK_URL || 'desktop + digest.log'}\n`);
   startAIS();
+  setTimeout(alertLoop, 12_000);
+  setInterval(alertLoop, 5 * 60_000);
+  setInterval(maybeSendDigest, 60_000);
 });

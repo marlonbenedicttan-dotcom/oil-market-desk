@@ -59,19 +59,45 @@ npm start
 AISSTREAM_KEY=your_key_here npm start
 ```
 
-Optionally override the watched regions (a JSON array of `[[lat,lon],[lat,lon]]` boxes):
+Optionally override the watched regions (JSON array of `[[lat,lon],[lat,lon]]` boxes):
 
 ```sh
 AIS_BOXES='[[[18,-98],[31,-80]]]' AISSTREAM_KEY=... npm start
 ```
 
-Default regions: US Gulf, North Sea/Rotterdam, Malacca/Singapore, Persian Gulf.
+## Alerts & daily digest
+
+The server runs an alert engine (checks every 5 min) and a daily digest (default **07:00** local). Delivery channels:
+
+| Channel | Enable with | Notes |
+|---|---|---|
+| Desktop notification | on by default (macOS) | `NOTIFY=off` to disable |
+| Webhook | `WEBHOOK_URL=https://hooks.slack.com/...` | POSTs `{subject, text}` |
+| Email | `SMTP_USER`, `SMTP_PASS`, `DIGEST_TO` | needs `npm i nodemailer` |
+| Log file | always | written to `digest.log` |
+
+Options: `DIGEST_HOUR` (default 7), `ALERT_COOLDOWN_H` (default 12).
+
+View the latest digest any time at `http://localhost:4173/api/digest`.
+
+### Email the digest via Gmail
+
+1. Turn on 2-Step Verification, then create an **App Password** at <https://myaccount.google.com/apppasswords>.
+2. Add to `.env`:
+   ```sh
+   SMTP_USER=you@gmail.com
+   SMTP_PASS=your_16_char_app_password
+   DIGEST_TO=you@gmail.com
+   ```
+3. `npm i nodemailer` and restart.
 
 ## Caveats
 
-- The futures contract **rolls** on expiry, which can visibly jump the basis.
-- Spot assessments publish with a **lag** and refer to specific delivery points, so the basis is indicative, not a tradable cash-futures quote.
+- The futures series is the front-month **continuous** (not roll-adjusted); the **curve** (M1−M2 / M1−M6) is the roll-free structure signal.
+- Spot assessments publish with a **lag** and are a *different instrument* than the futures — read the on-screen **DATA QUALITY** flags.
 - Tanker positions are a live sample of AIS reports in the watched regions, not a complete global fleet picture.
+- Dubai / WTI Midland / Mars require a paid feed.
+- Not investment advice.
 
 ## License
 
