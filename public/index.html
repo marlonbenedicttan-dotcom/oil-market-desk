@@ -16,7 +16,7 @@
   <meta name="theme-color" content="#ff9e00" />
   <link rel="icon" href="/icon.svg" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <link rel="stylesheet" href="style.css?v=8" />
+  <link rel="stylesheet" href="style.css?v=9" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 </head>
@@ -39,8 +39,7 @@
 
     <!-- HERO: the market-state board (one quick-read tile per segment) -->
     <section class="hero">
-      <div id="marketstate" class="marketstate"></div>
-      <div id="regime" class="regime">MARKET STATE — loading…</div>
+      <div id="headlines" class="headlines"></div>
     </section>
 
     <!-- TABS -->
@@ -87,13 +86,10 @@
       </section>
 
       <section class="panel">
-        <div class="ph"><span class="ph-t">PRICES FOR MONTHS AHEAD</span>
-          <div class="controls"><select id="curve-metric"></select></div>
-        </div>
+        <div class="ph"><span class="ph-t">PRICES FOR MONTHS AHEAD — <span id="curve-title"></span></span><span class="dimtext">is it cheaper or pricier later? (the “curve”)</span></div>
         <div id="curve" class="curve"></div>
-        <div class="dimtext" style="padding:0 12px 6px">pick a segment — is it cheaper or pricier later? (the “curve”)</div>
         <div id="curvehist-block">
-          <div class="chokes-h dimtext" style="padding:8px 12px 0">IS OIL GETTING TIGHTER OR LOOSER? — WTI, this month vs next, over time (above 0 = tight)</div>
+          <div id="curvehist-title" class="chokes-h dimtext" style="padding:8px 12px 0"></div>
           <div class="chart-wrap" style="height:180px;padding:4px 12px 12px"><canvas id="curvehist"></canvas></div>
         </div>
       </section>
@@ -117,16 +113,14 @@
         <div id="sectors" class="sectors"></div>
       </section>
 
-      <section class="panel market-only" data-when="*">
-        <div class="ph"><span class="ph-t">HEDGE-FUND POSITIONING</span>
-          <div class="controls"><select id="pos-metric"></select></div>
-        </div>
-        <div id="positioning" class="ctx"></div>
-      </section>
-
       <section class="panel market-only" data-when="crude,refined,gas">
         <div class="ph"><span class="ph-t">SUPPLY — US STOCKPILES &amp; GAS STORAGE</span><span id="inv-date" class="dimtext">updated weekly</span></div>
         <div id="inventories" class="tbl"></div>
+      </section>
+
+      <section class="panel market-only" data-when="*">
+        <div class="ph"><span class="ph-t">🔬 FUNDAMENTALS — what the news implies</span><span id="fund-sub" class="dimtext"></span></div>
+        <div id="fundamentals" class="macro"></div>
       </section>
 
       <section class="panel market-only" data-when="*">
@@ -183,8 +177,11 @@
     <!-- MACRO -->
     <div class="tabpane hidden" data-pane="macro">
       <section class="panel">
-        <div class="ph"><span class="ph-t">🌍 REGION</span>
-          <div class="controls"><select id="macro-region"><option value="us">United States</option><option value="eu">Europe</option><option value="jp">Japan</option><option value="apac">Asia-Pacific</option></select></div>
+        <div class="ph"><span class="ph-t">🌍 REGION &amp; COUNTRY</span>
+          <div class="controls">
+            <select id="macro-region"><option value="us">United States</option><option value="eu">Europe</option><option value="jp">Japan</option><option value="cn">China</option><option value="in">India</option><option value="apac">Asia-Pacific</option></select>
+            <select id="macro-country"></select>
+          </div>
         </div>
         <div id="macro-region-panel" class="macro"></div>
       </section>
@@ -224,6 +221,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=9"></script>
+  <script src="app.js?v=10"></script>
 </body>
 </html>

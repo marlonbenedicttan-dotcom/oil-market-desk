@@ -967,9 +967,8 @@ function rollingVolPctile(values, win = 30) {
 function marketVerdict(r) {
   const ext = (p) => (p == null ? null : Math.abs(p - 50) / 50);
   const ps = [];
-  if (r.range.pos != null) ps.push([0.40, ext(r.range.pos)]);
-  if (r.cot?.pctile != null) ps.push([0.35, ext(r.cot.pctile)]);
-  if (r.vol.pctile != null) ps.push([0.25, ext(r.vol.pctile)]);
+  if (r.range.pos != null) ps.push([0.55, ext(r.range.pos)]);
+  if (r.vol.pctile != null) ps.push([0.45, ext(r.vol.pctile)]);
   const ws = ps.reduce((a, p) => a + p[0], 0);
   const score = ws ? Math.round((100 * ps.reduce((a, p) => a + p[0] * p[1], 0)) / ws) : null;
   const label = score == null ? '—' : score >= 80 ? 'EXTREME' : score >= 60 ? 'STRETCHED' : score >= 35 ? 'NORMAL' : 'CALM';
@@ -978,12 +977,11 @@ function marketVerdict(r) {
   if (r.range.pos != null) bits.push(r.range.pos >= 70 ? 'near the top of its 2-year range' : r.range.pos <= 30 ? 'near the bottom of its 2-year range' : 'mid its 2-year range');
   if (r.vol.v30 != null) bits.push(`${r.vol.v30.toFixed(0)}% volatility — ${(r.vol.pctile ?? 50) >= 70 ? 'jumpier than usual' : (r.vol.pctile ?? 50) <= 30 ? 'calmer than usual' : 'about normal'}`);
   const meaning = bits.join(' · ') + '.';
-  const cotNote = r.cot ? `Speculative funds are net ${r.cot.net >= 0 ? 'long' : 'short'} (${r.cot.pctile.toFixed(0)}th percentile of the past 3 years)${Math.abs(r.cot.pctile - 50) > 40 ? ' — a crowded bet that can unwind sharply' : ''}.` : '';
   const curveNote = r.curve ? `Futures are in <b>${r.curve.shape.toLowerCase()}</b> — ${r.curve.m1m2 >= 0 ? 'buyers paying up for near-term supply' : 'near-term supply looks comfortable'}.` : '';
   const macroNote = r.macro?.usd != null ? `It tends to move ${r.macro.usd < 0 ? 'against' : 'with'} the US dollar (3-month correlation ${r.macro.usd}).` : '';
   const c = MARKET_CONTENT[r.id] || {};
   return {
-    score, label, meaning, notes: [cotNote, curveNote, macroNote].filter(Boolean),
+    score, label, meaning, notes: [curveNote, macroNote].filter(Boolean),
     tightQ: c.tightQ || `IS ${r.label.toUpperCase()} STRETCHED?`, watch: c.watch || [], catalysts: c.catalysts || [],
     sectorsUp: c.sectorsUp || [], sectorsDown: c.sectorsDown || [], tickersUp: c.tickersUp || [], tickersDown: c.tickersDown || [], ideas: c.ideas || '',
   };
@@ -1002,8 +1000,6 @@ async function getMarketRead(id) {
     const vol30 = realizedVol(values, 30);
     let curve = null;
     if (CURVE_SPEC[m.primary]) { try { const c = await getCurveFor(m.primary); if (c.available) curve = { shape: c.shape, m1m2: c.m1m2, m1m6: c.m1m6 }; } catch {} }
-    let cot = null;
-    try { const p = await getPositioning(m.primary); if (!p.error && p.latest) cot = { net: p.latest.net, pctile: p.pct, wow: p.wow, oi: p.oi, oiChange: p.oiChange }; } catch {}
     const sym = primary.paper || primary.physical;
     const macro = {};
     for (const [k, s] of Object.entries({ usd: 'DX-Y.NYB', vix: '^VIX', spx: '^GSPC' })) { try { macro[k] = await pairCorr(sym, s); } catch { macro[k] = null; } }
@@ -1020,7 +1016,7 @@ async function getMarketRead(id) {
       perf: { m1: pctOver(values, 21), m3: pctOver(values, 63), m6: pctOver(values, 126), y1: pctOver(values, 252) },
       range: { pos: last != null ? percentile(values, last) : null },
       vol: { v30: vol30, pctile: rollingVolPctile(values, 30) },
-      curve, cot, macro, basis,
+      curve, macro, basis,
     };
     read.verdict = marketVerdict(read);
     return read;
@@ -1046,6 +1042,23 @@ const NEWS_QUERIES = {
   eu: '"euro area" OR ECB OR "eurozone economy" OR European inflation',
   jp: 'Japan economy OR "Bank of Japan" OR yen OR Japan inflation',
   apac: 'China economy OR PBOC OR "China stimulus" OR Asia markets',
+  // macro-country news
+  ea: '"euro area" economy OR ECB OR euro HICP',
+  de: 'Germany economy OR German inflation OR DAX',
+  uk: 'UK economy OR "Bank of England" OR UK inflation',
+  fr: 'France economy OR French inflation OR CAC',
+  cn: 'China economy OR PBOC OR China stimulus',
+  hk: 'Hong Kong economy OR Hong Kong markets',
+  in: 'India economy OR RBI OR Indian inflation',
+  kr: 'South Korea economy OR "Bank of Korea" OR KOSPI',
+  au: 'Australia economy OR RBA OR Australian inflation',
+  tw: 'Taiwan economy OR TSMC OR Taiwan markets',
+  sg: 'Singapore economy OR MAS OR Singapore markets',
+  id: 'Indonesia economy OR Bank Indonesia OR rupiah',
+  th: 'Thailand economy OR "Bank of Thailand" OR baht',
+  my: 'Malaysia economy OR "Bank Negara Malaysia" OR ringgit',
+  ph: 'Philippines economy OR Bangko Sentral OR peso',
+  vn: 'Vietnam economy OR "State Bank of Vietnam" OR dong',
 };
 const NEWS_REGION_LABELS = { us: 'United States', eu: 'Europe', jp: 'Japan', apac: 'Asia-Pacific' };
 const newsLabel = (id) => MARKETS.find((x) => x.id === id)?.label || NEWS_REGION_LABELS[id] || id;
@@ -1074,6 +1087,170 @@ async function getNews(id) {
       if (title && link) items.push({ title, source, url: link, date: d && !isNaN(d) ? d.toISOString() : null });
     }
     return { id, label: newsLabel(id), items };
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Macro countries — per-region country lists (currency + equity index, both LIVE
+// from Yahoo). Official macro is only attached where it is genuinely current.
+// ---------------------------------------------------------------------------
+// iso3 = World Bank code (annual fundamentals). oil = net crude position (factual).
+const MACRO_COUNTRIES = {
+  us: [{ id: 'us', label: 'United States', iso3: 'USA', oil: 'exporter', fx: 'DX-Y.NYB', fxLabel: 'US dollar (DXY)', index: '^GSPC', indexLabel: 'S&P 500' }],
+  eu: [
+    { id: 'ea', label: 'Euro area', iso3: 'EMU', oil: 'importer', fx: 'EURUSD=X', fxLabel: 'EUR / USD', index: '^STOXX50E', indexLabel: 'Euro Stoxx 50' },
+    { id: 'de', label: 'Germany', iso3: 'DEU', oil: 'importer', fx: 'EURUSD=X', fxLabel: 'EUR / USD', index: '^GDAXI', indexLabel: 'DAX' },
+    { id: 'uk', label: 'United Kingdom', iso3: 'GBR', oil: 'importer', fx: 'GBPUSD=X', fxLabel: 'GBP / USD', index: '^FTSE', indexLabel: 'FTSE 100' },
+    { id: 'fr', label: 'France', iso3: 'FRA', oil: 'importer', fx: 'EURUSD=X', fxLabel: 'EUR / USD', index: '^FCHI', indexLabel: 'CAC 40' },
+  ],
+  jp: [{ id: 'jp', label: 'Japan', iso3: 'JPN', oil: 'importer', fx: 'USDJPY=X', fxLabel: 'USD / JPY', index: '^N225', indexLabel: 'Nikkei 225' }],
+  in: [{ id: 'in', label: 'India', iso3: 'IND', oil: 'importer', fx: 'USDINR=X', fxLabel: 'USD / INR', index: '^NSEI', indexLabel: 'Nifty 50' }],
+  cn: [
+    { id: 'cn', label: 'China', iso3: 'CHN', oil: 'importer', fx: 'USDCNY=X', fxLabel: 'USD / CNY', index: '000001.SS', indexLabel: 'Shanghai Composite' },
+    { id: 'hk', label: 'Hong Kong', iso3: 'HKG', oil: 'importer', fx: 'USDHKD=X', fxLabel: 'USD / HKD', index: '^HSI', indexLabel: 'Hang Seng' },
+  ],
+  apac: [
+    { id: 'sg', label: 'Singapore', iso3: 'SGP', oil: 'importer', fx: 'USDSGD=X', fxLabel: 'USD / SGD', index: '^STI', indexLabel: 'Straits Times' },
+    { id: 'id', label: 'Indonesia', iso3: 'IDN', oil: 'importer', fx: 'USDIDR=X', fxLabel: 'USD / IDR', index: '^JKSE', indexLabel: 'IDX Composite' },
+    { id: 'th', label: 'Thailand', iso3: 'THA', oil: 'importer', fx: 'USDTHB=X', fxLabel: 'USD / THB', index: '^SET.BK', indexLabel: 'SET Index' },
+    { id: 'my', label: 'Malaysia', iso3: 'MYS', oil: 'exporter', fx: 'USDMYR=X', fxLabel: 'USD / MYR', index: '^KLSE', indexLabel: 'KLCI' },
+    { id: 'ph', label: 'Philippines', iso3: 'PHL', oil: 'importer', fx: 'USDPHP=X', fxLabel: 'USD / PHP', index: null, indexLabel: 'PSEi (not free)' },
+    { id: 'vn', label: 'Vietnam', iso3: 'VNM', oil: 'importer', fx: 'USDVND=X', fxLabel: 'USD / VND', index: null, indexLabel: 'VN-Index (not free)' },
+    { id: 'kr', label: 'South Korea', iso3: 'KOR', oil: 'importer', fx: 'USDKRW=X', fxLabel: 'USD / KRW', index: '^KS11', indexLabel: 'KOSPI' },
+    { id: 'au', label: 'Australia', iso3: 'AUS', oil: 'importer', fx: 'AUDUSD=X', fxLabel: 'AUD / USD', index: '^AXJO', indexLabel: 'ASX 200' },
+    { id: 'tw', label: 'Taiwan', iso3: 'TWN', oil: 'importer', fx: 'USDTWD=X', fxLabel: 'USD / TWD', index: '^TWII', indexLabel: 'TAIEX' },
+  ],
+};
+const ALL_COUNTRIES = Object.fromEntries(Object.entries(MACRO_COUNTRIES).flatMap(([region, list]) => list.map((c) => [c.id, { ...c, region }])));
+const COUNTRY_MACRO_REGION = { us: 'us', ea: 'eu' }; // where free official macro is actually current
+// World Bank annual fundamentals (free, no key). Annual data — always labelled by year.
+async function wbSeries(iso3, ind) {
+  if (!iso3) return [];
+  return cached(`wb:${iso3}:${ind}`, 24 * 3600e3, async () => {
+    try {
+      const j = await (await fetch(`https://api.worldbank.org/v2/country/${iso3}/indicator/${ind}?format=json&per_page=60&date=2000:2026`, { headers: UA })).json();
+      return (j[1] || []).filter((r) => r.value != null).sort((a, b) => +a.date - +b.date).map((r) => ({ year: +r.date, value: +(+r.value).toFixed(2) }));
+    } catch { return []; }
+  });
+}
+const wbLatest = async (iso3, ind) => { const s = await wbSeries(iso3, ind); return s.length ? s[s.length - 1] : null; };
+// Lightweight: just the currencies of every country in a region (for the macro ticker).
+async function getRegionQuotes(region) {
+  const list = MACRO_COUNTRIES[region] || [];
+  return cached('rq:' + region, 120e3, async () => {
+    const q = async (sym) => { try { const { price, series } = await cached('q:' + sym, 120e3, () => yahooSeries(sym, '5d', '1d')); const d = Object.keys(series).sort(); const a = series[d[d.length - 1]], b = series[d[d.length - 2]]; return { price: a ?? price ?? null, pct: a != null && b ? ((a - b) / b) * 100 : null }; } catch { return { price: null, pct: null }; } };
+    const items = await Promise.all(list.map(async (c) => ({ id: c.id, label: c.label, fx: { label: c.fxLabel, ...(await q(c.fx)) } })));
+    return { region, items };
+  });
+}
+async function getCountry(id) {
+  const c = ALL_COUNTRIES[id];
+  if (!c) return { error: 'unknown country' };
+  return cached('country:' + id, 15 * 60e3, async () => {
+    const quote = async (sym) => { try { const { price, series } = await cached('q:' + sym, 120e3, () => yahooSeries(sym, '5d', '1d')); const d = Object.keys(series).sort(); const a = series[d[d.length - 1]], b = series[d[d.length - 2]]; return { price: a ?? price ?? null, pct: a != null && b ? ((a - b) / b) * 100 : null }; } catch { return { price: null, pct: null }; } };
+    const [fx, idx, gdpGrowth, debtToGdp, inflation, unemployment] = await Promise.all([
+      quote(c.fx),
+      c.index ? quote(c.index) : Promise.resolve({ price: null, pct: null }),
+      wbSeries(c.iso3, 'NY.GDP.MKTP.KD.ZG'),
+      wbLatest(c.iso3, 'GC.DOD.TOTL.GD.ZS'),
+      wbLatest(c.iso3, 'FP.CPI.TOTL.ZG'),
+      wbLatest(c.iso3, 'SL.UEM.TOTL.ZS'),
+    ]);
+    let oilLink = null; try { oilLink = await pairCorr(c.fx, 'CL=F'); } catch {}
+    let macro = null;
+    const rk = COUNTRY_MACRO_REGION[id];
+    if (rk) { try { macro = (await getMacroDash()).regions?.[rk] || null; } catch {} }
+    return {
+      id, label: c.label, region: c.region, iso3: c.iso3, oil: c.oil,
+      fx: { label: c.fxLabel, sym: c.fx, ...fx }, index: { label: c.indexLabel, sym: c.index, ...idx },
+      macro, oilLink,
+      fund: { gdpGrowth: gdpGrowth.slice(-6), debtToGdp, inflation, unemployment, source: 'World Bank (annual)' },
+    };
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Fundamental news scanner — an algorithm that reads the headlines and tags the
+// ones that matter on supply/demand (weather, strikes, export bans, outages,
+// geopolitics…), then states the usual implication. A signal to investigate,
+// not a certainty — every item links to its source.
+// ---------------------------------------------------------------------------
+async function fetchGoogleNews(q, limit = 12) {
+  const url = `https://news.google.com/rss/search?q=${encodeURIComponent(q)}&hl=en-US&gl=US&ceid=US:en`;
+  const res = await fetch(url, { headers: UA });
+  if (!res.ok) throw new Error('news ' + res.status);
+  const xml = await res.text();
+  const items = [];
+  const re = /<item>([\s\S]*?)<\/item>/g;
+  let m;
+  while ((m = re.exec(xml)) && items.length < limit) {
+    const it = m[1];
+    const rawTitle = decodeEnt((it.match(/<title>([\s\S]*?)<\/title>/) || [])[1] || '');
+    const link = decodeEnt((it.match(/<link>([\s\S]*?)<\/link>/) || [])[1] || '');
+    const pub = (it.match(/<pubDate>([\s\S]*?)<\/pubDate>/) || [])[1] || '';
+    const source = decodeEnt((it.match(/<source[^>]*>([\s\S]*?)<\/source>/) || [])[1] || '');
+    const title = source && rawTitle.endsWith(' - ' + source) ? rawTitle.slice(0, -(source.length + 3)) : rawTitle;
+    const d = pub ? new Date(pub) : null;
+    if (title && link) items.push({ title, source, url: link, date: d && !isNaN(d) ? d.toISOString() : null });
+  }
+  return items;
+}
+const EVENT_RULES = [
+  { re: /\b(hurricane|typhoon|cyclone|tornado|severe storm)\b/i, kind: 'Severe weather', effect: 'up', weight: 3, chain: 'Storms can wreck crops, ports and refineries — a supply risk, usually price-positive, and a hit to downstream users.' },
+  { re: /\b(drought|heatwave|heat wave|dry spell|water short)\b/i, kind: 'Drought', effect: 'up', weight: 3, chain: 'Drought cuts yields and output — tighter supply, price-positive; hurts processors and consumers.' },
+  { re: /\b(frost|freeze|freezing)\b/i, kind: 'Frost / freeze', effect: 'up', weight: 3, chain: 'Frost damages crops (coffee, citrus, sugar) — supply risk, price-positive.' },
+  { re: /\b(el ni[ñn]o|la ni[ñn]a)\b/i, kind: 'El Niño / La Niña', effect: 'up', weight: 3, chain: 'El Niño/La Niña shifts rainfall — a classic risk to palm oil, sugar, coffee, cocoa and grains; supply risk.' },
+  { re: /\b(strike|walkout|labou?r action|protest)\b/i, kind: 'Strike / labour', effect: 'up', weight: 3, chain: 'Strikes at mines, ports or refineries cut supply — price-positive.' },
+  { re: /\b(sanction|embargo|export (ban|curb|levy|tax|quota)|blockade|ban on exports)\b/i, kind: 'Export curbs / sanctions', effect: 'up', weight: 3, chain: 'Export restrictions tighten supply (e.g. palm-oil levies, grain bans, metal sanctions) — price-positive.' },
+  { re: /\b(force majeure|outage|shut ?down|curtail|closure|halt(ed|s)?|suspend)\b/i, kind: 'Supply outage', effect: 'up', weight: 2, chain: 'An outage or shutdown removes supply — price-positive for the commodity.' },
+  { re: /\b(fire|explosion|blast|leak at)\b/i, kind: 'Plant / refinery incident', effect: 'up', weight: 2, chain: 'Fires or explosions at plants/refineries cut supply and widen crack spreads.' },
+  { re: /\b(war|conflict|attack|drone|missile|escalat|tension)\b/i, kind: 'Geopolitics', effect: 'up', weight: 3, chain: 'Conflict lifts supply/freight risk (and safe-haven demand for gold) — usually price-positive for energy and metals.' },
+  { re: /\b(record (crop|harvest|output|production)|bumper|surplus|glut|oversupply|abundant)\b/i, kind: 'Ample supply', effect: 'down', weight: 2, chain: 'Record output or surplus adds supply — price-negative, pressures producers.' },
+  { re: /\b(demand (slowdown|slump|weak|fall)|recession|slowdown|weaker demand)\b/i, kind: 'Weak demand', effect: 'down', weight: 2, chain: 'Weak demand softens prices — bearish for the commodity.' },
+  { re: /\b(disease|blight|rust|avian|bird flu|swine fever|pest)\b/i, kind: 'Crop disease', effect: 'up', weight: 2, chain: 'Disease hits crops or herds — reduces supply, price-positive.' },
+  { re: /\b(inventor(y|ies) (build|rise|jump)|stocks? (build|rise|jump)|build in (crude|stocks))\b/i, kind: 'Inventory build', effect: 'down', weight: 2, chain: 'Rising inventories signal ample supply — price-negative.' },
+];
+const SCAN_QUERIES = {
+  crude: '(oil OR refinery OR "oil field" OR OPEC) (hurricane OR outage OR sanctions OR "force majeure" OR attack OR strike)',
+  refined: '(refinery OR diesel OR gasoline OR "jet fuel") (outage OR fire OR hurricane OR strike OR "force majeure")',
+  gas: '("natural gas" OR LNG) (outage OR hurricane OR freeze OR pipeline OR strike)',
+  precious: '(gold OR silver OR "gold mine" OR platinum) (strike OR sanctions OR shutdown OR "central bank")',
+  industrial: '(copper OR "copper mine" OR aluminium) (strike OR outage OR sanctions OR shutdown OR "export ban")',
+  grains: '(wheat OR corn OR soybeans OR grain) (drought OR flood OR frost OR "export ban" OR harvest OR strike)',
+  softs: '(sugar OR coffee OR cocoa OR cotton OR "palm oil") (hurricane OR drought OR "El Nino" OR flood OR frost OR disease OR "export ban" OR harvest)',
+};
+async function getFundamentals(id) {
+  const q = SCAN_QUERIES[id];
+  if (!q) return { id, error: 'unknown segment', items: [] };
+  return cached('fund:' + id, 45 * 60e3, async () => {
+    const items = await fetchGoogleNews(q, 16);
+    const hits = [];
+    for (const it of items) {
+      for (const r of EVENT_RULES) { if (r.re.test(it.title)) { hits.push({ ...it, kind: r.kind, effect: r.effect, chain: r.chain }); break; } }
+    }
+    return { id, label: newsLabel(id), items: hits, scanned: items.length };
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Live "important headlines" — tier-1 wire, ranked by event materiality + recency.
+// ---------------------------------------------------------------------------
+const HEADLINE_QUERY = '(oil OR "natural gas" OR gold OR copper OR wheat OR corn OR soybeans OR sugar OR coffee OR cocoa OR "palm oil") (OPEC OR sanctions OR hurricane OR drought OR "export ban" OR strike OR outage OR "record output" OR glut OR tariff OR attack) (site:reuters.com OR site:bloomberg.com OR site:ft.com OR site:apnews.com OR site:cnbc.com)';
+const TIER1_RE = /reuters|bloomberg|financial times|ft\.com|ap news|associated press|cnbc|wsj|wall street journal/i;
+async function getHeadlines() {
+  return cached('headlines', 20 * 60e3, async () => {
+    const items = await fetchGoogleNews(HEADLINE_QUERY, 30).catch(() => []);
+    const now = Date.now();
+    for (const it of items) {
+      let kind = 'Markets', effect = 'watch', weight = 1;
+      for (const r of EVENT_RULES) { if (r.re.test(it.title)) { kind = r.kind; effect = r.effect; weight = r.weight; break; } }
+      it.kind = kind; it.effect = effect;
+      const age = it.date ? (now - new Date(it.date)) / 864e5 : 999;
+      it.ageDays = Math.round(age);
+      it.score = weight * 10 + (TIER1_RE.test(it.source || '') ? 6 : 0) + Math.max(0, 12 - age / 20) + (age <= 3 ? 10 : 0);
+    }
+    items.sort((a, b) => b.score - a.score);
+    return { items: items.slice(0, 6), generated: new Date().toISOString() };
   });
 }
 
@@ -1579,6 +1756,23 @@ const server = http.createServer(async (req, res) => {
       return sendJSON(res, 200, await getNews(id).catch((e) => ({ error: String(e.message), id, items: [] })));
     }
     if (url.pathname === '/api/transmission') return sendJSON(res, 200, await getTransmission().catch((e) => ({ error: String(e.message), ideas: [] })));
+    if (url.pathname === '/api/headlines') return sendJSON(res, 200, await getHeadlines().catch((e) => ({ error: String(e.message), items: [] })));
+    if (url.pathname === '/api/countries') return sendJSON(res, 200, MACRO_COUNTRIES);
+    if (url.pathname === '/api/region-quotes') {
+      const id = url.searchParams.get('id');
+      if (!MACRO_COUNTRIES[id]) return sendJSON(res, 404, { error: 'unknown region' });
+      return sendJSON(res, 200, await getRegionQuotes(id).catch((e) => ({ error: String(e.message), items: [] })));
+    }
+    if (url.pathname === '/api/country') {
+      const id = url.searchParams.get('id');
+      if (!ALL_COUNTRIES[id]) return sendJSON(res, 404, { error: 'unknown country' });
+      return sendJSON(res, 200, await getCountry(id).catch((e) => ({ error: String(e.message) })));
+    }
+    if (url.pathname === '/api/fundamentals') {
+      const id = url.searchParams.get('id');
+      if (!SCAN_QUERIES[id]) return sendJSON(res, 404, { error: 'unknown segment' });
+      return sendJSON(res, 200, await getFundamentals(id).catch((e) => ({ error: String(e.message), items: [] })));
+    }
     if (url.pathname === '/api/longterm') {
       const id = url.searchParams.get('id');
       const years = Math.min(15, Math.max(1, Number(url.searchParams.get('years')) || 10));

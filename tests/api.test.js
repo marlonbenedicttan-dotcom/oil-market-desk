@@ -75,6 +75,25 @@ test('/api/news returns headlines for segments and macro regions (graceful if un
   assert.equal((await fetch(`http://localhost:${PORT}/api/news?id=nope`)).status, 404);
 });
 
+test('/api/countries, /api/country and /api/region-quotes', async () => {
+  const c = await (await fetch(`http://localhost:${PORT}/api/countries`)).json();
+  for (const r of ['us', 'eu', 'jp', 'cn', 'in', 'apac']) assert.ok(c[r] && c[r].length, `region ${r}`);
+  const idn = await (await fetch(`http://localhost:${PORT}/api/country?id=id`)).json();
+  assert.equal(idn.label, 'Indonesia');
+  assert.ok(idn.fx && idn.index && idn.fund && Array.isArray(idn.fund.gdpGrowth));
+  assert.equal((await fetch(`http://localhost:${PORT}/api/country?id=nope`)).status, 404);
+  const rq = await (await fetch(`http://localhost:${PORT}/api/region-quotes?id=apac`)).json();
+  assert.ok(Array.isArray(rq.items) && rq.items.length >= 5);
+});
+
+test('/api/headlines + /api/fundamentals respond', async () => {
+  const h = await (await fetch(`http://localhost:${PORT}/api/headlines`)).json();
+  assert.ok(Array.isArray(h.items));
+  const f = await (await fetch(`http://localhost:${PORT}/api/fundamentals?id=softs`)).json();
+  assert.ok(Array.isArray(f.items));
+  assert.equal((await fetch(`http://localhost:${PORT}/api/fundamentals?id=nope`)).status, 404);
+});
+
 test('/api/transmission returns cross-asset logic with real triggers', async () => {
   const r = await fetch(`http://localhost:${PORT}/api/transmission`);
   assert.equal(r.status, 200);

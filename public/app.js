@@ -16,8 +16,12 @@ let marketRead = null;         // /api/marketread payload for currentMarket
 let lastFx = null;             // latest FX quotes (for the top ticker)
 let macroMd = null;            // /api/macrodash payload (macro tab)
 let macroRegion = 'us';        // selected macro region
+let macroCountries = null;     // /api/countries — country lists per region
+let macroCountry = 'us';       // selected country
 let transmission = null;       // /api/transmission — cross-asset logic
-const REGION_FX = { us: ['dxy'], eu: ['eurusd'], jp: ['usdjpy'], apac: ['usdcny', 'usdinr', 'usdjpy'] };
+let activeTab = 'commodities'; // which tab is showing (drives the ticker's content)
+let regionQuotes = null;       // region currencies/indices for the macro ticker
+const COUNTRY_FX_ID = { 'DX-Y.NYB': 'dxy', 'EURUSD=X': 'eurusd', 'GBPUSD=X': 'gbpusd', 'USDJPY=X': 'usdjpy', 'USDCNY=X': 'usdcny', 'USDINR=X': 'usdinr', 'AUDUSD=X': 'audusd' };
 let chartDp = 2;        // decimals for the current chart (set in renderChart)
 const seenAlerts = new Set();
 const ltCache = {};
@@ -34,7 +38,6 @@ const GLOSSARY = `
     <dt>% change</dt><dd>How much a price moved over the chosen window, not just today.</dd>
     <dt>How extreme</dt><dd>Where today’s number sits vs the last 2 years (90+/100 = near a record).</dd>
     <dt>Stockpiles</dt><dd>Weekly US oil inventories. A surprise <b>drop</b> is bullish for oil; a surprise <b>build</b> is bearish.</dd>
-    <dt>Hedge-fund bets</dt><dd>How much more big funds are betting oil rises vs falls.</dd>
     <dt>Oil-field flames</dt><dd>Satellites see the gas burned off at oil fields — fewer flames = fields shutting down.</dd>
   </dl>`;
 
@@ -234,7 +237,6 @@ function marketAlerts(r) {
   if (r.range.pos != null && r.range.pos >= 90) out.push({ level: 'high', text: `${r.label} is near its 2-year high (${r.range.pos.toFixed(0)}/100 percentile).` });
   else if (r.range.pos != null && r.range.pos <= 10) out.push({ level: 'med', text: `${r.label} is near its 2-year low (${r.range.pos.toFixed(0)}/100 percentile).` });
   if (r.vol?.pctile != null && r.vol.pctile >= 90) out.push({ level: 'med', text: `${r.label} volatility is unusually high (${r.vol.v30.toFixed(0)}% annualised, ${r.vol.pctile.toFixed(0)}th pctile).` });
-  if (r.cot && Math.abs(r.cot.pctile - 50) >= 45) out.push({ level: 'med', text: `Hedge funds are ${r.cot.pctile > 50 ? 'crowded long' : 'crowded short'} in ${r.label} (${r.cot.pctile.toFixed(0)}th pctile) — watch for an unwind.` });
   return out;
 }
 function insightsFor(r) {
@@ -242,7 +244,6 @@ function insightsFor(r) {
   if (r.dayPct != null) out.push(`<b>${r.label}</b> moved <b>${pctf(r.dayPct)}</b> today${r.perf.m1 != null ? ` and <b>${pctf(r.perf.m1)}</b> over a month` : ''}.`);
   if (r.perf.m6 != null) out.push(`6-month trend <b>${pctf(r.perf.m6)}</b>${r.perf.y1 != null ? ` · 1-year <b>${pctf(r.perf.y1)}</b>` : ''}.`);
   if (r.curve) out.push(`Futures are in <b>${r.curve.shape.toLowerCase()}</b> — ${r.curve.m1m2 >= 0 ? 'the market pays up for near-term supply (tight)' : 'near-term supply looks comfortable'}.`);
-  if (r.cot) out.push(`Hedge funds are net <b>${r.cot.net >= 0 ? 'long' : 'short'}</b> at the <b>${r.cot.pctile.toFixed(0)}th percentile</b> of 3 years.`);
   if (r.basis) out.push(`Real barrels trade <b>${signed(r.basis.value, r.dp)}</b> vs futures${r.basis.pctile != null ? ` (${r.basis.pctile.toFixed(0)}th pct)` : ''}.`);
   return out;
 }
@@ -290,7 +291,6 @@ function regLine(r) {
   if (r.perf?.m6 != null) bits.push(`${r.label} ${r.perf.m6 >= 0 ? 'up' : 'down'} ${Math.abs(r.perf.m6).toFixed(0)}% in 6 months`);
   if (r.range?.pos != null) bits.push(r.range.pos >= 70 ? 'near 2-year highs' : r.range.pos <= 30 ? 'near 2-year lows' : 'mid-range');
   if (r.curve) bits.push(r.curve.shape.toLowerCase());
-  if (r.cot) bits.push(`funds ${r.cot.pctile > 60 ? 'crowded long' : r.cot.pctile < 40 ? 'crowded short' : 'balanced'}`);
   return `MARKET STATE — ${bits.join(' · ')}.`;
 }
 // Show only the segment-specific blocks (ships for crude, fuels/stocks for refined, …).
@@ -314,7 +314,7 @@ function renderAdaptive() {
   setTitle('tightness-title', '⚡ ' + (mk ? `IS ${mk.label.toUpperCase()} TIGHT / STRETCHED?` : 'READING…'));
   setTitle('tightness-sub', 'range · volatility · positioning · curve');
   setTitle('ins1-title', mk ? mk.label.toUpperCase() : 'MARKET');
-  setTitle('ins2-title', mk && !mk.hasShips ? 'POSITIONING & MACRO' : 'SHIPS & FREIGHT');
+  setTitle('ins2-title', mk && !mk.hasShips ? 'MACRO & LINKS' : 'SHIPS & FREIGHT');
   if (!marketRead || marketRead.id !== currentMarket || marketRead.error) {
     $('bottomline').innerHTML = '<div class="dimtext" style="padding:10px 12px">reading the market…</div>';
     $('tightness').innerHTML = '<div class="dimtext" style="padding:10px 12px">loading…</div>';
@@ -341,7 +341,6 @@ function renderAdaptive() {
   const push = (label, value, dir, note) => ev.push({ label, value, dir, note });
   if (r.range.pos != null) push('Price vs its 2-year range', `${r.range.pos.toFixed(0)}/100`, r.range.pos >= 70 ? 'HIGH' : r.range.pos <= 30 ? 'LOW' : 'MID', r.range.pos >= 70 ? 'expensive vs 2 years' : r.range.pos <= 30 ? 'cheap vs 2 years' : 'mid-range');
   if (r.vol.v30 != null) push('Volatility (30-day, annualised)', r.vol.v30.toFixed(1) + '%', (r.vol.pctile ?? 50) >= 70 ? 'HIGH' : (r.vol.pctile ?? 50) <= 30 ? 'LOW' : 'MID', `${(r.vol.pctile ?? 50).toFixed(0)}th pctile — ${(r.vol.pctile ?? 50) >= 70 ? 'jumpier than usual' : (r.vol.pctile ?? 50) <= 30 ? 'calmer than usual' : 'normal'}`);
-  if (r.cot) push('Hedge-fund net position', `${r.cot.pctile.toFixed(0)}/100`, Math.abs(r.cot.pctile - 50) >= 40 ? 'CROWDED' : 'MID', `net ${r.cot.net.toLocaleString()} contracts`);
   if (r.curve) push('Curve — near vs later', r.curve.shape, r.curve.m1m2 >= 0 ? 'TIGHT' : 'LOOSE', r.curve.m1m2 >= 0 ? 'near-term prices higher' : 'near-term supply comfortable');
   if (r.basis) push('Real vs futures', signed(r.basis.value, r.dp), r.basis.value >= 0 ? 'TIGHT' : 'LOOSE', r.basis.pctile != null ? `${r.basis.pctile.toFixed(0)}th pctile` : 'physical vs paper');
   if (r.macro?.usd != null) push('Link to the US dollar', `${r.macro.usd}`, 'MID', '3-month correlation (negative = moves against the dollar)');
@@ -351,8 +350,6 @@ function renderAdaptive() {
     $('tanker-insights').innerHTML = tankerInsights(tankerInfo).map((x) => `<li>${x}</li>`).join('');
   } else {
     const pm = [];
-    if (r.cot) pm.push(`Hedge funds are net <b>${r.cot.net >= 0 ? 'long' : 'short'}</b> at the <b>${r.cot.pctile.toFixed(0)}th percentile</b> of 3 years${Math.abs(r.cot.pctile - 50) > 40 ? ' — a crowded bet' : ''}.`);
-    if (r.cot?.oiChange != null) pm.push(`Open interest ${r.cot.oiChange >= 0 ? 'rose' : 'fell'} <b>${Math.abs(r.cot.oiChange).toLocaleString()}</b> contracts this week.`);
     if (r.macro) pm.push(`3-month correlation — dollar <b>${r.macro.usd ?? '—'}</b>, VIX <b>${r.macro.vix ?? '—'}</b>, S&amp;P 500 <b>${r.macro.spx ?? '—'}</b>.`);
     if (r.basis) pm.push(`Real barrels trade <b>${signed(r.basis.value, r.dp)}</b> vs futures.`);
     $('tanker-insights').innerHTML = pm.map((x) => `<li>${x}</li>`).join('') || '<li>No extra context for this segment.</li>';
@@ -388,9 +385,12 @@ function selectMarket(id) {
   toggleMarketBlocks();
   if (data) { renderCards(data); buildMetricOptions(data); }
   setCardsTitle();
+  renderCurveForSegment();   // the curve follows the segment
+  loadCurveHistory();        // and so does the curve-over-time (or hides)
   renderAdaptive();
   loadMarketRead();
   loadNews();
+  loadFundamentals();
   renderChart();
 }
 
@@ -475,7 +475,13 @@ function renderTicker(m) {
   });
   // include every currency too
   for (const f of (lastFx || [])) parts.push(`<span class="tk"><b>${f.label.replace(/\s*·.*/, '')}</b><span class="tk-px">${f.price == null ? '—' : Number(f.price).toFixed(f.price < 10 ? 4 : 2)}</span><span class="tk-chg ${cls(f.pct)}">${f.pct == null ? '' : pctf(f.pct)}</span></span>`);
-  const one = parts.join('');
+  let one;
+  if (activeTab === 'macro' && regionQuotes && regionQuotes.length) {
+    // on the macro tab the ticker shows the REGION's currencies & markets, not commodities
+    one = regionQuotes.map((c) => `<span class="tk"><b>${c.label}</b><span class="tk-px">${c.fx.price == null ? '—' : Number(c.fx.price).toFixed(c.fx.price < 10 ? 4 : 2)}</span><span class="tk-chg ${cls(c.fx.pct)}">${c.fx.pct == null ? '' : pctf(c.fx.pct)}</span></span>`).join('');
+  } else {
+    one = parts.join('');
+  }
   $('ticker').innerHTML = `<div class="ticker-track">${one}${one}</div>`;   // two copies → seamless marquee
 }
 
@@ -626,7 +632,7 @@ async function renderChart() {
 async function loadHistory() { history = await getJSON('/api/history'); }
 async function loadMarket() {
   data = await getJSON('/api/market');
-  renderCards(data); buildMetricOptions(data); buildBpOptions(); buildCurveOptions(); buildPosOptions();
+  renderCards(data); buildMetricOptions(data); buildBpOptions();
   renderMarketState(); renderSnapshot(); setCardsTitle(); renderTicker(data);
   await renderChart();   // ← render AFTER data exists
   loadMarketRead();      // populate the adaptive Big Picture (hero line + panels)
@@ -729,30 +735,6 @@ function sparkline(vals, w = 240, h = 40) {
   const pts = xs.map((v, i) => `${(i / (xs.length - 1)) * w},${h - ((v - min) / rng) * h}`).join(' ');
   return `<svg width="${w}" height="${h}" class="spark"><polyline points="${pts}" fill="none" stroke="#ff9e00" stroke-width="1.5"/></svg>`;
 }
-function renderPositioning(p) {
-  if (!p || p.error || !p.latest) { $('positioning').innerHTML = '<div class="dimtext" style="padding:10px 12px">no data for this one</div>'; return; }
-  const name = (p.label || 'this market').replace(' spec net (non-comm)', '');
-  $('positioning').innerHTML =
-    `<div class="read-line">How many more bets hedge funds hold that <b>${name}</b> will <b>rise</b> vs <b>fall</b>. Extreme highs often come before a pullback.</div>` +
-    ctxRow(`Net spec position — ${name}`, p.pct, `${p.latest.net.toLocaleString()} contracts`) +
-    `<div class="pos-sub dimtext">Changed ${p.wow >= 0 ? '+' : ''}${p.wow.toLocaleString()} contracts this week · as of ${p.latest.date}</div>` +
-    (p.oi ? `<div class="read-line">Open interest: <b>${p.oi.toLocaleString()}</b> contracts (${p.oiChange >= 0 ? '+' : ''}${p.oiChange.toLocaleString()} this week). Price up + OI up = fresh conviction; price up + OI down = short-covering.</div>` : '') +
-    sparkline(p.history.map((h) => h.net));
-}
-function buildPosOptions() {
-  const sel = $('pos-metric');
-  if (!sel || !markets.length) return;
-  const prev = sel.value || 'wti';
-  const groups = {};
-  for (const m of markets) { if (!m.hasCOT) continue; (groups[m.group] ||= []).push(m); }
-  sel.innerHTML = Object.entries(groups).map(([g, list]) => `<optgroup label="${g.toUpperCase()}">${list.map((m) => `<option value="${m.primary}">${m.label}</option>`).join('')}</optgroup>`).join('');
-  if ([...sel.options].some((o) => o.value === prev)) sel.value = prev;
-}
-async function loadPositioning() {
-  const sel = $('pos-metric');
-  if (!sel) return;
-  try { renderPositioning(await getJSON('/api/positioning?id=' + encodeURIComponent(sel.value))); } catch {}
-}
 function sectorRead(m, a, t) {
   const by = Object.fromEntries(m.benchmarks.map((b) => [b.id, b]));
   const cracks = crackSpreads(m);
@@ -814,25 +796,18 @@ function renderCurveHistory(d) {
   curveHistChart = new Chart(cv, { type: 'line', data, options: opts });
 }
 function renderCurve(d) { if (!d) return; $('curve').innerHTML = curveBlock('WTI', d.wti) + curveBlock('Brent', d.brent); }
-function buildCurveOptions() {
-  const sel = $('curve-metric');
-  if (!sel || !markets.length) return;
-  const prev = sel.value || 'crude';
-  const groups = {};
-  for (const m of markets) { if (!m.hasCurve) continue; (groups[m.group] ||= []).push(m); }
-  sel.innerHTML = Object.entries(groups).map(([g, list]) => `<optgroup label="${g.toUpperCase()}">${list.map((m) => `<option value="${m.id}">${m.label}</option>`).join('')}</optgroup>`).join('');
-  if ([...sel.options].some((o) => o.value === prev)) sel.value = prev;
-}
-async function loadCurveFor(id) {
+// The curve ALWAYS follows the selected segment (no second picker).
+async function renderCurveForSegment() {
+  const mk = markets.find((x) => x.id === currentMarket);
+  setTitle('curve-title', mk ? mk.label.toUpperCase() : '');
   const el = $('curve');
   if (!el) return;
-  if (id === 'crude') { try { renderCurve(await getJSON('/api/curve')); return; } catch {} }
-  const mk = markets.find((x) => x.id === id);
+  if (currentMarket === 'crude') { try { renderCurve(await getJSON('/api/curve')); return; } catch {} }
   const comps = ((mk ? mk.components : []).map((c) => data.benchmarks.find((x) => x.id === c.id))).filter((b) => b && b.curve);
   el.innerHTML = '<div class="dimtext" style="padding:10px 12px">loading curve…</div>';
   const results = await Promise.all(comps.map((b) => getJSON('/api/termstructure?id=' + encodeURIComponent(b.id)).catch(() => null)));
   const html = results.filter((r) => r && r.available).map((r) => curveBlock(r.label, r)).join('');
-  el.innerHTML = html || '<div class="dimtext" style="padding:10px 12px">No free month-by-month curve for this one — only a front-month price.</div>';
+  el.innerHTML = html || '<div class="dimtext" style="padding:10px 12px">No free month-by-month curve for this segment — only a front-month price.</div>';
 }
 function renderAnalogue(a) {
   if (!a || a.error) { $('analogue').innerHTML = `<div class="dimtext" style="padding:10px 12px">${a?.error || 'loading…'}</div>`; return; }
@@ -1031,16 +1006,51 @@ function macroTile(label, value, sub, klass, metric) {
   return `<div class="kpi${metric ? ' clickable' : ''}"${metric ? ` data-metric="${metric}" title="Click for the chart"` : ''}><div class="kpi-l">${label}</div><div class="kpi-v ${klass || ''}">${value}</div><div class="kpi-s dimtext">${sub || ''}</div></div>`;
 }
 function renderMacroRegion() {
+  const sel = $('macro-country');
+  const list = (macroCountries && macroCountries[macroRegion]) || [];
+  if (sel) {
+    sel.innerHTML = list.map((c) => `<option value="${c.id}">${c.label}</option>`).join('');
+    macroCountry = list[0] ? list[0].id : 'us';
+    if ([...sel.options].some((o) => o.value === macroCountry)) sel.value = macroCountry;
+  }
+  loadRegionQuotes();
+  loadCountry();
+}
+async function loadRegionQuotes() {
+  try { regionQuotes = (await getJSON('/api/region-quotes?id=' + macroRegion)).items || []; }
+  catch { regionQuotes = null; }
+  if (data) renderTicker(data);
+}
+async function loadCountry() {
   const el = $('macro-region-panel');
-  if (!el || !macroMd) return;
-  const reg = (macroMd.regions || {})[macroRegion];
-  if (!reg) { el.innerHTML = ''; return; }
-  const tile = (k, v, suf, asOf) => macroTile(k.toUpperCase(), v == null ? '—' : `${v}${suf || ''}`, asOf ? `as of ${asOf}` : '');
-  let html = '<div class="kpis">' + reg.fields.map((f) => tile(f.k, f.v, f.suf, f.asOf)).join('') + '</div>';
-  const curIds = REGION_FX[macroRegion] || [];
-  const cur = (macroMd.fx || []).filter((f) => curIds.includes(f.id));
-  if (cur.length) html += '<div class="macro-note">KEY CURRENCIES</div><div class="kpis">' + cur.map((f) => macroTile(f.label, f.price != null ? f.price.toFixed(f.price < 10 ? 4 : 2) : '—', f.pct != null ? pctf(f.pct) : '', cls(f.pct), 'fx:' + f.id)).join('') + '</div>';
-  if (reg.note) html += `<div class="macro-note">⚠ ${reg.note}</div>`;
+  if (!el) return;
+  el.innerHTML = '<div class="dimtext" style="padding:10px 12px">loading…</div>';
+  let c; try { c = await getJSON('/api/country?id=' + encodeURIComponent(macroCountry)); } catch { c = null; }
+  if (!c || c.error) { el.innerHTML = '<div class="dimtext" style="padding:10px 12px">unavailable</div>'; return; }
+  const num = (v, dp) => (v == null ? '—' : Number(v).toFixed(dp));
+  const fxId = COUNTRY_FX_ID[c.fx.sym];
+  let html = '';
+  if (c.macro && c.macro.fields) html += '<div class="kpis">' + c.macro.fields.map((f) => macroTile(f.k.toUpperCase(), f.v == null ? '—' : `${f.v}${f.suf || ''}`, f.asOf ? `as of ${f.asOf}` : '')).join('') + '</div>';
+  else html += `<div class="macro-note">⚠ No current free official macro for ${c.label} — the market data, fundamentals and headlines below are shown instead.</div>`;
+  html += `<div class="macro-note">MARKET</div><div class="kpis">`
+    + macroTile(c.fx.label, num(c.fx.price, c.fx.price != null && c.fx.price < 10 ? 4 : 2), c.fx.pct != null ? pctf(c.fx.pct) + ' today' : '', cls(c.fx.pct), fxId ? 'fx:' + fxId : '')
+    + (c.index.label && !/not free/i.test(c.index.label) ? macroTile(c.index.label, num(c.index.price, c.index.price != null && c.index.price < 1000 ? 1 : 0), c.index.pct != null ? pctf(c.index.pct) + ' today' : '', cls(c.index.pct)) : '')
+    + '</div>';
+  const f = c.fund || {};
+  const gdp = f.gdpGrowth || [];
+  const bars = gdp.length
+    ? `<div class="wb-bars">${gdp.map((g) => `<span class="wb-bar ${g.value >= 0 ? 'pos' : 'neg'}" style="height:${Math.min(42, Math.abs(g.value) * 5 + 3)}px" title="${g.year}: ${g.value}%"></span>`).join('')}</div><div class="dimtext" style="padding:0 12px 4px">real GDP growth % · ${gdp.map((g) => g.year).join(' · ')}</div>`
+    : '<div class="dimtext" style="padding:0 12px 4px">GDP growth: not available free</div>';
+  html += `<div class="macro-note">FUNDAMENTALS · ${f.source || 'World Bank'}</div><div class="kpis">`
+    + macroTile('GDP GROWTH (LATEST)', gdp.length ? gdp[gdp.length - 1].value + '%' : '—', gdp.length ? String(gdp[gdp.length - 1].year) : 'n/a')
+    + macroTile('DEBT / GDP', f.debtToGdp && f.debtToGdp.year >= 2018 ? f.debtToGdp.value + '%' : '—', f.debtToGdp ? `${f.debtToGdp.year}${f.debtToGdp.year < 2018 ? ' — too old to rely on' : ''}` : 'not available')
+    + macroTile('INFLATION (CPI)', f.inflation ? f.inflation.value + '%' : '—', f.inflation ? String(f.inflation.year) : 'n/a')
+    + macroTile('UNEMPLOYMENT', f.unemployment ? f.unemployment.value + '%' : '—', f.unemployment ? String(f.unemployment.year) : 'n/a')
+    + '</div>' + bars;
+  if (c.oilLink != null) {
+    const read = c.oilLink > 0.2 ? 'the currency weakens when oil rises (importer strain)' : c.oilLink < -0.2 ? 'the currency firms with oil (exporter benefit)' : 'no strong currency–oil link right now';
+    html += `<div class="macro-note">OIL LINKAGE — ${c.label} is a net oil ${c.oil}. 3-month correlation of its currency vs Brent: <b>${c.oilLink}</b> — ${read}.</div>`;
+  }
   html += '<div class="gtitle">CROSS-ASSET — HOW THIS REGION IS AFFECTED</div>' + crossAssetBlock((i) => (i.regions || []).includes(macroRegion));
   el.innerHTML = html;
   loadMacroNews();
@@ -1061,13 +1071,49 @@ function crossAssetBlock(pred, title) {
 async function loadTransmission() {
   try { transmission = await getJSON('/api/transmission'); } catch { transmission = null; }
   renderAdaptive();
-  if (macroMd) renderMacroRegion();
+  if ($('macro-region-panel')) loadCountry();
+}
+// Segment fundamentals — auto-tagged supply/demand events from the news.
+async function loadFundamentals() {
+  const el = $('fundamentals');
+  if (!el) return;
+  el.innerHTML = '<div class="dimtext" style="padding:8px 12px">scanning fundamentals…</div>';
+  try { renderFundamentals(await getJSON('/api/fundamentals?id=' + encodeURIComponent(currentMarket))); }
+  catch { el.innerHTML = '<div class="dimtext" style="padding:8px 12px">unavailable right now</div>'; }
+}
+function renderFundamentals(f) {
+  const el = $('fundamentals');
+  if (!el) return;
+  const sub = $('fund-sub');
+  if (sub) sub.textContent = (f && f.label ? f.label + ' · ' : '') + 'past-year highlights + recent · auto-tagged from the news';
+  const items = (f && f.items) || [];
+  if (!items.length) { el.innerHTML = '<div class="dimtext" style="padding:8px 12px">No supply/demand shocks detected in coverage for this segment right now.</div>'; return; }
+  el.innerHTML = items.map((i) => `<div class="xa">
+      <div class="xa-trig ${i.effect === 'down' ? 'neg' : 'pos'}">${i.effect === 'down' ? '▼' : '▲'} ${i.kind} <span class="dimtext">· ${i.ageDays <= 14 ? 'recent' : Math.max(1, Math.round(i.ageDays / 30)) + 'mo ago'} · ${i.source}</span></div>
+      <div class="xa-chain"><a href="${i.url}" target="_blank" rel="noopener noreferrer">${i.title}</a></div>
+      <div class="macro-note">${i.chain}</div>
+    </div>`).join('')
+    + '<div class="macro-note">Auto-tagged: a keyword matched a supply/demand event — a prompt to investigate, not a certainty. Links open at the source.</div>';
+}
+// Live important headlines (hero board).
+async function loadHeadlines() {
+  const el = $('headlines');
+  if (!el) return;
+  try { renderHeadlines(await getJSON('/api/headlines')); }
+  catch { el.innerHTML = '<div class="dimtext" style="padding:8px 12px">headlines unavailable</div>'; }
+}
+function renderHeadlines(h) {
+  const el = $('headlines');
+  if (!el) return;
+  const items = (h && h.items) || [];
+  if (!items.length) { el.innerHTML = '<div class="dimtext" style="padding:8px 12px">No major commodity headlines right now.</div>'; return; }
+  el.innerHTML = '<div class="hl-h">📰 LIVE — IMPORTANT HEADLINES</div>' + items.map((i) => `<a class="hl ${i.effect === 'down' ? 'down' : 'up'}" href="${i.url}" target="_blank" rel="noopener noreferrer"><span class="hl-tag">${i.effect === 'down' ? '▼' : '▲'} ${i.kind}</span><span class="hl-t">${i.title}</span><span class="hl-s dimtext">${i.source}</span></a>`).join('');
 }
 async function loadMacroNews() {
   const el = $('macro-news');
   if (!el) return;
   el.innerHTML = '<div class="dimtext" style="padding:8px 12px">loading headlines…</div>';
-  try { renderNews(await getJSON('/api/news?id=' + macroRegion), 'macro-news', 'macro-news-sub'); }
+  try { renderNews(await getJSON('/api/news?id=' + macroCountry), 'macro-news', 'macro-news-sub'); }
   catch { el.innerHTML = '<div class="dimtext" style="padding:8px 12px">headlines unavailable right now</div>'; }
 }
 function renderMacroDash(md, corr, events) {
@@ -1123,13 +1169,23 @@ function renderKPIs(m, a, c, pos) {
   if (pos?.latest) t.push(kpiTile('HEDGE-FUND NET BET', pos.latest.net.toLocaleString(), `${pos.pct.toFixed(0)}/100 extreme vs 3 years`, cls(pos.latest.net)));
   $('kpis').innerHTML = t.join('');
 }
-let curveHistLoaded = false;
+// Curve-over-time only exists for the NYMEX energy roots (CL/BZ/NG/RB/HO);
+// it self-hides for metals/ags where the contract-month history isn't free.
+const CURVE_ROOT = { crude: { root: 'CL', name: 'CRUDE OIL' }, refined: { root: 'RB', name: 'GASOLINE' }, gas: { root: 'NG', name: 'NATURAL GAS' } };
+let curveHistRoot = null;
 async function loadCurveHistory() {
-  if (curveHistLoaded) return;
-  curveHistLoaded = true;
-  try { renderCurveHistory(await getJSON('/api/curvehistory?root=CL')); } catch {}
+  const spec = CURVE_ROOT[currentMarket];
+  const block = $('curvehist-block');
+  if (!spec) { if (block) block.style.display = 'none'; return; }
+  if (block) block.style.display = '';
+  if (curveHistRoot === spec.root) return;
+  curveHistRoot = spec.root;
+  const t = $('curvehist-title');
+  if (t) t.textContent = `IS ${spec.name} GETTING TIGHTER OR LOOSER? — this month vs next, over time (above 0 = tight)`;
+  try { renderCurveHistory(await getJSON('/api/curvehistory?root=' + spec.root)); } catch {}
 }
 function showTab(name) {
+  activeTab = name;
   document.querySelectorAll('.tab').forEach((t) => t.classList.toggle('active', t.dataset.tab === name));
   document.querySelectorAll('.tabpane').forEach((p) => p.classList.toggle('hidden', p.dataset.pane !== name));
   if (name === 'commodities') {
@@ -1139,17 +1195,18 @@ function showTab(name) {
     if (map) setTimeout(() => map.invalidateSize(), 80);
     if (crackHistChart && currentMarket === 'refined') setTimeout(() => crackHistChart.resize(), 80);
   }
+  if (name === 'macro') loadRegionQuotes();
+  if (data) renderTicker(data);
 }
 
 async function loadExtra() {
   if (!data) return; // need prices first
   try {
-    const [inv, eq, chk, an, cv, fl, pr] = await Promise.all([
+    const [inv, eq, chk, an, fl, pr] = await Promise.all([
       getJSON('/api/inventories').catch(() => null),
       getJSON('/api/equities').catch(() => null),
       getJSON('/api/chokepoints').catch(() => null),
       getJSON('/api/analytics').catch(() => null),
-      getJSON('/api/curve').catch(() => null),
       getJSON('/api/flows').catch(() => null),
       getJSON('/api/products').catch(() => null),
     ]);
@@ -1166,13 +1223,13 @@ async function loadExtra() {
     renderInventories(inv);
     renderSectors(eq, data, an, tankerInfo);
     renderChokepoints(chk);
-    if (!$('curve-metric') || $('curve-metric').value === 'crude') renderCurve(cv);
+    renderCurveForSegment();
+    loadCurveHistory();
     renderFlows(fl);
     renderProducts(pr);
     renderSatellite(sar, flr);
     renderMacroDash(md, corr, ev);
     if (md?.fx) { lastFx = md.fx; renderTicker(data); }
-    loadPositioning();
     renderMarketState();
     renderAdaptive();
     loadTransmission();
@@ -1190,11 +1247,11 @@ $('refresh').addEventListener('click', () => { nextRefresh = 60; refreshLive(); 
 $('metric').addEventListener('change', () => { localStorage.setItem('oilbasis.metric', $('metric').value); chartAnchor = null; renderChart(); });
 $('range').addEventListener('change', () => { chartAnchor = null; renderChart(); });
 $('bp-metric')?.addEventListener('change', () => selectMarket($('bp-metric').value));
-$('pos-metric')?.addEventListener('change', loadPositioning);
+
 $('marketstate')?.addEventListener('click', (e) => { const t = e.target.closest('[data-market]'); if (t) { showTab('commodities'); selectMarket(t.dataset.market); } });
 $('macro-region')?.addEventListener('change', () => { macroRegion = $('macro-region').value; renderMacroRegion(); });
 $('macro-region-panel')?.addEventListener('click', (e) => { const el = e.target.closest('[data-metric]'); if (el) pickMetric(el.dataset.metric, '1y'); });
-$('curve-metric')?.addEventListener('change', () => loadCurveFor($('curve-metric').value));
+$('macro-country')?.addEventListener('change', () => { macroCountry = $('macro-country').value; loadCountry(); });
 $('chart').addEventListener('click', (ev) => {
   if (!chart) return;
   const pts = chart.getElementsAtEventForMode(ev, 'index', { intersect: false }, true);
@@ -1251,10 +1308,13 @@ $('macro-links')?.addEventListener('click', (e) => { const el = e.target.closest
   await loadHistory().catch((e) => showError(e.message));
   fxList = await getJSON('/api/fx').catch(() => []);
   markets = await getJSON('/api/markets').catch(() => []);
+  macroCountries = await getJSON('/api/countries').catch(() => null);
   await refreshLive();        // prices + ships (sets `data` first)
   await loadExtra();          // slow feeds (need `data`)
   loadAnalogue();
   loadReroute();
+  loadHeadlines();
+  setInterval(loadHeadlines, 600000);   // refresh the live headline board
   setInterval(loadTankers, 15000);                                  // ships
   setInterval(loadReroute, 300000);                                 // reroute index
   setInterval(loadExtra, 600000);                                   // slow feeds every 10 min
