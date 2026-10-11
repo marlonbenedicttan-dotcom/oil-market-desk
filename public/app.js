@@ -490,14 +490,14 @@ function renderSatellite(sar, flares) {
   let html = '';
   if (sar && !sar.error) {
     const latest = sar.latest ? new Date(sar.latest.time).toLocaleString() : '—';
-    html += `<div class="read-line">🛰️ <b>Radar eyes (Sentinel-1 SAR)</b> — radar sees <b>every</b> ship regardless of AIS, day/night, through cloud. Last pass over the Gulf: <b>${latest}</b> · <b>${sar.passes}</b> passes in the last 7 days.<br><span class="dimtext">(Full dark-vessel detection = SAR image → ship detection → diff against AIS. Blueprint: github.com/kelu124/OrmuzOsint.)</span></div>`;
-    if (sar.recent?.length) html += `<div class="chokes">${sar.recent.map((r) => `<span class="choke">${r.platform} · ${new Date(r.time).toLocaleDateString()}</span>`).join('')}</div>`;
+    html += `<div class="read-line">👁️ <b>Radar picture of the Gulf.</b> Satellites bounce radar off the sea from space — ships show up as <b>bright dots</b>, even the ones that switched off their tracker. This is the latest pass (<b>${latest}</b>); they re-scan the Gulf about <b>${sar.passes}</b> times a week.</div>`;
+    if (sar.image) html += `<div class="sarimg"><img src="${sar.image}" alt="Latest Sentinel-1 radar image of the Gulf" loading="lazy" /><div class="dimtext">Latest radar image of the Gulf (Sentinel-1). Bright specks = ships, oil platforms and coastlines. Reading exact ship counts needs the full-resolution image.</div></div>`;
   }
   if (flares && !flares.error) {
     const regions = Object.entries(flares.byRegion || {}).map(([k, v]) => `<span class="choke"><b>${v}</b> ${k}</span>`).join('');
-    html += `<div class="chokes-h dimtext" style="padding:8px 12px 0">GULF GAS-FLARE ACTIVITY (production proxy — flares fade when output is shut in)</div>
-      <div class="chokes"><span class="choke"><b>${flares.total}</b> detections / 24h</span>${regions}</div>`;
-    if (flares.trend?.length > 1) html += `<div class="dimtext" style="padding:4px 12px">flare counts by day: ${flares.trend.map((t) => `${t.date.slice(5)}:${t.count}`).join(' · ')}</div>`;
+    html += `<div class="read-line" style="border-top:1px solid var(--line)">🔥 <b>Gas flames = how much oil is being produced.</b> Oil fields burn off gas in flames satellites can see from orbit. More flames ≈ more output; fewer ≈ fields shut down. Right now: <b>${flares.total}</b> flames seen in the last day.</div>
+      <div class="chokes">${regions}</div>`;
+    if (flares.trend?.length > 1) html += `<div class="dimtext" style="padding:4px 12px 10px">flames seen per day: ${flares.trend.map((t) => `${t.date.slice(5)}: ${t.count}`).join(' · ')}</div>`;
   }
   $('satellite').innerHTML = html || '<div class="dimtext" style="padding:10px 12px">no data</div>';
 }

@@ -240,6 +240,9 @@ footer li { margin-bottom: 2px; }
 .products { padding: 10px 12px; }
 .read-line { padding: 8px 12px; border-bottom: 1px solid var(--line); color: #c9d4df; font-size: 12.5px; }
 .satellite { padding-bottom: 10px; }
+.sarimg { padding: 8px 12px; }
+.sarimg img { width: 100%; max-width: 520px; border: 1px solid var(--line); border-radius: 6px; display: block; background: #000; }
+.sarimg .dimtext { margin-top: 4px; }
 
 .glossary { background: var(--panel2); border: 1px solid var(--line); padding: 12px 14px; margin: 12px; }
 .glossary dl { margin: 0; display: grid; grid-template-columns: max-content 1fr; gap: 5px 16px; }

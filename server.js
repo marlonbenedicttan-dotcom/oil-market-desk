@@ -759,7 +759,17 @@ async function getSAR() {
     if (!res.ok) throw new Error('cdse ' + res.status);
     const j = await res.json();
     const items = (j.value || []).map((p) => ({ name: p.Name, time: p.ContentDate?.Start, platform: (p.Name || '').slice(0, 3) }));
-    return { passes: j['@odata.count'] ?? items.length, latest: items[0] || null, recent: items.slice(0, 6) };
+    // Latest radar image (public AWS bucket, keyless)
+    let image = null;
+    try {
+      const es = await fetch('https://earth-search.aws.element84.com/v1/search', {
+        method: 'POST', headers: { ...UA, 'content-type': 'application/json' },
+        body: JSON.stringify({ collections: ['sentinel-1-grd'], bbox: [54, 24, 58, 28], limit: 1 }),
+      });
+      const href = (await es.json()).features?.[0]?.assets?.thumbnail?.href;
+      if (href) image = href.replace('s3://sentinel-s1-l1c/', 'https://sentinel-s1-l1c.s3.amazonaws.com/');
+    } catch {}
+    return { passes: j['@odata.count'] ?? items.length, latest: items[0] || null, recent: items.slice(0, 6), image };
   });
 }
 
