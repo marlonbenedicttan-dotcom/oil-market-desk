@@ -5,6 +5,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { execFile } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { sgn, businessDaysSince, inBox, haversineNm, isoWeek, monthly, pctOver, percentile, realizedVol, computeCracks } from './src/lib.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC = path.join(__dirname, 'public');
@@ -106,16 +107,6 @@ const hPhysFor = (b) => cached('hf:' + b.physical, 3_600_000, () => spotSeries(b
 // ---------------------------------------------------------------------------
 // Market snapshot
 // ---------------------------------------------------------------------------
-const sgn = (x, dp = 2) => (x == null ? '—' : (x >= 0 ? '+' : '') + Number(x).toFixed(dp));
-function businessDaysSince(d) {
-  if (!d) return null;
-  let n = 0;
-  const cur = new Date(d + 'T00:00:00Z');
-  const now = new Date(new Date().toISOString().slice(0, 10) + 'T00:00:00Z');
-  while (cur < now) { cur.setUTCDate(cur.getUTCDate() + 1); const wd = cur.getUTCDay(); if (wd !== 0 && wd !== 6) n++; }
-  return n;
-}
-
 async function getMarket() {
   const rows = await Promise.all(BENCHMARKS.map(async (b) => {
     const [p, f] = await Promise.all([paperFor(b), physFor(b)]);
@@ -214,25 +205,6 @@ async function getHistory() {
 // ---------------------------------------------------------------------------
 // Long-term (multi-year) history, bucketed by month, with % performance
 // ---------------------------------------------------------------------------
-function monthly(map) {
-  const out = {};
-  for (const d of Object.keys(map).sort()) out[d.slice(0, 7)] = map[d];
-  return out;
-}
-
-function pctOver(arr, n) {
-  const idx = [];
-  arr.forEach((v, i) => { if (v != null) idx.push(i); });
-  if (!idx.length) return null;
-  const lastIdx = idx[idx.length - 1];
-  const last = arr[lastIdx];
-  const target = lastIdx - n;
-  let baseIdx = idx[0];
-  for (const i of idx) { if (i <= target) baseIdx = i; }
-  const base = arr[baseIdx];
-  return base ? ((last - base) / base) * 100 : null;
-}
-
 async function getLongterm(b, years = 10) {
   const interval = years >= 3 ? '1mo' : '1wk';
   const paperMap = b.paper
@@ -286,15 +258,6 @@ async function eiaStocks(id, weeks = 320) {
   const res = await fetch(`https://api.eia.gov/v2/petroleum/stoc/wstk/data/?${p}`, { headers: UA });
   if (!res.ok) throw new Error(`eia stocks ${id} -> ${res.status}`);
   return ((await res.json()).response?.data || []).map((r) => ({ period: r.period, value: parseFloat(r.value) }));
-}
-function isoWeek(d) {
-  const date = new Date(d + 'T00:00:00Z');
-  const day = (date.getUTCDay() + 6) % 7;
-  date.setUTCDate(date.getUTCDate() - day + 3);
-  const firstThu = new Date(Date.UTC(date.getUTCFullYear(), 0, 4));
-  const fday = (firstThu.getUTCDay() + 6) % 7;
-  firstThu.setUTCDate(firstThu.getUTCDate() - fday + 3);
-  return 1 + Math.round((date - firstThu) / (7 * 864e5));
 }
 async function getInventories() {
   return cached('inventories', 6 * 3600e3, async () => {
@@ -388,9 +351,6 @@ const CHOKEPOINTS = [
   { name: 'Danish Straits', box: [[54, 10], [58, 13]] },
   { name: 'Turkish Straits', box: [[40, 27], [42, 30]] },
 ];
-const inBox = (lat, lon, box) => { const [[a, b], [c, d]] = box; return lat >= Math.min(a, c) && lat <= Math.max(a, c) && lon >= Math.min(b, d) && lon <= Math.max(b, d); };
-
-// Rolling AIS activity per region — a quiet region can itself be a signal (dark fleet / disruption).
 const regionHits = {};
 function recordHit(lat, lon) {
   if (lat == null || lon == null) return;
@@ -422,12 +382,6 @@ function snapshotReroute() {
 const ME_BOX = [[-5, 32], [30, 72]];
 const prevPos = new Map();
 const aisAnom = { spoof: 0, darkGap: 0 };
-function haversineNm(a1, o1, a2, o2) {
-  const R = 3440.065, r = (d) => (d * Math.PI) / 180;
-  const dφ = r(a2 - a1), dλ = r(o2 - o1);
-  const s = Math.sin(dφ / 2) ** 2 + Math.cos(r(a1)) * Math.cos(r(a2)) * Math.sin(dλ / 2) ** 2;
-  return 2 * R * Math.asin(Math.sqrt(s));
-}
 const inME = (lat, lon) => lat != null && lon != null && inBox(lat, lon, ME_BOX);
 function recordAisAnomaly(meta) {
   const { MMSI: mmsi, latitude: lat, longitude: lon } = meta;
@@ -452,16 +406,6 @@ function getChokepoints() {
 // ---------------------------------------------------------------------------
 // Analytics: percentile context + realised volatility + freight arb
 // ---------------------------------------------------------------------------
-const percentile = (arr, v) => { const xs = arr.filter((x) => x != null); return xs.length ? (xs.filter((x) => x <= v).length / xs.length) * 100 : null; };
-function realizedVol(arr, win = 30) {
-  const xs = arr.filter((x) => x != null);
-  if (xs.length < win + 1) return null;
-  const r = [];
-  for (let i = xs.length - win; i < xs.length; i++) r.push(Math.log(xs[i] / xs[i - 1]));
-  const m = r.reduce((a, b) => a + b, 0) / r.length;
-  const varp = r.reduce((a, b) => a + (b - m) ** 2, 0) / (r.length - 1);
-  return Math.sqrt(varp) * Math.sqrt(252) * 100;
-}
 const FREIGHT_DEFAULT = 2.0; // $/bbl USGC -> NW Europe estimate
 async function getAnalytics(freight = FREIGHT_DEFAULT) {
   return cached('analytics:' + freight, 6 * 3600e3, async () => {
@@ -587,19 +531,6 @@ async function getAnalogue(metric, years = 10) {
 // ---------------------------------------------------------------------------
 // Physical tightness, mid-east flows, products
 // ---------------------------------------------------------------------------
-function computeCracks(m) {
-  const by = Object.fromEntries(m.benchmarks.map((b) => [b.id, b]));
-  const w = by.wti, rb = by.rbob, ho = by.ulsd, jet = by.jet, G = 42;
-  const out = {};
-  if (rb && w && rb.paper != null && w.paper != null) out.gasoline = rb.paper * G - w.paper;
-  if (ho && w && ho.paper != null && w.paper != null) out.diesel = ho.paper * G - w.paper;
-  if (rb && ho && w && rb.paper != null && ho.paper != null && w.paper != null) out.c321 = ((2 * rb.paper + ho.paper) * G) / 3 - w.paper;
-  if (rb && w && rb.physical != null && w.physical != null) out.gasolinePhys = rb.physical * G - w.physical;
-  if (ho && w && ho.physical != null && w.physical != null) out.dieselPhys = ho.physical * G - w.physical;
-  if (jet && w && jet.physical != null && w.physical != null) out.jetPhys = jet.physical * G - w.physical;
-  return out;
-}
-
 async function getTightness() {
   return cached('tightness', 600_000, async () => {
     const [m, c, inv] = await Promise.all([getMarket(), getCurves().catch(() => null), getInventories().catch(() => null)]);
@@ -942,6 +873,12 @@ const sendJSON = (res, code, obj) => { res.writeHead(code, { 'content-type': 'ap
 
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, `http://${req.headers.host}`);
+  // Optional basic auth — set AUTH_USER + AUTH_PASS to protect a public deployment.
+  if (process.env.AUTH_USER && process.env.AUTH_PASS) {
+    const hdr = req.headers.authorization || '';
+    const ok = hdr.startsWith('Basic ') && Buffer.from(hdr.slice(6), 'base64').toString('utf8') === `${process.env.AUTH_USER}:${process.env.AUTH_PASS}`;
+    if (!ok) { res.writeHead(401, { 'www-authenticate': 'Basic realm="oil-market-desk"' }); return res.end('Authentication required'); }
+  }
   try {
     if (url.pathname === '/api/market') return sendJSON(res, 200, await getMarket());
     if (url.pathname === '/api/history') return sendJSON(res, 200, await getHistory());

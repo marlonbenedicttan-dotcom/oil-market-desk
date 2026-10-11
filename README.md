@@ -125,6 +125,20 @@ Notes for hosting:
 gh repo create oil-market-desk --private --source=. --push
 ```
 
+## Development
+
+```sh
+npm test        # unit tests + API smoke tests (Node's built-in runner)
+```
+
+The server keeps all logic in `server.js` and pure helpers in `src/lib.js` (unit-tested).
+
+## Security
+
+- Secrets come from environment variables (`.env` locally, dashboard env vars when hosted).
+- To protect a **public** deployment, set **`AUTH_USER`** and **`AUTH_PASS`** — the app then requires a browser login prompt.
+- The repo ships with a GitHub Actions workflow that runs the tests on every push.
+
 ## License
 
 MIT
