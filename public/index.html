@@ -66,6 +66,11 @@
       </section>
 
       <section class="panel market-only" data-when="*">
+        <div class="ph"><span class="ph-t">🔑 KEY TAKEAWAYS — what moved it, and what's going on</span><span class="dimtext" id="takeaways-sub"></span></div>
+        <div id="takeaways" class="takeaways"></div>
+      </section>
+
+      <section class="panel market-only" data-when="*">
         <div class="ph"><span class="ph-t">🔗 HOW IT TRANSMITS — <span id="xa-seg"></span></span><span class="dimtext">cross-asset knock-on · a framework, not a forecast</span></div>
         <div id="crossasset" class="macro"></div>
       </section>
@@ -186,6 +191,10 @@
         <div id="macro-region-panel" class="macro"></div>
       </section>
       <section class="panel">
+        <div class="ph"><span class="ph-t">🏦 CENTRAL BANK RATE — history</span><span id="policy-note" class="dimtext"></span></div>
+        <div class="chart-wrap" style="height:180px"><canvas id="policy-chart"></canvas></div>
+      </section>
+      <section class="panel">
         <div class="ph"><span class="ph-t">📈 INDEX vs CURRENCY (indexed to 100)</span>
           <div class="controls"><select id="macro-range"><option value="3m">3M</option><option value="6m">6M</option><option value="1y" selected>1Y</option><option value="ytd">YTD</option><option value="5y">5Y</option></select></div>
         </div>
@@ -228,6 +237,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=11"></script>
+  <script src="app.js?v=13"></script>
 </body>
 </html>

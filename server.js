@@ -1018,6 +1018,13 @@ async function getMarketRead(id) {
       vol: { v30: vol30, pctile: rollingVolPctile(values, 30) },
       curve, macro, basis,
     };
+    const takes = [];
+    if (read.perf.y1 != null) takes.push(`${read.label} is <b>${read.perf.y1 >= 0 ? 'up' : 'down'} ${Math.abs(read.perf.y1).toFixed(0)}%</b> over the last year${read.perf.m6 != null ? ` (6m ${read.perf.m6 >= 0 ? '+' : ''}${read.perf.m6.toFixed(0)}%)` : ''}.`);
+    if (read.range.pos != null) takes.push(`It sits at <b>${read.range.pos.toFixed(0)}/100</b> of its 2-year range — ${read.range.pos >= 70 ? 'near the top' : read.range.pos <= 30 ? 'near the bottom' : 'mid-range'}.`);
+    if (read.curve) takes.push(`Futures are in <b>${read.curve.shape.toLowerCase()}</b> — ${read.curve.m1m2 >= 0 ? 'near-term supply is tight (price-positive)' : 'near-term supply looks comfortable'}.`);
+    if (read.basis) takes.push(`Real barrels trade <b>${read.basis.value >= 0 ? '+' : ''}${read.basis.value.toFixed(read.dp)}</b> vs futures.`);
+    try { const f = await getFundamentals(id); for (const e of (f.items || []).slice(0, 3)) takes.push(`<b>${e.kind}</b> ${e.ageDays <= 14 ? 'recently' : Math.max(1, Math.round(e.ageDays / 30)) + ' months ago'}: ${e.title} — ${e.effect === 'down' ? 'pressure on price' : 'price-positive'}.`); } catch {}
+    read.takeaways = takes;
     read.verdict = marketVerdict(read);
     return read;
   });
@@ -1149,16 +1156,42 @@ async function getCountrySeries(id, range = '1y') {
   });
 }
 
-// Every macro ticker — currency + equity index for all countries (macro tape).
-async function getMacroTickers() {
-  return cached('macrotickers', 120e3, async () => {
+// Tickers for ONE region — every country's currency + equity index (region tape).
+async function getRegionTickers(region) {
+  const list = MACRO_COUNTRIES[region] || [];
+  return cached('rq:' + region, 120e3, async () => {
     const q = async (sym) => { try { const { price, series } = await cached('q:' + sym, 120e3, () => yahooSeries(sym, '5d', '1d')); const d = Object.keys(series).sort(); const a = series[d[d.length - 1]], b = series[d[d.length - 2]]; return { price: a ?? price ?? null, pct: a != null && b ? ((a - b) / b) * 100 : null }; } catch { return { price: null, pct: null }; } };
-    const items = (await Promise.all(Object.values(ALL_COUNTRIES).map(async (c) => {
+    const items = (await Promise.all(list.map(async (c) => {
       const arr = [{ id: c.id, label: c.fxLabel.replace(/\s*·.*/, ''), ...(await q(c.fx)) }];
       if (c.index) arr.push({ id: c.id, label: c.indexLabel, ...(await q(c.index)) });
       return arr;
     }))).flat();
-    return { items };
+    return { region, items };
+  });
+}
+// BIS central-bank policy rates (free). Area codes: euro area = XM; DE/FR use XM.
+const BIS_AREA = { us: 'US', ea: 'XM', de: 'XM', fr: 'XM', uk: 'GB', jp: 'JP', cn: 'CN', hk: 'HK', id: 'ID', th: 'TH', my: 'MY', ph: 'PH', in: 'IN', kr: 'KR', au: 'AU' };
+async function getPolicyRate(area) {
+  if (!area) return null;
+  return cached('bis:' + area, 6 * 3600e3, async () => {
+    try {
+      const url = `https://stats.bis.org/api/v1/data/BIS,WS_CBPOL,1.0/D.${area}/all?lastNObservations=1350`;
+      const r = await fetch(url, { headers: { ...UA, Accept: 'application/vnd.sdmx.data+csv;version=1.0.0' } });
+      if (!r.ok) return null;
+      const lines = (await r.text()).trim().split('\n');
+      const head = lines[0].split(',');
+      const iT = head.indexOf('TIME_PERIOD'), iV = head.indexOf('OBS_VALUE');
+      if (iT < 0 || iV < 0) return null;
+      const hist = [];
+      for (let i = 1; i < lines.length; i++) {
+        const c = lines[i].split(',');
+        const v = parseFloat(c[iV]);
+        if (isFinite(v)) hist.push({ date: c[iT], value: v });
+      }
+      if (!hist.length) return null;
+      hist.sort((a, b) => (a.date < b.date ? -1 : 1));
+      return { area, latest: hist[hist.length - 1], history: hist };
+    } catch { return null; }
   });
 }
 async function getCountry(id) {
@@ -1166,22 +1199,36 @@ async function getCountry(id) {
   if (!c) return { error: 'unknown country' };
   return cached('country:' + id, 15 * 60e3, async () => {
     const quote = async (sym) => { try { const { price, series } = await cached('q:' + sym, 120e3, () => yahooSeries(sym, '5d', '1d')); const d = Object.keys(series).sort(); const a = series[d[d.length - 1]], b = series[d[d.length - 2]]; return { price: a ?? price ?? null, pct: a != null && b ? ((a - b) / b) * 100 : null }; } catch { return { price: null, pct: null }; } };
-    const [fx, idx, gdpGrowth, debtToGdp, inflation, unemployment] = await Promise.all([
+    const rk = COUNTRY_MACRO_REGION[id];
+    // Everything independent runs CONCURRENTLY — the whole panel in one round trip.
+    const [fx, idx, gdpGrowth, debtToGdp, inflation, unemployment, cs, mn, oilLink, macroMd, policy] = await Promise.all([
       quote(c.fx),
       c.index ? quote(c.index) : Promise.resolve({ price: null, pct: null }),
       wbSeries(c.iso3, 'NY.GDP.MKTP.KD.ZG'),
       wbLatest(c.iso3, 'GC.DOD.TOTL.GD.ZS'),
       wbLatest(c.iso3, 'FP.CPI.TOTL.ZG'),
       wbLatest(c.iso3, 'SL.UEM.TOTL.ZS'),
+      getCountrySeries(id, '1y').catch(() => ({})),
+      getMacroNews(id).catch(() => ({ items: [] })),
+      pairCorr(c.fx, 'CL=F').catch(() => null),
+      rk ? getMacroDash().catch(() => null) : Promise.resolve(null),
+      getPolicyRate(BIS_AREA[id]).catch(() => null),
     ]);
-    let oilLink = null; try { oilLink = await pairCorr(c.fx, 'CL=F'); } catch {}
-    let macro = null;
-    const rk = COUNTRY_MACRO_REGION[id];
-    if (rk) { try { macro = (await getMacroDash()).regions?.[rk] || null; } catch {} }
+    const chg = (arr) => { const f = (arr || []).find((v) => v != null); const l = [...(arr || [])].reverse().find((v) => v != null); return f && l ? ((l - f) / f) * 100 : null; };
+    const perf = { index: chg(cs.index), fx: chg(cs.fx) };
+    const macro = macroMd ? (macroMd.regions?.[rk] || null) : null;
+    const takes = [];
+    if (policy) takes.push(`Central bank policy rate <b>${policy.latest.value}%</b> (as of ${policy.latest.date}).`);
+    if (perf.index != null && c.index) takes.push(`${c.indexLabel} <b>${perf.index >= 0 ? '+' : ''}${perf.index.toFixed(0)}%</b> over the last year.`);
+    if (perf.fx != null) takes.push(`${c.fxLabel} <b>${perf.fx >= 0 ? '+' : ''}${perf.fx.toFixed(0)}%</b> over the last year${perf.fx >= 0 ? ' (a higher USD-pair = weaker local currency)' : ''}.`);
+    if (inflation || unemployment) takes.push(`Inflation <b>${inflation ? inflation.value + '% (' + inflation.year + ')' : 'n/a'}</b> · unemployment <b>${unemployment ? unemployment.value + '% (' + unemployment.year + ')' : 'n/a'}</b>.`);
+    if (debtToGdp && debtToGdp.year >= 2018) takes.push(`Government debt is <b>${debtToGdp.value}% of GDP</b> (${debtToGdp.year}).`);
+    if (oilLink != null) takes.push(`${c.label} is a net oil ${c.oil}; its currency's 3-month correlation vs Brent is <b>${oilLink}</b>.`);
+    try { const mn = await getMacroNews(id); for (const it of (mn.items || []).slice(0, 2)) takes.push(`<b>${it.kind}</b>: ${it.title}.`); } catch {}
     return {
       id, label: c.label, region: c.region, iso3: c.iso3, oil: c.oil,
       fx: { label: c.fxLabel, sym: c.fx, ...fx }, index: { label: c.indexLabel, sym: c.index, ...idx },
-      macro, oilLink,
+      macro, oilLink, perf, takeaways: takes, policy,
       fund: { gdpGrowth: gdpGrowth.slice(-6), debtToGdp, inflation, unemployment, source: 'World Bank (annual)' },
     };
   });
@@ -1269,6 +1316,37 @@ async function getHeadlines() {
     }
     items.sort((a, b) => b.score - a.score);
     return { items: items.slice(0, 6), generated: new Date().toISOString() };
+  });
+}
+
+// Macro news — importance-ranked (policy, sovereign risk, politics, geopolitics).
+const MACRO_EVENT_RULES = [
+  { re: /\b(rate (hike|cut|rise|reduction)|hikes?|cuts? (rates|interest)|central bank|federal reserve|the fed|ecb|boj|pboc|rbi|bank of england|bank of japan|bank indonesia|bank of korea|rba)\b/i, kind: 'Central bank', weight: 3 },
+  { re: /\b(inflation (surge|jump|spike|hot|accelerat|eases|cools)|deflation|disinflation|price pressures)\b/i, kind: 'Inflation', weight: 3 },
+  { re: /\b(recession|gdp (falls|contracts|beats|misses|slows)|growth (slows|accelerates|beats)|downturn|slowdown)\b/i, kind: 'Growth', weight: 3 },
+  { re: /\b(election|votes?|referendum|coalition|parliament)\b/i, kind: 'Politics', weight: 2 },
+  { re: /\b(protest|unrest|riot|coup|martial law|crackdown|strike|violence)\b/i, kind: 'Unrest', weight: 3 },
+  { re: /\b(sanction|tariff|trade war|embargo|export (ban|curb)|import (ban|curb)|capital controls?|devalu)\b/i, kind: 'Trade / FX', weight: 3 },
+  { re: /\b(default|downgrade|imf|bailout|debt (crisis|ceiling|sustainab)|bond (selloff|yields|market))\b/i, kind: 'Sovereign risk', weight: 3 },
+  { re: /\b(stimulus|bailout|intervention|rescue|quantitative|subsid)\b/i, kind: 'Policy support', weight: 2 },
+  { re: /\b(war|conflict|attack|invasion|missile|escalat|tension)\b/i, kind: 'Geopolitics', weight: 3 },
+];
+async function getMacroNews(id) {
+  const terms = NEWS_QUERIES[id];
+  if (!terms) return { id, error: 'unknown region', items: [] };
+  return cached('mnews:' + id, 40 * 60e3, async () => {
+    const items = await fetchGoogleNews(`(${terms}) (rate OR inflation OR economy OR election OR sanctions OR protest OR IMF OR stimulus OR tariff OR downgrade)`, 30).catch(() => []);
+    const now = Date.now();
+    for (const it of items) {
+      let kind = 'Economy', weight = 1;
+      for (const r of MACRO_EVENT_RULES) { if (r.re.test(it.title)) { kind = r.kind; weight = r.weight; break; } }
+      it.kind = kind;
+      const age = it.date ? (now - new Date(it.date)) / 864e5 : 999;
+      it.ageDays = Math.round(age);
+      it.score = weight * 10 + (TIER1_RE.test(it.source || '') ? 6 : 0) + Math.max(0, 12 - age / 20) + (age <= 3 ? 10 : 0);
+    }
+    items.sort((a, b) => b.score - a.score);
+    return { id, label: newsLabel(id), items: items.slice(0, 6) };
   });
 }
 
@@ -1775,8 +1853,17 @@ const server = http.createServer(async (req, res) => {
     }
     if (url.pathname === '/api/transmission') return sendJSON(res, 200, await getTransmission().catch((e) => ({ error: String(e.message), ideas: [] })));
     if (url.pathname === '/api/headlines') return sendJSON(res, 200, await getHeadlines().catch((e) => ({ error: String(e.message), items: [] })));
+    if (url.pathname === '/api/macro-news') {
+      const id = url.searchParams.get('id');
+      if (!NEWS_QUERIES[id]) return sendJSON(res, 404, { error: 'unknown region' });
+      return sendJSON(res, 200, await getMacroNews(id).catch((e) => ({ error: String(e.message), items: [] })));
+    }
     if (url.pathname === '/api/countries') return sendJSON(res, 200, MACRO_COUNTRIES);
-    if (url.pathname === '/api/macro-tickers') return sendJSON(res, 200, await getMacroTickers().catch((e) => ({ error: String(e.message), items: [] })));
+    if (url.pathname === '/api/region-quotes') {
+      const id = url.searchParams.get('id');
+      if (!MACRO_COUNTRIES[id]) return sendJSON(res, 404, { error: 'unknown region' });
+      return sendJSON(res, 200, await getRegionTickers(id).catch((e) => ({ error: String(e.message), items: [] })));
+    }
     if (url.pathname === '/api/country-series') {
       const id = url.searchParams.get('id');
       if (!ALL_COUNTRIES[id]) return sendJSON(res, 404, { error: 'unknown country' });

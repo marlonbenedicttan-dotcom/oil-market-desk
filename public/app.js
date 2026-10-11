@@ -20,7 +20,7 @@ let macroCountries = null;     // /api/countries — country lists per region
 let macroCountry = 'us';       // selected country
 let transmission = null;       // /api/transmission — cross-asset logic
 let activeTab = 'commodities'; // which tab is showing (drives the ticker's content)
-let macroTickers = null;       // every macro ticker (all regions) for the macro tape
+let macroTickers = null;       // this region's macro tickers (currencies + indices) for the tape
 let macroChart = null;         // per-country index vs currency chart
 const COUNTRY_FX_ID = { 'DX-Y.NYB': 'dxy', 'EURUSD=X': 'eurusd', 'GBPUSD=X': 'gbpusd', 'USDJPY=X': 'usdjpy', 'USDCNY=X': 'usdcny', 'USDINR=X': 'usdinr', 'AUDUSD=X': 'audusd' };
 let chartDp = 2;        // decimals for the current chart (set in renderChart)
@@ -360,6 +360,9 @@ function renderAdaptive() {
   setTitle('xa-seg', mk ? mk.label.toUpperCase() : '');
   const xa = $('crossasset');
   if (xa) xa.innerHTML = crossAssetBlock((i) => (i.segments || []).includes(currentMarket));
+  const tk = $('takeaways');
+  if (tk) tk.innerHTML = (r.takeaways || []).length ? '<ul class="ins-list">' + r.takeaways.map((t) => `<li>${t}</li>`).join('') + '</ul>' : '<div class="dimtext" style="padding:8px 12px">No takeaways yet.</div>';
+  setTitle('takeaways-sub', mk ? mk.label : '');
 }
 async function loadNews() {
   const el = $('news');
@@ -376,7 +379,7 @@ function renderNews(n, elId = 'news', subId = 'news-sub') {
   const lbl = (n && n.label) || '';
   if (sub) sub.textContent = lbl + ' · tier-1 wire · refreshes daily';
   if (!items.length) { el.innerHTML = '<div class="dimtext" style="padding:8px 12px">No recent tier-1 headlines for this segment.</div>'; return; }
-  el.innerHTML = items.map((it) => `<a class="news-item" href="${it.url}" target="_blank" rel="noopener noreferrer"><span class="news-src">${it.source || 'wire'}</span><span class="news-t">${it.title}</span><span class="news-d dimtext">${ago(it.date)}</span></a>`).join('')
+  el.innerHTML = items.map((it) => `<a class="news-item" href="${it.url}" target="_blank" rel="noopener noreferrer"><span class="news-src">${it.source || 'wire'}</span><span class="news-t">${it.kind ? `<em class="news-k">${it.kind}</em> ` : ''}${it.title}</span><span class="news-d dimtext">${ago(it.date)}</span></a>`).join('')
     + '<div class="dimtext" style="padding:6px 12px;font-size:10px">Headlines via Google News · © the respective publishers · links open at the source.</div>';
 }
 function selectMarket(id) {
@@ -1018,16 +1021,23 @@ function renderMacroRegion() {
   loadCountry();
 }
 async function loadMacroTickers() {
-  try { macroTickers = (await getJSON('/api/macro-tickers')).items || []; }
-  catch { macroTickers = null; }
+  const req = macroRegion;                       // guard: newest region wins
+  let items = null;
+  try { items = (await getJSON('/api/region-quotes?id=' + req)).items || []; } catch { items = null; }
+  if (req !== macroRegion) return;
+  macroTickers = items;
   if (data) renderTicker(data);
 }
 async function loadCountry() {
   const el = $('macro-region-panel');
   if (!el) return;
-  el.innerHTML = '<div class="dimtext" style="padding:10px 12px">loading…</div>';
-  let c; try { c = await getJSON('/api/country?id=' + encodeURIComponent(macroCountry)); } catch { c = null; }
-  if (!c || c.error) { el.innerHTML = '<div class="dimtext" style="padding:10px 12px">unavailable</div>'; return; }
+  const req = macroCountry;                       // guard: newest country wins
+  const sel = $('macro-country');
+  const label = (sel && sel.selectedOptions[0] ? sel.selectedOptions[0].textContent : req).trim();
+  el.innerHTML = `<div class="macro-note">${label.toUpperCase()}</div><div class="dimtext" style="padding:6px 12px">loading…</div>`;
+  let c; try { c = await getJSON('/api/country?id=' + encodeURIComponent(req)); } catch { c = null; }
+  if (req !== macroCountry) return;
+  if (!c || c.error) { el.innerHTML = `<div class="macro-note">${label.toUpperCase()}</div><div class="dimtext" style="padding:6px 12px">data unavailable for this country</div>`; return; }
   const num = (v, dp) => (v == null ? '—' : Number(v).toFixed(dp));
   const fxId = COUNTRY_FX_ID[c.fx.sym];
   let html = '';
@@ -1036,18 +1046,18 @@ async function loadCountry() {
   html += `<div class="macro-note">MARKET</div><div class="kpis">`
     + macroTile(c.fx.label, num(c.fx.price, c.fx.price != null && c.fx.price < 10 ? 4 : 2), c.fx.pct != null ? pctf(c.fx.pct) + ' today' : '', cls(c.fx.pct), fxId ? 'fx:' + fxId : '')
     + (c.index.label && !/not free/i.test(c.index.label) ? macroTile(c.index.label, num(c.index.price, c.index.price != null && c.index.price < 1000 ? 1 : 0), c.index.pct != null ? pctf(c.index.pct) + ' today' : '', cls(c.index.pct)) : '')
+    + (c.policy ? macroTile('CENTRAL BANK RATE', c.policy.latest.value + '%', 'as of ' + c.policy.latest.date) : '')
     + '</div>';
   const f = c.fund || {};
   const gdp = f.gdpGrowth || [];
-  const bars = gdp.length
-    ? `<div class="wb-bars">${gdp.map((g) => `<span class="wb-bar ${g.value >= 0 ? 'pos' : 'neg'}" style="height:${Math.min(42, Math.abs(g.value) * 5 + 3)}px" title="${g.year}: ${g.value}%"></span>`).join('')}</div><div class="dimtext" style="padding:0 12px 4px">real GDP growth % · ${gdp.map((g) => g.year).join(' · ')}</div>`
-    : '<div class="dimtext" style="padding:0 12px 4px">GDP growth: not available free</div>';
   html += `<div class="macro-note">FUNDAMENTALS · ${f.source || 'World Bank'}</div><div class="kpis">`
     + macroTile('GDP GROWTH (LATEST)', gdp.length ? gdp[gdp.length - 1].value + '%' : '—', gdp.length ? String(gdp[gdp.length - 1].year) : 'n/a')
     + macroTile('DEBT / GDP', f.debtToGdp && f.debtToGdp.year >= 2018 ? f.debtToGdp.value + '%' : '—', f.debtToGdp ? `${f.debtToGdp.year}${f.debtToGdp.year < 2018 ? ' — too old to rely on' : ''}` : 'not available')
     + macroTile('INFLATION (CPI)', f.inflation ? f.inflation.value + '%' : '—', f.inflation ? String(f.inflation.year) : 'n/a')
     + macroTile('UNEMPLOYMENT', f.unemployment ? f.unemployment.value + '%' : '—', f.unemployment ? String(f.unemployment.year) : 'n/a')
-    + '</div>' + bars;
+    + '</div>';
+  if (gdp.length > 1) html += `<div class="dimtext" style="padding:2px 12px 8px">real GDP growth by year — ${gdp.map((g) => `${g.year}: ${g.value}%`).join(' · ')}</div>`;
+  if (c.takeaways && c.takeaways.length) html += '<div class="macro-note">🔑 KEY TAKEAWAYS</div><ul class="ins-list">' + c.takeaways.map((t) => `<li>${t}</li>`).join('') + '</ul>';
   if (c.oilLink != null) {
     const read = c.oilLink > 0.2 ? 'the currency weakens when oil rises (importer strain)' : c.oilLink < -0.2 ? 'the currency firms with oil (exporter benefit)' : 'no strong currency–oil link right now';
     html += `<div class="macro-note">OIL LINKAGE — ${c.label} is a net oil ${c.oil}. 3-month correlation of its currency vs Brent: <b>${c.oilLink}</b> — ${read}.</div>`;
@@ -1056,14 +1066,17 @@ async function loadCountry() {
   el.innerHTML = html;
   loadMacroNews();
   loadCountryChart();
+  renderPolicyChart(c.policy);
 }
 // Per-country chart: equity index and currency, both indexed to 100 so they compare.
 async function loadCountryChart() {
   const cv = $('macro-chart');
   if (!cv) return;
+  const req = macroCountry;
   let d;
-  try { d = await getJSON('/api/country-series?id=' + encodeURIComponent(macroCountry) + '&range=' + ($('macro-range') ? $('macro-range').value : '1y')); }
+  try { d = await getJSON('/api/country-series?id=' + encodeURIComponent(req) + '&range=' + ($('macro-range') ? $('macro-range').value : '1y')); }
   catch { return; }
+  if (req !== macroCountry) return;
   if (!d || d.error || !d.dates || !d.dates.length) return;
   const norm = (arr) => { const base = (arr || []).find((v) => v != null); return (arr || []).map((v) => (v == null || !base) ? null : (v / base) * 100); };
   chartDp = 1; chartAnchor = null;
@@ -1075,6 +1088,25 @@ async function loadCountryChart() {
   const data = { labels: d.dates, datasets };
   if (macroChart) { macroChart.data = data; macroChart.update(); return; }
   macroChart = new Chart(cv, { type: 'line', data, options: chartOpts(), plugins: [] });
+}
+// Central-bank policy rate history (stepped line; hover shows the rate).
+let policyChart = null;
+function renderPolicyChart(policy) {
+  const cv = $('policy-chart');
+  if (!cv) return;
+  const wrap = cv.parentElement;
+  const note = $('policy-note');
+  if (!policy || !policy.history || !policy.history.length) {
+    if (wrap) wrap.style.display = 'none';
+    if (note) note.textContent = 'no free policy-rate series for this country';
+    return;
+  }
+  if (wrap) wrap.style.display = '';
+  if (note) note.textContent = `${policy.latest.value}% · as of ${policy.latest.date}`;
+  const data = { labels: policy.history.map((h) => h.date), datasets: [{ label: 'policy rate', data: policy.history.map((h) => h.value), borderColor: '#ff9e00', backgroundColor: '#ff9e0022', borderWidth: 2, pointRadius: 0, stepped: true, fill: false }] };
+  const opts = { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false }, plugins: { legend: { display: false }, tooltip: { callbacks: { title: (it) => (it.length ? it[0].label : ''), label: (ctx) => `policy rate ${ctx.parsed.y}%` } } }, scales: { x: { ticks: { color: '#7c8a99', maxTicksLimit: 8 }, grid: { color: '#151a20' } }, y: { ticks: { color: '#7c8a99', callback: (v) => v + '%' }, grid: { color: '#151a20' } } } };
+  if (policyChart) { policyChart.data = data; policyChart.update(); return; }
+  policyChart = new Chart(cv, { type: 'line', data, options: opts });
 }
 // Cross-asset transmission block — shared by segments and macro regions.
 function crossAssetBlock(pred, title) {
@@ -1133,9 +1165,11 @@ function renderHeadlines(h) {
 async function loadMacroNews() {
   const el = $('macro-news');
   if (!el) return;
+  const req = macroCountry;
   el.innerHTML = '<div class="dimtext" style="padding:8px 12px">loading headlines…</div>';
-  try { renderNews(await getJSON('/api/news?id=' + macroCountry), 'macro-news', 'macro-news-sub'); }
-  catch { el.innerHTML = '<div class="dimtext" style="padding:8px 12px">headlines unavailable right now</div>'; }
+  let n; try { n = await getJSON('/api/macro-news?id=' + req); } catch { n = null; }
+  if (req !== macroCountry) return;
+  renderNews(n || { items: [] }, 'macro-news', 'macro-news-sub');
 }
 function renderMacroDash(md, corr, events) {
   if (!md || md.error) return;
@@ -1216,7 +1250,7 @@ function showTab(name) {
     if (map) setTimeout(() => map.invalidateSize(), 80);
     if (crackHistChart && currentMarket === 'refined') setTimeout(() => crackHistChart.resize(), 80);
   }
-  if (name === 'macro') { loadMacroTickers(); if (macroChart) setTimeout(() => macroChart.resize(), 60); }
+  if (name === 'macro') { loadMacroTickers(); if (macroChart) setTimeout(() => macroChart.resize(), 60); if (policyChart) setTimeout(() => policyChart.resize(), 70); }
   if (data) renderTicker(data);
 }
 

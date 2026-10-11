@@ -388,3 +388,4 @@ footer li { margin-bottom: 2px; }
 .glossary dt { color: var(--amber); font-weight: 700; }
 .glossary dd { margin: 0; color: #c9d4df; }
 @media (max-width: 620px) { .glossary dl { grid-template-columns: 1fr; } .glossary dt { margin-top: 6px; } }
+.news-k { font-style: normal; color: var(--amber); font-size: 10px; letter-spacing: .5px; margin-right: 6px; border: 1px solid var(--line2); padding: 0 4px; }
