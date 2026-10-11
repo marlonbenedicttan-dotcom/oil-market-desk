@@ -174,6 +174,16 @@ function renderTicker(m) {
 // Chart (6M and 10Y)
 // ---------------------------------------------------------------------------
 let chart;
+let chartAnchor = null;
+const anchorLine = {
+  id: 'anchorLine',
+  afterDatasetsDraw(c) {
+    if (chartAnchor == null) return;
+    const x = c.scales.x.getPixelForValue(chartAnchor);
+    const { top, bottom } = c.chartArea;
+    const g = c.ctx; g.save(); g.strokeStyle = '#ff9e00'; g.setLineDash([3, 3]); g.beginPath(); g.moveTo(x, top); g.lineTo(x, bottom); g.stroke(); g.restore();
+  },
+};
 function buildMetricOptions(m) {
   const sel = $('metric');
   const prev = sel.value || localStorage.getItem('oilbasis.metric');
@@ -196,7 +206,20 @@ function datasetsFor(metric, h, m) {
 }
 function chartOpts() {
   return { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false },
-    plugins: { legend: { labels: { color: '#7c8a99', boxWidth: 12, font: { family: 'monospace' } } } },
+    plugins: {
+      legend: { labels: { color: '#7c8a99', boxWidth: 12, font: { family: 'monospace' } } },
+      tooltip: {
+        callbacks: {
+          label: (ctx) => {
+            const v = ctx.parsed.y, ds = ctx.dataset.data;
+            const base = chartAnchor != null && ds[chartAnchor] != null ? ds[chartAnchor] : ds.find((x) => x != null);
+            const pct = base && v != null ? ((v - base) / base) * 100 : null;
+            const tag = chartAnchor != null ? 'Δ anchor' : 'Δ window';
+            return `${ctx.dataset.label}: ${v == null ? '—' : v.toFixed(2)}${pct != null ? `  (${tag} ${pct >= 0 ? '+' : ''}${pct.toFixed(1)}%)` : ''}`;
+          },
+        },
+      },
+    },
     scales: { x: { ticks: { color: '#7c8a99', maxTicksLimit: 10 }, grid: { color: '#151a20' } }, y: { ticks: { color: '#7c8a99' }, grid: { color: '#151a20' } } } };
 }
 async function renderChart() {
@@ -220,10 +243,10 @@ async function renderChart() {
     if (range === '10y' && !bench) summary = '10Y view is per-benchmark — pick a benchmark above.';
   }
 
-  $('lt-summary').textContent = summary;
+  $('lt-summary').textContent = (summary ? summary + '  ·  ' : '') + 'hover to see % change · click to set an anchor, then drag to measure between two points';
   const chartData = { labels, datasets };
   if (chart) { chart.data = chartData; chart.update(); return; }
-  chart = new Chart($('chart'), { type: 'line', data: chartData, options: chartOpts() });
+  chart = new Chart($('chart'), { type: 'line', data: chartData, options: chartOpts(), plugins: [anchorLine] });
 }
 
 async function loadHistory() { history = await getJSON('/api/history'); }
@@ -411,12 +434,17 @@ function renderFlows(d) {
   const an = d.anomalies || {};
   const anHtml = `<div class="chokes-h dimtext" style="padding:0 12px">AIS ANOMALIES (visible vessels, M.E. only)</div>
     <div class="chokes"><span class="choke"><b>${an.spoof || 0}</b> spoof / teleport</span><span class="choke"><b>${an.darkGap || 0}</b> dark gaps → inferred transits</span></div>`;
+  const routes = (d.routes || []).map((r) => `<span class="choke ${r.perMin === 0 ? 'cold' : ''}"><b>${r.count}</b> ${r.name} <span class="dimtext">${r.perMin}/min</span></span>`).join('');
+  const routesHtml = `<div class="chokes-h dimtext" style="padding:0 12px">ROUTE MIX — are tankers dodging chokepoints?</div><div class="chokes">${routes}</div>`;
+  const divHtml = d.diversion ? `<div class="qflag watch" style="margin:8px 12px">🧭 ROUTING: ${d.diversion}</div>` : '';
   $('flows').innerHTML =
     `<div class="chokes-h dimtext">MIDDLE-EAST FLOWS (live AIS)</div>
      <div class="chokes">${regions}</div>
      <div class="chokes-h dimtext" style="padding:0 12px">AIS ACTIVITY (reports/min · 5-min window)</div>
      <div class="chokes">${rates}</div>
      ${darkNote}
+     ${routesHtml}
+     ${divHtml}
      ${stressHtml}
      ${anHtml}
      <div class="flowbar"><div class="dimtext">Gulf of Oman / Arabian Sea — direction of travel</div>
@@ -505,8 +533,16 @@ async function refreshAll() {
   await loadExtra();
 }
 $('refresh').addEventListener('click', () => { nextRefresh = 60; refreshAll(); });
-$('metric').addEventListener('change', () => { localStorage.setItem('oilbasis.metric', $('metric').value); renderChart(); });
-$('range').addEventListener('change', renderChart);
+$('metric').addEventListener('change', () => { localStorage.setItem('oilbasis.metric', $('metric').value); chartAnchor = null; renderChart(); });
+$('range').addEventListener('change', () => { chartAnchor = null; renderChart(); });
+$('chart').addEventListener('click', (ev) => {
+  if (!chart) return;
+  const pts = chart.getElementsAtEventForMode(ev, 'index', { intersect: false }, true);
+  if (!pts.length) return;
+  const idx = pts[0].index;
+  chartAnchor = chartAnchor === idx ? null : idx;
+  chart.update('none');
+});
 $('an-metric').addEventListener('change', loadAnalogue);
 $('tabs').addEventListener('click', (e) => { const b = e.target.closest('.tab'); if (b) showTab(b.dataset.tab); });
 $('help-btn').addEventListener('click', () => { const g = $('glossary'); g.innerHTML = GLOSSARY; g.classList.toggle('hidden'); });

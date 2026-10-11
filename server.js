@@ -381,11 +381,11 @@ const regionHits = {};
 function recordHit(lat, lon) {
   if (lat == null || lon == null) return;
   const now = Date.now();
-  for (const r of FLOW_REGIONS) if (inBox(lat, lon, r.box)) (regionHits[r.name] ||= []).push(now);
+  for (const r of REGIONS) if (inBox(lat, lon, r.box)) (regionHits[r.name] ||= []).push(now);
 }
 function regionRates() {
   const now = Date.now(), win = 5 * 60_000;
-  return FLOW_REGIONS.map((r) => {
+  return REGIONS.map((r) => {
     const arr = (regionHits[r.name] || []).filter((t) => now - t < win);
     regionHits[r.name] = arr;
     return { name: r.name, perMin: +(arr.length / 5).toFixed(1) };
@@ -588,6 +588,11 @@ async function getTightness() {
     if (inv?.items) { const cr = inv.items.find((i) => i.key === 'crude'); if (cr?.surprise != null) push('Crude vs seasonal', sgn(cr.surprise), cr.surprise < 0 ? 'TIGHT' : 'LOOSE', cr.surprise < 0 ? 'drew more than seasonal' : 'built vs seasonal'); }
     const idle = [...tankers.values()].filter((v) => (v.sog ?? 0) < 1).length;
     if (ais.enabled) push('Idle tankers', String(idle), idle >= 15 ? 'TIGHT' : 'NEUTRAL', idle >= 15 ? 'floating storage building' : 'normal transit');
+    const flows = await getFlows().catch(() => null);
+    if (flows) {
+      const gulfDark = flows.dark.some((n) => /Persian|Hormuz|Oman|Arabian|Red Sea/.test(n));
+      push('Gulf AIS transit', gulfDark ? 'CONCEALED' : 'observed', gulfDark ? 'TIGHT' : 'NEUTRAL', gulfDark ? 'trackers off in the Gulf → flows hidden (disruption)' : 'visible in AIS');
+    }
     const tight = ev.filter((e) => e.direction === 'TIGHT').length;
     const loose = ev.filter((e) => e.direction === 'LOOSE').length;
     const verdict = tight > loose
@@ -598,13 +603,18 @@ async function getTightness() {
   });
 }
 
-const FLOW_REGIONS = [
-  { name: 'Persian Gulf', box: [[24, 48], [30, 57]] },
-  { name: 'Strait of Hormuz', box: [[24, 54], [28, 58]] },
-  { name: 'Gulf of Oman', box: [[22, 56], [26, 62]] },
-  { name: 'Arabian Sea', box: [[8, 55], [22, 72]] },
-  { name: 'Red Sea', box: [[12, 32], [30, 44]] },
+const REGIONS = [
+  { name: 'Persian Gulf', box: [[24, 48], [30, 57]], me: true },
+  { name: 'Strait of Hormuz', box: [[24, 54], [28, 58]], me: true },
+  { name: 'Gulf of Oman', box: [[22, 56], [26, 62]], me: true },
+  { name: 'Arabian Sea', box: [[8, 55], [22, 72]], me: true },
+  { name: 'Red Sea / Suez', box: [[12, 32], [30, 44]], me: true, route: true },
+  { name: 'Malacca / Singapore', box: [[-5, 95], [10, 110]], route: true },
+  { name: 'Cape of Good Hope', box: [[-40, 10], [-28, 30]], route: true },
+  { name: 'US Gulf', box: [[18, -98], [31, -80]], route: true },
 ];
+const FLOW_REGIONS = REGIONS.filter((r) => r.me);
+const ROUTE_REGIONS = REGIONS.filter((r) => r.route);
 async function getFlows() {
   const list = [...tankers.values()];
   const regions = FLOW_REGIONS.map((r) => ({ name: r.name, count: list.filter((v) => v.lat != null && inBox(v.lat, v.lon, r.box)).length }));
@@ -613,8 +623,16 @@ async function getFlows() {
   let east = 0, west = 0;
   for (const v of exit) { if (v.cog == null) continue; if (v.cog >= 0 && v.cog < 180) east++; else west++; }
   const moving = exit.filter((v) => (v.sog ?? 0) >= 1).length;
-  const rates = regionRates();
+  const allRates = regionRates();
+  const rateOf = (name) => allRates.find((x) => x.name === name)?.perMin ?? 0;
+  const rates = allRates.filter((r) => FLOW_REGIONS.some((f) => f.name === r.name));
+  const routes = ROUTE_REGIONS.map((r) => ({ name: r.name, count: list.filter((v) => v.lat != null && inBox(v.lat, v.lon, r.box)).length, perMin: rateOf(r.name) }));
   const dark = rates.filter((r) => r.perMin === 0).map((r) => r.name);
+  const suez = rateOf('Red Sea / Suez'), cape = rateOf('Cape of Good Hope');
+  let diversion = null;
+  if (suez === 0 && cape > 0) diversion = 'Red Sea/Suez is dark while the Cape is active → tankers appear to be routing AROUND Africa (dodging the Red Sea).';
+  else if (suez > 0 && cape === 0) diversion = 'Red Sea/Suez active, Cape quiet — normal routing.';
+  else if (suez === 0 && cape === 0) diversion = 'Both Suez and Cape dark — too little AIS to infer routing.';
 
   // Market-implied Gulf stress: ships go dark, but prices price the lost barrels.
   let marketStress = null;
@@ -630,7 +648,7 @@ async function getFlows() {
     marketStress = { signals: sig, score: n, verdict: n >= 2 ? `Market is pricing SIGNIFICANT Gulf-flow stress (${n}/3 signals).` : `Market is pricing limited Gulf stress (${n}/3 signals).` };
   } catch {}
 
-  return { regions, exit: { total: exit.length, eastbound: east, westbound: west, moving, idle: exit.length - moving }, rates, dark, anomalies: aisAnom, marketStress, enabled: ais.enabled };
+  return { regions, exit: { total: exit.length, eastbound: east, westbound: west, moving, idle: exit.length - moving }, rates, routes, diversion, dark, anomalies: aisAnom, marketStress, enabled: ais.enabled };
 }
 
 async function getProducts() {
@@ -681,6 +699,7 @@ const DEFAULT_BOXES = [
   [[12, 32], [30, 44]],     // Red Sea / Suez
   [[5, -84], [11, -76]],    // Panama Canal
   [[39, 26], [43, 31]],     // Turkish Straits
+  [[-40, 10], [-28, 30]],   // Cape of Good Hope
 ];
 
 function startAIS() {
