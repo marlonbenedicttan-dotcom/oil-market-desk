@@ -104,7 +104,7 @@
       <section class="panel" id="chart-panel">
         <div class="ph">
           <span class="ph-t">PRICE HISTORY</span>
-          <div class="controls"><select id="metric"></select><select id="range"><option value="1m">1M</option><option value="3m">3M</option><option value="6m" selected>6M</option><option value="ytd">YTD</option><option value="1y">1Y</option><option value="5y">5Y</option><option value="10y">10Y</option></select></div>
+          <div class="controls"><select id="metric" aria-label="Instrument"></select><select id="range" aria-label="Chart range"><option value="1m">1M</option><option value="3m">3M</option><option value="6m" selected>6M</option><option value="ytd">YTD</option><option value="1y">1Y</option><option value="5y">5Y</option><option value="10y">10Y</option></select></div>
         </div>
         <div class="chart-wrap lg"><canvas id="chart"></canvas></div>
         <div id="lt-summary" class="dimtext lt-summary"></div>
@@ -115,9 +115,9 @@
         <div class="ph">
           <span class="ph-t">⚖️ COMPARE / SPREAD</span>
           <div class="controls">
-            <select id="cmp-a"></select><span class="dimtext">vs</span><select id="cmp-b"></select>
-            <select id="cmp-range"><option value="1m">1M</option><option value="3m">3M</option><option value="6m" selected>6M</option><option value="ytd">YTD</option><option value="1y">1Y</option></select>
-            <select id="cmp-view"><option value="index" selected>Indexed to 100</option><option value="diff">Difference</option></select>
+            <select id="cmp-a" aria-label="Compare series A"></select><span class="dimtext">vs</span><select id="cmp-b" aria-label="Compare series B"></select>
+            <select id="cmp-range" aria-label="Compare range"><option value="1m">1M</option><option value="3m">3M</option><option value="6m" selected>6M</option><option value="ytd">YTD</option><option value="1y">1Y</option></select>
+            <select id="cmp-view" aria-label="Compare view"><option value="index" selected>Indexed to 100</option><option value="diff">Difference</option></select>
           </div>
         </div>
         <div id="cmp-presets" class="cmp-presets"></div>
@@ -229,8 +229,8 @@
       <section class="panel">
         <div class="ph"><span class="ph-t">🌍 REGION &amp; COUNTRY</span>
           <div class="controls">
-            <select id="macro-region"><option value="us">United States</option><option value="eu">Europe</option><option value="jp">Japan</option><option value="cn">China</option><option value="in">India</option><option value="apac">Asia-Pacific</option></select>
-            <select id="macro-country"></select>
+            <select id="macro-region" aria-label="Region"><option value="us">United States</option><option value="eu">Europe</option><option value="jp">Japan</option><option value="cn">China</option><option value="in">India</option><option value="apac">Asia-Pacific</option></select>
+            <select id="macro-country" aria-label="Country"></select>
           </div>
         </div>
         <div id="macro-region-panel" class="macro"></div>
@@ -255,7 +255,7 @@
       </section>
       <section class="panel">
         <div class="ph"><span class="ph-t">📈 INDEX vs CURRENCY (indexed to 100)</span>
-          <div class="controls"><select id="macro-range"><option value="3m">3M</option><option value="6m">6M</option><option value="1y" selected>1Y</option><option value="ytd">YTD</option><option value="5y">5Y</option></select></div>
+          <div class="controls"><select id="macro-range" aria-label="Macro chart range"><option value="3m">3M</option><option value="6m">6M</option><option value="1y" selected>1Y</option><option value="ytd">YTD</option><option value="5y">5Y</option></select></div>
         </div>
         <div class="chart-wrap lg"><canvas id="macro-chart"></canvas></div>
         <div id="macro-chart-note" class="dimtext lt-summary"></div>
@@ -289,6 +289,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=47"></script>
+  <script src="app.js?v=48"></script>
 </body>
 </html>

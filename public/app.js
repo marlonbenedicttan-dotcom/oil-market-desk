@@ -45,6 +45,7 @@ let macroMd = null;            // /api/macrodash payload (macro tab)
 let macroRegion = 'us';        // selected macro region
 let macroCountries = null;     // /api/countries — country lists per region
 let macroCountry = 'us';       // selected country
+let prefCountry = null;        // one-shot: the country to select on the next region render (restore)
 let transmission = null;       // /api/transmission — cross-asset logic
 let macroTickers = null;       // this region's macro tickers (currencies + indices) for the tape
 let macroChart = null;         // per-country index vs currency chart
@@ -155,6 +156,19 @@ function crackCard(c) {
 }
 function watchlist() { try { return JSON.parse(localStorage.getItem('oilbasis.watch') || '[]'); } catch { return []; } }
 function toggleWatch(id) { const w = watchlist(); const i = w.indexOf(id); if (i >= 0) w.splice(i, 1); else w.push(id); localStorage.setItem('oilbasis.watch', JSON.stringify(w)); }
+// Remember the user's view across visits (tab, segment, range, compare, macro) — feels like the
+// app "knows" you, with zero new UI.
+const saveStr = (k, v) => { try { localStorage.setItem('oilbasis.' + k, v); } catch {} };
+function saveCompare() { try { localStorage.setItem('oilbasis.cmp', JSON.stringify({ a: $('cmp-a')?.value, b: $('cmp-b')?.value, range: $('cmp-range')?.value, view: $('cmp-view')?.value })); } catch {} }
+function restoreCompare() {
+  try {
+    const c = JSON.parse(localStorage.getItem('oilbasis.cmp') || 'null');
+    if (!c) return;
+    const set = (id, v) => { const el = $(id); if (v && el && [...el.options].some((o) => o.value === v)) el.value = v; };
+    set('cmp-a', c.a); set('cmp-b', c.b); set('cmp-range', c.range); set('cmp-view', c.view);
+    renderCompare();
+  } catch {}
+}
 // Tiny inline trend line (last ~6 months of the fetched history), coloured by direction.
 function tileSpark(arr) {
   const v = (arr || []).filter((x) => x != null);
@@ -443,6 +457,7 @@ function renderNews(n, elId = 'news', subId = 'news-sub') {
     + '<div class="dimtext" style="padding:6px 12px;font-size:10px">Headlines via Google News · © the respective publishers · links open at the source.</div>';
 }
 function selectMarket(id) {
+  saveStr('segment', id);
   currentMarket = id;
   currentComponent = null;   // reset to the segment's headline when the segment changes
   renderSnapshot();
@@ -1392,7 +1407,8 @@ function renderMacroRegion() {
   const list = (macroCountries && macroCountries[macroRegion]) || [];
   if (sel) {
     sel.innerHTML = list.map((c) => `<option value="${c.id}">${c.label}</option>`).join('');
-    macroCountry = list[0] ? list[0].id : 'us';
+    const want = (prefCountry && list.some((c) => c.id === prefCountry)) ? prefCountry : (list[0] ? list[0].id : 'us');
+    macroCountry = want; prefCountry = null;
     if ([...sel.options].some((o) => o.value === macroCountry)) sel.value = macroCountry;
   }
   loadMacroTickers();
@@ -1768,6 +1784,7 @@ async function loadCurveHistory() {
   try { renderCurveHistory(await getJSON('/api/curvehistory?root=' + spec.root)); } catch {}
 }
 function showTab(name) {
+  saveStr('tab', name);
   document.querySelectorAll('.tab').forEach((t) => t.classList.toggle('active', t.dataset.tab === name));
   document.querySelectorAll('.tabpane').forEach((p) => p.classList.toggle('hidden', p.dataset.pane !== name));
   if (name === 'commodities') {
@@ -1832,12 +1849,9 @@ async function refreshLive() {
 }
 $('refresh').addEventListener('click', () => { nextRefresh = 60; refreshLive(); loadExtra(); });
 $('metric').addEventListener('change', () => { localStorage.setItem('oilbasis.metric', $('metric').value); chartAnchor = null; renderChart(); });
-$('range').addEventListener('change', () => { chartAnchor = null; renderChart(); });
-$('cmp-a')?.addEventListener('change', renderCompare);
-$('cmp-b')?.addEventListener('change', renderCompare);
-$('cmp-range')?.addEventListener('change', renderCompare);
-$('cmp-view')?.addEventListener('change', renderCompare);
-$('cmp-presets')?.addEventListener('click', (e) => { const btn = e.target.closest('.cmp-preset'); if (!btn) return; $('cmp-a').value = btn.dataset.a; $('cmp-b').value = btn.dataset.b; $('cmp-view').value = btn.dataset.v; renderCompare(); });
+$('range').addEventListener('change', () => { saveStr('range', $('range').value); chartAnchor = null; renderChart(); });
+['cmp-a', 'cmp-b', 'cmp-range', 'cmp-view'].forEach((id) => $(id)?.addEventListener('change', () => { saveCompare(); renderCompare(); }));
+$('cmp-presets')?.addEventListener('click', (e) => { const btn = e.target.closest('.cmp-preset'); if (!btn) return; $('cmp-a').value = btn.dataset.a; $('cmp-b').value = btn.dataset.b; $('cmp-view').value = btn.dataset.v; saveCompare(); renderCompare(); });
 $('bp-metric')?.addEventListener('change', () => selectMarket($('bp-metric').value));
 $('bp-snapshot')?.addEventListener('click', (e) => {
   const c = e.target.closest('.bp-comp[data-component]');
@@ -1849,9 +1863,9 @@ $('bp-snapshot')?.addEventListener('click', (e) => {
 });
 
 $('marketstate')?.addEventListener('click', (e) => { const t = e.target.closest('[data-market]'); if (t) { showTab('commodities'); selectMarket(t.dataset.market); } });
-$('macro-region')?.addEventListener('change', () => { macroRegion = $('macro-region').value; renderMacroRegion(); });
+$('macro-region')?.addEventListener('change', () => { macroRegion = $('macro-region').value; saveStr('macroRegion', macroRegion); renderMacroRegion(); });
 $('macro-region-panel')?.addEventListener('click', (e) => { const el = e.target.closest('[data-metric]'); if (el) pickMetric(el.dataset.metric, '1y'); });
-$('macro-country')?.addEventListener('change', () => { macroCountry = $('macro-country').value; loadCountry(); });
+$('macro-country')?.addEventListener('change', () => { macroCountry = $('macro-country').value; saveStr('macroCountry', macroCountry); loadCountry(); });
 $('macro-range')?.addEventListener('change', loadCountryChart);
 $('chart').addEventListener('click', (ev) => {
   if (!chart) return;
@@ -1911,6 +1925,15 @@ $('macro-links')?.addEventListener('click', (e) => { const el = e.target.closest
   $('onboard-close')?.addEventListener('click', hideOnboard);
   $('help-open')?.addEventListener('click', showOnboard);
   $('onboarding')?.addEventListener('click', (e) => { if (e.target.id === 'onboarding') hideOnboard(); });
+  // Restore the last view — tab, segment, chart range, compare, and macro region/country.
+  const savedTab = localStorage.getItem('oilbasis.tab');
+  const savedSeg = localStorage.getItem('oilbasis.segment');
+  const savedRegion = localStorage.getItem('oilbasis.macroRegion');
+  const savedCountry = localStorage.getItem('oilbasis.macroCountry');
+  const savedRange = localStorage.getItem('oilbasis.range');
+  if (savedRange && [...$('range').options].some((o) => o.value === savedRange)) $('range').value = savedRange;
+  if (savedRegion) { macroRegion = savedRegion; if ($('macro-region')) $('macro-region').value = savedRegion; }
+  if (savedCountry) prefCountry = savedCountry;
   if ('Notification' in window && Notification.permission === 'default') { try { await Notification.requestPermission(); } catch {} }
   await loadHistory().catch((e) => showError(e.message));
   fxList = await getJSON('/api/fx').catch(() => []);
@@ -1920,6 +1943,9 @@ $('macro-links')?.addEventListener('click', (e) => { const el = e.target.closest
   macroCountries = await getJSON('/api/countries').catch(() => null);
   await refreshLive();        // prices + ships (sets `data` first)
   await loadExtra();          // slow feeds (need `data`)
+  if (savedSeg && markets.some((m) => m.id === savedSeg)) selectMarket(savedSeg);   // restore the last segment
+  restoreCompare();
+  if (savedTab) showTab(savedTab);
   loadAnalogue();
   loadReroute();
   loadHeadlines();
