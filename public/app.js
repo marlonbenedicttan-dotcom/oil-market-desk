@@ -728,6 +728,9 @@ const eventsPlugin = {
     }
   },
 };
+// Register it for EVERY chart (it does nothing on charts with no events) — otherwise only the
+// chart that listed it explicitly drew the markers.
+Chart.register(eventsPlugin);
 let chart;
 let chartAnchor = null;
 const anchorLine = {
@@ -854,7 +857,7 @@ async function renderChart() {
   if (chartKey !== $('metric').value + '|' + $('range').value + '|' + currentMarket) return;   // metric/range changed while loading
   $('lt-summary').textContent = (summary ? summary + '  ·  ' : '') + 'hover any point for its % change · click to drop an anchor (●), hover again to measure between two';
   const chartData = { labels, datasets };
-  chart = mountChart('chart', chartData, baseOptions({ dp: chartDp, anchorable: true }), [anchorLine, bandsPlugin, eventsPlugin]);
+  chart = mountChart('chart', chartData, baseOptions({ dp: chartDp, anchorable: true }), [anchorLine, bandsPlugin]);
   if (chart) chart.$bands = bands;
   // Big-move markers — the chart's own largest swings, each tagged with the trusted news behind it.
   let newsId = null;
