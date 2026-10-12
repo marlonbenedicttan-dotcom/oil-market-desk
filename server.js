@@ -1281,6 +1281,44 @@ const NEWS_QUERIES = {
   ph: 'Philippines economy OR Bangko Sentral OR peso',
   vn: 'Vietnam economy OR "State Bank of Vietnam" OR dong',
 };
+// A story must NAME the thing it explains — so a US-yield move never shows a UK story and a
+// copper move never shows a corn one. Applied ON TOP of the tier-1 + date + direction match.
+// Some patterns are case-SENSITIVE on purpose (e.g. /\bUS\b/ so the pronoun "us" doesn't match).
+const NEWS_MUST = {
+  // commodity segments
+  crude: [/\b(crude|oil|opec|brent|wti|barrel|petroleum)\b/i],
+  refined: [/\b(gasoline|diesel|jet fuel|refin(er|ing|ers)|distillate|heating oil|crack)\b/i],
+  gas: [/\b(natural gas|lng|henry hub|gas (storage|prices?|demand|supply))\b/i],
+  precious: [/\b(gold|silver|platinum|palladium|bullion|precious metal)\b/i],
+  industrial: [/\b(copper|aluminium|aluminum|base metal|smelter|lme)\b/i],
+  grains: [/\b(wheat|corn|maize|soybean|soy\b|grain|wasde|harvest|crop|agricultur)\b/i],
+  softs: [/\b(sugar|coffee|cocoa|cotton|palm oil)\b/i],
+  livestock: [/\b(cattle|hogs?|beef|pork|feeder)\b/i],
+  dairy: [/\b(milk|dairy|cheese|butter|whey)\b/i],
+  // macro regions
+  us: [/\bFed\b/i, /\bFederal Reserve\b/i, /\bU\.S\./, /\bUS\b/, /\bAmerica\b/i, /\bUnited States\b/i, /\bTreasury\b/i, /\bWall Street\b/i, /\bS&P\b/i, /\bNasdaq\b/i, /\bDXY\b/i, /\bdollar index\b/i],
+  eu: [/\beuro(zone|-area|\s?area)?\b/i, /\bECB\b/i, /\bEurope(an)?\b/i],
+  jp: [/\bJapan(ese)?\b/i, /\bBoJ\b/i, /\bBank of Japan\b/i, /\byen\b/i, /\bNikkei\b/i, /\bJGB\b/i],
+  cn: [/\bChina\b/i, /\bChinese\b/i, /\bPBOC\b/i, /\byuan\b/i, /\brenminbi\b/i, /\bShanghai\b/i, /\bBeijing\b/i, /\bHong Kong\b/i, /\bHang Seng\b/i],
+  in: [/\bIndia(n)?\b/i, /\bRBI\b/i, /\brupee\b/i, /\bNifty\b/i, /\bSensex\b/i],
+  apac: [/\bAsia(n)?\b/i, /\bSingapore\b/i, /\bIndonesia\b/i, /\bThailand\b/i, /\bMalaysia\b/i, /\bPhilippines\b/i, /\bVietnam\b/i, /\bKorea\b/i, /\bAustralia\b/i, /\bTaiwan\b/i, /\bASEAN\b/i],
+  // macro countries
+  ea: [/\beuro(zone|-area|\s?area)?\b/i, /\bECB\b/i, /\bEurope(an)?\b/i],
+  de: [/\bGerman(y)?\b/i, /\bDAX\b/i, /\bBundesbank\b/i, /\bBund\b/i, /\bBerlin\b/i],
+  uk: [/\bUK\b/, /\bBritain\b/i, /\bBritish\b/i, /\bBoE\b/i, /\bBank of England\b/i, /\bsterling\b/i, /\bFTSE\b/i, /\bgilt\b/i, /\bLondon\b/i, /\bGBP\b/],
+  fr: [/\bFrance\b/i, /\bFrench\b/i, /\bCAC\b/i, /\bParis\b/i],
+  hk: [/\bHong Kong\b/i, /\bHang Seng\b/i, /\bHKMA\b/i, /\bHKD\b/i],
+  kr: [/\bKorea(n)?\b/i, /\bBoK\b/i, /\bBank of Korea\b/i, /\bKOSPI\b/i],
+  au: [/\bAustralia(n)?\b/i, /\bRBA\b/i, /\bASX\b/i, /\bAussie\b/i],
+  tw: [/\bTaiwan(ese)?\b/i, /\bTAIEX\b/i, /\bTSMC\b/i],
+  sg: [/\bSingapore(an)?\b/i, /\bMAS\b/, /\bSORA\b/i, /\bStraits Times\b/i],
+  id: [/\bIndonesia(n)?\b/i, /\brupiah\b/i, /\bJakarta\b/i],
+  th: [/\bThailand\b/i, /\bThai\b/i, /\bbaht\b/i, /\bBangkok\b/i],
+  my: [/\bMalaysia(n)?\b/i, /\bringgit\b/i, /\bKuala Lumpur\b/i, /\bKLCI\b/i],
+  ph: [/\bPhilippines\b/i, /\bPhilippine\b/i, /\bManila\b/i, /\bPSEi\b/i],
+  vn: [/\bVietnam(ese)?\b/i, /\bdong\b/i, /\bHanoi\b/i],
+};
+const titleMatches = (id, title) => { const s = NEWS_MUST[id]; return !s || s.some((re) => re.test(title || '')); };
 const NEWS_REGION_LABELS = { us: 'United States', eu: 'Europe', jp: 'Japan', apac: 'Asia-Pacific' };
 const newsLabel = (id) => MARKETS.find((x) => x.id === id)?.label || NEWS_REGION_LABELS[id] || id;
 const NEWS_TIER1 = '(site:reuters.com OR site:bloomberg.com OR site:ft.com OR site:apnews.com OR site:cnbc.com)';
@@ -1307,7 +1345,7 @@ async function getNews(id) {
       const d = pub ? new Date(pub) : null;
       if (title && link) items.push({ title, source, url: link, date: d && !isNaN(d) ? d.toISOString() : null });
     }
-    return { id, label: newsLabel(id), items };
+    return { id, label: newsLabel(id), items: items.filter((i) => titleMatches(id, i.title)) };
   });
 }
 
@@ -1616,6 +1654,7 @@ async function getFundamentals(id) {
     const now = Date.now();
     const hits = [];
     for (const it of items) {
+      if (!titleMatches(id, it.title)) continue;   // on-topic only
       for (const r of EVENT_RULES) { if (r.re.test(it.title)) { hits.push({ ...it, kind: r.kind, effect: r.effect, chain: r.chain, ageDays: it.date ? Math.max(0, Math.round((now - Date.parse(it.date)) / 864e5)) : null }); break; } }
     }
     return { id, label: newsLabel(id), items: hits, scanned: items.length };
@@ -1642,6 +1681,7 @@ async function getMoveWho(id, reqs) {
       const ev = [];
       for (const it of items) {
         if (!TIER1_RE.test(it.source || '')) continue;
+        if (!titleMatches(id, it.title)) continue;   // must actually be about this segment/market
         let kind = null, effect = 'watch', weight = 1;
         for (const rule of EVENT_RULES) { if (rule.re.test(it.title)) { kind = rule.kind; effect = rule.effect; weight = rule.weight; break; } }
         ev.push({ date: it.date, title: it.title, source: it.source, url: it.url, kind: kind || 'Market news', effect, weight });
@@ -1685,6 +1725,7 @@ async function getAttribution(id, componentId) {
     try { items = await fetchGoogleNews(q + ' when:1y', 60); } catch {}
     const events = [];
     for (const it of items) {
+      if (!titleMatches(id, it.title)) continue;   // on-topic only
       for (const r of EVENT_RULES) {
         if (r.re.test(it.title)) { events.push({ kind: r.kind, effect: r.effect, weight: r.weight, date: it.date, source: it.source, title: it.title, url: it.url, tier1: TIER1_RE.test(it.source || '') }); break; }
       }
