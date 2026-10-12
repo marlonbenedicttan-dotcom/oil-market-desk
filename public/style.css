@@ -123,17 +123,22 @@ select { background: var(--panel2); color: var(--text); border: 1px solid var(--
 /* ---- Boot beacon ---------------------------------------------------------- */
 .boot { position: fixed; inset: 0; z-index: 200; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 20px; background: #0a0d11; transition: opacity .5s ease; }
 .boot.done { opacity: 0; visibility: hidden; transition: opacity .5s ease, visibility 0s linear .5s; }
-.boot-tower { position: relative; width: 104px; height: 104px; display: grid; place-items: center; }
-.boot-mark { font-size: 38px; color: var(--text); filter: drop-shadow(0 0 7px rgba(74,163,255,.55)); animation: bootmark 2.4s ease-in-out infinite; }
-.boot-beam { position: absolute; inset: -8px; border-radius: 50%; background: conic-gradient(from 0deg, rgba(74,163,255,0) 0deg, rgba(74,163,255,.40) 38deg, rgba(74,163,255,0) 78deg); -webkit-mask: radial-gradient(circle, transparent 39%, #000 40%); mask: radial-gradient(circle, transparent 39%, #000 40%); animation: bootbeam 2.4s linear infinite; }
-.boot-ring { position: absolute; inset: 16px; border: 1px solid rgba(74,163,255,.35); border-radius: 50%; animation: bootring 2.4s ease-out infinite; }
-.boot-ring.r2 { animation-delay: 1.2s; }
+.scope { position: relative; width: 132px; height: 132px; border-radius: 50%; border: 1px solid rgba(74,163,255,.35); background: radial-gradient(circle, rgba(74,163,255,.07), rgba(74,163,255,0) 70%); display: grid; place-items: center; overflow: hidden; }
+.scope-ring { position: absolute; border: 1px solid rgba(74,163,255,.15); border-radius: 50%; }
+.scope-ring.r1 { inset: 18px; } .scope-ring.r2 { inset: 40px; } .scope-ring.r3 { inset: 60px; }
+.scope-cross { position: absolute; inset: 0; background: linear-gradient(rgba(74,163,255,.12), rgba(74,163,255,.12)) center/1px 100% no-repeat, linear-gradient(rgba(74,163,255,.12), rgba(74,163,255,.12)) center/100% 1px no-repeat; }
+.scope-sweep { position: absolute; inset: 0; border-radius: 50%; background: conic-gradient(from 0deg, rgba(74,163,255,0) 0deg, rgba(74,163,255,.05) 296deg, rgba(74,163,255,.18) 338deg, rgba(74,163,255,.46) 360deg); animation: bootsweep 3.4s cubic-bezier(.45,0,.55,1) infinite; }
+.scope-core { position: relative; font-size: 30px; color: var(--text); filter: drop-shadow(0 0 8px rgba(74,163,255,.6)); animation: bootpulse 2.6s ease-in-out infinite; }
+.scope-blip { position: absolute; width: 6px; height: 6px; margin: -3px 0 0 -3px; border-radius: 50%; background: var(--green, #00c853); box-shadow: 0 0 9px rgba(0,200,83,.75); opacity: 0; transition: opacity .35s ease; }
+.scope-blip.on { opacity: 1; animation: bootping .6s ease-out; }
+.scope-blip.b1 { top: 30px; left: 92px; } .scope-blip.b2 { top: 74px; left: 112px; } .scope-blip.b3 { top: 100px; left: 84px; }
+.scope-blip.b4 { top: 104px; left: 40px; } .scope-blip.b5 { top: 82px; left: 18px; } .scope-blip.b6 { top: 40px; left: 32px; }
 .boot-word { font-size: 12px; letter-spacing: 4px; color: var(--text); font-family: monospace; }
 .boot-status { font-size: 11px; letter-spacing: .5px; color: var(--dim); }
-@keyframes bootbeam { to { transform: rotate(360deg); } }
-@keyframes bootmark { 0%,100% { opacity: .7; } 50% { opacity: 1; } }
-@keyframes bootring { 0% { transform: scale(.55); opacity: .8; } 100% { transform: scale(1.55); opacity: 0; } }
-@media (prefers-reduced-motion: reduce) { .boot-beam, .boot-ring, .boot-mark { animation: none; } }
+@keyframes bootsweep { to { transform: rotate(360deg); } }
+@keyframes bootpulse { 0%,100% { opacity: .72; } 50% { opacity: 1; } }
+@keyframes bootping { 0% { transform: scale(.4); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .scope-sweep, .scope-core { animation: none; } }
 .cmp-presets { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 12px 0; }
 .card.clickable { cursor: pointer; transition: border-color .12s; }
 .card.clickable:hover { border-color: var(--amber); }

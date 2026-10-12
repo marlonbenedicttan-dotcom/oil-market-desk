@@ -88,11 +88,13 @@ async function jget(url, ttl = 180000) {
 // switched away while it was waiting. This is what stops "I clicked oil but it still shows corn".
 const segKey = () => currentMarket + '|' + (currentComponent || '');
 // Boot beacon helpers: update the status line, and drop the overlay when the essentials are up.
-const bootStep = (m) => { const el = document.getElementById('boot-status'); if (el) el.textContent = m; };
+let bootBlips = 0;
+const bootBlip = () => { const b = document.querySelectorAll('.scope-blip'); if (b[bootBlips]) b[bootBlips].classList.add('on'); bootBlips++; };
+const bootStep = (m) => { const el = document.getElementById('boot-status'); if (el) el.textContent = m; bootBlip(); };
 const hideBoot = () => { const b = document.getElementById('boot'); if (b) b.classList.add('done'); };
 // The beacon waits for the segment's CORE — the read, the price chart and the news — not just the read.
 const bootReady = { read: false, chart: false, news: false };
-const markReady = (k) => { if (bootReady[k]) return; bootReady[k] = true; if (bootReady.read && bootReady.chart && bootReady.news) hideBoot(); };
+const markReady = (k) => { if (bootReady[k]) return; bootReady[k] = true; bootBlip(); if (bootReady.read && bootReady.chart && bootReady.news) hideBoot(); };
 async function getLongterm(id, years = 10) {
   const k = id + years; const hit = ltCache[k];
   if (hit && Date.now() - hit.t < CHART_TTL) return hit.v;

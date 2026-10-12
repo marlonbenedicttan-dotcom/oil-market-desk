@@ -24,10 +24,13 @@
   <!-- Boot beacon: static markup so it paints on the first byte, then fades when the app is ready
        (or after 9s, so it can never stick even if the script fails). -->
   <div id="boot" class="boot" role="status" aria-live="polite">
-    <div class="boot-tower" aria-hidden="true">
-      <span class="boot-beam"></span>
-      <span class="boot-ring"></span><span class="boot-ring r2"></span>
-      <span class="boot-mark">♜</span>
+    <div class="scope" aria-hidden="true">
+      <span class="scope-ring r1"></span><span class="scope-ring r2"></span><span class="scope-ring r3"></span>
+      <span class="scope-cross"></span>
+      <span class="scope-sweep"></span>
+      <span class="scope-blip b1"></span><span class="scope-blip b2"></span><span class="scope-blip b3"></span>
+      <span class="scope-blip b4"></span><span class="scope-blip b5"></span><span class="scope-blip b6"></span>
+      <span class="scope-core">♜</span>
     </div>
     <div class="boot-word">MARLON'S WATCHTOWER</div>
     <div id="boot-status" class="boot-status">connecting…</div>
@@ -308,6 +311,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=64"></script>
+  <script src="app.js?v=65"></script>
 </body>
 </html>
