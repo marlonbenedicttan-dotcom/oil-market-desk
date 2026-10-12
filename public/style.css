@@ -468,6 +468,27 @@ footer li { margin-bottom: 2px; }
   .chart-wrap.lg { height: 240px; }
   #map { height: 300px; margin: 0 8px; }
   .bl-num { font-size: 34px; }
+  /* --- mobile: stacking, tap targets, safe areas, scrollable tables --- */
+  main { padding: 10px max(10px, env(safe-area-inset-left)) calc(10px + env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-right)); overflow-wrap: break-word; }
+  .topbar { padding-left: max(10px, env(safe-area-inset-left)); padding-right: max(10px, env(safe-area-inset-right)); }
+  .ph { flex-wrap: wrap; align-items: flex-start; }
+  .ph .controls { width: 100%; }
+  .tab { padding: 11px 12px; min-height: 40px; }
+  .ghost, .ghost.small { min-height: 36px; padding: 8px 12px; font-size: 11px; }
+  .star { font-size: 16px; padding: 4px 8px; }
+  select { min-height: 36px; font-size: 12px; }
+  .controls { gap: 6px; }
+  .tk { padding: 3px 12px; font-size: 11px; }
+  .tbl, #analogue, .glossary { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .antable { min-width: 420px; }
+}
+@media (max-width: 480px) {
+  .brand h1 { font-size: 12px; letter-spacing: 1px; }
+  .kpis { grid-template-columns: 1fr; }
+  .ev { grid-template-columns: 1fr 54px 50px; }
+  .ms-tile { padding: 7px 8px; }
+  .scope { width: 116px; height: 116px; }
+  .onboard-box { padding: 18px; }
 }
 
 .glossary { background: var(--panel2); border: 1px solid var(--line); padding: 12px 14px; margin: 12px; }
