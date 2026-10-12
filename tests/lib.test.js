@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { sgn, inBox, haversineNm, isoWeek, monthly, pctOver, percentile, realizedVol, computeCracks, computeCrush, backAdjust, pearson, logReturns, horizonDeltas, curveTightness, inventoryTightness, weightedScore, seasonalGrade, seasonalAhead, contractMonthsBetween, signedPosition, signedMove, stretchScore, sdLabel, attributeMoves } from '../src/lib.js';
+import { sgn, inBox, haversineNm, isoWeek, monthly, pctOver, percentile, realizedVol, computeCracks, computeCrush, backAdjust, pearson, logReturns, horizonDeltas, curveTightness, inventoryTightness, weightedScore, seasonalGrade, seasonalAhead, contractMonthsBetween, signedPosition, signedMove, stretchScore, sdLabel, attributeMoves, newsContextOk, looksLikeProperNoun, NON_MARKET_CTX } from '../src/lib.js';
 
 test('sgn formats with sign', () => {
   assert.equal(sgn(4.39), '+4.39');
@@ -213,4 +213,38 @@ test('computeCracks builds refining margins', () => {
   assert.equal(c.diesel, 4 * 42 - 100);
   assert.equal(c.c321, ((2 * 3 + 4) * 42) / 3 - 100);
   assert.equal(c.jetPhys, 5 * 42 - 100);
+});
+
+test('newsContextOk: a commodity word must be a MARKET story, not a name or a sport', () => {
+  assert.ok(NON_MARKET_CTX.test('NBA finals'), 'sanity: the block-list regex is wired');
+  // the bug this fixes: the NBA commissioner's name contains "silver"
+  assert.equal(newsContextOk('NBA commissioner Adam Silver addresses the media'), false);
+  assert.equal(newsContextOk('Adam Silver says the league will expand the playoffs'), false);
+  // a real metals story still matches
+  assert.equal(newsContextOk('Silver jumps on safe-haven demand'), true);
+  assert.equal(newsContextOk('Gold and silver gain as the dollar slips'), true);
+  assert.equal(newsContextOk('Silver prices hit a record high'), true);
+  assert.equal(newsContextOk('Copper edges up on Chinese demand'), true);
+  // the same class of bug in other segments
+  assert.equal(newsContextOk('Families flock to the annual corn maze'), false);
+  assert.equal(newsContextOk('Corn futures fall after a record harvest'), true);
+  assert.equal(newsContextOk('Comedian Coffee Jones releases a new album'), false);
+  // a hard market term (a unit / an exchange) overrides the sports/entertainment block-list
+  assert.equal(newsContextOk('Comex silver futures steady amid NBA talk'), true);
+  // unambiguous commodities stay on-topic without a price term (don't over-filter real coverage)
+  assert.equal(newsContextOk('US to Reopen Largest Port for Mexican Cattle Shipments'), true);
+  assert.equal(newsContextOk('Ghana cocoa regulator secures funding for farmer purchases'), true);
+  // …while the homonyms still need market framing
+  assert.equal(newsContextOk("Toshikazu Kawaguchi on the appeal of Japan's coffee shops"), false);
+  assert.equal(newsContextOk("Watch Why Harley's Are Called Hogs"), false);
+  // callers can force or waive the market-context requirement
+  assert.equal(newsContextOk('Silver', { requireMarket: false }), true);
+  assert.equal(newsContextOk('Corn futures fall after a record harvest', { requireMarket: true }), true);
+});
+
+test('looksLikeProperNoun flags a commodity used as a surname', () => {
+  assert.equal(looksLikeProperNoun('Adam Silver said the league will expand'), true);
+  assert.equal(looksLikeProperNoun('Ari Gold is a fictional agent'), true);
+  assert.equal(looksLikeProperNoun('Silver prices rose today'), false);
+  assert.equal(looksLikeProperNoun('The silver market is tight'), false);
 });

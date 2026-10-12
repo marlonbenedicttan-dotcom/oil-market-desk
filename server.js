@@ -5,7 +5,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { execFile } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { sgn, businessDaysSince, inBox, haversineNm, horizonDeltas, isoWeek, monthly, pctOver, percentile, realizedVol, computeCracks, computeCrush, backAdjust, pearson, logReturns, curveTightness, inventoryTightness, weightedScore, seasonalGrade, seasonalAhead, contractMonthsBetween, signedPosition, signedMove, stretchScore, sdLabel, attributeMoves } from './src/lib.js';
+import { sgn, businessDaysSince, inBox, haversineNm, horizonDeltas, isoWeek, monthly, pctOver, percentile, realizedVol, computeCracks, computeCrush, backAdjust, pearson, logReturns, curveTightness, inventoryTightness, weightedScore, seasonalGrade, seasonalAhead, contractMonthsBetween, signedPosition, signedMove, stretchScore, sdLabel, attributeMoves, newsContextOk } from './src/lib.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC = path.join(__dirname, 'public');
@@ -1337,7 +1337,12 @@ function mustScoreFor(specs, title) {
   return best;
 }
 const mustScore = (id, title) => mustScoreFor(NEWS_MUST[id], title);
-const titleMatches = (id, title) => { const s = NEWS_MUST[id]; return !s || mustScore(id, title) > 0; };
+// Keyword presence alone is not enough: "NBA commissioner Adam Silver" contains "silver".
+// Commodity segments + instruments must ALSO pass the market-context guard; macro ids (a Fed
+// or country story, which carries no "price/ounce/…" term) are exempt from the extra check.
+const COMMODITY_NEWS_IDS = new Set([...MARKETS.map((m) => m.id), ...BENCHMARKS.map((b) => b.id)]);
+const newsGuardOk = (id, title) => !COMMODITY_NEWS_IDS.has(id) || newsContextOk(title);
+const titleMatches = (id, title) => { const s = NEWS_MUST[id]; return (!s || mustScore(id, title) > 0) && newsGuardOk(id, title); };
 // Sharper still: the SPECIFIC instrument on the chart (a cocoa chart should not get a sugar story).
 const NEWS_FOCUS = {
   wti: [/\b(wti|west texas|crude)\b/i], brent: [/\bbrent\b/i], rbob: [/\b(gasoline|rbob)\b/i], ulsd: [/\b(diesel|heating oil|distillate)\b/i],
@@ -1735,6 +1740,7 @@ async function getMoveWho(id, reqs, focusId) {
       if (isNaN(et)) continue;
       const rel = mustScore(id, e.title);
       if (rel === 0) continue;                              // must name the segment / market
+      if (!newsGuardOk(id, e.title)) continue;              // ...and be a market story, not "Adam Silver" (NBA)
       const td = newsDir(e.title);
       let dirBonus;
       if (td) { if (td !== want) continue; dirBonus = 3; }  // headline says the opposite → wrong story
