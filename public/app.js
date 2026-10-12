@@ -804,7 +804,23 @@ async function renderChart() {
   chart = mountChart('chart', chartData, baseOptions({ dp: chartDp, anchorable: true }), [anchorLine, bandsPlugin, eventsPlugin]);
   if (chart) chart.$bands = bands;
   // Big-move markers — the chart's own largest swings, each tagged with the trusted news behind it.
-  if (chart) { chart.$events = await chartMoveMarkers(bench ? currentMarket : null, histLabels, datasets[0] ? datasets[0].data.slice(0, histLabels.length) : []); renderChartEvents(chart.$events); chart.update('none'); }
+  if (chart) {
+    chart.$events = await chartMoveMarkers(bench ? currentMarket : null, histLabels, datasets[0] ? datasets[0].data.slice(0, histLabels.length) : []);
+    renderChartEvents(chart.$events);
+    // Hovering a marker line pops up the headline behind that move.
+    chart.options.onHover = (evt, _els, c) => {
+      const tip = $('chart-tip'); if (!tip) return;
+      let hit = null;
+      for (const m of (c.$events || [])) { const mx = c.scales.x.getPixelForValue(m.idx); if (Math.abs(mx - evt.x) <= 7) { hit = m; break; } }
+      if (!hit) { tip.hidden = true; return; }
+      tip.innerHTML = `<b>${hit.date}</b> · <span class="${hit.pct >= 0 ? 'pos' : 'neg'}">${hit.pct >= 0 ? '+' : ''}${hit.pct.toFixed(1)}%</span><div class="tip-t">${hit.title}</div><div class="dimtext">${hit.source}</div>`;
+      tip.hidden = false;
+      tip.style.left = Math.max(0, Math.min(c.canvas.clientWidth - 250, evt.x + 12)) + 'px';
+      tip.style.top = '10px';
+    };
+    chart.options.onLeave = () => { const tip = $('chart-tip'); if (tip) tip.hidden = true; };
+    chart.update('none');
+  }
 }
 // The futures curve for a benchmark (client-cached 5 min) — powers the forward-curve overlay.
 const termCache = {};
@@ -852,8 +868,9 @@ async function chartMoveMarkers(market, labels, data) {
 }
 function renderChartEvents(ev) {
   const el = $('chart-events'); if (!el) return;
+  const tip = $('chart-tip'); if (tip) tip.hidden = true;
   if (!ev || !ev.length) { el.innerHTML = ''; return; }
-  el.innerHTML = `<span class="dimtext">big moves &amp; the news behind them:</span> ` + ev.map((e) => `<a class="ce" href="${e.url}" target="_blank" rel="noopener noreferrer" title="${String(e.title).replace(/"/g, '&quot;')}"><span class="ce-dot" style="background:${e.color}"></span>${e.date.slice(5)} ${e.pct >= 0 ? '▲ +' : '▼ '}${e.pct.toFixed(1)}% · ${e.kind} <span class="dimtext">(${e.source})</span></a>`).join('');
+  el.innerHTML = `<span class="dimtext">big moves &amp; the news behind them:</span> ` + ev.map((e) => { const t = String(e.title); const short = t.length > 72 ? t.slice(0, 71) + '…' : t; return `<a class="ce" href="${e.url}" target="_blank" rel="noopener noreferrer" title="${t.replace(/"/g, '&quot;')}"><span class="ce-dot" style="background:${e.color}"></span>${e.date.slice(5)} ${e.pct >= 0 ? '▲ +' : '▼ '}${e.pct.toFixed(1)}% · ${short} <span class="dimtext">(${e.source})</span></a>`; }).join('');
 }
 
 // ---------------------------------------------------------------------------

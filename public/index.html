@@ -106,7 +106,7 @@
           <span class="ph-t">PRICE HISTORY</span>
           <div class="controls"><select id="metric" aria-label="Instrument"></select><select id="range" aria-label="Chart range"><option value="1m">1M</option><option value="3m">3M</option><option value="6m" selected>6M</option><option value="ytd">YTD</option><option value="1y">1Y</option><option value="5y">5Y</option><option value="10y">10Y</option></select></div>
         </div>
-        <div class="chart-wrap lg"><canvas id="chart"></canvas></div>
+        <div class="chart-wrap lg"><canvas id="chart"></canvas><div id="chart-tip" class="chart-tip" hidden></div></div>
         <div id="lt-summary" class="dimtext lt-summary"></div>
         <div id="chart-events" class="chart-events"></div>
       </section>
@@ -289,6 +289,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=50"></script>
+  <script src="app.js?v=51"></script>
 </body>
 </html>
