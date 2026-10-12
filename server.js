@@ -36,6 +36,7 @@ const BENCHMARKS = [
   { id: 'gold',     label: 'Gold',      group: 'Metals', unit: '$/oz', dp: 2, paper: 'GC=F', physical: null },
   { id: 'silver',   label: 'Silver',    group: 'Metals', unit: '$/oz', dp: 3, paper: 'SI=F', physical: null },
   { id: 'copper',   label: 'Copper',    group: 'Metals', unit: '$/lb', dp: 4, paper: 'HG=F', physical: null },
+  { id: 'nickel',   label: 'Nickel',    group: 'Metals', unit: 'USD',  dp: 2, paper: 'NICK.L', physical: null },
   { id: 'platinum', label: 'Platinum',  group: 'Metals', unit: '$/oz', dp: 2, paper: 'PL=F', physical: null },
   { id: 'palladium',label: 'Palladium', group: 'Metals', unit: '$/oz', dp: 2, paper: 'PA=F', physical: null },
   // ---- Agriculture (futures only) ----
@@ -61,7 +62,7 @@ const MARKETS = [
   { id: 'refined',    label: 'Refined products', group: 'Refined', primary: 'rbob',   components: ['rbob', 'ulsd', 'jet', 'propane'],           hasBasis: true,  hasInventories: true,  hasShips: true },
   { id: 'gas',        label: 'Natural gas',      group: 'Gas',     primary: 'natgas', components: ['natgas'],                                   hasBasis: true,  hasInventories: true,  hasShips: false },
   { id: 'precious',   label: 'Precious metals',   group: 'Metals',      primary: 'gold',   components: ['gold', 'silver', 'platinum', 'palladium'],  hasBasis: false, hasInventories: false, hasShips: false },
-  { id: 'industrial', label: 'Industrial metals', group: 'Metals',      primary: 'copper', components: ['copper'],                                   hasBasis: false, hasInventories: false, hasShips: false },
+  { id: 'industrial', label: 'Industrial metals', group: 'Metals',      primary: 'copper', components: ['copper', 'nickel'],                 hasBasis: false, hasInventories: false, hasShips: false },
   { id: 'grains',     label: 'Grains',            group: 'Agriculture', primary: 'corn',   components: ['corn', 'wheat', 'soybean'],                 hasBasis: false, hasInventories: false, hasShips: false },
   { id: 'softs',      label: 'Softs',             group: 'Agriculture', primary: 'sugar',  components: ['sugar', 'coffee', 'cocoa', 'cotton', 'palm'], hasBasis: false, hasInventories: false, hasShips: false },
 ];
@@ -235,6 +236,7 @@ async function getMarket() {
       'A positive gap means real barrels cost more than futures (a tight market).',
       'The futures line is the current month only (not spliced); "prices for months ahead" is the cleanest read.',
       'Dubai / WTI Midland / Mars need a paid data source.',
+      'Nickel uses the WisdomTree Nickel ETC (LSE, NICK.L) as a free proxy for LME nickel — there is no free LME feed, so the % moves track nickel but the level is the ETC price, not $/tonne.',
     ],
   };
 }
@@ -1002,10 +1004,10 @@ const MARKET_CONTENT = {
     sectorsUp: ['Gold & silver miners', 'Royalty & streaming'], sectorsDown: ['No direct loser — a store of value, not an input'],
     tickersUp: ['NEM', 'AEM', 'GDX', 'GDXJ', 'WPM', 'GOLD', 'GFI', 'HMY'], tickersDown: ['SIG'],
     ideas: 'Precious metals are a store of value, not an input — a strong run usually means fear or falling real yields. Mainly helps miners; there is no direct corporate loser.' },
-  industrial: { tightQ: 'IS COPPER TIGHT?', catalysts: ['China demand & stimulus', 'mine supply & strikes', 'exchange warehouse stocks'], watch: ['China property & grid spending', 'Low exchange inventories'],
-    sectorsUp: ['Copper miners', 'Electrification & grid suppliers'], sectorsDown: ['Construction', 'Autos & machinery'],
-    tickersUp: ['FCX', 'SCCO', 'RIO', 'BHP', 'COPX', 'PICK', 'VEDL.NS', '3993.HK'], tickersDown: ['CAT', 'DE', 'PKB'],
-    ideas: 'Copper is a growth barometer — tight copper helps miners and signals firm industrial demand; it raises costs for construction, autos and machinery.' },
+  industrial: { tightQ: 'ARE COPPER & NICKEL TIGHT?', catalysts: ['China demand & stimulus', 'mine supply & strikes (Chile, Indonesia)', 'exchange warehouse stocks', 'Indonesia nickel policy & EV-battery demand'], watch: ['China property & grid spending', 'Indonesia nickel supply / export policy'],
+    sectorsUp: ['Copper & nickel miners', 'Electrification, grid & battery suppliers'], sectorsDown: ['Construction', 'Autos & machinery', 'Stainless-steel users'],
+    tickersUp: ['FCX', 'SCCO', 'RIO', 'BHP', 'VALE', 'COPX', 'PICK', 'VEDL.NS', '3993.HK'], tickersDown: ['CAT', 'DE', 'PKB'],
+    ideas: 'Copper and nickel are the electrification metals — tight supply helps miners and signals firm industrial/EV demand; it raises costs for construction, autos, batteries and machinery.' },
   grains:     { tightQ: 'ARE GRAINS TIGHT?', catalysts: ['USDA WASDE report (monthly)', 'crop weather (US, Brazil, Black Sea)', 'weekly export sales'], watch: ['US crop conditions & the WASDE print', 'Black-Sea export flows'],
     sectorsUp: ['Farm equipment & inputs', 'Grain traders & processors'], sectorsDown: ['Food makers', 'Livestock & protein (feed cost)', 'Ethanol'],
     tickersUp: ['DE', 'ADM', 'BG', 'CF', 'MOS', 'MOO', 'DBA', 'F34.SI'], tickersDown: ['TSN', 'KHC', 'MDLZ'],
@@ -1344,7 +1346,7 @@ const COUNTRY_COMMODITY_LINKS = {
   jp: [['WTI crude', 'CL=F'], ['Copper', 'HG=F']],
   cn: [['Copper', 'HG=F'], ['Brent crude', 'BZ=F']], hk: [['Brent crude', 'BZ=F']],
   sg: [['Brent crude', 'BZ=F']],
-  id: [['Palm oil', 'CPO=F'], ['Copper', 'HG=F'], ['Brent crude', 'BZ=F']],
+  id: [['Palm oil', 'CPO=F'], ['Nickel', 'NICK.L'], ['Copper', 'HG=F'], ['Brent crude', 'BZ=F']],
   th: [['Sugar', 'SB=F'], ['Brent crude', 'BZ=F']],
   my: [['Palm oil', 'CPO=F'], ['Brent crude', 'BZ=F']],
   ph: [['Sugar', 'SB=F'], ['Brent crude', 'BZ=F']],
