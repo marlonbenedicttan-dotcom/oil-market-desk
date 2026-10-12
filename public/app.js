@@ -864,8 +864,14 @@ function renderChartEvents(ev, sel = '#chart-events') {
 // (a body-level element, positioned by the mouse) and render the chip list under the chart.
 async function attachMarkers(chart, newsId, labels, seriesList, chipsSel) {
   if (!chart) return;
-  chart.$events = await chartMoveMarkers(newsId, labels, seriesList).catch(() => []);
-  const tip = $('chart-tip');
+  // Race guard: if the user switches segment/country/metric before this resolves, a newer call
+  // bumps $mseq and we drop the stale result (otherwise old headlines linger on the new chart).
+  const seq = (chart.$mseq || 0) + 1; chart.$mseq = seq;
+  const chips = $(chipsSel); if (chips) chips.innerHTML = '';
+  const tip = $('chart-tip'); if (tip) tip.hidden = true;
+  const ev = await chartMoveMarkers(newsId, labels, seriesList).catch(() => []);
+  if (chart.$mseq !== seq) return;
+  chart.$events = ev;
   chart.options.onHover = (evt, _els, c) => {
     if (!tip) return;
     let hit = null;
@@ -878,7 +884,7 @@ async function attachMarkers(chart, newsId, labels, seriesList, chipsSel) {
     tip.style.top = Math.max(6, (e.clientY || 0) + 12) + 'px';
   };
   chart.options.onLeave = () => { if (tip) tip.hidden = true; };
-  renderChartEvents(chart.$events, chipsSel);
+  renderChartEvents(ev, chipsSel);
   chart.update('none');
 }
 
@@ -1894,6 +1900,8 @@ $('bp-snapshot')?.addEventListener('click', (e) => {
   const c = e.target.closest('.bp-comp[data-component]');
   if (!c) return;
   currentComponent = c.dataset.component;
+  // Follow the commodity you're reading in the PRICE chart too (so its big-move markers apply).
+  if ([...$('metric').options].some((o) => o.value === currentComponent)) { $('metric').value = currentComponent; saveStr('metric', currentComponent); chartAnchor = null; renderChart(); }
   renderSnapshot();
   loadMarketRead();
   syncCompareToSelection();

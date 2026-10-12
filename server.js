@@ -1618,11 +1618,14 @@ async function getMoveWho(id, reqs) {
   const out = [];
   for (const r of (reqs || []).slice(0, 6)) {
     const d = r.date;
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) continue;
-    const sh = (off) => new Date(Date.parse(d) + off * 864e5).toISOString().slice(0, 10);
+    const monthly = /^\d{4}-\d{2}$/.test(d);
+    if (!monthly && !/^\d{4}-\d{2}-\d{2}$/.test(d)) continue;
+    const day = monthly ? d + '-15' : d;                 // 5Y/10Y charts use YYYY-MM labels
+    const win = monthly ? 15 : 3;                        // a monthly bar's news can be any day that month
+    const sh = (off) => new Date(Date.parse(day) + off * 864e5).toISOString().slice(0, 10);
     const hit = await cached(`movewho:${id}:${d}`, 6 * 3600e3, async () => {
       let items = [];
-      try { items = await fetchGoogleNews(`(${base}) after:${sh(-3)} before:${sh(4)} ${NEWS_TIER1}`, 15); } catch {}
+      try { items = await fetchGoogleNews(`(${base}) after:${sh(-win)} before:${sh(win + 1)} ${NEWS_TIER1}`, 20); } catch {}
       const ev = [];
       for (const it of items) {
         if (!TIER1_RE.test(it.source || '')) continue;
@@ -1637,7 +1640,7 @@ async function getMoveWho(id, reqs) {
     for (const e of hit) {
       const et = Date.parse(String(e.date).slice(0, 10));
       if (isNaN(et)) continue;
-      const days = Math.abs(et - Date.parse(d)) / 864e5;
+      const days = Math.abs(et - Date.parse(day)) / 864e5;
       const bias = (!want || e.effect === want || e.effect === 'watch') ? 0 : 4;   // prefer a matching direction
       const s = days + bias - (e.weight || 1) * 0.1;
       if (s < bs) { bs = s; best = e; }
@@ -2344,7 +2347,7 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname === '/api/movewho') {
       const id = url.searchParams.get('id');
       if (!NEWS_QUERIES[id]) return sendJSON(res, 404, { error: 'unknown segment' });
-      const reqs = (url.searchParams.get('dates') || '').split(',').map((s) => { const [date, dir] = s.split(':'); return { date, dir: dir === '1' ? 'up' : 'down' }; }).filter((r) => /^\d{4}-\d{2}-\d{2}$/.test(r.date));
+      const reqs = (url.searchParams.get('dates') || '').split(',').map((s) => { const [date, dir] = s.split(':'); return { date, dir: dir === '1' ? 'up' : 'down' }; }).filter((r) => /^\d{4}-\d{2}(-\d{2})?$/.test(r.date));
       return sendJSON(res, 200, await getMoveWho(id, reqs).catch((e) => ({ error: String(e.message), results: [] })));
     }
     if (url.pathname === '/api/longterm') {
