@@ -1044,11 +1044,17 @@ function marketVerdict(r) {
   // so they are excluded; anything unavailable is left out, never faked.
   const parts = [];
   const curveOk = r.curve?.m1m2 != null && r.id !== 'precious';
-  if (curveOk) parts.push({ key: 'curve', label: 'Curve (near vs next)', weight: 0.4, score: curveTightness(r.curve.m1m2, r.price) });
+  // Normalise the front spread by its actual month gap — cocoa/corn front pairs are 3 months
+  // apart, not 1, so an un-normalised spread reads far too extreme for quarterly curves.
+  if (curveOk) parts.push({ key: 'curve', label: 'Curve (near vs next)', weight: 0.4, score: curveTightness(r.curve.m1m2 / (r.curve.months || 1), r.price) });
   if (r.basis?.pctile != null) parts.push({ key: 'basis', label: 'Real vs futures', weight: 0.3, score: Math.round(r.basis.pctile) });
   const inv = r.inventory || [];
   for (const it of inv) parts.push({ key: 'inv:' + it.key, label: `${it.label} vs seasonal`, weight: 0.3 / inv.length, score: inventoryTightness(it.surprise, it.seasonalMin, it.seasonalMax) });
   const physical = weightedScore(parts);
+  // "Physical" only when there is real physical data (basis or stocks); otherwise it is a
+  // futures-curve read and must be labelled as such, not as physical tightness.
+  const hasPhysical = r.basis?.pctile != null || inv.length > 0;
+  physical.kind = hasPhysical ? 'physical' : (physical.score == null ? null : 'curve');
   const missing = [];
   if (!curveOk) missing.push('curve');
   if (r.hasBasis && r.basis == null) missing.push('basis');
@@ -1057,7 +1063,9 @@ function marketVerdict(r) {
     ? (r.id === 'precious'
       ? 'Precious metals have no free basis or inventories, and their curve tracks interest rates/carry rather than physical tightness — read price stretch, positioning and macro instead.'
       : 'No free physical data for this segment right now — price stretch and positioning are the reads.')
-    : `From ${physical.parts.map((p) => p.label).join(' + ')}${missing.length ? ` · no free ${missing.join(' or ')}` : ''}.`;
+    : hasPhysical
+      ? `From ${physical.parts.map((p) => p.label).join(' + ')}${missing.length ? ` · no free ${missing.join(' or ')}` : ''}.`
+      : 'From the futures curve only (near vs next) — this market has no free real-barrel prices or inventories, so read it as the curve, not physical tightness.';
 
   const bits = [];
   if (r.perf.m6 != null) bits.push(`<b>${r.label}</b> is ${r.perf.m6 >= 0 ? 'up' : 'down'} <b>${Math.abs(r.perf.m6).toFixed(0)}%</b> over 6 months`);
@@ -1093,7 +1101,7 @@ async function getMarketRead(id, componentId) {
     const dayPct = last != null && prev ? ((last - prev) / prev) * 100 : null;
     const vol30 = realizedVol(values, 30);
     let curve = null;
-    if (CURVE_SPEC[sel]) { try { const c = await getCurveFor(sel); if (c.available) curve = { shape: c.shape, m1m2: c.m1m2, m1m6: c.m1m6 }; } catch {} }
+    if (CURVE_SPEC[sel]) { try { const c = await getCurveFor(sel); if (c.available) curve = { shape: c.shape, m1m2: c.m1m2, m1m6: c.m1m6, months: (c.calendar && c.calendar[0] && c.calendar[0].months) || 1 }; } catch {} }
     const sym = primary.paper || primary.physical;
     const macro = {};
     for (const [k, s] of Object.entries({ usd: 'DX-Y.NYB', vix: '^VIX', spx: '^GSPC' })) { try { macro[k] = await pairCorr(sym, s); } catch { macro[k] = null; } }
@@ -1127,11 +1135,12 @@ async function getMarketRead(id, componentId) {
     };
     // Price stretch (v2): independent "how extended" reads, combined without dilution.
     read.stretch = [
-      { key: 'range2y', label: '2-yr range', weight: 0.2, score: rangeExtremity(values) },
-      { key: 'range10y', label: '10-yr range', weight: 0.2, score: rangeExtremity(longVals) },
-      { key: 'trend1y', label: '1-yr move', weight: 0.25, score: trendExtremity(longVals, 12) },
+      { key: 'range2y', label: '2-yr range', weight: 0.15, score: rangeExtremity(values) },
+      { key: 'range10y', label: '10-yr range', weight: 0.15, score: rangeExtremity(longVals) },
+      { key: 'trend1y', label: '1-yr move', weight: 0.2, score: trendExtremity(longVals, 12) },
+      { key: 'trend6m', label: '6-mo move', weight: 0.2, score: trendExtremity(longVals, 6) },
       { key: 'trend3m', label: '3-mo move', weight: 0.15, score: trendExtremity(values, 63) },
-      { key: 'vol', label: 'volatility', weight: 0.2, score: volPctile == null ? null : Math.round((Math.max(0, volPctile - 50) / 50) * 100) },
+      { key: 'vol', label: 'volatility', weight: 0.15, score: volPctile == null ? null : Math.round((Math.max(0, volPctile - 50) / 50) * 100) },
     ];
     // Past-year move + cited news drivers (attribution).
     read.attribution = await getAttribution(id, sel).catch(() => null);

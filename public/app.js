@@ -365,6 +365,7 @@ function renderAdaptive() {
   const ph = v.physical || { score: null, label: '—', parts: [], note: '' };
   const kl = score == null ? 'elevated' : score >= 80 ? 'high' : score >= 45 ? 'elevated' : 'low';
   const phCls = ph.score == null ? '' : ph.score >= 58 ? 'pos' : ph.score <= 42 ? 'neg' : '';
+  const phName = ph.kind === 'curve' ? 'CURVE TIGHTNESS' : 'PHYSICAL TIGHTNESS';
   const vk = ph.score == null ? (score == null ? 'mixed' : score >= 55 ? 'tight' : score >= 35 ? 'mixed' : 'loose') : ph.score >= 58 ? 'tight' : ph.score <= 42 ? 'loose' : 'mixed';
   if ($('regime')) $('regime').textContent = regLine(r);
   const next = [...(v.catalysts || []).map((c) => `Watch: <b>${c}</b>`), ...(v.watch || [])];
@@ -386,7 +387,7 @@ function renderAdaptive() {
   }
   $('bottomline').innerHTML = `<div class="bl">
       <div class="bl-score ${kl}"><div class="bl-num">${score == null ? '—' : score}<span>/100</span></div><div class="bl-lbl">PRICE STRETCH<div class="bl-tag">${v.label}</div></div>
-        <div class="bl-phys"><div class="bl-phys-k">PHYSICAL TIGHTNESS</div><div class="bl-phys-v ${phCls}">${ph.score == null ? 'no free data' : `${ph.score}<span>/100</span> ${ph.label}`}</div></div>
+        <div class="bl-phys"><div class="bl-phys-k">${phName}</div><div class="bl-phys-v ${phCls}">${ph.score == null ? 'no free data' : `${ph.score}<span>/100</span> ${ph.label}`}</div></div>
       </div>
       <div class="bl-sec"><div class="gtitle">WHAT HAPPENED</div><p>${v.meaning} ${(v.notes || []).join(' ')}</p>${attrHtml}</div>
       <div class="bl-sec"><div class="gtitle">KEY POINTS</div><ul>${kp}</ul></div>
@@ -410,7 +411,7 @@ function renderAdaptive() {
   const psParts = (v.priceStretch && v.priceStretch.parts) || [];
   const psChips = psParts.length ? `<div class="phys-parts"><span class="dimtext" style="align-self:center">price stretch:</span>${psParts.map((p) => `<span class="phys-part">${p.label} <b>${p.score}</b></span>`).join('')}</div>` : '';
   const priceLine = score == null ? 'price stretch unavailable' : `price is <b>${v.label.toLowerCase()}</b> (${score}/100)`;
-  const physLine = ph.score == null ? 'physical tightness unavailable' : `the physical market is <b>${ph.label.toLowerCase()}</b> (${ph.score}/100)`;
+  const physLine = ph.score == null ? 'no free physical data' : (ph.kind === 'curve' ? `the futures curve is <b>${ph.label.toLowerCase()}</b> (${ph.score}/100)` : `the physical market is <b>${ph.label.toLowerCase()}</b> (${ph.score}/100)`);
   $('tightness').innerHTML = `<div class="verdict ${vk}">${r.label}: ${priceLine} · ${physLine}.</div>${psChips}${physChips}${physNote}<div class="ev-list">${ev.map((e) => `<div class="ev"><span class="ev-l">${e.label}</span><span class="ev-v">${e.value}</span><span class="tag ${e.dir.toLowerCase()}">${e.dir}</span><span class="ev-n dimtext">${e.note}</span></div>`).join('')}</div>`;
   const si = $('ships-insights');
   if (si) si.innerHTML = r.hasShips ? tankerInsights(tankerInfo).map((x) => `<li>${x}</li>`).join('') : '';
