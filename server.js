@@ -1493,6 +1493,8 @@ const EVENT_RULES = [
   { re: /\b(sanction|embargo|export (ban|curb|levy|tax|quota)|blockade|ban on exports)\b/i, kind: 'Export curbs / sanctions', effect: 'up', weight: 3, chain: 'Export restrictions tighten supply (e.g. palm-oil levies, grain bans, metal sanctions) — price-positive.' },
   { re: /\b(force majeure|outage|curtail(ed|ment)?|closure|halt(ed|s)?|suspend(ed|s)?)\b/i, kind: 'Supply outage', effect: 'up', weight: 2, chain: 'An outage or shutdown removes supply — price-positive for the commodity.' },
   { re: /\b(fire|explosion|blast|leak at)\b/i, kind: 'Plant / refinery incident', effect: 'up', weight: 2, chain: 'Fires or explosions at plants/refineries cut supply and widen crack spreads.' },
+  // Metals/gold often move on money, not barrels — rates, the dollar, ETF/safe-haven flows.
+  { re: /\b(fed|federal reserve|rate (cut|hike|rise|hold)|interest rate|treasury yield|safe haven|etf|central bank|gold buying|dollar (weak|firm|strength|slide))\b/i, kind: 'Rates / dollar', effect: 'watch', weight: 2, chain: 'Metals trade off interest rates and the dollar — cuts and a softer dollar are supportive, hikes and a firm dollar a headwind.' },
   { re: /\b(record (crop|harvest|output|production)|bumper|surplus|glut|oversupply|abundant)\b/i, kind: 'Ample supply', effect: 'down', weight: 2, chain: 'Record output or surplus adds supply — price-negative, pressures producers.' },
   { re: /\b(demand (slowdown|slump|weak|fall)|recession|slowdown|weaker demand)\b/i, kind: 'Weak demand', effect: 'down', weight: 2, chain: 'Weak demand softens prices — bearish for the commodity.' },
   { re: /\b(disease|blight|rust|avian|bird flu|swine fever|pest)\b/i, kind: 'Crop disease', effect: 'up', weight: 2, chain: 'Disease hits crops or herds — reduces supply, price-positive.' },
@@ -1525,7 +1527,7 @@ async function getFundamentals(id) {
 // coverage for the segment, tags it with the event rules, ranks trusted sources, and picks
 // the kinds consistent with the direction of the move. A heuristic, clearly labelled.
 // ---------------------------------------------------------------------------
-const ATTR_EVENTS = '(drought OR flood OR frost OR hurricane OR "export ban" OR sanctions OR strike OR outage OR disease OR harvest OR "El Nino" OR shortage OR surplus OR demand)';
+const ATTR_EVENTS = '(drought OR flood OR frost OR hurricane OR "export ban" OR sanctions OR strike OR outage OR disease OR harvest OR "El Nino" OR shortage OR surplus OR demand OR "central bank" OR Fed OR rates OR ETF OR "safe haven" OR mine OR supply)';
 async function getAttribution(id, componentId) {
   const m = MARKETS.find((x) => x.id === id);
   if (!m) return { id, error: 'unknown segment' };
