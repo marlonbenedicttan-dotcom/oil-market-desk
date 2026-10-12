@@ -766,16 +766,44 @@ async function renderChart() {
     if (r.kind === 'basis') bands = basisBands(r.series.paper);
   }
 
+  const histLabels = labels.slice();
+  // Forward-curve overlay — the futures months, priced, extended to the right (dashed). Links
+  // the price chart to the "prices for months ahead" panel. Segment benchmarks only.
+  if (bench && datasets.length) {
+    const term = await curveForBench(bench.id);
+    if (term && term.available && term.contracts && term.contracts.length >= 2) {
+      const MC = { F: 'Jan', G: 'Feb', H: 'Mar', J: 'Apr', K: 'May', M: 'Jun', N: 'Jul', Q: 'Aug', U: 'Sep', V: 'Oct', X: 'Nov', Z: 'Dec' };
+      const cs = term.contracts.slice(0, 6);
+      const fLabels = cs.map((c) => { const m = MC[(c.label || '')[0]]; return m ? `${m}-${(c.label || '').slice(1)}` : c.label; });
+      const lastVal = [...datasets[0].data].reverse().find((v) => v != null);
+      const fwdData = histLabels.map(() => null); fwdData[histLabels.length - 1] = lastVal;
+      for (const c of cs) fwdData.push(c.price);
+      labels = [...histLabels, ...fLabels];
+      for (const ds of datasets) ds.data = [...ds.data, ...fLabels.map(() => null)];
+      datasets.push({ label: 'Forward curve (futures)', data: fwdData, borderColor: CT.accent, backgroundColor: 'transparent', borderWidth: 1.5, borderDash: [5, 4], pointRadius: 2, pointStyle: 'rectRot', tension: 0.2, fill: false });
+    }
+  }
+
   $('lt-summary').textContent = (summary ? summary + '  ·  ' : '') + 'hover any point for its % change · click to drop an anchor (●), hover again to measure between two';
   const chartData = { labels, datasets };
   chart = mountChart('chart', chartData, baseOptions({ dp: chartDp, anchorable: true }), [anchorLine, bandsPlugin, eventsPlugin]);
   if (chart) chart.$bands = bands;
   // Event markers — dated news shocks that help explain the moves on the chart. Only on a
   // segment's own benchmark (not currencies / gaps / spreads).
-  if (chart) { chart.$events = await chartMarkers(bench ? currentMarket : null, labels); renderChartEvents(chart.$events); chart.update('none'); }
+  if (chart) { chart.$events = await chartMarkers(bench ? currentMarket : null, histLabels); renderChartEvents(chart.$events); chart.update('none'); }
 }
 // Dated news shocks for a segment, matched to the chart's x-axis labels (client-cached 5min).
 const markerCache = {};
+// The futures curve for a benchmark (client-cached 5 min) — powers the forward-curve overlay.
+const termCache = {};
+async function curveForBench(id) {
+  const c = termCache[id];
+  if (c && Date.now() - c.t < 5 * 60e3) return c.v;
+  let v = null;
+  try { v = await getJSON('/api/termstructure?id=' + encodeURIComponent(id)); } catch { v = null; }
+  termCache[id] = { t: Date.now(), v };
+  return v;
+}
 async function chartMarkers(market, labels) {
   if (!market) return [];
   let c = markerCache[market];
