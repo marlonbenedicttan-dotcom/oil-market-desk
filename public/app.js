@@ -644,7 +644,15 @@ const fmtNum = (v, dp = 2) => {
   if (a >= 1e5) return (v / 1e3).toFixed(0) + 'k';
   return Number(v).toFixed(dp);
 };
-const winPct = (arr, i) => { const first = Array.isArray(arr) ? arr.find((x) => x != null) : null; const cur = Array.isArray(arr) ? arr[i] : null; return (first == null || cur == null || first === 0) ? null : ((cur - first) / first) * 100; };
+// Change formatting. For a PRICE, a relative % is right. For a RATE (already a %), it is not — a
+// policy rate near zero makes "% change" explode (Japan), so rate charts show percentage-points /
+// basis-points instead.
+const chgText = (v, absolute) => {
+  if (v == null || Number.isNaN(v)) return '—';
+  if (absolute) { const bp = v * 100; return Math.abs(v) < 1 ? `${bp >= 0 ? '+' : ''}${bp.toFixed(0)} bp` : `${v >= 0 ? '+' : ''}${v.toFixed(2)} pp`; }
+  return `${v >= 0 ? '+' : ''}${v.toFixed(1)}%`;
+};
+const moveText = (e) => chgText(e.move, e.mode === 'abs');
 function baseOptions({ dp = 2, unit = '', percentAxis = false, yTitle = '', y1Title = '', legend = true, log = false, anchorable = false } = {}) {
   const tick = (v) => (percentAxis ? v + '%' : fmtNum(v, dp) + unit);
   return {
@@ -664,14 +672,15 @@ function baseOptions({ dp = 2, unit = '', percentAxis = false, yTitle = '', y1Ti
               const e = ctx.dataset.$news[ctx.dataIndex];
               if (!e) return undefined;
               const t = String(e.title); const tt = t.length > 90 ? t.slice(0, 89) + '…' : t;
-              return `📰 ${e.date.slice(5)} · ${tt} — ${e.source} (${e.pct >= 0 ? '+' : ''}${e.pct.toFixed(1)}%)`;
+              return `📰 ${e.date.slice(5)} · ${tt} — ${e.source} (${moveText(e)})`;
             }
             const v = ctx.parsed.y;
             if (v == null || Number.isNaN(v)) return `${ctx.dataset.label}: —`;
             let out = `${ctx.dataset.label}: ${percentAxis ? Number(v).toFixed(dp) + '%' : fmtNum(v, dp) + unit}`;
-            const p = winPct(ctx.dataset.data, ctx.dataIndex);
-            if (p != null) out += `   ${p >= 0 ? '+' : ''}${p.toFixed(1)}%`;
-            if (anchorable && chartAnchor != null && ctx.dataset.data[chartAnchor] != null) out += `  ·  ${signed(((v - ctx.dataset.data[chartAnchor]) / ctx.dataset.data[chartAnchor]) * 100, 1)}% vs ●`;
+            const d = ctx.dataset.data || [];
+            const first = d.find((x) => x != null);
+            if (first != null) out += `   ${chgText(percentAxis ? (v - first) : ((v - first) / first) * 100, percentAxis)}`;
+            if (anchorable && chartAnchor != null && d[chartAnchor] != null) out += `  ·  ${chgText(percentAxis ? (v - d[chartAnchor]) : ((v - d[chartAnchor]) / d[chartAnchor]) * 100, percentAxis)} vs ●`;
             return out;
           },
         },
@@ -879,9 +888,13 @@ async function curveForBench(id) {
 // Big moves + the trusted news behind them. Markers are the MOVES (not every headline): we find
 // the largest swings in the plotted series, then ask the server for the news in a tight window
 // around each one (tier-1 sources only) and attach the best match.
-function detectBigMoves(labels, data, maxN = 4) {
+function detectBigMoves(labels, data, maxN = 4, mode = 'pct') {
   const rets = [];
-  for (let i = 1; i < data.length; i++) { const a = data[i - 1], b = data[i]; rets.push(a && b != null ? ((b - a) / a) * 100 : null); }
+  for (let i = 1; i < data.length; i++) {
+    const a = data[i - 1], b = data[i];
+    if (a == null || b == null) { rets.push(null); continue; }
+    rets.push(mode === 'abs' ? (b - a) : (a ? ((b - a) / a) * 100 : null));
+  }
   const abs = rets.filter((r) => r != null).map(Math.abs).sort((x, y) => x - y);
   if (abs.length < 12) return [];
   const med = abs[Math.floor(abs.length / 2)] || 0;
@@ -893,15 +906,15 @@ function detectBigMoves(labels, data, maxN = 4) {
   idxs.sort((i, j) => Math.abs(rets[j - 1]) - Math.abs(rets[i - 1]));
   const chosen = [];
   for (const i of idxs) { if (chosen.length >= maxN) break; if (chosen.some((c) => Math.abs(c - i) < 3)) continue; chosen.push(i); }
-  return chosen.sort((a, b) => a - b).map((i) => ({ idx: i, date: labels[i], pct: rets[i - 1], dir: rets[i - 1] >= 0 ? 'up' : 'down' }));
+  return chosen.sort((a, b) => a - b).map((i) => ({ idx: i, date: labels[i], move: rets[i - 1], dir: rets[i - 1] >= 0 ? 'up' : 'down' }));
 }
-async function chartMoveMarkers(market, labels, seriesList) {
+async function chartMoveMarkers(market, labels, seriesList, mode = 'pct') {
   if (!market) return [];
   const lists = (seriesList || []).filter((a) => Array.isArray(a) && a.length >= 12);
   if (!lists.length) return [];
   const byIdx = new Map();
-  for (const s of lists) for (const m of detectBigMoves(labels, s)) { const cur = byIdx.get(m.idx); if (!cur || Math.abs(m.pct) > Math.abs(cur.pct)) byIdx.set(m.idx, m); }
-  const moves = [...byIdx.values()].sort((a, b) => Math.abs(b.pct) - Math.abs(a.pct)).slice(0, 5).sort((a, b) => a.idx - b.idx);
+  for (const s of lists) for (const m of detectBigMoves(labels, s, 4, mode)) { const cur = byIdx.get(m.idx); if (!cur || Math.abs(m.move) > Math.abs(cur.move)) byIdx.set(m.idx, m); }
+  const moves = [...byIdx.values()].sort((a, b) => Math.abs(b.move) - Math.abs(a.move)).slice(0, 5).sort((a, b) => a.idx - b.idx);
   if (!moves.length) return [];
   const dates = moves.map((mv) => `${mv.date}:${mv.dir === 'up' ? 1 : -1}`).join(',');
   let res = [];
@@ -911,24 +924,24 @@ async function chartMoveMarkers(market, labels, seriesList) {
   for (const mv of moves) {
     const n = byDate[mv.date];
     if (!n) continue;   // only mark moves we can actually explain with a trusted source
-    out.push({ idx: mv.idx, date: mv.date, pct: mv.pct, kind: n.kind, title: n.title, source: n.source, url: n.url, color: mv.dir === 'up' ? '#2e9e6b' : '#c25b5b' });
+    out.push({ idx: mv.idx, date: mv.date, move: mv.move, mode, kind: n.kind, title: n.title, source: n.source, url: n.url, color: mv.dir === 'up' ? '#2e9e6b' : '#c25b5b' });
   }
   return out;
 }
 function renderChartEvents(ev, sel = '#chart-events') {
   const el = $(sel); if (!el) return;
   if (!ev || !ev.length) { el.innerHTML = ''; return; }
-  el.innerHTML = `<span class="dimtext">big moves on this chart — hover a marker for the headline, or open the source:</span> ` + ev.map((e) => { const t = String(e.title); const short = t.length > 72 ? t.slice(0, 71) + '…' : t; return `<a class="ce" href="${e.url}" target="_blank" rel="noopener noreferrer" title="${t.replace(/"/g, '&quot;')}"><span class="ce-dot" style="background:${e.color}"></span>${e.date.slice(5)} ${e.pct >= 0 ? '▲ +' : '▼ '}${e.pct.toFixed(1)}% · ${short} <span class="dimtext">(${e.source})</span></a>`; }).join('');
+  el.innerHTML = `<span class="dimtext">big moves on this chart — hover a marker for the headline, or open the source:</span> ` + ev.map((e) => { const t = String(e.title); const short = t.length > 72 ? t.slice(0, 71) + '…' : t; return `<a class="ce" href="${e.url}" target="_blank" rel="noopener noreferrer" title="${t.replace(/"/g, '&quot;')}"><span class="ce-dot" style="background:${e.color}"></span>${e.date.slice(5)} ${e.move >= 0 ? '▲' : '▼'} ${moveText(e)} · ${short} <span class="dimtext">(${e.source})</span></a>`; }).join('');
 }
 // Shared by every chart: detect its big moves, attach the trusted news (as a line INSIDE the
 // normal tooltip) and render the clickable chip list under the chart.
-async function attachMarkers(chart, newsId, labels, seriesList, chipsSel) {
+async function attachMarkers(chart, newsId, labels, seriesList, chipsSel, mode = 'pct') {
   if (!chart) return;
   // Race guard: if the user switches segment/country/metric before this resolves, a newer call
   // bumps $mseq and we drop the stale result (otherwise old headlines linger on the new chart).
   const seq = (chart.$mseq || 0) + 1; chart.$mseq = seq;
   const chips = $(chipsSel); if (chips) chips.innerHTML = '';
-  const ev = await chartMoveMarkers(newsId, labels, seriesList).catch(() => []);
+  const ev = await chartMoveMarkers(newsId, labels, seriesList, mode).catch(() => []);
   if (chart.$mseq !== seq) return;
   chart.$events = ev;
   applyNewsDataset(chart, ev);
@@ -1679,7 +1692,7 @@ function renderPolicyChart(policy, policyNote) {
   if (note) note.textContent = `${policy.latest.value}% · as of ${policy.latest.date}`;
   const data = { labels: policy.history.map((h) => h.date), datasets: [{ label: 'policy rate', data: policy.history.map((h) => h.value), borderColor: CT.c2, backgroundColor: CT.c2 + '22', borderWidth: 2, pointRadius: 0, stepped: true, fill: false }] };
   policyChart = mountChart('policy-chart', data, baseOptions({ dp: 2, percentAxis: true, legend: false }));
-  attachMarkers(policyChart, macroCountry, data.labels, [data.datasets[0].data], '#policy-events');
+  attachMarkers(policyChart, macroCountry, data.labels, [data.datasets[0].data], '#policy-events', 'abs');
 }
 // CPI — annual inflation % per country (World Bank), hover shows year + %.
 let cpiChart = null;
@@ -1723,7 +1736,7 @@ function renderYields(d) {
   const chartData = { labels: dates, datasets };
   yieldsChart = mountChart('yields-chart', chartData, baseOptions({ dp: 2, percentAxis: true }));
   const ysrc = d.long || d.short;
-  if (ysrc) attachMarkers(yieldsChart, macroCountry, dates, [arr(ysrc)], '#yields-events');
+  if (ysrc) attachMarkers(yieldsChart, macroCountry, dates, [arr(ysrc)], '#yields-events', 'abs');
 }
 async function loadYields() {
   const cv = $('yields-chart');
@@ -1751,7 +1764,7 @@ function renderUsJp(us, jp) {
   const datasets = [line('US 10-yr', usArr, CT.c1), line('Japan 10-yr', jpArr, CT.c4)];
   const chartData = { labels: dates, datasets };
   usjpChart = mountChart('usjp-chart', chartData, baseOptions({ dp: 2, percentAxis: true }));
-  attachMarkers(usjpChart, macroCountry === 'jp' ? 'jp' : 'us', dates, [usArr, jpArr], '#usjp-events');
+  attachMarkers(usjpChart, macroCountry === 'jp' ? 'jp' : 'us', dates, [usArr, jpArr], '#usjp-events', 'abs');
 }
 async function loadUsJp() {
   if (!$('usjp-chart')) return;
