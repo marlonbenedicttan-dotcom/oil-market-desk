@@ -1554,8 +1554,15 @@ function renderFundamentals(f) {
   const el = $('fundamentals');
   if (!el) return;
   const sub = $('fund-sub');
-  if (sub) sub.textContent = (f && f.label ? f.label + ' · ' : '') + 'past-year highlights + recent · auto-tagged from the news';
   const items = (f && f.items) || [];
+  // A qualitative news TILT — shown next to the news, deliberately NOT scored (headlines are
+  // keyword-tagged prompts, not data). Counts only explicit bullish/bearish supply-demand shocks.
+  const up = items.filter((i) => i.effect === 'up').length;
+  const down = items.filter((i) => i.effect === 'down').length;
+  const lean = (up + down) < 3 ? 'too few tagged shocks to lean'
+    : up >= down * 1.5 ? 'tight-leaning (more supply shocks than gluts)'
+    : down >= up * 1.5 ? 'loose-leaning (more gluts than supply shocks)' : 'mixed';
+  if (sub) sub.textContent = `${f && f.label ? f.label + ' · ' : ''}news tilt: ${lean} — ${up} bullish vs ${down} bearish tagged shocks (qualitative, not scored)`;
   if (!items.length) { el.innerHTML = '<div class="dimtext" style="padding:8px 12px">No supply/demand shocks detected in coverage for this segment right now.</div>'; return; }
   el.innerHTML = items.map((i) => `<div class="xa">
       <div class="xa-trig ${i.effect === 'down' ? 'neg' : 'pos'}">${i.effect === 'down' ? '▼' : '▲'} ${i.kind} <span class="dimtext">· ${i.ageDays <= 14 ? 'recent' : Math.max(1, Math.round(i.ageDays / 30)) + 'mo ago'} · ${i.source}</span></div>
