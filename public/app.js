@@ -384,7 +384,7 @@ async function loadMarketRead() {
 function renderAdaptive() {
   const mk = markets.find((x) => x.id === currentMarket);
   const nm = (marketRead && marketRead.id === currentMarket && marketRead.label) || (mk && mk.label) || '';
-  setTitle('tightness-title', '⚡ ' + (nm ? `IS ${nm.toUpperCase()} RICH, CHEAP OR TIGHT?` : 'READING…'));
+  setTitle('tightness-title', '⚡ ' + (nm ? `IS ${nm.toUpperCase()} AT A PREMIUM, A DISCOUNT, OR TIGHT?` : 'READING…'));
   setTitle('tightness-sub', 'price vs its own history · physical tightness · curve · volatility');
   if (!marketRead || marketRead.id !== currentMarket || marketRead.error) { readSkeleton(mk); return; }
   const r = marketRead, v = r.verdict;
@@ -428,7 +428,9 @@ function renderAdaptive() {
   const sdNote = sd.note ? `<div class="phys-note dimtext">${sd.note}</div>` : '';
   const psParts = (v.priceStretch && v.priceStretch.parts) || [];
   const psChips = psParts.length ? `<div class="phys-parts"><span class="dimtext" style="align-self:center">vs its own history:</span>${psParts.map((p) => `<span class="phys-part">${p.label} <b>${signed(p.score, 0)}</b></span>`).join('')}</div>` : '';
-  const priceLine = score == null ? 'price vs its own history unavailable' : `it is <b>${v.label.toLowerCase()}</b> vs its own history (${signed(score, 0)}/100)`;
+  const priceLine = score == null ? 'price vs its own history unavailable'
+    : (score >= 20 || score <= -20) ? `it trades <b>${v.label.toLowerCase()}</b> vs its own history (${signed(score, 0)}/100)`
+    : `it is <b>${v.label.toLowerCase()}</b> (${signed(score, 0)}/100)`;
   const sdLine = sd.score == null ? 'no free supply/demand data' : `supply vs demand looks <b>${sd.label.toLowerCase()}</b> (${sd.score}/100)`;
   $('tightness').innerHTML = `<div class="verdict ${vk}">${r.label}: ${priceLine} · ${sdLine}.</div>${psChips}${sdChips}${sdNote}<div class="ev-list">${ev.map((e) => `<div class="ev"><span class="ev-l">${e.label}</span><span class="ev-v">${e.value}</span><span class="tag ${e.dir.toLowerCase()}">${e.dir}</span><span class="ev-n dimtext">${e.note}</span></div>`).join('')}</div>`;
   const si = $('ships-insights');

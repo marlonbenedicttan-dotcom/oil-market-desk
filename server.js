@@ -1128,7 +1128,11 @@ function marketVerdict(r) {
       : `${curveCaveat(r.id)} No free warehouse stocks or spot prices for this market.`);
 
   const bits = [];
-  if (score != null) bits.push(`<b>${r.label}</b> looks <b>${label.toLowerCase()}</b> versus its own history (${score >= 0 ? '+' : ''}${score}/100)`);
+  if (score != null) {
+    const lbl = label.toLowerCase();
+    const phrase = (score >= 20 || score <= -20) ? `trades <b>${lbl}</b> versus its own history` : `is <b>${lbl}</b>`;
+    bits.push(`<b>${r.label}</b> ${phrase} (${score >= 0 ? '+' : ''}${score}/100)`);
+  }
   const mv = [];
   if (r.perf.m3 != null) mv.push(`${r.perf.m3 >= 0 ? 'up' : 'down'} ${Math.abs(r.perf.m3).toFixed(0)}% in 3 months`);
   if (r.perf.y1 != null) mv.push(`${r.perf.y1 >= 0 ? 'up' : 'down'} ${Math.abs(r.perf.y1).toFixed(0)}% over a year`);

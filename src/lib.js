@@ -186,10 +186,12 @@ export function signedMove(values, window) {
   return Math.round(Math.max(-1, Math.min(1, cur / p90)) * 100);
 }
 // Plain-word label for a signed score. Symmetric: rich on the way up, cheap on the way down.
+// Plain-word label for a signed score. Premium on the way up, discount on the way down — the
+// finance-native way to say "above/below its own history".
 export function stretchLabel(s) {
   if (s == null) return '—';
-  return s >= 80 ? 'VERY RICH' : s >= 50 ? 'RICH' : s >= 20 ? 'LEANING RICH'
-    : s > -20 ? 'ABOUT AVERAGE' : s > -50 ? 'LEANING CHEAP' : s > -80 ? 'CHEAP' : 'VERY CHEAP';
+  return s >= 80 ? 'AT A BIG PREMIUM' : s >= 50 ? 'AT A PREMIUM' : s >= 20 ? 'AT A SLIGHT PREMIUM'
+    : s > -20 ? 'IN LINE WITH HISTORY' : s > -50 ? 'AT A SLIGHT DISCOUNT' : s > -80 ? 'AT A DISCOUNT' : 'AT A BIG DISCOUNT';
 }
 // Plain-word label for the supply/demand (tightness) score, 0-100 where 50 = balanced.
 // Reads as a physical-balance verdict: undersupplied on the way up, oversupplied on the way down.

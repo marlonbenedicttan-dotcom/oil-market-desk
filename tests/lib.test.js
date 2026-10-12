@@ -152,13 +152,13 @@ test('signedMove: a rise is positive, a fall negative, both scaled by the market
   assert.equal(signedMove([1, 2, 3], 5), null); // too short
 });
 
-test('stretchScore: signed blend reads rich on the way up, cheap on the way down', () => {
+test('stretchScore: signed blend reads premium on the way up, discount on the way down', () => {
   const rich = stretchScore([{ key: 'a', label: 'A', weight: 0.6, score: 90 }, { key: 'b', label: 'B', weight: 0.4, score: 40 }]);
   assert.equal(rich.score, 70);
-  assert.equal(rich.label, 'RICH');
+  assert.equal(rich.label, 'AT A PREMIUM');
   const cheap = stretchScore([{ key: 'a', label: 'A', weight: 0.6, score: -100 }, { key: 'b', label: 'B', weight: 0.4, score: -50 }]);
   assert.equal(cheap.score, -80);
-  assert.equal(cheap.label, 'VERY CHEAP');
+  assert.equal(cheap.label, 'AT A BIG DISCOUNT');
   assert.equal(stretchScore([]).score, null);
 });
 
