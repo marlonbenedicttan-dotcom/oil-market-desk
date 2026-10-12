@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { sgn, inBox, haversineNm, isoWeek, monthly, pctOver, percentile, realizedVol, computeCracks, computeCrush, backAdjust, pearson, logReturns, horizonDeltas, curveTightness, inventoryTightness, weightedScore, seasonalGrade, seasonalAhead, contractMonthsBetween, signedPosition, signedMove, stretchScore, attributeMoves } from '../src/lib.js';
+import { sgn, inBox, haversineNm, isoWeek, monthly, pctOver, percentile, realizedVol, computeCracks, computeCrush, backAdjust, pearson, logReturns, horizonDeltas, curveTightness, inventoryTightness, weightedScore, seasonalGrade, seasonalAhead, contractMonthsBetween, signedPosition, signedMove, stretchScore, sdLabel, attributeMoves } from '../src/lib.js';
 
 test('sgn formats with sign', () => {
   assert.equal(sgn(4.39), '+4.39');
@@ -160,6 +160,15 @@ test('stretchScore: signed blend reads rich on the way up, cheap on the way down
   assert.equal(cheap.score, -80);
   assert.equal(cheap.label, 'VERY CHEAP');
   assert.equal(stretchScore([]).score, null);
+});
+
+test('sdLabel: plain supply/demand words, balanced at 50', () => {
+  assert.equal(sdLabel(85), 'UNDERSUPPLIED');
+  assert.equal(sdLabel(62), 'TIGHT');
+  assert.equal(sdLabel(50), 'BALANCED');
+  assert.equal(sdLabel(35), 'WELL SUPPLIED');
+  assert.equal(sdLabel(15), 'OVERSUPPLIED');
+  assert.equal(sdLabel(null), '—');
 });
 
 test('computeCrush: board crush = meal×0.024 + oil×0.11 − beans/100, with oil share', () => {

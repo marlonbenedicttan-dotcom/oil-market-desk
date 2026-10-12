@@ -117,7 +117,7 @@ test('/api/marketread returns a per-segment read (404 for unknown)', async () =>
   assert.equal((await fetch(`http://localhost:${PORT}/api/marketread?id=nope`)).status, 404);
 });
 
-test('/api/marketread gives a SIGNED price-vs-history score, separate from physical tightness', async () => {
+test('/api/marketread gives a SIGNED price-vs-history score, separate from supply & demand', async () => {
   const crude = await (await fetch(`http://localhost:${PORT}/api/marketread?id=crude`)).json();
   const ps = crude.verdict.priceStretch;
   assert.ok(ps && typeof ps.score === 'number', 'the price headline is a number');
@@ -125,12 +125,14 @@ test('/api/marketread gives a SIGNED price-vs-history score, separate from physi
   assert.ok(Array.isArray(ps.parts) && ps.parts.length >= 3, 'the price score exposes its components');
   assert.ok(ps.parts.some((p) => p.key === 'pos2y'), 'includes the 2-yr position component');
   assert.ok(ps.parts.every((p) => p.score == null || (p.score >= -100 && p.score <= 100)), 'each part is signed and bounded');
-  assert.ok(crude.verdict.physical && typeof crude.verdict.physical === 'object');
-  assert.ok('score' in crude.verdict.physical && Array.isArray(crude.verdict.physical.parts));
-  assert.ok(typeof crude.verdict.physical.note === 'string' && crude.verdict.physical.note.length > 0);
-  // grains have no free basis or inventories → never a basis component
+  const sd = crude.verdict.supplyDemand;
+  assert.ok(sd && typeof sd === 'object', 'supplyDemand is present');
+  assert.ok(sd.score == null || (sd.score >= 0 && sd.score <= 100), 'the S/D score is 0-100 when present');
+  assert.ok(sd.score == null || ['UNDERSUPPLIED', 'TIGHT', 'BALANCED', 'WELL SUPPLIED', 'OVERSUPPLIED'].includes(sd.label), 'S/D label is a plain word');
+  assert.ok(Array.isArray(sd.parts) && typeof sd.note === 'string' && sd.note.length > 0, 'S/D exposes its parts + an evidence note');
+  // grains have no free basis or inventories → the S/D read is curve-only, never a basis component
   const grains = await (await fetch(`http://localhost:${PORT}/api/marketread?id=grains`)).json();
-  assert.ok(grains.verdict.physical.parts.every((p) => p.key !== 'basis'));
+  assert.ok(grains.verdict.supplyDemand.parts.every((p) => p.key !== 'basis'));
 });
 
 test('/api/news returns headlines for segments and macro regions (graceful if unavailable)', async () => {

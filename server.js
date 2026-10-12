@@ -5,7 +5,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { execFile } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { sgn, businessDaysSince, inBox, haversineNm, horizonDeltas, isoWeek, monthly, pctOver, percentile, realizedVol, computeCracks, computeCrush, backAdjust, pearson, logReturns, curveTightness, inventoryTightness, weightedScore, seasonalGrade, seasonalAhead, contractMonthsBetween, signedPosition, signedMove, stretchScore, attributeMoves } from './src/lib.js';
+import { sgn, businessDaysSince, inBox, haversineNm, horizonDeltas, isoWeek, monthly, pctOver, percentile, realizedVol, computeCracks, computeCrush, backAdjust, pearson, logReturns, curveTightness, inventoryTightness, weightedScore, seasonalGrade, seasonalAhead, contractMonthsBetween, signedPosition, signedMove, stretchScore, sdLabel, attributeMoves } from './src/lib.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC = path.join(__dirname, 'public');
@@ -947,6 +947,8 @@ const CURVE_SPEC = {
   coffee: { root: 'KC', exch: 'NYB' }, sugar: { root: 'SB', exch: 'NYB' }, cocoa: { root: 'CC', exch: 'NYB' }, cotton: { root: 'CT', exch: 'NYB' },
   // CME dairy complex (all quoted as individual contract months on Yahoo)
   milk: { root: 'DC', exch: 'CME' }, butter: { root: 'CB', exch: 'CME' }, nfdm: { root: 'GNF', exch: 'CME' }, cheese: { root: 'CSC', exch: 'CME' }, whey: { root: 'DY', exch: 'CME' },
+  // CME livestock
+  cattle: { root: 'LE', exch: 'CME' }, hogs: { root: 'HE', exch: 'CME' }, feeder: { root: 'GF', exch: 'CME' },
 };
 async function curveFor(id) {
   const spec = CURVE_SPEC[id];
@@ -1058,6 +1060,13 @@ function rollingVolPctile(values, win = 30) {
   const cur = vols[vols.length - 1];
   return (vols.filter((v) => v <= cur).length / vols.length) * 100;
 }
+// A one-line, class-appropriate caveat for a curve-only (market-implied) supply/demand read.
+function curveCaveat(marketId) {
+  const grp = MARKETS.find((m) => m.id === marketId)?.group;
+  return grp === 'Metals'
+    ? 'Curve-only, market-implied — and for metals the curve is mostly financing/storage cost, so read it as a hint rather than a stock count.'
+    : 'Curve-only, market-implied — the futures curve alone; for crops & livestock the curve also carries the seasonal pattern, so read it as a hint.';
+}
 function marketVerdict(r) {
   // PRICE vs ITS OWN HISTORY (v3) — a SIGNED read (-100 = cheap/washed-out … +100 = rich):
   // where the price sits in its 2-yr and 10-yr range, plus how big its 3-mo and 1-yr moves are
@@ -1067,33 +1076,49 @@ function marketVerdict(r) {
   const score = ps.score;
   const label = ps.label;
 
-  // PHYSICAL TIGHTNESS — the fundamentals that actually say whether the market is
-  // tight: curve (near vs next), the real-vs-futures basis, and stocks vs the
-  // seasonal norm. Precious metals' curves track rates/carry, not physical tightness,
-  // so they are excluded; anything unavailable is left out, never faked.
-  // Physical tightness needs REAL physical data — a real-vs-futures basis or inventories.
-  // Where there is none (metals, grains, softs) we show NOTHING rather than a futures-curve
-  // proxy. The curve is used only as one input where real physical data exists (energy).
+  // SUPPLY & DEMAND — is the market undersupplied or oversupplied? Built from the best FREE
+  // evidence available, and ALWAYS labelled with what it used and what is missing:
+  //   • curve             the futures curve (near vs next): backwardation = tight. Free for
+  //                       almost everything — but it is the market's OWN vote, not a stock count,
+  //                       and for metals it is mostly financing/storage cost.
+  //   • spot basis        real (spot) vs futures, where a free spot exists (energy).
+  //   • stocks vs norm    weekly US inventories vs their seasonal norm (energy).
+  //   • USDA stocks-to-use official supply/demand balance (grains/oilseeds/dairy/livestock) —
+  //                       added when the monthly snapshot is present.
+  // Weights favour real fundamentals over the (indirect) curve. A missing leg is left out and
+  // named — never faked. `kind` = 'physical' when real fundamentals are present, else
+  // 'market-implied' (curve only).
   const inv = r.inventory || [];
-  const hasPhysical = r.basis?.pctile != null || inv.length > 0;
-  const parts = [];
+  const sd = [];
+  const used = [];
   const missing = [];
-  if (hasPhysical) {
-    const curveOk = r.curve?.m1m2 != null && r.id !== 'precious';
-    if (curveOk) parts.push({ key: 'curve', label: 'Curve (near vs next)', weight: 0.4, score: curveTightness(r.curve.m1m2 / (r.curve.months || 1), r.price) });
-    if (r.basis?.pctile != null) parts.push({ key: 'basis', label: 'Real vs futures', weight: 0.3, score: Math.round(r.basis.pctile) });
-    for (const it of inv) parts.push({ key: 'inv:' + it.key, label: `${it.label} vs seasonal`, weight: 0.3 / inv.length, score: inventoryTightness(it.surprise, it.seasonalMin, it.seasonalMax) });
-    if (!curveOk) missing.push('curve');
-    if (r.hasBasis && r.basis == null) missing.push('basis');
-    if (r.hasInventories && !inv.length) missing.push('inventories');
+  if (r.curve?.m1m2 != null && r.id !== 'precious') {
+    sd.push({ key: 'curve', label: 'Futures curve (near vs next)', weight: 0.25, score: curveTightness(r.curve.m1m2 / (r.curve.months || 1), r.price) });
+    used.push('the futures curve');
+  } else if (r.id === 'precious') {
+    missing.push('a curve read (rates-driven, not supply)');
   }
-  const physical = hasPhysical ? weightedScore(parts) : { score: null, label: '—', parts: [] };
-  physical.kind = hasPhysical ? 'physical' : null;
-  physical.note = hasPhysical
-    ? `From ${physical.parts.map((p) => p.label).join(' + ')}${missing.length ? ` · no free ${missing.join(' or ')}` : ''}.`
-    : (r.id === 'precious'
-      ? 'Precious metals have no free basis or inventories, so no physical tightness is shown — read price stretch, the curve, positioning and macro instead.'
-      : 'No free real-barrel (spot) prices or inventories for this market, so no physical tightness is shown (never faked) — read price stretch, the curve and positioning.');
+  if (r.basis?.pctile != null) { sd.push({ key: 'basis', label: 'Spot vs futures', weight: 0.3, score: Math.round(r.basis.pctile) }); used.push('spot vs futures'); }
+  for (const it of inv) { sd.push({ key: 'inv:' + it.key, label: `${it.label} vs seasonal`, weight: 0.45 / inv.length, score: inventoryTightness(it.surprise, it.seasonalMin, it.seasonalMax) }); used.push(it.label + ' vs seasonal'); }
+  if (r.usda?.stocksPct != null) { sd.push({ key: 'usda', label: 'USDA stocks-to-use vs history', weight: 0.5, score: Math.round(100 - r.usda.stocksPct) }); used.push('USDA stocks-to-use'); }
+  if (r.hasBasis && r.basis == null) missing.push('a free spot price');
+  if (r.hasInventories && !inv.length) missing.push('stocks');
+  const sds = weightedScore(sd);
+  const hasReal = used.some((u) => u !== 'the futures curve');
+  const supplyDemand = {
+    score: sd.length ? sds.score : null,
+    label: sd.length ? sdLabel(sds.score) : '—',
+    parts: sds.parts,
+    kind: !sd.length ? null : hasReal ? 'physical' : 'market-implied',
+    used, missing,
+  };
+  supplyDemand.note = !sd.length
+    ? (r.id === 'precious'
+      ? 'Precious metals have no free spot or warehouse stocks, and their curve tracks rates rather than supply — so no supply/demand read is shown (never faked).'
+      : 'No free curve, spot or stock data for this market, so no supply/demand read is shown (never faked).')
+    : (hasReal
+      ? `From ${used.join(' + ')}${missing.length ? ` · no free ${missing.join(' or ')}` : ''}.`
+      : `${curveCaveat(r.id)} No free warehouse stocks or spot prices for this market.`);
 
   const bits = [];
   if (score != null) bits.push(`<b>${r.label}</b> looks <b>${label.toLowerCase()}</b> versus its own history (${score >= 0 ? '+' : ''}${score}/100)`);
@@ -1108,7 +1133,7 @@ function marketVerdict(r) {
   const macroNote = r.macro?.usd != null ? `It tends to move ${r.macro.usd < 0 ? 'against' : 'with'} the US dollar (3-month correlation ${r.macro.usd}).` : '';
   const c = MARKET_CONTENT[r.id] || {};
   return {
-    score, label, priceStretch: { score, label, parts: ps.parts }, physical, meaning, notes: [curveNote, macroNote].filter(Boolean),
+    score, label, priceStretch: { score, label, parts: ps.parts }, supplyDemand, meaning, notes: [curveNote, macroNote].filter(Boolean),
     tightQ: c.tightQ || `IS ${r.label.toUpperCase()} STRETCHED?`, watch: c.watch || [], catalysts: c.catalysts || [],
     sectorsUp: c.sectorsUp || [], sectorsDown: c.sectorsDown || [], tickersUp: c.tickersUp || [], tickersDown: c.tickersDown || [], ideas: c.ideas || '',
   };

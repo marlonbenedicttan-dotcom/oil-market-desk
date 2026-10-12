@@ -191,6 +191,12 @@ export function stretchLabel(s) {
   return s >= 80 ? 'VERY RICH' : s >= 50 ? 'RICH' : s >= 20 ? 'LEANING RICH'
     : s > -20 ? 'ABOUT AVERAGE' : s > -50 ? 'LEANING CHEAP' : s > -80 ? 'CHEAP' : 'VERY CHEAP';
 }
+// Plain-word label for the supply/demand (tightness) score, 0-100 where 50 = balanced.
+// Reads as a physical-balance verdict: undersupplied on the way up, oversupplied on the way down.
+export function sdLabel(s) {
+  if (s == null) return '—';
+  return s >= 70 ? 'UNDERSUPPLIED' : s >= 58 ? 'TIGHT' : s >= 42 ? 'BALANCED' : s >= 30 ? 'WELL SUPPLIED' : 'OVERSUPPLIED';
+}
 // Blend signed parts ({ key, label, weight, score -100..+100 }) into one headline. A plain
 // weighted mean, re-normalised over whatever is present — predictable, and no single input can
 // hijack the score the way the old max-blend let the (spurious) range read do.

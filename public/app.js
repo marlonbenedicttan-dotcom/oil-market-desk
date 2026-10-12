@@ -362,14 +362,13 @@ function renderAdaptive() {
   }
   const r = marketRead, v = r.verdict;
   const score = v.score;
-  const ph = v.physical || { score: null, label: '—', parts: [], note: '' };
+  const sd = v.supplyDemand || { score: null, label: '—', parts: [], note: '', kind: null };
   const kl = score == null ? 'elevated' : score >= 20 ? 'high' : score <= -20 ? 'low' : 'elevated';
-  const phCls = ph.score == null ? '' : ph.score >= 58 ? 'pos' : ph.score <= 42 ? 'neg' : '';
-  const phName = 'PHYSICAL TIGHTNESS';
-  // The verdict bar's colour reflects PHYSICAL tightness (tight/loose); price richness is shown
-  // by the tile colour above. If there is no physical data we stay neutral rather than calling a
-  // cheap market "loose".
-  const vk = ph.score == null ? 'mixed' : ph.score >= 58 ? 'tight' : ph.score <= 42 ? 'loose' : 'mixed';
+  const sdCls = sd.score == null ? '' : sd.score >= 58 ? 'pos' : sd.score <= 42 ? 'neg' : '';
+  const sdWord = (s) => (s == null ? '—' : s >= 70 ? 'UNDERSUPPLIED' : s >= 58 ? 'TIGHT' : s >= 42 ? 'BALANCED' : s >= 30 ? 'WELL SUPPLIED' : 'OVERSUPPLIED');
+  // The verdict bar's colour reflects the supply/demand read (tight/loose); price richness is
+  // shown by the tile colour above. No physical data → stay neutral.
+  const vk = sd.score == null ? 'mixed' : sd.score >= 58 ? 'tight' : sd.score <= 42 ? 'loose' : 'mixed';
   if ($('regime')) $('regime').textContent = regLine(r);
   const next = [...(v.catalysts || []).map((c) => `Watch: <b>${c}</b>`), ...(v.watch || [])];
   const chips = [...(v.tickersUp || []).map((t) => `<span class="chip up">▲ ${t}</span>`), ...(v.tickersDown || []).map((t) => `<span class="chip down">▼ ${t}</span>`)].join('');
@@ -390,7 +389,7 @@ function renderAdaptive() {
   }
   $('bottomline').innerHTML = `<div class="bl">
       <div class="bl-score ${kl}"><div class="bl-num">${score == null ? '—' : signed(score, 0)}<span>/100</span></div><div class="bl-lbl">PRICE vs ITS OWN HISTORY<div class="bl-tag">${v.label}</div></div>
-        <div class="bl-phys"><div class="bl-phys-k">${phName}</div><div class="bl-phys-v ${phCls}">${ph.score == null ? 'no free data' : `${ph.score}<span>/100</span> ${ph.label}`}</div></div>
+        <div class="bl-phys"><div class="bl-phys-k">SUPPLY &amp; DEMAND${sd.kind ? ` · ${sd.kind === 'physical' ? 'real data' : 'curve only'}` : ''}</div><div class="bl-phys-v ${sdCls}">${sd.score == null ? 'no free data' : `${sd.score}<span>/100</span> ${sd.label}`}</div></div>
       </div>
       <div class="bl-sec"><div class="gtitle">WHAT HAPPENED</div><p>${v.meaning} ${(v.notes || []).join(' ')}</p>${attrHtml}</div>
       <div class="bl-sec"><div class="gtitle">KEY POINTS</div><ul>${kp}</ul></div>
@@ -409,13 +408,13 @@ function renderAdaptive() {
   if (r.basis) push('Real vs futures', signed(r.basis.value, r.dp), r.basis.value >= 0 ? 'TIGHT' : 'LOOSE', r.basis.pctile != null ? `${r.basis.pctile.toFixed(0)}th pctile` : 'physical vs paper');
   if (r.inventory?.length) for (const it of r.inventory) push(`${it.label} vs seasonal`, it.surprise == null ? '—' : signed(it.surprise, 0), it.surprise < 0 ? 'TIGHT' : 'LOOSE', it.surprise < 0 ? 'a bigger draw than usual' : 'built up vs usual');
   if (r.macro?.usd != null) push('Link to the US dollar', `${r.macro.usd}`, 'MID', '3-month correlation (negative = moves against the dollar)');
-  const physChips = (ph.parts && ph.parts.length) ? `<div class="phys-parts">${ph.parts.map((p) => `<span class="phys-part ${p.score >= 58 ? 'tight' : p.score <= 42 ? 'loose' : ''}">${p.label} <b>${p.score}</b> ${p.score >= 58 ? 'TIGHT' : p.score <= 42 ? 'LOOSE' : 'BALANCED'}</span>`).join('')}</div>` : '';
-  const physNote = ph.note ? `<div class="phys-note dimtext">${ph.note}</div>` : '';
+  const sdChips = (sd.parts && sd.parts.length) ? `<div class="phys-parts">${sd.parts.map((p) => `<span class="phys-part ${p.score >= 58 ? 'tight' : p.score <= 42 ? 'loose' : ''}">${p.label} <b>${p.score}</b> ${sdWord(p.score)}</span>`).join('')}</div>` : '';
+  const sdNote = sd.note ? `<div class="phys-note dimtext">${sd.note}</div>` : '';
   const psParts = (v.priceStretch && v.priceStretch.parts) || [];
   const psChips = psParts.length ? `<div class="phys-parts"><span class="dimtext" style="align-self:center">vs its own history:</span>${psParts.map((p) => `<span class="phys-part">${p.label} <b>${signed(p.score, 0)}</b></span>`).join('')}</div>` : '';
   const priceLine = score == null ? 'price vs its own history unavailable' : `it is <b>${v.label.toLowerCase()}</b> vs its own history (${signed(score, 0)}/100)`;
-  const physLine = ph.score == null ? 'no free physical data' : `the physical market is <b>${ph.label.toLowerCase()}</b> (${ph.score}/100)`;
-  $('tightness').innerHTML = `<div class="verdict ${vk}">${r.label}: ${priceLine} · ${physLine}.</div>${psChips}${physChips}${physNote}<div class="ev-list">${ev.map((e) => `<div class="ev"><span class="ev-l">${e.label}</span><span class="ev-v">${e.value}</span><span class="tag ${e.dir.toLowerCase()}">${e.dir}</span><span class="ev-n dimtext">${e.note}</span></div>`).join('')}</div>`;
+  const sdLine = sd.score == null ? 'no free supply/demand data' : `supply vs demand looks <b>${sd.label.toLowerCase()}</b> (${sd.score}/100)`;
+  $('tightness').innerHTML = `<div class="verdict ${vk}">${r.label}: ${priceLine} · ${sdLine}.</div>${psChips}${sdChips}${sdNote}<div class="ev-list">${ev.map((e) => `<div class="ev"><span class="ev-l">${e.label}</span><span class="ev-v">${e.value}</span><span class="tag ${e.dir.toLowerCase()}">${e.dir}</span><span class="ev-n dimtext">${e.note}</span></div>`).join('')}</div>`;
   const si = $('ships-insights');
   if (si) si.innerHTML = r.hasShips ? tankerInsights(tankerInfo).map((x) => `<li>${x}</li>`).join('') : '';
   renderAlerts(marketAlerts(r));
