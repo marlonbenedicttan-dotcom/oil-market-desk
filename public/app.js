@@ -642,6 +642,26 @@ const bandsPlugin = {
     draw(b.p10, '#2a3440'); draw(b.p90, '#2a3440'); draw(b.median, '#4aa3ff');
   },
 };
+// Event markers: a faint line + dot at each dated news shock (see chartMarkers).
+const eventsPlugin = {
+  id: 'events',
+  afterDatasetsDraw(c) {
+    const ev = c.$events;
+    if (!ev || !ev.length) return;
+    const { top, bottom, left, right } = c.chartArea;
+    const g = c.ctx;
+    for (const e of ev) {
+      const x = c.scales.x.getPixelForValue(e.idx);
+      if (x < left || x > right) continue;
+      g.save();
+      g.strokeStyle = e.color; g.globalAlpha = 0.45; g.setLineDash([2, 3]); g.lineWidth = 1;
+      g.beginPath(); g.moveTo(x, top); g.lineTo(x, bottom); g.stroke();
+      g.setLineDash([]); g.globalAlpha = 1; g.fillStyle = e.color;
+      g.beginPath(); g.arc(x, top + 3, 2.6, 0, Math.PI * 2); g.fill();
+      g.restore();
+    }
+  },
+};
 let chart;
 let chartAnchor = null;
 const anchorLine = {
@@ -748,8 +768,41 @@ async function renderChart() {
 
   $('lt-summary').textContent = (summary ? summary + '  ·  ' : '') + 'hover any point for its % change · click to drop an anchor (●), hover again to measure between two';
   const chartData = { labels, datasets };
-  chart = mountChart('chart', chartData, baseOptions({ dp: chartDp, anchorable: true }), [anchorLine, bandsPlugin]);
+  chart = mountChart('chart', chartData, baseOptions({ dp: chartDp, anchorable: true }), [anchorLine, bandsPlugin, eventsPlugin]);
   if (chart) chart.$bands = bands;
+  // Event markers — dated news shocks that help explain the moves on the chart. Only on a
+  // segment's own benchmark (not currencies / gaps / spreads).
+  if (chart) { chart.$events = await chartMarkers(bench ? currentMarket : null, labels); renderChartEvents(chart.$events); chart.update('none'); }
+}
+// Dated news shocks for a segment, matched to the chart's x-axis labels (client-cached 5min).
+const markerCache = {};
+async function chartMarkers(market, labels) {
+  if (!market) return [];
+  let c = markerCache[market];
+  if (!c || Date.now() - c.t > 5 * 60e3) {
+    try { const f = await getJSON('/api/fundamentals?id=' + encodeURIComponent(market)); c = { t: Date.now(), v: (f.items || []).filter((i) => i.date) }; }
+    catch { c = { t: Date.now(), v: [] }; }
+    markerCache[market] = c;
+  }
+  const first = String((labels || [])[0] || '');
+  const tol = (/^\d{4}-\d{2}$/.test(first) ? 45 : 12) * 864e5;
+  const ld = (labels || []).map((l) => { const s = String(l); return /^\d{4}-\d{2}-\d{2}$/.test(s) ? Date.parse(s) : /^\d{4}-\d{2}$/.test(s) ? Date.parse(s + '-15') : NaN; });
+  const seen = new Set(); const out = [];
+  for (const it of c.v) {
+    const ds = String(it.date).slice(0, 10); const t = Date.parse(ds);
+    if (isNaN(t)) continue;
+    let best = -1, bd = Infinity;
+    for (let i = 0; i < ld.length; i++) { if (isNaN(ld[i])) continue; const d = Math.abs(ld[i] - t); if (d < bd) { bd = d; best = i; } }
+    if (best < 0 || bd > tol || seen.has(best)) continue;
+    seen.add(best);
+    out.push({ idx: best, color: it.effect === 'down' ? '#ff5252' : CT.c3, kind: it.kind, title: it.title, url: it.url, date: ds });
+  }
+  return out.sort((a, b) => a.idx - b.idx);
+}
+function renderChartEvents(ev) {
+  const el = $('chart-events'); if (!el) return;
+  if (!ev || !ev.length) { el.innerHTML = ''; return; }
+  el.innerHTML = `<span class="dimtext">news on this chart (dot = a dated supply/demand shock):</span> ` + ev.slice(-8).map((e) => `<a class="ce" href="${e.url}" target="_blank" rel="noopener noreferrer" title="${String(e.title).replace(/"/g, '&quot;')}"><span class="ce-dot" style="background:${e.color}"></span>${e.date.slice(5)} ${e.kind}</a>`).join('');
 }
 
 // ---------------------------------------------------------------------------

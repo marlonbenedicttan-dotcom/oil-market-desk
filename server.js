@@ -1600,9 +1600,10 @@ async function getFundamentals(id) {
   if (!q) return { id, error: 'unknown segment', items: [] };
   return cached('fund:' + id, 45 * 60e3, async () => {
     const items = await fetchGoogleNews(q, 16);
+    const now = Date.now();
     const hits = [];
     for (const it of items) {
-      for (const r of EVENT_RULES) { if (r.re.test(it.title)) { hits.push({ ...it, kind: r.kind, effect: r.effect, chain: r.chain }); break; } }
+      for (const r of EVENT_RULES) { if (r.re.test(it.title)) { hits.push({ ...it, kind: r.kind, effect: r.effect, chain: r.chain, ageDays: it.date ? Math.max(0, Math.round((now - Date.parse(it.date)) / 864e5)) : null }); break; } }
     }
     return { id, label: newsLabel(id), items: hits, scanned: items.length };
   });
