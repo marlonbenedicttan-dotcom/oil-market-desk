@@ -804,23 +804,7 @@ async function renderChart() {
   chart = mountChart('chart', chartData, baseOptions({ dp: chartDp, anchorable: true }), [anchorLine, bandsPlugin, eventsPlugin]);
   if (chart) chart.$bands = bands;
   // Big-move markers — the chart's own largest swings, each tagged with the trusted news behind it.
-  if (chart) {
-    chart.$events = await chartMoveMarkers(bench ? currentMarket : null, histLabels, datasets[0] ? datasets[0].data.slice(0, histLabels.length) : []);
-    renderChartEvents(chart.$events);
-    // Hovering a marker line pops up the headline behind that move.
-    chart.options.onHover = (evt, _els, c) => {
-      const tip = $('chart-tip'); if (!tip) return;
-      let hit = null;
-      for (const m of (c.$events || [])) { const mx = c.scales.x.getPixelForValue(m.idx); if (Math.abs(mx - evt.x) <= 7) { hit = m; break; } }
-      if (!hit) { tip.hidden = true; return; }
-      tip.innerHTML = `<b>${hit.date}</b> · <span class="${hit.pct >= 0 ? 'pos' : 'neg'}">${hit.pct >= 0 ? '+' : ''}${hit.pct.toFixed(1)}%</span><div class="tip-t">${hit.title}</div><div class="dimtext">${hit.source}</div>`;
-      tip.hidden = false;
-      tip.style.left = Math.max(0, Math.min(c.canvas.clientWidth - 250, evt.x + 12)) + 'px';
-      tip.style.top = '10px';
-    };
-    chart.options.onLeave = () => { const tip = $('chart-tip'); if (tip) tip.hidden = true; };
-    chart.update('none');
-  }
+  if (chart) await attachMarkers(chart, bench ? currentMarket : null, histLabels, datasets[0] ? datasets[0].data.slice(0, histLabels.length) : [], '#chart-events');
 }
 // The futures curve for a benchmark (client-cached 5 min) — powers the forward-curve overlay.
 const termCache = {};
@@ -866,11 +850,32 @@ async function chartMoveMarkers(market, labels, data) {
   }
   return out;
 }
-function renderChartEvents(ev) {
-  const el = $('chart-events'); if (!el) return;
+function renderChartEvents(ev, sel = '#chart-events') {
+  const el = $(sel); if (!el) return;
   const tip = $('chart-tip'); if (tip) tip.hidden = true;
   if (!ev || !ev.length) { el.innerHTML = ''; return; }
   el.innerHTML = `<span class="dimtext">big moves &amp; the news behind them:</span> ` + ev.map((e) => { const t = String(e.title); const short = t.length > 72 ? t.slice(0, 71) + '…' : t; return `<a class="ce" href="${e.url}" target="_blank" rel="noopener noreferrer" title="${t.replace(/"/g, '&quot;')}"><span class="ce-dot" style="background:${e.color}"></span>${e.date.slice(5)} ${e.pct >= 0 ? '▲ +' : '▼ '}${e.pct.toFixed(1)}% · ${short} <span class="dimtext">(${e.source})</span></a>`; }).join('');
+}
+// Shared by every chart: detect its big moves, attach the trusted news, wire the hover tooltip
+// (a body-level element, positioned by the mouse) and render the chip list under the chart.
+async function attachMarkers(chart, newsId, labels, data, chipsSel) {
+  if (!chart) return;
+  chart.$events = await chartMoveMarkers(newsId, labels, data).catch(() => []);
+  const tip = $('chart-tip');
+  chart.options.onHover = (evt, _els, c) => {
+    if (!tip) return;
+    let hit = null;
+    for (const m of (c.$events || [])) { const mx = c.scales.x.getPixelForValue(m.idx); if (Math.abs(mx - evt.x) <= 7) { hit = m; break; } }
+    if (!hit) { tip.hidden = true; return; }
+    tip.innerHTML = `<b>${hit.date}</b> · <span class="${hit.pct >= 0 ? 'pos' : 'neg'}">${hit.pct >= 0 ? '+' : ''}${hit.pct.toFixed(1)}%</span><div class="tip-t">${hit.title}</div><div class="dimtext">${hit.source}</div>`;
+    tip.hidden = false;
+    const e = evt.native || {};
+    tip.style.left = Math.max(6, Math.min(window.innerWidth - 260, (e.clientX || 0) + 12)) + 'px';
+    tip.style.top = Math.max(6, (e.clientY || 0) + 12) + 'px';
+  };
+  chart.options.onLeave = () => { if (tip) tip.hidden = true; };
+  renderChartEvents(chart.$events, chipsSel);
+  chart.update('none');
 }
 
 // ---------------------------------------------------------------------------
@@ -1560,6 +1565,8 @@ async function loadCountryChart() {
   const note = $('macro-chart-note');
   if (note) note.textContent = `${d.label} — both lines start at 100; hover any point for its % change. ${d.indexLabel ? '' : 'Index unavailable free.'}`;
   macroChart = mountChart('macro-chart', { labels: d.dates, datasets }, baseOptions({ dp: 1 }));
+  const prim = (d.index && d.index.some((v) => v != null)) ? d.index : d.fx;
+  attachMarkers(macroChart, req, d.dates, prim || [], '#macro-chart-events');
 }
 // Central-bank policy rate history (stepped line; hover shows the rate).
 let policyChart = null;
@@ -1619,6 +1626,8 @@ function renderYields(d) {
   if (d.long) datasets.push(line(`${d.long.label} yield`, arr(d.long), CT.c2));
   const chartData = { labels: dates, datasets };
   yieldsChart = mountChart('yields-chart', chartData, baseOptions({ dp: 2, percentAxis: true }));
+  const ysrc = d.long || d.short;
+  if (ysrc) attachMarkers(yieldsChart, macroCountry, dates, arr(ysrc), '#yields-events');
 }
 async function loadYields() {
   const cv = $('yields-chart');

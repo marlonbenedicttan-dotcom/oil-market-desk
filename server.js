@@ -1320,10 +1320,10 @@ const MACRO_COUNTRIES = {
   apac: [
     { id: 'sg', label: 'Singapore', iso3: 'SGP', oil: 'importer', fx: 'USDSGD=X', fxLabel: 'USD / SGD', index: '^STI', indexLabel: 'Straits Times' },
     { id: 'id', label: 'Indonesia', iso3: 'IDN', oil: 'importer', fx: 'USDIDR=X', fxLabel: 'USD / IDR', index: '^JKSE', indexLabel: 'IDX Composite' },
-    { id: 'th', label: 'Thailand', iso3: 'THA', oil: 'importer', fx: 'USDTHB=X', fxLabel: 'USD / THB', index: '^SET.BK', indexLabel: 'SET Index' },
+    { id: 'th', label: 'Thailand', iso3: 'THA', oil: 'importer', fx: 'USDTHB=X', fxLabel: 'USD / THB', index: 'THD', indexLabel: 'Thailand (THD ETF proxy)' },
     { id: 'my', label: 'Malaysia', iso3: 'MYS', oil: 'exporter', fx: 'USDMYR=X', fxLabel: 'USD / MYR', index: '^KLSE', indexLabel: 'KLCI' },
-    { id: 'ph', label: 'Philippines', iso3: 'PHL', oil: 'importer', fx: 'USDPHP=X', fxLabel: 'USD / PHP', index: null, indexLabel: 'PSEi (not free)' },
-    { id: 'vn', label: 'Vietnam', iso3: 'VNM', oil: 'importer', fx: 'USDVND=X', fxLabel: 'USD / VND', index: null, indexLabel: 'VN-Index (not free)' },
+    { id: 'ph', label: 'Philippines', iso3: 'PHL', oil: 'importer', fx: 'USDPHP=X', fxLabel: 'USD / PHP', index: 'EPHE', indexLabel: 'Philippines (EPHE ETF proxy)' },
+    { id: 'vn', label: 'Vietnam', iso3: 'VNM', oil: 'importer', fx: 'USDVND=X', fxLabel: 'USD / VND', index: 'VNM', indexLabel: 'Vietnam (VNM ETF proxy)' },
     { id: 'kr', label: 'South Korea', iso3: 'KOR', oil: 'importer', fx: 'USDKRW=X', fxLabel: 'USD / KRW', index: '^KS11', indexLabel: 'KOSPI' },
     { id: 'au', label: 'Australia', iso3: 'AUS', oil: 'importer', fx: 'AUDUSD=X', fxLabel: 'AUD / USD', index: '^AXJO', indexLabel: 'ASX 200' },
     { id: 'tw', label: 'Taiwan', iso3: 'TWN', oil: 'importer', fx: 'USDTWD=X', fxLabel: 'USD / TWD', index: '^TWII', indexLabel: 'TAIEX' },
@@ -1613,9 +1613,8 @@ async function getFundamentals(id) {
 // published in a tight window around each move (Google News honours after:/before:), and pick the
 // best story (closest day, preferring one whose direction matches the move).
 async function getMoveWho(id, reqs) {
-  const m = MARKETS.find((x) => x.id === id);
-  if (!m) return { results: [] };
-  const base = NEWS_QUERIES[id] || SCAN_QUERIES[id] || id;
+  const base = NEWS_QUERIES[id];        // covers commodity segments AND macro regions/countries
+  if (!base) return { results: [] };
   const out = [];
   for (const r of (reqs || []).slice(0, 6)) {
     const d = r.date;
@@ -2344,7 +2343,7 @@ const server = http.createServer(async (req, res) => {
     }
     if (url.pathname === '/api/movewho') {
       const id = url.searchParams.get('id');
-      if (!MARKETS.some((x) => x.id === id)) return sendJSON(res, 404, { error: 'unknown segment' });
+      if (!NEWS_QUERIES[id]) return sendJSON(res, 404, { error: 'unknown segment' });
       const reqs = (url.searchParams.get('dates') || '').split(',').map((s) => { const [date, dir] = s.split(':'); return { date, dir: dir === '1' ? 'up' : 'down' }; }).filter((r) => /^\d{4}-\d{2}-\d{2}$/.test(r.date));
       return sendJSON(res, 200, await getMoveWho(id, reqs).catch((e) => ({ error: String(e.message), results: [] })));
     }
