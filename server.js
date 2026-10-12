@@ -554,7 +554,7 @@ async function getCurveHistory(root) {
   return cached('curvehist:' + root, 6 * 3600e3, async () => {
     const now = new Date();
     const list = [];
-    for (let k = -18; k <= 6; k++) {
+    for (let k = -12; k <= 4; k++) {                  // 16 contract months (was 25) — the biggest cost in a cold page
       const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + k, 1));
       const mk = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
       list.push({ mk, symbol: `${root}${CURVE_MONTHS[d.getUTCMonth()]}${String(d.getUTCFullYear()).slice(2)}.NYM` });
@@ -562,7 +562,7 @@ async function getCurveHistory(root) {
     const series = {};
     for (const c of list) {
       series[c.mk] = await contractSeries(c.symbol);
-      await sleep(200);
+      await sleep(120);                               // Yahoo rate-limit courtesy (was 200ms)
     }
     const months = Object.keys(series).filter((m) => Object.keys(series[m]).length).sort();
     const allDates = [...new Set(months.flatMap((m) => Object.keys(series[m])))].sort().slice(-500);

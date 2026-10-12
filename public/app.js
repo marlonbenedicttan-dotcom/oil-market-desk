@@ -90,6 +90,9 @@ const segKey = () => currentMarket + '|' + (currentComponent || '');
 // Boot beacon helpers: update the status line, and drop the overlay when the essentials are up.
 const bootStep = (m) => { const el = document.getElementById('boot-status'); if (el) el.textContent = m; };
 const hideBoot = () => { const b = document.getElementById('boot'); if (b) b.classList.add('done'); };
+// The beacon waits for the segment's CORE — the read, the price chart and the news — not just the read.
+const bootReady = { read: false, chart: false, news: false };
+const markReady = (k) => { if (bootReady[k]) return; bootReady[k] = true; if (bootReady.read && bootReady.chart && bootReady.news) hideBoot(); };
 async function getLongterm(id, years = 10) {
   const k = id + years; const hit = ltCache[k];
   if (hit && Date.now() - hit.t < CHART_TTL) return hit.v;
@@ -444,7 +447,7 @@ function renderAdaptive() {
   const xa = $('crossasset');
   if (xa) xa.innerHTML = crossAssetBlock((i) => (i.segments || []).includes(currentMarket));
   loadMarketWhy();   // fill the past-year news-drivers block in afterwards
-  hideBoot();        // the read is up — drop the boot beacon
+  markReady('read');  // the read is up
 }
 // An instant, correct-segment skeleton shown while the full read loads (price/6m from memory).
 function readSkeleton(mk) {
@@ -489,11 +492,12 @@ async function loadNews() {
   const k = segKey();
   el.innerHTML = '<div class="dimtext" style="padding:8px 12px">loading headlines…</div>';
   try { const n = await jget('/api/news?id=' + encodeURIComponent(currentMarket), 300000); if (k !== segKey()) return; renderNews(n); }
-  catch { if (k === segKey()) el.innerHTML = '<div class="dimtext" style="padding:8px 12px">headlines unavailable right now</div>'; }
+  catch { if (k === segKey()) { el.innerHTML = '<div class="dimtext" style="padding:8px 12px">headlines unavailable right now</div>'; markReady('news'); } }
 }
 function renderNews(n, elId = 'news', subId = 'news-sub') {
   const el = $(elId);
   if (!el) return;
+  if (elId === 'news') markReady('news');
   const items = (n && n.items) || [];
   const sub = $(subId);
   const lbl = (n && n.label) || '';
@@ -842,8 +846,8 @@ async function renderChart() {
   } else {
     let r;
     try { r = RANGE_YEARS[range] ? await getLongterm(metric, RANGE_YEARS[range]) : await getRange(metric, range); }
-    catch (e) { showError(e.message); return; }
-    if (!r || r.error || (!r.dates && !r.months)) { showError('No chart data for ' + metric.replace(/^fx:|^basis:/, '')); chartEmpty('chart', 'no chart data for this range'); return; }
+    catch (e) { showError(e.message); markReady('chart'); return; }
+    if (!r || r.error || (!r.dates && !r.months)) { showError('No chart data for ' + metric.replace(/^fx:|^basis:/, '')); chartEmpty('chart', 'no chart data for this range'); markReady('chart'); return; }
     labels = r.dates || r.months;
     chartDp = r.dp ?? chartDp;
     datasets = seriesLines(r);
@@ -873,6 +877,7 @@ async function renderChart() {
   $('lt-summary').textContent = (summary ? summary + '  ·  ' : '') + 'hover any point for its % change · click to drop an anchor (●), hover again to measure between two';
   const chartData = { labels, datasets };
   chart = mountChart('chart', chartData, baseOptions({ dp: chartDp, anchorable: true }), [anchorLine, bandsPlugin]);
+  markReady('chart');
   if (chart) chart.$bands = bands;
   // Big-move markers — the chart's own largest swings, each tagged with the trusted news behind it.
   let newsId = null;
@@ -1923,6 +1928,8 @@ function renderKPIs(m, a, c, pos) {
 // it self-hides for metals/ags where the contract-month history isn't free.
 const CURVE_ROOT = { crude: { root: 'CL', name: 'CRUDE OIL' }, refined: { root: 'RB', name: 'GASOLINE' }, gas: { root: 'NG', name: 'NATURAL GAS' } };
 let curveHistRoot = null;
+let curveHistPending = null;    // root still to fetch, deferred until the panel is in view
+let curveHistVisible = false;   // has the panel ever scrolled into view?
 async function loadCurveHistory() {
   const k = segKey();
   const spec = CURVE_ROOT[currentMarket];
@@ -1930,10 +1937,28 @@ async function loadCurveHistory() {
   if (!spec) { if (block) block.style.display = 'none'; return; }
   if (block) block.style.display = '';
   if (curveHistRoot === spec.root) return;
-  curveHistRoot = spec.root;
   const t = $('curvehist-title');
+  // Deferred: this is the single most expensive request (~20-45s cold, energy-only) and it is
+  // below the fold — so we only fetch it once you actually scroll to it.
+  if (!curveHistVisible) {
+    curveHistPending = spec.root;
+    if (t) t.textContent = `IS ${spec.name} GETTING TIGHTER OR LOOSER? — scroll here to load this chart`;
+    return;
+  }
+  curveHistPending = null;
+  curveHistRoot = spec.root;
   if (t) t.textContent = `IS ${spec.name} GETTING TIGHTER OR LOOSER? — this month vs next, over time (above 0 = tight)`;
-  try { const d = await jget('/api/curvehistory?root=' + spec.root, 300000); if (k !== segKey()) return; renderCurveHistory(d); } catch {}
+  try { const d = await jget('/api/curvehistory?root=' + spec.root, 6 * 3600e3); if (k !== segKey()) return; renderCurveHistory(d); } catch {}
+}
+function initCurveHist() {
+  const block = $('curvehist-block');
+  if (!block || !('IntersectionObserver' in window)) { curveHistVisible = true; return; }   // no IO → load eagerly
+  const io = new IntersectionObserver((entries) => {
+    if (!entries.some((e) => e.isIntersecting)) return;
+    curveHistVisible = true; io.disconnect();
+    if (curveHistPending) loadCurveHistory();
+  }, { rootMargin: '300px' });
+  io.observe(block);
 }
 function showTab(name) {
   saveStr('tab', name);
@@ -2111,6 +2136,7 @@ $('macro-links')?.addEventListener('click', (e) => { const el = e.target.closest
   macroCountries = await getJSON('/api/countries').catch(() => null);
   bootStep('loading prices…');
   await refreshLive();        // prices + ships (sets `data` first)
+  initCurveHist();            // arm the lazy loader for the (expensive) curve-history chart
   bootStep('reading the market…');
   await loadExtraCore();      // the above-the-fold feeds only — below-the-fold comes after first paint
   // Always land on a segment (first visit included) so the read actually loads.
