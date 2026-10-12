@@ -365,7 +365,7 @@ function renderAdaptive() {
   const ph = v.physical || { score: null, label: '—', parts: [], note: '' };
   const kl = score == null ? 'elevated' : score >= 80 ? 'high' : score >= 45 ? 'elevated' : 'low';
   const phCls = ph.score == null ? '' : ph.score >= 58 ? 'pos' : ph.score <= 42 ? 'neg' : '';
-  const phName = ph.kind === 'curve' ? 'CURVE TIGHTNESS' : 'PHYSICAL TIGHTNESS';
+  const phName = 'PHYSICAL TIGHTNESS';
   const vk = ph.score == null ? (score == null ? 'mixed' : score >= 55 ? 'tight' : score >= 35 ? 'mixed' : 'loose') : ph.score >= 58 ? 'tight' : ph.score <= 42 ? 'loose' : 'mixed';
   if ($('regime')) $('regime').textContent = regLine(r);
   const next = [...(v.catalysts || []).map((c) => `Watch: <b>${c}</b>`), ...(v.watch || [])];
@@ -411,7 +411,7 @@ function renderAdaptive() {
   const psParts = (v.priceStretch && v.priceStretch.parts) || [];
   const psChips = psParts.length ? `<div class="phys-parts"><span class="dimtext" style="align-self:center">price stretch:</span>${psParts.map((p) => `<span class="phys-part">${p.label} <b>${p.score}</b></span>`).join('')}</div>` : '';
   const priceLine = score == null ? 'price stretch unavailable' : `price is <b>${v.label.toLowerCase()}</b> (${score}/100)`;
-  const physLine = ph.score == null ? 'no free physical data' : (ph.kind === 'curve' ? `the futures curve is <b>${ph.label.toLowerCase()}</b> (${ph.score}/100)` : `the physical market is <b>${ph.label.toLowerCase()}</b> (${ph.score}/100)`);
+  const physLine = ph.score == null ? 'no free physical data' : `the physical market is <b>${ph.label.toLowerCase()}</b> (${ph.score}/100)`;
   $('tightness').innerHTML = `<div class="verdict ${vk}">${r.label}: ${priceLine} · ${physLine}.</div>${psChips}${physChips}${physNote}<div class="ev-list">${ev.map((e) => `<div class="ev"><span class="ev-l">${e.label}</span><span class="ev-v">${e.value}</span><span class="tag ${e.dir.toLowerCase()}">${e.dir}</span><span class="ev-n dimtext">${e.note}</span></div>`).join('')}</div>`;
   const si = $('ships-insights');
   if (si) si.innerHTML = r.hasShips ? tankerInsights(tankerInfo).map((x) => `<li>${x}</li>`).join('') : '';
@@ -455,6 +455,7 @@ function selectMarket(id) {
   loadNews();
   loadFundamentals();
   renderChart();
+  syncCompareToSelection();
 }
 
 // ---------------------------------------------------------------------------
@@ -738,6 +739,24 @@ function renderCmpPresets() {
   const el = $('cmp-presets');
   if (el) el.innerHTML = CMP_PRESETS.map(([lab, a, b, v]) => `<button class="ghost small cmp-preset" data-a="${a}" data-b="${b}" data-v="${v}">${lab}</button>`).join('');
 }
+function cmpUnit(id) {
+  if (!id || id.startsWith('fx:') || id.startsWith('rate:')) return '';
+  const b = data.benchmarks.find((x) => x.id === id);
+  return b ? b.unit : '';
+}
+// Point COMPARE at the chosen instrument: A = it, B = another component of the segment
+// (else the dollar), view = difference only when the units match.
+function syncCompareToSelection() {
+  const a = $('cmp-a'), b = $('cmp-b');
+  if (!a || !b || !data || !a.options.length) return;
+  const mk = markets.find((x) => x.id === currentMarket);
+  const sel = currentComponent || (mk && mk.primary) || a.value;
+  if ([...a.options].some((o) => o.value === sel)) a.value = sel;
+  const partner = (mk ? mk.components.map((c) => c.id) : []).find((id) => id !== a.value && [...b.options].some((o) => o.value === id));
+  b.value = partner || (a.value === 'fx:dxy' ? 'wti' : 'fx:dxy');
+  if ($('cmp-view')) $('cmp-view').value = cmpUnit(a.value) && cmpUnit(a.value) === cmpUnit(b.value) ? 'diff' : 'index';
+  renderCompare();
+}
 async function cmpSeries(metric, range) {
   let r; try { r = await getRange(metric, range); } catch { return null; }
   if (!r || r.error) return null;
@@ -804,7 +823,7 @@ async function loadMarket() {
   renderMarketState(); renderSnapshot(); setCardsTitle(); renderTicker(data);
   renderWatchlist(); renderHomeAlerts();
   await renderChart();   // ← render AFTER data exists
-  buildCompareOptions(); renderCompare();
+  buildCompareOptions(); syncCompareToSelection();
   loadSeasonal();
   loadMarketRead();      // populate the adaptive Big Picture (hero line + panels)
   loadNews();
@@ -1686,6 +1705,7 @@ $('bp-snapshot')?.addEventListener('click', (e) => {
   currentComponent = c.dataset.component;
   renderSnapshot();
   loadMarketRead();
+  syncCompareToSelection();
 });
 
 $('marketstate')?.addEventListener('click', (e) => { const t = e.target.closest('[data-market]'); if (t) { showTab('commodities'); selectMarket(t.dataset.market); } });

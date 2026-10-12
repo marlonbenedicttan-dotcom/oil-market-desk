@@ -1042,30 +1042,29 @@ function marketVerdict(r) {
   // tight: curve (near vs next), the real-vs-futures basis, and stocks vs the
   // seasonal norm. Precious metals' curves track rates/carry, not physical tightness,
   // so they are excluded; anything unavailable is left out, never faked.
-  const parts = [];
-  const curveOk = r.curve?.m1m2 != null && r.id !== 'precious';
-  // Normalise the front spread by its actual month gap — cocoa/corn front pairs are 3 months
-  // apart, not 1, so an un-normalised spread reads far too extreme for quarterly curves.
-  if (curveOk) parts.push({ key: 'curve', label: 'Curve (near vs next)', weight: 0.4, score: curveTightness(r.curve.m1m2 / (r.curve.months || 1), r.price) });
-  if (r.basis?.pctile != null) parts.push({ key: 'basis', label: 'Real vs futures', weight: 0.3, score: Math.round(r.basis.pctile) });
+  // Physical tightness needs REAL physical data — a real-vs-futures basis or inventories.
+  // Where there is none (metals, grains, softs) we show NOTHING rather than a futures-curve
+  // proxy. The curve is used only as one input where real physical data exists (energy).
   const inv = r.inventory || [];
-  for (const it of inv) parts.push({ key: 'inv:' + it.key, label: `${it.label} vs seasonal`, weight: 0.3 / inv.length, score: inventoryTightness(it.surprise, it.seasonalMin, it.seasonalMax) });
-  const physical = weightedScore(parts);
-  // "Physical" only when there is real physical data (basis or stocks); otherwise it is a
-  // futures-curve read and must be labelled as such, not as physical tightness.
   const hasPhysical = r.basis?.pctile != null || inv.length > 0;
-  physical.kind = hasPhysical ? 'physical' : (physical.score == null ? null : 'curve');
+  const parts = [];
   const missing = [];
-  if (!curveOk) missing.push('curve');
-  if (r.hasBasis && r.basis == null) missing.push('basis');
-  if (r.hasInventories && !inv.length) missing.push('inventories');
-  physical.note = physical.score == null
-    ? (r.id === 'precious'
-      ? 'Precious metals have no free basis or inventories, and their curve tracks interest rates/carry rather than physical tightness — read price stretch, positioning and macro instead.'
-      : 'No free physical data for this segment right now — price stretch and positioning are the reads.')
-    : hasPhysical
-      ? `From ${physical.parts.map((p) => p.label).join(' + ')}${missing.length ? ` · no free ${missing.join(' or ')}` : ''}.`
-      : 'From the futures curve only (near vs next) — this market has no free real-barrel prices or inventories, so read it as the curve, not physical tightness.';
+  if (hasPhysical) {
+    const curveOk = r.curve?.m1m2 != null && r.id !== 'precious';
+    if (curveOk) parts.push({ key: 'curve', label: 'Curve (near vs next)', weight: 0.4, score: curveTightness(r.curve.m1m2 / (r.curve.months || 1), r.price) });
+    if (r.basis?.pctile != null) parts.push({ key: 'basis', label: 'Real vs futures', weight: 0.3, score: Math.round(r.basis.pctile) });
+    for (const it of inv) parts.push({ key: 'inv:' + it.key, label: `${it.label} vs seasonal`, weight: 0.3 / inv.length, score: inventoryTightness(it.surprise, it.seasonalMin, it.seasonalMax) });
+    if (!curveOk) missing.push('curve');
+    if (r.hasBasis && r.basis == null) missing.push('basis');
+    if (r.hasInventories && !inv.length) missing.push('inventories');
+  }
+  const physical = hasPhysical ? weightedScore(parts) : { score: null, label: '—', parts: [] };
+  physical.kind = hasPhysical ? 'physical' : null;
+  physical.note = hasPhysical
+    ? `From ${physical.parts.map((p) => p.label).join(' + ')}${missing.length ? ` · no free ${missing.join(' or ')}` : ''}.`
+    : (r.id === 'precious'
+      ? 'Precious metals have no free basis or inventories, so no physical tightness is shown — read price stretch, the curve, positioning and macro instead.'
+      : 'No free real-barrel (spot) prices or inventories for this market, so no physical tightness is shown (never faked) — read price stretch, the curve and positioning.');
 
   const bits = [];
   if (r.perf.m6 != null) bits.push(`<b>${r.label}</b> is ${r.perf.m6 >= 0 ? 'up' : 'down'} <b>${Math.abs(r.perf.m6).toFixed(0)}%</b> over 6 months`);
