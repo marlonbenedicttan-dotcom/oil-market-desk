@@ -133,6 +133,9 @@ test('/api/marketread gives a SIGNED price-vs-history score, separate from suppl
   // grains have no free basis or inventories → the S/D read is curve-only, never a basis component
   const grains = await (await fetch(`http://localhost:${PORT}/api/marketread?id=grains`)).json();
   assert.ok(grains.verdict.supplyDemand.parts.every((p) => p.key !== 'basis'));
+  // peanuts: no free basis; corn (grains' headline) DOES have the USDA stocks-to-use snapshot leg
+  assert.ok(grains.verdict.supplyDemand.parts.some((p) => p.key === 'usda'), 'grains S/D includes the USDA stocks-to-use leg');
+  assert.equal(grains.verdict.supplyDemand.kind, 'physical');
 });
 
 test('/api/news returns headlines for segments and macro regions (graceful if unavailable)', async () => {

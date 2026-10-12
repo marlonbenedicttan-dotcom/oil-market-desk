@@ -407,6 +407,7 @@ function renderAdaptive() {
   if (r.curve) push('Curve — near vs later', r.curve.shape, r.curve.m1m2 >= 0 ? 'TIGHT' : 'LOOSE', r.curve.m1m2 >= 0 ? 'near-term prices higher' : 'near-term supply comfortable');
   if (r.basis) push('Real vs futures', signed(r.basis.value, r.dp), r.basis.value >= 0 ? 'TIGHT' : 'LOOSE', r.basis.pctile != null ? `${r.basis.pctile.toFixed(0)}th pctile` : 'physical vs paper');
   if (r.inventory?.length) for (const it of r.inventory) push(`${it.label} vs seasonal`, it.surprise == null ? '—' : signed(it.surprise, 0), it.surprise < 0 ? 'TIGHT' : 'LOOSE', it.surprise < 0 ? 'a bigger draw than usual' : 'built up vs usual');
+  if (r.usda) push('USDA US stocks-to-use', `${(r.usda.stocksToUse * 100).toFixed(1)}%`, r.usda.stocksPct <= 30 ? 'TIGHT' : r.usda.stocksPct >= 70 ? 'LOOSE' : 'MID', `${r.usda.yearLabel} market year · ${r.usda.stocksPct.toFixed(0)}th pctile vs 30 yrs`);
   if (r.macro?.usd != null) push('Link to the US dollar', `${r.macro.usd}`, 'MID', '3-month correlation (negative = moves against the dollar)');
   const sdChips = (sd.parts && sd.parts.length) ? `<div class="phys-parts">${sd.parts.map((p) => `<span class="phys-part ${p.score >= 58 ? 'tight' : p.score <= 42 ? 'loose' : ''}">${p.label} <b>${p.score}</b> ${sdWord(p.score)}</span>`).join('')}</div>` : '';
   const sdNote = sd.note ? `<div class="phys-note dimtext">${sd.note}</div>` : '';

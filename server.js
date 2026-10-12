@@ -16,6 +16,7 @@ const UA = { 'User-Agent': 'Mozilla/5.0 (oil-basis)' };
 // IMF API is blocked from this host, so we serve the committed snapshot instead. Read once at
 // startup — it only changes on a commit, which redeploys us. Absent -> per-source fallback.
 const MACRO_SNAPSHOT = (() => { try { return JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'macro.json'), 'utf8')); } catch { return null; } })();
+const USDA_SNAPSHOT = (() => { try { return JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'usda.json'), 'utf8')); } catch { return null; } })();
 
 // ---------------------------------------------------------------------------
 // Benchmark registry
@@ -1100,7 +1101,7 @@ function marketVerdict(r) {
   }
   if (r.basis?.pctile != null) { sd.push({ key: 'basis', label: 'Spot vs futures', weight: 0.3, score: Math.round(r.basis.pctile) }); used.push('spot vs futures'); }
   for (const it of inv) { sd.push({ key: 'inv:' + it.key, label: `${it.label} vs seasonal`, weight: 0.45 / inv.length, score: inventoryTightness(it.surprise, it.seasonalMin, it.seasonalMax) }); used.push(it.label + ' vs seasonal'); }
-  if (r.usda?.stocksPct != null) { sd.push({ key: 'usda', label: 'USDA stocks-to-use vs history', weight: 0.5, score: Math.round(100 - r.usda.stocksPct) }); used.push('USDA stocks-to-use'); }
+  if (r.usda?.stocksPct != null) { sd.push({ key: 'usda', label: `USDA stocks-to-use${r.usda.yearLabel ? ' ' + r.usda.yearLabel : ''}`, weight: 0.5, score: Math.round(100 - r.usda.stocksPct) }); used.push('USDA stocks-to-use'); }
   if (r.hasBasis && r.basis == null) missing.push('a free spot price');
   if (r.hasInventories && !inv.length) missing.push('stocks');
   const sds = weightedScore(sd);
@@ -1180,6 +1181,17 @@ async function getMarketRead(id, componentId) {
         inventory = pick.length ? pick : null;
       } catch {}
     }
+    // USDA PSD supply/demand — the official US balance (stocks-to-use), where we have it.
+    // Monthly, from the committed snapshot (scripts/fetch-usda.mjs). Percentile is within its
+    // own 30-year history, so it is comparable across crops.
+    let usda = null;
+    try {
+      const u = USDA_SNAPSHOT?.commodities?.[sel];
+      if (u?.history?.length) {
+        const pct = percentile(u.history.map((h) => h.stocksToUse), u.stocksToUse);
+        if (pct != null) usda = { label: u.label, marketYear: u.marketYear, yearLabel: u.yearLabel, stocksToUse: u.stocksToUse, stocksPct: pct };
+      }
+    } catch {}
     const volPctile = rollingVolPctile(values, 30);
     const read = {
       id, label: primary.label, segment: m.label, group: m.group, primary: sel, unit: primary.unit, dp: primary.dp,
@@ -1188,7 +1200,7 @@ async function getMarketRead(id, componentId) {
       perf: { m1: pctOver(values, 21), m3: pctOver(values, 63), m6: pctOver(values, 126), y1: pctOver(values, 252) },
       range: { pos: last != null ? percentile(values, last) : null },
       vol: { v30: vol30, pctile: volPctile },
-      curve, macro, basis, inventory,
+      curve, macro, basis, inventory, usda,
     };
     // Price vs its own history (v3), SIGNED: + = rich/stretched up, − = cheap/washed-out.
     // Position (where the price sits) carries most of the weight; momentum (how fast it got

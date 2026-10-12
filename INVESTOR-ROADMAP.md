@@ -113,6 +113,7 @@ unavailable rather than inventing them). US-focused is fine to start; the countr
 The deploy host (Render) is blocked from some sources (verified: **imf.org → 403 WAF**). The fix is
 to **fetch where you can and serve a committed snapshot**:
 - Fetcher: `scripts/fetch-macro.mjs` (pulls IMF WEO → `data/macro.json`; completed years only).
+- Fetcher: `scripts/fetch-usda.mjs` (pulls USDA PSD bulk CSVs → `data/usda.json`; US stocks-to-use, keyless).
 - Runner: `scripts/snapshot-and-push.sh`, scheduled weekly by the launchd agent
   `~/Library/LaunchAgents/com.marlon.watchtower.macro.plist` (runs on the user's Mac, whose IP
   reaches the IMF). It fetches → commits → pushes → Render redeploys.

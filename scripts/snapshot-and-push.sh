@@ -6,7 +6,8 @@ set -e
 export PATH="$HOME/.local/node/bin:$PATH"
 cd "$HOME/projects/oil-basis"
 node scripts/fetch-macro.mjs
-git add data/macro.json
-if git diff --staged --quiet; then echo "no change to data/macro.json"; exit 0; fi
-git commit -m "chore: refresh macro snapshot (IMF WEO)"
+node scripts/fetch-usda.mjs
+git add data/macro.json data/usda.json
+if git diff --staged --quiet; then echo "no change to the snapshots"; exit 0; fi
+git commit -m "chore: refresh macro + USDA snapshots"
 git push

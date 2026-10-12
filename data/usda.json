@@ -1,0 +1,1297 @@
+{
+ "updated": "2026-10-12T07:23:54.614Z",
+ "source": "USDA PSD (FAS) — US balance",
+ "metric": "stocks-to-use = ending stocks / (domestic consumption + exports), by market year",
+ "commodities": {
+  "corn": {
+   "code": "0440000",
+   "label": "Corn",
+   "marketYear": 2026,
+   "yearLabel": "2026/27",
+   "stocksToUse": 0.1134,
+   "history": [
+    {
+     "year": 1997,
+     "stocksToUse": 0.1488
+    },
+    {
+     "year": 1998,
+     "stocksToUse": 0.1922
+    },
+    {
+     "year": 1999,
+     "stocksToUse": 0.1805
+    },
+    {
+     "year": 2000,
+     "stocksToUse": 0.195
+    },
+    {
+     "year": 2001,
+     "stocksToUse": 0.1626
+    },
+    {
+     "year": 2002,
+     "stocksToUse": 0.1145
+    },
+    {
+     "year": 2003,
+     "stocksToUse": 0.0937
+    },
+    {
+     "year": 2004,
+     "stocksToUse": 0.1983
+    },
+    {
+     "year": 2005,
+     "stocksToUse": 0.1746
+    },
+    {
+     "year": 2006,
+     "stocksToUse": 0.1163
+    },
+    {
+     "year": 2007,
+     "stocksToUse": 0.1275
+    },
+    {
+     "year": 2008,
+     "stocksToUse": 0.1394
+    },
+    {
+     "year": 2009,
+     "stocksToUse": 0.131
+    },
+    {
+     "year": 2010,
+     "stocksToUse": 0.0865
+    },
+    {
+     "year": 2011,
+     "stocksToUse": 0.0792
+    },
+    {
+     "year": 2012,
+     "stocksToUse": 0.0741
+    },
+    {
+     "year": 2013,
+     "stocksToUse": 0.0916
+    },
+    {
+     "year": 2014,
+     "stocksToUse": 0.1259
+    },
+    {
+     "year": 2015,
+     "stocksToUse": 0.1271
+    },
+    {
+     "year": 2016,
+     "stocksToUse": 0.1566
+    },
+    {
+     "year": 2017,
+     "stocksToUse": 0.1446
+    },
+    {
+     "year": 2018,
+     "stocksToUse": 0.157
+    },
+    {
+     "year": 2019,
+     "stocksToUse": 0.1448
+    },
+    {
+     "year": 2020,
+     "stocksToUse": 0.083
+    },
+    {
+     "year": 2021,
+     "stocksToUse": 0.0924
+    },
+    {
+     "year": 2022,
+     "stocksToUse": 0.0992
+    },
+    {
+     "year": 2023,
+     "stocksToUse": 0.1178
+    },
+    {
+     "year": 2024,
+     "stocksToUse": 0.1026
+    },
+    {
+     "year": 2025,
+     "stocksToUse": 0.1273
+    },
+    {
+     "year": 2026,
+     "stocksToUse": 0.1134
+    }
+   ]
+  },
+  "wheat": {
+   "code": "0410000",
+   "label": "Wheat",
+   "marketYear": 2026,
+   "yearLabel": "2026/27",
+   "stocksToUse": 0.398,
+   "history": [
+    {
+     "year": 1997,
+     "stocksToUse": 0.3145
+    },
+    {
+     "year": 1998,
+     "stocksToUse": 0.3898
+    },
+    {
+     "year": 1999,
+     "stocksToUse": 0.398
+    },
+    {
+     "year": 2000,
+     "stocksToUse": 0.3664
+    },
+    {
+     "year": 2001,
+     "stocksToUse": 0.3608
+    },
+    {
+     "year": 2002,
+     "stocksToUse": 0.2496
+    },
+    {
+     "year": 2003,
+     "stocksToUse": 0.2323
+    },
+    {
+     "year": 2004,
+     "stocksToUse": 0.2418
+    },
+    {
+     "year": 2005,
+     "stocksToUse": 0.2652
+    },
+    {
+     "year": 2006,
+     "stocksToUse": 0.223
+    },
+    {
+     "year": 2007,
+     "stocksToUse": 0.1322
+    },
+    {
+     "year": 2008,
+     "stocksToUse": 0.2869
+    },
+    {
+     "year": 2009,
+     "stocksToUse": 0.4858
+    },
+    {
+     "year": 2010,
+     "stocksToUse": 0.3637
+    },
+    {
+     "year": 2011,
+     "stocksToUse": 0.3335
+    },
+    {
+     "year": 2012,
+     "stocksToUse": 0.299
+    },
+    {
+     "year": 2013,
+     "stocksToUse": 0.2424
+    },
+    {
+     "year": 2014,
+     "stocksToUse": 0.3733
+    },
+    {
+     "year": 2015,
+     "stocksToUse": 0.4999
+    },
+    {
+     "year": 2016,
+     "stocksToUse": 0.5314
+    },
+    {
+     "year": 2017,
+     "stocksToUse": 0.5548
+    },
+    {
+     "year": 2018,
+     "stocksToUse": 0.5295
+    },
+    {
+     "year": 2019,
+     "stocksToUse": 0.4926
+    },
+    {
+     "year": 2020,
+     "stocksToUse": 0.4019
+    },
+    {
+     "year": 2021,
+     "stocksToUse": 0.3525
+    },
+    {
+     "year": 2022,
+     "stocksToUse": 0.3036
+    },
+    {
+     "year": 2023,
+     "stocksToUse": 0.3837
+    },
+    {
+     "year": 2024,
+     "stocksToUse": 0.4339
+    },
+    {
+     "year": 2025,
+     "stocksToUse": 0.4491
+    },
+    {
+     "year": 2026,
+     "stocksToUse": 0.398
+    }
+   ]
+  },
+  "soybean": {
+   "code": "2222000",
+   "label": "Soybeans",
+   "marketYear": 2026,
+   "yearLabel": "2026/27",
+   "stocksToUse": 0.0687,
+   "history": [
+    {
+     "year": 1997,
+     "stocksToUse": 0.0761
+    },
+    {
+     "year": 1998,
+     "stocksToUse": 0.1342
+    },
+    {
+     "year": 1999,
+     "stocksToUse": 0.1068
+    },
+    {
+     "year": 2000,
+     "stocksToUse": 0.0884
+    },
+    {
+     "year": 2001,
+     "stocksToUse": 0.071
+    },
+    {
+     "year": 2002,
+     "stocksToUse": 0.0639
+    },
+    {
+     "year": 2003,
+     "stocksToUse": 0.0445
+    },
+    {
+     "year": 2004,
+     "stocksToUse": 0.0856
+    },
+    {
+     "year": 2005,
+     "stocksToUse": 0.1561
+    },
+    {
+     "year": 2006,
+     "stocksToUse": 0.1862
+    },
+    {
+     "year": 2007,
+     "stocksToUse": 0.0671
+    },
+    {
+     "year": 2008,
+     "stocksToUse": 0.0454
+    },
+    {
+     "year": 2009,
+     "stocksToUse": 0.0449
+    },
+    {
+     "year": 2010,
+     "stocksToUse": 0.0655
+    },
+    {
+     "year": 2011,
+     "stocksToUse": 0.0536
+    },
+    {
+     "year": 2012,
+     "stocksToUse": 0.0452
+    },
+    {
+     "year": 2013,
+     "stocksToUse": 0.0265
+    },
+    {
+     "year": 2014,
+     "stocksToUse": 0.0494
+    },
+    {
+     "year": 2015,
+     "stocksToUse": 0.0499
+    },
+    {
+     "year": 2016,
+     "stocksToUse": 0.0716
+    },
+    {
+     "year": 2017,
+     "stocksToUse": 0.102
+    },
+    {
+     "year": 2018,
+     "stocksToUse": 0.2339
+    },
+    {
+     "year": 2019,
+     "stocksToUse": 0.1362
+    },
+    {
+     "year": 2020,
+     "stocksToUse": 0.0569
+    },
+    {
+     "year": 2021,
+     "stocksToUse": 0.0615
+    },
+    {
+     "year": 2022,
+     "stocksToUse": 0.0614
+    },
+    {
+     "year": 2023,
+     "stocksToUse": 0.0834
+    },
+    {
+     "year": 2024,
+     "stocksToUse": 0.0735
+    },
+    {
+     "year": 2025,
+     "stocksToUse": 0.0734
+    },
+    {
+     "year": 2026,
+     "stocksToUse": 0.0687
+    }
+   ]
+  },
+  "soymeal": {
+   "code": "0813100",
+   "label": "Soybean meal",
+   "marketYear": 2026,
+   "yearLabel": "2026/27",
+   "stocksToUse": 0.0067,
+   "history": [
+    {
+     "year": 1997,
+     "stocksToUse": 0.0057
+    },
+    {
+     "year": 1998,
+     "stocksToUse": 0.0088
+    },
+    {
+     "year": 1999,
+     "stocksToUse": 0.0078
+    },
+    {
+     "year": 2000,
+     "stocksToUse": 0.0097
+    },
+    {
+     "year": 2001,
+     "stocksToUse": 0.0059
+    },
+    {
+     "year": 2002,
+     "stocksToUse": 0.0057
+    },
+    {
+     "year": 2003,
+     "stocksToUse": 0.0057
+    },
+    {
+     "year": 2004,
+     "stocksToUse": 0.0042
+    },
+    {
+     "year": 2005,
+     "stocksToUse": 0.0076
+    },
+    {
+     "year": 2006,
+     "stocksToUse": 0.0079
+    },
+    {
+     "year": 2007,
+     "stocksToUse": 0.0069
+    },
+    {
+     "year": 2008,
+     "stocksToUse": 0.006
+    },
+    {
+     "year": 2009,
+     "stocksToUse": 0.0072
+    },
+    {
+     "year": 2010,
+     "stocksToUse": 0.0089
+    },
+    {
+     "year": 2011,
+     "stocksToUse": 0.0073
+    },
+    {
+     "year": 2012,
+     "stocksToUse": 0.0068
+    },
+    {
+     "year": 2013,
+     "stocksToUse": 0.0061
+    },
+    {
+     "year": 2014,
+     "stocksToUse": 0.0057
+    },
+    {
+     "year": 2015,
+     "stocksToUse": 0.0058
+    },
+    {
+     "year": 2016,
+     "stocksToUse": 0.0089
+    },
+    {
+     "year": 2017,
+     "stocksToUse": 0.0112
+    },
+    {
+     "year": 2018,
+     "stocksToUse": 0.0081
+    },
+    {
+     "year": 2019,
+     "stocksToUse": 0.0066
+    },
+    {
+     "year": 2020,
+     "stocksToUse": 0.0066
+    },
+    {
+     "year": 2021,
+     "stocksToUse": 0.0059
+    },
+    {
+     "year": 2022,
+     "stocksToUse": 0.007
+    },
+    {
+     "year": 2023,
+     "stocksToUse": 0.0083
+    },
+    {
+     "year": 2024,
+     "stocksToUse": 0.0067
+    },
+    {
+     "year": 2025,
+     "stocksToUse": 0.007
+    },
+    {
+     "year": 2026,
+     "stocksToUse": 0.0067
+    }
+   ]
+  },
+  "soyoil": {
+   "code": "4232000",
+   "label": "Soybean oil",
+   "marketYear": 2026,
+   "yearLabel": "2026/27",
+   "stocksToUse": 0.0536,
+   "history": [
+    {
+     "year": 1997,
+     "stocksToUse": 0.0754
+    },
+    {
+     "year": 1998,
+     "stocksToUse": 0.0844
+    },
+    {
+     "year": 1999,
+     "stocksToUse": 0.1143
+    },
+    {
+     "year": 2000,
+     "stocksToUse": 0.1562
+    },
+    {
+     "year": 2001,
+     "stocksToUse": 0.1219
+    },
+    {
+     "year": 2002,
+     "stocksToUse": 0.077
+    },
+    {
+     "year": 2003,
+     "stocksToUse": 0.0604
+    },
+    {
+     "year": 2004,
+     "stocksToUse": 0.0906
+    },
+    {
+     "year": 2005,
+     "stocksToUse": 0.1574
+    },
+    {
+     "year": 2006,
+     "stocksToUse": 0.1508
+    },
+    {
+     "year": 2007,
+     "stocksToUse": 0.1169
+    },
+    {
+     "year": 2008,
+     "stocksToUse": 0.155
+    },
+    {
+     "year": 2009,
+     "stocksToUse": 0.1776
+    },
+    {
+     "year": 2010,
+     "stocksToUse": 0.1352
+    },
+    {
+     "year": 2011,
+     "stocksToUse": 0.1297
+    },
+    {
+     "year": 2012,
+     "stocksToUse": 0.079
+    },
+    {
+     "year": 2013,
+     "stocksToUse": 0.056
+    },
+    {
+     "year": 2014,
+     "stocksToUse": 0.0884
+    },
+    {
+     "year": 2015,
+     "stocksToUse": 0.0753
+    },
+    {
+     "year": 2016,
+     "stocksToUse": 0.0763
+    },
+    {
+     "year": 2017,
+     "stocksToUse": 0.0837
+    },
+    {
+     "year": 2018,
+     "stocksToUse": 0.0715
+    },
+    {
+     "year": 2019,
+     "stocksToUse": 0.0736
+    },
+    {
+     "year": 2020,
+     "stocksToUse": 0.0851
+    },
+    {
+     "year": 2021,
+     "stocksToUse": 0.0748
+    },
+    {
+     "year": 2022,
+     "stocksToUse": 0.0596
+    },
+    {
+     "year": 2023,
+     "stocksToUse": 0.0558
+    },
+    {
+     "year": 2024,
+     "stocksToUse": 0.0594
+    },
+    {
+     "year": 2025,
+     "stocksToUse": 0.0529
+    },
+    {
+     "year": 2026,
+     "stocksToUse": 0.0536
+    }
+   ]
+  },
+  "butter": {
+   "code": "0230000",
+   "label": "Butter",
+   "marketYear": 2026,
+   "yearLabel": "2026/27",
+   "stocksToUse": 0.0671,
+   "history": [
+    {
+     "year": 1997,
+     "stocksToUse": 0.0191
+    },
+    {
+     "year": 1998,
+     "stocksToUse": 0.0215
+    },
+    {
+     "year": 1999,
+     "stocksToUse": 0.0184
+    },
+    {
+     "year": 2000,
+     "stocksToUse": 0.0188
+    },
+    {
+     "year": 2001,
+     "stocksToUse": 0.0432
+    },
+    {
+     "year": 2002,
+     "stocksToUse": 0.1231
+    },
+    {
+     "year": 2003,
+     "stocksToUse": 0.0743
+    },
+    {
+     "year": 2004,
+     "stocksToUse": 0.0325
+    },
+    {
+     "year": 2005,
+     "stocksToUse": 0.0435
+    },
+    {
+     "year": 2006,
+     "stocksToUse": 0.0749
+    },
+    {
+     "year": 2007,
+     "stocksToUse": 0.1012
+    },
+    {
+     "year": 2008,
+     "stocksToUse": 0.0694
+    },
+    {
+     "year": 2009,
+     "stocksToUse": 0.0829
+    },
+    {
+     "year": 2010,
+     "stocksToUse": 0.0499
+    },
+    {
+     "year": 2011,
+     "stocksToUse": 0.0584
+    },
+    {
+     "year": 2012,
+     "stocksToUse": 0.0822
+    },
+    {
+     "year": 2013,
+     "stocksToUse": 0.0583
+    },
+    {
+     "year": 2014,
+     "stocksToUse": 0.0554
+    },
+    {
+     "year": 2015,
+     "stocksToUse": 0.0819
+    },
+    {
+     "year": 2016,
+     "stocksToUse": 0.0856
+    },
+    {
+     "year": 2017,
+     "stocksToUse": 0.0875
+    },
+    {
+     "year": 2018,
+     "stocksToUse": 0.0851
+    },
+    {
+     "year": 2019,
+     "stocksToUse": 0.0889
+    },
+    {
+     "year": 2020,
+     "stocksToUse": 0.1234
+    },
+    {
+     "year": 2021,
+     "stocksToUse": 0.0873
+    },
+    {
+     "year": 2022,
+     "stocksToUse": 0.0983
+    },
+    {
+     "year": 2023,
+     "stocksToUse": 0.0875
+    },
+    {
+     "year": 2024,
+     "stocksToUse": 0.0872
+    },
+    {
+     "year": 2025,
+     "stocksToUse": 0.0735
+    },
+    {
+     "year": 2026,
+     "stocksToUse": 0.0671
+    }
+   ]
+  },
+  "cheese": {
+   "code": "0240000",
+   "label": "Cheese",
+   "marketYear": 2026,
+   "yearLabel": "2026/27",
+   "stocksToUse": 0.0893,
+   "history": [
+    {
+     "year": 1997,
+     "stocksToUse": 0.0628
+    },
+    {
+     "year": 1998,
+     "stocksToUse": 0.0664
+    },
+    {
+     "year": 1999,
+     "stocksToUse": 0.0756
+    },
+    {
+     "year": 2000,
+     "stocksToUse": 0.0828
+    },
+    {
+     "year": 2001,
+     "stocksToUse": 0.0759
+    },
+    {
+     "year": 2002,
+     "stocksToUse": 0.0822
+    },
+    {
+     "year": 2003,
+     "stocksToUse": 0.0794
+    },
+    {
+     "year": 2004,
+     "stocksToUse": 0.0756
+    },
+    {
+     "year": 2005,
+     "stocksToUse": 0.0801
+    },
+    {
+     "year": 2006,
+     "stocksToUse": 0.0831
+    },
+    {
+     "year": 2007,
+     "stocksToUse": 0.0786
+    },
+    {
+     "year": 2008,
+     "stocksToUse": 0.0837
+    },
+    {
+     "year": 2009,
+     "stocksToUse": 0.0944
+    },
+    {
+     "year": 2010,
+     "stocksToUse": 0.0987
+    },
+    {
+     "year": 2011,
+     "stocksToUse": 0.0911
+    },
+    {
+     "year": 2012,
+     "stocksToUse": 0.092
+    },
+    {
+     "year": 2013,
+     "stocksToUse": 0.0888
+    },
+    {
+     "year": 2014,
+     "stocksToUse": 0.0864
+    },
+    {
+     "year": 2015,
+     "stocksToUse": 0.0951
+    },
+    {
+     "year": 2016,
+     "stocksToUse": 0.096
+    },
+    {
+     "year": 2017,
+     "stocksToUse": 0.0996
+    },
+    {
+     "year": 2018,
+     "stocksToUse": 0.1013
+    },
+    {
+     "year": 2019,
+     "stocksToUse": 0.0982
+    },
+    {
+     "year": 2020,
+     "stocksToUse": 0.1038
+    },
+    {
+     "year": 2021,
+     "stocksToUse": 0.1027
+    },
+    {
+     "year": 2022,
+     "stocksToUse": 0.1005
+    },
+    {
+     "year": 2023,
+     "stocksToUse": 0.0996
+    },
+    {
+     "year": 2024,
+     "stocksToUse": 0.0922
+    },
+    {
+     "year": 2025,
+     "stocksToUse": 0.0914
+    },
+    {
+     "year": 2026,
+     "stocksToUse": 0.0893
+    }
+   ]
+  },
+  "nfdm": {
+   "code": "0224200",
+   "label": "Nonfat dry milk",
+   "marketYear": 2026,
+   "yearLabel": "2026/27",
+   "stocksToUse": 0.0858,
+   "history": [
+    {
+     "year": 1997,
+     "stocksToUse": 0.1069
+    },
+    {
+     "year": 1998,
+     "stocksToUse": 0.1381
+    },
+    {
+     "year": 1999,
+     "stocksToUse": 0.2309
+    },
+    {
+     "year": 2000,
+     "stocksToUse": 0.6105
+    },
+    {
+     "year": 2001,
+     "stocksToUse": 0.7588
+    },
+    {
+     "year": 2002,
+     "stocksToUse": 0.8403
+    },
+    {
+     "year": 2003,
+     "stocksToUse": 0.5582
+    },
+    {
+     "year": 2004,
+     "stocksToUse": 0.2719
+    },
+    {
+     "year": 2005,
+     "stocksToUse": 0.0991
+    },
+    {
+     "year": 2006,
+     "stocksToUse": 0.0676
+    },
+    {
+     "year": 2007,
+     "stocksToUse": 0.1159
+    },
+    {
+     "year": 2008,
+     "stocksToUse": 0.137
+    },
+    {
+     "year": 2009,
+     "stocksToUse": 0.108
+    },
+    {
+     "year": 2010,
+     "stocksToUse": 0.0776
+    },
+    {
+     "year": 2011,
+     "stocksToUse": 0.0855
+    },
+    {
+     "year": 2012,
+     "stocksToUse": 0.0866
+    },
+    {
+     "year": 2013,
+     "stocksToUse": 0.063
+    },
+    {
+     "year": 2014,
+     "stocksToUse": 0.1092
+    },
+    {
+     "year": 2015,
+     "stocksToUse": 0.0882
+    },
+    {
+     "year": 2016,
+     "stocksToUse": 0.0987
+    },
+    {
+     "year": 2017,
+     "stocksToUse": 0.1409
+    },
+    {
+     "year": 2018,
+     "stocksToUse": 0.123
+    },
+    {
+     "year": 2019,
+     "stocksToUse": 0.1051
+    },
+    {
+     "year": 2020,
+     "stocksToUse": 0.1122
+    },
+    {
+     "year": 2021,
+     "stocksToUse": 0.0923
+    },
+    {
+     "year": 2022,
+     "stocksToUse": 0.1011
+    },
+    {
+     "year": 2023,
+     "stocksToUse": 0.0762
+    },
+    {
+     "year": 2024,
+     "stocksToUse": 0.0923
+    },
+    {
+     "year": 2025,
+     "stocksToUse": 0.1005
+    },
+    {
+     "year": 2026,
+     "stocksToUse": 0.0858
+    }
+   ]
+  },
+  "cattle": {
+   "code": "0111000",
+   "label": "Beef & veal",
+   "marketYear": 2027,
+   "yearLabel": "2027/28",
+   "stocksToUse": 0.0186,
+   "history": [
+    {
+     "year": 1998,
+     "stocksToUse": 0.0139
+    },
+    {
+     "year": 1999,
+     "stocksToUse": 0.0141
+    },
+    {
+     "year": 2000,
+     "stocksToUse": 0.0176
+    },
+    {
+     "year": 2001,
+     "stocksToUse": 0.0208
+    },
+    {
+     "year": 2002,
+     "stocksToUse": 0.0229
+    },
+    {
+     "year": 2003,
+     "stocksToUse": 0.0176
+    },
+    {
+     "year": 2004,
+     "stocksToUse": 0.0226
+    },
+    {
+     "year": 2005,
+     "stocksToUse": 0.0201
+    },
+    {
+     "year": 2006,
+     "stocksToUse": 0.0216
+    },
+    {
+     "year": 2007,
+     "stocksToUse": 0.0214
+    },
+    {
+     "year": 2008,
+     "stocksToUse": 0.0222
+    },
+    {
+     "year": 2009,
+     "stocksToUse": 0.0198
+    },
+    {
+     "year": 2010,
+     "stocksToUse": 0.0204
+    },
+    {
+     "year": 2011,
+     "stocksToUse": 0.0212
+    },
+    {
+     "year": 2012,
+     "stocksToUse": 0.0216
+    },
+    {
+     "year": 2013,
+     "stocksToUse": 0.0209
+    },
+    {
+     "year": 2014,
+     "stocksToUse": 0.0218
+    },
+    {
+     "year": 2015,
+     "stocksToUse": 0.0254
+    },
+    {
+     "year": 2016,
+     "stocksToUse": 0.0273
+    },
+    {
+     "year": 2017,
+     "stocksToUse": 0.0226
+    },
+    {
+     "year": 2018,
+     "stocksToUse": 0.0223
+    },
+    {
+     "year": 2019,
+     "stocksToUse": 0.0213
+    },
+    {
+     "year": 2020,
+     "stocksToUse": 0.0237
+    },
+    {
+     "year": 2021,
+     "stocksToUse": 0.0216
+    },
+    {
+     "year": 2022,
+     "stocksToUse": 0.0228
+    },
+    {
+     "year": 2023,
+     "stocksToUse": 0.0207
+    },
+    {
+     "year": 2024,
+     "stocksToUse": 0.0189
+    },
+    {
+     "year": 2025,
+     "stocksToUse": 0.0183
+    },
+    {
+     "year": 2026,
+     "stocksToUse": 0.0186
+    },
+    {
+     "year": 2027,
+     "stocksToUse": 0.0186
+    }
+   ]
+  },
+  "hogs": {
+   "code": "0113000",
+   "label": "Pork",
+   "marketYear": 2027,
+   "yearLabel": "2027/28",
+   "stocksToUse": 0.0152,
+   "history": [
+    {
+     "year": 1998,
+     "stocksToUse": 0.0275
+    },
+    {
+     "year": 1999,
+     "stocksToUse": 0.0228
+    },
+    {
+     "year": 2000,
+     "stocksToUse": 0.0227
+    },
+    {
+     "year": 2001,
+     "stocksToUse": 0.0256
+    },
+    {
+     "year": 2002,
+     "stocksToUse": 0.0247
+    },
+    {
+     "year": 2003,
+     "stocksToUse": 0.024
+    },
+    {
+     "year": 2004,
+     "stocksToUse": 0.0235
+    },
+    {
+     "year": 2005,
+     "stocksToUse": 0.0221
+    },
+    {
+     "year": 2006,
+     "stocksToUse": 0.0224
+    },
+    {
+     "year": 2007,
+     "stocksToUse": 0.0226
+    },
+    {
+     "year": 2008,
+     "stocksToUse": 0.0264
+    },
+    {
+     "year": 2009,
+     "stocksToUse": 0.0219
+    },
+    {
+     "year": 2010,
+     "stocksToUse": 0.0232
+    },
+    {
+     "year": 2011,
+     "stocksToUse": 0.023
+    },
+    {
+     "year": 2012,
+     "stocksToUse": 0.026
+    },
+    {
+     "year": 2013,
+     "stocksToUse": 0.0256
+    },
+    {
+     "year": 2014,
+     "stocksToUse": 0.0233
+    },
+    {
+     "year": 2015,
+     "stocksToUse": 0.023
+    },
+    {
+     "year": 2016,
+     "stocksToUse": 0.0194
+    },
+    {
+     "year": 2017,
+     "stocksToUse": 0.0208
+    },
+    {
+     "year": 2018,
+     "stocksToUse": 0.0205
+    },
+    {
+     "year": 2019,
+     "stocksToUse": 0.0227
+    },
+    {
+     "year": 2020,
+     "stocksToUse": 0.0159
+    },
+    {
+     "year": 2021,
+     "stocksToUse": 0.0154
+    },
+    {
+     "year": 2022,
+     "stocksToUse": 0.0178
+    },
+    {
+     "year": 2023,
+     "stocksToUse": 0.0166
+    },
+    {
+     "year": 2024,
+     "stocksToUse": 0.0151
+    },
+    {
+     "year": 2025,
+     "stocksToUse": 0.015
+    },
+    {
+     "year": 2026,
+     "stocksToUse": 0.0156
+    },
+    {
+     "year": 2027,
+     "stocksToUse": 0.0152
+    }
+   ]
+  }
+ }
+}
