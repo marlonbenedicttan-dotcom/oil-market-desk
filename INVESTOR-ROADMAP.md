@@ -17,7 +17,7 @@ scores, transmission, daily brief). It is weak on **1 (regime), 4 (alerts), 5 (r
 Close those gaps and it goes from "nice dashboard" to "desk I check every morning".
 
 ## Already built — do NOT rebuild
-- Deltas (1D/1W/1M/YTD/1Y) + source/as-of badges; price-stretch & physical-tightness scores.
+- Deltas (1D/1W/1M/YTD/1Y) + source/as-of badges; a **signed** price-vs-history score (rich ↔ cheap) and physical-tightness scores.
 - HOME (brief → watchlist → alerts → headlines → segments), on-screen daily brief (`/api/brief`).
 - Compare/spread panel, seasonality grade, curve carry + calendar spreads, bond yields + US–JP spread.
 - Cross-asset transmission (narrative), fundamentals scanner, ships/satellites, macro country cards.

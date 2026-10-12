@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { sgn, inBox, haversineNm, isoWeek, monthly, pctOver, percentile, realizedVol, computeCracks, backAdjust, pearson, logReturns, horizonDeltas, curveTightness, inventoryTightness, weightedScore, seasonalGrade, seasonalAhead, contractMonthsBetween, rangeExtremity, trendExtremity, stretchScore, attributeMoves } from '../src/lib.js';
+import { sgn, inBox, haversineNm, isoWeek, monthly, pctOver, percentile, realizedVol, computeCracks, backAdjust, pearson, logReturns, horizonDeltas, curveTightness, inventoryTightness, weightedScore, seasonalGrade, seasonalAhead, contractMonthsBetween, signedPosition, signedMove, stretchScore, attributeMoves } from '../src/lib.js';
 
 test('sgn formats with sign', () => {
   assert.equal(sgn(4.39), '+4.39');
@@ -134,30 +134,31 @@ test('contractMonthsBetween measures the gap between futures months', () => {
   assert.equal(contractMonthsBetween(null, 'F26'), null);
 });
 
-test('rangeExtremity: extremes score ~100, mid scores ~0, symmetric', () => {
+test('signedPosition: ends at its highs → +100, at its lows → −100, middle → ~0', () => {
   const ramp = Array.from({ length: 101 }, (_, i) => i); // 0..100
-  assert.equal(rangeExtremity(ramp), 100);               // last value is the max
+  assert.equal(signedPosition(ramp), 100);               // last value is the max → rich
+  assert.ok(signedPosition(ramp.slice().reverse()) <= -95, 'ending at its lows must be strongly negative (cheap)');
   const mid = ramp.slice(0, 100).concat([50]);           // last value ≈ median
-  assert.ok(rangeExtremity(mid) <= 5, `mid should be ~0, got ${rangeExtremity(mid)}`);
-  assert.equal(rangeExtremity([1, 2, 3]), null);         // too few points
+  assert.ok(Math.abs(signedPosition(mid)) <= 5, `mid should be ~0, got ${signedPosition(mid)}`);
+  assert.equal(signedPosition([1, 2, 3]), null);         // too few points
 });
 
-test('trendExtremity: an unusually big move scores higher than a typical one', () => {
+test('signedMove: a rise is positive, a fall negative, both scaled by the market’s own moves', () => {
   const flat = Array.from({ length: 60 }, (_, i) => 100 + (i % 3));
-  const big = flat.concat([200]); // a huge final move
-  assert.ok(trendExtremity(big, 1) > trendExtremity(flat, 1));
-  assert.equal(trendExtremity([1, 2, 3], 5), null); // too short
+  const up = flat.concat([200]);   // a huge final move up
+  const down = flat.concat([50]);  // a huge final move down
+  assert.ok(signedMove(up, 1) > 0, `a rise must be positive, got ${signedMove(up, 1)}`);
+  assert.ok(signedMove(down, 1) < 0, `a fall must be negative, got ${signedMove(down, 1)}`);
+  assert.equal(signedMove([1, 2, 3], 5), null); // too short
 });
 
-test('stretchScore does not let one extreme be diluted by the others', () => {
-  const s = stretchScore([
-    { key: 'a', label: 'A', weight: 0.5, score: 90 },
-    { key: 'b', label: 'B', weight: 0.5, score: 20 },
-  ]);
-  // a plain weighted mean would be 55; the blend pulls it up so the extreme is not washed out
-  assert.ok(s.score > 55, `got ${s.score}`);
-  assert.equal(s.label, 'STRETCHED');
-  assert.equal(s.parts.length, 2);
+test('stretchScore: signed blend reads rich on the way up, cheap on the way down', () => {
+  const rich = stretchScore([{ key: 'a', label: 'A', weight: 0.6, score: 90 }, { key: 'b', label: 'B', weight: 0.4, score: 40 }]);
+  assert.equal(rich.score, 70);
+  assert.equal(rich.label, 'RICH');
+  const cheap = stretchScore([{ key: 'a', label: 'A', weight: 0.6, score: -100 }, { key: 'b', label: 'B', weight: 0.4, score: -50 }]);
+  assert.equal(cheap.score, -80);
+  assert.equal(cheap.label, 'VERY CHEAP');
   assert.equal(stretchScore([]).score, null);
 });
 

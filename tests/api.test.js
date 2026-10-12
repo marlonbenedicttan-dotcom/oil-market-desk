@@ -99,10 +99,14 @@ test('/api/marketread returns a per-segment read (404 for unknown)', async () =>
   assert.equal((await fetch(`http://localhost:${PORT}/api/marketread?id=nope`)).status, 404);
 });
 
-test('/api/marketread splits price stretch from physical tightness', async () => {
+test('/api/marketread gives a SIGNED price-vs-history score, separate from physical tightness', async () => {
   const crude = await (await fetch(`http://localhost:${PORT}/api/marketread?id=crude`)).json();
-  assert.ok(crude.verdict.priceStretch && typeof crude.verdict.priceStretch.score !== 'undefined');
-  assert.ok(Array.isArray(crude.verdict.priceStretch.parts) && crude.verdict.priceStretch.parts.length >= 3, 'price stretch exposes its components');
+  const ps = crude.verdict.priceStretch;
+  assert.ok(ps && typeof ps.score === 'number', 'the price headline is a number');
+  assert.ok(ps.score >= -100 && ps.score <= 100, 'the price headline is signed and bounded to ±100');
+  assert.ok(Array.isArray(ps.parts) && ps.parts.length >= 3, 'the price score exposes its components');
+  assert.ok(ps.parts.some((p) => p.key === 'pos2y'), 'includes the 2-yr position component');
+  assert.ok(ps.parts.every((p) => p.score == null || (p.score >= -100 && p.score <= 100)), 'each part is signed and bounded');
   assert.ok(crude.verdict.physical && typeof crude.verdict.physical === 'object');
   assert.ok('score' in crude.verdict.physical && Array.isArray(crude.verdict.physical.parts));
   assert.ok(typeof crude.verdict.physical.note === 'string' && crude.verdict.physical.note.length > 0);

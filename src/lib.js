@@ -153,40 +153,53 @@ export function contractMonthsBetween(a, b) {
   return ia && ib ? Math.abs(ib - ia) : null;
 }
 
-// --- Price stretch (v2) ------------------------------------------------------
-// How extended is the price? Several independent reads, each scored 0-100 where higher =
-// more stretched (symmetric: a crash to the bottom counts as much as a spike to the top).
-// Extremity of the latest value's percentile within the series (0 = mid-range, 100 = extreme).
-export function rangeExtremity(values) {
+// --- Price vs its own history (v3) -------------------------------------------
+// One SIGNED read, -100..+100:  + = rich / stretched up,  - = cheap / washed out,  0 = middle.
+// Why signed: v2 combined |distance from the middle| with |size of move| and then labelled the
+// result with up-words ("STRETCHED"/"EXTREME"), so a market that had CRASHED to 2-year lows
+// scored as "stretched" — wrong. Direction now carries through.
+// Why comparable: every input is a percentile of THIS market's OWN history, so a +70 means the
+// same thing for hogs as for gold. Volatility is deliberately NOT an input — it has no
+// direction and would just double-count a big move (it is shown as its own line).
+//
+// Where the latest value sits in its own distribution: -100 = at its lows, +100 = at its highs.
+export function signedPosition(values) {
   const xs = (values || []).filter((v) => v != null);
   if (xs.length < 20) return null;
   const p = percentile(xs, xs[xs.length - 1]);
-  return p == null ? null : Math.round((Math.abs(p - 50) / 50) * 100);
+  return p == null ? null : Math.round((p - 50) * 2);
 }
-// Extremity of the latest |move over `window` steps| within the series' OWN history of such
-// moves. Only moves BIGGER than typical count (a quiet market is calm, not extreme): a
-// typical move → 0, the largest move seen → 100.
-export function trendExtremity(values, window) {
+// The latest `window`-step move as a fraction of how big this market's OWN moves of that length
+// usually get (its 90th percentile), SIGNED: a rise is positive, a fall is negative. A typical
+// move → a small number; a move as big as its biggest usual ones → ±100. Self-normalised, so a
+// 5% move in gold and a 5% move in hogs are judged against their own volatility, not each other.
+export function signedMove(values, window) {
   const xs = (values || []).filter((v) => v != null);
   if (xs.length < window + 12) return null;
   const moves = [];
-  for (let i = window; i < xs.length; i++) { const b = xs[i - window]; if (b) moves.push(Math.abs((xs[i] - b) / b)); }
+  for (let i = window; i < xs.length; i++) { const b = xs[i - window]; if (b) moves.push((xs[i] - b) / b); }
+  if (moves.length < 12) return null;
   const cur = moves[moves.length - 1];
-  const p = percentile(moves, cur);
-  return p == null ? null : Math.round((Math.max(0, p - 50) / 50) * 100);
+  const size = moves.map((m) => Math.abs(m)).sort((a, b) => a - b);
+  const p90 = size[Math.min(size.length - 1, Math.floor(size.length * 0.9))];
+  if (!p90) return null;
+  return Math.round(Math.max(-1, Math.min(1, cur / p90)) * 100);
 }
-// Combine stretch components ({ key, label, weight, score } 0-100) into one 0-100 score.
-// A plain weighted mean DILUTES a single extreme input (that was the old bug); so blend the
-// weighted mean with the strongest component. Re-normalises over what is present.
+// Plain-word label for a signed score. Symmetric: rich on the way up, cheap on the way down.
+export function stretchLabel(s) {
+  if (s == null) return '—';
+  return s >= 80 ? 'VERY RICH' : s >= 50 ? 'RICH' : s >= 20 ? 'LEANING RICH'
+    : s > -20 ? 'ABOUT AVERAGE' : s > -50 ? 'LEANING CHEAP' : s > -80 ? 'CHEAP' : 'VERY CHEAP';
+}
+// Blend signed parts ({ key, label, weight, score -100..+100 }) into one headline. A plain
+// weighted mean, re-normalised over whatever is present — predictable, and no single input can
+// hijack the score the way the old max-blend let the (spurious) range read do.
 export function stretchScore(parts) {
   const use = (parts || []).filter((p) => p && p.score != null && p.weight > 0);
   if (!use.length) return { score: null, label: '—', parts: [] };
   const w = use.reduce((a, p) => a + p.weight, 0);
-  const mean = use.reduce((a, p) => a + p.weight * p.score, 0) / w;
-  const max = Math.max(...use.map((p) => p.score));
-  const score = Math.round(0.5 * mean + 0.5 * max);
-  const label = score >= 80 ? 'EXTREME' : score >= 62 ? 'STRETCHED' : score >= 45 ? 'ELEVATED' : score >= 30 ? 'NORMAL' : 'CALM';
-  return { score, label, parts: use.map((p) => ({ key: p.key, label: p.label, score: p.score })) };
+  const score = Math.round(use.reduce((a, p) => a + p.weight * p.score, 0) / w);
+  return { score, label: stretchLabel(score), parts: use.map((p) => ({ key: p.key, label: p.label, score: p.score })) };
 }
 
 // Attribute a price move to news. moves = { y1, m6, m1 } (percent). events = tagged news

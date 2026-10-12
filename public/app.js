@@ -353,8 +353,8 @@ async function loadMarketRead() {
 function renderAdaptive() {
   const mk = markets.find((x) => x.id === currentMarket);
   const nm = (marketRead && marketRead.label) || (mk && mk.label) || '';
-  setTitle('tightness-title', '⚡ ' + (nm ? `IS ${nm.toUpperCase()} TIGHT / STRETCHED?` : 'READING…'));
-  setTitle('tightness-sub', 'range · volatility · positioning · curve');
+  setTitle('tightness-title', '⚡ ' + (nm ? `IS ${nm.toUpperCase()} RICH, CHEAP OR TIGHT?` : 'READING…'));
+  setTitle('tightness-sub', 'price vs its own history · physical tightness · curve · volatility');
   if (!marketRead || marketRead.id !== currentMarket || marketRead.error) {
     $('bottomline').innerHTML = '<div class="dimtext" style="padding:10px 12px">reading the market…</div>';
     $('tightness').innerHTML = '<div class="dimtext" style="padding:10px 12px">loading…</div>';
@@ -363,10 +363,13 @@ function renderAdaptive() {
   const r = marketRead, v = r.verdict;
   const score = v.score;
   const ph = v.physical || { score: null, label: '—', parts: [], note: '' };
-  const kl = score == null ? 'elevated' : score >= 80 ? 'high' : score >= 45 ? 'elevated' : 'low';
+  const kl = score == null ? 'elevated' : score >= 20 ? 'high' : score <= -20 ? 'low' : 'elevated';
   const phCls = ph.score == null ? '' : ph.score >= 58 ? 'pos' : ph.score <= 42 ? 'neg' : '';
   const phName = 'PHYSICAL TIGHTNESS';
-  const vk = ph.score == null ? (score == null ? 'mixed' : score >= 55 ? 'tight' : score >= 35 ? 'mixed' : 'loose') : ph.score >= 58 ? 'tight' : ph.score <= 42 ? 'loose' : 'mixed';
+  // The verdict bar's colour reflects PHYSICAL tightness (tight/loose); price richness is shown
+  // by the tile colour above. If there is no physical data we stay neutral rather than calling a
+  // cheap market "loose".
+  const vk = ph.score == null ? 'mixed' : ph.score >= 58 ? 'tight' : ph.score <= 42 ? 'loose' : 'mixed';
   if ($('regime')) $('regime').textContent = regLine(r);
   const next = [...(v.catalysts || []).map((c) => `Watch: <b>${c}</b>`), ...(v.watch || [])];
   const chips = [...(v.tickersUp || []).map((t) => `<span class="chip up">▲ ${t}</span>`), ...(v.tickersDown || []).map((t) => `<span class="chip down">▼ ${t}</span>`)].join('');
@@ -386,7 +389,7 @@ function renderAdaptive() {
     }
   }
   $('bottomline').innerHTML = `<div class="bl">
-      <div class="bl-score ${kl}"><div class="bl-num">${score == null ? '—' : score}<span>/100</span></div><div class="bl-lbl">PRICE STRETCH<div class="bl-tag">${v.label}</div></div>
+      <div class="bl-score ${kl}"><div class="bl-num">${score == null ? '—' : signed(score, 0)}<span>/100</span></div><div class="bl-lbl">PRICE vs ITS OWN HISTORY<div class="bl-tag">${v.label}</div></div>
         <div class="bl-phys"><div class="bl-phys-k">${phName}</div><div class="bl-phys-v ${phCls}">${ph.score == null ? 'no free data' : `${ph.score}<span>/100</span> ${ph.label}`}</div></div>
       </div>
       <div class="bl-sec"><div class="gtitle">WHAT HAPPENED</div><p>${v.meaning} ${(v.notes || []).join(' ')}</p>${attrHtml}</div>
@@ -409,8 +412,8 @@ function renderAdaptive() {
   const physChips = (ph.parts && ph.parts.length) ? `<div class="phys-parts">${ph.parts.map((p) => `<span class="phys-part ${p.score >= 58 ? 'tight' : p.score <= 42 ? 'loose' : ''}">${p.label} <b>${p.score}</b> ${p.score >= 58 ? 'TIGHT' : p.score <= 42 ? 'LOOSE' : 'BALANCED'}</span>`).join('')}</div>` : '';
   const physNote = ph.note ? `<div class="phys-note dimtext">${ph.note}</div>` : '';
   const psParts = (v.priceStretch && v.priceStretch.parts) || [];
-  const psChips = psParts.length ? `<div class="phys-parts"><span class="dimtext" style="align-self:center">price stretch:</span>${psParts.map((p) => `<span class="phys-part">${p.label} <b>${p.score}</b></span>`).join('')}</div>` : '';
-  const priceLine = score == null ? 'price stretch unavailable' : `price is <b>${v.label.toLowerCase()}</b> (${score}/100)`;
+  const psChips = psParts.length ? `<div class="phys-parts"><span class="dimtext" style="align-self:center">vs its own history:</span>${psParts.map((p) => `<span class="phys-part">${p.label} <b>${signed(p.score, 0)}</b></span>`).join('')}</div>` : '';
+  const priceLine = score == null ? 'price vs its own history unavailable' : `it is <b>${v.label.toLowerCase()}</b> vs its own history (${signed(score, 0)}/100)`;
   const physLine = ph.score == null ? 'no free physical data' : `the physical market is <b>${ph.label.toLowerCase()}</b> (${ph.score}/100)`;
   $('tightness').innerHTML = `<div class="verdict ${vk}">${r.label}: ${priceLine} · ${physLine}.</div>${psChips}${physChips}${physNote}<div class="ev-list">${ev.map((e) => `<div class="ev"><span class="ev-l">${e.label}</span><span class="ev-v">${e.value}</span><span class="tag ${e.dir.toLowerCase()}">${e.dir}</span><span class="ev-n dimtext">${e.note}</span></div>`).join('')}</div>`;
   const si = $('ships-insights');

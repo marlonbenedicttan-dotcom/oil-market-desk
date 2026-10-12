@@ -5,7 +5,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { execFile } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { sgn, businessDaysSince, inBox, haversineNm, horizonDeltas, isoWeek, monthly, pctOver, percentile, realizedVol, computeCracks, backAdjust, pearson, logReturns, curveTightness, inventoryTightness, weightedScore, seasonalGrade, seasonalAhead, contractMonthsBetween, rangeExtremity, trendExtremity, stretchScore, attributeMoves } from './src/lib.js';
+import { sgn, businessDaysSince, inBox, haversineNm, horizonDeltas, isoWeek, monthly, pctOver, percentile, realizedVol, computeCracks, backAdjust, pearson, logReturns, curveTightness, inventoryTightness, weightedScore, seasonalGrade, seasonalAhead, contractMonthsBetween, signedPosition, signedMove, stretchScore, attributeMoves } from './src/lib.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC = path.join(__dirname, 'public');
@@ -1042,10 +1042,10 @@ function rollingVolPctile(values, win = 30) {
   return (vols.filter((v) => v <= cur).length / vols.length) * 100;
 }
 function marketVerdict(r) {
-  // PRICE STRETCH (v2) — how extended the price is across several independent reads:
-  // 2-yr and 10-yr range position, the 1-yr and 3-mo move size, and volatility. Combined
-  // so a single extreme isn't diluted by the others. Deliberately separate from physical
-  // tightness below: a quiet market can be tight, and an extended price well supplied.
+  // PRICE vs ITS OWN HISTORY (v3) — a SIGNED read (-100 = cheap/washed-out … +100 = rich):
+  // where the price sits in its 2-yr and 10-yr range, plus how big its 3-mo and 1-yr moves are
+  // versus its own usual moves. Deliberately separate from physical tightness below: a cheap
+  // market can be tight, and a rich one well supplied.
   const ps = stretchScore(r.stretch || []);
   const score = ps.score;
   const label = ps.label;
@@ -1079,9 +1079,13 @@ function marketVerdict(r) {
       : 'No free real-barrel (spot) prices or inventories for this market, so no physical tightness is shown (never faked) — read price stretch, the curve and positioning.');
 
   const bits = [];
-  if (r.perf.m6 != null) bits.push(`<b>${r.label}</b> is ${r.perf.m6 >= 0 ? 'up' : 'down'} <b>${Math.abs(r.perf.m6).toFixed(0)}%</b> over 6 months`);
+  if (score != null) bits.push(`<b>${r.label}</b> looks <b>${label.toLowerCase()}</b> versus its own history (${score >= 0 ? '+' : ''}${score}/100)`);
+  const mv = [];
+  if (r.perf.m3 != null) mv.push(`${r.perf.m3 >= 0 ? 'up' : 'down'} ${Math.abs(r.perf.m3).toFixed(0)}% in 3 months`);
+  if (r.perf.y1 != null) mv.push(`${r.perf.y1 >= 0 ? 'up' : 'down'} ${Math.abs(r.perf.y1).toFixed(0)}% over a year`);
+  if (mv.length) bits.push(mv.join(' and '));
   if (r.range.pos != null) bits.push(r.range.pos >= 70 ? 'near the top of its 2-year range' : r.range.pos <= 30 ? 'near the bottom of its 2-year range' : 'mid its 2-year range');
-  if (r.vol.v30 != null) bits.push(`${r.vol.v30.toFixed(0)}% volatility — ${(r.vol.pctile ?? 50) >= 70 ? 'jumpier than usual' : (r.vol.pctile ?? 50) <= 30 ? 'calmer than usual' : 'about normal'}`);
+  if (r.vol.v30 != null) bits.push(`${(r.vol.pctile ?? 50) >= 70 ? 'unusually jumpy' : (r.vol.pctile ?? 50) <= 30 ? 'unusually calm' : 'normal volatility'}`);
   const meaning = bits.join(' · ') + '.';
   const curveNote = r.curve ? `Futures are in <b>${r.curve.shape.toLowerCase()}</b> — ${r.curve.m1m2 >= 0 ? 'buyers paying up for near-term supply' : 'near-term supply looks comfortable'}.` : '';
   const macroNote = r.macro?.usd != null ? `It tends to move ${r.macro.usd < 0 ? 'against' : 'with'} the US dollar (3-month correlation ${r.macro.usd}).` : '';
@@ -1144,14 +1148,18 @@ async function getMarketRead(id, componentId) {
       vol: { v30: vol30, pctile: volPctile },
       curve, macro, basis, inventory,
     };
-    // Price stretch (v2): independent "how extended" reads, combined without dilution.
+    // Price vs its own history (v3), SIGNED: + = rich/stretched up, − = cheap/washed-out.
+    // Position (where the price sits) carries most of the weight; momentum (how fast it got
+    // there) the rest. Volatility is NOT here (not directional, and it double-counts a big
+    // move) — it shows as its own line. Each part is a percentile of this market's own history,
+    // so the blend is comparable across commodities.
     read.stretch = [
-      { key: 'range2y', label: '2-yr range', weight: 0.15, score: rangeExtremity(values) },
-      { key: 'range10y', label: '10-yr range', weight: 0.15, score: rangeExtremity(longVals) },
-      { key: 'trend1y', label: '1-yr move', weight: 0.2, score: trendExtremity(longVals, 12) },
-      { key: 'trend6m', label: '6-mo move', weight: 0.2, score: trendExtremity(longVals, 6) },
-      { key: 'trend3m', label: '3-mo move', weight: 0.15, score: trendExtremity(values, 63) },
-      { key: 'vol', label: 'volatility', weight: 0.15, score: volPctile == null ? null : Math.round((Math.max(0, volPctile - 50) / 50) * 100) },
+      { key: 'pos2y', label: '2-yr range', weight: 0.36, score: signedPosition(values) },
+      { key: 'pos10y', label: '10-yr range', weight: 0.29, score: signedPosition(longVals) },
+      // Moves come from the SAME daily series as `perf` below, so the score and the prose agree
+      // (the 10-yr monthly series carries a duplicate trailing bar and would disagree).
+      { key: 'mv3m', label: '3-mo move', weight: 0.18, score: signedMove(values, 63) },
+      { key: 'mv1y', label: '1-yr move', weight: 0.17, score: signedMove(values, 252) },
     ];
     // Past-year move + cited news drivers (attribution).
     read.attribution = await getAttribution(id, sel).catch(() => null);
