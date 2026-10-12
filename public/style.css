@@ -45,7 +45,7 @@ button { font-family: var(--mono); }
 .ticker-track { display: inline-flex; gap: 0; animation: ticker-scroll 120s linear infinite; will-change: transform; }
 .ticker:hover .ticker-track { animation-play-state: paused; }
 @keyframes ticker-scroll { from { transform: translateX(0); } to { transform: translateX(-50%); } }
-@media (prefers-reduced-motion: reduce) { .ticker-track { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .ticker-track { animation: none; } .ticker { overflow-x: auto; scrollbar-width: none; } .ticker::-webkit-scrollbar { display: none; } }
 .tk { display: inline-flex; align-items: baseline; gap: 8px; padding: 6px 14px; border-right: 1px solid var(--line); font-size: 12px; }
 .tk b { color: var(--dim); font-weight: 700; letter-spacing: .5px; }
 .tk-px { color: var(--text); font-variant-numeric: tabular-nums; }
@@ -458,17 +458,23 @@ canvas { display: block; }
 
 /* Mobile */
 @media (max-width: 640px) {
-  .topbar { padding: 6px 10px; flex-wrap: wrap; row-gap: 6px; }
-  .brand h1 { letter-spacing: 1px; }
-  .ph-t { letter-spacing: 1px; }
+  /* Top bar: wordmark on its own line, controls below — tidy on a phone. */
+  .topbar { padding: 8px max(10px, env(safe-area-inset-left)) 8px max(10px, env(safe-area-inset-right)); flex-wrap: wrap; row-gap: 8px; }
+  .brand { flex: 1 1 100%; gap: 6px; min-width: 0; }
+  .brand h1 { font-size: 12px; letter-spacing: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .brand .sub { display: none; }
-  .meta { gap: 8px; }
-  .brand h1 { font-size: 13px; letter-spacing: 1.5px; }
-  main { padding: 10px; gap: 10px; }
+  .meta { flex: 1 1 100%; justify-content: flex-end; flex-wrap: wrap; gap: 6px; }
+  .meta .ghost, .meta .ghost.small { padding: 7px 10px; min-height: 34px; }
+  .clock { font-size: 12px; }
+  #updated { font-size: 10px; }
+  /* Ticker: clearly moving on a phone; touch pauses it. */
+  .ticker-track { animation-duration: 45s; }
+  .ticker:active .ticker-track { animation-play-state: paused; }
+  /* Layout */
+  main { padding: 10px max(10px, env(safe-area-inset-left)) calc(10px + env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-right)); gap: 10px; overflow-wrap: break-word; }
   .kpis { grid-template-columns: 1fr 1fr; }
-  .kpi { border-bottom: 1px solid var(--line); }
   .kpi-v { font-size: 18px; }
-  .tab { padding: 8px 10px; font-size: 10px; letter-spacing: 1px; }
+  .tab { padding: 11px 12px; min-height: 40px; font-size: 10px; letter-spacing: 1px; }
   .cards { grid-template-columns: 1fr; }
   .ev { grid-template-columns: 1fr 64px 58px; }
   .ev-n { display: none; }
@@ -478,17 +484,14 @@ canvas { display: block; }
   .chart-wrap.lg { height: 240px; }
   #map { height: 300px; margin: 0 8px; }
   .bl-num { font-size: 34px; }
-  /* --- mobile: stacking, tap targets, safe areas, scrollable tables --- */
-  main { padding: 10px max(10px, env(safe-area-inset-left)) calc(10px + env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-right)); overflow-wrap: break-word; }
-  .topbar { padding-left: max(10px, env(safe-area-inset-left)); padding-right: max(10px, env(safe-area-inset-right)); }
   .ph { flex-wrap: wrap; align-items: flex-start; }
   .ph .controls { width: 100%; }
-  .tab { padding: 11px 12px; min-height: 40px; }
+  .ph-t { letter-spacing: 1px; }
   .ghost, .ghost.small { min-height: 36px; padding: 8px 12px; font-size: 11px; }
   .star { font-size: 16px; padding: 4px 8px; }
   select { min-height: 36px; font-size: 12px; }
   .controls { gap: 6px; }
-  .tk { padding: 3px 12px; font-size: 11px; }
+  .tk { padding: 4px 12px; font-size: 11px; }
   .tbl, #analogue, .glossary { overflow-x: auto; -webkit-overflow-scrolling: touch; }
   .antable { min-width: 420px; }
 }
