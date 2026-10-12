@@ -5,7 +5,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { execFile } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { sgn, businessDaysSince, inBox, haversineNm, horizonDeltas, isoWeek, monthly, pctOver, percentile, realizedVol, computeCracks, backAdjust, pearson, logReturns, curveTightness, inventoryTightness, weightedScore, seasonalGrade, seasonalAhead, contractMonthsBetween, signedPosition, signedMove, stretchScore, attributeMoves } from './src/lib.js';
+import { sgn, businessDaysSince, inBox, haversineNm, horizonDeltas, isoWeek, monthly, pctOver, percentile, realizedVol, computeCracks, computeCrush, backAdjust, pearson, logReturns, curveTightness, inventoryTightness, weightedScore, seasonalGrade, seasonalAhead, contractMonthsBetween, signedPosition, signedMove, stretchScore, attributeMoves } from './src/lib.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC = path.join(__dirname, 'public');
@@ -43,6 +43,8 @@ const BENCHMARKS = [
   { id: 'corn',    label: 'Corn',     group: 'Agriculture', unit: '¢/bu', dp: 1, paper: 'ZC=F', physical: null },
   { id: 'wheat',   label: 'Wheat',    group: 'Agriculture', unit: '¢/bu', dp: 1, paper: 'ZW=F', physical: null },
   { id: 'soybean', label: 'Soybeans', group: 'Agriculture', unit: '¢/bu', dp: 1, paper: 'ZS=F', physical: null },
+  { id: 'soymeal', label: 'Soybean Meal', group: 'Agriculture', unit: '$/ton', dp: 1, paper: 'ZM=F', physical: null },
+  { id: 'soyoil',  label: 'Soybean Oil',  group: 'Agriculture', unit: '¢/lb', dp: 2, paper: 'ZL=F', physical: null },
   { id: 'sugar',   label: 'Sugar',    group: 'Agriculture', unit: '¢/lb', dp: 2, paper: 'SB=F', physical: null },
   { id: 'coffee',  label: 'Coffee',   group: 'Agriculture', unit: '¢/lb', dp: 2, paper: 'KC=F', physical: null },
   { id: 'cocoa',   label: 'Cocoa',    group: 'Agriculture', unit: '$/t',  dp: 0, paper: 'CC=F', physical: null },
@@ -73,7 +75,7 @@ const MARKETS = [
   { id: 'gas',        label: 'Natural gas',      group: 'Gas',     primary: 'natgas', components: ['natgas'],                                   hasBasis: true,  hasInventories: true,  hasShips: false },
   { id: 'precious',   label: 'Precious metals',   group: 'Metals',      primary: 'gold',   components: ['gold', 'silver', 'platinum', 'palladium'],  hasBasis: false, hasInventories: false, hasShips: false },
   { id: 'industrial', label: 'Industrial metals', group: 'Metals',      primary: 'copper', components: ['copper', 'aluminium'],              hasBasis: false, hasInventories: false, hasShips: false },
-  { id: 'grains',     label: 'Grains',            group: 'Agriculture', primary: 'corn',   components: ['corn', 'wheat', 'soybean'],                 hasBasis: false, hasInventories: false, hasShips: false },
+  { id: 'grains',     label: 'Grains & oilseeds',  group: 'Agriculture', primary: 'corn',   components: ['corn', 'wheat', 'soybean', 'soymeal', 'soyoil'], hasBasis: false, hasInventories: false, hasShips: false },
   { id: 'softs',      label: 'Softs',             group: 'Agriculture', primary: 'sugar',  components: ['sugar', 'coffee', 'cocoa', 'cotton', 'palm'], hasBasis: false, hasInventories: false, hasShips: false },
   { id: 'livestock',  label: 'Livestock',         group: 'Livestock',   primary: 'cattle', components: ['cattle', 'hogs', 'feeder'],                hasBasis: false, hasInventories: false, hasShips: false },
   { id: 'dairy',      label: 'Dairy',             group: 'Dairy',       primary: 'milk',   components: ['milk', 'butter', 'nfdm', 'cheese', 'whey'], hasBasis: false, hasInventories: false, hasShips: false },
@@ -483,7 +485,7 @@ const COT_NAMES = {
   wti: 'CRUDE OIL, LIGHT SWEET-WTI', brent: 'CRUDE OIL, BRENT',
   rbob: 'GASOLINE RBOB', ulsd: 'NY HARBOR ULSD', natgas: 'NATURAL GAS',
   gold: 'GOLD', silver: 'SILVER', copper: 'COPPER', platinum: 'PLATINUM', palladium: 'PALLADIUM',
-  corn: 'CORN', wheat: 'WHEAT-SRW', soybean: 'SOYBEANS',
+  corn: 'CORN', wheat: 'WHEAT-SRW', soybean: 'SOYBEANS', soymeal: 'SOYBEAN MEAL', soyoil: 'SOYBEAN OIL',
   sugar: 'SUGAR NO. 11', coffee: 'COFFEE C', cocoa: 'COCOA', cotton: 'COTTON NO. 2',
   palm: 'MALAYSIAN PALM OIL CALENDAR SW',
   milk: 'MILK, Class III', butter: 'BUTTER (CASH SETTLED)', cheese: 'CHEESE (CASH-SETTLED)', nfdm: 'NON FAT DRY MILK', whey: 'DRY WHEY',
@@ -941,6 +943,7 @@ const CURVE_SPEC = {
   aluminium: { root: 'ALI', exch: 'CMX' },
   platinum: { root: 'PL', exch: 'CMX' }, palladium: { root: 'PA', exch: 'CMX' },
   corn: { root: 'ZC', exch: 'CBT' }, wheat: { root: 'ZW', exch: 'CBT' }, soybean: { root: 'ZS', exch: 'CBT' },
+  soymeal: { root: 'ZM', exch: 'CBT' }, soyoil: { root: 'ZL', exch: 'CBT' },
   coffee: { root: 'KC', exch: 'NYB' }, sugar: { root: 'SB', exch: 'NYB' }, cocoa: { root: 'CC', exch: 'NYB' }, cotton: { root: 'CT', exch: 'NYB' },
   // CME dairy complex (all quoted as individual contract months on Yahoo)
   milk: { root: 'DC', exch: 'CME' }, butter: { root: 'CB', exch: 'CME' }, nfdm: { root: 'GNF', exch: 'CME' }, cheese: { root: 'CSC', exch: 'CME' }, whey: { root: 'DY', exch: 'CME' },
@@ -1897,6 +1900,34 @@ async function getProducts() {
   });
 }
 
+// Soybean crush — the processor's margin (meal + oil − beans, $/bu) and the oil share, with a
+// 2-year history so today's crush can be ranked against its own past. Futures-only (no free spot).
+async function getCrush() {
+  return cached('crush', 3 * 3600e3, async () => {
+    const m = await getMarket();
+    const now = computeCrush(m);
+    const ser = (sym) => cached('a2p:' + sym, 6 * 3600e3, () => yahooSeries(sym, '2y', '1d')).then((r) => r.series);
+    const [zm, zl, zs] = await Promise.all([ser('ZM=F'), ser('ZL=F'), ser('ZS=F')]);
+    const dates = Object.keys(zm).sort();
+    const hd = [], crush = [], oilShare = [];
+    for (const d of dates) {
+      if (zm[d] == null || zl[d] == null || zs[d] == null) continue;
+      const mv = zm[d] * 0.024, ov = zl[d] * 0.11;
+      hd.push(d); crush.push(mv + ov - zs[d] / 100); oilShare.push((ov / (ov + mv)) * 100);
+    }
+    const pct = (a, v) => { const xs = a.filter((x) => x != null); return xs.length && v != null ? (xs.filter((x) => x <= v).length / xs.length) * 100 : null; };
+    const cur = now.crush ?? [...crush].reverse().find((x) => x != null) ?? null;
+    const curOil = now.oilShare ?? [...oilShare].reverse().find((x) => x != null) ?? null;
+    return {
+      label: 'Soybean crush',
+      crush: cur, pct: pct(crush, cur),
+      oilShare: curOil, oilSharePct: pct(oilShare, curOil),
+      legs: { mealValue: now.mealValue ?? null, oilValue: now.oilValue ?? null, beanCost: now.beanCost ?? null },
+      history: { dates: hd.slice(-180), crush: crush.slice(-180), oilShare: oilShare.slice(-180) },
+    };
+  });
+}
+
 // ---------------------------------------------------------------------------
 // Satellite (AIS-independent): NASA FIRMS gas flares + Sentinel-1 radar passes
 // ---------------------------------------------------------------------------
@@ -2270,6 +2301,7 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname === '/api/tightness') return sendJSON(res, 200, await getTightness().catch((e) => ({ error: String(e.message) })));
     if (url.pathname === '/api/flows') return sendJSON(res, 200, await getFlows());
     if (url.pathname === '/api/products') return sendJSON(res, 200, await getProducts().catch((e) => ({ error: String(e.message) })));
+    if (url.pathname === '/api/crush') return sendJSON(res, 200, await getCrush().catch((e) => ({ error: String(e.message) })));
     if (url.pathname === '/api/flares') return sendJSON(res, 200, await getFlares().catch((e) => ({ error: String(e.message) })));
     if (url.pathname === '/api/sar') return sendJSON(res, 200, await getSAR().catch((e) => ({ error: String(e.message) })));
     if (url.pathname === '/api/sar/image') {

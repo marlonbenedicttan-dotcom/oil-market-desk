@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { sgn, inBox, haversineNm, isoWeek, monthly, pctOver, percentile, realizedVol, computeCracks, backAdjust, pearson, logReturns, horizonDeltas, curveTightness, inventoryTightness, weightedScore, seasonalGrade, seasonalAhead, contractMonthsBetween, signedPosition, signedMove, stretchScore, attributeMoves } from '../src/lib.js';
+import { sgn, inBox, haversineNm, isoWeek, monthly, pctOver, percentile, realizedVol, computeCracks, computeCrush, backAdjust, pearson, logReturns, horizonDeltas, curveTightness, inventoryTightness, weightedScore, seasonalGrade, seasonalAhead, contractMonthsBetween, signedPosition, signedMove, stretchScore, attributeMoves } from '../src/lib.js';
 
 test('sgn formats with sign', () => {
   assert.equal(sgn(4.39), '+4.39');
@@ -160,6 +160,14 @@ test('stretchScore: signed blend reads rich on the way up, cheap on the way down
   assert.equal(cheap.score, -80);
   assert.equal(cheap.label, 'VERY CHEAP');
   assert.equal(stretchScore([]).score, null);
+});
+
+test('computeCrush: board crush = meal×0.024 + oil×0.11 − beans/100, with oil share', () => {
+  const m = { benchmarks: [{ id: 'soymeal', paper: 364.4 }, { id: 'soyoil', paper: 67.89 }, { id: 'soybean', paper: 1283.75 }] };
+  const c = computeCrush(m);
+  assert.ok(Math.abs(c.crush - 3.376) < 0.02, `crush got ${c.crush}`);
+  assert.ok(Math.abs(c.oilShare - 46.1) < 0.3, `oil share got ${c.oilShare}`);
+  assert.deepEqual(computeCrush({ benchmarks: [{ id: 'corn', paper: 480 }] }), {}); // no beans/meal/oil → {}
 });
 
 test('attributeMoves picks the news kinds consistent with the move direction', () => {

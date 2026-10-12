@@ -453,6 +453,7 @@ function selectMarket(id) {
   renderCurveForSegment();   // the curve follows the segment
   loadCurveHistory();        // and so does the curve-over-time (or hides)
   loadSeasonal();            // and the seasonality grade (gas/grains/softs)
+  loadCrush();               // and the soybean crush (grains)
   renderAdaptive();
   loadMarketRead();
   loadNews();
@@ -1008,6 +1009,48 @@ async function renderCurveForSegment() {
   const html = results.filter((r) => r && r.available).map((r) => curveBlock(r.label, r)).join('');
   el.innerHTML = html || '<div class="dimtext" style="padding:10px 12px">No free month-by-month curve for this segment — only a front-month price.</div>';
 }
+// Soybean crush — the processor margin (meal + oil − beans, $/bu) for the grains segment.
+async function loadCrush() {
+  const el = $('crush');
+  if (!el) return;
+  if (currentMarket !== 'grains') { el.innerHTML = ''; return; }
+  el.innerHTML = '<div class="dimtext" style="padding:10px 12px">reading the soybean crush…</div>';
+  let d; try { d = await getJSON('/api/crush'); } catch { d = null; }
+  renderCrush(d);
+}
+let crushChart;
+function renderCrush(d) {
+  const el = $('crush'); if (!el) return;
+  if (!d || d.error || d.crush == null || !d.legs) { el.innerHTML = '<div class="dimtext" style="padding:10px 12px">soybean crush unavailable right now.</div>'; return; }
+  const read = d.crush > 2 ? 'fat' : d.crush > 1 ? 'healthy' : d.crush > 0 ? 'thin' : 'negative — processors losing money';
+  const oilRead = d.oilShare == null ? '—' : d.oilShare >= 45 ? 'oil-led (soyoil rich vs meal)' : d.oilShare <= 38 ? 'meal-led (soymeal rich vs oil)' : 'balanced';
+  el.innerHTML = `<div class="cards">
+    <div class="card"><h3>Soybean crush <span>$/bushel</span></h3>
+      <div class="row"><span class="k">Crush margin</span><span class="v basis ${cls(d.crush)}">${signed(d.crush, 2)}</span></div>
+      <div class="row"><span class="k">How extreme</span><span class="v">${d.pct == null ? '—' : d.pct.toFixed(0) + '/100'}</span></div>
+      <div class="row"><span class="k">Read</span><span class="v dimtext" style="font-weight:400">${read}</span></div></div>
+    <div class="card"><h3>Oil share <span>% of product value</span></h3>
+      <div class="row"><span class="k">Oil share</span><span class="v">${d.oilShare == null ? '—' : d.oilShare.toFixed(1) + '%'}</span></div>
+      <div class="row"><span class="k">How extreme</span><span class="v">${d.oilSharePct == null ? '—' : d.oilSharePct.toFixed(0) + '/100'}</span></div>
+      <div class="row"><span class="k">Read</span><span class="v dimtext" style="font-weight:400">${oilRead}</span></div></div>
+    <div class="card"><h3>The three legs <span>$/bushel</span></h3>
+      <div class="row"><span class="k">Meal value</span><span class="v">${signed(d.legs.mealValue, 2)}</span></div>
+      <div class="row"><span class="k">Oil value</span><span class="v">${signed(d.legs.oilValue, 2)}</span></div>
+      <div class="row"><span class="k">Bean cost</span><span class="v">${signed(-Math.abs(d.legs.beanCost), 2)}</span></div></div>
+  </div>`;
+  renderCrushHistory(d.history);
+}
+function renderCrushHistory(h) {
+  const cv = $('crushhist'); if (!cv || !h?.dates?.length) return;
+  const data = { labels: h.dates, datasets: [
+    { label: 'Crush $/bu', data: h.crush, borderColor: '#ffd54f', borderWidth: 2, pointRadius: 0, tension: 0.25, yAxisID: 'y' },
+    { label: 'Oil share %', data: h.oilShare, borderColor: '#4aa3ff', borderWidth: 1.5, pointRadius: 0, tension: 0.25, yAxisID: 'y1' },
+  ] };
+  const opts = { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: '#7c8a99', boxWidth: 10, font: { family: 'monospace' } } } }, scales: { x: { ticks: { color: '#7c8a99', maxTicksLimit: 8 }, grid: { color: '#151a20' } }, y: { position: 'left', ticks: { color: '#7c8a99' }, grid: { color: '#151a20' }, title: { display: true, text: '$/bu', color: '#7c8a99' } }, y1: { position: 'right', ticks: { color: '#7c8a99' }, grid: { drawOnChartArea: false }, title: { display: true, text: '%', color: '#7c8a99' } } } };
+  if (crushChart) { crushChart.data = data; crushChart.update(); return; }
+  crushChart = new Chart(cv, { type: 'line', data, options: opts });
+}
+
 // Seasonality — where the price sits vs its 5-year day-of-year band (gas/grains/softs).
 async function loadSeasonal() {
   const el = $('seasonal');
@@ -1675,6 +1718,7 @@ async function loadExtra() {
     loadCurveHistory();
     renderFlows(fl);
     renderProducts(pr);
+    loadCrush();
     renderSatellite(sar, flr);
     renderMacroDash(md, corr, ev);
     if (md?.fx) { lastFx = md.fx; renderTicker(data); }

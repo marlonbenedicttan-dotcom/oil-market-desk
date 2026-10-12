@@ -246,6 +246,21 @@ export function computeCracks(m) {
   return out;
 }
 
+// Soybean "board crush" (per bushel) — a processor's gross margin turning beans into meal + oil.
+// 1 bushel of soybeans crushes to ≈48 lb of meal and ≈11 lb of oil. CME quotes meal (ZM) in
+// $/short ton, oil (ZL) in ¢/lb, and CBOT quotes beans (ZS) in ¢/bushel, so:
+//   crush = meal×48/2000 + oil×11/100 − beans/100    ($/bushel; positive = processors profitable)
+// `oilShare` is the share of the product value that is oil (high = oil-led, low = meal-led).
+export function computeCrush(m) {
+  const by = Object.fromEntries((m.benchmarks || []).map((b) => [b.id, b]));
+  const meal = by.soymeal?.paper, oil = by.soyoil?.paper, bean = by.soybean?.paper;
+  if (meal == null || oil == null || bean == null) return {};
+  const mealValue = meal * 0.024;
+  const oilValue = oil * 0.11;
+  const beanCost = bean / 100;
+  return { crush: mealValue + oilValue - beanCost, mealValue, oilValue, beanCost, oilShare: (oilValue / (oilValue + mealValue)) * 100 };
+}
+
 // ---------------------------------------------------------------------------
 // Physical-tightness scoring (roadmap item 2). Each maps one physical signal to
 // 0-100 where 50 = neutral and >50 = tight; null when the input is missing, so a

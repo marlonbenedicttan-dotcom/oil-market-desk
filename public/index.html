@@ -138,6 +138,14 @@
         <div id="seasonal" class="seasonal"></div>
       </section>
 
+      <!-- GRAINS only: the soybean crush (the oilseed complex's core signal) -->
+      <section class="panel market-only" data-when="grains">
+        <div class="ph"><span class="ph-t">🌾 SOYBEAN CRUSH — processor margin</span><span class="dimtext">meal + oil − beans, per bushel</span></div>
+        <div id="crush" class="products"></div>
+        <div class="chokes-h dimtext" style="padding:0 12px">SOYBEAN CRUSH OVER TIME ($/bu · oil share %, last 6 months)</div>
+        <div class="chart-wrap" style="height:190px;padding:4px 12px 12px"><canvas id="crushhist"></canvas></div>
+      </section>
+
       <!-- 4. EVIDENCE — the segment's own defining signal comes first -->
       <section class="panel">
         <div class="ph"><span class="ph-t" id="tightness-title">⚡ IS OIL ACTUALLY TIGHT?</span><span class="dimtext" id="tightness-sub">six independent checks</span></div>
@@ -280,6 +288,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=40"></script>
+  <script src="app.js?v=41"></script>
 </body>
 </html>

@@ -78,6 +78,7 @@ test('/api/markets groups benchmarks into 9 segments (WTI+Brent=Crude, fuels=Ref
   assert.deepEqual(ms.find((m) => m.id === 'refined').components.map((c) => c.id), ['rbob', 'ulsd', 'jet', 'propane']);
   assert.equal(ms.find((m) => m.id === 'precious').components.length, 4);
   assert.equal(ms.find((m) => m.id === 'grains').hasBasis, false);
+  assert.deepEqual(ms.find((m) => m.id === 'grains').components.map((c) => c.id), ['corn', 'wheat', 'soybean', 'soymeal', 'soyoil']);
   // nickel is gone; industrial metals are copper + aluminium
   assert.deepEqual(ms.find((m) => m.id === 'industrial').components.map((c) => c.id), ['copper', 'aluminium']);
   // a new Livestock segment exists, headed by live cattle
@@ -93,6 +94,17 @@ test('/api/markets groups benchmarks into 9 segments (WTI+Brent=Crude, fuels=Ref
   assert.deepEqual(dairy.components.map((c) => c.id), ['milk', 'butter', 'nfdm', 'cheese', 'whey']);
   assert.equal(dairy.hasBasis, false);
   assert.ok(ms.every((m) => m.primary && m.hasCOT));
+});
+
+test('/api/crush returns the soybean board crush + oil share + aligned history', async () => {
+  const r = await fetch(`http://localhost:${PORT}/api/crush`);
+  assert.equal(r.status, 200);
+  const j = await r.json();
+  assert.ok(typeof j.crush === 'number' && Number.isFinite(j.crush), 'crush is a finite number');
+  assert.ok(typeof j.oilShare === 'number' && j.oilShare > 0 && j.oilShare < 100, 'oil share is a valid %');
+  assert.ok(Array.isArray(j.history?.dates) && j.history.dates.length > 20, 'has a crush history');
+  assert.equal(j.history.crush.length, j.history.dates.length, 'history arrays are aligned');
+  assert.ok(j.legs && typeof j.legs.mealValue === 'number' && typeof j.legs.oilValue === 'number', 'exposes the legs');
 });
 
 test('/api/marketread returns a per-segment read (404 for unknown)', async () => {
