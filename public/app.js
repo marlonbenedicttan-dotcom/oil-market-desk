@@ -632,11 +632,54 @@ function renderTicker(m) {
   const one = parts.join('');
   const ticker = $('ticker');
   if (!ticker) return;
-  // Reuse the existing track element so the marquee animation never restarts (only its
-  // children are refreshed). Rebuilding #ticker.innerHTML would reset the scroll.
+  // Reuse the existing track element so the tape never jumps (only its children are refreshed).
+  // Rebuilding #ticker.innerHTML would reset the scroll position.
   const track = ticker.querySelector('.ticker-track');
   if (track) track.innerHTML = `${one}${one}`;
   else ticker.innerHTML = `<div class="ticker-track">${one}${one}</div>`;   // two copies → seamless marquee
+  tickerStart();
+}
+
+// The tape moves on requestAnimationFrame, NOT a CSS animation: iOS Safari latches :hover after a
+// touch (and can still report `(hover: hover)`), which freezes a CSS marquee. Owning the motion in
+// JS means it always runs; press-and-hold pauses it. Two identical copies make a seamless loop.
+let tickerX = 0, tickerRAF = null, tickerLast = 0, tickerHeld = false, tickerWired = false;
+const tickerReduce = matchMedia('(prefers-reduced-motion: reduce)');
+function tickerStart() {
+  const ticker = $('ticker');
+  if (!ticker) return;
+  if (!tickerWired) {                               // wire listeners once (re-renders don't re-add)
+    tickerWired = true;
+    const setHeld = (v) => () => { tickerHeld = v; };
+    ticker.addEventListener('pointerdown', setHeld(true), { passive: true });
+    ticker.addEventListener('pointerup', setHeld(false), { passive: true });
+    ticker.addEventListener('pointercancel', setHeld(false), { passive: true });
+    ticker.addEventListener('pointerleave', setHeld(false), { passive: true });
+    tickerReduce.addEventListener?.('change', () => { if (!tickerReduce.matches) tickerStart(); });   // OS toggle → resume
+  }
+  if (tickerReduce.matches) {                       // honour Reduce Motion: leave it as a swipe strip
+    const t = ticker.querySelector('.ticker-track');
+    if (t) t.style.transform = '';
+    return;
+  }
+  if (tickerRAF) return;                            // one loop, reused across re-renders
+  tickerLast = performance.now();
+  tickerRAF = requestAnimationFrame(function step(now) {
+    const track = ticker.querySelector('.ticker-track');
+    if (!track || tickerReduce.matches) {           // stop cleanly if the content or the setting changes
+      if (track) track.style.transform = '';
+      tickerRAF = null;
+      return;
+    }
+    const half = track.scrollWidth / 2;             // one copy's width
+    if (!half) { tickerRAF = requestAnimationFrame(step); return; }   // not laid out yet
+    const dt = Math.min(64, Math.max(0, now - tickerLast)); tickerLast = now;
+    if (!tickerHeld) tickerX -= (half / (innerWidth <= 640 ? 45000 : 120000)) * dt;  // one copy per duration
+    if (tickerX <= -half) tickerX += half;
+    if (tickerX > 0) tickerX -= half;
+    track.style.transform = `translateX(${tickerX.toFixed(2)}px)`;
+    tickerRAF = requestAnimationFrame(step);
+  });
 }
 
 // ---------------------------------------------------------------------------

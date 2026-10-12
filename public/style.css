@@ -41,11 +41,16 @@ button { font-family: var(--mono); }
 .ghost.small { padding: 2px 8px; font-size: 10px; }
 
 /* ---------- Ticker ---------- */
-.ticker { overflow: hidden; background: #05070a; border-bottom: 1px solid var(--line); white-space: nowrap; }
-.ticker-track { display: inline-flex; gap: 0; animation: ticker-scroll 120s linear infinite; will-change: transform; }
-@media (hover: hover) { .ticker:hover .ticker-track { animation-play-state: paused; } }
-@keyframes ticker-scroll { from { transform: translateX(0); } to { transform: translateX(-50%); } }
-@media (prefers-reduced-motion: reduce) { .ticker-track { animation: none; } .ticker { overflow-x: auto; scrollbar-width: none; } .ticker::-webkit-scrollbar { display: none; } }
+.ticker { position: relative; overflow: hidden; background: #05070a; border-bottom: 1px solid var(--line); white-space: nowrap; }
+/* Soft fade at both edges — an overlay, NOT a mask, so the moving tape keeps its own compositor. */
+.ticker::before, .ticker::after { content: ''; position: absolute; top: 0; bottom: 0; width: 16px; pointer-events: none; z-index: 1; }
+.ticker::before { left: 0; background: linear-gradient(90deg, #05070a, rgba(5,7,10,0)); }
+.ticker::after { right: 0; background: linear-gradient(270deg, #05070a, rgba(5,7,10,0)); }
+/* The tape is moved by JS (requestAnimationFrame), never by a CSS animation or :hover — iOS Safari
+   latches :hover after a touch (and may still report `(hover: hover)`), which can freeze a CSS
+   marquee. rAF has no such state, so the tape always runs. */
+.ticker-track { display: inline-flex; gap: 0; will-change: transform; }
+@media (prefers-reduced-motion: reduce) { .ticker { overflow-x: auto; scrollbar-width: none; } .ticker::-webkit-scrollbar { display: none; } }
 .tk { display: inline-flex; align-items: baseline; gap: 8px; padding: 6px 14px; border-right: 1px solid var(--line); font-size: 12px; }
 .tk b { color: var(--dim); font-weight: 700; letter-spacing: .5px; }
 .tk-px { color: var(--text); font-variant-numeric: tabular-nums; }
@@ -462,17 +467,17 @@ canvas { display: block; }
 
 /* Mobile */
 @media (max-width: 640px) {
-  /* Top bar: wordmark on its own line, controls below — tidy on a phone. */
-  .topbar { padding: 8px max(10px, env(safe-area-inset-left)) 8px max(10px, env(safe-area-inset-right)); flex-wrap: wrap; row-gap: 8px; }
-  .brand { flex: 1 1 100%; gap: 6px; min-width: 0; }
-  .brand h1 { font-size: 12px; letter-spacing: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  /* Top bar: ONE tidy row — the same shape as desktop, just smaller: rook · wordmark · clock · ↻ · ?.
+     (CSV/DAILY BRIEF live in the footer on phones.) No 2-line wrap: fewer portrait-only overrides
+     = fewer bugs, and it matches the header that already works in landscape. */
+  .topbar { padding: 7px max(10px, env(safe-area-inset-left)) 7px max(10px, env(safe-area-inset-right)); flex-wrap: nowrap; gap: 8px; }
+  .brand { flex: 1 1 auto; gap: 6px; min-width: 0; }
+  .brand h1 { font-size: 11px; letter-spacing: .5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .brand .sub { display: none; }
-  .meta { flex: 1 1 100%; justify-content: flex-end; flex-wrap: wrap; gap: 6px; }
-  .meta .ghost, .meta .ghost.small { padding: 7px 10px; min-height: 34px; }
-  .clock { font-size: 12px; }
-  #updated { font-size: 10px; }
-  /* Ticker: clearly moving on a phone; touch pauses it. */
-  .ticker-track { animation-duration: 45s; }
+  #updated { display: none; }
+  .meta { flex: 0 0 auto; flex-wrap: nowrap; gap: 6px; align-items: center; }
+  .clock { font-size: 11px; letter-spacing: 0; }
+  .meta .ghost, .meta .ghost.small { min-height: 38px; min-width: 38px; padding: 0 8px; font-size: 15px; }
   /* Layout */
   main { padding: 10px max(10px, env(safe-area-inset-left)) calc(10px + env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-right)); gap: 10px; overflow-wrap: break-word; }
   .kpis { grid-template-columns: 1fr 1fr; }
@@ -499,7 +504,6 @@ canvas { display: block; }
   .antable { min-width: 420px; }
 }
 @media (max-width: 480px) {
-  .brand h1 { font-size: 12px; letter-spacing: 1px; }
   .kpis { grid-template-columns: 1fr; }
   .ev { grid-template-columns: 1fr 54px 50px; }
   .ms-tile { padding: 7px 8px; }
