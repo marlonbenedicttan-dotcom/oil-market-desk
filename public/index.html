@@ -16,7 +16,7 @@
   <meta name="theme-color" content="#ff9e00" />
   <link rel="icon" href="/icon.svg" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <link rel="stylesheet" href="style.css?v=22" />
+  <link rel="stylesheet" href="style.css?v=23" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 </head>
@@ -106,7 +106,7 @@
           <span class="ph-t">PRICE HISTORY</span>
           <div class="controls"><select id="metric"></select><select id="range"><option value="1m">1M</option><option value="3m">3M</option><option value="6m" selected>6M</option><option value="ytd">YTD</option><option value="1y">1Y</option><option value="5y">5Y</option><option value="10y">10Y</option></select></div>
         </div>
-        <div class="chart-wrap"><canvas id="chart"></canvas></div>
+        <div class="chart-wrap lg"><canvas id="chart"></canvas></div>
         <div id="lt-summary" class="dimtext lt-summary"></div>
       </section>
 
@@ -120,7 +120,7 @@
           </div>
         </div>
         <div id="cmp-presets" class="cmp-presets"></div>
-        <div class="chart-wrap" style="height:280px"><canvas id="cmp-chart"></canvas></div>
+        <div class="chart-wrap lg"><canvas id="cmp-chart"></canvas></div>
         <div id="cmp-summary" class="dimtext lt-summary"></div>
       </section>
 
@@ -129,7 +129,7 @@
         <div id="curve" class="curve"></div>
         <div id="curvehist-block">
           <div id="curvehist-title" class="chokes-h dimtext" style="padding:8px 12px 0"></div>
-          <div class="chart-wrap" style="height:180px;padding:4px 12px 12px"><canvas id="curvehist"></canvas></div>
+          <div class="chart-wrap sm"><canvas id="curvehist"></canvas></div>
         </div>
       </section>
 
@@ -143,7 +143,7 @@
         <div class="ph"><span class="ph-t">🌾 SOYBEAN CRUSH — processor margin</span><span class="dimtext">meal + oil − beans, per bushel</span></div>
         <div id="crush" class="products"></div>
         <div class="chokes-h dimtext" style="padding:0 12px">SOYBEAN CRUSH OVER TIME ($/bu · oil share %, last 6 months)</div>
-        <div class="chart-wrap" style="height:190px;padding:4px 12px 12px"><canvas id="crushhist"></canvas></div>
+        <div class="chart-wrap sm"><canvas id="crushhist"></canvas></div>
       </section>
 
       <!-- 4. EVIDENCE — the segment's own defining signal comes first -->
@@ -157,7 +157,7 @@
         <div class="ph"><span class="ph-t">REFINING MARGINS — DIESEL · JET · GASOLINE</span><span class="dimtext">profit per barrel</span></div>
         <div id="products" class="products"></div>
         <div class="chokes-h dimtext" style="padding:0 12px">REFINING PROFIT OVER TIME ($/bbl, last 6 months)</div>
-        <div class="chart-wrap" style="height:190px;padding:4px 12px 12px"><canvas id="crackhist"></canvas></div>
+        <div class="chart-wrap sm"><canvas id="crackhist"></canvas></div>
       </section>
       <section class="panel market-only" data-when="refined">
         <div class="ph"><span class="ph-t">WHO IT HELPS / HURTS</span><span id="eq-date" class="dimtext"></span></div>
@@ -191,7 +191,7 @@
           <div id="map"><div id="map-empty" class="map-empty hidden">WAITING FOR SHIP POSITIONS…</div></div>
           <div id="flows" class="flows"></div>
           <div class="chokes-h dimtext" style="padding:8px 12px 0">ARE SHIPS AVOIDING CHOKEPOINTS? — around Africa vs the Red Sea, over time</div>
-          <div class="chart-wrap" style="height:150px;padding:4px 12px 12px"><canvas id="reroute"></canvas></div>
+          <div class="chart-wrap sm"><canvas id="reroute"></canvas></div>
           <details class="fold"><summary>Ship list</summary><div id="tanker-list" class="tanker-list"></div></details>
         </section>
         <section class="fold-body">
@@ -236,27 +236,27 @@
       </section>
       <section class="panel">
         <div class="ph"><span class="ph-t">🏦 CENTRAL BANK RATE — history</span><span id="policy-note" class="dimtext"></span></div>
-        <div class="chart-wrap" style="height:180px"><canvas id="policy-chart"></canvas></div>
+        <div class="chart-wrap sm"><canvas id="policy-chart"></canvas></div>
       </section>
       <section class="panel">
         <div class="ph"><span class="ph-t">📉 BOND YIELDS — short-term vs long-term</span><span id="yields-note" class="dimtext"></span></div>
-        <div class="chart-wrap" style="height:200px"><canvas id="yields-chart"></canvas></div>
+        <div class="chart-wrap"><canvas id="yields-chart"></canvas></div>
         <div id="yields-summary" class="dimtext lt-summary"></div>
       </section>
       <section class="panel" id="usjp-panel">
         <div class="ph"><span class="ph-t">🇺🇸 🇯🇵 US vs JAPAN — 10-year yields &amp; the spread</span><span id="usjp-note" class="dimtext"></span></div>
-        <div class="chart-wrap" style="height:200px"><canvas id="usjp-chart"></canvas></div>
+        <div class="chart-wrap"><canvas id="usjp-chart"></canvas></div>
         <div id="usjp-summary" class="dimtext lt-summary"></div>
       </section>
       <section class="panel">
         <div class="ph"><span class="ph-t">📊 CPI — annual inflation % (World Bank)</span><span id="cpi-note" class="dimtext"></span></div>
-        <div class="chart-wrap" style="height:180px"><canvas id="cpi-chart"></canvas></div>
+        <div class="chart-wrap sm"><canvas id="cpi-chart"></canvas></div>
       </section>
       <section class="panel">
         <div class="ph"><span class="ph-t">📈 INDEX vs CURRENCY (indexed to 100)</span>
           <div class="controls"><select id="macro-range"><option value="3m">3M</option><option value="6m">6M</option><option value="1y" selected>1Y</option><option value="ytd">YTD</option><option value="5y">5Y</option></select></div>
         </div>
-        <div class="chart-wrap"><canvas id="macro-chart"></canvas></div>
+        <div class="chart-wrap lg"><canvas id="macro-chart"></canvas></div>
         <div id="macro-chart-note" class="dimtext lt-summary"></div>
       </section>
       <section class="panel">
@@ -288,6 +288,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=44"></script>
+  <script src="app.js?v=45"></script>
 </body>
 </html>

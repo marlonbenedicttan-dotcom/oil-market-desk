@@ -571,6 +571,67 @@ function renderTicker(m) {
 // ---------------------------------------------------------------------------
 // Chart (6M and 10Y)
 // ---------------------------------------------------------------------------
+// ---- Chart kit -------------------------------------------------------------
+// ONE definition of how every chart looks, so a chart reads the same everywhere:
+// same grid/axis/legend/tooltip and the same role colours. No new controls for
+// the reader — just consistency. Roles: c1 primary (futures), c2 secondary
+// (real/spot), c3 tertiary, c4 alt, accent.
+const CT = { text: '#7c8a99', grid: '#151a20', ref: '#2a3440', c1: '#4aa3ff', c2: '#ff9e00', c3: '#00c853', c4: '#c06bff', accent: '#ffd54f' };
+const charts = {};   // canvas id -> Chart instance (re-render updates in place; no leaks)
+const fmtNum = (v, dp = 2) => {
+  if (v == null || Number.isNaN(v)) return '—';
+  const a = Math.abs(v);
+  if (a >= 1e9) return (v / 1e9).toFixed(1).replace(/\.0$/, '') + 'B';
+  if (a >= 1e6) return (v / 1e6).toFixed(1).replace(/\.0$/, '') + 'M';
+  if (a >= 1e5) return (v / 1e3).toFixed(0) + 'k';
+  return Number(v).toFixed(dp);
+};
+const winPct = (arr, i) => { const first = Array.isArray(arr) ? arr.find((x) => x != null) : null; const cur = Array.isArray(arr) ? arr[i] : null; return (first == null || cur == null || first === 0) ? null : ((cur - first) / first) * 100; };
+function baseOptions({ dp = 2, unit = '', percentAxis = false, yTitle = '', y1Title = '', legend = true, log = false, anchorable = false } = {}) {
+  const tick = (v) => (percentAxis ? v + '%' : fmtNum(v, dp) + unit);
+  return {
+    responsive: true, maintainAspectRatio: false,
+    animation: { duration: 200 },
+    interaction: { mode: 'index', intersect: false },
+    plugins: {
+      legend: { display: legend, labels: { color: CT.text, boxWidth: 10, usePointStyle: true, font: { family: 'monospace' } } },
+      tooltip: {
+        mode: 'index', intersect: false,
+        callbacks: {
+          title: (it) => (it && it.length ? String(it[0].label) : ''),
+          label: (ctx) => {
+            const v = ctx.parsed.y;
+            if (v == null || Number.isNaN(v)) return `${ctx.dataset.label}: —`;
+            let out = `${ctx.dataset.label}: ${percentAxis ? Number(v).toFixed(dp) + '%' : fmtNum(v, dp) + unit}`;
+            const p = winPct(ctx.dataset.data, ctx.dataIndex);
+            if (p != null) out += `   ${p >= 0 ? '+' : ''}${p.toFixed(1)}%`;
+            if (anchorable && chartAnchor != null && ctx.dataset.data[chartAnchor] != null) out += `  ·  ${signed(((v - ctx.dataset.data[chartAnchor]) / ctx.dataset.data[chartAnchor]) * 100, 1)}% vs ●`;
+            return out;
+          },
+        },
+      },
+    },
+    scales: {
+      x: { ticks: { color: CT.text, maxTicksLimit: 7, autoSkip: true, maxRotation: 0 }, grid: { color: CT.grid } },
+      y: {
+        type: log ? 'logarithmic' : 'linear',
+        ...(yTitle ? { title: { display: true, text: yTitle, color: CT.text } } : {}),
+        ticks: { color: CT.text, callback: tick }, grid: { color: CT.grid },
+      },
+      ...(y1Title ? { y1: { position: 'right', title: { display: true, text: y1Title, color: CT.text }, ticks: { color: CT.text }, grid: { drawOnChartArea: false } } } : {}),
+    },
+  };
+}
+function mountChart(id, data, options, plugins) {
+  const cv = $(id);
+  if (!cv) return null;
+  if (cv.parentElement) cv.parentElement.removeAttribute('data-empty');
+  if (charts[id]) { charts[id].data = data; charts[id].options = options; charts[id].update(); return charts[id]; }
+  charts[id] = new Chart(cv, { type: 'line', data, options, plugins: plugins || [] });
+  return charts[id];
+}
+function chartEmpty(id, msg) { const cv = $(id); if (cv && cv.parentElement) cv.parentElement.setAttribute('data-empty', msg || 'no data for this range'); }
+
 const bandsPlugin = {
   id: 'bands',
   beforeDatasetsDraw(c) {
@@ -620,27 +681,7 @@ function datasetsFor(metric, h, m) {
   if (metric.startsWith('spread:')) { const s = h.spreads[metric.slice(7)]; return [line('futures', s.paper, '#4aa3ff'), line('real', s.physical, '#ff9e00')]; }
   return [];
 }
-function chartOpts() {
-  return { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false },
-    plugins: {
-      legend: { labels: { color: '#7c8a99', boxWidth: 12, font: { family: 'monospace' } } },
-      tooltip: {
-        callbacks: {
-          title: (items) => (items && items.length ? String(items[0].label) : ''),
-          label: (ctx) => {
-            const v = ctx.parsed.y, ds = ctx.dataset.data;
-            if (v == null) return `${ctx.dataset.label}: —`;
-            let out = `${ctx.dataset.label}: ${Number(v).toFixed(chartDp || 2)}`;
-            const first = ds.find((x) => x != null);
-            if (first) out += `   ${signed(((v - first) / first) * 100, 1)}% vs start`;
-            if (chartAnchor != null && ds[chartAnchor] != null) out += `  ·  ${signed(((v - ds[chartAnchor]) / ds[chartAnchor]) * 100, 1)}% vs ●`;
-            return out;
-          },
-        },
-      },
-    },
-    scales: { x: { ticks: { color: '#7c8a99', maxTicksLimit: 10 }, grid: { color: '#151a20' } }, y: { ticks: { color: '#7c8a99' }, grid: { color: '#151a20' } } } };
-}
+// (chart options now come from baseOptions() in the chart kit above.)
 // Resolver-shaped series → chart datasets (benchmark futures/real · a gap · a currency).
 function seriesLines(r) {
   const has = (a) => a && a.some((v) => v != null);
@@ -697,7 +738,7 @@ async function renderChart() {
     let r;
     try { r = RANGE_YEARS[range] ? await getLongterm(metric, RANGE_YEARS[range]) : await getRange(metric, range); }
     catch (e) { showError(e.message); return; }
-    if (!r || r.error || (!r.dates && !r.months)) { showError('No chart data for ' + metric.replace(/^fx:|^basis:/, '')); return; }
+    if (!r || r.error || (!r.dates && !r.months)) { showError('No chart data for ' + metric.replace(/^fx:|^basis:/, '')); chartEmpty('chart', 'no chart data for this range'); return; }
     labels = r.dates || r.months;
     chartDp = r.dp ?? chartDp;
     datasets = seriesLines(r);
@@ -707,9 +748,8 @@ async function renderChart() {
 
   $('lt-summary').textContent = (summary ? summary + '  ·  ' : '') + 'hover any point for its % change · click to drop an anchor (●), hover again to measure between two';
   const chartData = { labels, datasets };
-  if (chart) { chart.$bands = bands; chart.data = chartData; chart.update(); return; }
-  chart = new Chart($('chart'), { type: 'line', data: chartData, options: chartOpts(), plugins: [anchorLine, bandsPlugin] });
-  chart.$bands = bands;
+  chart = mountChart('chart', chartData, baseOptions({ dp: chartDp, anchorable: true }), [anchorLine, bandsPlugin]);
+  if (chart) chart.$bands = bands;
 }
 
 // ---------------------------------------------------------------------------
@@ -798,18 +838,12 @@ async function renderCompare() {
     const ba = first(a2), bb = first(b2);
     const ia = a2.map((v) => (v == null || !ba ? null : (v / ba) * 100));
     const ib = b2.map((v) => (v == null || !bb ? null : (v / bb) * 100));
-    datasets = [line(A.label, ia, '#4aa3ff'), line(B.label, ib, '#c06bff')];
+    datasets = [line(A.label, ia, CT.c1), line(B.label, ib, CT.c4)];
     const rateNote = (A.kind === 'rate' || B.kind === 'rate') ? ' · a yield is already a %, so this is its % change (not pp)' : '';
     summary = `${A.label} ${pctf(pct(a2))} vs ${B.label} ${pctf(pct(b2))} over ${label} · both start at 100${rateNote}`;
   }
   if (sum) sum.textContent = summary;
-  const opts = { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false },
-    plugins: { legend: { labels: { color: '#7c8a99', boxWidth: 12, font: { family: 'monospace' } } },
-      tooltip: { callbacks: { title: (it) => (it.length ? String(it[0].label) : ''), label: (ctx) => `${ctx.dataset.label}: ${ctx.parsed.y == null ? '—' : Number(ctx.parsed.y).toFixed(chartDp)}` } } },
-    scales: { x: { ticks: { color: '#7c8a99', maxTicksLimit: 10 }, grid: { color: '#151a20' } }, y: { ticks: { color: '#7c8a99' }, grid: { color: '#151a20' } } } };
-  const chartData = { labels: axis, datasets };
-  if (cmpChart) { cmpChart.data = chartData; cmpChart.options = opts; cmpChart.update(); return; }
-  cmpChart = new Chart(cv, { type: 'line', data: chartData, options: opts, plugins: [] });
+  cmpChart = mountChart('cmp-chart', { labels: axis, datasets }, baseOptions({ dp: chartDp }));
 }
 
 async function loadHistory() { history = await getJSON('/api/history'); }
@@ -990,10 +1024,8 @@ function renderCurveHistory(d) {
   if (!cv) return;
   if (!d?.dates?.length || d.dates.length < 20) { if (block) block.style.display = 'none'; return; }
   if (block) block.style.display = '';
-  const data = { labels: d.dates, datasets: [{ label: 'WTI: this month − next month', data: d.m1m2, borderColor: '#ff9e00', backgroundColor: '#ff9e0022', borderWidth: 2, pointRadius: 0, tension: 0.25, fill: false }] };
-  const opts = { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: '#7c8a99', boxWidth: 10, font: { family: 'monospace' } } } }, scales: { x: { ticks: { color: '#7c8a99', maxTicksLimit: 8 }, grid: { color: '#151a20' } }, y: { ticks: { color: '#7c8a99' }, grid: { color: '#151a20' } } } };
-  if (curveHistChart) { curveHistChart.data = data; curveHistChart.update(); return; }
-  curveHistChart = new Chart(cv, { type: 'line', data, options: opts });
+  const data = { labels: d.dates, datasets: [line('WTI: this month − next month', d.m1m2, CT.c2)] };
+  curveHistChart = mountChart('curvehist', data, baseOptions({ dp: 2, yTitle: '$/bbl' }));
 }
 function renderCurve(d) { if (!d) return; $('curve').innerHTML = curveBlock('WTI', d.wti) + curveBlock('Brent', d.brent); }
 // The curve ALWAYS follows the selected segment (no second picker).
@@ -1043,12 +1075,10 @@ function renderCrush(d) {
 function renderCrushHistory(h) {
   const cv = $('crushhist'); if (!cv || !h?.dates?.length) return;
   const data = { labels: h.dates, datasets: [
-    { label: 'Crush $/bu', data: h.crush, borderColor: '#ffd54f', borderWidth: 2, pointRadius: 0, tension: 0.25, yAxisID: 'y' },
-    { label: 'Oil share %', data: h.oilShare, borderColor: '#4aa3ff', borderWidth: 1.5, pointRadius: 0, tension: 0.25, yAxisID: 'y1' },
+    { label: 'Crush $/bu', data: h.crush, borderColor: CT.accent, backgroundColor: CT.accent + '22', borderWidth: 2, pointRadius: 0, tension: 0.25, yAxisID: 'y' },
+    { label: 'Oil share %', data: h.oilShare, borderColor: CT.c1, backgroundColor: CT.c1 + '22', borderWidth: 1.5, pointRadius: 0, tension: 0.25, yAxisID: 'y1' },
   ] };
-  const opts = { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: '#7c8a99', boxWidth: 10, font: { family: 'monospace' } } } }, scales: { x: { ticks: { color: '#7c8a99', maxTicksLimit: 8 }, grid: { color: '#151a20' } }, y: { position: 'left', ticks: { color: '#7c8a99' }, grid: { color: '#151a20' }, title: { display: true, text: '$/bu', color: '#7c8a99' } }, y1: { position: 'right', ticks: { color: '#7c8a99' }, grid: { drawOnChartArea: false }, title: { display: true, text: '%', color: '#7c8a99' } } } };
-  if (crushChart) { crushChart.data = data; crushChart.update(); return; }
-  crushChart = new Chart(cv, { type: 'line', data, options: opts });
+  crushChart = mountChart('crushhist', data, baseOptions({ dp: 2, yTitle: '$/bu', y1Title: '%' }));
 }
 
 // Seasonality — where the price sits vs its 5-year day-of-year band (gas/grains/softs).
@@ -1188,13 +1218,11 @@ function renderCrackHistory(h) {
   const cv = $('crackhist');
   if (!cv || !h?.dates?.length) return;
   const data = { labels: h.dates, datasets: [
-    { label: 'Diesel', data: h.diesel, borderColor: '#ff9e00', borderWidth: 2, pointRadius: 0, tension: 0.25 },
-    { label: 'Gasoline', data: h.gasoline, borderColor: '#4aa3ff', borderWidth: 2, pointRadius: 0, tension: 0.25 },
-    { label: '3-2-1', data: h.c321, borderColor: '#00c853', borderWidth: 1.5, pointRadius: 0, tension: 0.25 },
+    { label: 'Diesel', data: h.diesel, borderColor: CT.c2, backgroundColor: CT.c2 + '22', borderWidth: 2, pointRadius: 0, tension: 0.25 },
+    { label: 'Gasoline', data: h.gasoline, borderColor: CT.c1, backgroundColor: CT.c1 + '22', borderWidth: 2, pointRadius: 0, tension: 0.25 },
+    { label: '3-2-1', data: h.c321, borderColor: CT.c3, backgroundColor: CT.c3 + '22', borderWidth: 1.5, pointRadius: 0, tension: 0.25 },
   ] };
-  const opts = { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: '#7c8a99', boxWidth: 10, font: { family: 'monospace' } } } }, scales: { x: { ticks: { color: '#7c8a99', maxTicksLimit: 8 }, grid: { color: '#151a20' } }, y: { ticks: { color: '#7c8a99' }, grid: { color: '#151a20' } } } };
-  if (crackHistChart) { crackHistChart.data = data; crackHistChart.update(); return; }
-  crackHistChart = new Chart(cv, { type: 'line', data, options: opts });
+  crackHistChart = mountChart('crackhist', data, baseOptions({ dp: 2, yTitle: '$/bbl' }));
 }
 function renderProducts(d) {
   if (!d?.items) { $('products').innerHTML = ''; return; }
@@ -1269,13 +1297,10 @@ function renderReroute(d) {
   const s = d.series;
   const labels = s.map((x) => new Date(x.t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
   const data = { labels, datasets: [
-    { label: 'Cape of Good Hope', data: s.map((x) => x.cape), borderColor: '#ff9e00', borderWidth: 2, pointRadius: 0, tension: 0.3, spanGaps: true },
-    { label: 'Red Sea / Suez', data: s.map((x) => x.suez), borderColor: '#4aa3ff', borderWidth: 2, pointRadius: 0, tension: 0.3, spanGaps: true },
+    { label: 'Cape of Good Hope', data: s.map((x) => x.cape), borderColor: CT.c2, backgroundColor: CT.c2 + '22', borderWidth: 2, pointRadius: 0, tension: 0.3, spanGaps: true },
+    { label: 'Red Sea / Suez', data: s.map((x) => x.suez), borderColor: CT.c1, backgroundColor: CT.c1 + '22', borderWidth: 2, pointRadius: 0, tension: 0.3, spanGaps: true },
   ] };
-  if (rerouteChart) { rerouteChart.data = data; rerouteChart.update(); return; }
-  rerouteChart = new Chart(cv, { type: 'line', data, options: { responsive: true, maintainAspectRatio: false,
-    plugins: { legend: { labels: { color: '#7c8a99', boxWidth: 10, font: { family: 'monospace' } } } },
-    scales: { x: { ticks: { color: '#7c8a99', maxTicksLimit: 6 }, grid: { color: '#151a20' } }, y: { ticks: { color: '#7c8a99' }, grid: { color: '#151a20' } } } } });
+  rerouteChart = mountChart('reroute', data, baseOptions({ dp: 0 }));
 }
 async function loadReroute() { try { renderReroute(await getJSON('/api/reroute')); } catch {} }
 function macroTile(label, value, sub, klass, metric, extra) {
@@ -1408,13 +1433,11 @@ async function loadCountryChart() {
   const norm = (arr) => { const base = (arr || []).find((v) => v != null); return (arr || []).map((v) => (v == null || !base) ? null : (v / base) * 100); };
   chartDp = 1; chartAnchor = null;
   const datasets = [];
-  if (d.index && d.index.some((v) => v != null)) datasets.push(line(`${d.indexLabel} (indexed)`, norm(d.index), '#4aa3ff'));
-  if (d.fx && d.fx.some((v) => v != null)) datasets.push(line(`${d.fxLabel} (indexed)`, norm(d.fx), '#c06bff'));
+  if (d.index && d.index.some((v) => v != null)) datasets.push(line(`${d.indexLabel} (indexed)`, norm(d.index), CT.c1));
+  if (d.fx && d.fx.some((v) => v != null)) datasets.push(line(`${d.fxLabel} (indexed)`, norm(d.fx), CT.c4));
   const note = $('macro-chart-note');
   if (note) note.textContent = `${d.label} — both lines start at 100; hover any point for its % change. ${d.indexLabel ? '' : 'Index unavailable free.'}`;
-  const data = { labels: d.dates, datasets };
-  if (macroChart) { macroChart.data = data; macroChart.update(); return; }
-  macroChart = new Chart(cv, { type: 'line', data, options: chartOpts(), plugins: [] });
+  macroChart = mountChart('macro-chart', { labels: d.dates, datasets }, baseOptions({ dp: 1 }));
 }
 // Central-bank policy rate history (stepped line; hover shows the rate).
 let policyChart = null;
@@ -1430,10 +1453,8 @@ function renderPolicyChart(policy, policyNote) {
   }
   if (wrap) wrap.style.display = '';
   if (note) note.textContent = `${policy.latest.value}% · as of ${policy.latest.date}`;
-  const data = { labels: policy.history.map((h) => h.date), datasets: [{ label: 'policy rate', data: policy.history.map((h) => h.value), borderColor: '#ff9e00', backgroundColor: '#ff9e0022', borderWidth: 2, pointRadius: 0, stepped: true, fill: false }] };
-  const opts = { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false }, plugins: { legend: { display: false }, tooltip: { callbacks: { title: (it) => (it.length ? it[0].label : ''), label: (ctx) => `policy rate ${ctx.parsed.y}%` } } }, scales: { x: { ticks: { color: '#7c8a99', maxTicksLimit: 8 }, grid: { color: '#151a20' } }, y: { ticks: { color: '#7c8a99', callback: (v) => v + '%' }, grid: { color: '#151a20' } } } };
-  if (policyChart) { policyChart.data = data; policyChart.update(); return; }
-  policyChart = new Chart(cv, { type: 'line', data, options: opts });
+  const data = { labels: policy.history.map((h) => h.date), datasets: [{ label: 'policy rate', data: policy.history.map((h) => h.value), borderColor: CT.c2, backgroundColor: CT.c2 + '22', borderWidth: 2, pointRadius: 0, stepped: true, fill: false }] };
+  policyChart = mountChart('policy-chart', data, baseOptions({ dp: 2, percentAxis: true, legend: false }));
 }
 // CPI — annual inflation % per country (World Bank), hover shows year + %.
 let cpiChart = null;
@@ -1447,10 +1468,8 @@ function renderCpiChart(cpi) {
   if (!cpi || !cpi.length) { if (wrap) wrap.style.display = 'none'; if (note) note.textContent = 'no free CPI series for this country'; return; }
   if (wrap) wrap.style.display = '';
   if (note) note.textContent = `latest ${cpi[cpi.length - 1].value}% (${cpi[cpi.length - 1].year})`;
-  const data = { labels: cpi.map((d) => String(d.year)), datasets: [{ label: 'CPI YoY %', data: cpi.map((d) => d.value), borderColor: '#c06bff', backgroundColor: '#c06bff22', borderWidth: 2, pointRadius: 0, tension: 0.25, fill: false }] };
-  const opts = { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false }, plugins: { legend: { display: false }, tooltip: { callbacks: { title: (it) => (it.length ? it[0].label : ''), label: (ctx) => `inflation ${ctx.parsed.y}%` } } }, scales: { x: { ticks: { color: '#7c8a99', maxTicksLimit: 10 }, grid: { color: '#151a20' } }, y: { ticks: { color: '#7c8a99', callback: (v) => v + '%' }, grid: { color: '#151a20' } } } };
-  if (cpiChart) { cpiChart.data = data; cpiChart.update(); return; }
-  cpiChart = new Chart(cv, { type: 'line', data, options: opts });
+  const data = { labels: cpi.map((d) => String(d.year)), datasets: [{ label: 'CPI YoY %', data: cpi.map((d) => d.value), borderColor: CT.c4, backgroundColor: CT.c4 + '22', borderWidth: 2, pointRadius: 0, tension: 0.25, fill: false }] };
+  cpiChart = mountChart('cpi-chart', data, baseOptions({ dp: 1, percentAxis: true, legend: false }));
 }
 // Government bond yields for the selected country (short + long + term spread).
 function renderYields(d) {
@@ -1474,15 +1493,10 @@ function renderYields(d) {
   const dates = [...new Set([...(d.short?.dates || []), ...(d.long?.dates || [])])].sort();
   const arr = (s) => { const m = new Map(); if (s) s.dates.forEach((dt, i) => m.set(dt, s.values[i])); return dates.map((dt) => (m.has(dt) ? m.get(dt) : null)); };
   const datasets = [];
-  if (d.short) datasets.push(line(`${d.short.label} yield`, arr(d.short), '#4aa3ff'));
-  if (d.long) datasets.push(line(`${d.long.label} yield`, arr(d.long), '#ff9e00'));
-  const opts = { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false },
-    plugins: { legend: { labels: { color: '#7c8a99', boxWidth: 12, font: { family: 'monospace' } } },
-      tooltip: { callbacks: { title: (it) => (it.length ? String(it[0].label) : ''), label: (ctx) => `${ctx.dataset.label}: ${ctx.parsed.y == null ? '—' : Number(ctx.parsed.y).toFixed(2)}%` } } },
-    scales: { x: { ticks: { color: '#7c8a99', maxTicksLimit: 10 }, grid: { color: '#151a20' } }, y: { ticks: { color: '#7c8a99', callback: (v) => v + '%' }, grid: { color: '#151a20' } } } };
+  if (d.short) datasets.push(line(`${d.short.label} yield`, arr(d.short), CT.c1));
+  if (d.long) datasets.push(line(`${d.long.label} yield`, arr(d.long), CT.c2));
   const chartData = { labels: dates, datasets };
-  if (yieldsChart) { yieldsChart.data = chartData; yieldsChart.options = opts; yieldsChart.update(); return; }
-  yieldsChart = new Chart(cv, { type: 'line', data: chartData, options: opts, plugins: [] });
+  yieldsChart = mountChart('yields-chart', chartData, baseOptions({ dp: 2, percentAxis: true }));
 }
 async function loadYields() {
   const cv = $('yields-chart');
@@ -1507,18 +1521,9 @@ function renderUsJp(us, jp) {
   const spread = ul.latest != null && jl.latest != null ? +(ul.latest - jl.latest).toFixed(2) : null;
   if (note) note.textContent = `US daily · Japan monthly (OECD, carried forward)${us.asOf ? ' · as of ' + us.asOf : ''}`;
   if (sum) sum.textContent = `US 10-yr ${ul.latest == null ? '—' : ul.latest.toFixed(2) + '%'} · Japan 10-yr ${jl.latest == null ? '—' : jl.latest.toFixed(2) + '%'}${spread != null ? ` · US–Japan spread ${spread >= 0 ? '+' : ''}${spread}pp (the carry gap)` : ''}`;
-  const datasets = [line('US 10-yr', usArr, '#4aa3ff'), line('Japan 10-yr', jpArr, '#c06bff')];
-  const opts = { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false },
-    plugins: { legend: { labels: { color: '#7c8a99', boxWidth: 12, font: { family: 'monospace' } } },
-      tooltip: { callbacks: {
-        title: (it) => (it.length ? String(it[0].label) : ''),
-        label: (ctx) => `${ctx.dataset.label}: ${ctx.parsed.y == null ? '—' : Number(ctx.parsed.y).toFixed(2)}%`,
-        afterBody: (items) => { const u = items.find((i) => /US/.test(i.dataset.label)); const j = items.find((i) => /Japan/.test(i.dataset.label)); return (u && j && u.parsed.y != null && j.parsed.y != null) ? [`spread: ${(u.parsed.y - j.parsed.y).toFixed(2)}pp`] : []; },
-      } } },
-    scales: { x: { ticks: { color: '#7c8a99', maxTicksLimit: 10 }, grid: { color: '#151a20' } }, y: { ticks: { color: '#7c8a99', callback: (v) => v + '%' }, grid: { color: '#151a20' } } } };
+  const datasets = [line('US 10-yr', usArr, CT.c1), line('Japan 10-yr', jpArr, CT.c4)];
   const chartData = { labels: dates, datasets };
-  if (usjpChart) { usjpChart.data = chartData; usjpChart.options = opts; usjpChart.update(); return; }
-  usjpChart = new Chart(cv, { type: 'line', data: chartData, options: opts, plugins: [] });
+  usjpChart = mountChart('usjp-chart', chartData, baseOptions({ dp: 2, percentAxis: true }));
 }
 async function loadUsJp() {
   if (!$('usjp-chart')) return;
