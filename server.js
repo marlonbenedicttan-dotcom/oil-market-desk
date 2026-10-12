@@ -273,9 +273,10 @@ async function getHistory() {
   const list = BENCHMARKS;
   const maps = {};
   await Promise.all(list.map(async (b) => {
-    const p = await hPaperFor(b);
-    const f = await hPhysFor(b);
-    maps[b.id] = { paper: p.series, physical: f };
+    let paper = {}, physical = {};
+    try { paper = (await hPaperFor(b)).series || {}; } catch {}   // one flaky symbol must NOT 500 the whole endpoint
+    try { physical = (await hPhysFor(b)) || {}; } catch {}
+    maps[b.id] = { paper, physical };
   }));
 
   const allDates = new Set();
@@ -2390,7 +2391,7 @@ const server = http.createServer(async (req, res) => {
   }
   try {
     if (url.pathname === '/api/market') return sendJSON(res, 200, await getMarket());
-    if (url.pathname === '/api/history') return sendJSON(res, 200, await getHistory());
+    if (url.pathname === '/api/history') return sendJSON(res, 200, await getHistory().catch((e) => { console.error('[history]', e.message); return { dates: [], series: {}, basis: {}, spreads: {}, deltas: {} }; }));
     if (url.pathname === '/api/fx') return sendJSON(res, 200, FX_SYMS.map((f) => ({ id: f.id, label: f.label, dp: f.dp })));
     if (url.pathname === '/api/rates') return sendJSON(res, 200, RATES.map((r) => ({ id: r.id, label: r.label, dp: r.dp })));
     if (url.pathname === '/api/markets') return sendJSON(res, 200, getMarkets());

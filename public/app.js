@@ -1085,7 +1085,15 @@ async function renderCompare() {
   cmpChart = mountChart('cmp-chart', { labels: axis, datasets }, baseOptions({ dp: chartDp }));
 }
 
-async function loadHistory() { history = await getJSON('/api/history'); }
+async function loadHistory() {
+  const empty = { dates: [], series: {}, basis: {}, spreads: {}, deltas: {} };
+  try { history = await getJSON('/api/history'); }
+  catch {                                   // a 500 is usually a transient upstream hiccup — retry once, then degrade
+    await new Promise((r) => setTimeout(r, 1200));
+    try { history = await getJSON('/api/history'); } catch { history = empty; }
+  }
+  if (!history || !history.series) history = empty;
+}
 // Re-pull the daily history and redraw everything that depends on it (the 1D/1W/1M/YTD/1Y
 // strips + sparklines), so they keep up as new daily bars arrive — not just at page load.
 async function reloadHistory() {
@@ -2129,7 +2137,7 @@ $('macro-links')?.addEventListener('click', (e) => { const el = e.target.closest
   if (savedCountry) prefCountry = savedCountry;
   if ('Notification' in window && Notification.permission === 'default') { try { await Notification.requestPermission(); } catch {} }
   bootStep('loading history…');
-  await loadHistory().catch((e) => showError(e.message));
+  await loadHistory().catch(() => {});   // never fatal — degrades to an empty history
   fxList = await getJSON('/api/fx').catch(() => []);
   rateList = await getJSON('/api/rates').catch(() => []);
   renderCmpPresets();
