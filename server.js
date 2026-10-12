@@ -1251,7 +1251,7 @@ const NEWS_QUERIES = {
   jp: 'Japan economy OR "Bank of Japan" OR yen OR Japan inflation',
   apac: 'China economy OR PBOC OR "China stimulus" OR Asia markets',
   // macro-country news
-  ea: '"euro area" economy OR ECB OR euro HICP',
+  ea: '(euro area OR eurozone OR ECB) (inflation OR economy OR rates OR GDP OR growth)',
   de: 'Germany economy OR German inflation OR DAX',
   uk: 'UK economy OR "Bank of England" OR UK inflation',
   fr: 'France economy OR French inflation OR CAC',

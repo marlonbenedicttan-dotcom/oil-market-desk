@@ -804,7 +804,7 @@ async function renderChart() {
   chart = mountChart('chart', chartData, baseOptions({ dp: chartDp, anchorable: true }), [anchorLine, bandsPlugin, eventsPlugin]);
   if (chart) chart.$bands = bands;
   // Big-move markers — the chart's own largest swings, each tagged with the trusted news behind it.
-  if (chart) await attachMarkers(chart, bench ? currentMarket : null, histLabels, datasets[0] ? datasets[0].data.slice(0, histLabels.length) : [], '#chart-events');
+  if (chart) await attachMarkers(chart, bench ? currentMarket : null, histLabels, [datasets[0] ? datasets[0].data.slice(0, histLabels.length) : []], '#chart-events');
 }
 // The futures curve for a benchmark (client-cached 5 min) — powers the forward-curve overlay.
 const termCache = {};
@@ -834,9 +834,13 @@ function detectBigMoves(labels, data, maxN = 4) {
   for (const i of idxs) { if (chosen.length >= maxN) break; if (chosen.some((c) => Math.abs(c - i) < 3)) continue; chosen.push(i); }
   return chosen.sort((a, b) => a - b).map((i) => ({ idx: i, date: labels[i], pct: rets[i - 1], dir: rets[i - 1] >= 0 ? 'up' : 'down' }));
 }
-async function chartMoveMarkers(market, labels, data) {
-  if (!market || !data || data.length < 12) return [];
-  const moves = detectBigMoves(labels, data);
+async function chartMoveMarkers(market, labels, seriesList) {
+  if (!market) return [];
+  const lists = (seriesList || []).filter((a) => Array.isArray(a) && a.length >= 12);
+  if (!lists.length) return [];
+  const byIdx = new Map();
+  for (const s of lists) for (const m of detectBigMoves(labels, s)) { const cur = byIdx.get(m.idx); if (!cur || Math.abs(m.pct) > Math.abs(cur.pct)) byIdx.set(m.idx, m); }
+  const moves = [...byIdx.values()].sort((a, b) => Math.abs(b.pct) - Math.abs(a.pct)).slice(0, 5).sort((a, b) => a.idx - b.idx);
   if (!moves.length) return [];
   const dates = moves.map((mv) => `${mv.date}:${mv.dir === 'up' ? 1 : -1}`).join(',');
   let res = [];
@@ -858,9 +862,9 @@ function renderChartEvents(ev, sel = '#chart-events') {
 }
 // Shared by every chart: detect its big moves, attach the trusted news, wire the hover tooltip
 // (a body-level element, positioned by the mouse) and render the chip list under the chart.
-async function attachMarkers(chart, newsId, labels, data, chipsSel) {
+async function attachMarkers(chart, newsId, labels, seriesList, chipsSel) {
   if (!chart) return;
-  chart.$events = await chartMoveMarkers(newsId, labels, data).catch(() => []);
+  chart.$events = await chartMoveMarkers(newsId, labels, seriesList).catch(() => []);
   const tip = $('chart-tip');
   chart.options.onHover = (evt, _els, c) => {
     if (!tip) return;
@@ -1565,8 +1569,7 @@ async function loadCountryChart() {
   const note = $('macro-chart-note');
   if (note) note.textContent = `${d.label} — both lines start at 100; hover any point for its % change. ${d.indexLabel ? '' : 'Index unavailable free.'}`;
   macroChart = mountChart('macro-chart', { labels: d.dates, datasets }, baseOptions({ dp: 1 }));
-  const prim = (d.index && d.index.some((v) => v != null)) ? d.index : d.fx;
-  attachMarkers(macroChart, req, d.dates, prim || [], '#macro-chart-events');
+  attachMarkers(macroChart, req, d.dates, [d.index, d.fx].filter(Boolean), '#macro-chart-events');
 }
 // Central-bank policy rate history (stepped line; hover shows the rate).
 let policyChart = null;
@@ -1627,7 +1630,7 @@ function renderYields(d) {
   const chartData = { labels: dates, datasets };
   yieldsChart = mountChart('yields-chart', chartData, baseOptions({ dp: 2, percentAxis: true }));
   const ysrc = d.long || d.short;
-  if (ysrc) attachMarkers(yieldsChart, macroCountry, dates, arr(ysrc), '#yields-events');
+  if (ysrc) attachMarkers(yieldsChart, macroCountry, dates, [arr(ysrc)], '#yields-events');
 }
 async function loadYields() {
   const cv = $('yields-chart');
