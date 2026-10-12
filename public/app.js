@@ -87,6 +87,9 @@ async function jget(url, ttl = 180000) {
 // The current selection identity — every loader captures it and drops its result if the user
 // switched away while it was waiting. This is what stops "I clicked oil but it still shows corn".
 const segKey = () => currentMarket + '|' + (currentComponent || '');
+// Boot beacon helpers: update the status line, and drop the overlay when the essentials are up.
+const bootStep = (m) => { const el = document.getElementById('boot-status'); if (el) el.textContent = m; };
+const hideBoot = () => { const b = document.getElementById('boot'); if (b) b.classList.add('done'); };
 async function getLongterm(id, years = 10) {
   const k = id + years; const hit = ltCache[k];
   if (hit && Date.now() - hit.t < CHART_TTL) return hit.v;
@@ -441,6 +444,7 @@ function renderAdaptive() {
   const xa = $('crossasset');
   if (xa) xa.innerHTML = crossAssetBlock((i) => (i.segments || []).includes(currentMarket));
   loadMarketWhy();   // fill the past-year news-drivers block in afterwards
+  hideBoot();        // the read is up — drop the boot beacon
 }
 // An instant, correct-segment skeleton shown while the full read loads (price/6m from memory).
 function readSkeleton(mk) {
@@ -1943,11 +1947,14 @@ function showTab(name) {
     if (map) setTimeout(() => map.invalidateSize(), 80);
     if (crackHistChart && currentMarket === 'refined') setTimeout(() => crackHistChart.resize(), 80);
   }
-  if (name === 'macro') { loadMacroTickers(); if (macroChart) setTimeout(() => macroChart.resize(), 60); if (policyChart) setTimeout(() => policyChart.resize(), 70); if (cpiChart) setTimeout(() => cpiChart.resize(), 80); if (yieldsChart) setTimeout(() => yieldsChart.resize(), 85); if (usjpChart) setTimeout(() => usjpChart.resize(), 90); }
+  if (name === 'macro') { loadMacroTickers(); if (!extraSlowDone) setTimeout(() => loadExtraSlow().catch(() => {}), 0); if (macroChart) setTimeout(() => macroChart.resize(), 60); if (policyChart) setTimeout(() => policyChart.resize(), 70); if (cpiChart) setTimeout(() => cpiChart.resize(), 80); if (yieldsChart) setTimeout(() => yieldsChart.resize(), 85); if (usjpChart) setTimeout(() => usjpChart.resize(), 90); }
   if (data) renderTicker(data);
 }
 
-async function loadExtra() {
+async function loadExtra() { await loadExtraCore(); await loadExtraSlow(); }
+
+// Above-the-fold feeds — drawn as soon as they arrive so the app looks complete fast.
+async function loadExtraCore() {
   if (!data) return; // need prices first
   reloadHistory();   // refresh the deltas + sparklines (fire-and-forget)
   try {
@@ -1959,15 +1966,6 @@ async function loadExtra() {
       getJSON('/api/flows').catch(() => null),
       getJSON('/api/products').catch(() => null),
     ]);
-    const [flr, sar] = await Promise.all([
-      getJSON('/api/flares').catch(() => null),
-      getJSON('/api/sar').catch(() => null),
-    ]);
-    const [md, corr, ev] = await Promise.all([
-      getJSON('/api/macrodash').catch(() => null),
-      getJSON('/api/correlations').catch(() => null),
-      getJSON('/api/events').catch(() => null),
-    ]);
     analytics = an;
     renderInventories(inv);
     renderSectors(eq, data, an, tankerInfo);
@@ -1977,15 +1975,33 @@ async function loadExtra() {
     renderFlows(fl);
     renderProducts(pr);
     loadCrush();
-    renderSatellite(sar, flr);
-    renderMacroDash(md, corr, ev);
-    if (md?.fx) { lastFx = md.fx; renderTicker(data); }
     renderMarketState();
     renderAdaptive();
     loadTransmission();
     loadAlerts();
     loadBrief();
   } catch (e) { showError(e.message); }
+}
+// Below-the-fold / MACRO-only feeds — the slowest requests (satellite, macro). Loaded AFTER the
+// first paint (and again on the periodic refresh) so they never delay the initial screen.
+let extraSlowDone = false;
+async function loadExtraSlow() {
+  if (!data) return;
+  try {
+    const [flr, sar] = await Promise.all([
+      getJSON('/api/flares').catch(() => null),
+      getJSON('/api/sar').catch(() => null),
+    ]);
+    const [md, corr, ev] = await Promise.all([
+      getJSON('/api/macrodash').catch(() => null),
+      getJSON('/api/correlations').catch(() => null),
+      getJSON('/api/events').catch(() => null),
+    ]);
+    renderSatellite(sar, flr);
+    renderMacroDash(md, corr, ev);
+    if (md?.fx) { lastFx = md.fx; renderTicker(data); }
+    extraSlowDone = true;
+  } catch (e) {}
 }
 
 // ---------------------------------------------------------------------------
@@ -2085,17 +2101,24 @@ $('macro-links')?.addEventListener('click', (e) => { const el = e.target.closest
   if (savedRegion) { macroRegion = savedRegion; if ($('macro-region')) $('macro-region').value = savedRegion; }
   if (savedCountry) prefCountry = savedCountry;
   if ('Notification' in window && Notification.permission === 'default') { try { await Notification.requestPermission(); } catch {} }
+  bootStep('loading history…');
   await loadHistory().catch((e) => showError(e.message));
   fxList = await getJSON('/api/fx').catch(() => []);
   rateList = await getJSON('/api/rates').catch(() => []);
   renderCmpPresets();
+  bootStep('loading markets…');
   markets = await getJSON('/api/markets').catch(() => []);
   macroCountries = await getJSON('/api/countries').catch(() => null);
+  bootStep('loading prices…');
   await refreshLive();        // prices + ships (sets `data` first)
-  await loadExtra();          // slow feeds (need `data`)
-  if (savedSeg && markets.some((m) => m.id === savedSeg)) selectMarket(savedSeg);   // restore the last segment
+  bootStep('reading the market…');
+  await loadExtraCore();      // the above-the-fold feeds only — below-the-fold comes after first paint
+  // Always land on a segment (first visit included) so the read actually loads.
+  selectMarket(savedSeg && markets.some((m) => m.id === savedSeg) ? savedSeg : (markets[0] && markets[0].id) || 'crude');
   restoreCompare();
   if (savedTab) showTab(savedTab);
+  setTimeout(hideBoot, 6000);                     // safety — renderAdaptive drops it sooner, when the read is up
+  setTimeout(() => loadExtraSlow().catch(() => {}), 300);   // the slow, below-the-fold feeds
   loadAnalogue();
   loadReroute();
   loadHeadlines();

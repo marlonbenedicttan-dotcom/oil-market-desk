@@ -21,6 +21,18 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 </head>
 <body>
+  <!-- Boot beacon: static markup so it paints on the first byte, then fades when the app is ready
+       (or after 9s, so it can never stick even if the script fails). -->
+  <div id="boot" class="boot" role="status" aria-live="polite">
+    <div class="boot-tower" aria-hidden="true">
+      <span class="boot-beam"></span>
+      <span class="boot-ring"></span><span class="boot-ring r2"></span>
+      <span class="boot-mark">♜</span>
+    </div>
+    <div class="boot-word">MARLON'S WATCHTOWER</div>
+    <div id="boot-status" class="boot-status">connecting…</div>
+  </div>
+  <script>setTimeout(function () { var b = document.getElementById('boot'); if (b) b.classList.add('done'); }, 9000);</script>
   <header class="topbar">
     <div class="brand"><span class="logo">♜</span><h1>MARLON'S WATCHTOWER</h1><span class="sub">ENERGY · METALS · AGRICULTURE · MACRO</span></div>
     <div class="meta">
@@ -296,6 +308,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=62"></script>
+  <script src="app.js?v=63"></script>
 </body>
 </html>
