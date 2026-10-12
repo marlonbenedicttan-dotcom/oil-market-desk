@@ -1337,11 +1337,12 @@ function mustScoreFor(specs, title) {
   return best;
 }
 const mustScore = (id, title) => mustScoreFor(NEWS_MUST[id], title);
-// Keyword presence alone is not enough: "NBA commissioner Adam Silver" contains "silver".
-// Commodity segments + instruments must ALSO pass the market-context guard; macro ids (a Fed
-// or country story, which carries no "price/ounce/…" term) are exempt from the extra check.
+// Keyword presence alone is not enough: "NBA commissioner Adam Silver" contains "silver", and
+// "US Open champion" contains "US". EVERY news path runs through this one guard, and the headline
+// must be about the right DOMAIN — a commodity market for a commodity, an economy/market story for
+// a country/region — not merely contain the keyword.
 const COMMODITY_NEWS_IDS = new Set([...MARKETS.map((m) => m.id), ...BENCHMARKS.map((b) => b.id)]);
-const newsGuardOk = (id, title) => !COMMODITY_NEWS_IDS.has(id) || newsContextOk(title);
+const newsGuardOk = (id, title) => newsContextOk(title, { domain: COMMODITY_NEWS_IDS.has(id) ? 'commodity' : 'macro' });
 const titleMatches = (id, title) => { const s = NEWS_MUST[id]; return (!s || mustScore(id, title) > 0) && newsGuardOk(id, title); };
 // Sharper still: the SPECIFIC instrument on the chart (a cocoa chart should not get a sugar story).
 const NEWS_FOCUS = {
@@ -1794,7 +1795,8 @@ const HEADLINE_QUERY = '(oil OR "natural gas" OR gold OR copper OR wheat OR corn
 const TIER1_RE = /reuters|bloomberg|financial times|ft\.com|ap news|associated press|cnbc|wsj|wall street journal/i;
 async function getHeadlines() {
   return cached('headlines', 20 * 60e3, async () => {
-    const items = await fetchGoogleNews(HEADLINE_QUERY, 30).catch(() => []);
+    // The hero board is commodity-focused; still drop any sports/entertainment or name collision.
+    const items = (await fetchGoogleNews(HEADLINE_QUERY, 30).catch(() => [])).filter((it) => newsContextOk(it.title, { requireMarket: false }));
     const now = Date.now();
     for (const it of items) {
       let kind = 'Markets', effect = 'watch', weight = 1;
@@ -1825,7 +1827,9 @@ async function getMacroNews(id) {
   const terms = NEWS_QUERIES[id];
   if (!terms) return { id, error: 'unknown region', items: [] };
   return cached('mnews:' + id, 40 * 60e3, async () => {
-    const items = await fetchGoogleNews(`(${terms}) (rate OR inflation OR economy OR election OR sanctions OR protest OR IMF OR stimulus OR tariff OR downgrade)`, 30).catch(() => []);
+    // Drop anything that is not actually an economy/market story — e.g. a sports or film headline
+    // that merely names the country (the MACRO domain guard).
+    const items = (await fetchGoogleNews(`(${terms}) (rate OR inflation OR economy OR election OR sanctions OR protest OR IMF OR stimulus OR tariff OR downgrade)`, 30).catch(() => [])).filter((it) => newsContextOk(it.title, { domain: 'macro' }));
     const now = Date.now();
     for (const it of items) {
       let kind = 'Economy', weight = 1;

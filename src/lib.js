@@ -306,10 +306,15 @@ export function weightedScore(parts) {
 // ---------------------------------------------------------------------------
 // Topics that are never a commodity market. Stories about these are dropped unless the
 // headline ALSO carries a hard market term (a unit or an exchange), which overrides.
-export const NON_MARKET_CTX = /\b(nba|nfl|mlb|nhl|mls|ncaa|olympic[s]?|playoffs?|quarterback|touchdown|basketball|baseball|football|soccer|hockey|coach(?:es|ed)?|actors?|actress(?:es)?|movies?|film|sequel|box office|singers?|album|celebrity|awards?|oscars?|grammys?|netflix|hollywood|premiere|red carpet|draft|tournament|championship|league|match(?:es)?|player|signed with|traded to)\b/i;
+export const NON_MARKET_CTX = /\b(nba|nfl|mlb|nhl|mls|ncaa|olympic[s]?|playoffs?|quarterback|touchdown|basketball|baseball|football|footballer|soccer|hockey|cricket|rugby|fifa|uefa|world cup|super bowl|wimbledon|grand slam|boxing|boxer|coach(?:es|ed)?|actors?|actress(?:es)?|movies?|film|sitcom|sequel|box office|broadway|singers?|rapper|pop star|album|concerts?|celebrity|awards?|oscars?|grammys?|emmys?|tonys?|netflix|hollywood|premiere|red carpet|draft|tournament|championship|league|match(?:es)?|player|signed with|traded to)\b/i;
 // Hard, unambiguous market terms — a unit or an exchange. Their presence means "this is a
 // market story", so they override the sports/entertainment block-list above.
 export const STRONG_MARKET_CTX = /\b(futures?|spot price|bullion|commodit(?:y|ies)|cme|comex|lme|nymex|troy|ounces?|tonnes?|metric tons?|barrels?|bushels?|pounds?|per (?:ounce|tonne|ton|barrel|bushel|pound))\b/i;
+// Macro/economy framing — what a country or region story is about (not just a mention of the
+// country). Used for the MACRO domain, so a "US Open" or "Japan film" headline never attaches.
+export const MACRO_CTX = /\b(econom(?:y|ic|ies|ist)|inflation|deflation|disinflation|cpi|ppi|wages?|salaries|interest rates?|rates?|central bank|the fed|federal reserve|ecb|boj|pboc|rbi|bank of england|bank of japan|bank of korea|bank indonesia|imf|world bank|gdp|growth|recession|slowdown|downturn|unemploy\w*|jobless|jobs?|payrolls?|labou?r market|fiscal|budget|deficit|surplus|debt|bonds?|yields?|treasur\w*|currenc\w*|forex|\bfx\b|exchange rate|devalu\w*|dollar|euro|yen|yuan|renminbi|sterling|pound|rupee|baht|ringgit|peso|dong|rupiah|trade|tariff|sanction\w*|embargo|export\w*|import\w*|stimulus|subsid\w*|reform|policy|downgrade|credit rating|sovereign|default|bailout|crisis|bank\w*|stocks?|shares?|equit\w*|markets?|index|indices|nikkei|dax|ftse|kospi|sensex|nifty|hang seng|taiex|straits times|asx|s&p|nasdaq|wall street|commodit\w*|energy|election\w*|parliament|referendum|government|coalition|coup|protest\w*|unrest|war|conflict|geopolit\w*|summit|manufactur\w*|pmi|retail sales|industrial production|housing|property|invest\w*|ipo|merger|acquisition)\b/i;
+// A hard macro term (a central bank, inflation, GDP…) — overrides the sports/entertainment block.
+export const STRONG_MACRO_CTX = /\b(inflation|deflation|central bank|the fed|federal reserve|ecb|boj|pboc|rbi|gdp|recession|interest rates?|unemploy\w*|payrolls?|imf|sovereign|downgrade|treasury|bond market|credit rating|stimulus|bailout|default|fiscal deficit|monetary policy)\b/i;
 // Softer market framing: prices, moves and fundamental words. A commodity keyword needs at
 // least this to be treated as on-topic.
 export const MARKET_CTX = /\b(price[sd]?|pricing|ounce[s]?|troy|tonne[s]?|metric tons?|barrel[s]?|bushel[s]?|pound[s]?|per (?:ounce|tonne|ton|barrel|bushel|pound)|futures?|contract[s]?|spot|settle(?:s|d|ment)?|rally|rallies|rallied|surge[sd]?|soar(?:s|ed)?|jump(?:s|ed)?|climb(?:s|ed)?|slip(?:s|ped)?|fall(?:s|ing)?|fell|drop(?:s|ped)?|plunge[sd]?|tumble[sd]?|slide[s]?|slid|decline[sd]?|gain(?:s|ed)?|rise|rises|rising|rebound(?:s|ed)?|weaker|stronger|demand|supply|inventor(?:y|ies)|stockpile[s]?|output|production|export[s]?|import[s]?|tariff[s]?|sanction[s]?|mines?|mining|smelt(?:er|ers|ing)|refin(?:e|er|ing|ers|ery|eries)|harvest|crops?|opec|inflation|interest rates?|central bank|dollar|yuan|euro|yen|markets?|commodit(?:y|ies)|hedge[sd]?|traders?|investors?|record (?:high|low)|all-time|record|higher|lower|advance[sd]?|edges?|steady|flat|mixed|firmer|softer|holds?|retreats?|extends?|tops?|hits?)\b/i;
@@ -331,14 +336,21 @@ export const looksLikeProperNoun = (title) => PROPER_NOUN_RE.test(String(title |
 // Hogs (Harley), Beef (a grudge), Gas/Oil/Crude, … Only these need explicit market framing.
 // Unambiguous commodities ("cattle", "cocoa", "soybeans", "palladium") are on-topic on their own.
 export const AMBIGUOUS_TERMS = /\b(gold|silver|copper|platinum|palladium|corn|sugar|coffee|palm|butter|cheese|milk|hogs?|beef|feeder|gas|oil|crude|barrel|grain)\b/i;
-// The guard. `requireMarket` defaults to "only when the headline uses a homonym-prone word";
-// pass it explicitly to force (true) or waive (false) the market-context requirement.
-export function newsContextOk(title, { requireMarket = null } = {}) {
+// The guard. `domain` = 'commodity' (default) or 'macro'. A commodity headline needs market
+// framing only when it uses a homonym-prone word; a MACRO headline must be an economy/market
+// story, not a mere mention of a country. Both drop sports/entertainment unless a hard term
+// (a unit/exchange, or a central-bank/inflation term) proves otherwise.
+export function newsContextOk(title, { domain = 'commodity', requireMarket = null, requireContext = null } = {}) {
   const t = String(title || '');
-  const strong = STRONG_MARKET_CTX.test(t);
+  const strong = STRONG_MARKET_CTX.test(t) || STRONG_MACRO_CTX.test(t);
   if (NON_MARKET_CTX.test(t) && !strong) return false;    // a sports/entertainment story
+  if (domain === 'macro') {
+    const need = requireContext == null ? true : requireContext;
+    if (need && !MACRO_CTX.test(t)) return false;         // not an economy/market story
+    return true;
+  }
   if (looksLikeProperNoun(t) && !strong) return false;    // "Adam Silver" — a person, not the metal
-  const needCtx = requireMarket == null ? AMBIGUOUS_TERMS.test(t) : requireMarket;
-  if (needCtx && !MARKET_CTX.test(t)) return false;       // a homonym with no market framing
+  const need = requireMarket == null ? AMBIGUOUS_TERMS.test(t) : requireMarket;
+  if (need && !MARKET_CTX.test(t)) return false;          // a homonym with no market framing
   return true;
 }

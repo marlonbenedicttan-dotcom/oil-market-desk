@@ -248,3 +248,21 @@ test('looksLikeProperNoun flags a commodity used as a surname', () => {
   assert.equal(looksLikeProperNoun('Silver prices rose today'), false);
   assert.equal(looksLikeProperNoun('The silver market is tight'), false);
 });
+
+test('newsContextOk: the MACRO domain needs an economy story, not just a country name', () => {
+  // a sports/entertainment headline that merely names the country must not attach
+  assert.equal(newsContextOk('US beat Mexico in the World Cup final', { domain: 'macro' }), false);
+  assert.equal(newsContextOk("Japanese film wins the Palme d'Or at Cannes", { domain: 'macro' }), false);
+  assert.equal(newsContextOk('India wins the cricket series against Australia', { domain: 'macro' }), false);
+  // a real economy story stays
+  assert.equal(newsContextOk('US inflation cools as the Fed holds rates', { domain: 'macro' }), true);
+  assert.equal(newsContextOk('Japan GDP beats forecasts as the yen steadies', { domain: 'macro' }), true);
+  assert.equal(newsContextOk('China unveils fresh stimulus to lift property demand', { domain: 'macro' }), true);
+  assert.equal(newsContextOk('Euro area inflation falls to the ECB\u2019s target', { domain: 'macro' }), true);
+  assert.equal(newsContextOk('UK bond yields jump after a budget downgrade', { domain: 'macro' }), true);
+  // a hard macro term overrides a stray sports word
+  assert.equal(newsContextOk('RBI holds rates despite the cricket season', { domain: 'macro' }), true);
+  // a commodity headline is never judged by the macro rules
+  assert.equal(newsContextOk('Silver jumps on safe-haven demand'), true);
+  assert.equal(newsContextOk('Silver', { domain: 'macro' }), false); // no economy framing at all
+});
