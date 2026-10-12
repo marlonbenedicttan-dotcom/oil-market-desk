@@ -164,7 +164,8 @@ export function rangeExtremity(values) {
   return p == null ? null : Math.round((Math.abs(p - 50) / 50) * 100);
 }
 // Extremity of the latest |move over `window` steps| within the series' OWN history of such
-// moves — so a big move is "stretched" relative to how this instrument usually moves.
+// moves. Only moves BIGGER than typical count (a quiet market is calm, not extreme): a
+// typical move → 0, the largest move seen → 100.
 export function trendExtremity(values, window) {
   const xs = (values || []).filter((v) => v != null);
   if (xs.length < window + 12) return null;
@@ -172,7 +173,7 @@ export function trendExtremity(values, window) {
   for (let i = window; i < xs.length; i++) { const b = xs[i - window]; if (b) moves.push(Math.abs((xs[i] - b) / b)); }
   const cur = moves[moves.length - 1];
   const p = percentile(moves, cur);
-  return p == null ? null : Math.round((Math.abs(p - 50) / 50) * 100);
+  return p == null ? null : Math.round((Math.max(0, p - 50) / 50) * 100);
 }
 // Combine stretch components ({ key, label, weight, score } 0-100) into one 0-100 score.
 // A plain weighted mean DILUTES a single extreme input (that was the old bug); so blend the

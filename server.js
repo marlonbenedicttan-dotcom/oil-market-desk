@@ -1128,7 +1128,7 @@ async function getMarketRead(id) {
       { key: 'range10y', label: '10-yr range', weight: 0.2, score: rangeExtremity(longVals) },
       { key: 'trend1y', label: '1-yr move', weight: 0.25, score: trendExtremity(longVals, 12) },
       { key: 'trend3m', label: '3-mo move', weight: 0.15, score: trendExtremity(values, 63) },
-      { key: 'vol', label: 'volatility', weight: 0.2, score: volPctile == null ? null : Math.round((Math.abs(volPctile - 50) / 50) * 100) },
+      { key: 'vol', label: 'volatility', weight: 0.2, score: volPctile == null ? null : Math.round((Math.max(0, volPctile - 50) / 50) * 100) },
     ];
     const takes = [];
     if (read.perf.y1 != null) takes.push(`${read.label} is <b>${read.perf.y1 >= 0 ? 'up' : 'down'} ${Math.abs(read.perf.y1).toFixed(0)}%</b> over the last year${read.perf.m6 != null ? ` (6m ${read.perf.m6 >= 0 ? '+' : ''}${read.perf.m6.toFixed(0)}%)` : ''}.`);

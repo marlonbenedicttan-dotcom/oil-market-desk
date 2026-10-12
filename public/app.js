@@ -360,7 +360,7 @@ function renderAdaptive() {
   const r = marketRead, v = r.verdict;
   const score = v.score;
   const ph = v.physical || { score: null, label: '—', parts: [], note: '' };
-  const kl = score == null ? 'elevated' : score >= 70 ? 'high' : score >= 40 ? 'elevated' : 'low';
+  const kl = score == null ? 'elevated' : score >= 80 ? 'high' : score >= 45 ? 'elevated' : 'low';
   const phCls = ph.score == null ? '' : ph.score >= 58 ? 'pos' : ph.score <= 42 ? 'neg' : '';
   const vk = ph.score == null ? (score == null ? 'mixed' : score >= 55 ? 'tight' : score >= 35 ? 'mixed' : 'loose') : ph.score >= 58 ? 'tight' : ph.score <= 42 ? 'loose' : 'mixed';
   if ($('regime')) $('regime').textContent = regLine(r);
