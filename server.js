@@ -1318,7 +1318,41 @@ const NEWS_MUST = {
   ph: [/\bPhilippines\b/i, /\bPhilippine\b/i, /\bManila\b/i, /\bPSEi\b/i],
   vn: [/\bVietnam(ese)?\b/i, /\bdong\b/i, /\bHanoi\b/i],
 };
-const titleMatches = (id, title) => { const s = NEWS_MUST[id]; return !s || s.some((re) => re.test(title || '')); };
+function mustScoreFor(specs, title) {
+  if (!specs) return 0;
+  const t = String(title || '');
+  let best = 0;
+  for (const re of specs) {
+    const m = t.match(re);
+    if (!m) continue;
+    const pos = (m.index || 0) / Math.max(1, t.length);   // 0 = very start (the subject of the headline)
+    const s = pos <= 0.34 ? 4 : pos <= 0.67 ? 2 : 1;      // subject / mid-sentence / passing mention
+    if (s > best) best = s;
+  }
+  return best;
+}
+const mustScore = (id, title) => mustScoreFor(NEWS_MUST[id], title);
+const titleMatches = (id, title) => { const s = NEWS_MUST[id]; return !s || mustScore(id, title) > 0; };
+// Sharper still: the SPECIFIC instrument on the chart (a cocoa chart should not get a sugar story).
+const NEWS_FOCUS = {
+  wti: [/\b(wti|west texas|crude)\b/i], brent: [/\bbrent\b/i], rbob: [/\b(gasoline|rbob)\b/i], ulsd: [/\b(diesel|heating oil|distillate)\b/i],
+  jet: [/\bjet fuel\b/i], propane: [/\bpropane\b/i], natgas: [/\b(natural gas|lng)\b/i],
+  gold: [/\bgold\b/i], silver: [/\bsilver\b/i], platinum: [/\bplatinum\b/i], palladium: [/\bpalladium\b/i],
+  copper: [/\bcopper\b/i], aluminium: [/\b(aluminium|aluminum)\b/i],
+  corn: [/\b(corn|maize)\b/i], wheat: [/\bwheat\b/i], soybean: [/\b(soybean|soy)\b/i], soymeal: [/\b(soy ?meal|meal)\b/i], soyoil: [/\b(soy ?oil|soybean oil|vegetable oil)\b/i],
+  sugar: [/\bsugar\b/i], coffee: [/\bcoffee\b/i], cocoa: [/\bcocoa\b/i], cotton: [/\bcotton\b/i], palm: [/\bpalm\b/i],
+  cattle: [/\b(cattle|beef)\b/i], hogs: [/\b(hog|pork)\b/i], feeder: [/\b(feeder|cattle|calves)\b/i],
+  milk: [/\bmilk\b/i], butter: [/\bbutter\b/i], nfdm: [/\b(nonfat|milk powder|nfdm)\b/i], cheese: [/\bcheese\b/i], whey: [/\bwhey\b/i],
+};
+// The headline's OWN price direction — an up move wants "surges / soars / rallies", a down move
+// "plunges / slides / falls". If a headline says the opposite of the move, it is the wrong story.
+const DIR_UP = /\b(surge[sd]?|soar(s|ed)?|rall(y|ies|ied)|jump(s|ed)?|climb(s|ed)?|spike[sd]?|gain(s|ed)?|rise|rises|rising|rebound(s|ed)?|boost(s|ed)?|strengthen(s|ed)?|advance[sd]?|record high|higher)\b/i;
+const DIR_DOWN = /\b(plunge[sd]?|slide[s]?|slid|falls?|falling|fell|tumble[sd]?|drops?|dropped|slump(s|ed)?|sink(s|ing)?|sank|decline[sd]?|sell-?off|crash(es|ed)?|record low|retreat(s|ed)?|weaken(s|ed)?|ease[sd]?|slips?|slipped|dips?|dipped|lower)\b/i;
+function newsDir(title) {
+  const t = String(title || '');
+  const u = DIR_UP.test(t), d = DIR_DOWN.test(t);
+  return (u && !d) ? 'up' : (d && !u) ? 'down' : null;   // both present = ambiguous
+}
 const NEWS_REGION_LABELS = { us: 'United States', eu: 'Europe', jp: 'Japan', apac: 'Asia-Pacific' };
 const newsLabel = (id) => MARKETS.find((x) => x.id === id)?.label || NEWS_REGION_LABELS[id] || id;
 const NEWS_TIER1 = '(site:reuters.com OR site:bloomberg.com OR site:ft.com OR site:apnews.com OR site:cnbc.com)';
@@ -1664,9 +1698,10 @@ async function getFundamentals(id) {
 // finds the biggest moves in the plotted series and sends their dates; here we look up the news
 // published in a tight window around each move (Google News honours after:/before:), and pick the
 // best story (closest day, preferring one whose direction matches the move).
-async function getMoveWho(id, reqs) {
+async function getMoveWho(id, reqs, focusId) {
   const base = NEWS_QUERIES[id];        // covers commodity segments AND macro regions/countries
   if (!base) return { results: [] };
+  const focusSpecs = (focusId && NEWS_FOCUS[focusId]) || null;
   const out = [];
   for (const r of (reqs || []).slice(0, 6)) {
     const d = r.date;
@@ -1681,24 +1716,30 @@ async function getMoveWho(id, reqs) {
       const ev = [];
       for (const it of items) {
         if (!TIER1_RE.test(it.source || '')) continue;
-        if (!titleMatches(id, it.title)) continue;   // must actually be about this segment/market
         let kind = null, effect = 'watch', weight = 1;
         for (const rule of EVENT_RULES) { if (rule.re.test(it.title)) { kind = rule.kind; effect = rule.effect; weight = rule.weight; break; } }
         ev.push({ date: it.date, title: it.title, source: it.source, url: it.url, kind: kind || 'Market news', effect, weight });
       }
       return ev;
     });
-    const want = r.dir === 'up' ? 'up' : r.dir === 'down' ? 'down' : null;
-    let best = null, bs = Infinity;
+    // Pick the most ON-TOPIC story that AGREES with the move's direction.
+    const want = r.dir === 'up' ? 'up' : 'down';
+    let best = null, bs = -Infinity, bestFocus = false;
     for (const e of hit) {
       const et = Date.parse(String(e.date).slice(0, 10));
       if (isNaN(et)) continue;
+      const rel = mustScore(id, e.title);
+      if (rel === 0) continue;                              // must name the segment / market
+      const td = newsDir(e.title);
+      let dirBonus;
+      if (td) { if (td !== want) continue; dirBonus = 3; }  // headline says the opposite → wrong story
+      else { if (e.effect !== 'watch' && e.effect !== want) continue; dirBonus = e.effect === want ? 2 : 0.5; }
+      const frel = focusSpecs ? mustScoreFor(focusSpecs, e.title) : 0;
       const days = Math.abs(et - Date.parse(day)) / 864e5;
-      const bias = (!want || e.effect === want || e.effect === 'watch') ? 0 : 4;   // prefer a matching direction
-      const s = days + bias - (e.weight || 1) * 0.1;
-      if (s < bs) { bs = s; best = e; }
+      const score = rel * 1.2 + frel * 2.0 + dirBonus + (e.kind ? 0.3 : 0) - days * 0.25;
+      if (score > bs) { bs = score; best = e; bestFocus = frel > 0; }
     }
-    out.push({ date: d, dir: r.dir, news: best ? { kind: best.kind, title: best.title, source: best.source, url: best.url } : null });
+    out.push({ date: d, dir: r.dir, news: best ? { kind: best.kind, title: best.title, source: best.source, url: best.url, match: bestFocus ? 'instrument' : 'segment' } : null });
   }
   return { id, label: newsLabel(id), results: out };
 }
@@ -2407,7 +2448,7 @@ const server = http.createServer(async (req, res) => {
       const id = url.searchParams.get('id');
       if (!NEWS_QUERIES[id]) return sendJSON(res, 404, { error: 'unknown segment' });
       const reqs = (url.searchParams.get('dates') || '').split(',').map((s) => { const [date, dir] = s.split(':'); return { date, dir: dir === '1' ? 'up' : 'down' }; }).filter((r) => /^\d{4}-\d{2}(-\d{2})?$/.test(r.date));
-      return sendJSON(res, 200, await getMoveWho(id, reqs).catch((e) => ({ error: String(e.message), results: [] })));
+      return sendJSON(res, 200, await getMoveWho(id, reqs, url.searchParams.get('focus')).catch((e) => ({ error: String(e.message), results: [] })));
     }
     if (url.pathname === '/api/longterm') {
       const id = url.searchParams.get('id');

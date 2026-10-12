@@ -873,7 +873,7 @@ async function renderChart() {
   if (bench) newsId = currentMarket;
   else if (metric.startsWith('basis:')) { const mk2 = markets.find((m) => m.components.includes(metric.slice(6))); newsId = mk2 ? mk2.id : null; }
   else if (metric.startsWith('spread:')) newsId = 'crude';
-  if (chart) await attachMarkers(chart, newsId, histLabels, [datasets[0] ? datasets[0].data.slice(0, histLabels.length) : []], '#chart-events');
+  if (chart) await attachMarkers(chart, newsId, histLabels, [datasets[0] ? datasets[0].data.slice(0, histLabels.length) : []], '#chart-events', 'pct', bench ? bench.id : null);
 }
 // The futures curve for a benchmark (client-cached 5 min) — powers the forward-curve overlay.
 const termCache = {};
@@ -908,7 +908,7 @@ function detectBigMoves(labels, data, maxN = 4, mode = 'pct') {
   for (const i of idxs) { if (chosen.length >= maxN) break; if (chosen.some((c) => Math.abs(c - i) < 3)) continue; chosen.push(i); }
   return chosen.sort((a, b) => a - b).map((i) => ({ idx: i, date: labels[i], move: rets[i - 1], dir: rets[i - 1] >= 0 ? 'up' : 'down' }));
 }
-async function chartMoveMarkers(market, labels, seriesList, mode = 'pct') {
+async function chartMoveMarkers(market, labels, seriesList, mode = 'pct', focusId = null) {
   if (!market) return [];
   const lists = (seriesList || []).filter((a) => Array.isArray(a) && a.length >= 12);
   if (!lists.length) return [];
@@ -918,7 +918,7 @@ async function chartMoveMarkers(market, labels, seriesList, mode = 'pct') {
   if (!moves.length) return [];
   const dates = moves.map((mv) => `${mv.date}:${mv.dir === 'up' ? 1 : -1}`).join(',');
   let res = [];
-  try { const f = await jget('/api/movewho?id=' + encodeURIComponent(market) + '&dates=' + encodeURIComponent(dates), 300000); res = f.results || []; } catch {}
+  try { const f = await jget('/api/movewho?id=' + encodeURIComponent(market) + (focusId ? '&focus=' + encodeURIComponent(focusId) : '') + '&dates=' + encodeURIComponent(dates), 300000); res = f.results || []; } catch {}
   const byDate = Object.fromEntries(res.map((r) => [r.date, r.news]));
   const out = [];
   for (const mv of moves) {
@@ -935,13 +935,13 @@ function renderChartEvents(ev, sel = '#chart-events') {
 }
 // Shared by every chart: detect its big moves, attach the trusted news (as a line INSIDE the
 // normal tooltip) and render the clickable chip list under the chart.
-async function attachMarkers(chart, newsId, labels, seriesList, chipsSel, mode = 'pct') {
+async function attachMarkers(chart, newsId, labels, seriesList, chipsSel, mode = 'pct', focusId = null) {
   if (!chart) return;
   // Race guard: if the user switches segment/country/metric before this resolves, a newer call
   // bumps $mseq and we drop the stale result (otherwise old headlines linger on the new chart).
   const seq = (chart.$mseq || 0) + 1; chart.$mseq = seq;
   const chips = $(chipsSel); if (chips) chips.innerHTML = '';
-  const ev = await chartMoveMarkers(newsId, labels, seriesList, mode).catch(() => []);
+  const ev = await chartMoveMarkers(newsId, labels, seriesList, mode, focusId).catch(() => []);
   if (chart.$mseq !== seq) return;
   chart.$events = ev;
   applyNewsDataset(chart, ev);
