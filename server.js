@@ -936,7 +936,7 @@ async function curveFor(id) {
     const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + k, 1));
     const symbol = `${spec.root}${MONTH_CODE[d.getUTCMonth()]}${String(d.getUTCFullYear()).slice(2)}.${spec.exch}`;
     try {
-      const q = await cached('cur:' + symbol, 300_000, () => yahooSeries(symbol, '5d', '1d'));
+      const q = await cached('curveq:' + symbol, 300_000, () => yahooSeries(symbol, '5d', '1d'));
       if (q.price != null) out.push({ label: symbol.slice(spec.root.length, spec.root.length + 3), price: q.price });
     } catch {}
   }
