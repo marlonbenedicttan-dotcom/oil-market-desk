@@ -67,17 +67,25 @@ test('/api/alerts returns the server alert engine output', async () => {
   for (const a of j.current) assert.ok(a.key && a.level && a.text, 'each alert needs key + level + text');
 });
 
-test('/api/markets groups benchmarks into 7 segments (WTI+Brent=Crude, fuels=Refined)', async () => {
+test('/api/markets groups benchmarks into 8 segments (WTI+Brent=Crude, fuels=Refined)', async () => {
   const r = await fetch(`http://localhost:${PORT}/api/markets`);
   assert.equal(r.status, 200);
   const ms = await r.json();
-  assert.equal(ms.length, 7);
+  assert.equal(ms.length, 8);
   const crude = ms.find((m) => m.id === 'crude');
   assert.deepEqual(crude.components.map((c) => c.id), ['wti', 'brent']);
   assert.equal(crude.hasBasis, true);
   assert.deepEqual(ms.find((m) => m.id === 'refined').components.map((c) => c.id), ['rbob', 'ulsd', 'jet', 'propane']);
   assert.equal(ms.find((m) => m.id === 'precious').components.length, 4);
   assert.equal(ms.find((m) => m.id === 'grains').hasBasis, false);
+  // nickel is gone; industrial metals are copper + aluminium
+  assert.deepEqual(ms.find((m) => m.id === 'industrial').components.map((c) => c.id), ['copper', 'aluminium']);
+  // a new Livestock segment exists, headed by live cattle
+  const live = ms.find((m) => m.id === 'livestock');
+  assert.ok(live, 'livestock segment must exist');
+  assert.equal(live.primary, 'cattle');
+  assert.deepEqual(live.components.map((c) => c.id), ['cattle', 'hogs', 'feeder']);
+  assert.equal(live.hasBasis, false);
   assert.ok(ms.every((m) => m.primary && m.hasCOT));
 });
 

@@ -36,7 +36,7 @@ const BENCHMARKS = [
   { id: 'gold',     label: 'Gold',      group: 'Metals', unit: '$/oz', dp: 2, paper: 'GC=F', physical: null },
   { id: 'silver',   label: 'Silver',    group: 'Metals', unit: '$/oz', dp: 3, paper: 'SI=F', physical: null },
   { id: 'copper',   label: 'Copper',    group: 'Metals', unit: '$/lb', dp: 4, paper: 'HG=F', physical: null },
-  { id: 'nickel',   label: 'Nickel',    group: 'Metals', unit: 'USD',  dp: 2, paper: 'NICK.L', physical: null },
+  { id: 'aluminium',label: 'Aluminium', group: 'Metals', unit: '$/t',  dp: 0, paper: 'ALI=F', physical: null },
   { id: 'platinum', label: 'Platinum',  group: 'Metals', unit: '$/oz', dp: 2, paper: 'PL=F', physical: null },
   { id: 'palladium',label: 'Palladium', group: 'Metals', unit: '$/oz', dp: 2, paper: 'PA=F', physical: null },
   // ---- Agriculture (futures only) ----
@@ -48,6 +48,10 @@ const BENCHMARKS = [
   { id: 'cocoa',   label: 'Cocoa',    group: 'Agriculture', unit: '$/t',  dp: 0, paper: 'CC=F', physical: null },
   { id: 'cotton',  label: 'Cotton',   group: 'Agriculture', unit: '¢/lb', dp: 2, paper: 'CT=F', physical: null },
   { id: 'palm',    label: 'Palm Oil', group: 'Agriculture', unit: '$/t',  dp: 0, paper: 'CPO=F', physical: null },
+  // ---- Livestock (futures only) ----
+  { id: 'cattle',  label: 'Live Cattle',   group: 'Livestock', unit: '¢/lb', dp: 2, paper: 'LE=F', physical: null },
+  { id: 'hogs',    label: 'Lean Hogs',     group: 'Livestock', unit: '¢/lb', dp: 2, paper: 'HE=F', physical: null },
+  { id: 'feeder',  label: 'Feeder Cattle', group: 'Livestock', unit: '¢/lb', dp: 2, paper: 'GF=F', physical: null },
 ];
 
 // ---------------------------------------------------------------------------
@@ -62,9 +66,10 @@ const MARKETS = [
   { id: 'refined',    label: 'Refined products', group: 'Refined', primary: 'rbob',   components: ['rbob', 'ulsd', 'jet', 'propane'],           hasBasis: true,  hasInventories: true,  hasShips: true },
   { id: 'gas',        label: 'Natural gas',      group: 'Gas',     primary: 'natgas', components: ['natgas'],                                   hasBasis: true,  hasInventories: true,  hasShips: false },
   { id: 'precious',   label: 'Precious metals',   group: 'Metals',      primary: 'gold',   components: ['gold', 'silver', 'platinum', 'palladium'],  hasBasis: false, hasInventories: false, hasShips: false },
-  { id: 'industrial', label: 'Industrial metals', group: 'Metals',      primary: 'copper', components: ['copper', 'nickel'],                 hasBasis: false, hasInventories: false, hasShips: false },
+  { id: 'industrial', label: 'Industrial metals', group: 'Metals',      primary: 'copper', components: ['copper', 'aluminium'],              hasBasis: false, hasInventories: false, hasShips: false },
   { id: 'grains',     label: 'Grains',            group: 'Agriculture', primary: 'corn',   components: ['corn', 'wheat', 'soybean'],                 hasBasis: false, hasInventories: false, hasShips: false },
   { id: 'softs',      label: 'Softs',             group: 'Agriculture', primary: 'sugar',  components: ['sugar', 'coffee', 'cocoa', 'cotton', 'palm'], hasBasis: false, hasInventories: false, hasShips: false },
+  { id: 'livestock',  label: 'Livestock',         group: 'Livestock',   primary: 'cattle', components: ['cattle', 'hogs', 'feeder'],                hasBasis: false, hasInventories: false, hasShips: false },
 ];
 function getMarkets() {
   return MARKETS.map((m) => ({
@@ -236,7 +241,7 @@ async function getMarket() {
       'A positive gap means real barrels cost more than futures (a tight market).',
       'The futures line is the current month only (not spliced); "prices for months ahead" is the cleanest read.',
       'Dubai / WTI Midland / Mars need a paid data source.',
-      'Nickel uses the WisdomTree Nickel ETC (LSE, NICK.L) as a free proxy for LME nickel — there is no free LME feed, so the % moves track nickel but the level is the ETC price, not $/tonne.',
+      'Aluminium (COMEX ALI) and livestock (CME cattle/hogs) are Yahoo futures — live, no key. There is no free spot for either, so they are futures-only (no basis).',
     ],
   };
 }
@@ -925,6 +930,7 @@ const CURVE_SPEC = {
   wti: { root: 'CL', exch: 'NYM' }, brent: { root: 'BZ', exch: 'NYM' },
   rbob: { root: 'RB', exch: 'NYM' }, ulsd: { root: 'HO', exch: 'NYM' }, natgas: { root: 'NG', exch: 'NYM' },
   gold: { root: 'GC', exch: 'CMX' }, silver: { root: 'SI', exch: 'CMX' }, copper: { root: 'HG', exch: 'CMX' },
+  aluminium: { root: 'ALI', exch: 'CMX' },
   platinum: { root: 'PL', exch: 'CMX' }, palladium: { root: 'PA', exch: 'CMX' },
   corn: { root: 'ZC', exch: 'CBT' }, wheat: { root: 'ZW', exch: 'CBT' }, soybean: { root: 'ZS', exch: 'CBT' },
   coffee: { root: 'KC', exch: 'NYB' }, sugar: { root: 'SB', exch: 'NYB' }, cocoa: { root: 'CC', exch: 'NYB' }, cotton: { root: 'CT', exch: 'NYB' },
@@ -1004,10 +1010,10 @@ const MARKET_CONTENT = {
     sectorsUp: ['Gold & silver miners', 'Royalty & streaming'], sectorsDown: ['No direct loser — a store of value, not an input'],
     tickersUp: ['NEM', 'AEM', 'GDX', 'GDXJ', 'WPM', 'GOLD', 'GFI', 'HMY'], tickersDown: ['SIG'],
     ideas: 'Precious metals are a store of value, not an input — a strong run usually means fear or falling real yields. Mainly helps miners; there is no direct corporate loser.' },
-  industrial: { tightQ: 'ARE COPPER & NICKEL TIGHT?', catalysts: ['China demand & stimulus', 'mine supply & strikes (Chile, Indonesia)', 'exchange warehouse stocks', 'Indonesia nickel policy & EV-battery demand'], watch: ['China property & grid spending', 'Indonesia nickel supply / export policy'],
-    sectorsUp: ['Copper & nickel miners', 'Electrification, grid & battery suppliers'], sectorsDown: ['Construction', 'Autos & machinery', 'Stainless-steel users'],
-    tickersUp: ['FCX', 'SCCO', 'RIO', 'BHP', 'VALE', 'COPX', 'PICK', 'VEDL.NS', '3993.HK'], tickersDown: ['CAT', 'DE', 'PKB'],
-    ideas: 'Copper and nickel are the electrification metals — tight supply helps miners and signals firm industrial/EV demand; it raises costs for construction, autos, batteries and machinery.' },
+  industrial: { tightQ: 'ARE COPPER & ALUMINIUM TIGHT?', catalysts: ['China demand & stimulus', 'mine supply & strikes (Chile, Indonesia)', 'exchange warehouse stocks', 'energy & power costs (smelters)'], watch: ['China property & grid spending', 'LME/COMEX warehouse stocks & smelter curtailments'],
+    sectorsUp: ['Copper & aluminium miners & smelters', 'Electrification, grid & battery suppliers'], sectorsDown: ['Aerospace, packaging & autos', 'Construction & machinery'],
+    tickersUp: ['FCX', 'SCCO', 'RIO', 'BHP', 'VALE', 'AA', 'CENX', 'COPX', 'PICK', '3993.HK'], tickersDown: ['CAT', 'DE', 'PKB'],
+    ideas: 'Copper and aluminium are the electrification, grid and packaging metals — tight supply helps miners and smelters and signals firm industrial demand; it raises costs for construction, aerospace, packaging, autos and machinery.' },
   grains:     { tightQ: 'ARE GRAINS TIGHT?', catalysts: ['USDA WASDE report (monthly)', 'crop weather (US, Brazil, Black Sea)', 'weekly export sales'], watch: ['US crop conditions & the WASDE print', 'Black-Sea export flows'],
     sectorsUp: ['Farm equipment & inputs', 'Grain traders & processors'], sectorsDown: ['Food makers', 'Livestock & protein (feed cost)', 'Ethanol'],
     tickersUp: ['DE', 'ADM', 'BG', 'CF', 'MOS', 'MOO', 'DBA', 'F34.SI'], tickersDown: ['TSN', 'KHC', 'MDLZ'],
@@ -1016,6 +1022,10 @@ const MARKET_CONTENT = {
     sectorsUp: ['Soft-commodity traders & processors', 'Sugar & coffee producers'], sectorsDown: ['Food & beverage makers', 'Chocolate & confectionery'],
     tickersUp: ['ADM', 'BG', 'JO', 'SGG', 'NIB', 'BAL', 'F34.SI'], tickersDown: ['SBUX', 'HSY', 'MDLZ'],
     ideas: 'Poor harvests lift softs (good for producers & traders) and raise input costs for food, beverage and confectionery companies.' },
+  livestock:  { tightQ: 'ARE CATTLE & HOGS TIGHT?', catalysts: ['feed costs (corn/soy)', 'herd cycle & drought', 'export demand (China, Mexico)', 'disease (bird flu / swine fever)'], watch: ['USDA cattle-on-feed & hogs report', 'US beef/pork export demand & the herd rebuild'],
+    sectorsUp: ['Protein producers & processors', 'Farm equipment & feed'], sectorsDown: ['Restaurants & food makers', 'Consumers'],
+    tickersUp: ['TSN', 'JBS', 'PPC', 'SEB', 'ADM'], tickersDown: ['MCD', 'CMG', 'YUM'],
+    ideas: 'Tight cattle & hog supply lifts protein producers, processors and feed/equipment names, and raises input costs for restaurants, food makers and consumers — a protein-inflation read.' },
 };
 function rollingVolPctile(values, win = 30) {
   const r = [];
@@ -1171,6 +1181,7 @@ const NEWS_QUERIES = {
   industrial: 'copper OR "base metals" OR aluminium',
   grains: 'wheat OR corn OR soybeans OR WASDE',
   softs: 'sugar OR coffee OR cocoa OR cotton OR "palm oil"',
+  livestock: 'cattle OR hogs OR "beef prices" OR "pork prices"',
   // macro regions
   us: 'US economy OR "Federal Reserve" OR US inflation OR "interest rates"',
   eu: '"euro area" OR ECB OR "eurozone economy" OR European inflation',
@@ -1346,7 +1357,7 @@ const COUNTRY_COMMODITY_LINKS = {
   jp: [['WTI crude', 'CL=F'], ['Copper', 'HG=F']],
   cn: [['Copper', 'HG=F'], ['Brent crude', 'BZ=F']], hk: [['Brent crude', 'BZ=F']],
   sg: [['Brent crude', 'BZ=F']],
-  id: [['Palm oil', 'CPO=F'], ['Nickel', 'NICK.L'], ['Copper', 'HG=F'], ['Brent crude', 'BZ=F']],
+  id: [['Palm oil', 'CPO=F'], ['Aluminium', 'ALI=F'], ['Copper', 'HG=F'], ['Brent crude', 'BZ=F']],
   th: [['Sugar', 'SB=F'], ['Brent crude', 'BZ=F']],
   my: [['Palm oil', 'CPO=F'], ['Brent crude', 'BZ=F']],
   ph: [['Sugar', 'SB=F'], ['Brent crude', 'BZ=F']],
@@ -1518,6 +1529,7 @@ const SCAN_QUERIES = {
   industrial: '(copper OR "copper mine" OR aluminium) (strike OR outage OR sanctions OR shutdown OR "export ban")',
   grains: '(wheat OR corn OR soybeans OR grain) (drought OR flood OR frost OR "export ban" OR harvest OR strike)',
   softs: '(sugar OR coffee OR cocoa OR cotton OR "palm oil") (hurricane OR drought OR "El Nino" OR flood OR frost OR disease OR "export ban" OR harvest)',
+  livestock: '(cattle OR hogs OR beef OR pork) (drought OR disease OR "bird flu" OR "swine fever" OR "export ban" OR strike OR recall OR herd)',
 };
 async function getFundamentals(id) {
   const q = SCAN_QUERIES[id];
