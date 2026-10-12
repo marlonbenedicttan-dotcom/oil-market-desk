@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { sgn, inBox, haversineNm, isoWeek, monthly, pctOver, percentile, realizedVol, computeCracks, backAdjust, pearson, logReturns, horizonDeltas, curveTightness, inventoryTightness, weightedScore, seasonalGrade, seasonalAhead, contractMonthsBetween } from '../src/lib.js';
+import { sgn, inBox, haversineNm, isoWeek, monthly, pctOver, percentile, realizedVol, computeCracks, backAdjust, pearson, logReturns, horizonDeltas, curveTightness, inventoryTightness, weightedScore, seasonalGrade, seasonalAhead, contractMonthsBetween, rangeExtremity, trendExtremity, stretchScore } from '../src/lib.js';
 
 test('sgn formats with sign', () => {
   assert.equal(sgn(4.39), '+4.39');
@@ -132,6 +132,33 @@ test('contractMonthsBetween measures the gap between futures months', () => {
   assert.equal(contractMonthsBetween('F26', 'F27'), 12);
   assert.equal(contractMonthsBetween('F26', 'H26'), 2);       // Jan → Mar
   assert.equal(contractMonthsBetween(null, 'F26'), null);
+});
+
+test('rangeExtremity: extremes score ~100, mid scores ~0, symmetric', () => {
+  const ramp = Array.from({ length: 101 }, (_, i) => i); // 0..100
+  assert.equal(rangeExtremity(ramp), 100);               // last value is the max
+  const mid = ramp.slice(0, 100).concat([50]);           // last value ≈ median
+  assert.ok(rangeExtremity(mid) <= 5, `mid should be ~0, got ${rangeExtremity(mid)}`);
+  assert.equal(rangeExtremity([1, 2, 3]), null);         // too few points
+});
+
+test('trendExtremity: an unusually big move scores higher than a typical one', () => {
+  const flat = Array.from({ length: 60 }, (_, i) => 100 + (i % 3));
+  const big = flat.concat([200]); // a huge final move
+  assert.ok(trendExtremity(big, 1) > trendExtremity(flat, 1));
+  assert.equal(trendExtremity([1, 2, 3], 5), null); // too short
+});
+
+test('stretchScore does not let one extreme be diluted by the others', () => {
+  const s = stretchScore([
+    { key: 'a', label: 'A', weight: 0.5, score: 90 },
+    { key: 'b', label: 'B', weight: 0.5, score: 20 },
+  ]);
+  // a plain weighted mean would be 55; the blend pulls it up so the extreme is not washed out
+  assert.ok(s.score > 55, `got ${s.score}`);
+  assert.equal(s.label, 'STRETCHED');
+  assert.equal(s.parts.length, 2);
+  assert.equal(stretchScore([]).score, null);
 });
 
 test('computeCracks builds refining margins', () => {

@@ -153,6 +153,41 @@ export function contractMonthsBetween(a, b) {
   return ia && ib ? Math.abs(ib - ia) : null;
 }
 
+// --- Price stretch (v2) ------------------------------------------------------
+// How extended is the price? Several independent reads, each scored 0-100 where higher =
+// more stretched (symmetric: a crash to the bottom counts as much as a spike to the top).
+// Extremity of the latest value's percentile within the series (0 = mid-range, 100 = extreme).
+export function rangeExtremity(values) {
+  const xs = (values || []).filter((v) => v != null);
+  if (xs.length < 20) return null;
+  const p = percentile(xs, xs[xs.length - 1]);
+  return p == null ? null : Math.round((Math.abs(p - 50) / 50) * 100);
+}
+// Extremity of the latest |move over `window` steps| within the series' OWN history of such
+// moves — so a big move is "stretched" relative to how this instrument usually moves.
+export function trendExtremity(values, window) {
+  const xs = (values || []).filter((v) => v != null);
+  if (xs.length < window + 12) return null;
+  const moves = [];
+  for (let i = window; i < xs.length; i++) { const b = xs[i - window]; if (b) moves.push(Math.abs((xs[i] - b) / b)); }
+  const cur = moves[moves.length - 1];
+  const p = percentile(moves, cur);
+  return p == null ? null : Math.round((Math.abs(p - 50) / 50) * 100);
+}
+// Combine stretch components ({ key, label, weight, score } 0-100) into one 0-100 score.
+// A plain weighted mean DILUTES a single extreme input (that was the old bug); so blend the
+// weighted mean with the strongest component. Re-normalises over what is present.
+export function stretchScore(parts) {
+  const use = (parts || []).filter((p) => p && p.score != null && p.weight > 0);
+  if (!use.length) return { score: null, label: '—', parts: [] };
+  const w = use.reduce((a, p) => a + p.weight, 0);
+  const mean = use.reduce((a, p) => a + p.weight * p.score, 0) / w;
+  const max = Math.max(...use.map((p) => p.score));
+  const score = Math.round(0.5 * mean + 0.5 * max);
+  const label = score >= 80 ? 'EXTREME' : score >= 62 ? 'STRETCHED' : score >= 45 ? 'ELEVATED' : score >= 30 ? 'NORMAL' : 'CALM';
+  return { score, label, parts: use.map((p) => ({ key: p.key, label: p.label, score: p.score })) };
+}
+
 export function computeCracks(m) {
   const by = Object.fromEntries(m.benchmarks.map((b) => [b.id, b]));
   const w = by.wti, rb = by.rbob, ho = by.ulsd, jet = by.jet, G = 42;

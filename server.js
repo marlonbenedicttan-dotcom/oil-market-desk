@@ -5,7 +5,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { execFile } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { sgn, businessDaysSince, inBox, haversineNm, horizonDeltas, isoWeek, monthly, pctOver, percentile, realizedVol, computeCracks, backAdjust, pearson, logReturns, curveTightness, inventoryTightness, weightedScore, seasonalGrade, seasonalAhead, contractMonthsBetween } from './src/lib.js';
+import { sgn, businessDaysSince, inBox, haversineNm, horizonDeltas, isoWeek, monthly, pctOver, percentile, realizedVol, computeCracks, backAdjust, pearson, logReturns, curveTightness, inventoryTightness, weightedScore, seasonalGrade, seasonalAhead, contractMonthsBetween, rangeExtremity, trendExtremity, stretchScore } from './src/lib.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC = path.join(__dirname, 'public');
@@ -624,7 +624,7 @@ async function getMacro() {
 // 5-year seasonal range by day-of-year (for the price chart band).
 async function getSeasonal(b, years = 5) {
   return cached('season:' + b.id + ':' + years, 12 * 3600e3, async () => {
-    const map = b.paper ? (await cached('hp:' + b.paper, 12 * 3600e3, () => yahooSeries(b.paper, years + 'y', '1d'))).series : await spotSeries(b, years * 366);
+    const map = b.paper ? (await cached('season-src:' + b.paper, 12 * 3600e3, () => yahooSeries(b.paper, years + 'y', '1d'))).series : await spotSeries(b, years * 366);
     if (!map || !Object.keys(map).length) return { error: 'no data' };
     const byMD = {};
     for (const d of Object.keys(map)) { const md = d.slice(5); (byMD[md] ||= []).push(map[d]); }
@@ -1030,16 +1030,13 @@ function rollingVolPctile(values, win = 30) {
   return (vols.filter((v) => v <= cur).length / vols.length) * 100;
 }
 function marketVerdict(r) {
-  // PRICE STRETCH — how extended the price is vs its own 2-year range and volatility.
-  // Deliberately separate from physical tightness (below): a quiet market can be
-  // physically tight, and an extended price can be well supplied.
-  const ext = (p) => (p == null ? null : Math.abs(p - 50) / 50);
-  const ps = [];
-  if (r.range.pos != null) ps.push([0.55, ext(r.range.pos)]);
-  if (r.vol.pctile != null) ps.push([0.45, ext(r.vol.pctile)]);
-  const ws = ps.reduce((a, p) => a + p[0], 0);
-  const score = ws ? Math.round((100 * ps.reduce((a, p) => a + p[0] * p[1], 0)) / ws) : null;
-  const label = score == null ? '—' : score >= 80 ? 'EXTREME' : score >= 60 ? 'STRETCHED' : score >= 35 ? 'NORMAL' : 'CALM';
+  // PRICE STRETCH (v2) — how extended the price is across several independent reads:
+  // 2-yr and 10-yr range position, the 1-yr and 3-mo move size, and volatility. Combined
+  // so a single extreme isn't diluted by the others. Deliberately separate from physical
+  // tightness below: a quiet market can be tight, and an extended price well supplied.
+  const ps = stretchScore(r.stretch || []);
+  const score = ps.score;
+  const label = ps.label;
 
   // PHYSICAL TIGHTNESS — the fundamentals that actually say whether the market is
   // tight: curve (near vs next), the real-vs-futures basis, and stocks vs the
@@ -1071,7 +1068,7 @@ function marketVerdict(r) {
   const macroNote = r.macro?.usd != null ? `It tends to move ${r.macro.usd < 0 ? 'against' : 'with'} the US dollar (3-month correlation ${r.macro.usd}).` : '';
   const c = MARKET_CONTENT[r.id] || {};
   return {
-    score, label, priceStretch: { score, label }, physical, meaning, notes: [curveNote, macroNote].filter(Boolean),
+    score, label, priceStretch: { score, label, parts: ps.parts }, physical, meaning, notes: [curveNote, macroNote].filter(Boolean),
     tightQ: c.tightQ || `IS ${r.label.toUpperCase()} STRETCHED?`, watch: c.watch || [], catalysts: c.catalysts || [],
     sectorsUp: c.sectorsUp || [], sectorsDown: c.sectorsDown || [], tickersUp: c.tickersUp || [], tickersDown: c.tickersDown || [], ideas: c.ideas || '',
   };
@@ -1084,6 +1081,10 @@ async function getMarketRead(id) {
     let priceMap = {};
     try { priceMap = primary.paper ? (await yc(primary.paper, '2y')).series : await cached('mrf:' + primary.physical, 3600e3, () => spotSeries(primary, 740)); } catch {}
     const values = Object.keys(priceMap).sort().map((d) => priceMap[d]);
+    // Long monthly history for a multi-year range percentile + the 1-yr move's own
+    // distribution, so "stretched" isn't limited to the 2-year window.
+    let longVals = [];
+    if (primary.paper) { try { const lmap = (await cached('mrlt:' + primary.paper, 6 * 3600e3, () => yahooSeries(primary.paper, '10y', '1mo'))).series; longVals = Object.keys(lmap).sort().map((d) => lmap[d]); } catch {} }
     const last = [...values].reverse().find((v) => v != null) ?? null;
     let prev = null; for (let i = values.length - 2; i >= 0; i--) if (values[i] != null) { prev = values[i]; break; }
     const dayPct = last != null && prev ? ((last - prev) / prev) * 100 : null;
@@ -1111,15 +1112,24 @@ async function getMarketRead(id) {
         inventory = pick.length ? pick : null;
       } catch {}
     }
+    const volPctile = rollingVolPctile(values, 30);
     const read = {
       id, label: m.label, group: m.group, primary: m.primary, unit: primary.unit, dp: primary.dp,
       hasBasis: m.hasBasis, hasInventories: m.hasInventories, hasShips: m.hasShips,
       price: last, dayPct,
       perf: { m1: pctOver(values, 21), m3: pctOver(values, 63), m6: pctOver(values, 126), y1: pctOver(values, 252) },
       range: { pos: last != null ? percentile(values, last) : null },
-      vol: { v30: vol30, pctile: rollingVolPctile(values, 30) },
+      vol: { v30: vol30, pctile: volPctile },
       curve, macro, basis, inventory,
     };
+    // Price stretch (v2): independent "how extended" reads, combined without dilution.
+    read.stretch = [
+      { key: 'range2y', label: '2-yr range', weight: 0.2, score: rangeExtremity(values) },
+      { key: 'range10y', label: '10-yr range', weight: 0.2, score: rangeExtremity(longVals) },
+      { key: 'trend1y', label: '1-yr move', weight: 0.25, score: trendExtremity(longVals, 12) },
+      { key: 'trend3m', label: '3-mo move', weight: 0.15, score: trendExtremity(values, 63) },
+      { key: 'vol', label: 'volatility', weight: 0.2, score: volPctile == null ? null : Math.round((Math.abs(volPctile - 50) / 50) * 100) },
+    ];
     const takes = [];
     if (read.perf.y1 != null) takes.push(`${read.label} is <b>${read.perf.y1 >= 0 ? 'up' : 'down'} ${Math.abs(read.perf.y1).toFixed(0)}%</b> over the last year${read.perf.m6 != null ? ` (6m ${read.perf.m6 >= 0 ? '+' : ''}${read.perf.m6.toFixed(0)}%)` : ''}.`);
     if (read.range.pos != null) takes.push(`It sits at <b>${read.range.pos.toFixed(0)}/100</b> of its 2-year range — ${read.range.pos >= 70 ? 'near the top' : read.range.pos <= 30 ? 'near the bottom' : 'mid-range'}.`);

@@ -390,9 +390,11 @@ function renderAdaptive() {
   if (r.macro?.usd != null) push('Link to the US dollar', `${r.macro.usd}`, 'MID', '3-month correlation (negative = moves against the dollar)');
   const physChips = (ph.parts && ph.parts.length) ? `<div class="phys-parts">${ph.parts.map((p) => `<span class="phys-part ${p.score >= 58 ? 'tight' : p.score <= 42 ? 'loose' : ''}">${p.label} <b>${p.score}</b> ${p.score >= 58 ? 'TIGHT' : p.score <= 42 ? 'LOOSE' : 'BALANCED'}</span>`).join('')}</div>` : '';
   const physNote = ph.note ? `<div class="phys-note dimtext">${ph.note}</div>` : '';
+  const psParts = (v.priceStretch && v.priceStretch.parts) || [];
+  const psChips = psParts.length ? `<div class="phys-parts"><span class="dimtext" style="align-self:center">price stretch:</span>${psParts.map((p) => `<span class="phys-part">${p.label} <b>${p.score}</b></span>`).join('')}</div>` : '';
   const priceLine = score == null ? 'price stretch unavailable' : `price is <b>${v.label.toLowerCase()}</b> (${score}/100)`;
   const physLine = ph.score == null ? 'physical tightness unavailable' : `the physical market is <b>${ph.label.toLowerCase()}</b> (${ph.score}/100)`;
-  $('tightness').innerHTML = `<div class="verdict ${vk}">${r.label}: ${priceLine} · ${physLine}.</div>${physChips}${physNote}<div class="ev-list">${ev.map((e) => `<div class="ev"><span class="ev-l">${e.label}</span><span class="ev-v">${e.value}</span><span class="tag ${e.dir.toLowerCase()}">${e.dir}</span><span class="ev-n dimtext">${e.note}</span></div>`).join('')}</div>`;
+  $('tightness').innerHTML = `<div class="verdict ${vk}">${r.label}: ${priceLine} · ${physLine}.</div>${psChips}${physChips}${physNote}<div class="ev-list">${ev.map((e) => `<div class="ev"><span class="ev-l">${e.label}</span><span class="ev-v">${e.value}</span><span class="tag ${e.dir.toLowerCase()}">${e.dir}</span><span class="ev-n dimtext">${e.note}</span></div>`).join('')}</div>`;
   const si = $('ships-insights');
   if (si) si.innerHTML = r.hasShips ? tankerInsights(tankerInfo).map((x) => `<li>${x}</li>`).join('') : '';
   renderAlerts(marketAlerts(r));

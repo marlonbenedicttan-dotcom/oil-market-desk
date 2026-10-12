@@ -94,6 +94,7 @@ test('/api/marketread returns a per-segment read (404 for unknown)', async () =>
 test('/api/marketread splits price stretch from physical tightness', async () => {
   const crude = await (await fetch(`http://localhost:${PORT}/api/marketread?id=crude`)).json();
   assert.ok(crude.verdict.priceStretch && typeof crude.verdict.priceStretch.score !== 'undefined');
+  assert.ok(Array.isArray(crude.verdict.priceStretch.parts) && crude.verdict.priceStretch.parts.length >= 3, 'price stretch exposes its components');
   assert.ok(crude.verdict.physical && typeof crude.verdict.physical === 'object');
   assert.ok('score' in crude.verdict.physical && Array.isArray(crude.verdict.physical.parts));
   assert.ok(typeof crude.verdict.physical.note === 'string' && crude.verdict.physical.note.length > 0);
