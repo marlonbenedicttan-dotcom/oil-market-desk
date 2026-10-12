@@ -43,7 +43,7 @@ button { font-family: var(--mono); }
 /* ---------- Ticker ---------- */
 .ticker { overflow: hidden; background: #05070a; border-bottom: 1px solid var(--line); white-space: nowrap; }
 .ticker-track { display: inline-flex; gap: 0; animation: ticker-scroll 120s linear infinite; will-change: transform; }
-.ticker:hover .ticker-track { animation-play-state: paused; }
+@media (hover: hover) { .ticker:hover .ticker-track { animation-play-state: paused; } }
 @keyframes ticker-scroll { from { transform: translateX(0); } to { transform: translateX(-50%); } }
 @media (prefers-reduced-motion: reduce) { .ticker-track { animation: none; } .ticker { overflow-x: auto; scrollbar-width: none; } .ticker::-webkit-scrollbar { display: none; } }
 .tk { display: inline-flex; align-items: baseline; gap: 8px; padding: 6px 14px; border-right: 1px solid var(--line); font-size: 12px; }
@@ -448,6 +448,10 @@ footer li { margin-bottom: 2px; }
 .news-d { font-size: 10px; text-align: right; white-space: nowrap; }
 @media (max-width: 700px) { .news-item { grid-template-columns: 1fr auto; } .news-src { grid-column: 1 / -1; } }
 
+.mobile-only { display: none; }
+.exports { gap: 8px; justify-content: center; flex-wrap: wrap; padding: 6px 0 2px; }
+@media (max-width: 640px) { .desk-only { display: none; } .mobile-only { display: flex; } }
+
 /* Keep the page inside the phone's width. Grid/flex children default to min-width:auto, so a
    single wide child (a table, a canvas, a nowrap row) can push the whole page wider than the
    screen → sideways scroll → "too big / won't fit". Let every one of them shrink instead. */
@@ -469,7 +473,6 @@ canvas { display: block; }
   #updated { font-size: 10px; }
   /* Ticker: clearly moving on a phone; touch pauses it. */
   .ticker-track { animation-duration: 45s; }
-  .ticker:active .ticker-track { animation-play-state: paused; }
   /* Layout */
   main { padding: 10px max(10px, env(safe-area-inset-left)) calc(10px + env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-right)); gap: 10px; overflow-wrap: break-word; }
   .kpis { grid-template-columns: 1fr 1fr; }
