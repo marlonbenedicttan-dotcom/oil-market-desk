@@ -448,9 +448,19 @@ footer li { margin-bottom: 2px; }
 .news-d { font-size: 10px; text-align: right; white-space: nowrap; }
 @media (max-width: 700px) { .news-item { grid-template-columns: 1fr auto; } .news-src { grid-column: 1 / -1; } }
 
+/* Keep the page inside the phone's width. Grid/flex children default to min-width:auto, so a
+   single wide child (a table, a canvas, a nowrap row) can push the whole page wider than the
+   screen → sideways scroll → "too big / won't fit". Let every one of them shrink instead. */
+main, .tabpane, .panel, .cards, .curve, .kpis, .marketstate, .insights, .brief-cols, .bl, .bl-sec, .macro, .sectors, .sector-read, .attr, .ev, .ctx-row { min-width: 0; }
+main > *, .tabpane > *, .panel > * { min-width: 0; }
+canvas, img, svg, table, pre { max-width: 100%; }
+canvas { display: block; }
+
 /* Mobile */
 @media (max-width: 640px) {
-  .topbar { padding: 6px 10px; }
+  .topbar { padding: 6px 10px; flex-wrap: wrap; row-gap: 6px; }
+  .brand h1 { letter-spacing: 1px; }
+  .ph-t { letter-spacing: 1px; }
   .brand .sub { display: none; }
   .meta { gap: 8px; }
   .brand h1 { font-size: 13px; letter-spacing: 1.5px; }
