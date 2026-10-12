@@ -119,9 +119,6 @@ select { background: var(--panel2); color: var(--text); border: 1px solid var(--
 .chart-events a.ce { color: var(--text); text-decoration: none; border: 1px solid var(--line2); padding: 1px 7px; display: inline-flex; align-items: center; gap: 5px; }
 .chart-events a.ce:hover { border-color: var(--dim); }
 .ce-dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; }
-.chart-tip { position: fixed; z-index: 60; background: #0c0f13; border: 1px solid var(--line2); padding: 6px 9px; font-size: 11px; line-height: 1.4; max-width: 250px; pointer-events: none; }
-.chart-tip[hidden] { display: none; }
-.chart-tip .tip-t { margin-top: 3px; color: var(--text); }
 .cmp-presets { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 12px 0; }
 .card.clickable { cursor: pointer; transition: border-color .12s; }
 .card.clickable:hover { border-color: var(--amber); }

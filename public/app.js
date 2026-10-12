@@ -652,12 +652,20 @@ function baseOptions({ dp = 2, unit = '', percentAxis = false, yTitle = '', y1Ti
     animation: { duration: 200 },
     interaction: { mode: 'index', intersect: false },
     plugins: {
-      legend: { display: legend, labels: { color: CT.text, boxWidth: 10, usePointStyle: true, font: { family: 'monospace' } } },
+      legend: { display: legend, labels: { color: CT.text, boxWidth: 10, usePointStyle: true, font: { family: 'monospace' }, filter: (item, data) => !(data.datasets[item.datasetIndex] && data.datasets[item.datasetIndex].$news) } },
       tooltip: {
         mode: 'index', intersect: false,
+        backgroundColor: '#0c0f13', borderColor: '#2a3440', borderWidth: 1, titleColor: '#e6edf3', bodyColor: '#c9d4df', padding: 8,
         callbacks: {
           title: (it) => (it && it.length ? String(it[0].label) : ''),
           label: (ctx) => {
+            // The invisible "news" dataset: one line per big move, right inside the normal tooltip.
+            if (ctx.dataset && ctx.dataset.$news) {
+              const e = ctx.dataset.$news[ctx.dataIndex];
+              if (!e) return undefined;
+              const t = String(e.title); const tt = t.length > 90 ? t.slice(0, 89) + '…' : t;
+              return `📰 ${tt} — ${e.source} (${e.pct >= 0 ? '+' : ''}${e.pct.toFixed(1)}%)`;
+            }
             const v = ctx.parsed.y;
             if (v == null || Number.isNaN(v)) return `${ctx.dataset.label}: —`;
             let out = `${ctx.dataset.label}: ${percentAxis ? Number(v).toFixed(dp) + '%' : fmtNum(v, dp) + unit}`;
@@ -871,7 +879,8 @@ function detectBigMoves(labels, data, maxN = 4) {
   if (abs.length < 12) return [];
   const med = abs[Math.floor(abs.length / 2)] || 0;
   const p95 = abs[Math.min(abs.length - 1, Math.floor(abs.length * 0.95))] || med;
-  const thresh = Math.max(med * 2.5, p95);            // clearly above the market's typical swing
+  let thresh = Math.max(med * 2.5, p95);            // clearly above the market's typical swing
+  if (!(thresh > 0)) { const nz = abs.find((x) => x > 0); thresh = nz != null ? nz : Infinity; }   // stepped series (e.g. a policy rate): any change counts
   const idxs = [];
   for (let i = 0; i < rets.length; i++) if (rets[i] != null && Math.abs(rets[i]) >= thresh) idxs.push(i + 1);
   idxs.sort((i, j) => Math.abs(rets[j - 1]) - Math.abs(rets[i - 1]));
@@ -901,36 +910,48 @@ async function chartMoveMarkers(market, labels, seriesList) {
 }
 function renderChartEvents(ev, sel = '#chart-events') {
   const el = $(sel); if (!el) return;
-  const tip = $('chart-tip'); if (tip) tip.hidden = true;
   if (!ev || !ev.length) { el.innerHTML = ''; return; }
-  el.innerHTML = `<span class="dimtext">big moves &amp; the news behind them:</span> ` + ev.map((e) => { const t = String(e.title); const short = t.length > 72 ? t.slice(0, 71) + '…' : t; return `<a class="ce" href="${e.url}" target="_blank" rel="noopener noreferrer" title="${t.replace(/"/g, '&quot;')}"><span class="ce-dot" style="background:${e.color}"></span>${e.date.slice(5)} ${e.pct >= 0 ? '▲ +' : '▼ '}${e.pct.toFixed(1)}% · ${short} <span class="dimtext">(${e.source})</span></a>`; }).join('');
+  el.innerHTML = `<span class="dimtext">big moves on this chart — hover a marker for the headline, or open the source:</span> ` + ev.map((e) => { const t = String(e.title); const short = t.length > 72 ? t.slice(0, 71) + '…' : t; return `<a class="ce" href="${e.url}" target="_blank" rel="noopener noreferrer" title="${t.replace(/"/g, '&quot;')}"><span class="ce-dot" style="background:${e.color}"></span>${e.date.slice(5)} ${e.pct >= 0 ? '▲ +' : '▼ '}${e.pct.toFixed(1)}% · ${short} <span class="dimtext">(${e.source})</span></a>`; }).join('');
 }
-// Shared by every chart: detect its big moves, attach the trusted news, wire the hover tooltip
-// (a body-level element, positioned by the mouse) and render the chip list under the chart.
+// Shared by every chart: detect its big moves, attach the trusted news (as a line INSIDE the
+// normal tooltip) and render the clickable chip list under the chart.
 async function attachMarkers(chart, newsId, labels, seriesList, chipsSel) {
   if (!chart) return;
   // Race guard: if the user switches segment/country/metric before this resolves, a newer call
   // bumps $mseq and we drop the stale result (otherwise old headlines linger on the new chart).
   const seq = (chart.$mseq || 0) + 1; chart.$mseq = seq;
   const chips = $(chipsSel); if (chips) chips.innerHTML = '';
-  const tip = $('chart-tip'); if (tip) tip.hidden = true;
   const ev = await chartMoveMarkers(newsId, labels, seriesList).catch(() => []);
   if (chart.$mseq !== seq) return;
   chart.$events = ev;
-  chart.options.onHover = (evt, _els, c) => {
-    if (!tip) return;
-    let hit = null;
-    for (const m of (c.$events || [])) { const mx = c.scales.x.getPixelForValue(m.idx); if (Math.abs(mx - evt.x) <= 7) { hit = m; break; } }
-    if (!hit) { tip.hidden = true; return; }
-    tip.innerHTML = `<b>${hit.date}</b> · <span class="${hit.pct >= 0 ? 'pos' : 'neg'}">${hit.pct >= 0 ? '+' : ''}${hit.pct.toFixed(1)}%</span><div class="tip-t">${hit.title}</div><div class="dimtext">${hit.source}</div>`;
-    tip.hidden = false;
-    const e = evt.native || {};
-    tip.style.left = Math.max(6, Math.min(window.innerWidth - 260, (e.clientX || 0) + 12)) + 'px';
-    tip.style.top = Math.max(6, (e.clientY || 0) + 12) + 'px';
-  };
-  chart.options.onLeave = () => { if (tip) tip.hidden = true; };
+  applyNewsDataset(chart, ev);
   renderChartEvents(ev, chipsSel);
   chart.update('none');
+}
+// Put the news INSIDE the normal Chart.js tooltip: an invisible dataset with a point at each big
+// move, whose tooltip line is the headline. Chart.js handles the hover + hiding (no floating card).
+function seriesValueAt(data, i) {
+  if (data && data[i] != null) return data[i];
+  for (let j = i - 1; j >= 0; j--) if (data[j] != null) return data[j];
+  for (let j = i + 1; j < (data ? data.length : 0); j++) if (data[j] != null) return data[j];
+  return null;
+}
+function applyNewsDataset(chart, ev) {
+  if (!chart || !chart.data) return;
+  chart.data.datasets = (chart.data.datasets || []).filter((d) => !d.$news);
+  if (!ev || !ev.length) return;
+  const labels = chart.data.labels || [];
+  const primary = (chart.data.datasets[0] && chart.data.datasets[0].data) || [];
+  if (!primary.some((x) => x != null)) return;
+  const byIdx = {}; const data = labels.map(() => null);
+  for (const e of ev) {
+    if (e.idx < 0 || e.idx >= labels.length) continue;
+    byIdx[e.idx] = e;
+    const v = seriesValueAt(primary, e.idx);
+    data[e.idx] = v == null ? 0 : v;
+  }
+  if (!Object.keys(byIdx).length) return;
+  chart.data.datasets.push({ label: 'news', data, borderColor: 'transparent', backgroundColor: 'transparent', borderWidth: 0, pointRadius: 0, pointHitRadius: 16, showLine: false, spanGaps: true, fill: false, $news: byIdx });
 }
 
 // ---------------------------------------------------------------------------
@@ -1644,6 +1665,7 @@ function renderPolicyChart(policy, policyNote) {
   if (note) note.textContent = `${policy.latest.value}% · as of ${policy.latest.date}`;
   const data = { labels: policy.history.map((h) => h.date), datasets: [{ label: 'policy rate', data: policy.history.map((h) => h.value), borderColor: CT.c2, backgroundColor: CT.c2 + '22', borderWidth: 2, pointRadius: 0, stepped: true, fill: false }] };
   policyChart = mountChart('policy-chart', data, baseOptions({ dp: 2, percentAxis: true, legend: false }));
+  attachMarkers(policyChart, macroCountry, data.labels, [data.datasets[0].data], '#policy-events');
 }
 // CPI — annual inflation % per country (World Bank), hover shows year + %.
 let cpiChart = null;
@@ -1715,6 +1737,7 @@ function renderUsJp(us, jp) {
   const datasets = [line('US 10-yr', usArr, CT.c1), line('Japan 10-yr', jpArr, CT.c4)];
   const chartData = { labels: dates, datasets };
   usjpChart = mountChart('usjp-chart', chartData, baseOptions({ dp: 2, percentAxis: true }));
+  attachMarkers(usjpChart, macroCountry === 'jp' ? 'jp' : 'us', dates, [usArr, jpArr], '#usjp-events');
 }
 async function loadUsJp() {
   if (!$('usjp-chart')) return;
