@@ -5,7 +5,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { execFile } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { sgn, businessDaysSince, inBox, haversineNm, horizonDeltas, isoWeek, monthly, pctOver, percentile, realizedVol, computeCracks, backAdjust, pearson, logReturns, curveTightness, inventoryTightness, weightedScore, seasonalGrade, seasonalAhead, contractMonthsBetween, rangeExtremity, trendExtremity, stretchScore } from './src/lib.js';
+import { sgn, businessDaysSince, inBox, haversineNm, horizonDeltas, isoWeek, monthly, pctOver, percentile, realizedVol, computeCracks, backAdjust, pearson, logReturns, curveTightness, inventoryTightness, weightedScore, seasonalGrade, seasonalAhead, contractMonthsBetween, rangeExtremity, trendExtremity, stretchScore, attributeMoves } from './src/lib.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC = path.join(__dirname, 'public');
@@ -1130,6 +1130,8 @@ async function getMarketRead(id) {
       { key: 'trend3m', label: '3-mo move', weight: 0.15, score: trendExtremity(values, 63) },
       { key: 'vol', label: 'volatility', weight: 0.2, score: volPctile == null ? null : Math.round((Math.max(0, volPctile - 50) / 50) * 100) },
     ];
+    // Past-year move + cited news drivers (attribution).
+    read.attribution = await getAttribution(id).catch(() => null);
     const takes = [];
     if (read.perf.y1 != null) takes.push(`${read.label} is <b>${read.perf.y1 >= 0 ? 'up' : 'down'} ${Math.abs(read.perf.y1).toFixed(0)}%</b> over the last year${read.perf.m6 != null ? ` (6m ${read.perf.m6 >= 0 ? '+' : ''}${read.perf.m6.toFixed(0)}%)` : ''}.`);
     if (read.range.pos != null) takes.push(`It sits at <b>${read.range.pos.toFixed(0)}/100</b> of its 2-year range — ${read.range.pos >= 70 ? 'near the top' : read.range.pos <= 30 ? 'near the bottom' : 'mid-range'}.`);
@@ -1480,18 +1482,21 @@ const EVENT_RULES = [
   { re: /\b(drought|heatwave|heat wave|dry spell|water short)\b/i, kind: 'Drought', effect: 'up', weight: 3, chain: 'Drought cuts yields and output — tighter supply, price-positive; hurts processors and consumers.' },
   { re: /\b(frost|freeze|freezing)\b/i, kind: 'Frost / freeze', effect: 'up', weight: 3, chain: 'Frost damages crops (coffee, citrus, sugar) — supply risk, price-positive.' },
   { re: /\b(el ni[ñn]o|la ni[ñn]a)\b/i, kind: 'El Niño / La Niña', effect: 'up', weight: 3, chain: 'El Niño/La Niña shifts rainfall — a classic risk to palm oil, sugar, coffee, cocoa and grains; supply risk.' },
-  { re: /\b(strike|walkout|labou?r action|protest)\b/i, kind: 'Strike / labour', effect: 'up', weight: 3, chain: 'Strikes at mines, ports or refineries cut supply — price-positive.' },
-  { re: /\b(sanction|embargo|export (ban|curb|levy|tax|quota)|blockade|ban on exports)\b/i, kind: 'Export curbs / sanctions', effect: 'up', weight: 3, chain: 'Export restrictions tighten supply (e.g. palm-oil levies, grain bans, metal sanctions) — price-positive.' },
-  { re: /\b(force majeure|outage|shut ?down|curtail|closure|halt(ed|s)?|suspend)\b/i, kind: 'Supply outage', effect: 'up', weight: 2, chain: 'An outage or shutdown removes supply — price-positive for the commodity.' },
-  { re: /\b(fire|explosion|blast|leak at)\b/i, kind: 'Plant / refinery incident', effect: 'up', weight: 2, chain: 'Fires or explosions at plants/refineries cut supply and widen crack spreads.' },
+  // Geopolitics / chokepoints BEFORE "strike" — else a military "drone strike" is mis-tagged as a labour strike.
   { re: /\b(war|conflict|attack|drone|missile|escalat|tension)\b/i, kind: 'Geopolitics', effect: 'up', weight: 3, chain: 'Conflict lifts supply/freight risk (and safe-haven demand for gold) — usually price-positive for energy and metals.' },
+  { re: /\b(hormuz|red sea|suez|bab el|chokepoint|strait of hormuz)\b/i, kind: 'Shipping / chokepoint', effect: 'up', weight: 3, chain: 'A chokepoint or shipping disruption lifts freight and supply risk — price-positive for oil, products and gas.' },
+  { re: /\b(opec\+?[^.]{0,40}(cut|reduce|hold|extend)|production cut|output cut|supply cut)\b/i, kind: 'OPEC+ supply policy', effect: 'up', weight: 2, chain: 'OPEC+ output cuts tighten supply — price-positive for crude and products.' },
+  { re: /\b(walkout|labou?r (action|dispute|unrest)|workers?'? strike|strike action|mine strike|port strike|protest)\b/i, kind: 'Strike / labour', effect: 'up', weight: 3, chain: 'Strikes at mines, ports or refineries cut supply — price-positive.' },
+  { re: /\b(sanction|embargo|export (ban|curb|levy|tax|quota)|blockade|ban on exports)\b/i, kind: 'Export curbs / sanctions', effect: 'up', weight: 3, chain: 'Export restrictions tighten supply (e.g. palm-oil levies, grain bans, metal sanctions) — price-positive.' },
+  { re: /\b(force majeure|outage|curtail(ed|ment)?|closure|halt(ed|s)?|suspend(ed|s)?)\b/i, kind: 'Supply outage', effect: 'up', weight: 2, chain: 'An outage or shutdown removes supply — price-positive for the commodity.' },
+  { re: /\b(fire|explosion|blast|leak at)\b/i, kind: 'Plant / refinery incident', effect: 'up', weight: 2, chain: 'Fires or explosions at plants/refineries cut supply and widen crack spreads.' },
   { re: /\b(record (crop|harvest|output|production)|bumper|surplus|glut|oversupply|abundant)\b/i, kind: 'Ample supply', effect: 'down', weight: 2, chain: 'Record output or surplus adds supply — price-negative, pressures producers.' },
   { re: /\b(demand (slowdown|slump|weak|fall)|recession|slowdown|weaker demand)\b/i, kind: 'Weak demand', effect: 'down', weight: 2, chain: 'Weak demand softens prices — bearish for the commodity.' },
   { re: /\b(disease|blight|rust|avian|bird flu|swine fever|pest)\b/i, kind: 'Crop disease', effect: 'up', weight: 2, chain: 'Disease hits crops or herds — reduces supply, price-positive.' },
   { re: /\b(inventor(y|ies) (build|rise|jump)|stocks? (build|rise|jump)|build in (crude|stocks))\b/i, kind: 'Inventory build', effect: 'down', weight: 2, chain: 'Rising inventories signal ample supply — price-negative.' },
 ];
 const SCAN_QUERIES = {
-  crude: '(oil OR refinery OR "oil field" OR OPEC) (hurricane OR outage OR sanctions OR "force majeure" OR attack OR strike)',
+  crude: '(oil OR refinery OR "oil field" OR OPEC OR "crude oil") (hurricane OR outage OR sanctions OR "force majeure" OR attack OR strike OR hormuz OR "red sea" OR tanker OR "supply cut")',
   refined: '(refinery OR diesel OR gasoline OR "jet fuel") (outage OR fire OR hurricane OR strike OR "force majeure")',
   gas: '("natural gas" OR LNG) (outage OR hurricane OR freeze OR pipeline OR strike)',
   precious: '(gold OR silver OR "gold mine" OR platinum) (strike OR sanctions OR shutdown OR "central bank")',
@@ -1509,6 +1514,33 @@ async function getFundamentals(id) {
       for (const r of EVENT_RULES) { if (r.re.test(it.title)) { hits.push({ ...it, kind: r.kind, effect: r.effect, chain: r.chain }); break; } }
     }
     return { id, label: newsLabel(id), items: hits, scanned: items.length };
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Attribution — explain the PAST YEAR's move with cited, trusted news. Pulls a year of
+// coverage for the segment, tags it with the event rules, ranks trusted sources, and picks
+// the kinds consistent with the direction of the move. A heuristic, clearly labelled.
+// ---------------------------------------------------------------------------
+async function getAttribution(id) {
+  const m = MARKETS.find((x) => x.id === id);
+  const primary = (m && BENCHMARKS.find((b) => b.id === m.primary)) || BENCHMARKS.find((b) => b.id === id);
+  if (!primary) return { id, error: 'unknown segment' };
+  return cached('attr:' + id, 3600e3, async () => {
+    let values = [];
+    try { const pm = primary.paper ? (await yc(primary.paper, '2y')).series : {}; values = Object.keys(pm).sort().map((d) => pm[d]); } catch {}
+    const moves = { y1: pctOver(values, 252), m6: pctOver(values, 126), m1: pctOver(values, 21) };
+    const q = SCAN_QUERIES[id] || NEWS_QUERIES[id] || primary.label;
+    let items = [];
+    try { items = await fetchGoogleNews(q + ' when:1y', 60); } catch {}
+    const events = [];
+    for (const it of items) {
+      for (const r of EVENT_RULES) {
+        if (r.re.test(it.title)) { events.push({ kind: r.kind, effect: r.effect, weight: r.weight, date: it.date, source: it.source, title: it.title, url: it.url, tier1: TIER1_RE.test(it.source || '') }); break; }
+      }
+    }
+    const attr = attributeMoves(moves, events);
+    return { id, label: primary.label, y1: moves.y1, m6: moves.m6, m1: moves.m1, ...attr, scanned: items.length, tagged: events.length };
   });
 }
 
@@ -2102,6 +2134,11 @@ const server = http.createServer(async (req, res) => {
       const id = url.searchParams.get('id');
       if (!MARKETS.some((x) => x.id === id)) return sendJSON(res, 404, { error: 'unknown market' });
       return sendJSON(res, 200, await getMarketRead(id).catch((e) => ({ error: String(e.message) })));
+    }
+    if (url.pathname === '/api/attribution') {
+      const id = url.searchParams.get('id');
+      if (!MARKETS.some((x) => x.id === id)) return sendJSON(res, 404, { error: 'unknown segment' });
+      return sendJSON(res, 200, await getAttribution(id).catch((e) => ({ error: String(e.message) })));
     }
     if (url.pathname === '/api/news') {
       const id = url.searchParams.get('id');

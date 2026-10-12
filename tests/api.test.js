@@ -219,6 +219,17 @@ test('/api/yields returns short + long bond yields (US daily, Japan monthly)', a
   assert.equal((await fetch(`http://localhost:${PORT}/api/yields?id=nope`)).status, 404);
 });
 
+test('/api/attribution explains the past year with cited news drivers', async () => {
+  const r = await fetch(`http://localhost:${PORT}/api/attribution?id=crude`);
+  assert.equal(r.status, 200);
+  const j = await r.json();
+  assert.equal(j.error, undefined, JSON.stringify(j).slice(0, 120));
+  assert.ok(typeof j.y1 === 'number' || j.y1 === null);
+  assert.ok(Array.isArray(j.drivers));
+  for (const d of j.drivers) assert.ok(d.kind && d.sample && d.sample.url, 'each driver cites a source');
+  assert.equal((await fetch(`http://localhost:${PORT}/api/attribution?id=nope`)).status, 404);
+});
+
 test('/api/termstructure returns a curve, 404 for unknown', async () => {
   const r = await fetch(`http://localhost:${PORT}/api/termstructure?id=wti`);
   assert.equal(r.status, 200);

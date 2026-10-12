@@ -367,11 +367,23 @@ function renderAdaptive() {
   const next = [...(v.catalysts || []).map((c) => `Watch: <b>${c}</b>`), ...(v.watch || [])];
   const chips = [...(v.tickersUp || []).map((t) => `<span class="chip up">▲ ${t}</span>`), ...(v.tickersDown || []).map((t) => `<span class="chip down">▼ ${t}</span>`)].join('');
   const kp = (r.takeaways || []).length ? r.takeaways.map((t) => `<li>${t}</li>`).join('') : '<li class="dimtext">No key points yet.</li>';
+  // Past-year attribution: the move + the news kinds most consistent with it (cited).
+  const at = r.attribution;
+  let attrHtml = '';
+  if (at && !at.error) {
+    if (at.drivers && at.drivers.length) {
+      const lead = at.y1 == null ? 'Past-year news drivers:' : `Over the past year it is <b>${pctf(at.y1)}</b> — the news most consistent with that move:`;
+      const items = at.drivers.map((d) => { const s = d.sample || {}; return `<li><b>${d.kind}</b> <span class="dimtext">(${d.count} headline${d.count > 1 ? 's' : ''})</span> — <a href="${s.url}" target="_blank" rel="noopener noreferrer">${s.title || ''}</a> <span class="dimtext">${s.source || ''}${s.date ? ' · ' + String(s.date).slice(0, 10) : ''}</span></li>`; }).join('');
+      attrHtml = `<div class="attr"><div class="attr-lead">${lead}</div><ul class="attr-list">${items}</ul><div class="dimtext attr-caveat">News-implied, not a verdict — links open at the source.</div></div>`;
+    } else {
+      attrHtml = '<div class="attr dimtext">No single clear news driver found over the past year — see 📰 IN THE NEWS.</div>';
+    }
+  }
   $('bottomline').innerHTML = `<div class="bl">
       <div class="bl-score ${kl}"><div class="bl-num">${score == null ? '—' : score}<span>/100</span></div><div class="bl-lbl">PRICE STRETCH<div class="bl-tag">${v.label}</div></div>
         <div class="bl-phys"><div class="bl-phys-k">PHYSICAL TIGHTNESS</div><div class="bl-phys-v ${phCls}">${ph.score == null ? 'no free data' : `${ph.score}<span>/100</span> ${ph.label}`}</div></div>
       </div>
-      <div class="bl-sec"><div class="gtitle">WHAT HAPPENED</div><p>${v.meaning} ${(v.notes || []).join(' ')}</p></div>
+      <div class="bl-sec"><div class="gtitle">WHAT HAPPENED</div><p>${v.meaning} ${(v.notes || []).join(' ')}</p>${attrHtml}</div>
       <div class="bl-sec"><div class="gtitle">KEY POINTS</div><ul>${kp}</ul></div>
       <div class="bl-sec"><div class="gtitle">WHAT'S NEXT</div><ul>${next.map((w) => `<li>${w}</li>`).join('')}</ul></div>
     </div>

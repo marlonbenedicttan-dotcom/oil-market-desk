@@ -367,6 +367,13 @@ footer li { margin-bottom: 2px; }
 .bl-sec { padding: 14px 16px; border-right: 1px solid var(--line); }
 .bl-ti { padding: 14px 16px; border-top: 1px solid var(--line); }
 .bl-ti p { margin: 0 0 6px; font-size: 12.5px; color: #c9d4df; line-height: 1.55; }
+/* Past-year attribution (news drivers) inside WHAT HAPPENED */
+.attr { margin-top: 8px; }
+.attr-lead { font-size: 12px; color: #c9d4df; margin-bottom: 4px; line-height: 1.5; }
+.attr-list { margin: 0; padding-left: 16px; }
+.attr-list li { font-size: 12px; color: #c9d4df; margin-bottom: 5px; line-height: 1.45; }
+.attr-list a { color: var(--amber2); }
+.attr-caveat { margin-top: 4px; }
 .bl-sec:last-child { border-right: 0; }
 .bl-sec p { margin: 0; font-size: 12.5px; color: #c9d4df; line-height: 1.55; }
 .bl-sec ul { margin: 0; padding-left: 16px; } .bl-sec li { font-size: 12px; color: #c9d4df; margin-bottom: 5px; }

@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { sgn, inBox, haversineNm, isoWeek, monthly, pctOver, percentile, realizedVol, computeCracks, backAdjust, pearson, logReturns, horizonDeltas, curveTightness, inventoryTightness, weightedScore, seasonalGrade, seasonalAhead, contractMonthsBetween, rangeExtremity, trendExtremity, stretchScore } from '../src/lib.js';
+import { sgn, inBox, haversineNm, isoWeek, monthly, pctOver, percentile, realizedVol, computeCracks, backAdjust, pearson, logReturns, horizonDeltas, curveTightness, inventoryTightness, weightedScore, seasonalGrade, seasonalAhead, contractMonthsBetween, rangeExtremity, trendExtremity, stretchScore, attributeMoves } from '../src/lib.js';
 
 test('sgn formats with sign', () => {
   assert.equal(sgn(4.39), '+4.39');
@@ -159,6 +159,24 @@ test('stretchScore does not let one extreme be diluted by the others', () => {
   assert.equal(s.label, 'STRETCHED');
   assert.equal(s.parts.length, 2);
   assert.equal(stretchScore([]).score, null);
+});
+
+test('attributeMoves picks the news kinds consistent with the move direction', () => {
+  const events = [
+    { kind: 'Geopolitics', effect: 'up', weight: 3, tier1: true, title: 'Hormuz strike', source: 'Reuters', url: 'u1', date: '2026-06-01' },
+    { kind: 'Geopolitics', effect: 'up', weight: 3, title: 'Tension rises', source: 'X', url: 'u2', date: '2026-02-01' },
+    { kind: 'Ample supply', effect: 'down', weight: 2, title: 'Record output', source: 'Y', url: 'u3', date: '2026-03-01' },
+  ];
+  const up = attributeMoves({ y1: 47, m6: -8 }, events);
+  assert.equal(up.direction, 'up');
+  assert.equal(up.drivers[0].kind, 'Geopolitics');            // aligns with the up move
+  assert.equal(up.drivers[0].count, 2);
+  assert.equal(up.drivers[0].sample.title, 'Hormuz strike');  // tier-1 sample wins
+  const down = attributeMoves({ y1: -30, m6: -5 }, events);
+  assert.equal(down.direction, 'down');
+  assert.equal(down.drivers[0].kind, 'Ample supply');         // aligns with the down move
+  assert.equal(attributeMoves({ y1: 2, m6: 1 }, events).direction, 'up'); // small year move -> uses 6m sign
+  assert.deepEqual(attributeMoves({}, []).drivers, []);
 });
 
 test('computeCracks builds refining margins', () => {

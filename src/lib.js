@@ -189,6 +189,32 @@ export function stretchScore(parts) {
   return { score, label, parts: use.map((p) => ({ key: p.key, label: p.label, score: p.score })) };
 }
 
+// Attribute a price move to news. moves = { y1, m6, m1 } (percent). events = tagged news
+// [{ kind, effect:'up'|'down'|'watch', weight, date, source, title, url, tier1 }]. Picks the
+// event KINDS most consistent with the direction of the move (a year UP is explained by
+// bullish news, a year DOWN by bearish news) and returns the top few, each with a
+// representative headline. A heuristic — a prompt to investigate, not a verdict.
+export function attributeMoves(moves, events) {
+  const list = events || [];
+  const mv = moves || {};
+  const dir = mv.y1 != null && Math.abs(mv.y1) >= 5 ? Math.sign(mv.y1) : mv.m6 != null ? Math.sign(mv.m6) : 0;
+  const want = dir > 0 ? 'up' : dir < 0 ? 'down' : null;
+  const groups = {};
+  for (const e of list) {
+    if (!e || !e.kind) continue;
+    const align = want == null ? 0.6 : e.effect === want ? 1 : e.effect === 'up' || e.effect === 'down' ? 0.2 : 0.6;
+    const w = (e.weight || 1) * align * (e.tier1 ? 1.3 : 1);
+    if (w <= 0) continue;
+    const g = groups[e.kind] || (groups[e.kind] = { kind: e.kind, count: 0, weight: 0, sample: null, _rank: -1 });
+    g.count += 1; g.weight += w;
+    const rank = (e.tier1 ? 2 : 0) + (e.weight || 1);
+    if (rank > g._rank) { g._rank = rank; g.sample = { title: e.title, source: e.source, url: e.url, date: e.date }; }
+  }
+  const drivers = Object.values(groups).sort((a, b) => b.weight - a.weight).slice(0, 3)
+    .map((g) => ({ kind: g.kind, count: g.count, weight: +g.weight.toFixed(1), sample: g.sample }));
+  return { direction: dir > 0 ? 'up' : dir < 0 ? 'down' : null, drivers };
+}
+
 export function computeCracks(m) {
   const by = Object.fromEntries(m.benchmarks.map((b) => [b.id, b]));
   const w = by.wti, rb = by.rbob, ho = by.ulsd, jet = by.jet, G = 42;
