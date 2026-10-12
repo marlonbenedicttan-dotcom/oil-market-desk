@@ -52,6 +52,12 @@ const BENCHMARKS = [
   { id: 'cattle',  label: 'Live Cattle',   group: 'Livestock', unit: '¢/lb', dp: 2, paper: 'LE=F', physical: null },
   { id: 'hogs',    label: 'Lean Hogs',     group: 'Livestock', unit: '¢/lb', dp: 2, paper: 'HE=F', physical: null },
   { id: 'feeder',  label: 'Feeder Cattle', group: 'Livestock', unit: '¢/lb', dp: 2, paper: 'GF=F', physical: null },
+  // ---- Dairy (CME futures only — no free spot/inventories) ----
+  { id: 'milk',   label: 'Class III Milk',  group: 'Dairy', unit: '$/cwt', dp: 2, paper: 'DC=F',  physical: null },
+  { id: 'butter', label: 'Butter',          group: 'Dairy', unit: '¢/lb',  dp: 1, paper: 'CB=F',  physical: null },
+  { id: 'nfdm',   label: 'Nonfat Dry Milk', group: 'Dairy', unit: '¢/lb',  dp: 1, paper: 'GNF=F', physical: null },
+  { id: 'cheese', label: 'Cheddar Cheese',  group: 'Dairy', unit: '$/lb',  dp: 3, paper: 'CSC=F', physical: null },
+  { id: 'whey',   label: 'Dry Whey',        group: 'Dairy', unit: '¢/lb',  dp: 1, paper: 'DY=F',  physical: null },
 ];
 
 // ---------------------------------------------------------------------------
@@ -70,6 +76,7 @@ const MARKETS = [
   { id: 'grains',     label: 'Grains',            group: 'Agriculture', primary: 'corn',   components: ['corn', 'wheat', 'soybean'],                 hasBasis: false, hasInventories: false, hasShips: false },
   { id: 'softs',      label: 'Softs',             group: 'Agriculture', primary: 'sugar',  components: ['sugar', 'coffee', 'cocoa', 'cotton', 'palm'], hasBasis: false, hasInventories: false, hasShips: false },
   { id: 'livestock',  label: 'Livestock',         group: 'Livestock',   primary: 'cattle', components: ['cattle', 'hogs', 'feeder'],                hasBasis: false, hasInventories: false, hasShips: false },
+  { id: 'dairy',      label: 'Dairy',             group: 'Dairy',       primary: 'milk',   components: ['milk', 'butter', 'nfdm', 'cheese', 'whey'], hasBasis: false, hasInventories: false, hasShips: false },
 ];
 function getMarkets() {
   return MARKETS.map((m) => ({
@@ -479,6 +486,7 @@ const COT_NAMES = {
   corn: 'CORN', wheat: 'WHEAT-SRW', soybean: 'SOYBEANS',
   sugar: 'SUGAR NO. 11', coffee: 'COFFEE C', cocoa: 'COCOA', cotton: 'COTTON NO. 2',
   palm: 'MALAYSIAN PALM OIL CALENDAR SW',
+  milk: 'MILK, Class III', butter: 'BUTTER (CASH SETTLED)', cheese: 'CHEESE (CASH-SETTLED)', nfdm: 'NON FAT DRY MILK', whey: 'DRY WHEY',
 };
 async function getPositioning(id = 'wti') {
   const name = COT_NAMES[id];
@@ -934,6 +942,8 @@ const CURVE_SPEC = {
   platinum: { root: 'PL', exch: 'CMX' }, palladium: { root: 'PA', exch: 'CMX' },
   corn: { root: 'ZC', exch: 'CBT' }, wheat: { root: 'ZW', exch: 'CBT' }, soybean: { root: 'ZS', exch: 'CBT' },
   coffee: { root: 'KC', exch: 'NYB' }, sugar: { root: 'SB', exch: 'NYB' }, cocoa: { root: 'CC', exch: 'NYB' }, cotton: { root: 'CT', exch: 'NYB' },
+  // CME dairy complex (all quoted as individual contract months on Yahoo)
+  milk: { root: 'DC', exch: 'CME' }, butter: { root: 'CB', exch: 'CME' }, nfdm: { root: 'GNF', exch: 'CME' }, cheese: { root: 'CSC', exch: 'CME' }, whey: { root: 'DY', exch: 'CME' },
 };
 async function curveFor(id) {
   const spec = CURVE_SPEC[id];
@@ -1026,6 +1036,10 @@ const MARKET_CONTENT = {
     sectorsUp: ['Protein producers & processors', 'Farm equipment & feed'], sectorsDown: ['Restaurants & food makers', 'Consumers'],
     tickersUp: ['TSN', 'JBS', 'PPC', 'SEB', 'ADM'], tickersDown: ['MCD', 'CMG', 'YUM'],
     ideas: 'Tight cattle & hog supply lifts protein producers, processors and feed/equipment names, and raises input costs for restaurants, food makers and consumers — a protein-inflation read.' },
+  dairy:      { tightQ: 'IS DAIRY TIGHT?', catalysts: ['feed costs (corn, soy, alfalfa)', 'USDA milk production & the cow herd', 'Global Dairy Trade (GDT) auctions', 'export demand (China, Mexico, SE Asia)'], watch: ['The USDA milk-production report & cow numbers', 'Global Dairy Trade auction results'],
+    sectorsUp: ['Dairy processors & co-ops', 'Farm equipment & feed'], sectorsDown: ['Food & beverage makers', 'Restaurants & consumers'],
+    tickersUp: ['SAP.TO', 'BN.PA', 'GL9.IR', 'ADM', 'BG'], tickersDown: ['HSY', 'MDLZ', 'KHC', 'SBUX', 'CMG'],
+    ideas: 'Tight milk — a small herd and firm exports — lifts dairy processors and feed suppliers and raises input costs for food makers, restaurants and consumers: a food-inflation read. The tradeable complex is milk, cheese, butter and milk powder.' },
 };
 function rollingVolPctile(values, win = 30) {
   const r = [];
@@ -1190,6 +1204,7 @@ const NEWS_QUERIES = {
   grains: 'wheat OR corn OR soybeans OR WASDE',
   softs: 'sugar OR coffee OR cocoa OR cotton OR "palm oil"',
   livestock: 'cattle OR hogs OR "beef prices" OR "pork prices"',
+  dairy: 'milk OR cheese OR butter OR "dairy prices" OR "milk powder"',
   // macro regions
   us: 'US economy OR "Federal Reserve" OR US inflation OR "interest rates"',
   eu: '"euro area" OR ECB OR "eurozone economy" OR European inflation',
@@ -1538,6 +1553,7 @@ const SCAN_QUERIES = {
   grains: '(wheat OR corn OR soybeans OR grain) (drought OR flood OR frost OR "export ban" OR harvest OR strike)',
   softs: '(sugar OR coffee OR cocoa OR cotton OR "palm oil") (hurricane OR drought OR "El Nino" OR flood OR frost OR disease OR "export ban" OR harvest)',
   livestock: '(cattle OR hogs OR beef OR pork) (drought OR disease OR "bird flu" OR "swine fever" OR "export ban" OR strike OR recall OR herd)',
+  dairy: '(milk OR dairy OR cheese OR butter) (drought OR disease OR "bird flu" OR "export ban" OR strike OR recall OR cull OR feed)',
 };
 async function getFundamentals(id) {
   const q = SCAN_QUERIES[id];
