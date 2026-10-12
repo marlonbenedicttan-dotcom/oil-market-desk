@@ -59,18 +59,19 @@ const ltCache = {};
 
 const GLOSSARY = `
   <dl>
-    <dt>Futures ("paper")</dt><dd>A contract to buy oil later — a financial bet, not real barrels.</dd>
-    <dt>Real barrels ("physical")</dt><dd>The going rate to actually deliver oil now.</dd>
-    <dt>The gap</dt><dd>Real price − futures price. Positive = real barrels cost <b>more</b> than futures → market is <b>tight</b>. Negative = the opposite (plenty of oil).</dd>
-    <dt>Pricier now than later</dt><dd>Called “backwardation” — a sign oil is scarce today. The opposite means well supplied.</dd>
-    <dt>Refining profit</dt><dd>What a refiner earns turning crude into fuel (a “crack spread”). Higher = better for refiners.</dd>
-    <dt>Brent vs WTI</dt><dd>The two main oil types. A wide gap means seaborne Brent is in demand for export.</dd>
-    <dt>Prices for later months</dt><dd>The list of prices for each future month — the shape tells you if oil is tight or well supplied.</dd>
-    <dt>% change</dt><dd>How much a price moved over the chosen window, not just today.</dd>
-    <dt>How extreme</dt><dd>Where today’s number sits vs the last 2 years (90+/100 = near a record).</dd>
-    <dt>Stockpiles</dt><dd>Weekly US oil inventories. A surprise <b>drop</b> is bullish for oil; a surprise <b>build</b> is bearish.</dd>
-    <dt>Oil-field flames</dt><dd>Satellites see the gas burned off at oil fields — fewer flames = fields shutting down.</dd>
+    <dt>Prices</dt><dd>Live futures for every commodity. Energy also shows the <b>real</b> (spot) price.</dd>
+    <dt>Premium / discount</dt><dd>How today's price compares with its <b>own history</b> — a big premium means it's near the top of its usual range.</dd>
+    <dt>Supply &amp; demand</dt><dd><b>Undersupplied</b> (tight) → <b>oversupplied</b> (ample). Built from the curve, the real-vs-futures gap and stocks where we have them; “curve only” means it is market-implied.</dd>
+    <dt>The curve</dt><dd>Prices for each future month. Pricier <b>now</b> than later (“backwardation”) = tight; the reverse = well supplied.</dd>
+    <dt>Refining profit (crack)</dt><dd>What a refiner earns turning crude into fuel. Higher = better for refiners.</dd>
+    <dt>The gap (basis)</dt><dd>Real (spot) price − futures. Positive = real barrels cost more → <b>tight</b>. Energy only.</dd>
+    <dt>Stockpiles</dt><dd>Weekly US oil &amp; gas inventories (EIA). A surprise <b>draw</b> is bullish; a <b>build</b> is bearish.</dd>
+    <dt>USDA stocks-to-use</dt><dd>Official US grain / dairy / livestock stocks vs consumption; low = tight. Monthly.</dd>
+    <dt>Big-move markers</dt><dd>The dots on a chart mark its <b>biggest moves</b> — hover one for the trusted news behind it.</dd>
+    <dt>% change</dt><dd>The move over the chosen window, not just today.</dd>
+    <dt>Oil-field flames</dt><dd>Satellites see the gas burned off at oil fields; fewer flames = fields shutting down.</dd>
   </dl>`;
+
 
 function showError(msg) { const el = $('error'); el.classList.remove('hidden'); el.textContent = '⚠ ' + msg; }
 async function getJSON(url) { const r = await fetch(url); if (!r.ok) throw new Error(`${url} -> HTTP ${r.status}`); return r.json(); }
@@ -943,7 +944,7 @@ async function chartMoveMarkers(market, labels, seriesList, mode = 'pct', focusI
 }
 function renderChartEvents(ev, sel = '#chart-events') {
   const el = $(sel); if (!el) return;
-  if (!ev || !ev.length) { el.innerHTML = ''; return; }
+  if (!ev || !ev.length) { el.innerHTML = '<span class="dimtext">No big move with a trusted-news match on this chart right now.</span>'; return; }
   el.innerHTML = `<span class="dimtext">big moves on this chart — hover a marker for the headline, or open the source:</span> ` + ev.map((e) => { const t = String(e.title); const short = t.length > 72 ? t.slice(0, 71) + '…' : t; return `<a class="ce" href="${e.url}" target="_blank" rel="noopener noreferrer" title="${t.replace(/"/g, '&quot;')}"><span class="ce-dot" style="background:${e.color}"></span>${e.date.slice(5)} ${e.move >= 0 ? '▲' : '▼'} ${moveText(e)} · ${short} <span class="dimtext">(${e.source})</span></a>`; }).join('');
 }
 // Shared by every chart: detect its big moves, attach the trusted news (as a line INSIDE the
@@ -1103,7 +1104,10 @@ async function reloadHistory() {
   if ($('range') && $('range').value === '6m') renderChart();
 }
 async function loadMarket() {
-  data = await getJSON('/api/market');
+  let d = null;
+  try { d = await getJSON('/api/market'); }
+  catch (e) { console.error('[market]', e.message); if (data && data.benchmarks && data.benchmarks.length) return; throw e; }   // keep the last good board; never blank it on a hiccup
+  data = d;
   renderCards(data); buildMetricOptions(data); buildBpOptions();
   renderMarketState(); renderSnapshot(); setCardsTitle(); renderTicker(data);
   renderWatchlist(); renderHomeAlerts();
@@ -1133,7 +1137,7 @@ function initMap() {
   setTimeout(() => map.invalidateSize(), 200);
 }
 async function loadTankers() {
-  tankerInfo = await getJSON('/api/tankers');
+  try { tankerInfo = await getJSON('/api/tankers'); } catch (e) { console.error('[tankers]', e.message); return; }   // AIS is flaky; keep the last state
   const s = tankerInfo.status;
   const pill = $('ais-status');
   if (!s.enabled) {
@@ -1161,26 +1165,6 @@ async function loadTankers() {
 const pctClass = (p) => (p == null ? '' : p >= 80 ? 'hot' : p <= 20 ? 'cold' : '');
 function ctxRow(k, pct, value) {
   return `<div class="ctx-row"><span class="ctx-k">${k}</span><span class="ctx-bar"><i style="width:${pct == null ? 0 : pct}%"></i></span><span class="ctx-p ${pctClass(pct)}">${pct == null ? '—' : pct.toFixed(0) + '/100'}</span><span class="ctx-v">${value}</span></div>`;
-}
-function renderContext(m, a, macro) {
-  if (!a) { $('context').innerHTML = '<div class="dimtext" style="padding:10px 12px">loading…</div>'; return; }
-  const rows = [];
-  for (const b of m.benchmarks) {
-    const an = a.benchmarks?.[b.id];
-    if (!an || an.basisPct == null) continue;
-    rows.push(ctxRow(`${b.label}: real vs futures`, an.basisPct, `<span class="${cls(b.basis)}">${signed(b.basis, b.dp)}</span>`));
-  }
-  if (a.spread?.pct != null) rows.push(ctxRow('Brent vs WTI (real)', a.spread.pct, signed(a.spread.brentWtiPhysical, 2)));
-  const arb = a.arb ? `<div class="arb">💡 <b>Export read (rough):</b> US crude is ${signed(a.arb.spread, 2)}/bbl cheaper than Brent. Even after an assumed ${a.arb.freight.toFixed(2)}/bbl shipping cost, that’s ${signed(a.arb.net, 2)}/bbl — ${a.arb.open ? 'a wide gap that <b>normally</b> pulls US barrels to Europe' : 'too thin to encourage exports'}. <span class="warn">A gap this wide is unusual — likely inflated by slightly old real-barrel prices, so treat it as a rough guide, not a real trade.</span></div>` : '';
-  const vols = m.benchmarks.map((b) => { const an = a.benchmarks?.[b.id]; return an && an.vol30 != null ? `<span class="choke"><b>${an.vol30.toFixed(1)}%</b> ${b.label.replace(/\s*\(.*\)/, '')}</span>` : ''; }).filter(Boolean).join('');
-  const volStrip = vols ? `<div class="chokes"><div class="chokes-h">HOW JUMPY PRICES HAVE BEEN (last 30 days, yearly pace)</div>${vols}</div>` : '';
-  const qf = data?.quality?.flags || [];
-  const quality = `<div class="qflags"><div class="chokes-h">DATA CHECKS</div>${
-    qf.length ? qf.map((f) => `<div class="qflag ${f.level}">⚠ ${f.text}</div>`).join('')
-      : '<div class="qflag ok">✓ Everything checks out — real prices and futures line up.</div>'}</div>`;
-  const macroItems = (macro?.items || []).map((x) => `<span class="choke"><b class="${cls(x.pct)}">${x.pct != null ? pctf(x.pct) : '—'}</b> ${x.label}</span>`).join('');
-  const macroStrip = macroItems ? `<div class="chokes"><div class="chokes-h">MACRO CONTEXT (oil rarely moves alone)</div>${macroItems}</div>` : '';
-  $('context').innerHTML = rows.join('') + arb + volStrip + macroStrip + quality;
 }
 function renderInventories(d) {
   if (!d || !d.items?.length) { $('inventories').innerHTML = '<div class="dimtext" style="padding:10px 12px">EIA key needed, or no data.</div>'; return; }
@@ -1389,51 +1373,6 @@ function renderAnalogue(a) {
 async function loadAnalogue() {
   try { renderAnalogue(await getJSON('/api/analogue?metric=' + encodeURIComponent($('an-metric').value))); }
   catch (e) { showError(e.message); }
-}
-function renderBottomLine(m, tn, fl, flares, sar) {
-  if (!m || !tn) return;
-  const total = tn.evidence?.length || 1;
-  const stress = fl?.marketStress?.score ?? 0;
-  const gulfDark = (fl?.dark || []).some((n) => /Persian|Hormuz|Oman|Arabian|Red Sea/.test(n));
-  let flareNote = '', flareTight = 0;
-  if (flares?.trend?.length >= 2) {
-    const today = flares.trend[flares.trend.length - 1].count;
-    const prev = flares.trend.slice(0, -1);
-    const avg = prev.reduce((a, b) => a + b.count, 0) / prev.length;
-    const pct = Math.round(((today - avg) / avg) * 100);
-    if (pct <= -15) { flareTight = 8; flareNote = `Oil-field flames are <b>down ${Math.abs(pct)}%</b> — production being shut in.`; }
-    else if (pct >= 15) flareNote = `Oil-field flames are <b>up ${pct}%</b> — production rising.`;
-    else flareNote = `Oil-field flames steady (${today} seen).`;
-  } else if (flares?.total != null) {
-    flareNote = `Satellites see <b>${flares.total}</b> oil-field flames in the Gulf.`;
-  }
-  const score = Math.round(Math.min(100, (tn.tight / total) * 55 + (stress / 3) * 27 + (gulfDark ? 10 : 0) + flareTight));
-  const label = score >= 70 ? 'HIGH' : score >= 40 ? 'ELEVATED' : 'LOW';
-  const by = Object.fromEntries(m.benchmarks.map((b) => [b.id, b]));
-  const tight = (by.brent?.basis ?? 0) > 0;
-  const meaning = `Real barrels are ${tight ? '<b>scarce and pricier than futures</b> (a tight market)' : '<b>plentiful</b> (a well-supplied market)'}, and Gulf shipping is ${gulfDark ? '<b>going dark — ships switching off trackers</b>' : 'flowing normally'}. ${sar?.latest ? `Our last radar look at the Gulf was ${new Date(sar.latest.time).toLocaleDateString()}. ` : ''}${flareNote} ${score >= 70 ? 'Bottom line: the market is pricing a real supply squeeze — expect sharp swings.' : score >= 40 ? 'Some tightness, but not extreme.' : 'No major tightness right now.'}`;
-  const watch = ['<b>Weekly US oil stocks</b> — every Wednesday, 10:30am New York time (the week\u2019s biggest mover)'];
-  if (tight) watch.push('The <b>price gap between this month and next</b> — if it shrinks, tightness is fading');
-  if (gulfDark) watch.push('The <b>next satellite radar pass</b> over the Gulf (Ships tab) — our tracker-independent look');
-  watch.push('Whether ships are <b>avoiding the Red Sea</b> and going around Africa (Ships tab)');
-  if (flares) watch.push('The <b>oil-field flames</b> (Ships tab) — fewer flames = production being cut');
-  const impact = tight || score >= 60
-    ? 'Typically <b>helps</b> oil producers and refiners, and <b>hurts</b> heavy fuel users like airlines and trucking.'
-    : 'Typically <b>eases</b> the squeeze on airlines and trucking, and <b>weighs on</b> producers.';
-  const companies = tight || score >= 60 ? ['COP', 'EOG', 'OXY', 'VLO', 'PSX', 'MPC'] : ['DAL', 'UAL', 'AAL', 'LUV'];
-  $('bottomline').innerHTML = `
-    <div class="bl">
-      <div class="bl-score ${label.toLowerCase()}"><div class="bl-num">${score}<span>/100</span></div><div class="bl-lbl">OIL MARKET STRESS<div class="bl-tag">${label}</div></div></div>
-      <div class="bl-sec"><div class="gtitle">WHAT IT MEANS</div><p>${meaning}</p></div>
-      <div class="bl-sec"><div class="gtitle">WHAT TO WATCH NEXT</div><ul>${watch.map((w) => `<li>${w}</li>`).join('')}</ul></div>
-      <div class="bl-sec"><div class="gtitle">WHO IT HELPS / HURTS</div><p>${impact}</p><div class="bl-chips">${companies.map((c) => `<span class="chip">${c}</span>`).join('')}</div></div>
-    </div>`;
-}
-function renderTightness(d) {
-  if (!d || d.error) { $('tightness').innerHTML = '<div class="dimtext" style="padding:10px 12px">loading…</div>'; return; }
-  const k = d.tight > d.loose ? 'tight' : d.loose > d.tight ? 'loose' : 'mixed';
-  const rows = d.evidence.map((e) => `<div class="ev"><span class="ev-l">${e.label}</span><span class="ev-v ${e.direction === 'TIGHT' ? 'pos' : e.direction === 'LOOSE' ? 'neg' : ''}">${e.value}</span><span class="tag ${e.direction.toLowerCase()}">${e.direction}</span><span class="ev-n dimtext">${e.note}</span></div>`).join('');
-  $('tightness').innerHTML = `<div class="verdict ${k}">${d.verdict}</div><div class="ev-list">${rows}</div>`;
 }
 function renderFlows(d) {
   if (!d?.regions) { $('flows').innerHTML = ''; return; }
@@ -1900,40 +1839,6 @@ function renderMacroDash(md, corr, events) {
   const mcorr = $('macro-corr'); if (mcorr) mcorr.innerHTML = `<div class="kpis">${cTile('OIL vs US DOLLAR', c.oilVsDollar, 'usually negative')}${cTile('OIL vs VIX', c.oilVsVix, 'risk-off link')}${cTile('OIL vs S&P 500', c.oilVsSp500, 'risk-on link')}</div>`;
   $('macro-events').innerHTML = (events || []).map((e) => `<div class="read-line">📅 <b>${e.name}</b>${e.date ? ` — ${e.date}` : ''} <span class="dimtext">${e.note || ''}</span></div>`).join('');
 }
-function renderRegime(m, a, c) {
-  const by = Object.fromEntries(m.benchmarks.map((b) => [b.id, b]));
-  const parts = [];
-  if (c?.brent) parts.push(c.brent.shape === 'Backwardation'
-    ? '<span title="Prices are higher for sooner delivery — a sign oil is scarce right now.">oil is <b>tight</b> (worth more sooner)</span>'
-    : '<span title="Prices are lower for sooner delivery — plenty of oil available.">oil is <b>well supplied</b></span>');
-  const bb = by.brent?.basis;
-  if (bb != null) parts.push(bb > 0
-    ? '<span title="The real (physical) price of Brent is above the futures price.">real barrels cost <span class="pos">more</span> than futures</span>'
-    : '<span title="The real price is below the futures price.">real barrels cost <span class="neg">less</span> than futures</span>');
-  if (a?.arb) parts.push(a.arb.open
-    ? '<span title="US crude is cheaper than Brent by more than a rough shipping estimate — which normally encourages exports to Europe. Rough estimate only.">US oil is much cheaper than Brent → exports to Europe likely</span>'
-    : '<span title="US crude is not cheap enough vs Brent to cover rough shipping costs — exports less attractive.">US oil isn’t cheap enough to ship to Europe</span>');
-  const dq = (m.quality?.flags || []).length;
-  if (dq) parts.push(`<span class="warn" title="Some real-barrel prices are a few days old, so the gap can look off.">⚠ ${dq} data check${dq > 1 ? 's' : ''}</span>`);
-  $('regime').innerHTML = `<span class="regime-k">MARKET STATE</span> ${parts.join(' · ')}`;
-}
-function kpiTile(label, value, sub, klass) {
-  return `<div class="kpi"><div class="kpi-l">${label}</div><div class="kpi-v ${klass || ''}">${value}</div><div class="kpi-s dimtext">${sub}</div></div>`;
-}
-function renderKPIs(m, a, c, pos) {
-  const by = Object.fromEntries(m.benchmarks.map((b) => [b.id, b]));
-  const d321 = crackSpreads(m).find((x) => x.label.startsWith('3-2-1'));
-  const extreme = (id) => { const v = a?.benchmarks?.[id]?.basisPct; return v == null ? '—' : `${Math.round(v)}/100 extreme vs 2 years`; };
-  const shape = c?.brent?.shape === 'Backwardation' ? 'oil pricier now than later' : 'oil cheaper now than later';
-  const t = [];
-  if (by.brent) t.push(kpiTile('BRENT — REAL vs FUTURES', signed(by.brent.basis, 2), extreme('brent'), cls(by.brent.basis)));
-  if (by.wti) t.push(kpiTile('WTI — REAL vs FUTURES', signed(by.wti.basis, 2), extreme('wti'), cls(by.wti.basis)));
-  if (m.spreads.brent_wti) t.push(kpiTile('BRENT vs WTI', signed(m.spreads.brent_wti.physical, 2), 'real-barrel gap', cls(m.spreads.brent_wti.physical)));
-  if (d321) t.push(kpiTile('REFINING PROFIT', signed(d321.value, 2), d321.value > 18 ? 'very good' : d321.value > 8 ? 'ok' : 'poor', cls(d321.value)));
-  if (c?.brent?.m1m2 != null) t.push(kpiTile('PRICE NOW vs NEXT MONTH', signed(c.brent.m1m2, 2), shape, cls(c.brent.m1m2)));
-  if (pos?.latest) t.push(kpiTile('HEDGE-FUND NET BET', pos.latest.net.toLocaleString(), `${pos.pct.toFixed(0)}/100 extreme vs 3 years`, cls(pos.latest.net)));
-  $('kpis').innerHTML = t.join('');
-}
 // Curve-over-time only exists for the NYMEX energy roots (CL/BZ/NG/RB/HO);
 // it self-hides for metals/ags where the contract-month history isn't free.
 const CURVE_ROOT = { crude: { root: 'CL', name: 'CRUDE OIL' }, refined: { root: 'RB', name: 'GASOLINE' }, gas: { root: 'NG', name: 'NATURAL GAS' } };
@@ -2043,8 +1948,9 @@ async function loadExtraSlow() {
 // Boot
 // ---------------------------------------------------------------------------
 async function refreshLive() {
-  try { await loadMarket(); } catch (e) { showError(e.message); console.error(e); }
-  try { await loadTankers(); } catch (e) { showError(e.message); console.error(e); }
+  // Transient upstream hiccups must never pop the error banner (the loaders keep last-good state).
+  try { await loadMarket(); } catch (e) { console.error('[market]', e.message); }
+  try { await loadTankers(); } catch (e) { console.error('[tankers]', e.message); }
 }
 $('refresh').addEventListener('click', () => { nextRefresh = 60; refreshLive(); loadExtra(); });
 $('metric').addEventListener('change', () => { localStorage.setItem('oilbasis.metric', $('metric').value); chartAnchor = null; renderChart(); });

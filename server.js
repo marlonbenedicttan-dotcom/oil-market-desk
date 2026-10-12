@@ -2390,7 +2390,7 @@ const server = http.createServer(async (req, res) => {
     if (!ok) { res.writeHead(401, { 'www-authenticate': 'Basic realm="oil-market-desk"' }); return res.end('Authentication required'); }
   }
   try {
-    if (url.pathname === '/api/market') return sendJSON(res, 200, await getMarket());
+    if (url.pathname === '/api/market') return sendJSON(res, 200, await getMarket().catch((e) => { console.error('[market]', e.message); return { updated: new Date().toISOString(), benchmarks: [], spreads: {}, quality: { flags: [], curveAvailable: false }, notes: [] }; }));
     if (url.pathname === '/api/history') return sendJSON(res, 200, await getHistory().catch((e) => { console.error('[history]', e.message); return { dates: [], series: {}, basis: {}, spreads: {}, deltas: {} }; }));
     if (url.pathname === '/api/fx') return sendJSON(res, 200, FX_SYMS.map((f) => ({ id: f.id, label: f.label, dp: f.dp })));
     if (url.pathname === '/api/rates') return sendJSON(res, 200, RATES.map((r) => ({ id: r.id, label: r.label, dp: r.dp })));
@@ -2504,7 +2504,7 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname === '/api/alerts') return sendJSON(res, 200, { current: await computeServerAlerts().catch(() => []) });
     if (url.pathname === '/api/digest') { res.writeHead(200, { 'content-type': 'text/plain' }); return res.end(lastDigest || await buildDigest()); }
     if (url.pathname === '/api/brief') return sendJSON(res, 200, await buildBrief().catch((e) => ({ error: String(e.message) })));
-    if (url.pathname === '/api/analytics') return sendJSON(res, 200, await getAnalytics(Number(url.searchParams.get('freight')) || FREIGHT_DEFAULT));
+    if (url.pathname === '/api/analytics') return sendJSON(res, 200, await getAnalytics(Number(url.searchParams.get('freight')) || FREIGHT_DEFAULT).catch((e) => { console.error('[analytics]', e.message); return { benchmarks: {} }; }));
     if (url.pathname === '/api/export.csv') {
       const [m, a] = await Promise.all([getMarket(), getAnalytics()]);
       const rows = [['benchmark', 'unit', 'paper', 'physical', 'physical_date', 'basis', 'basis_pctile_2y', 'vol30_ann_pct']];

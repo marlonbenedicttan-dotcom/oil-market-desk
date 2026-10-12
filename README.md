@@ -8,11 +8,11 @@ app_port: 7860
 pinned: false
 ---
 
-# Marlon's Watchtower 🛢️
+# Marlon's Watchtower 🗼
 
-**🔴 Live demo:** https://oil-market-desk.onrender.com
+**🔴 Live:** https://oil-market-desk.onrender.com
 
-A **two-tab** dashboard — **COMMODITIES** and **MACRO** — that puts **paper** (futures) and **physical** (spot/cash) prices side by side across energy benchmarks, computes the **basis**, tracks **live tanker traffic**, and gives each commodity **segment** its own adaptive read: what happened, what's next, and trade ideas.
+A free, self-hosted **commodity + global-macro desk** — three tabs (**HOME · COMMODITIES · MACRO**). Every segment gets a plain-English read: **price vs its own history** (premium / discount) and a **supply & demand** read (undersupplied → oversupplied) with an evidence badge, plus the **curve**, seasonality, trade ideas, and the **trusted news behind the biggest moves** marked on the charts. Energy also gets real-vs-futures **basis**, **stockpiles**, **live ships** and satellites. Macro covers **rates, inflation, growth and currencies**, country by country.
 
 | Benchmark | Paper (futures) | Physical (spot) |
 |---|---|---|
@@ -32,13 +32,15 @@ Adding a benchmark = one row in the `BENCHMARKS` table in `server.js`.
 
 ## Features
 
-The UI is **two tabs**: **COMMODITIES** and **MACRO**. Everything commodity-related lives in COMMODITIES; the macro side (rates, inflation/growth, currencies) in MACRO. A **global segment picker** sits on top — pick a segment and the whole tab follows it.
+The UI is **three tabs**: **HOME** · **COMMODITIES** · **MACRO**. HOME is the board (watchlist, alerts, brief); COMMODITIES is scoped to one segment (a global segment picker drives the whole tab); MACRO is country-by-country.
 
-- **Segments** — seven: **Crude oil** · **Refined products** · **Natural gas** · **Precious metals** · **Industrial metals** · **Grains** · **Softs**. Each bundles its related instruments (e.g. Crude = WTI + Brent; Refined = gasoline, diesel, jet, propane).
+- **Segments** — nine: **Crude oil** · **Refined products** · **Natural gas** · **Precious metals** · **Industrial metals** · **Grains & oilseeds** · **Softs** · **Livestock** · **Dairy**. Each bundles its related instruments (Crude = WTI + Brent; Livestock = cattle / hogs / feeder; Dairy = milk / butter / milk powder / cheese / whey).
 - **Adaptive Big Picture** — the overview is not crude-only. Choosing a segment re-renders the panes: the Bottom Line becomes that segment's read with three actionable blocks — **WHAT HAPPENED** (data-driven), **WHAT'S NEXT** (catalysts) and **TRADE IDEAS — who benefits / who's in trouble** (sectors + example tickers). "Is oil tight?" becomes **"Is this segment tight/stretched?"**.
 - **Charts** — click any commodity, gap or currency to chart it over **1M · 3M · 6M · YTD · 1Y · 5Y · 10Y**. Hover a point for its **% change** on the window; click to drop an anchor and measure between two. Every tile carries a 6-month sparkline.
 - **Curves for every segment** — the **prices-for-months-ahead** term structure has a picker, so you can see any segment's curve, not just crude.
-- **Positioning for every segment** — CFTC hedge-fund positioning (net, percentile, open-interest change) via a verified COT map covering all seven segments.
+- **Two honest scores** — **price vs its own history** (*At a big premium … In line with history … At a big discount*) and **supply & demand** (*Undersupplied … Balanced … Oversupplied*), the latter carrying an **evidence badge** (real fundamentals vs *curve only*).
+- **News on the charts** — each annotated chart marks its **biggest moves** and ties each to the **trusted story** behind it (matched by date, direction and instrument; hover for the headline).
+- **Positioning** — CFTC COT is wired per segment but *deliberately not surfaced* in the UI.
 - **Ships & satellites for crude** — a live tanker map (free AIS, filtered to tankers) plus satellite radar passes and gas-flare detection, all oil-only.
 - **Fuels & stocks for refined** — gasoline/diesel/3-2-1 crack spreads and a sector stock watchlist under the Refined segment.
 - **Supply** — US oil stockpiles and gas storage under the energy segments.
