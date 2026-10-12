@@ -803,12 +803,9 @@ async function renderChart() {
   const chartData = { labels, datasets };
   chart = mountChart('chart', chartData, baseOptions({ dp: chartDp, anchorable: true }), [anchorLine, bandsPlugin, eventsPlugin]);
   if (chart) chart.$bands = bands;
-  // Event markers — dated news shocks that help explain the moves on the chart. Only on a
-  // segment's own benchmark (not currencies / gaps / spreads).
-  if (chart) { chart.$events = await chartMarkers(bench ? currentMarket : null, histLabels); renderChartEvents(chart.$events); chart.update('none'); }
+  // Big-move markers — the chart's own largest swings, each tagged with the trusted news behind it.
+  if (chart) { chart.$events = await chartMoveMarkers(bench ? currentMarket : null, histLabels, datasets[0] ? datasets[0].data.slice(0, histLabels.length) : []); renderChartEvents(chart.$events); chart.update('none'); }
 }
-// Dated news shocks for a segment, matched to the chart's x-axis labels (client-cached 5min).
-const markerCache = {};
 // The futures curve for a benchmark (client-cached 5 min) — powers the forward-curve overlay.
 const termCache = {};
 async function curveForBench(id) {
@@ -819,33 +816,44 @@ async function curveForBench(id) {
   termCache[id] = { t: Date.now(), v };
   return v;
 }
-async function chartMarkers(market, labels) {
-  if (!market) return [];
-  let c = markerCache[market];
-  if (!c || Date.now() - c.t > 5 * 60e3) {
-    try { const f = await getJSON('/api/fundamentals?id=' + encodeURIComponent(market)); c = { t: Date.now(), v: (f.items || []).filter((i) => i.date) }; }
-    catch { c = { t: Date.now(), v: [] }; }
-    markerCache[market] = c;
+// Big moves + the trusted news behind them. Markers are the MOVES (not every headline): we find
+// the largest swings in the plotted series, then ask the server for the news in a tight window
+// around each one (tier-1 sources only) and attach the best match.
+function detectBigMoves(labels, data, maxN = 4) {
+  const rets = [];
+  for (let i = 1; i < data.length; i++) { const a = data[i - 1], b = data[i]; rets.push(a && b != null ? ((b - a) / a) * 100 : null); }
+  const abs = rets.filter((r) => r != null).map(Math.abs).sort((x, y) => x - y);
+  if (abs.length < 12) return [];
+  const med = abs[Math.floor(abs.length / 2)] || 0;
+  const p95 = abs[Math.min(abs.length - 1, Math.floor(abs.length * 0.95))] || med;
+  const thresh = Math.max(med * 2.5, p95);            // clearly above the market's typical swing
+  const idxs = [];
+  for (let i = 0; i < rets.length; i++) if (rets[i] != null && Math.abs(rets[i]) >= thresh) idxs.push(i + 1);
+  idxs.sort((i, j) => Math.abs(rets[j - 1]) - Math.abs(rets[i - 1]));
+  const chosen = [];
+  for (const i of idxs) { if (chosen.length >= maxN) break; if (chosen.some((c) => Math.abs(c - i) < 3)) continue; chosen.push(i); }
+  return chosen.sort((a, b) => a - b).map((i) => ({ idx: i, date: labels[i], pct: rets[i - 1], dir: rets[i - 1] >= 0 ? 'up' : 'down' }));
+}
+async function chartMoveMarkers(market, labels, data) {
+  if (!market || !data || data.length < 12) return [];
+  const moves = detectBigMoves(labels, data);
+  if (!moves.length) return [];
+  const dates = moves.map((mv) => `${mv.date}:${mv.dir === 'up' ? 1 : -1}`).join(',');
+  let res = [];
+  try { const f = await getJSON('/api/movewho?id=' + encodeURIComponent(market) + '&dates=' + encodeURIComponent(dates)); res = f.results || []; } catch {}
+  const byDate = Object.fromEntries(res.map((r) => [r.date, r.news]));
+  const out = [];
+  for (const mv of moves) {
+    const n = byDate[mv.date];
+    if (!n) continue;   // only mark moves we can actually explain with a trusted source
+    out.push({ idx: mv.idx, date: mv.date, pct: mv.pct, kind: n.kind, title: n.title, source: n.source, url: n.url, color: mv.dir === 'up' ? '#2e9e6b' : '#c25b5b' });
   }
-  const first = String((labels || [])[0] || '');
-  const tol = (/^\d{4}-\d{2}$/.test(first) ? 45 : 12) * 864e5;
-  const ld = (labels || []).map((l) => { const s = String(l); return /^\d{4}-\d{2}-\d{2}$/.test(s) ? Date.parse(s) : /^\d{4}-\d{2}$/.test(s) ? Date.parse(s + '-15') : NaN; });
-  const seen = new Set(); const out = [];
-  for (const it of c.v) {
-    const ds = String(it.date).slice(0, 10); const t = Date.parse(ds);
-    if (isNaN(t)) continue;
-    let best = -1, bd = Infinity;
-    for (let i = 0; i < ld.length; i++) { if (isNaN(ld[i])) continue; const d = Math.abs(ld[i] - t); if (d < bd) { bd = d; best = i; } }
-    if (best < 0 || bd > tol || seen.has(best)) continue;
-    seen.add(best);
-    out.push({ idx: best, color: it.effect === 'down' ? '#ff5252' : CT.c3, kind: it.kind, title: it.title, url: it.url, date: ds });
-  }
-  return out.sort((a, b) => a.idx - b.idx);
+  return out;
 }
 function renderChartEvents(ev) {
   const el = $('chart-events'); if (!el) return;
   if (!ev || !ev.length) { el.innerHTML = ''; return; }
-  el.innerHTML = `<span class="dimtext">news on this chart (dot = a dated supply/demand shock):</span> ` + ev.slice(-8).map((e) => `<a class="ce" href="${e.url}" target="_blank" rel="noopener noreferrer" title="${String(e.title).replace(/"/g, '&quot;')}"><span class="ce-dot" style="background:${e.color}"></span>${e.date.slice(5)} ${e.kind}</a>`).join('');
+  el.innerHTML = `<span class="dimtext">big moves &amp; the news behind them:</span> ` + ev.map((e) => `<a class="ce" href="${e.url}" target="_blank" rel="noopener noreferrer" title="${String(e.title).replace(/"/g, '&quot;')}"><span class="ce-dot" style="background:${e.color}"></span>${e.date.slice(5)} ${e.pct >= 0 ? '▲ +' : '▼ '}${e.pct.toFixed(1)}% · ${e.kind} <span class="dimtext">(${e.source})</span></a>`).join('');
 }
 
 // ---------------------------------------------------------------------------

@@ -1608,6 +1608,45 @@ async function getFundamentals(id) {
     return { id, label: newsLabel(id), items: hits, scanned: items.length };
   });
 }
+// Trusted-source news for explaining a chart move — tier-1 outlets ONLY (no blogs). The client
+// finds the biggest moves in the plotted series and sends their dates; here we look up the news
+// published in a tight window around each move (Google News honours after:/before:), and pick the
+// best story (closest day, preferring one whose direction matches the move).
+async function getMoveWho(id, reqs) {
+  const m = MARKETS.find((x) => x.id === id);
+  if (!m) return { results: [] };
+  const base = NEWS_QUERIES[id] || SCAN_QUERIES[id] || id;
+  const out = [];
+  for (const r of (reqs || []).slice(0, 6)) {
+    const d = r.date;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) continue;
+    const sh = (off) => new Date(Date.parse(d) + off * 864e5).toISOString().slice(0, 10);
+    const hit = await cached(`movewho:${id}:${d}`, 6 * 3600e3, async () => {
+      let items = [];
+      try { items = await fetchGoogleNews(`(${base}) after:${sh(-3)} before:${sh(4)} ${NEWS_TIER1}`, 15); } catch {}
+      const ev = [];
+      for (const it of items) {
+        if (!TIER1_RE.test(it.source || '')) continue;
+        let kind = null, effect = 'watch', weight = 1;
+        for (const rule of EVENT_RULES) { if (rule.re.test(it.title)) { kind = rule.kind; effect = rule.effect; weight = rule.weight; break; } }
+        ev.push({ date: it.date, title: it.title, source: it.source, url: it.url, kind: kind || 'Market news', effect, weight });
+      }
+      return ev;
+    });
+    const want = r.dir === 'up' ? 'up' : r.dir === 'down' ? 'down' : null;
+    let best = null, bs = Infinity;
+    for (const e of hit) {
+      const et = Date.parse(String(e.date).slice(0, 10));
+      if (isNaN(et)) continue;
+      const days = Math.abs(et - Date.parse(d)) / 864e5;
+      const bias = (!want || e.effect === want || e.effect === 'watch') ? 0 : 4;   // prefer a matching direction
+      const s = days + bias - (e.weight || 1) * 0.1;
+      if (s < bs) { bs = s; best = e; }
+    }
+    out.push({ date: d, dir: r.dir, news: best ? { kind: best.kind, title: best.title, source: best.source, url: best.url } : null });
+  }
+  return { id, label: newsLabel(id), results: out };
+}
 
 // ---------------------------------------------------------------------------
 // Attribution — explain the PAST YEAR's move with cited, trusted news. Pulls a year of
@@ -2302,6 +2341,12 @@ const server = http.createServer(async (req, res) => {
       const id = url.searchParams.get('id');
       if (!SCAN_QUERIES[id]) return sendJSON(res, 404, { error: 'unknown segment' });
       return sendJSON(res, 200, await getFundamentals(id).catch((e) => ({ error: String(e.message), items: [] })));
+    }
+    if (url.pathname === '/api/movewho') {
+      const id = url.searchParams.get('id');
+      if (!MARKETS.some((x) => x.id === id)) return sendJSON(res, 404, { error: 'unknown segment' });
+      const reqs = (url.searchParams.get('dates') || '').split(',').map((s) => { const [date, dir] = s.split(':'); return { date, dir: dir === '1' ? 'up' : 'down' }; }).filter((r) => /^\d{4}-\d{2}-\d{2}$/.test(r.date));
+      return sendJSON(res, 200, await getMoveWho(id, reqs).catch((e) => ({ error: String(e.message), results: [] })));
     }
     if (url.pathname === '/api/longterm') {
       const id = url.searchParams.get('id');

@@ -138,6 +138,15 @@ test('/api/marketread gives a SIGNED price-vs-history score, separate from suppl
   assert.equal(grains.verdict.supplyDemand.kind, 'physical');
 });
 
+test('/api/movewho returns trusted-source news for the given move dates', async () => {
+  const r = await fetch(`http://localhost:${PORT}/api/movewho?id=crude&dates=${encodeURIComponent('2026-07-13:1,2026-04-14:-1')}`);
+  assert.equal(r.status, 200);
+  const j = await r.json();
+  assert.ok(Array.isArray(j.results), 'results is an array');
+  for (const x of j.results) assert.ok(/^\d{4}-\d{2}-\d{2}$/.test(x.date), 'each result carries its date');
+  assert.equal((await fetch(`http://localhost:${PORT}/api/movewho?id=nope&dates=2026-07-13:1`)).status, 404);
+});
+
 test('/api/news returns headlines for segments and macro regions (graceful if unavailable)', async () => {
   for (const id of ['crude', 'us', 'eu', 'jp', 'apac']) {
     const r = await fetch(`http://localhost:${PORT}/api/news?id=${id}`);
