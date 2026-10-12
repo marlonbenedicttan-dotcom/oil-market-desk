@@ -74,6 +74,19 @@ const GLOSSARY = `
 
 function showError(msg) { const el = $('error'); el.classList.remove('hidden'); el.textContent = '⚠ ' + msg; }
 async function getJSON(url) { const r = await fetch(url); if (!r.ok) throw new Error(`${url} -> HTTP ${r.status}`); return r.json(); }
+// Memoised GET — a per-session cache so re-visiting a segment is instant (no re-fetch of the
+// read, news, curve, etc.). Short TTL; the server has its own longer cache anyway.
+const jcache = new Map();
+async function jget(url, ttl = 180000) {
+  const hit = jcache.get(url);
+  if (hit && Date.now() - hit.t < ttl) return hit.v;
+  const v = await getJSON(url);
+  jcache.set(url, { t: Date.now(), v });
+  return v;
+}
+// The current selection identity — every loader captures it and drops its result if the user
+// switched away while it was waiting. This is what stops "I clicked oil but it still shows corn".
+const segKey = () => currentMarket + '|' + (currentComponent || '');
 async function getLongterm(id, years = 10) {
   const k = id + years; const hit = ltCache[k];
   if (hit && Date.now() - hit.t < CHART_TTL) return hit.v;
@@ -361,8 +374,11 @@ function toggleMarketBlocks() {
   if (currentMarket === 'refined' && crackHistChart) setTimeout(() => crackHistChart.resize(), 80);
 }
 async function loadMarketRead() {
-  try { marketRead = await getJSON('/api/marketread?id=' + encodeURIComponent(currentMarket) + (currentComponent ? '&component=' + encodeURIComponent(currentComponent) : '')); } catch { marketRead = null; }
-  renderAdaptive();
+  const k = segKey();
+  let r = null;
+  try { r = await jget('/api/marketread?id=' + encodeURIComponent(currentMarket) + (currentComponent ? '&component=' + encodeURIComponent(currentComponent) : ''), 120000); } catch {}
+  if (k !== segKey()) return;          // selection changed while we waited — drop it
+  marketRead = r; renderAdaptive();
 }
 function renderAdaptive() {
   const mk = markets.find((x) => x.id === currentMarket);
@@ -441,9 +457,10 @@ function renderAdaptive() {
 async function loadNews() {
   const el = $('news');
   if (!el) return;
+  const k = segKey();
   el.innerHTML = '<div class="dimtext" style="padding:8px 12px">loading headlines…</div>';
-  try { renderNews(await getJSON('/api/news?id=' + encodeURIComponent(currentMarket))); }
-  catch { el.innerHTML = '<div class="dimtext" style="padding:8px 12px">headlines unavailable right now</div>'; }
+  try { const n = await jget('/api/news?id=' + encodeURIComponent(currentMarket), 300000); if (k !== segKey()) return; renderNews(n); }
+  catch { if (k === segKey()) el.innerHTML = '<div class="dimtext" style="padding:8px 12px">headlines unavailable right now</div>'; }
 }
 function renderNews(n, elId = 'news', subId = 'news-sub') {
   const el = $(elId);
@@ -744,6 +761,7 @@ async function renderChart() {
   if (!history || !data) return;
   const metric = $('metric').value;
   const range = $('range').value;
+  const chartKey = metric + '|' + range + '|' + currentMarket;   // guard: drop if the choice changed
   const bench = data.benchmarks.find((b) => b.id === metric);
   const isFx = metric.startsWith('fx:');
   const isSpread = metric.startsWith('spread:');
@@ -799,6 +817,7 @@ async function renderChart() {
     }
   }
 
+  if (chartKey !== $('metric').value + '|' + $('range').value + '|' + currentMarket) return;   // metric/range changed while loading
   $('lt-summary').textContent = (summary ? summary + '  ·  ' : '') + 'hover any point for its % change · click to drop an anchor (●), hover again to measure between two';
   const chartData = { labels, datasets };
   chart = mountChart('chart', chartData, baseOptions({ dp: chartDp, anchorable: true }), [anchorLine, bandsPlugin, eventsPlugin]);
@@ -844,7 +863,7 @@ async function chartMoveMarkers(market, labels, seriesList) {
   if (!moves.length) return [];
   const dates = moves.map((mv) => `${mv.date}:${mv.dir === 'up' ? 1 : -1}`).join(',');
   let res = [];
-  try { const f = await getJSON('/api/movewho?id=' + encodeURIComponent(market) + '&dates=' + encodeURIComponent(dates)); res = f.results || []; } catch {}
+  try { const f = await jget('/api/movewho?id=' + encodeURIComponent(market) + '&dates=' + encodeURIComponent(dates), 300000); res = f.results || []; } catch {}
   const byDate = Object.fromEntries(res.map((r) => [r.date, r.news]));
   const out = [];
   for (const mv of moves) {
@@ -1166,14 +1185,16 @@ function renderCurveHistory(d) {
 function renderCurve(d) { if (!d) return; $('curve').innerHTML = curveBlock('WTI', d.wti) + curveBlock('Brent', d.brent); }
 // The curve ALWAYS follows the selected segment (no second picker).
 async function renderCurveForSegment() {
+  const k = segKey();
   const mk = markets.find((x) => x.id === currentMarket);
   setTitle('curve-title', mk ? mk.label.toUpperCase() : '');
   const el = $('curve');
   if (!el) return;
-  if (currentMarket === 'crude') { try { renderCurve(await getJSON('/api/curve')); return; } catch {} }
+  if (currentMarket === 'crude') { try { const c = await jget('/api/curve', 60000); if (k !== segKey()) return; renderCurve(c); return; } catch {} }
   const comps = ((mk ? mk.components : []).map((c) => data.benchmarks.find((x) => x.id === c.id))).filter((b) => b && b.curve);
   el.innerHTML = '<div class="dimtext" style="padding:10px 12px">loading curve…</div>';
-  const results = await Promise.all(comps.map((b) => getJSON('/api/termstructure?id=' + encodeURIComponent(b.id)).catch(() => null)));
+  const results = await Promise.all(comps.map((b) => jget('/api/termstructure?id=' + encodeURIComponent(b.id), 180000).catch(() => null)));
+  if (k !== segKey()) return;
   const html = results.filter((r) => r && r.available).map((r) => curveBlock(r.label, r)).join('');
   el.innerHTML = html || '<div class="dimtext" style="padding:10px 12px">No free month-by-month curve for this segment — only a front-month price.</div>';
 }
@@ -1182,8 +1203,10 @@ async function loadCrush() {
   const el = $('crush');
   if (!el) return;
   if (currentMarket !== 'grains') { el.innerHTML = ''; return; }
+  const k = segKey();
   el.innerHTML = '<div class="dimtext" style="padding:10px 12px">reading the soybean crush…</div>';
-  let d; try { d = await getJSON('/api/crush'); } catch { d = null; }
+  let d; try { d = await jget('/api/crush', 300000); } catch { d = null; }
+  if (k !== segKey() || currentMarket !== 'grains') return;
   renderCrush(d);
 }
 let crushChart;
@@ -1221,11 +1244,13 @@ function renderCrushHistory(h) {
 async function loadSeasonal() {
   const el = $('seasonal');
   if (!el || !data) return;
+  const k = segKey();
   const mk = markets.find((x) => x.id === currentMarket);
   const b = mk ? data.benchmarks.find((x) => x.id === mk.primary) : null;
   if (!b) { el.innerHTML = ''; return; }
   el.innerHTML = '<div class="dimtext" style="padding:10px 12px">reading 5-year seasonality…</div>';
   let sea; try { sea = await getSeasonal(b.id); } catch { sea = null; }
+  if (k !== segKey()) return;
   renderSeasonal(sea, b);
 }
 function renderSeasonal(sea, b) {
@@ -1691,9 +1716,10 @@ async function loadTransmission() {
 async function loadFundamentals() {
   const el = $('fundamentals');
   if (!el) return;
+  const k = segKey();
   el.innerHTML = '<div class="dimtext" style="padding:8px 12px">scanning fundamentals…</div>';
-  try { renderFundamentals(await getJSON('/api/fundamentals?id=' + encodeURIComponent(currentMarket))); }
-  catch { el.innerHTML = '<div class="dimtext" style="padding:8px 12px">unavailable right now</div>'; }
+  try { const f = await jget('/api/fundamentals?id=' + encodeURIComponent(currentMarket), 300000); if (k !== segKey()) return; renderFundamentals(f); }
+  catch { if (k === segKey()) el.innerHTML = '<div class="dimtext" style="padding:8px 12px">unavailable right now</div>'; }
 }
 function renderFundamentals(f) {
   const el = $('fundamentals');
@@ -1816,6 +1842,7 @@ function renderKPIs(m, a, c, pos) {
 const CURVE_ROOT = { crude: { root: 'CL', name: 'CRUDE OIL' }, refined: { root: 'RB', name: 'GASOLINE' }, gas: { root: 'NG', name: 'NATURAL GAS' } };
 let curveHistRoot = null;
 async function loadCurveHistory() {
+  const k = segKey();
   const spec = CURVE_ROOT[currentMarket];
   const block = $('curvehist-block');
   if (!spec) { if (block) block.style.display = 'none'; return; }
@@ -1824,7 +1851,7 @@ async function loadCurveHistory() {
   curveHistRoot = spec.root;
   const t = $('curvehist-title');
   if (t) t.textContent = `IS ${spec.name} GETTING TIGHTER OR LOOSER? — this month vs next, over time (above 0 = tight)`;
-  try { renderCurveHistory(await getJSON('/api/curvehistory?root=' + spec.root)); } catch {}
+  try { const d = await jget('/api/curvehistory?root=' + spec.root, 300000); if (k !== segKey()) return; renderCurveHistory(d); } catch {}
 }
 function showTab(name) {
   saveStr('tab', name);
