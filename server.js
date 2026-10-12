@@ -156,12 +156,15 @@ const lastEntry = (obj) => {
 // Cache
 // ---------------------------------------------------------------------------
 const cache = new Map();
+const inflight = new Map();   // in-flight de-dupe: concurrent callers of the same key share one job
 async function cached(key, ttlMs, fn) {
   const hit = cache.get(key);
   if (hit && Date.now() - hit.t < ttlMs) return hit.v;
-  const v = await fn();
-  cache.set(key, { t: Date.now(), v });
-  return v;
+  const fly = inflight.get(key);
+  if (fly) return fly;                         // someone is already computing it — wait for theirs
+  const p = (async () => { try { const v = await fn(); cache.set(key, { t: Date.now(), v }); return v; } finally { inflight.delete(key); } })();
+  inflight.set(key, p);
+  return p;
 }
 
 const paperFor = (b) => (b.paper ? cached('p:' + b.paper, 180_000, () => yahooSeries(b.paper, '5d', '1d')) : Promise.resolve({ price: null }));
@@ -955,16 +958,19 @@ async function curveFor(id) {
   const spec = CURVE_SPEC[id];
   if (!spec) return [];
   const now = new Date();
-  const out = [];
-  for (let k = 0; k < 14; k++) {
+  // Front 6 contract months, fetched IN PARALLEL (was 14 sequential — the single biggest cost in
+  // a cold /api/marketread). m1m12 was never used by the UI, so 6 is enough for m1m6 + calendar.
+  const syms = Array.from({ length: 6 }, (_, k) => {
     const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + k, 1));
-    const symbol = `${spec.root}${MONTH_CODE[d.getUTCMonth()]}${String(d.getUTCFullYear()).slice(2)}.${spec.exch}`;
+    return `${spec.root}${MONTH_CODE[d.getUTCMonth()]}${String(d.getUTCFullYear()).slice(2)}.${spec.exch}`;
+  });
+  const quotes = await Promise.all(syms.map(async (symbol) => {
     try {
-      const q = await cached('curveq:' + symbol, 300_000, () => yahooSeries(symbol, '5d', '1d'));
-      if (q.price != null) out.push({ label: symbol.slice(spec.root.length, spec.root.length + 3), price: q.price });
-    } catch {}
-  }
-  return out;
+      const q = await cached('curveq:' + symbol, 900_000, () => yahooSeries(symbol, '5d', '1d'));
+      return q.price != null ? { label: symbol.slice(spec.root.length, spec.root.length + 3), price: q.price } : null;
+    } catch { return null; }
+  }));
+  return quotes.filter(Boolean);
 }
 function buildCurve(c) {
   if (c.length < 2) return { contracts: c, available: false };
@@ -1215,8 +1221,8 @@ async function getMarketRead(id, componentId) {
       { key: 'mv3m', label: '3-mo move', weight: 0.18, score: signedMove(values, 63) },
       { key: 'mv1y', label: '1-yr move', weight: 0.17, score: signedMove(values, 252) },
     ];
-    // Past-year move + cited news drivers (attribution).
-    read.attribution = await getAttribution(id, sel).catch(() => null);
+    // (The past-year "news drivers" block is served separately by /api/marketwhy, so the core
+    // READ returns fast and the client fills that block in afterwards.)
     const takes = [];
     if (read.perf.y1 != null) takes.push(`${read.label} is <b>${read.perf.y1 >= 0 ? 'up' : 'down'} ${Math.abs(read.perf.y1).toFixed(0)}%</b> over the last year${read.perf.m6 != null ? ` (6m ${read.perf.m6 >= 0 ? '+' : ''}${read.perf.m6.toFixed(0)}%)` : ''}.`);
     if (read.range.pos != null) takes.push(`It sits at <b>${read.range.pos.toFixed(0)}/100</b> of its 2-year range — ${read.range.pos >= 70 ? 'near the top' : read.range.pos <= 30 ? 'near the bottom' : 'mid-range'}.`);
@@ -1227,6 +1233,13 @@ async function getMarketRead(id, componentId) {
     read.verdict = marketVerdict(read);
     return read;
   });
+}
+// The READ's slow extra — the past-year news drivers — split out so the core read is fast.
+async function getMarketWhy(id, componentId) {
+  const m = MARKETS.find((x) => x.id === id);
+  if (!m) return { error: 'unknown market' };
+  const sel = m.components.includes(componentId) ? componentId : m.primary;
+  return cached('mwhy:' + id + ':' + sel, 3600e3, async () => ({ attribution: await getAttribution(id, sel).catch(() => null) }));
 }
 
 // ---------------------------------------------------------------------------
@@ -2300,6 +2313,11 @@ const server = http.createServer(async (req, res) => {
       if (!MARKETS.some((x) => x.id === id)) return sendJSON(res, 404, { error: 'unknown market' });
       return sendJSON(res, 200, await getMarketRead(id, url.searchParams.get('component')).catch((e) => ({ error: String(e.message) })));
     }
+    if (url.pathname === '/api/marketwhy') {
+      const id = url.searchParams.get('id');
+      if (!MARKETS.some((x) => x.id === id)) return sendJSON(res, 404, { error: 'unknown market' });
+      return sendJSON(res, 200, await getMarketWhy(id, url.searchParams.get('component')).catch((e) => ({ error: String(e.message) })));
+    }
     if (url.pathname === '/api/attribution') {
       const id = url.searchParams.get('id');
       if (!MARKETS.some((x) => x.id === id)) return sendJSON(res, 404, { error: 'unknown segment' });
@@ -2438,4 +2456,10 @@ server.listen(PORT, () => {
   setInterval(() => { state.tankerMMSI = [...tankerMMSI]; saveState(); }, 60_000);
   setTimeout(() => { state.tankerMMSI = [...tankerMMSI]; saveState(); snapshotReroute(); }, 90_000);
   setInterval(snapshotReroute, 5 * 60_000);
+  // Warm every segment's READ + curve in the background so switching segments is instant for the
+  // user (a cold read is ~1.5s; warm it is ~1ms). Started after the first paint settles, gently
+  // staggered; `cached()` de-dupes so a user request during warm-up just shares the work.
+  const warmCaches = async () => { for (const m of MARKETS) { try { await getMarketRead(m.id, null); } catch {} await new Promise((r) => setTimeout(r, 600)); } };
+  setTimeout(() => warmCaches().catch(() => {}), 25_000);
+  setInterval(() => warmCaches().catch(() => {}), 8 * 60_000);
 });

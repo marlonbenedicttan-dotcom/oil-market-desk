@@ -245,7 +245,8 @@ function buildBpOptions() {
   const groups = {};
   for (const m of markets) (groups[m.group] ||= []).push(m);
   sel.innerHTML = Object.entries(groups).map(([g, list]) => `<optgroup label="${g.toUpperCase()}">${list.map((m) => `<option value="${m.id}">${m.label}</option>`).join('')}</optgroup>`).join('');
-  if ([...sel.options].some((o) => o.value === prev)) sel.value = prev;
+  const want = [...sel.options].some((o) => o.value === currentMarket) ? currentMarket : (sel.value || prev);
+  if ([...sel.options].some((o) => o.value === want)) sel.value = want;
 }
 function bpVol(arr) {
   const xs = (arr || []).filter((v) => v != null);
@@ -259,7 +260,7 @@ function bpVol(arr) {
 function renderSnapshot() {
   const el = $('bp-snapshot');
   if (!el || !data) return;
-  const mk = markets.find((x) => x.id === $('bp-metric').value);
+  const mk = markets.find((x) => x.id === currentMarket);
   const selId = currentComponent || (mk ? mk.primary : $('bp-metric').value);
   const b = data.benchmarks.find((x) => x.id === selId);
   if (!b) { el.innerHTML = ''; return; }
@@ -382,14 +383,10 @@ async function loadMarketRead() {
 }
 function renderAdaptive() {
   const mk = markets.find((x) => x.id === currentMarket);
-  const nm = (marketRead && marketRead.label) || (mk && mk.label) || '';
+  const nm = (marketRead && marketRead.id === currentMarket && marketRead.label) || (mk && mk.label) || '';
   setTitle('tightness-title', '⚡ ' + (nm ? `IS ${nm.toUpperCase()} RICH, CHEAP OR TIGHT?` : 'READING…'));
   setTitle('tightness-sub', 'price vs its own history · physical tightness · curve · volatility');
-  if (!marketRead || marketRead.id !== currentMarket || marketRead.error) {
-    $('bottomline').innerHTML = '<div class="dimtext" style="padding:10px 12px">reading the market…</div>';
-    $('tightness').innerHTML = '<div class="dimtext" style="padding:10px 12px">loading…</div>';
-    return;
-  }
+  if (!marketRead || marketRead.id !== currentMarket || marketRead.error) { readSkeleton(mk); return; }
   const r = marketRead, v = r.verdict;
   const score = v.score;
   const sd = v.supplyDemand || { score: null, label: '—', parts: [], note: '', kind: null };
@@ -403,20 +400,8 @@ function renderAdaptive() {
   const next = [...(v.catalysts || []).map((c) => `Watch: <b>${c}</b>`), ...(v.watch || [])];
   const chips = [...(v.tickersUp || []).map((t) => `<span class="chip up">▲ ${t}</span>`), ...(v.tickersDown || []).map((t) => `<span class="chip down">▼ ${t}</span>`)].join('');
   const kp = (r.takeaways || []).length ? r.takeaways.map((t) => `<li>${t}</li>`).join('') : '<li class="dimtext">No key points yet.</li>';
-  // Past-year attribution: the move + the news kinds most consistent with it (cited).
-  const at = r.attribution;
-  let attrHtml = '';
-  if (at && !at.error) {
-    if (at.drivers && at.drivers.length) {
-      const lead = at.y1 == null ? 'Past-year news drivers:' : `Over the past year it is <b>${pctf(at.y1)}</b> — the news most consistent with that move:`;
-      const items = at.drivers.map((d) => { const s = d.sample || {}; return `<li><b>${d.kind}</b> <span class="dimtext">(${d.count} headline${d.count > 1 ? 's' : ''})</span> — <a href="${s.url}" target="_blank" rel="noopener noreferrer">${s.title || ''}</a> <span class="dimtext">${s.source || ''}${s.date ? ' · ' + String(s.date).slice(0, 10) : ''}</span></li>`; }).join('');
-      attrHtml = `<div class="attr"><div class="attr-lead">${lead}</div><ul class="attr-list">${items}</ul><div class="dimtext attr-caveat">News-implied, not a verdict — links open at the source.</div></div>`;
-    } else {
-      attrHtml = at.divergence
-        ? '<div class="attr dimtext">The past-year news leaned <b>against</b> that move — a divergence worth investigating. See 📰 IN THE NEWS.</div>'
-        : '<div class="attr dimtext">No single clear news driver found over the past year — see 📰 IN THE NEWS.</div>';
-    }
-  }
+  // Past-year news drivers are fetched separately (/api/marketwhy) so the core read appears fast.
+  const attrHtml = '<div id="read-attr" class="attr-holder"></div>';
   $('bottomline').innerHTML = `<div class="bl">
       <div class="bl-score ${kl}"><div class="bl-num">${score == null ? '—' : signed(score, 0)}<span>/100</span></div><div class="bl-lbl">PRICE vs ITS OWN HISTORY<div class="bl-tag">${v.label}</div></div>
         <div class="bl-phys"><div class="bl-phys-k">SUPPLY &amp; DEMAND${sd.kind ? ` · ${sd.kind === 'physical' ? 'real data' : 'curve only'}` : ''}</div><div class="bl-phys-v ${sdCls}">${sd.score == null ? 'no free data' : `${sd.score}<span>/100</span> ${sd.label}`}</div></div>
@@ -453,6 +438,44 @@ function renderAdaptive() {
   setTitle('xa-seg', mk ? mk.label.toUpperCase() : '');
   const xa = $('crossasset');
   if (xa) xa.innerHTML = crossAssetBlock((i) => (i.segments || []).includes(currentMarket));
+  loadMarketWhy();   // fill the past-year news-drivers block in afterwards
+}
+// An instant, correct-segment skeleton shown while the full read loads (price/6m from memory).
+function readSkeleton(mk) {
+  const b = mk && data && data.benchmarks.find((x) => x.id === mk.primary);
+  const s = b && history?.series?.[b.id];
+  const arr = b ? (b.paper != null ? s?.paper : s?.physical) : null;
+  const val = b ? (b.paper != null ? b.paper : b.physical) : null;
+  const n = (arr || []).filter((x) => x != null);
+  const six = n.length > 1 ? ((n[n.length - 1] - n[0]) / n[0]) * 100 : null;
+  const name = b ? b.label : (mk ? mk.label : '');
+  const px = (val == null || !b) ? '—' : Number(val).toFixed(b.dp);
+  $('bottomline').innerHTML = `<div class="bl">
+    <div class="bl-score elevated"><div class="bl-num">${px}</div><div class="bl-lbl">${String(name).toUpperCase()}${b ? ` <span class="dimtext">${b.unit}</span>` : ''}<div class="bl-tag">reading the full verdict…</div></div></div>
+    <div class="bl-sec"><div class="gtitle">WHAT HAPPENED</div><p class="dimtext">Pulling the price history, curve, supply/demand and news for <b>${name}</b>${six == null ? '' : ` — ${six >= 0 ? '+' : ''}${six.toFixed(0)}% over 6 months`}…</p></div></div>`;
+  $('tightness').innerHTML = '<div class="dimtext" style="padding:10px 12px">reading the market…</div>';
+}
+// The past-year news drivers (slow) — fetched after the read, into the placeholder.
+async function loadMarketWhy() {
+  const el = $('read-attr'); if (!el) return;
+  const k = segKey();
+  el.innerHTML = '<div class="dimtext" style="padding:4px 0">pulling the past-year news drivers…</div>';
+  try {
+    const d = await jget('/api/marketwhy?id=' + encodeURIComponent(currentMarket) + (currentComponent ? '&component=' + encodeURIComponent(currentComponent) : ''), 900000);
+    if (k !== segKey()) return;
+    el.innerHTML = attrBlock(d && d.attribution);
+  } catch { el.innerHTML = ''; }
+}
+function attrBlock(at) {
+  if (!at || at.error) return '';
+  if (at.drivers && at.drivers.length) {
+    const lead = at.y1 == null ? 'Past-year news drivers:' : `Over the past year it is <b>${pctf(at.y1)}</b> — the news most consistent with that move:`;
+    const items = at.drivers.map((d) => { const s = d.sample || {}; return `<li><b>${d.kind}</b> <span class="dimtext">(${d.count} headline${d.count > 1 ? 's' : ''})</span> — <a href="${s.url}" target="_blank" rel="noopener noreferrer">${s.title || ''}</a> <span class="dimtext">${s.source || ''}${s.date ? ' · ' + String(s.date).slice(0, 10) : ''}</span></li>`; }).join('');
+    return `<div class="attr"><div class="attr-lead">${lead}</div><ul class="attr-list">${items}</ul><div class="dimtext attr-caveat">News-implied, not a verdict — links open at the source.</div></div>`;
+  }
+  return at.divergence
+    ? '<div class="attr dimtext">The past-year news leaned <b>against</b> that move — a divergence worth investigating. See 📰 IN THE NEWS.</div>'
+    : '<div class="attr dimtext">No single clear news driver found over the past year — see 📰 IN THE NEWS.</div>';
 }
 async function loadNews() {
   const el = $('news');
@@ -477,6 +500,9 @@ function selectMarket(id) {
   saveStr('segment', id);
   currentMarket = id;
   currentComponent = null;   // reset to the segment's headline when the segment changes
+  marketRead = null;         // clear so nothing from the previous segment can linger
+  const pick = $('bp-metric');
+  if (pick && [...pick.options].some((o) => o.value === id)) pick.value = id;   // keep the picker in sync
   renderSnapshot();
   renderMarketState();
   toggleMarketBlocks();
