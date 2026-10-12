@@ -38,6 +38,7 @@ let fxList = [];        // chartable currencies (from /api/fx)
 let rateList = [];      // chartable rates (from /api/rates)
 let markets = [];       // commodity markets (from /api/markets) — Big Picture groups
 let currentMarket = 'crude';   // which segment the page is showing
+let currentComponent = null;   // which instrument within the segment the READ reflects (null = the segment's headline)
 let marketRead = null;         // /api/marketread payload for currentMarket
 let lastFx = null;             // latest FX quotes (for the top ticker)
 let macroMd = null;            // /api/macrodash payload (macro tab)
@@ -232,7 +233,8 @@ function renderSnapshot() {
   const el = $('bp-snapshot');
   if (!el || !data) return;
   const mk = markets.find((x) => x.id === $('bp-metric').value);
-  const b = data.benchmarks.find((x) => x.id === (mk ? mk.primary : $('bp-metric').value));
+  const selId = currentComponent || (mk ? mk.primary : $('bp-metric').value);
+  const b = data.benchmarks.find((x) => x.id === selId);
   if (!b) { el.innerHTML = ''; return; }
   const s = history?.series?.[b.id];
   const arr = b.paper != null ? s?.paper : s?.physical;
@@ -245,7 +247,7 @@ function renderSnapshot() {
   const pos = val != null && min != null && max > min ? ((val - min) / (max - min)) * 100 : null;
   const vol = bpVol(arr);
   const cells = [
-    [`${(mk ? mk.label : b.label).toUpperCase()} PRICE`, val == null ? '—' : `${Number(val).toFixed(dp)} <span class="dimtext">${b.unit}</span>`, ''],
+    [`${b.label.toUpperCase()} PRICE`, val == null ? '—' : `${Number(val).toFixed(dp)} <span class="dimtext">${b.unit}</span>`, ''],
     ['TODAY', day == null ? '—' : pctf(day), cls(day)],
     ['PAST 6 MONTHS', six == null ? '—' : pctf(six), cls(six)],
     ['30-DAY JUMPINESS', vol == null ? '—' : vol.toFixed(1) + '%', ''],
@@ -253,7 +255,7 @@ function renderSnapshot() {
     [b.physical != null ? 'REAL vs FUTURES' : 'SOURCE', b.physical != null ? signed(b.basis, dp) : 'futures only', cls(b.basis)],
   ];
   const bits = [];
-  if (day != null) bits.push(`${mk ? mk.label : b.label} is ${day >= 0 ? 'up' : 'down'} <b>${Math.abs(day).toFixed(1)}%</b> today`);
+  if (day != null) bits.push(`${b.label} is ${day >= 0 ? 'up' : 'down'} <b>${Math.abs(day).toFixed(1)}%</b> today`);
   if (six != null) bits.push(`${Math.abs(six).toFixed(0)}% ${six >= 0 ? 'higher' : 'lower'} over 6 months`);
   if (pos != null) bits.push(pos >= 70 ? 'near the top of its range' : pos <= 30 ? 'near the bottom of its range' : 'mid-range');
   if (vol != null) bits.push(vol > 35 ? 'very jumpy' : vol > 20 ? 'fairly jumpy' : 'calm');
@@ -263,14 +265,14 @@ function renderSnapshot() {
   const compStrip = comps.length > 1 ? `<div class="bp-comps">${comps.map((c) => {
     const a = c.paper != null ? history?.series?.[c.id]?.paper : history?.series?.[c.id]?.physical;
     const pc = pctOf(a); const v = c.paper != null ? c.paper : c.physical;
-    return `<span class="bp-comp"><span class="bp-comp-l">${c.label.replace(/\s*\(.*\)/, '')}</span><b>${v == null ? '—' : Number(v).toFixed(c.dp)}</b> <em class="${cls(pc)}">${pc == null ? '' : pctf(pc)}</em></span>`;
+    return `<span class="bp-comp ${c.id === b.id ? 'active' : ''}" data-component="${c.id}" title="Read this instrument's own stretch &amp; tightness"><span class="bp-comp-l">${c.label.replace(/\s*\(.*\)/, '')}</span><b>${v == null ? '—' : Number(v).toFixed(c.dp)}</b> <em class="${cls(pc)}">${pc == null ? '' : pctf(pc)}</em></span>`;
   }).join('')}</div>` : '';
   const spreadLine = (mk && mk.id === 'crude' && data.spreads?.brent_wti)
     ? `<div class="read-line">Brent − WTI spread: <b>${signed(data.spreads.brent_wti.paper, 2)}</b> futures · <b>${signed(data.spreads.brent_wti.physical, 2)}</b> real barrels.</div>` : '';
-  el.innerHTML = `<div class="bp-head">${mk ? mk.label : b.label}</div>`
+  el.innerHTML = `<div class="bp-head">${mk ? mk.label : b.label}${comps.length > 1 ? ` <span class="dimtext">· ${b.label.toUpperCase()}</span>` : ''}</div>`
     + `<div class="bp-grid">${cells.map(([k, v, c]) => `<div class="bp-cell"><div class="bp-k">${k}</div><div class="bp-v ${c || ''}">${v}</div></div>`).join('')}</div>`
     + `<div class="bp-deltas">${deltaStrip(headDeltas(b))}${freshStrip(b)}</div>`
-    + compStrip + spreadLine
+    + compStrip + (compStrip ? '<div class="dimtext" style="padding:0 12px 6px">click a name to read that instrument\'s own stretch &amp; tightness</div>' : '') + spreadLine
     + `<div class="bp-spark">${tileSpark(arr)}</div>`
     + `<div class="read-line">${bits.join(' · ')}.</div>`;
 }
@@ -345,12 +347,13 @@ function toggleMarketBlocks() {
   if (currentMarket === 'refined' && crackHistChart) setTimeout(() => crackHistChart.resize(), 80);
 }
 async function loadMarketRead() {
-  try { marketRead = await getJSON('/api/marketread?id=' + encodeURIComponent(currentMarket)); } catch { marketRead = null; }
+  try { marketRead = await getJSON('/api/marketread?id=' + encodeURIComponent(currentMarket) + (currentComponent ? '&component=' + encodeURIComponent(currentComponent) : '')); } catch { marketRead = null; }
   renderAdaptive();
 }
 function renderAdaptive() {
   const mk = markets.find((x) => x.id === currentMarket);
-  setTitle('tightness-title', '⚡ ' + (mk ? `IS ${mk.label.toUpperCase()} TIGHT / STRETCHED?` : 'READING…'));
+  const nm = (marketRead && marketRead.label) || (mk && mk.label) || '';
+  setTitle('tightness-title', '⚡ ' + (nm ? `IS ${nm.toUpperCase()} TIGHT / STRETCHED?` : 'READING…'));
   setTitle('tightness-sub', 'range · volatility · positioning · curve');
   if (!marketRead || marketRead.id !== currentMarket || marketRead.error) {
     $('bottomline').innerHTML = '<div class="dimtext" style="padding:10px 12px">reading the market…</div>';
@@ -376,7 +379,9 @@ function renderAdaptive() {
       const items = at.drivers.map((d) => { const s = d.sample || {}; return `<li><b>${d.kind}</b> <span class="dimtext">(${d.count} headline${d.count > 1 ? 's' : ''})</span> — <a href="${s.url}" target="_blank" rel="noopener noreferrer">${s.title || ''}</a> <span class="dimtext">${s.source || ''}${s.date ? ' · ' + String(s.date).slice(0, 10) : ''}</span></li>`; }).join('');
       attrHtml = `<div class="attr"><div class="attr-lead">${lead}</div><ul class="attr-list">${items}</ul><div class="dimtext attr-caveat">News-implied, not a verdict — links open at the source.</div></div>`;
     } else {
-      attrHtml = '<div class="attr dimtext">No single clear news driver found over the past year — see 📰 IN THE NEWS.</div>';
+      attrHtml = at.divergence
+        ? '<div class="attr dimtext">The past-year news leaned <b>against</b> that move — a divergence worth investigating. See 📰 IN THE NEWS.</div>'
+        : '<div class="attr dimtext">No single clear news driver found over the past year — see 📰 IN THE NEWS.</div>';
     }
   }
   $('bottomline').innerHTML = `<div class="bl">
@@ -435,6 +440,7 @@ function renderNews(n, elId = 'news', subId = 'news-sub') {
 }
 function selectMarket(id) {
   currentMarket = id;
+  currentComponent = null;   // reset to the segment's headline when the segment changes
   renderSnapshot();
   renderMarketState();
   toggleMarketBlocks();
@@ -1673,6 +1679,13 @@ $('cmp-range')?.addEventListener('change', renderCompare);
 $('cmp-view')?.addEventListener('change', renderCompare);
 $('cmp-presets')?.addEventListener('click', (e) => { const btn = e.target.closest('.cmp-preset'); if (!btn) return; $('cmp-a').value = btn.dataset.a; $('cmp-b').value = btn.dataset.b; $('cmp-view').value = btn.dataset.v; renderCompare(); });
 $('bp-metric')?.addEventListener('change', () => selectMarket($('bp-metric').value));
+$('bp-snapshot')?.addEventListener('click', (e) => {
+  const c = e.target.closest('.bp-comp[data-component]');
+  if (!c) return;
+  currentComponent = c.dataset.component;
+  renderSnapshot();
+  loadMarketRead();
+});
 
 $('marketstate')?.addEventListener('click', (e) => { const t = e.target.closest('[data-market]'); if (t) { showTab('commodities'); selectMarket(t.dataset.market); } });
 $('macro-region')?.addEventListener('change', () => { macroRegion = $('macro-region').value; renderMacroRegion(); });

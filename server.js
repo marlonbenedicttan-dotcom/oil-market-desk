@@ -1073,11 +1073,14 @@ function marketVerdict(r) {
     sectorsUp: c.sectorsUp || [], sectorsDown: c.sectorsDown || [], tickersUp: c.tickersUp || [], tickersDown: c.tickersDown || [], ideas: c.ideas || '',
   };
 }
-async function getMarketRead(id) {
+async function getMarketRead(id, componentId) {
   const m = MARKETS.find((x) => x.id === id);
   if (!m) return { error: 'unknown market' };
-  return cached('mread:' + id, 600_000, async () => {
-    const primary = BENCHMARKS.find((b) => b.id === m.primary);
+  // A segment can bundle several instruments — let the caller pick which one to read
+  // (e.g. sugar vs coffee vs palm within Softs); default to the segment's headline.
+  const sel = m.components.includes(componentId) ? componentId : m.primary;
+  return cached('mread:' + id + ':' + sel, 600_000, async () => {
+    const primary = BENCHMARKS.find((b) => b.id === sel);
     let priceMap = {};
     try { priceMap = primary.paper ? (await yc(primary.paper, '2y')).series : await cached('mrf:' + primary.physical, 3600e3, () => spotSeries(primary, 740)); } catch {}
     const values = Object.keys(priceMap).sort().map((d) => priceMap[d]);
@@ -1090,14 +1093,14 @@ async function getMarketRead(id) {
     const dayPct = last != null && prev ? ((last - prev) / prev) * 100 : null;
     const vol30 = realizedVol(values, 30);
     let curve = null;
-    if (CURVE_SPEC[m.primary]) { try { const c = await getCurveFor(m.primary); if (c.available) curve = { shape: c.shape, m1m2: c.m1m2, m1m6: c.m1m6 }; } catch {} }
+    if (CURVE_SPEC[sel]) { try { const c = await getCurveFor(sel); if (c.available) curve = { shape: c.shape, m1m2: c.m1m2, m1m6: c.m1m6 }; } catch {} }
     const sym = primary.paper || primary.physical;
     const macro = {};
     for (const [k, s] of Object.entries({ usd: 'DX-Y.NYB', vix: '^VIX', spx: '^GSPC' })) { try { macro[k] = await pairCorr(sym, s); } catch { macro[k] = null; } }
     let basis = null;
     try {
-      const row = (await getMarket()).benchmarks.find((b) => b.id === m.primary);
-      const an = (await getAnalytics()).benchmarks?.[m.primary];
+      const row = (await getMarket()).benchmarks.find((b) => b.id === sel);
+      const an = (await getAnalytics()).benchmarks?.[sel];
       if (row?.basis != null) basis = { value: row.basis, pctile: an?.basisPct ?? null };
     } catch {}
     // Stocks vs their seasonal norm — the segment's own inventory series (energy only).
@@ -1114,7 +1117,7 @@ async function getMarketRead(id) {
     }
     const volPctile = rollingVolPctile(values, 30);
     const read = {
-      id, label: m.label, group: m.group, primary: m.primary, unit: primary.unit, dp: primary.dp,
+      id, label: primary.label, segment: m.label, group: m.group, primary: sel, unit: primary.unit, dp: primary.dp,
       hasBasis: m.hasBasis, hasInventories: m.hasInventories, hasShips: m.hasShips,
       price: last, dayPct,
       perf: { m1: pctOver(values, 21), m3: pctOver(values, 63), m6: pctOver(values, 126), y1: pctOver(values, 252) },
@@ -1131,7 +1134,7 @@ async function getMarketRead(id) {
       { key: 'vol', label: 'volatility', weight: 0.2, score: volPctile == null ? null : Math.round((Math.max(0, volPctile - 50) / 50) * 100) },
     ];
     // Past-year move + cited news drivers (attribution).
-    read.attribution = await getAttribution(id).catch(() => null);
+    read.attribution = await getAttribution(id, sel).catch(() => null);
     const takes = [];
     if (read.perf.y1 != null) takes.push(`${read.label} is <b>${read.perf.y1 >= 0 ? 'up' : 'down'} ${Math.abs(read.perf.y1).toFixed(0)}%</b> over the last year${read.perf.m6 != null ? ` (6m ${read.perf.m6 >= 0 ? '+' : ''}${read.perf.m6.toFixed(0)}%)` : ''}.`);
     if (read.range.pos != null) takes.push(`It sits at <b>${read.range.pos.toFixed(0)}/100</b> of its 2-year range — ${read.range.pos >= 70 ? 'near the top' : read.range.pos <= 30 ? 'near the bottom' : 'mid-range'}.`);
@@ -1522,15 +1525,19 @@ async function getFundamentals(id) {
 // coverage for the segment, tags it with the event rules, ranks trusted sources, and picks
 // the kinds consistent with the direction of the move. A heuristic, clearly labelled.
 // ---------------------------------------------------------------------------
-async function getAttribution(id) {
+const ATTR_EVENTS = '(drought OR flood OR frost OR hurricane OR "export ban" OR sanctions OR strike OR outage OR disease OR harvest OR "El Nino" OR shortage OR surplus OR demand)';
+async function getAttribution(id, componentId) {
   const m = MARKETS.find((x) => x.id === id);
-  const primary = (m && BENCHMARKS.find((b) => b.id === m.primary)) || BENCHMARKS.find((b) => b.id === id);
-  if (!primary) return { id, error: 'unknown segment' };
-  return cached('attr:' + id, 3600e3, async () => {
+  if (!m) return { id, error: 'unknown segment' };
+  const sel = m.components.includes(componentId) ? componentId : m.primary;
+  const primary = BENCHMARKS.find((b) => b.id === sel);
+  return cached('attr:' + id + ':' + sel, 3600e3, async () => {
     let values = [];
     try { const pm = primary.paper ? (await yc(primary.paper, '2y')).series : {}; values = Object.keys(pm).sort().map((d) => pm[d]); } catch {}
     const moves = { y1: pctOver(values, 252), m6: pctOver(values, 126), m1: pctOver(values, 21) };
-    const q = SCAN_QUERIES[id] || NEWS_QUERIES[id] || primary.label;
+    // Tuned segment query for the headline instrument; a commodity-specific one otherwise.
+    const term = primary.label.replace(/\s*\(.*\)/, '');
+    const q = sel === m.primary ? (SCAN_QUERIES[id] || NEWS_QUERIES[id] || term) : `"${term}" ${ATTR_EVENTS}`;
     let items = [];
     try { items = await fetchGoogleNews(q + ' when:1y', 60); } catch {}
     const events = [];
@@ -2133,12 +2140,12 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname === '/api/marketread') {
       const id = url.searchParams.get('id');
       if (!MARKETS.some((x) => x.id === id)) return sendJSON(res, 404, { error: 'unknown market' });
-      return sendJSON(res, 200, await getMarketRead(id).catch((e) => ({ error: String(e.message) })));
+      return sendJSON(res, 200, await getMarketRead(id, url.searchParams.get('component')).catch((e) => ({ error: String(e.message) })));
     }
     if (url.pathname === '/api/attribution') {
       const id = url.searchParams.get('id');
       if (!MARKETS.some((x) => x.id === id)) return sendJSON(res, 404, { error: 'unknown segment' });
-      return sendJSON(res, 200, await getAttribution(id).catch((e) => ({ error: String(e.message) })));
+      return sendJSON(res, 200, await getAttribution(id, url.searchParams.get('component')).catch((e) => ({ error: String(e.message) })));
     }
     if (url.pathname === '/api/news') {
       const id = url.searchParams.get('id');

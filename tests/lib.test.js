@@ -177,6 +177,10 @@ test('attributeMoves picks the news kinds consistent with the move direction', (
   assert.equal(down.drivers[0].kind, 'Ample supply');         // aligns with the down move
   assert.equal(attributeMoves({ y1: 2, m6: 1 }, events).direction, 'up'); // small year move -> uses 6m sign
   assert.deepEqual(attributeMoves({}, []).drivers, []);
+  // bullish news must NOT "explain" a fall — flag the divergence instead
+  const div = attributeMoves({ y1: -25, m6: -5 }, [{ kind: 'Drought', effect: 'up', weight: 3, title: 'x', source: 'y', url: 'z' }]);
+  assert.equal(div.drivers.length, 0);
+  assert.equal(div.divergence, true);
 });
 
 test('computeCracks builds refining margins', () => {

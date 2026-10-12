@@ -271,7 +271,9 @@ footer li { margin-bottom: 2px; }
 .bp-v.cold { color: var(--green); }
 .bp-head { padding: 8px 12px 2px; font-size: 12px; letter-spacing: 1.5px; color: var(--amber); }
 .bp-comps { display: flex; flex-wrap: wrap; gap: 8px; padding: 6px 12px 2px; }
-.bp-comp { background: var(--panel); border: 1px solid var(--line); padding: 4px 8px; font-family: var(--mono); font-size: 11px; }
+.bp-comp { background: var(--panel); border: 1px solid var(--line); padding: 4px 8px; font-family: var(--mono); font-size: 11px; cursor: pointer; }
+.bp-comp:hover { border-color: var(--amber); }
+.bp-comp.active { border-color: var(--amber); background: #14181e; }
 .bp-comp-l { color: var(--dim); margin-right: 6px; }
 .bp-comp em { font-style: normal; }
 .bp-spark { padding: 5px 12px 2px; }

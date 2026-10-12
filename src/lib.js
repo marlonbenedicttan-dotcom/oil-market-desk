@@ -202,17 +202,22 @@ export function attributeMoves(moves, events) {
   const groups = {};
   for (const e of list) {
     if (!e || !e.kind) continue;
-    const align = want == null ? 0.6 : e.effect === want ? 1 : e.effect === 'up' || e.effect === 'down' ? 0.2 : 0.6;
-    const w = (e.weight || 1) * align * (e.tier1 ? 1.3 : 1);
-    if (w <= 0) continue;
-    const g = groups[e.kind] || (groups[e.kind] = { kind: e.kind, count: 0, weight: 0, sample: null, _rank: -1 });
-    g.count += 1; g.weight += w;
-    const rank = (e.tier1 ? 2 : 0) + (e.weight || 1);
-    if (rank > g._rank) { g._rank = rank; g.sample = { title: e.title, source: e.source, url: e.url, date: e.date }; }
+    const g = groups[e.kind] || (groups[e.kind] = { kind: e.kind, count: 0, good: 0, weight: 0, sample: null, _rank: -1 });
+    g.count += 1;
+    const aligned = want == null || e.effect === want || (e.effect !== 'up' && e.effect !== 'down');
+    if (aligned) {
+      g.good += 1; g.weight += (e.weight || 1) * (e.tier1 ? 1.3 : 1);
+      const rank = (e.tier1 ? 2 : 0) + (e.weight || 1);
+      if (rank > g._rank) { g._rank = rank; g.sample = { title: e.title, source: e.source, url: e.url, date: e.date }; }
+    }
   }
-  const drivers = Object.values(groups).sort((a, b) => b.weight - a.weight).slice(0, 3)
+  const all = Object.values(groups);
+  // A kind only counts as a driver if the MAJORITY of its headlines support the direction —
+  // so a fall isn't "explained" by bullish news. If nothing qualifies, flag the divergence.
+  const drivers = all.filter((g) => g.good > 0 && g.good / g.count >= 0.5)
+    .sort((a, b) => b.weight - a.weight).slice(0, 3)
     .map((g) => ({ kind: g.kind, count: g.count, weight: +g.weight.toFixed(1), sample: g.sample }));
-  return { direction: dir > 0 ? 'up' : dir < 0 ? 'down' : null, drivers };
+  return { direction: dir > 0 ? 'up' : dir < 0 ? 'down' : null, drivers, divergence: drivers.length === 0 && all.length > 0 };
 }
 
 export function computeCracks(m) {
