@@ -664,7 +664,7 @@ function baseOptions({ dp = 2, unit = '', percentAxis = false, yTitle = '', y1Ti
               const e = ctx.dataset.$news[ctx.dataIndex];
               if (!e) return undefined;
               const t = String(e.title); const tt = t.length > 90 ? t.slice(0, 89) + '…' : t;
-              return `📰 ${tt} — ${e.source} (${e.pct >= 0 ? '+' : ''}${e.pct.toFixed(1)}%)`;
+              return `📰 ${e.date.slice(5)} · ${tt} — ${e.source} (${e.pct >= 0 ? '+' : ''}${e.pct.toFixed(1)}%)`;
             }
             const v = ctx.parsed.y;
             if (v == null || Number.isNaN(v)) return `${ctx.dataset.label}: —`;
@@ -857,7 +857,11 @@ async function renderChart() {
   chart = mountChart('chart', chartData, baseOptions({ dp: chartDp, anchorable: true }), [anchorLine, bandsPlugin, eventsPlugin]);
   if (chart) chart.$bands = bands;
   // Big-move markers — the chart's own largest swings, each tagged with the trusted news behind it.
-  if (chart) await attachMarkers(chart, bench ? currentMarket : null, histLabels, [datasets[0] ? datasets[0].data.slice(0, histLabels.length) : []], '#chart-events');
+  let newsId = null;
+  if (bench) newsId = currentMarket;
+  else if (metric.startsWith('basis:')) { const mk2 = markets.find((m) => m.components.includes(metric.slice(6))); newsId = mk2 ? mk2.id : null; }
+  else if (metric.startsWith('spread:')) newsId = 'crude';
+  if (chart) await attachMarkers(chart, newsId, histLabels, [datasets[0] ? datasets[0].data.slice(0, histLabels.length) : []], '#chart-events');
 }
 // The futures curve for a benchmark (client-cached 5 min) — powers the forward-curve overlay.
 const termCache = {};
@@ -943,12 +947,16 @@ function applyNewsDataset(chart, ev) {
   const labels = chart.data.labels || [];
   const primary = (chart.data.datasets[0] && chart.data.datasets[0].data) || [];
   if (!primary.some((x) => x != null)) return;
+  // A small BAND around each move (not one column) so hovering NEAR it shows the headline.
+  const band = labels.length > 200 ? 3 : 2;
   const byIdx = {}; const data = labels.map(() => null);
   for (const e of ev) {
-    if (e.idx < 0 || e.idx >= labels.length) continue;
-    byIdx[e.idx] = e;
-    const v = seriesValueAt(primary, e.idx);
-    data[e.idx] = v == null ? 0 : v;
+    for (let j = Math.max(0, e.idx - band); j <= Math.min(labels.length - 1, e.idx + band); j++) {
+      if (byIdx[j]) continue;                       // an earlier (closer) event already claimed this column
+      byIdx[j] = e;
+      const v = seriesValueAt(primary, j);
+      data[j] = v == null ? 0 : v;
+    }
   }
   if (!Object.keys(byIdx).length) return;
   chart.data.datasets.push({ label: 'news', data, borderColor: 'transparent', backgroundColor: 'transparent', borderWidth: 0, pointRadius: 0, pointHitRadius: 16, showLine: false, spanGaps: true, fill: false, $news: byIdx });
@@ -1228,6 +1236,7 @@ function renderCurveHistory(d) {
   if (block) block.style.display = '';
   const data = { labels: d.dates, datasets: [line('WTI: this month − next month', d.m1m2, CT.c2)] };
   curveHistChart = mountChart('curvehist', data, baseOptions({ dp: 2, yTitle: '$/bbl' }));
+  attachMarkers(curveHistChart, currentMarket, d.dates, [d.m1m2], '#curvehist-events');
 }
 function renderCurve(d) { if (!d) return; $('curve').innerHTML = curveBlock('WTI', d.wti) + curveBlock('Brent', d.brent); }
 // The curve ALWAYS follows the selected segment (no second picker).
@@ -1285,6 +1294,7 @@ function renderCrushHistory(h) {
     { label: 'Oil share %', data: h.oilShare, borderColor: CT.c1, backgroundColor: CT.c1 + '22', borderWidth: 1.5, pointRadius: 0, tension: 0.25, yAxisID: 'y1' },
   ] };
   crushChart = mountChart('crushhist', data, baseOptions({ dp: 2, yTitle: '$/bu', y1Title: '%' }));
+  attachMarkers(crushChart, 'grains', h.dates, [h.crush], '#crush-events');
 }
 
 // Seasonality — where the price sits vs its 5-year day-of-year band (gas/grains/softs).
@@ -1431,6 +1441,7 @@ function renderCrackHistory(h) {
     { label: '3-2-1', data: h.c321, borderColor: CT.c3, backgroundColor: CT.c3 + '22', borderWidth: 1.5, pointRadius: 0, tension: 0.25 },
   ] };
   crackHistChart = mountChart('crackhist', data, baseOptions({ dp: 2, yTitle: '$/bbl' }));
+  attachMarkers(crackHistChart, 'refined', h.dates, [h.diesel, h.c321, h.gasoline], '#crack-events');
 }
 function renderProducts(d) {
   if (!d?.items) { $('products').innerHTML = ''; return; }
