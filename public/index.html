@@ -21,7 +21,7 @@
   <link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png" />
   <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <link rel="stylesheet" href="style.css?v=35" />
+  <link rel="stylesheet" href="style.css?v=36" />
   <noscript><style>#boot{display:none!important}</style></noscript>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -72,28 +72,35 @@
 
     <!-- HOME: daily brief + watchlist + alerts + headlines + segments -->
     <div class="tabpane" data-pane="home" id="pane-home" role="tabpanel" aria-labelledby="tab-home">
-      <section class="panel">
+      <nav class="jumpnav" aria-label="Jump to a section">
+        <a href="#p-brief">Brief</a>
+        <a href="#p-watch">Watchlist</a>
+        <a href="#p-alerts">Alerts</a>
+        <a href="#p-headlines">Headlines</a>
+        <a href="#p-segments">Segments</a>
+      </nav>
+      <section class="panel" id="p-brief">
         <div class="ph"><span class="ph-t">☀️ DAILY BRIEF — what happened · what's on today</span><span id="brief-updated" class="dimtext"></span></div>
         <div id="home-brief"></div>
       </section>
 
-      <section class="panel">
+      <section class="panel" id="p-watch">
         <div class="ph"><span class="ph-t">📌 WATCHLIST — your pinned instruments</span><span class="dimtext">★ on any instrument pins it here · click a tile for its chart</span></div>
         <div id="home-watch"></div>
       </section>
 
-      <section class="panel">
-        <div class="ph"><span class="ph-t">⚠ ALERTS</span><span class="ph-right"><span id="home-alert-count" class="pill">0</span></span></div>
+      <section class="panel" id="p-alerts">
+        <div class="ph"><span class="ph-t">⚠️ ALERTS</span><span class="ph-right"><span id="home-alert-count" class="pill">0</span></span></div>
         <div id="home-alerts" class="alerts"></div>
         <div id="home-alert-sub" class="dimtext" style="padding:0 12px 10px"></div>
       </section>
 
-      <section class="panel">
+      <section class="panel" id="p-headlines">
         <div class="ph"><span class="ph-t">📰 LIVE — IMPORTANT HEADLINES</span><span class="dimtext">tier-1 wire · ranked by materiality · refreshes every 10 min</span></div>
         <div id="headlines" class="headlines"></div>
       </section>
 
-      <section class="panel">
+      <section class="panel" id="p-segments">
         <div class="ph"><span class="ph-t">🔎 SEGMENTS AT A GLANCE</span><span class="dimtext">click a segment to open it</span></div>
         <div id="marketstate" class="marketstate"></div>
       </section>
@@ -129,7 +136,7 @@
 
       <section class="panel" id="chart-panel">
         <div class="ph">
-          <span class="ph-t">PRICE HISTORY</span>
+          <span class="ph-t">📈 PRICE HISTORY</span>
           <div class="controls"><select id="metric" aria-label="Instrument"></select><select id="range" aria-label="Chart range"><option value="1m">1M</option><option value="3m">3M</option><option value="6m" selected>6M</option><option value="ytd">YTD</option><option value="1y">1Y</option><option value="5y">5Y</option><option value="10y">10Y</option></select></div>
         </div>
         <div class="chart-wrap lg"><canvas id="chart"></canvas></div>
@@ -152,7 +159,7 @@
       </section>
 
       <section class="panel">
-        <div class="ph"><span class="ph-t">PRICES FOR MONTHS AHEAD — <span id="curve-title"></span></span><span class="dimtext">is it cheaper or pricier later? (the “curve”)</span></div>
+        <div class="ph"><span class="ph-t">📅 PRICES FOR MONTHS AHEAD — <span id="curve-title"></span></span><span class="dimtext">is it cheaper or pricier later? (the “curve”)</span></div>
         <div id="curve" class="curve"></div>
         <div id="curvehist-block">
           <div id="curvehist-title" class="chokes-h dimtext" style="padding:8px 12px 0"></div>
@@ -183,20 +190,20 @@
 
       <!-- REFINED only: refining margins (the sector's core signal) + who it helps/hurts -->
       <section class="panel market-only" data-when="refined">
-        <div class="ph"><span class="ph-t">REFINING MARGINS — DIESEL · JET · GASOLINE</span><span class="dimtext">profit per barrel</span></div>
+        <div class="ph"><span class="ph-t">🏭 REFINING MARGINS — DIESEL · JET · GASOLINE</span><span class="dimtext">profit per barrel</span></div>
         <div id="products" class="products"></div>
         <div class="chokes-h dimtext" style="padding:0 12px">REFINING PROFIT OVER TIME ($/bbl, last 6 months)</div>
         <div class="chart-wrap sm"><canvas id="crackhist"></canvas></div>
         <div id="crack-events" class="chart-events"></div>
       </section>
       <section class="panel market-only" data-when="refined">
-        <div class="ph"><span class="ph-t">WHO IT HELPS / HURTS</span><span id="eq-date" class="dimtext"></span></div>
+        <div class="ph"><span class="ph-t">🤝 WHO IT HELPS / HURTS</span><span id="eq-date" class="dimtext"></span></div>
         <div id="sector-read" class="sector-read"></div>
         <div id="sectors" class="sectors"></div>
       </section>
 
       <section class="panel market-only" data-when="crude,refined,gas">
-        <div class="ph"><span class="ph-t">SUPPLY — US STOCKPILES &amp; GAS STORAGE</span><span id="inv-date" class="dimtext">updated weekly</span></div>
+        <div class="ph"><span class="ph-t">🛢️ SUPPLY — US STOCKPILES &amp; GAS STORAGE</span><span id="inv-date" class="dimtext">updated weekly</span></div>
         <div id="inventories" class="tbl"></div>
       </section>
 
@@ -236,16 +243,16 @@
         <section class="fold-body">
           <div class="ph"><span class="ph-t">🧭 PLAIN-ENGLISH GUIDE</span><button id="help-btn" class="ghost small">OPEN GUIDE</button></div>
           <div id="glossary" class="glossary hidden"></div>
-          <div class="ph sub-head"><span class="ph-t">⚠ THINGS TO FLAG</span><span class="ph-right"><button id="alert-settings" class="ghost small">⚙ THRESHOLDS</button><span id="alert-count" class="pill">0</span></span></div>
+          <div class="ph sub-head"><span class="ph-t">⚠️ THINGS TO FLAG</span><span class="ph-right"><button id="alert-settings" class="ghost small">⚙ THRESHOLDS</button><span id="alert-count" class="pill">0</span></span></div>
           <div id="alert-thresholds" class="thresholds hidden"></div>
           <div id="alerts" class="alerts"></div>
         </section>
         <section class="fold-body">
-          <div class="ph"><span class="ph-t">HOW EXTREME IS THIS?</span><span class="dimtext">vs 2 years · jumpiness · positioning · macro</span></div>
+          <div class="ph"><span class="ph-t">📏 HOW EXTREME IS THIS?</span><span class="dimtext">vs 2 years · jumpiness · positioning · macro</span></div>
           <div id="context" class="ctx"></div>
         </section>
         <section class="fold-body">
-          <div class="ph"><span class="ph-t">LAST TIME IT WAS THIS EXTREME</span>
+          <div class="ph"><span class="ph-t">🕰️ LAST TIME IT WAS THIS EXTREME</span>
             <select id="an-metric"><option value="basis:brent">Brent gap</option><option value="basis:wti">WTI gap</option><option value="spread:brent_wti">Brent vs WTI (real)</option></select>
           </div>
           <div id="analogue" class="analogue"></div>
@@ -298,11 +305,11 @@
         <div id="macro-news" class="news"></div>
       </section>
       <section class="panel">
-        <div class="ph"><span class="ph-t">CURRENCIES — <span id="fx-scope">REGION</span></span><span class="dimtext">the chosen region's currencies · click one for its chart</span></div>
+        <div class="ph"><span class="ph-t">💱 CURRENCIES — <span id="fx-scope">REGION</span></span><span class="dimtext">the chosen region's currencies · click one for its chart</span></div>
         <div id="macro-fx" class="macro"></div>
       </section>
       <section class="panel">
-        <div class="ph"><span class="ph-t">UPCOMING CATALYSTS</span></div>
+        <div class="ph"><span class="ph-t">🗓️ UPCOMING CATALYSTS</span></div>
         <div id="macro-events" class="macro"></div>
       </section>
     </div>
@@ -328,6 +335,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=72"></script>
+  <script src="app.js?v=73"></script>
 </body>
 </html>

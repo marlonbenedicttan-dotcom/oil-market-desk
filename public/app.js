@@ -283,7 +283,7 @@ function renderCards(m) {
 function setCardsTitle() {
   const mk = markets.find((x) => x.id === currentMarket);
   const el = $('cards-title');
-  if (el) el.textContent = 'INSTRUMENTS — ' + (mk ? mk.label.toUpperCase() : 'ALL');
+  if (el) el.textContent = '📊 INSTRUMENTS — ' + (mk ? mk.label.toUpperCase() : 'ALL');
 }
 
 // Home: the pinned instruments, across every segment, in one board.
@@ -464,8 +464,9 @@ function renderAdaptive() {
   // Past-year news drivers are fetched separately (/api/marketwhy) so the core read appears fast.
   const attrHtml = '<div id="read-attr" class="attr-holder"></div>';
   $('bottomline').innerHTML = `<div class="bl">
-      <div class="bl-score ${kl}"><div class="bl-num">${score == null ? '—' : signed(score, 0)}<span>/100</span></div><div class="bl-lbl">PRICE vs ITS OWN HISTORY<div class="bl-tag">${v.label}</div></div>
-        <div class="bl-phys"><div class="bl-phys-k">SUPPLY &amp; DEMAND${sd.kind ? ` · ${sd.kind === 'physical' ? 'real data' : 'curve only'}` : ''}</div><div class="bl-phys-v ${sdCls}">${sd.score == null ? 'no free data' : `${sd.score}<span>/100</span> ${sd.label}`}</div></div>
+      <div class="bl-score ${kl}"><div class="bl-num" title="Price vs its own history: −100 = cheap / washed-out, +100 = rich / premium, 0 = mid.">${score == null ? '—' : signed(score, 0)}<span>/100</span></div><div class="bl-lbl">PRICE vs ITS OWN HISTORY<div class="bl-tag">${v.label}</div></div>
+        <div class="bl-phys"><div class="bl-phys-k">SUPPLY &amp; DEMAND${sd.kind ? ` · ${sd.kind === 'physical' ? 'real data' : 'curve only'}` : ''}</div><div class="bl-phys-v ${sdCls}" title="Supply &amp; demand: 0 = oversupplied, 50 = balanced, 100 = undersupplied.">${sd.score == null ? 'no free data' : `${sd.score}<span>/100</span> ${sd.label}`}</div></div>
+        <div class="score-key" title="Full method in DATA &amp; METHODOLOGY (footer)">Scores: <b>−100</b> cheap → <b>+100</b> rich · <b>0</b> oversupplied → <b>100</b> undersupplied</div>
       </div>
       <div class="bl-sec"><div class="gtitle">WHAT HAPPENED</div><p>${v.meaning} ${(v.notes || []).join(' ')}</p>${attrHtml}</div>
       <div class="bl-sec"><div class="gtitle">KEY POINTS</div><ul>${kp}</ul></div>
@@ -2139,6 +2140,9 @@ $('macro-links')?.addEventListener('click', (e) => { const el = e.target.closest
   }));
   const tick = () => { $('clock').textContent = new Date().toLocaleTimeString('en-GB'); };
   tick(); setInterval(tick, 1000);
+  // Keep the sticky jump-nav pinned just under the (variable-height) top bar.
+  const setTopbarH = () => { const tb = document.querySelector('.topbar'); if (tb) document.documentElement.style.setProperty('--topbar-h', tb.offsetHeight + 'px'); };
+  setTopbarH(); addEventListener('resize', setTopbarH);
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});
   const onboardEl = $('onboarding');
   const showOnboard = () => { onboardEl?.classList.remove('hidden'); $('onboard-close')?.focus(); };
