@@ -2390,7 +2390,17 @@ async function maybeSendDigest() {
 const MIME = { '.html': 'text/html', '.css': 'text/css', '.js': 'text/javascript', '.json': 'application/json', '.svg': 'image/svg+xml', '.ico': 'image/x-icon', '.png': 'image/png', '.webmanifest': 'application/manifest+json' };
 const sendJSON = (res, code, obj) => { res.writeHead(code, { 'content-type': 'application/json', 'cache-control': 'no-store' }); res.end(JSON.stringify(obj)); };
 
+// Security headers on every response. The CSP is report-only, so it can never break the app —
+// it just watches for drift (a new inline script, CDN, or tile host).
+const SECURITY_HEADERS = {
+  'X-Content-Type-Options': 'nosniff',
+  'Referrer-Policy': 'strict-origin-when-cross-origin',
+  'X-Frame-Options': 'SAMEORIGIN',
+  'Permissions-Policy': 'geolocation=(), microphone=(), camera=()',
+  'Content-Security-Policy-Report-Only': "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com; style-src 'self' 'unsafe-inline' https://unpkg.com; img-src 'self' data: blob: https://server.arcgisonline.com https://tile.openstreetmap.org; connect-src 'self'; font-src 'self' data:; worker-src 'self'; frame-ancestors 'self'",
+};
 const server = http.createServer(async (req, res) => {
+  for (const k in SECURITY_HEADERS) res.setHeader(k, SECURITY_HEADERS[k]);
   const url = new URL(req.url, `http://${req.headers.host}`);
   // Health check (no auth) for uptime monitors.
   if (url.pathname === '/health') { res.writeHead(200, { 'content-type': 'application/json' }); return res.end(JSON.stringify({ ok: true, uptime: Math.round(process.uptime()) })); }

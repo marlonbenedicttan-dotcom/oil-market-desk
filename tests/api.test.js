@@ -320,3 +320,14 @@ test('export.csv returns CSV', async () => {
   assert.equal(r.status, 200);
   assert.match(await r.text(), /benchmark,unit/);
 });
+
+test('security headers are set on every response', async () => {
+  const html = await fetch(`http://localhost:${PORT}/`);
+  assert.equal(html.headers.get('x-content-type-options'), 'nosniff');
+  assert.equal(html.headers.get('x-frame-options'), 'SAMEORIGIN');
+  assert.match(html.headers.get('referrer-policy') || '', /strict-origin/);
+  assert.match(html.headers.get('permissions-policy') || '', /geolocation=\(\)/);
+  assert.match(html.headers.get('content-security-policy-report-only') || '', /default-src 'self'/);
+  const api = await fetch(`http://localhost:${PORT}/api/market`);
+  assert.equal(api.headers.get('x-content-type-options'), 'nosniff');
+});

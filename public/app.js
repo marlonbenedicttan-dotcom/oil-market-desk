@@ -820,7 +820,23 @@ function baseOptions({ dp = 2, unit = '', percentAxis = false, yTitle = '', y1Ti
 function mountChart(id, data, options, plugins) {
   const cv = $(id);
   if (!cv) return null;
-  if (cv.parentElement) cv.parentElement.removeAttribute('data-empty');
+  const wrap = cv.parentElement;
+  if (typeof Chart === 'undefined') {   // the Chart.js CDN failed — say so, don't throw
+    if (wrap) wrap.setAttribute('data-empty', 'Charts are unavailable right now — the chart library didn’t load.');
+    return null;
+  }
+  if (wrap) wrap.removeAttribute('data-empty');
+  // A text alternative for screen readers: what the chart plots, with the latest value.
+  const ds = (data?.datasets || []).filter((d) => d && d.label && !d.$news);
+  if (ds.length) {
+    const desc = ds.map((d) => {
+      const arr = (d.data || []).filter((v) => v != null);
+      const last = arr.length ? Number(arr[arr.length - 1]) : null;
+      return Number.isFinite(last) ? `${d.label} (latest ${last.toFixed(2)})` : d.label;
+    }).join(', ');
+    cv.setAttribute('role', 'img');
+    cv.setAttribute('aria-label', `Line chart — ${desc}. Values are approximate; hover a point for detail.`);
+  }
   if (charts[id]) { charts[id].data = data; charts[id].options = options; charts[id].update(); return charts[id]; }
   charts[id] = new Chart(cv, { type: 'line', data, options, plugins: plugins || [] });
   return charts[id];
@@ -1232,6 +1248,11 @@ async function loadMarket() {
 // ---------------------------------------------------------------------------
 let map, layer;
 function initMap() {
+  if (typeof L === 'undefined') {   // the Leaflet CDN failed — degrade to a note, don't throw
+    const e = $('map-empty');
+    if (e) { e.classList.remove('hidden'); e.textContent = 'Map unavailable — the map library didn’t load.'; }
+    return;
+  }
   map = L.map('map', { worldCopyJump: false, minZoom: 2, maxZoom: 16, maxBounds: [[-85, -180], [85, 180]], maxBoundsViscosity: 1.0 }).setView([25, 40], 2);
   const esri = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', { attribution: 'Tiles © Esri', maxZoom: 16, noWrap: true });
   esri.addTo(map);
