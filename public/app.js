@@ -94,6 +94,17 @@ function updateFreshness(iso) {
   const title = 'Market data ' + (label ? 'updated ' + label : 'not available');
   dot.title = title; dot.setAttribute('aria-label', title);
 }
+
+// ---------------------------------------------------------------------------
+// One voice + one look for every panel state, so the page never reads as half-built.
+//   loading → a pulsing dot + what is being fetched
+//   empty   → a calm "nothing here" (and why)
+//   error   → what failed, and that we retry (never a bare "unavailable")
+// ---------------------------------------------------------------------------
+const stState = (kind, text) => `<div class="state ${kind}">${kind === 'loading' ? '<i class="spin" aria-hidden="true"></i>' : ''}<span>${text}</span></div>`;
+const stLoading = (text = 'Loading…') => stState('loading', text);
+const stEmpty = (text) => stState('empty', text);
+const stError = (text) => stState('error', text);
 async function getJSON(url) { const r = await fetch(url); if (!r.ok) throw new Error(`${url} -> HTTP ${r.status}`); return r.json(); }
 // Memoised GET — a per-session cache so re-visiting a segment is instant (no re-fetch of the
 // read, news, curve, etc.). Short TTL; the server has its own longer cache anyway.
@@ -261,7 +272,7 @@ function renderWatchlist() {
   const items = watchlist().map((id) => data.benchmarks.find((b) => b.id === id)).filter(Boolean);
   el.innerHTML = items.length
     ? `<div class="tiles">${items.map(tileHtml).join('')}</div>`
-    : '<div class="dimtext" style="padding:12px">Nothing pinned yet — open <b>COMMODITIES</b> and click <b>☆</b> on any instrument to pin it here.</div>';
+    : stEmpty('Nothing pinned yet — open <b>COMMODITIES</b> and click <b>☆</b> on any instrument to pin it here.');
 }
 
 // ---------------------------------------------------------------------------
@@ -485,13 +496,13 @@ function readSkeleton(mk) {
   $('bottomline').innerHTML = `<div class="bl">
     <div class="bl-score elevated"><div class="bl-num">${px}</div><div class="bl-lbl">${String(name).toUpperCase()}${b ? ` <span class="dimtext">${b.unit}</span>` : ''}<div class="bl-tag">reading the full verdict…</div></div></div>
     <div class="bl-sec"><div class="gtitle">WHAT HAPPENED</div><p class="dimtext">Pulling the price history, curve, supply/demand and news for <b>${name}</b>${six == null ? '' : ` — ${six >= 0 ? '+' : ''}${six.toFixed(0)}% over 6 months`}…</p></div></div>`;
-  $('tightness').innerHTML = '<div class="dimtext" style="padding:10px 12px">reading the market…</div>';
+  $('tightness').innerHTML = stLoading('Reading the market…');
 }
 // The past-year news drivers (slow) — fetched after the read, into the placeholder.
 async function loadMarketWhy() {
   const el = $('read-attr'); if (!el) return;
   const k = segKey();
-  el.innerHTML = '<div class="dimtext" style="padding:4px 0">pulling the past-year news drivers…</div>';
+  el.innerHTML = stLoading('Pulling the past-year news drivers…');
   try {
     const d = await jget('/api/marketwhy?id=' + encodeURIComponent(currentMarket) + (currentComponent ? '&component=' + encodeURIComponent(currentComponent) : ''), 900000);
     if (k !== segKey()) return;
@@ -513,9 +524,9 @@ async function loadNews() {
   const el = $('news');
   if (!el) return;
   const k = segKey();
-  el.innerHTML = '<div class="dimtext" style="padding:8px 12px">loading headlines…</div>';
+  el.innerHTML = stLoading('Loading headlines…');
   try { const n = await jget('/api/news?id=' + encodeURIComponent(currentMarket), 300000); if (k !== segKey()) return; renderNews(n); }
-  catch { if (k === segKey()) { el.innerHTML = '<div class="dimtext" style="padding:8px 12px">headlines unavailable right now</div>'; markReady('news'); } }
+  catch { if (k === segKey()) { el.innerHTML = stError('Couldn\u2019t load headlines — retrying.'); markReady('news'); } }
 }
 function renderNews(n, elId = 'news', subId = 'news-sub') {
   const el = $(elId);
@@ -525,7 +536,7 @@ function renderNews(n, elId = 'news', subId = 'news-sub') {
   const sub = $(subId);
   const lbl = (n && n.label) || '';
   if (sub) sub.textContent = lbl + ' · tier-1 wire · refreshes daily';
-  if (!items.length) { el.innerHTML = '<div class="dimtext" style="padding:8px 12px">No recent tier-1 headlines for this segment.</div>'; return; }
+  if (!items.length) { el.innerHTML = stEmpty('No recent tier-1 headlines for this segment.'); return; }
   el.innerHTML = items.map((it) => `<a class="news-item" href="${it.url}" target="_blank" rel="noopener noreferrer"><span class="news-src">${it.source || 'wire'}</span><span class="news-t">${it.kind ? `<em class="news-k">${it.kind}</em> ` : ''}${it.title}</span><span class="news-d dimtext">${ago(it.date)}</span></a>`).join('')
     + '<div class="dimtext" style="padding:6px 12px;font-size:10px">Headlines via Google News · © the respective publishers · links open at the source.</div>';
 }
@@ -1018,7 +1029,7 @@ async function chartMoveMarkers(market, labels, seriesList, mode = 'pct', focusI
 }
 function renderChartEvents(ev, sel = '#chart-events') {
   const el = $(sel); if (!el) return;
-  if (!ev || !ev.length) { el.innerHTML = '<span class="dimtext">No big move with a trusted-news match on this chart right now.</span>'; return; }
+  if (!ev || !ev.length) { el.innerHTML = stEmpty('No big move with a trusted-news match on this chart right now.'); return; }
   el.innerHTML = `<span class="dimtext">big moves on this chart — hover a marker for the headline, or open the source:</span> ` + ev.map((e) => { const t = String(e.title); const short = t.length > 72 ? t.slice(0, 71) + '…' : t; return `<a class="ce" href="${e.url}" target="_blank" rel="noopener noreferrer" title="${t.replace(/"/g, '&quot;')}"><span class="ce-dot" style="background:${e.color}"></span>${e.date.slice(5)} ${e.move >= 0 ? '▲' : '▼'} ${moveText(e)} · ${short} <span class="dimtext">(${e.source})</span></a>`; }).join('');
 }
 // Shared by every chart: detect its big moves, attach the trusted news (as a line INSIDE the
@@ -1241,7 +1252,7 @@ function ctxRow(k, pct, value) {
   return `<div class="ctx-row"><span class="ctx-k">${k}</span><span class="ctx-bar"><i style="width:${pct == null ? 0 : pct}%"></i></span><span class="ctx-p ${pctClass(pct)}">${pct == null ? '—' : pct.toFixed(0) + '/100'}</span><span class="ctx-v">${value}</span></div>`;
 }
 function renderInventories(d) {
-  if (!d || !d.items?.length) { $('inventories').innerHTML = '<div class="dimtext" style="padding:10px 12px">EIA key needed, or no data.</div>'; return; }
+  if (!d || !d.items?.length) { $('inventories').innerHTML = stEmpty('EIA key needed, or no inventory data.'); return; }
   const LBL = { crude: 'Crude oil', cushing: 'Cushing (delivery hub)', gasoline: 'Gasoline', distillate: 'Diesel & heating oil', spr: 'Strategic reserve' };
   $('inv-date').textContent = 'weekly US stockpiles · week of ' + d.items[0].period;
   const fmtN = (v) => (v == null ? '—' : (v >= 0 ? '+' : '') + v.toLocaleString(undefined, { maximumFractionDigits: 0 }));
@@ -1343,11 +1354,11 @@ async function renderCurveForSegment() {
   if (!el) return;
   if (currentMarket === 'crude') { try { const c = await jget('/api/curve', 60000); if (k !== segKey()) return; renderCurve(c); return; } catch {} }
   const comps = ((mk ? mk.components : []).map((c) => data.benchmarks.find((x) => x.id === c.id))).filter((b) => b && b.curve);
-  el.innerHTML = '<div class="dimtext" style="padding:10px 12px">loading curve…</div>';
+  el.innerHTML = stLoading('Loading the curve…');
   const results = await Promise.all(comps.map((b) => jget('/api/termstructure?id=' + encodeURIComponent(b.id), 180000).catch(() => null)));
   if (k !== segKey()) return;
   const html = results.filter((r) => r && r.available).map((r) => curveBlock(r.label, r)).join('');
-  el.innerHTML = html || '<div class="dimtext" style="padding:10px 12px">No free month-by-month curve for this segment — only a front-month price.</div>';
+  el.innerHTML = html || stEmpty('No free month-by-month curve for this segment — only a front-month price.');
 }
 // Soybean crush — the processor margin (meal + oil − beans, $/bu) for the grains segment.
 async function loadCrush() {
@@ -1355,7 +1366,7 @@ async function loadCrush() {
   if (!el) return;
   if (currentMarket !== 'grains') { el.innerHTML = ''; return; }
   const k = segKey();
-  el.innerHTML = '<div class="dimtext" style="padding:10px 12px">reading the soybean crush…</div>';
+  el.innerHTML = stLoading('Reading the soybean crush…');
   let d; try { d = await jget('/api/crush', 300000); } catch { d = null; }
   if (k !== segKey() || currentMarket !== 'grains') return;
   renderCrush(d);
@@ -1363,7 +1374,7 @@ async function loadCrush() {
 let crushChart;
 function renderCrush(d) {
   const el = $('crush'); if (!el) return;
-  if (!d || d.error || d.crush == null || !d.legs) { el.innerHTML = '<div class="dimtext" style="padding:10px 12px">soybean crush unavailable right now.</div>'; return; }
+  if (!d || d.error || d.crush == null || !d.legs) { el.innerHTML = stError('Soybean crush data isn\u2019t available right now.'); return; }
   const read = d.crush > 2 ? 'fat' : d.crush > 1 ? 'healthy' : d.crush > 0 ? 'thin' : 'negative — processors losing money';
   const oilRead = d.oilShare == null ? '—' : d.oilShare >= 45 ? 'oil-led (soyoil rich vs meal)' : d.oilShare <= 38 ? 'meal-led (soymeal rich vs oil)' : 'balanced';
   el.innerHTML = `<div class="cards">
@@ -1400,7 +1411,7 @@ async function loadSeasonal() {
   const mk = markets.find((x) => x.id === currentMarket);
   const b = mk ? data.benchmarks.find((x) => x.id === mk.primary) : null;
   if (!b) { el.innerHTML = ''; return; }
-  el.innerHTML = '<div class="dimtext" style="padding:10px 12px">reading 5-year seasonality…</div>';
+  el.innerHTML = stLoading('Reading 5-year seasonality…');
   let sea; try { sea = await getSeasonal(b.id); } catch { sea = null; }
   if (k !== segKey()) return;
   renderSeasonal(sea, b);
@@ -1411,7 +1422,7 @@ function renderSeasonal(sea, b) {
   const sub = $('seasonal-sub');
   if (sub) sub.textContent = b ? `${b.label} · 5-year, day-of-year` : '';
   const g = sea && !sea.error ? sea.grade : null;
-  if (!g) { el.innerHTML = '<div class="dimtext" style="padding:10px 12px">No 5-year seasonal history for this instrument.</div>'; return; }
+  if (!g) { el.innerHTML = stEmpty('No 5-year seasonal history for this instrument.'); return; }
   const dp = (b && b.dp) ?? 2;
   const clamp = (x) => Math.max(0, Math.min(100, x));
   const pos = clamp(g.pos);
@@ -1429,7 +1440,7 @@ function renderSeasonal(sea, b) {
     <div class="read-line">Now <b>${price == null ? '—' : Number(price).toFixed(dp)}</b>${g.vsMedian != null ? ` — ${g.vsMedian >= 0 ? '+' : ''}${g.vsMedian}% vs the 5-year median` : ''}.${aheadTxt}</div>`;
 }
 function renderAnalogue(a) {
-  if (!a || a.error) { $('analogue').innerHTML = `<div class="dimtext" style="padding:10px 12px">${a?.error || 'loading…'}</div>`; return; }
+  if (!a || a.error) { $('analogue').innerHTML = a?.error ? stError('Couldn\u2019t load the analogue — retrying.') : stLoading(); return; }
   const rows = a.horizons.map((h) => (h.n
     ? `<tr><td>${h.h} days</td><td>${h.n}</td><td class="${cls(h.median)}">${signed(h.median, 2)}</td><td>${h.q25.toFixed(2)} … ${h.q75.toFixed(2)}</td><td>${h.pctUp.toFixed(0)}%</td></tr>`
     : `<tr><td>${h.h} days</td><td colspan="4" class="dimtext">never this extreme</td></tr>`)).join('');
@@ -1539,7 +1550,7 @@ function processSar() {
     for (const p of points) { ctx.beginPath(); ctx.arc(p.x, p.y, 7, 0, Math.PI * 2); ctx.stroke(); }
     $('sar-count').innerHTML = `<b>${points.length}</b> small bright objects circled — likely <b>oil platforms or ships</b>. (At this zoom a single tanker is under 1 pixel, so treat the count as indicative, not exact.)`;
   };
-  img.onerror = () => { const s = $('sar-count'); if (s) s.textContent = 'image unavailable right now'; };
+  img.onerror = () => { const s = $('sar-count'); if (s) s.textContent = 'image unavailable'; };
   img.src = '/api/sar/image';
 }
 
@@ -1557,7 +1568,7 @@ function renderSatellite(sar, flares) {
       <div class="chokes">${regions}</div>`;
     if (flares.trend?.length > 1) html += `<div class="dimtext" style="padding:4px 12px 10px">flames seen per day: ${flares.trend.map((t) => `${t.date.slice(5)}: ${t.count}`).join(' · ')}</div>`;
   }
-  $('satellite').innerHTML = html || '<div class="dimtext" style="padding:10px 12px">no data</div>';
+  $('satellite').innerHTML = html || stEmpty('No satellite picture right now.');
   if (sar && !sar.error) processSar();
 }
 function renderReroute(d) {
@@ -1592,7 +1603,7 @@ function renderMacroRegion() {
 async function loadRegionCurrencies() {
   const el = $('macro-fx');
   if (!el) return;
-  el.innerHTML = '<div class="dimtext" style="padding:8px 12px">loading…</div>';
+  el.innerHTML = stLoading();
   const req = macroRegion;
   let items = null;
   try { items = (await getJSON('/api/region-quotes?id=' + req)).items || []; } catch {}
@@ -1602,7 +1613,7 @@ async function loadRegionCurrencies() {
   const fx = (items || []).filter((i) => i.kind === 'fx').filter((i) => { if (seen.has(i.label)) return false; seen.add(i.label); return true; });
   el.innerHTML = fx.length
     ? '<div class="kpis">' + fx.map((f) => macroTile(f.label, f.price == null ? '—' : Number(f.price).toFixed(f.price < 10 ? 4 : 2), f.pct != null ? pctf(f.pct) : '', cls(f.pct), null, f.deltas ? deltaStrip(f.deltas) : '')).join('') + '</div><div class="macro-note">the chosen region\'s currencies · moves over 1D/1W/1M/YTD/1Y</div>'
-    : '<div class="dimtext" style="padding:8px 12px">no currencies for this region</div>';
+    : stEmpty('No currencies for this region.');
 }
 async function loadMacroTickers() {
   // the macro tape shows EVERY macro ticker (all regions) so it is never sparse
@@ -1636,10 +1647,10 @@ async function loadCountry() {
   if (showUsJp) loadUsJp();
   const sel = $('macro-country');
   const label = (sel && sel.selectedOptions[0] ? sel.selectedOptions[0].textContent : req).trim();
-  el.innerHTML = `<div class="macro-note">${label.toUpperCase()}</div><div class="dimtext" style="padding:6px 12px">loading…</div>`;
+  el.innerHTML = `<div class="macro-note">${label.toUpperCase()}</div>${stLoading()}`;
   const c = await fetchCountry(req);
   if (req !== macroCountry) return;
-  if (!c || c.error) { el.innerHTML = `<div class="macro-note">${label.toUpperCase()}</div><div class="dimtext" style="padding:6px 12px">data unavailable for this country</div>`; return; }
+  if (!c || c.error) { el.innerHTML = `<div class="macro-note">${label.toUpperCase()}</div>${stError('Couldn\u2019t load this country\u2019s data.')}`; return; }
   const num = (v, dp) => (v == null ? '—' : Number(v).toFixed(dp));
   const fxId = COUNTRY_FX_ID[c.fx.sym];
   const f = c.fund || {};
@@ -1787,7 +1798,7 @@ function renderUsJp(us, jp) {
   const note = $('usjp-note');
   const sum = $('usjp-summary');
   const ul = us && us.long, jl = jp && jp.long;
-  if (!cv || !ul || !jl) { if (sum) sum.textContent = 'US or Japan 10-year data unavailable right now.'; return; }
+  if (!cv || !ul || !jl) { if (sum) sum.textContent = 'US or Japan 10-year data is unavailable right now.'; return; }
   const dates = [...new Set([...ul.dates, ...jl.dates])].sort();
   const raw = (s) => { const m = new Map(); s.dates.forEach((dt, i) => m.set(dt, s.values[i])); return dates.map((dt) => (m.has(dt) ? m.get(dt) : null)); };
   const usArr = raw(ul);
@@ -1807,7 +1818,7 @@ async function loadUsJp() {
 // Cross-asset transmission block — shared by segments and macro regions.
 function crossAssetBlock(pred, title) {
   const ideas = ((transmission && transmission.ideas) || []).filter(pred);
-  if (!ideas.length) return '<div class="dimtext" style="padding:8px 12px">No strong cross-asset signal right now — moves are within normal ranges.</div>';
+  if (!ideas.length) return stEmpty('No strong cross-asset signal right now — moves are within normal ranges.');
   return ideas.map((i) => `
     <div class="xa">
       <div class="xa-trig">▸ ${i.trigger}</div>
@@ -1827,9 +1838,9 @@ async function loadFundamentals() {
   const el = $('fundamentals');
   if (!el) return;
   const k = segKey();
-  el.innerHTML = '<div class="dimtext" style="padding:8px 12px">scanning fundamentals…</div>';
+  el.innerHTML = stLoading('Scanning fundamentals…');
   try { const f = await jget('/api/fundamentals?id=' + encodeURIComponent(currentMarket), 300000); if (k !== segKey()) return; renderFundamentals(f); }
-  catch { if (k === segKey()) el.innerHTML = '<div class="dimtext" style="padding:8px 12px">unavailable right now</div>'; }
+  catch { if (k === segKey()) el.innerHTML = stError('Couldn\u2019t load fundamentals — retrying.'); }
 }
 function renderFundamentals(f) {
   const el = $('fundamentals');
@@ -1844,7 +1855,7 @@ function renderFundamentals(f) {
     : up >= down * 1.5 ? 'tight-leaning (more supply shocks than gluts)'
     : down >= up * 1.5 ? 'loose-leaning (more gluts than supply shocks)' : 'mixed';
   if (sub) sub.textContent = `${f && f.label ? f.label + ' · ' : ''}news tilt: ${lean} — ${up} bullish vs ${down} bearish tagged shocks (qualitative, not scored)`;
-  if (!items.length) { el.innerHTML = '<div class="dimtext" style="padding:8px 12px">No supply/demand shocks detected in coverage for this segment right now.</div>'; return; }
+  if (!items.length) { el.innerHTML = stEmpty('No supply/demand shocks in recent coverage for this segment.'); return; }
   el.innerHTML = items.map((i) => `<div class="xa">
       <div class="xa-trig ${i.effect === 'down' ? 'neg' : 'pos'}">${i.effect === 'down' ? '▼' : '▲'} ${i.kind} <span class="dimtext">· ${i.ageDays <= 14 ? 'recent' : Math.max(1, Math.round(i.ageDays / 30)) + 'mo ago'} · ${i.source}</span></div>
       <div class="xa-chain"><a href="${i.url}" target="_blank" rel="noopener noreferrer">${i.title}</a></div>
@@ -1856,7 +1867,7 @@ function renderFundamentals(f) {
 function renderBrief(b) {
   const el = $('home-brief');
   if (!el) return;
-  if (!b || b.error) { el.innerHTML = '<div class="dimtext" style="padding:12px">brief unavailable right now</div>'; return; }
+  if (!b || b.error) { el.innerHTML = stError('Couldn\u2019t load today\u2019s brief — retrying.'); return; }
   const upd = $('brief-updated');
   if (upd) upd.textContent = 'as of ' + new Date(b.updated).toLocaleString('en-GB');
   const happened = (b.happened || []).map((x) => `<li>${x.text}</li>`).join('') || '<li class="dimtext">No notable moves.</li>';
@@ -1869,7 +1880,7 @@ function renderBrief(b) {
 }
 async function loadBrief() {
   const el = $('home-brief');
-  if (el && !el.innerHTML) el.innerHTML = '<div class="dimtext" style="padding:12px">reading the day…</div>';
+  if (el && !el.innerHTML) el.innerHTML = stLoading('Reading the day…');
   try { renderBrief(await getJSON('/api/brief')); } catch { renderBrief(null); }
 }
 // Live important headlines (hero board).
@@ -1877,20 +1888,20 @@ async function loadHeadlines() {
   const el = $('headlines');
   if (!el) return;
   try { renderHeadlines(await getJSON('/api/headlines')); }
-  catch { el.innerHTML = '<div class="dimtext" style="padding:8px 12px">headlines unavailable</div>'; }
+  catch { el.innerHTML = stError('Couldn\u2019t load headlines — retrying.'); }
 }
 function renderHeadlines(h) {
   const el = $('headlines');
   if (!el) return;
   const items = (h && h.items) || [];
-  if (!items.length) { el.innerHTML = '<div class="dimtext" style="padding:8px 12px">No major commodity headlines right now.</div>'; return; }
+  if (!items.length) { el.innerHTML = stEmpty('No major commodity headlines right now.'); return; }
   el.innerHTML = items.map((i) => `<a class="hl ${i.effect === 'down' ? 'down' : 'up'}" href="${i.url}" target="_blank" rel="noopener noreferrer"><span class="hl-tag">${i.effect === 'down' ? '▼' : '▲'} ${i.kind}</span><span class="hl-t">${i.title}</span><span class="hl-s dimtext">${i.source}</span></a>`).join('');
 }
 async function loadMacroNews() {
   const el = $('macro-news');
   if (!el) return;
   const req = macroCountry;
-  el.innerHTML = '<div class="dimtext" style="padding:8px 12px">loading headlines…</div>';
+  el.innerHTML = stLoading('Loading headlines…');
   let n; try { n = await getJSON('/api/macro-news?id=' + req); } catch { n = null; }
   if (req !== macroCountry) return;
   renderNews(n || { items: [] }, 'macro-news', 'macro-news-sub');
@@ -2137,15 +2148,15 @@ $('macro-links')?.addEventListener('click', (e) => { const el = e.target.closest
   if (savedRegion) { macroRegion = savedRegion; if ($('macro-region')) $('macro-region').value = savedRegion; }
   if (savedCountry) prefCountry = savedCountry;
   if ('Notification' in window && Notification.permission === 'default') { try { await Notification.requestPermission(); } catch {} }
-  bootStep('loading history…');
+  bootStep('Loading history…');
   await loadHistory().catch(() => {});   // never fatal — degrades to an empty history
   fxList = await getJSON('/api/fx').catch(() => []);
   rateList = await getJSON('/api/rates').catch(() => []);
   renderCmpPresets();
-  bootStep('loading markets…');
+  bootStep('Loading markets…');
   markets = await getJSON('/api/markets').catch(() => []);
   macroCountries = await getJSON('/api/countries').catch(() => null);
-  bootStep('loading prices…');
+  bootStep('Loading prices…');
   await refreshLive();        // prices + ships (sets `data` first)
   initCurveHist();            // arm the lazy loader for the (expensive) curve-history chart
   bootStep('reading the market…');
