@@ -565,8 +565,21 @@ footer li { margin-bottom: 2px; }
 /* Onboarding */
 .onboard { position: fixed; inset: 0; z-index: 5000; background: rgba(0,0,0,.72); display: flex; align-items: center; justify-content: center; padding: 20px; }
 .onboard-box { background: var(--panel); border: 1px solid var(--line2); max-width: 520px; padding: 22px 24px; border-radius: 12px; }
-.onboard-box h2 { margin: 0 0 12px; font-size: 18px; }
-.onboard-lead { margin: -4px 0 14px; color: var(--dim); font-size: 13px; }
+.onboard-box h2 { margin: 0 0 10px; font-size: 18px; }
+.onboard-lead { margin: 0 0 12px; color: #c9d4df; font-size: 13px; line-height: 1.6; }
+/* Intro "?" — a small tower scanning (radar sweep), then a two-line about */
+.tower { position: relative; width: 108px; height: 108px; margin: 2px auto 16px; border-radius: 50%; border: 1px solid rgba(255,158,0,.22); background: radial-gradient(circle, rgba(255,158,0,.06), rgba(255,158,0,0) 70%); display: grid; place-items: center; overflow: hidden; }
+.tower-ring { position: absolute; border: 1px solid rgba(255,158,0,.13); border-radius: 50%; }
+.tower-ring.r1 { inset: 16px; } .tower-ring.r2 { inset: 34px; }
+.tower-sweep { position: absolute; inset: 0; border-radius: 50%; background: conic-gradient(from 0deg, rgba(255,158,0,0) 0deg, rgba(255,158,0,.04) 296deg, rgba(255,158,0,.16) 338deg, rgba(255,158,0,.42) 360deg); animation: towersweep 4s cubic-bezier(.45,0,.55,1) infinite; }
+.tower-core { position: relative; z-index: 1; display: grid; place-items: center; }
+.tower-rook { width: 40px; height: 40px; filter: drop-shadow(0 0 8px rgba(255,158,0,.45)); animation: bootpulse 2.6s ease-in-out infinite; }
+.tower-beacon { position: absolute; top: -5px; left: 50%; margin-left: -3px; width: 6px; height: 6px; border-radius: 50%; background: var(--green, #00c853); box-shadow: 0 0 9px rgba(0,200,83,.8); animation: bootping 2.2s ease-out infinite; }
+@keyframes towersweep { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .tower-sweep, .tower-rook, .tower-beacon { animation: none; } }
+.onboard-tabs { margin: 0 0 16px; color: #c9d4df; font-size: 12.5px; line-height: 1.9; }
+.onboard-tabs b { color: var(--text); }
+.onboard-close { letter-spacing: 1px; font-size: 11px; }
 .onboard-box ul { margin: 0 0 16px; padding-left: 18px; }
 .onboard-box li { margin-bottom: 8px; color: #c9d4df; font-size: 13px; }
 .onboard-box li b { color: var(--text); }

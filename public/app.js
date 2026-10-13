@@ -133,7 +133,7 @@ function renderMethodology(data) {
   }
   if (caveats) html += `<div class="m-sec"><h4>THINGS TO FLAG</h4><ul class="m-rules">${caveats}</ul></div>`;
   el.innerHTML = `<details class="fold" id="methodology"><summary>DATA &amp; METHODOLOGY</summary><div class="note-body">${html}</div></details>`
-    + `<div class="foot-line dimtext">Marlon's Watchtower${data.version ? ` · build ${data.version}` : ''} · data © the respective sources · not investment advice.</div>`;
+    + '<div class="foot-line dimtext">Marlon\'s Watchtower · built and maintained by <b>Marlon Benedict Tan</b> · data © the respective sources · not investment advice.</div>';
 }
 async function getJSON(url) { const r = await fetch(url); if (!r.ok) throw new Error(`${url} -> HTTP ${r.status}`); return r.json(); }
 // Memoised GET — a per-session cache so re-visiting a segment is instant (no re-fetch of the

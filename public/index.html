@@ -23,7 +23,7 @@
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
   <link rel="preconnect" href="https://unpkg.com" crossorigin />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <link rel="stylesheet" href="style.css?v=47" />
+  <link rel="stylesheet" href="style.css?v=48" />
   <noscript><style>#boot{display:none!important}</style></noscript>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -367,18 +367,26 @@
   </main>
   <div id="onboarding" class="onboard hidden" role="dialog" aria-modal="true" aria-labelledby="onboard-title">
     <div class="onboard-box">
-      <h2 id="onboard-title">Welcome to Marlon's Watchtower</h2>
-      <p class="onboard-lead">Commodities and global macro — in plain English.</p>
-      <ul>
-        <li><b>HOME</b> — your pinned <b>watchlist</b> (★ any instrument), live <b>alerts</b>, and every segment at a glance.</li>
-        <li><b>COMMODITIES</b> — pick a segment and the page follows it: price, curve, supply vs demand, news and trade ideas.</li>
-        <li><b>MACRO</b> — rates, inflation, growth and currencies, by region.</li>
-      </ul>
-      <button id="onboard-close">Got it →</button>
-      <div class="dimtext">For information only — not investment advice.</div>
+      <div class="tower" aria-hidden="true">
+        <span class="tower-ring r1"></span><span class="tower-ring r2"></span>
+        <span class="tower-sweep"></span>
+        <span class="tower-core">
+          <svg class="tower-rook" viewBox="0 0 64 64" fill="#ff9e00">
+            <rect x="16" y="13" width="32" height="5"/><rect x="18" y="18" width="6" height="8"/>
+            <rect x="29" y="18" width="6" height="8"/><rect x="40" y="18" width="6" height="8"/>
+            <rect x="20" y="26" width="24" height="22"/><rect x="14" y="48" width="36" height="6"/>
+          </svg>
+          <span class="tower-beacon"></span>
+        </span>
+      </div>
+      <h2 id="onboard-title">Marlon's Watchtower</h2>
+      <p class="onboard-lead">A live commodity and macro desk: <b>what moved, why it moved, and what to watch next</b> — with a source and an as-of date on every number.</p>
+      <p class="onboard-tabs"><b>HOME</b> watchlist &amp; alerts &nbsp;·&nbsp; <b>COMMODITIES</b> a segment at a time &nbsp;·&nbsp; <b>MACRO</b> rates, inflation &amp; FX by region</p>
+      <button id="onboard-close" class="onboard-close">CLOSE</button>
+      <div class="dimtext">Information only. Not investment advice.</div>
     </div>
   </div>
 
-  <script src="app.js?v=90"></script>
+  <script src="app.js?v=91"></script>
 </body>
 </html>
