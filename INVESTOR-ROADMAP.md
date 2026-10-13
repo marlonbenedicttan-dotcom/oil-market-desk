@@ -45,7 +45,10 @@ managed-money net, **3-yr percentile**, **WoW change**, long/short split, and a 
 screener. Reuse the existing `renderKPIs`-style tile.
 **Honesty:** label it "CFTC, weekly (as of <date>)"; it lags ~3 days.
 
-### 2. Cross-asset "markets at a glance" board (the missing *regime* view)
+### 2. Cross-asset "markets at a glance" board (the missing *regime* view)  ⭐ **DONE (2026-10-13)**
+**Shipped:** a **🌐 MARKETS AT A GLANCE** board on HOME — DXY · VIX · US 10y · S&P 500 · gold ·
+copper · WTI · Brent — each cell with its level, **1D/1W/1M/YTD/1Y strip**, and a source/as-of line,
+served by `/api/regime` (Yahoo + FRED; the 10y shows **pp/bp**, not %, via `horizonDeltasAbs`).
 **Why:** every session starts with risk-on/off. Today the only board is commodities.
 **Do:** one compact board: **DXY, VIX, US 10y, S&P 500, gold, copper, WTI, Brent** — each with the
 existing 1D/1W/1M/YTD/1Y strip + as-of badge. Put it on MACRO (or HOME, under the brief).

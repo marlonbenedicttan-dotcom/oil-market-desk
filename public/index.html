@@ -21,7 +21,7 @@
   <link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png" />
   <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <link rel="stylesheet" href="style.css?v=37" />
+  <link rel="stylesheet" href="style.css?v=38" />
   <noscript><style>#boot{display:none!important}</style></noscript>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -74,6 +74,7 @@
     <div class="tabpane" data-pane="home" id="pane-home" role="tabpanel" aria-labelledby="tab-home">
       <nav class="jumpnav" aria-label="Jump to a section">
         <a href="#p-brief">Brief</a>
+        <a href="#p-regime">Regime</a>
         <a href="#p-watch">Watchlist</a>
         <a href="#p-alerts">Alerts</a>
         <a href="#p-headlines">Headlines</a>
@@ -82,6 +83,11 @@
       <section class="panel" id="p-brief">
         <div class="ph"><span class="ph-t">☀️ DAILY BRIEF — what happened · what's on today</span><span id="brief-updated" class="dimtext"></span></div>
         <div id="home-brief"></div>
+      </section>
+
+      <section class="panel" id="p-regime">
+        <div class="ph"><span class="ph-t">🌐 MARKETS AT A GLANCE — the backdrop</span><span class="dimtext">dollar · volatility · rates · risk · metals · oil</span></div>
+        <div id="regime-board" class="regime-board"></div>
       </section>
 
       <section class="panel" id="p-watch">
@@ -341,6 +347,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=76"></script>
+  <script src="app.js?v=77"></script>
 </body>
 </html>

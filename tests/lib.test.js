@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { sgn, inBox, haversineNm, isoWeek, monthly, pctOver, percentile, realizedVol, computeCracks, computeCrush, backAdjust, pearson, logReturns, horizonDeltas, curveTightness, inventoryTightness, weightedScore, seasonalGrade, seasonalAhead, contractMonthsBetween, signedPosition, signedMove, stretchScore, sdLabel, attributeMoves, newsContextOk, looksLikeProperNoun, NON_MARKET_CTX, METHODOLOGY, positioningFlag, positioningRead } from '../src/lib.js';
+import { sgn, inBox, haversineNm, isoWeek, monthly, pctOver, percentile, realizedVol, computeCracks, computeCrush, backAdjust, pearson, logReturns, horizonDeltas, horizonDeltasAbs, curveTightness, inventoryTightness, weightedScore, seasonalGrade, seasonalAhead, contractMonthsBetween, signedPosition, signedMove, stretchScore, sdLabel, attributeMoves, newsContextOk, looksLikeProperNoun, NON_MARKET_CTX, METHODOLOGY, positioningFlag, positioningRead } from '../src/lib.js';
 
 test('sgn formats with sign', () => {
   assert.equal(sgn(4.39), '+4.39');
@@ -240,6 +240,16 @@ test('newsContextOk: a commodity word must be a MARKET story, not a name or a sp
   // callers can force or waive the market-context requirement
   assert.equal(newsContextOk('Silver', { requireMarket: false }), true);
   assert.equal(newsContextOk('Corn futures fall after a record harvest', { requireMarket: true }), true);
+});
+
+test('horizonDeltasAbs gives ABSOLUTE changes (a yield move is pp, not %)', () => {
+  const dates = ['2025-01-01', '2025-03-01', '2025-06-01', '2026-01-01', '2026-06-01'];
+  const values = [4.00, 4.10, 4.30, 4.40, 4.25];
+  const d = horizonDeltasAbs(dates, values);
+  assert.equal(d.d1, -0.15);   // 4.25 vs 4.40
+  assert.equal(d.ytd, -0.15);  // vs the 2026-01-01 base
+  assert.equal(d.y1, -0.05);   // vs the latest point ≤ 1 year back (4.30)
+  assert.deepEqual(horizonDeltasAbs(['2025-01-01'], [4.2]), { d1: null, w1: null, m1: null, ytd: null, y1: null });
 });
 
 test('positioningFlag / positioningRead turn a percentile into a plain verdict', () => {

@@ -6,7 +6,7 @@ import path from 'node:path';
 import zlib from 'node:zlib';
 import { execFile } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { sgn, businessDaysSince, inBox, haversineNm, horizonDeltas, isoWeek, monthly, pctOver, percentile, realizedVol, computeCracks, computeCrush, backAdjust, pearson, logReturns, curveTightness, inventoryTightness, weightedScore, seasonalGrade, seasonalAhead, contractMonthsBetween, signedPosition, signedMove, stretchScore, sdLabel, attributeMoves, newsContextOk, METHODOLOGY, positioningFlag, positioningRead } from './src/lib.js';
+import { sgn, businessDaysSince, inBox, haversineNm, horizonDeltas, horizonDeltasAbs, isoWeek, monthly, pctOver, percentile, realizedVol, computeCracks, computeCrush, backAdjust, pearson, logReturns, curveTightness, inventoryTightness, weightedScore, seasonalGrade, seasonalAhead, contractMonthsBetween, signedPosition, signedMove, stretchScore, sdLabel, attributeMoves, newsContextOk, METHODOLOGY, positioningFlag, positioningRead } from './src/lib.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC = path.join(__dirname, 'public');
@@ -538,6 +538,41 @@ async function getPositioningSegment(seg) {
     .filter((p) => p && !p.error)
     .map((p) => ({ id: p.id, label: (BENCHMARKS.find((x) => x.id === p.id) || {}).label || p.id, ...p }));
   return { segment: seg, label: m.label, primary: m.primary, items };
+}
+
+// ---------------------------------------------------------------------------
+// Cross-asset "regime" board — one glance at the backdrop that sets the day's tone.
+// Everything comes from sources already wired (Yahoo + FRED); the 10y yield shows pp, not %.
+// ---------------------------------------------------------------------------
+const REGIME_BOARD = [
+  { id: 'dxy', label: 'US dollar (DXY)', sym: 'DX-Y.NYB', source: 'Yahoo', unit: '', dp: 2 },
+  { id: 'vix', label: 'VIX (volatility)', sym: '^VIX', source: 'Yahoo', unit: '', dp: 2 },
+  { id: 'us10y', label: 'US 10y yield', fred: 'DGS10', source: 'FRED', unit: '%', dp: 2, rate: true },
+  { id: 'spx', label: 'S&P 500', sym: '^GSPC', source: 'Yahoo', unit: '', dp: 0 },
+  { id: 'gold', label: 'Gold', sym: 'GC=F', source: 'Yahoo', unit: '$/oz', dp: 2 },
+  { id: 'copper', label: 'Copper', sym: 'HG=F', source: 'Yahoo', unit: '$/lb', dp: 3 },
+  { id: 'wti', label: 'WTI crude', sym: 'CL=F', source: 'Yahoo', unit: '$/bbl', dp: 2 },
+  { id: 'brent', label: 'Brent crude', sym: 'BZ=F', source: 'Yahoo', unit: '$/bbl', dp: 2 },
+];
+async function getRegime() {
+  return cached('regime', 120e3, async () => {
+    const rows = await Promise.all(REGIME_BOARD.map(async (s) => {
+      const base = { id: s.id, label: s.label, source: s.source, unit: s.unit, dp: s.dp, rate: !!s.rate };
+      try {
+        const map = s.fred
+          ? await cached('regime:' + s.id, 3600e3, () => fredSeries(s.fred, 40 * 366).catch(() => ({})))
+          : (await cached('regime:' + s.id, 120e3, () => yahooSeries(s.sym, '2y', '1d'))).series || {};
+        const dates = Object.keys(map).sort();
+        const values = dates.map((d) => map[d]);
+        const lastIdx = values.reduce((acc, v, i) => (v != null ? i : acc), -1);
+        if (lastIdx < 0) return { ...base, price: null, deltas: null, asOf: null };
+        return { ...base, price: +(+values[lastIdx]).toFixed(s.dp), asOf: dates[lastIdx], deltas: s.rate ? horizonDeltasAbs(dates, values) : horizonDeltas(dates, values) };
+      } catch {
+        return { ...base, price: null, deltas: null, asOf: null };
+      }
+    }));
+    return { updated: new Date().toISOString(), rows };
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -2529,6 +2564,7 @@ const server = http.createServer(async (req, res) => {
     }
     if (url.pathname === '/api/reroute') return sendJSON(res, 200, { series: rerouteSeries, current: rerouteSeries[rerouteSeries.length - 1] || null });
     if (url.pathname === '/api/inventories') return sendJSON(res, 200, await getInventories());
+    if (url.pathname === '/api/regime') return sendJSON(res, 200, await getRegime().catch((e) => ({ error: String(e.message), rows: [] })));
     if (url.pathname === '/api/positioning') {
       const seg = url.searchParams.get('segment');
       const p = seg ? getPositioningSegment(seg) : getPositioning(url.searchParams.get('id') || 'wti');

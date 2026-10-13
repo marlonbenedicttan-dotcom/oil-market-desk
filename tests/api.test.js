@@ -334,6 +334,19 @@ test('security headers are set on every response', async () => {
   assert.equal(api.headers.get('x-content-type-options'), 'nosniff');
 });
 
+test('/api/regime returns the cross-asset board', async () => {
+  const r = await fetch(`http://localhost:${PORT}/api/regime`);
+  assert.equal(r.status, 200);
+  const j = await r.json();
+  if (!j.error) {
+    assert.ok(Array.isArray(j.rows) && j.rows.length >= 6, 'at least 6 regime rows');
+    const dxy = j.rows.find((x) => x.id === 'dxy');
+    assert.ok(dxy && 'price' in dxy && 'deltas' in dxy, 'DXY row has a price + deltas');
+    const y = j.rows.find((x) => x.id === 'us10y');
+    assert.ok(y && y.rate === true, 'the 10y is flagged as a rate (pp, not %)');
+  }
+});
+
 test('/api/positioning serves a single series and a per-segment bundle', async () => {
   const one = await (await fetch(`http://localhost:${PORT}/api/positioning?id=wti`)).json();
   assert.equal(one.id, 'wti');

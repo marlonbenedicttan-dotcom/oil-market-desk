@@ -125,6 +125,28 @@ export function horizonDeltas(dates, values) {
   };
 }
 
+// Same windows, but as ABSOLUTE differences — for series where a % move is meaningless (a yield:
+// 4.2% → 4.3% is not "+2%", it is +0.10pp). Returns percentage points, rounded to 2 dp.
+export function horizonDeltasAbs(dates, values) {
+  const at = [];
+  for (let i = 0; i < dates.length; i++) if (values[i] != null) at.push(i);
+  const flat = { d1: null, w1: null, m1: null, ytd: null, y1: null };
+  if (at.length < 2) return flat;
+  const lastI = at[at.length - 1];
+  const last = values[lastI];
+  const lastDate = dates[lastI];
+  const baseBefore = (iso) => { let bi = null; for (const i of at) { if (i === lastI) break; if (dates[i] <= iso) bi = i; } return bi; };
+  const back = (days) => { const t = new Date(lastDate + 'T00:00:00Z'); t.setUTCDate(t.getUTCDate() - days); return t.toISOString().slice(0, 10); };
+  const diff = (i) => (i == null || values[i] == null ? null : +((last - values[i]).toFixed(2)));
+  return {
+    d1: diff(at[at.length - 2]),
+    w1: diff(baseBefore(back(7))),
+    m1: diff(baseBefore(back(30))),
+    ytd: diff(baseBefore(lastDate.slice(0, 4) + '-01-01')),
+    y1: diff(baseBefore(back(365))),
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Seasonality (roadmap item 6). low/high/median are MM-DD-keyed maps from a 5-year
 // day-of-year band. Never invents a grade when the inputs are missing.

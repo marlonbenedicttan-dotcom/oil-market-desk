@@ -16,6 +16,15 @@ function deltaStrip(d) {
   }).join('');
   return `<span class="dstrip" title="change over 1 day · 1 week · 1 month · year-to-date · 1 year">${cells}</span>`;
 }
+// Same strip, but in basis points (for a yield, where a % move is meaningless).
+function deltaStripRate(d) {
+  if (!d) return '';
+  const cells = HORIZONS.map(([lab, k]) => {
+    const v = d[k];
+    return `<span class="dl"><i>${lab}</i><b class="${cls(v)}">${v == null ? '—' : `${v >= 0 ? '+' : ''}${Math.round(v * 100)}bp`}</b></span>`;
+  }).join('');
+  return `<span class="dstrip" title="change in basis points over 1 day · 1 week · 1 month · year-to-date · 1 year">${cells}</span>`;
+}
 // Source + as-of badge: which feed a number comes from and how current it is.
 function freshBadge(source, asOf, lagDays) {
   if (!source && !asOf) return '';
@@ -1964,6 +1973,27 @@ async function loadBrief() {
   try { renderBrief(await getJSON('/api/brief')); } catch { renderBrief(null); }
 }
 // Live important headlines (hero board).
+// Cross-asset regime board — the backdrop that sets the day's tone (dollar, volatility, rates,
+// risk, metals, oil). Each cell shows the level + its 1D/1W/1M/YTD/1Y strip and its source.
+async function loadRegime() {
+  const el = $('regime-board'); if (!el) return; if (!el.innerHTML) el.innerHTML = stLoading('Loading the backdrop…');
+  let d = null; try { d = await jget('/api/regime', 120000); } catch { d = null; }
+  renderRegime(d);
+}
+function renderRegime(d) {
+  const el = $('regime-board'); if (!el) return;
+  const rows = (d && d.rows) || [];
+  if (!rows.length) { el.innerHTML = stError('Couldn’t load the regime board — retrying.'); return; }
+  el.innerHTML = rows.map((r) => {
+    const src = `${r.source}${r.asOf ? ` · ${r.asOf}` : ''}`;
+    if (r.price == null) return `<div class="rb-cell"><div class="rb-l" title="${r.label}">${r.label}</div><div class="rb-v">—</div><div class="rb-src">${src}</div></div>`;
+    const strip = r.rate ? deltaStripRate(r.deltas) : deltaStrip(r.deltas);
+    const dv = r.deltas ? r.deltas.d1 : null;
+    return `<div class="rb-cell" title="${r.label} · ${src}"><div class="rb-l">${r.label}</div>`
+      + `<div class="rb-v ${cls(dv)}">${fmtNum(r.price, r.dp)}${r.unit ? `<span class="rb-u">${r.unit}</span>` : ''}</div>${strip}`
+      + `<div class="rb-src">${src}</div></div>`;
+  }).join('');
+}
 async function loadHeadlines() {
   const el = $('headlines');
   if (!el) return;
@@ -2062,6 +2092,7 @@ async function loadExtra() { await loadExtraCore(); await loadExtraSlow(); }
 async function loadExtraCore() {
   if (!data) return; // need prices first
   reloadHistory();   // refresh the deltas + sparklines (fire-and-forget)
+  loadRegime();      // the cross-asset backdrop (HOME)
   try {
     const [inv, eq, chk, an, fl, pr] = await Promise.all([
       getJSON('/api/inventories').catch(() => null),
