@@ -334,6 +334,16 @@ test('security headers are set on every response', async () => {
   assert.equal(api.headers.get('x-content-type-options'), 'nosniff');
 });
 
+test('/api/positioning serves a single series and a per-segment bundle', async () => {
+  const one = await (await fetch(`http://localhost:${PORT}/api/positioning?id=wti`)).json();
+  assert.equal(one.id, 'wti');
+  if (!one.error) { assert.ok(Number.isFinite(one.pct) || one.pct == null); assert.ok('pct3y' in one && 'flag' in one); }
+  const seg = await (await fetch(`http://localhost:${PORT}/api/positioning?segment=crude`)).json();
+  assert.equal(seg.segment, 'crude');
+  if (!seg.error) assert.ok(Array.isArray(seg.items));
+  assert.equal((await fetch(`http://localhost:${PORT}/api/positioning?segment=nope`)).status, 200); // error shape, not a 500
+});
+
 test('/health reports a build version', async () => {
   const j = await (await fetch(`http://localhost:${PORT}/health`)).json();
   assert.equal(j.ok, true);

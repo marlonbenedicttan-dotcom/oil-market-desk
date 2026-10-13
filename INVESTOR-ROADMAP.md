@@ -27,7 +27,12 @@ Close those gaps and it goes from "nice dashboard" to "desk I check every mornin
 
 ## TIER 1 — high value, mostly free or already half-built
 
-### 1. Surface positioning (CFTC COT) — the biggest free win  ⭐ start here
+### 1. Surface positioning (CFTC COT) — the biggest free win  ⭐ **DONE (2026-10-13)**
+**Shipped:** a **📊 POSITIONING** panel on COMMODITIES (the segment's primary + an "also covered"
+strip): managed-money net, **3-yr percentile**, WoW change, long/short split, open interest, a 3-yr
+net sparkline, and a **CROWDED LONG / STRETCHED / WASHED-OUT / NEUTRAL** flag with a plain read.
+`/api/positioning?segment=<seg>` bundles every COT-covered component in one call; the daily brief
+adds a positioning line when crude is crowded. Pure `positioningFlag`/`positioningRead` in `src/lib.js`.
 **Why:** crowding is where pain comes from. Price tells you *what*; positioning tells you *who*.
 **Already built:** `getPositioning(id)` (server.js) and **`/api/positioning?id=`** are live but the
 UI never calls them (it was deliberately removed earlier — reverse that decision). It returns

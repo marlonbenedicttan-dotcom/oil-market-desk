@@ -329,6 +329,27 @@ export const METHODOLOGY = {
 };
 
 // ---------------------------------------------------------------------------
+// CFTC positioning (managed money / non-commercial net) — turn a 0-100 percentile of the spec
+// net into a plain read. High = crowded long (squeeze risk), low = washed-out / crowded short.
+// ---------------------------------------------------------------------------
+export function positioningFlag(pct) {
+  if (pct == null || !Number.isFinite(pct)) return { label: '—', tone: 'mid' };
+  if (pct >= 90) return { label: 'CROWDED LONG', tone: 'hot' };
+  if (pct >= 70) return { label: 'STRETCHED LONG', tone: 'warm' };
+  if (pct <= 10) return { label: 'CROWDED SHORT', tone: 'hot' };
+  if (pct <= 30) return { label: 'WASHED-OUT', tone: 'cool' };
+  return { label: 'NEUTRAL', tone: 'mid' };
+}
+export function positioningRead(pct) {
+  if (pct == null || !Number.isFinite(pct)) return '';
+  if (pct >= 90) return 'Speculative money is crowded long — a squeeze or a fast unwind is the risk if the trend stalls.';
+  if (pct >= 70) return 'Specs are stretched long — much of the easy upside may already be priced in.';
+  if (pct <= 10) return 'Speculative money is washed-out / crowded short — fuel for a violent short squeeze.';
+  if (pct <= 30) return 'Specs are light — positioning is not a headwind right now.';
+  return 'Positioning is mid-range — no crowding either way.';
+}
+
+// ---------------------------------------------------------------------------
 // News context guard. Keyword matching alone attaches "NBA commissioner Adam Silver" to
 // SILVER, "corn maze" to CORN, a "Coffee" surname to COFFEE, "Copper" (the TV series) to
 // copper. A commodity keyword is dropped when it is used as a name, a sport or an everyday

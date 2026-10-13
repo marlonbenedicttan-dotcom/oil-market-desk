@@ -582,6 +582,7 @@ function selectMarket(id) {
   loadMarketRead();
   loadNews();
   loadFundamentals();
+  loadPositioning();
   renderChart();
   syncCompareToSelection();
 }
@@ -1314,9 +1315,47 @@ function renderInventories(d) {
     `<div class="t inv h"><span class="inv-l">SERIES (million barrels)</span><span class="num">LEVEL</span><span class="num">THIS WEEK</span><span class="num">vs NORMAL</span></div>` + rows +
     (d.gas ? `<div class="read-line" style="border-top:1px solid var(--line)">🔥 Natural gas storage: <b>${d.gas.value.toLocaleString()} BCF</b> (${d.gas.wow >= 0 ? '+' : ''}${d.gas.wow} this week${d.gas.surprise != null ? `, vs a normal ${d.gas.surprise >= 0 ? '+' : ''}${d.gas.surprise}` : ''}) — ${d.gas.wow < 0 ? 'a draw is bullish for gas' : 'a build is bearish for gas'}.</div>` : '');
 }
+// ---------------------------------------------------------------------------
+// Positioning (CFTC, weekly) — who is crowded. Fetched per segment; the server supplies the
+// plain read (positioningFlag / positioningRead in src/lib.js).
+// ---------------------------------------------------------------------------
+async function loadPositioning() {
+  const el = $('positioning'); if (!el) return;
+  const seg = currentMarket;
+  el.innerHTML = stLoading('Loading positioning…');
+  let d = null;
+  try { d = await jget('/api/positioning?segment=' + encodeURIComponent(seg), 6 * 60e3); } catch { d = null; }
+  if (seg !== currentMarket) return;   // the segment changed while this was in flight
+  renderPositioning(d);
+}
+function renderPositioning(d) {
+  const el = $('positioning'); if (!el) return;
+  const sub = $('pos-sub');
+  const items = (d && d.items) || [];
+  if (!items.length) { el.innerHTML = stEmpty('No CFTC positioning series covers this segment.'); if (sub) sub.textContent = ''; return; }
+  const mk = markets.find((m) => m.id === currentMarket);
+  const primary = items.find((it) => it.id === (mk && mk.primary)) || items[0];
+  const f = primary.flag || { label: '—', tone: 'mid' };
+  const num = (n) => (n == null ? '—' : (n < 0 ? '−' : '+') + Math.abs(n).toLocaleString());
+  const pct = primary.pct3y;
+  if (sub) sub.textContent = `CFTC · managed money · weekly · as of ${(primary.latest && primary.latest.date) || '—'}`;
+  let html = `<div class="pos-hero"><span class="pos-net ${primary.latest && primary.latest.net >= 0 ? 'pos' : 'neg'}">${primary.latest ? num(primary.latest.net) : '—'}</span>`
+    + `<span class="pos-lab">contracts · ${String(primary.label).replace(/ spec net.*/, '')} spec net</span><span class="pos-flag ${f.tone}">${f.label}</span></div>`
+    + `<div class="pos-row"><span>${pct == null ? 'little history' : `${Math.round(pct)}th pctile (3y)`}</span>`
+    + `<span>this week <b class="${primary.wow >= 0 ? 'pos' : 'neg'}">${num(primary.wow)}</b></span>`
+    + (primary.latest && primary.latest.long != null ? `<span>long <b>${primary.latest.long.toLocaleString()}</b></span><span>short <b>${primary.latest.short.toLocaleString()}</b></span>` : '')
+    + (primary.oi ? `<span>open interest <b>${primary.oi.toLocaleString()}</b>${primary.oiChange != null ? ` (${num(primary.oiChange)})` : ''}</span>` : '')
+    + '</div>';
+  const spark = sparkline((primary.history || []).map((r) => r.net));
+  if (spark) html += `<div class="pos-spark" aria-hidden="true">${spark}</div>`;
+  if (primary.read) html += `<div class="pos-note dimtext">${primary.read}</div>`;
+  const others = items.filter((it) => it !== primary);
+  if (others.length) html += `<div class="pos-chips"><span class="dimtext" style="align-self:center">also covered:</span>`
+    + others.map((it) => `<span class="pos-chip" title="${it.label} — ${it.read || ''}">${String(it.label).replace(/\s*\(.*\)/, '')} <em>${it.latest ? num(it.latest.net) : '—'}</em> <span class="pos-flag ${(it.flag || {}).tone || 'mid'}">${(it.flag || {}).label || ''}</span></span>`).join('') + '</div>';
+  el.innerHTML = html;
+}
 function sparkline(vals, w = 240, h = 40) {
   const xs = vals.filter((v) => v != null);
-  if (xs.length < 2) return '';
   const min = Math.min(...xs), max = Math.max(...xs), rng = max - min || 1;
   const pts = xs.map((v, i) => `${(i / (xs.length - 1)) * w},${h - ((v - min) / rng) * h}`).join(' ');
   return `<svg width="${w}" height="${h}" class="spark"><polyline points="${pts}" fill="none" stroke="#ff9e00" stroke-width="1.5"/></svg>`;

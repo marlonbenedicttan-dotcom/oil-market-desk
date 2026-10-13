@@ -6,7 +6,7 @@ import path from 'node:path';
 import zlib from 'node:zlib';
 import { execFile } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { sgn, businessDaysSince, inBox, haversineNm, horizonDeltas, isoWeek, monthly, pctOver, percentile, realizedVol, computeCracks, computeCrush, backAdjust, pearson, logReturns, curveTightness, inventoryTightness, weightedScore, seasonalGrade, seasonalAhead, contractMonthsBetween, signedPosition, signedMove, stretchScore, sdLabel, attributeMoves, newsContextOk, METHODOLOGY } from './src/lib.js';
+import { sgn, businessDaysSince, inBox, haversineNm, horizonDeltas, isoWeek, monthly, pctOver, percentile, realizedVol, computeCracks, computeCrush, backAdjust, pearson, logReturns, curveTightness, inventoryTightness, weightedScore, seasonalGrade, seasonalAhead, contractMonthsBetween, signedPosition, signedMove, stretchScore, sdLabel, attributeMoves, newsContextOk, METHODOLOGY, positioningFlag, positioningRead } from './src/lib.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC = path.join(__dirname, 'public');
@@ -507,23 +507,37 @@ async function getPositioning(id = 'wti') {
     const url = `https://publicreporting.cftc.gov/resource/6dca-aqww.json?$limit=220&$order=report_date_as_yyyy_mm_dd%20DESC&$where=${encodeURIComponent(where)}`;
     const res = await fetch(url, { headers: UA });
     if (!res.ok) throw new Error('cftc ' + res.status);
-    const rows = (await res.json()).map((r) => ({
-      date: (r.report_date_as_yyyy_mm_dd || '').slice(0, 10),
-      net: (Number(r.noncomm_positions_long_all) || 0) - (Number(r.noncomm_positions_short_all) || 0),
-      oi: Number(r.open_interest_all) || 0,
-    })).reverse();
+    const rows = (await res.json()).map((r) => {
+      const long = Number(r.noncomm_positions_long_all) || 0;
+      const short = Number(r.noncomm_positions_short_all) || 0;
+      return { date: (r.report_date_as_yyyy_mm_dd || '').slice(0, 10), net: long - short, long, short, oi: Number(r.open_interest_all) || 0 };
+    }).reverse();
     if (!rows.length) return { error: 'no data' };
     const latest = rows[rows.length - 1];
     const prev = rows[rows.length - 2];
     const nets = rows.map((r) => r.net);
+    const pctOf = (arr) => (arr.length ? (arr.filter((n) => n <= latest.net).length / arr.length) * 100 : null);
+    const pct3y = pctOf(nets.slice(-156));                  // the last 3 years of weekly reports
     return {
       id, label: `${b?.label || id} spec net (non-comm)`, unit: 'contracts',
       latest, wow: prev ? latest.net - prev.net : null,
-      pct: (nets.filter((n) => n <= latest.net).length / nets.length) * 100,
+      pct: pctOf(nets),                                     // full window (kept for the digest)
+      pct3y, weeks: rows.length,
+      flag: positioningFlag(pct3y), read: positioningRead(pct3y),
       oi: latest.oi, oiChange: prev ? latest.oi - prev.oi : null,
       history: rows.slice(-156),
     };
   });
+}
+// Positioning for every COT-covered component of a segment (one call; each series cached server-side).
+async function getPositioningSegment(seg) {
+  const m = MARKETS.find((x) => x.id === seg);
+  if (!m) return { error: 'unknown segment' };
+  const ids = m.components.filter((c) => COT_NAMES[c]);
+  const items = (await Promise.all(ids.map((c) => getPositioning(c).catch(() => null))))
+    .filter((p) => p && !p.error)
+    .map((p) => ({ id: p.id, label: (BENCHMARKS.find((x) => x.id === p.id) || {}).label || p.id, ...p }));
+  return { segment: seg, label: m.label, primary: m.primary, items };
 }
 
 // ---------------------------------------------------------------------------
@@ -2327,12 +2341,13 @@ async function buildDigest() {
 // ---------------------------------------------------------------------------
 async function buildBrief() {
   return cached('brief', 300_000, async () => {
-    const [m, h, inv, curves, alerts] = await Promise.all([
+    const [m, h, inv, curves, alerts, pos] = await Promise.all([
       getMarket(),
       getHistory().catch(() => null),
       getInventories().catch(() => null),
       getCurves().catch(() => null),
       computeServerAlerts().catch(() => []),
+      getPositioning('wti').catch(() => null),
     ]);
     // Biggest 1-day moves across every instrument's headline series.
     const movers = [];
@@ -2348,6 +2363,7 @@ async function buildBrief() {
     if (curves?.wti) happened.push({ kind: 'curve', id: 'wti', text: `WTI is in <b>${curves.wti.shape.toLowerCase()}</b> — this month ${curves.wti.m1m2 >= 0 ? 'above' : 'below'} next by <b>${sgn(curves.wti.m1m2)}</b>.` });
     const crude = inv?.items?.find((i) => i.key === 'crude');
     if (crude?.surprise != null) happened.push({ kind: 'stocks', id: 'wti', text: `US crude stocks ${crude.wow >= 0 ? 'built' : 'drew'} vs last week — <b>${Math.abs(crude.surprise).toLocaleString()}k bbl ${crude.surprise < 0 ? 'more drawn than usual (bullish)' : 'more built than usual (bearish)'}</b>.` });
+    if (pos?.pct3y != null && (pos.pct3y >= 90 || pos.pct3y <= 10)) happened.push({ kind: 'positioning', id: 'wti', text: `Hedge funds are <b>${pos.pct3y >= 90 ? 'crowded long' : 'crowded short'}</b> crude (${pos.pct3y.toFixed(0)}th pctile, CFTC ${pos.latest.date}) — ${pos.pct3y >= 90 ? 'unwind risk' : 'squeeze fuel'}.` });
 
     const next = getEvents().map((e) => ({ name: e.name, date: e.date, note: e.note }));
     const hi = alerts.find((a) => a.level === 'high');
@@ -2513,7 +2529,11 @@ const server = http.createServer(async (req, res) => {
     }
     if (url.pathname === '/api/reroute') return sendJSON(res, 200, { series: rerouteSeries, current: rerouteSeries[rerouteSeries.length - 1] || null });
     if (url.pathname === '/api/inventories') return sendJSON(res, 200, await getInventories());
-    if (url.pathname === '/api/positioning') return sendJSON(res, 200, await getPositioning(url.searchParams.get('id') || 'wti').catch((e) => ({ error: String(e.message) })));
+    if (url.pathname === '/api/positioning') {
+      const seg = url.searchParams.get('segment');
+      const p = seg ? getPositioningSegment(seg) : getPositioning(url.searchParams.get('id') || 'wti');
+      return sendJSON(res, 200, await p.catch((e) => ({ error: String(e.message) })));
+    }
     if (url.pathname === '/api/equities') return sendJSON(res, 200, await getEquities());
     if (url.pathname === '/api/macro') return sendJSON(res, 200, await getMacro());
     if (url.pathname === '/api/macrodash') return sendJSON(res, 200, await getMacroDash().catch((e) => ({ error: String(e.message) })));

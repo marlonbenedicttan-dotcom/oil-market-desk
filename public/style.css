@@ -404,6 +404,26 @@ footer li { margin-bottom: 2px; }
 .read-line { padding: 8px 12px; border-bottom: 1px solid var(--line); color: #c9d4df; font-size: 12.5px; }
 .macro { padding: 6px 0; }
 
+/* Positioning (CFTC, weekly) */
+.positioning { padding: 10px 12px; }
+.pos-hero { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.pos-net { font-size: 24px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.pos-net.pos { color: var(--green); }
+.pos-net.neg { color: var(--red); }
+.pos-lab { color: var(--dim); font-size: 11px; }
+.pos-flag { font-size: 10px; letter-spacing: 1px; padding: 2px 8px; border: 1px solid var(--line2); color: var(--dim); }
+.pos-flag.hot { color: var(--red); border-color: #5a2020; }
+.pos-flag.warm { color: var(--amber); border-color: #5c4a1d; }
+.pos-flag.cool { color: var(--blue); border-color: #1c3a5a; }
+.pos-row { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 7px; font-size: 11.5px; color: var(--dim); }
+.pos-row b { color: var(--text); font-variant-numeric: tabular-nums; }
+.pos-spark { margin-top: 6px; }
+.pos-spark svg { width: 100%; height: 40px; display: block; opacity: .9; }
+.pos-note { margin-top: 6px; }
+.pos-chips { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 10px; }
+.pos-chip { border: 1px solid var(--line2); padding: 3px 8px; font-size: 11px; color: #c9d4df; display: inline-flex; gap: 6px; align-items: center; font-variant-numeric: tabular-nums; }
+.pos-chip em { font-style: normal; color: var(--dim); }
+
 /* Onboarding */
 .onboard { position: fixed; inset: 0; z-index: 5000; background: rgba(0,0,0,.72); display: flex; align-items: center; justify-content: center; padding: 20px; }
 .onboard-box { background: var(--panel); border: 1px solid var(--line2); max-width: 520px; padding: 22px 24px; border-radius: 12px; }

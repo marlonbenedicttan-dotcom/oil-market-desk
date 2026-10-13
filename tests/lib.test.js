@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { sgn, inBox, haversineNm, isoWeek, monthly, pctOver, percentile, realizedVol, computeCracks, computeCrush, backAdjust, pearson, logReturns, horizonDeltas, curveTightness, inventoryTightness, weightedScore, seasonalGrade, seasonalAhead, contractMonthsBetween, signedPosition, signedMove, stretchScore, sdLabel, attributeMoves, newsContextOk, looksLikeProperNoun, NON_MARKET_CTX, METHODOLOGY } from '../src/lib.js';
+import { sgn, inBox, haversineNm, isoWeek, monthly, pctOver, percentile, realizedVol, computeCracks, computeCrush, backAdjust, pearson, logReturns, horizonDeltas, curveTightness, inventoryTightness, weightedScore, seasonalGrade, seasonalAhead, contractMonthsBetween, signedPosition, signedMove, stretchScore, sdLabel, attributeMoves, newsContextOk, looksLikeProperNoun, NON_MARKET_CTX, METHODOLOGY, positioningFlag, positioningRead } from '../src/lib.js';
 
 test('sgn formats with sign', () => {
   assert.equal(sgn(4.39), '+4.39');
@@ -240,6 +240,20 @@ test('newsContextOk: a commodity word must be a MARKET story, not a name or a sp
   // callers can force or waive the market-context requirement
   assert.equal(newsContextOk('Silver', { requireMarket: false }), true);
   assert.equal(newsContextOk('Corn futures fall after a record harvest', { requireMarket: true }), true);
+});
+
+test('positioningFlag / positioningRead turn a percentile into a plain verdict', () => {
+  assert.equal(positioningFlag(95).label, 'CROWDED LONG');
+  assert.equal(positioningFlag(95).tone, 'hot');
+  assert.equal(positioningFlag(75).label, 'STRETCHED LONG');
+  assert.equal(positioningFlag(20).label, 'WASHED-OUT');
+  assert.equal(positioningFlag(5).label, 'CROWDED SHORT');
+  assert.equal(positioningFlag(5).tone, 'hot');
+  assert.equal(positioningFlag(50).label, 'NEUTRAL');
+  assert.equal(positioningFlag(null).label, '—');
+  assert.match(positioningRead(95), /crowded long/i);
+  assert.match(positioningRead(5), /squeeze/i);
+  assert.equal(positioningRead(null), '');
 });
 
 test('METHODOLOGY is complete — every source and score carries its labels', () => {
