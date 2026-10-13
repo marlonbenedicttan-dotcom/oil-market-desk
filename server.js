@@ -1327,7 +1327,7 @@ async function getMarketRead(id, componentId) {
     if (read.range.pos != null) takes.push(`It sits at <b>${read.range.pos.toFixed(0)}/100</b> of its 2-year range — ${read.range.pos >= 70 ? 'near the top' : read.range.pos <= 30 ? 'near the bottom' : 'mid-range'}.`);
     if (read.curve) takes.push(`Futures are in <b>${read.curve.shape.toLowerCase()}</b> — ${read.curve.m1m2 >= 0 ? 'near-term supply is tight (price-positive)' : 'near-term supply looks comfortable'}.`);
     if (read.basis) takes.push(`Real barrels trade <b>${read.basis.value >= 0 ? '+' : ''}${read.basis.value.toFixed(read.dp)}</b> vs futures.`);
-    try { const f = await getFundamentals(id); for (const e of (f.items || []).slice(0, 3)) takes.push(`<b>${e.kind}</b> ${e.ageDays <= 14 ? 'recently' : Math.max(1, Math.round(e.ageDays / 30)) + ' months ago'}: ${e.title} — ${e.effect === 'down' ? 'pressure on price' : 'price-positive'}.`); } catch {}
+    try { const f = await getFundamentals(id, sel); for (const e of (f.items || []).slice(0, 3)) takes.push(`<b>${e.kind}</b> ${e.ageDays <= 14 ? 'recently' : Math.max(1, Math.round(e.ageDays / 30)) + ' months ago'}: ${e.title} — ${e.effect === 'down' ? 'pressure on price' : 'price-positive'}.`); } catch {}
     read.takeaways = takes;
     read.verdict = marketVerdict(read);
     return read;
@@ -1462,29 +1462,25 @@ const NEWS_REGION_LABELS = { us: 'United States', eu: 'Europe', jp: 'Japan', apa
 const newsLabel = (id) => MARKETS.find((x) => x.id === id)?.label || NEWS_REGION_LABELS[id] || id;
 const NEWS_TIER1 = '(site:reuters.com OR site:bloomberg.com OR site:ft.com OR site:apnews.com OR site:cnbc.com)';
 const decodeEnt = (s) => String(s || '').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&nbsp;/g, ' ').trim();
-async function getNews(id) {
+async function getNews(id, componentId) {
   const terms = NEWS_QUERIES[id];
   if (!terms) return { id, error: 'unknown segment' };
-  return cached('news:' + id, 45 * 60e3, async () => {
-    const q = `(${terms}) ${NEWS_TIER1}`;
-    const url = `https://news.google.com/rss/search?q=${encodeURIComponent(q)}&hl=en-US&gl=US&ceid=US:en`;
-    const res = await fetch(url, { headers: UA });
-    if (!res.ok) throw new Error('news ' + res.status);
-    const xml = await res.text();
-    const items = [];
-    const re = /<item>([\s\S]*?)<\/item>/g;
-    let m;
-    while ((m = re.exec(xml)) && items.length < 10) {
-      const it = m[1];
-      const rawTitle = decodeEnt((it.match(/<title>([\s\S]*?)<\/title>/) || [])[1] || '');
-      const link = decodeEnt((it.match(/<link>([\s\S]*?)<\/link>/) || [])[1] || '');
-      const pub = (it.match(/<pubDate>([\s\S]*?)<\/pubDate>/) || [])[1] || '';
-      const source = decodeEnt((it.match(/<source[^>]*>([\s\S]*?)<\/source>/) || [])[1] || '');
-      const title = source && rawTitle.endsWith(' - ' + source) ? rawTitle.slice(0, -(source.length + 3)) : rawTitle;
-      const d = pub ? new Date(pub) : null;
-      if (title && link) items.push({ title, source, url: link, date: d && !isNaN(d) ? d.toISOString() : null });
+  // Scope to the chosen instrument (Softs + sugar → sugar headlines, not cotton/cocoa).
+  const m = MARKETS.find((x) => x.id === id);
+  const sel = m && m.components.includes(componentId) ? componentId : null;
+  const b = sel ? BENCHMARKS.find((x) => x.id === sel) : null;
+  const onTopic = b
+    ? (i) => mustScoreFor(NEWS_FOCUS[sel] || [], i.title) > 0 && newsContextOk(i.title)
+    : (i) => titleMatches(id, i.title);
+  return cached('news:' + id + (sel ? ':' + sel : ''), 45 * 60e3, async () => {
+    // Query the chosen instrument directly (Google News returns ~100 per query), then keep only
+    // headlines that actually name it and pass the market-context guard.
+    const q = b ? `${b.label.replace(/\s*\(.*\)/, '')} ${NEWS_TIER1}` : `(${terms}) ${NEWS_TIER1}`;
+    let kept = (await fetchGoogleNews(q, sel ? 40 : 10)).filter(onTopic);
+    if (sel && !kept.length) {   // a sparse day → widen to the whole segment's feed, still filtered
+      try { kept = (await fetchGoogleNews(`(${terms}) ${NEWS_TIER1}`, 40)).filter(onTopic); } catch {}
     }
-    return { id, label: newsLabel(id), items: items.filter((i) => titleMatches(id, i.title)) };
+    return { id, label: b ? b.label : newsLabel(id), component: sel || null, items: kept.slice(0, 10) };
   });
 }
 
@@ -1785,18 +1781,34 @@ const SCAN_QUERIES = {
   livestock: '(cattle OR hogs OR beef OR pork) (drought OR disease OR "bird flu" OR "swine fever" OR "export ban" OR strike OR recall OR herd)',
   dairy: '(milk OR dairy OR cheese OR butter) (drought OR disease OR "bird flu" OR "export ban" OR strike OR recall OR cull OR feed)',
 };
-async function getFundamentals(id) {
-  const q = SCAN_QUERIES[id];
-  if (!q) return { id, error: 'unknown segment', items: [] };
-  return cached('fund:' + id, 45 * 60e3, async () => {
-    const items = await fetchGoogleNews(q, 16);
+// Supply/demand event terms for a per-instrument fundamentals scan.
+const FUND_EVENTS = '(drought OR flood OR frost OR hurricane OR "export ban" OR sanctions OR strike OR outage OR disease OR harvest OR "El Nino" OR shortage OR surplus OR recall OR "force majeure" OR mine OR smelter OR freeze OR pipeline)';
+async function getFundamentals(id, componentId) {
+  const m = MARKETS.find((x) => x.id === id);
+  const base = SCAN_QUERIES[id];
+  if (!m || !base) return { id, error: 'unknown segment', items: [] };
+  // Scope to the CHOSEN instrument when one is picked — so Softs + sugar never surfaces a cotton
+  // (or cocoa) event. No component → scan the whole segment, as before.
+  const sel = m.components.includes(componentId) ? componentId : null;
+  const b = sel ? BENCHMARKS.find((x) => x.id === sel) : null;
+  return cached('fund:' + id + (sel ? ':' + sel : ''), 45 * 60e3, async () => {
+    const term = b ? b.label.replace(/\s*\(.*\)/, '') : null;
     const now = Date.now();
     const hits = [];
-    for (const it of items) {
-      if (!titleMatches(id, it.title)) continue;   // on-topic only
-      for (const r of EVENT_RULES) { if (r.re.test(it.title)) { hits.push({ ...it, kind: r.kind, effect: r.effect, chain: r.chain, ageDays: it.date ? Math.max(0, Math.round((now - Date.parse(it.date)) / 864e5)) : null }); break; } }
-    }
-    return { id, label: newsLabel(id), items: hits, scanned: items.length };
+    const collect = (list) => {
+      for (const it of list) {
+        const onTopic = sel
+          ? (mustScoreFor(NEWS_FOCUS[sel] || [], it.title) > 0 && newsContextOk(it.title))   // names the instrument + market context
+          : titleMatches(id, it.title);
+        if (!onTopic) continue;
+        for (const r of EVENT_RULES) { if (r.re.test(it.title)) { hits.push({ ...it, kind: r.kind, effect: r.effect, chain: r.chain, ageDays: it.date ? Math.max(0, Math.round((now - Date.parse(it.date)) / 864e5)) : null }); break; } }
+      }
+    };
+    const items = await fetchGoogleNews(term ? `${term} ${FUND_EVENTS}` : base, sel ? 40 : 16);
+    let scanned = items.length;
+    collect(items);
+    if (sel && !hits.length) { try { const more = await fetchGoogleNews(base, 40); scanned += more.length; collect(more); } catch {} }
+    return { id, label: b ? b.label : newsLabel(id), component: sel || null, items: sel ? hits.slice(0, 10) : hits, scanned };
   });
 }
 // Trusted-source news for explaining a chart move — tier-1 outlets ONLY (no blogs). The client
@@ -2546,7 +2558,7 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname === '/api/news') {
       const id = url.searchParams.get('id');
       if (!NEWS_QUERIES[id]) return sendJSON(res, 404, { error: 'unknown segment' });
-      return sendJSON(res, 200, await getNews(id).catch((e) => ({ error: String(e.message), id, items: [] })));
+      return sendJSON(res, 200, await getNews(id, url.searchParams.get('component')).catch((e) => ({ error: String(e.message), id, items: [] })));
     }
     if (url.pathname === '/api/transmission') return sendJSON(res, 200, await getTransmission().catch((e) => ({ error: String(e.message), ideas: [] })));
     if (url.pathname === '/api/headlines') return sendJSON(res, 200, await getHeadlines().catch((e) => ({ error: String(e.message), items: [] })));
@@ -2580,7 +2592,7 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname === '/api/fundamentals') {
       const id = url.searchParams.get('id');
       if (!SCAN_QUERIES[id]) return sendJSON(res, 404, { error: 'unknown segment' });
-      return sendJSON(res, 200, await getFundamentals(id).catch((e) => ({ error: String(e.message), items: [] })));
+      return sendJSON(res, 200, await getFundamentals(id, url.searchParams.get('component')).catch((e) => ({ error: String(e.message), items: [] })));
     }
     if (url.pathname === '/api/movewho') {
       const id = url.searchParams.get('id');

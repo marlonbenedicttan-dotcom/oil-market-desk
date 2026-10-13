@@ -556,7 +556,7 @@ async function loadNews() {
   if (!el) return;
   const k = segKey();
   el.innerHTML = stLoading('Loading headlines…');
-  try { const n = await jget('/api/news?id=' + encodeURIComponent(currentMarket), 300000); if (k !== segKey()) return; renderNews(n); }
+  try { const n = await jget('/api/news?id=' + encodeURIComponent(currentMarket) + (currentComponent ? '&component=' + encodeURIComponent(currentComponent) : ''), 300000); if (k !== segKey()) return; renderNews(n); }
   catch { if (k === segKey()) { el.innerHTML = stError('Couldn\u2019t load headlines — retrying.'); markReady('news'); } }
 }
 function renderNews(n, elId = 'news', subId = 'news-sub') {
@@ -2011,7 +2011,7 @@ async function loadFundamentals() {
   if (!el) return;
   const k = segKey();
   el.innerHTML = stLoading('Scanning fundamentals…');
-  try { const f = await jget('/api/fundamentals?id=' + encodeURIComponent(currentMarket), 300000); if (k !== segKey()) return; renderFundamentals(f); }
+  try { const f = await jget('/api/fundamentals?id=' + encodeURIComponent(currentMarket) + (currentComponent ? '&component=' + encodeURIComponent(currentComponent) : ''), 300000); if (k !== segKey()) return; renderFundamentals(f); }
   catch { if (k === segKey()) el.innerHTML = stError('Couldn\u2019t load fundamentals — retrying.'); }
 }
 function renderFundamentals(f) {
@@ -2027,7 +2027,7 @@ function renderFundamentals(f) {
     : up >= down * 1.5 ? 'tight-leaning (more supply shocks than gluts)'
     : down >= up * 1.5 ? 'loose-leaning (more gluts than supply shocks)' : 'mixed';
   if (sub) sub.textContent = `${f && f.label ? f.label + ' · ' : ''}news tilt: ${lean} — ${up} bullish vs ${down} bearish tagged shocks (qualitative, not scored)`;
-  if (!items.length) { el.innerHTML = stEmpty('No supply/demand shocks in recent coverage for this segment.'); return; }
+  if (!items.length) { el.innerHTML = stEmpty('No supply/demand shocks in recent coverage.'); return; }
   el.innerHTML = items.map((i) => `<div class="xa">
       <div class="xa-trig ${i.effect === 'down' ? 'neg' : 'pos'}">${i.effect === 'down' ? '▼' : '▲'} ${i.kind} <span class="dimtext">· ${i.ageDays <= 14 ? 'recent' : Math.max(1, Math.round(i.ageDays / 30)) + 'mo ago'} · ${i.source}</span></div>
       <div class="xa-chain"><a href="${i.url}" target="_blank" rel="noopener noreferrer">${i.title}</a></div>
