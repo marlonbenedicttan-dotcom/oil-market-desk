@@ -70,7 +70,7 @@ const GLOSSARY = `
   <dl>
     <dt>Prices</dt><dd>Live futures for every commodity. Energy also shows the <b>real</b> (spot) price.</dd>
     <dt>Premium / discount</dt><dd>How today's price compares with its <b>own history</b> — a big premium means it's near the top of its usual range.</dd>
-    <dt>Supply &amp; demand</dt><dd><b>Undersupplied</b> (tight) → <b>oversupplied</b> (ample). Built from the curve, the real-vs-futures gap and stocks where we have them; “curve only” means it is market-implied.</dd>
+    <dt>Supply &amp; demand</dt><dd><b>Undersupplied</b> (tight) → <b>oversupplied</b> (ample). Built from the curve, the real-vs-futures gap and stocks where available; “curve only” means it is market-implied.</dd>
     <dt>The curve</dt><dd>Prices for each future month. Pricier <b>now</b> than later (“backwardation”) = tight; the reverse = well supplied.</dd>
     <dt>Refining profit (crack)</dt><dd>What a refiner earns turning crude into fuel. Higher = better for refiners.</dd>
     <dt>The gap (basis)</dt><dd>Real (spot) price − futures. Positive = real barrels cost more → <b>tight</b>. Energy only.</dd>
@@ -82,7 +82,7 @@ const GLOSSARY = `
   </dl>`;
 
 
-function showError(msg) { const el = $('error'); el.classList.remove('hidden'); el.textContent = '⚠ ' + msg; }
+function showError(msg) { const el = $('error'); el.classList.remove('hidden'); el.textContent = msg; }
 // How stale is the market data? A relative label for the header, plus a green/amber/red dot that
 // also survives on phones (where the text label is hidden).
 function relAge(iso) {
@@ -132,7 +132,7 @@ function renderMethodology(data) {
       + `<div class="m-sec"><h4>THE RULES</h4><ul class="m-rules">${rules}</ul></div>`;
   }
   if (caveats) html += `<div class="m-sec"><h4>THINGS TO FLAG</h4><ul class="m-rules">${caveats}</ul></div>`;
-  el.innerHTML = `<details class="fold" id="methodology"><summary>📖 DATA &amp; METHODOLOGY</summary><div class="note-body">${html}</div></details>`
+  el.innerHTML = `<details class="fold" id="methodology"><summary>DATA &amp; METHODOLOGY</summary><div class="note-body">${html}</div></details>`
     + `<div class="foot-line dimtext">Marlon's Watchtower${data.version ? ` · build ${data.version}` : ''} · data © the respective sources · not investment advice.</div>`;
 }
 async function getJSON(url) { const r = await fetch(url); if (!r.ok) throw new Error(`${url} -> HTTP ${r.status}`); return r.json(); }
@@ -292,7 +292,7 @@ function renderCards(m) {
 function setCardsTitle() {
   const mk = markets.find((x) => x.id === currentMarket);
   const el = $('cards-title');
-  if (el) el.textContent = '📊 INSTRUMENTS — ' + (mk ? mk.label.toUpperCase() : 'ALL');
+  if (el) el.textContent = 'INSTRUMENTS — ' + (mk ? mk.label.toUpperCase() : 'ALL');
 }
 
 // Home: the pinned instruments, across every segment, in one board.
@@ -454,7 +454,7 @@ async function loadMarketRead() {
 function renderAdaptive() {
   const mk = markets.find((x) => x.id === currentMarket);
   const nm = (marketRead && marketRead.id === currentMarket && marketRead.label) || (mk && mk.label) || '';
-  setTitle('tightness-title', '⚡ ' + (nm ? `IS ${nm.toUpperCase()} AT A PREMIUM, A DISCOUNT, OR TIGHT?` : 'READING…'));
+  setTitle('tightness-title', nm ? `${nm.toUpperCase()} — TIGHTNESS` : 'TIGHTNESS');
   setTitle('tightness-sub', 'price vs its own history · physical tightness · curve · volatility');
   if (!marketRead || marketRead.id !== currentMarket || marketRead.error) { readSkeleton(mk); return; }
   const r = marketRead, v = r.verdict;
@@ -548,8 +548,8 @@ function attrBlock(at) {
     return `<div class="attr"><div class="attr-lead">${lead}</div><ul class="attr-list">${items}</ul><div class="dimtext attr-caveat">News-implied, not a verdict — links open at the source.</div></div>`;
   }
   return at.divergence
-    ? '<div class="attr dimtext">The past-year news leaned <b>against</b> that move — a divergence worth investigating. See 📰 IN THE NEWS.</div>'
-    : '<div class="attr dimtext">No single clear news driver found over the past year — see 📰 IN THE NEWS.</div>';
+    ? '<div class="attr dimtext">The past-year news leaned <b>against</b> that move — a divergence worth investigating. See the news panel.</div>'
+    : '<div class="attr dimtext">No single clear news driver found over the past year — see the news panel.</div>';
 }
 async function loadNews() {
   const el = $('news');
@@ -641,7 +641,7 @@ function renderThresholds() {
 function renderAlerts(alerts) {
   $('alert-count').textContent = String(alerts.length);
   $('alert-count').className = 'pill ' + (alerts.some((a) => a.level === 'high') ? 'warn' : alerts.length ? '' : 'ok');
-  $('alerts').innerHTML = alerts.length ? alerts.map((a) => `<div class="alert ${a.level}"><span class="badge">${a.level === 'high' ? 'HIGH' : 'WATCH'}</span> ${a.text}</div>`).join('') : '<div class="alert none">✅ No alerts — markets within normal ranges.</div>';
+  $('alerts').innerHTML = alerts.length ? alerts.map((a) => `<div class="alert ${a.level}"><span class="badge">${a.level === 'high' ? 'HIGH' : 'WATCH'}</span> ${a.text}</div>`).join('') : '<div class="alert none">No alerts — markets within normal ranges.</div>';
   if ('Notification' in window && Notification.permission === 'granted') for (const a of alerts) if (a.level === 'high' && !seenAlerts.has(a.text)) { seenAlerts.add(a.text); try { new Notification('Oil market alert', { body: a.text }); } catch {} }
 }
 // ---------------------------------------------------------------------------
@@ -700,7 +700,7 @@ function renderRules() {
     ? rs.map((r) => `<div class="rule"><span>${ruleLabel(r.metric)} ${r.op === '>' ? 'above' : r.op === '<' ? 'below' : 'crosses'} <b>${r.level}</b>${r.note ? ` — ${r.note}` : ''}</span><button class="rule-x" data-del="${r.id}" aria-label="Delete rule">✕</button></div>`).join('')
     : '<div class="dimtext" style="padding:2px 0">No rules yet — add one below.</div>';
   const granted = 'Notification' in window && Notification.permission === 'granted';
-  el.innerHTML = '<div class="rules-h">⚙ MY RULES — tell me when…</div>'
+  el.innerHTML = '<div class="rules-h">ALERT RULES — tell me when…</div>'
     + `<div class="rules-list">${list}</div>`
     + `<div class="rule-add"><select id="rule-metric" aria-label="Metric">${opts}</select>`
     + '<select id="rule-op" aria-label="Condition"><option value=">">is above</option><option value="<">is below</option><option value="crosses">crosses</option></select>'
@@ -738,7 +738,7 @@ function renderHomeAlerts() {
   if (sub) sub.textContent = 'server checks (basis extremes, data quality, idle ships) + your rules · add rules below, or edit thresholds in COMMODITIES → MORE DETAIL';
   el.innerHTML = list.length
     ? list.map((a) => `<div class="alert ${a.level}"><span class="badge">${a.level === 'high' ? 'HIGH' : a.level === 'watch' ? 'CHECK' : 'WATCH'}</span> ${a.text}</div>`).join('')
-    : '<div class="alert none">✅ No alerts — markets within normal ranges.</div>';
+    : '<div class="alert none">No alerts — markets within normal ranges.</div>';
   // Browser notifications for new high alerts + any rule that fires (rules are user-defined, so
   // they always announce). Client-side only — this runs while the tab is open.
   if ('Notification' in window && Notification.permission === 'granted') {
@@ -885,7 +885,7 @@ function baseOptions({ dp = 2, unit = '', percentAxis = false, yTitle = '', y1Ti
               const e = ctx.dataset.$news[ctx.dataIndex];
               if (!e) return undefined;
               const t = String(e.title); const tt = t.length > 90 ? t.slice(0, 89) + '…' : t;
-              return `📰 ${e.date.slice(5)} · ${tt} — ${e.source} (${moveText(e)})`;
+              return `NEWS · ${e.date.slice(5)} · ${tt} — ${e.source} (${moveText(e)})`;
             }
             const v = ctx.parsed.y;
             if (v == null || Number.isNaN(v)) return `${ctx.dataset.label}: —`;
@@ -1393,7 +1393,7 @@ function renderInventories(d) {
   const fmtN = (v) => (v == null ? '—' : (v >= 0 ? '+' : '') + v.toLocaleString(undefined, { maximumFractionDigits: 0 }));
   const crude = d.items.find((i) => i.key === 'crude');
   const read = crude?.surprise != null
-    ? (crude.surprise < 0 ? '🛢️ Crude stocks <b>fell more than usual</b> this week → bullish for oil.' : '🛢️ Crude stocks <b>built more than usual</b> → bearish for oil.')
+    ? (crude.surprise < 0 ? 'Crude stocks <b>fell more than usual</b> this week → bullish for oil.' : 'Crude stocks <b>built more than usual</b> → bearish for oil.')
     : '';
   const rows = d.items.map((i) => {
     const sur = i.surprise;
@@ -1406,7 +1406,7 @@ function renderInventories(d) {
   $('inventories').innerHTML =
     (read ? `<div class="read-line">${read}</div>` : '') +
     `<div class="t inv h"><span class="inv-l">SERIES (million barrels)</span><span class="num">LEVEL</span><span class="num">THIS WEEK</span><span class="num">vs NORMAL</span></div>` + rows +
-    (d.gas ? `<div class="read-line" style="border-top:1px solid var(--line)">🔥 Natural gas storage: <b>${d.gas.value.toLocaleString()} BCF</b> (${d.gas.wow >= 0 ? '+' : ''}${d.gas.wow} this week${d.gas.surprise != null ? `, vs a normal ${d.gas.surprise >= 0 ? '+' : ''}${d.gas.surprise}` : ''}) — ${d.gas.wow < 0 ? 'a draw is bullish for gas' : 'a build is bearish for gas'}.</div>` : '');
+    (d.gas ? `<div class="read-line" style="border-top:1px solid var(--line)">Natural gas storage: <b>${d.gas.value.toLocaleString()} BCF</b> (${d.gas.wow >= 0 ? '+' : ''}${d.gas.wow} this week${d.gas.surprise != null ? `, vs a normal ${d.gas.surprise >= 0 ? '+' : ''}${d.gas.surprise}` : ''}) — ${d.gas.wow < 0 ? 'a draw is bullish for gas' : 'a build is bearish for gas'}.</div>` : '');
 }
 // ---------------------------------------------------------------------------
 // Positioning (CFTC, weekly) — who is crowded. Fetched per segment; the server supplies the
@@ -1469,7 +1469,7 @@ function renderOptions(d) {
   const cell = (k, v, cls, s) => `<div class="opt-cell"><div class="opt-k">${k}</div><div class="opt-v ${cls}">${v}</div><div class="opt-s dimtext">${s}</div></div>`;
   el.innerHTML = '<div class="opt-grid">'
     + cell('ATM IMPLIED VOL', iv == null ? '—' : iv.toFixed(1) + '%', '', iv == null ? '' : `${iv >= 40 ? 'elevated' : iv <= 20 ? 'calm' : 'normal'} · ${d.expiry || ''}`)
-    + cell('PUT / CALL · open interest', pc == null ? '—' : pc.toFixed(2), pcCls, pc == null ? '' : pc >= 1.2 ? 'put-heavy — defensive' : pc <= 0.8 ? 'call-heavy — greedy' : 'balanced')
+    + cell('PUT / CALL · open interest', pc == null ? '—' : pc.toFixed(2), pcCls, pc == null ? '' : pc >= 1.2 ? 'put-heavy — defensive' : pc <= 0.8 ? 'call-heavy — bullish' : 'balanced')
     + cell('PUT / CALL · volume', pcv == null ? '—' : pcv.toFixed(2), '', "today's flow")
     + cell('25Δ SKEW · put − call IV', sk == null ? '—' : (sk > 0 ? '+' : '') + sk.toFixed(1), skCls, sk == null ? '' : sk >= 1 ? 'puts bid — hedging' : sk <= -1 ? 'calls bid — chasing upside' : 'flat')
     + '</div>'
@@ -1667,18 +1667,18 @@ function renderFlows(d) {
   const e = d.exit; const total = (e.eastbound + e.westbound) || 1;
   const ew = (e.eastbound / total * 100).toFixed(0), ww = (e.westbound / total * 100).toFixed(0);
   const darkNote = (d.dark && d.dark.length)
-    ? `<div class="qflag watch" style="margin:8px 12px">⚠ <b>No ship signals</b> in: ${d.dark.join(', ')} — this area has gone quiet (ships may be switching off trackers, or the feed is limited).</div>`
+    ? `<div class="qflag watch" style="margin:8px 12px"><b>No ship signals</b> in: ${d.dark.join(', ')} — this area has gone quiet (ships may be switching off trackers, or the feed is limited).</div>`
     : '';
   const ms = d.marketStress;
   const stressHtml = ms ? `<div class="chokes-h dimtext" style="padding:10px 12px 0">WHAT PRICES ARE SAYING (ships go dark, but prices can't)</div>
     <div style="padding:6px 12px 0"><div class="verdict ${ms.score >= 2 ? 'tight' : 'mixed'}">${ms.verdict}</div>
     ${ms.signals.map((s) => `<div class="ev"><span class="ev-l">${s.label}</span><span class="ev-v ${s.hot ? 'pos' : ''}">${s.value != null ? (s.value >= 0 ? '+' : '') + Number(s.value).toFixed(2) : '—'}</span><span class="tag ${s.hot ? 'tight' : 'neutral'}">${s.hot ? 'STRESS' : 'ok'}</span><span class="ev-n dimtext">${s.hot ? 'pricing disruption' : 'normal'}</span></div>`).join('')}</div>` : '';
   const an = d.anomalies || {};
-  const anHtml = (an.spoof || an.darkGap) ? `<div class="chokes-h dimtext" style="padding:0 12px">TRACKER ODDITIES (ships we can still see)</div>
+  const anHtml = (an.spoof || an.darkGap) ? `<div class="chokes-h dimtext" style="padding:0 12px">TRACKER ODDITIES (ships still visible)</div>
     <div class="chokes"><span class="choke"><b>${an.spoof || 0}</b> fake jumps (spoofing)</span><span class="choke"><b>${an.darkGap || 0}</b> went silent (hidden trips)</span></div>` : '';
   const routes = (d.routes || []).map((r) => `<span class="choke ${r.perMin === 0 ? 'cold' : ''}"><b>${r.count}</b> ${r.name} <span class="dimtext">${r.perMin}/min</span></span>`).join('');
   const routesHtml = `<div class="chokes-h dimtext" style="padding:0 12px">ARE SHIPS DODGING CHOKEPOINTS?</div><div class="chokes">${routes}</div>`;
-  const divHtml = d.diversion ? `<div class="qflag watch" style="margin:8px 12px">🧭 ${d.diversion}</div>` : '';
+  const divHtml = d.diversion ? `<div class="qflag watch" style="margin:8px 12px">${d.diversion}</div>` : '';
   $('flows').innerHTML =
     `<div class="chokes-h dimtext">MIDDLE-EAST SHIPPING (live)</div>
      <div class="chokes">${regions}</div>
@@ -1759,13 +1759,13 @@ function renderSatellite(sar, flares) {
   let html = '';
   if (sar && !sar.error) {
     const latest = sar.latest ? new Date(sar.latest.time).toLocaleString() : '—';
-    html += `<div class="read-line">👁️ <b>How we can still see the Gulf from space.</b> This is <b>radar, not a photo</b> — so it works at night and through cloud. Latest pass: <b>${latest}</b>.</div>
-      <div class="legend"><span class="lg"><i class="sw bright"></i> bright = a solid object (ship, platform) or land</span><span class="lg"><i class="sw dark"></i> dark = open water</span><span class="lg"><i class="sw circle"></i> red circle = a small object we spotted</span></div>
+    html += `<div class="read-line"><b>How the Gulf is visible from space.</b> This is <b>radar, not a photo</b> — so it works at night and through cloud. Latest pass: <b>${latest}</b>.</div>
+      <div class="legend"><span class="lg"><i class="sw bright"></i> bright = a solid object (ship, platform) or land</span><span class="lg"><i class="sw dark"></i> dark = open water</span><span class="lg"><i class="sw circle"></i> red circle = a small object detected</span></div>
       <div class="sarimg"><canvas id="sar-canvas"></canvas><div id="sar-count" class="dimtext">reading the image…</div></div>`;
   }
   if (flares && !flares.error) {
     const regions = Object.entries(flares.byRegion || {}).map(([k, v]) => `<span class="choke"><b>${v}</b> ${k}</span>`).join('');
-    html += `<div class="read-line" style="border-top:1px solid var(--line)">🔥 <b>Gas flames = how much oil is being produced.</b> Oil fields burn off gas in flames satellites can see from orbit. More flames ≈ more output; fewer ≈ fields shut down. Right now: <b>${flares.total}</b> flames seen in the last day.</div>
+    html += `<div class="read-line" style="border-top:1px solid var(--line)"><b>Gas flames = how much oil is being produced.</b> Oil fields burn off gas in flames satellites can see from orbit. More flames ≈ more output; fewer ≈ fields shut down. Right now: <b>${flares.total}</b> flames seen in the last day.</div>
       <div class="chokes">${regions}</div>`;
     if (flares.trend?.length > 1) html += `<div class="dimtext" style="padding:4px 12px 10px">flames seen per day: ${flares.trend.map((t) => `${t.date.slice(5)}: ${t.count}`).join(' · ')}</div>`;
   }
@@ -1876,7 +1876,7 @@ async function loadCountry() {
     + '</div>'
     + (f.source ? `<div class="macro-note">${f.source} — labelled by year.</div>` : '');
 
-  if (!c.policy && c.policyNote) html += `<div class="macro-note">🏦 ${c.policyNote}</div>`;
+  if (!c.policy && c.policyNote) html += `<div class="macro-note">${c.policyNote}</div>`;
   if (gdp.length > 1) html += `<div class="dimtext" style="padding:2px 12px 8px">real GDP growth by year — ${gdp.map((g) => `${g.year}: ${g.value}%`).join(' · ')}</div>`;
 
   html += '<div class="bb-sec">COMMODITY LINKAGE — its currency vs…</div>';
@@ -2311,7 +2311,7 @@ function renderMacroDash(md, corr, events) {
   const c = corr || {};
   const cTile = (label, v, note) => macroTile(label, v != null ? v : '—', note, v != null ? (v < 0 ? 'neg' : 'pos') : '');
   const mcorr = $('macro-corr'); if (mcorr) mcorr.innerHTML = `<div class="kpis">${cTile('OIL vs US DOLLAR', c.oilVsDollar, 'usually negative')}${cTile('OIL vs VIX', c.oilVsVix, 'risk-off link')}${cTile('OIL vs S&P 500', c.oilVsSp500, 'risk-on link')}</div>`;
-  $('macro-events').innerHTML = (events || []).map((e) => `<div class="read-line">📅 <b>${e.name}</b>${e.date ? ` — ${e.date}` : ''} <span class="dimtext">${e.note || ''}</span></div>`).join('');
+  $('macro-events').innerHTML = (events || []).map((e) => `<div class="read-line"><b>${e.name}</b>${e.date ? ` — ${e.date}` : ''} <span class="dimtext">${e.note || ''}</span></div>`).join('');
 }
 // Curve-over-time only exists for the NYMEX energy roots (CL/BZ/NG/RB/HO);
 // it self-hides for metals/ags where the contract-month history isn't free.

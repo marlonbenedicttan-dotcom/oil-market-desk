@@ -986,7 +986,7 @@ async function getMacroDash() {
     const spread2s10s = r10 && r2 ? +(r10.value - r2.value).toFixed(2) : null;
     // Only fields we can source ACCURATELY are filled; everything else stays null and is labelled.
     const regions = {
-      us: { label: 'United States', fields: [
+      us: { label: 'Americas', fields: [
         { k: 'Fed funds (policy)', v: ffr?.value ?? null, suf: '%', asOf: ffr?.date },
         { k: 'US CPI YoY', v: usCpi ?? null, suf: '%', asOf: cpiDates[cpiDates.length - 1] },
         { k: 'US GDP QoQ (annualised)', v: g?.value ?? null, suf: '%', asOf: g?.date },
@@ -1338,7 +1338,7 @@ const MARKET_CONTENT = {
   dairy:      { tightQ: 'IS DAIRY TIGHT?', catalysts: ['feed costs (corn, soy, alfalfa)', 'USDA milk production & the cow herd', 'Global Dairy Trade (GDT) auctions', 'export demand (China, Mexico, SE Asia)'], watch: ['The USDA milk-production report & cow numbers', 'Global Dairy Trade auction results'],
     sectorsUp: ['Dairy processors & co-ops', 'Farm equipment & feed'], sectorsDown: ['Food & beverage makers', 'Restaurants & consumers'],
     tickersUp: ['SAP.TO', 'BN.PA', 'GL9.IR', 'ADM', 'BG'], tickersDown: ['HSY', 'MDLZ', 'KHC', 'SBUX', 'CMG'],
-    ideas: 'Tight milk — a small herd and firm exports — lifts dairy processors and feed suppliers and raises input costs for food makers, restaurants and consumers: a food-inflation read. The tradeable complex is milk, cheese, butter and milk powder.' },
+    ideas: 'Tight milk (a small herd and firm exports) lifts dairy processors and feed suppliers, and raises input costs for food makers, restaurants and consumers: a food-inflation read. The tradeable complex is milk, cheese, butter and milk powder.' },
 };
 function rollingVolPctile(values, win = 30) {
   const r = [];
@@ -1650,7 +1650,7 @@ function newsDir(title) {
   const u = DIR_UP.test(t), d = DIR_DOWN.test(t);
   return (u && !d) ? 'up' : (d && !u) ? 'down' : null;   // both present = ambiguous
 }
-const NEWS_REGION_LABELS = { us: 'United States', eu: 'Europe', jp: 'Japan', apac: 'Asia-Pacific' };
+const NEWS_REGION_LABELS = { us: 'Americas', eu: 'Europe', jp: 'Japan', apac: 'Asia-Pacific' };
 const newsLabel = (id) => MARKETS.find((x) => x.id === id)?.label || NEWS_REGION_LABELS[id] || id;
 const NEWS_TIER1 = '(site:reuters.com OR site:bloomberg.com OR site:ft.com OR site:apnews.com OR site:cnbc.com)';
 const decodeEnt = (s) => String(s || '').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&nbsp;/g, ' ').trim();
@@ -2189,15 +2189,15 @@ async function getTransmission() {
     if (dxy1m != null && Math.abs(dxy1m) > 1.5) {
       const up = dxy1m > 0;
       add({ id: 'dollar', trigger: `US dollar ${up ? '+' : ''}${dxy1m.toFixed(1)}% in a month`,
-        chain: up ? 'A firmer dollar makes dollar-priced commodities <b>more expensive</b> for the rest of the world — a broad headwind — and tightens global financial conditions, pressing emerging markets.'
-          : 'A softer dollar makes dollar-priced commodities <b>cheaper</b> for the world — a broad tailwind — and eases global financial conditions, supporting emerging markets.',
+        chain: up ? 'A firmer dollar makes dollar-priced commodities <b>more expensive</b> for the rest of the world, a broad headwind, and tightens global financial conditions, pressing emerging markets.'
+          : 'A softer dollar makes dollar-priced commodities <b>cheaper</b> for the world, a broad tailwind, and eases global financial conditions, supporting emerging markets.',
         benefits: up ? ['US importers', 'dollar-funded carry'] : ['Commodities broadly', 'Emerging-market assets'], hurt: up ? ['Commodities', 'EM currencies & assets'] : ['US import prices (inflation risk)'],
         up: up ? [] : ['GLD', 'EEM', 'FCX'], down: up ? ['GLD', 'EEM', 'FCX'] : [], segments: ['precious', 'industrial', 'grains', 'softs', 'crude'], regions: ['us'] });
     }
     if (rateChg != null && Math.abs(rateChg) >= 0.15) {
       const up = rateChg > 0;
       add({ id: 'rates', trigger: `US 10-year yield ${up ? '+' : ''}${rateChg.toFixed(2)}pp in a month`,
-        chain: up ? 'Rising long yields lift <b>real rates</b> — a direct headwind for precious metals — support the dollar, and pressure long-duration growth and property.' : 'Falling long yields cut <b>real rates</b> — supportive for precious metals — soften the dollar, and help long-duration growth.',
+        chain: up ? 'Rising long yields lift <b>real rates</b> (a direct headwind for precious metals), support the dollar, and pressure long-duration growth and property.' : 'Falling long yields cut <b>real rates</b> (supportive for precious metals), soften the dollar, and help long-duration growth.',
         benefits: up ? ['Banks', 'Value / energy'] : ['Precious metals', 'Long-duration growth', 'Property'], hurt: up ? ['Precious metals', 'Growth & property'] : ['Banks'],
         up: up ? ['XLF'] : ['GDX', 'NEM'], down: up ? ['GDX', 'NEM'] : ['XLF'], segments: ['precious', 'industrial'], regions: ['us'] });
     }
@@ -2214,7 +2214,7 @@ async function getTransmission() {
     }
     if (corn1m != null && corn1m > 4) {
       add({ id: 'food-inflation', trigger: `Grains +${corn1m.toFixed(1)}% in a month`,
-        chain: 'Higher grains feed <b>food inflation</b> — a regressive squeeze on consumers, especially in emerging Asia — while helping farmers, inputs and grain traders.',
+        chain: 'Higher grains feed <b>food inflation</b> (a regressive squeeze on consumers, especially in emerging Asia) while helping farmers, inputs and grain traders.',
         benefits: ['Farm inputs & equipment', 'Grain traders & processors'], hurt: ['Food makers', 'Livestock (feed cost)', 'EM consumers'],
         up: ['DE', 'ADM', 'BG', 'CF'], down: ['TSN', 'KHC'], segments: ['grains', 'softs'], regions: ['apac', 'eu'] });
     }

@@ -49,7 +49,7 @@
       <span id="fresh" class="fresh-dot" role="img" title="Data freshness" aria-label="Data freshness"></span>
       <span id="clock" class="clock">--:--:--</span>
       <span id="updated" class="dimtext">loading…</span>
-      <a class="ghost desk-only" href="/api/export.csv">⬇ CSV</a>
+      <a class="ghost desk-only" href="/api/export.csv">EXPORT CSV</a>
       <a class="ghost desk-only" href="/api/digest" target="_blank">DAILY BRIEF</a>
       <button id="refresh" class="ghost" aria-label="Refresh data" title="Refresh data">↻</button>
       <button id="help-open" class="ghost" aria-label="Help and guide" title="Help and guide">?</button>
@@ -84,17 +84,17 @@
         <a href="#p-segments">Segments</a>
       </nav>
       <section class="panel" id="p-brief">
-        <div class="ph"><span class="ph-t">☀️ DAILY BRIEF — what happened · what's on today</span><span id="brief-updated" class="dimtext"></span></div>
+        <div class="ph"><span class="ph-t">DAILY BRIEF — what happened · what's next</span><span id="brief-updated" class="dimtext"></span></div>
         <div id="home-brief"></div>
       </section>
 
       <section class="panel" id="p-regime">
-        <div class="ph"><span class="ph-t">🌐 MARKETS AT A GLANCE — the backdrop</span><span class="dimtext">dollar · volatility · rates · risk · metals · oil</span></div>
+        <div class="ph"><span class="ph-t">MARKETS AT A GLANCE</span><span class="dimtext">dollar · volatility · rates · risk · metals · oil</span></div>
         <div id="regime-board" class="regime-board"></div>
       </section>
 
       <section class="panel" id="p-screen">
-        <div class="ph"><span class="ph-t">🔎 SCREENER — where to look today</span>
+        <div class="ph"><span class="ph-t">SCREENER — every instrument, ranked</span>
           <div class="controls"><span class="dimtext">returns in</span>
             <select id="base-cur" aria-label="Base currency"><option value="USD" selected>USD</option><option value="EUR">EUR</option><option value="GBP">GBP</option><option value="JPY">JPY</option><option value="CNY">CNY</option><option value="CAD">CAD</option><option value="AUD">AUD</option><option value="CHF">CHF</option></select>
           </div>
@@ -103,34 +103,34 @@
       </section>
 
       <section class="panel" id="p-risk">
-        <div class="ph"><span class="ph-t">⚠️ RISK &amp; CORRELATION — the backdrop, quantified</span><span id="risk-sub" class="dimtext"></span></div>
+        <div class="ph"><span class="ph-t">RISK &amp; CORRELATION</span><span id="risk-sub" class="dimtext"></span></div>
         <div id="risk" class="risk"></div>
       </section>
 
       <section class="panel" id="p-calendar">
-        <div class="ph"><span class="ph-t">📅 ECONOMIC CALENDAR</span><span id="cal-sub" class="dimtext"></span></div>
+        <div class="ph"><span class="ph-t">ECONOMIC CALENDAR</span><span id="cal-sub" class="dimtext"></span></div>
         <div id="calendar" class="calendar"></div>
       </section>
 
       <section class="panel" id="p-watch">
-        <div class="ph"><span class="ph-t">📌 WATCHLIST — your pinned instruments</span><span class="dimtext">★ on any instrument pins it here · click a tile for its chart</span></div>
+        <div class="ph"><span class="ph-t">WATCHLIST</span><span class="dimtext">★ on any instrument pins it here · click a tile for its chart</span></div>
         <div id="home-watch"></div>
       </section>
 
       <section class="panel" id="p-alerts">
-        <div class="ph"><span class="ph-t">⚠️ ALERTS</span><span class="ph-right"><span id="home-alert-count" class="pill">0</span></span></div>
+        <div class="ph"><span class="ph-t">ALERTS</span><span class="ph-right"><span id="home-alert-count" class="pill">0</span></span></div>
         <div id="home-alerts" class="alerts"></div>
         <div id="home-alert-sub" class="dimtext" style="padding:0 12px 10px"></div>
         <div id="home-rules"></div>
       </section>
 
       <section class="panel" id="p-headlines">
-        <div class="ph"><span class="ph-t">📰 LIVE — IMPORTANT HEADLINES</span><span class="dimtext">tier-1 wire · ranked by materiality · refreshes every 10 min</span></div>
+        <div class="ph"><span class="ph-t">HEADLINES</span><span class="dimtext">tier-1 wire · ranked by materiality · refreshes every 10 min</span></div>
         <div id="headlines" class="headlines"></div>
       </section>
 
       <section class="panel" id="p-segments">
-        <div class="ph"><span class="ph-t">🔎 SEGMENTS AT A GLANCE</span><span class="dimtext">click a segment to open it</span></div>
+        <div class="ph"><span class="ph-t">SEGMENTS</span><span class="dimtext">click a segment to open it</span></div>
         <div id="marketstate" class="marketstate"></div>
       </section>
     </div>
@@ -140,7 +140,7 @@
 
       <!-- 1. WHERE ARE WE -->
       <section class="panel">
-        <div class="ph"><span class="ph-t">🔎 PICK A SEGMENT</span>
+        <div class="ph"><span class="ph-t">SEGMENT</span>
           <div class="controls"><select id="bp-metric"></select></div>
         </div>
         <div id="bp-snapshot" class="bp-snapshot"></div>
@@ -148,12 +148,12 @@
 
       <!-- 2. THE SO-WHAT (read first) — one read: what happened, key points, what's next, trade ideas -->
       <section class="panel">
-        <div class="ph"><span class="ph-t">🎯 THE READ — WHAT HAPPENED · KEY POINTS · WHAT'S NEXT · TRADE IDEAS</span><span class="dimtext">NOT INVESTMENT ADVICE</span></div>
+        <div class="ph"><span class="ph-t">THE READ — what happened · key points · what's next · trade ideas</span><span class="dimtext">NOT INVESTMENT ADVICE</span></div>
         <div id="bottomline" class="bottomline"></div>
       </section>
 
       <section class="panel market-only" data-when="*">
-        <div class="ph"><span class="ph-t">🔗 HOW IT TRANSMITS — <span id="xa-seg"></span></span><span class="dimtext">cross-asset knock-on · a framework, not a forecast</span></div>
+        <div class="ph"><span class="ph-t">HOW IT TRANSMITS — <span id="xa-seg"></span></span><span class="dimtext">cross-asset links · a framework, not a forecast</span></div>
         <div id="crossasset" class="macro"></div>
       </section>
 
@@ -165,7 +165,7 @@
 
       <section class="panel" id="chart-panel">
         <div class="ph">
-          <span class="ph-t">📈 PRICE HISTORY</span>
+          <span class="ph-t">PRICE HISTORY</span>
           <div class="controls"><select id="metric" aria-label="Instrument"></select><select id="range" aria-label="Chart range"><option value="1m">1M</option><option value="3m">3M</option><option value="6m" selected>6M</option><option value="ytd">YTD</option><option value="1y">1Y</option><option value="5y">5Y</option><option value="10y">10Y</option></select></div>
         </div>
         <div class="chart-wrap lg"><canvas id="chart"></canvas></div>
@@ -175,7 +175,7 @@
 
       <section class="panel" id="compare-panel">
         <div class="ph">
-          <span class="ph-t">⚖️ COMPARE / SPREAD</span>
+          <span class="ph-t">COMPARE / SPREAD</span>
           <div class="controls">
             <select id="cmp-a" aria-label="Compare series A"></select><span class="dimtext">vs</span><select id="cmp-b" aria-label="Compare series B"></select>
             <select id="cmp-range" aria-label="Compare range"><option value="1m">1M</option><option value="3m">3M</option><option value="6m" selected>6M</option><option value="ytd">YTD</option><option value="1y">1Y</option></select>
@@ -188,7 +188,7 @@
       </section>
 
       <section class="panel">
-        <div class="ph"><span class="ph-t">📅 PRICES FOR MONTHS AHEAD — <span id="curve-title"></span></span><span class="dimtext">is it cheaper or pricier later? (the “curve”)</span></div>
+        <div class="ph"><span class="ph-t">FORWARD CURVE — <span id="curve-title"></span></span><span class="dimtext">is it cheaper or pricier later? (the “curve”)</span></div>
         <div id="curve" class="curve"></div>
         <div id="curvehist-block">
           <div id="curvehist-title" class="chokes-h dimtext" style="padding:8px 12px 0"></div>
@@ -198,13 +198,13 @@
       </section>
 
       <section class="panel market-only" data-when="gas,grains,softs">
-        <div class="ph"><span class="ph-t">🌱 SEASONALITY — vs the 5-year norm</span><span class="dimtext" id="seasonal-sub"></span></div>
+        <div class="ph"><span class="ph-t">SEASONALITY — vs the 5-year norm</span><span class="dimtext" id="seasonal-sub"></span></div>
         <div id="seasonal" class="seasonal"></div>
       </section>
 
       <!-- GRAINS only: the soybean crush (the oilseed complex's core signal) -->
       <section class="panel market-only" data-when="grains">
-        <div class="ph"><span class="ph-t">🌾 SOYBEAN CRUSH — processor margin</span><span class="dimtext">meal + oil − beans, per bushel</span></div>
+        <div class="ph"><span class="ph-t">SOYBEAN CRUSH — processor margin</span><span class="dimtext">meal + oil − beans, per bushel</span></div>
         <div id="crush" class="products"></div>
         <div class="chokes-h dimtext" style="padding:0 12px">SOYBEAN CRUSH OVER TIME ($/bu · oil share %, last 6 months)</div>
         <div class="chart-wrap sm"><canvas id="crushhist"></canvas></div>
@@ -213,56 +213,56 @@
 
       <!-- 4. EVIDENCE — the segment's own defining signal comes first -->
       <section class="panel">
-        <div class="ph"><span class="ph-t" id="tightness-title">⚡ IS OIL ACTUALLY TIGHT?</span><span class="dimtext" id="tightness-sub">six independent checks</span></div>
+        <div class="ph"><span class="ph-t" id="tightness-title">TIGHTNESS</span><span class="dimtext" id="tightness-sub">six independent checks</span></div>
         <div id="tightness" class="tightness"></div>
       </section>
 
       <!-- POSITIONING: who is long / short (CFTC, weekly) -->
       <section class="panel market-only" data-when="*" id="positioning-panel">
-        <div class="ph"><span class="ph-t">📊 POSITIONING — who's crowded</span><span id="pos-sub" class="dimtext"></span></div>
+        <div class="ph"><span class="ph-t">POSITIONING</span><span id="pos-sub" class="dimtext"></span></div>
         <div id="positioning" class="positioning"></div>
       </section>
 
       <!-- OPTIONS: implied vol, put/call, skew (CBOE delayed, via the ETF proxy) -->
       <section class="panel market-only" data-when="*" id="options-panel">
-        <div class="ph"><span class="ph-t">🎚️ OPTIONS — vol, fear &amp; skew</span><span id="opt-sub" class="dimtext"></span></div>
+        <div class="ph"><span class="ph-t">OPTIONS</span><span id="opt-sub" class="dimtext"></span></div>
         <div id="options" class="options"></div>
       </section>
 
       <!-- REFINED only: refining margins (the sector's core signal) + who it helps/hurts -->
       <section class="panel market-only" data-when="refined">
-        <div class="ph"><span class="ph-t">🏭 REFINING MARGINS — DIESEL · JET · GASOLINE</span><span class="dimtext">profit per barrel</span></div>
+        <div class="ph"><span class="ph-t">REFINING MARGINS</span><span class="dimtext">profit per barrel</span></div>
         <div id="products" class="products"></div>
         <div class="chokes-h dimtext" style="padding:0 12px">REFINING PROFIT OVER TIME ($/bbl, last 6 months)</div>
         <div class="chart-wrap sm"><canvas id="crackhist"></canvas></div>
         <div id="crack-events" class="chart-events"></div>
       </section>
       <section class="panel market-only" data-when="refined">
-        <div class="ph"><span class="ph-t">🤝 WHO IT HELPS / HURTS</span><span id="eq-date" class="dimtext"></span></div>
+        <div class="ph"><span class="ph-t">WHO IT HELPS / HURTS</span><span id="eq-date" class="dimtext"></span></div>
         <div id="sector-read" class="sector-read"></div>
         <div id="sectors" class="sectors"></div>
       </section>
 
       <section class="panel market-only" data-when="crude,refined,gas">
-        <div class="ph"><span class="ph-t">🛢️ SUPPLY — US STOCKPILES &amp; GAS STORAGE</span><span id="inv-date" class="dimtext">updated weekly</span></div>
+        <div class="ph"><span class="ph-t">SUPPLY</span><span id="inv-date" class="dimtext">updated weekly</span></div>
         <div id="inventories" class="tbl"></div>
       </section>
 
       <section class="panel market-only" data-when="*">
-        <div class="ph"><span class="ph-t">🔬 FUNDAMENTALS — what the news implies</span><span id="fund-sub" class="dimtext"></span></div>
+        <div class="ph"><span class="ph-t">FUNDAMENTALS</span><span id="fund-sub" class="dimtext"></span></div>
         <div id="fundamentals" class="macro"></div>
       </section>
 
       <section class="panel market-only" data-when="*">
-        <div class="ph"><span class="ph-t">📰 IN THE NEWS</span><span id="news-sub" class="dimtext"></span></div>
+        <div class="ph"><span class="ph-t">IN THE NEWS</span><span id="news-sub" class="dimtext"></span></div>
         <div id="news" class="news"></div>
       </section>
 
       <!-- CRUDE only, folded: ships & satellites -->
       <details class="panel fold-panel market-only" data-when="crude">
-        <summary>🚢 SHIPS &amp; SATELLITES — live tracking &amp; the space look</summary>
+        <summary>SHIPS &amp; SATELLITES</summary>
         <section class="fold-body">
-          <div class="ph"><span class="ph-t">🚢 SHIPS — LIVE TRACKING</span><span id="ais-status" class="pill">—</span></div>
+          <div class="ph"><span class="ph-t">SHIPS</span><span id="ais-status" class="pill">—</span></div>
           <div id="ais-sub" class="dimtext"></div>
           <ul id="ships-insights" class="ins-list" style="padding:4px 12px 6px 26px"></ul>
           <div id="ais-help" class="help hidden"></div>
@@ -273,27 +273,27 @@
           <details class="fold"><summary>Ship list</summary><div id="tanker-list" class="tanker-list"></div></details>
         </section>
         <section class="fold-body">
-          <div class="ph"><span class="ph-t">🛰️ SATELLITES — SEEING WITHOUT TRACKERS</span><span class="dimtext">radar picture + heat from space</span></div>
+          <div class="ph"><span class="ph-t">SATELLITES</span><span class="dimtext">radar picture + heat from space</span></div>
           <div id="satellite" class="satellite"></div>
         </section>
       </details>
 
       <!-- Folded: secondary detail -->
       <details class="panel fold-panel">
-        <summary>📖 MORE DETAIL — flags, extremes &amp; history</summary>
+        <summary>MORE DETAIL</summary>
         <section class="fold-body">
-          <div class="ph"><span class="ph-t">🧭 PLAIN-ENGLISH GUIDE</span><button id="help-btn" class="ghost small">OPEN GUIDE</button></div>
+          <div class="ph"><span class="ph-t">GUIDE</span><button id="help-btn" class="ghost small">OPEN GUIDE</button></div>
           <div id="glossary" class="glossary hidden"></div>
-          <div class="ph sub-head"><span class="ph-t">⚠️ THINGS TO FLAG</span><span class="ph-right"><button id="alert-settings" class="ghost small">⚙ THRESHOLDS</button><span id="alert-count" class="pill">0</span></span></div>
+          <div class="ph sub-head"><span class="ph-t">DATA CHECKS</span><span class="ph-right"><button id="alert-settings" class="ghost small">THRESHOLDS</button><span id="alert-count" class="pill">0</span></span></div>
           <div id="alert-thresholds" class="thresholds hidden"></div>
           <div id="alerts" class="alerts"></div>
         </section>
         <section class="fold-body">
-          <div class="ph"><span class="ph-t">📏 HOW EXTREME IS THIS?</span><span class="dimtext">vs 2 years · jumpiness · positioning · macro</span></div>
+          <div class="ph"><span class="ph-t">HOW EXTREME</span><span class="dimtext">vs 2 years · jumpiness · positioning · macro</span></div>
           <div id="context" class="ctx"></div>
         </section>
         <section class="fold-body">
-          <div class="ph"><span class="ph-t">🕰️ LAST TIME IT WAS THIS EXTREME</span>
+          <div class="ph"><span class="ph-t">LAST TIME IT WAS THIS EXTREME</span>
             <select id="an-metric"><option value="basis:brent">Brent gap</option><option value="basis:wti">WTI gap</option><option value="spread:brent_wti">Brent vs WTI (real)</option></select>
           </div>
           <div id="analogue" class="analogue"></div>
@@ -304,37 +304,37 @@
     <!-- MACRO -->
     <div class="tabpane hidden" data-pane="macro" id="pane-macro" role="tabpanel" aria-labelledby="tab-macro">
       <section class="panel">
-        <div class="ph"><span class="ph-t">🌍 REGION &amp; COUNTRY</span>
+        <div class="ph"><span class="ph-t">REGION &amp; COUNTRY</span>
           <div class="controls">
-            <select id="macro-region" aria-label="Region"><option value="us">United States</option><option value="eu">Europe</option><option value="jp">Japan</option><option value="cn">China</option><option value="in">India</option><option value="apac">Asia-Pacific</option></select>
+            <select id="macro-region" aria-label="Region"><option value="us">Americas</option><option value="eu">Europe</option><option value="jp">Japan</option><option value="cn">China</option><option value="in">India</option><option value="apac">Asia-Pacific</option></select>
             <select id="macro-country" aria-label="Country"></select>
           </div>
         </div>
         <div id="macro-region-panel" class="macro"></div>
       </section>
       <section class="panel">
-        <div class="ph"><span class="ph-t">🏦 CENTRAL BANK RATE — history</span><span id="policy-note" class="dimtext"></span></div>
+        <div class="ph"><span class="ph-t">POLICY RATE — history</span><span id="policy-note" class="dimtext"></span></div>
         <div class="chart-wrap sm"><canvas id="policy-chart"></canvas></div>
         <div id="policy-events" class="chart-events"></div>
       </section>
       <section class="panel">
-        <div class="ph"><span class="ph-t">📉 BOND YIELDS — short-term vs long-term</span><span id="yields-note" class="dimtext"></span></div>
+        <div class="ph"><span class="ph-t">BOND YIELDS</span><span id="yields-note" class="dimtext"></span></div>
         <div class="chart-wrap"><canvas id="yields-chart"></canvas></div>
         <div id="yields-events" class="chart-events"></div>
         <div id="yields-summary" class="dimtext lt-summary"></div>
       </section>
       <section class="panel" id="usjp-panel">
-        <div class="ph"><span class="ph-t">🇺🇸 🇯🇵 US vs JAPAN — 10-year yields &amp; the spread</span><span id="usjp-note" class="dimtext"></span></div>
+        <div class="ph"><span class="ph-t">US vs JAPAN — 10-year yields</span><span id="usjp-note" class="dimtext"></span></div>
         <div class="chart-wrap"><canvas id="usjp-chart"></canvas></div>
         <div id="usjp-summary" class="dimtext lt-summary"></div>
         <div id="usjp-events" class="chart-events"></div>
       </section>
       <section class="panel">
-        <div class="ph"><span class="ph-t">📊 CPI — annual inflation % (World Bank)</span><span id="cpi-note" class="dimtext"></span></div>
+        <div class="ph"><span class="ph-t">INFLATION — CPI, annual % (World Bank)</span><span id="cpi-note" class="dimtext"></span></div>
         <div class="chart-wrap sm"><canvas id="cpi-chart"></canvas></div>
       </section>
       <section class="panel">
-        <div class="ph"><span class="ph-t">📈 INDEX vs CURRENCY (indexed to 100)</span>
+        <div class="ph"><span class="ph-t">INDEX vs CURRENCY (indexed to 100)</span>
           <div class="controls"><select id="macro-range" aria-label="Macro chart range"><option value="3m">3M</option><option value="6m">6M</option><option value="1y" selected>1Y</option><option value="ytd">YTD</option><option value="5y">5Y</option></select></div>
         </div>
         <div class="chart-wrap lg"><canvas id="macro-chart"></canvas></div>
@@ -342,33 +342,33 @@
         <div id="macro-chart-events" class="chart-events"></div>
       </section>
       <section class="panel">
-        <div class="ph"><span class="ph-t">📰 REGIONAL NEWS</span><span id="macro-news-sub" class="dimtext"></span></div>
+        <div class="ph"><span class="ph-t">REGIONAL NEWS</span><span id="macro-news-sub" class="dimtext"></span></div>
         <div id="macro-news" class="news"></div>
       </section>
       <section class="panel">
-        <div class="ph"><span class="ph-t">💱 CURRENCIES — <span id="fx-scope">REGION</span></span><span class="dimtext">the chosen region's currencies · click one for its chart</span></div>
+        <div class="ph"><span class="ph-t">CURRENCIES — <span id="fx-scope">REGION</span></span><span class="dimtext">the chosen region's currencies · click one for its chart</span></div>
         <div id="macro-fx" class="macro"></div>
       </section>
       <section class="panel">
-        <div class="ph"><span class="ph-t">🗓️ UPCOMING CATALYSTS</span></div>
+        <div class="ph"><span class="ph-t">UPCOMING CATALYSTS</span></div>
         <div id="macro-events" class="macro"></div>
       </section>
     </div>
 
     <!-- exports live in the footer on phones (moved out of the crowded header) -->
     <div class="exports mobile-only">
-      <a class="ghost" href="/api/export.csv">⬇ DOWNLOAD CSV</a>
+      <a class="ghost" href="/api/export.csv">DOWNLOAD CSV</a>
       <a class="ghost" href="/api/digest" target="_blank">DAILY BRIEF</a>
     </div>
     <footer id="notes"></footer>
   </main>
   <div id="onboarding" class="onboard hidden" role="dialog" aria-modal="true" aria-labelledby="onboard-title">
     <div class="onboard-box">
-      <h2 id="onboard-title">👋 Welcome to Marlon's Watchtower</h2>
+      <h2 id="onboard-title">Welcome to Marlon's Watchtower</h2>
       <p class="onboard-lead">Commodities and global macro — in plain English.</p>
       <ul>
         <li><b>HOME</b> — your pinned <b>watchlist</b> (★ any instrument), live <b>alerts</b>, and every segment at a glance.</li>
-        <li><b>COMMODITIES</b> — pick a segment; the whole page follows it — price, curve, supply vs demand, news and trade ideas.</li>
+        <li><b>COMMODITIES</b> — pick a segment and the page follows it: price, curve, supply vs demand, news and trade ideas.</li>
         <li><b>MACRO</b> — rates, inflation, growth and currencies, by region.</li>
       </ul>
       <button id="onboard-close">Got it →</button>
@@ -376,6 +376,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=87"></script>
+  <script src="app.js?v=88"></script>
 </body>
 </html>
