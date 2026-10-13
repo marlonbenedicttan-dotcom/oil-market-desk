@@ -717,15 +717,17 @@ async function getScreen() {
     MARKETS.forEach((mk, i) => { readBySeg[mk.id] = reads[i]; });
     const segByBench = {};
     for (const mk of MARKETS) for (const c of mk.components) segByBench[c] = mk.id;
+    const segLabel = Object.fromEntries(MARKETS.map((mk) => [mk.id, mk.label]));
     const rows = await Promise.all(m.benchmarks.map(async (b) => {
       const dd = h && h.deltas ? h.deltas[b.id] : null;
       const d = dd ? (b.paper != null ? dd.paper : dd.physical) : null;
       const an = (a && a.benchmarks && a.benchmarks[b.id]) || {};
-      const rd = readBySeg[segByBench[b.id]] || {};
+      const seg = segByBench[b.id] || null;
+      const rd = readBySeg[seg] || {};
       const vd = rd.verdict || {};
       const pos = COT_NAMES[b.id] ? await getPositioning(b.id).catch(() => null) : null;
       return {
-        id: b.id, label: b.label, group: b.group, unit: b.unit, dp: b.dp,
+        id: b.id, label: b.label, group: b.group, seg, segLabel: segLabel[seg] || null, unit: b.unit, dp: b.dp,
         price: b.paper != null ? b.paper : b.physical,
         source: b.paperSource || b.physicalSource || null,
         asOf: b.paperDate || b.physicalDate || null,
@@ -738,7 +740,7 @@ async function getScreen() {
         posFlag: pos && pos.flag ? pos.flag.label : null,
       };
     }));
-    return { updated: new Date().toISOString(), rows };
+    return { updated: new Date().toISOString(), segments: MARKETS.map((mk) => ({ id: mk.id, label: mk.label })), rows };
   });
 }
 

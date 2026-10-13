@@ -2160,6 +2160,9 @@ function renderRegime(d) {
 }
 // Screener — every instrument in one sortable table (assembled server-side at /api/screen).
 let screenRows = null, screenSort = { key: 'absd1', dir: -1 }, fxBase = 'USD', fxRows = null;
+let screenSegs = [];                  // the segment list from /api/screen
+let screenSeg = 'all';                // segment filter
+let screenPicks = null;               // Set of instrument ids to show; null = show every one
 const SCREEN_COLS = [
   { k: 'label', t: 'INSTRUMENT' }, { k: 'price', t: 'LAST' },
   { k: 'd1', t: '1D' }, { k: 'w1', t: '1W' }, { k: 'm1', t: '1M' }, { k: 'ytd', t: 'YTD' }, { k: 'y1', t: '1Y' },
@@ -2178,14 +2181,54 @@ async function loadScreen() {
   if (!el.innerHTML) el.innerHTML = stLoading('Ranking the board…');
   let d = null; try { d = await jget('/api/screen', 300000); } catch { d = null; }
   screenRows = (d && d.rows) || [];
+  screenSegs = (d && d.segments) || [];
   markReady('screen');
-  renderScreen();
+  renderScreen(true);   // full: filter bar + table
 }
-function renderScreen() {
+// Filters — narrow the board by segment, and/or tick exactly which instruments to show.
+function screenSegOptions() {
+  if (screenSegs.length) return screenSegs;
+  const seen = new Map();
+  for (const r of screenRows) if (!seen.has(r.seg)) seen.set(r.seg, r.segLabel || r.seg);
+  return [...seen].map(([id, label]) => ({ id, label }));
+}
+const screenVisible = () => screenRows.filter((r) => (screenSeg === 'all' || r.seg === screenSeg) && (screenPicks === null || screenPicks.has(r.id)));
+function persistScreenFilter() {
+  saveStr('scSeg', screenSeg);
+  saveStr('scPicks', screenPicks === null ? 'all' : JSON.stringify([...screenPicks]));
+}
+// Re-paint the bar's own controls (without replacing it, so an open pick-list stays open).
+function syncScreenBar() {
+  const s = $('sc-seg'); if (s) s.value = screenSeg;
+  document.querySelectorAll('#sc-pick-list input[data-id]').forEach((cb) => { cb.checked = screenPicks === null || screenPicks.has(cb.dataset.id); });
+}
+function scBarHtml() {
+  const groups = [];
+  for (const r of screenRows) {
+    let g = groups.find((x) => x.seg === r.seg);
+    if (!g) { g = { seg: r.seg, label: r.segLabel || r.seg || 'Other', items: [] }; groups.push(g); }
+    g.items.push(r);
+  }
+  return `<label class="sc-f">SEGMENT <select id="sc-seg" aria-label="Filter the screener by segment"><option value="all">All segments</option>`
+    + screenSegOptions().map((s) => `<option value="${s.id}"${screenSeg === s.id ? ' selected' : ''}>${s.label}</option>`).join('')
+    + `</select></label>`
+    + `<details class="sc-pick"><summary>INSTRUMENTS</summary><div class="sc-pick-body">`
+    + `<div class="sc-pick-actions"><button type="button" data-sc-act="all">ALL</button><button type="button" data-sc-act="none">NONE</button><button type="button" data-sc-act="seg">THIS SEGMENT</button></div>`
+    + `<div id="sc-pick-list">` + groups.map((g) => `<div class="sc-pick-seg">${String(g.label).toUpperCase()}</div>`
+      + g.items.map((r) => `<label><input type="checkbox" data-id="${r.id}"${screenPicks === null || screenPicks.has(r.id) ? ' checked' : ''}> ${r.label}</label>`).join('')).join('')
+    + `</div></div></details>`
+    + `<button type="button" class="ghost" data-sc-act="reset">RESET</button>`
+    + `<span class="sc-count dimtext" id="sc-count"></span>`;
+}
+function renderScreen(full) {
   const el = $('screen'); if (!el) return;
   if (!screenRows || !screenRows.length) { el.innerHTML = stError('Couldn’t load the screener — retrying.'); return; }
+  if (full || !$('sc-table')) {
+    el.innerHTML = '<div class="sc-bar">' + scBarHtml() + '</div><div class="sc-wrap" id="sc-table"></div><div class="sc-note dimtext" id="sc-note"></div>';
+  }
+  const rows = screenVisible();
   const { key, dir } = screenSort;
-  const rows = [...screenRows].sort((a, b) => {
+  const sorted = [...rows].sort((a, b) => {
     const x = screenVal(a, key), y = screenVal(b, key);
     if (x == null && y == null) return 0;
     if (x == null) return 1;
@@ -2194,7 +2237,7 @@ function renderScreen() {
   });
   const head = SCREEN_COLS.map((c) => `<th class="${key === c.k ? 'on' : ''}" data-k="${c.k}">${c.t}${key === c.k ? (dir < 0 ? ' ▼' : ' ▲') : ''}</th>`).join('');
   const pcell = (v) => (v == null ? '<td class="num">—</td>' : `<td class="num ${cls(v)}">${pctf(v)}</td>`);
-  const body = rows.map((r) => {
+  const body = sorted.map((r) => {
     const d = effDeltas(r);
     const flagCls = r.posFlag === 'CROWDED LONG' || r.posFlag === 'CROWDED SHORT' ? 'hot' : r.posFlag === 'STRETCHED LONG' ? 'warm' : r.posFlag === 'WASHED-OUT' ? 'cool' : '';
     const crowd = r.posPct == null ? '<td class="num">—</td>' : `<td class="num"><span class="sc-flag ${flagCls}" title="${r.posFlag || ''}">${r.posPct}</span></td>`;
@@ -2204,8 +2247,13 @@ function renderScreen() {
       + pcell(d.d1) + pcell(d.w1) + pcell(d.m1) + pcell(d.ytd) + pcell(d.y1)
       + s(r.stretch) + s(r.tight) + s(r.basisPct) + crowd + '</tr>';
   }).join('');
-  el.innerHTML = `<div class="sc-wrap"><table class="sc-table"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>`
-    + `<div class="sc-note dimtext">${fxBase !== 'USD' ? `Returns converted to <b>${fxBase}</b> (USD move + the currency's own move). ` : ''}Click a header to sort; click a row to open its chart. STRETCH is −100 (cheap)…+100 (rich) · TIGHT is 0 (oversupplied)…100 (undersupplied) · BASIS% and CROWD are percentiles.</div>`;
+  $('sc-table').innerHTML = body
+    ? `<table class="sc-table"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table>`
+    : '<div class="sc-empty dimtext">Nothing matches this filter — pick a different segment, tick more instruments, or hit RESET.</div>';
+  const cnt = $('sc-count'); if (cnt) cnt.textContent = `${rows.length} of ${screenRows.length} shown`;
+  $('sc-note').innerHTML = (rows.length !== screenRows.length ? `Filtered to <b>${rows.length}</b> of ${screenRows.length} instruments. ` : '')
+    + (fxBase !== 'USD' ? `Returns converted to <b>${fxBase}</b> (USD move + the currency's own move). ` : '')
+    + 'Click a header to sort; click a row to open its chart. STRETCH is −100 (cheap)…+100 (rich) · TIGHT is 0 (oversupplied)…100 (undersupplied) · BASIS% and CROWD are percentiles.';
 }
 $('base-cur')?.addEventListener('change', async (e) => {
   fxBase = e.target.value || 'USD';
@@ -2216,13 +2264,33 @@ $('base-cur')?.addEventListener('change', async (e) => {
       fxRows = Object.fromEntries(((d && d.rows) || []).map((r) => [r.id, r.deltas]));
     } catch { fxRows = null; }
   }
-  renderScreen();
+  renderScreen(false);
 });
 $('screen')?.addEventListener('click', (e) => {
+  const act = e.target.closest('[data-sc-act]');
+  if (act) {
+    const a = act.dataset.scAct;
+    if (a === 'reset') { screenSeg = 'all'; screenPicks = null; }
+    else if (a === 'all') screenPicks = null;
+    else if (a === 'none') screenPicks = new Set();
+    else if (a === 'seg') screenPicks = new Set(screenRows.filter((r) => screenSeg === 'all' || r.seg === screenSeg).map((r) => r.id));
+    persistScreenFilter(); syncScreenBar(); renderScreen(false); return;
+  }
   const th = e.target.closest('th[data-k]');
-  if (th) { const k = th.dataset.k; screenSort = { key: k, dir: screenSort.key === k ? -screenSort.dir : (k === 'label' ? 1 : -1) }; renderScreen(); return; }
+  if (th) { const k = th.dataset.k; screenSort = { key: k, dir: screenSort.key === k ? -screenSort.dir : (k === 'label' ? 1 : -1) }; renderScreen(false); return; }
   const tr = e.target.closest('tr[data-id]');
   if (tr) { showTab('commodities'); pickMetric(tr.dataset.id, '6m'); }
+});
+// The bar's own controls: the segment select and the instrument checkboxes.
+$('screen')?.addEventListener('change', (e) => {
+  const t = e.target;
+  if (t.id === 'sc-seg') { screenSeg = t.value; persistScreenFilter(); renderScreen(false); return; }
+  if (t.matches && t.matches('#sc-pick-list input[data-id]')) {
+    if (screenPicks === null) screenPicks = new Set(screenRows.map((r) => r.id));
+    if (t.checked) screenPicks.add(t.dataset.id); else screenPicks.delete(t.dataset.id);
+    if (screenPicks.size === screenRows.length) screenPicks = null;   // everything ticked = no filter at all
+    persistScreenFilter(); syncScreenBar(); renderScreen(false);
+  }
 });
 // Economic calendar — a real month grid. Dated events sit on their day; undated ones are listed below.
 const CAL_DOW = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -2605,6 +2673,12 @@ $('macro-links')?.addEventListener('click', (e) => { const el = e.target.closest
   const savedCountry = localStorage.getItem('oilbasis.macroCountry');
   const savedRange = localStorage.getItem('oilbasis.range');
   if (savedRange && [...$('range').options].some((o) => o.value === savedRange)) $('range').value = savedRange;
+  // Screener filters survive a reload like the rest of the view state.
+  const savedScSeg = localStorage.getItem('oilbasis.scSeg');
+  if (savedScSeg) screenSeg = savedScSeg;
+  const savedScPicks = localStorage.getItem('oilbasis.scPicks');
+  if (savedScPicks === 'all') screenPicks = null;
+  else if (savedScPicks) { try { const a = JSON.parse(savedScPicks); if (Array.isArray(a)) screenPicks = new Set(a); } catch {} }
   if (savedRegion) { macroRegion = savedRegion; if ($('macro-region')) $('macro-region').value = savedRegion; }
   if (savedCountry) prefCountry = savedCountry;
   if ('Notification' in window && Notification.permission === 'default') { try { await Notification.requestPermission(); } catch {} }
