@@ -103,8 +103,11 @@ unavailable rather than inventing them). US-focused is fine to start; the countr
 
 - **Currency-adjusted returns** — a EUR/JPY investor wants local-currency P&L, not just USD. Add a
   base-currency toggle (reuse the `fx:` series in the compare engine).
-- **Risk metrics** — max drawdown, realised-vol term structure, and a real **correlation matrix**
-  (the transmission engine is narrative; `pearson` already exists in `src/lib.js`).
+- ~~**Risk metrics** — max drawdown, realised-vol term structure, and a real **correlation matrix**
+  (the transmission engine is narrative; `pearson` already exists in `src/lib.js`).~~ **DONE
+  (2026-10-13)** — `⚠️ RISK & CORRELATION` on HOME: 1-yr max drawdown + a 30/60/90-day realised-vol
+  term structure per key asset, and a colour-coded **correlation matrix** over ~1y of daily
+  log-returns. `/api/risk`; pure `maxDrawdown`/`realizedVolTerm`/`corrMatrix` in `src/lib.js` (tested).
 - **Options signals** — open interest, put/call, IV rank, skew. Yahoo options chains give partial
   data; this is a genuine investor signal but coverage is uneven — label it.
 - **Positioning-vs-price divergence** — "price up while specs cut" is a classic tell (natural
