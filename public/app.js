@@ -149,14 +149,23 @@ async function jget(url, ttl = 180000) {
 // The current selection identity — every loader captures it and drops its result if the user
 // switched away while it was waiting. This is what stops "I clicked oil but it still shows corn".
 const segKey = () => currentMarket + '|' + (currentComponent || '');
-// Boot beacon helpers: update the status line, and drop the overlay when the essentials are up.
-let bootBlips = 0;
-const bootBlip = () => { const b = document.querySelectorAll('.scope-blip'); if (b[bootBlips]) b[bootBlips].classList.add('on'); bootBlips++; };
-const bootStep = (m) => { const el = document.getElementById('boot-status'); if (el) el.textContent = m; bootBlip(); };
+// Boot beacon: a progress bar + dots that fill as the CORE panels land. The overlay is dropped
+// only once they are all in (or at a hard cap, so it never lingers on a slow feed).
+const BOOT_CORE = ['data', 'read', 'chart', 'news', 'headlines', 'regime', 'screen', 'calendar', 'positioning'];
+const bootReady = Object.fromEntries(BOOT_CORE.map((k) => [k, false]));
+let bootCount0 = 0;
+const bootCount = () => BOOT_CORE.filter((k) => bootReady[k]).length;
 const hideBoot = () => { const b = document.getElementById('boot'); if (b) b.classList.add('done'); };
-// The beacon waits for the segment's CORE — the read, the price chart and the news — not just the read.
-const bootReady = { read: false, chart: false, news: false };
-const markReady = (k) => { if (bootReady[k]) return; bootReady[k] = true; bootBlip(); if (bootReady.read && bootReady.chart && bootReady.news) hideBoot(); };
+const bootPaint = () => {
+  const n = bootCount(); if (n === bootCount0 && n) return; bootCount0 = n;
+  const frac = n / BOOT_CORE.length;
+  const bar = document.getElementById('boot-bar'); if (bar) bar.style.width = (frac * 100).toFixed(0) + '%';
+  const blips = document.querySelectorAll('.scope-blip');
+  blips.forEach((b, i) => b.classList.toggle('on', frac * blips.length > i + 0.01));
+  if (n === BOOT_CORE.length) hideBoot();
+};
+const bootStep = (m) => { const el = document.getElementById('boot-status'); if (el) el.textContent = m; bootPaint(); };
+const markReady = (k) => { if (!(k in bootReady) || bootReady[k]) return; bootReady[k] = true; bootPaint(); };
 async function getLongterm(id, years = 10) {
   const k = id + years; const hit = ltCache[k];
   if (hit && Date.now() - hit.t < CHART_TTL) return hit.v;
@@ -1324,6 +1333,7 @@ async function loadMarket() {
   try { d = await getJSON('/api/market'); }
   catch (e) { console.error('[market]', e.message); if (data && data.benchmarks && data.benchmarks.length) return; throw e; }   // keep the last good board; never blank it on a hiccup
   data = d;
+  markReady('data');
   renderCards(data); buildMetricOptions(data); buildBpOptions();
   renderMarketState(); renderSnapshot(); setCardsTitle(); renderTicker(data);
   renderWatchlist(); renderHomeAlerts();
@@ -1419,6 +1429,7 @@ async function loadPositioning() {
   let d = null;
   try { d = await jget('/api/positioning?segment=' + encodeURIComponent(seg), 6 * 60e3); } catch { d = null; }
   if (seg !== currentMarket) return;   // the segment changed while this was in flight
+  markReady('positioning');
   renderPositioning(d);
 }
 function renderPositioning(d) {
@@ -2090,6 +2101,7 @@ async function loadBrief() {
 async function loadRegime() {
   const el = $('regime-board'); if (!el) return; if (!el.innerHTML) el.innerHTML = stLoading('Loading the backdrop…');
   let d = null; try { d = await jget('/api/regime', 120000); } catch { d = null; }
+  markReady('regime');
   renderRegime(d);
 }
 function renderRegime(d) {
@@ -2126,6 +2138,7 @@ async function loadScreen() {
   if (!el.innerHTML) el.innerHTML = stLoading('Ranking the board…');
   let d = null; try { d = await jget('/api/screen', 300000); } catch { d = null; }
   screenRows = (d && d.rows) || [];
+  markReady('screen');
   renderScreen();
 }
 function renderScreen() {
@@ -2181,6 +2194,7 @@ async function loadCalendar() {
   let d = null; try { d = await jget('/api/calendar', 1800000); } catch { d = null; }
   calEvents = (d && d.events) || null;
   calFomc = d && d.fomc;
+  markReady('calendar');
   if (calEvents && !calMonth) {
     const dated = calEvents.filter((e) => e.date);
     const basis = dated.length ? new Date(dated[0].date + 'T00:00:00Z') : new Date();
@@ -2278,6 +2292,7 @@ async function loadHeadlines() {
   if (!el) return;
   try { renderHeadlines(await getJSON('/api/headlines')); }
   catch { el.innerHTML = stError('Couldn\u2019t load headlines — retrying.'); }
+  markReady('headlines');
 }
 function renderHeadlines(h) {
   const el = $('headlines');
@@ -2367,14 +2382,24 @@ function showTab(name) {
 
 async function loadExtra() { await loadExtraCore(); await loadExtraSlow(); }
 
-// Above-the-fold feeds — drawn as soon as they arrive so the app looks complete fast.
+// Above-the-fold feeds — fired immediately, not awaited, so the read/chart/news can start now.
 async function loadExtraCore() {
   if (!data) return; // need prices first
-  reloadHistory();   // refresh the deltas + sparklines (fire-and-forget)
-  loadRegime();      // the cross-asset backdrop (HOME)
-  loadScreen();      // the screener (HOME)
-  loadCalendar();    // the economic calendar (HOME)
-  loadRisk();        // risk + correlation (HOME)
+  reloadHistory();    // deltas + sparklines
+  loadRegime();       // HOME: markets at a glance
+  loadScreen();       // HOME: screener
+  loadCalendar();     // HOME: calendar
+  loadRisk();         // HOME: risk & correlation
+  loadAlerts();       // HOME: alerts
+  loadBrief();        // HOME: daily brief
+  loadTransmission(); // COMMODITIES: how it transmits
+  renderMarketState();
+  renderAdaptive();
+  loadBelowFold();    // everything below the fold — fire-and-forget (NOT awaited)
+}
+// Below-the-fold panels (inventories, sector quotes, ships, refining margins…). Deliberately not
+// awaited — these used to block the read/chart from starting.
+async function loadBelowFold() {
   try {
     const [inv, eq, chk, an, fl, pr] = await Promise.all([
       getJSON('/api/inventories').catch(() => null),
@@ -2393,12 +2418,7 @@ async function loadExtraCore() {
     renderFlows(fl);
     renderProducts(pr);
     loadCrush();
-    renderMarketState();
-    renderAdaptive();
-    loadTransmission();
-    loadAlerts();
-    loadBrief();
-  } catch (e) { showError(e.message); }
+  } catch { /* below the fold — stay quiet */ }
 }
 // Below-the-fold / MACRO-only feeds — the slowest requests (satellite, macro). Loaded AFTER the
 // first paint (and again on the periodic refresh) so they never delay the initial screen.
@@ -2545,13 +2565,17 @@ $('macro-links')?.addEventListener('click', (e) => { const el = e.target.closest
   if (savedCountry) prefCountry = savedCountry;
   if ('Notification' in window && Notification.permission === 'default') { try { await Notification.requestPermission(); } catch {} }
   bootStep('Loading history…');
+  // Fire the small config feeds in parallel with the (heavy) history load.
+  const fxP = getJSON('/api/fx').catch(() => []);
+  const rateP = getJSON('/api/rates').catch(() => []);
+  const mkP = getJSON('/api/markets').catch(() => []);
+  const ctryP = getJSON('/api/countries').catch(() => null);
   await loadHistory().catch(() => {});   // never fatal — degrades to an empty history
-  fxList = await getJSON('/api/fx').catch(() => []);
-  rateList = await getJSON('/api/rates').catch(() => []);
+  fxList = await fxP; rateList = await rateP;
   renderCmpPresets();
   bootStep('Loading markets…');
-  markets = await getJSON('/api/markets').catch(() => []);
-  macroCountries = await getJSON('/api/countries').catch(() => null);
+  markets = await mkP;
+  macroCountries = await ctryP;
   bootStep('Loading prices…');
   await refreshLive();        // prices + ships (sets `data` first)
   initCurveHist();            // arm the lazy loader for the (expensive) curve-history chart
@@ -2561,7 +2585,7 @@ $('macro-links')?.addEventListener('click', (e) => { const el = e.target.closest
   selectMarket(savedSeg && markets.some((m) => m.id === savedSeg) ? savedSeg : (markets[0] && markets[0].id) || 'crude');
   restoreCompare();
   if (savedTab) showTab(savedTab);
-  setTimeout(hideBoot, 6000);                     // safety — renderAdaptive drops it sooner, when the read is up
+  setTimeout(hideBoot, 8000);                     // hard cap — never linger, even on a slow feed
   setTimeout(() => loadExtraSlow().catch(() => {}), 300);   // the slow, below-the-fold feeds
   loadAnalogue();
   loadReroute();

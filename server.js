@@ -2912,7 +2912,15 @@ server.listen(PORT, () => {
   // Warm every segment's READ + curve in the background so switching segments is instant for the
   // user (a cold read is ~1.5s; warm it is ~1ms). Started after the first paint settles, gently
   // staggered; `cached()` de-dupes so a user request during warm-up just shares the work.
-  const warmCaches = async () => { for (const m of MARKETS) { try { await getMarketRead(m.id, null); } catch {} await new Promise((r) => setTimeout(r, 600)); } };
-  setTimeout(() => warmCaches().catch(() => {}), 25_000);
+  // Warm the boot-critical caches early so a visitor right after a deploy still loads fast:
+  // base feeds → CFTC positioning (parallel) → boards → the 9 segment reads → the screener.
+  const warmCaches = async () => {
+    try { await Promise.all([getMarket(), getHistory(), getAnalytics()]); } catch {}
+    try { await Promise.all(BENCHMARKS.filter((b) => COT_NAMES[b.id]).map((b) => getPositioning(b.id).catch(() => {}))); } catch {}
+    try { await Promise.all([getRegime(), getCalendar()]); } catch {}
+    for (const m of MARKETS) { try { await getMarketRead(m.id, null); } catch {} await new Promise((r) => setTimeout(r, 300)); }
+    try { await getScreen(); } catch {}
+  };
+  setTimeout(() => warmCaches().catch(() => {}), 800);
   setInterval(() => warmCaches().catch(() => {}), 8 * 60_000);
 });
