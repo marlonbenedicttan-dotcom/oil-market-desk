@@ -1,5 +1,8 @@
 # HANDOFF — Marlon's Watchtower (brief for the next agent)
 
+> **Briefing a new AI agent? Paste `AGENT-BRIEF.md`** — a short, ready-to-use prompt with the
+> environment, the hard rules and the working style. Then read this file for the detail.
+
 ## What this is
 A free, self-hosted **commodity + global-macro dashboard**. Three tabs: **HOME** (watchlist + alerts + segments at a glance), **COMMODITIES** and **MACRO**. It gives each commodity segment and each macro country an adaptive, plain-English read with trade ideas — plus charts, curves, supply data, live ships and a news/fundamentals scanner.
 
