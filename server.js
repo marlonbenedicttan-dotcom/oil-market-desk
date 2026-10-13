@@ -927,6 +927,63 @@ function getEvents() {
     { name: 'OPEC+ monthly meeting', date: null, note: 'date varies — check the OPEC calendar' },
   ];
 }
+// FOMC meeting dates — parsed from the Federal Reserve's own (keyless) calendar page; the published
+// 2026 schedule is the fallback if that page is unreachable. The DECISION is on the meeting's 2nd day.
+const FOMC_FALLBACK = ['2026-01-28', '2026-03-18', '2026-04-29', '2026-06-17', '2026-07-29', '2026-09-16', '2026-10-28', '2026-12-09'];
+async function fomcDates() {
+  return cached('fomc', 24 * 3600e3, async () => {
+    const html = await (await fetch('https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm', { headers: UA })).text();
+    const MON = { January: 1, February: 2, March: 3, April: 4, May: 5, June: 6, July: 7, August: 8, September: 9, October: 10, November: 11, December: 12 };
+    const out = [];
+    const year = new Date().getUTCFullYear();
+    for (const y of [year, year + 1]) {
+      const a = html.indexOf(`${y} FOMC Meetings`); if (a < 0) continue;
+      const tail = html.slice(a + 20);
+      const nx = tail.search(/\d{4} FOMC Meetings/);
+      const seg = tail.slice(0, nx >= 0 ? nx : 20000).replace(/<[^>]+>/g, ' ').replace(/&nbsp;|\u00a0/g, ' ');
+      for (const m of seg.matchAll(/\b(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{1,2})\s*[-–]\s*(\d{1,2})/g)) {
+        out.push(new Date(Date.UTC(y, MON[m[1]] - 1, Number(m[3]))).toISOString().slice(0, 10));
+      }
+    }
+    // One meeting per month — guards against a section slice catching a neighbouring year's row.
+    const byMonth = new Map();
+    for (const d of out.sort()) if (!byMonth.has(d.slice(0, 7))) byMonth.set(d.slice(0, 7), d);
+    return [...byMonth.values()].sort();
+  });
+}
+// Economic calendar — dated upcoming releases. Recurring ones are computed; FOMC comes from the
+// Fed's page; with a free FRED_API_KEY we add FRED's release calendar. A consensus/forecast is
+// NEVER invented — we show the date and the source only (see the "no forecast" note in the UI).
+async function getCalendar() {
+  return cached('calendar', 6 * 3600e3, async () => {
+    const now = new Date();
+    const iso = (d) => d.toISOString().slice(0, 10);
+    const today = iso(now);
+    const events = getEvents().map((e) => ({ ...e, source: /EIA/.test(e.name) ? 'EIA' : /OPEC/.test(e.name) ? 'OPEC+' : /expiry/.test(e.name) ? 'CME' : null }));
+    // USDA WASDE — the monthly crop balance, usually the middle of the month.
+    const wasde = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + (now.getUTCDate() > 12 ? 1 : 0), 12));
+    events.push({ date: iso(wasde), name: 'USDA WASDE report (approx.)', source: 'USDA', note: 'monthly crop supply & demand — usual mid-month slot' });
+    // FOMC — the Fed's published dates (live if reachable, else the published fallback).
+    let fomc = [];
+    try { fomc = await fomcDates(); } catch {}
+    const fomcLive = fomc.length > 0;
+    if (!fomcLive) fomc = FOMC_FALLBACK;
+    for (const d of fomc) if (d >= today) events.push({ date: d, name: 'FOMC rate decision', source: 'Federal Reserve', note: 'policy rate decision · 2:00pm New York' });
+    // FRED release calendar (optional free key) — adds CPI, payrolls, GDP, PCE, retail sales…
+    if (process.env.FRED_API_KEY) {
+      try {
+        const end = iso(new Date(Date.now() + 75 * 864e5));
+        const url = `https://api.stlouisfed.org/fred/releases/dates?api_key=${process.env.FRED_API_KEY}&file_type=json&realtime_start=${today}&realtime_end=${end}&include_release_dates_with_no_data=true&limit=1000`;
+        const j = await (await fetch(url, { headers: UA })).json();
+        const want = /(consumer price index|employment situation|gross domestic product|personal income|producer price index|retail sales|industrial production|advance report)/i;
+        for (const r of (j.release_dates || [])) if (want.test(r.release_name || '')) events.push({ date: r.date, name: r.release_name, source: 'FRED', note: 'scheduled release' });
+      } catch {}
+    }
+    const upcoming = events.filter((e) => !e.date || e.date >= today)
+      .sort((x, y) => (x.date || '9999-99-99').localeCompare(y.date || '9999-99-99')).slice(0, 16);
+    return { updated: new Date().toISOString(), events: upcoming, fomc: fomcLive ? 'live' : 'fallback', fredKey: Boolean(process.env.FRED_API_KEY) };
+  });
+}
 
 // ---------------------------------------------------------------------------
 // Chokepoint tanker counts (live, from AIS)
@@ -2454,7 +2511,8 @@ async function buildBrief() {
     if (crude?.surprise != null) happened.push({ kind: 'stocks', id: 'wti', text: `US crude stocks ${crude.wow >= 0 ? 'built' : 'drew'} vs last week — <b>${Math.abs(crude.surprise).toLocaleString()}k bbl ${crude.surprise < 0 ? 'more drawn than usual (bullish)' : 'more built than usual (bearish)'}</b>.` });
     if (pos?.pct3y != null && (pos.pct3y >= 90 || pos.pct3y <= 10)) happened.push({ kind: 'positioning', id: 'wti', text: `Hedge funds are <b>${pos.pct3y >= 90 ? 'crowded long' : 'crowded short'}</b> crude (${pos.pct3y.toFixed(0)}th pctile, CFTC ${pos.latest.date}) — ${pos.pct3y >= 90 ? 'unwind risk' : 'squeeze fuel'}.` });
 
-    const next = getEvents().map((e) => ({ name: e.name, date: e.date, note: e.note }));
+    const cal = await getCalendar().catch(() => null);
+    const next = ((cal && cal.events) || getEvents()).slice(0, 4).map((e) => ({ name: e.name, date: e.date, note: e.note }));
     const hi = alerts.find((a) => a.level === 'high');
     const mv = movers[0];
     const headline = (mv ? `Biggest move: ${mv.label} ${mv.d1 >= 0 ? 'up' : 'down'} ${Math.abs(mv.d1).toFixed(1)}%` : 'Quiet session so far')
@@ -2630,6 +2688,7 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname === '/api/macrodash') return sendJSON(res, 200, await getMacroDash().catch((e) => ({ error: String(e.message) })));
     if (url.pathname === '/api/correlations') return sendJSON(res, 200, await getCorrelations().catch((e) => ({ error: String(e.message) })));
     if (url.pathname === '/api/events') return sendJSON(res, 200, getEvents());
+    if (url.pathname === '/api/calendar') return sendJSON(res, 200, await getCalendar().catch((e) => ({ error: String(e.message), events: [] })));
     if (url.pathname === '/api/chokepoints') return sendJSON(res, 200, getChokepoints());
     if (url.pathname === '/api/curve') return sendJSON(res, 200, await getCurves());
     if (url.pathname === '/api/termstructure') {

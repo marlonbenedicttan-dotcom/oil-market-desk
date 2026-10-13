@@ -337,6 +337,17 @@ test('security headers are set on every response', async () => {
   assert.equal(api.headers.get('x-content-type-options'), 'nosniff');
 });
 
+test('/api/calendar returns dated upcoming events (FOMC at least)', async () => {
+  const r = await fetch(`http://localhost:${PORT}/api/calendar`);
+  assert.equal(r.status, 200);
+  const j = await r.json();
+  if (!j.error) {
+    assert.ok(Array.isArray(j.events) && j.events.length >= 3, 'a few upcoming events');
+    assert.ok(j.events.some((e) => /FOMC/.test(e.name)), 'FOMC meeting dates are present');
+    for (const e of j.events.slice(0, 5)) assert.ok(e.name && (e.date == null || /^\d{4}-\d{2}-\d{2}$/.test(e.date)), 'dated (or explicitly undated)');
+  }
+});
+
 test('/api/screen returns one row per instrument with scores', async () => {
   const r = await fetch(`http://localhost:${PORT}/api/screen`);
   assert.equal(r.status, 200);

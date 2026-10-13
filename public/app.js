@@ -2129,6 +2129,26 @@ $('screen')?.addEventListener('click', (e) => {
   const tr = e.target.closest('tr[data-id]');
   if (tr) { showTab('commodities'); pickMetric(tr.dataset.id, '6m'); }
 });
+// Economic calendar — dated upcoming releases. No consensus is invented (show date + source only).
+async function loadCalendar() {
+  const el = $('calendar'); if (!el) return;
+  if (!el.innerHTML) el.innerHTML = stLoading('Loading the calendar…');
+  let d = null; try { d = await jget('/api/calendar', 1800000); } catch { d = null; }
+  renderCalendar(d);
+}
+function renderCalendar(d) {
+  const el = $('calendar'); if (!el) return;
+  const sub = $('cal-sub');
+  if (sub) sub.textContent = 'dates only — no free consensus, so no forecasts (never invented)';
+  const events = (d && d.events) || [];
+  if (!events.length) { el.innerHTML = stError('Couldn’t load the calendar — retrying.'); return; }
+  const today = new Date().toISOString().slice(0, 10);
+  el.innerHTML = events.map((e) => {
+    const days = e.date ? Math.round((Date.parse(e.date) - Date.parse(today)) / 864e5) : null;
+    const when = e.date ? `${e.date}${days === 0 ? ' · today' : days > 0 ? ` · ${days}d` : ''}` : 'date varies';
+    return `<div class="cal-row"><span class="cal-date">${when}</span><span class="cal-name">${e.name}</span><span class="cal-src">${e.source || ''}</span>${e.note ? `<span class="cal-note dimtext">${e.note}</span>` : ''}</div>`;
+  }).join('') + (d.fomc === 'fallback' ? '<div class="cal-foot dimtext">FOMC dates from the published schedule — the live Federal Reserve feed was unavailable.</div>' : '');
+}
 async function loadHeadlines() {
   const el = $('headlines');
   if (!el) return;
@@ -2229,6 +2249,7 @@ async function loadExtraCore() {
   reloadHistory();   // refresh the deltas + sparklines (fire-and-forget)
   loadRegime();      // the cross-asset backdrop (HOME)
   loadScreen();      // the screener (HOME)
+  loadCalendar();    // the economic calendar (HOME)
   try {
     const [inv, eq, chk, an, fl, pr] = await Promise.all([
       getJSON('/api/inventories').catch(() => null),
@@ -2267,7 +2288,7 @@ async function loadExtraSlow() {
     const [md, corr, ev] = await Promise.all([
       getJSON('/api/macrodash').catch(() => null),
       getJSON('/api/correlations').catch(() => null),
-      getJSON('/api/events').catch(() => null),
+      getJSON('/api/calendar').then((x) => (x && x.events) || null).catch(() => null),
     ]);
     renderSatellite(sar, flr);
     renderMacroDash(md, corr, ev);

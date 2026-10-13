@@ -85,9 +85,13 @@ rate:<id>), op (>, <, crosses), level, note }`, stored in localStorage, evaluate
 **Honesty:** client-side = only while the tab is open; say so. Server-side (email/webhook) already
 exists via `deliver()` if you want always-on.
 
-### 5. Economic calendar (actual / forecast / previous)
-**Why:** "what's on today" currently lists only EIA/expiry/OPEC. Investors plan around CPI, Fed,
-GDP, payrolls.
+### 5. Economic calendar (actual / forecast / previous)  ⭐ **DONE (2026-10-13)**
+**Shipped:** a **📅 ECONOMIC CALENDAR** panel on HOME — dated upcoming releases with the source and a
+day-count: EIA weekly, CME expiry, **FOMC rate decisions** (parsed from the Federal Reserve's own
+keyless calendar page, with the published 2026 schedule as a fallback), USDA WASDE, OPEC+, and FRED's
+release calendar when a free `FRED_API_KEY` is present. `/api/calendar`; the DAILY BRIEF reuses it.
+**Honesty:** **no forecast is invented** — the panel says so ("dates only — no free consensus").
+**Why:** "what's on today" used to list only EIA/expiry/OPEC.
 **Do:** extend `getEvents()` (server.js) into a calendar. **FRED release calendar is free** (release
 dates + values; consensus is the hard part — show "previous" and "released" and label forecasts as
 unavailable rather than inventing them). US-focused is fine to start; the country cards can reuse it.
