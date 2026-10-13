@@ -2171,26 +2171,60 @@ $('screen')?.addEventListener('click', (e) => {
   const tr = e.target.closest('tr[data-id]');
   if (tr) { showTab('commodities'); pickMetric(tr.dataset.id, '6m'); }
 });
-// Economic calendar — dated upcoming releases. No consensus is invented (show date + source only).
+// Economic calendar — a real month grid. Dated events sit on their day; undated ones are listed below.
+const CAL_DOW = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+const MONTH_NAMES = ['JANUARY', 'FEBRUARY', 'MARCH', 'APRIL', 'MAY', 'JUNE', 'JULY', 'AUGUST', 'SEPTEMBER', 'OCTOBER', 'NOVEMBER', 'DECEMBER'];
+let calEvents = null, calMonth = null, calFomc = null;
 async function loadCalendar() {
   const el = $('calendar'); if (!el) return;
   if (!el.innerHTML) el.innerHTML = stLoading('Loading the calendar…');
   let d = null; try { d = await jget('/api/calendar', 1800000); } catch { d = null; }
-  renderCalendar(d);
+  calEvents = (d && d.events) || null;
+  calFomc = d && d.fomc;
+  if (calEvents && !calMonth) {
+    const dated = calEvents.filter((e) => e.date);
+    const basis = dated.length ? new Date(dated[0].date + 'T00:00:00Z') : new Date();
+    calMonth = { y: basis.getUTCFullYear(), m: basis.getUTCMonth() };
+  }
+  renderCalendar();
 }
-function renderCalendar(d) {
+function calRow(e, today, withDay) {
+  const days = e.date ? Math.round((Date.parse(e.date) - Date.parse(today)) / 864e5) : null;
+  const when = e.date ? `${e.date.slice(5)}${withDay ? (days === 0 ? ' · today' : days > 0 ? ` · ${days}d` : '') : ''}` : 'date varies';
+  return `<div class="cal-row"><span class="cal-date">${when}</span><span class="cal-name">${e.name}</span><span class="cal-src">${e.source || ''}</span>${e.note ? `<span class="cal-note dimtext">${e.note}</span>` : ''}</div>`;
+}
+function renderCalendar() {
   const el = $('calendar'); if (!el) return;
-  const sub = $('cal-sub');
-  if (sub) sub.textContent = 'dates only — no free consensus, so no forecasts (never invented)';
-  const events = (d && d.events) || [];
-  if (!events.length) { el.innerHTML = stError('Couldn’t load the calendar — retrying.'); return; }
+  const sub = $('cal-sub'); if (sub) sub.textContent = 'dates only — no free consensus, so no forecasts (never invented)';
+  if (!calEvents || !calMonth) { el.innerHTML = stError('Couldn’t load the calendar — retrying.'); return; }
   const today = new Date().toISOString().slice(0, 10);
-  el.innerHTML = events.map((e) => {
-    const days = e.date ? Math.round((Date.parse(e.date) - Date.parse(today)) / 864e5) : null;
-    const when = e.date ? `${e.date}${days === 0 ? ' · today' : days > 0 ? ` · ${days}d` : ''}` : 'date varies';
-    return `<div class="cal-row"><span class="cal-date">${when}</span><span class="cal-name">${e.name}</span><span class="cal-src">${e.source || ''}</span>${e.note ? `<span class="cal-note dimtext">${e.note}</span>` : ''}</div>`;
-  }).join('') + (d.fomc === 'fallback' ? '<div class="cal-foot dimtext">FOMC dates from the published schedule — the live Federal Reserve feed was unavailable.</div>' : '');
+  const byDate = {};
+  for (const e of calEvents) if (e.date) (byDate[e.date] = byDate[e.date] || []).push(e);
+  const { y, m } = calMonth;
+  const startDow = (new Date(Date.UTC(y, m, 1)).getUTCDay() + 6) % 7;   // Monday-first
+  const dim = new Date(Date.UTC(y, m + 1, 0)).getUTCDate();
+  const cells = [];
+  for (let i = 0; i < startDow; i++) cells.push(null);
+  for (let day = 1; day <= dim; day++) { const k = `${y}-${String(m + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`; cells.push({ day, k, ev: byDate[k] || [] }); }
+  while (cells.length % 7) cells.push(null);
+  const grid = cells.map((c) => c
+    ? `<div class="cal-day${c.k === today ? ' today' : ''}${c.ev.length ? ' has' : ''}"><span class="cal-dn">${c.day}</span>${c.ev.map((e) => `<span class="cal-ev" title="${e.name}${e.source ? ' · ' + e.source : ''}">${e.name}</span>`).join('')}</div>`
+    : '<div class="cal-day pad"></div>').join('');
+  const mk = `${y}-${String(m + 1).padStart(2, '0')}`;
+  const monthEvents = calEvents.filter((e) => e.date && e.date.slice(0, 7) === mk);
+  const undated = calEvents.filter((e) => !e.date);
+  el.innerHTML = `<div class="cal-head"><div class="cal-nav"><button id="cal-prev" type="button" aria-label="Previous month">‹</button><span class="cal-title">${MONTH_NAMES[m]} ${y}</span><button id="cal-next" type="button" aria-label="Next month">›</button></div><button id="cal-today" class="ghost small" type="button">TODAY</button></div>`
+    + `<div class="cal-grid">${CAL_DOW.map((d) => `<div class="cal-dow">${d}</div>`).join('')}${grid}</div>`
+    + (monthEvents.length ? `<div class="cal-list">${monthEvents.map((e) => calRow(e, today, true)).join('')}</div>` : '<div class="cal-foot dimtext">No dated events this month.</div>')
+    + (undated.length ? undated.map((e) => calRow(e, today, false)).join('') : '')
+    + (calFomc === 'fallback' ? '<div class="cal-foot dimtext">FOMC dates from the published schedule — the live Federal Reserve feed was unavailable.</div>' : '');
 }
+$('calendar')?.addEventListener('click', (e) => {
+  if (!calMonth) return;
+  if (e.target.id === 'cal-prev') { calMonth.m--; if (calMonth.m < 0) { calMonth.m = 11; calMonth.y--; } renderCalendar(); return; }
+  if (e.target.id === 'cal-next') { calMonth.m++; if (calMonth.m > 11) { calMonth.m = 0; calMonth.y++; } renderCalendar(); return; }
+  if (e.target.id === 'cal-today') { const n = new Date(); calMonth = { y: n.getUTCFullYear(), m: n.getUTCMonth() }; renderCalendar(); }
+});
 // Risk & correlation — max drawdown + a realised-vol term structure, and a correlation matrix.
 async function loadRisk() {
   const el = $('risk'); if (!el) return;

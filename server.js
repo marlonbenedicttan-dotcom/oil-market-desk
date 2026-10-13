@@ -1086,10 +1086,19 @@ async function getCalendar() {
     const now = new Date();
     const iso = (d) => d.toISOString().slice(0, 10);
     const today = iso(now);
-    const events = getEvents().map((e) => ({ ...e, source: /EIA/.test(e.name) ? 'EIA' : /OPEC/.test(e.name) ? 'OPEC+' : /expiry/.test(e.name) ? 'CME' : null }));
-    // USDA WASDE — the monthly crop balance, usually the middle of the month.
-    const wasde = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + (now.getUTCDate() > 12 ? 1 : 0), 12));
-    events.push({ date: iso(wasde), name: 'USDA WASDE report (approx.)', source: 'USDA', note: 'monthly crop supply & demand — usual mid-month slot' });
+    const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+    const end = new Date(start.getTime() + 150 * 864e5);
+    const events = [];
+    const push = (d, name, source, note) => { if (d >= start && d <= end) events.push({ date: iso(d), name, source, note }); };
+    // EIA weekly oil stocks — every Wednesday.
+    const wed = new Date(start); wed.setUTCDate(wed.getUTCDate() + ((3 - wed.getUTCDay() + 7) % 7));
+    for (let d = new Date(wed); d <= end; d = new Date(d.getTime() + 7 * 864e5)) push(d, 'US oil stockpiles (EIA)', 'EIA', 'weekly · 10:30am New York');
+    // Monthly: futures roll (~20th) and the USDA WASDE crop balance (~12th).
+    for (let k = 0; k <= 5; k++) {
+      push(new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + k, 20)), 'WTI/Brent front-month expiry (approx.)', 'CME', 'futures roll to the next month');
+      push(new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + k, 12)), 'USDA WASDE report (approx.)', 'USDA', 'usual mid-month slot');
+    }
+    events.push({ date: null, name: 'OPEC+ monthly meeting', source: 'OPEC+', note: 'date varies — check the OPEC calendar' });
     // FOMC — the Fed's published dates (live if reachable, else the published fallback).
     let fomc = [];
     try { fomc = await fomcDates(); } catch {}
@@ -1107,7 +1116,7 @@ async function getCalendar() {
       } catch {}
     }
     const upcoming = events.filter((e) => !e.date || e.date >= today)
-      .sort((x, y) => (x.date || '9999-99-99').localeCompare(y.date || '9999-99-99')).slice(0, 16);
+      .sort((x, y) => (x.date || '9999-99-99').localeCompare(y.date || '9999-99-99')).slice(0, 120);
     return { updated: new Date().toISOString(), events: upcoming, fomc: fomcLive ? 'live' : 'fallback', fredKey: Boolean(process.env.FRED_API_KEY) };
   });
 }
