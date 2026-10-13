@@ -54,7 +54,7 @@ button { font-family: var(--mono); }
 .ticker::before, .ticker::after { content: ''; position: absolute; top: 0; bottom: 0; width: 16px; pointer-events: none; z-index: 1; }
 .ticker::before { left: 0; background: linear-gradient(90deg, #05070a, rgba(5,7,10,0)); }
 .ticker::after { right: 0; background: linear-gradient(270deg, #05070a, rgba(5,7,10,0)); }
-.tick-btn { flex: 0 0 auto; width: 36px; border: 0; border-left: 1px solid var(--line); background: #05070a; color: var(--dim); font-size: 13px; line-height: 1; cursor: pointer; }
+.tick-btn { flex: 0 0 auto; width: 30px; border: 0; border-left: 1px solid var(--line); background: #05070a; color: var(--dim); font: 700 9px/1 var(--mono); letter-spacing: 1px; cursor: pointer; display: grid; place-items: center; padding: 0; }
 .tick-btn:hover { color: var(--amber); background: #0c0f13; }
 .tick-btn[aria-pressed="true"] { color: var(--amber); }
 /* The tape is moved by JS (requestAnimationFrame), never by a CSS animation or :hover — iOS Safari
@@ -463,8 +463,10 @@ footer li { margin-bottom: 2px; }
 .rule-x:hover { color: var(--red); }
 .rule-add { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
 .rule-add select { min-height: 32px; }
+.rule-add input { background: var(--panel2); color: var(--text); border: 1px solid var(--line2); padding: 4px 8px; font-family: var(--mono); font-size: 11px; min-height: 32px; }
+.rule-add input::placeholder { color: var(--dim); }
 .rule-add #rule-level { width: 96px; }
-.rule-add #rule-note { flex: 1 1 140px; background: var(--panel2); color: var(--text); border: 1px solid var(--line2); padding: 4px 8px; font-family: var(--mono); font-size: 11px; min-height: 32px; }
+.rule-add #rule-note { flex: 1 1 140px; }
 .rule-foot { margin-top: 8px; }
 .rule-foot button { margin-left: 6px; }
 

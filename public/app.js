@@ -807,7 +807,7 @@ function tickerStart() {
     pauseBtn?.addEventListener('click', () => {
       tickerPaused = !tickerPaused;
       pauseBtn.setAttribute('aria-pressed', String(tickerPaused));
-      pauseBtn.textContent = tickerPaused ? '▶' : '⏸';
+      pauseBtn.textContent = tickerPaused ? '▸' : '❚❚';
       const label = tickerPaused ? 'Play the ticker' : 'Pause the ticker';
       pauseBtn.setAttribute('aria-label', label); pauseBtn.title = label;
       if (!tickerPaused) { tickerLast = performance.now(); tickerStart(); }
