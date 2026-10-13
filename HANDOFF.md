@@ -152,6 +152,9 @@ Each country has a verified-live Yahoo `fx` + `index`, a World Bank `iso3`, an `
 > See **`INVESTOR-ROADMAP.md`** for the investor-value backlog (surface COT positioning, a
 > cross-asset regime board, a screener/leaderboard, custom alerts, an economic calendar) — written
 > after a full review. It supersedes this list in priority; #9 here is cosmetic.
+> For **quality** — trust/timestamps, accessibility, wording, IA, SEO/PWA completeness — see
+> **`POLISH-ROADMAP.md`** (a full audit with evidence). Do its **quick wins 1–5** before the feature
+> backlog; they are small and high-visibility.
 > ✅ **DONE (2026-10-13) — `NEXT-TASK-2.md`**: (1) the mobile top bar is now one tidy row and the
 > ticker is a JS `requestAnimationFrame` marquee (never `:hover`, honours Reduce Motion). NB: that
 > fix **had been written but never committed**, so the live site was still serving the frozen CSS
