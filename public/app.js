@@ -2538,7 +2538,12 @@ $('macro-links')?.addEventListener('click', (e) => { const el = e.target.closest
   setTopbarH(); addEventListener('resize', setTopbarH);
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});
   const onboardEl = $('onboarding');
-  const showOnboard = () => { onboardEl?.classList.remove('hidden'); $('onboard-close')?.focus(); };
+  // Give the tower's contact blips a fresh random phase/duration each time the intro opens.
+  const seedBlips = () => document.querySelectorAll('.tower-blip').forEach((b) => {
+    b.style.setProperty('--dur', (3 + Math.random() * 2.8).toFixed(2) + 's');
+    b.style.setProperty('--delay', '-' + (Math.random() * 7).toFixed(2) + 's');
+  });
+  const showOnboard = () => { seedBlips(); onboardEl?.classList.remove('hidden'); $('onboard-close')?.focus(); };
   const hideOnboard = () => { localStorage.setItem('oilbasis.seenOnboard', '1'); onboardEl?.classList.add('hidden'); };
   if (!localStorage.getItem('oilbasis.seenOnboard')) showOnboard();
   $('onboard-close')?.addEventListener('click', hideOnboard);
