@@ -126,7 +126,7 @@ select { background: var(--panel2); color: var(--text); border: 1px solid var(--
 .ce-dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; }
 
 /* ---- Boot beacon ---------------------------------------------------------- */
-.boot { position: fixed; inset: 0; z-index: 200; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 20px; background: #0a0d11; transition: opacity .5s ease; }
+.boot { position: fixed; inset: 0; z-index: 10000; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 20px; background: #0a0d11; transition: opacity .5s ease; }
 .boot.done { opacity: 0; visibility: hidden; transition: opacity .5s ease, visibility 0s linear .5s; }
 .scope { position: relative; width: 132px; height: 132px; border-radius: 50%; border: 1px solid rgba(74,163,255,.35); background: radial-gradient(circle, rgba(74,163,255,.07), rgba(74,163,255,0) 70%); display: grid; place-items: center; overflow: hidden; }
 .scope-ring { position: absolute; border: 1px solid rgba(74,163,255,.15); border-radius: 50%; }

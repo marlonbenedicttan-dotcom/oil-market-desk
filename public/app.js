@@ -645,6 +645,7 @@ function renderTicker(m) {
 // JS means it always runs; press-and-hold pauses it. Two identical copies make a seamless loop.
 let tickerX = 0, tickerRAF = null, tickerLast = 0, tickerHeld = false, tickerWired = false;
 const tickerReduce = matchMedia('(prefers-reduced-motion: reduce)');
+const TICKER_MS = 120000;   // one full copy takes 120s — the SAME speed on phone and desktop
 function tickerStart() {
   const ticker = $('ticker');
   if (!ticker) return;
@@ -674,7 +675,7 @@ function tickerStart() {
     const half = track.scrollWidth / 2;             // one copy's width
     if (!half) { tickerRAF = requestAnimationFrame(step); return; }   // not laid out yet
     const dt = Math.min(64, Math.max(0, now - tickerLast)); tickerLast = now;
-    if (!tickerHeld) tickerX -= (half / (innerWidth <= 640 ? 45000 : 120000)) * dt;  // one copy per duration
+    if (!tickerHeld) tickerX -= (half / TICKER_MS) * dt;   // one copy per duration (same on all sizes)
     if (tickerX <= -half) tickerX += half;
     if (tickerX > 0) tickerX -= half;
     track.style.transform = `translateX(${tickerX.toFixed(2)}px)`;
