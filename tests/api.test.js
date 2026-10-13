@@ -1,6 +1,8 @@
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
+import http from 'node:http';
+import zlib from 'node:zlib';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -330,4 +332,22 @@ test('security headers are set on every response', async () => {
   assert.match(html.headers.get('content-security-policy-report-only') || '', /default-src 'self'/);
   const api = await fetch(`http://localhost:${PORT}/api/market`);
   assert.equal(api.headers.get('x-content-type-options'), 'nosniff');
+});
+
+test('/health reports a build version', async () => {
+  const j = await (await fetch(`http://localhost:${PORT}/health`)).json();
+  assert.equal(j.ok, true);
+  assert.ok(j.version, 'a build version is present');
+});
+
+test('text assets are gzipped when the client accepts it (and decode cleanly)', async () => {
+  const res = await new Promise((resolve) => {
+    http.get({ host: 'localhost', port: PORT, path: '/app.js', headers: { 'accept-encoding': 'gzip' } }, resolve);
+  });
+  assert.equal(res.headers['content-encoding'], 'gzip');
+  assert.match(res.headers.vary || '', /accept-encoding/i);
+  const chunks = [];
+  for await (const c of res) chunks.push(c);
+  const body = zlib.gunzipSync(Buffer.concat(chunks)).toString();
+  assert.match(body, /tickerStart/, 'the gzip stream decodes to the real script');
 });

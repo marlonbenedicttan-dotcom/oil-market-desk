@@ -14,8 +14,8 @@ deploy, verify live.
   all `aria-*` / `role=` usages.
 
 ## Status
-**Items 1–8 DONE (2026-10-13)** — see `HANDOFF.md` → Latest. Remaining: 9 (minify + version
-surface), then the `INVESTOR-ROADMAP.md` features.
+**All items 1–9 DONE (2026-10-13)** — see `HANDOFF.md` → Latest. Next: the `INVESTOR-ROADMAP.md`
+features (#1 positioning, #2 regime board, #3 screener, #4 custom alerts, #5 economic calendar).
 
 ## What is already strong (don't "fix" these)
 Honest data with source + as-of badges; signed price score + physical tightness; adaptive plain-English

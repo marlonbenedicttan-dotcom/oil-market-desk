@@ -3,6 +3,7 @@
 import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
+import zlib from 'node:zlib';
 import { execFile } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { sgn, businessDaysSince, inBox, haversineNm, horizonDeltas, isoWeek, monthly, pctOver, percentile, realizedVol, computeCracks, computeCrush, backAdjust, pearson, logReturns, curveTightness, inventoryTightness, weightedScore, seasonalGrade, seasonalAhead, contractMonthsBetween, signedPosition, signedMove, stretchScore, sdLabel, attributeMoves, newsContextOk, METHODOLOGY } from './src/lib.js';
@@ -245,6 +246,7 @@ async function getMarket() {
   }
   return {
     updated: new Date().toISOString(),
+    version: BUILD,
     benchmarks: rows,
     spreads,
     quality: { flags, curveAvailable: Boolean(curves) },
@@ -2388,7 +2390,24 @@ async function maybeSendDigest() {
 // HTTP server
 // ---------------------------------------------------------------------------
 const MIME = { '.html': 'text/html', '.css': 'text/css', '.js': 'text/javascript', '.json': 'application/json', '.svg': 'image/svg+xml', '.ico': 'image/x-icon', '.png': 'image/png', '.webmanifest': 'application/manifest+json' };
-const sendJSON = (res, code, obj) => { res.writeHead(code, { 'content-type': 'application/json', 'cache-control': 'no-store' }); res.end(JSON.stringify(obj)); };
+// Build stamp — Render sets RENDER_GIT_COMMIT on every deploy, so "am I on the new build?" is answerable.
+const BUILD = (process.env.RENDER_GIT_COMMIT || process.env.GIT_SHA || '').slice(0, 7) || 'dev';
+// On-the-fly compression with the built-in zlib (no deps). Static files are compressed once per
+// file+mtime and cached in memory; JSON is compressed per request when it is worth it.
+const zcache = new Map();
+const COMPRESSIBLE = new Set(['.html', '.css', '.js', '.json', '.svg', '.txt', '.webmanifest']);
+const pickEncoding = (ae) => (/\bbr\b/.test(ae || '') ? 'br' : /\bgzip\b/.test(ae || '') ? 'gzip' : null);
+const encodeBuf = (raw, enc) => (enc === 'br'
+  ? zlib.brotliCompressSync(raw, { params: { [zlib.constants.BROTLI_PARAM_QUALITY]: 5 } })
+  : zlib.gzipSync(raw, { level: 6 }));
+const sendJSON = (res, code, obj) => {
+  const body = Buffer.from(JSON.stringify(obj));
+  const enc = body.length > 1024 ? pickEncoding(res.req && res.req.headers['accept-encoding']) : null;
+  const headers = { 'content-type': 'application/json', 'cache-control': 'no-store' };
+  if (enc) { headers['content-encoding'] = enc; headers.vary = 'Accept-Encoding'; res.writeHead(code, headers); return res.end(encodeBuf(body, enc)); }
+  res.writeHead(code, headers);
+  res.end(body);
+};
 
 // Security headers on every response. The CSP is report-only, so it can never break the app —
 // it just watches for drift (a new inline script, CDN, or tile host).
@@ -2403,7 +2422,7 @@ const server = http.createServer(async (req, res) => {
   for (const k in SECURITY_HEADERS) res.setHeader(k, SECURITY_HEADERS[k]);
   const url = new URL(req.url, `http://${req.headers.host}`);
   // Health check (no auth) for uptime monitors.
-  if (url.pathname === '/health') { res.writeHead(200, { 'content-type': 'application/json' }); return res.end(JSON.stringify({ ok: true, uptime: Math.round(process.uptime()) })); }
+  if (url.pathname === '/health') { res.writeHead(200, { 'content-type': 'application/json' }); return res.end(JSON.stringify({ ok: true, uptime: Math.round(process.uptime()), version: BUILD })); }
   // Optional basic auth — set AUTH_USER + AUTH_PASS to protect a public deployment.
   if (process.env.AUTH_USER && process.env.AUTH_PASS) {
     const hdr = req.headers.authorization || '';
@@ -2543,13 +2562,26 @@ const server = http.createServer(async (req, res) => {
     let file = url.pathname === '/' ? '/index.html' : url.pathname;
     file = path.normalize(file).replace(/^(\.\.[/\\])+/, '');
     const full = path.join(PUBLIC, file);
-    if (!full.startsWith(PUBLIC) || !fs.existsSync(full) || fs.statSync(full).isDirectory()) {
+    let st = null;
+    try { st = fs.statSync(full); } catch {}
+    if (!full.startsWith(PUBLIC) || !st || st.isDirectory()) {
       const nf = path.join(PUBLIC, '404.html');
       res.writeHead(404, { 'content-type': 'text/html', 'cache-control': 'no-cache' });
       if (fs.existsSync(nf)) return fs.createReadStream(nf).pipe(res);
       return res.end('not found');
     }
-    res.writeHead(200, { 'content-type': MIME[path.extname(full)] || 'application/octet-stream', 'cache-control': 'no-cache' });
+    const ext = path.extname(full);
+    const headers = { 'content-type': MIME[ext] || 'application/octet-stream', 'cache-control': 'no-cache' };
+    const enc = st.size > 1024 && COMPRESSIBLE.has(ext) ? pickEncoding(req.headers['accept-encoding']) : null;
+    if (enc) {
+      const key = full + ':' + st.mtimeMs + ':' + enc;
+      let buf = zcache.get(key);
+      if (!buf) { buf = encodeBuf(fs.readFileSync(full), enc); if (zcache.size > 80) zcache.clear(); zcache.set(key, buf); }
+      headers['content-encoding'] = enc; headers.vary = 'Accept-Encoding';
+      res.writeHead(200, headers);
+      return res.end(buf);
+    }
+    res.writeHead(200, headers);
     fs.createReadStream(full).pipe(res);
   } catch (err) {
     sendJSON(res, 500, { error: String(err.message || err) });
