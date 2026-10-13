@@ -337,6 +337,19 @@ test('security headers are set on every response', async () => {
   assert.equal(api.headers.get('x-content-type-options'), 'nosniff');
 });
 
+test('/api/risk returns drawdown, a vol term structure and a correlation matrix', async () => {
+  const r = await fetch(`http://localhost:${PORT}/api/risk`);
+  assert.equal(r.status, 200);
+  const j = await r.json();
+  if (!j.error) {
+    assert.ok(Array.isArray(j.metrics) && j.metrics.length >= 5, 'a metric per key asset');
+    const m = j.metrics.find((x) => x.key === 'wti');
+    assert.ok(m && 'drawdown' in m && 'vol' in m && 'w30' in m.vol, 'WTI has drawdown + vol term');
+    assert.ok(j.keys.length >= 5 && typeof j.matrix === 'object');
+    assert.equal(j.matrix.wti.wti, 1, 'diagonal is 1');
+  }
+});
+
 test('/api/calendar returns dated upcoming events (FOMC at least)', async () => {
   const r = await fetch(`http://localhost:${PORT}/api/calendar`);
   assert.equal(r.status, 200);

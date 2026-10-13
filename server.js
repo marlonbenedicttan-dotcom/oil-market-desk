@@ -6,7 +6,7 @@ import path from 'node:path';
 import zlib from 'node:zlib';
 import { execFile } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { sgn, businessDaysSince, inBox, haversineNm, horizonDeltas, horizonDeltasAbs, isoWeek, monthly, pctOver, percentile, realizedVol, computeCracks, computeCrush, backAdjust, pearson, logReturns, curveTightness, inventoryTightness, weightedScore, seasonalGrade, seasonalAhead, contractMonthsBetween, signedPosition, signedMove, stretchScore, sdLabel, attributeMoves, newsContextOk, METHODOLOGY, positioningFlag, positioningRead } from './src/lib.js';
+import { sgn, businessDaysSince, inBox, haversineNm, horizonDeltas, horizonDeltasAbs, isoWeek, monthly, pctOver, percentile, realizedVol, computeCracks, computeCrush, backAdjust, pearson, logReturns, curveTightness, inventoryTightness, weightedScore, seasonalGrade, seasonalAhead, contractMonthsBetween, signedPosition, signedMove, stretchScore, sdLabel, attributeMoves, newsContextOk, METHODOLOGY, positioningFlag, positioningRead, maxDrawdown, realizedVolTerm, corrMatrix } from './src/lib.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC = path.join(__dirname, 'public');
@@ -572,6 +572,45 @@ async function getRegime() {
       }
     }));
     return { updated: new Date().toISOString(), rows };
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Risk & cross-asset correlation (Tier 2). Max drawdown + a realised-vol term structure per
+// instrument, and a correlation matrix over ~1y of aligned daily log-returns.
+// ---------------------------------------------------------------------------
+const RISK_SERIES = [
+  { key: 'wti', label: 'WTI crude', short: 'WTI', sym: 'CL=F' },
+  { key: 'gold', label: 'Gold', short: 'Gold', sym: 'GC=F' },
+  { key: 'copper', label: 'Copper', short: 'Copper', sym: 'HG=F' },
+  { key: 'spx', label: 'S&P 500', short: 'S&P', sym: '^GSPC' },
+  { key: 'dxy', label: 'Dollar (DXY)', short: 'Dollar', sym: 'DX-Y.NYB' },
+  { key: 'us10y', label: 'US 10y', short: 'US 10y', fred: 'DGS10', rate: true },
+  { key: 'vix', label: 'VIX', short: 'VIX', sym: '^VIX' },
+];
+async function getRisk() {
+  return cached('risk', 3600e3, async () => {
+    const maps = {};
+    await Promise.all(RISK_SERIES.map(async (s) => {
+      try {
+        maps[s.key] = s.fred
+          ? await cached('risk:' + s.key, 6 * 3600e3, () => fredSeries(s.fred, 400).catch(() => ({})))
+          : ((await cached('risk:' + s.key, 3600e3, () => yahooSeries(s.sym, '1y', '1d'))).series) || {};
+      } catch { maps[s.key] = {}; }
+    }));
+    const metrics = RISK_SERIES.map((s) => {
+      const dates = Object.keys(maps[s.key]).sort();
+      const vals = dates.map((d) => maps[s.key][d]);
+      return { key: s.key, label: s.label, rate: !!s.rate, drawdown: maxDrawdown(vals), vol: realizedVolTerm(vals) };
+    });
+    const dates = [...new Set(RISK_SERIES.flatMap((s) => Object.keys(maps[s.key])))].sort();
+    return {
+      updated: new Date().toISOString(),
+      metrics,
+      keys: RISK_SERIES.map((s) => ({ key: s.key, label: s.label, short: s.short })),
+      matrix: corrMatrix(maps, dates),
+      days: dates.length,
+    };
   });
 }
 
@@ -2682,6 +2721,7 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname === '/api/inventories') return sendJSON(res, 200, await getInventories());
     if (url.pathname === '/api/regime') return sendJSON(res, 200, await getRegime().catch((e) => ({ error: String(e.message), rows: [] })));
     if (url.pathname === '/api/screen') return sendJSON(res, 200, await getScreen().catch((e) => ({ error: String(e.message), rows: [] })));
+    if (url.pathname === '/api/risk') return sendJSON(res, 200, await getRisk().catch((e) => ({ error: String(e.message), metrics: [], matrix: {} })));
     if (url.pathname === '/api/positioning') {
       const seg = url.searchParams.get('segment');
       const p = seg ? getPositioningSegment(seg) : getPositioning(url.searchParams.get('id') || 'wti');

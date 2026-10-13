@@ -348,7 +348,7 @@ footer li { margin-bottom: 2px; }
 .jumpnav::-webkit-scrollbar { display: none; }
 .jumpnav a { flex: 0 0 auto; border: 1px solid var(--line2); padding: 5px 11px; font-size: 11px; letter-spacing: .5px; color: var(--dim); text-decoration: none; white-space: nowrap; }
 .jumpnav a:hover, .jumpnav a:focus-visible { color: var(--amber); border-color: var(--amber); }
-#p-brief, #p-regime, #p-screen, #p-calendar, #p-watch, #p-alerts, #p-headlines, #p-segments { scroll-margin-top: calc(var(--topbar-h, 44px) + 54px); }
+#p-brief, #p-regime, #p-screen, #p-risk, #p-calendar, #p-watch, #p-alerts, #p-headlines, #p-segments { scroll-margin-top: calc(var(--topbar-h, 44px) + 54px); }
 /* Score key — what the /100 numbers mean, right where they appear. */
 .score-key { margin-top: 9px; font-size: 10px; color: var(--dim); line-height: 1.55; }
 .score-key b { color: #c9d4df; }
@@ -479,6 +479,25 @@ footer li { margin-bottom: 2px; }
 .cal-note { grid-column: 1 / -1; font-size: 10.5px; }
 .cal-foot { padding: 7px 12px; }
 @media (max-width: 640px) { .cal-row { grid-template-columns: 96px 1fr; } .cal-src { grid-column: 2; } }
+
+/* Risk & correlation (HOME) */
+.risk { padding: 10px 12px; }
+.rk-head, .rk-row { display: grid; grid-template-columns: 1fr 84px 62px 62px 62px; gap: 6px; font-size: 12px; align-items: baseline; }
+.rk-head { color: var(--dim); font-size: 9.5px; letter-spacing: 1px; margin-bottom: 4px; }
+.rk-row { padding: 3px 0; border-bottom: 1px dotted var(--line); }
+.rk-name { color: #c9d4df; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rk-dd, .rk-v { text-align: right; font-variant-numeric: tabular-nums; }
+.rk-dd { color: #c9d4df; }
+.rk-dd.neg { color: var(--red); }
+.rk-dd.warm { color: var(--amber); }
+.corr-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; margin-top: 10px; }
+.corr-tbl { border-collapse: collapse; font-size: 10.5px; font-variant-numeric: tabular-nums; }
+.corr-tbl th { color: var(--dim); font-weight: 400; padding: 3px 6px; text-align: right; white-space: nowrap; font-size: 9.5px; letter-spacing: .5px; }
+.corr-tbl td { padding: 3px 6px; text-align: right; border: 1px solid var(--line); color: var(--dim); }
+.corr-tbl td.hi { color: var(--amber); }
+.corr-tbl td.hineg { color: var(--blue); }
+.corr-tbl td.mid { color: #c9d4df; }
+@media (max-width: 640px) { .rk-head, .rk-row { grid-template-columns: 1fr 74px 50px 46px 46px; font-size: 11px; } }
 
 /* Onboarding */
 .onboard { position: fixed; inset: 0; z-index: 5000; background: rgba(0,0,0,.72); display: flex; align-items: center; justify-content: center; padding: 20px; }

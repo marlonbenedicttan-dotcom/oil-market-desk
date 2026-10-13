@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { sgn, inBox, haversineNm, isoWeek, monthly, pctOver, percentile, realizedVol, computeCracks, computeCrush, backAdjust, pearson, logReturns, horizonDeltas, horizonDeltasAbs, curveTightness, inventoryTightness, weightedScore, seasonalGrade, seasonalAhead, contractMonthsBetween, signedPosition, signedMove, stretchScore, sdLabel, attributeMoves, newsContextOk, looksLikeProperNoun, NON_MARKET_CTX, METHODOLOGY, positioningFlag, positioningRead } from '../src/lib.js';
+import { sgn, inBox, haversineNm, isoWeek, monthly, pctOver, percentile, realizedVol, computeCracks, computeCrush, backAdjust, pearson, logReturns, horizonDeltas, horizonDeltasAbs, curveTightness, inventoryTightness, weightedScore, seasonalGrade, seasonalAhead, contractMonthsBetween, signedPosition, signedMove, stretchScore, sdLabel, attributeMoves, newsContextOk, looksLikeProperNoun, NON_MARKET_CTX, METHODOLOGY, positioningFlag, positioningRead, maxDrawdown, realizedVolTerm, corrMatrix } from '../src/lib.js';
 
 test('sgn formats with sign', () => {
   assert.equal(sgn(4.39), '+4.39');
@@ -264,6 +264,29 @@ test('positioningFlag / positioningRead turn a percentile into a plain verdict',
   assert.match(positioningRead(95), /crowded long/i);
   assert.match(positioningRead(5), /squeeze/i);
   assert.equal(positioningRead(null), '');
+});
+
+test('maxDrawdown finds the worst peak-to-trough decline', () => {
+  assert.equal(maxDrawdown([100, 120, 90, 110]), -25);
+  assert.equal(maxDrawdown([100, 130, 120]), -7.7);
+  assert.equal(maxDrawdown([100, 110, 120]), 0);   // never below a prior peak
+  assert.equal(maxDrawdown([5]), null);
+});
+
+test('realizedVolTerm gives a vol per window (null when too short)', () => {
+  const ramp = Array.from({ length: 120 }, (_, i) => 100 + Math.sin(i / 3) * 5);
+  const t = realizedVolTerm(ramp);
+  assert.ok(t.w30 > 0 && t.w60 > 0 && t.w90 > 0);
+  assert.equal(realizedVolTerm([1, 2, 3]).w90, null);
+});
+
+test('corrMatrix is +1 for a series with itself and −1 for a mirrored one', () => {
+  const mk = (rets) => { let p = 100; const m = {}; rets.forEach((r, i) => { p *= Math.exp(r); m['2026-' + String(i + 1).padStart(3, '0')] = p; }); return m; };
+  const rets = Array.from({ length: 30 }, (_, i) => (i % 2 ? 0.02 : -0.02));
+  const a = mk(rets), b = mk(rets.map((r) => -r));
+  const m = corrMatrix({ a, b }, Object.keys(a));
+  assert.equal(m.a.a, 1);
+  assert.equal(m.a.b, -1);
 });
 
 test('METHODOLOGY is complete — every source and score carries its labels', () => {

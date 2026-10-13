@@ -2149,6 +2149,36 @@ function renderCalendar(d) {
     return `<div class="cal-row"><span class="cal-date">${when}</span><span class="cal-name">${e.name}</span><span class="cal-src">${e.source || ''}</span>${e.note ? `<span class="cal-note dimtext">${e.note}</span>` : ''}</div>`;
   }).join('') + (d.fomc === 'fallback' ? '<div class="cal-foot dimtext">FOMC dates from the published schedule — the live Federal Reserve feed was unavailable.</div>' : '');
 }
+// Risk & correlation — max drawdown + a realised-vol term structure, and a correlation matrix.
+async function loadRisk() {
+  const el = $('risk'); if (!el) return;
+  if (!el.innerHTML) el.innerHTML = stLoading('Loading risk metrics…');
+  let d = null; try { d = await jget('/api/risk', 3600000); } catch { d = null; }
+  renderRisk(d);
+}
+function renderRisk(d) {
+  const el = $('risk'); if (!el) return;
+  const sub = $('risk-sub'); if (sub) sub.textContent = 'max drawdown + realised vol over 1y · correlation of daily returns';
+  const metrics = (d && d.metrics) || [];
+  if (!metrics.length) { el.innerHTML = stError('Couldn’t load risk metrics — retrying.'); return; }
+  const vol = (v) => (v == null ? '—' : v.toFixed(0) + '%');
+  const rows = metrics.map((m) => `<div class="rk-row"><span class="rk-name">${m.label}</span>`
+    + `<span class="rk-dd ${m.drawdown == null ? '' : m.drawdown <= -20 ? 'neg' : m.drawdown <= -8 ? 'warm' : ''}">${m.drawdown == null ? '—' : m.drawdown.toFixed(1) + '%'}</span>`
+    + `<span class="rk-v">${vol(m.vol.w30)}</span><span class="rk-v">${vol(m.vol.w60)}</span><span class="rk-v">${vol(m.vol.w90)}</span></div>`).join('');
+  const keys = (d && d.keys) || [];
+  const mtx = (d && d.matrix) || {};
+  const short = (k) => k.short || String(k.label).replace(/\s*\(.*\)/, '');
+  const cls = (v) => (v == null ? '' : Math.abs(v) >= 0.6 ? (v > 0 ? 'hi' : 'hineg') : Math.abs(v) >= 0.3 ? 'mid' : 'lo');
+  const corr = keys.length ? '<div class="corr-wrap"><table class="corr-tbl"><thead><tr><th></th>'
+    + keys.map((k) => `<th>${short(k)}</th>`).join('') + '</tr></thead><tbody>'
+    + keys.map((a) => `<tr><th>${short(a)}</th>` + keys.map((b) => {
+        const v = a.key === b.key ? null : (mtx[a.key] ? mtx[a.key][b.key] : null);
+        return `<td class="${cls(v)}">${v == null ? '—' : (v > 0 ? '+' : '') + v.toFixed(2)}</td>`;
+      }).join('') + '</tr>').join('') + '</tbody></table></div>' : '';
+  el.innerHTML = '<div class="rk-head"><span class="rk-name">INSTRUMENT</span><span class="rk-dd">1Y MAX DD</span><span class="rk-v">VOL 30D</span><span class="rk-v">60D</span><span class="rk-v">90D</span></div>'
+    + rows + corr
+    + '<div class="sc-note dimtext">Max drawdown = the worst peak-to-trough fall over the last year (a risk gauge, not a forecast). Correlation is over daily returns: +1 moves together, −1 opposite. Vol is annualised.</div>';
+}
 async function loadHeadlines() {
   const el = $('headlines');
   if (!el) return;
@@ -2250,6 +2280,7 @@ async function loadExtraCore() {
   loadRegime();      // the cross-asset backdrop (HOME)
   loadScreen();      // the screener (HOME)
   loadCalendar();    // the economic calendar (HOME)
+  loadRisk();        // risk + correlation (HOME)
   try {
     const [inv, eq, chk, an, fl, pr] = await Promise.all([
       getJSON('/api/inventories').catch(() => null),

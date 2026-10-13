@@ -351,9 +351,37 @@ export const METHODOLOGY = {
 };
 
 // ---------------------------------------------------------------------------
-// CFTC positioning (managed money / non-commercial net) — turn a 0-100 percentile of the spec
-// net into a plain read. High = crowded long (squeeze risk), low = washed-out / crowded short.
+// Risk metrics (Tier 2). Max drawdown, a realised-vol term structure, and a
+// correlation matrix over aligned log-returns.
 // ---------------------------------------------------------------------------
+// Largest peak-to-trough decline over the series, as a % (≤ 0). null if too short.
+export function maxDrawdown(values) {
+  const xs = (values || []).filter((v) => v != null);
+  if (xs.length < 2) return null;
+  let peak = xs[0], worst = 0;
+  for (const v of xs) {
+    if (v > peak) peak = v;
+    if (peak > 0) { const dd = ((v - peak) / peak) * 100; if (dd < worst) worst = dd; }
+  }
+  return +worst.toFixed(1);
+}
+// Annualised realised vol across several look-backs — a term structure (rising = stress building).
+export function realizedVolTerm(values, wins = [30, 60, 90]) {
+  const out = {};
+  for (const w of wins) out['w' + w] = realizedVol(values, w);
+  return out;
+}
+// Pearson correlation matrix over aligned log-returns. seriesByKey: { key: { 'YYYY-MM-DD': value } }.
+export function corrMatrix(seriesByKey, dates) {
+  const keys = Object.keys(seriesByKey);
+  const rets = {};
+  for (const k of keys) rets[k] = logReturns(seriesByKey[k], dates);
+  const m = {};
+  for (const a of keys) { m[a] = {}; for (const b of keys) m[a][b] = a === b ? 1 : pearson(rets[a], rets[b]); }
+  return m;
+}
+// CFTC positioning (managed money / non-commercial net) — turn a 0-100 percentile of the spec net
+// into a plain read. High = crowded long (squeeze risk), low = washed-out / crowded short.
 export function positioningFlag(pct) {
   if (pct == null || !Number.isFinite(pct)) return { label: '—', tone: 'mid' };
   if (pct >= 90) return { label: 'CROWDED LONG', tone: 'hot' };
