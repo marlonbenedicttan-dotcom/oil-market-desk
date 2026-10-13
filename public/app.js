@@ -2095,7 +2095,7 @@ async function loadRegime() {
 function renderRegime(d) {
   const el = $('regime-board'); if (!el) return;
   const rows = (d && d.rows) || [];
-  if (!rows.length) { el.innerHTML = stError('Couldn’t load the regime board — retrying.'); return; }
+  if (!rows.length) { el.innerHTML = stError('Couldn’t load the markets board — retrying.'); return; }
   el.innerHTML = rows.map((r) => {
     const src = `${r.source}${r.asOf ? ` · ${r.asOf}` : ''}`;
     if (r.price == null) return `<div class="rb-cell"><div class="rb-l" title="${r.label}">${r.label}</div><div class="rb-v">—</div><div class="rb-src">${src}</div></div>`;
@@ -2268,7 +2268,7 @@ function renderRisk(d) {
     + rows
     + `<div class="crf"><div class="crf-head">WHAT <select id="risk-focus" aria-label="Focus instrument">${picks}</select> MOVES WITH — lately</div>${fb || '<div class="dimtext">No overlapping history for this one.</div>'}</div>`
     + `<details class="fold"><summary>▸ SHOW THE FULL CORRELATION MATRIX</summary><div class="note-body">${heat}<div class="sc-note dimtext">Every pair, over ~1 year of daily returns: <b>+1</b> = same direction, <b>−1</b> = opposite, <b>0</b> = unrelated. Colour is only a guide — the number is what counts.</div></div></details>`
-    + '<div class="sc-note dimtext">“Worst fall” = the biggest peak-to-trough drop over the last year (a risk gauge, not a forecast). “How jumpy” = annualised realised volatility; ↑ rising, ↓ falling. Correlation is about DAILY moves, and it changes with the regime. For a yield (US 10y) and VIX, a “fall” is a move in the level, not a P&amp;L.</div>';
+    + '<div class="sc-note dimtext">“Worst fall” = the biggest peak-to-trough drop over the last year (a risk gauge, not a forecast). “How jumpy” = annualised realised volatility; ↑ rising, ↓ falling. Correlation is about DAILY moves and it changes over time. For a yield (US 10y) and VIX, a “fall” is a move in the level, not a P&amp;L.</div>';
 }
 $('risk')?.addEventListener('change', (e) => {
   if (e.target.id === 'risk-focus') { riskFocus = e.target.value; renderRisk(riskData); }
