@@ -684,10 +684,14 @@ async function getContinuous(root) {
       list.push({ mk, symbol: `${root}${CURVE_MONTHS[d.getUTCMonth()]}${String(d.getUTCFullYear()).slice(2)}.NYM` });
     }
     const series = {};
-    for (const c of list) {
-      series[c.mk] = await contractSeries(c.symbol);
-      await sleep(200);
-    }
+    // Fetch the contract months through a small worker pool — sequential + sleep(200) was ~30s.
+    let qi = 0;
+    await Promise.all(Array.from({ length: 4 }, async () => {
+      while (qi < list.length) {
+        const c = list[qi++];
+        try { series[c.mk] = await contractSeries(c.symbol); } catch { series[c.mk] = {}; }
+      }
+    }));
     const months = Object.keys(series).filter((m) => Object.keys(series[m]).length).sort();
     const allDates = [...new Set(months.flatMap((m) => Object.keys(series[m])))].sort();
     const dates = [], raw = [], fronts = [];
