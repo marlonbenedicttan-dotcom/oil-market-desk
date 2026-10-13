@@ -337,6 +337,19 @@ test('security headers are set on every response', async () => {
   assert.equal(api.headers.get('x-content-type-options'), 'nosniff');
 });
 
+test('/api/fxadjusted converts returns to a base currency', async () => {
+  const usd = await (await fetch(`http://localhost:${PORT}/api/fxadjusted?base=USD`)).json();
+  const eur = await (await fetch(`http://localhost:${PORT}/api/fxadjusted?base=EUR`)).json();
+  assert.equal(usd.base, 'USD');
+  assert.equal(eur.base, 'EUR');
+  if (!usd.error && !eur.error) {
+    const uw = usd.rows.find((r) => r.id === 'wti');
+    const ew = eur.rows.find((r) => r.id === 'wti');
+    assert.ok(uw && ew && 'deltas' in uw && 'deltas' in ew, 'per-instrument windows');
+  }
+  assert.equal((await fetch(`http://localhost:${PORT}/api/fxadjusted?base=XYZ`)).status, 200); // error shape, not 500
+});
+
 test('/api/risk returns drawdown, a vol term structure and a correlation matrix', async () => {
   const r = await fetch(`http://localhost:${PORT}/api/risk`);
   assert.equal(r.status, 200);

@@ -94,7 +94,11 @@
       </section>
 
       <section class="panel" id="p-screen">
-        <div class="ph"><span class="ph-t">🔎 SCREENER — where to look today</span><span class="dimtext">all instruments · click a header to sort · a row to open its chart</span></div>
+        <div class="ph"><span class="ph-t">🔎 SCREENER — where to look today</span>
+          <div class="controls"><span class="dimtext">returns in</span>
+            <select id="base-cur" aria-label="Base currency"><option value="USD" selected>USD</option><option value="EUR">EUR</option><option value="GBP">GBP</option><option value="JPY">JPY</option><option value="CNY">CNY</option><option value="CAD">CAD</option><option value="AUD">AUD</option><option value="CHF">CHF</option></select>
+          </div>
+        </div>
         <div id="screen" class="screen"></div>
       </section>
 
@@ -366,6 +370,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=83"></script>
+  <script src="app.js?v=84"></script>
 </body>
 </html>

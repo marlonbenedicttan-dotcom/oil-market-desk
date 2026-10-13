@@ -351,6 +351,18 @@ export const METHODOLOGY = {
 };
 
 // ---------------------------------------------------------------------------
+// Currency-adjusted returns (Tier 2). Convert a USD return over a window into the same return in a
+// chosen base currency. mode 'mul' = the pair is base-per-USD (e.g. USD/JPY, CNY-per-USD);
+// 'div' = the pair is USD-per-base (e.g. EUR/USD). Inputs/returns are percentages.
+// ---------------------------------------------------------------------------
+export function fxAdjust(usdPct, fxPct, mode) {
+  if (usdPct == null || fxPct == null) return null;
+  const u = 1 + usdPct / 100, f = 1 + fxPct / 100;
+  const r = mode === 'div' ? u / f : u * f;
+  return +((r - 1) * 100).toFixed(2);
+}
+
+// ---------------------------------------------------------------------------
 // Risk metrics (Tier 2). Max drawdown, a realised-vol term structure, and a
 // correlation matrix over aligned log-returns.
 // ---------------------------------------------------------------------------

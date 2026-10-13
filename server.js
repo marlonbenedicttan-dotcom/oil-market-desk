@@ -6,7 +6,7 @@ import path from 'node:path';
 import zlib from 'node:zlib';
 import { execFile } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { sgn, businessDaysSince, inBox, haversineNm, horizonDeltas, horizonDeltasAbs, isoWeek, monthly, pctOver, percentile, realizedVol, computeCracks, computeCrush, backAdjust, pearson, logReturns, curveTightness, inventoryTightness, weightedScore, seasonalGrade, seasonalAhead, contractMonthsBetween, signedPosition, signedMove, stretchScore, sdLabel, attributeMoves, newsContextOk, METHODOLOGY, positioningFlag, positioningRead, maxDrawdown, realizedVolTerm, corrMatrix } from './src/lib.js';
+import { sgn, businessDaysSince, inBox, haversineNm, horizonDeltas, horizonDeltasAbs, isoWeek, monthly, pctOver, percentile, realizedVol, computeCracks, computeCrush, backAdjust, pearson, logReturns, curveTightness, inventoryTightness, weightedScore, seasonalGrade, seasonalAhead, contractMonthsBetween, signedPosition, signedMove, stretchScore, sdLabel, attributeMoves, newsContextOk, METHODOLOGY, positioningFlag, positioningRead, maxDrawdown, realizedVolTerm, corrMatrix, fxAdjust } from './src/lib.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC = path.join(__dirname, 'public');
@@ -572,6 +572,42 @@ async function getRegime() {
       }
     }));
     return { updated: new Date().toISOString(), rows };
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Currency-adjusted returns (Tier 2). A EUR/JPY investor wants local-currency P&L, not just USD.
+// We take each instrument's USD window return and fold in the base currency's own move over the
+// same window. 'div' = the pair is USD-per-base (EUR/USD); 'mul' = base-per-USD (USD/JPY).
+// ---------------------------------------------------------------------------
+const FX_BASE = {
+  USD: null,
+  EUR: { sym: 'EURUSD=X', mode: 'div' }, GBP: { sym: 'GBPUSD=X', mode: 'div' }, AUD: { sym: 'AUDUSD=X', mode: 'div' },
+  JPY: { sym: 'USDJPY=X', mode: 'mul' }, CNY: { sym: 'USDCNY=X', mode: 'mul' }, CAD: { sym: 'USDCAD=X', mode: 'mul' }, CHF: { sym: 'USDCHF=X', mode: 'mul' },
+};
+async function getFxAdjusted(base = 'USD') {
+  const B = String(base || 'USD').toUpperCase();
+  if (B !== 'USD' && !FX_BASE[B]) return { error: 'unsupported base', base: B };
+  return cached('fxadj:' + B, 3600e3, async () => {
+    const [m, h] = await Promise.all([getMarket(), getHistory().catch(() => null)]);
+    let fxD = null;
+    if (B !== 'USD') {
+      try {
+        const { series } = await cached('fxadjq:' + B, 3600e3, () => yahooSeries(FX_BASE[B].sym, '2y', '1d'));
+        const dates = Object.keys(series).sort();
+        fxD = horizonDeltas(dates, dates.map((d) => series[d]));
+      } catch {}
+    }
+    const rows = m.benchmarks.map((b) => {
+      const dd = h && h.deltas ? h.deltas[b.id] : null;
+      const d = dd ? (b.paper != null ? dd.paper : dd.physical) : null;
+      const adj = {};
+      for (const k of ['d1', 'w1', 'm1', 'ytd', 'y1']) {
+        adj[k] = (B === 'USD' || !fxD) ? (d ? d[k] : null) : fxAdjust(d ? d[k] : null, fxD[k], FX_BASE[B].mode);
+      }
+      return { id: b.id, label: b.label, deltas: adj };
+    });
+    return { base: B, updated: new Date().toISOString(), rows };
   });
 }
 
@@ -2722,6 +2758,7 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname === '/api/regime') return sendJSON(res, 200, await getRegime().catch((e) => ({ error: String(e.message), rows: [] })));
     if (url.pathname === '/api/screen') return sendJSON(res, 200, await getScreen().catch((e) => ({ error: String(e.message), rows: [] })));
     if (url.pathname === '/api/risk') return sendJSON(res, 200, await getRisk().catch((e) => ({ error: String(e.message), metrics: [], matrix: {} })));
+    if (url.pathname === '/api/fxadjusted') return sendJSON(res, 200, await getFxAdjusted(url.searchParams.get('base') || 'USD').catch((e) => ({ error: String(e.message), rows: [] })));
     if (url.pathname === '/api/positioning') {
       const seg = url.searchParams.get('segment');
       const p = seg ? getPositioningSegment(seg) : getPositioning(url.searchParams.get('id') || 'wti');

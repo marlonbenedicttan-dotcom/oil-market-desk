@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { sgn, inBox, haversineNm, isoWeek, monthly, pctOver, percentile, realizedVol, computeCracks, computeCrush, backAdjust, pearson, logReturns, horizonDeltas, horizonDeltasAbs, curveTightness, inventoryTightness, weightedScore, seasonalGrade, seasonalAhead, contractMonthsBetween, signedPosition, signedMove, stretchScore, sdLabel, attributeMoves, newsContextOk, looksLikeProperNoun, NON_MARKET_CTX, METHODOLOGY, positioningFlag, positioningRead, maxDrawdown, realizedVolTerm, corrMatrix } from '../src/lib.js';
+import { sgn, inBox, haversineNm, isoWeek, monthly, pctOver, percentile, realizedVol, computeCracks, computeCrush, backAdjust, pearson, logReturns, horizonDeltas, horizonDeltasAbs, curveTightness, inventoryTightness, weightedScore, seasonalGrade, seasonalAhead, contractMonthsBetween, signedPosition, signedMove, stretchScore, sdLabel, attributeMoves, newsContextOk, looksLikeProperNoun, NON_MARKET_CTX, METHODOLOGY, positioningFlag, positioningRead, maxDrawdown, realizedVolTerm, corrMatrix, fxAdjust } from '../src/lib.js';
 
 test('sgn formats with sign', () => {
   assert.equal(sgn(4.39), '+4.39');
@@ -264,6 +264,16 @@ test('positioningFlag / positioningRead turn a percentile into a plain verdict',
   assert.match(positioningRead(95), /crowded long/i);
   assert.match(positioningRead(5), /squeeze/i);
   assert.equal(positioningRead(null), '');
+});
+
+test('fxAdjust converts a USD return into a base-currency return', () => {
+  // +10% in USD and the base weakens 5% (USD/base up 5%) → base gain ≈ 1.10/1.05 − 1 = +4.76% (div)
+  assert.equal(fxAdjust(10, 5, 'div'), 4.76);
+  // +10% in USD and USD/base up 5% (multiply) → +15.5%
+  assert.equal(fxAdjust(10, 5, 'mul'), 15.5);
+  // a flat FX move leaves the return unchanged
+  assert.equal(fxAdjust(7.5, 0, 'div'), 7.5);
+  assert.equal(fxAdjust(null, 5, 'mul'), null);
 });
 
 test('maxDrawdown finds the worst peak-to-trough decline', () => {

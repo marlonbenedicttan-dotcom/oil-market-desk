@@ -101,8 +101,10 @@ unavailable rather than inventing them). US-focused is fine to start; the countr
 
 ## TIER 2 — valuable, more work
 
-- **Currency-adjusted returns** — a EUR/JPY investor wants local-currency P&L, not just USD. Add a
-  base-currency toggle (reuse the `fx:` series in the compare engine).
+- ~~**Currency-adjusted returns** — a EUR/JPY investor wants local-currency P&L, not just USD. Add a
+  base-currency toggle (reuse the `fx:` series in the compare engine).~~ **DONE (2026-10-13)** — a
+  **base-currency selector** on the SCREENER (USD/EUR/GBP/JPY/CNY/CAD/AUD/CHF); the 1D–1Y columns
+  become local-currency returns. `/api/fxadjusted?base=`; pure `fxAdjust` in `src/lib.js` (tested).
 - ~~**Risk metrics** — max drawdown, realised-vol term structure, and a real **correlation matrix**
   (the transmission engine is narrative; `pearson` already exists in `src/lib.js`).~~ **DONE
   (2026-10-13)** — `⚠️ RISK & CORRELATION` on HOME: 1-yr max drawdown + a 30/60/90-day realised-vol

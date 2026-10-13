@@ -2078,16 +2078,18 @@ function renderRegime(d) {
   }).join('');
 }
 // Screener — every instrument in one sortable table (assembled server-side at /api/screen).
-let screenRows = null, screenSort = { key: 'absd1', dir: -1 };
+let screenRows = null, screenSort = { key: 'absd1', dir: -1 }, fxBase = 'USD', fxRows = null;
 const SCREEN_COLS = [
   { k: 'label', t: 'INSTRUMENT' }, { k: 'price', t: 'LAST' },
   { k: 'd1', t: '1D' }, { k: 'w1', t: '1W' }, { k: 'm1', t: '1M' }, { k: 'ytd', t: 'YTD' }, { k: 'y1', t: '1Y' },
   { k: 'stretch', t: 'STRETCH' }, { k: 'tight', t: 'TIGHT' }, { k: 'basisPct', t: 'BASIS%' }, { k: 'posPct', t: 'CROWD' },
 ];
+const DELTA_KEYS = ['d1', 'w1', 'm1', 'ytd', 'y1'];
+function effDeltas(r) { return (fxBase !== 'USD' && fxRows && fxRows[r.id]) ? fxRows[r.id] : (r.deltas || {}); }
 function screenVal(r, k) {
   if (k === 'label' || k === 'price') return r[k];
-  if (k === 'absd1') return r.deltas ? Math.abs(r.deltas.d1 == null ? 0 : r.deltas.d1) : -1;
-  if (['d1', 'w1', 'm1', 'ytd', 'y1'].includes(k)) return r.deltas ? r.deltas[k] : null;
+  if (k === 'absd1') { const d = effDeltas(r); return Math.abs(d.d1 == null ? 0 : d.d1); }
+  if (DELTA_KEYS.includes(k)) return effDeltas(r)[k];
   return r[k];
 }
 async function loadScreen() {
@@ -2111,7 +2113,7 @@ function renderScreen() {
   const head = SCREEN_COLS.map((c) => `<th class="${key === c.k ? 'on' : ''}" data-k="${c.k}">${c.t}${key === c.k ? (dir < 0 ? ' ▼' : ' ▲') : ''}</th>`).join('');
   const pcell = (v) => (v == null ? '<td class="num">—</td>' : `<td class="num ${cls(v)}">${pctf(v)}</td>`);
   const body = rows.map((r) => {
-    const d = r.deltas || {};
+    const d = effDeltas(r);
     const flagCls = r.posFlag === 'CROWDED LONG' || r.posFlag === 'CROWDED SHORT' ? 'hot' : r.posFlag === 'STRETCHED LONG' ? 'warm' : r.posFlag === 'WASHED-OUT' ? 'cool' : '';
     const crowd = r.posPct == null ? '<td class="num">—</td>' : `<td class="num"><span class="sc-flag ${flagCls}" title="${r.posFlag || ''}">${r.posPct}</span></td>`;
     const s = (v) => `<td class="num">${v == null ? '—' : v}</td>`;
@@ -2121,8 +2123,19 @@ function renderScreen() {
       + s(r.stretch) + s(r.tight) + s(r.basisPct) + crowd + '</tr>';
   }).join('');
   el.innerHTML = `<div class="sc-wrap"><table class="sc-table"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>`
-    + '<div class="sc-note dimtext">Click a header to sort; click a row to open its chart. STRETCH is −100 (cheap)…+100 (rich) · TIGHT is 0 (oversupplied)…100 (undersupplied) · BASIS% and CROWD are percentiles.</div>';
+    + `<div class="sc-note dimtext">${fxBase !== 'USD' ? `Returns converted to <b>${fxBase}</b> (USD move + the currency's own move). ` : ''}Click a header to sort; click a row to open its chart. STRETCH is −100 (cheap)…+100 (rich) · TIGHT is 0 (oversupplied)…100 (undersupplied) · BASIS% and CROWD are percentiles.</div>`;
 }
+$('base-cur')?.addEventListener('change', async (e) => {
+  fxBase = e.target.value || 'USD';
+  fxRows = null;
+  if (fxBase !== 'USD') {
+    try {
+      const d = await jget('/api/fxadjusted?base=' + encodeURIComponent(fxBase), 3600000);
+      fxRows = Object.fromEntries(((d && d.rows) || []).map((r) => [r.id, r.deltas]));
+    } catch { fxRows = null; }
+  }
+  renderScreen();
+});
 $('screen')?.addEventListener('click', (e) => {
   const th = e.target.closest('th[data-k]');
   if (th) { const k = th.dataset.k; screenSort = { key: k, dir: screenSort.key === k ? -screenSort.dir : (k === 'label' ? 1 : -1) }; renderScreen(); return; }
