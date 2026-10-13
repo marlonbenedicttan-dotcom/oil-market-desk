@@ -1712,6 +1712,40 @@ const MACRO_COUNTRIES = {
 };
 const ALL_COUNTRIES = Object.fromEntries(Object.entries(MACRO_COUNTRIES).flatMap(([region, list]) => list.map((c) => [c.id, { ...c, region }])));
 const COUNTRY_MACRO_REGION = { us: 'us', ea: 'eu' }; // where free official macro is actually current
+
+// Country-scoped upcoming catalysts — real dated releases from TradingView's public economic
+// calendar (the same JSON its own calendar page uses; it 403s without an Origin header). Only
+// high/medium-importance releases are kept, so the list stays short and relevant to the country.
+const TV_COUNTRY = { us: 'US', ea: 'EU', de: 'DE', fr: 'FR', uk: 'GB', jp: 'JP', in: 'IN', cn: 'CN', hk: 'HK', sg: 'SG', id: 'ID', th: 'TH', my: 'MY', ph: 'PH', vn: 'VN', kr: 'KR', au: 'AU', tw: 'TW' };
+const TV_HEADERS = { ...UA, Origin: 'https://www.tradingview.com', Referer: 'https://www.tradingview.com/economic-calendar/', Accept: 'application/json' };
+const etParts = (iso) => {
+  const d = new Date(iso);
+  const date = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York' }).format(d);
+  const time = new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'America/New_York' }).format(d).replace(/\s/g, '').toLowerCase();
+  return { date, time: `${time} ET` };
+};
+const tvCalendar = (cc) => cached('tvcal:' + cc, 3 * 3600e3, async () => {
+  const from = new Date().toISOString();
+  const to = new Date(Date.now() + 42 * 864e5).toISOString();
+  const r = await fetch(`https://economic-calendar.tradingview.com/events?from=${from}&to=${to}&countries=${cc}`, { headers: TV_HEADERS });
+  if (!r.ok) throw new Error(`tradingview ${cc} -> ${r.status}`);
+  const j = await r.json();
+  // Keep the notable releases; if a country only has low-impact ones (HK, VN, TW…), show those
+  // rather than an empty list so the panel still reflects the country. Holidays are not catalysts.
+  const all = (j.result || []).filter((e) => e.date && !/\b(holiday|festival)\b/i.test(e.title || ''));
+  const strong = all.filter((e) => e.importance >= 0);
+  return (strong.length ? strong : all).map((e) => ({ ...etParts(e.date), name: e.title, importance: e.importance }));
+});
+async function getCatalysts(country) {
+  const id = ALL_COUNTRIES[country] ? country : 'us';
+  const label = (ALL_COUNTRIES[id] || {}).label || id.toUpperCase();
+  let events = [], source = 'TradingView';
+  try { events = (await tvCalendar(TV_COUNTRY[id])).slice(0, 12); } catch { events = []; }
+  if (!events.length && id === 'us') { // offline fallback: the app's own recurring US releases
+    try { events = ((await getCalendar()).events || []).filter((e) => e.date).map((e) => ({ date: e.date, time: '', name: e.name })).slice(0, 12); source = 'built-in'; } catch {}
+  }
+  return { updated: new Date().toISOString(), country: id, label, source, events };
+}
 // World Bank annual fundamentals (free, no key). Annual data — always labelled by year.
 async function wbSeries(iso3, ind) {
   if (!iso3) return [];
@@ -2764,6 +2798,10 @@ const server = http.createServer(async (req, res) => {
       return sendJSON(res, 200, await getMacroNews(id).catch((e) => ({ error: String(e.message), items: [] })));
     }
     if (url.pathname === '/api/countries') return sendJSON(res, 200, MACRO_COUNTRIES);
+    if (url.pathname === '/api/catalysts') {
+      const c = url.searchParams.get('country') || 'us';
+      return sendJSON(res, 200, await getCatalysts(c).catch((e) => ({ error: String(e.message), events: [] })));
+    }
     if (url.pathname === '/api/macro-tickers') return sendJSON(res, 200, await getMacroTickers().catch((e) => ({ error: String(e.message), items: [] })));
     if (url.pathname === '/api/region-quotes') {
       const id = url.searchParams.get('id');

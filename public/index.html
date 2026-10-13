@@ -23,7 +23,7 @@
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
   <link rel="preconnect" href="https://unpkg.com" crossorigin />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <link rel="stylesheet" href="style.css?v=49" />
+  <link rel="stylesheet" href="style.css?v=50" />
   <noscript><style>#boot{display:none!important}</style></noscript>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -352,10 +352,10 @@
         <div class="ph"><span class="ph-t">CURRENCIES — <span id="fx-scope">REGION</span></span><span class="dimtext">the chosen region's currencies · click one for its chart</span></div>
         <div id="macro-fx" class="macro"></div>
       </section>
-      <section class="panel">
-        <div class="ph"><span class="ph-t">UPCOMING CATALYSTS</span></div>
-        <div id="macro-events" class="macro"></div>
-      </section>
+      <details class="fold-panel" id="cat-fold">
+        <summary>UPCOMING CATALYSTS — <span id="cat-scope">REGION</span> <span id="cat-count" class="dimtext"></span></summary>
+        <div class="fold-body"><div id="macro-events" class="macro"></div></div>
+      </details>
     </div>
 
     <!-- exports live in the footer on phones (moved out of the crowded header) -->
@@ -394,6 +394,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=92"></script>
+  <script src="app.js?v=93"></script>
 </body>
 </html>

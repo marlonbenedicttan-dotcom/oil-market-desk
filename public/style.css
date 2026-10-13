@@ -313,8 +313,27 @@ footer li { margin-bottom: 2px; }
 .dl b { font-size: 10px; font-weight: 700; font-variant-numeric: tabular-nums; }
 .fresh { display: block; margin-top: 3px; font-size: 9px; color: var(--dim); letter-spacing: .3px; }
 .fresh em { font-style: normal; color: var(--amber); }
-.bb-card .dstrip, .kpi .dstrip { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 1px 6px; }
+.bb-card .dstrip { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 1px 6px; }
+.kpi .dstrip { display: flex; flex-wrap: wrap; justify-content: flex-start; gap: 1px 14px; }
 .bb-card .dl, .kpi .dl { align-items: flex-start; min-width: 0; }
+/* Region currencies — one tidy row per currency (name · price · today · 1D/1W/1M/YTD/1Y) so the same
+   clean layout works whether a region has one currency or nine. The delta column absorbs the slack,
+   so the numbers stay packed left instead of being flung to the far edge of a stretched tile. */
+#macro-fx .kpis { display: grid; grid-template-columns: 1fr; gap: 0; }
+#macro-fx .kpi { display: grid; grid-template-columns: minmax(150px, 240px) 100px 84px minmax(0, 1fr); align-items: center; gap: 2px 14px; padding: 9px 14px; border-right: 0; border-bottom: 1px solid var(--line); }
+#macro-fx .kpi:last-child { border-bottom: 0; }
+#macro-fx .kpi-v { margin: 0; font-size: 19px; }
+#macro-fx .kpi-s { font-size: 11px; }
+#macro-fx .dl { min-width: 42px; }
+@media (max-width: 640px) {
+  #macro-fx .kpi { grid-template-columns: 1fr auto; gap: 2px 10px; }
+  #macro-fx .kpi-l { grid-column: 1; grid-row: 1; }
+  #macro-fx .kpi-v { grid-column: 2; grid-row: 1; text-align: right; }
+  #macro-fx .kpi-s { grid-column: 2; grid-row: 2; text-align: right; }
+  #macro-fx .dstrip { grid-column: 1 / -1; grid-row: 3; margin-top: 3px; }
+}
+/* Catalysts list reuses the calendar row; a high-importance release gets a red tag. */
+.cal-src.hi { color: var(--red); }
 .fold-panel { background: var(--panel); border: 1px solid var(--line); }
 .fold-panel > summary { cursor: pointer; list-style: none; padding: 9px 12px; font-size: 11px; letter-spacing: 2px; color: var(--amber); }
 .fold-panel > summary::-webkit-details-marker { display: none; }

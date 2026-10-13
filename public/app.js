@@ -1798,7 +1798,16 @@ async function loadReroute() { try { renderReroute(await getJSON('/api/reroute')
 function macroTile(label, value, sub, klass, metric, extra) {
   return `<div class="kpi${metric ? ' clickable' : ''}"${metric ? ` data-metric="${metric}" title="Click for the chart"` : ''}><div class="kpi-l">${label}</div><div class="kpi-v ${klass || ''}">${value}</div><div class="kpi-s dimtext">${sub || ''}</div>${extra || ''}</div>`;
 }
+let countriesP = null;          // in-flight /api/countries fetch, shared by boot + the region renderer
+function ensureCountries() {
+  if (macroCountries) return Promise.resolve(macroCountries);
+  if (!countriesP) countriesP = getJSON('/api/countries').catch(() => null).then((c) => { macroCountries = macroCountries || c || {}; return macroCountries; });
+  return countriesP;
+}
 function renderMacroRegion() {
+  // The country lists arrive with a boot-time fetch. If a region is picked before they land (or the
+  // fetch is slow), rendering now would fall back to the US — so wait, then render the picked region.
+  if (!macroCountries) { ensureCountries().then(renderMacroRegion); return; }
   const sel = $('macro-country');
   const list = (macroCountries && macroCountries[macroRegion]) || [];
   if (sel) {
@@ -1834,6 +1843,26 @@ async function loadMacroTickers() {
   if (items) macroTickers = items;
   if (data) renderTicker(data);
 }
+// Upcoming catalysts — scoped to the chosen country, collapsed under its own header.
+const CAT_DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const CAT_MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const catDate = (d) => { const t = new Date(d + 'T12:00:00Z'); return `${CAT_DOW[t.getUTCDay()]} ${t.getUTCDate()} ${CAT_MON[t.getUTCMonth()]}`; };
+async function loadCatalysts() {
+  const el = $('macro-events');
+  if (!el) return;
+  const req = macroCountry || 'us';
+  el.innerHTML = stLoading();
+  let d = null;
+  try { d = await getJSON('/api/catalysts?country=' + encodeURIComponent(req)); } catch {}
+  if (req !== (macroCountry || 'us')) return;   // newest country wins
+  const scope = $('cat-scope'); if (scope) scope.textContent = ((d && d.label) || req).toUpperCase();
+  const items = (d && d.events) || [];
+  const cnt = $('cat-count'); if (cnt) cnt.textContent = items.length ? `· ${items.length}` : '';
+  el.innerHTML = items.length
+    ? items.map((e) => `<div class="cal-row"><span class="cal-date">${catDate(e.date)}</span><span class="cal-name">${e.name}${e.time ? ` <span class="dimtext">· ${e.time}</span>` : ''}</span><span class="cal-src${e.importance >= 1 ? ' hi' : ''}">${e.importance >= 1 ? 'High' : e.importance === 0 ? 'Med' : 'Low'}</span></div>`).join('')
+      + '<div class="macro-note">Near-term releases for this country, from TradingView\'s economic calendar. The full dated schedule (including FOMC) lives in the Calendar panel.</div>'
+    : stEmpty('No releases scheduled for ' + ((d && d.label) || req) + ' over the next 6 weeks.');
+}
 // Cached fetch: instant if we already have it (or prefetched).
 async function fetchCountry(id) {
   const hit = countryCache[id];
@@ -1853,6 +1882,7 @@ async function loadCountry() {
   const el = $('macro-region-panel');
   if (!el) return;
   const req = macroCountry;                       // guard: newest country wins
+  loadCatalysts();                                // country-scoped · independent of the heavier panel below
   const showUsJp = req === 'us' || req === 'jp';
   const up = $('usjp-panel');
   if (up) up.classList.toggle('hidden', !showUsJp);
@@ -2310,7 +2340,7 @@ async function loadMacroNews() {
   if (req !== macroCountry) return;
   renderNews(n || { items: [] }, 'macro-news', 'macro-news-sub');
 }
-function renderMacroDash(md, corr, events) {
+function renderMacroDash(md, corr) {
   if (!md || md.error) return;
   macroMd = md;
   renderMacroRegion();
@@ -2326,7 +2356,6 @@ function renderMacroDash(md, corr, events) {
   const c = corr || {};
   const cTile = (label, v, note) => macroTile(label, v != null ? v : '—', note, v != null ? (v < 0 ? 'neg' : 'pos') : '');
   const mcorr = $('macro-corr'); if (mcorr) mcorr.innerHTML = `<div class="kpis">${cTile('OIL vs US DOLLAR', c.oilVsDollar, 'usually negative')}${cTile('OIL vs VIX', c.oilVsVix, 'risk-off link')}${cTile('OIL vs S&P 500', c.oilVsSp500, 'risk-on link')}</div>`;
-  $('macro-events').innerHTML = (events || []).map((e) => `<div class="read-line"><b>${e.name}</b>${e.date ? ` — ${e.date}` : ''} <span class="dimtext">${e.note || ''}</span></div>`).join('');
 }
 // Curve-over-time only exists for the NYMEX energy roots (CL/BZ/NG/RB/HO);
 // it self-hides for metals/ags where the contract-month history isn't free.
@@ -2430,13 +2459,13 @@ async function loadExtraSlow() {
       getJSON('/api/flares').catch(() => null),
       getJSON('/api/sar').catch(() => null),
     ]);
-    const [md, corr, ev] = await Promise.all([
+    const [md, corr] = await Promise.all([
       getJSON('/api/macrodash').catch(() => null),
       getJSON('/api/correlations').catch(() => null),
-      getJSON('/api/calendar').then((x) => (x && x.events) || null).catch(() => null),
     ]);
     renderSatellite(sar, flr);
-    renderMacroDash(md, corr, ev);
+    renderMacroDash(md, corr);
+    loadCatalysts();
     if (md?.fx) { lastFx = md.fx; renderTicker(data); const lv = $('rule-level'); if ($('home-rules') && !$('home-rules').innerHTML.includes('CURRENCIES') && (!lv || !lv.value)) renderRules(); }
     extraSlowDone = true;
   } catch (e) {}
@@ -2575,6 +2604,7 @@ $('macro-links')?.addEventListener('click', (e) => { const el = e.target.closest
   const rateP = getJSON('/api/rates').catch(() => []);
   const mkP = getJSON('/api/markets').catch(() => []);
   const ctryP = getJSON('/api/countries').catch(() => null);
+  countriesP = ctryP;   // shared with ensureCountries() so a slow boot can't lose the user's pick
   await loadHistory().catch(() => {});   // never fatal — degrades to an empty history
   fxList = await fxP; rateList = await rateP;
   renderCmpPresets();
