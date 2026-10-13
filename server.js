@@ -6,7 +6,7 @@ import path from 'node:path';
 import zlib from 'node:zlib';
 import { execFile } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { sgn, businessDaysSince, inBox, haversineNm, horizonDeltas, horizonDeltasAbs, isoWeek, monthly, pctOver, percentile, realizedVol, computeCracks, computeCrush, backAdjust, pearson, logReturns, curveTightness, inventoryTightness, weightedScore, seasonalGrade, seasonalAhead, contractMonthsBetween, signedPosition, signedMove, stretchScore, sdLabel, attributeMoves, newsContextOk, METHODOLOGY, positioningFlag, positioningRead, maxDrawdown, realizedVolTerm, corrMatrix, fxAdjust, parseOcc } from './src/lib.js';
+import { sgn, businessDaysSince, inBox, haversineNm, horizonDeltas, horizonDeltasAbs, isoWeek, monthly, pctOver, percentile, realizedVol, computeCracks, computeCrush, backAdjust, pearson, logReturns, curveTightness, inventoryTightness, weightedScore, seasonalGrade, seasonalAhead, contractMonthsBetween, signedPosition, signedMove, stretchScore, sdLabel, attributeMoves, newsContextOk, METHODOLOGY, positioningFlag, positioningRead, maxDrawdown, realizedVolTerm, corrMatrix, fxAdjust, parseOcc, drawdownWord, volWord, volTrend, topPairs, bestDiversifier, riskRead } from './src/lib.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC = path.join(__dirname, 'public');
@@ -685,16 +685,15 @@ async function getRisk() {
     const metrics = RISK_SERIES.map((s) => {
       const dates = Object.keys(maps[s.key]).sort();
       const vals = dates.map((d) => maps[s.key][d]);
-      return { key: s.key, label: s.label, rate: !!s.rate, drawdown: maxDrawdown(vals), vol: realizedVolTerm(vals) };
+      const dd = maxDrawdown(vals), vol = realizedVolTerm(vals);
+      return { key: s.key, label: s.label, short: s.short, rate: !!s.rate, drawdown: dd, ddWord: drawdownWord(dd), vol, volWord: volWord(vol.w30), volTrend: volTrend(vol) };
     });
     const dates = [...new Set(RISK_SERIES.flatMap((s) => Object.keys(maps[s.key])))].sort();
-    return {
-      updated: new Date().toISOString(),
-      metrics,
-      keys: RISK_SERIES.map((s) => ({ key: s.key, label: s.label, short: s.short })),
-      matrix: corrMatrix(maps, dates),
-      days: dates.length,
-    };
+    const keys = RISK_SERIES.map((s) => ({ key: s.key, label: s.label, short: s.short }));
+    const matrix = corrMatrix(maps, dates);
+    const pairs = topPairs(matrix, keys, 3);
+    const div = bestDiversifier(matrix, keys);
+    return { updated: new Date().toISOString(), metrics, keys, matrix, days: dates.length, pairs, div, read: riskRead(metrics, pairs, div) };
   });
 }
 

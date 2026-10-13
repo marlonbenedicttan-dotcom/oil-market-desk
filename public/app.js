@@ -2225,36 +2225,54 @@ $('calendar')?.addEventListener('click', (e) => {
   if (e.target.id === 'cal-next') { calMonth.m++; if (calMonth.m > 11) { calMonth.m = 0; calMonth.y++; } renderCalendar(); return; }
   if (e.target.id === 'cal-today') { const n = new Date(); calMonth = { y: n.getUTCFullYear(), m: n.getUTCMonth() }; renderCalendar(); }
 });
-// Risk & correlation — max drawdown + a realised-vol term structure, and a correlation matrix.
+// Risk & correlation — a plain read, bars-with-words, and a focus view (full matrix behind a fold).
+let riskData = null, riskFocus = null;
 async function loadRisk() {
   const el = $('risk'); if (!el) return;
   if (!el.innerHTML) el.innerHTML = stLoading('Loading risk metrics…');
   let d = null; try { d = await jget('/api/risk', 3600000); } catch { d = null; }
+  riskData = d;
+  if (d && d.keys && d.keys.length && !riskFocus) riskFocus = d.keys[0].key;
   renderRisk(d);
 }
 function renderRisk(d) {
   const el = $('risk'); if (!el) return;
-  const sub = $('risk-sub'); if (sub) sub.textContent = 'max drawdown + realised vol over 1y · correlation of daily returns';
+  const sub = $('risk-sub'); if (sub) sub.textContent = 'worst 1-year fall · how jumpy · what moves together (daily returns)';
   const metrics = (d && d.metrics) || [];
   if (!metrics.length) { el.innerHTML = stError('Couldn’t load risk metrics — retrying.'); return; }
-  const vol = (v) => (v == null ? '—' : v.toFixed(0) + '%');
-  const rows = metrics.map((m) => `<div class="rk-row"><span class="rk-name">${m.label}</span>`
-    + `<span class="rk-dd ${m.drawdown == null ? '' : m.drawdown <= -20 ? 'neg' : m.drawdown <= -8 ? 'warm' : ''}">${m.drawdown == null ? '—' : m.drawdown.toFixed(1) + '%'}</span>`
-    + `<span class="rk-v">${vol(m.vol.w30)}</span><span class="rk-v">${vol(m.vol.w60)}</span><span class="rk-v">${vol(m.vol.w90)}</span></div>`).join('');
+  const maxDD = Math.max(1, ...metrics.map((m) => Math.abs(m.drawdown || 0)));
+  const ddCls = (w) => (w === 'deep fall' ? 'deep' : w === 'barely moved' || w === 'mild fall' ? 'mild' : '');
+  const arrow = { rising: '↑', falling: '↓', flat: '→' };
+  const rows = metrics.map((m) => {
+    const w = Math.abs(m.drawdown || 0) / maxDD * 100;
+    const vw = m.vol && m.vol.w30;
+    return `<div class="rk-row"><span class="rk-name">${m.label}</span>`
+      + `<span class="rk-dd" title="worst peak-to-trough fall over the last year">${m.drawdown == null ? '—' : m.drawdown.toFixed(0) + '%'}</span>`
+      + `<span class="rk-bar ${ddCls(m.ddWord)}"><i style="width:${w.toFixed(0)}%"></i></span>`
+      + `<span class="rk-word">${m.ddWord}</span>`
+      + `<span class="rk-vol" title="annualised realised volatility over 30 days (and the 30-vs-90 trend)">${vw == null ? '—' : Math.round(vw) + '%'} <em>${m.volWord || ''}</em> ${m.volTrend ? arrow[m.volTrend] : ''}</span></div>`;
+  }).join('');
   const keys = (d && d.keys) || [];
   const mtx = (d && d.matrix) || {};
-  const short = (k) => k.short || String(k.label).replace(/\s*\(.*\)/, '');
+  const focusLabel = ((keys.find((k) => k.key === riskFocus) || {}).label) || '';
+  const picks = keys.map((k) => `<option value="${k.key}"${k.key === riskFocus ? ' selected' : ''}>${k.label}</option>`).join('');
+  const row = (riskFocus && mtx[riskFocus]) || {};
+  const frows = keys.filter((k) => k.key !== riskFocus && row[k.key] != null).map((k) => ({ ...k, r: row[k.key] })).sort((a, b) => Math.abs(b.r) - Math.abs(a.r));
+  const fb = frows.map((k) => `<div class="crf-row"><span class="crf-k">${k.label}</span><span class="crf-bar" title="${focusLabel} ${k.r > 0 ? 'moves WITH' : 'moves OPPOSITE'} ${k.label} (r = ${k.r})"><i class="${k.r >= 0 ? 'pos' : 'neg'}" style="width:${(Math.abs(k.r) * 50).toFixed(0)}%"></i></span><span class="crf-r ${k.r > 0 ? 'pos' : 'neg'}">${k.r > 0 ? '+' : ''}${k.r.toFixed(2)}</span></div>`).join('');
+  const short = (k) => k.short || k.label;
   const cls = (v) => (v == null ? '' : Math.abs(v) >= 0.6 ? (v > 0 ? 'hi' : 'hineg') : Math.abs(v) >= 0.3 ? 'mid' : 'lo');
-  const corr = keys.length ? '<div class="corr-wrap"><table class="corr-tbl"><thead><tr><th></th>'
-    + keys.map((k) => `<th>${short(k)}</th>`).join('') + '</tr></thead><tbody>'
-    + keys.map((a) => `<tr><th>${short(a)}</th>` + keys.map((b) => {
-        const v = a.key === b.key ? null : (mtx[a.key] ? mtx[a.key][b.key] : null);
-        return `<td class="${cls(v)}">${v == null ? '—' : (v > 0 ? '+' : '') + v.toFixed(2)}</td>`;
-      }).join('') + '</tr>').join('') + '</tbody></table></div>' : '';
-  el.innerHTML = '<div class="rk-head"><span class="rk-name">INSTRUMENT</span><span class="rk-dd">1Y MAX DD</span><span class="rk-v">VOL 30D</span><span class="rk-v">60D</span><span class="rk-v">90D</span></div>'
-    + rows + corr
-    + '<div class="sc-note dimtext">Max drawdown = the worst peak-to-trough fall over the last year (a risk gauge, not a forecast). Correlation is over daily returns: +1 moves together, −1 opposite. Vol is annualised.</div>';
+  const heat = '<div class="corr-wrap"><table class="corr-tbl"><thead><tr><th></th>' + keys.map((k) => `<th>${short(k)}</th>`).join('') + '</tr></thead><tbody>'
+    + keys.map((a) => `<tr><th>${short(a)}</th>` + keys.map((b) => { const v = a.key === b.key ? null : (mtx[a.key] ? mtx[a.key][b.key] : null); return `<td class="${cls(v)}">${v == null ? '—' : (v > 0 ? '+' : '') + v.toFixed(2)}</td>`; }).join('') + '</tr>').join('') + '</tbody></table></div>';
+  el.innerHTML = (d.read ? `<div class="risk-read">${d.read}</div>` : '')
+    + '<div class="rk-head"><span class="rk-name">INSTRUMENT</span><span class="rk-dd">FALL</span><span class="rk-bar"></span><span class="rk-word">WORST 1Y</span><span class="rk-vol">HOW JUMPY (30d)</span></div>'
+    + rows
+    + `<div class="crf"><div class="crf-head">WHAT <select id="risk-focus" aria-label="Focus instrument">${picks}</select> MOVES WITH — lately</div>${fb || '<div class="dimtext">No overlapping history for this one.</div>'}</div>`
+    + `<details class="fold"><summary>▸ SHOW THE FULL CORRELATION MATRIX</summary><div class="note-body">${heat}<div class="sc-note dimtext">Every pair, over ~1 year of daily returns: <b>+1</b> = same direction, <b>−1</b> = opposite, <b>0</b> = unrelated. Colour is only a guide — the number is what counts.</div></div></details>`
+    + '<div class="sc-note dimtext">“Worst fall” = the biggest peak-to-trough drop over the last year (a risk gauge, not a forecast). “How jumpy” = annualised realised volatility; ↑ rising, ↓ falling. Correlation is about DAILY moves, and it changes with the regime. For a yield (US 10y) and VIX, a “fall” is a move in the level, not a P&amp;L.</div>';
 }
+$('risk')?.addEventListener('change', (e) => {
+  if (e.target.id === 'risk-focus') { riskFocus = e.target.value; renderRisk(riskData); }
+});
 async function loadHeadlines() {
   const el = $('headlines');
   if (!el) return;

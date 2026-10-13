@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { sgn, inBox, haversineNm, isoWeek, monthly, pctOver, percentile, realizedVol, computeCracks, computeCrush, backAdjust, pearson, logReturns, horizonDeltas, horizonDeltasAbs, curveTightness, inventoryTightness, weightedScore, seasonalGrade, seasonalAhead, contractMonthsBetween, signedPosition, signedMove, stretchScore, sdLabel, attributeMoves, newsContextOk, looksLikeProperNoun, NON_MARKET_CTX, METHODOLOGY, positioningFlag, positioningRead, maxDrawdown, realizedVolTerm, corrMatrix, fxAdjust, parseOcc } from '../src/lib.js';
+import { sgn, inBox, haversineNm, isoWeek, monthly, pctOver, percentile, realizedVol, computeCracks, computeCrush, backAdjust, pearson, logReturns, horizonDeltas, horizonDeltasAbs, curveTightness, inventoryTightness, weightedScore, seasonalGrade, seasonalAhead, contractMonthsBetween, signedPosition, signedMove, stretchScore, sdLabel, attributeMoves, newsContextOk, looksLikeProperNoun, NON_MARKET_CTX, METHODOLOGY, positioningFlag, positioningRead, maxDrawdown, realizedVolTerm, corrMatrix, fxAdjust, parseOcc, drawdownWord, volWord, volTrend, focusRows, topPairs, bestDiversifier, riskRead } from '../src/lib.js';
 
 test('sgn formats with sign', () => {
   assert.equal(sgn(4.39), '+4.39');
@@ -264,6 +264,45 @@ test('positioningFlag / positioningRead turn a percentile into a plain verdict',
   assert.match(positioningRead(95), /crowded long/i);
   assert.match(positioningRead(5), /squeeze/i);
   assert.equal(positioningRead(null), '');
+});
+
+test('risk words: drawdownWord / volWord / volTrend', () => {
+  assert.equal(drawdownWord(-39), 'deep fall');
+  assert.equal(drawdownWord(-12), 'moderate fall');
+  assert.equal(drawdownWord(-2), 'barely moved');
+  assert.equal(drawdownWord(null), '—');
+  assert.equal(volWord(87), 'very jumpy');
+  assert.equal(volWord(43), 'jumpy');
+  assert.equal(volWord(19), 'normal');
+  assert.equal(volWord(5), 'calm');
+  assert.equal(volTrend({ w30: 30, w90: 20 }), 'rising');
+  assert.equal(volTrend({ w30: 10, w90: 20 }), 'falling');
+  assert.equal(volTrend({ w30: 20, w90: 20 }), 'flat');
+});
+
+test('focusRows / topPairs / bestDiversifier read a correlation matrix', () => {
+  const keys = [{ key: 'a', label: 'A' }, { key: 'b', label: 'B' }, { key: 'c', label: 'C' }];
+  const m = { a: { a: 1, b: 0.5, c: -0.2 }, b: { a: 0.5, b: 1, c: -0.9 }, c: { a: -0.2, b: -0.9, c: 1 } };
+  assert.deepEqual(focusRows(m, 'a', keys).map((r) => [r.key, r.r]), [['b', 0.5], ['c', -0.2]]);
+  assert.equal(topPairs(m, keys)[0].r, -0.9);                        // strongest |r|
+  assert.equal(topPairs(m, keys)[0].a.key + topPairs(m, keys)[0].b.key, 'bc');
+  const div = bestDiversifier(m, keys);
+  assert.equal(div.key, 'a');                                        // (0.5+0.2)/2 = 0.35, the lowest
+  assert.equal(div.avg, 0.35);
+});
+
+test('riskRead produces a plain-English risk sentence', () => {
+  const metrics = [
+    { key: 'wti', label: 'WTI', drawdown: -39, vol: { w30: 43, w90: 48 }, volTrend: 'flat' },
+    { key: 'vix', label: 'VIX', drawdown: -20, vol: { w30: 87, w90: 90 }, volTrend: 'flat' },
+    { key: 'gold', label: 'Gold', drawdown: -25, vol: { w30: 19, w90: 24 }, volTrend: 'rising' },
+  ];
+  const s = riskRead(metrics, [{ a: { label: 'VIX' }, b: { label: 'S&P' }, r: -0.82 }], { label: 'Gold', avg: 0.12 });
+  assert.match(s, /Wildest here: <b>WTI<\/b>, down 39%/);
+  assert.match(s, /Jumpiest: <b>VIX<\/b> \(87% vol\)/);
+  assert.match(s, /Most independent: <b>Gold<\/b>/);
+  assert.match(s, /Strongest link on the board: <b>VIX ↔ S&P<\/b> \(-0\.82\)/);
+  assert.match(s, /Vol is building for Gold/);
 });
 
 test('parseOcc decodes an OCC option symbol', () => {

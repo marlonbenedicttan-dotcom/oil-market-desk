@@ -403,6 +403,61 @@ export function corrMatrix(seriesByKey, dates) {
   for (const a of keys) { m[a] = {}; for (const b of keys) m[a][b] = a === b ? 1 : pearson(rets[a], rets[b]); }
   return m;
 }
+// --- Plain words for the risk panel (so the copy is tested, not ad-hoc) ------
+export function drawdownWord(pct) {
+  if (pct == null) return '—';
+  const a = Math.abs(pct);
+  return a >= 35 ? 'deep fall' : a >= 20 ? 'big fall' : a >= 10 ? 'moderate fall' : a >= 4 ? 'mild fall' : 'barely moved';
+}
+export function volWord(v) {
+  if (v == null) return '—';
+  return v >= 60 ? 'very jumpy' : v >= 35 ? 'jumpy' : v >= 18 ? 'normal' : 'calm';
+}
+export function volTrend(term) {
+  if (!term || term.w30 == null || term.w90 == null) return null;
+  const d = term.w30 - term.w90, eps = Math.max(2, term.w90 * 0.12);
+  return d > eps ? 'rising' : d < -eps ? 'falling' : 'flat';
+}
+// One key's correlations with the rest, strongest first (for the default "what X moves with" view).
+export function focusRows(matrix, key, keys) {
+  const row = (matrix && matrix[key]) || {};
+  return (keys || []).filter((k) => k.key !== key && row[k.key] != null).map((k) => ({ ...k, r: row[k.key] })).sort((a, b) => Math.abs(b.r) - Math.abs(a.r));
+}
+// The strongest relationships in the whole matrix (off-diagonal), by |r|.
+export function topPairs(matrix, keys, n = 3) {
+  const out = [];
+  for (let i = 0; i < (keys || []).length; i++) for (let j = i + 1; j < keys.length; j++) {
+    const a = keys[i], b = keys[j];
+    const v = matrix[a.key] ? matrix[a.key][b.key] : null;
+    if (v != null) out.push({ a, b, r: v });
+  }
+  return out.sort((x, y) => Math.abs(y.r) - Math.abs(x.r)).slice(0, n);
+}
+// The most independent series — lowest average |r| against the others.
+export function bestDiversifier(matrix, keys) {
+  let best = null, bestAvg = Infinity;
+  for (const a of keys || []) {
+    const row = matrix[a.key] || {};
+    let sum = 0, n = 0;
+    for (const b of keys) { if (b.key === a.key) continue; const v = row[b.key]; if (v != null) { sum += Math.abs(v); n++; } }
+    if (n) { const avg = sum / n; if (avg < bestAvg) { bestAvg = avg; best = a; } }
+  }
+  return best ? { key: best.key, label: best.label, avg: +bestAvg.toFixed(2) } : null;
+}
+// One plain-English paragraph summarising the risk board.
+export function riskRead(metrics, pairs, div) {
+  const list = (metrics || []).filter((m) => m.drawdown != null);
+  if (list.length < 2) return '';
+  const wildest = list.slice().sort((a, b) => a.drawdown - b.drawdown)[0];
+  const jumpy = (metrics || []).filter((m) => m.vol && m.vol.w30 != null).sort((a, b) => b.vol.w30 - a.vol.w30)[0];
+  const rising = (metrics || []).filter((m) => m.volTrend === 'rising').map((m) => m.label);
+  const s = [`Wildest here: <b>${wildest.label}</b>, down ${Math.abs(wildest.drawdown).toFixed(0)}% peak-to-trough over the year.`];
+  if (jumpy && jumpy.key !== wildest.key) s.push(`Jumpiest: <b>${jumpy.label}</b> (${Math.round(jumpy.vol.w30)}% vol).`);
+  if (div) s.push(`Most independent: <b>${div.label}</b> (average link ${div.avg}).`);
+  if (pairs && pairs.length) s.push(`Strongest link on the board: <b>${pairs[0].a.label} ↔ ${pairs[0].b.label}</b> (${pairs[0].r > 0 ? '+' : ''}${pairs[0].r.toFixed(2)}).`);
+  if (rising.length) s.push(`Vol is building for ${rising.join(', ')}.`);
+  return s.join(' ');
+}
 // CFTC positioning (managed money / non-commercial net) — turn a 0-100 percentile of the spec net
 // into a plain read. High = crowded long (squeeze risk), low = washed-out / crowded short.
 export function positioningFlag(pct) {
