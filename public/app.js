@@ -592,6 +592,7 @@ function selectMarket(id) {
   loadNews();
   loadFundamentals();
   loadPositioning();
+  loadOptions();
   renderChart();
   syncCompareToSelection();
 }
@@ -1445,6 +1446,34 @@ function renderPositioning(d) {
   if (others.length) html += `<div class="pos-chips"><span class="dimtext" style="align-self:center">also covered:</span>`
     + others.map((it) => `<span class="pos-chip" title="${it.label} — ${it.read || ''}">${String(it.label).replace(/\s*\(.*\)/, '')} <em>${it.latest ? num(it.latest.net) : '—'}</em> <span class="pos-flag ${(it.flag || {}).tone || 'mid'}">${(it.flag || {}).label || ''}</span></span>`).join('') + '</div>';
   el.innerHTML = html;
+}
+// Options (CBOE delayed, via the commodity's ETF proxy) — vol, put/call and 25-delta skew.
+async function loadOptions() {
+  const el = $('options'); if (!el) return;
+  const seg = currentMarket;
+  const mk = markets.find((m) => m.id === seg) || {};
+  const id = currentComponent || mk.primary || seg;
+  el.innerHTML = stLoading('Loading options…');
+  let d = null; try { d = await jget('/api/options?id=' + encodeURIComponent(id), 1800000); } catch { d = null; }
+  if (seg !== currentMarket || id !== (currentComponent || (markets.find((m) => m.id === currentMarket) || {}).primary || currentMarket)) return;
+  renderOptions(d);
+}
+function renderOptions(d) {
+  const el = $('options'); if (!el) return;
+  const sub = $('opt-sub');
+  if (!d || d.error) { el.innerHTML = stEmpty('No free options series for this instrument — its ETF proxy has no listed options.'); if (sub) sub.textContent = ''; return; }
+  if (sub) sub.textContent = `${d.proxy} ETF options · CBOE delayed · as of ${d.asOf || '—'}`;
+  const iv = d.atmIv, pc = d.pcOi, pcv = d.pcVol, sk = d.skew;
+  const pcCls = pc == null ? '' : pc >= 1.2 ? 'neg' : pc <= 0.8 ? 'pos' : '';
+  const skCls = sk == null ? '' : sk >= 1 ? 'neg' : sk <= -1 ? 'pos' : '';
+  const cell = (k, v, cls, s) => `<div class="opt-cell"><div class="opt-k">${k}</div><div class="opt-v ${cls}">${v}</div><div class="opt-s dimtext">${s}</div></div>`;
+  el.innerHTML = '<div class="opt-grid">'
+    + cell('ATM IMPLIED VOL', iv == null ? '—' : iv.toFixed(1) + '%', '', iv == null ? '' : `${iv >= 40 ? 'elevated' : iv <= 20 ? 'calm' : 'normal'} · ${d.expiry || ''}`)
+    + cell('PUT / CALL · open interest', pc == null ? '—' : pc.toFixed(2), pcCls, pc == null ? '' : pc >= 1.2 ? 'put-heavy — defensive' : pc <= 0.8 ? 'call-heavy — greedy' : 'balanced')
+    + cell('PUT / CALL · volume', pcv == null ? '—' : pcv.toFixed(2), '', "today's flow")
+    + cell('25Δ SKEW · put − call IV', sk == null ? '—' : (sk > 0 ? '+' : '') + sk.toFixed(1), skCls, sk == null ? '' : sk >= 1 ? 'puts bid — hedging' : sk <= -1 ? 'calls bid — chasing upside' : 'flat')
+    + '</div>'
+    + `<div class="pos-note dimtext">From the <b>${d.proxy}</b> ETF's options (a liquid proxy, not the futures options themselves) · CBOE delayed. Total open interest ${Number(d.totalOi || 0).toLocaleString()}. IV rank needs a stored history, so it is not shown.</div>`;
 }
 function sparkline(vals, w = 240, h = 40) {
   const xs = vals.filter((v) => v != null);

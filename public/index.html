@@ -21,7 +21,7 @@
   <link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png" />
   <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <link rel="stylesheet" href="style.css?v=43" />
+  <link rel="stylesheet" href="style.css?v=44" />
   <noscript><style>#boot{display:none!important}</style></noscript>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -223,6 +223,12 @@
         <div id="positioning" class="positioning"></div>
       </section>
 
+      <!-- OPTIONS: implied vol, put/call, skew (CBOE delayed, via the ETF proxy) -->
+      <section class="panel market-only" data-when="*" id="options-panel">
+        <div class="ph"><span class="ph-t">🎚️ OPTIONS — vol, fear &amp; skew</span><span id="opt-sub" class="dimtext"></span></div>
+        <div id="options" class="options"></div>
+      </section>
+
       <!-- REFINED only: refining margins (the sector's core signal) + who it helps/hurts -->
       <section class="panel market-only" data-when="refined">
         <div class="ph"><span class="ph-t">🏭 REFINING MARGINS — DIESEL · JET · GASOLINE</span><span class="dimtext">profit per barrel</span></div>
@@ -370,6 +376,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=84"></script>
+  <script src="app.js?v=85"></script>
 </body>
 </html>

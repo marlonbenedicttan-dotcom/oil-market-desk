@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { sgn, inBox, haversineNm, isoWeek, monthly, pctOver, percentile, realizedVol, computeCracks, computeCrush, backAdjust, pearson, logReturns, horizonDeltas, horizonDeltasAbs, curveTightness, inventoryTightness, weightedScore, seasonalGrade, seasonalAhead, contractMonthsBetween, signedPosition, signedMove, stretchScore, sdLabel, attributeMoves, newsContextOk, looksLikeProperNoun, NON_MARKET_CTX, METHODOLOGY, positioningFlag, positioningRead, maxDrawdown, realizedVolTerm, corrMatrix, fxAdjust } from '../src/lib.js';
+import { sgn, inBox, haversineNm, isoWeek, monthly, pctOver, percentile, realizedVol, computeCracks, computeCrush, backAdjust, pearson, logReturns, horizonDeltas, horizonDeltasAbs, curveTightness, inventoryTightness, weightedScore, seasonalGrade, seasonalAhead, contractMonthsBetween, signedPosition, signedMove, stretchScore, sdLabel, attributeMoves, newsContextOk, looksLikeProperNoun, NON_MARKET_CTX, METHODOLOGY, positioningFlag, positioningRead, maxDrawdown, realizedVolTerm, corrMatrix, fxAdjust, parseOcc } from '../src/lib.js';
 
 test('sgn formats with sign', () => {
   assert.equal(sgn(4.39), '+4.39');
@@ -264,6 +264,13 @@ test('positioningFlag / positioningRead turn a percentile into a plain verdict',
   assert.match(positioningRead(95), /crowded long/i);
   assert.match(positioningRead(5), /squeeze/i);
   assert.equal(positioningRead(null), '');
+});
+
+test('parseOcc decodes an OCC option symbol', () => {
+  assert.deepEqual(parseOcc('USO261014C00123000'), { root: 'USO', expiry: '2026-10-14', type: 'call', strike: 123 });
+  assert.deepEqual(parseOcc('GLD261218P00450000'), { root: 'GLD', expiry: '2026-12-18', type: 'put', strike: 450 });
+  assert.equal(parseOcc('not-an-option'), null);
+  assert.equal(parseOcc(null), null);
 });
 
 test('fxAdjust converts a USD return into a base-currency return', () => {

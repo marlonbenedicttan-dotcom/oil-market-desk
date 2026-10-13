@@ -6,7 +6,7 @@ import path from 'node:path';
 import zlib from 'node:zlib';
 import { execFile } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { sgn, businessDaysSince, inBox, haversineNm, horizonDeltas, horizonDeltasAbs, isoWeek, monthly, pctOver, percentile, realizedVol, computeCracks, computeCrush, backAdjust, pearson, logReturns, curveTightness, inventoryTightness, weightedScore, seasonalGrade, seasonalAhead, contractMonthsBetween, signedPosition, signedMove, stretchScore, sdLabel, attributeMoves, newsContextOk, METHODOLOGY, positioningFlag, positioningRead, maxDrawdown, realizedVolTerm, corrMatrix, fxAdjust } from './src/lib.js';
+import { sgn, businessDaysSince, inBox, haversineNm, horizonDeltas, horizonDeltasAbs, isoWeek, monthly, pctOver, percentile, realizedVol, computeCracks, computeCrush, backAdjust, pearson, logReturns, curveTightness, inventoryTightness, weightedScore, seasonalGrade, seasonalAhead, contractMonthsBetween, signedPosition, signedMove, stretchScore, sdLabel, attributeMoves, newsContextOk, METHODOLOGY, positioningFlag, positioningRead, maxDrawdown, realizedVolTerm, corrMatrix, fxAdjust, parseOcc } from './src/lib.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC = path.join(__dirname, 'public');
@@ -608,6 +608,54 @@ async function getFxAdjusted(base = 'USD') {
       return { id: b.id, label: b.label, deltas: adj };
     });
     return { base: B, updated: new Date().toISOString(), rows };
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Options signals (Tier 2). Free, keyless CBOE **delayed** quotes for the ETF that tracks each
+// commodity (USO crude, GLD gold, UNG gas, CORN wheat/corn …). We show OI-based and volume-based
+// put/call, the ATM implied vol and a 25-delta skew. Coverage is uneven — no free proxy for some.
+// ---------------------------------------------------------------------------
+const OPT_PROXY = {
+  wti: 'USO', brent: 'USO', rbob: 'UGA', ulsd: 'USO', natgas: 'UNG',
+  gold: 'GLD', silver: 'SLV', platinum: 'PPLT', palladium: 'PALL', copper: 'CPER',
+  corn: 'CORN', wheat: 'WEAT', soybean: 'SOYB', sugar: 'CANE', coffee: 'JO', cocoa: 'NIB',
+};
+async function getOptions(id = 'wti') {
+  const sym = OPT_PROXY[id];
+  if (!sym) return { error: 'no free options proxy for ' + id, id };
+  return cached('opt:' + sym, 30 * 60e3, async () => {
+    const res = await fetch(`https://cdn-api.cboe.com/api/global/delayed_quotes/options/${sym}.json`, { headers: UA });
+    if (!res.ok) throw new Error('cboe ' + res.status);
+    const j = await res.json();
+    const d = j.data || {};
+    const spot = d.current_price ?? null;
+    const rows = (d.options || []).map((o) => {
+      const p = parseOcc(o.option); if (!p) return null;
+      return { ...p, iv: o.iv == null ? null : +o.iv, oi: +o.open_interest || 0, vol: +o.volume || 0, delta: o.delta == null ? null : +o.delta };
+    }).filter(Boolean);
+    if (!rows.length) return { error: 'no option rows', id };
+    const calls = rows.filter((r) => r.type === 'call'), puts = rows.filter((r) => r.type === 'put');
+    const sum = (a, k) => a.reduce((s, x) => s + (x[k] || 0), 0);
+    const cOi = sum(calls, 'oi'), pOi = sum(puts, 'oi'), cVol = sum(calls, 'vol'), pVol = sum(puts, 'vol');
+    const expiries = [...new Set(rows.map((r) => r.expiry))].sort();
+    const target = new Date(Date.now() + 30 * 864e5).toISOString().slice(0, 10);
+    const exp = expiries.find((e) => e >= target) || expiries[expiries.length - 1] || null;
+    const inExp = rows.filter((r) => r.expiry === exp);
+    const near = (spot != null && inExp.length) ? inExp.slice().sort((a, b) => Math.abs(a.strike - spot) - Math.abs(b.strike - spot))[0] : null;
+    const atmStrike = near ? near.strike : null;
+    const atmRows = inExp.filter((r) => r.strike === atmStrike && r.iv != null);
+    const atmIv = atmRows.length ? +((atmRows.reduce((s, r) => s + r.iv, 0) / atmRows.length) * 100).toFixed(1) : null;
+    const p25 = inExp.filter((r) => r.type === 'put' && r.delta != null && r.delta <= -0.08).sort((a, b) => Math.abs(a.delta + 0.25) - Math.abs(b.delta + 0.25))[0];
+    const c25 = inExp.filter((r) => r.type === 'call' && r.delta != null && r.delta >= 0.08).sort((a, b) => Math.abs(a.delta - 0.25) - Math.abs(b.delta - 0.25))[0];
+    const skew = (p25 && c25 && p25.iv != null && c25.iv != null) ? +(((p25.iv - c25.iv) * 100).toFixed(1)) : null;
+    return {
+      id, proxy: sym, asOf: String(j.timestamp || '').slice(0, 10), spot,
+      expiry: exp, atmStrike, atmIv, skew,
+      pcOi: cOi ? +(pOi / cOi).toFixed(2) : null,
+      pcVol: cVol ? +(pVol / cVol).toFixed(2) : null,
+      totalOi: cOi + pOi, totalVol: cVol + pVol, expiries: expiries.slice(0, 6),
+    };
   });
 }
 
@@ -2759,6 +2807,7 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname === '/api/screen') return sendJSON(res, 200, await getScreen().catch((e) => ({ error: String(e.message), rows: [] })));
     if (url.pathname === '/api/risk') return sendJSON(res, 200, await getRisk().catch((e) => ({ error: String(e.message), metrics: [], matrix: {} })));
     if (url.pathname === '/api/fxadjusted') return sendJSON(res, 200, await getFxAdjusted(url.searchParams.get('base') || 'USD').catch((e) => ({ error: String(e.message), rows: [] })));
+    if (url.pathname === '/api/options') return sendJSON(res, 200, await getOptions(url.searchParams.get('id') || 'wti').catch((e) => ({ error: String(e.message) })));
     if (url.pathname === '/api/positioning') {
       const seg = url.searchParams.get('segment');
       const p = seg ? getPositioningSegment(seg) : getPositioning(url.searchParams.get('id') || 'wti');

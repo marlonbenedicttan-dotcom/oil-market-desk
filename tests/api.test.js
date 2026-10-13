@@ -337,6 +337,14 @@ test('security headers are set on every response', async () => {
   assert.equal(api.headers.get('x-content-type-options'), 'nosniff');
 });
 
+test('/api/options returns vol/put-call/skew for a proxy (or a clean error)', async () => {
+  const r = await fetch(`http://localhost:${PORT}/api/options?id=gold`);
+  assert.equal(r.status, 200);
+  const j = await r.json();
+  if (!j.error) { assert.equal(j.proxy, 'GLD'); assert.ok('atmIv' in j && 'pcOi' in j && 'skew' in j); }
+  assert.equal((await fetch(`http://localhost:${PORT}/api/options?id=soymeal`)).status, 200); // error shape, not 500
+});
+
 test('/api/fxadjusted converts returns to a base currency', async () => {
   const usd = await (await fetch(`http://localhost:${PORT}/api/fxadjusted?base=USD`)).json();
   const eur = await (await fetch(`http://localhost:${PORT}/api/fxadjusted?base=EUR`)).json();

@@ -351,6 +351,17 @@ export const METHODOLOGY = {
 };
 
 // ---------------------------------------------------------------------------
+// Options (Tier 2). Parse an OCC option symbol, e.g. USO261014C00123000 →
+// { root:'USO', expiry:'2026-10-14', type:'call', strike:123 }.
+// ---------------------------------------------------------------------------
+export function parseOcc(sym) {
+  const m = /^([A-Z0-9.]{1,6})(\d{2})(\d{2})(\d{2})([CP])(\d{8})$/.exec(String(sym || ''));
+  if (!m) return null;
+  const [, root, yy, mm, dd, cp, strike] = m;
+  return { root, expiry: `20${yy}-${mm}-${dd}`, type: cp === 'C' ? 'call' : 'put', strike: Number(strike) / 1000 };
+}
+
+// ---------------------------------------------------------------------------
 // Currency-adjusted returns (Tier 2). Convert a USD return over a window into the same return in a
 // chosen base currency. mode 'mul' = the pair is base-per-USD (e.g. USD/JPY, CNY-per-USD);
 // 'div' = the pair is USD-per-base (e.g. EUR/USD). Inputs/returns are percentages.

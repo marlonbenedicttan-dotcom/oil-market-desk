@@ -110,8 +110,12 @@ unavailable rather than inventing them). US-focused is fine to start; the countr
   (2026-10-13)** — `⚠️ RISK & CORRELATION` on HOME: 1-yr max drawdown + a 30/60/90-day realised-vol
   term structure per key asset, and a colour-coded **correlation matrix** over ~1y of daily
   log-returns. `/api/risk`; pure `maxDrawdown`/`realizedVolTerm`/`corrMatrix` in `src/lib.js` (tested).
-- **Options signals** — open interest, put/call, IV rank, skew. Yahoo options chains give partial
-  data; this is a genuine investor signal but coverage is uneven — label it.
+- ~~**Options signals** — open interest, put/call, IV rank, skew. Yahoo options chains give partial
+  data; this is a genuine investor signal but coverage is uneven — label it.~~ **DONE (2026-10-13)** —
+  a **🎚️ OPTIONS** panel on COMMODITIES: ATM implied vol, **put/call** (OI + volume) and a **25-Δ
+  skew**, from the commodity's **CBOE delayed** ETF-proxy options (USO/GLD/UNG/CPER/CORN…; keyless —
+  Yahoo's own chain is crumb-gated/401). Coverage is uneven and labelled; **IV rank is not shown**
+  (it needs a stored history). `/api/options?id=`; pure `parseOcc` in `src/lib.js` (tested).
 - **Positioning-vs-price divergence** — "price up while specs cut" is a classic tell (natural
   follow-on to #1).
 

@@ -499,6 +499,15 @@ footer li { margin-bottom: 2px; }
 .corr-tbl td.mid { color: #c9d4df; }
 @media (max-width: 640px) { .rk-head, .rk-row { grid-template-columns: 1fr 74px 50px 46px 46px; font-size: 11px; } }
 
+/* Options (CBOE delayed) */
+.opt-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(158px, 1fr)); gap: 1px; background: var(--line); }
+.opt-cell { background: #0c0f13; padding: 9px 11px; min-width: 0; }
+.opt-k { font-size: 9.5px; letter-spacing: 1px; color: var(--dim); }
+.opt-v { font-size: 19px; font-weight: 700; font-variant-numeric: tabular-nums; margin: 3px 0 2px; }
+.opt-v.pos { color: var(--green); }
+.opt-v.neg { color: var(--red); }
+.opt-s { font-size: 10px; }
+
 /* Onboarding */
 .onboard { position: fixed; inset: 0; z-index: 5000; background: rgba(0,0,0,.72); display: flex; align-items: center; justify-content: center; padding: 20px; }
 .onboard-box { background: var(--panel); border: 1px solid var(--line2); max-width: 520px; padding: 22px 24px; border-radius: 12px; }
