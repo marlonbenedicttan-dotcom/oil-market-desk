@@ -348,7 +348,7 @@ footer li { margin-bottom: 2px; }
 .jumpnav::-webkit-scrollbar { display: none; }
 .jumpnav a { flex: 0 0 auto; border: 1px solid var(--line2); padding: 5px 11px; font-size: 11px; letter-spacing: .5px; color: var(--dim); text-decoration: none; white-space: nowrap; }
 .jumpnav a:hover, .jumpnav a:focus-visible { color: var(--amber); border-color: var(--amber); }
-#p-brief, #p-regime, #p-watch, #p-alerts, #p-headlines, #p-segments { scroll-margin-top: calc(var(--topbar-h, 44px) + 54px); }
+#p-brief, #p-regime, #p-screen, #p-watch, #p-alerts, #p-headlines, #p-segments { scroll-margin-top: calc(var(--topbar-h, 44px) + 54px); }
 /* Score key — what the /100 numbers mean, right where they appear. */
 .score-key { margin-top: 9px; font-size: 10px; color: var(--dim); line-height: 1.55; }
 .score-key b { color: #c9d4df; }
@@ -434,6 +434,23 @@ footer li { margin-bottom: 2px; }
 .rb-u { font-size: 10px; color: var(--dim); font-weight: 400; margin-left: 4px; }
 .rb-cell .dstrip { margin-top: 3px; }
 .rb-src { display: block; margin-top: 4px; font-size: 9px; color: var(--dim); }
+
+/* Screener (HOME) — every instrument, ranked + sortable */
+.sc-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.sc-table { width: 100%; border-collapse: collapse; font-size: 12px; font-variant-numeric: tabular-nums; min-width: 760px; }
+.sc-table th { background: #0c0f13; color: var(--amber); font-size: 10px; letter-spacing: 1px; padding: 7px 8px; border-bottom: 1px solid var(--line2); cursor: pointer; white-space: nowrap; text-align: right; user-select: none; }
+.sc-table th:first-child { text-align: left; }
+.sc-table th.on { color: var(--amber2); }
+.sc-table td { padding: 6px 8px; border-bottom: 1px solid var(--line); }
+.sc-table td.num { text-align: right; }
+.sc-table tbody tr { cursor: pointer; }
+.sc-table tbody tr:hover { background: #10151b; }
+.sc-name { color: var(--text); white-space: nowrap; text-align: left; }
+.sc-flag { padding: 0 5px; border: 1px solid var(--line2); color: var(--dim); }
+.sc-flag.hot { color: var(--red); border-color: #5a2020; }
+.sc-flag.warm { color: var(--amber); border-color: #5c4a1d; }
+.sc-flag.cool { color: var(--blue); border-color: #1c3a5a; }
+.sc-note { padding: 8px 12px; }
 
 /* Onboarding */
 .onboard { position: fixed; inset: 0; z-index: 5000; background: rgba(0,0,0,.72); display: flex; align-items: center; justify-content: center; padding: 20px; }

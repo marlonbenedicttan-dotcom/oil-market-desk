@@ -56,7 +56,11 @@ existing 1D/1W/1M/YTD/1Y strip + as-of badge. Put it on MACRO (or HOME, under th
 `/api/market` (gold/copper/WTI/Brent). No new source needed; just assemble.
 **Honesty:** label VIX/indices as Yahoo (delayed).
 
-### 3. Screener / leaderboard across all instruments
+### 3. Screener / leaderboard across all instruments  ⭐ **DONE (2026-10-13)**
+**Shipped:** a **🔎 SCREENER** panel on HOME — all 31 instruments in one **sortable** table
+(INSTRUMENT · LAST · 1D/1W/1M/YTD/1Y · STRETCH · TIGHT · BASIS% · CROWD), assembled server-side by
+**`/api/screen`** (deltas + `/api/history`, the two scores + `/api/marketread`, basis percentiles +
+`/api/analytics`, positioning + `getPositioning`). Click a header to sort, a row to open its chart.
 **Why:** "where do I look today?" — the app answers this for one segment, not the universe.
 **Do:** a sortable table ranking all ~20 benchmarks by: biggest **1D/1W mover**, most
 **price-stretched**, most **physically tight**, most extreme **seasonal** position, highest

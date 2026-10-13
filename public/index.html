@@ -21,7 +21,7 @@
   <link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png" />
   <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <link rel="stylesheet" href="style.css?v=38" />
+  <link rel="stylesheet" href="style.css?v=39" />
   <noscript><style>#boot{display:none!important}</style></noscript>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -75,6 +75,7 @@
       <nav class="jumpnav" aria-label="Jump to a section">
         <a href="#p-brief">Brief</a>
         <a href="#p-regime">Regime</a>
+        <a href="#p-screen">Screener</a>
         <a href="#p-watch">Watchlist</a>
         <a href="#p-alerts">Alerts</a>
         <a href="#p-headlines">Headlines</a>
@@ -88,6 +89,11 @@
       <section class="panel" id="p-regime">
         <div class="ph"><span class="ph-t">🌐 MARKETS AT A GLANCE — the backdrop</span><span class="dimtext">dollar · volatility · rates · risk · metals · oil</span></div>
         <div id="regime-board" class="regime-board"></div>
+      </section>
+
+      <section class="panel" id="p-screen">
+        <div class="ph"><span class="ph-t">🔎 SCREENER — where to look today</span><span class="dimtext">all instruments · click a header to sort · a row to open its chart</span></div>
+        <div id="screen" class="screen"></div>
       </section>
 
       <section class="panel" id="p-watch">
@@ -347,6 +353,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=77"></script>
+  <script src="app.js?v=78"></script>
 </body>
 </html>

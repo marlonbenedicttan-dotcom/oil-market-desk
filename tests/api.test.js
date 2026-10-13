@@ -334,6 +334,17 @@ test('security headers are set on every response', async () => {
   assert.equal(api.headers.get('x-content-type-options'), 'nosniff');
 });
 
+test('/api/screen returns one row per instrument with scores', async () => {
+  const r = await fetch(`http://localhost:${PORT}/api/screen`);
+  assert.equal(r.status, 200);
+  const j = await r.json();
+  if (!j.error) {
+    assert.ok(Array.isArray(j.rows) && j.rows.length >= 20, 'ranks the universe');
+    const row = j.rows.find((x) => x.id === 'wti');
+    assert.ok(row && 'deltas' in row && 'stretch' in row && 'tight' in row && 'posPct' in row, 'WTI row carries deltas + scores');
+  }
+});
+
 test('/api/regime returns the cross-asset board', async () => {
   const r = await fetch(`http://localhost:${PORT}/api/regime`);
   assert.equal(r.status, 200);

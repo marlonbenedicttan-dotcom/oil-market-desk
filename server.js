@@ -576,6 +576,48 @@ async function getRegime() {
 }
 
 // ---------------------------------------------------------------------------
+// Screener — one row per instrument, ranked by "where do I look today?". Assembles the deltas,
+// the two scores, the basis percentile, vol and (where CFTC covers it) positioning. Server-side
+// so the logic is testable; the client only sorts + renders.
+// ---------------------------------------------------------------------------
+async function getScreen() {
+  return cached('screen', 5 * 60e3, async () => {
+    const [m, h, a, reads] = await Promise.all([
+      getMarket(),
+      getHistory().catch(() => null),
+      getAnalytics().catch(() => null),
+      Promise.all(MARKETS.map((mk) => getMarketRead(mk.id, null).catch(() => null))),
+    ]);
+    const readBySeg = {};
+    MARKETS.forEach((mk, i) => { readBySeg[mk.id] = reads[i]; });
+    const segByBench = {};
+    for (const mk of MARKETS) for (const c of mk.components) segByBench[c] = mk.id;
+    const rows = await Promise.all(m.benchmarks.map(async (b) => {
+      const dd = h && h.deltas ? h.deltas[b.id] : null;
+      const d = dd ? (b.paper != null ? dd.paper : dd.physical) : null;
+      const an = (a && a.benchmarks && a.benchmarks[b.id]) || {};
+      const rd = readBySeg[segByBench[b.id]] || {};
+      const vd = rd.verdict || {};
+      const pos = COT_NAMES[b.id] ? await getPositioning(b.id).catch(() => null) : null;
+      return {
+        id: b.id, label: b.label, group: b.group, unit: b.unit, dp: b.dp,
+        price: b.paper != null ? b.paper : b.physical,
+        source: b.paperSource || b.physicalSource || null,
+        asOf: b.paperDate || b.physicalDate || null,
+        deltas: d,
+        stretch: vd.priceStretch ? vd.priceStretch.score : null,
+        tight: vd.supplyDemand ? vd.supplyDemand.score : null,
+        basisPct: an.basisPct != null ? Math.round(an.basisPct) : null,
+        vol30: an.vol30 != null ? +an.vol30.toFixed(1) : null,
+        posPct: pos && pos.pct3y != null ? Math.round(pos.pct3y) : null,
+        posFlag: pos && pos.flag ? pos.flag.label : null,
+      };
+    }));
+    return { updated: new Date().toISOString(), rows };
+  });
+}
+
+// ---------------------------------------------------------------------------
 // Sector watchlist (Yahoo quotes)
 // ---------------------------------------------------------------------------
 const SECTORS = [
@@ -2565,6 +2607,7 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname === '/api/reroute') return sendJSON(res, 200, { series: rerouteSeries, current: rerouteSeries[rerouteSeries.length - 1] || null });
     if (url.pathname === '/api/inventories') return sendJSON(res, 200, await getInventories());
     if (url.pathname === '/api/regime') return sendJSON(res, 200, await getRegime().catch((e) => ({ error: String(e.message), rows: [] })));
+    if (url.pathname === '/api/screen') return sendJSON(res, 200, await getScreen().catch((e) => ({ error: String(e.message), rows: [] })));
     if (url.pathname === '/api/positioning') {
       const seg = url.searchParams.get('segment');
       const p = seg ? getPositioningSegment(seg) : getPositioning(url.searchParams.get('id') || 'wti');

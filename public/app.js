@@ -1994,6 +1994,58 @@ function renderRegime(d) {
       + `<div class="rb-src">${src}</div></div>`;
   }).join('');
 }
+// Screener — every instrument in one sortable table (assembled server-side at /api/screen).
+let screenRows = null, screenSort = { key: 'absd1', dir: -1 };
+const SCREEN_COLS = [
+  { k: 'label', t: 'INSTRUMENT' }, { k: 'price', t: 'LAST' },
+  { k: 'd1', t: '1D' }, { k: 'w1', t: '1W' }, { k: 'm1', t: '1M' }, { k: 'ytd', t: 'YTD' }, { k: 'y1', t: '1Y' },
+  { k: 'stretch', t: 'STRETCH' }, { k: 'tight', t: 'TIGHT' }, { k: 'basisPct', t: 'BASIS%' }, { k: 'posPct', t: 'CROWD' },
+];
+function screenVal(r, k) {
+  if (k === 'label' || k === 'price') return r[k];
+  if (k === 'absd1') return r.deltas ? Math.abs(r.deltas.d1 == null ? 0 : r.deltas.d1) : -1;
+  if (['d1', 'w1', 'm1', 'ytd', 'y1'].includes(k)) return r.deltas ? r.deltas[k] : null;
+  return r[k];
+}
+async function loadScreen() {
+  const el = $('screen'); if (!el) return;
+  if (!el.innerHTML) el.innerHTML = stLoading('Ranking the board…');
+  let d = null; try { d = await jget('/api/screen', 300000); } catch { d = null; }
+  screenRows = (d && d.rows) || [];
+  renderScreen();
+}
+function renderScreen() {
+  const el = $('screen'); if (!el) return;
+  if (!screenRows || !screenRows.length) { el.innerHTML = stError('Couldn’t load the screener — retrying.'); return; }
+  const { key, dir } = screenSort;
+  const rows = [...screenRows].sort((a, b) => {
+    const x = screenVal(a, key), y = screenVal(b, key);
+    if (x == null && y == null) return 0;
+    if (x == null) return 1;
+    if (y == null) return -1;
+    return key === 'label' ? x.localeCompare(y) * dir : (x - y) * dir;
+  });
+  const head = SCREEN_COLS.map((c) => `<th class="${key === c.k ? 'on' : ''}" data-k="${c.k}">${c.t}${key === c.k ? (dir < 0 ? ' ▼' : ' ▲') : ''}</th>`).join('');
+  const pcell = (v) => (v == null ? '<td class="num">—</td>' : `<td class="num ${cls(v)}">${pctf(v)}</td>`);
+  const body = rows.map((r) => {
+    const d = r.deltas || {};
+    const flagCls = r.posFlag === 'CROWDED LONG' || r.posFlag === 'CROWDED SHORT' ? 'hot' : r.posFlag === 'STRETCHED LONG' ? 'warm' : r.posFlag === 'WASHED-OUT' ? 'cool' : '';
+    const crowd = r.posPct == null ? '<td class="num">—</td>' : `<td class="num"><span class="sc-flag ${flagCls}" title="${r.posFlag || ''}">${r.posPct}</span></td>`;
+    const s = (v) => `<td class="num">${v == null ? '—' : v}</td>`;
+    return `<tr data-id="${r.id}" title="${r.label} · ${r.source || ''} ${r.asOf || ''}">`
+      + `<td class="sc-name">${r.label}</td><td class="num">${fmtNum(r.price, r.dp)}</td>`
+      + pcell(d.d1) + pcell(d.w1) + pcell(d.m1) + pcell(d.ytd) + pcell(d.y1)
+      + s(r.stretch) + s(r.tight) + s(r.basisPct) + crowd + '</tr>';
+  }).join('');
+  el.innerHTML = `<div class="sc-wrap"><table class="sc-table"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>`
+    + '<div class="sc-note dimtext">Click a header to sort; click a row to open its chart. STRETCH is −100 (cheap)…+100 (rich) · TIGHT is 0 (oversupplied)…100 (undersupplied) · BASIS% and CROWD are percentiles.</div>';
+}
+$('screen')?.addEventListener('click', (e) => {
+  const th = e.target.closest('th[data-k]');
+  if (th) { const k = th.dataset.k; screenSort = { key: k, dir: screenSort.key === k ? -screenSort.dir : (k === 'label' ? 1 : -1) }; renderScreen(); return; }
+  const tr = e.target.closest('tr[data-id]');
+  if (tr) { showTab('commodities'); pickMetric(tr.dataset.id, '6m'); }
+});
 async function loadHeadlines() {
   const el = $('headlines');
   if (!el) return;
@@ -2093,6 +2145,7 @@ async function loadExtraCore() {
   if (!data) return; // need prices first
   reloadHistory();   // refresh the deltas + sparklines (fire-and-forget)
   loadRegime();      // the cross-asset backdrop (HOME)
+  loadScreen();      // the screener (HOME)
   try {
     const [inv, eq, chk, an, fl, pr] = await Promise.all([
       getJSON('/api/inventories').catch(() => null),
