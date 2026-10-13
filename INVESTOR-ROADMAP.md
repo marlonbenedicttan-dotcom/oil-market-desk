@@ -70,7 +70,12 @@ existing 1D/1W/1M/YTD/1Y strip + as-of badge. Put it on MACRO (or HOME, under th
 so the logic is testable — pure scoring lives in `src/lib.js`.
 **Why it matters:** this is the piece that makes the app "answer first" instead of "explore".
 
-### 4. Custom alerts (user-set levels)
+### 4. Custom alerts (user-set levels)  ⭐ **DONE (2026-10-13)**
+**Shipped:** a **⚙ MY RULES** builder in the HOME alerts panel — pick a **metric** (any instrument
+price, any real-vs-futures basis, or any currency), a **condition** (`is above` / `is below` /
+`crosses`), a **level** and an optional note; rules persist in localStorage (`oilbasis.rules`),
+evaluated on every refresh, and appear in the alerts board + fire a **browser notification**.
+**Honesty:** a footnote says it is checked client-side while the tab is open.
 **Why:** a desk lives on "tell me when X crosses Y". Today alerts are only 4 fixed thresholds.
 **Already built:** the alert engine, `/api/alerts`, the browser `Notification` path, and a
 threshold editor UI (localStorage `oilbasis.thresholds`) — but only for brent/wti/diesel/idlers.

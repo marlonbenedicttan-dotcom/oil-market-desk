@@ -29,6 +29,9 @@ test('serves the dashboard', async () => {
   assert.match(html, /data-pane="home"/);   // watchlist + alerts home screen
   assert.match(html, /id="home-watch"/);
   assert.match(html, /id="headlines"/);     // live headlines board now lives in HOME
+  assert.match(html, /id="regime-board"/);  // cross-asset backdrop (INVESTOR #2)
+  assert.match(html, /id="screen"/);        // screener (INVESTOR #3)
+  assert.match(html, /id="home-rules"/);    // custom alert rules (INVESTOR #4)
   assert.doesNotMatch(html, /class="hero"/); // ...not pinned to the top of every page
 });
 

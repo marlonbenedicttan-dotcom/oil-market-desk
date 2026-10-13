@@ -452,6 +452,22 @@ footer li { margin-bottom: 2px; }
 .sc-flag.cool { color: var(--blue); border-color: #1c3a5a; }
 .sc-note { padding: 8px 12px; }
 
+/* Custom alert rules (HOME alerts panel) */
+#home-rules { padding: 10px 12px; border-top: 1px solid var(--line); }
+#home-rules:empty { display: none; }
+.rules-h { font-size: 11px; letter-spacing: 1px; color: var(--amber); margin-bottom: 8px; }
+.rules-list { display: grid; gap: 5px; margin-bottom: 8px; }
+.rule { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 12px; color: #c9d4df; border: 1px solid var(--line); background: var(--panel2); padding: 5px 9px; }
+.rule b { color: var(--text); }
+.rule-x { background: none; border: 0; color: var(--dim); cursor: pointer; font-size: 12px; padding: 0 4px; }
+.rule-x:hover { color: var(--red); }
+.rule-add { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.rule-add select { min-height: 32px; }
+.rule-add #rule-level { width: 96px; }
+.rule-add #rule-note { flex: 1 1 140px; background: var(--panel2); color: var(--text); border: 1px solid var(--line2); padding: 4px 8px; font-family: var(--mono); font-size: 11px; min-height: 32px; }
+.rule-foot { margin-top: 8px; }
+.rule-foot button { margin-left: 6px; }
+
 /* Onboarding */
 .onboard { position: fixed; inset: 0; z-index: 5000; background: rgba(0,0,0,.72); display: flex; align-items: center; justify-content: center; padding: 20px; }
 .onboard-box { background: var(--panel); border: 1px solid var(--line2); max-width: 520px; padding: 22px 24px; border-radius: 12px; }

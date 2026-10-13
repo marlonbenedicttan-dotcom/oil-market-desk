@@ -643,11 +643,88 @@ function renderAlerts(alerts) {
   $('alerts').innerHTML = alerts.length ? alerts.map((a) => `<div class="alert ${a.level}"><span class="badge">${a.level === 'high' ? 'HIGH' : 'WATCH'}</span> ${a.text}</div>`).join('') : '<div class="alert none">✅ No alerts — markets within normal ranges.</div>';
   if ('Notification' in window && Notification.permission === 'granted') for (const a of alerts) if (a.level === 'high' && !seenAlerts.has(a.text)) { seenAlerts.add(a.text); try { new Notification('Oil market alert', { body: a.text }); } catch {} }
 }
+// ---------------------------------------------------------------------------
+// Custom alert rules — user-set "tell me when X is above/below/crosses Y".
+// Client-side (localStorage 'oilbasis.rules'); evaluated on every refresh while the tab is open.
+// ---------------------------------------------------------------------------
+const RULES_KEY = 'oilbasis.rules';
+const rulePrev = {};   // last value per rule id, for "crosses"
+function rules() { try { const a = JSON.parse(localStorage.getItem(RULES_KEY)); return Array.isArray(a) ? a : []; } catch { return []; } }
+function saveRules(a) { try { localStorage.setItem(RULES_KEY, JSON.stringify(a)); } catch {} }
+function metricGroups() {
+  const bs = (data && data.benchmarks) || [];
+  const g = [];
+  g.push(['INSTRUMENTS (price)', bs.map((b) => ({ v: 'bench:' + b.id, l: b.label }))]);
+  const basis = bs.filter((b) => b.basis != null);
+  if (basis.length) g.push(['BASIS (real − futures)', basis.map((b) => ({ v: 'basis:' + b.id, l: b.label }))]);
+  const fx = lastFx || [];
+  if (fx.length) g.push(['CURRENCIES', fx.map((f) => ({ v: 'fx:' + f.id, l: f.label }))]);
+  return g.filter(([, arr]) => arr.length);
+}
+function ruleLabel(metric) {
+  const [kind, id] = String(metric).split(':');
+  if (kind === 'bench') { const b = (data && data.benchmarks || []).find((x) => x.id === id); return `${b ? b.label : id} price`; }
+  if (kind === 'basis') { const b = (data && data.benchmarks || []).find((x) => x.id === id); return `${b ? b.label : id} gap`; }
+  if (kind === 'fx') { const f = (lastFx || []).find((x) => x.id === id); return `${f ? f.label : id}`; }
+  return metric;
+}
+function ruleValue(metric) {
+  const [kind, id] = String(metric).split(':');
+  if (kind === 'bench') { const b = (data && data.benchmarks || []).find((x) => x.id === id); return b ? (b.paper != null ? b.paper : b.physical) : null; }
+  if (kind === 'basis') { const b = (data && data.benchmarks || []).find((x) => x.id === id); return b ? b.basis : null; }
+  if (kind === 'fx') { const f = (lastFx || []).find((x) => x.id === id); return f ? f.price : null; }
+  return null;
+}
+function computeRules() {
+  const out = [];
+  if (!data) return out;
+  for (const r of rules()) {
+    if (r.on === false) continue;
+    const v = ruleValue(r.metric);
+    if (v == null) continue;
+    const prev = rulePrev[r.id]; rulePrev[r.id] = v;
+    let hit = false;
+    if (r.op === '>') hit = v > r.level;
+    else if (r.op === '<') hit = v < r.level;
+    else if (r.op === 'crosses') hit = prev != null && ((prev < r.level && v >= r.level) || (prev > r.level && v <= r.level));
+    if (hit) out.push({ level: 'med', rule: true, text: `${ruleLabel(r.metric)} ${r.op === '>' ? 'is above' : r.op === '<' ? 'is below' : 'crossed'} ${r.level}${r.note ? ` — ${r.note}` : ''} (now ${Number(v).toFixed(2)}).` });
+  }
+  return out;
+}
+function renderRules() {
+  const el = $('home-rules'); if (!el) return;
+  const rs = rules();
+  const opts = metricGroups().map(([g, arr]) => `<optgroup label="${g}">${arr.map((o) => `<option value="${o.v}">${o.l}</option>`).join('')}</optgroup>`).join('');
+  const list = rs.length
+    ? rs.map((r) => `<div class="rule"><span>${ruleLabel(r.metric)} ${r.op === '>' ? 'above' : r.op === '<' ? 'below' : 'crosses'} <b>${r.level}</b>${r.note ? ` — ${r.note}` : ''}</span><button class="rule-x" data-del="${r.id}" aria-label="Delete rule">✕</button></div>`).join('')
+    : '<div class="dimtext" style="padding:2px 0">No rules yet — add one below.</div>';
+  const granted = 'Notification' in window && Notification.permission === 'granted';
+  el.innerHTML = '<div class="rules-h">⚙ MY RULES — tell me when…</div>'
+    + `<div class="rules-list">${list}</div>`
+    + `<div class="rule-add"><select id="rule-metric" aria-label="Metric">${opts}</select>`
+    + '<select id="rule-op" aria-label="Condition"><option value=">">is above</option><option value="<">is below</option><option value="crosses">crosses</option></select>'
+    + '<input id="rule-level" type="number" step="any" placeholder="level" aria-label="Level">'
+    + '<input id="rule-note" type="text" placeholder="note (optional)" aria-label="Note">'
+    + '<button id="rule-add" class="ghost small" type="button">＋ ADD RULE</button></div>'
+    + `<div class="rule-foot dimtext">Checked in this tab while it is open. <button id="rule-notify" class="ghost small" type="button">${granted ? '✓ notifications on' : 'ENABLE NOTIFICATIONS'}</button></div>`;
+}
+$('home-rules')?.addEventListener('click', (e) => {
+  const del = e.target.closest('[data-del]');
+  if (del) { saveRules(rules().filter((r) => r.id !== del.dataset.del)); renderRules(); renderHomeAlerts(); return; }
+  if (e.target.id === 'rule-notify') { if ('Notification' in window) Notification.requestPermission().then(() => renderRules()); return; }
+  if (e.target.id === 'rule-add') {
+    const metric = $('rule-metric').value, op = $('rule-op').value, level = Number($('rule-level').value), note = $('rule-note').value.trim();
+    if (!metric || !Number.isFinite(level)) { showError('Give the rule a numeric level.'); return; }
+    const rs = rules(); rs.push({ id: 'r' + Date.now().toString(36), metric, op, level, note, on: true }); saveRules(rs);
+    renderRules(); renderHomeAlerts();
+  }
+});
 // Home: every alert firing, from both engines, severity-sorted.
 const ALERT_RANK = { high: 0, med: 1, watch: 2 };
 function allAlerts() {
   const out = serverAlerts.map((a) => ({ level: a.level, text: a.text }));
   if (data) for (const a of computeAlerts(data, tankerInfo)) out.push({ level: a.level, text: a.text });
+  for (const a of computeRules()) out.push(a);   // user rules
   return out.sort((x, y) => (ALERT_RANK[x.level] ?? 3) - (ALERT_RANK[y.level] ?? 3));
 }
 function renderHomeAlerts() {
@@ -657,10 +734,15 @@ function renderHomeAlerts() {
   const c = $('home-alert-count');
   if (c) { c.textContent = String(list.length); c.className = 'pill ' + (list.some((a) => a.level === 'high') ? 'warn' : list.length ? '' : 'ok'); }
   const sub = $('home-alert-sub');
-  if (sub) sub.textContent = 'server checks (basis extremes, data quality, idle ships) + your own thresholds · edit thresholds in COMMODITIES → MORE DETAIL';
+  if (sub) sub.textContent = 'server checks (basis extremes, data quality, idle ships) + your rules · add rules below, or edit thresholds in COMMODITIES → MORE DETAIL';
   el.innerHTML = list.length
     ? list.map((a) => `<div class="alert ${a.level}"><span class="badge">${a.level === 'high' ? 'HIGH' : a.level === 'watch' ? 'CHECK' : 'WATCH'}</span> ${a.text}</div>`).join('')
     : '<div class="alert none">✅ No alerts — markets within normal ranges.</div>';
+  // Browser notifications for new high alerts + any rule that fires (rules are user-defined, so
+  // they always announce). Client-side only — this runs while the tab is open.
+  if ('Notification' in window && Notification.permission === 'granted') {
+    for (const a of list) if ((a.rule || a.level === 'high') && !seenAlerts.has(a.text)) { seenAlerts.add(a.text); try { new Notification("Marlon's Watchtower", { body: a.text }); } catch {} }
+  }
 }
 async function loadAlerts() {
   try { serverAlerts = (await getJSON('/api/alerts')).current || []; } catch { serverAlerts = []; }
@@ -1244,6 +1326,7 @@ async function loadMarket() {
   renderCards(data); buildMetricOptions(data); buildBpOptions();
   renderMarketState(); renderSnapshot(); setCardsTitle(); renderTicker(data);
   renderWatchlist(); renderHomeAlerts();
+  if (!$('home-rules')?.innerHTML) renderRules();   // metric options need data (+ fx when it lands)
   await renderChart();   // ← render AFTER data exists
   buildCompareOptions(); syncCompareToSelection();
   loadSeasonal();
@@ -2188,7 +2271,7 @@ async function loadExtraSlow() {
     ]);
     renderSatellite(sar, flr);
     renderMacroDash(md, corr, ev);
-    if (md?.fx) { lastFx = md.fx; renderTicker(data); }
+    if (md?.fx) { lastFx = md.fx; renderTicker(data); const lv = $('rule-level'); if ($('home-rules') && !$('home-rules').innerHTML.includes('CURRENCIES') && (!lv || !lv.value)) renderRules(); }
     extraSlowDone = true;
   } catch (e) {}
 }
