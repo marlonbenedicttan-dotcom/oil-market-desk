@@ -74,6 +74,26 @@ const GLOSSARY = `
 
 
 function showError(msg) { const el = $('error'); el.classList.remove('hidden'); el.textContent = '⚠ ' + msg; }
+// How stale is the market data? A relative label for the header, plus a green/amber/red dot that
+// also survives on phones (where the text label is hidden).
+function relAge(iso) {
+  if (!iso) return null;
+  const mins = Math.round((Date.now() - Date.parse(iso)) / 60000);
+  if (!Number.isFinite(mins) || mins < 0) return null;
+  if (mins < 1) return 'just now';
+  if (mins < 60) return mins + ' min ago';
+  const h = Math.round(mins / 60);
+  return h < 48 ? h + ' h ago' : Math.round(h / 24) + ' d ago';
+}
+function updateFreshness(iso) {
+  const label = relAge(iso);
+  const upd = $('updated'); if (upd) upd.textContent = label ? 'updated ' + label : 'price data —';
+  const dot = $('fresh'); if (!dot) return;
+  const mins = iso ? (Date.now() - Date.parse(iso)) / 60000 : Infinity;
+  dot.className = 'fresh-dot ' + (mins < 5 ? 'ok' : mins < 30 ? 'warn' : 'stale');
+  const title = 'Market data ' + (label ? 'updated ' + label : 'not available');
+  dot.title = title; dot.setAttribute('aria-label', title);
+}
 async function getJSON(url) { const r = await fetch(url); if (!r.ok) throw new Error(`${url} -> HTTP ${r.status}`); return r.json(); }
 // Memoised GET — a per-session cache so re-visiting a segment is instant (no re-fetch of the
 // read, news, curve, etc.). Short TTL; the server has its own longer cache anyway.
@@ -643,7 +663,7 @@ function renderTicker(m) {
 // The tape moves on requestAnimationFrame, NOT a CSS animation: iOS Safari latches :hover after a
 // touch (and can still report `(hover: hover)`), which freezes a CSS marquee. Owning the motion in
 // JS means it always runs; press-and-hold pauses it. Two identical copies make a seamless loop.
-let tickerX = 0, tickerRAF = null, tickerLast = 0, tickerHeld = false, tickerWired = false;
+let tickerX = 0, tickerRAF = null, tickerLast = 0, tickerHeld = false, tickerPaused = false, tickerWired = false;
 const tickerReduce = matchMedia('(prefers-reduced-motion: reduce)');
 const TICKER_MS = 120000;   // one full copy takes 120s — the SAME speed on phone and desktop
 function tickerStart() {
@@ -657,6 +677,16 @@ function tickerStart() {
     ticker.addEventListener('pointercancel', setHeld(false), { passive: true });
     ticker.addEventListener('pointerleave', setHeld(false), { passive: true });
     tickerReduce.addEventListener?.('change', () => { if (!tickerReduce.matches) tickerStart(); });   // OS toggle → resume
+    // A visible pause/play control — WCAG 2.2.2: auto-moving content must be stoppable.
+    const pauseBtn = $('ticker-pause');
+    pauseBtn?.addEventListener('click', () => {
+      tickerPaused = !tickerPaused;
+      pauseBtn.setAttribute('aria-pressed', String(tickerPaused));
+      pauseBtn.textContent = tickerPaused ? '▶' : '⏸';
+      const label = tickerPaused ? 'Play the ticker' : 'Pause the ticker';
+      pauseBtn.setAttribute('aria-label', label); pauseBtn.title = label;
+      if (!tickerPaused) { tickerLast = performance.now(); tickerStart(); }
+    });
   }
   if (tickerReduce.matches) {                       // honour Reduce Motion: leave it as a swipe strip
     const t = ticker.querySelector('.ticker-track');
@@ -675,7 +705,7 @@ function tickerStart() {
     const half = track.scrollWidth / 2;             // one copy's width
     if (!half) { tickerRAF = requestAnimationFrame(step); return; }   // not laid out yet
     const dt = Math.min(64, Math.max(0, now - tickerLast)); tickerLast = now;
-    if (!tickerHeld) tickerX -= (half / TICKER_MS) * dt;   // one copy per duration (same on all sizes)
+    if (!tickerHeld && !tickerPaused) tickerX -= (half / TICKER_MS) * dt;   // one copy per duration (same on all sizes)
     if (tickerX <= -half) tickerX += half;
     if (tickerX > 0) tickerX -= half;
     track.style.transform = `translateX(${tickerX.toFixed(2)}px)`;
@@ -1160,7 +1190,7 @@ async function loadMarket() {
   loadSeasonal();
   loadMarketRead();      // populate the adaptive Big Picture (hero line + panels)
   loadNews();
-  $('updated').textContent = 'prices ' + new Date(data.updated).toLocaleTimeString();
+  updateFreshness(data.updated);
   $('notes').innerHTML = `<details class="fold"><summary>SOURCES, NOTES &amp; DISCLAIMER</summary><div class="note-body"><ul>` +
     data.notes.map((n) => `<li>${n}</li>`).join('') + '</ul>' +
     '<div class="disc">Sources: FRED/EIA (spot), Yahoo (futures), aisstream.io (AIS), CFTC (positioning). For information only — <b>not investment advice</b>. Figures may be delayed or indicative.</div></div></details>';
@@ -1921,7 +1951,7 @@ function initCurveHist() {
 }
 function showTab(name) {
   saveStr('tab', name);
-  document.querySelectorAll('.tab').forEach((t) => t.classList.toggle('active', t.dataset.tab === name));
+  document.querySelectorAll('.tab').forEach((t) => { const on = t.dataset.tab === name; t.classList.toggle('active', on); t.setAttribute('aria-selected', String(on)); });
   document.querySelectorAll('.tabpane').forEach((p) => p.classList.toggle('hidden', p.dataset.pane !== name));
   if (name === 'commodities') {
     loadCurveHistory();
@@ -2044,6 +2074,16 @@ function pickMetric(id, range = '6m') {
   if (cp) setTimeout(() => cp.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);
 }
 $('tabs').addEventListener('click', (e) => { const b = e.target.closest('.tab'); if (b) showTab(b.dataset.tab); });
+// Arrow keys move between tabs (standard tablist behaviour).
+$('tabs').addEventListener('keydown', (e) => {
+  if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+  const tabs = [...document.querySelectorAll('.tab')];
+  const i = tabs.indexOf(e.target.closest('.tab'));
+  if (i < 0) return;
+  e.preventDefault();
+  const next = tabs[(i + (e.key === 'ArrowRight' ? 1 : -1) + tabs.length) % tabs.length];
+  next.focus(); next.click();
+});
 $('help-btn').addEventListener('click', () => { const g = $('glossary'); g.innerHTML = GLOSSARY; g.classList.toggle('hidden'); });
 $('cards').addEventListener('click', (e) => {
   const star = e.target.closest('.star');
@@ -2070,12 +2110,23 @@ $('macro-links')?.addEventListener('click', (e) => { const el = e.target.closest
   const tick = () => { $('clock').textContent = new Date().toLocaleTimeString('en-GB'); };
   tick(); setInterval(tick, 1000);
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});
-  const showOnboard = () => $('onboarding')?.classList.remove('hidden');
-  const hideOnboard = () => { localStorage.setItem('oilbasis.seenOnboard', '1'); $('onboarding')?.classList.add('hidden'); };
+  const onboardEl = $('onboarding');
+  const showOnboard = () => { onboardEl?.classList.remove('hidden'); $('onboard-close')?.focus(); };
+  const hideOnboard = () => { localStorage.setItem('oilbasis.seenOnboard', '1'); onboardEl?.classList.add('hidden'); };
   if (!localStorage.getItem('oilbasis.seenOnboard')) showOnboard();
   $('onboard-close')?.addEventListener('click', hideOnboard);
   $('help-open')?.addEventListener('click', showOnboard);
-  $('onboarding')?.addEventListener('click', (e) => { if (e.target.id === 'onboarding') hideOnboard(); });
+  onboardEl?.addEventListener('click', (e) => { if (e.target.id === 'onboarding') hideOnboard(); });
+  // Real dialog behaviour: Escape closes, and Tab is trapped inside while it is open.
+  onboardEl?.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') { hideOnboard(); return; }
+    if (e.key !== 'Tab') return;
+    const f = [...onboardEl.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])')];
+    if (!f.length) return;
+    const first = f[0], last = f[f.length - 1];
+    if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+  });
   // Restore the last view — tab, segment, chart range, compare, and macro region/country.
   const savedTab = localStorage.getItem('oilbasis.tab');
   const savedSeg = localStorage.getItem('oilbasis.segment');

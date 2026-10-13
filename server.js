@@ -2386,7 +2386,7 @@ async function maybeSendDigest() {
 // ---------------------------------------------------------------------------
 // HTTP server
 // ---------------------------------------------------------------------------
-const MIME = { '.html': 'text/html', '.css': 'text/css', '.js': 'text/javascript', '.json': 'application/json', '.svg': 'image/svg+xml', '.ico': 'image/x-icon' };
+const MIME = { '.html': 'text/html', '.css': 'text/css', '.js': 'text/javascript', '.json': 'application/json', '.svg': 'image/svg+xml', '.ico': 'image/x-icon', '.png': 'image/png', '.webmanifest': 'application/manifest+json' };
 const sendJSON = (res, code, obj) => { res.writeHead(code, { 'content-type': 'application/json', 'cache-control': 'no-store' }); res.end(JSON.stringify(obj)); };
 
 const server = http.createServer(async (req, res) => {
@@ -2532,7 +2532,12 @@ const server = http.createServer(async (req, res) => {
     let file = url.pathname === '/' ? '/index.html' : url.pathname;
     file = path.normalize(file).replace(/^(\.\.[/\\])+/, '');
     const full = path.join(PUBLIC, file);
-    if (!full.startsWith(PUBLIC) || !fs.existsSync(full) || fs.statSync(full).isDirectory()) { res.writeHead(404).end('not found'); return; }
+    if (!full.startsWith(PUBLIC) || !fs.existsSync(full) || fs.statSync(full).isDirectory()) {
+      const nf = path.join(PUBLIC, '404.html');
+      res.writeHead(404, { 'content-type': 'text/html', 'cache-control': 'no-cache' });
+      if (fs.existsSync(nf)) return fs.createReadStream(nf).pipe(res);
+      return res.end('not found');
+    }
     res.writeHead(200, { 'content-type': MIME[path.extname(full)] || 'application/octet-stream', 'cache-control': 'no-cache' });
     fs.createReadStream(full).pipe(res);
   } catch (err) {

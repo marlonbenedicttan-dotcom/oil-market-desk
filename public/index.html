@@ -3,21 +3,26 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <meta name="theme-color" content="#05070a" />
-  <title>Marlon's Watchtower</title>
+  <title>Marlon's Watchtower — commodities &amp; macro, in plain English</title>
   <meta name="description" content="Energy, metals, agriculture & macro — what it means, with live ships and satellites. Not investment advice." />
   <meta property="og:title" content="Marlon's Watchtower" />
   <meta property="og:description" content="Energy, metals, agriculture & macro — what it means, with live ships and satellites." />
   <meta property="og:type" content="website" />
-  <meta property="og:image" content="/icon.svg" />
+  <meta property="og:image" content="/og.png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:image:alt" content="Marlon's Watchtower — commodities and macro desk" />
   <meta name="twitter:card" content="summary" />
   <meta name="twitter:title" content="Marlon's Watchtower" />
   <meta name="twitter:description" content="Energy, metals, agriculture & macro — what it means." />
   <link rel="manifest" href="/manifest.json" />
   <meta name="theme-color" content="#ff9e00" />
-  <link rel="icon" href="/icon.svg" />
+  <link rel="icon" href="/icon.svg" type="image/svg+xml" />
+  <link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png" />
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <link rel="stylesheet" href="style.css?v=32" />
+  <link rel="stylesheet" href="style.css?v=33" />
+  <noscript><style>#boot{display:none!important}</style></noscript>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 </head>
@@ -37,31 +42,36 @@
     <div id="boot-status" class="boot-status">connecting…</div>
   </div>
   <script>setTimeout(function () { var b = document.getElementById('boot'); if (b) b.classList.add('done'); }, 9000);</script>
+  <noscript><div class="noscript-note">This desk needs JavaScript to run. Please enable it, or grab the raw data from <a href="/api/export.csv">the CSV export</a>.</div></noscript>
   <header class="topbar">
     <div class="brand"><span class="logo">♜</span><h1>MARLON'S WATCHTOWER</h1><span class="sub">ENERGY · METALS · AGRICULTURE · MACRO</span></div>
     <div class="meta">
+      <span id="fresh" class="fresh-dot" role="img" title="Data freshness" aria-label="Data freshness"></span>
       <span id="clock" class="clock">--:--:--</span>
       <span id="updated" class="dimtext">loading…</span>
       <a class="ghost desk-only" href="/api/export.csv">⬇ CSV</a>
       <a class="ghost desk-only" href="/api/digest" target="_blank">DAILY BRIEF</a>
-      <button id="refresh" class="ghost">↻</button>
-      <button id="help-open" class="ghost" title="What am I looking at?">?</button>
+      <button id="refresh" class="ghost" aria-label="Refresh data" title="Refresh data">↻</button>
+      <button id="help-open" class="ghost" aria-label="Help and guide" title="Help and guide">?</button>
     </div>
   </header>
-  <div id="ticker" class="ticker"></div>
+  <div class="tickerbar">
+    <div id="ticker" class="ticker"></div>
+    <button id="ticker-pause" class="tick-btn" type="button" aria-label="Pause the ticker" aria-pressed="false" title="Pause the ticker">⏸</button>
+  </div>
 
   <main>
-    <div id="error" class="errbar hidden"></div>
+    <div id="error" class="errbar hidden" role="alert"></div>
 
     <!-- TABS -->
-    <nav class="tabs" id="tabs">
-      <button class="tab active" data-tab="home">HOME</button>
-      <button class="tab" data-tab="commodities">COMMODITIES</button>
-      <button class="tab" data-tab="macro">MACRO</button>
+    <nav class="tabs" id="tabs" role="tablist" aria-label="Sections">
+      <button class="tab active" data-tab="home" id="tab-home" role="tab" aria-selected="true" aria-controls="pane-home">HOME</button>
+      <button class="tab" data-tab="commodities" id="tab-commodities" role="tab" aria-selected="false" aria-controls="pane-commodities">COMMODITIES</button>
+      <button class="tab" data-tab="macro" id="tab-macro" role="tab" aria-selected="false" aria-controls="pane-macro">MACRO</button>
     </nav>
 
     <!-- HOME: daily brief + watchlist + alerts + headlines + segments -->
-    <div class="tabpane" data-pane="home">
+    <div class="tabpane" data-pane="home" id="pane-home" role="tabpanel" aria-labelledby="tab-home">
       <section class="panel">
         <div class="ph"><span class="ph-t">☀️ DAILY BRIEF — what happened · what's on today</span><span id="brief-updated" class="dimtext"></span></div>
         <div id="home-brief"></div>
@@ -90,7 +100,7 @@
     </div>
 
     <!-- COMMODITIES -->
-    <div class="tabpane hidden" data-pane="commodities">
+    <div class="tabpane hidden" data-pane="commodities" id="pane-commodities" role="tabpanel" aria-labelledby="tab-commodities">
 
       <!-- 1. WHERE ARE WE -->
       <section class="panel">
@@ -244,7 +254,7 @@
     </div>
 
     <!-- MACRO -->
-    <div class="tabpane hidden" data-pane="macro">
+    <div class="tabpane hidden" data-pane="macro" id="pane-macro" role="tabpanel" aria-labelledby="tab-macro">
       <section class="panel">
         <div class="ph"><span class="ph-t">🌍 REGION &amp; COUNTRY</span>
           <div class="controls">
@@ -304,9 +314,9 @@
     </div>
     <footer id="notes"></footer>
   </main>
-  <div id="onboarding" class="onboard hidden">
+  <div id="onboarding" class="onboard hidden" role="dialog" aria-modal="true" aria-labelledby="onboard-title">
     <div class="onboard-box">
-      <h2>👋 Welcome to Marlon's Watchtower</h2>
+      <h2 id="onboard-title">👋 Welcome to Marlon's Watchtower</h2>
       <p class="onboard-lead">Commodities and global macro — in plain English.</p>
       <ul>
         <li><b>HOME</b> — your pinned <b>watchlist</b> (★ any instrument), live <b>alerts</b>, and every segment at a glance.</li>
@@ -318,6 +328,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=69"></script>
+  <script src="app.js?v=70"></script>
 </body>
 </html>

@@ -36,16 +36,27 @@ button { font-family: var(--mono); }
 .brand .sub { color: var(--dim); font-size: 10px; letter-spacing: 1.5px; }
 .meta { display: flex; align-items: center; gap: 14px; }
 .clock { color: var(--amber); font-size: 12px; letter-spacing: 1px; }
+/* Data-freshness dot — green < 5 min, amber < 30 min, red after. Visible on phones too. */
+.fresh-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--dim); display: inline-block; flex: 0 0 auto; }
+.fresh-dot.ok { background: var(--green); box-shadow: 0 0 6px rgba(0, 200, 83, .6); }
+.fresh-dot.warn { background: var(--amber); box-shadow: 0 0 6px rgba(255, 158, 0, .55); }
+.fresh-dot.stale { background: var(--red); box-shadow: 0 0 6px rgba(255, 59, 48, .55); }
 .ghost { background: #12161c; border: 1px solid var(--line2); color: var(--dim); padding: 4px 10px; font-size: 11px; letter-spacing: 1px; cursor: pointer; }
 .ghost:hover { color: var(--amber); border-color: var(--amber); }
 .ghost.small { padding: 2px 8px; font-size: 10px; }
 
 /* ---------- Ticker ---------- */
-.ticker { position: relative; overflow: hidden; background: #05070a; border-bottom: 1px solid var(--line); white-space: nowrap; }
+/* A flex bar: the scrolling tape (flexes) + a small pause control (WCAG 2.2.2 — auto-moving
+   content needs a way to stop it). */
+.tickerbar { display: flex; align-items: stretch; background: #05070a; border-bottom: 1px solid var(--line); }
+.ticker { position: relative; flex: 1 1 auto; min-width: 0; overflow: hidden; background: #05070a; white-space: nowrap; }
 /* Soft fade at both edges — an overlay, NOT a mask, so the moving tape keeps its own compositor. */
 .ticker::before, .ticker::after { content: ''; position: absolute; top: 0; bottom: 0; width: 16px; pointer-events: none; z-index: 1; }
 .ticker::before { left: 0; background: linear-gradient(90deg, #05070a, rgba(5,7,10,0)); }
 .ticker::after { right: 0; background: linear-gradient(270deg, #05070a, rgba(5,7,10,0)); }
+.tick-btn { flex: 0 0 auto; width: 36px; border: 0; border-left: 1px solid var(--line); background: #05070a; color: var(--dim); font-size: 13px; line-height: 1; cursor: pointer; }
+.tick-btn:hover { color: var(--amber); background: #0c0f13; }
+.tick-btn[aria-pressed="true"] { color: var(--amber); }
 /* The tape is moved by JS (requestAnimationFrame), never by a CSS animation or :hover — iOS Safari
    latches :hover after a touch (and may still report `(hover: hover)`), which can freeze a CSS
    marquee. rAF has no such state, so the tape always runs. */
@@ -172,6 +183,7 @@ select {
 /* ---------- Utility ---------- */
 .dimtext { color: var(--dim); font-size: 11px; }
 .hidden { display: none !important; }
+.noscript-note { margin: 14px; padding: 14px 16px; border: 1px solid var(--line2); background: var(--panel2); color: var(--text); font-size: 13px; line-height: 1.6; }
 .errbar { background: #2a1214; border: 1px solid #7a2b2b; color: #ffd7d7; padding: 8px 12px; font-size: 12px; }
 footer { color: var(--dim); font-size: 11px; line-height: 1.7; border-top: 1px solid var(--line); padding-top: 10px; }
 footer li { margin-bottom: 2px; }
