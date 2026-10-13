@@ -1817,24 +1817,33 @@ function renderMacroRegion() {
     if ([...sel.options].some((o) => o.value === macroCountry)) sel.value = macroCountry;
   }
   loadMacroTickers();
-  loadRegionCurrencies();
-  loadCountry().then(prefetchRegion);   // then warm the rest of the region in the background
+  loadCountry().then(prefetchRegion);   // loads the country, then warms the rest of the region
 }
-// CURRENCIES board is scoped to the chosen region (not the global majors).
+// The chosen country's name — shared by the currency and catalyst panel scopes.
+function countryLabel(id) {
+  const list = (macroCountries && macroCountries[macroRegion]) || [];
+  const c = list.find((x) => x.id === id);
+  return c ? c.label : String(id || '').toUpperCase();
+}
+// CURRENCIES board — scoped to the chosen COUNTRY so it matches the catalysts panel below it.
 async function loadRegionCurrencies() {
   const el = $('macro-fx');
   if (!el) return;
   el.innerHTML = stLoading();
-  const req = macroRegion;
+  const reqR = macroRegion, reqC = macroCountry;
   let items = null;
-  try { items = (await getJSON('/api/region-quotes?id=' + req)).items || []; } catch {}
-  if (req !== macroRegion) return;
-  const scope = $('fx-scope'); if (scope) scope.textContent = req.toUpperCase();
-  const seen = new Set();
-  const fx = (items || []).filter((i) => i.kind === 'fx').filter((i) => { if (seen.has(i.label)) return false; seen.add(i.label); return true; });
+  try { items = (await getJSON('/api/region-quotes?id=' + reqR)).items || []; } catch {}
+  if (reqR !== macroRegion || reqC !== macroCountry) return;   // newest pick wins
+  const scope = $('fx-scope'); if (scope) scope.textContent = countryLabel(reqC).toUpperCase();
+  const byLabel = {};
+  for (const f of (fxList || [])) byLabel[f.label.replace(/\s*·.*/, '')] = f.id;   // chartable ones only
+  const fx = (items || []).filter((i) => i.kind === 'fx' && i.id === reqC);
   el.innerHTML = fx.length
-    ? '<div class="kpis">' + fx.map((f) => macroTile(f.label, f.price == null ? '—' : Number(f.price).toFixed(f.price < 10 ? 4 : 2), f.pct != null ? pctf(f.pct) : '', cls(f.pct), null, f.deltas ? deltaStrip(f.deltas) : '')).join('') + '</div><div class="macro-note">the chosen region\'s currencies · moves over 1D/1W/1M/YTD/1Y</div>'
-    : stEmpty('No currencies for this region.');
+    ? '<div class="kpis">' + fx.map((f) => {
+      const cid = byLabel[f.label.replace(/\s*·.*/, '')];
+      return macroTile(f.label, f.price == null ? '—' : Number(f.price).toFixed(f.price < 10 ? 4 : 2), f.pct != null ? pctf(f.pct) : '', cls(f.pct), cid ? 'fx:' + cid : null, f.deltas ? deltaStrip(f.deltas) : '');
+    }).join('') + '</div><div class="macro-note">the chosen country\'s currency · moves over 1D/1W/1M/YTD/1Y</div>'
+    : stEmpty('No currency for this country.');
 }
 async function loadMacroTickers() {
   // the macro tape shows EVERY macro ticker (all regions) so it is never sparse
@@ -1883,6 +1892,7 @@ async function loadCountry() {
   if (!el) return;
   const req = macroCountry;                       // guard: newest country wins
   loadCatalysts();                                // country-scoped · independent of the heavier panel below
+  loadRegionCurrencies();                         // also country-scoped, so the two panels agree
   const showUsJp = req === 'us' || req === 'jp';
   const up = $('usjp-panel');
   if (up) up.classList.toggle('hidden', !showUsJp);
