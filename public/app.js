@@ -1,8 +1,11 @@
 const $ = (id) => document.getElementById(id);
-const fmt = (n, dp = 2) => (n == null ? '—' : '$' + Number(n).toFixed(dp));
 const signed = (n, dp = 2) => (n == null ? '—' : (n >= 0 ? '+' : '') + Number(n).toFixed(dp));
 const pctf = (x) => (x == null ? '—' : (x >= 0 ? '+' : '') + Number(x).toFixed(1) + '%');
 const cls = (n) => (n == null ? '' : n >= 0 ? 'pos' : 'neg');
+// Escape text that comes from outside the app — wire headlines, URLs, TradingView event titles,
+// user-typed rule notes — before interpolating it into innerHTML. Server-side prose deliberately
+// contains <b> tags, so only genuinely external strings are escaped, never the prose fields.
+const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const GAL = 42;
 const ago = (iso) => { if (!iso) return ''; const s = Math.round((Date.now() - new Date(iso)) / 1000); return s < 60 ? `${s}s ago` : s < 3600 ? `${Math.round(s / 60)}m ago` : `${Math.round(s / 3600)}h ago`; };
 
@@ -213,39 +216,6 @@ function crackSpreads(m) {
   return out;
 }
 
-// ---------------------------------------------------------------------------
-// Cards
-// ---------------------------------------------------------------------------
-function benchCard(b) {
-  const realOnly = b.paper == null;      // spot only (jet/propane)
-  const paperOnly = b.physical == null;  // futures only (metals/ags)
-  const s = history?.series?.[b.id];
-  const arr = b.paper != null ? s?.paper : s?.physical;
-  const day = changeOf(arr), dayPct = pctOf(arr);
-  const stale = b.spotLagDays != null && b.spotLagDays >= 3;
-  const rows = [];
-  rows.push(`<div class="row"><span class="k">Futures price</span><span class="v">${realOnly ? '<span class="k">— none</span>' : fmt(b.paper, b.dp)}</span></div>`);
-  if (!paperOnly) rows.push(`<div class="row"><span class="k">Real barrels <em>${b.physicalDate || ''}</em>${stale ? ` <span class="qb">${b.spotLagDays}d old</span>` : ''}</span><span class="v">${fmt(b.physical, b.dp)}</span></div>`);
-  if (!realOnly && !paperOnly) rows.push(`<div class="row"><span class="k">Gap (real − futures) <span class="qi" title="Real price minus futures price">ⓘ</span></span><span class="v basis ${cls(b.basis)}">${b.basis == null ? '—' : signed(b.basis, b.dp)}</span></div>`);
-  rows.push(`<div class="row"><span class="k">Change today</span><span class="v ${cls(day)}">${day == null ? '—' : `${signed(day, b.dp)} (${pctf(dayPct)})`}</span></div>`);
-  return `
-    <div class="card clickable" data-id="${b.id}" title="Click for history">
-      <h3 title="${b.label}">${b.label} <span>${b.unit}${realOnly ? ' · real only' : paperOnly ? ' · futures' : ''}</span></h3>
-      ${rows.join('')}
-    </div>`;
-}
-function spreadCard(s) {
-  return `<div class="card"><h3>${s.label} <span>${s.unit}</span></h3>
-      <div class="row"><span class="k">Futures gap</span><span class="v ${cls(s.paper)}">${signed(s.paper, s.dp)}</span></div>
-      <div class="row"><span class="k">Real-barrel gap</span><span class="v ${cls(s.physical)}">${signed(s.physical, s.dp)}</span></div>
-      <div class="row"><span class="k">Difference</span><span class="v ${cls(s.paper - s.physical)}">${signed(s.paper - s.physical, s.dp)}</span></div></div>`;
-}
-function crackCard(c) {
-  const read = c.value > 20 ? 'very good' : c.value > 8 ? 'ok' : 'poor';
-  return `<div class="card"><h3>${c.label} <span>$/bbl</span></h3>
-      <div class="row"><span class="k">Profit / barrel</span><span class="v basis ${cls(c.value)}">${signed(c.value)}</span></div>
-      <div class="row"><span class="k">Read</span><span class="v dimtext" style="font-weight:400">${read}</span></div></div>`;
-}
 function watchlist() { try { return JSON.parse(localStorage.getItem('oilbasis.watch') || '[]'); } catch { return []; } }
 function toggleWatch(id) { const w = watchlist(); const i = w.indexOf(id); if (i >= 0) w.splice(i, 1); else w.push(id); localStorage.setItem('oilbasis.watch', JSON.stringify(w)); }
 // Remember the user's view across visits (tab, segment, range, compare, macro) — feels like the
@@ -577,7 +547,7 @@ function renderNews(n, elId = 'news', subId = 'news-sub') {
   const lbl = (n && n.label) || '';
   if (sub) sub.textContent = lbl + ' · tier-1 wire · refreshes daily';
   if (!items.length) { el.innerHTML = stEmpty('No recent tier-1 headlines for this segment.'); return; }
-  el.innerHTML = items.map((it) => `<a class="news-item" href="${it.url}" target="_blank" rel="noopener noreferrer"><span class="news-src">${it.source || 'wire'}</span><span class="news-t">${it.kind ? `<em class="news-k">${it.kind}</em> ` : ''}${it.title}</span><span class="news-d dimtext">${ago(it.date)}</span></a>`).join('')
+  el.innerHTML = items.map((it) => `<a class="news-item" href="${esc(it.url)}" target="_blank" rel="noopener noreferrer"><span class="news-src">${esc(it.source || 'wire')}</span><span class="news-t">${it.kind ? `<em class="news-k">${esc(it.kind)}</em> ` : ''}${esc(it.title)}</span><span class="news-d dimtext">${ago(it.date)}</span></a>`).join('')
     + '<div class="dimtext" style="padding:6px 12px;font-size:10px">Headlines via Google News · © the respective publishers · links open at the source.</div>';
 }
 function selectMarket(id) {
@@ -697,7 +667,7 @@ function computeRules() {
     if (r.op === '>') hit = v > r.level;
     else if (r.op === '<') hit = v < r.level;
     else if (r.op === 'crosses') hit = prev != null && ((prev < r.level && v >= r.level) || (prev > r.level && v <= r.level));
-    if (hit) out.push({ level: 'med', rule: true, text: `${ruleLabel(r.metric)} ${r.op === '>' ? 'is above' : r.op === '<' ? 'is below' : 'crossed'} ${r.level}${r.note ? ` — ${r.note}` : ''} (now ${Number(v).toFixed(2)}).` });
+    if (hit) out.push({ level: 'med', rule: true, text: `${ruleLabel(r.metric)} ${r.op === '>' ? 'is above' : r.op === '<' ? 'is below' : 'crossed'} ${r.level}${r.note ? ` — ${esc(r.note)}` : ''} (now ${Number(v).toFixed(2)}).` });
   }
   return out;
 }
@@ -706,7 +676,7 @@ function renderRules() {
   const rs = rules();
   const opts = metricGroups().map(([g, arr]) => `<optgroup label="${g}">${arr.map((o) => `<option value="${o.v}">${o.l}</option>`).join('')}</optgroup>`).join('');
   const list = rs.length
-    ? rs.map((r) => `<div class="rule"><span>${ruleLabel(r.metric)} ${r.op === '>' ? 'above' : r.op === '<' ? 'below' : 'crosses'} <b>${r.level}</b>${r.note ? ` — ${r.note}` : ''}</span><button class="rule-x" data-del="${r.id}" aria-label="Delete rule">✕</button></div>`).join('')
+    ? rs.map((r) => `<div class="rule"><span>${ruleLabel(r.metric)} ${r.op === '>' ? 'above' : r.op === '<' ? 'below' : 'crosses'} <b>${r.level}</b>${r.note ? ` — ${esc(r.note)}` : ''}</span><button class="rule-x" data-del="${r.id}" aria-label="Delete rule">✕</button></div>`).join('')
     : '<div class="dimtext" style="padding:2px 0">No rules yet — add one below.</div>';
   const granted = 'Notification' in window && Notification.permission === 'granted';
   el.innerHTML = '<div class="rules-h">ALERT RULES — tell me when…</div>'
@@ -1170,7 +1140,7 @@ async function chartMoveMarkers(market, labels, seriesList, mode = 'pct', focusI
 function renderChartEvents(ev, sel = '#chart-events') {
   const el = $(sel); if (!el) return;
   if (!ev || !ev.length) { el.innerHTML = stEmpty('No big move with a trusted-news match on this chart right now.'); return; }
-  el.innerHTML = `<span class="dimtext">big moves on this chart — hover a marker for the headline, or open the source:</span> ` + ev.map((e) => { const t = String(e.title); const short = t.length > 72 ? t.slice(0, 71) + '…' : t; return `<a class="ce" href="${e.url}" target="_blank" rel="noopener noreferrer" title="${t.replace(/"/g, '&quot;')}"><span class="ce-dot" style="background:${e.color}"></span>${e.date.slice(5)} ${e.move >= 0 ? '▲' : '▼'} ${moveText(e)} · ${short} <span class="dimtext">(${e.source})</span></a>`; }).join('');
+  el.innerHTML = `<span class="dimtext">big moves on this chart — hover a marker for the headline, or open the source:</span> ` + ev.map((e) => { const t = String(e.title); const short = t.length > 72 ? t.slice(0, 71) + '…' : t; return `<a class="ce" href="${esc(e.url)}" target="_blank" rel="noopener noreferrer" title="${esc(t)}"><span class="ce-dot" style="background:${e.color}"></span>${e.date.slice(5)} ${e.move >= 0 ? '▲' : '▼'} ${moveText(e)} · ${esc(short)} <span class="dimtext">(${esc(e.source)})</span></a>`; }).join('');
 }
 // Shared by every chart: detect its big moves, attach the trusted news (as a line INSIDE the
 // normal tooltip) and render the clickable chip list under the chart.
@@ -1732,6 +1702,8 @@ let rerouteChart;
 function processSar() {
   const cv = $('sar-canvas');
   if (!cv) return;
+  cv.setAttribute('role', 'img');
+  cv.setAttribute('aria-label', 'Satellite radar image of the Gulf of Mexico — loading.');
   const img = new Image();
   img.onload = () => {
     const W = img.width, H = img.height;
@@ -1761,8 +1733,9 @@ function processSar() {
     ctx.lineWidth = 1.5; ctx.strokeStyle = '#ff3b30';
     for (const p of points) { ctx.beginPath(); ctx.arc(p.x, p.y, 7, 0, Math.PI * 2); ctx.stroke(); }
     $('sar-count').innerHTML = `<b>${points.length}</b> small bright objects circled — likely <b>oil platforms or ships</b>. (At this zoom a single tanker is under 1 pixel, so treat the count as indicative, not exact.)`;
+    cv.setAttribute('aria-label', `Satellite radar image of the Gulf of Mexico — ${points.length} small bright objects (likely oil platforms or ships) circled in red. Bright pixels are solid objects or land; dark pixels are open water.`);
   };
-  img.onerror = () => { const s = $('sar-count'); if (s) s.textContent = 'image unavailable'; };
+  img.onerror = () => { const s = $('sar-count'); if (s) s.textContent = 'image unavailable'; cv.setAttribute('aria-label', 'Satellite radar image of the Gulf of Mexico — the image could not be loaded.'); };
   img.src = '/api/sar/image';
 }
 
@@ -1868,7 +1841,7 @@ async function loadCatalysts() {
   const items = (d && d.events) || [];
   const cnt = $('cat-count'); if (cnt) cnt.textContent = items.length ? `· ${items.length}` : '';
   el.innerHTML = items.length
-    ? items.map((e) => `<div class="cal-row"><span class="cal-date">${catDate(e.date)}</span><span class="cal-name">${e.name}${e.time ? ` <span class="dimtext">· ${e.time}</span>` : ''}</span><span class="cal-src${e.importance >= 1 ? ' hi' : ''}">${e.importance >= 1 ? 'High' : e.importance === 0 ? 'Med' : 'Low'}</span></div>`).join('')
+    ? items.map((e) => `<div class="cal-row"><span class="cal-date">${catDate(e.date)}</span><span class="cal-name">${esc(e.name)}${e.time ? ` <span class="dimtext">· ${esc(e.time)}</span>` : ''}</span><span class="cal-src${e.importance >= 1 ? ' hi' : ''}">${e.importance >= 1 ? 'High' : e.importance === 0 ? 'Med' : 'Low'}</span></div>`).join('')
       + '<div class="macro-note">Near-term releases for this country, from TradingView\'s economic calendar. The full dated schedule (including FOMC) lives in the Calendar panel.</div>'
     : stEmpty('No releases scheduled for ' + ((d && d.label) || req) + ' over the next 6 weeks.');
 }
@@ -2109,8 +2082,8 @@ function renderFundamentals(f) {
   if (sub) sub.textContent = `${f && f.label ? f.label + ' · ' : ''}news tilt: ${lean} — ${up} bullish vs ${down} bearish tagged shocks (qualitative, not scored)`;
   if (!items.length) { el.innerHTML = stEmpty('No supply/demand shocks in recent coverage.'); return; }
   el.innerHTML = items.map((i) => `<div class="xa">
-      <div class="xa-trig ${i.effect === 'down' ? 'neg' : 'pos'}">${i.effect === 'down' ? '▼' : '▲'} ${i.kind} <span class="dimtext">· ${i.ageDays <= 14 ? 'recent' : Math.max(1, Math.round(i.ageDays / 30)) + 'mo ago'} · ${i.source}</span></div>
-      <div class="xa-chain"><a href="${i.url}" target="_blank" rel="noopener noreferrer">${i.title}</a></div>
+      <div class="xa-trig ${i.effect === 'down' ? 'neg' : 'pos'}">${i.effect === 'down' ? '▼' : '▲'} ${esc(i.kind)} <span class="dimtext">· ${i.ageDays <= 14 ? 'recent' : Math.max(1, Math.round(i.ageDays / 30)) + 'mo ago'} · ${esc(i.source)}</span></div>
+      <div class="xa-chain"><a href="${esc(i.url)}" target="_blank" rel="noopener noreferrer">${esc(i.title)}</a></div>
       <div class="macro-note">${i.chain}</div>
     </div>`).join('')
     + '<div class="macro-note">Auto-tagged: a keyword matched a supply/demand event — a prompt to investigate, not a certainty. Links open at the source.</div>';
@@ -2407,7 +2380,7 @@ function renderHeadlines(h) {
   if (!el) return;
   const items = (h && h.items) || [];
   if (!items.length) { el.innerHTML = stEmpty('No major commodity headlines right now.'); return; }
-  el.innerHTML = items.map((i) => `<a class="hl ${i.effect === 'down' ? 'down' : 'up'}" href="${i.url}" target="_blank" rel="noopener noreferrer"><span class="hl-tag">${i.effect === 'down' ? '▼' : '▲'} ${i.kind}</span><span class="hl-t">${i.title}</span><span class="hl-s dimtext">${i.source}</span></a>`).join('');
+  el.innerHTML = items.map((i) => `<a class="hl ${i.effect === 'down' ? 'down' : 'up'}" href="${esc(i.url)}" target="_blank" rel="noopener noreferrer"><span class="hl-tag">${i.effect === 'down' ? '▼' : '▲'} ${esc(i.kind)}</span><span class="hl-t">${esc(i.title)}</span><span class="hl-s dimtext">${esc(i.source)}</span></a>`).join('');
 }
 async function loadMacroNews() {
   const el = $('macro-news');

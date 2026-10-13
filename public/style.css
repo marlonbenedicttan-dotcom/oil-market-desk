@@ -86,7 +86,6 @@ main { max-width: 1240px; margin: 0 auto; padding: 14px; display: grid; gap: 14p
 .tile:hover { border-color: var(--amber); }
 .t-name { grid-area: name; min-width: 0; color: #c9d4df; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .t-px { grid-area: px; font-variant-numeric: tabular-nums; font-weight: 700; font-size: 13px; }
-.t-chg { grid-area: chg; font-size: 11px; min-width: 46px; text-align: right; }
 .tile .spark { grid-area: spark; display: block; width: 100%; height: 22px; margin-top: 2px; opacity: .85; }
 .tile .t-foot { grid-column: 1 / -1; display: block; }
 .star { grid-area: star; justify-self: end; color: var(--dim); cursor: pointer; font-size: 13px; padding-left: 4px; }
@@ -105,10 +104,6 @@ main { max-width: 1240px; margin: 0 auto; padding: 14px; display: grid; gap: 14p
 .qi { color: var(--dim); font-size: 10px; cursor: help; }
 
 /* ---------- Insights ---------- */
-.insights { display: grid; grid-template-columns: 1fr 1fr; gap: 0; }
-.insights .col { padding: 0 4px 8px; }
-.insights .col:first-child { border-right: 1px solid var(--line); }
-@media (max-width: 760px) { .insights { grid-template-columns: 1fr; } .insights .col:first-child { border-right: 0; border-bottom: 1px solid var(--line); } }
 .ins-list { margin: 0; padding: 0 16px 0 26px; }
 .ins-list li { margin-bottom: 7px; color: #c9d4df; }
 .ins-list b { color: var(--text); }
@@ -233,7 +228,6 @@ footer li { margin-bottom: 2px; }
 .chokes-h { width: 100%; font-size: 10px; letter-spacing: 1px; margin-bottom: 2px; }
 .choke { border: 1px solid var(--line); padding: 3px 8px; font-size: 12px; }
 .choke b { color: var(--amber); }
-.disc { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--line); font-size: 10.5px; }
 
 /* Term structure */
 .curve { padding: 10px 12px; display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
@@ -280,7 +274,6 @@ footer li { margin-bottom: 2px; }
 /* Hero (regime + KPIs) */
 .hero { background: #0a0c0f; border: 1px solid var(--line); }
 .regime { padding: 9px 12px; border-bottom: 1px solid var(--line); font-size: 13px; letter-spacing: .4px; }
-.regime-k { color: var(--amber); font-size: 10px; letter-spacing: 2px; margin-right: 8px; }
 .regime .warn { color: var(--amber); }
 /* Hero: per-segment market-state board */
 .marketstate { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1px; background: var(--line); }
@@ -533,7 +526,6 @@ footer li { margin-bottom: 2px; }
 .cal-src { grid-column: 3; color: var(--dim); font-size: 10px; letter-spacing: .5px; text-transform: uppercase; white-space: nowrap; }
 .cal-note { grid-column: 1 / -1; font-size: 10.5px; }
 .cal-foot { padding: 7px 12px; }
-.cal-undated { border-top: 1px solid var(--line); }
 @media (max-width: 640px) {
   .cal-row { grid-template-columns: 1fr auto; gap: 1px 10px; }
   .cal-date { grid-column: 1; grid-row: 1; }
@@ -689,7 +681,6 @@ footer li { margin-bottom: 2px; }
 .xa-chain { font-size: 12.5px; color: #c9d4df; line-height: 1.5; margin-bottom: 6px; }
 .xa-chain b { color: #fff; }
 .headlines { display: grid; gap: 1px; background: var(--line); }
-.hl-h { padding: 7px 12px; font-size: 10px; letter-spacing: 2px; color: var(--amber); background: #0a0c0f; }
 .hl { display: grid; grid-template-columns: 150px 1fr auto; align-items: baseline; gap: 10px; padding: 7px 12px; background: #0c0f13; color: var(--text); text-decoration: none; }
 .hl:hover { background: #10151b; }
 .hl-tag { font-size: 10px; letter-spacing: .5px; }
@@ -699,9 +690,6 @@ footer li { margin-bottom: 2px; }
 .hl:hover .hl-t { color: #fff; }
 .hl-s { font-size: 10px; text-align: right; white-space: nowrap; }
 @media (max-width: 700px) { .hl { grid-template-columns: 1fr; } .hl-tag, .hl-s { grid-column: 1; } }
-.wb-bars { display: flex; align-items: flex-end; gap: 3px; height: 46px; padding: 4px 12px 0; }
-.wb-bar { flex: 1; max-width: 26px; background: var(--green); opacity: .8; }
-.wb-bar.neg { background: var(--red); }
 .xa-trig.pos { color: var(--green); }
 .xa-trig.neg { color: var(--red); }
 .news { display: grid; }
@@ -720,7 +708,7 @@ footer li { margin-bottom: 2px; }
 /* Keep the page inside the phone's width. Grid/flex children default to min-width:auto, so a
    single wide child (a table, a canvas, a nowrap row) can push the whole page wider than the
    screen → sideways scroll → "too big / won't fit". Let every one of them shrink instead. */
-main, .tabpane, .panel, .cards, .curve, .kpis, .marketstate, .insights, .brief-cols, .bl, .bl-sec, .macro, .sectors, .sector-read, .attr, .ev, .ctx-row { min-width: 0; }
+main, .tabpane, .panel, .cards, .curve, .kpis, .marketstate, .brief-cols, .bl, .bl-sec, .macro, .sectors, .sector-read, .attr, .ev, .ctx-row { min-width: 0; }
 main > *, .tabpane > *, .panel > * { min-width: 0; }
 canvas, img, svg, table, pre { max-width: 100%; }
 canvas { display: block; }

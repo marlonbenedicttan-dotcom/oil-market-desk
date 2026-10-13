@@ -150,12 +150,6 @@ async function eiaSeries(id, days = 220) {
 
 const spotSeries = (b, days) => (!b.physical ? Promise.resolve({}) : b.source === 'eia' ? eiaSeries(b.physical, days) : fredSeries(b.physical, days));
 
-const lastEntry = (obj) => {
-  const dates = Object.keys(obj).sort();
-  const d = dates[dates.length - 1];
-  return { date: d || null, value: d ? obj[d] : null };
-};
-
 // ---------------------------------------------------------------------------
 // Cache
 // ---------------------------------------------------------------------------
@@ -782,10 +776,15 @@ async function getCurveHistory(root) {
       list.push({ mk, symbol: `${root}${CURVE_MONTHS[d.getUTCMonth()]}${String(d.getUTCFullYear()).slice(2)}.NYM` });
     }
     const series = {};
-    for (const c of list) {
-      series[c.mk] = await contractSeries(c.symbol);
-      await sleep(120);                               // Yahoo rate-limit courtesy (was 200ms)
-    }
+    // Fetch the contract months through a small worker pool — the sequential loop + sleep(120) took
+    // ~28s cold (getContinuous already uses this pattern; it fetches more months in half the time).
+    let qi = 0;
+    await Promise.all(Array.from({ length: 4 }, async () => {
+      while (qi < list.length) {
+        const c = list[qi++];
+        try { series[c.mk] = await contractSeries(c.symbol); } catch { series[c.mk] = {}; }
+      }
+    }));
     const months = Object.keys(series).filter((m) => Object.keys(series[m]).length).sort();
     const allDates = [...new Set(months.flatMap((m) => Object.keys(series[m])))].sort().slice(-500);
     const dates = [], m1m2 = [];

@@ -23,7 +23,7 @@
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
   <link rel="preconnect" href="https://unpkg.com" crossorigin />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <link rel="stylesheet" href="style.css?v=51" />
+  <link rel="stylesheet" href="style.css?v=52" />
   <noscript><style>#boot{display:none!important}</style></noscript>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -195,7 +195,7 @@
         <div id="curve" class="curve"></div>
         <div id="curvehist-block">
           <div id="curvehist-title" class="chokes-h dimtext" style="padding:8px 12px 0"></div>
-          <div class="chart-wrap sm"><canvas id="curvehist"></canvas></div>
+          <div class="chart-wrap sm"><canvas id="curvehist" role="img" aria-label="Term-structure chart — this month minus next month, loading."></canvas></div>
           <div id="curvehist-events" class="chart-events"></div>
         </div>
       </section>
@@ -210,7 +210,7 @@
         <div class="ph"><span class="ph-t">SOYBEAN CRUSH — processor margin</span><span class="dimtext">meal + oil − beans, per bushel</span></div>
         <div id="crush" class="products"></div>
         <div class="chokes-h dimtext" style="padding:0 12px">SOYBEAN CRUSH OVER TIME ($/bu · oil share %, last 6 months)</div>
-        <div class="chart-wrap sm"><canvas id="crushhist"></canvas></div>
+        <div class="chart-wrap sm"><canvas id="crushhist" role="img" aria-label="Soybean crush and oil-share chart, loading."></canvas></div>
         <div id="crush-events" class="chart-events"></div>
       </section>
 
@@ -394,6 +394,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=95"></script>
+  <script src="app.js?v=96"></script>
 </body>
 </html>
