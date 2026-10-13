@@ -349,6 +349,24 @@ footer li { margin-bottom: 2px; }
 .fold summary:hover { color: var(--amber); }
 .fold[open] summary { border-bottom: 1px solid var(--line); }
 .note-body { padding: 8px 14px 12px; }
+/* Data & Methodology */
+#methodology .note-body { padding: 4px 14px 14px; }
+.m-sec { margin-top: 14px; }
+.m-sec h4 { font-size: 10px; letter-spacing: 2px; color: var(--amber); margin: 0 0 7px; }
+.m-tbl-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.m-tbl { width: 100%; border-collapse: collapse; font-size: 12px; min-width: 460px; }
+.m-tbl th { text-align: left; color: var(--dim); font-size: 10px; letter-spacing: 1px; border-bottom: 1px solid var(--line2); padding: 4px 8px; }
+.m-tbl td { padding: 5px 8px; border-bottom: 1px solid var(--line); color: #c9d4df; vertical-align: top; }
+.m-tbl td:first-child { color: var(--text); white-space: nowrap; }
+.m-fresh { color: var(--dim); }
+.m-score { border: 1px solid var(--line); background: var(--panel2); padding: 8px 10px; margin-bottom: 8px; }
+.m-score-h { font-size: 12px; color: var(--amber2); font-weight: 700; margin-bottom: 4px; }
+.m-score-h span { color: var(--dim); font-weight: 400; font-size: 11px; margin-left: 6px; }
+.m-score p { margin: 0; font-size: 12px; color: #c9d4df; line-height: 1.55; }
+.m-rules { margin: 0; padding-left: 18px; }
+.m-rules li { font-size: 12px; color: #c9d4df; margin-bottom: 5px; line-height: 1.5; }
+.m-sec p { margin: 0; font-size: 12px; color: #c9d4df; line-height: 1.55; }
+.foot-line { margin-top: 10px; }
 
 /* Tightness */
 .tightness { padding: 10px 12px; }

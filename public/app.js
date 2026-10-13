@@ -105,6 +105,27 @@ const stState = (kind, text) => `<div class="state ${kind}">${kind === 'loading'
 const stLoading = (text = 'Loading…') => stState('loading', text);
 const stEmpty = (text) => stState('empty', text);
 const stError = (text) => stState('error', text);
+
+// The on-site "Data & Methodology" — sources + freshness, what the scores mean, how basis works,
+// and the rules. Content comes from the server (METHODOLOGY in src/lib.js) so it can't drift.
+function renderMethodology(data) {
+  const el = $('notes'); if (!el) return;
+  const m = data.methodology;
+  const caveats = (data.notes || []).map((n) => `<li>${n}</li>`).join('');
+  let html = '';
+  if (m) {
+    const rows = m.sources.map((s) => `<tr><td>${s.name}</td><td>${s.covers}</td><td class="m-fresh">${s.freshness}</td></tr>`).join('');
+    const scores = m.scores.map((s) => `<div class="m-score"><div class="m-score-h">${s.name}<span>${s.range}</span></div><p>${s.read}</p></div>`).join('');
+    const rules = m.rules.map((r) => `<li>${r}</li>`).join('');
+    html = `<div class="m-sec"><h4>WHERE THE DATA COMES FROM</h4><div class="m-tbl-wrap"><table class="m-tbl"><thead><tr><th>Source</th><th>What it covers</th><th>Freshness</th></tr></thead><tbody>${rows}</tbody></table></div></div>`
+      + `<div class="m-sec"><h4>WHAT THE SCORES MEAN</h4>${scores}</div>`
+      + `<div class="m-sec"><h4>HOW BASIS WORKS</h4><p>${m.basis}</p></div>`
+      + `<div class="m-sec"><h4>THE RULES</h4><ul class="m-rules">${rules}</ul></div>`;
+  }
+  if (caveats) html += `<div class="m-sec"><h4>THINGS TO FLAG</h4><ul class="m-rules">${caveats}</ul></div>`;
+  el.innerHTML = `<details class="fold" id="methodology"><summary>📖 DATA &amp; METHODOLOGY</summary><div class="note-body">${html}</div></details>`
+    + `<div class="foot-line dimtext">Marlon's Watchtower · data © the respective sources · not investment advice.</div>`;
+}
 async function getJSON(url) { const r = await fetch(url); if (!r.ok) throw new Error(`${url} -> HTTP ${r.status}`); return r.json(); }
 // Memoised GET — a per-session cache so re-visiting a segment is instant (no re-fetch of the
 // read, news, curve, etc.). Short TTL; the server has its own longer cache anyway.
@@ -1202,9 +1223,7 @@ async function loadMarket() {
   loadMarketRead();      // populate the adaptive Big Picture (hero line + panels)
   loadNews();
   updateFreshness(data.updated);
-  $('notes').innerHTML = `<details class="fold"><summary>SOURCES, NOTES &amp; DISCLAIMER</summary><div class="note-body"><ul>` +
-    data.notes.map((n) => `<li>${n}</li>`).join('') + '</ul>' +
-    '<div class="disc">Sources: FRED/EIA (spot), Yahoo (futures), aisstream.io (AIS), CFTC (positioning). For information only — <b>not investment advice</b>. Figures may be delayed or indicative.</div></div></details>';
+  renderMethodology(data);
 }
 
 // ---------------------------------------------------------------------------

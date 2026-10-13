@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { sgn, inBox, haversineNm, isoWeek, monthly, pctOver, percentile, realizedVol, computeCracks, computeCrush, backAdjust, pearson, logReturns, horizonDeltas, curveTightness, inventoryTightness, weightedScore, seasonalGrade, seasonalAhead, contractMonthsBetween, signedPosition, signedMove, stretchScore, sdLabel, attributeMoves, newsContextOk, looksLikeProperNoun, NON_MARKET_CTX } from '../src/lib.js';
+import { sgn, inBox, haversineNm, isoWeek, monthly, pctOver, percentile, realizedVol, computeCracks, computeCrush, backAdjust, pearson, logReturns, horizonDeltas, curveTightness, inventoryTightness, weightedScore, seasonalGrade, seasonalAhead, contractMonthsBetween, signedPosition, signedMove, stretchScore, sdLabel, attributeMoves, newsContextOk, looksLikeProperNoun, NON_MARKET_CTX, METHODOLOGY } from '../src/lib.js';
 
 test('sgn formats with sign', () => {
   assert.equal(sgn(4.39), '+4.39');
@@ -240,6 +240,15 @@ test('newsContextOk: a commodity word must be a MARKET story, not a name or a sp
   // callers can force or waive the market-context requirement
   assert.equal(newsContextOk('Silver', { requireMarket: false }), true);
   assert.equal(newsContextOk('Corn futures fall after a record harvest', { requireMarket: true }), true);
+});
+
+test('METHODOLOGY is complete — every source and score carries its labels', () => {
+  assert.ok(Array.isArray(METHODOLOGY.sources) && METHODOLOGY.sources.length >= 6, 'expect a source list');
+  for (const s of METHODOLOGY.sources) assert.ok(s.name && s.covers && s.freshness, `source incomplete: ${JSON.stringify(s)}`);
+  assert.equal(METHODOLOGY.scores.length, 2, 'price score + supply/demand score');
+  for (const s of METHODOLOGY.scores) assert.ok(s.name && s.range && s.read, `score incomplete: ${JSON.stringify(s)}`);
+  assert.ok(METHODOLOGY.basis.length > 40, 'basis needs an explanation');
+  assert.ok(METHODOLOGY.rules.some((r) => /not investment advice/i.test(r)), 'keep the disclaimer');
 });
 
 test('looksLikeProperNoun flags a commodity used as a surname', () => {

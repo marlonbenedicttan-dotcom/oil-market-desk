@@ -299,6 +299,36 @@ export function weightedScore(parts) {
 }
 
 // ---------------------------------------------------------------------------
+// Data provenance + method — the single source of truth for the on-site
+// "Data & Methodology" section (served at /api/market.methodology). It's content, not
+// logic, but it lives here so it can't drift between the server and the UI, and so a
+// unit test can assert it stays complete.
+// ---------------------------------------------------------------------------
+export const METHODOLOGY = {
+  sources: [
+    { name: 'Yahoo Finance', covers: 'Futures, FX and equity indices', freshness: 'Live — may be delayed ~15 min' },
+    { name: 'FRED / EIA', covers: 'Real-barrel spot prices, US inventories, gas storage', freshness: 'Spot lags days; EIA weekly (Wed)' },
+    { name: 'CFTC', covers: 'Positioning (managed money, COT)', freshness: 'Weekly, Friday — lags ~3 days' },
+    { name: 'BIS', covers: 'Central-bank policy rates', freshness: 'Monthly' },
+    { name: 'World Bank / IMF', covers: 'GDP, debt, inflation (country fundamentals)', freshness: 'Annual — labelled by year' },
+    { name: 'USDA', covers: 'Grain & dairy stocks-to-use balances', freshness: 'Monthly snapshot' },
+    { name: 'Google News (tier-1 wire)', covers: 'Headlines and event tagging', freshness: 'Live — keyword + context matched' },
+    { name: 'aisstream.io / NASA', covers: 'Ships, gas flares, radar satellite', freshness: 'Live / daily' },
+  ],
+  scores: [
+    { name: 'Price vs its own history', range: '−100 … +100', read: 'Where today’s price sits in THIS market’s own history: + = rich (a premium), − = cheap (a discount), 0 = mid. Built from 2-year & 10-year range position plus self-normalised 3-month and 1-year moves — never compared across markets.' },
+    { name: 'Supply & demand', range: '0 … 100', read: 'The physical balance from the curve, the real-vs-futures basis and stocks vs the seasonal norm. Above 50 = undersupplied, 50 = balanced, below 50 = oversupplied. Re-weighted over whatever data exists; missing inputs are shown, never faked.' },
+  ],
+  basis: 'Basis = real barrels (the official spot assessment) − futures. A positive gap means cash is above futures, i.e. a tight physical market. Spot LAGS and comes from a different source, so the gap can reflect timing as well as tightness — the data checks say when.',
+  rules: [
+    'Numbers are never invented: a missing input shows “—” or “no free data”, never a guess.',
+    'Every figure carries its source and as-of date; delayed feeds are labelled.',
+    'News is keyword- and context-matched and always links to the source — a prompt to investigate, not a verdict.',
+    'For information only — not investment advice.',
+  ],
+};
+
+// ---------------------------------------------------------------------------
 // News context guard. Keyword matching alone attaches "NBA commissioner Adam Silver" to
 // SILVER, "corn maze" to CORN, a "Coffee" surname to COFFEE, "Copper" (the TV series) to
 // copper. A commodity keyword is dropped when it is used as a name, a sport or an everyday

@@ -14,9 +14,9 @@ deploy, verify live.
   all `aria-*` / `role=` usages.
 
 ## Status
-**Items 1–5 DONE (2026-10-13)** — see `HANDOFF.md` → Latest. Remaining: 6 (Data & Methodology),
-7 (IA/heading/legend), 8 (chart a11y / CDN fallback / security headers), 9 (minify + version
-surface), then the `INVESTOR-ROADMAP.md` features.
+**Items 1–6 DONE (2026-10-13)** — see `HANDOFF.md` → Latest. Remaining: 7 (IA/heading/legend),
+8 (chart a11y / CDN fallback / security headers), 9 (minify + version surface), then the
+`INVESTOR-ROADMAP.md` features.
 
 ## What is already strong (don't "fix" these)
 Honest data with source + as-of badges; signed price score + physical tightness; adaptive plain-English
