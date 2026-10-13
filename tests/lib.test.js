@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { sgn, inBox, haversineNm, isoWeek, monthly, pctOver, percentile, realizedVol, computeCracks, computeCrush, backAdjust, pearson, logReturns, horizonDeltas, horizonDeltasAbs, curveTightness, inventoryTightness, weightedScore, seasonalGrade, seasonalAhead, contractMonthsBetween, signedPosition, signedMove, stretchScore, sdLabel, attributeMoves, newsContextOk, looksLikeProperNoun, NON_MARKET_CTX, METHODOLOGY, positioningFlag, positioningRead, maxDrawdown, realizedVolTerm, corrMatrix, fxAdjust, parseOcc, drawdownWord, volWord, volTrend, focusRows, topPairs, bestDiversifier, riskRead } from '../src/lib.js';
+import { sgn, inBox, haversineNm, isoWeek, monthly, pctOver, percentile, lastNonNull, realizedVol, computeCracks, computeCrush, backAdjust, pearson, logReturns, horizonDeltas, horizonDeltasAbs, curveTightness, inventoryTightness, weightedScore, seasonalGrade, seasonalAhead, contractMonthsBetween, signedPosition, signedMove, stretchScore, sdLabel, attributeMoves, newsContextOk, looksLikeProperNoun, NON_MARKET_CTX, METHODOLOGY, positioningFlag, positioningRead, maxDrawdown, realizedVolTerm, corrMatrix, fxAdjust, parseOcc, drawdownWord, volWord, volTrend, focusRows, topPairs, bestDiversifier, riskRead } from '../src/lib.js';
 
 test('sgn formats with sign', () => {
   assert.equal(sgn(4.39), '+4.39');
@@ -35,6 +35,13 @@ test('pctOver computes % change from the start', () => {
 
 test('percentile ranks a value within a series', () => {
   assert.equal(percentile([1, 2, 3, 4, 5], 3), 60);
+});
+
+test('lastNonNull returns the last present value (never a stale meta quote)', () => {
+  assert.equal(lastNonNull([1, 2, null]), 2);
+  assert.equal(lastNonNull([3]), 3);
+  assert.equal(lastNonNull([null, null]), null);
+  assert.equal(lastNonNull([]), null);
 });
 
 test('realizedVol returns null with too few points', () => {

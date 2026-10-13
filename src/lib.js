@@ -51,6 +51,13 @@ export function pctOver(arr, n) {
 
 export const percentile = (arr, v) => { const xs = arr.filter((x) => x != null); return xs.length ? (xs.filter((x) => x <= v).length / xs.length) * 100 : null; };
 
+// The last present value of a series. Used to pick a price that cannot be a stale meta quote
+// (Yahoo's `regularMarketPrice` is a Mar-2024 number for some legacy symbols, e.g. CPO=F).
+export function lastNonNull(arr) {
+  for (let i = (arr || []).length - 1; i >= 0; i--) if (arr[i] != null) return arr[i];
+  return null;
+}
+
 export function realizedVol(arr, win = 30) {
   const xs = arr.filter((x) => x != null);
   if (xs.length < win + 1) return null;
