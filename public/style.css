@@ -277,13 +277,6 @@ footer li { margin-bottom: 2px; }
 .regime { padding: 9px 12px; border-bottom: 1px solid var(--line); font-size: 13px; letter-spacing: .4px; }
 .regime .warn { color: var(--amber); }
 /* Hero: per-segment market-state board */
-.ms-tile { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 8px; background: #0c0f13; border: 0; border-left: 3px solid transparent; color: var(--text); text-align: left; padding: 8px 10px; cursor: pointer; font-family: var(--mono); }
-.ms-tile:hover { background: #10151b; }
-.ms-tile.active { border-left-color: var(--amber); background: #10151b; }
-.ms-name { flex: 1 1 100%; font-size: 11px; color: #c9d4df; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.ms-px { font-weight: 700; font-size: 14px; font-variant-numeric: tabular-nums; }
-.ms-chg { font-size: 11px; font-variant-numeric: tabular-nums; }
-.ms-sub { flex: 1 1 100%; font-size: 10px; }
 /* Home: on-screen daily brief */
 .brief-head { padding: 10px 12px; font-size: 13.5px; color: var(--amber2); border-bottom: 1px solid var(--line); }
 .brief-cols { display: grid; grid-template-columns: 1fr 1fr; }
@@ -688,9 +681,6 @@ footer li { margin-bottom: 2px; }
 .news-d { font-size: 10px; text-align: right; white-space: nowrap; }
 @media (max-width: 700px) { .news-item { grid-template-columns: 1fr auto; } .news-src { grid-column: 1 / -1; } }
 
-.mobile-only { display: none; }
-@media (max-width: 640px) { .desk-only { display: none; } .mobile-only { display: flex; } }
-
 /* Keep the page inside the phone's width. Grid/flex children default to min-width:auto, so a
    single wide child (a table, a canvas, a nowrap row) can push the whole page wider than the
    screen → sideways scroll → "too big / won't fit". Let every one of them shrink instead. */
@@ -701,9 +691,8 @@ canvas { display: block; }
 
 /* Mobile */
 @media (max-width: 640px) {
-  /* Top bar: ONE tidy row — the same shape as desktop, just smaller: rook · wordmark · clock · ↻ · ?.
-     (CSV/DAILY BRIEF live in the footer on phones.) No 2-line wrap: fewer portrait-only overrides
-     = fewer bugs, and it matches the header that already works in landscape. */
+  /* Top bar: ONE tidy row — rook · wordmark · clock · ↻ · ?. No 2-line wrap: fewer portrait-only
+     overrides = fewer bugs, and it matches the header that already works in landscape. */
   .topbar { padding: 7px max(10px, env(safe-area-inset-left)) 7px max(10px, env(safe-area-inset-right)); flex-wrap: nowrap; gap: 8px; }
   .brand { flex: 1 1 auto; gap: 6px; min-width: 0; }
   .brand h1 { font-size: 11px; letter-spacing: .5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -742,9 +731,27 @@ canvas { display: block; }
 @media (max-width: 480px) {
   .kpis { grid-template-columns: 1fr; }
   .ev { grid-template-columns: 1fr 54px 50px; }
-  .ms-tile { padding: 7px 8px; }
   .scope { width: 116px; height: 116px; }
   .onboard-box { padding: 18px; }
+}
+
+/* Touch sizing — on a phone every control you press is a comfortable 34-40px tall. (These are the
+   controls that measured 21-31px: the tape's pause button, the section chips, the panel fold
+   headers, the calendar's month arrows, the screener's filter controls and the watchlist stars.) */
+@media (max-width: 640px) {
+  .tk { padding: 9px 12px; }                        /* the pause button stretches to the bar height */
+  .tick-btn { width: 40px; font-size: 10px; }
+  .jumpnav a { padding: 9px 12px; font-size: 12px; }
+  .fold-panel > summary { padding: 14px 12px; }
+  .fold summary { padding: 13px 12px; }
+  .star { padding: 8px 10px; font-size: 17px; }
+  .cal-nav button { width: 40px; height: 40px; font-size: 18px; }
+  .sc-pick > summary { padding: 11px 12px; }
+  .sc-table th { padding: 10px 8px; }
+  .sc-pick-actions button { min-height: 34px; padding: 8px 12px; font-size: 10px; }
+  #sc-pick-list label { padding: 9px 2px; }
+  #sc-pick-list input { width: 16px; height: 16px; }
+  .leaflet-control-zoom a.leaflet-control-zoom-in, .leaflet-control-zoom a.leaflet-control-zoom-out { width: 34px; height: 34px; line-height: 34px; }
 }
 
 .glossary { background: var(--panel2); border: 1px solid var(--line); padding: 12px 14px; margin: 12px; }

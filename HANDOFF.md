@@ -708,3 +708,19 @@ Commodity Desk rebranded from the oil-only "Oil Basis"; merged COMMODITIES+PRICE
   `#/commodities/grains/corn` ("Grains & oilseeds · CORN"); then **WTI** → `#/commodities/crude/wti`;
   a screener row for **sugar** → `#/commodities/softs/sugar`. Zero console errors. 94 tests throughout.
   `app.js?v=114`, `style.css?v=60`.
+- **Mobile pass for the pruned UI (2026-10-15).** Everything removed above is gone on phones too, and the
+  mobile layout was re-measured at **320 / 360 / 390 / 430px** across all three tabs:
+  * **Dead CSS dropped:** the `.desk-only` / `.mobile-only` utilities (their only users were the header
+    CSV/BRIEF links and the phone footer pair — all removed), the `.ms-*` SEGMENTS-board tiles (+ its
+    ≤480 override), and a stale "CSV/DAILY BRIEF live in the footer on phones" comment.
+  * **Every control is now ≥32px tall on a phone** (the audit found 21–31px): the tape's pause button
+    (24 → 34px, via `.tk` padding so the tape and the button grow together), the section chips
+    (28 → 36px), the panel fold headers `.fold-panel > summary` / `.fold summary` (29 → 42/37px), the
+    calendar month arrows (28 → 40px), the screener's filter dropdown + ALL/NONE/THIS SEGMENT buttons
+    (21 → 34px), its picker labels and checkboxes, the watchlist stars (31 → 36px), the screener table
+    headers (29 → 34px) and Leaflet's zoom buttons (30 → 34px — needs `.leaflet-control-zoom
+    a.leaflet-control-zoom-in` to outrank Leaflet's own `.leaflet-touch .leaflet-bar a`).
+  * **Measured after the pass: 0 tap targets under 32px and 0 horizontal overflow** at every width on
+    every tab. The two remaining sub-32px hits are prose credit links (aisstream.io, Leaflet) — correctly
+    inline text, not controls. The chips' and screener table's edge clipping is their own
+    `overflow-x: auto` scrollers, by design. `style.css?v=62`.
