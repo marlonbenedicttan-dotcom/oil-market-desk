@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { sgn, inBox, haversineNm, isoWeek, monthly, pctOver, percentile, lastNonNull, escHtml, realizedVol, computeCracks, computeCrush, backAdjust, pearson, logReturns, horizonDeltas, horizonDeltasAbs, curveTightness, inventoryTightness, weightedScore, seasonalGrade, seasonalAhead, contractMonthsBetween, signedPosition, signedMove, stretchScore, sdLabel, attributeMoves, newsContextOk, looksLikeProperNoun, NON_MARKET_CTX, METHODOLOGY, positioningFlag, positioningRead, maxDrawdown, realizedVolTerm, corrMatrix, fxAdjust, parseOcc, drawdownWord, volWord, volTrend, focusRows, topPairs, bestDiversifier, riskRead } from '../src/lib.js';
+import { sgn, inBox, haversineNm, isoWeek, monthly, pctOver, percentile, lastNonNull, escHtml, webhookPayload, realizedVol, computeCracks, computeCrush, backAdjust, pearson, logReturns, horizonDeltas, horizonDeltasAbs, curveTightness, inventoryTightness, weightedScore, seasonalGrade, seasonalAhead, contractMonthsBetween, signedPosition, signedMove, stretchScore, sdLabel, attributeMoves, newsContextOk, looksLikeProperNoun, NON_MARKET_CTX, METHODOLOGY, positioningFlag, positioningRead, maxDrawdown, realizedVolTerm, corrMatrix, fxAdjust, parseOcc, drawdownWord, volWord, volTrend, focusRows, topPairs, bestDiversifier, riskRead } from '../src/lib.js';
 
 test('sgn formats with sign', () => {
   assert.equal(sgn(4.39), '+4.39');
@@ -35,6 +35,15 @@ test('pctOver computes % change from the start', () => {
 
 test('percentile ranks a value within a series', () => {
   assert.equal(percentile([1, 2, 3, 4, 5], 3), 60);
+});
+
+test('webhookPayload shapes the POST for each chat service', () => {
+  assert.deepEqual(webhookPayload('https://hooks.slack.com/services/T/B/x', 'S', 'T'), { json: { text: 'S\n\nT' } });
+  assert.deepEqual(webhookPayload('https://discord.com/api/webhooks/1/abc', 'S', 'T'), { json: { content: 'S\n\nT' } });
+  assert.deepEqual(webhookPayload('https://discordapp.com/api/webhooks/1/abc', 'S', 'T'), { json: { content: 'S\n\nT' } });
+  assert.deepEqual(webhookPayload('https://api.telegram.org/bot123:abc/sendMessage', 'S', 'T', '99'), { json: { chat_id: '99', text: 'S\n\nT', disable_web_page_preview: true } });
+  assert.deepEqual(webhookPayload('https://ntfy.sh/my-topic', 'Alert', 'plain body'), { raw: 'plain body', headers: { Title: 'Alert' } });
+  assert.deepEqual(webhookPayload('https://example.com/my-hook', 'S', 'T'), { json: { subject: 'S', text: 'T' } });
 });
 
 test('escHtml neutralises external text but leaves prose markup alone', () => {

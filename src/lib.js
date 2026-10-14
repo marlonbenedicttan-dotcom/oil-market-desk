@@ -58,6 +58,22 @@ export function lastNonNull(arr) {
   return null;
 }
 
+// One WEBHOOK_URL, several chat services — they each want a different POST shape, so detect by host:
+//   Slack     {"text": "..."}                      (also the generic default)
+//   Discord   {"content": "..."}
+//   Telegram  {"chat_id", "text"}                  (needs TELEGRAM_CHAT_ID)
+//   ntfy.sh   plain-text body + a Title header     (no account needed, works on any network)
+//   anything else gets {"subject", "text"} — point it at your own endpoint if you like.
+export function webhookPayload(url, subject, text, chatId) {
+  const u = String(url || '');
+  const full = `${subject}\n\n${text}`;
+  if (/discord(app)?\.com\/api\/webhooks/i.test(u)) return { json: { content: full.slice(0, 1900) } };
+  if (/api\.telegram\.org\/bot/i.test(u)) return { json: { chat_id: chatId, text: full.slice(0, 4000), disable_web_page_preview: true } };
+  if (/ntfy/i.test(u)) return { raw: text, headers: { Title: subject } };
+  if (/slack\.com\/services/i.test(u)) return { json: { text: full } };
+  return { json: { subject, text } };
+}
+
 // Escape text that comes from outside the app (wire headlines) before embedding it in the
 // server-built HTML prose (e.g. the READ's takeaways). Only the external fragment is escaped —
 // the surrounding prose keeps its intentional <b> tags, which the client renders as HTML.

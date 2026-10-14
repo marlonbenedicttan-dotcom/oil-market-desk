@@ -7,7 +7,7 @@ import zlib from 'node:zlib';
 import { execFile } from 'node:child_process';
 import { sendMail } from './src/smtp.js';
 import { fileURLToPath } from 'node:url';
-import { sgn, businessDaysSince, inBox, haversineNm, horizonDeltas, horizonDeltasAbs, isoWeek, monthly, pctOver, percentile, lastNonNull, escHtml, realizedVol, computeCracks, computeCrush, backAdjust, pearson, logReturns, curveTightness, inventoryTightness, weightedScore, seasonalGrade, seasonalAhead, contractMonthsBetween, signedPosition, signedMove, stretchScore, sdLabel, attributeMoves, newsContextOk, METHODOLOGY, positioningFlag, positioningRead, maxDrawdown, realizedVolTerm, corrMatrix, fxAdjust, parseOcc, drawdownWord, volWord, volTrend, topPairs, bestDiversifier, riskRead } from './src/lib.js';
+import { sgn, businessDaysSince, inBox, haversineNm, horizonDeltas, horizonDeltasAbs, isoWeek, monthly, pctOver, percentile, lastNonNull, escHtml, webhookPayload, realizedVol, computeCracks, computeCrush, backAdjust, pearson, logReturns, curveTightness, inventoryTightness, weightedScore, seasonalGrade, seasonalAhead, contractMonthsBetween, signedPosition, signedMove, stretchScore, sdLabel, attributeMoves, newsContextOk, METHODOLOGY, positioningFlag, positioningRead, maxDrawdown, realizedVolTerm, corrMatrix, fxAdjust, parseOcc, drawdownWord, volWord, volTrend, topPairs, bestDiversifier, riskRead } from './src/lib.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC = path.join(__dirname, 'public');
@@ -2657,7 +2657,13 @@ async function deliver(kind, subject, text) {
     execFile('osascript', ['-e', `display notification ${JSON.stringify(text.slice(0, 200))} with title ${JSON.stringify(subject)}`], () => {});
   }
   if (process.env.WEBHOOK_URL) {
-    fetch(process.env.WEBHOOK_URL, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ subject, text }) }).catch(() => {});
+    const p = webhookPayload(process.env.WEBHOOK_URL, subject, text, process.env.TELEGRAM_CHAT_ID);
+    if (/api\.telegram\.org\/bot/i.test(process.env.WEBHOOK_URL) && !process.env.TELEGRAM_CHAT_ID) console.warn('[webhook] TELEGRAM_CHAT_ID is not set — Telegram will reject this');
+    fetch(process.env.WEBHOOK_URL, {
+      method: 'POST',
+      headers: p.raw != null ? { 'content-type': 'text/plain; charset=utf-8', ...(p.headers || {}) } : { 'content-type': 'application/json', ...(p.headers || {}) },
+      body: p.raw != null ? p.raw : JSON.stringify(p.json),
+    }).catch(() => {});
   }
   if (!mailConfigured()) { notifyStatus.lastOk = null; notifyStatus.lastError = 'not configured (need SMTP_USER, SMTP_PASS, DIGEST_TO)'; }
   else {
