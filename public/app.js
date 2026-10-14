@@ -726,6 +726,12 @@ async function loadNotifyStatus() {
   const digest = d.digest.lastDate ? `last digest ${esc(d.digest.lastDate)}` : 'no digest sent yet';
   const lastErr = d.last && d.last.ok === false && d.last.error ? ` · last error: ${esc(d.last.error)}` : '';
   const sr = d.serverRules || {};
+  // If this deployment can only email its owner, don't invite visitors to type an email they can't use.
+  if (d.email && d.email.reach === 'owner-only') {
+    const it = $('sub-target'), h = document.querySelector('.sub-hint');
+    if (it) it.placeholder = 'your ntfy.sh / Telegram / Discord webhook URL (email isn’t available on this deployment yet)';
+    if (h) h.innerHTML = 'Easiest: install the <b>ntfy</b> app (free, no account) → subscribe to a topic name you invent → paste <b>https://ntfy.sh/&lt;that-topic&gt;</b> above. Telegram and Discord work too. You’ll get a confirmation first — nothing is sent until you click it.';
+  }
   const sbs = d.subscribers || { active: 0, pending: 0, cap: 0 };
   serverRulesEnabled = sr.enabled === true;
   if (serverRulesEnabled && !rulesSynced) { rulesSynced = true; syncServerRules(); }

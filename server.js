@@ -2670,6 +2670,16 @@ const notifyStatus = { lastAt: null, lastKind: null, lastOk: null, lastError: nu
 const resendKey = () => process.env.RESEND_API_KEY || '';
 const mailProvider = () => (resendKey() ? 'resend' : (process.env.SMTP_USER && process.env.SMTP_PASS ? 'smtp' : null));
 const mailConfigured = () => Boolean(process.env.DIGEST_TO && mailProvider());
+// Resend's no-domain sender (onboarding@resend.dev) only delivers to the account owner's own address —
+// so without a verified sending domain the PUBLIC email sign-up can't reach visitors, and we say so
+// instead of accepting a stranger's address and failing. Plain SMTP has no such restriction.
+const emailReach = () => {
+  const p = mailProvider();
+  if (!p) return 'none';
+  if (p === 'smtp') return 'anyone';
+  const from = String(process.env.MAIL_FROM || '');
+  return (!from || /resend\.dev/i.test(from)) ? 'owner-only' : 'anyone';
+};
 
 async function sendEmail(subject, text) {
   if (!mailConfigured()) return notifyStatus.lastError = 'not configured (need DIGEST_TO plus RESEND_API_KEY or SMTP_USER/SMTP_PASS)';
@@ -3165,6 +3175,9 @@ const server = http.createServer(async (req, res) => {
       const kind = isEmail(target) ? 'email' : (allowedWebhook(target) ? 'webhook' : null);
       if (!kind) return sendJSON(res, 400, { error: 'Enter an email address, or a https chat-webhook URL from ntfy.sh, api.telegram.org, discord.com or slack.com.' });
       if (kind === 'email' && !mailConfigured()) return sendJSON(res, 503, { error: 'This deployment has no email set up yet — use a chat webhook instead (an ntfy.sh topic is the easiest).' });
+      if (kind === 'email' && emailReach() !== 'anyone' && target.toLowerCase() !== String(process.env.DIGEST_TO || '').toLowerCase()) {
+        return sendJSON(res, 503, { error: 'This site can’t email new addresses yet (it has no verified sending domain) — please subscribe with a chat channel instead: an ntfy.sh topic takes a minute and needs no account.' });
+      }
       const ip = String(req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket.remoteAddress || '?';
       const now = Date.now();
       const hits = (subHits.get(ip) || []).filter((t) => now - t < 3600e3);
@@ -3181,9 +3194,10 @@ const server = http.createServer(async (req, res) => {
       } catch (e) {
         // Say something the visitor can act on: a rate limit and a bad URL are very different problems.
         const m = String(e.message || '');
+        const isMail = isEmail(target);
         const msg = /429/.test(m) ? 'That channel is rate-limiting us right now — please try again in a few minutes.'
-          : /\b40[13]\b/.test(m) ? 'That channel rejected the message — double-check the webhook URL.'
-          : `Couldn’t reach that destination (${m.slice(0, 50)}). Check the address and try again.`;
+          : /\b40[13]\b/.test(m) ? (isMail ? 'The mail provider rejected that address — check it, or subscribe with a chat channel instead.' : 'That channel rejected the message — double-check the webhook URL.')
+          : isMail ? `Couldn’t email that address (${m.slice(0, 60)}).` : `Couldn’t reach that destination (${m.slice(0, 50)}). Check the address and try again.`;
         return sendJSON(res, 502, { error: msg });
       }
       saveSubs([...list.filter((x) => x.target !== target), rec]);
@@ -3205,7 +3219,7 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname === '/api/notify') {
       const mask = (a) => (a && a.includes('@') ? a.replace(/^(.).*(@.*)$/, '$1***$2') : a || null);
       return sendJSON(res, 200, {
-        email: { configured: mailConfigured(), provider: mailProvider(), to: mask(process.env.DIGEST_TO), host: process.env.SMTP_HOST || 'smtp.gmail.com', port: Number(process.env.SMTP_PORT || 465) },
+        email: { configured: mailConfigured(), provider: mailProvider(), reach: emailReach(), to: mask(process.env.DIGEST_TO), host: process.env.SMTP_HOST || 'smtp.gmail.com', port: Number(process.env.SMTP_PORT || 465) },
         webhook: Boolean(process.env.WEBHOOK_URL),
         desktop: process.platform === 'darwin' && process.env.NOTIFY !== 'off',
         digest: { hour: Number(process.env.DIGEST_HOUR ?? 7), lastDate: notifyStatus.digestDate || state.lastDigestDate || null, lastAt: notifyStatus.digestAt },
