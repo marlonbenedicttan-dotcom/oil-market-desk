@@ -300,6 +300,14 @@ footer li { margin-bottom: 2px; }
 .kpi.clickable { cursor: pointer; }
 .kpi.clickable:hover { background: #10151b; }
 .macro-note { padding: 6px 12px; font-size: 10px; color: var(--dim); }
+/* Public alert subscriptions (ALERTS panel) — anyone can sign up, double opt-in. */
+.subscribe { padding: 10px 12px 2px; border-top: 1px solid var(--line); }
+.sub-h { font-size: 10px; letter-spacing: 1.4px; color: var(--amber); margin-bottom: 7px; }
+.sub-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.sub-row input { flex: 1 1 260px; background: var(--panel2); color: var(--text); border: 1px solid var(--line2); padding: 5px 8px; font-family: var(--mono); font-size: 11px; min-height: 32px; }
+.sub-row input::placeholder { color: var(--dim); }
+#sub-msg { margin-top: 7px; min-height: 14px; }
+.sub-hint { padding: 6px 0 0; line-height: 1.6; }
 /* Multi-horizon deltas (1D/1W/1M/YTD/1Y) + source/as-of freshness badge */
 .dstrip { display: inline-flex; flex-wrap: wrap; gap: 1px 9px; margin-top: 4px; }
 .dl { display: inline-flex; flex-direction: column; align-items: flex-end; min-width: 36px; }

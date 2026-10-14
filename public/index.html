@@ -23,7 +23,7 @@
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
   <link rel="preconnect" href="https://unpkg.com" crossorigin />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <link rel="stylesheet" href="style.css?v=55" />
+  <link rel="stylesheet" href="style.css?v=56" />
   <noscript><style>#boot{display:none!important}</style></noscript>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -137,6 +137,15 @@
         <div id="home-alert-sub" class="dimtext" style="padding:0 12px 10px"></div>
         <div id="home-rules"></div>
         <div id="notify-status" class="macro-note"></div>
+        <div id="subscribe" class="subscribe">
+          <div class="sub-h">GET THESE ALERTS</div>
+          <div class="sub-row">
+            <input id="sub-target" type="text" autocomplete="off" spellcheck="false" aria-label="Where to send alerts" placeholder="your email, or your own ntfy.sh / Telegram / Discord webhook URL">
+            <button id="sub-go" class="ghost" type="button">SUBSCRIBE</button>
+          </div>
+          <div class="sub-hint dimtext">Easiest: install the <b>ntfy</b> app (free, no account) → subscribe to a topic name you invent → paste <b>https://ntfy.sh/&lt;that-topic&gt;</b> above. Telegram and Discord also work. You’ll get a confirmation first — nothing is sent until you click it.</div>
+          <div id="sub-msg" class="dimtext"></div>
+        </div>
       </section>
 
       <section class="panel" id="p-headlines">
@@ -441,6 +450,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=106"></script>
+  <script src="app.js?v=107"></script>
 </body>
 </html>
