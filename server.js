@@ -2979,4 +2979,10 @@ server.listen(PORT, () => {
   };
   setTimeout(() => warmCaches().catch(() => {}), 800);
   setInterval(() => warmCaches().catch(() => {}), 8 * 60_000);
+  // FIRMS active-fire CSV (~25s) and the SAR image are slow upstreams that are only needed deep in
+  // COMMODITIES. Warm them well after boot so they never compete with the first paint — and so the
+  // first reader to open SHIPS & SATELLITES doesn't wait 25s.
+  const warmSlow = async () => { try { await getFlares(); } catch {} try { await getSAR(); } catch {} };
+  setTimeout(() => warmSlow().catch(() => {}), 90_000);
+  setInterval(() => warmSlow().catch(() => {}), 3 * 3600e3);
 });

@@ -154,7 +154,9 @@ async function jget(url, ttl = 180000) {
 const segKey = () => currentMarket + '|' + (currentComponent || '');
 // Boot beacon: a progress bar + dots that fill as the CORE panels land. The overlay is dropped
 // only once they are all in (or at a hard cap, so it never lingers on a slow feed).
-const BOOT_CORE = ['data', 'read', 'chart', 'news', 'headlines', 'regime', 'screen', 'calendar', 'positioning'];
+// What the loading overlay waits for. Only things the reader sees without scrolling: the read, the
+// chart, the news strip, headlines and the regime board. The screener and calendar render on scroll.
+const BOOT_CORE = ['data', 'read', 'chart', 'news', 'headlines', 'regime', 'positioning'];
 const bootReady = Object.fromEntries(BOOT_CORE.map((k) => [k, false]));
 let bootCount0 = 0;
 const bootCount = () => BOOT_CORE.filter((k) => bootReady[k]).length;
@@ -572,8 +574,9 @@ function selectMarket(id) {
   loadMarketRead();
   loadNews();
   loadFundamentals();
-  loadPositioning();
-  loadOptions();
+  // Both live inside hidden-by-default COMMODITIES panels — don't fetch them for a tab that isn't open.
+  whenNear('#positioning-panel', loadPositioning);
+  whenNear('#options-panel', loadOptions);
   renderChart();
   syncCompareToSelection();
 }
@@ -1806,8 +1809,10 @@ function renderMacroRegion() {
     macroCountry = want; prefCountry = null;
     if ([...sel.options].some((o) => o.value === macroCountry)) sel.value = macroCountry;
   }
-  loadMacroTickers();
-  loadCountry().then(prefetchRegion);   // loads the country, then warms the rest of the region
+  loadMacroTickers();   // feeds the top tape — keep eager
+  // The country panel pulls World Bank/BIS/FRED data and renders 5 charts. It's a hidden pane while
+  // the reader is on HOME, so render it when MACRO is actually opened (a no-op once seen).
+  whenNear('#pane-macro', () => { loadRegionCurrencies(); loadCountry().then(prefetchRegion); });
 }
 // The chosen country's name — shared by the currency and catalyst panel scopes.
 function countryLabel(id) {
@@ -2074,7 +2079,7 @@ function crossAssetBlock(pred, title) {
 async function loadTransmission() {
   try { transmission = await getJSON('/api/transmission'); } catch { transmission = null; }
   renderAdaptive();
-  if ($('macro-region-panel')) loadCountry();
+  if ($('macro-region-panel')) whenNear('#pane-macro', loadCountry);
 }
 // Segment fundamentals — auto-tagged supply/demand events from the news.
 async function loadFundamentals() {
@@ -2452,6 +2457,21 @@ async function loadCurveHistory() {
   if (t) t.textContent = `IS ${spec.name} GETTING TIGHTER OR LOOSER? — this month vs next, over time (above 0 = tight)`;
   try { const d = await jget('/api/curvehistory?root=' + spec.root, 6 * 3600e3); if (k !== segKey()) return; renderCurveHistory(d); } catch {}
 }
+// Run a below-the-fold loader only once its element first comes near the viewport. A panel inside a
+// hidden pane never intersects, so this also covers "don't render the other tabs until they're opened".
+// Once a panel has been seen it runs immediately on later calls (so refresh cycles stay simple).
+const nearSeen = new WeakSet();
+function whenNear(el, fn, rootMargin = '400px') {
+  const node = typeof el === 'string' ? $(el) : el;
+  if (!node || nearSeen.has(node) || !('IntersectionObserver' in window)) { fn(); return; }
+  const io = new IntersectionObserver((entries) => {
+    if (!entries.some((e) => e.isIntersecting)) return;
+    io.disconnect();
+    nearSeen.add(node);
+    fn();
+  }, { rootMargin });
+  io.observe(node);
+}
 function initCurveHist() {
   const block = $('curvehist-block');
   if (!block || !('IntersectionObserver' in window)) { curveHistVisible = true; return; }   // no IO → load eagerly
@@ -2669,15 +2689,20 @@ async function loadExtraCore() {
   if (!data) return; // need prices first
   reloadHistory();    // deltas + sparklines
   loadRegime();       // HOME: markets at a glance
-  loadScreen();       // HOME: screener
-  loadCalendar();     // HOME: calendar
-  loadRisk();         // HOME: risk & correlation
+  // Loaded eagerly (a gate here is unreliable: these panels define the page height, so their
+  // on-screen position is only known once they've rendered). The loading overlay no longer waits on
+  // them — they sit below the fold, so BOOT_CORE excludes the screener and calendar.
+  loadScreen();
+  loadCalendar();
+  loadRisk();
   loadAlerts();       // HOME: alerts
   loadBrief();        // HOME: daily brief
   loadTransmission(); // COMMODITIES: how it transmits
   renderMarketState();
   renderAdaptive();
-  loadBelowFold();    // everything below the fold — fire-and-forget (NOT awaited)
+  // 40+ sector quotes, inventories, chokepoints… all inside the COMMODITIES pane, which is hidden
+  // while the reader is on HOME. Defer the whole batch until that pane is actually opened.
+  whenNear('#pane-commodities', loadBelowFold);
 }
 // Below-the-fold panels (inventories, sector quotes, ships, refining margins…). Deliberately not
 // awaited — these used to block the read/chart from starting.
@@ -2708,17 +2733,21 @@ let extraSlowDone = false;
 async function loadExtraSlow() {
   if (!data) return;
   try {
-    const [flr, sar] = await Promise.all([
-      getJSON('/api/flares').catch(() => null),
-      getJSON('/api/sar').catch(() => null),
-    ]);
+    // Satellite: nothing else needs it, so don't even fetch it until the reader reaches SHIPS &
+    // SATELLITES (it downloads + pixel-scans a radar image).
+    whenNear('#c-ships', async () => {
+      const [flr, sar] = await Promise.all([
+        getJSON('/api/flares').catch(() => null),
+        getJSON('/api/sar').catch(() => null),
+      ]);
+      renderSatellite(sar, flr);
+    }, '200px');
+    // macrodash is fetched eagerly because `md.fx` feeds the top tape's currency section.
     const [md, corr] = await Promise.all([
       getJSON('/api/macrodash').catch(() => null),
       getJSON('/api/correlations').catch(() => null),
     ]);
-    renderSatellite(sar, flr);
-    renderMacroDash(md, corr);
-    loadCatalysts();
+    whenNear('#pane-macro', () => { renderMacroDash(md, corr); loadCatalysts(); });
     if (md?.fx) { lastFx = md.fx; renderTicker(data); const lv = $('rule-level'); if ($('home-rules') && !$('home-rules').innerHTML.includes('CURRENCIES') && (!lv || !lv.value)) renderRules(); }
     extraSlowDone = true;
   } catch (e) {}
