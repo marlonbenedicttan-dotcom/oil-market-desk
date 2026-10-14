@@ -22,6 +22,10 @@ services:
       # Daily digest + alert delivery. Set all three of SMTP_USER / SMTP_PASS / DIGEST_TO to turn on
       # email (SMTP_PASS is an app password, not your account password). WEBHOOK_URL is the alternative
       # (Slack/Discord) — either or both.
+      # QUICKEST email: one free Resend API key. Sends from onboarding@resend.dev to your own address —
+      # no domain, no app password, nothing else to set beyond DIGEST_TO.
+      - key: RESEND_API_KEY
+        sync: false        # resend.com → API Keys → create (free tier)
       - key: SMTP_USER
         sync: false        # e.g. you@gmail.com
       - key: SMTP_PASS

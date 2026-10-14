@@ -2665,10 +2665,28 @@ async function computeServerAlerts() {
 
 // Delivery outcomes, so the UI can say whether email actually works (and why not).
 const notifyStatus = { lastAt: null, lastKind: null, lastOk: null, lastError: null, digestAt: null, digestDate: null };
-const mailConfigured = () => Boolean(process.env.SMTP_USER && process.env.SMTP_PASS && process.env.DIGEST_TO);
+// Two ways to send, and the first is the quick one: an email API key (Resend's free tier sends from
+// onboarding@resend.dev to your own address with no domain and no app password), or plain SMTP.
+const resendKey = () => process.env.RESEND_API_KEY || '';
+const mailProvider = () => (resendKey() ? 'resend' : (process.env.SMTP_USER && process.env.SMTP_PASS ? 'smtp' : null));
+const mailConfigured = () => Boolean(process.env.DIGEST_TO && mailProvider());
 
 async function sendEmail(subject, text) {
-  if (!mailConfigured()) return notifyStatus.lastError = 'not configured (need SMTP_USER, SMTP_PASS, DIGEST_TO)';
+  if (!mailConfigured()) return notifyStatus.lastError = 'not configured (need DIGEST_TO plus RESEND_API_KEY or SMTP_USER/SMTP_PASS)';
+  if (resendKey()) {
+    const r = await fetch(process.env.RESEND_API_URL || 'https://api.resend.com/emails', {
+      method: 'POST',
+      headers: { authorization: `Bearer ${resendKey()}`, 'content-type': 'application/json' },
+      body: JSON.stringify({
+        from: process.env.MAIL_FROM || 'Watchtower <onboarding@resend.dev>',
+        to: [process.env.DIGEST_TO],
+        subject,
+        text,
+      }),
+    });
+    if (!r.ok) throw new Error(`resend ${r.status} ${String(await r.text().catch(() => '')).slice(0, 80)}`);
+    return true;
+  }
   const port = Number(process.env.SMTP_PORT || 465);
   await sendMail({
     host: process.env.SMTP_HOST || 'smtp.gmail.com',
@@ -3187,7 +3205,7 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname === '/api/notify') {
       const mask = (a) => (a && a.includes('@') ? a.replace(/^(.).*(@.*)$/, '$1***$2') : a || null);
       return sendJSON(res, 200, {
-        email: { configured: mailConfigured(), to: mask(process.env.DIGEST_TO), host: process.env.SMTP_HOST || 'smtp.gmail.com', port: Number(process.env.SMTP_PORT || 465) },
+        email: { configured: mailConfigured(), provider: mailProvider(), to: mask(process.env.DIGEST_TO), host: process.env.SMTP_HOST || 'smtp.gmail.com', port: Number(process.env.SMTP_PORT || 465) },
         webhook: Boolean(process.env.WEBHOOK_URL),
         desktop: process.platform === 'darwin' && process.env.NOTIFY !== 'off',
         digest: { hour: Number(process.env.DIGEST_HOUR ?? 7), lastDate: notifyStatus.digestDate || state.lastDigestDate || null, lastAt: notifyStatus.digestAt },
