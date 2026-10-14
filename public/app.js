@@ -2474,6 +2474,110 @@ function syncJumpnavs() {
     });
   });
 }
+// ---------------------------------------------------------------------------
+// Quick jump (⌘K / Ctrl-K) — one box to reach any instrument, segment, country
+// or section. Built from data already in memory (markets, macroCountries) plus
+// the rendered jump-navs, so it can never drift from what the app can show.
+// ---------------------------------------------------------------------------
+let paletteRows = [], paletteSel = 0;
+// Common names people actually type, mapped to instrument ids (labels alone don't cover them).
+const PALETTE_ALIAS = {
+  ulsd: 'diesel heating oil gasoil distillate', rbob: 'gasoline petrol gas', natgas: 'gas lng henry hub',
+  wti: 'oil crude west texas texas light', brent: 'oil crude', soyoil: 'soybean oil veg oil', soymeal: 'meal',
+  hogs: 'pork pig', cattle: 'beef', feeder: 'beef cattle', nfdm: 'milk powder smp', whey: 'dairy',
+  cheese: 'cheddar dairy', butter: 'dairy', milk: 'class iii dairy', palm: 'cpo', cocoa: 'chocolate',
+  coffee: 'arabica robusta', sugar: 'raw sugar', cotton: 'lint', aluminium: 'aluminum', copper: 'hg',
+  platinum: 'pgm', palladium: 'pgm', corn: 'maize', soybean: 'soy beans', wheat: 'grain', propane: 'lpg',
+};
+function paletteIndex() {
+  const out = [];
+  for (const mk of (markets || [])) for (const c of (mk.components || [])) {
+    out.push({ kind: 'Instrument', label: c.label, sub: mk.label, keys: `${c.label} ${c.id} ${mk.label} ${PALETTE_ALIAS[c.id] || ''}`,
+      run: () => { selectMarket(mk.id); pickMetric(c.id, '6m'); } });
+  }
+  for (const mk of (markets || [])) out.push({ kind: 'Segment', label: mk.label, sub: 'commodities', keys: `segment ${mk.label} ${mk.id}`,
+    run: () => { showTab('commodities'); selectMarket(mk.id); } });
+  const regionName = Object.fromEntries([...($('macro-region')?.options || [])].map((o) => [o.value, o.textContent]));
+  for (const [region, list] of Object.entries(macroCountries || {})) for (const c of (list || [])) {
+    out.push({ kind: 'Country', label: c.label, sub: regionName[region] || region, keys: `country ${c.label} ${c.id} ${region}`,
+      run: () => {
+        showTab('macro');
+        const rs = $('macro-region'), cs = $('macro-country');
+        if (!rs || !cs) return;
+        if (rs.value !== region) { rs.value = region; rs.dispatchEvent(new Event('change', { bubbles: true })); }
+        if ([...cs.options].some((o) => o.value === c.id)) { cs.value = c.id; cs.dispatchEvent(new Event('change', { bubbles: true })); }
+      } });
+  }
+  document.querySelectorAll('.tabpane').forEach((pane) => pane.querySelectorAll('.jumpnav a').forEach((a) => {
+    const t = $(a.getAttribute('href'));
+    if (!t || a.classList.contains('hidden')) return;   // never offer a section that isn't rendered
+    out.push({ kind: 'Section', label: a.textContent.trim(), sub: `${pane.dataset.pane} tab`, keys: `${a.textContent} ${pane.dataset.pane} section`,
+      run: () => { showTab(pane.dataset.pane); setTimeout(() => t.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60); } });
+  }));
+  return out;
+}
+function paletteMatch(q) {
+  const all = paletteIndex();
+  const query = String(q || '').trim().toLowerCase();
+  if (!query) return all.slice(0, 8);
+  const scored = [];
+  for (const it of all) {
+    const L = it.label.toLowerCase(), K = it.keys.toLowerCase();
+    let s = 0;
+    if (L === query) s = 100;
+    else if (L.startsWith(query)) s = 80;
+    else if (L.includes(query)) s = 60;
+    else if (K.includes(query)) s = 30;
+    if (s) scored.push({ it, s });
+  }
+  return scored.sort((a, b) => b.s - a.s || a.it.label.length - b.it.label.length).slice(0, 8).map((x) => x.it);
+}
+function palettePaint() {
+  const list = $('palette-list'); if (!list) return;
+  paletteRows = paletteMatch($('palette-input')?.value);
+  paletteSel = 0;
+  list.innerHTML = paletteRows.length
+    ? paletteRows.map((r, i) => `<div class="palette-row${i === 0 ? ' on' : ''}" role="option" aria-selected="${i === 0}" data-i="${i}"><span class="pl-label">${esc(r.label)}</span><span class="pl-sub">${esc(r.sub || '')}</span><span class="pl-kind">${esc(r.kind)}</span></div>`).join('')
+    : '<div class="palette-empty dimtext">No match — try “gold”, “diesel”, “japan” or “screener”.</div>';
+}
+function paletteMove(d) {
+  if (!paletteRows.length) return;
+  paletteSel = (paletteSel + d + paletteRows.length) % paletteRows.length;
+  const list = $('palette-list');
+  [...list.querySelectorAll('.palette-row')].forEach((el, i) => { el.classList.toggle('on', i === paletteSel); el.setAttribute('aria-selected', String(i === paletteSel)); });
+  list.querySelector('.palette-row.on')?.scrollIntoView({ block: 'nearest' });
+}
+function paletteGo(i = paletteSel) {
+  const r = paletteRows[i];
+  closePalette();
+  if (r) r.run();
+}
+const paletteOpen = () => $('palette') && !$('palette').classList.contains('hidden');
+function openPalette() {
+  const p = $('palette'); if (!p) return;
+  p.classList.remove('hidden');
+  const inp = $('palette-input'); if (inp) { inp.value = ''; inp.focus(); }
+  palettePaint();
+}
+function closePalette() { $('palette')?.classList.add('hidden'); }
+$('jump-btn')?.addEventListener('click', openPalette);
+$('palette')?.addEventListener('click', (e) => {
+  if (e.target === $('palette')) { closePalette(); return; }   // click the backdrop to dismiss
+  const row = e.target.closest('.palette-row');
+  if (row) paletteGo(Number(row.dataset.i));
+});
+$('palette-input')?.addEventListener('input', palettePaint);
+$('palette-input')?.addEventListener('keydown', (e) => {
+  if (e.key === 'ArrowDown') { e.preventDefault(); paletteMove(1); }
+  else if (e.key === 'ArrowUp') { e.preventDefault(); paletteMove(-1); }
+  else if (e.key === 'Enter') { e.preventDefault(); paletteGo(); }
+  else if (e.key === 'Escape') { e.preventDefault(); closePalette(); }
+});
+addEventListener('keydown', (e) => {
+  if ((e.metaKey || e.ctrlKey) && String(e.key).toLowerCase() === 'k') { e.preventDefault(); paletteOpen() ? closePalette() : openPalette(); return; }
+  if (e.key === 'Escape' && paletteOpen()) closePalette();
+});
+
 function showTab(name) {
   saveStr('tab', name);
   document.querySelectorAll('.tab').forEach((t) => { const on = t.dataset.tab === name; t.classList.toggle('active', on); t.setAttribute('aria-selected', String(on)); });
