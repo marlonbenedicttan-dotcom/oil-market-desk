@@ -2983,6 +2983,10 @@ server.listen(PORT, () => {
   // COMMODITIES. Warm them well after boot so they never compete with the first paint — and so the
   // first reader to open SHIPS & SATELLITES doesn't wait 25s.
   const warmSlow = async () => { try { await getFlares(); } catch {} try { await getSAR(); } catch {} };
-  setTimeout(() => warmSlow().catch(() => {}), 90_000);
-  setInterval(() => warmSlow().catch(() => {}), 3 * 3600e3);
+  // WARM=off (the test suite) skips the background warmers: they fetch 25s third-party feeds and would
+  // compete with whatever the caller is actually measuring.
+  if (process.env.WARM !== 'off') {
+    setTimeout(() => warmSlow().catch(() => {}), 90_000);
+    setInterval(() => warmSlow().catch(() => {}), 3 * 3600e3);
+  }
 });
