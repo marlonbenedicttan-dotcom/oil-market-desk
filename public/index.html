@@ -23,7 +23,7 @@
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
   <link rel="preconnect" href="https://unpkg.com" crossorigin />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <link rel="stylesheet" href="style.css?v=57" />
+  <link rel="stylesheet" href="style.css?v=59" />
   <noscript><style>#boot{display:none!important}</style></noscript>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -62,7 +62,7 @@
       <span id="fresh" class="fresh-dot" role="img" title="Data freshness" aria-label="Data freshness"></span>
       <span id="clock" class="clock">--:--:--</span>
       <span id="updated" class="dimtext">loading…</span>
-      <button id="jump-btn" class="ghost" aria-label="Quick jump — search instruments, countries and sections" title="Quick jump (⌘K or Ctrl-K)">JUMP</button>
+      <button id="jump-btn" class="ghost" aria-label="Quick jump — search commodities, countries and sections" title="Quick jump (⌘K or Ctrl-K)">JUMP</button>
       <button id="refresh" class="ghost" aria-label="Refresh data" title="Refresh data">↻</button>
       <button id="help-open" class="ghost" aria-label="Help and guide" title="Help and guide">?</button>
     </div>
@@ -389,10 +389,10 @@
 
     <footer id="notes"></footer>
   </main>
-  <!-- Quick jump (⌘K / Ctrl-K, or the JUMP button) — straight to any instrument, segment, country or section. -->
+  <!-- Quick jump (⌘K / Ctrl-K, or the JUMP button) — a short grouped menu: commodities · countries · sections. -->
   <div id="palette" class="palette hidden" role="dialog" aria-modal="true" aria-label="Quick jump">
     <div class="palette-box">
-      <input id="palette-input" class="palette-input" type="text" placeholder="Jump to an instrument, segment, country or section…" aria-label="Quick jump" autocomplete="off" spellcheck="false" role="combobox" aria-expanded="true" aria-controls="palette-list">
+      <input id="palette-input" class="palette-input" type="text" placeholder="Jump to a commodity, country or section…" aria-label="Quick jump" autocomplete="off" spellcheck="false" role="combobox" aria-expanded="true" aria-controls="palette-list">
       <div id="palette-list" class="palette-list" role="listbox" aria-label="Jump targets"></div>
       <div class="palette-foot dimtext">↑ ↓ to choose · Enter to go · Esc to close</div>
     </div>
@@ -426,6 +426,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=111"></script>
+  <script src="app.js?v=112"></script>
 </body>
 </html>

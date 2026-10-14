@@ -672,3 +672,17 @@ Commodity Desk rebranded from the oil-only "Oil Basis"; merged COMMODITIES+PRICE
   `#alert-count` / `#alert-settings` (DATA CHECKS) remain. **94 tests pass.** Headless sweep: all eight
   removed nodes absent, all eight kept HOME panels present, **zero console errors**.
   `app.js?v=111`, `style.css?v=57`.
+- **Quick-jump tidied into a grouped menu (2026-10-15).** The ⌘K / JUMP box opened on a wall of
+  **instrument** names — `WTI (Cushing)`, `Brent`, `RBOB Gasoline`, `ULSD / Heating`, `Jet Fuel (USGC)`…
+  each tagged `Instrument` — which buried the things people actually navigate by. It is now a short
+  **grouped menu**: `COMMODITIES` (one row per commodity) · `COUNTRIES` · `SECTIONS`, with a group
+  heading instead of a per-row tag, and no echoed labels (`Japan` no longer reads `Japan · Japan`).
+  Instrument names are gone from the list but stay **searchable** — each commodity row carries its
+  instruments' names *and* the everyday words for them, so `brent` → Crude oil, `diesel` → Refined
+  products, `gold` → Precious metals, `wti` → Crude oil. Ordering is group-first then best-match, so
+  groups never interleave and ↑/↓ never lands on a heading. The default list shows 12 rows and
+  `.palette-list` grew 46vh → 58vh so the *second* heading is visible on open (countries used to be
+  hidden below the fold). Wording follows: placeholder "Jump to a commodity, country or section…",
+  JUMP's aria-label drops "instruments". Verified in headless Chrome at 1200×820 **and** 390×844:
+  groups render in order, ArrowDown walks rows only, Enter on `crude` → COMMODITIES/crude, Enter on
+  `japan` → MACRO/jp, **zero console errors**. 94 tests. `app.js?v=112`, `style.css?v=59`.

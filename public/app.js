@@ -2457,11 +2457,13 @@ function syncJumpnavs() {
   });
 }
 // ---------------------------------------------------------------------------
-// Quick jump (⌘K / Ctrl-K) — one box to reach any instrument, segment, country
-// or section. Built from data already in memory (markets, macroCountries) plus
-// the rendered jump-navs, so it can never drift from what the app can show.
+// Quick jump (⌘K / Ctrl-K) — one tidy, grouped list: COMMODITIES · COUNTRIES · SECTIONS.
+// Built from data already in memory (markets, macroCountries) plus the rendered jump-navs,
+// so it can never drift from what the app can show. Rows are commodities/places/sections —
+// never a single instrument.
 // ---------------------------------------------------------------------------
 let paletteRows = [], paletteSel = 0;
+const PALETTE_GROUPS = ['Commodities', 'Countries', 'Sections'];
 // Common names people actually type, mapped to instrument ids (labels alone don't cover them).
 const PALETTE_ALIAS = {
   ulsd: 'diesel heating oil gasoil distillate', rbob: 'gasoline petrol gas', natgas: 'gas lng henry hub',
@@ -2473,15 +2475,17 @@ const PALETTE_ALIAS = {
 };
 function paletteIndex() {
   const out = [];
-  for (const mk of (markets || [])) for (const c of (mk.components || [])) {
-    out.push({ kind: 'Instrument', label: c.label, sub: mk.label, keys: `${c.label} ${c.id} ${mk.label} ${PALETTE_ALIAS[c.id] || ''}`,
-      run: () => { selectMarket(mk.id); pickMetric(c.id, '6m'); } });
+  // One row per COMMODITY (this used to list every instrument, which buried the things people
+  // actually navigate by). A commodity stays findable through its instruments' names and the
+  // everyday words for them, so "brent", "diesel" or "gold" still land on the right row.
+  for (const mk of (markets || [])) {
+    const words = (mk.components || []).map((c) => `${c.label} ${c.id} ${PALETTE_ALIAS[c.id] || ''}`).join(' ');
+    out.push({ group: 'Commodities', label: mk.label, sub: '', keys: `commodity ${mk.label} ${mk.id} ${words}`,
+      run: () => { showTab('commodities'); selectMarket(mk.id); } });
   }
-  for (const mk of (markets || [])) out.push({ kind: 'Segment', label: mk.label, sub: 'commodities', keys: `segment ${mk.label} ${mk.id}`,
-    run: () => { showTab('commodities'); selectMarket(mk.id); } });
   const regionName = Object.fromEntries([...($('macro-region')?.options || [])].map((o) => [o.value, o.textContent]));
   for (const [region, list] of Object.entries(macroCountries || {})) for (const c of (list || [])) {
-    out.push({ kind: 'Country', label: c.label, sub: regionName[region] || region, keys: `country ${c.label} ${c.id} ${region}`,
+    out.push({ group: 'Countries', label: c.label, sub: regionName[region] || region, keys: `country ${c.label} ${c.id} ${region}`,
       run: () => {
         showTab('macro');
         const rs = $('macro-region'), cs = $('macro-country');
@@ -2493,7 +2497,7 @@ function paletteIndex() {
   document.querySelectorAll('.tabpane').forEach((pane) => pane.querySelectorAll('.jumpnav a').forEach((a) => {
     const t = $(a.getAttribute('href'));
     if (!t || a.classList.contains('hidden')) return;   // never offer a section that isn't rendered
-    out.push({ kind: 'Section', label: a.textContent.trim(), sub: `${pane.dataset.pane} tab`, keys: `${a.textContent} ${pane.dataset.pane} section`,
+    out.push({ group: 'Sections', label: a.textContent.trim(), sub: String(pane.dataset.pane || '').toUpperCase(), keys: `${a.textContent} ${pane.dataset.pane} section`,
       run: () => { showTab(pane.dataset.pane); setTimeout(() => t.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60); } });
   }));
   return out;
@@ -2501,7 +2505,7 @@ function paletteIndex() {
 function paletteMatch(q) {
   const all = paletteIndex();
   const query = String(q || '').trim().toLowerCase();
-  if (!query) return all.slice(0, 8);
+  if (!query) return all.slice(0, 12);
   const scored = [];
   for (const it of all) {
     const L = it.label.toLowerCase(), K = it.keys.toLowerCase();
@@ -2512,15 +2516,32 @@ function paletteMatch(q) {
     else if (K.includes(query)) s = 30;
     if (s) scored.push({ it, s });
   }
-  return scored.sort((a, b) => b.s - a.s || a.it.label.length - b.it.label.length).slice(0, 8).map((x) => x.it);
+  // Group order first (so the list reads COMMODITIES → COUNTRIES → SECTIONS and never interleaves),
+  // then best match, then the shorter label.
+  const rank = (x) => PALETTE_GROUPS.indexOf(x.it.group);
+  return scored.sort((a, b) => rank(a) - rank(b) || b.s - a.s || a.it.label.length - b.it.label.length).slice(0, 12).map((x) => x.it);
 }
 function palettePaint() {
   const list = $('palette-list'); if (!list) return;
   paletteRows = paletteMatch($('palette-input')?.value);
   paletteSel = 0;
-  list.innerHTML = paletteRows.length
-    ? paletteRows.map((r, i) => `<div class="palette-row${i === 0 ? ' on' : ''}" role="option" aria-selected="${i === 0}" data-i="${i}"><span class="pl-label">${esc(r.label)}</span><span class="pl-sub">${esc(r.sub || '')}</span><span class="pl-kind">${esc(r.kind)}</span></div>`).join('')
-    : '<div class="palette-empty dimtext">No match — try “gold”, “diesel”, “japan” or “screener”.</div>';
+  if (!paletteRows.length) {
+    list.innerHTML = '<div class="palette-empty dimtext">No match — try “oil”, “metals”, “japan” or “screener”.</div>';
+    return;
+  }
+  // Grouped headings so it reads as a short menu instead of one long stream. Render order is the
+  // row order (paletteMatch keeps groups contiguous), so ↑/↓ never lands on a heading.
+  let html = '', group = null;
+  paletteRows.forEach((r, i) => {
+    if (r.group !== group) {
+      if (group) html += '</div>';
+      group = r.group;
+      html += `<div class="palette-group" role="group" aria-label="${esc(group)}"><div class="palette-group-h">${esc(group)}</div>`;
+    }
+    const sub = r.sub && r.sub !== r.label ? r.sub : '';   // don't echo the label (e.g. "Japan · Japan")
+    html += `<div class="palette-row${i === 0 ? ' on' : ''}" role="option" aria-selected="${i === 0}" data-i="${i}"><span class="pl-label">${esc(r.label)}</span><span class="pl-sub">${esc(sub)}</span></div>`;
+  });
+  list.innerHTML = html + '</div>';
 }
 function paletteMove(d) {
   if (!paletteRows.length) return;
