@@ -1194,11 +1194,12 @@ const FREIGHT_DEFAULT = 2.0; // $/bbl USGC -> NW Europe estimate
 async function getAnalytics(freight = FREIGHT_DEFAULT) {
   return cached('analytics:' + freight, 6 * 3600e3, async () => {
     const twoYear = {};
-    for (const b of BENCHMARKS.filter((x) => x.physical)) {
+    // Independent per-benchmark fetches — run them together rather than back-to-back.
+    await Promise.all(BENCHMARKS.filter((x) => x.physical).map(async (b) => {
       const paperMap = (await cached(`a2p:${b.paper || b.id}`, 6 * 3600e3, () => (b.paper ? yahooSeries(b.paper, '2y', '1d') : Promise.resolve({ series: {} })))).series;
       const physMap = await cached(`a2f:${b.physical}`, 6 * 3600e3, () => spotSeries(b, 740));
       twoYear[b.id] = { paperMap, physMap };
-    }
+    }));
     const benchmarks = {};
     for (const b of BENCHMARKS.filter((x) => x.physical)) {
       const { paperMap, physMap } = twoYear[b.id];
@@ -1463,7 +1464,9 @@ async function getMarketRead(id, componentId) {
     if (CURVE_SPEC[sel]) { try { const c = await getCurveFor(sel); if (c.available) curve = { shape: c.shape, m1m2: c.m1m2, m1m6: c.m1m6, months: (c.calendar && c.calendar[0] && c.calendar[0].months) || 1 }; } catch {} }
     const sym = primary.paper || primary.physical;
     const macro = {};
-    for (const [k, s] of Object.entries({ usd: 'DX-Y.NYB', vix: '^VIX', spx: '^GSPC' })) { try { macro[k] = await pairCorr(sym, s); } catch { macro[k] = null; } }
+    await Promise.all(Object.entries({ usd: 'DX-Y.NYB', vix: '^VIX', spx: '^GSPC' }).map(async ([k, s]) => {
+      try { macro[k] = await pairCorr(sym, s); } catch { macro[k] = null; }
+    }));
     let basis = null;
     try {
       const row = (await getMarket()).benchmarks.find((b) => b.id === sel);
@@ -2049,26 +2052,32 @@ async function getMoveWho(id, reqs, focusId) {
   const base = NEWS_QUERIES[id];        // covers commodity segments AND macro regions/countries
   if (!base) return { results: [] };
   const focusSpecs = (focusId && NEWS_FOCUS[focusId]) || null;
-  const out = [];
-  for (const r of (reqs || []).slice(0, 6)) {
+  const sh = (day, off) => new Date(Date.parse(day) + off * 864e5).toISOString().slice(0, 10);
+  const plans = (reqs || []).slice(0, 6).map((r) => {
     const d = r.date;
     const monthly = /^\d{4}-\d{2}$/.test(d);
-    if (!monthly && !/^\d{4}-\d{2}-\d{2}$/.test(d)) continue;
+    if (!monthly && !/^\d{4}-\d{2}-\d{2}$/.test(d)) return null;
     const day = monthly ? d + '-15' : d;                 // 5Y/10Y charts use YYYY-MM labels
     const win = monthly ? 15 : 3;                        // a monthly bar's news can be any day that month
-    const sh = (off) => new Date(Date.parse(day) + off * 864e5).toISOString().slice(0, 10);
-    const hit = await cached(`movewho:${id}:${d}`, 6 * 3600e3, async () => {
-      let items = [];
-      try { items = await fetchGoogleNews(`(${base}) after:${sh(-win)} before:${sh(win + 1)} ${NEWS_TIER1}`, 20); } catch {}
-      const ev = [];
-      for (const it of items) {
-        if (!TIER1_RE.test(it.source || '')) continue;
-        let kind = null, effect = 'watch', weight = 1;
-        for (const rule of EVENT_RULES) { if (rule.re.test(it.title)) { kind = rule.kind; effect = rule.effect; weight = rule.weight; break; } }
-        ev.push({ date: it.date, title: it.title, source: it.source, url: it.url, kind: kind || 'Market news', effect, weight });
-      }
-      return ev;
-    });
+    return { r, d, day, after: sh(day, -win), before: sh(day, win + 1) };
+  }).filter(Boolean);
+  // Each day needs its own Google News query. They are independent, so fetch them together — the
+  // old sequential loop did up to 6 back-to-back round-trips (~9s on a cold chart).
+  const hits = await Promise.all(plans.map((p) => cached(`movewho:${id}:${p.d}`, 6 * 3600e3, async () => {
+    let items = [];
+    try { items = await fetchGoogleNews(`(${base}) after:${p.after} before:${p.before} ${NEWS_TIER1}`, 20); } catch {}
+    const ev = [];
+    for (const it of items) {
+      if (!TIER1_RE.test(it.source || '')) continue;
+      let kind = null, effect = 'watch', weight = 1;
+      for (const rule of EVENT_RULES) { if (rule.re.test(it.title)) { kind = rule.kind; effect = rule.effect; weight = rule.weight; break; } }
+      ev.push({ date: it.date, title: it.title, source: it.source, url: it.url, kind: kind || 'Market news', effect, weight });
+    }
+    return ev;
+  })));
+  const out = [];
+  plans.forEach(({ r, d, day }, i) => {
+    const hit = hits[i];
     // Pick the most ON-TOPIC story that AGREES with the move's direction.
     const want = r.dir === 'up' ? 'up' : 'down';
     let best = null, bs = -Infinity, bestFocus = false;
@@ -2088,7 +2097,7 @@ async function getMoveWho(id, reqs, focusId) {
       if (score > bs) { bs = score; best = e; bestFocus = frel > 0; }
     }
     out.push({ date: d, dir: r.dir, news: best ? { kind: best.kind, title: best.title, source: best.source, url: best.url, match: bestFocus ? 'instrument' : 'segment' } : null });
-  }
+  });
   return { id, label: newsLabel(id), results: out };
 }
 

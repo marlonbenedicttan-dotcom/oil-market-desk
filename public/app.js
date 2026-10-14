@@ -1,4 +1,4 @@
-const $ = (id) => document.getElementById(id);
+const $ = (id) => document.getElementById(String(id).replace(/^#/, ''));
 const signed = (n, dp = 2) => (n == null ? '—' : (n >= 0 ? '+' : '') + Number(n).toFixed(dp));
 const pctf = (x) => (x == null ? '—' : (x >= 0 ? '+' : '') + Number(x).toFixed(1) + '%');
 const cls = (n) => (n == null ? '' : n >= 0 ? 'pos' : 'neg');
