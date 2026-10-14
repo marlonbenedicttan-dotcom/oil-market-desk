@@ -36,6 +36,13 @@ services:
         sync: false        # optional, defaults to SMTP_USER
       - key: WEBHOOK_URL
         sync: false        # optional Slack/Discord webhook
+      # Durable storage. Without these, subscribers/rules/cooldowns live in .state.json and the free
+      # tier WIPES IT on redeploy and on every sleep/wake. A free Upstash Redis (REST) URL + token makes
+      # them survive — anyone can subscribe and stay subscribed.
+      - key: UPSTASH_REDIS_REST_URL
+        sync: false        # e.g. https://your-db.upstash.io
+      - key: UPSTASH_REDIS_REST_TOKEN
+        sync: false
       # Optional login. Set BOTH to put the whole dashboard behind basic auth — which also unlocks
       # server-side alert rules (they are site-wide, so they need the login; see /api/rules).
       - key: AUTH_USER

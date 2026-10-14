@@ -2602,12 +2602,46 @@ function startAIS() {
 // ---------------------------------------------------------------------------
 const DIGEST_LOG = path.join(__dirname, 'digest.log');
 const STATE_FILE = path.join(__dirname, '.state.json');
+// Render's free tier wipes the filesystem on redeploy *and* on each sleep/wake, which would silently
+// drop subscribers, rules and alert cooldowns. Point UPSTASH_REDIS_REST_URL + _TOKEN at any free Redis
+// (Upstash's free tier is plenty) and the state lives there instead — plain REST, so the project stays
+// zero-dependency. Without them we fall back to the local file.
+const KV_URL = String(process.env.UPSTASH_REDIS_REST_URL || '').replace(/\/+$/, '');
+const KV_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN || '';
+const KV_KEY = process.env.STATE_KEY || 'watchtower:state';
+const stateDurable = Boolean(KV_URL && KV_TOKEN);
 const alertSeen = new Map();                 // alert key -> last-notified ms (persisted below)
 const loadState = () => { try { return JSON.parse(fs.readFileSync(STATE_FILE, 'utf8')); } catch { return {}; } };
 const state = loadState();
 // Restore the cooldowns so a restart/redeploy doesn't re-fire every alert.
 for (const [k, v] of Object.entries(state.alertSeen || {})) alertSeen.set(k, v);
-const saveState = () => { try { fs.writeFileSync(STATE_FILE, JSON.stringify(state)); } catch {} };
+const kvHeaders = () => ({ authorization: `Bearer ${KV_TOKEN}` });
+let kvTimer = null;
+const kvPut = async () => {
+  const r = await fetch(`${KV_URL}/set/${encodeURIComponent(KV_KEY)}`, { method: 'POST', headers: kvHeaders(), body: JSON.stringify(state) });
+  if (!r.ok) throw new Error(`kv set ${r.status}`);
+};
+const saveState = () => {
+  try { fs.writeFileSync(STATE_FILE, JSON.stringify(state)); } catch {}    // instant, and the fallback
+  if (!stateDurable) return;
+  clearTimeout(kvTimer);                                                   // debounce the remote write
+  kvTimer = setTimeout(() => kvPut().catch((e) => console.warn('[state] save failed:', e.message)), 1500);
+};
+// On boot prefer the remote copy (it survives deploys); the file stays as a cold-start fallback.
+async function loadRemoteState() {
+  if (!stateDurable) return;
+  try {
+    const r = await fetch(`${KV_URL}/get/${encodeURIComponent(KV_KEY)}`, { headers: kvHeaders() });
+    if (!r.ok) throw new Error(`kv get ${r.status}`);
+    const j = await r.json();
+    if (!j || j.result == null) return;                     // nothing stored yet → keep the file
+    const remote = typeof j.result === 'string' ? JSON.parse(j.result) : j.result;
+    if (!remote || typeof remote !== 'object') return;
+    Object.assign(state, remote);
+    for (const [k, v] of Object.entries(state.alertSeen || {})) alertSeen.set(k, v);
+    console.log(`[state] restored from Redis: ${Object.keys(remote).length} keys`);
+  } catch (e) { console.warn('[state] could not read Redis, using the file:', e.message); }
+}
 let lastDigestDate = state.lastDigestDate || null;
 let lastDigest = '';
 let lastTestAt = 0;
@@ -2860,14 +2894,20 @@ async function fanOut(alerts) {
   const list = subs().filter((x) => x.active);
   if (!list.length) return;
   const today = new Date().toISOString().slice(0, 10);
+  // ONE message per subscriber carrying everything that just happened. Five alerts used to mean five
+  // pushes — and five publishes into the chat service, which is exactly what gets us rate-limited (it's
+  // how the free ntfy tier throttled us during testing).
+  const subject = alerts.length === 1
+    ? `Marlon's Watchtower · ${alerts[0].level.toUpperCase()}`
+    : `Marlon's Watchtower · ${alerts.length} alerts`;
+  const text = alerts.map((a) => `• ${a.text}`).join('\n');
   let changed = false;
   for (const s2 of list) {
     if (s2.sentDate !== today) { s2.sentDate = today; s2.sent = 0; changed = true; }
-    for (const a of alerts) {
-      if ((s2.sent || 0) >= SUB_DAILY_MAX) break;
-      try { await sendToSubscriber(s2, `Marlon's Watchtower · ${a.level.toUpperCase()}`, a.text); s2.sent = (s2.sent || 0) + 1; changed = true; }
-      catch (e) { console.warn('[sub]', maskTarget(s2.target), e.message); }
-    }
+    if ((s2.sent || 0) >= SUB_DAILY_MAX) continue;
+    try { await sendToSubscriber(s2, subject, text); s2.sent = (s2.sent || 0) + alerts.length; changed = true; }
+    catch (e) { console.warn('[sub]', maskTarget(s2.target), e.message); }
+    await sleep(250);                        // spread the sends rather than bursting one host
   }
   if (changed) saveSubs(list);
 }
@@ -3154,7 +3194,7 @@ const server = http.createServer(async (req, res) => {
         last: { at: notifyStatus.lastAt, kind: notifyStatus.lastKind, ok: notifyStatus.lastOk, error: notifyStatus.lastError },
         alerts: { muted: alertSeen.size },
         serverRules: { enabled: Boolean(process.env.AUTH_USER && process.env.AUTH_PASS), count: Array.isArray(state.rules) ? state.rules.length : 0 },
-        subscribers: { active: subs().filter((x) => x.active).length, pending: subs().filter((x) => !x.active).length, cap: SUB_CAP },
+        subscribers: { active: subs().filter((x) => x.active).length, pending: subs().filter((x) => !x.active).length, cap: SUB_CAP, durable: stateDurable },
       });
     }
     if (url.pathname === '/api/notify/test' && req.method === 'POST') {
@@ -3211,7 +3251,8 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
-server.listen(PORT, () => {
+server.listen(PORT, async () => {
+  await loadRemoteState();                     // durable state first, so nothing reads stale values
   console.log(`\n  🛢️  Marlon's Watchtower running at  http://localhost:${PORT}`);
   console.log(`     ${BENCHMARKS.length} benchmarks: ${BENCHMARKS.map((b) => b.label).join(', ')}`);
   console.log(`     tankers: ${process.env.AISSTREAM_KEY ? 'aisstream.io' : 'disabled (set AISSTREAM_KEY)'}`);

@@ -734,6 +734,7 @@ async function loadNotifyStatus() {
     + '<br>' + rulesLine
     + ` <button id="notify-test" class="ghost small" type="button">SEND TEST</button>`
     + `<br><b>Subscribers</b>: ${sbs.active} getting alerts${sbs.pending ? ` · ${sbs.pending} awaiting confirmation` : ''}${sbs.cap ? ` (cap ${sbs.cap})` : ''}`
+    + (sbs.durable ? ' · stored durably' : ' · <span title="Render\'s free tier wipes the filesystem on redeploy and on each sleep — set UPSTASH_REDIS_REST_URL + _TOKEN to keep them">may reset on redeploy</span>')
     + (!d.email.configured ? '<br>Set <b>SMTP_USER</b>, <b>SMTP_PASS</b> and <b>DIGEST_TO</b> on the server (or <b>WEBHOOK_URL</b>) to get the daily digest and alerts by email.' : '');
 }
 // Anyone may subscribe: we send a confirmation to the destination, and only alert the ones that
