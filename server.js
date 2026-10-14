@@ -3121,7 +3121,12 @@ const server = http.createServer(async (req, res) => {
         await sendToSubscriber(rec, "Marlon's Watchtower · confirm your alerts",
           `You (or someone using this address) asked for commodity alerts from Marlon's Watchtower.\n\nConfirm: ${baseUrl(req)}/api/confirm?t=${rec.token}`, req, { footer: false });
       } catch (e) {
-        return sendJSON(res, 502, { error: `Couldn’t reach that destination (${String(e.message).slice(0, 60)}). Check the address and try again.` });
+        // Say something the visitor can act on: a rate limit and a bad URL are very different problems.
+        const m = String(e.message || '');
+        const msg = /429/.test(m) ? 'That channel is rate-limiting us right now — please try again in a few minutes.'
+          : /\b40[13]\b/.test(m) ? 'That channel rejected the message — double-check the webhook URL.'
+          : `Couldn’t reach that destination (${m.slice(0, 50)}). Check the address and try again.`;
+        return sendJSON(res, 502, { error: msg });
       }
       saveSubs([...list.filter((x) => x.target !== target), rec]);
       return sendJSON(res, 200, { ok: true, pending: true, kind, to: maskTarget(target) });
