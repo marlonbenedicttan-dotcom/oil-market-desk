@@ -403,28 +403,6 @@ function renderMarketContext(r) {
   $('context').innerHTML = rows + macro + dc;
 }
 // Hero board: one quick-read tile per segment.
-function renderMarketState() {
-  const el = $('marketstate');
-  if (!el || !markets.length || !data) return;
-  el.innerHTML = markets.map((m) => {
-    const b = data.benchmarks.find((x) => x.id === m.primary);
-    if (!b) return '';
-    const s = history?.series?.[b.id];
-    const arr = b.paper != null ? s?.paper : s?.physical;
-    const n = (arr || []).filter((x) => x != null);
-    const val = b.paper != null ? b.paper : b.physical;
-    const day = pctOf(arr);
-    const six = n.length > 1 ? ((n[n.length - 1] - n[0]) / n[0]) * 100 : null;
-    const lo = n.length ? Math.min(...n) : null, hi = n.length ? Math.max(...n) : null;
-    const pos = val != null && lo != null && hi > lo ? ((val - lo) / (hi - lo)) * 100 : null;
-    return `<button class="ms-tile${m.id === currentMarket ? ' active' : ''}" data-market="${m.id}" title="${m.label} — click to open">
-      <span class="ms-name">${m.label}</span>
-      <span class="ms-px">${val == null ? '—' : Number(val).toFixed(b.dp)}</span>
-      <span class="ms-chg ${cls(day)}">${day == null ? '—' : pctf(day)}</span>
-      <span class="ms-sub dimtext">${six == null ? '' : `${pctf(six)} 6m`}${pos == null ? '' : ` · ${pos.toFixed(0)}/100 range`}</span>
-    </button>`;
-  }).join('');
-}
 function regLine(r) {
   const bits = [];
   if (r.perf?.m6 != null) bits.push(`${r.label} ${r.perf.m6 >= 0 ? 'up' : 'down'} ${Math.abs(r.perf.m6).toFixed(0)}% in 6 months`);
@@ -580,7 +558,7 @@ function selectMarket(id) {
   const pick = $('bp-metric');
   if (pick && [...pick.options].some((o) => o.value === id)) pick.value = id;   // keep the picker in sync
   renderSnapshot();
-  renderMarketState();
+
   toggleMarketBlocks();
   if (data) { renderCards(data); buildMetricOptions(data); }
   setCardsTitle();
@@ -1213,7 +1191,7 @@ async function loadHistory() {
 async function reloadHistory() {
   try { await loadHistory(); } catch { return; }
   if (!data) return;
-  renderCards(data); renderSnapshot(); renderMarketState(); renderTicker(data); renderWatchlist();
+  renderCards(data); renderSnapshot(); renderTicker(data); renderWatchlist();
   if ($('range') && $('range').value === '6m') renderChart();
 }
 async function loadMarket() {
@@ -1223,7 +1201,7 @@ async function loadMarket() {
   data = d;
   markReady('data');
   renderCards(data); buildMetricOptions(data); buildBpOptions();
-  renderMarketState(); renderSnapshot(); setCardsTitle(); renderTicker(data);
+  renderSnapshot(); setCardsTitle(); renderTicker(data);
   renderWatchlist();
   await renderChart();   // ← render AFTER data exists
   buildCompareOptions(); syncCompareToSelection();
@@ -2171,7 +2149,7 @@ $('screen')?.addEventListener('click', (e) => {
   const th = e.target.closest('th[data-k]');
   if (th) { const k = th.dataset.k; screenSort = { key: k, dir: screenSort.key === k ? -screenSort.dir : (k === 'label' ? 1 : -1) }; renderScreen(false); return; }
   const tr = e.target.closest('tr[data-id]');
-  if (tr) { showTab('commodities'); pickMetric(tr.dataset.id, '6m'); }
+  if (tr) goToInstrument(tr.dataset.id);
 });
 // The bar's own controls: the segment select and the instrument checkboxes.
 $('screen')?.addEventListener('change', (e) => {
@@ -2456,130 +2434,6 @@ function syncJumpnavs() {
     });
   });
 }
-// ---------------------------------------------------------------------------
-// Quick jump (⌘K / Ctrl-K) — one tidy, grouped list: COMMODITIES · COUNTRIES · SECTIONS.
-// Built from data already in memory (markets, macroCountries) plus the rendered jump-navs,
-// so it can never drift from what the app can show. Rows are commodities/places/sections —
-// never a single instrument.
-// ---------------------------------------------------------------------------
-let paletteRows = [], paletteSel = 0;
-const PALETTE_GROUPS = ['Commodities', 'Countries', 'Sections'];
-// Common names people actually type, mapped to instrument ids (labels alone don't cover them).
-const PALETTE_ALIAS = {
-  ulsd: 'diesel heating oil gasoil distillate', rbob: 'gasoline petrol gas', natgas: 'gas lng henry hub',
-  wti: 'oil crude west texas texas light', brent: 'oil crude', soyoil: 'soybean oil veg oil', soymeal: 'meal',
-  hogs: 'pork pig', cattle: 'beef', feeder: 'beef cattle', nfdm: 'milk powder smp', whey: 'dairy',
-  cheese: 'cheddar dairy', butter: 'dairy', milk: 'class iii dairy', palm: 'cpo', cocoa: 'chocolate',
-  coffee: 'arabica robusta', sugar: 'raw sugar', cotton: 'lint', aluminium: 'aluminum', copper: 'hg',
-  platinum: 'pgm', palladium: 'pgm', corn: 'maize', soybean: 'soy beans', wheat: 'grain', propane: 'lpg',
-};
-function paletteIndex() {
-  const out = [];
-  // One row per COMMODITY (this used to list every instrument, which buried the things people
-  // actually navigate by). A commodity stays findable through its instruments' names and the
-  // everyday words for them, so "brent", "diesel" or "gold" still land on the right row.
-  for (const mk of (markets || [])) {
-    const words = (mk.components || []).map((c) => `${c.label} ${c.id} ${PALETTE_ALIAS[c.id] || ''}`).join(' ');
-    out.push({ group: 'Commodities', label: mk.label, sub: '', keys: `commodity ${mk.label} ${mk.id} ${words}`,
-      run: () => { showTab('commodities'); selectMarket(mk.id); } });
-  }
-  const regionName = Object.fromEntries([...($('macro-region')?.options || [])].map((o) => [o.value, o.textContent]));
-  for (const [region, list] of Object.entries(macroCountries || {})) for (const c of (list || [])) {
-    out.push({ group: 'Countries', label: c.label, sub: regionName[region] || region, keys: `country ${c.label} ${c.id} ${region}`,
-      run: () => {
-        showTab('macro');
-        const rs = $('macro-region'), cs = $('macro-country');
-        if (!rs || !cs) return;
-        if (rs.value !== region) { rs.value = region; rs.dispatchEvent(new Event('change', { bubbles: true })); }
-        if ([...cs.options].some((o) => o.value === c.id)) { cs.value = c.id; cs.dispatchEvent(new Event('change', { bubbles: true })); }
-      } });
-  }
-  document.querySelectorAll('.tabpane').forEach((pane) => pane.querySelectorAll('.jumpnav a').forEach((a) => {
-    const t = $(a.getAttribute('href'));
-    if (!t || a.classList.contains('hidden')) return;   // never offer a section that isn't rendered
-    out.push({ group: 'Sections', label: a.textContent.trim(), sub: String(pane.dataset.pane || '').toUpperCase(), keys: `${a.textContent} ${pane.dataset.pane} section`,
-      run: () => { showTab(pane.dataset.pane); setTimeout(() => t.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60); } });
-  }));
-  return out;
-}
-function paletteMatch(q) {
-  const all = paletteIndex();
-  const query = String(q || '').trim().toLowerCase();
-  if (!query) return all.slice(0, 12);
-  const scored = [];
-  for (const it of all) {
-    const L = it.label.toLowerCase(), K = it.keys.toLowerCase();
-    let s = 0;
-    if (L === query) s = 100;
-    else if (L.startsWith(query)) s = 80;
-    else if (L.includes(query)) s = 60;
-    else if (K.includes(query)) s = 30;
-    if (s) scored.push({ it, s });
-  }
-  // Group order first (so the list reads COMMODITIES → COUNTRIES → SECTIONS and never interleaves),
-  // then best match, then the shorter label.
-  const rank = (x) => PALETTE_GROUPS.indexOf(x.it.group);
-  return scored.sort((a, b) => rank(a) - rank(b) || b.s - a.s || a.it.label.length - b.it.label.length).slice(0, 12).map((x) => x.it);
-}
-function palettePaint() {
-  const list = $('palette-list'); if (!list) return;
-  paletteRows = paletteMatch($('palette-input')?.value);
-  paletteSel = 0;
-  if (!paletteRows.length) {
-    list.innerHTML = '<div class="palette-empty dimtext">No match — try “oil”, “metals”, “japan” or “screener”.</div>';
-    return;
-  }
-  // Grouped headings so it reads as a short menu instead of one long stream. Render order is the
-  // row order (paletteMatch keeps groups contiguous), so ↑/↓ never lands on a heading.
-  let html = '', group = null;
-  paletteRows.forEach((r, i) => {
-    if (r.group !== group) {
-      if (group) html += '</div>';
-      group = r.group;
-      html += `<div class="palette-group" role="group" aria-label="${esc(group)}"><div class="palette-group-h">${esc(group)}</div>`;
-    }
-    const sub = r.sub && r.sub !== r.label ? r.sub : '';   // don't echo the label (e.g. "Japan · Japan")
-    html += `<div class="palette-row${i === 0 ? ' on' : ''}" role="option" aria-selected="${i === 0}" data-i="${i}"><span class="pl-label">${esc(r.label)}</span><span class="pl-sub">${esc(sub)}</span></div>`;
-  });
-  list.innerHTML = html + '</div>';
-}
-function paletteMove(d) {
-  if (!paletteRows.length) return;
-  paletteSel = (paletteSel + d + paletteRows.length) % paletteRows.length;
-  const list = $('palette-list');
-  [...list.querySelectorAll('.palette-row')].forEach((el, i) => { el.classList.toggle('on', i === paletteSel); el.setAttribute('aria-selected', String(i === paletteSel)); });
-  list.querySelector('.palette-row.on')?.scrollIntoView({ block: 'nearest' });
-}
-function paletteGo(i = paletteSel) {
-  const r = paletteRows[i];
-  closePalette();
-  if (r) r.run();
-}
-const paletteOpen = () => $('palette') && !$('palette').classList.contains('hidden');
-function openPalette() {
-  const p = $('palette'); if (!p) return;
-  p.classList.remove('hidden');
-  const inp = $('palette-input'); if (inp) { inp.value = ''; inp.focus(); }
-  palettePaint();
-}
-function closePalette() { $('palette')?.classList.add('hidden'); }
-$('jump-btn')?.addEventListener('click', openPalette);
-$('palette')?.addEventListener('click', (e) => {
-  if (e.target === $('palette')) { closePalette(); return; }   // click the backdrop to dismiss
-  const row = e.target.closest('.palette-row');
-  if (row) paletteGo(Number(row.dataset.i));
-});
-$('palette-input')?.addEventListener('input', palettePaint);
-$('palette-input')?.addEventListener('keydown', (e) => {
-  if (e.key === 'ArrowDown') { e.preventDefault(); paletteMove(1); }
-  else if (e.key === 'ArrowUp') { e.preventDefault(); paletteMove(-1); }
-  else if (e.key === 'Enter') { e.preventDefault(); paletteGo(); }
-  else if (e.key === 'Escape') { e.preventDefault(); closePalette(); }
-});
-addEventListener('keydown', (e) => {
-  if ((e.metaKey || e.ctrlKey) && String(e.key).toLowerCase() === 'k') { e.preventDefault(); paletteOpen() ? closePalette() : openPalette(); return; }
-  if (e.key === 'Escape' && paletteOpen()) closePalette();
-});
 
 function showTab(name) {
   saveStr('tab', name);
@@ -2614,7 +2468,7 @@ async function loadExtraCore() {
   loadRisk();
   loadBrief();        // HOME: daily brief
   loadTransmission(); // COMMODITIES: how it transmits
-  renderMarketState();
+
   renderAdaptive();
   // 40+ sector quotes, inventories, chokepoints… all inside the COMMODITIES pane, which is hidden
   // while the reader is on HOME. Defer the whole batch until that pane is actually opened.
@@ -2694,7 +2548,6 @@ $('bp-snapshot')?.addEventListener('click', (e) => {
   syncCompareToSelection();
 });
 
-$('marketstate')?.addEventListener('click', (e) => { const t = e.target.closest('[data-market]'); if (t) { showTab('commodities'); selectMarket(t.dataset.market); } });
 $('macro-region')?.addEventListener('change', () => { macroRegion = $('macro-region').value; saveStr('macroRegion', macroRegion); renderMacroRegion(); syncRoute(false); });
 $('macro-region-panel')?.addEventListener('click', (e) => { const el = e.target.closest('[data-metric]'); if (el) pickMetric(el.dataset.metric, '1y'); });
 $('macro-country')?.addEventListener('change', () => { macroCountry = $('macro-country').value; saveStr('macroCountry', macroCountry); loadCountry(); syncRoute(false); });
@@ -2725,6 +2578,19 @@ function pickMetric(id, range = '6m') {
   const cp = $('chart-panel');
   if (cp) setTimeout(() => cp.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);
 }
+// Open one instrument's page (watchlist tile, screener row, component card). The metric picker is
+// rebuilt for whichever segment is open, so the segment that OWNS the instrument has to be selected
+// FIRST — otherwise the instrument has no option to land on and you stay on whatever segment happened
+// to be open, which reads as "it sent me to some random segment".
+function goToInstrument(id, range = '6m') {
+  if (!id) return;
+  const owner = (markets || []).find((m) => (m.components || []).some((c) => c.id === id));
+  if (owner && owner.id !== currentMarket) selectMarket(owner.id);   // also rebuilds the metric options
+  currentComponent = id;          // the snapshot + READ follow this instrument, not the segment headline
+  pickMetric(id, range);          // switches to COMMODITIES, selects it, draws the chart
+  renderSnapshot();
+  loadMarketRead();
+}
 $('tabs').addEventListener('click', (e) => { const b = e.target.closest('.tab'); if (b) showTab(b.dataset.tab); });
 // Arrow keys move between tabs (standard tablist behaviour).
 $('tabs').addEventListener('keydown', (e) => {
@@ -2741,13 +2607,13 @@ $('cards').addEventListener('click', (e) => {
   const star = e.target.closest('.star');
   if (star) { toggleWatch(star.dataset.star); renderCards(data); renderWatchlist(); return; }
   const tile = e.target.closest('.tile[data-id]');
-  if (tile) pickMetric(tile.dataset.id, '6m');
+  if (tile) goToInstrument(tile.dataset.id);
 });
 $('home-watch')?.addEventListener('click', (e) => {
   const star = e.target.closest('.star');
   if (star) { toggleWatch(star.dataset.star); renderWatchlist(); if (data) renderCards(data); return; }
   const tile = e.target.closest('.tile[data-id]');
-  if (tile) pickMetric(tile.dataset.id, '6m');
+  if (tile) goToInstrument(tile.dataset.id);
 });
 $('macro-fx')?.addEventListener('click', (e) => { const el = e.target.closest('[data-metric]'); if (el) pickMetric(el.dataset.metric, '1y'); });
 $('macro-links')?.addEventListener('click', (e) => { const el = e.target.closest('[data-metric]'); if (el) pickMetric(el.dataset.metric, '1y'); });

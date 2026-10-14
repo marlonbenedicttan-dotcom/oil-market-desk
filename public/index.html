@@ -23,7 +23,7 @@
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
   <link rel="preconnect" href="https://unpkg.com" crossorigin />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <link rel="stylesheet" href="style.css?v=59" />
+  <link rel="stylesheet" href="style.css?v=60" />
   <noscript><style>#boot{display:none!important}</style></noscript>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -62,7 +62,6 @@
       <span id="fresh" class="fresh-dot" role="img" title="Data freshness" aria-label="Data freshness"></span>
       <span id="clock" class="clock">--:--:--</span>
       <span id="updated" class="dimtext">loading…</span>
-      <button id="jump-btn" class="ghost" aria-label="Quick jump — search commodities, countries and sections" title="Quick jump (⌘K or Ctrl-K)">JUMP</button>
       <button id="refresh" class="ghost" aria-label="Refresh data" title="Refresh data">↻</button>
       <button id="help-open" class="ghost" aria-label="Help and guide" title="Help and guide">?</button>
     </div>
@@ -82,7 +81,7 @@
       <button class="tab" data-tab="macro" id="tab-macro" role="tab" aria-selected="false" aria-controls="pane-macro">MACRO</button>
     </nav>
 
-    <!-- HOME: daily brief + watchlist + headlines + segments -->
+    <!-- HOME: daily brief + markets + screener + risk + calendar + watchlist + headlines -->
     <div class="tabpane" data-pane="home" id="pane-home" role="tabpanel" aria-labelledby="tab-home">
       <nav class="jumpnav" aria-label="Jump to a section">
         <a href="#p-brief">Brief</a>
@@ -92,7 +91,6 @@
         <a href="#p-calendar">Calendar</a>
         <a href="#p-watch">Watchlist</a>
         <a href="#p-headlines">Headlines</a>
-        <a href="#p-segments">Segments</a>
       </nav>
       <section class="panel" id="p-brief">
         <div class="ph"><span class="ph-t">DAILY BRIEF — what happened · what's next</span><span id="brief-updated" class="dimtext"></span></div>
@@ -134,10 +132,6 @@
         <div id="headlines" class="headlines"></div>
       </section>
 
-      <section class="panel" id="p-segments">
-        <div class="ph"><span class="ph-t">SEGMENTS</span><span class="dimtext">click a segment to open it</span></div>
-        <div id="marketstate" class="marketstate"></div>
-      </section>
     </div>
 
     <!-- COMMODITIES -->
@@ -389,14 +383,6 @@
 
     <footer id="notes"></footer>
   </main>
-  <!-- Quick jump (⌘K / Ctrl-K, or the JUMP button) — a short grouped menu: commodities · countries · sections. -->
-  <div id="palette" class="palette hidden" role="dialog" aria-modal="true" aria-label="Quick jump">
-    <div class="palette-box">
-      <input id="palette-input" class="palette-input" type="text" placeholder="Jump to a commodity, country or section…" aria-label="Quick jump" autocomplete="off" spellcheck="false" role="combobox" aria-expanded="true" aria-controls="palette-list">
-      <div id="palette-list" class="palette-list" role="listbox" aria-label="Jump targets"></div>
-      <div class="palette-foot dimtext">↑ ↓ to choose · Enter to go · Esc to close</div>
-    </div>
-  </div>
   <div id="onboarding" class="onboard hidden" role="dialog" aria-modal="true" aria-labelledby="onboard-title">
     <div class="onboard-box">
       <div class="tower" aria-hidden="true">
@@ -426,6 +412,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=112"></script>
+  <script src="app.js?v=114"></script>
 </body>
 </html>

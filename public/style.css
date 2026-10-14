@@ -277,7 +277,6 @@ footer li { margin-bottom: 2px; }
 .regime { padding: 9px 12px; border-bottom: 1px solid var(--line); font-size: 13px; letter-spacing: .4px; }
 .regime .warn { color: var(--amber); }
 /* Hero: per-segment market-state board */
-.marketstate { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1px; background: var(--line); }
 .ms-tile { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 8px; background: #0c0f13; border: 0; border-left: 3px solid transparent; color: var(--text); text-align: left; padding: 8px 10px; cursor: pointer; font-family: var(--mono); }
 .ms-tile:hover { background: #10151b; }
 .ms-tile.active { border-left-color: var(--amber); background: #10151b; }
@@ -364,21 +363,6 @@ footer li { margin-bottom: 2px; }
 .jumpnav::-webkit-scrollbar { display: none; }
 .jumpnav a { flex: 0 0 auto; border: 1px solid var(--line2); padding: 5px 11px; font-size: 11px; letter-spacing: .5px; color: var(--dim); text-decoration: none; white-space: nowrap; }
 .jumpnav a:hover, .jumpnav a:focus-visible { color: var(--amber); border-color: var(--amber); }
-/* Quick jump (⌘K / Ctrl-K, or the JUMP button) — a short grouped menu (commodities · countries ·
-   sections) instead of one long stream of instrument names. */
-.palette { position: fixed; inset: 0; z-index: 200; background: rgba(3, 5, 8, .74); display: flex; align-items: flex-start; justify-content: center; padding: 11vh 14px 14px; }
-.palette-box { width: min(620px, 100%); background: #0c0f13; border: 1px solid var(--line2); box-shadow: 0 24px 60px rgba(0, 0, 0, .6); }
-.palette-input { width: 100%; box-sizing: border-box; background: #05070a; border: 0; border-bottom: 1px solid var(--line2); color: var(--text); font-family: var(--mono); font-size: 14px; padding: 14px 16px; outline: none; }
-.palette-input::placeholder { color: var(--dim); }
-.palette-list { max-height: 58vh; overflow: auto; }   /* roomy enough that the second group heading stays visible */
-.palette-row { display: flex; align-items: baseline; gap: 10px; padding: 9px 14px; border-bottom: 1px solid var(--line); cursor: pointer; }
-.palette-row.on { background: #10151b; box-shadow: inset 2px 0 0 var(--amber); }
-.pl-label { font-size: 13px; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.pl-sub { flex: 1; font-size: 10.5px; color: var(--dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.palette-group + .palette-group { border-top: 1px solid var(--line2); }
-.palette-group-h { padding: 9px 14px 5px; font-size: 9px; letter-spacing: 1.4px; color: var(--amber); text-transform: uppercase; }
-.palette-empty { padding: 14px; font-size: 12px; }
-.palette-foot { padding: 8px 14px; font-size: 10px; border-top: 1px solid var(--line); }
 /* The sticky jump-nav sits under the top bar, so any anchored panel needs extra scroll margin.
    (The HOME list used to be spelled out by id; this covers every pane's targets automatically.) */
 .tabpane > section[id], .tabpane > details[id] { scroll-margin-top: calc(var(--topbar-h, 44px) + 54px); }
@@ -710,7 +694,7 @@ footer li { margin-bottom: 2px; }
 /* Keep the page inside the phone's width. Grid/flex children default to min-width:auto, so a
    single wide child (a table, a canvas, a nowrap row) can push the whole page wider than the
    screen → sideways scroll → "too big / won't fit". Let every one of them shrink instead. */
-main, .tabpane, .panel, .cards, .curve, .kpis, .marketstate, .brief-cols, .bl, .bl-sec, .macro, .sectors, .sector-read, .attr, .ev, .ctx-row { min-width: 0; }
+main, .tabpane, .panel, .cards, .curve, .kpis, .brief-cols, .bl, .bl-sec, .macro, .sectors, .sector-read, .attr, .ev, .ctx-row { min-width: 0; }
 main > *, .tabpane > *, .panel > * { min-width: 0; }
 canvas, img, svg, table, pre { max-width: 100%; }
 canvas { display: block; }

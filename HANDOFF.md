@@ -686,3 +686,25 @@ Commodity Desk rebranded from the oil-only "Oil Basis"; merged COMMODITIES+PRICE
   JUMP's aria-label drops "instruments". Verified in headless Chrome at 1200×820 **and** 390×844:
   groups render in order, ArrowDown walks rows only, Enter on `crude` → COMMODITIES/crude, Enter on
   `japan` → MACRO/jp, **zero console errors**. 94 tests. `app.js?v=112`, `style.css?v=59`.
+## Latest (2026-10-15) — pruning the navigation surface + a real "open this instrument" fix
+- **Quick-jump removed (⌘K / JUMP).** The user tried it, had it tidied, then decided it isn't needed:
+  gone are the header `JUMP` button, the `#palette` dialog, the `⌘K`/`Ctrl-K` binding, its CSS
+  (`.palette*`, `.pl-*`, ~15 rules) and its JS (`paletteIndex` / `paletteMatch` / `palettePaint` /
+  `paletteMove` / `paletteGo` / `openPalette` / `closePalette`, `PALETTE_GROUPS`, `PALETTE_ALIAS` —
+  ~124 lines). The **in-page chip nav (`.jumpnav`) stays**.
+- **HOME → SEGMENTS board removed** (`#p-segments` / `#marketstate`, its jump-nav chip, the
+  `renderMarketState()` function + its 4 calls + the tile click handler + its CSS). The SCREENER
+  (every instrument, ranked) and the WATCHLIST already cover that ground. HOME now ends at HEADLINES,
+  and its chips are Brief · Markets · Screener · Risk · Calendar · Watchlist · Headlines.
+- **Clicking a watchlist tile (or a screener row / component card) now opens THAT instrument.** The bug
+  behind "it sent me to some random segment": `pickMetric(id)` only sets `#metric` **if the open
+  segment's dropdown already contains that option** — and the dropdown is rebuilt per segment — so an
+  instrument belonging to another segment was silently ignored and you stayed on whatever segment
+  happened to be open. New shared `goToInstrument(id, range)`: find the segment that owns the
+  instrument → `selectMarket()` (which rebuilds the metric options) → set `currentComponent` so the
+  snapshot **and THE READ** follow the instrument, not the segment headline → `pickMetric()` →
+  `renderSnapshot()` + `loadMarketRead()`. Wired into the HOME watchlist tiles, the COMMODITIES
+  component cards and the screener rows. Verified headless: with `crude` open, a pinned **Corn** →
+  `#/commodities/grains/corn` ("Grains & oilseeds · CORN"); then **WTI** → `#/commodities/crude/wti`;
+  a screener row for **sugar** → `#/commodities/softs/sugar`. Zero console errors. 94 tests throughout.
+  `app.js?v=114`, `style.css?v=60`.
