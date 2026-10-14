@@ -711,6 +711,35 @@ function computeRules() {
   }
   return out;
 }
+// Delivery status for server-side alerts + the daily digest — so "is my email working?" is answerable
+// from the dashboard instead of from the logs.
+async function loadNotifyStatus() {
+  const el = $('notify-status');
+  if (!el) return;
+  let d = null;
+  try { d = await getJSON('/api/notify'); } catch { d = null; }
+  if (!d) { el.textContent = 'Delivery status unavailable.'; return; }
+  const on = [];
+  if (d.email.configured) on.push(`email → ${esc(d.email.to)}`);
+  if (d.webhook) on.push('webhook');
+  if (d.desktop) on.push('desktop');
+  const digest = d.digest.lastDate ? `last digest ${esc(d.digest.lastDate)}` : 'no digest sent yet';
+  const lastErr = d.last && d.last.ok === false && d.last.error ? ` · last error: ${esc(d.last.error)}` : '';
+  el.innerHTML = `<b>Server alerts</b> · ${on.length ? on.join(' · ') : 'nothing configured yet'} · digest ${d.digest.hour}:00 (${digest})${lastErr}`
+    + ` <button id="notify-test" class="ghost small" type="button">SEND TEST</button>`
+    + (!d.email.configured ? '<br>Set <b>SMTP_USER</b>, <b>SMTP_PASS</b> and <b>DIGEST_TO</b> on the server (or <b>WEBHOOK_URL</b>) to get the daily digest and alerts by email.' : '');
+}
+$('notify-status')?.addEventListener('click', async (e) => {
+  if (e.target.id !== 'notify-test') return;
+  const btn = e.target;
+  btn.textContent = 'SENDING…';
+  let r = null;
+  try { r = await (await fetch('/api/notify/test', { method: 'POST' })).json(); } catch { r = null; }
+  btn.textContent = r && r.ok ? 'SENT ✓' : 'FAILED';
+  if (r && r.error) btn.title = String(r.error);
+  setTimeout(loadNotifyStatus, 1500);
+});
+
 function renderRules() {
   const el = $('home-rules'); if (!el) return;
   const rs = rules();
@@ -2716,6 +2745,7 @@ async function loadExtraCore() {
   loadCalendar();
   loadRisk();
   loadAlerts();       // HOME: alerts
+  loadNotifyStatus(); // HOME: is email/webhook delivery actually working?
   loadBrief();        // HOME: daily brief
   loadTransmission(); // COMMODITIES: how it transmits
   renderMarketState();

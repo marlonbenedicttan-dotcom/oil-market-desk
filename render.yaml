@@ -17,3 +17,20 @@ services:
         value: "7"
       - key: NOTIFY
         value: "off"       # desktop notifications are macOS-only
+      # Daily digest + alert delivery. Set all three of SMTP_USER / SMTP_PASS / DIGEST_TO to turn on
+      # email (SMTP_PASS is an app password, not your account password). WEBHOOK_URL is the alternative
+      # (Slack/Discord) — either or both.
+      - key: SMTP_USER
+        sync: false        # e.g. you@gmail.com
+      - key: SMTP_PASS
+        sync: false        # app password
+      - key: SMTP_HOST
+        value: smtp.gmail.com
+      - key: SMTP_PORT
+        value: "465"       # 465 = implicit TLS, 587 = STARTTLS
+      - key: DIGEST_TO
+        sync: false        # where the digest + alerts are sent
+      - key: MAIL_FROM
+        sync: false        # optional, defaults to SMTP_USER
+      - key: WEBHOOK_URL
+        sync: false        # optional Slack/Discord webhook

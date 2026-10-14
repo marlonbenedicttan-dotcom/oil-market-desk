@@ -5,6 +5,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import zlib from 'node:zlib';
 import { execFile } from 'node:child_process';
+import { sendMail } from './src/smtp.js';
 import { fileURLToPath } from 'node:url';
 import { sgn, businessDaysSince, inBox, haversineNm, horizonDeltas, horizonDeltasAbs, isoWeek, monthly, pctOver, percentile, lastNonNull, escHtml, realizedVol, computeCracks, computeCrush, backAdjust, pearson, logReturns, curveTightness, inventoryTightness, weightedScore, seasonalGrade, seasonalAhead, contractMonthsBetween, signedPosition, signedMove, stretchScore, sdLabel, attributeMoves, newsContextOk, METHODOLOGY, positioningFlag, positioningRead, maxDrawdown, realizedVolTerm, corrMatrix, fxAdjust, parseOcc, drawdownWord, volWord, volTrend, topPairs, bestDiversifier, riskRead } from './src/lib.js';
 
@@ -2600,12 +2601,15 @@ function startAIS() {
 // ---------------------------------------------------------------------------
 const DIGEST_LOG = path.join(__dirname, 'digest.log');
 const STATE_FILE = path.join(__dirname, '.state.json');
-const alertSeen = new Map();
+const alertSeen = new Map();                 // alert key -> last-notified ms (persisted below)
 const loadState = () => { try { return JSON.parse(fs.readFileSync(STATE_FILE, 'utf8')); } catch { return {}; } };
 const state = loadState();
+// Restore the cooldowns so a restart/redeploy doesn't re-fire every alert.
+for (const [k, v] of Object.entries(state.alertSeen || {})) alertSeen.set(k, v);
 const saveState = () => { try { fs.writeFileSync(STATE_FILE, JSON.stringify(state)); } catch {} };
 let lastDigestDate = state.lastDigestDate || null;
 let lastDigest = '';
+let lastTestAt = 0;
 
 async function computeServerAlerts() {
   const m = await getMarket();
@@ -2624,20 +2628,30 @@ async function computeServerAlerts() {
   return out;
 }
 
+// Delivery outcomes, so the UI can say whether email actually works (and why not).
+const notifyStatus = { lastAt: null, lastKind: null, lastOk: null, lastError: null, digestAt: null, digestDate: null };
+const mailConfigured = () => Boolean(process.env.SMTP_USER && process.env.SMTP_PASS && process.env.DIGEST_TO);
+
 async function sendEmail(subject, text) {
-  if (!process.env.SMTP_USER || !process.env.SMTP_PASS || !process.env.DIGEST_TO) return false;
-  let nodemailer;
-  try { nodemailer = (await import('nodemailer')).default; } catch { console.log('[mail] nodemailer not installed — run: npm i nodemailer'); return false; }
-  const t = nodemailer.createTransport({
-    host: process.env.SMTP_HOST || 'smtp.gmail.com', port: Number(process.env.SMTP_PORT || 465), secure: true,
-    auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
+  if (!mailConfigured()) return notifyStatus.lastError = 'not configured (need SMTP_USER, SMTP_PASS, DIGEST_TO)';
+  const port = Number(process.env.SMTP_PORT || 465);
+  await sendMail({
+    host: process.env.SMTP_HOST || 'smtp.gmail.com',
+    port,
+    secure: process.env.SMTP_SECURE ? process.env.SMTP_SECURE !== 'false' : port === 465,
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASS,
+    from: process.env.MAIL_FROM || process.env.SMTP_USER,
+    to: process.env.DIGEST_TO,
+    subject,
+    text,
   });
-  await t.sendMail({ from: process.env.SMTP_USER, to: process.env.DIGEST_TO, subject, text });
   return true;
 }
 
 async function deliver(kind, subject, text) {
   console.log(`[notify:${kind}] ${subject}`);
+  notifyStatus.lastAt = new Date().toISOString(); notifyStatus.lastKind = kind;
   try { fs.appendFileSync(DIGEST_LOG, `\n=== ${new Date().toISOString()} [${kind}] ${subject} ===\n${text}\n`); } catch {}
   if (process.platform === 'darwin' && process.env.NOTIFY !== 'off') {
     execFile('osascript', ['-e', `display notification ${JSON.stringify(text.slice(0, 200))} with title ${JSON.stringify(subject)}`], () => {});
@@ -2645,7 +2659,11 @@ async function deliver(kind, subject, text) {
   if (process.env.WEBHOOK_URL) {
     fetch(process.env.WEBHOOK_URL, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ subject, text }) }).catch(() => {});
   }
-  await sendEmail(subject, text).catch((e) => console.error('[mail]', e.message));
+  if (!mailConfigured()) { notifyStatus.lastOk = null; notifyStatus.lastError = 'not configured (need SMTP_USER, SMTP_PASS, DIGEST_TO)'; }
+  else {
+    try { await sendEmail(subject, text); notifyStatus.lastOk = true; notifyStatus.lastError = null; }
+    catch (e) { notifyStatus.lastOk = false; notifyStatus.lastError = e.message; console.error('[mail]', e.message); }
+  }
 }
 
 async function buildDigest() {
@@ -2712,7 +2730,7 @@ async function alertLoop() {
     const cooldown = Number(process.env.ALERT_COOLDOWN_H || 12) * 3600e3;
     const now = Date.now();
     for (const a of await computeServerAlerts()) {
-      if (now - (alertSeen.get(a.key) || 0) > cooldown) { alertSeen.set(a.key, now); await deliver('alert', `Marlon's Watchtower · ${a.level.toUpperCase()}`, a.text); }
+      if (now - (alertSeen.get(a.key) || 0) > cooldown) { alertSeen.set(a.key, now); state.alertSeen = Object.fromEntries(alertSeen); saveState(); await deliver('alert', `Marlon's Watchtower · ${a.level.toUpperCase()}`, a.text); }
     }
   } catch (e) { console.error('[alerts]', e.message); }
 }
@@ -2727,6 +2745,7 @@ async function maybeSendDigest() {
       state.lastDigestDate = today; saveState();
       lastDigest = await buildDigest();
       await deliver('digest', "Marlon's Watchtower · daily digest", lastDigest);
+      notifyStatus.digestAt = new Date().toISOString(); notifyStatus.digestDate = today;
     }
   } catch (e) { console.error('[digest]', e.message); }
 }
@@ -2775,8 +2794,9 @@ const server = http.createServer(async (req, res) => {
     if (!ok) { res.writeHead(401, { 'www-authenticate': 'Basic realm="oil-market-desk"' }); return res.end('Authentication required'); }
   }
   try {
-    // Read-only service — every route is a GET. Anything else is a mistake or a probe.
-    if (req.method !== 'GET' && req.method !== 'HEAD') {
+    // Read-only service — every route is a GET, except the deliberate "send me a test email" POST.
+    const notifyTest = req.method === 'POST' && url.pathname === '/api/notify/test';
+    if (req.method !== 'GET' && req.method !== 'HEAD' && !notifyTest) {
       res.writeHead(405, { 'content-type': 'text/plain', allow: 'GET, HEAD' });
       return res.end('method not allowed');
     }
@@ -2907,6 +2927,26 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname === '/api/analogue') return sendJSON(res, 200, await getAnalogue(url.searchParams.get('metric') || 'basis:brent', Math.min(15, Math.max(2, Number(url.searchParams.get('years')) || 10))));
     if (url.pathname === '/api/alerts') return sendJSON(res, 200, { current: await computeServerAlerts().catch(() => []) });
     if (url.pathname === '/api/digest') { res.writeHead(200, { 'content-type': 'text/plain' }); return res.end(lastDigest || await buildDigest()); }
+    if (url.pathname === '/api/notify') {
+      const mask = (a) => (a && a.includes('@') ? a.replace(/^(.).*(@.*)$/, '$1***$2') : a || null);
+      return sendJSON(res, 200, {
+        email: { configured: mailConfigured(), to: mask(process.env.DIGEST_TO), host: process.env.SMTP_HOST || 'smtp.gmail.com', port: Number(process.env.SMTP_PORT || 465) },
+        webhook: Boolean(process.env.WEBHOOK_URL),
+        desktop: process.platform === 'darwin' && process.env.NOTIFY !== 'off',
+        digest: { hour: Number(process.env.DIGEST_HOUR ?? 7), lastDate: notifyStatus.digestDate || state.lastDigestDate || null, lastAt: notifyStatus.digestAt },
+        last: { at: notifyStatus.lastAt, kind: notifyStatus.lastKind, ok: notifyStatus.lastOk, error: notifyStatus.lastError },
+        alerts: { muted: alertSeen.size },
+      });
+    }
+    if (url.pathname === '/api/notify/test' && req.method === 'POST') {
+      // One test per minute — this endpoint is reachable without auth on a default deployment.
+      const since = Date.now() - (lastTestAt || 0);
+      if (since < 60_000) return sendJSON(res, 429, { error: `slow down — try again in ${Math.ceil((60_000 - since) / 1000)}s` });
+      lastTestAt = Date.now();
+      const body = `This is a test from Marlon's Watchtower.\n\nIf you're reading it, alert + digest delivery works.\nChannels: ${[mailConfigured() && 'email', process.env.WEBHOOK_URL && 'webhook', process.platform === 'darwin' && process.env.NOTIFY !== 'off' && 'desktop'].filter(Boolean).join(', ') || 'none configured'}.`;
+      await deliver('test', "Marlon's Watchtower · test message", body);
+      return sendJSON(res, 200, { ok: notifyStatus.lastOk, error: notifyStatus.lastError, channels: { email: mailConfigured(), webhook: Boolean(process.env.WEBHOOK_URL) } });
+    }
     if (url.pathname === '/api/brief') return sendJSON(res, 200, await buildBrief().catch((e) => ({ error: String(e.message) })));
     if (url.pathname === '/api/analytics') return sendJSON(res, 200, await getAnalytics(Number(url.searchParams.get('freight')) || FREIGHT_DEFAULT).catch((e) => { console.error('[analytics]', e.message); return { benchmarks: {} }; }));
     if (url.pathname === '/api/export.csv') {
