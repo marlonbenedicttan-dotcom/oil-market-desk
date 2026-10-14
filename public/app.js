@@ -422,6 +422,7 @@ function toggleMarketBlocks() {
     if (rerouteChart) setTimeout(() => rerouteChart.resize(), 80);
   }
   if (currentMarket === 'refined' && crackHistChart) setTimeout(() => crackHistChart.resize(), 80);
+  syncJumpnavs();
 }
 async function loadMarketRead() {
   const k = segKey();
@@ -1884,6 +1885,7 @@ async function loadCountry() {
   const showUsJp = req === 'us' || req === 'jp';
   const up = $('usjp-panel');
   if (up) up.classList.toggle('hidden', !showUsJp);
+  syncJumpnavs();
   if (showUsJp) loadUsJp();
   const sel = $('macro-country');
   const label = (sel && sel.selectedOptions[0] ? sel.selectedOptions[0].textContent : req).trim();
@@ -2459,6 +2461,19 @@ function initCurveHist() {
   }, { rootMargin: '300px' });
   io.observe(block);
 }
+// A jump-nav chip must never point at a panel that isn't currently rendered: COMMODITIES shows and
+// hides a dozen sections by segment, and the US–Japan panel only exists for the US/Japan. Hide the
+// dead chips rather than offering a link that goes nowhere.
+function syncJumpnavs() {
+  document.querySelectorAll('.jumpnav').forEach((nav) => {
+    const pane = nav.closest('.tabpane');
+    if (!pane || pane.classList.contains('hidden')) return;
+    nav.querySelectorAll('a[href^="#"]').forEach((a) => {
+      const t = $(a.getAttribute('href'));
+      a.classList.toggle('hidden', !(t && (t.offsetParent !== null || t.getClientRects().length > 0)));
+    });
+  });
+}
 function showTab(name) {
   saveStr('tab', name);
   document.querySelectorAll('.tab').forEach((t) => { const on = t.dataset.tab === name; t.classList.toggle('active', on); t.setAttribute('aria-selected', String(on)); });
@@ -2473,6 +2488,7 @@ function showTab(name) {
   }
   if (name === 'macro') { loadMacroTickers(); if (!extraSlowDone) setTimeout(() => loadExtraSlow().catch(() => {}), 0); if (macroChart) setTimeout(() => macroChart.resize(), 60); if (policyChart) setTimeout(() => policyChart.resize(), 70); if (cpiChart) setTimeout(() => cpiChart.resize(), 80); if (yieldsChart) setTimeout(() => yieldsChart.resize(), 85); if (usjpChart) setTimeout(() => usjpChart.resize(), 90); }
   if (data) renderTicker(data);
+  syncJumpnavs();
 }
 
 async function loadExtra() { await loadExtraCore(); await loadExtraSlow(); }

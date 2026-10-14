@@ -362,7 +362,9 @@ footer li { margin-bottom: 2px; }
 .jumpnav::-webkit-scrollbar { display: none; }
 .jumpnav a { flex: 0 0 auto; border: 1px solid var(--line2); padding: 5px 11px; font-size: 11px; letter-spacing: .5px; color: var(--dim); text-decoration: none; white-space: nowrap; }
 .jumpnav a:hover, .jumpnav a:focus-visible { color: var(--amber); border-color: var(--amber); }
-#p-brief, #p-regime, #p-screen, #p-risk, #p-calendar, #p-watch, #p-alerts, #p-headlines, #p-segments { scroll-margin-top: calc(var(--topbar-h, 44px) + 54px); }
+/* The sticky jump-nav sits under the top bar, so any anchored panel needs extra scroll margin.
+   (The HOME list used to be spelled out by id; this covers every pane's targets automatically.) */
+.tabpane > section[id], .tabpane > details[id] { scroll-margin-top: calc(var(--topbar-h, 44px) + 54px); }
 /* Score key — what the /100 numbers mean, right where they appear. */
 .score-key { margin-top: 9px; font-size: 10px; color: var(--dim); line-height: 1.55; }
 .score-key b { color: #c9d4df; }

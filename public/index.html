@@ -23,7 +23,7 @@
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
   <link rel="preconnect" href="https://unpkg.com" crossorigin />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <link rel="stylesheet" href="style.css?v=52" />
+  <link rel="stylesheet" href="style.css?v=53" />
   <noscript><style>#boot{display:none!important}</style></noscript>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -140,9 +140,25 @@
 
     <!-- COMMODITIES -->
     <div class="tabpane hidden" data-pane="commodities" id="pane-commodities" role="tabpanel" aria-labelledby="tab-commodities">
+      <nav class="jumpnav" aria-label="Jump to a section">
+        <a href="#c-read">Read</a>
+        <a href="#chart-panel">Chart</a>
+        <a href="#compare-panel">Compare</a>
+        <a href="#c-curve">Curve</a>
+        <a href="#c-seasonal">Season</a>
+        <a href="#c-tight">Tightness</a>
+        <a href="#positioning-panel">Positioning</a>
+        <a href="#options-panel">Options</a>
+        <a href="#c-cracks">Cracks</a>
+        <a href="#c-supply">Supply</a>
+        <a href="#c-fundamentals">Basics</a>
+        <a href="#c-news">News</a>
+        <a href="#c-ships">Ships</a>
+        <a href="#c-more">More</a>
+      </nav>
 
       <!-- 1. WHERE ARE WE -->
-      <section class="panel">
+      <section id="c-seg" class="panel">
         <div class="ph"><span class="ph-t">SEGMENT</span>
           <div class="controls"><select id="bp-metric"></select></div>
         </div>
@@ -150,18 +166,18 @@
       </section>
 
       <!-- 2. THE SO-WHAT (read first) — one read: what happened, key points, what's next, trade ideas -->
-      <section class="panel">
+      <section id="c-read" class="panel">
         <div class="ph"><span class="ph-t">THE READ — what happened · key points · what's next · trade ideas</span><span class="dimtext">NOT INVESTMENT ADVICE</span></div>
         <div id="bottomline" class="bottomline"></div>
       </section>
 
-      <section class="panel market-only" data-when="*">
+      <section id="c-transmit" class="panel market-only" data-when="*">
         <div class="ph"><span class="ph-t">HOW IT TRANSMITS — <span id="xa-seg"></span></span><span class="dimtext">cross-asset links · a framework, not a forecast</span></div>
         <div id="crossasset" class="macro"></div>
       </section>
 
       <!-- 3. THE MARKET (price & structure) -->
-      <section class="panel">
+      <section id="c-tiles" class="panel">
         <div class="ph"><span class="ph-t" id="cards-title">INSTRUMENTS</span><span class="dimtext">click a tile for its chart · move over 1D/1W/1M/YTD/1Y · ★ to pin</span></div>
         <div id="cards"></div>
       </section>
@@ -190,7 +206,7 @@
         <div id="cmp-summary" class="dimtext lt-summary"></div>
       </section>
 
-      <section class="panel">
+      <section id="c-curve" class="panel">
         <div class="ph"><span class="ph-t">FORWARD CURVE — <span id="curve-title"></span></span><span class="dimtext">is it cheaper or pricier later? (the “curve”)</span></div>
         <div id="curve" class="curve"></div>
         <div id="curvehist-block">
@@ -200,13 +216,13 @@
         </div>
       </section>
 
-      <section class="panel market-only" data-when="gas,grains,softs">
+      <section id="c-seasonal" class="panel market-only" data-when="gas,grains,softs">
         <div class="ph"><span class="ph-t">SEASONALITY — vs the 5-year norm</span><span class="dimtext" id="seasonal-sub"></span></div>
         <div id="seasonal" class="seasonal"></div>
       </section>
 
       <!-- GRAINS only: the soybean crush (the oilseed complex's core signal) -->
-      <section class="panel market-only" data-when="grains">
+      <section id="c-crush" class="panel market-only" data-when="grains">
         <div class="ph"><span class="ph-t">SOYBEAN CRUSH — processor margin</span><span class="dimtext">meal + oil − beans, per bushel</span></div>
         <div id="crush" class="products"></div>
         <div class="chokes-h dimtext" style="padding:0 12px">SOYBEAN CRUSH OVER TIME ($/bu · oil share %, last 6 months)</div>
@@ -215,7 +231,7 @@
       </section>
 
       <!-- 4. EVIDENCE — the segment's own defining signal comes first -->
-      <section class="panel">
+      <section id="c-tight" class="panel">
         <div class="ph"><span class="ph-t" id="tightness-title">TIGHTNESS</span><span class="dimtext" id="tightness-sub">six independent checks</span></div>
         <div id="tightness" class="tightness"></div>
       </section>
@@ -233,36 +249,36 @@
       </section>
 
       <!-- REFINED only: refining margins (the sector's core signal) + who it helps/hurts -->
-      <section class="panel market-only" data-when="refined">
+      <section id="c-cracks" class="panel market-only" data-when="refined">
         <div class="ph"><span class="ph-t">REFINING MARGINS</span><span class="dimtext">profit per barrel</span></div>
         <div id="products" class="products"></div>
         <div class="chokes-h dimtext" style="padding:0 12px">REFINING PROFIT OVER TIME ($/bbl, last 6 months)</div>
         <div class="chart-wrap sm"><canvas id="crackhist"></canvas></div>
         <div id="crack-events" class="chart-events"></div>
       </section>
-      <section class="panel market-only" data-when="refined">
+      <section id="c-who" class="panel market-only" data-when="refined">
         <div class="ph"><span class="ph-t">WHO IT HELPS / HURTS</span><span id="eq-date" class="dimtext"></span></div>
         <div id="sector-read" class="sector-read"></div>
         <div id="sectors" class="sectors"></div>
       </section>
 
-      <section class="panel market-only" data-when="crude,refined,gas">
+      <section id="c-supply" class="panel market-only" data-when="crude,refined,gas">
         <div class="ph"><span class="ph-t">SUPPLY</span><span id="inv-date" class="dimtext">updated weekly</span></div>
         <div id="inventories" class="tbl"></div>
       </section>
 
-      <section class="panel market-only" data-when="*">
+      <section id="c-fundamentals" class="panel market-only" data-when="*">
         <div class="ph"><span class="ph-t">FUNDAMENTALS</span><span id="fund-sub" class="dimtext"></span></div>
         <div id="fundamentals" class="macro"></div>
       </section>
 
-      <section class="panel market-only" data-when="*">
+      <section id="c-news" class="panel market-only" data-when="*">
         <div class="ph"><span class="ph-t">IN THE NEWS</span><span id="news-sub" class="dimtext"></span></div>
         <div id="news" class="news"></div>
       </section>
 
       <!-- CRUDE only, folded: ships & satellites -->
-      <details class="panel fold-panel market-only" data-when="crude">
+      <details id="c-ships" class="panel fold-panel market-only" data-when="crude">
         <summary>SHIPS &amp; SATELLITES</summary>
         <section class="fold-body">
           <div class="ph"><span class="ph-t">SHIPS</span><span id="ais-status" class="pill">—</span></div>
@@ -282,7 +298,7 @@
       </details>
 
       <!-- Folded: secondary detail -->
-      <details class="panel fold-panel">
+      <details id="c-more" class="panel fold-panel">
         <summary>MORE DETAIL</summary>
         <section class="fold-body">
           <div class="ph"><span class="ph-t">GUIDE</span><button id="help-btn" class="ghost small">OPEN GUIDE</button></div>
@@ -306,7 +322,18 @@
 
     <!-- MACRO -->
     <div class="tabpane hidden" data-pane="macro" id="pane-macro" role="tabpanel" aria-labelledby="tab-macro">
-      <section class="panel">
+      <nav class="jumpnav" aria-label="Jump to a section">
+        <a href="#m-region">Country</a>
+        <a href="#m-policy">Policy</a>
+        <a href="#m-yields">Yields</a>
+        <a href="#usjp-panel">US&ndash;Japan</a>
+        <a href="#m-cpi">Inflation</a>
+        <a href="#m-index">Index vs FX</a>
+        <a href="#m-news">News</a>
+        <a href="#m-fx">Currency</a>
+        <a href="#cat-fold">Catalysts</a>
+      </nav>
+      <section id="m-region" class="panel">
         <div class="ph"><span class="ph-t">REGION &amp; COUNTRY</span>
           <div class="controls">
             <select id="macro-region" aria-label="Region"><option value="us">Americas</option><option value="eu">Europe</option><option value="jp">Japan</option><option value="cn">China</option><option value="in">India</option><option value="apac">Asia-Pacific</option></select>
@@ -315,12 +342,12 @@
         </div>
         <div id="macro-region-panel" class="macro"></div>
       </section>
-      <section class="panel">
+      <section id="m-policy" class="panel">
         <div class="ph"><span class="ph-t">POLICY RATE — history</span><span id="policy-note" class="dimtext"></span></div>
         <div class="chart-wrap sm"><canvas id="policy-chart"></canvas></div>
         <div id="policy-events" class="chart-events"></div>
       </section>
-      <section class="panel">
+      <section id="m-yields" class="panel">
         <div class="ph"><span class="ph-t">BOND YIELDS</span><span id="yields-note" class="dimtext"></span></div>
         <div class="chart-wrap"><canvas id="yields-chart"></canvas></div>
         <div id="yields-events" class="chart-events"></div>
@@ -332,11 +359,11 @@
         <div id="usjp-summary" class="dimtext lt-summary"></div>
         <div id="usjp-events" class="chart-events"></div>
       </section>
-      <section class="panel">
+      <section id="m-cpi" class="panel">
         <div class="ph"><span class="ph-t">INFLATION — CPI, annual % (World Bank)</span><span id="cpi-note" class="dimtext"></span></div>
         <div class="chart-wrap sm"><canvas id="cpi-chart"></canvas></div>
       </section>
-      <section class="panel">
+      <section id="m-index" class="panel">
         <div class="ph"><span class="ph-t">INDEX vs CURRENCY (indexed to 100)</span>
           <div class="controls"><select id="macro-range" aria-label="Macro chart range"><option value="3m">3M</option><option value="6m">6M</option><option value="1y" selected>1Y</option><option value="ytd">YTD</option><option value="5y">5Y</option></select></div>
         </div>
@@ -344,11 +371,11 @@
         <div id="macro-chart-note" class="dimtext lt-summary"></div>
         <div id="macro-chart-events" class="chart-events"></div>
       </section>
-      <section class="panel">
+      <section id="m-news" class="panel">
         <div class="ph"><span class="ph-t">REGIONAL NEWS</span><span id="macro-news-sub" class="dimtext"></span></div>
         <div id="macro-news" class="news"></div>
       </section>
-      <section class="panel">
+      <section id="m-fx" class="panel">
         <div class="ph"><span class="ph-t">CURRENCY — <span id="fx-scope">COUNTRY</span></span><span class="dimtext">the chosen country's currency · click for its chart</span></div>
         <div id="macro-fx" class="macro"></div>
       </section>
@@ -394,6 +421,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=98"></script>
+  <script src="app.js?v=99"></script>
 </body>
 </html>
