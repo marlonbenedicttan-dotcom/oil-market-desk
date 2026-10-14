@@ -154,6 +154,7 @@ select {
 .boot-bar { width: 168px; height: 4px; background: #151a20; border: 1px solid var(--line); overflow: hidden; }
 .boot-bar i { display: block; height: 100%; width: 0; background: var(--amber); transition: width .35s ease; }
 .boot-status { font-size: 11px; letter-spacing: .5px; color: var(--dim); }
+.boot-note { max-width: 330px; padding: 0 16px; text-align: center; font-size: 11px; line-height: 1.65; color: var(--amber); }
 @keyframes bootsweep { to { transform: rotate(360deg); } }
 @keyframes bootpulse { 0%,100% { opacity: .72; } 50% { opacity: 1; } }
 @keyframes bootping { 0% { transform: scale(.4); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }

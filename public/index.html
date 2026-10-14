@@ -23,7 +23,7 @@
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
   <link rel="preconnect" href="https://unpkg.com" crossorigin />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <link rel="stylesheet" href="style.css?v=54" />
+  <link rel="stylesheet" href="style.css?v=55" />
   <noscript><style>#boot{display:none!important}</style></noscript>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -43,8 +43,18 @@
     <div class="boot-word">MARLON'S WATCHTOWER</div>
     <div class="boot-bar" aria-hidden="true"><i id="boot-bar"></i></div>
     <div id="boot-status" class="boot-status">connecting…</div>
+    <div id="boot-note" class="boot-note hidden">Waking the server — the free plan sleeps when it's idle, so the first visit after a while can take 20–30 seconds. It'll fill in on its own.</div>
   </div>
-  <script>setTimeout(function () { var b = document.getElementById('boot'); if (b) b.classList.add('done'); }, 9000);</script>
+  <script>
+    // Failsafe: never let the beacon stick if the app script fails. If app.js has told us the server
+    // is cold-starting, give it longer instead of revealing a half-empty shell at 9s.
+    setTimeout(function () {
+      var b = document.getElementById('boot');
+      if (!b) return;
+      if (window.__coldStart && !window.__bootDone) { setTimeout(function () { b.classList.add('done'); }, 25000); return; }
+      b.classList.add('done');
+    }, 9000);
+  </script>
   <noscript><div class="noscript-note">This desk needs JavaScript to run. Please enable it, or grab the raw data from <a href="/api/export.csv">the CSV export</a>.</div></noscript>
   <header class="topbar">
     <div class="brand"><span class="logo">♜</span><h1>MARLON'S WATCHTOWER</h1><span class="sub">ENERGY · METALS · AGRICULTURE · MACRO</span></div>
@@ -430,6 +440,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=102"></script>
+  <script src="app.js?v=103"></script>
 </body>
 </html>

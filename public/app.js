@@ -138,7 +138,27 @@ function renderMethodology(data) {
   el.innerHTML = `<details class="fold" id="methodology"><summary>DATA &amp; METHODOLOGY</summary><div class="note-body">${html}</div></details>`
     + '<div class="foot-line dimtext">Marlon\'s Watchtower · built and maintained by <b>Marlon Benedict Tan</b> · data © the respective sources · not investment advice.</div>';
 }
-async function getJSON(url) { const r = await fetch(url); if (!r.ok) throw new Error(`${url} -> HTTP ${r.status}`); return r.json(); }
+// A Render free instance sleeps after ~15 min idle, so the first request can hang for 20-30s. Say so
+// on the beacon rather than looking broken, and let the failsafe wait longer.
+const BOOT_T0 = Date.now();
+let coldTold = false;
+function noteColdStart() {
+  if (coldTold) return;
+  coldTold = true;
+  window.__coldStart = true;
+  const st = document.getElementById('boot-status');
+  if (st) st.textContent = 'waking the server…';
+  document.getElementById('boot-note')?.classList.remove('hidden');
+}
+async function getJSON(url) {
+  const t0 = Date.now();
+  const r = await fetch(url);
+  if (!r.ok) throw new Error(`${url} -> HTTP ${r.status}`);
+  // The first response tells us whether the instance was asleep (or the network was slow).
+  if (!coldTold && Date.now() - BOOT_T0 > 2500 && t0 - BOOT_T0 < 1500) noteColdStart();
+  else if (!coldTold && Date.now() - BOOT_T0 > 4000 && !Object.values(bootReady).some(Boolean)) noteColdStart();
+  return r.json();
+}
 // Memoised GET — a per-session cache so re-visiting a segment is instant (no re-fetch of the
 // read, news, curve, etc.). Short TTL; the server has its own longer cache anyway.
 const jcache = new Map();
@@ -160,7 +180,7 @@ const BOOT_CORE = ['data', 'read', 'chart', 'news', 'headlines', 'regime', 'posi
 const bootReady = Object.fromEntries(BOOT_CORE.map((k) => [k, false]));
 let bootCount0 = 0;
 const bootCount = () => BOOT_CORE.filter((k) => bootReady[k]).length;
-const hideBoot = () => { const b = document.getElementById('boot'); if (b) b.classList.add('done'); };
+const hideBoot = () => { window.__bootDone = true; const b = document.getElementById('boot'); if (b) b.classList.add('done'); };
 const bootPaint = () => {
   const n = bootCount(); if (n === bootCount0 && n) return; bootCount0 = n;
   const frac = n / BOOT_CORE.length;
