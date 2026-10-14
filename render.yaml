@@ -13,8 +13,10 @@ services:
         sync: false        # enter in the Render dashboard
       - key: EIA_API_KEY
         sync: false
+      # Hour of the digest in UTC (the container's clock). 23 UTC = 07:00 in Singapore (UTC+8),
+      # so the brief lands at breakfast. (It also catches up on the first wake after this hour.)
       - key: DIGEST_HOUR
-        value: "7"
+        value: "23"
       - key: NOTIFY
         value: "off"       # desktop notifications are macOS-only
       # Daily digest + alert delivery. Set all three of SMTP_USER / SMTP_PASS / DIGEST_TO to turn on
