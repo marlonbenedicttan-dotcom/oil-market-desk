@@ -2725,6 +2725,71 @@ async function buildBrief() {
   });
 }
 
+// ---------------------------------------------------------------------------
+// User alert rules, evaluated server-side so they fire when the app is closed.
+// Metrics mirror the client exactly: bench:<id> (price), basis:<id> (real − futures), fx:<id>.
+// The endpoints are protected by the optional AUTH_USER/AUTH_PASS login (see /api/rules).
+// ---------------------------------------------------------------------------
+const RULES_MAX = 20;
+async function serverRuleValue(metric) {
+  const [kind, id] = String(metric).split(':');
+  if (kind === 'bench' || kind === 'basis') {
+    const b = (await getMarket()).benchmarks.find((x) => x.id === id);
+    if (!b) return null;
+    return kind === 'bench' ? (b.paper != null ? b.paper : b.physical) : b.basis;
+  }
+  if (kind === 'fx') {
+    const spec = FX_SYMS.find((x) => x.id === id);
+    if (!spec) return null;
+    const { price, series } = await cached('q:' + spec.sym, 120e3, () => yahooSeries(spec.sym, '5d', '1d'));
+    const dates = Object.keys(series).sort();
+    const last = dates.length ? series[dates[dates.length - 1]] : price;
+    return last != null ? last : price ?? null;
+  }
+  return null;
+}
+async function serverRuleLabel(metric) {
+  const [kind, id] = String(metric).split(':');
+  if (kind === 'fx') { const f = FX_SYMS.find((x) => x.id === id); return f ? f.label : id; }
+  const b = (await getMarket()).benchmarks.find((x) => x.id === id);
+  const name = b ? b.label : id;
+  return kind === 'basis' ? `${name} gap` : `${name} price`;
+}
+function validRule(r) {
+  if (!r || typeof r !== 'object') return null;
+  const op = ['>', '<', 'crosses'].includes(r.op) ? r.op : '>';
+  const level = Number(r.level);
+  const metric = String(r.metric || '');
+  if (!/^(bench|basis|fx):[a-z0-9]+$/.test(metric) || !Number.isFinite(level)) return null;
+  return { id: String(r.id || 'r' + Math.random().toString(36).slice(2, 9)).slice(0, 24), metric, op, level, note: String(r.note || '').slice(0, 80), on: r.on !== false };
+}
+async function evaluateRules() {
+  const list = (Array.isArray(state.rules) ? state.rules : []).map(validRule).filter(Boolean);
+  const out = [];
+  if (!list.length) return out;
+  const cooldown = Number(process.env.ALERT_COOLDOWN_H || 12) * 3600e3;
+  const now = Date.now();
+  state.rulePrev = state.rulePrev || {};
+  for (const r of list) {
+    const v = await serverRuleValue(r.metric).catch(() => null);
+    if (v == null) continue;
+    const prev = state.rulePrev[r.id];
+    let hit = false;
+    if (r.op === '>') hit = v > r.level;
+    else if (r.op === '<') hit = v < r.level;
+    else hit = prev != null && ((prev < r.level && v >= r.level) || (prev > r.level && v <= r.level));
+    state.rulePrev[r.id] = v;
+    if (!hit) continue;
+    const key = `rule:${r.id}:${r.level}`;
+    if (now - (alertSeen.get(key) || 0) < cooldown) continue;
+    alertSeen.set(key, now); state.alertSeen = Object.fromEntries(alertSeen);
+    const label = await serverRuleLabel(r.metric).catch(() => r.metric);
+    out.push({ key, level: 'med', text: `${label} ${r.op === '>' ? 'is above' : r.op === '<' ? 'is below' : 'crossed'} ${r.level}${r.note ? ` — ${r.note}` : ''} (now ${Number(v).toFixed(2)}).` });
+  }
+  saveState();
+  return out;
+}
+
 async function alertLoop() {
   try {
     const cooldown = Number(process.env.ALERT_COOLDOWN_H || 12) * 3600e3;
@@ -2732,6 +2797,8 @@ async function alertLoop() {
     for (const a of await computeServerAlerts()) {
       if (now - (alertSeen.get(a.key) || 0) > cooldown) { alertSeen.set(a.key, now); state.alertSeen = Object.fromEntries(alertSeen); saveState(); await deliver('alert', `Marlon's Watchtower · ${a.level.toUpperCase()}`, a.text); }
     }
+    // …and the reader's own rules, so they still fire when the tab is closed.
+    for (const a of await evaluateRules()) await deliver('alert', `Marlon's Watchtower · ${a.level.toUpperCase()}`, a.text);
   } catch (e) { console.error('[alerts]', e.message); }
 }
 
@@ -2782,6 +2849,13 @@ const SECURITY_HEADERS = {
   'Permissions-Policy': 'geolocation=(), microphone=(), camera=()',
   'Content-Security-Policy-Report-Only': "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com; style-src 'self' 'unsafe-inline' https://unpkg.com; img-src 'self' data: blob: https://server.arcgisonline.com https://tile.openstreetmap.org; connect-src 'self'; font-src 'self' data:; worker-src 'self'; frame-ancestors 'self'",
 };
+// Read a small JSON body (the rules POST is the only route that carries one).
+const readJsonBody = (req, limit = 20000) => new Promise((resolve) => {
+  let raw = '', n = 0;
+  req.on('data', (c) => { n += c.length; if (n > limit) { req.destroy(); resolve(null); return; } raw += c; });
+  req.on('end', () => { try { resolve(JSON.parse(raw || 'null')); } catch { resolve(null); } });
+  req.on('error', () => resolve(null));
+});
 const server = http.createServer(async (req, res) => {
   for (const k in SECURITY_HEADERS) res.setHeader(k, SECURITY_HEADERS[k]);
   const url = new URL(req.url, `http://${req.headers.host}`);
@@ -2796,7 +2870,8 @@ const server = http.createServer(async (req, res) => {
   try {
     // Read-only service — every route is a GET, except the deliberate "send me a test email" POST.
     const notifyTest = req.method === 'POST' && url.pathname === '/api/notify/test';
-    if (req.method !== 'GET' && req.method !== 'HEAD' && !notifyTest) {
+    const rulesPost = req.method === 'POST' && url.pathname === '/api/rules';
+    if (req.method !== 'GET' && req.method !== 'HEAD' && !notifyTest && !rulesPost) {
       res.writeHead(405, { 'content-type': 'text/plain', allow: 'GET, HEAD' });
       return res.end('method not allowed');
     }
@@ -2927,6 +3002,22 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname === '/api/analogue') return sendJSON(res, 200, await getAnalogue(url.searchParams.get('metric') || 'basis:brent', Math.min(15, Math.max(2, Number(url.searchParams.get('years')) || 10))));
     if (url.pathname === '/api/alerts') return sendJSON(res, 200, { current: await computeServerAlerts().catch(() => []) });
     if (url.pathname === '/api/digest') { res.writeHead(200, { 'content-type': 'text/plain' }); return res.end(lastDigest || await buildDigest()); }
+    if (url.pathname === '/api/rules') {
+      // Server-side rules are site-wide (there is no per-user model), so they are only writable — and
+      // only readable — when the deployment has a login. Reaching here means the auth check above passed.
+      if (!process.env.AUTH_USER || !process.env.AUTH_PASS) {
+        return sendJSON(res, 401, { error: 'server rules need the login enabled — set AUTH_USER and AUTH_PASS' });
+      }
+      if (req.method === 'POST') {
+        const body = await readJsonBody(req);
+        const raw = Array.isArray(body) ? body : (body && Array.isArray(body.rules) ? body.rules : null);
+        if (!raw) return sendJSON(res, 400, { error: 'expected a JSON array of rules' });
+        const rules = raw.slice(0, RULES_MAX).map(validRule).filter(Boolean);
+        state.rules = rules; saveState();
+        return sendJSON(res, 200, { ok: true, count: rules.length });
+      }
+      return sendJSON(res, 200, { rules: Array.isArray(state.rules) ? state.rules : [], authRequired: true });
+    }
     if (url.pathname === '/api/notify') {
       const mask = (a) => (a && a.includes('@') ? a.replace(/^(.).*(@.*)$/, '$1***$2') : a || null);
       return sendJSON(res, 200, {
@@ -2936,6 +3027,7 @@ const server = http.createServer(async (req, res) => {
         digest: { hour: Number(process.env.DIGEST_HOUR ?? 7), lastDate: notifyStatus.digestDate || state.lastDigestDate || null, lastAt: notifyStatus.digestAt },
         last: { at: notifyStatus.lastAt, kind: notifyStatus.lastKind, ok: notifyStatus.lastOk, error: notifyStatus.lastError },
         alerts: { muted: alertSeen.size },
+        serverRules: { enabled: Boolean(process.env.AUTH_USER && process.env.AUTH_PASS), count: Array.isArray(state.rules) ? state.rules.length : 0 },
       });
     }
     if (url.pathname === '/api/notify/test' && req.method === 'POST') {

@@ -34,3 +34,9 @@ services:
         sync: false        # optional, defaults to SMTP_USER
       - key: WEBHOOK_URL
         sync: false        # optional Slack/Discord webhook
+      # Optional login. Set BOTH to put the whole dashboard behind basic auth — which also unlocks
+      # server-side alert rules (they are site-wide, so they need the login; see /api/rules).
+      - key: AUTH_USER
+        sync: false
+      - key: AUTH_PASS
+        sync: false

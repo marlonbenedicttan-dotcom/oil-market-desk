@@ -725,7 +725,12 @@ async function loadNotifyStatus() {
   if (d.desktop) on.push('desktop');
   const digest = d.digest.lastDate ? `last digest ${esc(d.digest.lastDate)}` : 'no digest sent yet';
   const lastErr = d.last && d.last.ok === false && d.last.error ? ` · last error: ${esc(d.last.error)}` : '';
+  const sr = d.serverRules || {};
+  serverRulesEnabled = sr.enabled === true;
+  if (serverRulesEnabled && !rulesSynced) { rulesSynced = true; syncServerRules(); }
+  const rulesLine = `<b>Your rules</b>: ${sr.enabled ? (sr.count ? `${sr.count} on the server (fire when the app is closed)` : 'none saved on the server yet') : 'browser only — set <b>AUTH_USER</b> + <b>AUTH_PASS</b> to run them on the server'}`;
   el.innerHTML = `<b>Server alerts</b> · ${on.length ? on.join(' · ') : 'nothing configured yet'} · digest ${d.digest.hour}:00 (${digest})${lastErr}`
+    + '<br>' + rulesLine
     + ` <button id="notify-test" class="ghost small" type="button">SEND TEST</button>`
     + (!d.email.configured ? '<br>Set <b>SMTP_USER</b>, <b>SMTP_PASS</b> and <b>DIGEST_TO</b> on the server (or <b>WEBHOOK_URL</b>) to get the daily digest and alerts by email.' : '');
 }
@@ -739,6 +744,40 @@ $('notify-status')?.addEventListener('click', async (e) => {
   if (r && r.error) btn.title = String(r.error);
   setTimeout(loadNotifyStatus, 1500);
 });
+
+// Rules are stored locally AND (when the deployment has a login) on the server, so they keep firing
+// when the tab is closed. The endpoints answer 401 if AUTH_USER/AUTH_PASS aren't set — we stay
+// client-side then, and say so.
+let serverRulesState = 'unknown';
+let serverRulesEnabled = false;   // set from /api/notify: server rules need the deployment login
+let rulesSynced = false;
+async function pushRules(list) {
+  if (!serverRulesEnabled) { serverRulesState = 'browser only'; return false; }
+  try {
+    const r = await fetch('/api/rules', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(list) });
+    if (r.status === 401) { serverRulesState = 'needs login'; return false; }
+    if (!r.ok) { serverRulesState = 'push failed'; return false; }
+    const d = await r.json();
+    serverRulesState = `${d.count} on the server`;
+    return true;
+  } catch { serverRulesState = 'unreachable'; return false; }
+}
+async function syncServerRules() {
+  if (!serverRulesEnabled) { serverRulesState = 'browser only'; return; }
+  const mine = rules();
+  try {
+    const r = await fetch('/api/rules', { headers: { accept: 'application/json' } });
+    if (r.status === 401) { serverRulesState = 'needs login'; return; }
+    if (!r.ok) { serverRulesState = 'unavailable'; return; }
+    const d = await r.json();
+    if (Array.isArray(d.rules) && d.rules.length) {
+      saveRules(d.rules);                       // the server is the source of truth
+      serverRulesState = `${d.rules.length} on the server`;
+      renderRules(); renderHomeAlerts();
+    } else if (mine.length) await pushRules(mine);   // first run: seed the server with what's local
+    else serverRulesState = 'none yet';
+  } catch { serverRulesState = 'unreachable'; }
+}
 
 function renderRules() {
   const el = $('home-rules'); if (!el) return;
@@ -759,12 +798,12 @@ function renderRules() {
 }
 $('home-rules')?.addEventListener('click', (e) => {
   const del = e.target.closest('[data-del]');
-  if (del) { saveRules(rules().filter((r) => r.id !== del.dataset.del)); renderRules(); renderHomeAlerts(); return; }
+  if (del) { saveRules(rules().filter((r) => r.id !== del.dataset.del)); renderRules(); renderHomeAlerts(); pushRules(rules()); loadNotifyStatus(); return; }
   if (e.target.id === 'rule-notify') { if ('Notification' in window) Notification.requestPermission().then(() => renderRules()); return; }
   if (e.target.id === 'rule-add') {
     const metric = $('rule-metric').value, op = $('rule-op').value, level = Number($('rule-level').value), note = $('rule-note').value.trim();
     if (!metric || !Number.isFinite(level)) { showError('Give the rule a numeric level.'); return; }
-    const rs = rules(); rs.push({ id: 'r' + Date.now().toString(36), metric, op, level, note, on: true }); saveRules(rs);
+    const rs = rules(); rs.push({ id: 'r' + Date.now().toString(36), metric, op, level, note, on: true }); saveRules(rs); pushRules(rs); loadNotifyStatus();
     renderRules(); renderHomeAlerts();
   }
 });
@@ -2745,7 +2784,7 @@ async function loadExtraCore() {
   loadCalendar();
   loadRisk();
   loadAlerts();       // HOME: alerts
-  loadNotifyStatus(); // HOME: is email/webhook delivery actually working?
+  loadNotifyStatus(); // HOME: is email/webhook delivery working? (also kicks off the rules sync)
   loadBrief();        // HOME: daily brief
   loadTransmission(); // COMMODITIES: how it transmits
   renderMarketState();

@@ -54,12 +54,14 @@ const ENDPOINTS = [
 ];
 for (const { p, external } of ENDPOINTS) {
   test(`GET ${p} responds`, async () => {
+    // Bound the two third-party feeds: a stalled upstream should be a caught timeout, not a hung run.
+    const opts = external ? { signal: AbortSignal.timeout(20000) } : {};
     try {
-      const r = await fetch(`http://localhost:${PORT}${p}`);
+      const r = await fetch(`http://localhost:${PORT}${p}`, opts);
       assert.ok([200, 500].includes(r.status), `${p} -> ${r.status}`);
     } catch (e) {
       if (!external) throw e;
-      assert.match(String(e.message), /fetch|abort|socket|timeout|other side/i, `${p} upstream failed unexpectedly: ${e.message}`);
+      assert.match(String(e.message), /fetch|abort|socket|timeout|other side|terminat/i, `${p} upstream failed unexpectedly: ${e.message}`);
     }
   });
 }
