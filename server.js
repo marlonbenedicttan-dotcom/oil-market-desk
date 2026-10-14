@@ -2718,7 +2718,7 @@ async function deliver(kind, subject, text) {
       body: p.raw != null ? p.raw : JSON.stringify(p.json),
     }).catch(() => {});
   }
-  if (!mailConfigured()) { notifyStatus.lastOk = null; notifyStatus.lastError = 'not configured (need SMTP_USER, SMTP_PASS, DIGEST_TO)'; }
+  if (!mailConfigured()) { notifyStatus.lastOk = null; notifyStatus.lastError = `not configured (need DIGEST_TO plus ${resendKey() ? 'RESEND_API_KEY' : 'SMTP_USER/SMTP_PASS'})`; }
   else {
     try { await sendEmail(subject, text); notifyStatus.lastOk = true; notifyStatus.lastError = null; }
     catch (e) { notifyStatus.lastOk = false; notifyStatus.lastError = e.message; console.error('[mail]', e.message); }
