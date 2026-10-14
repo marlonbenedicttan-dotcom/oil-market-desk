@@ -629,7 +629,21 @@ function renderAlerts(alerts) {
 // ---------------------------------------------------------------------------
 const RULES_KEY = 'oilbasis.rules';
 const rulePrev = {};   // last value per rule id, for "crosses"
-function rules() { try { const a = JSON.parse(localStorage.getItem(RULES_KEY)); return Array.isArray(a) ? a : []; } catch { return []; } }
+// Rules come from localStorage, which is not a trusted store: coerce every field on the way in so a
+// tampered entry can never reach innerHTML (level must be a finite number, metric must be a known
+// instrument, op must be one of the three). Anything invalid is dropped.
+function rules() {
+  const OPS = new Set(['>', '<', 'crosses']);
+  try {
+    const a = JSON.parse(localStorage.getItem(RULES_KEY));
+    if (!Array.isArray(a)) return [];
+    const known = new Set(metricGroups().flatMap(([, arr]) => arr.map((o) => o.v)));
+    return a
+      .filter((r) => r && typeof r === 'object')
+      .map((r) => ({ id: String(r.id ?? '').slice(0, 24), metric: String(r.metric ?? ''), op: OPS.has(r.op) ? r.op : '>', level: Number(r.level), note: String(r.note ?? '').slice(0, 80) }))
+      .filter((r) => r.metric && Number.isFinite(r.level) && (known.size === 0 || known.has(r.metric)));
+  } catch { return []; }
+}
 function saveRules(a) { try { localStorage.setItem(RULES_KEY, JSON.stringify(a)); } catch {} }
 function metricGroups() {
   const bs = (data && data.benchmarks) || [];
@@ -643,10 +657,11 @@ function metricGroups() {
 }
 function ruleLabel(metric) {
   const [kind, id] = String(metric).split(':');
-  if (kind === 'bench') { const b = (data && data.benchmarks || []).find((x) => x.id === id); return `${b ? b.label : id} price`; }
-  if (kind === 'basis') { const b = (data && data.benchmarks || []).find((x) => x.id === id); return `${b ? b.label : id} gap`; }
-  if (kind === 'fx') { const f = (lastFx || []).find((x) => x.id === id); return `${f ? f.label : id}`; }
-  return metric;
+  const safeId = esc(id == null ? '' : id);
+  if (kind === 'bench') { const b = (data && data.benchmarks || []).find((x) => x.id === id); return `${b ? esc(b.label) : safeId} price`; }
+  if (kind === 'basis') { const b = (data && data.benchmarks || []).find((x) => x.id === id); return `${b ? esc(b.label) : safeId} gap`; }
+  if (kind === 'fx') { const f = (lastFx || []).find((x) => x.id === id); return `${f ? esc(f.label) : safeId}`; }
+  return esc(metric);
 }
 function ruleValue(metric) {
   const [kind, id] = String(metric).split(':');

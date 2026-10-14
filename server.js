@@ -6,7 +6,7 @@ import path from 'node:path';
 import zlib from 'node:zlib';
 import { execFile } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { sgn, businessDaysSince, inBox, haversineNm, horizonDeltas, horizonDeltasAbs, isoWeek, monthly, pctOver, percentile, lastNonNull, realizedVol, computeCracks, computeCrush, backAdjust, pearson, logReturns, curveTightness, inventoryTightness, weightedScore, seasonalGrade, seasonalAhead, contractMonthsBetween, signedPosition, signedMove, stretchScore, sdLabel, attributeMoves, newsContextOk, METHODOLOGY, positioningFlag, positioningRead, maxDrawdown, realizedVolTerm, corrMatrix, fxAdjust, parseOcc, drawdownWord, volWord, volTrend, topPairs, bestDiversifier, riskRead } from './src/lib.js';
+import { sgn, businessDaysSince, inBox, haversineNm, horizonDeltas, horizonDeltasAbs, isoWeek, monthly, pctOver, percentile, lastNonNull, escHtml, realizedVol, computeCracks, computeCrush, backAdjust, pearson, logReturns, curveTightness, inventoryTightness, weightedScore, seasonalGrade, seasonalAhead, contractMonthsBetween, signedPosition, signedMove, stretchScore, sdLabel, attributeMoves, newsContextOk, METHODOLOGY, positioningFlag, positioningRead, maxDrawdown, realizedVolTerm, corrMatrix, fxAdjust, parseOcc, drawdownWord, volWord, volTrend, topPairs, bestDiversifier, riskRead } from './src/lib.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC = path.join(__dirname, 'public');
@@ -1526,7 +1526,7 @@ async function getMarketRead(id, componentId) {
     if (read.range.pos != null) takes.push(`It sits at <b>${read.range.pos.toFixed(0)}/100</b> of its 2-year range — ${read.range.pos >= 70 ? 'near the top' : read.range.pos <= 30 ? 'near the bottom' : 'mid-range'}.`);
     if (read.curve) takes.push(`Futures are in <b>${read.curve.shape.toLowerCase()}</b> — ${read.curve.m1m2 >= 0 ? 'near-term supply is tight (price-positive)' : 'near-term supply looks comfortable'}.`);
     if (read.basis) takes.push(`Real barrels trade <b>${read.basis.value >= 0 ? '+' : ''}${read.basis.value.toFixed(read.dp)}</b> vs futures.`);
-    try { const f = await getFundamentals(id, sel); for (const e of (f.items || []).slice(0, 3)) takes.push(`<b>${e.kind}</b> ${e.ageDays <= 14 ? 'recently' : Math.max(1, Math.round(e.ageDays / 30)) + ' months ago'}: ${e.title} — ${e.effect === 'down' ? 'pressure on price' : 'price-positive'}.`); } catch {}
+    try { const f = await getFundamentals(id, sel); for (const e of (f.items || []).slice(0, 3)) takes.push(`<b>${e.kind}</b> ${e.ageDays <= 14 ? 'recently' : Math.max(1, Math.round(e.ageDays / 30)) + ' months ago'}: ${escHtml(e.title)} — ${e.effect === 'down' ? 'pressure on price' : 'price-positive'}.`); } catch {}
     read.takeaways = takes;
     read.verdict = marketVerdict(read);
     return read;
@@ -1945,7 +1945,7 @@ async function getCountry(id) {
     if (inflation || unemployment) takes.push(`Inflation <b>${inflation ? inflation.value + '% (' + inflation.year + ')' : 'n/a'}</b> · unemployment <b>${unemployment ? unemployment.value + '% (' + unemployment.year + ')' : 'n/a'}</b>.`);
     if (debtToGdp && debtToGdp.year >= 2018) takes.push(`Government debt is <b>${debtToGdp.value}% of GDP</b> (${debtToGdp.year}).`);
     if (oilLink != null) takes.push(`${c.label} is a net oil ${c.oil}; its currency's 3-month correlation vs Brent is <b>${oilLink}</b>.`);
-    try { const mn = await getMacroNews(id); for (const it of (mn.items || []).slice(0, 2)) takes.push(`<b>${it.kind}</b>: ${it.title}.`); } catch {}
+    try { const mn = await getMacroNews(id); for (const it of (mn.items || []).slice(0, 2)) takes.push(`<b>${it.kind}</b>: ${escHtml(it.title)}.`); } catch {}
     return {
       id, label: c.label, region: c.region, iso3: c.iso3, oil: c.oil,
       fx: { label: c.fxLabel, sym: c.fx, ...fx, deltas: fxDeltas, asOf, source: 'Yahoo Finance' },
@@ -2775,6 +2775,11 @@ const server = http.createServer(async (req, res) => {
     if (!ok) { res.writeHead(401, { 'www-authenticate': 'Basic realm="oil-market-desk"' }); return res.end('Authentication required'); }
   }
   try {
+    // Read-only service — every route is a GET. Anything else is a mistake or a probe.
+    if (req.method !== 'GET' && req.method !== 'HEAD') {
+      res.writeHead(405, { 'content-type': 'text/plain', allow: 'GET, HEAD' });
+      return res.end('method not allowed');
+    }
     if (url.pathname === '/api/market') return sendJSON(res, 200, await getMarket().catch((e) => { console.error('[market]', e.message); return { updated: new Date().toISOString(), benchmarks: [], spreads: {}, quality: { flags: [], curveAvailable: false }, notes: [] }; }));
     if (url.pathname === '/api/history') return sendJSON(res, 200, await getHistory().catch((e) => { console.error('[history]', e.message); return { dates: [], series: {}, basis: {}, spreads: {}, deltas: {} }; }));
     if (url.pathname === '/api/fx') return sendJSON(res, 200, FX_SYMS.map((f) => ({ id: f.id, label: f.label, dp: f.dp })));

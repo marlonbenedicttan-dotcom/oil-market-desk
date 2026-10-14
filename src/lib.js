@@ -58,6 +58,13 @@ export function lastNonNull(arr) {
   return null;
 }
 
+// Escape text that comes from outside the app (wire headlines) before embedding it in the
+// server-built HTML prose (e.g. the READ's takeaways). Only the external fragment is escaped —
+// the surrounding prose keeps its intentional <b> tags, which the client renders as HTML.
+export function escHtml(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
 export function realizedVol(arr, win = 30) {
   const xs = arr.filter((x) => x != null);
   if (xs.length < win + 1) return null;
