@@ -65,7 +65,6 @@ const countryCache = {};       // id -> { t, data } so switching is instant
 const COUNTRY_FX_ID = { 'DX-Y.NYB': 'dxy', 'EURUSD=X': 'eurusd', 'GBPUSD=X': 'gbpusd', 'USDJPY=X': 'usdjpy', 'USDCNY=X': 'usdcny', 'USDINR=X': 'usdinr', 'AUDUSD=X': 'audusd' };
 let chartDp = 2;        // decimals for the current chart (set in renderChart)
 const seenAlerts = new Set();
-let serverAlerts = [];  // /api/alerts — the server's alert engine (basis extremes, data checks, idle ships)
 const CHART_TTL = 15 * 60e3;   // chart series re-fetch at most every 15 min (they used to cache forever)
 const ltCache = {};
 
@@ -649,219 +648,6 @@ function renderAlerts(alerts) {
   if ('Notification' in window && Notification.permission === 'granted') for (const a of alerts) if (a.level === 'high' && !seenAlerts.has(a.text)) { seenAlerts.add(a.text); try { new Notification('Oil market alert', { body: a.text }); } catch {} }
 }
 // ---------------------------------------------------------------------------
-// Custom alert rules — user-set "tell me when X is above/below/crosses Y".
-// Client-side (localStorage 'oilbasis.rules'); evaluated on every refresh while the tab is open.
-// ---------------------------------------------------------------------------
-const RULES_KEY = 'oilbasis.rules';
-const rulePrev = {};   // last value per rule id, for "crosses"
-// Rules come from localStorage, which is not a trusted store: coerce every field on the way in so a
-// tampered entry can never reach innerHTML (level must be a finite number, metric must be a known
-// instrument, op must be one of the three). Anything invalid is dropped.
-function rules() {
-  const OPS = new Set(['>', '<', 'crosses']);
-  try {
-    const a = JSON.parse(localStorage.getItem(RULES_KEY));
-    if (!Array.isArray(a)) return [];
-    const known = new Set(metricGroups().flatMap(([, arr]) => arr.map((o) => o.v)));
-    return a
-      .filter((r) => r && typeof r === 'object')
-      .map((r) => ({ id: String(r.id ?? '').slice(0, 24), metric: String(r.metric ?? ''), op: OPS.has(r.op) ? r.op : '>', level: Number(r.level), note: String(r.note ?? '').slice(0, 80) }))
-      .filter((r) => r.metric && Number.isFinite(r.level) && (known.size === 0 || known.has(r.metric)));
-  } catch { return []; }
-}
-function saveRules(a) { try { localStorage.setItem(RULES_KEY, JSON.stringify(a)); } catch {} }
-function metricGroups() {
-  const bs = (data && data.benchmarks) || [];
-  const g = [];
-  g.push(['INSTRUMENTS (price)', bs.map((b) => ({ v: 'bench:' + b.id, l: b.label }))]);
-  const basis = bs.filter((b) => b.basis != null);
-  if (basis.length) g.push(['BASIS (real − futures)', basis.map((b) => ({ v: 'basis:' + b.id, l: b.label }))]);
-  const fx = lastFx || [];
-  if (fx.length) g.push(['CURRENCIES', fx.map((f) => ({ v: 'fx:' + f.id, l: f.label }))]);
-  return g.filter(([, arr]) => arr.length);
-}
-function ruleLabel(metric) {
-  const [kind, id] = String(metric).split(':');
-  const safeId = esc(id == null ? '' : id);
-  if (kind === 'bench') { const b = (data && data.benchmarks || []).find((x) => x.id === id); return `${b ? esc(b.label) : safeId} price`; }
-  if (kind === 'basis') { const b = (data && data.benchmarks || []).find((x) => x.id === id); return `${b ? esc(b.label) : safeId} gap`; }
-  if (kind === 'fx') { const f = (lastFx || []).find((x) => x.id === id); return `${f ? esc(f.label) : safeId}`; }
-  return esc(metric);
-}
-function ruleValue(metric) {
-  const [kind, id] = String(metric).split(':');
-  if (kind === 'bench') { const b = (data && data.benchmarks || []).find((x) => x.id === id); return b ? (b.paper != null ? b.paper : b.physical) : null; }
-  if (kind === 'basis') { const b = (data && data.benchmarks || []).find((x) => x.id === id); return b ? b.basis : null; }
-  if (kind === 'fx') { const f = (lastFx || []).find((x) => x.id === id); return f ? f.price : null; }
-  return null;
-}
-function computeRules() {
-  const out = [];
-  if (!data) return out;
-  for (const r of rules()) {
-    if (r.on === false) continue;
-    const v = ruleValue(r.metric);
-    if (v == null) continue;
-    const prev = rulePrev[r.id]; rulePrev[r.id] = v;
-    let hit = false;
-    if (r.op === '>') hit = v > r.level;
-    else if (r.op === '<') hit = v < r.level;
-    else if (r.op === 'crosses') hit = prev != null && ((prev < r.level && v >= r.level) || (prev > r.level && v <= r.level));
-    if (hit) out.push({ level: 'med', rule: true, text: `${ruleLabel(r.metric)} ${r.op === '>' ? 'is above' : r.op === '<' ? 'is below' : 'crossed'} ${r.level}${r.note ? ` — ${esc(r.note)}` : ''} (now ${Number(v).toFixed(2)}).` });
-  }
-  return out;
-}
-// Delivery status for server-side alerts + the daily digest — so "is my email working?" is answerable
-// from the dashboard instead of from the logs.
-async function loadNotifyStatus() {
-  const el = $('notify-status');
-  if (!el) return;
-  let d = null;
-  try { d = await getJSON('/api/notify'); } catch { d = null; }
-  if (!d) { el.textContent = 'Delivery status unavailable.'; return; }
-  const on = [];
-  if (d.email.configured) on.push(`email → ${esc(d.email.to)}`);
-  if (d.webhook) on.push('webhook');
-  if (d.desktop) on.push('desktop');
-  const digest = d.digest.lastDate ? `last digest ${esc(d.digest.lastDate)}` : 'no digest sent yet';
-  const lastErr = d.last && d.last.ok === false && d.last.error ? ` · last error: ${esc(d.last.error)}` : '';
-  const sr = d.serverRules || {};
-  // If this deployment can only email its owner, don't invite visitors to type an email they can't use.
-  if (d.email && d.email.reach === 'owner-only') {
-    const it = $('sub-target'), h = document.querySelector('.sub-hint');
-    if (it) it.placeholder = 'your ntfy.sh / Telegram / Discord webhook URL (email isn’t available on this deployment yet)';
-    if (h) h.innerHTML = 'Easiest: install the <b>ntfy</b> app (free, no account) → subscribe to a topic name you invent → paste <b>https://ntfy.sh/&lt;that-topic&gt;</b> above. Telegram and Discord work too. You’ll get a confirmation first — nothing is sent until you click it.';
-  }
-  const sbs = d.subscribers || { active: 0, pending: 0, cap: 0 };
-  serverRulesEnabled = sr.enabled === true;
-  if (serverRulesEnabled && !rulesSynced) { rulesSynced = true; syncServerRules(); }
-  const rulesLine = `<b>Your rules</b>: ${sr.enabled ? (sr.count ? `${sr.count} on the server (fire when the app is closed)` : 'none saved on the server yet') : 'browser only — set <b>AUTH_USER</b> + <b>AUTH_PASS</b> to run them on the server'}`;
-  el.innerHTML = `<b>Server alerts</b> · ${on.length ? on.join(' · ') : 'nothing configured yet'} · digest ${d.digest.hour}:00 (${digest})${lastErr}`
-    + '<br>' + rulesLine
-    + ` <button id="notify-test" class="ghost small" type="button">SEND TEST</button>`
-    + `<br><b>Subscribers</b>: ${sbs.active} getting alerts${sbs.pending ? ` · ${sbs.pending} awaiting confirmation` : ''}${sbs.cap ? ` (cap ${sbs.cap})` : ''}`
-    + (sbs.durable ? ' · stored durably' : ' · <span title="Render\'s free tier wipes the filesystem on redeploy and on each sleep — set UPSTASH_REDIS_REST_URL + _TOKEN to keep them">may reset on redeploy</span>')
-    + (!d.email.configured ? '<br>To get the digest + alerts by email, set <b>DIGEST_TO</b> and <b>RESEND_API_KEY</b> (a free Resend key — quickest, no app password) or <b>SMTP_USER</b>+<b>SMTP_PASS</b>. A chat channel via <b>WEBHOOK_URL</b> works too.' : '');
-}
-// Anyone may subscribe: we send a confirmation to the destination, and only alert the ones that
-// clicked it. Nothing about other subscribers is ever shown.
-$('sub-go')?.addEventListener('click', async () => {
-  const el = $('sub-target'), msg = $('sub-msg');
-  const target = (el && el.value || '').trim();
-  if (!target) { if (msg) msg.textContent = 'Enter an email address or a chat-webhook URL.'; return; }
-  if (msg) msg.textContent = 'Sending a confirmation…';
-  let r = null, d = null;
-  try { r = await fetch('/api/subscribe', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ target }) }); d = await r.json().catch(() => null); } catch {}
-  if (!msg) return;
-  if (!r) { msg.textContent = 'Couldn’t reach the server — try again.'; return; }
-  if (r.ok && d && d.already) { msg.textContent = 'That destination is already subscribed.'; return; }
-  if (r.ok && d) { msg.textContent = `Confirmation sent to ${d.to} — open it and click the link to start receiving alerts.`; if (el) el.value = ''; return; }
-  msg.textContent = (d && d.error) || `Couldn’t subscribe (${r.status}).`;
-});
-$('notify-status')?.addEventListener('click', async (e) => {
-  if (e.target.id !== 'notify-test') return;
-  const btn = e.target;
-  btn.textContent = 'SENDING…';
-  let r = null;
-  try { r = await (await fetch('/api/notify/test', { method: 'POST' })).json(); } catch { r = null; }
-  btn.textContent = r && r.ok ? 'SENT ✓' : 'FAILED';
-  if (r && r.error) btn.title = String(r.error);
-  setTimeout(loadNotifyStatus, 1500);
-});
-
-// Rules are stored locally AND (when the deployment has a login) on the server, so they keep firing
-// when the tab is closed. The endpoints answer 401 if AUTH_USER/AUTH_PASS aren't set — we stay
-// client-side then, and say so.
-let serverRulesState = 'unknown';
-let serverRulesEnabled = false;   // set from /api/notify: server rules need the deployment login
-let rulesSynced = false;
-async function pushRules(list) {
-  if (!serverRulesEnabled) { serverRulesState = 'browser only'; return false; }
-  try {
-    const r = await fetch('/api/rules', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(list) });
-    if (r.status === 401) { serverRulesState = 'needs login'; return false; }
-    if (!r.ok) { serverRulesState = 'push failed'; return false; }
-    const d = await r.json();
-    serverRulesState = `${d.count} on the server`;
-    return true;
-  } catch { serverRulesState = 'unreachable'; return false; }
-}
-async function syncServerRules() {
-  if (!serverRulesEnabled) { serverRulesState = 'browser only'; return; }
-  const mine = rules();
-  try {
-    const r = await fetch('/api/rules', { headers: { accept: 'application/json' } });
-    if (r.status === 401) { serverRulesState = 'needs login'; return; }
-    if (!r.ok) { serverRulesState = 'unavailable'; return; }
-    const d = await r.json();
-    if (Array.isArray(d.rules) && d.rules.length) {
-      saveRules(d.rules);                       // the server is the source of truth
-      serverRulesState = `${d.rules.length} on the server`;
-      renderRules(); renderHomeAlerts();
-    } else if (mine.length) await pushRules(mine);   // first run: seed the server with what's local
-    else serverRulesState = 'none yet';
-  } catch { serverRulesState = 'unreachable'; }
-}
-
-function renderRules() {
-  const el = $('home-rules'); if (!el) return;
-  const rs = rules();
-  const opts = metricGroups().map(([g, arr]) => `<optgroup label="${g}">${arr.map((o) => `<option value="${o.v}">${o.l}</option>`).join('')}</optgroup>`).join('');
-  const list = rs.length
-    ? rs.map((r) => `<div class="rule"><span>${ruleLabel(r.metric)} ${r.op === '>' ? 'above' : r.op === '<' ? 'below' : 'crosses'} <b>${r.level}</b>${r.note ? ` — ${esc(r.note)}` : ''}</span><button class="rule-x" data-del="${r.id}" aria-label="Delete rule">✕</button></div>`).join('')
-    : '<div class="dimtext" style="padding:2px 0">No rules yet — add one below.</div>';
-  const granted = 'Notification' in window && Notification.permission === 'granted';
-  el.innerHTML = '<div class="rules-h">ALERT RULES — tell me when…</div>'
-    + `<div class="rules-list">${list}</div>`
-    + `<div class="rule-add"><select id="rule-metric" aria-label="Metric">${opts}</select>`
-    + '<select id="rule-op" aria-label="Condition"><option value=">">is above</option><option value="<">is below</option><option value="crosses">crosses</option></select>'
-    + '<input id="rule-level" type="number" step="any" placeholder="level" aria-label="Level">'
-    + '<input id="rule-note" type="text" placeholder="note (optional)" aria-label="Note">'
-    + '<button id="rule-add" class="ghost small" type="button">＋ ADD RULE</button></div>'
-    + `<div class="rule-foot dimtext">Checked in this tab while it is open. <button id="rule-notify" class="ghost small" type="button">${granted ? '✓ notifications on' : 'ENABLE NOTIFICATIONS'}</button></div>`;
-}
-$('home-rules')?.addEventListener('click', (e) => {
-  const del = e.target.closest('[data-del]');
-  if (del) { saveRules(rules().filter((r) => r.id !== del.dataset.del)); renderRules(); renderHomeAlerts(); pushRules(rules()); loadNotifyStatus(); return; }
-  if (e.target.id === 'rule-notify') { if ('Notification' in window) Notification.requestPermission().then(() => renderRules()); return; }
-  if (e.target.id === 'rule-add') {
-    const metric = $('rule-metric').value, op = $('rule-op').value, level = Number($('rule-level').value), note = $('rule-note').value.trim();
-    if (!metric || !Number.isFinite(level)) { showError('Give the rule a numeric level.'); return; }
-    const rs = rules(); rs.push({ id: 'r' + Date.now().toString(36), metric, op, level, note, on: true }); saveRules(rs); pushRules(rs); loadNotifyStatus();
-    renderRules(); renderHomeAlerts();
-  }
-});
-// Home: every alert firing, from both engines, severity-sorted.
-const ALERT_RANK = { high: 0, med: 1, watch: 2 };
-function allAlerts() {
-  const out = serverAlerts.map((a) => ({ level: a.level, text: a.text }));
-  if (data) for (const a of computeAlerts(data, tankerInfo)) out.push({ level: a.level, text: a.text });
-  for (const a of computeRules()) out.push(a);   // user rules
-  return out.sort((x, y) => (ALERT_RANK[x.level] ?? 3) - (ALERT_RANK[y.level] ?? 3));
-}
-function renderHomeAlerts() {
-  const el = $('home-alerts');
-  if (!el) return;
-  const list = data ? allAlerts() : [];
-  const c = $('home-alert-count');
-  if (c) { c.textContent = String(list.length); c.className = 'pill ' + (list.some((a) => a.level === 'high') ? 'warn' : list.length ? '' : 'ok'); }
-  const sub = $('home-alert-sub');
-  if (sub) sub.textContent = 'server checks (basis extremes, data quality, idle ships) + your rules · add rules below, or edit thresholds in COMMODITIES → MORE DETAIL';
-  el.innerHTML = list.length
-    ? list.map((a) => `<div class="alert ${a.level}"><span class="badge">${a.level === 'high' ? 'HIGH' : a.level === 'watch' ? 'CHECK' : 'WATCH'}</span> ${a.text}</div>`).join('')
-    : '<div class="alert none">No alerts — markets within normal ranges.</div>';
-  // Browser notifications for new high alerts + any rule that fires (rules are user-defined, so
-  // they always announce). Client-side only — this runs while the tab is open.
-  if ('Notification' in window && Notification.permission === 'granted') {
-    for (const a of list) if ((a.rule || a.level === 'high') && !seenAlerts.has(a.text)) { seenAlerts.add(a.text); try { new Notification("Marlon's Watchtower", { body: a.text }); } catch {} }
-  }
-}
-async function loadAlerts() {
-  try { serverAlerts = (await getJSON('/api/alerts')).current || []; } catch { serverAlerts = []; }
-  renderHomeAlerts();
-}
-
-// ---------------------------------------------------------------------------
 // Ticker
 // ---------------------------------------------------------------------------
 function renderTicker(m) {
@@ -1438,8 +1224,7 @@ async function loadMarket() {
   markReady('data');
   renderCards(data); buildMetricOptions(data); buildBpOptions();
   renderMarketState(); renderSnapshot(); setCardsTitle(); renderTicker(data);
-  renderWatchlist(); renderHomeAlerts();
-  if (!$('home-rules')?.innerHTML) renderRules();   // metric options need data (+ fx when it lands)
+  renderWatchlist();
   await renderChart();   // ← render AFTER data exists
   buildCompareOptions(); syncCompareToSelection();
   loadSeasonal();
@@ -1488,7 +1273,6 @@ async function loadTankers() {
   const rows = tankerInfo.tankers.slice(0, 60).map((v) => `<div class="t"><span>${v.name || '(' + v.mmsi + ')'}</span><span>${(v.sog ?? 0).toFixed(1)} kn</span><span>${v.lat.toFixed(1)}, ${v.lon.toFixed(1)}</span></div>`).join('');
   $('tanker-list').innerHTML = `<div class="t h"><span>VESSEL (${tankerInfo.count} TRACKED)</span><span>SPEED</span><span>POSITION</span></div>` + rows;
   if (data) renderAdaptive();   // refresh the ship row of the adaptive Big Picture
-  renderHomeAlerts();           // idle-ship count feeds the alerts board
 }
 
 // ---------------------------------------------------------------------------
@@ -2807,8 +2591,6 @@ async function loadExtraCore() {
   loadScreen();
   loadCalendar();
   loadRisk();
-  loadAlerts();       // HOME: alerts
-  loadNotifyStatus(); // HOME: is email/webhook delivery working? (also kicks off the rules sync)
   loadBrief();        // HOME: daily brief
   loadTransmission(); // COMMODITIES: how it transmits
   renderMarketState();
@@ -2861,7 +2643,7 @@ async function loadExtraSlow() {
       getJSON('/api/correlations').catch(() => null),
     ]);
     whenNear('#pane-macro', () => { renderMacroDash(md, corr); loadCatalysts(); });
-    if (md?.fx) { lastFx = md.fx; renderTicker(data); const lv = $('rule-level'); if ($('home-rules') && !$('home-rules').innerHTML.includes('CURRENCIES') && (!lv || !lv.value)) renderRules(); }
+    if (md?.fx) { lastFx = md.fx; renderTicker(data); }
     extraSlowDone = true;
   } catch (e) {}
 }

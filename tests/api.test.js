@@ -26,13 +26,19 @@ test('serves the dashboard', async () => {
   assert.equal(r.status, 200);
   const html = await r.text();
   assert.match(html, /MARLON'S WATCHTOWER/);
-  assert.match(html, /data-pane="home"/);   // watchlist + alerts home screen
+  assert.match(html, /data-pane="home"/);   // watchlist + brief home screen
   assert.match(html, /id="home-watch"/);
   assert.match(html, /id="headlines"/);     // live headlines board now lives in HOME
   assert.match(html, /id="regime-board"/);  // cross-asset backdrop (INVESTOR #2)
   assert.match(html, /id="screen"/);        // screener (INVESTOR #3)
-  assert.match(html, /id="home-rules"/);    // custom alert rules (INVESTOR #4)
   assert.doesNotMatch(html, /class="hero"/); // ...not pinned to the top of every page
+  // Retired from the UI (kept only as endpoints): the HOME alerts panel, its subscribe form,
+  // and the header's EXPORT CSV / DAILY BRIEF buttons.
+  assert.doesNotMatch(html, /id="p-alerts"/);
+  assert.doesNotMatch(html, /id="home-rules"/);
+  assert.doesNotMatch(html, /id="subscribe"/);
+  assert.doesNotMatch(html, /api\/export\.csv">EXPORT CSV/);
+  assert.doesNotMatch(html, /href="\/api\/digest"/);
 });
 
 test('pure endpoints always respond 200', async () => {

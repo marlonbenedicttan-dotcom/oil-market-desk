@@ -23,7 +23,7 @@
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
   <link rel="preconnect" href="https://unpkg.com" crossorigin />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <link rel="stylesheet" href="style.css?v=56" />
+  <link rel="stylesheet" href="style.css?v=57" />
   <noscript><style>#boot{display:none!important}</style></noscript>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -62,8 +62,6 @@
       <span id="fresh" class="fresh-dot" role="img" title="Data freshness" aria-label="Data freshness"></span>
       <span id="clock" class="clock">--:--:--</span>
       <span id="updated" class="dimtext">loading…</span>
-      <a class="ghost desk-only" href="/api/export.csv">EXPORT CSV</a>
-      <a class="ghost desk-only" href="/api/digest" target="_blank">DAILY BRIEF</a>
       <button id="jump-btn" class="ghost" aria-label="Quick jump — search instruments, countries and sections" title="Quick jump (⌘K or Ctrl-K)">JUMP</button>
       <button id="refresh" class="ghost" aria-label="Refresh data" title="Refresh data">↻</button>
       <button id="help-open" class="ghost" aria-label="Help and guide" title="Help and guide">?</button>
@@ -84,7 +82,7 @@
       <button class="tab" data-tab="macro" id="tab-macro" role="tab" aria-selected="false" aria-controls="pane-macro">MACRO</button>
     </nav>
 
-    <!-- HOME: daily brief + watchlist + alerts + headlines + segments -->
+    <!-- HOME: daily brief + watchlist + headlines + segments -->
     <div class="tabpane" data-pane="home" id="pane-home" role="tabpanel" aria-labelledby="tab-home">
       <nav class="jumpnav" aria-label="Jump to a section">
         <a href="#p-brief">Brief</a>
@@ -93,7 +91,6 @@
         <a href="#p-risk">Risk</a>
         <a href="#p-calendar">Calendar</a>
         <a href="#p-watch">Watchlist</a>
-        <a href="#p-alerts">Alerts</a>
         <a href="#p-headlines">Headlines</a>
         <a href="#p-segments">Segments</a>
       </nav>
@@ -131,22 +128,6 @@
         <div id="home-watch"></div>
       </section>
 
-      <section class="panel" id="p-alerts">
-        <div class="ph"><span class="ph-t">ALERTS</span><span class="ph-right"><span id="home-alert-count" class="pill">0</span></span></div>
-        <div id="home-alerts" class="alerts"></div>
-        <div id="home-alert-sub" class="dimtext" style="padding:0 12px 10px"></div>
-        <div id="home-rules"></div>
-        <div id="notify-status" class="macro-note"></div>
-        <div id="subscribe" class="subscribe">
-          <div class="sub-h">GET THESE ALERTS</div>
-          <div class="sub-row">
-            <input id="sub-target" type="text" autocomplete="off" spellcheck="false" aria-label="Where to send alerts" placeholder="your email, or your own ntfy.sh / Telegram / Discord webhook URL">
-            <button id="sub-go" class="ghost" type="button">SUBSCRIBE</button>
-          </div>
-          <div class="sub-hint dimtext">Easiest: install the <b>ntfy</b> app (free, no account) → subscribe to a topic name you invent → paste <b>https://ntfy.sh/&lt;that-topic&gt;</b> above. Telegram and Discord also work. You’ll get a confirmation first — nothing is sent until you click it.</div>
-          <div id="sub-msg" class="dimtext"></div>
-        </div>
-      </section>
 
       <section class="panel" id="p-headlines">
         <div class="ph"><span class="ph-t">HEADLINES</span><span class="dimtext">tier-1 wire · ranked by materiality · refreshes every 10 min</span></div>
@@ -406,11 +387,6 @@
       </details>
     </div>
 
-    <!-- exports live in the footer on phones (moved out of the crowded header) -->
-    <div class="exports mobile-only">
-      <a class="ghost" href="/api/export.csv">DOWNLOAD CSV</a>
-      <a class="ghost" href="/api/digest" target="_blank">DAILY BRIEF</a>
-    </div>
     <footer id="notes"></footer>
   </main>
   <!-- Quick jump (⌘K / Ctrl-K, or the JUMP button) — straight to any instrument, segment, country or section. -->
@@ -450,6 +426,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=110"></script>
+  <script src="app.js?v=111"></script>
 </body>
 </html>
