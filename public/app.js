@@ -563,6 +563,7 @@ function selectMarket(id) {
   toggleMarketBlocks();
   if (data) { renderCards(data); buildMetricOptions(data); }
   setCardsTitle();
+  syncRoute(false);          // replace: the URL always reflects the current view
   renderCurveForSegment();   // the curve follows the segment
   loadCurveHistory();        // and so does the curve-over-time (or hides)
   loadSeasonal();            // and the seasonality grade (gas/grains/softs)
@@ -2464,6 +2465,71 @@ function initCurveHist() {
 // A jump-nav chip must never point at a panel that isn't currently rendered: COMMODITIES shows and
 // hides a dozen sections by segment, and the US–Japan panel only exists for the US/Japan. Hide the
 // dead chips rather than offering a link that goes nowhere.
+// ---------------------------------------------------------------------------
+// Deep links + Back — the URL hash mirrors the view (#/commodities/gold/wti,
+// #/macro/jp/jp) so a view can be bookmarked and shared, and the browser Back
+// button walks your tabs instead of leaving the app. Tab changes push a
+// history entry; everything finer-grained replaces, so Back isn't noisy.
+// ---------------------------------------------------------------------------
+let routeSuppress = false, routingReady = false;
+function currentRoute() {
+  const tab = document.querySelector('.tab.active')?.dataset.tab || 'home';
+  if (tab === 'commodities') {
+    const m = $('metric')?.value || currentComponent || '';
+    return `#/commodities/${currentMarket}${m ? '/' + encodeURIComponent(m) : ''}`;
+  }
+  if (tab === 'macro') return `#/macro/${macroRegion}/${macroCountry}`;
+  return '#/home';
+}
+function syncRoute(push) {
+  if (routeSuppress) return;
+  const r = currentRoute();
+  if (location.hash === r) return;
+  // NOTE: app.js has its own `history` (the price-history payload), which shadows window.history —
+  // so the History API must be reached through `window.` explicitly.
+  try { (push && routingReady) ? window.history.pushState(null, '', r) : window.history.replaceState(null, '', r); } catch {}
+}
+// Returns true when the hash really was a route (so callers can fall back to syncRoute).
+function applyRoute(hash) {
+  const parts = String(hash || '').replace(/^#\/?/, '').split('/').filter(Boolean)
+    .map((p) => { try { return decodeURIComponent(p); } catch { return p; } });
+  if (!parts.length) return false;
+  const [tab, a, b] = parts;
+  routeSuppress = true;
+  try {
+    if (tab === 'home') { showTab('home'); return true; }
+    if (tab === 'commodities') {
+      if (a && (markets || []).some((m) => m.id === a)) selectMarket(a);
+      showTab('commodities');
+      if (b) pickMetric(b, $('range')?.value || '6m');   // validates against the segment's metric options
+      return true;
+    }
+    if (tab === 'macro') {
+      showTab('macro');
+      const rs = $('macro-region'), cs = $('macro-country');
+      if (a && rs && [...rs.options].some((o) => o.value === a)) {
+        rs.value = a; rs.dispatchEvent(new Event('change', { bubbles: true }));
+        if (b && cs && [...cs.options].some((o) => o.value === b)) { cs.value = b; cs.dispatchEvent(new Event('change', { bubbles: true })); }
+      }
+      return true;
+    }
+  } finally { routeSuppress = false; }
+  return false;
+}
+// Jump-nav chips stay plain anchors for accessibility, but we scroll them ourselves so they don't
+// overwrite the route hash in the address bar.
+document.addEventListener('click', (e) => {
+  const a = e.target.closest && e.target.closest('.jumpnav a[href^="#"]');
+  if (!a) return;
+  const t = $(a.getAttribute('href'));
+  if (!t) return;
+  e.preventDefault();
+  const pane = a.closest('.tabpane');
+  if (pane) showTab(pane.dataset.pane);
+  setTimeout(() => t.scrollIntoView({ behavior: 'smooth', block: 'start' }), 40);
+});
+addEventListener('popstate', () => { if (!applyRoute(location.hash)) syncRoute(false); });
+
 function syncJumpnavs() {
   document.querySelectorAll('.jumpnav').forEach((nav) => {
     const pane = nav.closest('.tabpane');
@@ -2593,6 +2659,7 @@ function showTab(name) {
   if (name === 'macro') { loadMacroTickers(); if (!extraSlowDone) setTimeout(() => loadExtraSlow().catch(() => {}), 0); if (macroChart) setTimeout(() => macroChart.resize(), 60); if (policyChart) setTimeout(() => policyChart.resize(), 70); if (cpiChart) setTimeout(() => cpiChart.resize(), 80); if (yieldsChart) setTimeout(() => yieldsChart.resize(), 85); if (usjpChart) setTimeout(() => usjpChart.resize(), 90); }
   if (data) renderTicker(data);
   syncJumpnavs();
+  syncRoute(true);            // tab changes are the history steps (Back walks the tabs)
 }
 
 async function loadExtra() { await loadExtraCore(); await loadExtraSlow(); }
@@ -2666,7 +2733,7 @@ async function refreshLive() {
   try { await loadTankers(); } catch (e) { console.error('[tankers]', e.message); }
 }
 $('refresh').addEventListener('click', () => { nextRefresh = 60; refreshLive(); loadExtra(); });
-$('metric').addEventListener('change', () => { localStorage.setItem('oilbasis.metric', $('metric').value); chartAnchor = null; renderChart(); });
+$('metric').addEventListener('change', () => { localStorage.setItem('oilbasis.metric', $('metric').value); chartAnchor = null; renderChart(); syncRoute(false); });
 $('range').addEventListener('change', () => { saveStr('range', $('range').value); chartAnchor = null; renderChart(); });
 ['cmp-a', 'cmp-b', 'cmp-range', 'cmp-view'].forEach((id) => $(id)?.addEventListener('change', () => { saveCompare(); renderCompare(); }));
 $('cmp-presets')?.addEventListener('click', (e) => { const btn = e.target.closest('.cmp-preset'); if (!btn) return; $('cmp-a').value = btn.dataset.a; $('cmp-b').value = btn.dataset.b; $('cmp-view').value = btn.dataset.v; saveCompare(); renderCompare(); });
@@ -2683,9 +2750,9 @@ $('bp-snapshot')?.addEventListener('click', (e) => {
 });
 
 $('marketstate')?.addEventListener('click', (e) => { const t = e.target.closest('[data-market]'); if (t) { showTab('commodities'); selectMarket(t.dataset.market); } });
-$('macro-region')?.addEventListener('change', () => { macroRegion = $('macro-region').value; saveStr('macroRegion', macroRegion); renderMacroRegion(); });
+$('macro-region')?.addEventListener('change', () => { macroRegion = $('macro-region').value; saveStr('macroRegion', macroRegion); renderMacroRegion(); syncRoute(false); });
 $('macro-region-panel')?.addEventListener('click', (e) => { const el = e.target.closest('[data-metric]'); if (el) pickMetric(el.dataset.metric, '1y'); });
-$('macro-country')?.addEventListener('change', () => { macroCountry = $('macro-country').value; saveStr('macroCountry', macroCountry); loadCountry(); });
+$('macro-country')?.addEventListener('change', () => { macroCountry = $('macro-country').value; saveStr('macroCountry', macroCountry); loadCountry(); syncRoute(false); });
 $('macro-range')?.addEventListener('change', loadCountryChart);
 $('chart').addEventListener('click', (ev) => {
   if (!chart) return;
@@ -2709,6 +2776,7 @@ function pickMetric(id, range = '6m') {
   chartAnchor = null;
   showTab('commodities');
   renderChart();
+  syncRoute(false);
   const cp = $('chart-panel');
   if (cp) setTimeout(() => cp.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);
 }
@@ -2812,6 +2880,9 @@ $('macro-links')?.addEventListener('click', (e) => { const el = e.target.closest
   selectMarket(savedSeg && markets.some((m) => m.id === savedSeg) ? savedSeg : (markets[0] && markets[0].id) || 'crude');
   restoreCompare();
   if (savedTab) showTab(savedTab);
+  // A deep link (#/commodities/gold/… , #/macro/jp) wins over the restored tab.
+  if (!applyRoute(location.hash)) syncRoute(false);
+  routingReady = true;
   setTimeout(hideBoot, 8000);                     // hard cap — never linger, even on a slow feed
   setTimeout(() => loadExtraSlow().catch(() => {}), 300);   // the slow, below-the-fold feeds
   loadAnalogue();
