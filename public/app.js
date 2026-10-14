@@ -726,14 +726,31 @@ async function loadNotifyStatus() {
   const digest = d.digest.lastDate ? `last digest ${esc(d.digest.lastDate)}` : 'no digest sent yet';
   const lastErr = d.last && d.last.ok === false && d.last.error ? ` · last error: ${esc(d.last.error)}` : '';
   const sr = d.serverRules || {};
+  const sbs = d.subscribers || { active: 0, pending: 0, cap: 0 };
   serverRulesEnabled = sr.enabled === true;
   if (serverRulesEnabled && !rulesSynced) { rulesSynced = true; syncServerRules(); }
   const rulesLine = `<b>Your rules</b>: ${sr.enabled ? (sr.count ? `${sr.count} on the server (fire when the app is closed)` : 'none saved on the server yet') : 'browser only — set <b>AUTH_USER</b> + <b>AUTH_PASS</b> to run them on the server'}`;
   el.innerHTML = `<b>Server alerts</b> · ${on.length ? on.join(' · ') : 'nothing configured yet'} · digest ${d.digest.hour}:00 (${digest})${lastErr}`
     + '<br>' + rulesLine
     + ` <button id="notify-test" class="ghost small" type="button">SEND TEST</button>`
+    + `<br><b>Subscribers</b>: ${sbs.active} getting alerts${sbs.pending ? ` · ${sbs.pending} awaiting confirmation` : ''}${sbs.cap ? ` (cap ${sbs.cap})` : ''}`
     + (!d.email.configured ? '<br>Set <b>SMTP_USER</b>, <b>SMTP_PASS</b> and <b>DIGEST_TO</b> on the server (or <b>WEBHOOK_URL</b>) to get the daily digest and alerts by email.' : '');
 }
+// Anyone may subscribe: we send a confirmation to the destination, and only alert the ones that
+// clicked it. Nothing about other subscribers is ever shown.
+$('sub-go')?.addEventListener('click', async () => {
+  const el = $('sub-target'), msg = $('sub-msg');
+  const target = (el && el.value || '').trim();
+  if (!target) { if (msg) msg.textContent = 'Enter an email address or a chat-webhook URL.'; return; }
+  if (msg) msg.textContent = 'Sending a confirmation…';
+  let r = null, d = null;
+  try { r = await fetch('/api/subscribe', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ target }) }); d = await r.json().catch(() => null); } catch {}
+  if (!msg) return;
+  if (!r) { msg.textContent = 'Couldn’t reach the server — try again.'; return; }
+  if (r.ok && d && d.already) { msg.textContent = 'That destination is already subscribed.'; return; }
+  if (r.ok && d) { msg.textContent = `Confirmation sent to ${d.to} — open it and click the link to start receiving alerts.`; if (el) el.value = ''; return; }
+  msg.textContent = (d && d.error) || `Couldn’t subscribe (${r.status}).`;
+});
 $('notify-status')?.addEventListener('click', async (e) => {
   if (e.target.id !== 'notify-test') return;
   const btn = e.target;

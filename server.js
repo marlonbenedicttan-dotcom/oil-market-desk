@@ -5,6 +5,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import zlib from 'node:zlib';
 import { execFile } from 'node:child_process';
+import crypto from 'node:crypto';
 import { sendMail } from './src/smtp.js';
 import { fileURLToPath } from 'node:url';
 import { sgn, businessDaysSince, inBox, haversineNm, horizonDeltas, horizonDeltasAbs, isoWeek, monthly, pctOver, percentile, lastNonNull, escHtml, webhookPayload, realizedVol, computeCracks, computeCrush, backAdjust, pearson, logReturns, curveTightness, inventoryTightness, weightedScore, seasonalGrade, seasonalAhead, contractMonthsBetween, signedPosition, signedMove, stretchScore, sdLabel, attributeMoves, newsContextOk, METHODOLOGY, positioningFlag, positioningRead, maxDrawdown, realizedVolTerm, corrMatrix, fxAdjust, parseOcc, drawdownWord, volWord, volTrend, topPairs, bestDiversifier, riskRead } from './src/lib.js';
@@ -2796,16 +2797,79 @@ async function evaluateRules() {
   return out;
 }
 
+// ---------------------------------------------------------------------------
+// Public alert subscriptions — "anyone may receive the alerts".
+// Safety rails, in order of importance:
+//   1. DOUBLE OPT-IN. Nothing is ever sent to a destination that hasn't confirmed by clicking a link we
+//      deliver to that destination — so nobody can sign up somebody else, and your mail account can't be
+//      used as an open relay.
+//   2. HOST ALLOWLIST. A subscriber supplies a *webhook URL*, which we then POST to — so it must be a
+//      known chat host or it's an SSRF lever into the deployment's own network.
+//   3. RATE LIMITS + CAP. Per-IP signup limits, a global subscriber cap, and a per-subscriber daily
+//      message cap, so a noisy market can't spam somebody's phone on our bill.
+//   4. UNSUBSCRIBE in every message (and one click from there).
+// Storage is .state.json, which the free tier resets on redeploy/sleep — subscribers may need to
+// re-subscribe after a deploy (the UI says so).
+// ---------------------------------------------------------------------------
+const SUB_CAP = 200;                    // total stored subscriptions (pending + active)
+const SUB_PER_IP_PER_HOUR = 5;
+const SUB_DAILY_MAX = 20;               // messages to one subscriber per day
+const WEBHOOK_ALLOW = [/(^|\.)ntfy\.sh$/i, /^api\.telegram\.org$/i, /(^|\.)discord(app)?\.com$/i, /(^|\.)slack\.com$/i];
+const subHits = new Map();              // ip -> [ms]
+const isEmail = (v) => /^[^@\s]+@[^@\s.]+\.[^@\s]{2,}$/.test(String(v || ''));
+function allowedWebhook(u) {
+  try { const x = new URL(u); return x.protocol === 'https:' && WEBHOOK_ALLOW.some((rx) => rx.test(x.hostname)); }
+  catch { return false; }
+}
+const maskTarget = (t) => (t.includes('@') ? t.replace(/^(.).*(@.*)$/, '$1***$2') : String(t).replace(/\/([^/]{4})[^/]*$/, '/$1…'));
+const subs = () => (Array.isArray(state.subs) ? state.subs : []);
+const saveSubs = (a) => { state.subs = a.slice(-SUB_CAP); saveState(); };
+const baseUrl = (req) => process.env.RENDER_EXTERNAL_URL || (req && req.headers.host ? `https://${req.headers.host}` : 'https://oil-market-desk.onrender.com');
+
+// One message to one subscriber, in whatever shape their channel wants, with an unsubscribe link.
+async function sendToSubscriber(s2, subject, text, req, { footer = true } = {}) {
+  const unsub = `${baseUrl(req)}/api/unsubscribe?t=${s2.token}`;
+  const body = footer ? `${text}\n\n—\nStop these: ${unsub}` : text;
+  if (s2.kind === 'email') { await sendEmail(subject, body); return true; }
+  const p = webhookPayload(s2.target, subject, body, process.env.TELEGRAM_CHAT_ID);
+  const r = await fetch(s2.target, {
+    method: 'POST',
+    headers: p.raw != null ? { 'content-type': 'text/plain; charset=utf-8', ...(p.headers || {}) } : { 'content-type': 'application/json', ...(p.headers || {}) },
+    body: p.raw != null ? p.raw : JSON.stringify(p.json),
+  });
+  if (!r.ok) throw new Error(`channel ${r.status}`);
+  return true;
+}
+
 async function alertLoop() {
   try {
     const cooldown = Number(process.env.ALERT_COOLDOWN_H || 12) * 3600e3;
     const now = Date.now();
+    const fresh = [];
     for (const a of await computeServerAlerts()) {
-      if (now - (alertSeen.get(a.key) || 0) > cooldown) { alertSeen.set(a.key, now); state.alertSeen = Object.fromEntries(alertSeen); saveState(); await deliver('alert', `Marlon's Watchtower · ${a.level.toUpperCase()}`, a.text); }
+      if (now - (alertSeen.get(a.key) || 0) > cooldown) { alertSeen.set(a.key, now); state.alertSeen = Object.fromEntries(alertSeen); saveState(); fresh.push(a); await deliver('alert', `Marlon's Watchtower · ${a.level.toUpperCase()}`, a.text); }
     }
     // …and the reader's own rules, so they still fire when the tab is closed.
-    for (const a of await evaluateRules()) await deliver('alert', `Marlon's Watchtower · ${a.level.toUpperCase()}`, a.text);
+    for (const a of await evaluateRules()) { fresh.push(a); await deliver('alert', `Marlon's Watchtower · ${a.level.toUpperCase()}`, a.text); }
+    if (fresh.length) await fanOut(fresh);
   } catch (e) { console.error('[alerts]', e.message); }
+}
+
+// The same stream, pushed to every confirmed subscriber (capped per day per person).
+async function fanOut(alerts) {
+  const list = subs().filter((x) => x.active);
+  if (!list.length) return;
+  const today = new Date().toISOString().slice(0, 10);
+  let changed = false;
+  for (const s2 of list) {
+    if (s2.sentDate !== today) { s2.sentDate = today; s2.sent = 0; changed = true; }
+    for (const a of alerts) {
+      if ((s2.sent || 0) >= SUB_DAILY_MAX) break;
+      try { await sendToSubscriber(s2, `Marlon's Watchtower · ${a.level.toUpperCase()}`, a.text); s2.sent = (s2.sent || 0) + 1; changed = true; }
+      catch (e) { console.warn('[sub]', maskTarget(s2.target), e.message); }
+    }
+  }
+  if (changed) saveSubs(list);
 }
 
 async function maybeSendDigest() {
@@ -2855,6 +2919,14 @@ const SECURITY_HEADERS = {
   'Permissions-Policy': 'geolocation=(), microphone=(), camera=()',
   'Content-Security-Policy-Report-Only': "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com; style-src 'self' 'unsafe-inline' https://unpkg.com; img-src 'self' data: blob: https://server.arcgisonline.com https://tile.openstreetmap.org; connect-src 'self'; font-src 'self' data:; worker-src 'self'; frame-ancestors 'self'",
 };
+const sendHtml = (res, code, html) => { res.writeHead(code, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-cache' }); res.end(html); };
+// A tiny standalone page for the confirm / unsubscribe links (no JS, no assets).
+const htmlPage = (title, body) => `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escHtml(title)} — Marlon's Watchtower</title>
+<style>body{margin:0;background:#05070a;color:#c9d4df;font:14px/1.7 ui-monospace,SFMono-Regular,Menlo,monospace;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
+.b{max-width:560px;background:#0c0f13;border:1px solid #1e2530;padding:22px 24px}h1{font-size:12px;letter-spacing:3px;color:#ff9e00;margin:0 0 14px}
+a{color:#ff9e00}b{color:#fff}p{margin:0 0 10px}</style></head>
+<body><div class="b"><h1>MARLON'S WATCHTOWER</h1>${body}</div></body></html>`;
+
 // Read a small JSON body (the rules POST is the only route that carries one).
 const readJsonBody = (req, limit = 20000) => new Promise((resolve) => {
   let raw = '', n = 0;
@@ -2868,7 +2940,11 @@ const server = http.createServer(async (req, res) => {
   // Health check (no auth) for uptime monitors.
   if (url.pathname === '/health') { res.writeHead(200, { 'content-type': 'application/json' }); return res.end(JSON.stringify({ ok: true, uptime: Math.round(process.uptime()), version: BUILD })); }
   // Optional basic auth — set AUTH_USER + AUTH_PASS to protect a public deployment.
-  if (process.env.AUTH_USER && process.env.AUTH_PASS) {
+  // The subscription surface stays PUBLIC by design: visitors have no login, and the confirm /
+  // unsubscribe links are clicked from a mail client. Those routes protect themselves with a
+  // per-destination double opt-in, a host allowlist and per-IP rate limits instead.
+  const PUBLIC_PATHS = new Set(['/api/subscribe', '/api/confirm', '/api/unsubscribe']);
+  if (process.env.AUTH_USER && process.env.AUTH_PASS && !PUBLIC_PATHS.has(url.pathname)) {
     const hdr = req.headers.authorization || '';
     const ok = hdr.startsWith('Basic ') && Buffer.from(hdr.slice(6), 'base64').toString('utf8') === `${process.env.AUTH_USER}:${process.env.AUTH_PASS}`;
     if (!ok) { res.writeHead(401, { 'www-authenticate': 'Basic realm="oil-market-desk"' }); return res.end('Authentication required'); }
@@ -2877,7 +2953,8 @@ const server = http.createServer(async (req, res) => {
     // Read-only service — every route is a GET, except the deliberate "send me a test email" POST.
     const notifyTest = req.method === 'POST' && url.pathname === '/api/notify/test';
     const rulesPost = req.method === 'POST' && url.pathname === '/api/rules';
-    if (req.method !== 'GET' && req.method !== 'HEAD' && !notifyTest && !rulesPost) {
+    const subPost = req.method === 'POST' && url.pathname === '/api/subscribe';
+    if (req.method !== 'GET' && req.method !== 'HEAD' && !notifyTest && !rulesPost && !subPost) {
       res.writeHead(405, { 'content-type': 'text/plain', allow: 'GET, HEAD' });
       return res.end('method not allowed');
     }
@@ -3024,6 +3101,44 @@ const server = http.createServer(async (req, res) => {
       }
       return sendJSON(res, 200, { rules: Array.isArray(state.rules) ? state.rules : [], authRequired: true });
     }
+    if (url.pathname === '/api/subscribe' && req.method === 'POST') {
+      const b = await readJsonBody(req);
+      const target = String((b && b.target) || '').trim().slice(0, 300);
+      const kind = isEmail(target) ? 'email' : (allowedWebhook(target) ? 'webhook' : null);
+      if (!kind) return sendJSON(res, 400, { error: 'Enter an email address, or a https chat-webhook URL from ntfy.sh, api.telegram.org, discord.com or slack.com.' });
+      if (kind === 'email' && !mailConfigured()) return sendJSON(res, 503, { error: 'This deployment has no email set up yet — use a chat webhook instead (an ntfy.sh topic is the easiest).' });
+      const ip = String(req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket.remoteAddress || '?';
+      const now = Date.now();
+      const hits = (subHits.get(ip) || []).filter((t) => now - t < 3600e3);
+      if (hits.length >= SUB_PER_IP_PER_HOUR) return sendJSON(res, 429, { error: 'Too many sign-ups from this network — please try again later.' });
+      const list = subs();
+      const existing = list.find((x) => x.target === target);
+      if (existing && existing.active) return sendJSON(res, 200, { ok: true, already: true, message: 'That destination is already subscribed.' });
+      if (!existing && list.length >= SUB_CAP) return sendJSON(res, 503, { error: 'The subscriber limit for this free deployment has been reached.' });
+      hits.push(now); subHits.set(ip, hits);
+      const rec = existing || { id: 's' + crypto.randomBytes(4).toString('hex'), target, kind, token: crypto.randomBytes(18).toString('base64url'), active: false, createdAt: new Date().toISOString(), sent: 0, sentDate: null };
+      try {
+        await sendToSubscriber(rec, "Marlon's Watchtower · confirm your alerts",
+          `You (or someone using this address) asked for commodity alerts from Marlon's Watchtower.\n\nConfirm: ${baseUrl(req)}/api/confirm?t=${rec.token}`, req, { footer: false });
+      } catch (e) {
+        return sendJSON(res, 502, { error: `Couldn’t reach that destination (${String(e.message).slice(0, 60)}). Check the address and try again.` });
+      }
+      saveSubs([...list.filter((x) => x.target !== target), rec]);
+      return sendJSON(res, 200, { ok: true, pending: true, kind, to: maskTarget(target) });
+    }
+    if (url.pathname === '/api/confirm' || url.pathname === '/api/unsubscribe') {
+      const t = url.searchParams.get('t') || '';
+      const list = subs();
+      const rec = list.find((x) => x.token === t);
+      if (!rec) return sendHtml(res, 404, htmlPage('Link expired', '<p>That link is no longer valid — subscribe again from the dashboard.</p>'));
+      if (url.pathname === '/api/confirm') {
+        rec.active = true; rec.confirmedAt = new Date().toISOString();
+        saveSubs(list);
+        return sendHtml(res, 200, htmlPage('You’re subscribed', `<p>Alerts will arrive at <b>${escHtml(maskTarget(rec.target))}</b> whenever the market moves.</p><p><a href="${baseUrl(req)}">Back to the dashboard</a> · <a href="${baseUrl(req)}/api/unsubscribe?t=${rec.token}">Unsubscribe</a></p>`));
+      }
+      saveSubs(list.filter((x) => x.token !== t));
+      return sendHtml(res, 200, htmlPage('Unsubscribed', `<p>Done — no more alerts will be sent to <b>${escHtml(maskTarget(rec.target))}</b>.</p><p><a href="${baseUrl(req)}">Back to the dashboard</a></p>`));
+    }
     if (url.pathname === '/api/notify') {
       const mask = (a) => (a && a.includes('@') ? a.replace(/^(.).*(@.*)$/, '$1***$2') : a || null);
       return sendJSON(res, 200, {
@@ -3034,6 +3149,7 @@ const server = http.createServer(async (req, res) => {
         last: { at: notifyStatus.lastAt, kind: notifyStatus.lastKind, ok: notifyStatus.lastOk, error: notifyStatus.lastError },
         alerts: { muted: alertSeen.size },
         serverRules: { enabled: Boolean(process.env.AUTH_USER && process.env.AUTH_PASS), count: Array.isArray(state.rules) ? state.rules.length : 0 },
+        subscribers: { active: subs().filter((x) => x.active).length, pending: subs().filter((x) => !x.active).length, cap: SUB_CAP },
       });
     }
     if (url.pathname === '/api/notify/test' && req.method === 'POST') {
