@@ -2567,7 +2567,10 @@ $('alert-settings')?.addEventListener('click', () => {
   else panel.classList.add('hidden');
 });
 // Jump to the chart for any metric id (benchmark, basis:*, fx:*).
-function pickMetric(id, range = '6m') {
+// `land` decides where the view ends up: 'chart' (the default) scrolls down to the chart panel, which
+// is right when you just switched metric from inside the page; 'top' starts at the very top of the
+// instrument's page, which is right when a tap on a tile is really a page change.
+function pickMetric(id, range = '6m', land = 'chart') {
   if (id && [...$('metric').options].some((o) => o.value === id)) $('metric').value = id;
   localStorage.setItem('oilbasis.metric', id);
   $('range').value = range;
@@ -2575,8 +2578,14 @@ function pickMetric(id, range = '6m') {
   showTab('commodities');
   renderChart();
   syncRoute(false);
-  const cp = $('chart-panel');
-  if (cp) setTimeout(() => cp.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);
+  if (land === 'top') {
+    // scroll-behavior is unset in CSS, so 'auto' is instant — and it overrides the smooth scroll that
+    // used to drag the view down to the chart panel, leaving you part-way down a page you just opened.
+    setTimeout(() => window.scrollTo({ top: 0, behavior: 'auto' }), 0);
+  } else {
+    const cp = $('chart-panel');
+    if (cp) setTimeout(() => cp.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);
+  }
 }
 // Open one instrument's page (watchlist tile, screener row, component card). The metric picker is
 // rebuilt for whichever segment is open, so the segment that OWNS the instrument has to be selected
@@ -2587,7 +2596,7 @@ function goToInstrument(id, range = '6m') {
   const owner = (markets || []).find((m) => (m.components || []).some((c) => c.id === id));
   if (owner && owner.id !== currentMarket) selectMarket(owner.id);   // also rebuilds the metric options
   currentComponent = id;          // the snapshot + READ follow this instrument, not the segment headline
-  pickMetric(id, range);          // switches to COMMODITIES, selects it, draws the chart
+  pickMetric(id, range, 'top');   // switches to COMMODITIES, selects it, draws the chart, starts at the top
   renderSnapshot();
   loadMarketRead();
 }

@@ -724,3 +724,14 @@ Commodity Desk rebranded from the oil-only "Oil Basis"; merged COMMODITIES+PRICE
     every tab. The two remaining sub-32px hits are prose credit links (aisstream.io, Leaflet) — correctly
     inline text, not controls. The chips' and screener table's edge clipping is their own
     `overflow-x: auto` scrollers, by design. `style.css?v=62`.
+- **Watchlist/screener taps now open the instrument's page at the TOP (2026-10-15).** `pickMetric()`
+  ended by scrolling `#chart-panel` into view, so a tap on a watchlist tile switched tabs but left you
+  part-way down the page you had just opened (in the middle of it). It now takes a `land` argument:
+  `'chart'` (the default — unchanged, and still right when you switch metric from *inside* the page,
+  where the chart is what you want to see) or `'top'`, which scrolls the window straight to the top.
+  `goToInstrument()` — i.e. the watchlist tiles, the screener rows and the component cards — passes
+  `'top'`, so a tap is treated as a page change. Measured on a phone: tapping a pinned **Corn** from a
+  page scrolled to y=4106 → `commodities / grains / corn` at **y=0**; the same for a screener row.
+  Verified the in-page path is untouched: a macro metric link still lands with the chart panel at its
+  72px `scroll-margin-top`. Back/forward is untouched too (`applyRoute` keeps its own behaviour, since
+  `popstate` should preserve the browser's scroll). 94 tests. `app.js?v=115`.
