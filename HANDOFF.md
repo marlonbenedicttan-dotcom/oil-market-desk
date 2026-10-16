@@ -735,3 +735,38 @@ Commodity Desk rebranded from the oil-only "Oil Basis"; merged COMMODITIES+PRICE
   Verified the in-page path is untouched: a macro metric link still lands with the chart panel at its
   72px `scroll-margin-top`. Back/forward is untouched too (`applyRoute` keeps its own behaviour, since
   `popstate` should preserve the browser's scroll). 94 tests. `app.js?v=115`.
+## Latest (2026-10-16) — Gulf + Africa macro countries (Phase 1)
+Six new countries in **two new regions**: **Middle East → Saudi Arabia, UAE, Qatar** and **Africa →
+South Africa, Nigeria, Kenya**. Every source was probed live before any code was written; the honest
+gaps are handled, not hidden.
+- **Currencies (all 6)** — Yahoo FX, live and rich history. The three Gulf pairs are **USD-pegged**
+  (SAR 3.75 · AED 3.6725 · QAR 3.64), so they carry a `peg` field and the app **drops their % moves**:
+  the upstream series holds bad ticks (USDSAR reads 3.6397 for days then jumps to the true 3.7526) and
+  a peg is a constant, so *any* % change off it is noise. The card shows the level and states the peg;
+  the chart plots the equity line only ("a flat line says nothing"); and the commodity-correlation block
+  is replaced by "nothing to correlate". This kills three separate lies at once.
+- **Equity lines** — **no Yahoo index exists** for Tadawul/DFM/QSE/NGX/NSE (`^TASI.SR`, `DFMGI.AE`,
+  `^CASE30`, `^NGX`, `^NSE20` all return empty; every `.LAG`/`.QA`/`.MA` listing 404s). The US-listed
+  iShares country ETFs are the live proxy at every chart range (22/65/127/198/251/61 pts, same as the
+  existing THD/EPHE/VNM): **KSA, UAE, QAT, EZA** — labelled "(KSA ETF proxy)" etc.
+  **Nigeria and Kenya have no free equity line at all** — `NGE` (Global X Nigeria) is gone, `EGPT`/`MOR`
+  are dead, and **`KEN` is Kenon Holdings, an Israeli company, NOT Kenya** (caught before shipping).
+  Both ship `index: null`, which the app already declared honestly ("No free equity index exists for
+  this country") — the path had never been exercised before.
+- **Annual macro** — `scripts/fetch-macro.mjs` (IMF WEO → `data/macro.json`) extended to all six and
+  re-run: 24 countries now. It tolerates gaps (no unemployment line for AE/QA/KE → World Bank fallback),
+  and unemployment now **prefers the newer vintage** (Nigeria's IMF line stops in 2018; the World Bank
+  has 2025) with the card's source line saying exactly which is which.
+- **Policy rates** — BIS carries **Saudi (4.5%)** and **South Africa (7.25%)**; it does **not** carry
+  AE/QA/NG/KE, so those four get a `POLICY_NOTE` explaining why (the Gulf rates mechanically track the
+  Fed behind the peg) instead of a blank.
+- **Catalysts** — TradingView's calendar has SA (13), ZA (59), NG (4), KE (3), AE (1) but **zero for
+  Qatar**; the panel says "No releases scheduled" rather than inventing one. Holidays are now dropped by
+  `indicator === 'Holidays'` (the word filter alone let Kenya's *Mashujaa Day* through as a catalyst).
+- **News relevance** (the user's hard rule) — 6 fresh on-topic items each, verified. Two real leaks were
+  found and fixed: (1) the country queries were **double-bracketed**, and `getMacroNews` already wraps
+  them, so Google treated them as one phrase — 100 results became 1 (`sa` kept a 626-day-old story);
+  (2) `getMacroNews` matched on the *query* alone, so a Qatar outlet's Africa story and a **Ugandan
+  shilling** story reached Qatar/Kenya cards. Country news must now also **name the country**
+  (`titleMatches`), and "shilling" was dropped from the Kenya query. All 24 countries still return 4–6
+  items — tighter, nothing starved. `app.js?v=116`.

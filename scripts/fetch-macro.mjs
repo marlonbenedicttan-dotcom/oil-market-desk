@@ -13,6 +13,10 @@ const COUNTRIES = [
   ['jp', 'JPN'], ['cn', 'CHN'], ['hk', 'HKG'], ['in', 'IND'], ['sg', 'SGP'],
   ['id', 'IDN'], ['th', 'THA'], ['my', 'MYS'], ['ph', 'PHL'], ['vn', 'VNM'],
   ['kr', 'KOR'], ['au', 'AUS'], ['tw', 'TWN'],
+  // Added with the Gulf + Africa macro countries. Countries whose IMF series has gaps (the Gulf and
+  // Kenya have no unemployment line) simply omit that field — the app falls back to World Bank.
+  ['sa', 'SAU'], ['ae', 'ARE'], ['qa', 'QAT'],
+  ['za', 'ZAF'], ['ng', 'NGA'], ['ke', 'KEN'],
 ];
 
 // Completed years only — never store an IMF projection as if it were data.

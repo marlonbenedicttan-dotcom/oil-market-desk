@@ -185,7 +185,9 @@ test('/api/news returns headlines for segments and macro regions (graceful if un
 
 test('/api/countries, /api/country and /api/region-quotes', async () => {
   const c = await (await fetch(`http://localhost:${PORT}/api/countries`)).json();
-  for (const r of ['us', 'eu', 'jp', 'cn', 'in', 'apac']) assert.ok(c[r] && c[r].length, `region ${r}`);
+  for (const r of ['us', 'eu', 'jp', 'cn', 'in', 'apac', 'me', 'af']) assert.ok(c[r] && c[r].length, `region ${r}`);
+  assert.equal(c.me.length, 3);   // Saudi Arabia, UAE, Qatar
+  assert.equal(c.af.length, 3);   // South Africa, Nigeria, Kenya
   const idn = await (await fetch(`http://localhost:${PORT}/api/country?id=id`)).json();
   assert.equal(idn.label, 'Indonesia');
   assert.ok(idn.fx && idn.index && idn.fund && Array.isArray(idn.fund.gdpGrowth));
@@ -193,6 +195,26 @@ test('/api/countries, /api/country and /api/region-quotes', async () => {
   assert.ok(idn.fx.deltas && 'd1' in idn.fx.deltas, 'country fx carries multi-horizon deltas');
   assert.ok(idn.fund.debtToGdp && idn.fund.debtToGdp.year >= 2018, 'debt/GDP is current (IMF WEO), not a stale year');
   assert.equal((await fetch(`http://localhost:${PORT}/api/country?id=nope`)).status, 404);
+  // Nigeria has no free equity line (no Yahoo index, no surviving ETF) — it must be declared, not faked.
+  const nga = await (await fetch(`http://localhost:${PORT}/api/country?id=ng`)).json();
+  assert.equal(nga.label, 'Nigeria');
+  assert.equal(nga.index.price, null);
+  assert.equal(nga.index.label, null);
+  assert.ok(nga.fund.gdpGrowth.length, 'Nigeria still carries IMF annual macro');
+  assert.ok(nga.fx.price, 'Nigeria carries a live FX quote');
+  // A pegged Gulf currency is reported as a peg, never as a meaningless commodity correlation.
+  const sau = await (await fetch(`http://localhost:${PORT}/api/country?id=sa`)).json();
+  assert.ok(sau.takeaways.some((x) => /pegged to the US dollar/.test(x)), 'Saudi: the peg is stated');
+  assert.ok(!sau.links.length, 'Saudi: no commodity-correlation rows for a pegged currency');
+  assert.ok(sau.peg, 'Saudi carries its peg');
+  assert.deepEqual(sau.fx.deltas, {}, 'a pegged currency reports no % moves (the upstream series has bad ticks)');
+  assert.equal(sau.fx.pct, null, 'and no daily % either');
+  assert.ok(sau.fx.price, 'but it still reports the level');
+  const qat = await (await fetch(`http://localhost:${PORT}/api/country?id=qa`)).json();
+  assert.equal(qat.policy, null);
+  assert.match(qat.policyNote || '', /peg/i);   // and it says WHY there is no policy rate
+  const zaf = await (await fetch(`http://localhost:${PORT}/api/country?id=za`)).json();
+  assert.ok(zaf.links.some((l) => l.commodity === 'Gold'), 'South Africa links to gold');
   const mt = await (await fetch(`http://localhost:${PORT}/api/region-quotes?id=apac`)).json();
   assert.ok(Array.isArray(mt.items) && mt.items.length >= 8);   // currencies (and indices where free)
   assert.ok(mt.items.some((i) => i.deltas && 'd1' in i.deltas), 'region currencies carry deltas');

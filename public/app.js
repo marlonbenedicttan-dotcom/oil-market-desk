@@ -1800,19 +1800,24 @@ async function loadCountry() {
   if (!c.policy && c.policyNote) html += `<div class="macro-note">${c.policyNote}</div>`;
   if (gdp.length > 1) html += `<div class="dimtext" style="padding:2px 12px 8px">real GDP growth by year — ${gdp.map((g) => `${g.year}: ${g.value}%`).join(' · ')}</div>`;
 
-  html += '<div class="bb-sec">COMMODITY LINKAGE — its currency vs…</div>';
-  if (c.links && c.links.length) {
-    html += '<div class="bb-grid">' + c.links.map((l) => {
-      const v = l.corr;
-      const sub = v == null ? 'no data' : (Math.abs(v) >= 0.3 ? 'linked' : 'weak');
-      return card(l.commodity, v == null ? '—' : v, '3-mo corr · ' + sub, v == null ? '' : (v < 0 ? 'neg' : 'pos'));
-    }).join('') + '</div>';
+  html += '<div class="bb-sec">COMMODITY LINKAGE</div>';
+  if (c.peg) {
+    // A pegged currency does not float, so a correlation against it measures nothing.
+    html += `<div class="macro-note">Nothing to correlate — the currency is <b>pegged to the US dollar at ${c.peg}</b>, so it does not float against it.</div>`;
   } else {
-    html += '<div class="macro-note">No tracked commodity is closely tied to this currency.</div>';
-  }
-  if (c.oilLink != null) {
-    const read = c.oilLink > 0.2 ? 'the currency weakens when oil rises (importer strain)' : c.oilLink < -0.2 ? 'the currency firms with oil (exporter benefit)' : 'no strong currency–oil link right now';
-    html += `<div class="macro-note">${c.label} is a net oil ${c.oil}; currency vs Brent 3-mo correlation <b>${c.oilLink}</b> — ${read}.</div>`;
+    if (c.links && c.links.length) {
+      html += '<div class="bb-grid">' + c.links.map((l) => {
+        const v = l.corr;
+        const sub = v == null ? 'no data' : (Math.abs(v) >= 0.3 ? 'linked' : 'weak');
+        return card(l.commodity, v == null ? '—' : v, '3-mo corr · ' + sub, v == null ? '' : (v < 0 ? 'neg' : 'pos'));
+      }).join('') + '</div>';
+    } else {
+      html += '<div class="macro-note">No tracked commodity is closely tied to this currency.</div>';
+    }
+    if (c.oilLink != null) {
+      const read = c.oilLink > 0.2 ? 'the currency weakens when oil rises (importer strain)' : c.oilLink < -0.2 ? 'the currency firms with oil (exporter benefit)' : 'no strong currency–oil link right now';
+      html += `<div class="macro-note">${c.label} is a net oil ${c.oil}; currency vs Brent 3-mo correlation <b>${c.oilLink}</b> — ${read}.</div>`;
+    }
   }
   if (c.takeaways && c.takeaways.length) html += '<div class="bb-sec">KEY TAKEAWAYS</div><ul class="ins-list">' + c.takeaways.map((t) => `<li>${t}</li>`).join('') + '</ul>';
   html += '<div class="bb-sec">CROSS-ASSET — HOW THIS REGION IS AFFECTED</div>' + crossAssetBlock((i) => (i.regions || []).includes(macroRegion));
@@ -1839,7 +1844,9 @@ async function loadCountryChart() {
   if (d.index && d.index.some((v) => v != null)) datasets.push(line(`${d.indexLabel} (indexed)`, norm(d.index), CT.c1));
   if (d.fx && d.fx.some((v) => v != null)) datasets.push(line(`${d.fxLabel} (indexed)`, norm(d.fx), CT.c4));
   const note = $('macro-chart-note');
-  if (note) note.textContent = `${d.label} — both lines start at 100; hover any point for its % change. ${d.indexLabel ? '' : 'Index unavailable free.'}`;
+  if (note) note.textContent = `${d.label} — ${d.index ? 'both lines' : 'the currency'} start${d.index ? '' : 's'} at 100; hover any point for its % change.`
+    + `${d.indexLabel ? '' : ' No free equity index exists for this country, so there is no index line.'}`
+    + `${d.peg ? ` The currency is pegged to the US dollar at ${d.peg}, so it is not charted — a flat line says nothing.` : ''}`;
   macroChart = mountChart('macro-chart', { labels: d.dates, datasets }, baseOptions({ dp: 1 }));
   attachMarkers(macroChart, req, d.dates, [d.index, d.fx].filter(Boolean), '#macro-chart-events');
 }
