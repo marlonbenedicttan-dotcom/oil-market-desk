@@ -546,7 +546,7 @@ function renderNews(n, elId = 'news', subId = 'news-sub') {
   const sub = $(subId);
   const lbl = (n && n.label) || '';
   if (sub) sub.textContent = lbl + ' · tier-1 wire · refreshes daily';
-  if (!items.length) { el.innerHTML = stEmpty('No recent tier-1 headlines for this segment.'); return; }
+  if (!items.length) { el.innerHTML = stEmpty(elId === 'macro-news' ? 'No tier-1 wire coverage on this country right now.' : 'No recent tier-1 headlines for this segment.'); return; }
   el.innerHTML = items.map((it) => `<a class="news-item" href="${esc(it.url)}" target="_blank" rel="noopener noreferrer"><span class="news-src">${esc(it.source || 'wire')}</span><span class="news-t">${it.kind ? `<em class="news-k">${esc(it.kind)}</em> ` : ''}${esc(it.title)}</span><span class="news-d dimtext">${ago(it.date)}</span></a>`).join('')
     + '<div class="dimtext" style="padding:6px 12px;font-size:10px">Headlines via Google News · © the respective publishers · links open at the source.</div>';
 }
@@ -1780,10 +1780,13 @@ async function loadCountry() {
   const card = (l, v, s, k, dl) => `<div class="bb-card"${fxId && l === c.fx.label ? ` data-metric="fx:${fxId}" style="cursor:pointer"` : ''}><div class="bb-l">${l}</div><div class="bb-v ${k || ''}">${v}</div><div class="bb-s">${s || ''}</div>${dl ? deltaStrip(dl) : ''}</div>`;
   let html = `<div class="bb-head">${c.label.toUpperCase()} <span class="dimtext">· ${(c.region || '').toUpperCase()}</span></div>`;
 
+  const hasIndex = !!(c.index.label && !/not free/i.test(c.index.label));
   html += '<div class="bb-sec">MARKET</div><div class="bb-grid">'
     + card(c.fx.label, num(c.fx.price, c.fx.price != null && c.fx.price < 10 ? 4 : 2), (c.fx.pct != null ? pctf(c.fx.pct) + ' today' : '—') + freshBadge(c.fx.source, c.fx.asOf), cls(c.fx.pct), c.fx.deltas)
-    + (c.index.label && !/not free/i.test(c.index.label) ? card(c.index.label, num(c.index.price, c.index.price != null && c.index.price < 1000 ? 1 : 0), (c.index.pct != null ? pctf(c.index.pct) + ' today' : '—') + freshBadge(c.index.source, c.index.asOf), cls(c.index.pct), c.index.deltas) : '')
-    + '</div>';
+    + (hasIndex ? card(c.index.label, num(c.index.price, c.index.price != null && c.index.price < 1000 ? 1 : 0), (c.index.pct != null ? pctf(c.index.pct) + ' today' : '—') + freshBadge(c.index.source, c.index.asOf), cls(c.index.pct), c.index.deltas)
+        : card('Equity market', 'N/A', 'no free index exists for this country', 'dim'))
+    + '</div>'
+    + (hasIndex ? '' : `<div class="macro-note">Equity market: <b>not available</b> — no free index or ETF tracks ${esc(c.label)}, so the currency and the macro data above are what we can show.</div>`);
 
   html += '<div class="bb-sec">RATES &amp; INFLATION</div><div class="bb-grid">';
   if (c.policy) html += card('CENTRAL BANK RATE', c.policy.latest.value + '%', 'as of ' + c.policy.latest.date, '');

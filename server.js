@@ -33,8 +33,8 @@ const BENCHMARKS = [
   { id: 'brent',  label: 'Brent',           group: 'Crude',   unit: '$/bbl',   dp: 2, paper: 'BZ=F', physical: 'DCOILBRENTEU', source: 'fred' },
   { id: 'rbob',   label: 'RBOB Gasoline',   group: 'Refined', unit: '$/gal',   dp: 3, paper: 'RB=F', physical: 'DGASUSGULF', source: 'fred' },
   { id: 'ulsd',   label: 'ULSD / Heating',  group: 'Refined', unit: '$/gal',   dp: 3, paper: 'HO=F', physical: 'DHOILNYH', source: 'fred' },
-  { id: 'jet',    label: 'Jet Fuel (USGC)', group: 'Refined', unit: '$/gal',   dp: 3, paper: null,   physical: 'EER_EPJK_PF4_RGC_DPG', source: 'eia' },
-  { id: 'propane',label: 'Propane (Mt Belvieu)', group: 'Refined', unit: '$/gal', dp: 3, paper: null, physical: 'EER_EPLLPA_PF4_Y44MB_DPG', source: 'eia' },
+  { id: 'jet',    label: 'Jet Fuel (USGC)', group: 'Refined', unit: '$/gal',   dp: 3, paper: null,   physical: 'EER_EPJK_PF4_RGC_DPG', source: 'eia', fredFallback: 'DJFUELUSGULF' },
+  { id: 'propane',label: 'Propane (Mt Belvieu)', group: 'Refined', unit: '$/gal', dp: 3, paper: null, physical: 'EER_EPLLPA_PF4_Y44MB_DPG', source: 'eia', fredFallback: 'DPROPANEMBTX' },
   { id: 'natgas', label: 'Natural Gas',     group: 'Gas',     unit: '$/MMBtu', dp: 2, paper: 'NG=F', physical: 'DHHNGSP', source: 'fred' },
   // ---- Metals (futures only — no free spot) ----
   { id: 'gold',     label: 'Gold',      group: 'Metals', unit: '$/oz', dp: 2, paper: 'GC=F', physical: null },
@@ -150,7 +150,13 @@ async function eiaSeries(id, days = 220) {
   return out;
 }
 
-const spotSeries = (b, days) => (!b.physical ? Promise.resolve({}) : b.source === 'eia' ? eiaSeries(b.physical, days) : fredSeries(b.physical, days));
+// Spot series: FRED directly, or EIA (needs a free key) with the FRED mirror of the same series as the
+// fallback — so the two spot-only energy instruments are never blank just because no key was set.
+const spotSeries = (b, days) => (!b.physical
+  ? Promise.resolve({})
+  : b.source === 'eia'
+    ? eiaSeries(b.physical, days).then((s) => (Object.keys(s).length ? s : (b.fredFallback ? fredSeries(b.fredFallback, days) : {})))
+    : fredSeries(b.physical, days));
 
 // ---------------------------------------------------------------------------
 // Cache
@@ -1575,6 +1581,8 @@ const NEWS_QUERIES = {
   eu: '"euro area" OR ECB OR "eurozone economy" OR European inflation',
   jp: 'Japan economy OR "Bank of Japan" OR yen OR Japan inflation',
   apac: 'China economy OR PBOC OR "China stimulus" OR Asia markets',
+  me: 'Gulf economy OR Saudi Aramco OR OPEC OR Qatar LNG',
+  af: 'Africa economy OR African markets OR Sub-Saharan Africa',
   // macro-country news
   ea: '(euro area OR eurozone OR ECB) (inflation OR economy OR rates OR GDP OR growth)',
   de: 'Germany economy OR German inflation OR DAX',
@@ -1622,6 +1630,8 @@ const NEWS_MUST = {
   cn: [/\bChina\b/i, /\bChinese\b/i, /\bPBOC\b/i, /\byuan\b/i, /\brenminbi\b/i, /\bShanghai\b/i, /\bBeijing\b/i, /\bHong Kong\b/i, /\bHang Seng\b/i],
   in: [/\bIndia(n)?\b/i, /\bRBI\b/i, /\brupee\b/i, /\bNifty\b/i, /\bSensex\b/i],
   apac: [/\bAsia(n)?\b/i, /\bSingapore\b/i, /\bIndonesia\b/i, /\bThailand\b/i, /\bMalaysia\b/i, /\bPhilippines\b/i, /\bVietnam\b/i, /\bKorea\b/i, /\bAustralia\b/i, /\bTaiwan\b/i, /\bASEAN\b/i],
+  me: [/\bGulf\b/i, /\bMiddle East\b/i, /\bSaudi\b/i, /\bEmirat/i, /\bUAE\b/, /\bQatar\b/i, /\bKuwait\b/i, /\bBahrain\b/i, /\bOman\b/i, /\bMENA\b/i],
+  af: [/\bAfrica(n)?\b/i, /\bNigeri/i, /\bKenya/i, /\bSouth Africa/i, /\bGhana\b/i, /\bEthiopia\b/i, /\bTanzania\b/i, /\bUganda\b/i, /\bZambia\b/i],
   // macro countries
   ea: [/\beuro(zone|-area|\s?area)?\b/i, /\bECB\b/i, /\bEurope(an)?\b/i],
   de: [/\bGerman(y)?\b/i, /\bDAX\b/i, /\bBundesbank\b/i, /\bBund\b/i, /\bBerlin\b/i],
@@ -1686,7 +1696,7 @@ function newsDir(title) {
   return (u && !d) ? 'up' : (d && !u) ? 'down' : null;   // both present = ambiguous
 }
 const NEWS_REGION_LABELS = { us: 'Americas', eu: 'Europe', jp: 'Japan', apac: 'Asia-Pacific', me: 'Middle East', af: 'Africa' };
-const newsLabel = (id) => MARKETS.find((x) => x.id === id)?.label || NEWS_REGION_LABELS[id] || id;
+const newsLabel = (id) => MARKETS.find((x) => x.id === id)?.label || ALL_COUNTRIES[id]?.label || NEWS_REGION_LABELS[id] || id;
 const NEWS_TIER1 = '(site:reuters.com OR site:bloomberg.com OR site:ft.com OR site:apnews.com OR site:cnbc.com)';
 const decodeEnt = (s) => String(s || '').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&nbsp;/g, ' ').trim();
 async function getNews(id, componentId) {
@@ -2240,9 +2250,13 @@ async function getMacroNews(id) {
   return cached('mnews:' + id, 40 * 60e3, async () => {
     // Drop anything that is not actually an economy/market story — e.g. a sports or film headline
     // that merely names the country (the MACRO domain guard).
-    const items = (await fetchGoogleNews(`(${terms}) (rate OR inflation OR economy OR election OR sanctions OR protest OR IMF OR stimulus OR tariff OR downgrade)`, 30).catch(() => []))
+    // Ask for the full feed (100), not 30: the tier-1 wire query returns plenty, but only a fraction
+    // of it actually NAMES the country — Qatar had 28 such stories out of 100 and none in the first 30,
+    // so a 30-item window made its panel look empty.
+    const items = (await fetchGoogleNews(`(${terms}) (rate OR inflation OR economy OR election OR sanctions OR protest OR IMF OR stimulus OR tariff OR downgrade) ${NEWS_TIER1}`, 100).catch(() => []))
       .filter((it) => newsContextOk(it.title, { domain: 'macro' })   // must BE an economy story...
-        && titleMatches(id, it.title));                              // ...and name THIS country
+        && titleMatches(id, it.title)                                // ...name THIS country...
+        && TIER1_RE.test(it.source || ''));                          // ...and come from a real wire
     const now = Date.now();
     for (const it of items) {
       let kind = 'Economy', weight = 1;

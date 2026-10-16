@@ -229,6 +229,14 @@ test('/api/countries, /api/country and /api/region-quotes', async () => {
   }
   assert.ok(gulf.items.filter((i) => i.kind === 'index').every((i) => i.price > 0), 'the Gulf equity proxies still quote');
   // and the new currencies are chartable + offered in the currency dropdown
+  // Country news must come from a tier-1 wire — Nigeria/Kenya used to fill with content farms
+  // (UA.NEWS, nigeriahousingmarket.com) because only the segment news required tier-1.
+  const TIER1 = /reuters|bloomberg|financial times|ft\.com|ap news|associated press|cnbc|wsj|wall street journal/i;
+  for (const id of ['ng', 'ke', 'qa', 'sa']) {
+    const nw = await (await fetch(`http://localhost:${PORT}/api/macro-news?id=${id}`)).json();
+    assert.ok(Array.isArray(nw.items), `${id} news payload`);
+    for (const it of nw.items) assert.ok(TIER1.test(it.source || ''), `${id} headline from a real wire (got "${it.source}")`);
+  }
   const fxl = await (await fetch(`http://localhost:${PORT}/api/fx`)).json();
   for (const id of ['usdsar', 'usdaed', 'usdqar', 'usdngn', 'usdkes', 'usdzar']) {
     assert.ok(fxl.some((f) => f.id === id), `${id} is chartable`);

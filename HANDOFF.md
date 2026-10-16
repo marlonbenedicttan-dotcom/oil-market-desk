@@ -798,3 +798,31 @@ The user asked for a sweep and a harder look at a Nigeria equity line. Both done
   for most countries → "(IMF WEO / World Bank)".
 - Regression checks: all 24 countries still return 4–6 fresh news items, all 6 new country cards load
   (1–5 ms warm), no console errors, no horizontal overflow, 94 tests pass.
+## Ticker + relevance sweep (2026-10-16) — every symbol verified, country news gated to tier-1
+- **Symbol audit (134 symbols).** Every Yahoo symbol in `BENCHMARKS`, `FX_SYMS`, `MACRO_COUNTRIES` and the
+  dashboard tickers was fetched and compared against the name Yahoo actually reports. The only
+  mismatches are benign labels: `CL=F` → "Crude Oil Nov 26" (the app says WTI — correct), `ALI=F` →
+  "Aluminum Futures", `DX-Y.NYB` → "ICE US Dollar Index", `^STI`, `^TWII` → "TSEC CAPITALIZATION
+  WEIGHTED" (= TAIEX ✓), `^VIX`, `^TNX`. No `KEN`-style error left anywhere.
+- **Two tickers were blank, and I know why.** Jet fuel and propane are **spot-only** and came from the
+  **keyed** EIA v2 API, so with no `EIA_API_KEY` (any local run) they rendered "—" with no explanation
+  — production has the key, which is why the live site looked fine (4.562 / 1.07). They now use EIA when
+  the key is present and fall back to **FRED's mirror of the same series** (`DJFUELUSGULF`,
+  `DPROPANEMBTX`) when it isn't, so they populate with no key at all — verified: 4.562 and 1.070, the
+  same numbers production reports.
+- **The "random news" in Nigeria and Kenya — root-caused.** The country news path never *required* a
+  tier-1 wire, it only *scored* one, so the panels filled with content farms and blogs
+  (`UA.NEWS`, `nigeriahousingmarket.com`). Country news now carries the site filter **and** must match
+  `TIER1_RE` on the source. Result across all 24 countries: **0 with a non-tier-1 source, 0 empty.**
+  Nigeria now leads with inflation + the Dangote refinery stories (Reuters/Bloomberg) — better content
+  than before, not just cleaner.
+- **The 30-item window was hiding Qatar.** Of 100 tier-1 stories, only 28 actually *name* Qatar and none
+  were in the first 30, so its panel read as empty. The fetcher now asks for the full 100.
+- **"Not available" is now said out loud.** The country card silently dropped the equity tile for
+  Nigeria and Kenya, which reads as an omission rather than a fact. It now shows an **"Equity market ·
+  N/A · no free index exists for this country"** tile plus a note naming the country. (Bond yields and
+  CPI already said "no free … for this country", and the INDEX vs FX chart already said it.)
+- **`newsLabel` showed the raw id** — the panel header read "ke · tier-1 wire". It now resolves country
+  names ("Kenya"), and the two new regions gained the `NEWS_QUERIES` / `NEWS_MUST` entries every other
+  region already had.
+- 94 tests pass, including a new assertion that country news comes from a real wire.
