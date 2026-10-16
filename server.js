@@ -1580,6 +1580,14 @@ const NEWS_QUERIES = {
   my: 'Malaysia economy OR "Bank Negara Malaysia" OR ringgit',
   ph: 'Philippines economy OR Bangko Sentral OR peso',
   vn: 'Vietnam economy OR "State Bank of Vietnam" OR dong',
+  // No outer brackets: getMacroNews already wraps the terms in (...), and a second pair makes
+  // Google treat the whole thing as one phrase (verified: 100 results -> 1).
+  sa: 'Saudi Arabia OR Riyadh OR Aramco OR SAMA',
+  ae: '"United Arab Emirates" OR UAE OR Dubai OR "Abu Dhabi"',
+  qa: 'Qatar OR Doha OR QatarEnergy',
+  za: '"South Africa" OR rand OR SARB',
+  ng: 'Nigeria OR naira OR Dangote OR Lagos',
+  ke: 'Kenya OR Nairobi OR Kenyan',
 };
 // A story must NAME the thing it explains — so a US-yield move never shows a UK story and a
 // copper move never shows a corn one. Applied ON TOP of the tier-1 + date + direction match.
@@ -1617,6 +1625,12 @@ const NEWS_MUST = {
   my: [/\bMalaysia(n)?\b/i, /\bringgit\b/i, /\bKuala Lumpur\b/i, /\bKLCI\b/i],
   ph: [/\bPhilippines\b/i, /\bPhilippine\b/i, /\bManila\b/i, /\bPSEi\b/i],
   vn: [/\bVietnam(ese)?\b/i, /\bdong\b/i, /\bHanoi\b/i],
+  sa: [/\bSaudi\b/i, /\bRiyadh\b/i, /\bAramco\b/i, /\bSAMA\b/, /\bTadawul\b/i],
+  ae: [/\bUAE\b/, /\bEmirat/i, /\bDubai\b/i, /\bAbu Dhabi\b/i, /\bADNOC\b/i],
+  qa: [/\bQatar\b/i, /\bDoha\b/i, /\bQatarEnergy\b/i, /\bRas Laffan\b/i],
+  za: [/\bSouth Africa/i, /\bSARB\b/, /\bJohannesburg\b/i, /\bJSE\b/],
+  ng: [/\bNigeri/i, /\bnaira\b/i, /\bDangote\b/i, /\bLagos\b/i],
+  ke: [/\bKenya/i, /\bNairobi\b/i, /\bCentral Bank of Kenya\b/i],
 };
 function mustScoreFor(specs, title) {
   if (!specs) return 0;
@@ -1659,7 +1673,7 @@ function newsDir(title) {
   const u = DIR_UP.test(t), d = DIR_DOWN.test(t);
   return (u && !d) ? 'up' : (d && !u) ? 'down' : null;   // both present = ambiguous
 }
-const NEWS_REGION_LABELS = { us: 'Americas', eu: 'Europe', jp: 'Japan', apac: 'Asia-Pacific' };
+const NEWS_REGION_LABELS = { us: 'Americas', eu: 'Europe', jp: 'Japan', apac: 'Asia-Pacific', me: 'Middle East', af: 'Africa' };
 const newsLabel = (id) => MARKETS.find((x) => x.id === id)?.label || NEWS_REGION_LABELS[id] || id;
 const NEWS_TIER1 = '(site:reuters.com OR site:bloomberg.com OR site:ft.com OR site:apnews.com OR site:cnbc.com)';
 const decodeEnt = (s) => String(s || '').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&nbsp;/g, ' ').trim();
@@ -1715,6 +1729,23 @@ const MACRO_COUNTRIES = {
     { id: 'au', label: 'Australia', iso3: 'AUS', oil: 'importer', fx: 'AUDUSD=X', fxLabel: 'AUD / USD', index: '^AXJO', indexLabel: 'ASX 200' },
     { id: 'tw', label: 'Taiwan', iso3: 'TWN', oil: 'importer', fx: 'USDTWD=X', fxLabel: 'USD / TWD', index: '^TWII', indexLabel: 'TAIEX' },
   ],
+  // Gulf: none of these currencies float (all three are USD-pegged), so the equity line is where the
+  // oil/gas story shows up. No Yahoo index exists for Tadawul/DFM/QSE — the US-listed iShares MSCI
+  // country ETFs are the live proxy, labelled as such (same pattern as THD/EPHE/VNM).
+  me: [
+    { id: 'sa', label: 'Saudi Arabia', iso3: 'SAU', oil: 'exporter', fx: 'USDSAR=X', fxLabel: 'USD / SAR', index: 'KSA', indexLabel: 'Saudi Arabia (KSA ETF proxy)', peg: 3.75 },
+    { id: 'ae', label: 'United Arab Emirates', iso3: 'ARE', oil: 'exporter', fx: 'USDAED=X', fxLabel: 'USD / AED', index: 'UAE', indexLabel: 'UAE (UAE ETF proxy)', peg: 3.6725 },
+    { id: 'qa', label: 'Qatar', iso3: 'QAT', oil: 'exporter', fx: 'USDQAR=X', fxLabel: 'USD / QAR', index: 'QAT', indexLabel: 'Qatar (QAT ETF proxy)', peg: 3.64 },
+  ],
+  // Africa. South Africa has a real free equity proxy (EZA); Nigeria and Kenya have none — no index
+  // on Yahoo (^NGX/^NSE20 are empty), no surviving US-listed ETF (Global X Nigeria's NGE is gone, and
+  // the symbol "KEN" is Kenon Holdings, an Israeli company — NOT Kenya), and no Yahoo Lagos/Nairobi
+  // listings. So those two ship FX + macro + news only, with the index line honestly declared missing.
+  af: [
+    { id: 'za', label: 'South Africa', iso3: 'ZAF', oil: 'importer', fx: 'USDZAR=X', fxLabel: 'USD / ZAR', index: 'EZA', indexLabel: 'South Africa (EZA ETF proxy)' },
+    { id: 'ng', label: 'Nigeria', iso3: 'NGA', oil: 'exporter', fx: 'USDNGN=X', fxLabel: 'USD / NGN', index: null, indexLabel: null },
+    { id: 'ke', label: 'Kenya', iso3: 'KEN', oil: 'importer', fx: 'USDKES=X', fxLabel: 'USD / KES', index: null, indexLabel: null },
+  ],
 };
 const ALL_COUNTRIES = Object.fromEntries(Object.entries(MACRO_COUNTRIES).flatMap(([region, list]) => list.map((c) => [c.id, { ...c, region }])));
 const COUNTRY_MACRO_REGION = { us: 'us', ea: 'eu' }; // where free official macro is actually current
@@ -1722,7 +1753,8 @@ const COUNTRY_MACRO_REGION = { us: 'us', ea: 'eu' }; // where free official macr
 // Country-scoped upcoming catalysts — real dated releases from TradingView's public economic
 // calendar (the same JSON its own calendar page uses; it 403s without an Origin header). Only
 // high/medium-importance releases are kept, so the list stays short and relevant to the country.
-const TV_COUNTRY = { us: 'US', ea: 'EU', de: 'DE', fr: 'FR', uk: 'GB', jp: 'JP', in: 'IN', cn: 'CN', hk: 'HK', sg: 'SG', id: 'ID', th: 'TH', my: 'MY', ph: 'PH', vn: 'VN', kr: 'KR', au: 'AU', tw: 'TW' };
+const TV_COUNTRY = { us: 'US', ea: 'EU', de: 'DE', fr: 'FR', uk: 'GB', jp: 'JP', in: 'IN', cn: 'CN', hk: 'HK', sg: 'SG', id: 'ID', th: 'TH', my: 'MY', ph: 'PH', vn: 'VN', kr: 'KR', au: 'AU', tw: 'TW',
+  sa: 'SA', ae: 'AE', qa: 'QA', za: 'ZA', ng: 'NG', ke: 'KE' };
 const TV_HEADERS = { ...UA, Origin: 'https://www.tradingview.com', Referer: 'https://www.tradingview.com/economic-calendar/', Accept: 'application/json' };
 const etParts = (iso) => {
   const d = new Date(iso);
@@ -1738,7 +1770,7 @@ const tvCalendar = (cc) => cached('tvcal:' + cc, 3 * 3600e3, async () => {
   const j = await r.json();
   // Keep the notable releases; if a country only has low-impact ones (HK, VN, TW…), show those
   // rather than an empty list so the panel still reflects the country. Holidays are not catalysts.
-  const all = (j.result || []).filter((e) => e.date && !/\b(holiday|festival)\b/i.test(e.title || ''));
+  const all = (j.result || []).filter((e) => e.date && e.indicator !== 'Holidays' && !/\b(holiday|festival)\b/i.test(e.title || ''));
   const strong = all.filter((e) => e.importance >= 0);
   return (strong.length ? strong : all).map((e) => ({ ...etParts(e.date), name: e.title, importance: e.importance }));
 });
@@ -1786,7 +1818,9 @@ async function getCountrySeries(id, range = '1y') {
     if (c.index) { try { idxMap = (await cached(`csr:${cfg[0]}:${c.index}`, 3600e3, () => yahooSeries(c.index, cfg[0], cfg[1]))).series; } catch {} }
     const dates = [...new Set([...Object.keys(idxMap), ...Object.keys(fxMap)])].sort();
     const at = (o, d) => (o[d] != null ? o[d] : null);
-    return { id, label: c.label, range, dates, index: dates.map((d) => at(idxMap, d)), fx: dates.map((d) => at(fxMap, d)), indexLabel: c.index ? c.indexLabel : null, fxLabel: c.fxLabel };
+    // For a pegged currency the FX line is a constant (plus upstream bad ticks), so it is left out of
+    // the chart entirely — the equity line is where the oil/gas signal actually shows up.
+    return { id, label: c.label, range, dates, index: dates.map((d) => at(idxMap, d)), fx: c.peg ? [] : dates.map((d) => at(fxMap, d)), indexLabel: c.index ? c.indexLabel : null, fxLabel: c.fxLabel, peg: c.peg || null };
   });
 }
 
@@ -1818,7 +1852,8 @@ async function getRegionTickers(region) {
   });
 }
 // BIS central-bank policy rates (free). Area codes: euro area = XM; DE/FR use XM.
-const BIS_AREA = { us: 'US', ea: 'XM', de: 'XM', fr: 'XM', uk: 'GB', jp: 'JP', cn: 'CN', hk: 'HK', id: 'ID', th: 'TH', my: 'MY', ph: 'PH', in: 'IN', kr: 'KR', au: 'AU' };
+const BIS_AREA = { us: 'US', ea: 'XM', de: 'XM', fr: 'XM', uk: 'GB', jp: 'JP', cn: 'CN', hk: 'HK', id: 'ID', th: 'TH', my: 'MY', ph: 'PH', in: 'IN', kr: 'KR', au: 'AU',
+  sa: 'SA', za: 'ZA' };   // verified: BIS carries SA and ZA; it does not carry AE, QA, NG or KE
 // Government bond yields (FRED). US is daily (2-yr & 10-yr Treasury); the rest are the
 // OECD monthly series (3-month interbank + 10-yr), which lag by a month or two.
 const BOND_YIELDS = {
@@ -1850,6 +1885,11 @@ const COUNTRY_COMMODITY_LINKS = {
   kr: [['WTI crude', 'CL=F'], ['Copper', 'HG=F']],
   au: [['Copper', 'HG=F'], ['Gold', 'GC=F']],
   tw: [['Copper', 'HG=F'], ['WTI crude', 'CL=F']],
+  // No entries for sa/ae/qa on purpose: a pegged currency does not correlate with anything, so the
+  // card would print noise. The peg itself is the fact, and the card says so instead.
+  za: [['Gold', 'GC=F'], ['Platinum', 'PL=F']],
+  ng: [['Brent crude', 'BZ=F']],
+  ke: [['Coffee', 'KC=F']],
 };
 // Where there is no policy rate, say why (accurately).
 const POLICY_NOTE = {
@@ -1857,6 +1897,10 @@ const POLICY_NOTE = {
   tw: 'Taiwan’s policy rate (CBC discount rate) is not on the free BIS policy-rate feed.',
   vn: 'Vietnam’s policy rate (SBV refinancing rate) is not on the free BIS policy-rate feed.',
   ph: 'The BIS series currently carries no value for the Philippines policy rate.',
+  ae: 'The dirham is pegged to the US dollar (3.6725) and the CBUAE base rate is set to track the Fed, so it is not in the BIS policy-rate feed.',
+  qa: 'The riyal is pegged to the US dollar (3.64) and QCB rates track the Fed, so they are not in the BIS policy-rate feed.',
+  ng: 'The Central Bank of Nigeria\u2019s policy rate (MPR) is not on the free BIS policy-rate feed.',
+  ke: 'The Central Bank of Kenya\u2019s policy rate is not on the free BIS policy-rate feed.',
 };
 async function getPolicyRate(area) {
   if (!area) return null;
@@ -1932,8 +1976,10 @@ async function getCountry(id) {
     const debtToGdp = snap?.debtToGdp || fredDebtToGdp || wbDebt;
     const cpi = snap?.cpi?.length ? snap.cpi : wbCpi.slice(-25);
     const inflation = snap?.inflation || (cpi.length ? cpi[cpi.length - 1] : null);
-    const unemployment = snap?.unemployment || wbUnemp;
-    const perf = { index: chg(cs.index), fx: chg(cs.fx) };
+    // Newer vintage wins: the IMF line stops in 2018 for Nigeria while the World Bank has 2025.
+    const unempFromWb = !snap?.unemployment || (wbUnemp && wbUnemp.year > snap.unemployment.year);
+    const unemployment = unempFromWb ? wbUnemp : snap.unemployment;
+    const perf = { index: chg(cs.index), fx: c.peg ? null : chg(cs.fx) };
     // Every price in the country card gets the same multi-horizon moves + a source/as-of.
     const fxDeltas = mapDeltas(fxDlMap);
     const idxDeltas = mapDeltas(idxDlMap);
@@ -1943,18 +1989,24 @@ async function getCountry(id) {
     if (policy) takes.push(`Central bank policy rate <b>${policy.latest.value}%</b> (as of ${policy.latest.date}).`);
     else if (POLICY_NOTE[id]) takes.push(POLICY_NOTE[id]);
     if (perf.index != null && c.index) takes.push(`${c.indexLabel} <b>${perf.index >= 0 ? '+' : ''}${perf.index.toFixed(0)}%</b> over the last year.`);
-    if (perf.fx != null) takes.push(`${c.fxLabel} <b>${perf.fx >= 0 ? '+' : ''}${perf.fx.toFixed(0)}%</b> over the last year${perf.fx >= 0 ? ' (a higher USD-pair = weaker local currency)' : ''}.`);
+    if (perf.fx != null && !c.peg) takes.push(`${c.fxLabel} <b>${perf.fx >= 0 ? '+' : ''}${perf.fx.toFixed(0)}%</b> over the last year${perf.fx >= 0 ? ' (a higher USD-pair = weaker local currency)' : ''}.`);
     if (inflation || unemployment) takes.push(`Inflation <b>${inflation ? inflation.value + '% (' + inflation.year + ')' : 'n/a'}</b> · unemployment <b>${unemployment ? unemployment.value + '% (' + unemployment.year + ')' : 'n/a'}</b>.`);
     if (debtToGdp && debtToGdp.year >= 2018) takes.push(`Government debt is <b>${debtToGdp.value}% of GDP</b> (${debtToGdp.year}).`);
-    if (oilLink != null) takes.push(`${c.label} is a net oil ${c.oil}; its currency's 3-month correlation vs Brent is <b>${oilLink}</b>.`);
+    if (c.peg) takes.push(`${c.label}\u2019s currency is <b>pegged to the US dollar at ${c.peg}</b>, so the FX line barely moves \u2014 the oil story shows up in the equity line instead.`);
+    else if (oilLink != null) takes.push(`${c.label} is a net oil ${c.oil}; its currency's 3-month correlation vs Brent is <b>${oilLink}</b>.`);
     try { const mn = await getMacroNews(id); for (const it of (mn.items || []).slice(0, 2)) takes.push(`<b>${it.kind}</b>: ${escHtml(it.title)}.`); } catch {}
     return {
-      id, label: c.label, region: c.region, iso3: c.iso3, oil: c.oil,
-      fx: { label: c.fxLabel, sym: c.fx, ...fx, deltas: fxDeltas, asOf, source: 'Yahoo Finance' },
+      id, label: c.label, region: c.region, iso3: c.iso3, oil: c.oil, peg: c.peg || null,
+      // A peg is a constant: the upstream daily series carries bad ticks (USDSAR reads 3.6397 for days
+      // then jumps to the true 3.7526), so any % change off it is noise. Keep the level, drop the moves.
+      fx: { label: c.fxLabel, sym: c.fx, ...(c.peg ? { price: fx.price, pct: null } : fx), deltas: c.peg ? {} : fxDeltas, asOf, source: 'Yahoo Finance' },
       index: { label: c.indexLabel, sym: c.index, ...idx, deltas: idxDeltas, asOf, source: 'Yahoo Finance' },
       macro, oilLink, perf, takeaways: takes, policy, policyNote: POLICY_NOTE[id] || null, links,
       cpi,   // annual CPI inflation % (IMF WEO, World Bank fallback)
-      fund: { gdpGrowth: gdpGrowth.slice(-6), debtToGdp, inflation, unemployment, source: snap ? 'IMF WEO (annual snapshot)' : (fredDebtToGdp ? 'Debt/GDP: FRED (OECD) · others World Bank (annual)' : 'World Bank (annual)') },
+      fund: { gdpGrowth: gdpGrowth.slice(-6), debtToGdp, inflation, unemployment,
+        source: snap
+          ? ('IMF WEO (annual snapshot)' + (unempFromWb && wbUnemp ? ' · unemployment: World Bank' : ''))
+          : (fredDebtToGdp ? 'Debt/GDP: FRED (OECD) · others World Bank (annual)' : 'World Bank (annual)') },
     };
   });
 }
@@ -2176,7 +2228,9 @@ async function getMacroNews(id) {
   return cached('mnews:' + id, 40 * 60e3, async () => {
     // Drop anything that is not actually an economy/market story — e.g. a sports or film headline
     // that merely names the country (the MACRO domain guard).
-    const items = (await fetchGoogleNews(`(${terms}) (rate OR inflation OR economy OR election OR sanctions OR protest OR IMF OR stimulus OR tariff OR downgrade)`, 30).catch(() => [])).filter((it) => newsContextOk(it.title, { domain: 'macro' }));
+    const items = (await fetchGoogleNews(`(${terms}) (rate OR inflation OR economy OR election OR sanctions OR protest OR IMF OR stimulus OR tariff OR downgrade)`, 30).catch(() => []))
+      .filter((it) => newsContextOk(it.title, { domain: 'macro' })   // must BE an economy story...
+        && titleMatches(id, it.title));                              // ...and name THIS country
     const now = Date.now();
     for (const it of items) {
       let kind = 'Economy', weight = 1;
