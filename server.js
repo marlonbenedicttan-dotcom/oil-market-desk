@@ -908,6 +908,13 @@ const FX_SYMS = [
   { id: 'usdnok', label: 'USD / NOK · oil', sym: 'USDNOK=X', dp: 3 },
   { id: 'usdbrl', label: 'USD / BRL · agri', sym: 'USDBRL=X', dp: 3 },
   { id: 'usdzar', label: 'USD / ZAR · gold', sym: 'USDZAR=X', dp: 3 },
+  // Gulf + Africa. The three Gulf pairs are USD-pegged: the peg is stored on the currency so every
+  // path that publishes a quote can drop the meaningless % move (see noMoveIfPegged below).
+  { id: 'usdsar', label: 'USD / SAR · pegged', sym: 'USDSAR=X', dp: 4, peg: 3.75 },
+  { id: 'usdaed', label: 'USD / AED · pegged', sym: 'USDAED=X', dp: 4, peg: 3.6725 },
+  { id: 'usdqar', label: 'USD / QAR · pegged', sym: 'USDQAR=X', dp: 4, peg: 3.64 },
+  { id: 'usdngn', label: 'USD / NGN', sym: 'USDNGN=X', dp: 2 },
+  { id: 'usdkes', label: 'USD / KES', sym: 'USDKES=X', dp: 2 },
   { id: 'usdmxn', label: 'USD / MXN · oil', sym: 'USDMXN=X', dp: 3 },
   { id: 'usdinr', label: 'USD / INR', sym: 'USDINR=X', dp: 2 },
   { id: 'usdchf', label: 'USD / CHF', sym: 'USDCHF=X', dp: 4 },
@@ -932,6 +939,11 @@ const FX_LINKS = [
   { id: 'zar', pair: 'USD / ZAR · gold',   sym: 'USDZAR=X', commodity: 'Gold',      csym: 'GC=F', expect: -1 },
   { id: 'mxn', pair: 'USD / MXN · oil',    sym: 'USDMXN=X', commodity: 'WTI crude', csym: 'CL=F', expect: -1 },
 ];
+
+// A pegged currency's % move is noise, not data: the upstream daily series carries bad ticks (USDSAR
+// reads 3.6397 for days, then jumps to the true 3.7526) and a peg is a constant by definition. Every
+// publish path pushes quotes through here so a pegged pair reports its LEVEL and no moves.
+const noMoveIfPegged = (c, quote) => (c && c.peg ? { ...quote, pct: null } : quote);
 
 // Cached Yahoo daily series, keyed by range so different windows never collide.
 const yc = (sym, range = '3mo') => cached(`yq:${range}:${sym}`, 3600e3, () => yahooSeries(sym, range, '1d'));
@@ -966,12 +978,12 @@ async function getMacroDash() {
     const cpiLast = cpiDates.length ? cpi[cpiDates[cpiDates.length - 1]] : null;
     const cpiPrevYr = cpiDates.length > 12 ? cpi[cpiDates[cpiDates.length - 13]] : null;
     const r2 = last(dgs2), r10 = last(dgs10), ffr = last(ff), g = last(gdp), u = last(unrate), ecbLast = last(ecb);
-    const fx = await Promise.all(FX_SYMS.map(async (m) => {
+    const fx = await Promise.all(FX_SYMS.map(async (m) => {   // m.peg = a USD-pegged pair: level only
       try {
         const { price, series } = await cached('q:' + m.sym, 120e3, () => yahooSeries(m.sym, '5d', '1d'));
         const d = Object.keys(series).sort();
         const a = series[d[d.length - 1]], b = series[d[d.length - 2]];
-        return { id: m.id, label: m.label, price: a ?? price ?? null, pct: a != null && b ? ((a - b) / b) * 100 : null };
+        return { id: m.id, label: m.label, price: a ?? price ?? null, pct: m.peg ? null : (a != null && b ? ((a - b) / b) * 100 : null) };
       } catch { return { id: m.id, label: m.label, price: null, pct: null }; }
     }));
     // Do commodity currencies still track their commodity? (3-month daily returns)
@@ -1829,7 +1841,7 @@ async function getMacroTickers() {
   return cached('macrotickers', 120e3, async () => {
     const q = async (sym) => { try { const { price, series } = await cached('q:' + sym, 120e3, () => yahooSeries(sym, '5d', '1d')); const d = Object.keys(series).sort(); const a = series[d[d.length - 1]], b = series[d[d.length - 2]]; return { price: a ?? price ?? null, pct: a != null && b ? ((a - b) / b) * 100 : null }; } catch { return { price: null, pct: null }; } };
     const items = (await Promise.all(Object.values(ALL_COUNTRIES).map(async (c) => {
-      const arr = [{ id: c.id, label: c.fxLabel.replace(/\s*·.*/, ''), ...(await q(c.fx)) }];
+      const arr = [{ id: c.id, label: c.fxLabel.replace(/\s*·.*/, ''), ...noMoveIfPegged(c, await q(c.fx)) }];
       if (c.index) arr.push({ id: c.id, label: c.indexLabel, ...(await q(c.index)) });
       return arr;
     }))).flat();
@@ -1844,7 +1856,7 @@ async function getRegionTickers(region) {
     // Multi-horizon moves from the same 2-year series the country panel uses.
     const dl = (sym) => deltaSeries(sym).then((r) => mapDeltas(r.series)).catch(() => null);
     const items = (await Promise.all(list.map(async (c) => {
-      const arr = [{ id: c.id, label: c.fxLabel.replace(/\s*·.*/, ''), kind: 'fx', ...(await q(c.fx)), deltas: await dl(c.fx) }];
+      const arr = [{ id: c.id, label: c.fxLabel.replace(/\s*·.*/, ''), kind: 'fx', ...noMoveIfPegged(c, await q(c.fx)), deltas: c.peg ? {} : await dl(c.fx) }];
       if (c.index) arr.push({ id: c.id, label: c.indexLabel, kind: 'index', ...(await q(c.index)), deltas: await dl(c.index) });
       return arr;
     }))).flat();
@@ -2277,7 +2289,7 @@ async function getTransmission() {
       add({ id: 'oil-inflation-rates', trigger: `Oil ${oil1m >= 0 ? '+' : ''}${oil1m.toFixed(1)}% in a month${tight ? ' with the curve in backwardation (tight)' : ''}`,
         chain: 'Higher oil lifts <b>inflation expectations</b> → central banks stay hawkish and bond <b>yields rise</b> → higher <b>real yields</b> are a headwind for precious metals, while the dollar firms. Energy costs squeeze users.',
         benefits: ['Energy producers & services', 'Banks (steeper curve)'], hurt: ['Precious metals (via real yields)', 'Rate-sensitive growth & property', 'Airlines, trucking, chemicals'],
-        up: ['XOM', 'CVX', 'COP', 'SLB'], down: ['NEM', 'GDX', 'AAL', 'DAL'], segments: ['crude', 'refined', 'precious', 'industrial'], regions: ['us', 'eu', 'jp', 'apac'] });
+        up: ['XOM', 'CVX', 'COP', 'SLB'], down: ['NEM', 'GDX', 'AAL', 'DAL'], segments: ['crude', 'refined', 'precious', 'industrial'], regions: ['us', 'eu', 'jp', 'apac', 'me', 'af'] });
       add({ id: 'oil-importers', trigger: `Oil ${oil1m >= 0 ? '+' : ''}${oil1m.toFixed(1)}% in a month`,
         chain: 'Oil is priced in dollars and imported by most of Europe & Asia — a rising oil bill widens their <b>trade deficit</b>, pressures their <b>currencies</b> and squeezes consumer spending, while exporters gain.',
         benefits: ['Oil exporters (Norway, Canada, Brazil, Gulf, US shale)'], hurt: ['Big oil importers: Japan, euro area, India, Korea, China'],
@@ -2287,7 +2299,7 @@ async function getTransmission() {
       add({ id: 'oil-deflation-rates', trigger: `Oil ${oil1m.toFixed(1)}% in a month`,
         chain: 'Falling oil cools <b>inflation expectations</b> → room for lower rates → a tailwind for <b>precious metals</b> and rate-sensitive assets, and relief for fuel users; energy producers lose out.',
         benefits: ['Airlines, trucking, chemicals', 'Precious metals (if yields fall)'], hurt: ['Energy producers & services'],
-        up: ['DAL', 'UAL', 'GDX'], down: ['XOM', 'COP', 'SLB'], segments: ['crude', 'refined', 'precious'], regions: ['us', 'eu', 'jp', 'apac'] });
+        up: ['DAL', 'UAL', 'GDX'], down: ['XOM', 'COP', 'SLB'], segments: ['crude', 'refined', 'precious'], regions: ['us', 'eu', 'jp', 'apac', 'me', 'af'] });
     }
     if (dxy1m != null && Math.abs(dxy1m) > 1.5) {
       const up = dxy1m > 0;
@@ -2295,7 +2307,7 @@ async function getTransmission() {
         chain: up ? 'A firmer dollar makes dollar-priced commodities <b>more expensive</b> for the rest of the world, a broad headwind, and tightens global financial conditions, pressing emerging markets.'
           : 'A softer dollar makes dollar-priced commodities <b>cheaper</b> for the world, a broad tailwind, and eases global financial conditions, supporting emerging markets.',
         benefits: up ? ['US importers', 'dollar-funded carry'] : ['Commodities broadly', 'Emerging-market assets'], hurt: up ? ['Commodities', 'EM currencies & assets'] : ['US import prices (inflation risk)'],
-        up: up ? [] : ['GLD', 'EEM', 'FCX'], down: up ? ['GLD', 'EEM', 'FCX'] : [], segments: ['precious', 'industrial', 'grains', 'softs', 'crude'], regions: ['us'] });
+        up: up ? [] : ['GLD', 'EEM', 'FCX'], down: up ? ['GLD', 'EEM', 'FCX'] : [], segments: ['precious', 'industrial', 'grains', 'softs', 'crude'], regions: ['us', 'af'] });
     }
     if (rateChg != null && Math.abs(rateChg) >= 0.15) {
       const up = rateChg > 0;
@@ -2307,19 +2319,19 @@ async function getTransmission() {
     if (gold1m != null && gold1m > 3 && rateChg != null && rateChg > 0.1) {
       add({ id: 'gold-vs-yields', trigger: `Gold +${gold1m.toFixed(1)}% while 10-year yields also rose ${rateChg.toFixed(2)}pp`,
         chain: 'Gold rising <b>despite</b> higher yields is unusual — it points to <b>demand-driven buying</b> (central banks, safe-haven/geopolitical), not the usual rates channel. Often a bigger, more persistent move.',
-        benefits: ['Gold & silver miners', 'Royalty/streamers'], hurt: ['—'], up: ['NEM', 'AEM', 'GDX', 'WPM'], down: [], segments: ['precious'], regions: ['us', 'apac'] });
+        benefits: ['Gold & silver miners', 'Royalty/streamers'], hurt: ['—'], up: ['NEM', 'AEM', 'GDX', 'WPM'], down: [], segments: ['precious'], regions: ['us', 'apac', 'af'] });
     }
     if (copper1m != null && copper1m > 5) {
       add({ id: 'copper-growth', trigger: `Copper +${copper1m.toFixed(1)}% in a month`,
         chain: 'Copper is the <b>growth barometer</b> — a sharp rise signals firm industrial demand / stimulus, lifting cyclicals and rate expectations, and (via electrification) supporting grid & EV supply chains.',
         benefits: ['Copper miners', 'Electrification & grid suppliers'], hurt: ['Cost-pressured construction & autos'],
-        up: ['FCX', 'SCCO', 'RIO', 'BHP'], down: [], segments: ['industrial', 'precious'], regions: ['apac'] });
+        up: ['FCX', 'SCCO', 'RIO', 'BHP'], down: [], segments: ['industrial', 'precious'], regions: ['apac', 'af'] });
     }
     if (corn1m != null && corn1m > 4) {
       add({ id: 'food-inflation', trigger: `Grains +${corn1m.toFixed(1)}% in a month`,
         chain: 'Higher grains feed <b>food inflation</b> (a regressive squeeze on consumers, especially in emerging Asia) while helping farmers, inputs and grain traders.',
         benefits: ['Farm inputs & equipment', 'Grain traders & processors'], hurt: ['Food makers', 'Livestock (feed cost)', 'EM consumers'],
-        up: ['DE', 'ADM', 'BG', 'CF'], down: ['TSN', 'KHC'], segments: ['grains', 'softs'], regions: ['apac', 'eu'] });
+        up: ['DE', 'ADM', 'BG', 'CF'], down: ['TSN', 'KHC'], segments: ['grains', 'softs'], regions: ['apac', 'eu', 'af'] });
     }
     return { ideas, signals: { oil1m, oil3m, dxy1m, gold1m, copper1m, corn1m, rateChg, brentShape: curves?.brent?.shape ?? null }, us10y: r10, generated: new Date().toISOString() };
   });

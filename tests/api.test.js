@@ -218,6 +218,21 @@ test('/api/countries, /api/country and /api/region-quotes', async () => {
   const mt = await (await fetch(`http://localhost:${PORT}/api/region-quotes?id=apac`)).json();
   assert.ok(Array.isArray(mt.items) && mt.items.length >= 8);   // currencies (and indices where free)
   assert.ok(mt.items.some((i) => i.deltas && 'd1' in i.deltas), 'region currencies carry deltas');
+  // A pegged currency reports its level and NO moves — on every path that publishes a quote, not just
+  // the country card (the Gulf tape and region board leaked a fake +3.3% before this).
+  const gulf = await (await fetch(`http://localhost:${PORT}/api/region-quotes?id=me`)).json();
+  assert.equal(gulf.items.length, 6, 'Gulf region: 3 currencies + 3 equity proxies');
+  for (const it of gulf.items.filter((i) => i.kind === 'fx')) {
+    assert.equal(it.pct, null, `${it.label} must not report a daily % (pegged)`);
+    assert.deepEqual(it.deltas, {}, `${it.label} must not report multi-horizon moves (pegged)`);
+    assert.ok(it.price > 3 && it.price < 4, `${it.label} still reports its level`);
+  }
+  assert.ok(gulf.items.filter((i) => i.kind === 'index').every((i) => i.price > 0), 'the Gulf equity proxies still quote');
+  // and the new currencies are chartable + offered in the currency dropdown
+  const fxl = await (await fetch(`http://localhost:${PORT}/api/fx`)).json();
+  for (const id of ['usdsar', 'usdaed', 'usdqar', 'usdngn', 'usdkes', 'usdzar']) {
+    assert.ok(fxl.some((f) => f.id === id), `${id} is chartable`);
+  }
 });
 
 test('/api/headlines + /api/fundamentals respond', async () => {

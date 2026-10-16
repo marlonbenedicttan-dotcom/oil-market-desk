@@ -770,3 +770,31 @@ gaps are handled, not hidden.
   shilling** story reached Qatar/Kenya cards. Country news must now also **name the country**
   (`titleMatches`), and "shilling" was dropped from the Kenya query. All 24 countries still return 4–6
   items — tighter, nothing starved. `app.js?v=116`.
+## Sweep of the Gulf/Africa addition (2026-10-16) — 3 bugs found and fixed, + the Nigeria ETF verdict
+The user asked for a sweep and a harder look at a Nigeria equity line. Both done.
+- **Nigeria: there is no usable equity instrument, definitively.** Yahoo's own symbol search (which
+  is how you find anything) returns **no ETF** ("Nigeria ETF" → 0 hits; Global X's `NGE` is gone),
+  **no Lagos listings** (`.LAG` 404s), and only **reference-only MSCI entries** — `^704932-USD-GRTR`,
+  `^704932-USD-STRD`, `^704958-USD-*` and friends exist in search but return **no chart data at any
+  range**, exactly like `^TASI.SR`. Same story for Kenya ("MSCI Kenya" → 0 hits). So `index: null` is
+  the honest answer and it stays. Dangote reaches the desk through news instead, which is where the
+  story actually lives.
+- **Bug 1 — the pegged-currency fix only covered the country card.** The fake "+3.3% today" on USD/SAR
+  (from Yahoo's bad prior tick) still leaked into **three other publish paths**: the all-country top
+  tape (`/api/macro-tickers`), the region board behind the CURRENCIES panel (`/api/region-quotes`) and
+  the macrodash currency tape. All three now run quotes through one helper — `noMoveIfPegged(c, quote)`
+  — and the peg lives on the currency definition too (`FX_SYMS … peg: 3.75`). A regression test asserts
+  the Gulf region board reports `pct: null` **and** empty deltas while still reporting the level.
+- **Bug 2 — the new currencies were not chartable.** `FX_SYMS` drives both the CHART's CURRENCIES
+  dropdown and whether a CURRENCIES tile is clickable, and SAR/AED/QAR/NGN/KES weren't in it (ZAR
+  already was) — so the Gulf/Africa tiles were inert. Added, with the three pegs marked. Verified: the
+  tile now carries `data-metric=fx:usdsar` and clicking it charts that pair.
+- **Bug 3 — the new regions could never show a cross-asset signal.** The transmission rules' `regions`
+  tags covered only us/eu/jp/apac/cn/in, so "CROSS-ASSET — HOW THIS REGION IS AFFECTED" was **always
+  empty** for Middle East and Africa, even with oil down 6% in a month. Tagged: the two oil rules now
+  include **me + af** (both are oil-exporting regions), and the dollar / gold / copper / food-inflation
+  rules include **af**. Verified live: me = 1 idea, af = 2 (was 0/0).
+- **Label fixed:** the inflation panel said "(World Bank)" while the number is the **IMF WEO snapshot**
+  for most countries → "(IMF WEO / World Bank)".
+- Regression checks: all 24 countries still return 4–6 fresh news items, all 6 new country cards load
+  (1–5 ms warm), no console errors, no horizontal overflow, 94 tests pass.
