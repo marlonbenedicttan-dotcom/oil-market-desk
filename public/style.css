@@ -283,6 +283,13 @@ footer li { margin-bottom: 2px; }
 .brief-col { padding: 0 4px 8px; }
 .brief-col:first-child { border-right: 1px solid var(--line); }
 @media (max-width: 760px) { .brief-cols { grid-template-columns: 1fr; } .brief-col:first-child { border-right: 0; border-bottom: 1px solid var(--line); } }
+/* DAILY BRIEF — macro block: the day's country moves, each with the wire story that explains it. */
+.brief-macro { border-bottom: 1px solid var(--line); padding-bottom: 6px; }
+.bm-go { color: var(--amber); font-size: 10px; letter-spacing: .5px; text-decoration: none; border-bottom: 1px dotted var(--amber); white-space: nowrap; }
+.bm-go:hover { color: var(--amber2); border-bottom-color: var(--amber2); }
+.bm-why { margin: 3px 0 2px; font-size: 11px; line-height: 1.5; }
+.bm-why a { color: #c9d4df; text-decoration: none; }
+.bm-why a:hover { color: var(--amber); }
 .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); }
 .kpi { padding: 10px 14px; border-right: 1px solid var(--line); }
 .kpi:last-child { border-right: 0; }

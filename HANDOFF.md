@@ -826,3 +826,22 @@ The user asked for a sweep and a harder look at a Nigeria equity line. Both done
   names ("Kenya"), and the two new regions gained the `NEWS_QUERIES` / `NEWS_MUST` entries every other
   region already had.
 - 94 tests pass, including a new assertion that country news comes from a real wire.
+## The daily brief now covers macro, not just commodities (2026-10-17)
+- **The gap:** `buildBrief()` built "what happened" from `m.benchmarks` only (the 31 commodity
+  instruments) plus the WTI curve, US crude stocks and CFTC positioning. So a day like *"MSCI may cut
+  Indonesia from its indices → stocks fall the most since 1998"* never appeared on HOME at all.
+- **New `macro` section.** Every country tape item already carries the same multi-horizon deltas as the
+  commodity tape, so the brief now ranks all 24 countries' indices and currencies by today's move.
+  Bars: index **≥1.5%**, floating currency **≥0.75%** (below that the block would cry wolf every day).
+  **Pegged Gulf currencies carry no deltas at all**, so they can never appear as a fake mover.
+- **Each top mover gets the wire story that explains it** — the most recent (≤4 days) tier-1 headline,
+  preferring one whose own direction agrees with the move (a "stocks tumble" story for a fall), and the
+  line deep-links to that country's MACRO page (`#/macro/<region>/<id>`).
+- **The headline names a dramatic macro move too:** *"Biggest move: Class III Milk up 15.0% · South
+  Korea's index down 7.6% · WTI (Cushing) basis at the 100th percentile — physical dislocation."*
+- **Rendered as its own block** directly under the headline — **always present**, with an honest line on
+  quiet days ("No country index moved more than 1.5% …") so a reader can tell macro *is* covered; the
+  commodity column is now labelled **COMMODITIES — WHAT HAPPENED** so the two never blur. Verified on
+  desktop and mobile (no overflow). `app.js?v=118`, `style.css?v=63`.
+- 95 tests — new: the brief carries a macro section, each mover has a country deep link, and a pegged
+  currency is never listed as a mover.

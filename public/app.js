@@ -2004,9 +2004,21 @@ function renderBrief(b) {
   if (upd) upd.textContent = 'as of ' + new Date(b.updated).toLocaleString('en-GB');
   const happened = (b.happened || []).map((x) => `<li>${x.text}</li>`).join('') || '<li class="dimtext">No notable moves.</li>';
   const next = (b.next || []).map((e) => `<li><b>${e.name}</b>${e.date ? ` — ${e.date}` : ''} <span class="dimtext">${e.note || ''}</span></li>`).join('') || '<li class="dimtext">Nothing scheduled.</li>';
-  el.innerHTML = `<div class="brief-head">${b.headline || ''}</div>
+  // The brief used to be commodities-only. Countries move the tape too (an index can fall 8% on an
+  // index-provider decision), so the day's macro moves sit right under the headline, each with the
+  // wire story that explains it and a link to that country's page.
+  const macro = (b.macro || []);
+  // Always shown, even when quiet — otherwise a reader can't tell whether macro is covered at all.
+  const macroBlock = `<div class="brief-macro"><div class="gtitle">MACRO — WHAT MOVED TODAY</div><ul class="ins-list">`
+    + (macro.length
+        ? macro.map((x) => `<li>${x.text} <a class="bm-go" href="${esc(x.route || '#/macro')}">open</a>`
+            + (x.why ? `<div class="bm-why"><a href="${esc(x.why.url)}" target="_blank" rel="noopener noreferrer">${esc(x.why.title)}</a> <span class="dimtext">— ${esc(x.why.source)}</span></div>` : '')
+            + '</li>').join('')
+        : '<li class="dimtext">No country index moved more than 1.5% and no floating currency more than 0.75% today.</li>')
+    + '</ul></div>';
+  el.innerHTML = `<div class="brief-head">${b.headline || ''}</div>${macroBlock}
     <div class="brief-cols">
-      <div class="brief-col"><div class="gtitle">WHAT HAPPENED</div><ul class="ins-list">${happened}</ul></div>
+      <div class="brief-col"><div class="gtitle">COMMODITIES — WHAT HAPPENED</div><ul class="ins-list">${happened}</ul></div>
       <div class="brief-col"><div class="gtitle">WHAT'S ON TODAY / NEXT</div><ul class="ins-list">${next}</ul></div>
     </div>`;
 }

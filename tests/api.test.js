@@ -41,6 +41,22 @@ test('serves the dashboard', async () => {
   assert.doesNotMatch(html, /href="\/api\/digest"/);
 });
 
+test('/api/brief covers macro, not just commodities', async () => {
+  const b = await (await fetch(`http://localhost:${PORT}/api/brief`)).json();
+  assert.ok(b.headline, 'brief headline');
+  assert.ok(Array.isArray(b.happened) && b.happened.length, 'commodities section');
+  assert.ok(Array.isArray(b.macro), 'a macro section exists (empty is fine on a quiet day)');
+  for (const m of b.macro) {
+    assert.ok(m.label && m.route && /^#\/macro\//.test(m.route), 'macro move carries a country deep link');
+    assert.ok(m.text && typeof m.d1 === 'number', 'macro move has text + a move');
+    assert.ok(['index', 'fx'].includes(m.kind), 'macro move is an index or a currency');
+    if (m.why) assert.ok(/^https?:/.test(m.why.url || ''), 'the explaining headline links to its source');
+    assert.notEqual(m.kind, undefined);
+  }
+  // A pegged Gulf currency must never appear as a macro "move" (it reports no moves at all).
+  assert.ok(!b.macro.some((m) => m.kind === 'fx' && ['sa', 'ae', 'qa'].includes(m.id)), 'pegged currencies never show as movers');
+});
+
 test('pure endpoints always respond 200', async () => {
   for (const p of ['/api/chokepoints', '/api/reroute', '/api/flows']) {
     const r = await fetch(`http://localhost:${PORT}${p}`);

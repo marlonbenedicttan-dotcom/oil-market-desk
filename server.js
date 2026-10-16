@@ -2860,14 +2860,53 @@ async function buildBrief() {
     if (crude?.surprise != null) happened.push({ kind: 'stocks', id: 'wti', text: `US crude stocks ${crude.wow >= 0 ? 'built' : 'drew'} vs last week — <b>${Math.abs(crude.surprise).toLocaleString()}k bbl ${crude.surprise < 0 ? 'more drawn than usual (bullish)' : 'more built than usual (bearish)'}</b>.` });
     if (pos?.pct3y != null && (pos.pct3y >= 90 || pos.pct3y <= 10)) happened.push({ kind: 'positioning', id: 'wti', text: `Hedge funds are <b>${pos.pct3y >= 90 ? 'crowded long' : 'crowded short'}</b> crude (${pos.pct3y.toFixed(0)}th pctile, CFTC ${pos.latest.date}) — ${pos.pct3y >= 90 ? 'unwind risk' : 'squeeze fuel'}.` });
 
+    // ---- MACRO: the country moves that matter, and the wire story behind the biggest ones ----
+    // The brief used to be commodities-only, so a day like "MSCI may cut Indonesia → stocks fall the
+    // most since 1998" never appeared. Country tape items carry the same multi-horizon deltas as the
+    // commodity tape, and pegged currencies carry none at all (so they can never fake a move).
+    const regionItems = (await Promise.all(Object.keys(MACRO_COUNTRIES)
+      .map((r) => getRegionTickers(r).then((x) => x.items || []).catch(() => [])))).flat();
+    const macro = [];
+    for (const it of regionItems) {
+      const d1 = it.deltas && it.deltas.d1;
+      if (d1 == null) continue;                                   // a peg reports no moves, by design
+      const co = ALL_COUNTRIES[it.id];
+      if (!co) continue;
+      const isIdx = it.kind === 'index';
+      if (Math.abs(d1) < (isIdx ? 1.5 : 0.75)) continue;           // otherwise the brief cries wolf daily
+      macro.push({ id: it.id, label: co.label, region: co.region, kind: it.kind, sym: it.label,
+        d1, m1: it.deltas.m1 ?? null, y1: it.deltas.y1 ?? null, dp: isIdx ? 1 : 3 });
+    }
+    macro.sort((a, b) => Math.abs(b.d1) - Math.abs(a.d1));
+    const macroTop = macro.slice(0, 4);
+    // Explain the two biggest moves with a recent tier-1 headline, preferring one whose own direction
+    // agrees with the move (a "stocks sink" story for a fall, not a rally).
+    await Promise.all(macroTop.slice(0, 2).map(async (mv) => {
+      try {
+        const nw = await getMacroNews(mv.id);
+        const cand = (nw.items || []).filter((it) => (it.ageDays ?? 99) <= 4);
+        const want = mv.d1 < 0 ? 'down' : 'up';
+        const pick = cand.find((it) => newsDir(it.title) === want) || cand.find((it) => newsDir(it.title) == null) || null;
+        if (pick) mv.why = { title: pick.title, source: pick.source, url: pick.url };
+      } catch {}
+    }));
+    for (const mv of macroTop) {
+      const what = mv.kind === 'index' ? 'the stock index' : 'the currency';
+      mv.text = `${mv.label} — ${what} is <b>${mv.d1 >= 0 ? 'up' : 'down'} ${Math.abs(mv.d1).toFixed(1)}%</b> today`
+        + (mv.y1 != null ? ` — ${Math.abs(mv.y1).toFixed(0)}% ${mv.y1 >= 0 ? 'higher' : 'lower'} over a year` : '') + '.';
+      mv.route = `#/macro/${mv.region}/${mv.id}`;
+    }
+
     const cal = await getCalendar().catch(() => null);
     const next = ((cal && cal.events) || getEvents()).slice(0, 4).map((e) => ({ name: e.name, date: e.date, note: e.note }));
     const hi = alerts.find((a) => a.level === 'high');
     const mv = movers[0];
+    const bigMacro = macroTop[0] && Math.abs(macroTop[0].d1) >= 4 ? macroTop[0] : null;
     const headline = (mv ? `Biggest move: ${mv.label} ${mv.d1 >= 0 ? 'up' : 'down'} ${Math.abs(mv.d1).toFixed(1)}%` : 'Quiet session so far')
+      + (bigMacro ? ` · ${bigMacro.label}'s index ${bigMacro.d1 >= 0 ? 'up' : 'down'} ${Math.abs(bigMacro.d1).toFixed(1)}%` : '')
       + (hi ? ` · ${hi.text.replace(/\.$/, '')}` : '') + '.';
     return {
-      updated: new Date().toISOString(), headline, happened, next,
+      updated: new Date().toISOString(), headline, happened, next, macro: macroTop,
       alerts: alerts.map((a) => ({ level: a.level, text: a.text })),
       movers: movers.slice(0, 6),
     };
