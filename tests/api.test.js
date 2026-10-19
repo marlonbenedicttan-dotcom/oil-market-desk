@@ -204,7 +204,14 @@ test('/api/countries, /api/country and /api/region-quotes', async () => {
   for (const r of ['us', 'eu', 'jp', 'cn', 'in', 'apac', 'me', 'af']) assert.ok(c[r] && c[r].length, `region ${r}`);
   assert.equal(c.me.length, 3);   // Saudi Arabia, UAE, Qatar
   assert.equal(c.af.length, 3);   // South Africa, Nigeria, Kenya
-  assert.equal(c.us.length, 4);   // United States, Mexico, Brazil, Venezuela
+  assert.equal(c.us.length, 5);   // United States, Mexico, Brazil, Argentina, Venezuela
+  // Argentina: real MERVAL, Pampas commodity links, and NO stale policy rate (BIS stops in Jul 2025).
+  const arg = await (await fetch(`http://localhost:${PORT}/api/country?id=ar`)).json();
+  assert.equal(arg.index.label, 'MERVAL');
+  assert.ok(arg.index.price > 0, 'the MERVAL quotes');
+  assert.ok(arg.links.some((l) => l.commodity === 'Soybeans'), 'Argentina links to soybeans');
+  assert.equal(arg.policy, null, 'no policy rate is shown');
+  assert.match(arg.policyNote || '', /July 2025|stops/i, 'and it says why (the BIS series is stale)');
   // Mexico: a real index (S&P/BMV IPC), Banxico's rate, and the peso's crude/silver links.
   const mex = await (await fetch(`http://localhost:${PORT}/api/country?id=mx`)).json();
   assert.equal(mex.index.label, 'S&P/BMV IPC');

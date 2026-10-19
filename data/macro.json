@@ -1,5 +1,5 @@
 {
- "updated": "2026-10-19T11:47:47.287Z",
+ "updated": "2026-10-19T12:13:54.955Z",
  "source": "IMF World Economic Outlook (DataMapper)",
  "maxYear": 2025,
  "countries": {
@@ -3819,6 +3819,136 @@
    "unemployment": {
     "year": 2025,
     "value": 2.6
+   }
+  },
+  "ar": {
+   "debtToGdp": {
+    "year": 2025,
+    "value": 80.1
+   },
+   "gdpGrowth": [
+    {
+     "year": 2020,
+     "value": -9.9
+    },
+    {
+     "year": 2021,
+     "value": 10.4
+    },
+    {
+     "year": 2022,
+     "value": 6
+    },
+    {
+     "year": 2023,
+     "value": -1.9
+    },
+    {
+     "year": 2024,
+     "value": -1.4
+    },
+    {
+     "year": 2025,
+     "value": 4.5
+    }
+   ],
+   "inflation": {
+    "year": 2025,
+    "value": 41.9
+   },
+   "cpi": [
+    {
+     "year": 2001,
+     "value": -1.1
+    },
+    {
+     "year": 2002,
+     "value": 25.9
+    },
+    {
+     "year": 2003,
+     "value": 13.4
+    },
+    {
+     "year": 2004,
+     "value": 4.4
+    },
+    {
+     "year": 2005,
+     "value": 9.6
+    },
+    {
+     "year": 2006,
+     "value": 10.9
+    },
+    {
+     "year": 2007,
+     "value": 8.8
+    },
+    {
+     "year": 2008,
+     "value": 8.6
+    },
+    {
+     "year": 2009,
+     "value": 6.3
+    },
+    {
+     "year": 2010,
+     "value": 10.5
+    },
+    {
+     "year": 2011,
+     "value": 9.8
+    },
+    {
+     "year": 2012,
+     "value": 10
+    },
+    {
+     "year": 2013,
+     "value": 10.6
+    },
+    {
+     "year": 2017,
+     "value": 25.7
+    },
+    {
+     "year": 2018,
+     "value": 34.3
+    },
+    {
+     "year": 2019,
+     "value": 53.5
+    },
+    {
+     "year": 2020,
+     "value": 42
+    },
+    {
+     "year": 2021,
+     "value": 48.4
+    },
+    {
+     "year": 2022,
+     "value": 72.4
+    },
+    {
+     "year": 2023,
+     "value": 133.5
+    },
+    {
+     "year": 2024,
+     "value": 219.9
+    },
+    {
+     "year": 2025,
+     "value": 41.9
+    }
+   ],
+   "unemployment": {
+    "year": 2025,
+    "value": 7.4
    }
   }
  }

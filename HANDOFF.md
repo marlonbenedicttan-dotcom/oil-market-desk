@@ -881,3 +881,23 @@ TradingView releases**, and **100% tier-1 news coverage**. The Americas region i
   It matches Mexico / Mexican / Banxico / Pemex / CDMX.
 - Snapshot regenerated: **27 countries**. 95 tests (new: Mexico's IPC quotes, its Banxico rate is present,
   and it links to both silver and crude).
+## Americas: Argentina added (2026-10-19)
+The Americas region is now **United States · Mexico · Brazil · Argentina · Venezuela** (5).
+- **Real index:** `^MERV` (MERVAL) works at every chart range (22/65/126/195/246/61) — no ETF proxy.
+  Verified charting locally: 246 points on the 1y window, +47.7% over a year.
+- **IMF WEO complete:** GDP 4.5% · CPI 41.9% · debt 80.1% · unemployment 7.4%. World Bank agrees on
+  GDP/CPI/unemployment but has no debt series, so the snapshot is what shows.
+- **The policy rate is deliberately left out.** BIS's Argentina series **stops at 2025-07-10** (29%) —
+  fifteen months stale while Brazil's runs to today. The BCRA rate moves often, so rather than print an
+  old level as "the policy rate", `POLICY_NOTE.ar` says exactly that. (This is the first country where I
+  chose to omit a rate that *exists* but is too stale to be useful — the app's rule is show or say why,
+  never show stale-as-current.)
+- **Commodity links, the Pampas complex:** soybeans 0.34 · wheat 0.10 · corn 0.21 · live cattle −0.26.
+  `oil: exporter` on the Vaca Muerta flip (it remains a net importer of refined product).
+- News avoids a bare `/\bpeso\b/` (would pull Chile/Colombia/Uruguay/Mexico) — matches
+  Argentina/Argentine/Milei/BCRA/Buenos Aires. Tier-1 coverage is plentiful (100/100 in the probe);
+  first live headline: *"Argentina analysts hike up 2026 inflation, trim growth"* (Reuters).
+- The CPI chart stays linear for Argentina: the log rule needs every value > 0, and 2000–01 are negative
+  (−1%), so the 2024 spike (220%) is shown as-is rather than reshaped.
+- Snapshot regenerated: **28 countries**. 95 tests (new: the MERVAL quotes, soybeans are linked, and
+  `policy` is null **with** the note explaining the stale BIS series).
