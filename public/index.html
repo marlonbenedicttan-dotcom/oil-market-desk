@@ -226,6 +226,15 @@
         <div id="crush-events" class="chart-events"></div>
       </section>
 
+      <!-- INDUSTRIAL only: the steel margin (iron ore -> hot-rolled coil), the crush's industrial twin -->
+      <section id="c-steel" class="panel market-only" data-when="industrial">
+        <div class="ph"><span class="ph-t">STEEL MARGIN — hot-rolled coil vs iron ore</span><span class="dimtext">$/tonne · gross spread, before coking coal, energy &amp; scrap</span></div>
+        <div id="steel" class="products"></div>
+        <div class="chokes-h dimtext" style="padding:0 12px">STEEL MARGIN OVER TIME ($/t · coil ÷ ore multiple, last 6 months)</div>
+        <div class="chart-wrap sm"><canvas id="steelhist" role="img" aria-label="Steel margin and coil-to-ore ratio chart, loading."></canvas></div>
+        <div id="steel-events" class="chart-events"></div>
+      </section>
+
       <!-- 4. EVIDENCE — the segment's own defining signal comes first -->
       <section id="c-tight" class="panel">
         <div class="ph"><span class="ph-t" id="tightness-title">TIGHTNESS</span><span class="dimtext" id="tightness-sub">six independent checks</span></div>
@@ -412,6 +421,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=119"></script>
+  <script src="app.js?v=120"></script>
 </body>
 </html>

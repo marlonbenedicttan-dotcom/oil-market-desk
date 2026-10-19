@@ -567,6 +567,7 @@ function selectMarket(id) {
   loadCurveHistory();        // and so does the curve-over-time (or hides)
   loadSeasonal();            // and the seasonality grade (gas/grains/softs)
   loadCrush();               // and the soybean crush (grains)
+  loadSteel();               // and the steel margin (industrial)
   renderAdaptive();
   loadMarketRead();
   loadNews();
@@ -1477,6 +1478,51 @@ function renderCrushHistory(h) {
   ] };
   crushChart = mountChart('crushhist', data, baseOptions({ dp: 2, yTitle: '$/bu', y1Title: '%' }));
   attachMarkers(crushChart, 'grains', h.dates, [h.crush], '#crush-events');
+}
+
+// Steel margin — the industrial twin of the soybean crush: coil minus the ore needed to make it ($/t).
+async function loadSteel() {
+  const el = $('steel');
+  if (!el) return;
+  if (currentMarket !== 'industrial') { el.innerHTML = ''; return; }
+  const k = segKey();
+  el.innerHTML = stLoading('Reading the steel margin…');
+  let d; try { d = await jget('/api/steel', 300000); } catch { d = null; }
+  if (k !== segKey() || currentMarket !== 'industrial') return;
+  renderSteel(d);
+}
+let steelChart;
+function renderSteel(d) {
+  const el = $('steel'); if (!el) return;
+  if (!d || d.error || d.margin == null || !d.legs) { el.innerHTML = stError('Steel-margin data isn\u2019t available right now.'); return; }
+  // Relative, not absolute: a gross spread has no universal line between "healthy" and "thin".
+  const word = (p) => p == null ? '—' : p >= 80 ? 'wide vs its own history' : p <= 20 ? 'compressed vs its own history' : 'normal for the last two years';
+  el.innerHTML = `<div class="cards">
+    <div class="card"><h3>Steel margin <span>$/tonne</span></h3>
+      <div class="row"><span class="k">Coil − 1.6 × ore</span><span class="v basis ${cls(d.margin)}">${signed(d.margin, 0)}</span></div>
+      <div class="row"><span class="k">How extreme</span><span class="v">${d.pct == null ? '—' : d.pct.toFixed(0) + '/100'}</span></div>
+      <div class="row"><span class="k">Read</span><span class="v dimtext" style="font-weight:400">${word(d.pct)}</span></div></div>
+    <div class="card"><h3>Coil ÷ ore <span>multiple</span></h3>
+      <div class="row"><span class="k">Ratio</span><span class="v">${d.ratio == null ? '—' : d.ratio.toFixed(1) + '×'}</span></div>
+      <div class="row"><span class="k">How extreme</span><span class="v">${d.ratioPct == null ? '—' : d.ratioPct.toFixed(0) + '/100'}</span></div>
+      <div class="row"><span class="k">Read</span><span class="v dimtext" style="font-weight:400">${word(d.ratioPct)}</span></div></div>
+    <div class="card"><h3>The two legs <span>$/tonne</span></h3>
+      <div class="row"><span class="k">Coil (HRC)</span><span class="v">${d.legs.coilPerT == null ? '—' : signed(d.legs.coilPerT, 0)}</span></div>
+      <div class="row"><span class="k">Ore cost (×1.6)</span><span class="v">${d.legs.orePerT == null ? '—' : signed(-Math.abs(d.legs.orePerT), 0)}</span></div>
+      <div class="row"><span class="k">Excludes</span><span class="v dimtext" style="font-weight:400">coking coal, energy &amp; scrap</span></div></div>
+  </div>`;
+  renderSteelHistory(d.history);
+}
+function renderSteelHistory(h) {
+  const cv = $('steelhist'); if (!cv || !h?.dates?.length) return;
+  const data = { labels: h.dates, datasets: [
+    { label: 'Steel margin $/t', data: h.margin, borderColor: CT.accent, backgroundColor: CT.accent + '22', borderWidth: 2, pointRadius: 0, tension: 0.25, yAxisID: 'y' },
+    { label: 'Coil ÷ ore', data: h.ratio, borderColor: CT.c1, backgroundColor: CT.c1 + '22', borderWidth: 1.5, pointRadius: 0, tension: 0.25, yAxisID: 'y1' },
+  ] };
+  steelChart = mountChart('steelhist', data, baseOptions({ dp: 0, yTitle: '$/t', y1Title: '×' }));
+  // focus 'steel' so a margin move is explained by a steel story, not whichever copper headline
+  // happens to be in the industrial segment's feed.
+  attachMarkers(steelChart, 'industrial', h.dates, [h.margin], '#steel-events', 'pct', 'steel');
 }
 
 // Seasonality — where the price sits vs its 5-year day-of-year band (gas/grains/softs).

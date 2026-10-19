@@ -321,6 +321,20 @@ export function computeCrush(m) {
   return { crush: mealValue + oilValue - beanCost, mealValue, oilValue, beanCost, oilShare: (oilValue / (oilValue + mealValue)) * 100 };
 }
 
+// Steel margin: hot-rolled coil minus the iron ore needed to make a tonne of steel.
+// HRC is quoted per SHORT ton and iron ore per METRIC tonne, and a tonne of crude steel takes about
+// 1.6 t of ore — so the coil price is converted to $/t before the ore cost is subtracted. This is a
+// GROSS spread: coking coal, energy, scrap and conversion costs are not in it. `ratio` is the
+// coil:ore multiple (the ore-to-steel ratio analysts quote alongside the spread).
+export function computeSteel(m) {
+  const by = Object.fromEntries((m.benchmarks || []).map((b) => [b.id, b]));
+  const hrc = by.steel?.paper, ore = by.ironore?.paper;
+  if (hrc == null || ore == null) return {};
+  const coilPerT = hrc / 0.90718474;   // 1 short ton = 0.90718474 t
+  const orePerT = ore * 1.6;
+  return { margin: coilPerT - orePerT, coilPerT, orePerT, ratio: ore ? coilPerT / ore : null };
+}
+
 // ---------------------------------------------------------------------------
 // Physical-tightness scoring (roadmap item 2). Each maps one physical signal to
 // 0-100 where 50 = neutral and >50 = tight; null when the input is missing, so a

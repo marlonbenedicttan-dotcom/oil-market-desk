@@ -8,7 +8,7 @@ import { execFile } from 'node:child_process';
 import crypto from 'node:crypto';
 import { sendMail } from './src/smtp.js';
 import { fileURLToPath } from 'node:url';
-import { sgn, businessDaysSince, inBox, haversineNm, horizonDeltas, horizonDeltasAbs, isoWeek, monthly, pctOver, percentile, lastNonNull, escHtml, webhookPayload, realizedVol, computeCracks, computeCrush, backAdjust, pearson, logReturns, curveTightness, inventoryTightness, weightedScore, seasonalGrade, seasonalAhead, contractMonthsBetween, signedPosition, signedMove, stretchScore, sdLabel, attributeMoves, newsContextOk, METHODOLOGY, positioningFlag, positioningRead, maxDrawdown, realizedVolTerm, corrMatrix, fxAdjust, parseOcc, drawdownWord, volWord, volTrend, topPairs, bestDiversifier, riskRead } from './src/lib.js';
+import { sgn, businessDaysSince, inBox, haversineNm, horizonDeltas, horizonDeltasAbs, isoWeek, monthly, pctOver, percentile, lastNonNull, escHtml, webhookPayload, realizedVol, computeCracks, computeCrush, computeSteel, backAdjust, pearson, logReturns, curveTightness, inventoryTightness, weightedScore, seasonalGrade, seasonalAhead, contractMonthsBetween, signedPosition, signedMove, stretchScore, sdLabel, attributeMoves, newsContextOk, METHODOLOGY, positioningFlag, positioningRead, maxDrawdown, realizedVolTerm, corrMatrix, fxAdjust, parseOcc, drawdownWord, volWord, volTrend, topPairs, bestDiversifier, riskRead } from './src/lib.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC = path.join(__dirname, 'public');
@@ -2580,6 +2580,33 @@ async function getCrush() {
   });
 }
 
+// Steel margin — the industrial segment's equivalent of the soybean crush (ore -> hot-rolled coil).
+async function getSteelMargin() {
+  return cached('steelmargin', 3 * 3600e3, async () => {
+    const m = await getMarket();
+    const now = computeSteel(m);
+    const ser = (sym) => cached('a2p:' + sym, 6 * 3600e3, () => yahooSeries(sym, '2y', '1d')).then((r) => r.series);
+    const [hrc, ore] = await Promise.all([ser('HRC=F'), ser('TIO=F')]);
+    const dates = Object.keys(hrc).sort();
+    const hd = [], margin = [], ratio = [];
+    for (const d of dates) {
+      if (hrc[d] == null || ore[d] == null) continue;   // only days both markets printed
+      const coilPerT = hrc[d] / 0.90718474, orePerT = ore[d] * 1.6;
+      hd.push(d); margin.push(coilPerT - orePerT); ratio.push(ore[d] ? coilPerT / ore[d] : null);
+    }
+    const pct = (a, v) => { const xs = a.filter((x) => x != null); return xs.length && v != null ? (xs.filter((x) => x <= v).length / xs.length) * 100 : null; };
+    const cur = now.margin ?? [...margin].reverse().find((x) => x != null) ?? null;
+    const curRatio = now.ratio ?? [...ratio].reverse().find((x) => x != null) ?? null;
+    return {
+      label: 'Steel margin',
+      margin: cur, pct: pct(margin, cur),
+      ratio: curRatio, ratioPct: pct(ratio, curRatio),
+      legs: { coilPerT: now.coilPerT ?? null, orePerT: now.orePerT ?? null },
+      history: { dates: hd.slice(-180), margin: margin.slice(-180), ratio: ratio.slice(-180) },
+    };
+  });
+}
+
 // ---------------------------------------------------------------------------
 // Satellite (AIS-independent): NASA FIRMS gas flares + Sentinel-1 radar passes
 // ---------------------------------------------------------------------------
@@ -3297,6 +3324,7 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname === '/api/flows') return sendJSON(res, 200, await getFlows());
     if (url.pathname === '/api/products') return sendJSON(res, 200, await getProducts().catch((e) => ({ error: String(e.message) })));
     if (url.pathname === '/api/crush') return sendJSON(res, 200, await getCrush().catch((e) => ({ error: String(e.message) })));
+    if (url.pathname === '/api/steel') return sendJSON(res, 200, await getSteelMargin().catch((e) => ({ error: String(e.message) })));
     if (url.pathname === '/api/flares') return sendJSON(res, 200, await getFlares().catch((e) => ({ error: String(e.message) })));
     if (url.pathname === '/api/sar') return sendJSON(res, 200, await getSAR().catch((e) => ({ error: String(e.message) })));
     if (url.pathname === '/api/sar/image') {

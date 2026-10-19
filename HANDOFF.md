@@ -933,3 +933,23 @@ so they are not used for rows (they remain fine as cross-asset chips, e.g. GDX).
 
 **35 instruments.** 95 tests (the pinned segment-component assertions updated). Verified in the browser:
 35 screener rows, the 4-tile industrial strip, the OJ chart, no console errors, no overflow.
+## Steel margin — the industrial twin of the soybean crush (2026-10-19)
+The steel chain was visible but not analysed. There is now a **STEEL MARGIN** panel on the INDUSTRIAL
+segment (only that segment — the same `data-when` gating as the crush on grains).
+- **The maths** (`computeSteel`, pure + unit-tested): HRC is quoted per **short ton** and iron ore per
+  **metric tonne**, and a tonne of crude steel takes ~**1.6 t of ore** — so the coil price is converted
+  ($/st ÷ 0.90718474) and 1.6 × ore subtracted. It also returns the **coil ÷ ore multiple**, which is what
+  analysts quote alongside the spread. Live: HRC $1,320/st → $1,455/t · ore $90.9 × 1.6 = $145/t →
+  **margin +$1,310/t · ratio 16.0×**, both in the 100th percentile of the last two years.
+- **It is labelled a GROSS spread** — the header, the legs card and the note all say it excludes coking
+  coal, energy and scrap, so nobody mistakes it for a mill's profit.
+- **The read is relative, not absolute** ("wide / normal / compressed vs its own history"), because a gross
+  spread has no universal line between healthy and thin the way a $/bu crush does.
+- **The chart** is the margin ($/t) + the coil ÷ ore multiple over six months, with big-move markers —
+  focused on `steel` news so a margin move is explained by a steel story rather than the copper headline
+  that happens to be in the segment's feed.
+- `/api/steel` (cached 3 h) returns margin, percentile, ratio, both percentiles, the two legs and 180 days
+  of history. Verified in the browser on desktop and mobile: the panel shows only on INDUSTRIAL, hides for
+  grains (where the crush shows instead), no console errors, no overflow.
+- **96 tests** (new: `computeSteel` — the exact 907.18474 $/st → $1,000/t conversion, the 1.6 t ore cost, the
+  ratio, and that a missing leg invents nothing). `app.js?v=120`.

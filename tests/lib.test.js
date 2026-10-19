@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { sgn, inBox, haversineNm, isoWeek, monthly, pctOver, percentile, lastNonNull, escHtml, webhookPayload, realizedVol, computeCracks, computeCrush, backAdjust, pearson, logReturns, horizonDeltas, horizonDeltasAbs, curveTightness, inventoryTightness, weightedScore, seasonalGrade, seasonalAhead, contractMonthsBetween, signedPosition, signedMove, stretchScore, sdLabel, attributeMoves, newsContextOk, looksLikeProperNoun, NON_MARKET_CTX, METHODOLOGY, positioningFlag, positioningRead, maxDrawdown, realizedVolTerm, corrMatrix, fxAdjust, parseOcc, drawdownWord, volWord, volTrend, focusRows, topPairs, bestDiversifier, riskRead } from '../src/lib.js';
+import { sgn, inBox, haversineNm, isoWeek, monthly, pctOver, percentile, lastNonNull, escHtml, webhookPayload, realizedVol, computeCracks, computeCrush, computeSteel, backAdjust, pearson, logReturns, horizonDeltas, horizonDeltasAbs, curveTightness, inventoryTightness, weightedScore, seasonalGrade, seasonalAhead, contractMonthsBetween, signedPosition, signedMove, stretchScore, sdLabel, attributeMoves, newsContextOk, looksLikeProperNoun, NON_MARKET_CTX, METHODOLOGY, positioningFlag, positioningRead, maxDrawdown, realizedVolTerm, corrMatrix, fxAdjust, parseOcc, drawdownWord, volWord, volTrend, focusRows, topPairs, bestDiversifier, riskRead } from '../src/lib.js';
 
 test('sgn formats with sign', () => {
   assert.equal(sgn(4.39), '+4.39');
@@ -403,4 +403,17 @@ test('newsContextOk: the MACRO domain needs an economy story, not just a country
   // a commodity headline is never judged by the macro rules
   assert.equal(newsContextOk('Silver jumps on safe-haven demand'), true);
   assert.equal(newsContextOk('Silver', { domain: 'macro' }), false); // no economy framing at all
+});
+
+test('computeSteel: coil per tonne minus 1.6t of ore, with the short->metric conversion', () => {
+  // $907.18474 per SHORT ton is exactly $1,000 per metric tonne.
+  const m = { benchmarks: [{ id: 'steel', paper: 907.18474 }, { id: 'ironore', paper: 100 }] };
+  const r = computeSteel(m);
+  assert.equal(+r.coilPerT.toFixed(2), 1000);
+  assert.equal(r.orePerT, 160);
+  assert.equal(+r.margin.toFixed(2), 840);
+  assert.equal(+r.ratio.toFixed(2), 10);
+  // Missing one leg -> nothing invented, exactly like the crush.
+  assert.deepEqual(computeSteel({ benchmarks: [{ id: 'steel', paper: 900 }] }), {});
+  assert.deepEqual(computeSteel({}), {});
 });
