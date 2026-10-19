@@ -866,3 +866,18 @@ The Americas region had only the United States. Brazil and Venezuela are now the
   and the note says "· log scale" so the reader knows. Other countries are unaffected.
 - Snapshot regenerated: **26 countries**. 95 tests (new: Brazil has a real chartable index + its Selic and
   soybean link; Venezuela declares its missing index and explains the controlled rate). `app.js?v=119`.
+## Americas: Mexico added (2026-10-19) — the set's biggest hole
+**Why it was the obvious one to add:** the app already treated the peso as a first-class ticker — `usdmxn`
+sits in `FX_SYMS` ("USD / MXN · oil") and `FX_LINKS` pairs **USD/MXN with WTI** — but there was no
+country page behind it. So the app was internally inconsistent. It also has the most complete data of any
+candidate tried: a **real index** (`^MXX`, S&P/BMV IPC, at every chart range), **Banxico's rate on BIS**
+(6.50%), full IMF WEO + World Bank (GDP 0.5% · CPI 3.8% · debt 61.7% · unemployment 2.6%), **30
+TradingView releases**, and **100% tier-1 news coverage**. The Americas region is now
+**United States · Mexico · Brazil · Venezuela**.
+- Links: **WTI crude** (Pemex exports Maya crude — and this matches the existing MXN↔WTI link) and
+  **silver** (Mexico is the world's largest silver producer). `oil: exporter` on a crude basis, which is
+  how the app frames it (it is a net importer of refined product, worth knowing but not what the field means).
+- News deliberately does **not** match a bare `/\bpeso\b/` — that would pull Argentina/Chile/Colombia.
+  It matches Mexico / Mexican / Banxico / Pemex / CDMX.
+- Snapshot regenerated: **27 countries**. 95 tests (new: Mexico's IPC quotes, its Banxico rate is present,
+  and it links to both silver and crude).

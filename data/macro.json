@@ -1,5 +1,5 @@
 {
- "updated": "2026-10-19T11:30:52.926Z",
+ "updated": "2026-10-19T11:47:47.287Z",
  "source": "IMF World Economic Outlook (DataMapper)",
  "maxYear": 2025,
  "countries": {
@@ -3677,6 +3677,148 @@
    "unemployment": {
     "year": 2018,
     "value": 5.5
+   }
+  },
+  "mx": {
+   "debtToGdp": {
+    "year": 2025,
+    "value": 61.7
+   },
+   "gdpGrowth": [
+    {
+     "year": 2020,
+     "value": -8.4
+    },
+    {
+     "year": 2021,
+     "value": 6
+    },
+    {
+     "year": 2022,
+     "value": 3.7
+    },
+    {
+     "year": 2023,
+     "value": 3.1
+    },
+    {
+     "year": 2024,
+     "value": 1.5
+    },
+    {
+     "year": 2025,
+     "value": 0.5
+    }
+   ],
+   "inflation": {
+    "year": 2025,
+    "value": 3.8
+   },
+   "cpi": [
+    {
+     "year": 2001,
+     "value": 6.4
+    },
+    {
+     "year": 2002,
+     "value": 5
+    },
+    {
+     "year": 2003,
+     "value": 4.6
+    },
+    {
+     "year": 2004,
+     "value": 4.7
+    },
+    {
+     "year": 2005,
+     "value": 4
+    },
+    {
+     "year": 2006,
+     "value": 3.6
+    },
+    {
+     "year": 2007,
+     "value": 4
+    },
+    {
+     "year": 2008,
+     "value": 5.1
+    },
+    {
+     "year": 2009,
+     "value": 5.3
+    },
+    {
+     "year": 2010,
+     "value": 4.2
+    },
+    {
+     "year": 2011,
+     "value": 3.4
+    },
+    {
+     "year": 2012,
+     "value": 4.1
+    },
+    {
+     "year": 2013,
+     "value": 3.8
+    },
+    {
+     "year": 2014,
+     "value": 4
+    },
+    {
+     "year": 2015,
+     "value": 2.7
+    },
+    {
+     "year": 2016,
+     "value": 2.8
+    },
+    {
+     "year": 2017,
+     "value": 6
+    },
+    {
+     "year": 2018,
+     "value": 4.9
+    },
+    {
+     "year": 2019,
+     "value": 3.6
+    },
+    {
+     "year": 2020,
+     "value": 3.4
+    },
+    {
+     "year": 2021,
+     "value": 5.7
+    },
+    {
+     "year": 2022,
+     "value": 7.9
+    },
+    {
+     "year": 2023,
+     "value": 5.5
+    },
+    {
+     "year": 2024,
+     "value": 4.7
+    },
+    {
+     "year": 2025,
+     "value": 3.8
+    }
+   ],
+   "unemployment": {
+    "year": 2025,
+    "value": 2.6
    }
   }
  }

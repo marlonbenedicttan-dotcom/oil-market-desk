@@ -204,7 +204,14 @@ test('/api/countries, /api/country and /api/region-quotes', async () => {
   for (const r of ['us', 'eu', 'jp', 'cn', 'in', 'apac', 'me', 'af']) assert.ok(c[r] && c[r].length, `region ${r}`);
   assert.equal(c.me.length, 3);   // Saudi Arabia, UAE, Qatar
   assert.equal(c.af.length, 3);   // South Africa, Nigeria, Kenya
-  assert.equal(c.us.length, 3);   // United States, Brazil, Venezuela
+  assert.equal(c.us.length, 4);   // United States, Mexico, Brazil, Venezuela
+  // Mexico: a real index (S&P/BMV IPC), Banxico's rate, and the peso's crude/silver links.
+  const mex = await (await fetch(`http://localhost:${PORT}/api/country?id=mx`)).json();
+  assert.equal(mex.index.label, 'S&P/BMV IPC');
+  assert.ok(mex.index.price > 0, 'the IPC quotes');
+  assert.ok(mex.policy && mex.policy.latest.value > 0, 'Mexico carries its Banxico policy rate (BIS)');
+  assert.ok(mex.links.some((l) => l.commodity === 'Silver'), 'Mexico links to silver');
+  assert.ok(mex.links.some((l) => l.commodity === 'WTI crude'), 'and to crude');
   // Brazil has a REAL index (Ibovespa), not an ETF proxy — and it must be chartable.
   const bra = await (await fetch(`http://localhost:${PORT}/api/country?id=br`)).json();
   assert.equal(bra.label, 'Brazil');

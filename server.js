@@ -1582,6 +1582,7 @@ const NEWS_QUERIES = {
   eu: '"euro area" OR ECB OR "eurozone economy" OR European inflation',
   jp: 'Japan economy OR "Bank of Japan" OR yen OR Japan inflation',
   apac: 'China economy OR PBOC OR "China stimulus" OR Asia markets',
+  mx: 'Mexico economy OR Banxico OR Pemex OR peso',
   br: 'Brazil economy OR BCB OR Ibovespa OR Selic',
   ve: 'Venezuela economy OR PDVSA OR Caracas OR bolivar',
   me: 'Gulf economy OR Saudi Aramco OR OPEC OR Qatar LNG',
@@ -1633,6 +1634,7 @@ const NEWS_MUST = {
   cn: [/\bChina\b/i, /\bChinese\b/i, /\bPBOC\b/i, /\byuan\b/i, /\brenminbi\b/i, /\bShanghai\b/i, /\bBeijing\b/i, /\bHong Kong\b/i, /\bHang Seng\b/i],
   in: [/\bIndia(n)?\b/i, /\bRBI\b/i, /\brupee\b/i, /\bNifty\b/i, /\bSensex\b/i],
   apac: [/\bAsia(n)?\b/i, /\bSingapore\b/i, /\bIndonesia\b/i, /\bThailand\b/i, /\bMalaysia\b/i, /\bPhilippines\b/i, /\bVietnam\b/i, /\bKorea\b/i, /\bAustralia\b/i, /\bTaiwan\b/i, /\bASEAN\b/i],
+  mx: [/\bMexico\b/i, /\bMexican\b/i, /\bBanxico\b/i, /\bPemex\b/i, /\bCDMX\b/],
   br: [/\bBrazil(ian)?\b/i, /\bIbovespa\b/i, /\bBCB\b/, /\bSelic\b/i, /\bBras[ií]lia\b/i],
   ve: [/\bVenezuela(n)?\b/i, /\bPDVSA\b/, /\bCaracas\b/i, /\bbol[ií]var(es)?\b/i],
   me: [/\bGulf\b/i, /\bMiddle East\b/i, /\bSaudi\b/i, /\bEmirat/i, /\bUAE\b/, /\bQatar\b/i, /\bKuwait\b/i, /\bBahrain\b/i, /\bOman\b/i, /\bMENA\b/i],
@@ -1734,6 +1736,7 @@ async function getNews(id, componentId) {
 const MACRO_COUNTRIES = {
   us: [
     { id: 'us', label: 'United States', iso3: 'USA', oil: 'exporter', fx: 'DX-Y.NYB', fxLabel: 'US dollar (DXY)', index: '^GSPC', indexLabel: 'S&P 500' },
+    { id: 'mx', label: 'Mexico', iso3: 'MEX', oil: 'exporter', fx: 'USDMXN=X', fxLabel: 'USD / MXN', index: '^MXX', indexLabel: 'S&P/BMV IPC' },
     { id: 'br', label: 'Brazil', iso3: 'BRA', oil: 'exporter', fx: 'USDBRL=X', fxLabel: 'USD / BRL', index: '^BVSP', indexLabel: 'Ibovespa' },
     // Venezuela has no free equity index (^IBC and VEMTF are gone; "VZLA" is Vizsla Silver, a Canadian
     // miner) and no BIS policy rate or TradingView calendar — so the card says so and shows FX + macro.
@@ -1788,7 +1791,7 @@ const COUNTRY_MACRO_REGION = { us: 'us', ea: 'eu' }; // where free official macr
 // high/medium-importance releases are kept, so the list stays short and relevant to the country.
 const TV_COUNTRY = { us: 'US', ea: 'EU', de: 'DE', fr: 'FR', uk: 'GB', jp: 'JP', in: 'IN', cn: 'CN', hk: 'HK', sg: 'SG', id: 'ID', th: 'TH', my: 'MY', ph: 'PH', vn: 'VN', kr: 'KR', au: 'AU', tw: 'TW',
   sa: 'SA', ae: 'AE', qa: 'QA', za: 'ZA', ng: 'NG', ke: 'KE',
-  br: 'BR', ve: 'VE' };
+  br: 'BR', ve: 'VE', mx: 'MX' };
 const TV_HEADERS = { ...UA, Origin: 'https://www.tradingview.com', Referer: 'https://www.tradingview.com/economic-calendar/', Accept: 'application/json' };
 const etParts = (iso) => {
   const d = new Date(iso);
@@ -1887,7 +1890,7 @@ async function getRegionTickers(region) {
 }
 // BIS central-bank policy rates (free). Area codes: euro area = XM; DE/FR use XM.
 const BIS_AREA = { us: 'US', ea: 'XM', de: 'XM', fr: 'XM', uk: 'GB', jp: 'JP', cn: 'CN', hk: 'HK', id: 'ID', th: 'TH', my: 'MY', ph: 'PH', in: 'IN', kr: 'KR', au: 'AU',
-  sa: 'SA', za: 'ZA', br: 'BR' };   // verified: BIS carries SA, ZA, BR; it does not carry AE, QA, NG, KE or VE
+  sa: 'SA', za: 'ZA', br: 'BR', mx: 'MX' };   // verified: BIS carries SA, ZA, BR, MX; not AE, QA, NG, KE or VE
 // Government bond yields (FRED). US is daily (2-yr & 10-yr Treasury); the rest are the
 // OECD monthly series (3-month interbank + 10-yr), which lag by a month or two.
 const BOND_YIELDS = {
@@ -1922,6 +1925,7 @@ const COUNTRY_COMMODITY_LINKS = {
   // No entries for sa/ae/qa on purpose: a pegged currency does not correlate with anything, so the
   // card would print noise. The peg itself is the fact, and the card says so instead.
   // Brazil floats, so its correlations are real signal: ag exports + crude.
+  mx: [['WTI crude', 'CL=F'], ['Silver', 'SI=F']],
   br: [['Soybeans', 'ZS=F'], ['Sugar', 'SB=F'], ['Coffee', 'KC=F'], ['Brent crude', 'BZ=F']],
   ve: [['Brent crude', 'BZ=F']],
   za: [['Gold', 'GC=F'], ['Platinum', 'PL=F']],

@@ -17,7 +17,7 @@ const COUNTRIES = [
   // Kenya have no unemployment line) simply omit that field — the app falls back to World Bank.
   ['sa', 'SAU'], ['ae', 'ARE'], ['qa', 'QAT'],
   ['za', 'ZAF'], ['ng', 'NGA'], ['ke', 'KEN'],
-  ['br', 'BRA'], ['ve', 'VEN'],   // Venezuela has no debt series and a stale unemployment line — both omitted
+  ['br', 'BRA'], ['ve', 'VEN'], ['mx', 'MEX'],   // Venezuela has no debt series and a stale unemployment line — both omitted
 ];
 
 // Completed years only — never store an IMF projection as if it were data.
