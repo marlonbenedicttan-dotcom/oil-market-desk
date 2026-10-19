@@ -845,3 +845,24 @@ The user asked for a sweep and a harder look at a Nigeria equity line. Both done
   desktop and mobile (no overflow). `app.js?v=118`, `style.css?v=63`.
 - 95 tests — new: the brief carries a macro section, each mover has a country deep link, and a pegged
   currency is never listed as a mover.
+## Americas: Brazil + Venezuela added (2026-10-19)
+The Americas region had only the United States. Brazil and Venezuela are now there (3 countries).
+- **Brazil — a full card, and better than the others: it has a REAL index.** `^BVSP` (Ibovespa) works at
+  every chart range (22/65/127/198/249/61 pts), so it needs no ETF proxy. Yahoo FX ✓, IMF WEO complete
+  (GDP 2.3% · CPI 5.0% · debt 93.3% · unemployment 6.0%), **BIS Selic 13.75%**, 12 TradingView releases,
+  tier-1 news ✓, and real commodity links (soybeans −0.32, sugar 0.19, coffee 0.17, Brent −0.04) because
+  the real floats. `iso3 BRA`, `oil: exporter` (net crude exporter).
+- **Venezuela — thinner, and every gap is stated.** FX `USDVES=X` ✓ (with the collapse visible: +198.7%
+  YTD, +337.3% 1y). **No ETF and no usable index**: "Venezuela ETF" returns 0 hits on Yahoo; the frontier
+  funds that once held it (`FM`, `FRN`) are gone; the LatAm ETFs (ILW/FLLA/EWZ) exclude Venezuela (MSCI
+  dropped it in 2016), so using one would be the `KEN` mistake again; and the Caracas index `IBC.CR`
+  returns exactly **one** data point at every range (the exchange's two single stocks, `BVL.CR` and
+  `TDV-D.CR`, do quote — but two names are not a market). So `index: null` → the card says "Equity market:
+  not available" ✓. No BIS policy rate → a `POLICY_NOTE` explaining that the rate shown is the **official
+  BCV reference** and a parallel rate trades weaker ✓. No calendar (0 events) ✓. Debt/GDP missing →
+  "not available" ✓. IMF CPI **252%** and the WB unemployment (2025) via the newer-vintage rule ✓.
+- **The CPI chart now switches to a log axis when the spread is extreme** (Venezuela runs 21% → **65,374%**
+  in 2018; on a linear axis that is one spike and a flat line). Condition: every value > 0 and max/min > 50,
+  and the note says "· log scale" so the reader knows. Other countries are unaffected.
+- Snapshot regenerated: **26 countries**. 95 tests (new: Brazil has a real chartable index + its Selic and
+  soybean link; Venezuela declares its missing index and explains the controlled rate). `app.js?v=119`.

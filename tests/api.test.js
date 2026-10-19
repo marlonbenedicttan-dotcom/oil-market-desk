@@ -204,6 +204,20 @@ test('/api/countries, /api/country and /api/region-quotes', async () => {
   for (const r of ['us', 'eu', 'jp', 'cn', 'in', 'apac', 'me', 'af']) assert.ok(c[r] && c[r].length, `region ${r}`);
   assert.equal(c.me.length, 3);   // Saudi Arabia, UAE, Qatar
   assert.equal(c.af.length, 3);   // South Africa, Nigeria, Kenya
+  assert.equal(c.us.length, 3);   // United States, Brazil, Venezuela
+  // Brazil has a REAL index (Ibovespa), not an ETF proxy — and it must be chartable.
+  const bra = await (await fetch(`http://localhost:${PORT}/api/country?id=br`)).json();
+  assert.equal(bra.label, 'Brazil');
+  assert.equal(bra.index.label, 'Ibovespa');
+  assert.ok(bra.index.price > 0, 'Ibovespa quotes');
+  assert.ok(bra.policy && bra.policy.latest.value > 0, 'Brazil carries its Selic (BIS)');
+  assert.ok(bra.links.some((l) => l.commodity === 'Soybeans'), 'Brazil links to soybeans');
+  // Venezuela has no ETF and no usable index (IBC.CR returns a single point) — declared, not faked.
+  const ven = await (await fetch(`http://localhost:${PORT}/api/country?id=ve`)).json();
+  assert.equal(ven.index.price, null);
+  assert.equal(ven.index.label, null);
+  assert.match(ven.policyNote || '', /BCV|parallel/i, 'Venezuela explains the controlled FX rate');
+  assert.ok(ven.fund.inflation.value > 100, 'Venezuela reports its (hyper)inflation honestly');
   const idn = await (await fetch(`http://localhost:${PORT}/api/country?id=id`)).json();
   assert.equal(idn.label, 'Indonesia');
   assert.ok(idn.fx && idn.index && idn.fund && Array.isArray(idn.fund.gdpGrowth));

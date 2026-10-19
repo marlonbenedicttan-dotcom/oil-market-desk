@@ -921,6 +921,7 @@ const FX_SYMS = [
   { id: 'usdqar', label: 'USD / QAR · pegged', sym: 'USDQAR=X', dp: 4, peg: 3.64 },
   { id: 'usdngn', label: 'USD / NGN', sym: 'USDNGN=X', dp: 2 },
   { id: 'usdkes', label: 'USD / KES', sym: 'USDKES=X', dp: 2 },
+  { id: 'usdves', label: 'USD / VES', sym: 'USDVES=X', dp: 2 },
   { id: 'usdmxn', label: 'USD / MXN · oil', sym: 'USDMXN=X', dp: 3 },
   { id: 'usdinr', label: 'USD / INR', sym: 'USDINR=X', dp: 2 },
   { id: 'usdchf', label: 'USD / CHF', sym: 'USDCHF=X', dp: 4 },
@@ -1581,6 +1582,8 @@ const NEWS_QUERIES = {
   eu: '"euro area" OR ECB OR "eurozone economy" OR European inflation',
   jp: 'Japan economy OR "Bank of Japan" OR yen OR Japan inflation',
   apac: 'China economy OR PBOC OR "China stimulus" OR Asia markets',
+  br: 'Brazil economy OR BCB OR Ibovespa OR Selic',
+  ve: 'Venezuela economy OR PDVSA OR Caracas OR bolivar',
   me: 'Gulf economy OR Saudi Aramco OR OPEC OR Qatar LNG',
   af: 'Africa economy OR African markets OR Sub-Saharan Africa',
   // macro-country news
@@ -1630,6 +1633,8 @@ const NEWS_MUST = {
   cn: [/\bChina\b/i, /\bChinese\b/i, /\bPBOC\b/i, /\byuan\b/i, /\brenminbi\b/i, /\bShanghai\b/i, /\bBeijing\b/i, /\bHong Kong\b/i, /\bHang Seng\b/i],
   in: [/\bIndia(n)?\b/i, /\bRBI\b/i, /\brupee\b/i, /\bNifty\b/i, /\bSensex\b/i],
   apac: [/\bAsia(n)?\b/i, /\bSingapore\b/i, /\bIndonesia\b/i, /\bThailand\b/i, /\bMalaysia\b/i, /\bPhilippines\b/i, /\bVietnam\b/i, /\bKorea\b/i, /\bAustralia\b/i, /\bTaiwan\b/i, /\bASEAN\b/i],
+  br: [/\bBrazil(ian)?\b/i, /\bIbovespa\b/i, /\bBCB\b/, /\bSelic\b/i, /\bBras[ií]lia\b/i],
+  ve: [/\bVenezuela(n)?\b/i, /\bPDVSA\b/, /\bCaracas\b/i, /\bbol[ií]var(es)?\b/i],
   me: [/\bGulf\b/i, /\bMiddle East\b/i, /\bSaudi\b/i, /\bEmirat/i, /\bUAE\b/, /\bQatar\b/i, /\bKuwait\b/i, /\bBahrain\b/i, /\bOman\b/i, /\bMENA\b/i],
   af: [/\bAfrica(n)?\b/i, /\bNigeri/i, /\bKenya/i, /\bSouth Africa/i, /\bGhana\b/i, /\bEthiopia\b/i, /\bTanzania\b/i, /\bUganda\b/i, /\bZambia\b/i],
   // macro countries
@@ -1727,7 +1732,13 @@ async function getNews(id, componentId) {
 // ---------------------------------------------------------------------------
 // iso3 = World Bank code (annual fundamentals). oil = net crude position (factual).
 const MACRO_COUNTRIES = {
-  us: [{ id: 'us', label: 'United States', iso3: 'USA', oil: 'exporter', fx: 'DX-Y.NYB', fxLabel: 'US dollar (DXY)', index: '^GSPC', indexLabel: 'S&P 500' }],
+  us: [
+    { id: 'us', label: 'United States', iso3: 'USA', oil: 'exporter', fx: 'DX-Y.NYB', fxLabel: 'US dollar (DXY)', index: '^GSPC', indexLabel: 'S&P 500' },
+    { id: 'br', label: 'Brazil', iso3: 'BRA', oil: 'exporter', fx: 'USDBRL=X', fxLabel: 'USD / BRL', index: '^BVSP', indexLabel: 'Ibovespa' },
+    // Venezuela has no free equity index (^IBC and VEMTF are gone; "VZLA" is Vizsla Silver, a Canadian
+    // miner) and no BIS policy rate or TradingView calendar — so the card says so and shows FX + macro.
+    { id: 've', label: 'Venezuela', iso3: 'VEN', oil: 'exporter', fx: 'USDVES=X', fxLabel: 'USD / VES', index: null, indexLabel: null },
+  ],
   eu: [
     { id: 'ea', label: 'Euro area', iso3: 'EMU', oil: 'importer', fx: 'EURUSD=X', fxLabel: 'EUR / USD', index: '^STOXX50E', indexLabel: 'Euro Stoxx 50' },
     { id: 'de', label: 'Germany', iso3: 'DEU', oil: 'importer', fx: 'EURUSD=X', fxLabel: 'EUR / USD', index: '^GDAXI', indexLabel: 'DAX' },
@@ -1776,7 +1787,8 @@ const COUNTRY_MACRO_REGION = { us: 'us', ea: 'eu' }; // where free official macr
 // calendar (the same JSON its own calendar page uses; it 403s without an Origin header). Only
 // high/medium-importance releases are kept, so the list stays short and relevant to the country.
 const TV_COUNTRY = { us: 'US', ea: 'EU', de: 'DE', fr: 'FR', uk: 'GB', jp: 'JP', in: 'IN', cn: 'CN', hk: 'HK', sg: 'SG', id: 'ID', th: 'TH', my: 'MY', ph: 'PH', vn: 'VN', kr: 'KR', au: 'AU', tw: 'TW',
-  sa: 'SA', ae: 'AE', qa: 'QA', za: 'ZA', ng: 'NG', ke: 'KE' };
+  sa: 'SA', ae: 'AE', qa: 'QA', za: 'ZA', ng: 'NG', ke: 'KE',
+  br: 'BR', ve: 'VE' };
 const TV_HEADERS = { ...UA, Origin: 'https://www.tradingview.com', Referer: 'https://www.tradingview.com/economic-calendar/', Accept: 'application/json' };
 const etParts = (iso) => {
   const d = new Date(iso);
@@ -1875,7 +1887,7 @@ async function getRegionTickers(region) {
 }
 // BIS central-bank policy rates (free). Area codes: euro area = XM; DE/FR use XM.
 const BIS_AREA = { us: 'US', ea: 'XM', de: 'XM', fr: 'XM', uk: 'GB', jp: 'JP', cn: 'CN', hk: 'HK', id: 'ID', th: 'TH', my: 'MY', ph: 'PH', in: 'IN', kr: 'KR', au: 'AU',
-  sa: 'SA', za: 'ZA' };   // verified: BIS carries SA and ZA; it does not carry AE, QA, NG or KE
+  sa: 'SA', za: 'ZA', br: 'BR' };   // verified: BIS carries SA, ZA, BR; it does not carry AE, QA, NG, KE or VE
 // Government bond yields (FRED). US is daily (2-yr & 10-yr Treasury); the rest are the
 // OECD monthly series (3-month interbank + 10-yr), which lag by a month or two.
 const BOND_YIELDS = {
@@ -1909,6 +1921,9 @@ const COUNTRY_COMMODITY_LINKS = {
   tw: [['Copper', 'HG=F'], ['WTI crude', 'CL=F']],
   // No entries for sa/ae/qa on purpose: a pegged currency does not correlate with anything, so the
   // card would print noise. The peg itself is the fact, and the card says so instead.
+  // Brazil floats, so its correlations are real signal: ag exports + crude.
+  br: [['Soybeans', 'ZS=F'], ['Sugar', 'SB=F'], ['Coffee', 'KC=F'], ['Brent crude', 'BZ=F']],
+  ve: [['Brent crude', 'BZ=F']],
   za: [['Gold', 'GC=F'], ['Platinum', 'PL=F']],
   ng: [['Brent crude', 'BZ=F']],
   ke: [['Coffee', 'KC=F']],
@@ -1923,6 +1938,7 @@ const POLICY_NOTE = {
   qa: 'The riyal is pegged to the US dollar (3.64) and QCB rates track the Fed, so they are not in the BIS policy-rate feed.',
   ng: 'The Central Bank of Nigeria\u2019s policy rate (MPR) is not on the free BIS policy-rate feed.',
   ke: 'The Central Bank of Kenya\u2019s policy rate is not on the free BIS policy-rate feed.',
+  ve: 'Venezuela has no BIS policy rate. Note the currency: the rate shown is the official BCV reference \u2014 a parallel market rate exists and has traded far weaker, so treat the level as indicative.',
 };
 async function getPolicyRate(area) {
   if (!area) return null;

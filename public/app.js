@@ -1882,9 +1882,15 @@ function renderCpiChart(cpi) {
   const note = $('cpi-note');
   if (!cpi || !cpi.length) { if (wrap) wrap.style.display = 'none'; if (note) note.textContent = 'no free CPI series for this country'; return; }
   if (wrap) wrap.style.display = '';
-  if (note) note.textContent = `latest ${cpi[cpi.length - 1].value}% (${cpi[cpi.length - 1].year})`;
-  const data = { labels: cpi.map((d) => String(d.year)), datasets: [{ label: 'CPI YoY %', data: cpi.map((d) => d.value), borderColor: CT.c4, backgroundColor: CT.c4 + '22', borderWidth: 2, pointRadius: 0, tension: 0.25, fill: false }] };
-  cpiChart = mountChart('cpi-chart', data, baseOptions({ dp: 1, percentAxis: true, legend: false }));
+  // Venezuela's series runs from 21% to 65,374% (2018 hyperinflation). On a linear axis that is one
+  // spike with everything else flat against zero, so a chart that extreme switches to a log axis —
+  // the shape stays honest, the axis just says "×10 each step" instead of hiding the history.
+  const vals = cpi.map((d) => d.value);
+  const lo = Math.min(...vals), hi = Math.max(...vals);
+  const logCpi = lo > 0 && hi / lo > 50;
+  if (note) note.textContent = `latest ${cpi[cpi.length - 1].value}% (${cpi[cpi.length - 1].year})${logCpi ? ' · log scale' : ''}`;
+  const data = { labels: cpi.map((d) => String(d.year)), datasets: [{ label: 'CPI YoY %', data: vals, borderColor: CT.c4, backgroundColor: CT.c4 + '22', borderWidth: 2, pointRadius: 0, tension: 0.25, fill: false }] };
+  cpiChart = mountChart('cpi-chart', data, baseOptions({ dp: 1, percentAxis: true, legend: false, log: logCpi }));
 }
 // Government bond yields for the selected country (short + long + term spread).
 function renderYields(d) {
