@@ -41,6 +41,10 @@ const BENCHMARKS = [
   { id: 'silver',   label: 'Silver',    group: 'Metals', unit: '$/oz', dp: 3, paper: 'SI=F', physical: null },
   { id: 'copper',   label: 'Copper',    group: 'Metals', unit: '$/lb', dp: 4, paper: 'HG=F', physical: null },
   { id: 'aluminium',label: 'Aluminium', group: 'Metals', unit: '$/t',  dp: 0, paper: 'ALI=F', physical: null },
+  // The steel chain: ore is the China-demand bellwether, HRC is the industrial cycle itself, and the
+  // two together give a steel margin (ore -> hot-rolled coil) the way cracks and crush do for oil/soy.
+  { id: 'ironore',  label: 'Iron ore 62% Fe', group: 'Metals', unit: '$/t',  dp: 2, paper: 'TIO=F', physical: null },
+  { id: 'steel',    label: 'Steel (HRC)',     group: 'Metals', unit: '$/st', dp: 0, paper: 'HRC=F', physical: null },
   { id: 'platinum', label: 'Platinum',  group: 'Metals', unit: '$/oz', dp: 2, paper: 'PL=F', physical: null },
   { id: 'palladium',label: 'Palladium', group: 'Metals', unit: '$/oz', dp: 2, paper: 'PA=F', physical: null },
   // ---- Agriculture (futures only) ----
@@ -54,6 +58,8 @@ const BENCHMARKS = [
   { id: 'cocoa',   label: 'Cocoa',    group: 'Agriculture', unit: '$/t',  dp: 0, paper: 'CC=F', physical: null },
   { id: 'cotton',  label: 'Cotton',   group: 'Agriculture', unit: '¢/lb', dp: 2, paper: 'CT=F', physical: null },
   { id: 'palm',    label: 'Palm Oil', group: 'Agriculture', unit: '$/t',  dp: 0, paper: 'CPO=F', physical: null },
+  { id: 'rice',    label: 'Rough rice',   group: 'Agriculture', unit: '$/cwt', dp: 2, paper: 'ZR=F', physical: null },
+  { id: 'orange',  label: 'Orange juice', group: 'Agriculture', unit: '¢/lb',  dp: 2, paper: 'OJ=F', physical: null },
   // ---- Livestock (futures only) ----
   { id: 'cattle',  label: 'Live Cattle',   group: 'Livestock', unit: '¢/lb', dp: 2, paper: 'LE=F', physical: null },
   { id: 'hogs',    label: 'Lean Hogs',     group: 'Livestock', unit: '¢/lb', dp: 2, paper: 'HE=F', physical: null },
@@ -78,9 +84,9 @@ const MARKETS = [
   { id: 'refined',    label: 'Refined products', group: 'Refined', primary: 'rbob',   components: ['rbob', 'ulsd', 'jet', 'propane'],           hasBasis: true,  hasInventories: true,  hasShips: true },
   { id: 'gas',        label: 'Natural gas',      group: 'Gas',     primary: 'natgas', components: ['natgas'],                                   hasBasis: true,  hasInventories: true,  hasShips: false },
   { id: 'precious',   label: 'Precious metals',   group: 'Metals',      primary: 'gold',   components: ['gold', 'silver', 'platinum', 'palladium'],  hasBasis: false, hasInventories: false, hasShips: false },
-  { id: 'industrial', label: 'Industrial metals', group: 'Metals',      primary: 'copper', components: ['copper', 'aluminium'],              hasBasis: false, hasInventories: false, hasShips: false },
-  { id: 'grains',     label: 'Grains & oilseeds',  group: 'Agriculture', primary: 'corn',   components: ['corn', 'wheat', 'soybean', 'soymeal', 'soyoil'], hasBasis: false, hasInventories: false, hasShips: false },
-  { id: 'softs',      label: 'Softs',             group: 'Agriculture', primary: 'sugar',  components: ['sugar', 'coffee', 'cocoa', 'cotton', 'palm'], hasBasis: false, hasInventories: false, hasShips: false },
+  { id: 'industrial', label: 'Industrial metals', group: 'Metals',      primary: 'copper', components: ['copper', 'aluminium', 'ironore', 'steel'],              hasBasis: false, hasInventories: false, hasShips: false },
+  { id: 'grains',     label: 'Grains & oilseeds',  group: 'Agriculture', primary: 'corn',   components: ['corn', 'wheat', 'soybean', 'soymeal', 'soyoil', 'rice'], hasBasis: false, hasInventories: false, hasShips: false },
+  { id: 'softs',      label: 'Softs',             group: 'Agriculture', primary: 'sugar',  components: ['sugar', 'coffee', 'cocoa', 'cotton', 'palm', 'orange'], hasBasis: false, hasInventories: false, hasShips: false },
   { id: 'livestock',  label: 'Livestock',         group: 'Livestock',   primary: 'cattle', components: ['cattle', 'hogs', 'feeder'],                hasBasis: false, hasInventories: false, hasShips: false },
   { id: 'dairy',      label: 'Dairy',             group: 'Dairy',       primary: 'milk',   components: ['milk', 'butter', 'nfdm', 'cheese', 'whey'], hasBasis: false, hasInventories: false, hasShips: false },
 ];
@@ -498,8 +504,10 @@ const COT_NAMES = {
   wti: 'CRUDE OIL, LIGHT SWEET-WTI', brent: 'CRUDE OIL, BRENT',
   rbob: 'GASOLINE RBOB', ulsd: 'NY HARBOR ULSD', natgas: 'NATURAL GAS',
   gold: 'GOLD', silver: 'SILVER', copper: 'COPPER', platinum: 'PLATINUM', palladium: 'PALLADIUM',
+  steel: 'STEEL-HRC',   // iron ore is not a CFTC contract
   corn: 'CORN', wheat: 'WHEAT-SRW', soybean: 'SOYBEANS', soymeal: 'SOYBEAN MEAL', soyoil: 'SOYBEAN OIL',
   sugar: 'SUGAR NO. 11', coffee: 'COFFEE C', cocoa: 'COCOA', cotton: 'COTTON NO. 2',
+  orange: 'FRZN CONCENTRATED ORANGE JUICE', rice: 'ROUGH RICE',
   palm: 'MALAYSIAN PALM OIL CALENDAR SW',
   milk: 'MILK, Class III', butter: 'BUTTER (CASH SETTLED)', cheese: 'CHEESE (CASH-SETTLED)', nfdm: 'NON FAT DRY MILK', whey: 'DRY WHEY',
 };
@@ -1260,8 +1268,9 @@ const CURVE_SPEC = {
   aluminium: { root: 'ALI', exch: 'CMX' },
   platinum: { root: 'PL', exch: 'CMX' }, palladium: { root: 'PA', exch: 'CMX' },
   corn: { root: 'ZC', exch: 'CBT' }, wheat: { root: 'ZW', exch: 'CBT' }, soybean: { root: 'ZS', exch: 'CBT' },
-  soymeal: { root: 'ZM', exch: 'CBT' }, soyoil: { root: 'ZL', exch: 'CBT' },
+  soymeal: { root: 'ZM', exch: 'CBT' }, soyoil: { root: 'ZL', exch: 'CBT' }, rice: { root: 'ZR', exch: 'CBT' },
   coffee: { root: 'KC', exch: 'NYB' }, sugar: { root: 'SB', exch: 'NYB' }, cocoa: { root: 'CC', exch: 'NYB' }, cotton: { root: 'CT', exch: 'NYB' },
+  orange: { root: 'OJ', exch: 'NYB' },
   // CME dairy complex (all quoted as individual contract months on Yahoo)
   milk: { root: 'DC', exch: 'CME' }, butter: { root: 'CB', exch: 'CME' }, nfdm: { root: 'GNF', exch: 'CME' }, cheese: { root: 'CSC', exch: 'CME' }, whey: { root: 'DY', exch: 'CME' },
   // CME livestock
@@ -1345,10 +1354,10 @@ const MARKET_CONTENT = {
     sectorsUp: ['Gold & silver miners', 'Royalty & streaming'], sectorsDown: ['No direct loser — a store of value, not an input'],
     tickersUp: ['NEM', 'AEM', 'GDX', 'GDXJ', 'WPM', 'GOLD', 'GFI', 'HMY'], tickersDown: ['SIG'],
     ideas: 'Precious metals are a store of value, not an input — a strong run usually means fear or falling real yields. Mainly helps miners; there is no direct corporate loser.' },
-  industrial: { tightQ: 'ARE COPPER & ALUMINIUM TIGHT?', catalysts: ['China demand & stimulus', 'mine supply & strikes (Chile, Indonesia)', 'exchange warehouse stocks', 'energy & power costs (smelters)'], watch: ['China property & grid spending', 'LME/COMEX warehouse stocks & smelter curtailments'],
-    sectorsUp: ['Copper & aluminium miners & smelters', 'Electrification, grid & battery suppliers'], sectorsDown: ['Aerospace, packaging & autos', 'Construction & machinery'],
-    tickersUp: ['FCX', 'SCCO', 'RIO', 'BHP', 'VALE', 'AA', 'CENX', 'COPX', 'PICK', '3993.HK'], tickersDown: ['CAT', 'DE', 'PKB'],
-    ideas: 'Copper and aluminium are the electrification, grid and packaging metals — tight supply helps miners and smelters and signals firm industrial demand; it raises costs for construction, aerospace, packaging, autos and machinery.' },
+  industrial: { tightQ: 'ARE COPPER, ALUMINIUM & STEEL TIGHT?', catalysts: ['China demand & stimulus', 'mine supply & strikes (Chile, Indonesia)', 'iron ore & steel (China property)', 'exchange warehouse stocks', 'energy & power costs (smelters)'], watch: ['China property & grid spending', 'the steel margin (iron ore → HRC)', 'LME/COMEX warehouse stocks & smelter curtailments'],
+    sectorsUp: ['Copper, aluminium & steel producers', 'Electrification, grid & battery suppliers'], sectorsDown: ['Aerospace, packaging & autos', 'Construction & machinery'],
+    tickersUp: ['FCX', 'SCCO', 'RIO', 'BHP', 'VALE', 'AA', 'CENX', 'NUE', 'STLD', 'COPX', 'PICK'], tickersDown: ['CAT', 'DE', 'PKB'],
+    ideas: 'Copper and aluminium are the electrification and packaging metals; iron ore and steel are the construction and machinery cycle. Tight supply helps miners, smelters and mills and signals firm industrial demand, while raising costs for autos, construction, packaging and machinery.' },
   grains:     { tightQ: 'ARE GRAINS TIGHT?', catalysts: ['USDA WASDE report (monthly)', 'crop weather (US, Brazil, Black Sea)', 'weekly export sales'], watch: ['US crop conditions & the WASDE print', 'Black-Sea export flows'],
     sectorsUp: ['Farm equipment & inputs', 'Grain traders & processors'], sectorsDown: ['Food makers', 'Livestock & protein (feed cost)', 'Ethanol'],
     tickersUp: ['DE', 'ADM', 'BG', 'CF', 'MOS', 'MOO', 'DBA', 'F34.SI'], tickersDown: ['TSN', 'KHC', 'MDLZ'],
@@ -1690,6 +1699,8 @@ const NEWS_FOCUS = {
   jet: [/\bjet fuel\b/i], propane: [/\bpropane\b/i], natgas: [/\b(natural gas|lng)\b/i],
   gold: [/\bgold\b/i], silver: [/\bsilver\b/i], platinum: [/\bplatinum\b/i], palladium: [/\bpalladium\b/i],
   copper: [/\bcopper\b/i], aluminium: [/\b(aluminium|aluminum)\b/i],
+  ironore: [/\biron ore\b/i], steel: [/\b(steel|hot[- ]?rolled|hrc|rebar)\b/i],
+  orange: [/\b(orange juice|citrus|oranges?)\b/i], rice: [/\brice\b/i],
   corn: [/\b(corn|maize)\b/i], wheat: [/\bwheat\b/i], soybean: [/\b(soybean|soy)\b/i], soymeal: [/\b(soy ?meal|meal)\b/i], soyoil: [/\b(soy ?oil|soybean oil|vegetable oil)\b/i],
   sugar: [/\bsugar\b/i], coffee: [/\bcoffee\b/i], cocoa: [/\bcocoa\b/i], cotton: [/\bcotton\b/i], palm: [/\bpalm\b/i],
   cattle: [/\b(cattle|beef)\b/i], hogs: [/\b(hog|pork)\b/i], feeder: [/\b(feeder|cattle|calves)\b/i],

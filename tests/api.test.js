@@ -120,9 +120,10 @@ test('/api/markets groups benchmarks into 9 segments (WTI+Brent=Crude, fuels=Ref
   assert.deepEqual(ms.find((m) => m.id === 'refined').components.map((c) => c.id), ['rbob', 'ulsd', 'jet', 'propane']);
   assert.equal(ms.find((m) => m.id === 'precious').components.length, 4);
   assert.equal(ms.find((m) => m.id === 'grains').hasBasis, false);
-  assert.deepEqual(ms.find((m) => m.id === 'grains').components.map((c) => c.id), ['corn', 'wheat', 'soybean', 'soymeal', 'soyoil']);
-  // nickel is gone; industrial metals are copper + aluminium
-  assert.deepEqual(ms.find((m) => m.id === 'industrial').components.map((c) => c.id), ['copper', 'aluminium']);
+  assert.deepEqual(ms.find((m) => m.id === 'grains').components.map((c) => c.id), ['corn', 'wheat', 'soybean', 'soymeal', 'soyoil', 'rice']);
+  // nickel is gone (no free daily source); the industrial segment carries the metals plus the steel chain
+  assert.deepEqual(ms.find((m) => m.id === 'industrial').components.map((c) => c.id), ['copper', 'aluminium', 'ironore', 'steel']);
+  assert.deepEqual(ms.find((m) => m.id === 'softs').components.map((c) => c.id), ['sugar', 'coffee', 'cocoa', 'cotton', 'palm', 'orange']);
   // a new Livestock segment exists, headed by live cattle
   const live = ms.find((m) => m.id === 'livestock');
   assert.ok(live, 'livestock segment must exist');

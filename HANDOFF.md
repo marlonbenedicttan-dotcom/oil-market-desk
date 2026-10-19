@@ -901,3 +901,35 @@ The Americas region is now **United States · Mexico · Brazil · Argentina · V
   (−1%), so the 2024 spike (220%) is shown as-is rather than reshaped.
 - Snapshot regenerated: **28 countries**. 95 tests (new: the MERVAL quotes, soybeans are linked, and
   `policy` is null **with** the note explaining the stale BIS series).
+## Commodities: steel, iron ore, orange juice, rough rice (2026-10-19) — 31 → 35 instruments
+I probed every plausible addition first. Most are **data-blocked**, so these four are the ones with a real
+free daily futures market:
+- **Steel (HRC)** `HRC=F` · $/st · ~$1,320 → into **Industrial metals**. The app had no steel at all, which
+  is the industrial cycle itself (autos, construction, machinery).
+- **Iron ore 62% Fe** `TIO=F` · $/t · ~$90.9 → into **Industrial metals**. The China-demand bellwether, and
+  paired with HRC it makes the **steel margin** visible (ore → coil) — the same idea as the refining
+  cracks and the soybean crush. The component strip now reads Copper · Aluminium · Iron ore · Steel.
+- **Orange juice** `OJ=F` · ¢/lb · ~140.9 → into **Softs** (now 6).
+- **Rough rice** `ZR=F` · $/cwt · ~17.3 → into **Grains & oilseeds** (now 6).
+
+Wiring that each new instrument needed, and what it turned out to support:
+- **Curves:** OJ and rice quote individual months on Yahoo (`OJ F27.NYB`, `ZR H27.CBT`) — but only their
+  *odd* months resolve, so the curve panel shows the 3 of the next 6 that exist (the app already tolerates
+  gaps, as it does for coffee). **Steel and iron ore have no monthly contracts on Yahoo** (`HRC*.CME` 404s),
+  so `curve: false` — declared, not broken.
+- **CFTC positioning:** exact `contract_market_name` values fetched from the live report —
+  `STEEL-HRC` (net +8,854, 77th pctile), `FRZN CONCENTRATED ORANGE JUICE` (+472, 12th), `ROUGH RICE`
+  (+3,496, 88th), all as of 2026-10-13. Iron ore is **not** a CFTC contract → `cot: false`.
+- **News markers:** `NEWS_FOCUS` added for all four so their price charts get big-move annotations.
+- **Segment copy:** the industrial block now asks "ARE COPPER, ALUMINIUM & STEEL TIGHT?", lists iron ore &
+  steel as catalysts, and names **the steel margin (iron ore → HRC)** as a thing to watch.
+
+**What I checked and could NOT add** (so nobody re-tries it): lumber `LBS=F` 404 · canola `RS=F` empty,
+`CAN=F` 404 · robusta `RC=F` 404 · Minneapolis wheat `MW=F` 404 · uranium `UX=F` returns **one** point ·
+Baltic Dry `^BDI`/`BDIY` 404 · nickel only as an ETC proxy (removed once already for being misleading) ·
+coal, TTF gas, lithium, cobalt, carbon have no free futures. The miners ETFs that do work
+(`SLX`, `URA`, `LIT`, `CPER`) are **equity baskets, not the commodity** — the promise is physical prices,
+so they are not used for rows (they remain fine as cross-asset chips, e.g. GDX).
+
+**35 instruments.** 95 tests (the pinned segment-component assertions updated). Verified in the browser:
+35 screener rows, the 4-tile industrial strip, the OJ chart, no console errors, no overflow.
