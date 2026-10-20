@@ -1006,3 +1006,18 @@ important events on that day."* Fair: the panel was a month grid **plus** a 73-r
 - `/api/calendar` now sends `time` separately from the consensus note, so the list can lay them out.
 - 98 tests still pass (the calendar test is unchanged and still checks ≥15 countries + consensus).
   `app.js?v=123`, `style.css?v=66`.
+## Calendar: the month grid is BACK, with one selected day's events under it (2026-10-20)
+**My mistake:** I read "just put a list of important events" as "replace the calendar with a list" and
+removed the month grid — which the user likes. It is back, and the real complaint (a 73-row month dump
+under the grid) is fixed properly:
+- **The grid stays** — every macro country's **high-impact** releases plus the structural ones, max **2
+  chips per day + "+N"**, tooltips carrying the country, time and consensus, month nav `‹ OCTOBER 2026 ›`
+  and TODAY, and cells that respond to click *and* Enter/Space.
+- **Only ONE day is listed underneath** — `TODAY · OCT 20` by default, or whichever date you click
+  (`FRI · OCT 23`), showing that day's rows: **time · country · event · source**, with consensus / prior
+  on the line beneath. No month dump.
+- **Restoring the grid also restored `.cal-row` / `.cal-date` / `.cal-name` / `.cal-src` / `.cal-note`,
+  which the MACRO catalysts list shares** — those rules had been deleted with the grid, so the catalysts
+  panel was unstyled for a commit. Both lists now use one 3-column `118px · 1fr · auto` row, note spanning
+  the width; phones stack it.
+- 98 tests pass. `app.js?v=124`, `style.css?v=67`.

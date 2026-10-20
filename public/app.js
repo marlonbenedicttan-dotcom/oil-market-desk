@@ -2244,7 +2244,7 @@ $('screen')?.addEventListener('change', (e) => {
 // Economic calendar — a real month grid. Dated events sit on their day; undated ones are listed below.
 const CAL_DOW = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const MONTH_NAMES = ['JANUARY', 'FEBRUARY', 'MARCH', 'APRIL', 'MAY', 'JUNE', 'JULY', 'AUGUST', 'SEPTEMBER', 'OCTOBER', 'NOVEMBER', 'DECEMBER'];
-let calEvents = null, calFomc = null;
+let calEvents = null, calMonth = null, calSel = null, calFomc = null;
 async function loadCalendar() {
   const el = $('calendar'); if (!el) return;
   if (!el.innerHTML) el.innerHTML = stLoading('Loading the calendar…');
@@ -2254,44 +2254,67 @@ async function loadCalendar() {
   markReady('calendar');
   renderCalendar();
 }
-// The calendar is a short list, not a wall. It shows the next ten days of releases worth acting on —
-// the structural ones (EIA, expiry, WASDE, FOMC, OPEC+) plus country releases flagged high-impact —
-// grouped by day, at most four per day and twelve in total.
+// The month grid, plus the events of ONE selected day underneath (today by default). The full month is
+// never listed out — click a day to read that day. High-impact releases only, so the cells stay legible.
 function renderCalendar() {
   const el = $('calendar'); if (!el) return;
   const sub = $('cal-sub');
-  if (sub) sub.textContent = 'next 10 days · important releases · consensus where published';
+  if (sub) sub.textContent = 'every macro country · high-impact releases · click a day for its events';
   if (!calEvents) { el.innerHTML = stError('Couldn\u2019t load the calendar — retrying.'); return; }
   const iso = (d) => d.toISOString().slice(0, 10);
   const today = iso(new Date());
-  const tomorrow = iso(new Date(Date.now() + 864e5));
-  const horizon = iso(new Date(Date.now() + 10 * 864e5));
-  const notable = calEvents
-    .filter((e) => e.date && e.date >= today && e.date <= horizon && (!e.cc || e.importance >= 1))
-    .sort((x, y) => (x.date + (x.time || '')).localeCompare(y.date + (y.time || '')));
-  const groups = [];
-  let shown = 0;
-  for (const e of notable) {
-    if (shown >= 12) break;
-    let g = groups.find((x) => x.date === e.date);
-    if (!g) { g = { date: e.date, ev: [] }; groups.push(g); }
-    if (g.ev.length >= 4) continue;          // one busy day must not flood the list
-    g.ev.push(e); shown++;
+  if (!calMonth) { const d = new Date(today + 'T00:00:00Z'); calMonth = { y: d.getUTCFullYear(), m: d.getUTCMonth() }; }
+  const byDate = {};
+  for (const e of calEvents) {
+    if (!e.date || (e.cc && !(e.importance >= 1))) continue;   // structural, or a high-impact release
+    (byDate[e.date] = byDate[e.date] || []).push(e);
   }
-  const dayHead = (k) => {
-    const d = new Date(k + 'T00:00:00Z');
-    const md = `${MONTH_NAMES[d.getUTCMonth()].slice(0, 3)} ${d.getUTCDate()}`;
-    if (k === today) return `TODAY · ${md}`;
-    if (k === tomorrow) return `TOMORROW · ${md}`;
-    return `${CAL_DOW[(d.getUTCDay() + 6) % 7].toUpperCase()} · ${md}`;
-  };
-  const row = (e) => `<div class="cal-row"><span class="cal-time">${esc(e.time || '—')}</span><span class="cal-cc">${esc(e.cc || '')}</span><span class="cal-name">${esc(e.name)}</span><span class="cal-src">${esc(e.source || '')}</span>${e.note ? `<span class="cal-note dimtext">${esc(e.note)}</span>` : ''}</div>`;
-  const html = groups.map((g) => `<div class="cal-dayh">${dayHead(g.date)}</div>` + g.ev.map(row).join('')).join('');
-  const undated = calEvents.filter((e) => !e.date);
-  el.innerHTML = (html || stEmpty('Nothing high-impact in the next ten days.'))
-    + (undated.length ? '<div class="cal-dayh">DATE VARIES</div>' + undated.map(row).join('') : '')
+  for (const k of Object.keys(byDate)) byDate[k].sort((x, y) => (x.time || '').localeCompare(y.time || ''));
+  const { y, m } = calMonth;
+  const mk = `${y}-${String(m + 1).padStart(2, '0')}`;
+  if (!calSel || calSel.slice(0, 7) !== mk) calSel = (today.slice(0, 7) === mk ? today : `${mk}-01`);
+  const startDow = (new Date(Date.UTC(y, m, 1)).getUTCDay() + 6) % 7;   // Monday-first
+  const dim = new Date(Date.UTC(y, m + 1, 0)).getUTCDate();
+  const cells = [];
+  for (let i = 0; i < startDow; i++) cells.push(null);
+  for (let day = 1; day <= dim; day++) { const k = `${mk}-${String(day).padStart(2, '0')}`; cells.push({ day, k, ev: byDate[k] || [] }); }
+  while (cells.length % 7) cells.push(null);
+  const CAL_MAX = 2;
+  const tipOf = (e) => esc(`${e.cc ? e.cc + ' · ' : ''}${e.name}${e.time ? ' · ' + e.time : ''}${e.note ? ' · ' + e.note : ''}`);
+  const grid = cells.map((c) => {
+    if (!c) return '<div class="cal-day pad"></div>';
+    const shown = c.ev.slice(0, CAL_MAX), more = c.ev.length - shown.length;
+    return `<div class="cal-day${c.k === today ? ' today' : ''}${c.ev.length ? ' has' : ''}${c.k === calSel ? ' sel' : ''}" data-date="${c.k}" role="button" tabindex="0" aria-label="${c.k}${c.ev.length ? ' — ' + c.ev.length + ' release' + (c.ev.length > 1 ? 's' : '') : ', nothing scheduled'}">`
+      + `<span class="cal-dn">${c.day}</span>`
+      + shown.map((e) => `<span class="cal-ev" title="${tipOf(e)}">${e.cc ? `<em class="cal-cc">${esc(e.cc)}</em>` : ''}${esc(e.name)}</span>`).join('')
+      + (more > 0 ? `<span class="cal-more">+${more}</span>` : '')
+      + '</div>';
+  }).join('');
+  const selEv = byDate[calSel] || [];
+  const d0 = new Date(calSel + 'T00:00:00Z');
+  const md = `${MONTH_NAMES[d0.getUTCMonth()].slice(0, 3)} ${d0.getUTCDate()}`;
+  const dayLabel = calSel === today ? `TODAY · ${md}` : `${CAL_DOW[(d0.getUTCDay() + 6) % 7].toUpperCase()} · ${md}`;
+  const row = (e) => `<div class="cal-row"><span class="cal-date">${esc(e.time || '—')}</span><span class="cal-name">${e.cc ? `<em class="cal-cc">${esc(e.cc)}</em>` : ''}${esc(e.name)}</span><span class="cal-src">${esc(e.source || '')}</span>${e.note ? `<span class="cal-note dimtext">${esc(e.note)}</span>` : ''}</div>`;
+  el.innerHTML = `<div class="cal-head"><div class="cal-nav"><button id="cal-prev" type="button" aria-label="Previous month">‹</button><span class="cal-title">${MONTH_NAMES[m]} ${y}</span><button id="cal-next" type="button" aria-label="Next month">›</button></div><button id="cal-today" class="ghost small" type="button">TODAY</button></div>`
+    + `<div class="cal-grid">${CAL_DOW.map((x) => `<div class="cal-dow">${x}</div>`).join('')}${grid}</div>`
+    + `<div class="cal-dayh">${dayLabel}</div>`
+    + (selEv.length ? selEv.map(row).join('') : '<div class="cal-foot dimtext">Nothing high-impact scheduled on this day.</div>')
     + (calFomc === 'fallback' ? '<div class="cal-foot dimtext">FOMC dates from the published schedule — the live Federal Reserve feed was unavailable.</div>' : '');
 }
+const calPick = (k) => { if (k) { calSel = k; renderCalendar(); } };
+$('calendar')?.addEventListener('click', (e) => {
+  if (!calMonth) return;
+  if (e.target.id === 'cal-prev') { calMonth.m--; if (calMonth.m < 0) { calMonth.m = 11; calMonth.y--; } calSel = null; renderCalendar(); return; }
+  if (e.target.id === 'cal-next') { calMonth.m++; if (calMonth.m > 11) { calMonth.m = 0; calMonth.y++; } calSel = null; renderCalendar(); return; }
+  if (e.target.id === 'cal-today') { const n = new Date(); calMonth = { y: n.getUTCFullYear(), m: n.getUTCMonth() }; calSel = n.toISOString().slice(0, 10); renderCalendar(); return; }
+  const cell = e.target.closest('.cal-day[data-date]');
+  if (cell) calPick(cell.dataset.date);
+});
+$('calendar')?.addEventListener('keydown', (e) => {
+  if (e.key !== 'Enter' && e.key !== ' ') return;
+  const cell = e.target.closest('.cal-day[data-date]');
+  if (cell) { e.preventDefault(); calPick(cell.dataset.date); }
+});
 // Risk & correlation — a plain read, bars-with-words, and a focus view (full matrix behind a fold).
 let riskData = null, riskFocus = null;
 async function loadRisk() {
