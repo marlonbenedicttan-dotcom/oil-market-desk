@@ -1194,7 +1194,8 @@ async function getCalendar() {
     try {
       for (const e of await tvWorld()) {
         events.push({ date: e.date, name: e.name, source: e.country ? `TradingView · ${e.country}` : 'TradingView',
-          note: [e.time, e.forecast != null ? `consensus ${e.forecast}` : '', e.previous != null ? `prior ${e.previous}` : ''].filter(Boolean).join(' · '),
+          time: e.time || null,
+          note: [e.forecast != null ? `consensus ${e.forecast}` : '', e.previous != null ? `prior ${e.previous}` : ''].filter(Boolean).join(' · '),
           cc: e.cc, country: e.country, importance: e.importance });
       }
     } catch {}

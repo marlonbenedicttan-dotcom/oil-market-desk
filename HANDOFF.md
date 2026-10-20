@@ -990,3 +990,19 @@ country list): **195 events across 26 of 28 countries** in the 45-day window.
   TODAY / NEXT" names the country and **dedupes** — it used to list the same weekly EIA print four times.
 - 98 tests (new: ≥15 countries present, each with a readable country name, consensus/prior appears, and
   the structural events survive). `app.js?v=122`, `style.css?v=64`.
+## Economic calendar: a short list, not a wall (2026-10-20)
+The user's note: *"when I scroll the economic calendar you showed me too much — just put a list of
+important events on that day."* Fair: the panel was a month grid **plus** a 73-row month list.
+- **It is now one list**: the next **10 days** of releases worth acting on — the structural ones (EIA,
+  futures expiry, WASDE, FOMC, OPEC+) plus country releases flagged **high-impact** — grouped by day
+  (`TODAY · OCT 20`, `TOMORROW · OCT 21`, `THU · OCT 22`, …), at most **4 per day** and **12 in total**,
+  with a `DATE VARIES` group for the undated OPEC+ meeting.
+- Each row: **time (ET) · country · event**, the source on the right, and the **consensus / prior** on
+  the line beneath. The panel went from ~1,600px of grid+list to **827px**.
+- **Removed with it:** the month nav (`‹ OCTOBER 2026 ›`, TODAY), `calMonth` state and its click handler,
+  and all the grid CSS (`.cal-grid`, `.cal-dow`, `.cal-day*`, `.cal-ev`, `.cal-more`, `.cal-nav`,
+  `.cal-title`, `.cal-head`, `.cal-date`, `.cal-list` — 31 rules), replaced by `.cal-dayh` / `.cal-time`
+  and a 4-column row. Phones keep the same list with the source hidden.
+- `/api/calendar` now sends `time` separately from the consensus note, so the list can lay them out.
+- 98 tests still pass (the calendar test is unchanged and still checks ≥15 countries + consensus).
+  `app.js?v=123`, `style.css?v=66`.
