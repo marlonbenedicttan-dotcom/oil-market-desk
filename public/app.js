@@ -2262,11 +2262,12 @@ async function loadCalendar() {
 function calRow(e, today, withDay) {
   const days = e.date ? Math.round((Date.parse(e.date) - Date.parse(today)) / 864e5) : null;
   const when = e.date ? `${e.date.slice(5)}${withDay ? (days === 0 ? ' · today' : days > 0 ? ` · ${days}d` : '') : ''}` : 'date varies';
-  return `<div class="cal-row"><span class="cal-date">${when}</span><span class="cal-name">${e.name}</span><span class="cal-src">${e.source || ''}</span>${e.note ? `<span class="cal-note dimtext">${e.note}</span>` : ''}</div>`;
+  return `<div class="cal-row"><span class="cal-date">${when}</span><span class="cal-name">${e.cc ? `<em class="cal-cc">${esc(e.cc)}</em> ` : ''}${esc(e.name)}</span><span class="cal-src">${esc(e.source || '')}</span>${e.note ? `<span class="cal-note dimtext">${esc(e.note)}</span>` : ''}</div>`;
 }
 function renderCalendar() {
   const el = $('calendar'); if (!el) return;
-  const sub = $('cal-sub'); if (sub) sub.textContent = 'dates only — no free consensus, so no forecasts (never invented)';
+  const sub = $('cal-sub');
+  if (sub) sub.textContent = 'every macro country · high-impact releases · consensus & prior where TradingView publishes them';
   if (!calEvents || !calMonth) { el.innerHTML = stError('Couldn’t load the calendar — retrying.'); return; }
   const today = new Date().toISOString().slice(0, 10);
   const byDate = {};
@@ -2278,9 +2279,18 @@ function renderCalendar() {
   for (let i = 0; i < startDow; i++) cells.push(null);
   for (let day = 1; day <= dim; day++) { const k = `${y}-${String(m + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`; cells.push({ day, k, ev: byDate[k] || [] }); }
   while (cells.length % 7) cells.push(null);
-  const grid = cells.map((c) => c
-    ? `<div class="cal-day${c.k === today ? ' today' : ''}${c.ev.length ? ' has' : ''}"><span class="cal-dn">${c.day}</span>${c.ev.map((e) => `<span class="cal-ev" title="${e.name}${e.source ? ' · ' + e.source : ''}">${e.name}</span>`).join('')}</div>`
-    : '<div class="cal-day pad"></div>').join('');
+  // Two chips per day (a busy day carries 20+ releases across 28 countries) plus a "+N" hint; the full
+  // day is in the tooltip and the month list below spells every event out.
+  const CAL_MAX = 2;
+  const tip = (e) => esc(`${e.cc ? e.cc + ' · ' : ''}${e.name}${e.note ? ' · ' + e.note : ''}`);
+  const grid = cells.map((c) => {
+    if (!c) return '<div class="cal-day pad"></div>';
+    const shown = c.ev.slice(0, CAL_MAX), more = c.ev.length - shown.length;
+    return `<div class="cal-day${c.k === today ? ' today' : ''}${c.ev.length ? ' has' : ''}"><span class="cal-dn">${c.day}</span>`
+      + shown.map((e) => `<span class="cal-ev" title="${tip(e)}">${e.cc ? `<em class="cal-cc">${esc(e.cc)}</em>` : ''}${esc(e.name)}</span>`).join('')
+      + (more > 0 ? `<span class="cal-more" title="${esc(c.ev.slice(CAL_MAX).map((e) => (e.cc ? e.cc + ' ' : '') + e.name).join(' · '))}">+${more}</span>` : '')
+      + '</div>';
+  }).join('');
   const mk = `${y}-${String(m + 1).padStart(2, '0')}`;
   const monthEvents = calEvents.filter((e) => e.date && e.date.slice(0, 7) === mk);
   const undated = calEvents.filter((e) => !e.date);

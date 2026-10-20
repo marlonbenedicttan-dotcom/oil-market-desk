@@ -969,3 +969,24 @@ segment (only that segment — the same `data-when` gating as the crush on grain
   exact contract names verified against the live report — `LIVE CATTLE`, `LEAN HOGS`, `FEEDER CATTLE`.
   Live: cattle +26.3k contracts (2nd pctile), hogs −81.8k (1st), feeder −1.2k (26th).
 - 97 tests. `app.js?v=121`.
+## Economic calendar: every macro country, with consensus (2026-10-20)
+The HOME calendar used to be **structural only** — EIA weekly, futures expiry, WASDE, FOMC, OPEC+. It now
+also carries **every macro country's upcoming releases**, in one TradingView request (the feed accepts a
+country list): **195 events across 26 of 28 countries** in the 45-day window.
+- **Qatar and Venezuela are genuinely absent** — TradingView publishes **zero** events for either. Nothing
+  is invented to fill the gap.
+- **Importance fallback per country:** high-impact releases first; if a country has none in the window, its
+  medium ones; if it only publishes low-impact data (Kenya's GDP print is flagged low there), its next
+  couple — so no country goes silently missing. The structural events stay alongside.
+- **Consensus and prior are real.** The payload carries `forecast`/`previous`, so the panel's old line
+  *"dates only — no free consensus, so no forecasts (never invented)"* was simply wrong; it now reads
+  "every macro country · high-impact releases · consensus & prior where TradingView publishes them", and
+  each event carries e.g. `2:00am ET · consensus 3.4 · prior 3.1`.
+- **UI:** month cells show at most **2 chips + "+N"** (a busy day carries 20+ releases across 28
+  countries), each prefixed with the country code; the tooltip has the country, time and consensus; the
+  month list below spells every event out (`AR · Leading Indicator MoM · TradingView · Argentina ·
+  1:30pm ET · prior −0.27`). On phones the chips stay dots and the "+N" is hidden.
+- **Two incidental fixes:** `calRow` now **escapes** feed text (it didn't), and the brief's "WHAT'S ON
+  TODAY / NEXT" names the country and **dedupes** — it used to list the same weekly EIA print four times.
+- 98 tests (new: ≥15 countries present, each with a readable country name, consensus/prior appears, and
+  the structural events survive). `app.js?v=122`, `style.css?v=64`.

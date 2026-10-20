@@ -506,6 +506,8 @@ footer li { margin-bottom: 2px; }
 .cal-day.today .cal-dn { color: var(--amber); font-weight: 700; }
 .cal-day.has .cal-dn { color: var(--text); }
 .cal-ev { display: block; font-size: 9px; line-height: 1.25; color: #c9d4df; background: #161b22; border-left: 2px solid var(--amber); padding: 1px 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cal-cc { font-style: normal; color: var(--amber); margin-right: 3px; letter-spacing: .5px; }
+.cal-more { font-size: 9px; color: var(--dim); padding-left: 2px; }
 .cal-list { background: #0c0f13; }
 .cal-row { display: grid; grid-template-columns: 118px 1fr auto; gap: 2px 10px; background: #0c0f13; padding: 7px 12px; font-size: 12px; border-top: 1px solid var(--line); }
 .cal-date { grid-column: 1; color: var(--amber); font-variant-numeric: tabular-nums; white-space: nowrap; }
@@ -523,6 +525,7 @@ footer li { margin-bottom: 2px; }
   .cal-title { min-width: 96px; font-size: 11px; letter-spacing: 1px; }
   .cal-dow { font-size: 8px; letter-spacing: 0; }
   .cal-ev { width: 6px; height: 6px; margin-top: 3px; padding: 0; border: 0; border-radius: 50%; background: var(--amber); color: transparent; font-size: 0; }
+  .cal-more { display: none; }
 }
 
 /* Risk & correlation (HOME) */

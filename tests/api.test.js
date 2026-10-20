@@ -41,6 +41,25 @@ test('serves the dashboard', async () => {
   assert.doesNotMatch(html, /href="\/api\/digest"/);
 });
 
+test('/api/calendar spans every macro country, with consensus where published', async () => {
+  const c = await (await fetch(`http://localhost:${PORT}/api/calendar`)).json();
+  const ev = c.events || [];
+  assert.ok(Array.isArray(ev) && ev.length, 'calendar has events');
+  const world = ev.filter((e) => e.cc);
+  assert.ok(world.length >= 20, `cross-country releases present (got ${world.length})`);
+  const countries = new Set(world.map((e) => e.cc));
+  assert.ok(countries.size >= 15, `many countries represented (got ${countries.size})`);
+  for (const e of world.slice(0, 12)) {
+    assert.ok(e.name && e.date, 'every country release has a name + date');
+    assert.ok(e.country && e.country !== e.cc, 'and a readable country name');
+    assert.ok(/TradingView/.test(e.source || ''), 'sourced to TradingView');
+  }
+  // The old panel claimed there was no free consensus; the feed publishes forecast/previous.
+  assert.ok(world.some((e) => /consensus|prior/.test(e.note || '')), 'consensus/prior appears where published');
+  // Structural events must survive alongside them.
+  assert.ok(ev.some((e) => /EIA|WASDE|FOMC|expiry/i.test(e.name)), 'the structural calendar is still there');
+});
+
 test('/api/brief covers macro, not just commodities', async () => {
   const b = await (await fetch(`http://localhost:${PORT}/api/brief`)).json();
   assert.ok(b.headline, 'brief headline');

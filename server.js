@@ -1124,6 +1124,38 @@ async function fomcDates() {
 // Economic calendar — dated upcoming releases. Recurring ones are computed; FOMC comes from the
 // Fed's page; with a free FRED_API_KEY we add FRED's release calendar. A consensus/forecast is
 // NEVER invented — we show the date and the source only (see the "no forecast" note in the UI).
+// Every macro country's upcoming releases, in ONE TradingView request (the feed accepts a country
+// list). High-impact only, plus — for a country with no high-impact release inside the window — its
+// next medium one, so no country is silently absent. Forecast (consensus) and previous come free.
+const tvWorld = (days = 45) => cached('tvworld', 3 * 3600e3, async () => {
+  const codes = [...new Set(Object.values(TV_COUNTRY))];
+  const from = new Date().toISOString();
+  const to = new Date(Date.now() + days * 864e5).toISOString();
+  const r = await fetch(`https://economic-calendar.tradingview.com/events?from=${from}&to=${to}&countries=${encodeURIComponent(codes.join(','))}`, { headers: TV_HEADERS });
+  if (!r.ok) throw new Error('tradingview world -> ' + r.status);
+  const j = await r.json();
+  const nameOf = Object.fromEntries(Object.entries(TV_COUNTRY).map(([id, cc]) => [cc, (ALL_COUNTRIES[id] || {}).label || cc]));
+  const clean = (v) => (v == null || v === '' ? null : String(v));
+  const all = (j.result || []).filter((e) => e.date && e.indicator !== 'Holidays').map((e) => ({
+    ...etParts(e.date), name: e.title, cc: e.country, country: nameOf[e.country] || e.country,
+    importance: e.importance, forecast: clean(e.forecast), previous: clean(e.previous), actual: clean(e.actual),
+  }));
+  // Per country: high-impact releases; if a country has none in the window, its medium ones; if it only
+  // publishes low-impact data (Kenya's GDP is flagged low), its next couple — so no country is silent.
+  all.sort((a, b) => (a.date + (a.time || '')).localeCompare(b.date + (b.time || '')));
+  const byCc = {};
+  for (const e of all) (byCc[e.cc] = byCc[e.cc] || []).push(e);
+  const pick = [];
+  for (const list of Object.values(byCc)) {
+    const high = list.filter((x) => x.importance >= 1);
+    if (high.length) { pick.push(...high); continue; }
+    const med = list.filter((x) => x.importance === 0);
+    if (med.length) { pick.push(...med); continue; }
+    pick.push(...list.slice(0, 2));   // low-impact-only country: its next couple of releases
+  }
+  return pick.sort((a, b) => (a.date + (a.time || '')).localeCompare(b.date + (b.time || '')));
+});
+
 async function getCalendar() {
   return cached('calendar', 6 * 3600e3, async () => {
     const now = new Date();
@@ -1158,8 +1190,16 @@ async function getCalendar() {
         for (const r of (j.release_dates || [])) if (want.test(r.release_name || '')) events.push({ date: r.date, name: r.release_name, source: 'FRED', note: 'scheduled release' });
       } catch {}
     }
+    // Upcoming releases from every macro country, high-impact first (see tvWorld).
+    try {
+      for (const e of await tvWorld()) {
+        events.push({ date: e.date, name: e.name, source: e.country ? `TradingView · ${e.country}` : 'TradingView',
+          note: [e.time, e.forecast != null ? `consensus ${e.forecast}` : '', e.previous != null ? `prior ${e.previous}` : ''].filter(Boolean).join(' · '),
+          cc: e.cc, country: e.country, importance: e.importance });
+      }
+    } catch {}
     const upcoming = events.filter((e) => !e.date || e.date >= today)
-      .sort((x, y) => (x.date || '9999-99-99').localeCompare(y.date || '9999-99-99')).slice(0, 120);
+      .sort((x, y) => (x.date || '9999-99-99').localeCompare(y.date || '9999-99-99')).slice(0, 220);
     return { updated: new Date().toISOString(), events: upcoming, fomc: fomcLive ? 'live' : 'fallback', fredKey: Boolean(process.env.FRED_API_KEY) };
   });
 }
@@ -2972,7 +3012,11 @@ async function buildBrief() {
     }
 
     const cal = await getCalendar().catch(() => null);
-    const next = ((cal && cal.events) || getEvents()).slice(0, 4).map((e) => ({ name: e.name, date: e.date, note: e.note }));
+    const seenNext = new Set();
+    const next = ((cal && cal.events) || getEvents())
+      .filter((e) => { const k = String(e.name).toLowerCase(); if (seenNext.has(k)) return false; seenNext.add(k); return true; })
+      .slice(0, 4)
+      .map((e) => ({ name: e.country ? `${e.country} — ${e.name}` : e.name, date: e.date, note: e.note }));
     const hi = alerts.find((a) => a.level === 'high');
     const mv = movers[0];
     const bigMacro = macroTop[0] && Math.abs(macroTop[0].d1) >= 4 ? macroTop[0] : null;
