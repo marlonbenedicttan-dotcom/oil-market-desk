@@ -1736,7 +1736,15 @@ function renderMacroRegion() {
   loadMacroTickers();   // feeds the top tape — keep eager
   // The country panel pulls World Bank/BIS/FRED data and renders 5 charts. It's a hidden pane while
   // the reader is on HOME, so render it when MACRO is actually opened (a no-op once seen).
-  whenNear('#pane-macro', () => { loadRegionCurrencies(); loadCountry().then(prefetchRegion); });
+  // Prefetch the rest of the region only once the page is idle — doing it immediately competes with the
+  // country you actually opened, which is what made some of them feel slow.
+  whenNear('#pane-macro', () => {
+    loadRegionCurrencies();
+    loadCountry().then(() => {
+      const go = () => prefetchRegion();
+      if (window.requestIdleCallback) requestIdleCallback(go, { timeout: 4000 }); else setTimeout(go, 2500);
+    });
+  });
 }
 // The chosen country's name — shared by the currency and catalyst panel scopes.
 function countryLabel(id) {
@@ -1751,7 +1759,7 @@ async function loadRegionCurrencies() {
   el.innerHTML = stLoading();
   const reqR = macroRegion, reqC = macroCountry;
   let items = null;
-  try { items = (await getJSON('/api/region-quotes?id=' + reqR)).items || []; } catch {}
+  try { items = (await jget('/api/region-quotes?id=' + reqR, 300000)).items || []; } catch {}
   if (reqR !== macroRegion || reqC !== macroCountry) return;   // newest pick wins
   const scope = $('fx-scope'); if (scope) scope.textContent = countryLabel(reqC).toUpperCase();
   const byLabel = {};
@@ -1781,7 +1789,7 @@ async function loadCatalysts() {
   const req = macroCountry || 'us';
   el.innerHTML = stLoading();
   let d = null;
-  try { d = await getJSON('/api/catalysts?country=' + encodeURIComponent(req)); } catch {}
+  try { d = await jget('/api/catalysts?country=' + encodeURIComponent(req), 600000); } catch {}
   if (req !== (macroCountry || 'us')) return;   // newest country wins
   const scope = $('cat-scope'); if (scope) scope.textContent = ((d && d.label) || req).toUpperCase();
   const items = (d && d.events) || [];
@@ -1882,26 +1890,50 @@ async function loadCountry() {
   loadYields();
 }
 // Per-country chart: equity index and currency, both indexed to 100 so they compare.
+// The country chart compares this country against whatever you pick: another country's index (the
+// default is the S&P 500 — or the euro area when you are looking at the US), a currency, or a commodity.
+const MACRO_VS_DEFAULT = (id) => (id === 'us' ? 'idx:ea' : 'idx:us');
+function buildMacroVs() {
+  const sel = $('macro-vs'); if (!sel || sel.options.length) return;
+  const idx = [];
+  for (const list of Object.values(macroCountries || {})) for (const c of list) if (c.index) idx.push(`<option value="idx:${c.id}">${esc(c.indexLabel || c.label)}</option>`);
+  const fxs = (fxList || []).map((f) => `<option value="fx:${f.id}">${esc(f.label.replace(/\s*·.*/, ''))}</option>`).join('');
+  const coms = ((data && data.benchmarks) || []).filter((b) => b.paper).map((b) => `<option value="bench:${b.id}">${esc(b.label)}</option>`).join('');
+  sel.innerHTML = `<optgroup label="INDICES">${idx.join('')}</optgroup><optgroup label="CURRENCIES">${fxs}</optgroup><optgroup label="COMMODITIES">${coms}</optgroup>`;
+}
+function syncMacroVs() {
+  buildMacroVs();
+  const sel = $('macro-vs'); if (!sel) return;
+  const saved = localStorage.getItem('oilbasis.macroVs') || '';
+  const want = saved && saved !== `idx:${macroCountry}` ? saved : MACRO_VS_DEFAULT(macroCountry);
+  if ([...sel.options].some((o) => o.value === want)) sel.value = want;
+}
+const currentVs = () => (($('macro-vs') && $('macro-vs').value) || MACRO_VS_DEFAULT(macroCountry));
 async function loadCountryChart() {
   const cv = $('macro-chart');
   if (!cv) return;
   const req = macroCountry;
+  syncMacroVs();
+  const vs = currentVs();
   let d;
-  try { d = await getJSON('/api/country-series?id=' + encodeURIComponent(req) + '&range=' + ($('macro-range') ? $('macro-range').value : '1y')); }
+  try { d = await jget('/api/country-series?id=' + encodeURIComponent(req) + '&range=' + ($('macro-range') ? $('macro-range').value : '1y') + '&vs=' + encodeURIComponent(vs), 300000); }
   catch { return; }
   if (req !== macroCountry) return;
   if (!d || d.error || !d.dates || !d.dates.length) return;
   const norm = (arr) => { const base = (arr || []).find((v) => v != null); return (arr || []).map((v) => (v == null || !base) ? null : (v / base) * 100); };
   chartDp = 1; chartAnchor = null;
+  // No free index for this country? Then its currency is the line we have.
+  const hasIdx = d.index && d.index.some((v) => v != null);
+  const main = hasIdx ? { arr: d.index, label: d.indexLabel } : { arr: d.fx, label: d.fxLabel };
   const datasets = [];
-  if (d.index && d.index.some((v) => v != null)) datasets.push(line(`${d.indexLabel} (indexed)`, norm(d.index), CT.c1));
-  if (d.fx && d.fx.some((v) => v != null)) datasets.push(line(`${d.fxLabel} (indexed)`, norm(d.fx), CT.c4));
+  if (main.arr && main.arr.some((v) => v != null)) datasets.push(line(`${main.label} (indexed)`, norm(main.arr), CT.c1));
+  if (d.vs && d.vs.some((v) => v != null)) datasets.push(line(`${d.vsLabel} (indexed)`, norm(d.vs), CT.c4));
   const note = $('macro-chart-note');
-  if (note) note.textContent = `${d.label} — ${d.index ? 'both lines' : 'the currency'} start${d.index ? '' : 's'} at 100; hover any point for its % change.`
-    + `${d.indexLabel ? '' : ' No free equity index exists for this country, so there is no index line.'}`
-    + `${d.peg ? ` The currency is pegged to the US dollar at ${d.peg}, so it is not charted — a flat line says nothing.` : ''}`;
+  if (note) note.textContent = `${d.label} — ${main.label || 'this market'} vs ${d.vsLabel || 'nothing'}, both starting at 100; hover a point for its % change.`
+    + `${hasIdx ? '' : ' No free equity index exists for this country, so the currency is the line above.'}`
+    + `${d.peg ? ` (The currency is pegged at ${d.peg}, so it is not charted — a flat line says nothing.)` : ''}`;
   macroChart = mountChart('macro-chart', { labels: d.dates, datasets }, baseOptions({ dp: 1 }));
-  attachMarkers(macroChart, req, d.dates, [d.index, d.fx].filter(Boolean), '#macro-chart-events');
+  attachMarkers(macroChart, req, d.dates, [main.arr, d.vs].filter(Boolean), '#macro-chart-events');
 }
 // Central-bank policy rate history (stepped line; hover shows the rate).
 let policyChart = null;
@@ -2381,7 +2413,7 @@ async function loadMacroNews() {
   if (!el) return;
   const req = macroCountry;
   el.innerHTML = stLoading('Loading headlines…');
-  let n; try { n = await getJSON('/api/macro-news?id=' + req); } catch { n = null; }
+  let n; try { n = await jget('/api/macro-news?id=' + req, 300000); } catch { n = null; }
   if (req !== macroCountry) return;
   renderNews(n || { items: [] }, 'macro-news', 'macro-news-sub');
 }
@@ -2650,6 +2682,7 @@ $('macro-region')?.addEventListener('change', () => { macroRegion = $('macro-reg
 $('macro-region-panel')?.addEventListener('click', (e) => { const el = e.target.closest('[data-metric]'); if (el) pickMetric(el.dataset.metric, '1y'); });
 $('macro-country')?.addEventListener('change', () => { macroCountry = $('macro-country').value; saveStr('macroCountry', macroCountry); loadCountry(); syncRoute(false); });
 $('macro-range')?.addEventListener('change', loadCountryChart);
+$('macro-vs')?.addEventListener('change', () => { try { localStorage.setItem('oilbasis.macroVs', $('macro-vs').value); } catch {} loadCountryChart(); });
 $('chart').addEventListener('click', (ev) => {
   if (!chart) return;
   const pts = chart.getElementsAtEventForMode(ev, 'index', { intersect: false }, true);

@@ -1044,3 +1044,33 @@ navigation rewrote it to e.g. `#/macro/us/us`, and the boot replayed it through 
 - Verified in the browser: first load → home · click MACRO → `#/macro/us/us` · **reload → home** · reload
   from COMMODITIES → home · paste `#/macro/us/mx` → macro. No console errors.
 - `app.js?v=126`.
+## Country loading: what was actually slow (2026-10-20)
+Measured every country before touching anything:
+```
+cold /api/country   fr 913ms   us 1028ms   de 1015ms   in 1368ms   au 1283ms
+warm                all 1-3ms
+```
+**France was never the slow one** — the fastest of the big four. What made a country *feel* slow was the
+app firing the **region prefetch immediately**: the EU is 4 countries and each payload is ~15 upstream
+calls, so it competed with the country you had just opened. Three per-country calls also had **no client
+cache** (region-quotes, catalysts, macro-news).
+- The prefetch now runs on **idle** (`requestIdleCallback`, 2.5s fallback), so the visible panel gets the
+  connections first.
+- `region-quotes` / `catalysts` / `macro-news` are cached client-side (5 / 10 / 5 min), so switching back
+  to a country is instant.
+
+## MACRO chart: INDEX vs BENCHMARK, not vs currency (2026-10-20)
+The chart compared a country's index with **its own currency**. It now compares the index with whatever
+you choose — **another country's index by default** (S&P 500; Euro Stoxx 50 when you are looking at the
+US), or a **currency**, or a **commodity**.
+- `resolveVs()` + `vs=` on `/api/country-series`: `idx:<country>` (that country's index), `fx:<currency>`,
+  `bench:<commodity future>`. Cached per (country, range, vs); the response carries `vs`, `vsSpec`,
+  `vsLabel`.
+- The panel has a selector with **78 options in three groups** — INDICES / CURRENCIES / COMMODITIES — and
+  the pick is remembered in `oilbasis.macroVs`. The panel and its jump-nav chip are renamed
+  **Benchmark**.
+- Countries with no free index (Nigeria, Kenya, Venezuela) chart their **currency** against the benchmark
+  instead, and the note says so.
+- Verified: Japan → Nikkei vs S&P 500 (243 / 251 points) · US → S&P vs Euro Stoxx 50 · France → CAC 40 vs
+  EUR/USD · Japan → Nikkei vs Gold; switching saves and redraws.
+- `app.js?v=127`.

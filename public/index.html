@@ -332,7 +332,7 @@
         <a href="#m-yields">Yields</a>
         <a href="#usjp-panel">US&ndash;Japan</a>
         <a href="#m-cpi">Inflation</a>
-        <a href="#m-index">Index vs FX</a>
+        <a href="#m-index">Benchmark</a>
         <a href="#m-news">News</a>
         <a href="#m-fx">Currency</a>
         <a href="#cat-fold">Catalysts</a>
@@ -368,8 +368,8 @@
         <div class="chart-wrap sm"><canvas id="cpi-chart"></canvas></div>
       </section>
       <section id="m-index" class="panel">
-        <div class="ph"><span class="ph-t">INDEX vs CURRENCY (indexed to 100)</span>
-          <div class="controls"><select id="macro-range" aria-label="Macro chart range"><option value="3m">3M</option><option value="6m">6M</option><option value="1y" selected>1Y</option><option value="ytd">YTD</option><option value="5y">5Y</option></select></div>
+        <div class="ph"><span class="ph-t">INDEX vs BENCHMARK (indexed to 100)</span>
+          <div class="controls"><select id="macro-vs" aria-label="Compare this country's index against"></select><select id="macro-range" aria-label="Macro chart range"><option value="3m">3M</option><option value="6m">6M</option><option value="1y" selected>1Y</option><option value="ytd">YTD</option><option value="5y">5Y</option></select></div>
         </div>
         <div class="chart-wrap lg"><canvas id="macro-chart"></canvas></div>
         <div id="macro-chart-note" class="dimtext lt-summary"></div>
@@ -420,6 +420,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=126"></script>
+  <script src="app.js?v=127"></script>
 </body>
 </html>

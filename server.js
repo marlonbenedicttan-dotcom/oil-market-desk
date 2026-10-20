@@ -1911,19 +1911,36 @@ async function fredDebt(iso3) {
   return last ? { year: +last.slice(0, 4), value: +(+map[last]).toFixed(2) } : null;
 }
 // Index + currency series for one country (for the macro chart). Distinct cache key.
-async function getCountrySeries(id, range = '1y') {
+// What a country's index is measured against: idx:<country> (its index), fx:<currency id>, bench:<commodity>.
+function resolveVs(spec) {
+  const [kind, id] = String(spec || '').split(':');
+  if (kind === 'idx') { const c = ALL_COUNTRIES[id]; return c && c.index ? { spec, sym: c.index, label: c.indexLabel || c.label } : null; }
+  if (kind === 'fx') { const f = FX_SYMS.find((x) => x.id === id); return f ? { spec, sym: f.sym, label: f.label.replace(/\s*·.*/, '') } : null; }
+  if (kind === 'bench') { const b = BENCHMARKS.find((x) => x.id === id); return b && b.paper ? { spec, sym: b.paper, label: b.label } : null; }
+  return null;
+}
+async function getCountrySeries(id, range = '1y', vs = null) {
   const c = ALL_COUNTRIES[id];
   if (!c) return { error: 'unknown country' };
-  return cached(`cs:${id}:${range}`, 3600e3, async () => {
+  // Default: vs the S&P 500 — or, for the US itself, vs the euro area.
+  const want = resolveVs(vs) || resolveVs(c.id === 'us' ? 'idx:ea' : 'idx:us');
+  return cached(`cs:${id}:${range}:${want ? want.spec : '-'}`, 3600e3, async () => {
     const cfg = { '1m': ['1mo', '1d'], '3m': ['3mo', '1d'], '6m': ['6mo', '1d'], ytd: ['ytd', '1d'], '1y': ['1y', '1d'], '5y': ['5y', '1mo'] }[range] || ['1y', '1d'];
     let idxMap = {}, fxMap = {};
     try { fxMap = (await cached(`csr:${cfg[0]}:${c.fx}`, 3600e3, () => yahooSeries(c.fx, cfg[0], cfg[1]))).series; } catch {}
     if (c.index) { try { idxMap = (await cached(`csr:${cfg[0]}:${c.index}`, 3600e3, () => yahooSeries(c.index, cfg[0], cfg[1]))).series; } catch {} }
-    const dates = [...new Set([...Object.keys(idxMap), ...Object.keys(fxMap)])].sort();
+    let vsMap = {};
+    if (want) { try { vsMap = (await cached(`csr:${cfg[0]}:${want.sym}`, 3600e3, () => yahooSeries(want.sym, cfg[0], cfg[1]))).series; } catch {} }
+    const dates = [...new Set([...Object.keys(idxMap), ...Object.keys(fxMap), ...Object.keys(vsMap)])].sort();
     const at = (o, d) => (o[d] != null ? o[d] : null);
     // For a pegged currency the FX line is a constant (plus upstream bad ticks), so it is left out of
     // the chart entirely — the equity line is where the oil/gas signal actually shows up.
-    return { id, label: c.label, range, dates, index: dates.map((d) => at(idxMap, d)), fx: c.peg ? [] : dates.map((d) => at(fxMap, d)), indexLabel: c.index ? c.indexLabel : null, fxLabel: c.fxLabel, peg: c.peg || null };
+    return { id, label: c.label, range, dates,
+      index: dates.map((d) => at(idxMap, d)),
+      fx: c.peg ? [] : dates.map((d) => at(fxMap, d)),
+      vs: want ? dates.map((d) => at(vsMap, d)) : [],
+      vsSpec: want ? want.spec : null, vsLabel: want ? want.label : null,
+      indexLabel: c.index ? c.indexLabel : null, fxLabel: c.fxLabel, peg: c.peg || null };
   });
 }
 
@@ -3315,7 +3332,7 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname === '/api/country-series') {
       const id = url.searchParams.get('id');
       if (!ALL_COUNTRIES[id]) return sendJSON(res, 404, { error: 'unknown country' });
-      return sendJSON(res, 200, await getCountrySeries(id, url.searchParams.get('range') || '1y').catch((e) => ({ error: String(e.message) })));
+      return sendJSON(res, 200, await getCountrySeries(id, url.searchParams.get('range') || '1y', url.searchParams.get('vs') || null).catch((e) => ({ error: String(e.message) })));
     }
     if (url.pathname === '/api/country') {
       const id = url.searchParams.get('id');
