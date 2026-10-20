@@ -137,8 +137,8 @@ function renderMethodology(data) {
   el.innerHTML = `<details class="fold" id="methodology"><summary>DATA &amp; METHODOLOGY</summary><div class="note-body">${html}</div></details>`
     + '<div class="foot-line dimtext">Marlon\'s Watchtower · built and maintained by <b>Marlon Benedict Tan</b> · data © the respective sources · not investment advice.</div>';
 }
-// A Render free instance sleeps after ~15 min idle, so the first request can hang for 20-30s. Say so
-// on the beacon rather than looking broken, and let the failsafe wait longer.
+// The host sleeps when idle, so a first request can hang for 20-30s. The beacon just says 'waking the
+// server…' and the failsafe waits longer — no plan/pricing chatter on the loading screen.
 const BOOT_T0 = Date.now();
 let coldTold = false;
 function noteColdStart() {
@@ -147,7 +147,6 @@ function noteColdStart() {
   window.__coldStart = true;
   const st = document.getElementById('boot-status');
   if (st) st.textContent = 'waking the server…';
-  document.getElementById('boot-note')?.classList.remove('hidden');
 }
 async function getJSON(url) {
   const t0 = Date.now();

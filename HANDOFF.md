@@ -1021,3 +1021,14 @@ under the grid) is fixed properly:
   panel was unstyled for a commit. Both lists now use one 3-column `118px · 1fr · auto` row, note spanning
   the width; phones stack it.
 - 98 tests pass. `app.js?v=124`, `style.css?v=67`.
+## Loading screen: the "free plan" blurb is gone (2026-10-20)
+The boot beacon printed *"Waking the server — the free plan sleeps when it's idle, so the first visit after
+a while can take 20–30 seconds. It'll fill in on its own."* — yes, I added it during the cold-start work
+(cold starts really were 20–30s and the splash looked broken without an explanation), but it reads like
+pricing chatter on a professional desk.
+- **Removed**: the `#boot-note` markup, the code that un-hid it, and `.boot-note` CSS. Nothing else
+  references it.
+- **Kept**: the subtle status line *"waking the server…"* and the 25s failsafe (driven by
+  `window.__coldStart`), so a cold start still doesn't flash a half-empty shell at 9s — it just no longer
+  explains the hosting plan.
+- `app.js?v=125`, `style.css?v=68`.
