@@ -1032,3 +1032,15 @@ pricing chatter on a professional desk.
   `window.__coldStart`), so a cold start still doesn't flash a half-empty shell at 9s — it just no longer
   explains the hosting plan.
 - `app.js?v=125`, `style.css?v=68`.
+## Reload always starts on HOME (2026-10-20)
+The app restored the last tab from **two** places, so a reload dropped you back into MACRO:
+`localStorage['oilbasis.tab']` (`showTab` wrote it, the boot re-applied it) **and** the URL hash — every
+navigation rewrote it to e.g. `#/macro/us/us`, and the boot replayed it through `applyRoute`.
+- **Both are ignored at boot now.** The boot calls `showTab('home')` and rewrites the hash to `#/home`, so
+  neither the saved tab nor a stale hash can restore a view. The remembered COMMODITIES *segment* is still
+  restored (useful, harmless) — only the tab is pinned.
+- **Deep links still work when you actually go to them**: a new `hashchange` listener applies the route,
+  so pasting `#/macro/us/mx` while the app is open navigates there. Back/forward still works (`popstate`).
+- Verified in the browser: first load → home · click MACRO → `#/macro/us/us` · **reload → home** · reload
+  from COMMODITIES → home · paste `#/macro/us/mx` → macro. No console errors.
+- `app.js?v=126`.

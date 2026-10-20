@@ -2520,6 +2520,7 @@ document.addEventListener('click', (e) => {
   setTimeout(() => t.scrollIntoView({ behavior: 'smooth', block: 'start' }), 40);
 });
 addEventListener('popstate', () => { if (!applyRoute(location.hash)) syncRoute(false); });
+addEventListener('hashchange', () => { if (routingReady && !applyRoute(location.hash)) syncRoute(false); });
 
 function syncJumpnavs() {
   document.querySelectorAll('.jumpnav').forEach((nav) => {
@@ -2760,7 +2761,6 @@ $('macro-links')?.addEventListener('click', (e) => { const el = e.target.closest
     else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
   });
   // Restore the last view — tab, segment, chart range, compare, and macro region/country.
-  const savedTab = localStorage.getItem('oilbasis.tab');
   const savedSeg = localStorage.getItem('oilbasis.segment');
   const savedRegion = localStorage.getItem('oilbasis.macroRegion');
   const savedCountry = localStorage.getItem('oilbasis.macroCountry');
@@ -2796,9 +2796,12 @@ $('macro-links')?.addEventListener('click', (e) => { const el = e.target.closest
   // Always land on a segment (first visit included) so the read actually loads.
   selectMarket(savedSeg && markets.some((m) => m.id === savedSeg) ? savedSeg : (markets[0] && markets[0].id) || 'crude');
   restoreCompare();
-  if (savedTab) showTab(savedTab);
-  // A deep link (#/commodities/gold/… , #/macro/jp) wins over the restored tab.
-  if (!applyRoute(location.hash)) syncRoute(false);
+  // Always start on HOME. A reload must not drop you back into whichever tab you left (MACRO, say),
+  // and the URL hash is rewritten to #/home so it can't restore one either. In-app navigation still
+  // updates the hash, back/forward still works (popstate), and pasting a route later still works
+  // (hashchange) — only the boot state is pinned to HOME.
+  showTab('home');
+  syncRoute(false);
   routingReady = true;
   setTimeout(hideBoot, 8000);                     // hard cap — never linger, even on a slow feed
   setTimeout(() => loadExtraSlow().catch(() => {}), 300);   // the slow, below-the-fold feeds
