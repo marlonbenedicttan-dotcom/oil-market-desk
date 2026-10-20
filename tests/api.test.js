@@ -120,6 +120,26 @@ test('/api/brief returns the on-screen daily brief (headline + happened + next +
   assert.ok(Array.isArray(j.alerts));
 });
 
+test('/api/brief ranks one leaderboard and explains every row', async () => {
+  const b = await (await fetch(`http://localhost:${PORT}/api/brief`)).json();
+  const rows = b.rows || [];
+  assert.ok(rows.length <= 5, 'the brief lists at most five rows under the hero');
+  if (b.hero) {
+    assert.ok(Array.isArray(b.hero.facts) && b.hero.facts.length > 0, 'the hero always carries a computed line');
+    assert.ok(['bench', 'index', 'fx'].includes(b.hero.srcKind), 'the hero knows what kind of market it is');
+  }
+  const ids = new Set();
+  for (let i = 0; i < rows.length; i++) {
+    const r = rows[i];
+    assert.ok(r.label && typeof r.d1 === 'number', 'each row is a real move');
+    assert.ok((r.why && /^https?:/.test(r.why.url || '')) || (r.facts && r.facts.length),
+      `${r.label} must carry a wire story or a computed driver — never a bare number`);
+    assert.ok(!ids.has(r.id), 'the same instrument never appears twice');
+    ids.add(r.id);
+    if (i) assert.ok((rows[i - 1].score ?? 0) >= (r.score ?? 0), 'rows stay in rank order');
+  }
+});
+
 test('/api/alerts returns the server alert engine output', async () => {
   const r = await fetch(`http://localhost:${PORT}/api/alerts`);
   assert.equal(r.status, 200);

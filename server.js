@@ -3021,6 +3021,7 @@ async function buildBrief() {
       const vals = raw && (b0 && b0.paper != null ? raw.paper : raw.physical);
       const st = statsOf(vals);
       if (st && st.sd > 0) { mv.sigma = +st.sd.toFixed(2); mv.flat = Math.round(st.flat); mv.score = +((Math.abs(mv.d1) / st.sd) * liq(st.flat)).toFixed(2); }
+      else mv.score = +((Math.abs(mv.d1) / 2) * 0.8).toFixed(2);        // no history? conservative 2% day
       const ks = vals ? Object.keys(raw && (b0 && b0.paper != null ? raw.paper : raw.physical) || {}).sort() : [];
       if (ks.length) { const m2 = raw && (b0 && b0.paper != null ? raw.paper : raw.physical); mv.spark = ks.slice(-30).map((k) => (m2[k] == null ? null : +m2[k])); }
       if (daysToExp >= 0 && daysToExp <= 1 && CURVE_SPEC[mv.id] && Math.abs(mv.d1) >= 1.5) {
@@ -3067,11 +3068,19 @@ async function buildBrief() {
     await Promise.all(macro.map(async (mv) => {
       try {
         const c0 = ALL_COUNTRIES[mv.id];
-        if (!c0 || !c0.index) return;
-        const ser = (await cached('csr:1y:' + c0.index, 3600e3, () => yahooSeries(c0.index, '1y', '1d'))).series;
+        const sym = mv.kind === 'fx' ? (c0 && c0.fx) : (c0 && c0.index);
+        if (!sym) return;
+        const ser = (await cached('csr:1y:' + sym, 3600e3, () => yahooSeries(sym, '1y', '1d'))).series;
         const ks = Object.keys(ser).sort();
         const st = statsOf(ks.map((k) => ser[k]));
-        if (st && st.sd > 0) { mv.sigma = +st.sd.toFixed(2); mv.flat = Math.round(st.flat); mv.score = +((Math.abs(mv.d1) / st.sd) * liq(st.flat)).toFixed(2); }
+        if (st && st.sd > 0) {
+          mv.sigma = +st.sd.toFixed(2); mv.flat = Math.round(st.flat);
+          // Materiality floor: an index or currency moving 2% is a macro event on its own, even when that
+          // market is chronically volatile (KOSPI's daily sigma is ~3.5%), so score it against the calmer
+          // of "its own sigma" and a flat 2% yardstick.
+          mv.score = +Math.max((Math.abs(mv.d1) / st.sd) * liq(st.flat), Math.abs(mv.d1) / 2).toFixed(2);
+        }
+        else mv.score = +((Math.abs(mv.d1) / 2)).toFixed(2);
         mv.spark = ks.slice(-30).map((k) => (ser[k] == null ? null : +ser[k]));
       } catch {}
     }));
@@ -3082,6 +3091,7 @@ async function buildBrief() {
     // index move, preferably talk about stocks. Direction is a preference, never a requirement —
     // and no matching story means no line, because the brief does not invent an explanation.
     const MARKET_WORD = /\b(stocks?|shares?|equit(y|ies)|index|indices|bourse)\b/i;
+    const COMPANY_STORY = /\b(IPO|market debut|debuts?|plunges? \d|surges? \d|jumps? \d|one stock|single stock)\b/i;
     // A headline only explains a move if it is about the market: a price word, a supply event, or a
     // demand story. "Qatari electricity lifeline for Lebanon" names LNG but explains nothing.
     const STORY_WORD = /\b(prices?|rise|rises|rose|rising|fell|fall|falls|falling|surge[sd]?|soar(s|ed)?|plunge[sd]?|slid|slide[s]?|slip(s|ped)?|jump(s|ed)?|climb(s|ed)?|gain(s|ed)?|drop(s|ped)?|decline[sd]?|tumble[sd]?|retreat(s|ed)?|rebound(s|ed)?|sell-?off|rally|rallies|higher|lower|steady|unchanged|outlook|demand|supply|output|production|inventor(y|ies)|shortage|glut|surplus|OPEC|sanction[sd]?|tariff[s]?|strike|outage|harvest|drought|export[s]?|import[s]?|curb[s]?|quota|shipments?)\b/i;
@@ -3093,11 +3103,16 @@ async function buildBrief() {
         .map((it) => ({ ...it, ageDays: it.ageDays ?? (it.date ? Math.round((now - Date.parse(it.date)) / 864e5) : 99) }))
         .filter((it) => it.ageDays <= 3 && (!it.source || TIER1_RE.test(it.source)))
         .filter((it) => STORY_WORD.test(it.title))
+        // A commodity story must also SAY which way prices went (or name a supply event). "Qatari
+        // electricity lifeline for Lebanon ... LNG supply" is not an explanation for gas falling.
+        .filter((it) => x.kind !== 'bench' || newsDir(it.title) != null || EVENT_RULES.some((r) => r.re.test(it.title)))
         .filter((it) => x.kind === 'bench' || titleMatches(x.id, it.title))   // a country story must name the country
         .filter((it) => x.kind !== 'index' || MARKET_WORD.test(it.title))     // an index move needs a STOCKS story
         .map((it) => ({ it, s: (newsDir(it.title) === want ? 20 : newsDir(it.title) == null ? 10 : -99)
           + (idxLabel && it.title.includes(idxLabel) ? 8 : 0)
           + (MARKET_WORD.test(it.title) ? 4 : 0)
+          // A single company's IPO or one stock's 30% debut is not an explanation for a whole index day.
+          - (COMPANY_STORY.test(it.title) ? 9 : 0)
           + Math.max(0, 6 - it.ageDays * 2) }))
         .filter((r) => r.s > 0)
         .sort((a, b) => b.s - a.s)[0]?.it || null;
@@ -3137,7 +3152,68 @@ async function buildBrief() {
       mv.route = `#/macro/${mv.region}/${mv.id}`;
     }
     // Three commodities and three countries, so a 3% index day can never be crowded out by oil alone.
-    const mix = [...movers.slice(0, 3), ...macroTop.slice(0, 3)].sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
+    // ---- THE RANKING ---------------------------------------------------------------------------
+    // One leaderboard for every market. Commodities and countries compete on the SAME score, so the
+    // top of the brief moves with the day instead of with an asset-class quota:
+    //   score = |1-day move| / that market's OWN daily σ, damped by how often it actually trades.
+    // Diversity is applied afterwards, not instead: at most two contracts from one complex and one
+    // entry per country, so a single oil session cannot fill the page. A contract roll never leads.
+    const board = [
+      ...movers.map((x) => ({ ...x, kind: 'bench', tag: x.group || 'Commodity', srcKind: 'bench' })),
+      ...macro.map((x) => ({ ...x, kind: x.kind, tag: x.kind === 'fx' ? 'FX' : 'Index', srcKind: x.kind })),
+    ].filter((x) => x.score != null || x.d1 != null);
+    board.sort((a, b) => (b.score ?? 0) - (a.score ?? 0) || Math.abs(b.d1) - Math.abs(a.d1));
+    const picked = [], groupCount = {}, seenId = new Set();
+    for (const x of board) {
+      if (seenId.has(x.id)) continue;                       // one row per country / instrument
+      const g = x.kind === 'bench' ? 'g:' + x.group : 'c:' + x.id;
+      if ((groupCount[g] || 0) >= 2) continue;              // e.g. RBOB + ULSD, but not four refined products
+      groupCount[g] = (groupCount[g] || 0) + 1;
+      seenId.add(x.id);
+      picked.push(x);
+      if (picked.length >= 6) break;
+    }
+    const mix = picked;
+    // Computed drivers, so EVERY move has an explanation even on a day with no wire story. This is
+    // data, not narrative: what moved with it, what it is priced off, and how well it actually trades.
+    const REGION_LABEL = { us: 'US', eu: 'European', jp: 'Japanese', apac: 'Asian', me: 'Gulf', af: 'African' };
+    const pf = (v) => `${v >= 0 ? '+' : '\u2212'}${Math.abs(v).toFixed(1)}%`;
+    const factsFor = (x) => {
+      const f = [];
+      const dir = x.d1 >= 0 ? 'up' : 'down';
+      if (x.kind === 'bench') {
+        if (x.group === 'Refined') {
+          const crude = movers.find((mk) => mk.id === 'wti');
+          if (crude && Math.sign(crude.d1) === Math.sign(x.d1) && Math.abs(crude.d1) >= 1) f.push(`crude set the direction (WTI ${pf(crude.d1)})`);
+        }
+        const peers = movers.filter((mk) => mk.id !== x.id && mk.group === x.group);
+        const same = peers.filter((mk) => Math.sign(mk.d1) === Math.sign(x.d1));
+        const top = same.slice().sort((a, b) => Math.abs(b.d1) - Math.abs(a.d1))[0];
+        if (peers.length === 1) f.push(`${top ? top.label + ' moved ' + dir + ' with it (' + pf(top.d1) + ')' : 'no other ' + String(x.group || 'group').toLowerCase() + ' contract moved ' + dir}`);
+        else if (peers.length > 1) f.push(`${same.length} of ${peers.length} other ${String(x.group || 'group').toLowerCase()} contracts moved ${dir} too${top ? ` (${top.label} ${pf(top.d1)})` : ''}`);
+        if (x.flat >= 8) f.push(`stepped quotes — ${x.flat}% of days print unchanged`);
+      } else {
+        const co = ALL_COUNTRIES[x.id] || {};
+        const peers = regionItems.filter((it) => it.kind === 'index' && it.id !== x.id && it.deltas && it.deltas.d1 != null
+          && (ALL_COUNTRIES[it.id] || {}).region === co.region);
+        const same = peers.filter((it) => Math.sign(it.deltas.d1) === Math.sign(x.d1));
+        if (peers.length >= 2) f.push(`${same.length} of ${peers.length} other ${REGION_LABEL[co.region] || 'regional'} indices moved ${dir} too`);
+        if (x.kind === 'fx') {
+          const idx = regionItems.find((it) => it.id === x.id && it.kind === 'index' && it.deltas && it.deltas.d1 != null);
+          if (idx) f.push(`the index is ${pf(idx.deltas.d1)}`);
+        } else {
+          const fx = regionItems.find((it) => it.id === x.id && it.kind === 'fx' && it.deltas && it.deltas.d1 != null);
+          if (fx) f.push(`${fx.label} ${pf(fx.deltas.d1)}`);
+        }
+      }
+      // Never leave a move unexplained: if nothing above applied, state its size against its own norm.
+      if (!f.length) {
+        if (x.sigma) f.push(`${(Math.abs(x.d1) / x.sigma).toFixed(1)}\u00d7 a normal day (${x.sigma.toFixed(1)}%)`);
+        else f.push(`${pf(x.d1)} — one of the day's largest moves`);
+      }
+      return f.slice(0, 2);
+    };
+    for (const x of mix) x.facts = factsFor(x);
     await Promise.all(mix.map(async (x) => { x.why = await whyFor(x); }));
     // The same headline under three oil rows is noise: keep it where it ranks first, drop the repeats.
     const usedWhy = new Set();
@@ -3157,21 +3233,38 @@ async function buildBrief() {
       + (hi ? ` · ${hi.text.replace(/\.$/, '')}` : '') + '.';
     // The hero: the highest-scoring move across commodities and macro, with a sparkline attached.
     // A roll day can still be the loudest number on screen, but it must never be the day's STORY.
-    const pickFrom = [
-      ...movers.slice(0, 3).map((x) => ({ ...x, srcKind: 'bench', kind: 'bench' })),
-      ...macroTop.slice(0, 2).map((x) => ({ ...x, srcKind: x.kind, kind: 'macro' })),
-    ].filter((x) => !x.roll && (x.score != null || x.d1 != null));
-    const heroRaw = pickFrom.sort((a, b) => (b.score ?? 0) - (a.score ?? 0))[0] || null;
+    // The roll guard is applied to the hero only: a roll day can be the loudest number on screen
+    // without being the day's story.
+    const leadable = mix.filter((x) => !x.roll);
+    const forcedId = process.env.BRIEF_HERO_TEST;
+    let forcedRaw = forcedId ? [...mix, ...board].find((x) => x.id === forcedId) : null;
+    if (forcedId && !forcedRaw) {   // test hook: force ANY country, even one below today's threshold
+      const it = regionItems.find((r) => r.id === forcedId && r.deltas && r.deltas.d1 != null);
+      const co = ALL_COUNTRIES[forcedId];
+      if (it && co) forcedRaw = { id: it.id, label: co.label, region: co.region, kind: it.kind, sym: it.label,
+        d1: it.deltas.d1, m1: it.deltas.m1 ?? null, y1: it.deltas.y1 ?? null, route: `#/macro/${co.region}/${co.id}` };
+    }
+    const forced = forcedRaw ? { ...forcedRaw, srcKind: forcedRaw.srcKind || (forcedRaw.kind === 'bench' ? 'bench' : forcedRaw.kind) } : null;
+    if (forced && (!forced.facts || !forced.why)) { forced.facts = forced.facts || factsFor(forced); forced.why = forced.why || await whyFor(forced); }
+    const heroRaw = forced || leadable[0] || mix[0] || null;
     let hero = null;
     if (heroRaw) {
-      hero = { kind: heroRaw.kind, id: heroRaw.id, label: heroRaw.label, tag: heroRaw.kind === 'macro' ? (heroRaw.srcKind === 'fx' ? 'FX' : 'INDEX') : (heroRaw.group || 'COMMODITY'),
+      hero = { kind: heroRaw.kind, id: heroRaw.id, label: heroRaw.label, tag: heroRaw.tag || (heroRaw.kind === 'bench' ? (heroRaw.group || 'COMMODITY') : (heroRaw.kind === 'fx' ? 'FX' : 'INDEX')),
         sym: heroRaw.sym || null, d1: heroRaw.d1, y1: heroRaw.y1 ?? null, m1: heroRaw.m1 ?? null,
         score: heroRaw.score ?? null, sigma: heroRaw.sigma ?? null, flat: heroRaw.flat ?? null,
-        route: heroRaw.route || null, why: heroRaw.why || null, srcKind: heroRaw.srcKind || 'bench' };
+        route: heroRaw.route || null, why: heroRaw.why || null, facts: heroRaw.facts || [], srcKind: heroRaw.srcKind || 'bench' };
       hero.spark = heroRaw.spark || null;
     }
+    // WHAT HAPPENED is the rest of the same leaderboard — no second ranking, no re-sorting downstream.
+    const rows = mix.filter((x) => x !== heroRaw).slice(0, 5).map((x) => ({
+      kind: x.kind === 'bench' ? 'bench' : (x.kind === 'fx' ? 'fx' : 'index'),
+      id: x.id, label: x.label, tag: x.tag || (x.kind === 'fx' ? 'FX' : 'Index'),
+      d1: x.d1, m1: x.m1 ?? null, y1: x.y1 ?? null, score: x.score ?? null,
+      sigma: x.sigma ?? null, flat: x.flat ?? null, roll: x.roll || null,
+      spark: x.spark || null, why: x.why || null, facts: x.facts || [], route: x.route || null,
+    }));
     return {
-      updated: new Date().toISOString(), headline, happened, next, macro: macroTop, hero,
+      updated: new Date().toISOString(), headline, happened, next, macro: macroTop, hero, rows,
       alerts: alerts.map((a) => ({ level: a.level, text: a.text })),
       movers: movers.slice(0, 3),
     };

@@ -292,6 +292,7 @@ footer li { margin-bottom: 2px; }
 .hero-sp .spark { display: block; width: 100%; height: 54px; margin: 0; }
 .hero-s { font-size: 10px; margin-top: 1px; }
 .hero-w { font-size: 11px; margin-top: 5px; line-height: 1.45; }
+.hero-f { font-size: 10.5px; color: var(--dim); margin-top: 3px; line-height: 1.4; }
 .hero-w a { color: #c9d4df; text-decoration: none; }
 .hero-w a:hover { color: var(--amber); }
 .why-k { font-size: 8.5px; letter-spacing: 1.2px; color: var(--amber); margin-right: 6px; vertical-align: 1px; }

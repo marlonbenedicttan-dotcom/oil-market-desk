@@ -1141,3 +1141,40 @@ chart — and the brief said WHAT moved but never WHY. Four fixes:
     every country that clears the threshold, so a big index move can't sort on a missing σ.
 - Verified: desktop panel 465px, mobile 749px, 0 overflow, 98 tests, no console exceptions.
   `app.js?v=134`, `style.css?v=75`.
+
+## The daily brief is now a ranked system, not a hand-tuned page (2026-10-21)
+The brief used to be a quota (three commodities + three countries) and the explanation was whatever
+wire story happened to match. Both now come from one explicit pipeline, so the page produces the same
+standard on any day, for any asset class.
+**1. One leaderboard.** Every benchmark and every country (index and currency) is scored on the same
+number and sorted once:
+```
+score = max( |1-day move| / own daily σ , |1-day move| / 2 )   × liquidity
+liquidity = clamp(1 − flatShare/12, 0.15, 1)        flatShare = % of unchanged daily closes, 1y
+```
+- The σ term means "big for THIS market"; the 2% term is a **materiality floor** for countries — a
+  2% index or currency move is a macro event even where the market is chronically volatile (KOSPI's
+  daily σ is ~3.5%, so −3.7% was ranking below milk before the floor).
+- The liquidity term is what stops stepped quotes (dairy, HRC) from winning on a quote refresh.
+- **fx is scored against FX volatility**, not its country's equity index (it used the index symbol).
+- No history? Score against a conservative 2% day instead of dropping the move.
+**2. Diversity is applied AFTER ranking**, never instead of it: at most two contracts from one
+commodity complex and one entry per country, so an oil session can't fill the page but the top is
+still the sharpest move.
+**3. The hero is `picked[0]`** — the top of that board, unless it is a contract roll (a roll can be the
+loudest number on screen without being the story). WHAT HAPPENED is the next five on the same board,
+sent to the client already ranked and never re-sorted downstream.
+**4. Every move carries an explanation**, in this order:
+1. `roll` — computed: expiry day + backwardated curve + roll ≥ 50% of the move.
+2. `why` — a tier-1 wire story that names the instrument or country, agrees with the direction, and is
+   ≤3 days old; commodity stories must also say which way prices went or name a supply event (kills
+   "Qatari electricity lifeline..."); single-company IPO stories are down-weighted for index moves.
+3. `facts` — computed, and **guaranteed non-empty**: same-complex breadth (with the biggest peer),
+   "crude set the direction", regional index breadth (region-scoped), the same country's currency or
+   index, quote quality ("13% of days print unchanged"), and finally size vs its own norm.
+**5. Tested.** `tests/api.test.js` now asserts the brief's invariants: ≤5 rows, ranked order, no
+instrument twice, and every row carries a wire story or a computed driver. 99 tests pass.
+Verified across categories by forcing each hero in turn (WTI, RBOB, gas, gold, copper, corn, soy,
+coffee, sugar, cattle, milk, cheese, iron ore) and across countries (VN, SG, TH, KR, TW, JP, CN, IN,
+ZA, NG, KE, MX, BR, AR, QA, VE) — every case returns either a wire line or a computed driver.
+`app.js?v=136`, `style.css?v=77`.

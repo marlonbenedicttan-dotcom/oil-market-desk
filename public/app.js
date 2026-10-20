@@ -2116,6 +2116,7 @@ function renderBrief(b) {
     + `<div class="hero-s dimtext">${h.y1 != null ? `${h.y1 >= 0 ? '+' : '−'}${Math.abs(h.y1).toFixed(0)}% over a year` : ''}`
     + `${h.m1 != null ? ` · ${pctf(h.m1)} this month` : ''}${h.sigma ? ` · a normal day is ${h.sigma.toFixed(1)}%` : ''}</div>`
     + (h.why ? `<div class="hero-w"><span class="why-k">WHY</span><a href="${esc(h.why.url)}" target="_blank" rel="noopener noreferrer">${esc(h.why.title)}</a> <span class="dimtext">— ${esc(h.why.source)}</span></div>` : '')
+    + ((h.facts || []).length ? `<div class="hero-f">${esc(h.facts.slice(0, 2).join(' · '))}</div>` : '')
     + `</div>` : '';
   // One line under a row: either the computed contract-roll note or the wire story that fits.
   const whyLine = (x) => {
@@ -2124,15 +2125,15 @@ function renderBrief(b) {
       const full = `Front month expires ${r.when}. The curve is $${r.spread.toFixed(2)} backwardated (front above next), so about ${Math.abs(r.pct).toFixed(1)}% of this ${pctf(x.d1)} move is the contract rolling, not a selloff.`;
       return `<span class="mvr-why roll" title="${esc(full)}">Roll, not a selloff — ${Math.abs(r.pct).toFixed(1)}% of this move is the expiring contract.</span>`;
     }
-    if (x.why) return `<span class="mvr-why"><a href="${esc(x.why.url)}" target="_blank" rel="noopener noreferrer">${esc(x.why.title)}</a> <span class="dimtext">— ${esc(x.why.source)}</span></span>`;
+    if (x.why) return `<span class="mvr-why" title="${esc(x.why.title + ' — ' + (x.why.source || ''))}"><a href="${esc(x.why.url)}" target="_blank" rel="noopener noreferrer">${esc(x.why.title)}</a> <span class="dimtext">— ${esc(x.why.source)}</span></span>`;
+    // No wire story that day? Fall back to the computed driver, so the row is never a bare number.
+    if ((x.facts || []).length) return `<span class="mvr-why" title="${esc(x.facts.join(' · '))}">${esc(x.facts.join(' · '))}</span>`;
     return '';
   };
   // Everything else, one grammar. The hero's own row is skipped so nothing is said twice.
-  const isHero = (x) => !!(h && x.id === h.id && (x.kind || 'bench') === (h.srcKind || 'bench'));
-  const rest = [
-    ...((b.movers || []).filter((x) => !isHero(x)).map((x) => ({ ...x, tag: x.group || 'Commodity' }))),
-    ...((b.macro || []).filter((x) => !isHero(x)).map((x) => ({ ...x, tag: x.kind === 'fx' ? 'FX' : 'Index' }))),
-  ].sort((x, y) => (y.score ?? 0) - (x.score ?? 0));
+  // The server ranked these already (one leaderboard for commodities and countries). Do NOT re-sort:
+  // WHAT HAPPENED is simply the next five on the same board.
+  const rest = b.rows || [];
   const rows = rest.slice(0, 5).map((x) => `<div class="mvr${x.flat != null && x.flat >= 10 ? ' thin' : ''}">`
     + `<span class="mvr-tag">${esc(x.tag)}</span><span class="mvr-n">${esc(x.label)}</span>`
     + `<span class="mvr-v ${cls(x.d1)}">${pctf(x.d1)}</span><span class="mvr-sp">${spark(x.spark, x.d1 >= 0)}</span>`
