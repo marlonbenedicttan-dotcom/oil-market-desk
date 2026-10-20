@@ -512,6 +512,40 @@ export function positioningFlag(pct) {
   if (pct <= 30) return { label: 'WASHED-OUT', tone: 'cool' };
   return { label: 'NEUTRAL', tone: 'mid' };
 }
+// Positioning-vs-price divergence: the classic tell is price rising while speculators are cutting
+// (fading the move), or price falling while they are adding (buying the dip). Net positioning is
+// measured as a share of open interest so contracts of different size are comparable, and both legs
+// have to be material (price >=3%, net >=1 point of OI) before it is called a divergence.
+export function positioningDivergence(priceByDate, rows, lookbackWeeks = 13) {
+  const flat = { tone: 'flat', read: '' };
+  if (!rows || rows.length < lookbackWeeks + 2) return flat;
+  const dates = Object.keys(priceByDate || {}).sort();
+  if (!dates.length) return flat;
+  const atOrBefore = (d) => { let best = null; for (const x of dates) { if (x <= d) best = x; else break; } return best ? priceByDate[best] : null; };
+  const last = rows[rows.length - 1], then = rows[rows.length - 1 - lookbackWeeks];
+  const p1 = atOrBefore(last.date), p0 = atOrBefore(then.date);
+  if (p0 == null || p1 == null || !p0) return flat;
+  const netPct = (r) => (r && r.oi ? (r.net / r.oi) * 100 : null);
+  const n0 = netPct(then), n1 = netPct(last);
+  if (n0 == null || n1 == null) return flat;
+  const pricePct = ((p1 - p0) / p0) * 100;
+  const netPctChg = n1 - n0;
+  const w = lookbackWeeks, fmt = (v) => Math.abs(v).toFixed(1);
+  if (pricePct >= 3 && netPctChg <= -1) {
+    return { tone: 'bear', pricePct, netPctChg, weeks: w,
+      read: `Price is up ${fmt(pricePct)}% over ${w} weeks while speculators <b>cut</b> their net position by ${fmt(netPctChg)} points of open interest — they are fading the move, not driving it.` };
+  }
+  if (pricePct <= -3 && netPctChg >= 1) {
+    return { tone: 'bull', pricePct, netPctChg, weeks: w,
+      read: `Price is down ${fmt(pricePct)}% over ${w} weeks while speculators <b>added</b> ${fmt(netPctChg)} points of open interest — they are buying into weakness.` };
+  }
+  if (Math.abs(pricePct) < 3 && Math.abs(netPctChg) < 1) {
+    return { tone: 'flat', pricePct, netPctChg, weeks: w, read: `Little movement in either price or positioning over ${w} weeks.` };
+  }
+  return { tone: 'aligned', pricePct, netPctChg, weeks: w,
+    read: `Price and positioning moved together over ${w} weeks (price ${pricePct >= 0 ? '+' : '−'}${fmt(pricePct)}%, net position ${netPctChg >= 0 ? '+' : '−'}${fmt(netPctChg)} points) — no divergence.` };
+}
+
 export function positioningRead(pct) {
   if (pct == null || !Number.isFinite(pct)) return '';
   if (pct >= 90) return 'Speculative money is crowded long — a squeeze or a fast unwind is the risk if the trend stalls.';

@@ -8,7 +8,7 @@ import { execFile } from 'node:child_process';
 import crypto from 'node:crypto';
 import { sendMail } from './src/smtp.js';
 import { fileURLToPath } from 'node:url';
-import { sgn, businessDaysSince, inBox, haversineNm, horizonDeltas, horizonDeltasAbs, isoWeek, monthly, pctOver, percentile, lastNonNull, escHtml, webhookPayload, realizedVol, computeCracks, computeCrush, computeSteel, backAdjust, pearson, logReturns, curveTightness, inventoryTightness, weightedScore, seasonalGrade, seasonalAhead, contractMonthsBetween, signedPosition, signedMove, stretchScore, sdLabel, attributeMoves, newsContextOk, METHODOLOGY, positioningFlag, positioningRead, maxDrawdown, realizedVolTerm, corrMatrix, fxAdjust, parseOcc, drawdownWord, volWord, volTrend, topPairs, bestDiversifier, riskRead } from './src/lib.js';
+import { sgn, businessDaysSince, inBox, haversineNm, horizonDeltas, horizonDeltasAbs, isoWeek, monthly, pctOver, percentile, lastNonNull, escHtml, webhookPayload, realizedVol, computeCracks, computeCrush, computeSteel, backAdjust, pearson, logReturns, curveTightness, inventoryTightness, weightedScore, seasonalGrade, seasonalAhead, contractMonthsBetween, signedPosition, signedMove, stretchScore, sdLabel, attributeMoves, newsContextOk, METHODOLOGY, positioningFlag, positioningRead, positioningDivergence, maxDrawdown, realizedVolTerm, corrMatrix, fxAdjust, parseOcc, drawdownWord, volWord, volTrend, topPairs, bestDiversifier, riskRead } from './src/lib.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC = path.join(__dirname, 'public');
@@ -510,6 +510,8 @@ const COT_NAMES = {
   orange: 'FRZN CONCENTRATED ORANGE JUICE', rice: 'ROUGH RICE',
   palm: 'MALAYSIAN PALM OIL CALENDAR SW',
   milk: 'MILK, Class III', butter: 'BUTTER (CASH SETTLED)', cheese: 'CHEESE (CASH-SETTLED)', nfdm: 'NON FAT DRY MILK', whey: 'DRY WHEY',
+  // The livestock segment had no COT mapping at all, so its positioning panel always read "no series".
+  cattle: 'LIVE CATTLE', hogs: 'LEAN HOGS', feeder: 'FEEDER CATTLE',
 };
 async function getPositioning(id = 'wti') {
   const name = COT_NAMES[id];
@@ -537,6 +539,15 @@ async function getPositioning(id = 'wti') {
       pct: pctOf(nets),                                     // full window (kept for the digest)
       pct3y, weeks: rows.length,
       flag: positioningFlag(pct3y), read: positioningRead(pct3y),
+      // Price vs positioning: are specs leaning with the move or against it? (needs the futures series,
+      // which is the same 2y cache the crush and steel margin use)
+      divergence: await (async () => {
+        try {
+          if (!b || !b.paper) return null;
+          const px = await cached('a2p:' + b.paper, 6 * 3600e3, () => yahooSeries(b.paper, '2y', '1d')).then((r) => r.series).catch(() => ({}));
+          return positioningDivergence(px, rows);
+        } catch { return null; }
+      })(),
       oi: latest.oi, oiChange: prev ? latest.oi - prev.oi : null,
       history: rows.slice(-156),
     };

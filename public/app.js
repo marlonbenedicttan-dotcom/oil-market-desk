@@ -1318,6 +1318,11 @@ function renderPositioning(d) {
   const spark = sparkline((primary.history || []).map((r) => r.net));
   if (spark) html += `<div class="pos-spark" aria-hidden="true">${spark}</div>`;
   if (primary.read) html += `<div class="pos-note dimtext">${primary.read}</div>`;
+  const dv = primary.divergence;
+  if (dv && dv.read && dv.tone !== 'flat') {
+    const tone = dv.tone === 'bear' ? 'watch' : dv.tone === 'bull' ? 'ok' : '';
+    html += `<div class="pos-note"><span class="qflag ${tone}" style="margin-right:7px">PRICE vs POSITIONING</span>${dv.read}</div>`;
+  }
   const others = items.filter((it) => it !== primary);
   if (others.length) html += `<div class="pos-chips"><span class="dimtext" style="align-self:center">also covered:</span>`
     + others.map((it) => `<span class="pos-chip" title="${it.label} — ${it.read || ''}">${String(it.label).replace(/\s*\(.*\)/, '')} <em>${it.latest ? num(it.latest.net) : '—'}</em> <span class="pos-flag ${(it.flag || {}).tone || 'mid'}">${(it.flag || {}).label || ''}</span></span>`).join('') + '</div>';

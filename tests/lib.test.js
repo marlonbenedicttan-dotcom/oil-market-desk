@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { sgn, inBox, haversineNm, isoWeek, monthly, pctOver, percentile, lastNonNull, escHtml, webhookPayload, realizedVol, computeCracks, computeCrush, computeSteel, backAdjust, pearson, logReturns, horizonDeltas, horizonDeltasAbs, curveTightness, inventoryTightness, weightedScore, seasonalGrade, seasonalAhead, contractMonthsBetween, signedPosition, signedMove, stretchScore, sdLabel, attributeMoves, newsContextOk, looksLikeProperNoun, NON_MARKET_CTX, METHODOLOGY, positioningFlag, positioningRead, maxDrawdown, realizedVolTerm, corrMatrix, fxAdjust, parseOcc, drawdownWord, volWord, volTrend, focusRows, topPairs, bestDiversifier, riskRead } from '../src/lib.js';
+import { sgn, inBox, haversineNm, isoWeek, monthly, pctOver, percentile, lastNonNull, escHtml, webhookPayload, realizedVol, computeCracks, computeCrush, computeSteel, backAdjust, pearson, logReturns, horizonDeltas, horizonDeltasAbs, curveTightness, inventoryTightness, weightedScore, seasonalGrade, seasonalAhead, contractMonthsBetween, signedPosition, signedMove, stretchScore, sdLabel, attributeMoves, newsContextOk, looksLikeProperNoun, NON_MARKET_CTX, METHODOLOGY, positioningFlag, positioningRead, positioningDivergence, maxDrawdown, realizedVolTerm, corrMatrix, fxAdjust, parseOcc, drawdownWord, volWord, volTrend, focusRows, topPairs, bestDiversifier, riskRead } from '../src/lib.js';
 
 test('sgn formats with sign', () => {
   assert.equal(sgn(4.39), '+4.39');
@@ -416,4 +416,33 @@ test('computeSteel: coil per tonne minus 1.6t of ore, with the short->metric con
   // Missing one leg -> nothing invented, exactly like the crush.
   assert.deepEqual(computeSteel({ benchmarks: [{ id: 'steel', paper: 900 }] }), {});
   assert.deepEqual(computeSteel({}), {});
+});
+
+test('positioningDivergence: specs fading a rally is bearish, buying weakness is bullish', () => {
+  const d0 = Date.UTC(2026, 0, 6);
+  const day = (i) => new Date(d0 + i * 7 * 864e5).toISOString().slice(0, 10);
+  const rows = Array.from({ length: 15 }, (_, i) => ({ date: day(i), net: 120000, oi: 2000000 }));
+  const price = {};
+  for (const r of rows) price[r.date] = 100;
+  // 13-week window runs rows[1] -> rows[14]
+  price[rows[14].date] = 110;                       // +10%
+  rows[14].net = 80000;                             // specs cut 2 points of OI
+  const bear = positioningDivergence(price, rows);
+  assert.equal(bear.tone, 'bear');
+  assert.equal(+bear.pricePct.toFixed(1), 10);
+  assert.equal(+bear.netPctChg.toFixed(1), -2);
+
+  const down = { ...price };
+  down[rows[14].date] = 92;                         // -8%
+  const added = rows.map((r) => ({ ...r }));
+  added[14].net = 160000;                           // specs added 2 points
+  const bull = positioningDivergence(down, added);
+  assert.equal(bull.tone, 'bull');
+
+  // price up and specs adding = aligned, not a divergence
+  assert.equal(positioningDivergence(price, added).tone, 'aligned');
+
+  // no invented signal when there is not enough history
+  assert.equal(positioningDivergence(price, rows.slice(0, 5)).tone, 'flat');
+  assert.equal(positioningDivergence({}, rows).tone, 'flat');
 });

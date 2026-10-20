@@ -953,3 +953,19 @@ segment (only that segment — the same `data-when` gating as the crush on grain
   grains (where the crush shows instead), no console errors, no overflow.
 - **96 tests** (new: `computeSteel` — the exact 907.18474 $/st → $1,000/t conversion, the 1.6 t ore cost, the
   ratio, and that a missing leg invents nothing). `app.js?v=120`.
+## Positioning-vs-price divergence (2026-10-20) — the last open investor-roadmap item
+- **The tell:** price rising while speculators *cut* (fading the move) or price falling while they *add*
+  (buying weakness). Both legs have to be material — price **≥3%** and net **≥1 point of open interest** —
+  so it does not cry wolf every week.
+- **How it is measured:** net positioning as a **share of open interest** (so contracts of different sizes
+  compare), over a **13-week** window of the weekly CFTC series, with the price taken **at or before** each
+  report date (the reports are as-of Tuesday). Pure `positioningDivergence()` in `src/lib.js`, unit-tested
+  for bear / bull / aligned / not-enough-history / no-price.
+- **Where it shows:** the POSITIONING panel's `PRICE vs POSITIONING` line, with a watch/ok chip. Live now:
+  **WTI — price +18.7% over 13 weeks while specs cut 5.2 points of open interest → "fading the move, not
+  driving it"**; soyoil reads bullish divergence, NFDM and whey bearish, everything else aligned or flat.
+- **Bug found and fixed while wiring it:** the **livestock** segment had **no CFTC mapping at all**, so its
+  positioning panel always said "no series" even though the app's flags claimed COT coverage. Added the
+  exact contract names verified against the live report — `LIVE CATTLE`, `LEAN HOGS`, `FEEDER CATTLE`.
+  Live: cattle +26.3k contracts (2nd pctile), hogs −81.8k (1st), feeder −1.2k (26th).
+- 97 tests. `app.js?v=121`.
