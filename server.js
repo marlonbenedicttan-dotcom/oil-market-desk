@@ -2981,9 +2981,33 @@ async function buildBrief() {
     for (const b of m.benchmarks) {
       const dd = h?.deltas?.[b.id];
       const d = b.paper != null ? dd?.paper : dd?.physical;
-      if (d?.d1 != null) movers.push({ id: b.id, label: b.label, group: b.group, dp: b.dp, d1: d.d1, m1: d.m1 ?? null, y1: d.y1 ?? null });
+      if (d?.d1 != null) movers.push({ id: b.id, label: b.label, group: b.group, dp: b.dp, kind: 'bench', d1: d.d1, m1: d.m1 ?? null, y1: d.y1 ?? null });
     }
-    movers.sort((a, b) => Math.abs(b.d1) - Math.abs(a.d1));
+    // A raw % ranking is really a dairy ranking: whey, butter and HRC print in wide, infrequent ticks
+    // (41-50% of days unchanged), so a quote refresh reads as a 17% "move". Score each market by its move
+    // in its OWN daily σ, damped by how often it simply doesn't trade.
+    const ld = (vals) => vals.filter((v) => v != null);
+    const statsOf = (vals) => {
+      const a = ld(vals || []);
+      if (a.length < 40) return null;
+      let flat = 0, n = 0; const rets = [];
+      for (let i = 1; i < a.length; i++) { n++; if (a[i] === a[i - 1]) flat++; if (a[i - 1]) rets.push(Math.log(a[i] / a[i - 1])); }
+      if (rets.length < 30) return null;
+      const mu = rets.reduce((x, y) => x + y, 0) / rets.length;
+      const sd = Math.sqrt(rets.reduce((x, y) => x + (y - mu) ** 2, 0) / rets.length) * 100;
+      return { sd, flat: (flat / n) * 100 };
+    };
+    const liq = (flat) => Math.max(0.15, Math.min(1, 1 - flat / 12));
+    for (const mv of movers) {
+      const raw = h && h.series && h.series[mv.id];
+      const b0 = m.benchmarks.find((x) => x.id === mv.id);
+      const vals = raw && (b0 && b0.paper != null ? raw.paper : raw.physical);
+      const st = statsOf(vals);
+      if (st && st.sd > 0) { mv.sigma = +st.sd.toFixed(2); mv.flat = Math.round(st.flat); mv.score = +((Math.abs(mv.d1) / st.sd) * liq(st.flat)).toFixed(2); }
+      const ks = vals ? Object.keys(raw && (b0 && b0.paper != null ? raw.paper : raw.physical) || {}).sort() : [];
+      if (ks.length) { const m2 = raw && (b0 && b0.paper != null ? raw.paper : raw.physical); mv.spark = ks.slice(-30).map((k) => (m2[k] == null ? null : +m2[k])); }
+    }
+    movers.sort((a, b) => (b.score ?? 0) - (a.score ?? 0) || Math.abs(b.d1) - Math.abs(a.d1));
 
     const happened = [];
     for (const mv of movers.slice(0, 3)) happened.push({ kind: 'move', id: mv.id, text: `${mv.label} is ${mv.d1 >= 0 ? 'up' : 'down'} <b>${Math.abs(mv.d1).toFixed(1)}%</b> today${mv.y1 != null ? ` — ${Math.abs(mv.y1).toFixed(0)}% ${mv.y1 >= 0 ? 'higher' : 'lower'} over a year` : ''}.` });
@@ -3009,7 +3033,18 @@ async function buildBrief() {
       macro.push({ id: it.id, label: co.label, region: co.region, kind: it.kind, sym: it.label,
         d1, m1: it.deltas.m1 ?? null, y1: it.deltas.y1 ?? null, dp: isIdx ? 1 : 3 });
     }
-    macro.sort((a, b) => Math.abs(b.d1) - Math.abs(a.d1));
+    for (const mv of macro.slice(0, 3)) {
+      try {
+        const c0 = ALL_COUNTRIES[mv.id];
+        if (!c0 || !c0.index) continue;
+        const ser = (await cached('csr:1y:' + c0.index, 3600e3, () => yahooSeries(c0.index, '1y', '1d'))).series;
+        const ks = Object.keys(ser).sort();
+        const st = statsOf(ks.map((k) => ser[k]));
+        if (st && st.sd > 0) { mv.sigma = +st.sd.toFixed(2); mv.flat = Math.round(st.flat); mv.score = +((Math.abs(mv.d1) / st.sd) * liq(st.flat)).toFixed(2); }
+        mv.spark = ks.slice(-30).map((k) => (ser[k] == null ? null : +ser[k]));
+      } catch {}
+    }
+    macro.sort((a, b) => Math.abs(b.score ?? 0) - Math.abs(a.score ?? 0) || Math.abs(b.d1) - Math.abs(a.d1));
     const macroTop = macro.slice(0, 4);
     // Explain the two biggest moves with a recent tier-1 headline, preferring one whose own direction
     // agrees with the move (a "stocks sink" story for a fall, not a rally).
@@ -3041,8 +3076,22 @@ async function buildBrief() {
     const headline = (mv ? `Biggest move: ${mv.label} ${mv.d1 >= 0 ? 'up' : 'down'} ${Math.abs(mv.d1).toFixed(1)}%` : 'Quiet session so far')
       + (bigMacro ? ` · ${bigMacro.label}'s index ${bigMacro.d1 >= 0 ? 'up' : 'down'} ${Math.abs(bigMacro.d1).toFixed(1)}%` : '')
       + (hi ? ` · ${hi.text.replace(/\.$/, '')}` : '') + '.';
+    // The hero: the highest-scoring move across commodities and macro, with a sparkline attached.
+    const pickFrom = [
+      ...movers.slice(0, 3).map((x) => ({ ...x, srcKind: 'bench', kind: 'bench' })),
+      ...macroTop.slice(0, 2).map((x) => ({ ...x, srcKind: x.kind, kind: 'macro' })),
+    ].filter((x) => x.score != null || x.d1 != null);
+    const heroRaw = pickFrom.sort((a, b) => (b.score ?? 0) - (a.score ?? 0))[0] || null;
+    let hero = null;
+    if (heroRaw) {
+      hero = { kind: heroRaw.kind, id: heroRaw.id, label: heroRaw.label, tag: heroRaw.kind === 'macro' ? 'MACRO' : (heroRaw.group || 'COMMODITY'),
+        sym: heroRaw.sym || null, d1: heroRaw.d1, y1: heroRaw.y1 ?? null, m1: heroRaw.m1 ?? null,
+        score: heroRaw.score ?? null, sigma: heroRaw.sigma ?? null, flat: heroRaw.flat ?? null,
+        route: heroRaw.route || null, why: heroRaw.why || null, srcKind: heroRaw.srcKind || 'bench' };
+      hero.spark = heroRaw.spark || null;
+    }
     return {
-      updated: new Date().toISOString(), headline, happened, next, macro: macroTop,
+      updated: new Date().toISOString(), headline, happened, next, macro: macroTop, hero,
       alerts: alerts.map((a) => ({ level: a.level, text: a.text })),
       movers: movers.slice(0, 6),
     };

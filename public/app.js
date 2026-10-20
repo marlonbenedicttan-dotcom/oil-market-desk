@@ -252,14 +252,14 @@ function restoreCompare() {
   } catch {}
 }
 // Tiny inline trend line (last ~6 months of the fetched history), coloured by direction.
-function tileSpark(arr) {
+function tileSpark(arr, forceUp = null) {
   const v = (arr || []).filter((x) => x != null);
   if (v.length < 5) return '<svg class="spark" aria-hidden="true"></svg>';
   const w = 100, h = 22, min = Math.min(...v), max = Math.max(...v), rng = max - min || 1;
   const step = w / ((arr.length - 1) || 1);
   let d = '';
   arr.forEach((x, i) => { if (x == null) return; const px = (i * step).toFixed(1); const py = (h - 2 - ((x - min) / rng) * (h - 4)).toFixed(1); d += (d ? ' L' : 'M') + px + ',' + py; });
-  const up = v[v.length - 1] >= v[0];
+  const up = forceUp == null ? v[v.length - 1] >= v[0] : !!forceUp;   // null = judge by the window
   return `<svg class="spark" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" aria-hidden="true"><path d="${d}" fill="none" stroke="${up ? 'var(--green)' : 'var(--red)'}" stroke-width="1.4"/></svg>`;
 }
 function tileHtml(b) {
@@ -2086,15 +2086,16 @@ function renderFundamentals(f) {
 // On-screen daily brief (HOME) — what happened / what's on today, in 60 seconds.
 // The brief is read top-down in three beats: three stat tiles (the day in one glance), the macro
 // moves with the wire story behind them, then the commodity detail and what's next.
+// The brief: one hero (the day's most newsworthy move), then two strict columns — what happened and
+// what's next — and a single dim context line. Every row uses the same grammar: tag · name · % · spark.
 function renderBrief(b) {
   const el = $('home-brief');
   if (!el) return;
   if (!b || b.error) { el.innerHTML = stError('Couldn\u2019t load today\u2019s brief — retrying.'); return; }
   const upd = $('brief-updated');
   if (upd) upd.textContent = 'as of ' + new Date(b.updated).toLocaleString('en-GB');
-  const movers = b.movers || [], macro = b.macro || [], next = b.next || [];
-  const top = movers[0], topM = macro[0], nx = next[0];
-  const pct1 = (v) => (v == null ? '' : `${v >= 0 ? '+' : '−'}${Math.abs(v).toFixed(0)}% 1y`);
+  const h = b.hero;
+  const pct1 = (v) => (v == null ? '' : `${v >= 0 ? '+' : '−'}${Math.abs(v).toFixed(0)}% over a year`);
   const relDay = (d) => {
     if (!d) return '';
     const today = new Date().toISOString().slice(0, 10);
@@ -2103,61 +2104,35 @@ function renderBrief(b) {
     if (d === tomorrow) return 'Tomorrow';
     return new Date(d + 'T00:00:00Z').toLocaleDateString('en-GB', { weekday: 'short', day: '2-digit', month: 'short', timeZone: 'UTC' });
   };
-  const sparkFor = (id) => {
-    const bm = ((data && data.benchmarks) || []).find((x) => x.id === id);
-    const s = history && history.series && history.series[id];
-    if (!bm || !s) return '';
-    const arr = (bm.paper != null ? s.paper : s.physical) || [];
-    return arr.length ? tileSpark(arr.slice(-30)) : '';
-  };
-  const tile = (label, name, v, sub, href, spark) => `<div class="bt${href ? ' link' : ''}"${href ? ` data-go="${esc(href)}" role="link" tabindex="0"` : ''}>`
-    + `<div class="bt-l">${label}</div><div class="bt-n" title="${esc(name || '')}">${esc(name || '—')}</div>`
-    + (v != null ? `<div class="bt-v ${cls(v)}">${pctf(v)}</div>` : '')
-    + (spark ? `<div class="bt-sp">${spark}</div>` : '')
-    + (sub ? `<div class="bt-s dimtext">${sub}</div>` : '') + '</div>';
-
-  const tiles = `<div class="brief-tiles">`
-    + tile('BIGGEST MOVE', top && top.label, top ? top.d1 : null, top ? pct1(top.y1) : '', top ? `#/commodities` : '', top ? sparkFor(top.id) : '')
-    + tile('MACRO', topM ? topM.label : 'Nothing moved', topM ? topM.d1 : null, topM ? `${esc(topM.sym || '')}${topM.y1 != null ? ' · ' + pct1(topM.y1) : ''}` : 'no country moved more than the bar', topM ? topM.route : '', '')
-    + tile('NEXT', nx ? nx.name : 'Nothing scheduled', null, nx ? `${esc(relDay(nx.date))}${nx.time ? ' · ' + esc(nx.time) : ''}${nx.note ? ' · ' + esc(nx.note) : ''}` : 'quiet calendar', '', '')
-    + '</div>';
-
-  const strip = `<div class="brief-strip dimtext">${new Date(b.updated).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }).toUpperCase()}`
-    + ` · ${movers.length} move${movers.length === 1 ? '' : 's'} worth flagging · ${macro.length} macro · ${next.length} scheduled</div>`;
-
-  // MACRO: number first, the wire story underneath.
-  const macroRows = macro.length
-    ? macro.map((x) => `<div class="mvr"><span class="mvr-n">${esc(x.label)}${x.sym ? `<em>${esc(x.sym)}</em>` : ''}</span>`
-        + `<span class="mvr-v ${cls(x.d1)}">${pctf(x.d1)}</span><span class="mvr-sp"></span><span class="mvr-y dimtext">${pct1(x.y1)}</span>`
-        + (x.why ? `<div class="mvr-why"><a href="${esc(x.why.url)}" target="_blank" rel="noopener noreferrer">${esc(x.why.title)}</a> <span class="dimtext">— ${esc(x.why.source)}</span> <a class="bm-go" href="${esc(x.route || '#/macro')}">open</a></div>` : '')
-        + '</div>').join('')
-    : '<div class="mvr"><span class="mvr-n dimtext">No country index moved more than 1.5% and no floating currency more than 0.75% today.</span><span></span><span></span><span></span></div>';
-  const macroBlock = `<div class="brief-macro"><div class="gtitle">MACRO — WHAT MOVED TODAY</div>${macroRows}</div>`;
-
-  // COMMODITIES: the move rows (sparkline + 1y), then the qualitative items (curve, stocks, positioning).
-  const moveRows = movers.slice(0, 4).map((mv) => `<div class="mvr"><span class="mvr-n">${esc(mv.label)}</span>`
-    + `<span class="mvr-v ${cls(mv.d1)}">${pctf(mv.d1)}</span><span class="mvr-sp">${sparkFor(mv.id)}</span><span class="mvr-y dimtext">${pct1(mv.y1)}</span></div>`).join('');
-  const others = (b.happened || []).filter((x) => x.kind !== 'move');
-  const otherList = others.length ? `<ul class="ins-list">${others.map((x) => `<li>${x.text}</li>`).join('')}</ul>` : '';
-  const nextRows = next.length
-    ? next.slice(0, 4).map((e) => `<div class="mvr"><span class="mvr-n">${esc(e.name)}${e.note ? ` <em>${esc(e.note)}</em>` : ''}</span><span class="mvr-v dimtext" style="font-weight:400">${esc(relDay(e.date))}${e.time ? ' ' + esc(e.time) : ''}</span><span class="mvr-sp"></span><span class="mvr-y"></span></div>`).join('')
-    : '<div class="mvr"><span class="mvr-n dimtext">Nothing scheduled.</span><span></span><span></span><span></span></div>';
-
-  el.innerHTML = tiles + strip + macroBlock
-    + `<div class="brief-cols">
-      <div class="brief-col"><div class="gtitle">COMMODITIES — WHAT HAPPENED</div>${moveRows || '<div class="mvr"><span class="mvr-n dimtext">No notable moves.</span></div>'}${otherList}</div>
-      <div class="brief-col"><div class="gtitle">WHAT'S ON TODAY / NEXT</div>${nextRows}</div>
-    </div>`;
+  const spark = (arr, up) => (arr && arr.length ? tileSpark(arr, up) : '');
+  const heroHtml = h ? `<div class="hero${h.route ? ' link' : ''}"${h.route ? ` data-go="${esc(h.route)}" role="link" tabindex="0"` : ''}>`
+    + `<div class="hero-l">${esc(h.tag || '')}${h.flat != null && h.flat >= 10 ? ' · thin quotes' : ''}</div>`
+    + `<div class="hero-n">${esc(h.label)}${h.sym && h.sym !== h.label ? `<em>${esc(h.sym)}</em>` : ''}</div>`
+    + `<div class="hero-v ${cls(h.d1)}">${pctf(h.d1)}</div>`
+    + (spark(h.spark, h.d1 >= 0) ? `<div class="hero-sp">${spark(h.spark, h.d1 >= 0)}</div>` : '')
+    + `<div class="hero-s dimtext">${pct1(h.y1)}${h.sigma ? ` · normal day ${h.sigma.toFixed(1)}%` : ''}</div>`
+    + (h.why ? `<div class="hero-w"><a href="${esc(h.why.url)}" target="_blank" rel="noopener noreferrer">${esc(h.why.title)}</a> <span class="dimtext">— ${esc(h.why.source)}</span></div>` : '')
+    + '</div>' : '';
+  // Everything else, one grammar. The hero's own row is skipped so nothing is said twice.
+  const isHero = (x) => !!(h && x.id === h.id && (x.kind || 'bench') === (h.srcKind || 'bench'));
+  const rest = [
+    ...((b.movers || []).filter((x) => !isHero(x)).map((x) => ({ ...x, tag: x.group || 'Commodity' }))),
+    ...((b.macro || []).filter((x) => !isHero(x)).map((x) => ({ ...x, tag: 'Macro' }))),
+  ].sort((x, y) => (y.score ?? 0) - (x.score ?? 0));
+  const rows = rest.slice(0, 5).map((x) => `<div class="mvr${x.flat != null && x.flat >= 10 ? ' thin' : ''}">`
+    + `<span class="mvr-tag">${esc(x.tag)}</span><span class="mvr-n">${esc(x.label)}</span>`
+    + `<span class="mvr-v ${cls(x.d1)}">${pctf(x.d1)}</span><span class="mvr-sp">${spark(x.spark, x.d1 >= 0)}</span></div>`).join('')
+    || '<div class="mvr"><span class="mvr-tag"></span><span class="mvr-n dimtext">Nothing moved enough to flag today.</span><span></span><span></span></div>';
+  const nextRows = (b.next || []).slice(0, 4).map((e) => `<div class="mvr">`
+    + `<span class="mvr-tag">${esc(relDay(e.date))}</span><span class="mvr-n">${esc(e.name)}</span>`
+    + `<span class="mvr-v dimtext" style="font-weight:400">${esc(e.time || '')}</span><span class="mvr-sp"></span></div>`).join('')
+    || '<div class="mvr"><span class="mvr-tag"></span><span class="mvr-n dimtext">Nothing scheduled.</span><span></span><span></span></div>';
+  const ctx = (b.happened || []).filter((x) => x.kind !== 'move').map((x) => x.text).join(' · ');
+  el.innerHTML = heroHtml
+    + `<div class="brief-cols"><div class="brief-col"><div class="gtitle">WHAT HAPPENED</div>${rows}</div>`
+    + `<div class="brief-col"><div class="gtitle">WHAT'S NEXT</div>${nextRows}</div></div>`
+    + (ctx ? `<div class="brief-ctx dimtext">${ctx}</div>` : '');
 }
-$('home-brief')?.addEventListener('click', (e) => {
-  const t = e.target.closest('[data-go]');
-  if (t && t.dataset.go) location.hash = t.dataset.go;
-});
-$('home-brief')?.addEventListener('keydown', (e) => {
-  if (e.key !== 'Enter' && e.key !== ' ') return;
-  const t = e.target.closest('[data-go]');
-  if (t && t.dataset.go) { e.preventDefault(); location.hash = t.dataset.go; }
-});
 async function loadBrief() {
   const el = $('home-brief');
   if (el && !el.innerHTML) el.innerHTML = stLoading('Reading the day…');

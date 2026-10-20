@@ -1089,3 +1089,27 @@ but not coloured, and the run-on headline repeated the top of each list.
   (`tileSpark`), and `/api/brief`'s `next[]` now also carries `time`.
 - Verified: desktop panel 566px, mobile 960px (tiles stack, sparkline and 1y hidden), 98 tests, no console
   errors. `app.js?v=129`, `style.css?v=70`.
+
+## HOME daily brief — one hero, two lists, and a fix for the dairy problem (2026-10-20)
+The tile version was still three competing blocks, and the "biggest move" was whichever market twitched
+hardest in raw percent — which meant Class III Milk or cheese most days, because dairy quotes step.
+- **The hero is chosen by news value, not raw percent.** `score = (|1d| / σ_daily) × liquidity`, where
+  `liquidity = clamp(1 − flatShare/12, 0.15, 1)` and `flatShare` is the share of unchanged daily closes
+  over a year. A market that prints the same price 13% of days can no longer win by jumping 18%.
+  Measured flat-day share: Dry Whey 50%, HRC 44%, Butter 41%, NFDM 17%, Cheese 16%, **Milk 13%**,
+  while WTI / Brent / gold / copper / coffee are 0% and corn 2%. Snapping alone was not enough (milk
+  scored 9.3σ vs WTI's 1.9σ), hence the liquidity damping.
+- **One hero block**: tag, name, a 34px coloured number, a full-width 30-session sparkline, one dim line
+  ("−35% over a year · normal day 1.8%"), and at most one tier-1 wire line that direction-matches the
+  move. Tapping it opens that instrument or country.
+- **WHAT HAPPENED** — one grammar for everything else: `TAG · NAME · % · SPARK`. Commodities are tagged
+  by segment (CRUDE, REFINED, DAIRY…), macro rows MACRO; a market with ≥10% flat days gets an amber
+  "stepped quotes" tag. Top five by the same score.
+- **WHAT'S NEXT** — `TODAY/TOMORROW · event · time`, four rows.
+- **One dim context line** carries the qualitative items (backwardation, stocks surprise, CFTC percentile).
+- The score is a ranking aid only — it is never shown. `/api/brief` now returns `hero` plus `spark` and
+  `kind` on each mover, so the client draws every row from server data instead of re-deriving it.
+- Sparkline colour now follows the number beside it (today's sign), not the window's drift — the old
+  `tileSpark` painted a red line next to a green +5.7%.
+- Verified: desktop panel 451px, mobile 697px with names wrapping instead of truncating, 0 horizontal
+  overflow at 390px, 98 tests, no console exceptions.
