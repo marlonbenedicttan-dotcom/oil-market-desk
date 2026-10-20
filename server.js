@@ -3034,7 +3034,7 @@ async function buildBrief() {
     const next = ((cal && cal.events) || getEvents())
       .filter((e) => { const k = String(e.name).toLowerCase(); if (seenNext.has(k)) return false; seenNext.add(k); return true; })
       .slice(0, 4)
-      .map((e) => ({ name: e.country ? `${e.country} — ${e.name}` : e.name, date: e.date, note: e.note }));
+      .map((e) => ({ name: e.country ? `${e.country} — ${e.name}` : e.name, date: e.date, time: e.time || null, note: e.note }));
     const hi = alerts.find((a) => a.level === 'high');
     const mv = movers[0];
     const bigMacro = macroTop[0] && Math.abs(macroTop[0].d1) >= 4 ? macroTop[0] : null;

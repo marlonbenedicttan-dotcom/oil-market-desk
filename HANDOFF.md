@@ -1074,3 +1074,18 @@ US), or a **currency**, or a **commodity**.
 - Verified: Japan → Nikkei vs S&P 500 (243 / 251 points) · US → S&P vs Euro Stoxx 50 · France → CAC 40 vs
   EUR/USD · Japan → Nikkei vs Gold; switching saves and redraws.
 - `app.js?v=127`.
+## HOME daily brief — visual redesign (2026-10-20)
+It was three identical bulleted lists of sentences: every line carried three facts, the numbers were bold
+but not coloured, and the run-on headline repeated the top of each list.
+- **Three stat tiles replace the headline** — `BIGGEST MOVE` (with a **1-month sparkline**), `MACRO`
+  (country + its index + 1y), `NEXT` (the next release as "Today / Tomorrow · time · note"). The big
+  number is colour-coded and the macro tile is clickable through to that country's page.
+- **A one-line strip** under them: *"20 OCT · 6 moves worth flagging · 4 macro · 4 scheduled"*.
+- **Movers are rows, not sentences**: `name · coloured % · sparkline · 1y` for commodities, and
+  `country [index] · % · 1y` plus the wire story as a why-line for macro. `+17.7%` is green, `−6.4%` red.
+- **What's next** is the same row shape: event · note · "Today/Tomorrow + time" (no truncated dates).
+- The qualitative items (curve / stocks / positioning) stay as bullets beneath the commodity rows.
+- **No new data sources**: sparklines are built client-side from the price history the app already holds
+  (`tileSpark`), and `/api/brief`'s `next[]` now also carries `time`.
+- Verified: desktop panel 566px, mobile 960px (tiles stack, sparkline and 1y hidden), 98 tests, no console
+  errors. `app.js?v=129`, `style.css?v=70`.
