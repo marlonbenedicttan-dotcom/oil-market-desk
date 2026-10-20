@@ -116,10 +116,21 @@ async function yahooSeries(symbol, range = '6mo', interval = '1d') {
   const close = r.indicators?.quote?.[0]?.close || [];
   const series = {};
   ts.forEach((t, i) => { if (close[i] != null) series[new Date(t * 1000).toISOString().slice(0, 10)] = close[i]; });
-  // Prefer the newest close in the series: Yahoo's `regularMarketPrice` can be a STALE quote for
+  // TODAY'S BAR IS USUALLY NULL UNTIL THE SESSION SETTLES, so "the latest close" is yesterday and every
+  // 1-day number silently compares two old closes (KOSPI printed +1.8% while it was actually −3.7%).
+  // If Yahoo's own quote is fresh — not the stale legacy quotes noted below — put it on its date.
+  const meta = r.meta || {};
+  if (meta.regularMarketPrice != null && meta.regularMarketTime) {
+    const liveDay = new Date(meta.regularMarketTime * 1000).toISOString().slice(0, 10);
+    const lastKey = Object.keys(series).sort().pop();
+    // Only FILL a missing day, never overwrite a real bar, and never accept a future date — that is
+    // what keeps a stale legacy quote (CPO=F reported a Mar-2024 price) from poisoning the series.
+    if ((!lastKey || lastKey < liveDay) && liveDay <= new Date().toISOString().slice(0, 10)) series[liveDay] = meta.regularMarketPrice;
+  }
+  // Prefer the newest point in the series: Yahoo's `regularMarketPrice` can be a STALE quote for
   // legacy/alt symbols — e.g. CPO=F (palm) reports a Mar-2024 price while its daily bars are current.
-  const last = lastNonNull(close);
-  return { symbol, price: last != null ? last : (r.meta.regularMarketPrice ?? null), series };
+  const lastKey = Object.keys(series).sort().pop();
+  return { symbol, price: lastKey ? series[lastKey] : (meta.regularMarketPrice ?? null), series };
 }
 
 async function fredSeries(id, days = 220) {
@@ -2998,6 +3009,12 @@ async function buildBrief() {
       return { sd, flat: (flat / n) * 100 };
     };
     const liq = (flat) => Math.max(0.15, Math.min(1, 1 - flat / 12));
+    // Expiry day is not a market move. A continuous front-month series jumps to the next contract,
+    // and with a backwardated curve that jump is a large red number nobody traded. Name it, and stop
+    // it from winning the hero slot.
+    const nowD = new Date();
+    const expD = Date.UTC(nowD.getUTCFullYear(), nowD.getUTCMonth() + (nowD.getUTCDate() > 20 ? 1 : 0), 20);
+    const daysToExp = Math.round((expD - Date.UTC(nowD.getUTCFullYear(), nowD.getUTCMonth(), nowD.getUTCDate())) / 864e5);
     for (const mv of movers) {
       const raw = h && h.series && h.series[mv.id];
       const b0 = m.benchmarks.find((x) => x.id === mv.id);
@@ -3006,6 +3023,20 @@ async function buildBrief() {
       if (st && st.sd > 0) { mv.sigma = +st.sd.toFixed(2); mv.flat = Math.round(st.flat); mv.score = +((Math.abs(mv.d1) / st.sd) * liq(st.flat)).toFixed(2); }
       const ks = vals ? Object.keys(raw && (b0 && b0.paper != null ? raw.paper : raw.physical) || {}).sort() : [];
       if (ks.length) { const m2 = raw && (b0 && b0.paper != null ? raw.paper : raw.physical); mv.spark = ks.slice(-30).map((k) => (m2[k] == null ? null : +m2[k])); }
+      if (daysToExp >= 0 && daysToExp <= 1 && CURVE_SPEC[mv.id] && Math.abs(mv.d1) >= 1.5) {
+        try {
+          const c = await getCurveFor(mv.id);
+          const px = ld(vals || []).slice(-1)[0];
+          if (c && c.available && c.m1m2 != null && px) {
+            const rollPct = (c.m1m2 / px) * 100;
+            // Only ONE case is worth flagging: a backwardated curve (front above next) rolling down into
+            // a red number. Contango cannot manufacture a fall, so a +18% dairy print is not a roll.
+            if (c.m1m2 > 0 && mv.d1 < 0 && Math.abs(rollPct) >= 0.5 * Math.abs(mv.d1)) {
+              mv.roll = { spread: +c.m1m2.toFixed(2), pct: +rollPct.toFixed(1), when: daysToExp === 0 ? 'today' : 'tomorrow' };
+            }
+          }
+        } catch {}
+      }
     }
     movers.sort((a, b) => (b.score ?? 0) - (a.score ?? 0) || Math.abs(b.d1) - Math.abs(a.d1));
 
@@ -3033,36 +3064,84 @@ async function buildBrief() {
       macro.push({ id: it.id, label: co.label, region: co.region, kind: it.kind, sym: it.label,
         d1, m1: it.deltas.m1 ?? null, y1: it.deltas.y1 ?? null, dp: isIdx ? 1 : 3 });
     }
-    for (const mv of macro.slice(0, 3)) {
+    await Promise.all(macro.map(async (mv) => {
       try {
         const c0 = ALL_COUNTRIES[mv.id];
-        if (!c0 || !c0.index) continue;
+        if (!c0 || !c0.index) return;
         const ser = (await cached('csr:1y:' + c0.index, 3600e3, () => yahooSeries(c0.index, '1y', '1d'))).series;
         const ks = Object.keys(ser).sort();
         const st = statsOf(ks.map((k) => ser[k]));
         if (st && st.sd > 0) { mv.sigma = +st.sd.toFixed(2); mv.flat = Math.round(st.flat); mv.score = +((Math.abs(mv.d1) / st.sd) * liq(st.flat)).toFixed(2); }
         mv.spark = ks.slice(-30).map((k) => (ser[k] == null ? null : +ser[k]));
       } catch {}
-    }
+    }));
     macro.sort((a, b) => Math.abs(b.score ?? 0) - Math.abs(a.score ?? 0) || Math.abs(b.d1) - Math.abs(a.d1));
     const macroTop = macro.slice(0, 4);
-    // Explain the two biggest moves with a recent tier-1 headline, preferring one whose own direction
-    // agrees with the move (a "stocks sink" story for a fall, not a rally).
-    await Promise.all(macroTop.slice(0, 2).map(async (mv) => {
+    // A one-line reason per move, from a tier-1 wire. A commodity story must actually name the
+    // instrument (getNews already enforces that); a country story must name the country and, for an
+    // index move, preferably talk about stocks. Direction is a preference, never a requirement —
+    // and no matching story means no line, because the brief does not invent an explanation.
+    const MARKET_WORD = /\b(stocks?|shares?|equit(y|ies)|index|indices|bourse)\b/i;
+    // A headline only explains a move if it is about the market: a price word, a supply event, or a
+    // demand story. "Qatari electricity lifeline for Lebanon" names LNG but explains nothing.
+    const STORY_WORD = /\b(prices?|rise|rises|rose|rising|fell|fall|falls|falling|surge[sd]?|soar(s|ed)?|plunge[sd]?|slid|slide[s]?|slip(s|ped)?|jump(s|ed)?|climb(s|ed)?|gain(s|ed)?|drop(s|ped)?|decline[sd]?|tumble[sd]?|retreat(s|ed)?|rebound(s|ed)?|sell-?off|rally|rallies|higher|lower|steady|unchanged|outlook|demand|supply|output|production|inventor(y|ies)|shortage|glut|surplus|OPEC|sanction[sd]?|tariff[s]?|strike|outage|harvest|drought|export[s]?|import[s]?|curb[s]?|quota|shipments?)\b/i;
+    const pickStory = (items, x, co) => {
+      const want = x.d1 >= 0 ? 'up' : 'down';
+      const idxLabel = co && co.indexLabel ? co.indexLabel : null;
+      const now = Date.now();
+      return (items || [])
+        .map((it) => ({ ...it, ageDays: it.ageDays ?? (it.date ? Math.round((now - Date.parse(it.date)) / 864e5) : 99) }))
+        .filter((it) => it.ageDays <= 3 && (!it.source || TIER1_RE.test(it.source)))
+        .filter((it) => STORY_WORD.test(it.title))
+        .filter((it) => x.kind === 'bench' || titleMatches(x.id, it.title))   // a country story must name the country
+        .filter((it) => x.kind !== 'index' || MARKET_WORD.test(it.title))     // an index move needs a STOCKS story
+        .map((it) => ({ it, s: (newsDir(it.title) === want ? 20 : newsDir(it.title) == null ? 10 : -99)
+          + (idxLabel && it.title.includes(idxLabel) ? 8 : 0)
+          + (MARKET_WORD.test(it.title) ? 4 : 0)
+          + Math.max(0, 6 - it.ageDays * 2) }))
+        .filter((r) => r.s > 0)
+        .sort((a, b) => b.s - a.s)[0]?.it || null;
+    };
+    const whyFor = async (x) => {
       try {
-        const nw = await getMacroNews(mv.id);
-        const cand = (nw.items || []).filter((it) => (it.ageDays ?? 99) <= 4);
-        const want = mv.d1 < 0 ? 'down' : 'up';
-        const pick = cand.find((it) => newsDir(it.title) === want) || cand.find((it) => newsDir(it.title) == null) || null;
-        if (pick) mv.why = { title: pick.title, source: pick.source, url: pick.url };
-      } catch {}
-    }));
+        const day = new Date().toISOString().slice(0, 10);
+        const sh = (off) => new Date(Date.parse(day) + off * 864e5).toISOString().slice(0, 10);
+        let items = [];
+        if (x.kind === 'bench') {
+          const seg = (MARKETS.find((mk) => mk.components.includes(x.id)) || {}).id;
+          if (!seg) return null;
+          items = (await getNews(seg, x.id)).items || [];   // getNews already requires the instrument to be named
+        } else if (x.kind === 'index') {
+          // Ask about the STOCK MARKET, not the economy: "Indonesia economy OR rupiah" finds the rupiah
+          // story on a day the index rallied 5.7%, while "Indonesia stocks" finds the actual reason.
+          // Merge with the country feed so a wire story phrased "Korean stocks..." is not missed.
+          const co = ALL_COUNTRIES[x.id] || {};
+          const name = co.label || x.label;
+          const q = `(${name} stocks OR ${name} shares${co.indexLabel ? ` OR "${co.indexLabel}"` : ''}) after:${sh(-2)} before:${sh(2)} ${NEWS_TIER1}`;
+          const [mkt, gen] = await Promise.all([
+            cached('whyidx:' + x.id + ':' + day, 1800e3, () => fetchGoogleNews(q, 20)).catch(() => []),
+            getMacroNews(x.id).then((r) => r.items || []).catch(() => []),
+          ]);
+          items = [...mkt, ...gen];
+        } else {
+          items = (await getMacroNews(x.id)).items || [];
+        }
+        const p = pickStory(items, x, ALL_COUNTRIES[x.id]);
+        return p ? { title: p.title, source: p.source, url: p.url } : null;
+      } catch { return null; }
+    };
     for (const mv of macroTop) {
       const what = mv.kind === 'index' ? 'the stock index' : 'the currency';
       mv.text = `${mv.label} — ${what} is <b>${mv.d1 >= 0 ? 'up' : 'down'} ${Math.abs(mv.d1).toFixed(1)}%</b> today`
         + (mv.y1 != null ? ` — ${Math.abs(mv.y1).toFixed(0)}% ${mv.y1 >= 0 ? 'higher' : 'lower'} over a year` : '') + '.';
       mv.route = `#/macro/${mv.region}/${mv.id}`;
     }
+    // Three commodities and three countries, so a 3% index day can never be crowded out by oil alone.
+    const mix = [...movers.slice(0, 3), ...macroTop.slice(0, 3)].sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
+    await Promise.all(mix.map(async (x) => { x.why = await whyFor(x); }));
+    // The same headline under three oil rows is noise: keep it where it ranks first, drop the repeats.
+    const usedWhy = new Set();
+    for (const x of mix) { if (!x.why) continue; if (usedWhy.has(x.why.url)) x.why = null; else usedWhy.add(x.why.url); }
 
     const cal = await getCalendar().catch(() => null);
     const seenNext = new Set();
@@ -3077,14 +3156,15 @@ async function buildBrief() {
       + (bigMacro ? ` · ${bigMacro.label}'s index ${bigMacro.d1 >= 0 ? 'up' : 'down'} ${Math.abs(bigMacro.d1).toFixed(1)}%` : '')
       + (hi ? ` · ${hi.text.replace(/\.$/, '')}` : '') + '.';
     // The hero: the highest-scoring move across commodities and macro, with a sparkline attached.
+    // A roll day can still be the loudest number on screen, but it must never be the day's STORY.
     const pickFrom = [
       ...movers.slice(0, 3).map((x) => ({ ...x, srcKind: 'bench', kind: 'bench' })),
       ...macroTop.slice(0, 2).map((x) => ({ ...x, srcKind: x.kind, kind: 'macro' })),
-    ].filter((x) => x.score != null || x.d1 != null);
+    ].filter((x) => !x.roll && (x.score != null || x.d1 != null));
     const heroRaw = pickFrom.sort((a, b) => (b.score ?? 0) - (a.score ?? 0))[0] || null;
     let hero = null;
     if (heroRaw) {
-      hero = { kind: heroRaw.kind, id: heroRaw.id, label: heroRaw.label, tag: heroRaw.kind === 'macro' ? 'MACRO' : (heroRaw.group || 'COMMODITY'),
+      hero = { kind: heroRaw.kind, id: heroRaw.id, label: heroRaw.label, tag: heroRaw.kind === 'macro' ? (heroRaw.srcKind === 'fx' ? 'FX' : 'INDEX') : (heroRaw.group || 'COMMODITY'),
         sym: heroRaw.sym || null, d1: heroRaw.d1, y1: heroRaw.y1 ?? null, m1: heroRaw.m1 ?? null,
         score: heroRaw.score ?? null, sigma: heroRaw.sigma ?? null, flat: heroRaw.flat ?? null,
         route: heroRaw.route || null, why: heroRaw.why || null, srcKind: heroRaw.srcKind || 'bench' };
@@ -3093,7 +3173,7 @@ async function buildBrief() {
     return {
       updated: new Date().toISOString(), headline, happened, next, macro: macroTop, hero,
       alerts: alerts.map((a) => ({ level: a.level, text: a.text })),
-      movers: movers.slice(0, 6),
+      movers: movers.slice(0, 3),
     };
   });
 }

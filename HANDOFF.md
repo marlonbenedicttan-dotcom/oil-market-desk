@@ -1113,3 +1113,31 @@ hardest in raw percent — which meant Class III Milk or cheese most days, becau
   `tileSpark` painted a red line next to a green +5.7%.
 - Verified: desktop panel 451px, mobile 697px with names wrapping instead of truncating, 0 horizontal
   overflow at 390px, 98 tests, no console exceptions.
+
+## Daily brief: the hero graph, the WHY line, and two real data bugs (2026-10-21)
+The hero's sparkline spanned the full panel width — a 340px near-flat line that read as a rule, not a
+chart — and the brief said WHAT moved but never WHY. Four fixes:
+- **Hero graph is compact and sits beside the number**: 190px × 54px (130px on a phone), area-filled,
+  `vector-effect: non-scaling-stroke` so the hairline stays a hairline at any size.
+- **Every row can carry one WHY line**: a tier-1 wire story that names the thing and agrees with the
+  direction, or a computed `ROLL` note. No matching story means no line — never a guess.
+  - Commodities use `getNews(segment, instrument)` (already instrument-scoped).
+  - **Country indices now query the STOCK MARKET** (`"Indonesia stocks" OR "IDX Composite"`), not
+    "Indonesia economy OR rupiah" — that old query explained a +5.7% index rally with a rupiah story.
+    It now finds "Indonesia Stocks Rebound as Authorities Step Up Response to MSCI" (Bloomberg).
+  - Candidates must contain a market/price word (`STORY_WORD`); "Qatari electricity lifeline for
+    Lebanon" names LNG and explains nothing.
+  - Three commodities + three countries are merged, so a 3% index day cannot be crowded out by oil.
+- **Contract rolls are named, not reported as selloffs.** On expiry day a continuous front-month
+  series jumps to the next contract: WTI printed −6.0% with the curve $5.3 backwardated, i.e. ~5% of
+  that move was the roll. `buildBrief` detects it (expiry within a day, backwardation, roll ≥ 50% of
+  the move), tags the row "Roll, not a selloff — X% of this move is the expiring contract", and bars
+  it from the hero slot. Contango + an up move (dairy) is NOT a roll and is not flagged.
+- **Two data bugs behind "where is Korea?"**:
+  - `yahooSeries` ignored the live quote, so while today's daily bar is still null every 1-day number
+    compared the two PREVIOUS closes — KOSPI printed +1.8% while it was actually **−3.7%**. A fresh
+    `regularMarketPrice` now fills a missing day (`lastKey < liveDay`, never overwrite, never future).
+  - The brief's macro ranking scored only the first three countries before sorting. It now scores
+    every country that clears the threshold, so a big index move can't sort on a missing σ.
+- Verified: desktop panel 465px, mobile 749px, 0 overflow, 98 tests, no console exceptions.
+  `app.js?v=134`, `style.css?v=75`.

@@ -252,7 +252,7 @@ function restoreCompare() {
   } catch {}
 }
 // Tiny inline trend line (last ~6 months of the fetched history), coloured by direction.
-function tileSpark(arr, forceUp = null) {
+function tileSpark(arr, forceUp = null, fill = false) {
   const v = (arr || []).filter((x) => x != null);
   if (v.length < 5) return '<svg class="spark" aria-hidden="true"></svg>';
   const w = 100, h = 22, min = Math.min(...v), max = Math.max(...v), rng = max - min || 1;
@@ -260,7 +260,9 @@ function tileSpark(arr, forceUp = null) {
   let d = '';
   arr.forEach((x, i) => { if (x == null) return; const px = (i * step).toFixed(1); const py = (h - 2 - ((x - min) / rng) * (h - 4)).toFixed(1); d += (d ? ' L' : 'M') + px + ',' + py; });
   const up = forceUp == null ? v[v.length - 1] >= v[0] : !!forceUp;   // null = judge by the window
-  return `<svg class="spark" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" aria-hidden="true"><path d="${d}" fill="none" stroke="${up ? 'var(--green)' : 'var(--red)'}" stroke-width="1.4"/></svg>`;
+  const col = up ? 'var(--green)' : 'var(--red)';
+  const area = fill ? `<path d="${d}" fill="${col}" fill-opacity="0.09" stroke="none"/>` : '';
+  return `<svg class="spark" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" aria-hidden="true">${area}<path d="${d}" fill="none" stroke="${col}" stroke-width="1.4" vector-effect="non-scaling-stroke"/></svg>`;
 }
 function tileHtml(b) {
   const s = history?.series?.[b.id];
@@ -2095,7 +2097,6 @@ function renderBrief(b) {
   const upd = $('brief-updated');
   if (upd) upd.textContent = 'as of ' + new Date(b.updated).toLocaleString('en-GB');
   const h = b.hero;
-  const pct1 = (v) => (v == null ? '' : `${v >= 0 ? '+' : '−'}${Math.abs(v).toFixed(0)}% over a year`);
   const relDay = (d) => {
     if (!d) return '';
     const today = new Date().toISOString().slice(0, 10);
@@ -2104,24 +2105,38 @@ function renderBrief(b) {
     if (d === tomorrow) return 'Tomorrow';
     return new Date(d + 'T00:00:00Z').toLocaleDateString('en-GB', { weekday: 'short', day: '2-digit', month: 'short', timeZone: 'UTC' });
   };
-  const spark = (arr, up) => (arr && arr.length ? tileSpark(arr, up) : '');
+  const spark = (arr, up, fill) => (arr && arr.length ? tileSpark(arr, up, fill) : '');
+  // The hero: the number and its shape side by side, then the one line that says WHY.
   const heroHtml = h ? `<div class="hero${h.route ? ' link' : ''}"${h.route ? ` data-go="${esc(h.route)}" role="link" tabindex="0"` : ''}>`
     + `<div class="hero-l">${esc(h.tag || '')}${h.flat != null && h.flat >= 10 ? ' · thin quotes' : ''}</div>`
     + `<div class="hero-n">${esc(h.label)}${h.sym && h.sym !== h.label ? `<em>${esc(h.sym)}</em>` : ''}</div>`
-    + `<div class="hero-v ${cls(h.d1)}">${pctf(h.d1)}</div>`
-    + (spark(h.spark, h.d1 >= 0) ? `<div class="hero-sp">${spark(h.spark, h.d1 >= 0)}</div>` : '')
-    + `<div class="hero-s dimtext">${pct1(h.y1)}${h.sigma ? ` · normal day ${h.sigma.toFixed(1)}%` : ''}</div>`
-    + (h.why ? `<div class="hero-w"><a href="${esc(h.why.url)}" target="_blank" rel="noopener noreferrer">${esc(h.why.title)}</a> <span class="dimtext">— ${esc(h.why.source)}</span></div>` : '')
-    + '</div>' : '';
+    + `<div class="hero-mid"><span class="hero-v ${cls(h.d1)}">${pctf(h.d1)}</span>`
+    + (spark(h.spark, h.d1 >= 0, true) ? `<span class="hero-sp">${spark(h.spark, h.d1 >= 0, true)}</span>` : '')
+    + `</div>`
+    + `<div class="hero-s dimtext">${h.y1 != null ? `${h.y1 >= 0 ? '+' : '−'}${Math.abs(h.y1).toFixed(0)}% over a year` : ''}`
+    + `${h.m1 != null ? ` · ${pctf(h.m1)} this month` : ''}${h.sigma ? ` · a normal day is ${h.sigma.toFixed(1)}%` : ''}</div>`
+    + (h.why ? `<div class="hero-w"><span class="why-k">WHY</span><a href="${esc(h.why.url)}" target="_blank" rel="noopener noreferrer">${esc(h.why.title)}</a> <span class="dimtext">— ${esc(h.why.source)}</span></div>` : '')
+    + `</div>` : '';
+  // One line under a row: either the computed contract-roll note or the wire story that fits.
+  const whyLine = (x) => {
+    if (x.roll) {
+      const r = x.roll;
+      const full = `Front month expires ${r.when}. The curve is $${r.spread.toFixed(2)} backwardated (front above next), so about ${Math.abs(r.pct).toFixed(1)}% of this ${pctf(x.d1)} move is the contract rolling, not a selloff.`;
+      return `<span class="mvr-why roll" title="${esc(full)}">Roll, not a selloff — ${Math.abs(r.pct).toFixed(1)}% of this move is the expiring contract.</span>`;
+    }
+    if (x.why) return `<span class="mvr-why"><a href="${esc(x.why.url)}" target="_blank" rel="noopener noreferrer">${esc(x.why.title)}</a> <span class="dimtext">— ${esc(x.why.source)}</span></span>`;
+    return '';
+  };
   // Everything else, one grammar. The hero's own row is skipped so nothing is said twice.
   const isHero = (x) => !!(h && x.id === h.id && (x.kind || 'bench') === (h.srcKind || 'bench'));
   const rest = [
     ...((b.movers || []).filter((x) => !isHero(x)).map((x) => ({ ...x, tag: x.group || 'Commodity' }))),
-    ...((b.macro || []).filter((x) => !isHero(x)).map((x) => ({ ...x, tag: 'Macro' }))),
+    ...((b.macro || []).filter((x) => !isHero(x)).map((x) => ({ ...x, tag: x.kind === 'fx' ? 'FX' : 'Index' }))),
   ].sort((x, y) => (y.score ?? 0) - (x.score ?? 0));
   const rows = rest.slice(0, 5).map((x) => `<div class="mvr${x.flat != null && x.flat >= 10 ? ' thin' : ''}">`
     + `<span class="mvr-tag">${esc(x.tag)}</span><span class="mvr-n">${esc(x.label)}</span>`
-    + `<span class="mvr-v ${cls(x.d1)}">${pctf(x.d1)}</span><span class="mvr-sp">${spark(x.spark, x.d1 >= 0)}</span></div>`).join('')
+    + `<span class="mvr-v ${cls(x.d1)}">${pctf(x.d1)}</span><span class="mvr-sp">${spark(x.spark, x.d1 >= 0)}</span>`
+    + whyLine(x) + `</div>`).join('')
     || '<div class="mvr"><span class="mvr-tag"></span><span class="mvr-n dimtext">Nothing moved enough to flag today.</span><span></span><span></span></div>';
   const nextRows = (b.next || []).slice(0, 4).map((e) => `<div class="mvr">`
     + `<span class="mvr-tag">${esc(relDay(e.date))}</span><span class="mvr-n">${esc(e.name)}</span>`
