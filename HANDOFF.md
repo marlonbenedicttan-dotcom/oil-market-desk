@@ -1178,3 +1178,11 @@ Verified across categories by forcing each hero in turn (WTI, RBOB, gas, gold, c
 coffee, sugar, cattle, milk, cheese, iron ore) and across countries (VN, SG, TH, KR, TW, JP, CN, IN,
 ZA, NG, KE, MX, BR, AR, QA, VE) — every case returns either a wire line or a computed driver.
 `app.js?v=136`, `style.css?v=77`.
+
+## Follow-up: currencies and breadth (2026-10-21)
+- An **fx** row's wire story must be about money (`FX_STORY`: rates, inflation, central bank, flows,
+  budget, reserves, yields). "Poultry Disease Found at MBRF Supplier in Risk to Brazil Exports" was
+  explaining a −1.1% real move; it is now dropped and the row falls back to the computed driver.
+- Breadth now compares like with like: currencies against currencies, indices against indices, and
+  always inside the same region. `REGION_LABEL.us` is "Americas" — that key holds Mexico, Brazil,
+  Argentina and Venezuela, so it was calling the real a "US currency".

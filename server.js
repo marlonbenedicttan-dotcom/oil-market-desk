@@ -3141,7 +3141,9 @@ async function buildBrief() {
         } else {
           items = (await getMacroNews(x.id)).items || [];
         }
-        const p = pickStory(items, x, ALL_COUNTRIES[x.id]);
+        // A currency story has to be about money: rates, inflation, the central bank, flows, the budget.
+        const FX_STORY = /\b(currenc|fx|forex|exchange rate|central bank|rate (cut|hike|hold)|interest rates?|inflation|devalu|depreciat|appreciat|intervention|reserves|budget|election|yields?|bond)\b/i;
+        const p = pickStory(items.filter((it) => x.kind !== 'fx' || FX_STORY.test(it.title)), x, ALL_COUNTRIES[x.id]);
         return p ? { title: p.title, source: p.source, url: p.url } : null;
       } catch { return null; }
     };
@@ -3176,7 +3178,7 @@ async function buildBrief() {
     const mix = picked;
     // Computed drivers, so EVERY move has an explanation even on a day with no wire story. This is
     // data, not narrative: what moved with it, what it is priced off, and how well it actually trades.
-    const REGION_LABEL = { us: 'US', eu: 'European', jp: 'Japanese', apac: 'Asian', me: 'Gulf', af: 'African' };
+    const REGION_LABEL = { us: 'Americas', eu: 'European', jp: 'Japanese', apac: 'Asian', me: 'Gulf', af: 'African' };
     const pf = (v) => `${v >= 0 ? '+' : '\u2212'}${Math.abs(v).toFixed(1)}%`;
     const factsFor = (x) => {
       const f = [];
@@ -3194,10 +3196,11 @@ async function buildBrief() {
         if (x.flat >= 8) f.push(`stepped quotes — ${x.flat}% of days print unchanged`);
       } else {
         const co = ALL_COUNTRIES[x.id] || {};
-        const peers = regionItems.filter((it) => it.kind === 'index' && it.id !== x.id && it.deltas && it.deltas.d1 != null
+        const pk = x.kind === 'fx' ? 'fx' : 'index';
+        const peers = regionItems.filter((it) => it.kind === pk && it.id !== x.id && it.deltas && it.deltas.d1 != null
           && (ALL_COUNTRIES[it.id] || {}).region === co.region);
         const same = peers.filter((it) => Math.sign(it.deltas.d1) === Math.sign(x.d1));
-        if (peers.length >= 2) f.push(`${same.length} of ${peers.length} other ${REGION_LABEL[co.region] || 'regional'} indices moved ${dir} too`);
+        if (peers.length >= 2) f.push(`${same.length} of ${peers.length} other ${REGION_LABEL[co.region] || 'regional'} ${pk === 'fx' ? 'currencies' : 'indices'} moved ${dir} too`);
         if (x.kind === 'fx') {
           const idx = regionItems.find((it) => it.id === x.id && it.kind === 'index' && it.deltas && it.deltas.d1 != null);
           if (idx) f.push(`the index is ${pf(idx.deltas.d1)}`);
