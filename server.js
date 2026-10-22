@@ -1240,7 +1240,9 @@ async function getCalendar() {
     for (let d = new Date(wed); d <= end; d = new Date(d.getTime() + 7 * 864e5)) push(d, 'US oil stockpiles (EIA)', 'EIA', 'weekly · 10:30am New York');
     // Monthly: futures roll (~20th) and the USDA WASDE crop balance (~12th).
     for (let k = 0; k <= 5; k++) {
-      push(new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + k, 20)), 'WTI/Brent front-month expiry (approx.)', 'CME', 'futures roll to the next month');
+      // The recurring calendar used to post this on the 20th of every month. Use the real WTI rule.
+      const expIso = frontExpiry('CL', new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + k, 1)).toISOString().slice(0, 10));
+      if (expIso) push(new Date(expIso + 'T00:00:00Z'), 'WTI front-month expiry', 'CME', 'futures roll to the next month');
       push(new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + k, 12)), 'USDA WASDE report (approx.)', 'USDA', 'usual mid-month slot');
     }
     events.push({ date: null, name: 'OPEC+ monthly meeting', source: 'OPEC+', note: 'date varies — check the OPEC calendar' });

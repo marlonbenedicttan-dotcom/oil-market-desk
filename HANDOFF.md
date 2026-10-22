@@ -1239,6 +1239,8 @@ brief's roll detection and the calendar's expiry event both use it now. Unit-tes
 front CL is still October's, on 2026-10-22 it has rolled to November's.
 Consequence this week: WTI's roll was on the 21st, but Brent/RB/HO expire on the 30th — under the old
 "one date for everything" rule the whole complex was flagged as rolling on the same day.
+The recurring calendar had the same bug in a second code path (a hardcoded 20th of every month); it now
+posts the real dates — 2026-11-20, 2026-12-22, 2027-01-20, 2027-02-22.
 **3. A second source for non-US yields.** `tvYields()` pulls live 2y/10y quotes for 18 sovereigns from
 TradingView's scanner (same host the calendar already uses) whenever FRED returns nothing. Tenors are
 2y/10y rather than FRED's 3-month, so the frequency label says `daily · TradingView (2y / 10y)` and the
