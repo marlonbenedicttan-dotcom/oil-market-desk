@@ -133,17 +133,62 @@ async function yahooSeries(symbol, range = '6mo', interval = '1d') {
   return { symbol, price: lastKey ? series[lastKey] : (meta.regularMarketPrice ?? null), series };
 }
 
-async function fredSeries(id, days = 220) {
+const fredWarned = new Set();
+async function fredSeries(id, days = 220, { quiet = false } = {}) {
   const cosd = new Date(Date.now() - days * 864e5).toISOString().slice(0, 10);
-  const res = await fetch(`https://fred.stlouisfed.org/graph/fredgraph.csv?id=${id}&cosd=${cosd}`, { headers: UA });
-  if (!res.ok) throw new Error(`fred ${id} -> ${res.status}`);
-  const text = await res.text();
-  const out = {};
-  for (const line of text.trim().split('\n').slice(1)) {
-    const [d, v] = line.split(',');
-    if (v && v !== '.') out[d] = parseFloat(v);
+  // FRED is a best-effort feed: it 403s under load and answers HTTP 200 with a "Site Maintenance"
+  // page during outages. A dead series must degrade to "no spot data" (the futures price still works),
+  // never reject — one rejection used to empty the whole market/screener response.
+  try {
+    const res = await fetch(`https://fred.stlouisfed.org/graph/fredgraph.csv?id=${id}&cosd=${cosd}`, { headers: UA });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const text = await res.text();
+    if (!/^(DATE|observation_date),/i.test(text.trimStart().slice(0, 40))) throw new Error('maintenance page, not CSV');
+    const out = {};
+    for (const line of text.trim().split('\n').slice(1)) {
+      const [d, v] = line.split(',');
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(d) || !v || v === '.') continue;
+      const n = parseFloat(v);
+      if (Number.isFinite(n)) out[d] = n;
+    }
+    if (Object.keys(out).length < 5) throw new Error('too few observations');
+    return out;
+  } catch (e) {
+    if (!quiet && !fredWarned.has(id)) { fredWarned.add(id); console.warn(`[fred] ${id}: ${e.message} — continuing without it`); }
+    return {};
   }
-  return out;
+}
+
+// The US Treasury publishes the same daily curve FRED mirrors, and keeps answering when FRED does
+// not. Used as the fallback for US yields (DGS2/DGS10/... -> "2 Yr"/"10 Yr" columns).
+const TREASURY_COL = { DGS1MO: '1 Mo', DGS3MO: '3 Mo', DGS6MO: '6 Mo', DGS1: '1 Yr', DGS2: '2 Yr', DGS3: '3 Yr', DGS5: '5 Yr', DGS7: '7 Yr', DGS10: '10 Yr', DGS20: '20 Yr', DGS30: '30 Yr' };
+async function treasurySeries(fredId, years = 2) {
+  const col = TREASURY_COL[fredId];
+  if (!col) return {};
+  return cached('tres:' + fredId, 6 * 3600e3, async () => {
+    const out = {};
+    const nowY = new Date().getUTCFullYear();
+    for (let y = nowY - years + 1; y <= nowY; y++) {
+      try {
+        const url = `https://home.treasury.gov/resource-center/data-chart-center/interest-rates/daily-treasury-rates.csv/${y}/all?type=daily_treasury_yield_curve&field_tdr_date_value=${y}&page&_format=csv`;
+        const res = await fetch(url, { headers: UA });
+        if (!res.ok) continue;
+        const lines = (await res.text()).trim().split('\n');
+        const head = lines[0].split(',').map((h) => h.replace(/"/g, '').trim());
+        const idx = head.indexOf(col);
+        if (idx < 0) continue;
+        for (const line of lines.slice(1)) {
+          const cells = line.split(',');
+          const d = cells[0] && cells[0].trim();
+          const v = parseFloat(cells[idx]);
+          if (!/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(d || '') || !Number.isFinite(v)) continue;
+          const [m, dd, yy] = d.split('/');
+          out[`${yy}-${m.padStart(2, '0')}-${dd.padStart(2, '0')}`] = v;
+        }
+      } catch {}
+    }
+    return out;
+  });
 }
 
 // EIA v2 spot prices — needs a free EIA_API_KEY. Returns {} if the key is absent.
@@ -173,7 +218,8 @@ const spotSeries = (b, days) => (!b.physical
   ? Promise.resolve({})
   : b.source === 'eia'
     ? eiaSeries(b.physical, days).then((s) => (Object.keys(s).length ? s : (b.fredFallback ? fredSeries(b.fredFallback, days) : {})))
-    : fredSeries(b.physical, days));
+    : fredSeries(b.physical, days).catch(() => ({})));   // FRED can 403/return maintenance: the paper
+// price is what matters, the physical spot is only the basis. Never let one dead feed take the app down.
 
 // ---------------------------------------------------------------------------
 // Cache
@@ -582,7 +628,7 @@ async function getPositioningSegment(seg) {
 const REGIME_BOARD = [
   { id: 'dxy', label: 'US dollar (DXY)', sym: 'DX-Y.NYB', source: 'Yahoo', unit: '', dp: 2 },
   { id: 'vix', label: 'VIX (volatility)', sym: '^VIX', source: 'Yahoo', unit: '', dp: 2 },
-  { id: 'us10y', label: 'US 10y yield', fred: 'DGS10', source: 'FRED', unit: '%', dp: 2, rate: true },
+  { id: 'us10y', label: 'US 10y yield', fred: 'DGS10', altSym: '^TNX', source: 'FRED', unit: '%', dp: 2, rate: true },
   { id: 'spx', label: 'S&P 500', sym: '^GSPC', source: 'Yahoo', unit: '', dp: 0 },
   { id: 'gold', label: 'Gold', sym: 'GC=F', source: 'Yahoo', unit: '$/oz', dp: 2 },
   { id: 'copper', label: 'Copper', sym: 'HG=F', source: 'Yahoo', unit: '$/lb', dp: 3 },
@@ -594,14 +640,21 @@ async function getRegime() {
     const rows = await Promise.all(REGIME_BOARD.map(async (s) => {
       const base = { id: s.id, label: s.label, source: s.source, unit: s.unit, dp: s.dp, rate: !!s.rate };
       try {
-        const map = s.fred
+        let map = s.fred
           ? await cached('regime:' + s.id, 3600e3, () => fredSeries(s.fred, 40 * 366).catch(() => ({})))
           : (await cached('regime:' + s.id, 120e3, () => yahooSeries(s.sym, '2y', '1d'))).series || {};
+        let source = s.source;
+        if (Object.keys(map).length < 5 && s.altSym) {          // FRED is down / rate-limited
+          map = (await cached('regime:alt:' + s.id, 120e3, () => yahooSeries(s.altSym, '2y', '1d'))).series || {};
+          source = 'Yahoo';
+          // ^TNX has been quoted as yield x10 in the past; normalise anything implausible.
+          if (Object.values(map).some((v) => v > 20)) map = Object.fromEntries(Object.entries(map).map(([k, v]) => [k, v / 10]));
+        }
         const dates = Object.keys(map).sort();
         const values = dates.map((d) => map[d]);
         const lastIdx = values.reduce((acc, v, i) => (v != null ? i : acc), -1);
         if (lastIdx < 0) return { ...base, price: null, deltas: null, asOf: null };
-        return { ...base, price: +(+values[lastIdx]).toFixed(s.dp), asOf: dates[lastIdx], deltas: s.rate ? horizonDeltasAbs(dates, values) : horizonDeltas(dates, values) };
+        return { ...base, source, price: +(+values[lastIdx]).toFixed(s.dp), asOf: dates[lastIdx], deltas: s.rate ? horizonDeltasAbs(dates, values) : horizonDeltas(dates, values) };
       } catch {
         return { ...base, price: null, deltas: null, asOf: null };
       }
@@ -704,7 +757,7 @@ const RISK_SERIES = [
   { key: 'copper', label: 'Copper', short: 'Copper', sym: 'HG=F' },
   { key: 'spx', label: 'S&P 500', short: 'S&P', sym: '^GSPC' },
   { key: 'dxy', label: 'Dollar (DXY)', short: 'Dollar', sym: 'DX-Y.NYB' },
-  { key: 'us10y', label: 'US 10y', short: 'US 10y', fred: 'DGS10', rate: true },
+  { key: 'us10y', label: 'US 10y', short: 'US 10y', fred: 'DGS10', altSym: '^TNX', rate: true },
   { key: 'vix', label: 'VIX', short: 'VIX', sym: '^VIX' },
 ];
 async function getRisk() {
@@ -712,9 +765,14 @@ async function getRisk() {
     const maps = {};
     await Promise.all(RISK_SERIES.map(async (s) => {
       try {
-        maps[s.key] = s.fred
-          ? await cached('risk:' + s.key, 6 * 3600e3, () => fredSeries(s.fred, 400).catch(() => ({})))
+        let map = s.fred
+          ? await cached('risk:' + s.key, 6 * 3600e3, () => fredSeries(s.fred, 400))
           : ((await cached('risk:' + s.key, 3600e3, () => yahooSeries(s.sym, '1y', '1d'))).series) || {};
+        if (Object.keys(map).length < 5 && s.altSym) {   // FRED is down; ^TNX carries the same yield
+          map = (await cached('risk:alt:' + s.key, 3600e3, () => yahooSeries(s.altSym, '1y', '1d'))).series || {};
+          if (Object.values(map).some((v) => v > 20)) map = Object.fromEntries(Object.entries(map).map(([k, v]) => [k, v / 10]));
+        }
+        maps[s.key] = map;
       } catch { maps[s.key] = {}; }
     }));
     const metrics = RISK_SERIES.map((s) => {
@@ -2072,7 +2130,8 @@ async function getBondYields(id) {
     const days = 5 * 366 + 30;
     const get = async (spec) => {
       if (!spec) return null;
-      const map = await fredSeries(spec.id, days).catch(() => ({}));
+      let map = await fredSeries(spec.id, days);
+      if (Object.keys(map).length < 5) map = await treasurySeries(spec.id).catch(() => ({}));
       const dates = Object.keys(map).sort();
       if (!dates.length) return null;
       const last = [...dates].reverse().find((d) => map[d] != null) || null;
@@ -2080,7 +2139,9 @@ async function getBondYields(id) {
     };
     const [s, l] = await Promise.all([get(cfg.short), get(cfg.long)]);
     const spread = s?.latest != null && l?.latest != null ? +(l.latest - s.latest).toFixed(2) : null;
-    return { id, label, freq: cfg.freq, short: s, long: l, spread, asOf: (l?.date || s?.date || null) };
+    // If the upstream is down, say so — an unexplained blank looks like a broken panel.
+    const note = (!s && !l) ? 'yield feed unavailable right now' : null;
+    return { id, label, freq: cfg.freq, short: s, long: l, spread, asOf: (l?.date || s?.date || null), note };
   });
 }
 async function getCountry(id) {

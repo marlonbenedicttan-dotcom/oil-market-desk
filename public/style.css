@@ -481,10 +481,13 @@ footer li { margin-bottom: 2px; }
 .pos-chip em { font-style: normal; color: var(--dim); }
 
 /* Cross-asset regime board (HOME) */
-.regime-board { display: grid; grid-template-columns: repeat(auto-fill, minmax(148px, 1fr)); gap: 1px; background: var(--line); }
-.rb-cell { background: #0c0f13; padding: 8px 10px; min-width: 0; }
+/* Exactly four per row so the eight tiles form two clean rows (auto-fill left the last tile alone
+   on a row of its own, which read as a broken grid). */
+.regime-board { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1px; background: var(--line); }
+.rb-cell { background: #0c0f13; padding: 9px 11px; min-width: 0; }
+@media (max-width: 900px) { .regime-board { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .rb-l { font-size: 10px; color: var(--dim); letter-spacing: .3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.rb-v { font-size: 17px; font-weight: 700; font-variant-numeric: tabular-nums; margin: 3px 0 1px; }
+.rb-v { font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; margin: 3px 0 1px; }
 .rb-v.pos { color: var(--green); }
 .rb-v.neg { color: var(--red); }
 .rb-u { font-size: 10px; color: var(--dim); font-weight: 400; margin-left: 4px; }

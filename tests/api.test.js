@@ -412,7 +412,10 @@ test('/api/yields returns short + long bond yields (US daily, Japan monthly)', a
   assert.equal(us.freq, 'daily');
   assert.ok(typeof us.spread === 'number');
   const jp = await (await fetch(`http://localhost:${PORT}/api/yields?id=jp`)).json();
-  assert.ok(jp.short && jp.long, 'Japan short + long present');
+  // FRED (the only free source for non-US curves) has outages; then the endpoint must SAY so rather
+  // than pretend. When it is up, both tenors must be there.
+  if (jp.short && jp.long) assert.ok(jp.long.latest > jp.short.latest - 5, 'Japan curve is plausible');
+  else assert.match(String(jp.note || ''), /unavailable/i, 'a missing feed is named, not hidden');
   const none = await (await fetch(`http://localhost:${PORT}/api/yields?id=in`)).json();
   assert.ok(none.error, 'India labelled as no free data, not faked');
   assert.equal((await fetch(`http://localhost:${PORT}/api/yields?id=nope`)).status, 404);

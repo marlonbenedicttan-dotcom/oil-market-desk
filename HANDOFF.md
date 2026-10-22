@@ -1186,3 +1186,26 @@ ZA, NG, KE, MX, BR, AR, QA, VE) — every case returns either a wire line or a c
 - Breadth now compares like with like: currencies against currencies, indices against indices, and
   always inside the same region. `REGION_LABEL.us` is "Americas" — that key holds Mexico, Brazil,
   Argentina and Venezuela, so it was calling the real a "US currency".
+
+## MARKETS AT A GLANCE was broken — and FRED took the market down with it (2026-10-22)
+Two separate faults landed on the same panel:
+- **Layout**: `repeat(auto-fill, minmax(148px,1fr))` fitted seven tiles across, so the eighth (Brent)
+  sat alone on a second row with a dead gap beside it. Now a strict four-up grid (two-up under 900px),
+  so eight tiles always form two clean rows, with a slightly larger number.
+- **US 10y tile showed `400 %` with an HTML fragment as its source.** FRED answers HTTP **200** with a
+  "Site Maintenance" page during outages; `fredSeries` was splitting that HTML on commas and treating
+  numbers in it as observations. It now requires a real CSV header, validates every row, and returns
+  `{}` (never throws) when the feed is down — one dead feed used to reject the whole market payload.
+  - The 10y now falls back to Yahoo `^TNX` (normalised if it is quoted ×10), and the board reports the
+    source it actually used.
+  - `/api/yields` falls back to the US Treasury's own daily curve (all tenors), which keeps answering
+    when FRED does not; if a country has no fallback it says "yield feed unavailable right now"
+    instead of showing an unexplained blank.
+  - The RISK panel's US 10y row used the same dead feed and is fixed by the same fallback.
+- **Why the SCREENER said "Couldn't load":** `getMarket()` awaited `spotSeries` for the physical spot
+  price (FRED), so a single FRED 403 rejected the entire market response — 0 benchmarks, empty
+  screener. The spot feed is now optional: the futures/paper price carries the row and the spot only
+  feeds the basis.
+- Verified: `/api/market` 35 benchmarks, `/api/screen` 35 rows, `/api/regime` 8/8 with a live 10y,
+  `/api/risk` 7 rows including US 10y. 99 tests pass (the JP-yield assertion now accepts a named
+  outage instead of failing the build on a third-party feed).
