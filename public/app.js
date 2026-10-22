@@ -1744,7 +1744,9 @@ function renderMacroRegion() {
     loadRegionCurrencies();
     loadCountry().then(() => {
       const go = () => prefetchRegion();
-      if (window.requestIdleCallback) requestIdleCallback(go, { timeout: 4000 }); else setTimeout(go, 2500);
+      // Later and gentler: the burst used to compete with the country the reader had just opened,
+      // which is exactly what made the first country feel slow.
+      if (window.requestIdleCallback) requestIdleCallback(go, { timeout: 8000 }); else setTimeout(go, 6000);
     });
   });
 }
@@ -1775,9 +1777,10 @@ async function loadRegionCurrencies() {
     : stEmpty('No currency for this country.');
 }
 async function loadMacroTickers() {
-  // the macro tape shows EVERY macro ticker (all regions) so it is never sparse
+  // the macro tape shows EVERY macro ticker (all regions) so it is never sparse. It is the same list
+  // on every region change, so cache it instead of paying ~1.7s each time.
   let items = null;
-  try { items = (await getJSON('/api/macro-tickers')).items || []; } catch { items = null; }
+  try { items = (await jget('/api/macro-tickers', 300000)).items || []; } catch { items = null; }
   if (items) macroTickers = items;
   if (data) renderTicker(data);
 }
@@ -1814,7 +1817,7 @@ async function prefetchRegion() {
   const ids = list.map((c) => c.id).filter((id) => id !== macroCountry);
   let i = 0;
   const worker = async () => { while (i < ids.length) { const id = ids[i++]; await fetchCountry(id); } };
-  await Promise.all([worker(), worker(), worker()]);
+  await Promise.all([worker(), worker()]);
 }
 async function loadCountry() {
   const el = $('macro-region-panel');

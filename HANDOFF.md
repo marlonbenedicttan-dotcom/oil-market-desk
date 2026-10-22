@@ -1209,3 +1209,13 @@ Two separate faults landed on the same panel:
 - Verified: `/api/market` 35 benchmarks, `/api/screen` 35 rows, `/api/regime` 8/8 with a live 10y,
   `/api/risk` 7 rows including US 10y. 99 tests pass (the JP-yield assertion now accepts a named
   outage instead of failing the build on a third-party feed).
+
+## MACRO tab: first-open cost (2026-10-22)
+Measured in headless Chrome against a cold server: opening MACRO took ~1.9s, a country switch ~0.7s.
+Two avoidable costs, both client-side:
+- `/api/macro-tickers` (~1.7s) was re-fetched on **every** region render. It is the same list every
+  time, so it now goes through `jget` with a 5-minute TTL.
+- The background prefetch of the rest of the region used three workers and started 4s after load, so it
+  competed with the country the reader had just opened. Now two workers, starting at 8s idle.
+Result on a cold server: MACRO opens in ~0.7s, a country switch ~0.65s; warm it is ~0.3s / ~0.2s.
+(Server-side `/api/country` is already cached 15 min; the remaining cold cost is World Bank + BIS + FRED.)
