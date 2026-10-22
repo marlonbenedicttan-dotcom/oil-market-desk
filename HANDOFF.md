@@ -1219,3 +1219,29 @@ Two avoidable costs, both client-side:
   competed with the country the reader had just opened. Now two workers, starting at 8s idle.
 Result on a cold server: MACRO opens in ~0.7s, a country switch ~0.65s; warm it is ~0.3s / ~0.2s.
 (Server-side `/api/country` is already cached 15 min; the remaining cold cost is World Bank + BIS + FRED.)
+
+## Closing the three bounded fixes (2026-10-22)
+**1. The board's grid follows the tile count.** `gridCols(n)` picks the squarest real divisor (8 -> 4,
+9 -> 3, 10 -> 5, capped at 6) and writes `--rb-cols`; if `n` has no tidy divisor the last tile is given
+a `grid-column: span` to fill the final row. Adding or removing a tile no longer leaves a half-empty row.
+**2. Real contract expiries.** `src/lib.js:frontExpiry(root, refIso)` implements each exchange's own
+rule instead of one shared "the 20th":
+| root | rule |
+|---|---|
+| CL | 3 business days before the 25th of the month before delivery |
+| BZ | last business day of the 2nd month before delivery |
+| RB / HO / softs / livestock / dairy | last business day of the month before delivery |
+| NG | 3 business days before the 1st of the delivery month |
+| GC / SI / HG / PL / PA / ALI | 3rd last business day of the delivery month |
+| ZC / ZW / ZS / ZM / ZL / ZR | business day before the 15th of the month before delivery |
+Weekends only (exchange holidays shift a day or two), which is why the roll window is 0-2 days. The
+brief's roll detection and the calendar's expiry event both use it now. Unit-tested: on 2026-10-21 the
+front CL is still October's, on 2026-10-22 it has rolled to November's.
+Consequence this week: WTI's roll was on the 21st, but Brent/RB/HO expire on the 30th — under the old
+"one date for everything" rule the whole complex was flagged as rolling on the same day.
+**3. A second source for non-US yields.** `tvYields()` pulls live 2y/10y quotes for 18 sovereigns from
+TradingView's scanner (same host the calendar already uses) whenever FRED returns nothing. Tenors are
+2y/10y rather than FRED's 3-month, so the frequency label says `daily · TradingView (2y / 10y)` and the
+note names the fallback instead of passing it off as the same series. China (no FRED long end) is served
+by it permanently; Japan/Germany/UK/Korea use it only when FRED is down.
+100 tests pass.

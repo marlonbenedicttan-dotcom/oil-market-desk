@@ -8,7 +8,7 @@ import { execFile } from 'node:child_process';
 import crypto from 'node:crypto';
 import { sendMail } from './src/smtp.js';
 import { fileURLToPath } from 'node:url';
-import { sgn, businessDaysSince, inBox, haversineNm, horizonDeltas, horizonDeltasAbs, isoWeek, monthly, pctOver, percentile, lastNonNull, escHtml, webhookPayload, realizedVol, computeCracks, computeCrush, computeSteel, backAdjust, pearson, logReturns, curveTightness, inventoryTightness, weightedScore, seasonalGrade, seasonalAhead, contractMonthsBetween, signedPosition, signedMove, stretchScore, sdLabel, attributeMoves, newsContextOk, METHODOLOGY, positioningFlag, positioningRead, positioningDivergence, maxDrawdown, realizedVolTerm, corrMatrix, fxAdjust, parseOcc, drawdownWord, volWord, volTrend, topPairs, bestDiversifier, riskRead } from './src/lib.js';
+import { sgn, businessDaysSince, inBox, haversineNm, horizonDeltas, horizonDeltasAbs, isoWeek, monthly, pctOver, percentile, lastNonNull, escHtml, webhookPayload, realizedVol, computeCracks, computeCrush, computeSteel, backAdjust, pearson, logReturns, frontExpiry, curveTightness, inventoryTightness, weightedScore, seasonalGrade, seasonalAhead, contractMonthsBetween, signedPosition, signedMove, stretchScore, sdLabel, attributeMoves, newsContextOk, METHODOLOGY, positioningFlag, positioningRead, positioningDivergence, maxDrawdown, realizedVolTerm, corrMatrix, fxAdjust, parseOcc, drawdownWord, volWord, volTrend, topPairs, bestDiversifier, riskRead } from './src/lib.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC = path.join(__dirname, 'public');
@@ -1158,8 +1158,9 @@ function getEvents() {
   // Next Wednesday = EIA weekly report (10:30 ET).
   const wed = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
   wed.setUTCDate(wed.getUTCDate() + ((3 - wed.getUTCDay() + 7) % 7 || 7));
-  // Next contract expiry (approx: ~20th of the current/next month).
-  const exp = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + (now.getUTCDate() > 20 ? 1 : 0), 20));
+  // Next contract expiry — the WTI rule (3 business days before the 25th of the prior month).
+  const expIso = frontExpiry('CL', iso(now)) || iso(now);
+  const exp = new Date(expIso + 'T00:00:00Z');
   return [
     { name: 'US oil stockpiles (EIA)', date: iso(wed), note: "the week's biggest catalyst · 10:30am New York" },
     { name: 'WTI/Brent front-month expiry (approx.)', date: iso(exp), note: 'futures roll to the next month' },
@@ -2122,6 +2123,29 @@ async function getPolicyRate(area) {
   });
 }
 // Government bond yields for one country (short + long + term spread). FRED, cached 6h.
+// TradingView's scanner publishes sovereign 2y/10y yields for every market in BOND_YIELDS. FRED's OECD
+// series is monthly and lagged even when it is up; this keeps the panel daily and alive when FRED is not.
+const TV_YIELD = { jp: 'JP', de: 'DE', fr: 'FR', uk: 'GB', ea: 'EU', kr: 'KR', au: 'AU', cn: 'CN', id: 'ID', mx: 'MX', br: 'BR', in: 'IN', za: 'ZA', ca: 'CA', ch: 'CH', it: 'IT', es: 'ES', tr: 'TR' };
+async function tvYields() {
+  return cached('tvyields', 900e3, async () => {
+    const codes = [...new Set(Object.values(TV_YIELD))];
+    const tickers = codes.flatMap((c) => [`TVC:${c}10Y`, `TVC:${c}02Y`]);
+    const res = await fetch('https://scanner.tradingview.com/global/scan', {
+      method: 'POST',
+      headers: { ...TV_HEADERS, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ symbols: { tickers, query: { types: [] } }, columns: ['close'] }),
+    });
+    if (!res.ok) throw new Error('tradingview ' + res.status);
+    const by = {};
+    for (const r of (await res.json()).data || []) {
+      const m = /^TVC:([A-Z]{2})(\d{2})Y$/.exec(String(r.s || ''));
+      const v = r.d && r.d[0];
+      if (!m || v == null || !Number.isFinite(+v)) continue;
+      (by[m[1]] = by[m[1]] || {})[m[2]] = +v;
+    }
+    return by;
+  });
+}
 async function getBondYields(id) {
   const cfg = BOND_YIELDS[id];
   const label = ALL_COUNTRIES[id]?.label || id;
@@ -2137,11 +2161,27 @@ async function getBondYields(id) {
       const last = [...dates].reverse().find((d) => map[d] != null) || null;
       return { label: spec.label, dates, values: dates.map((d) => map[d]), latest: last ? map[last] : null, date: last };
     };
-    const [s, l] = await Promise.all([get(cfg.short), get(cfg.long)]);
-    const spread = s?.latest != null && l?.latest != null ? +(l.latest - s.latest).toFixed(2) : null;
-    // If the upstream is down, say so — an unexplained blank looks like a broken panel.
-    const note = (!s && !l) ? 'yield feed unavailable right now' : null;
-    return { id, label, freq: cfg.freq, short: s, long: l, spread, asOf: (l?.date || s?.date || null), note };
+    let [short, long] = await Promise.all([get(cfg.short), get(cfg.long)]);
+    let freq = cfg.freq;
+    let note = null;
+    if (!short || !long) {
+      // Second source: TradingView's own 2y/10y quotes. Tenors differ from FRED's 3-month, and the
+      // labels say so rather than pretending it is the same series.
+      const tv = await tvYields().catch(() => null);
+      const code = TV_YIELD[id];
+      const row = (tenor, ten) => {
+        const v = tv && code && tv[code] ? tv[code][tenor] : null;
+        if (v == null) return null;
+        const d = new Date().toISOString().slice(0, 10);
+        return { label: ten, dates: [d], values: [v], latest: v, date: d };
+      };
+      if (!short) short = row('02', '2-yr');
+      if (!long) long = row('10', '10-yr');
+      if (short || long) { freq = 'daily · TradingView (2y / 10y)'; note = 'FRED unavailable — showing the live 2y/10y quote'; }
+    }
+    const spread = short?.latest != null && long?.latest != null ? +(long.latest - short.latest).toFixed(2) : null;
+    if (!short && !long) note = 'yield feed unavailable right now';
+    return { id, label, freq, short, long, spread, note, asOf: (long?.date || short?.date || null) };
   });
 }
 async function getCountry(id) {
@@ -3072,10 +3112,16 @@ async function buildBrief() {
     const liq = (flat) => Math.max(0.15, Math.min(1, 1 - flat / 12));
     // Expiry day is not a market move. A continuous front-month series jumps to the next contract,
     // and with a backwardated curve that jump is a large red number nobody traded. Name it, and stop
-    // it from winning the hero slot.
-    const nowD = new Date();
-    const expD = Date.UTC(nowD.getUTCFullYear(), nowD.getUTCMonth() + (nowD.getUTCDate() > 20 ? 1 : 0), 20);
-    const daysToExp = Math.round((expD - Date.UTC(nowD.getUTCFullYear(), nowD.getUTCMonth(), nowD.getUTCDate())) / 864e5);
+    // it from winning the hero slot. Each market uses ITS OWN expiry rule (lib.frontExpiry), not one
+    // shared "20th of the month" — that was only ever right for WTI.
+    const todayIso = new Date().toISOString().slice(0, 10);
+    const expCache = new Map();
+    const expiryFor = (id) => {
+      const spec = CURVE_SPEC[id];
+      if (!spec) return null;
+      if (!expCache.has(spec.root)) expCache.set(spec.root, frontExpiry(spec.root, todayIso));
+      return expCache.get(spec.root);
+    };
     for (const mv of movers) {
       const raw = h && h.series && h.series[mv.id];
       const b0 = m.benchmarks.find((x) => x.id === mv.id);
@@ -3085,7 +3131,9 @@ async function buildBrief() {
       else mv.score = +((Math.abs(mv.d1) / 2) * 0.8).toFixed(2);        // no history? conservative 2% day
       const ks = vals ? Object.keys(raw && (b0 && b0.paper != null ? raw.paper : raw.physical) || {}).sort() : [];
       if (ks.length) { const m2 = raw && (b0 && b0.paper != null ? raw.paper : raw.physical); mv.spark = ks.slice(-30).map((k) => (m2[k] == null ? null : +m2[k])); }
-      if (daysToExp >= 0 && daysToExp <= 1 && CURVE_SPEC[mv.id] && Math.abs(mv.d1) >= 1.5) {
+      const exp = expiryFor(mv.id);
+      const daysToExp = exp ? Math.round((Date.parse(exp) - Date.parse(todayIso)) / 864e5) : null;
+      if (daysToExp != null && daysToExp >= 0 && daysToExp <= 2 && Math.abs(mv.d1) >= 1.5) {
         try {
           const c = await getCurveFor(mv.id);
           const px = ld(vals || []).slice(-1)[0];
@@ -3094,7 +3142,7 @@ async function buildBrief() {
             // Only ONE case is worth flagging: a backwardated curve (front above next) rolling down into
             // a red number. Contango cannot manufacture a fall, so a +18% dairy print is not a roll.
             if (c.m1m2 > 0 && mv.d1 < 0 && Math.abs(rollPct) >= 0.5 * Math.abs(mv.d1)) {
-              mv.roll = { spread: +c.m1m2.toFixed(2), pct: +rollPct.toFixed(1), when: daysToExp === 0 ? 'today' : 'tomorrow' };
+              mv.roll = { spread: +c.m1m2.toFixed(2), pct: +rollPct.toFixed(1), when: daysToExp === 0 ? 'today' : daysToExp === 1 ? 'tomorrow' : 'in two days', expiry: exp };
             }
           }
         } catch {}

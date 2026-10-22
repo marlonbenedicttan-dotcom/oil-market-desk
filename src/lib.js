@@ -611,3 +611,69 @@ export function newsContextOk(title, { domain = 'commodity', requireMarket = nul
   if (need && !MARKET_CTX.test(t)) return false;          // a homonym with no market framing
   return true;
 }
+
+// ---------------------------------------------------------------------------
+// Contract expiries. The brief used to assume "the 20th" for every market, which is right for WTI and
+// wrong for almost everything else. These are the exchange's own rules, applied to a reference date:
+//   CL  WTI       3 business days before the 25th of the month before delivery
+//   BZ  Brent     last business day of the 2nd month before delivery
+//   RB/HO         last business day of the month before delivery
+//   NG           3 business days before the 1st of the delivery month
+//   GC/SI/HG/PL/PA  3rd last business day of the delivery month
+//   grains (ZC/ZW/ZS/ZM/ZL/ZR)  business day before the 15th of the month before delivery
+//   softs / livestock / dairy   last business day of the month before delivery
+// Weekends only — exchange holidays shift a date by a day or two, which is why the roll window is
+// 0-2 days rather than an exact match.
+const isWeekend = (d) => d.getUTCDay() === 0 || d.getUTCDay() === 6;
+const prevBiz = (d) => { const x = new Date(d.getTime()); do { x.setUTCDate(x.getUTCDate() - 1); } while (isWeekend(x)); return x; };
+const minusBiz = (d, n) => { let x = new Date(d.getTime()); for (let i = 0; i < n; i++) x = prevBiz(x); return x; };
+const lastBiz = (y, m) => { const d = new Date(Date.UTC(y, m + 1, 0)); return isWeekend(d) ? prevBiz(d) : d; };
+const EXPIRY_RULES = {
+  CL: { back: 1, at: (y, m) => minusBiz(new Date(Date.UTC(y, m, 25)), 3) },
+  BZ: { back: 2, at: (y, m) => lastBiz(y, m) },
+  RB: { back: 1, at: (y, m) => lastBiz(y, m) },
+  HO: { back: 1, at: (y, m) => lastBiz(y, m) },
+  NG: { back: 0, at: (y, m) => minusBiz(new Date(Date.UTC(y, m, 1)), 3) },
+  GC: { back: 0, at: (y, m) => minusBiz(lastBiz(y, m), 2) },
+  SI: { back: 0, at: (y, m) => minusBiz(lastBiz(y, m), 2) },
+  HG: { back: 0, at: (y, m) => minusBiz(lastBiz(y, m), 2) },
+  PL: { back: 0, at: (y, m) => minusBiz(lastBiz(y, m), 2) },
+  PA: { back: 0, at: (y, m) => minusBiz(lastBiz(y, m), 2) },
+  ALI: { back: 0, at: (y, m) => minusBiz(lastBiz(y, m), 2) },
+  ZC: { back: 1, at: (y, m) => prevBiz(new Date(Date.UTC(y, m, 15))) },
+  ZW: { back: 1, at: (y, m) => prevBiz(new Date(Date.UTC(y, m, 15))) },
+  ZS: { back: 1, at: (y, m) => prevBiz(new Date(Date.UTC(y, m, 15))) },
+  ZM: { back: 1, at: (y, m) => prevBiz(new Date(Date.UTC(y, m, 15))) },
+  ZL: { back: 1, at: (y, m) => prevBiz(new Date(Date.UTC(y, m, 15))) },
+  ZR: { back: 1, at: (y, m) => prevBiz(new Date(Date.UTC(y, m, 15))) },
+  KC: { back: 1, at: (y, m) => lastBiz(y, m) },
+  SB: { back: 1, at: (y, m) => lastBiz(y, m) },
+  CC: { back: 1, at: (y, m) => lastBiz(y, m) },
+  CT: { back: 1, at: (y, m) => lastBiz(y, m) },
+  OJ: { back: 1, at: (y, m) => lastBiz(y, m) },
+  LE: { back: 1, at: (y, m) => lastBiz(y, m) },
+  HE: { back: 1, at: (y, m) => lastBiz(y, m) },
+  GF: { back: 1, at: (y, m) => lastBiz(y, m) },
+  DC: { back: 1, at: (y, m) => lastBiz(y, m) },
+  CB: { back: 1, at: (y, m) => lastBiz(y, m) },
+  GNF: { back: 1, at: (y, m) => lastBiz(y, m) },
+  CSC: { back: 1, at: (y, m) => lastBiz(y, m) },
+  DY: { back: 1, at: (y, m) => lastBiz(y, m) },
+};
+/** The expiry (YYYY-MM-DD) of the contract that is front month on `refIso`, or null if unknown. */
+export function frontExpiry(root, refIso) {
+  const rule = EXPIRY_RULES[root];
+  if (!rule || !/^\d{4}-\d{2}-\d{2}$/.test(String(refIso))) return null;
+  const ref = new Date(refIso + 'T00:00:00Z');
+  for (let k = 0; k < 14; k++) {
+    const base = new Date(Date.UTC(ref.getUTCFullYear(), ref.getUTCMonth() + k, 1));
+    const y = base.getUTCFullYear();
+    const deliv = base.getUTCMonth();
+    const em = deliv - rule.back;                       // expiry month, relative to delivery
+    const ey = y + Math.floor(em / 12);
+    const mm = ((em % 12) + 12) % 12;
+    const exp = rule.at(ey, mm);
+    if (exp && exp.getTime() >= ref.getTime()) return exp.toISOString().slice(0, 10);   // still the front month ON expiry day
+  }
+  return null;
+}

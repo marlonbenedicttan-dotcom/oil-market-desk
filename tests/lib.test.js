@@ -446,3 +446,18 @@ test('positioningDivergence: specs fading a rally is bearish, buying weakness is
   assert.equal(positioningDivergence(price, rows.slice(0, 5)).tone, 'flat');
   assert.equal(positioningDivergence({}, rows).tone, 'flat');
 });
+
+import { frontExpiry } from '../src/lib.js';
+
+test('frontExpiry applies each market\'s own expiry rule, not one shared date', () => {
+  // WTI: 3 business days before the 25th of the month before delivery.
+  assert.equal(frontExpiry('CL', '2026-10-19'), '2026-10-21');
+  assert.equal(frontExpiry('CL', '2026-10-21'), '2026-10-21');   // still front month ON expiry day
+  assert.equal(frontExpiry('CL', '2026-10-22'), '2026-11-20');   // rolled to the next contract
+  // Gold: third-last business day of the delivery month.
+  assert.equal(frontExpiry('GC', '2026-10-01'), '2026-10-28');
+  // Corn: business day before the 15th of the month before delivery.
+  assert.equal(frontExpiry('ZC', '2026-10-01'), '2026-10-14');
+  // Unknown roots are null, never a guess.
+  assert.equal(frontExpiry('NOPE', '2026-10-01'), null);
+});

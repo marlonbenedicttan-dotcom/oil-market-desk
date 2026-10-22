@@ -2166,11 +2166,27 @@ async function loadRegime() {
   markReady('regime');
   renderRegime(d);
 }
+// Column count from the number of tiles, not from a fixed 4: eight tiles -> 4 across (two clean
+// rows), nine -> 3 across (three clean rows), ten -> 5 across. If n has no tidy divisor we still use
+// the squarest count and let the last tile stretch to fill the row, so a row is never half empty.
+function gridCols(n) {
+  if (n <= 1) return 1;
+  const start = Math.max(2, Math.ceil(Math.sqrt(n)));
+  for (let c = start; c <= Math.min(6, n); c++) if (n % c === 0) return c;
+  return Math.min(6, Math.max(2, Math.ceil(n / Math.ceil(n / start))));
+}
 function renderRegime(d) {
   const el = $('regime-board'); if (!el) return;
   const rows = (d && d.rows) || [];
   if (!rows.length) { el.innerHTML = stError('Couldn’t load the markets board — retrying.'); return; }
-  el.innerHTML = rows.map((r) => {
+  const cols = gridCols(rows.length);
+  el.style.setProperty('--rb-cols', cols);
+  const addFill = (html, i) => {
+    const short = rows.length % cols;                       // tiles short on the final row
+    const fill = short && i >= rows.length - short ? cols - (rows.length % cols) + 1 : 0;
+    return fill > 1 ? html.replace('<div class="rb-cell"', `<div class="rb-cell" style="grid-column: span ${fill}"`) : html;
+  };
+  el.innerHTML = rows.map((r, i) => addFill((() => {
     const src = `${r.source}${r.asOf ? ` · ${r.asOf}` : ''}`;
     if (r.price == null) return `<div class="rb-cell"><div class="rb-l" title="${r.label}">${r.label}</div><div class="rb-v">—</div><div class="rb-src">${src}</div></div>`;
     const strip = r.rate ? deltaStripRate(r.deltas) : deltaStrip(r.deltas);
@@ -2178,7 +2194,7 @@ function renderRegime(d) {
     return `<div class="rb-cell" title="${r.label} · ${src}"><div class="rb-l">${r.label}</div>`
       + `<div class="rb-v ${cls(dv)}">${fmtNum(r.price, r.dp)}${r.unit ? `<span class="rb-u">${r.unit}</span>` : ''}</div>${strip}`
       + `<div class="rb-src">${src}</div></div>`;
-  }).join('');
+  })(), i)).join('');
 }
 // Screener — every instrument in one sortable table (assembled server-side at /api/screen).
 let screenRows = null, screenSort = { key: 'absd1', dir: -1 }, fxBase = 'USD', fxRows = null;
