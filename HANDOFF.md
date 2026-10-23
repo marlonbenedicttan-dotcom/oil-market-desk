@@ -1369,3 +1369,24 @@ is the sharpest *move*, M&A is a separate signal.
   work, and a link opens the exact view.
 - **Parties are clickable** on a deal: the acquirer and target are buttons, so you can hop from a deal
   to either company page without going back to the sector.
+
+## M&A: the archive problem, and a lookup that works today (2026-10-23)
+The Berkshire/OxyChem deal (2 Oct 2025, $9.7B) was missing because **Google News RSS ignores date
+ranges** — `after:`/`before:` return nothing, so nothing older than the store can ever enter. Verified
+by test. Two responses:
+1. **`scripts/backfill-deals.mjs`** — a GDELT walker (monthly windows, auto-split into weeks when a
+   window hits the 250-record cap, 6s pacing, domain allowlist, title de-tokenising). GDELT *does* have
+   the archive: a probe for "OxyChem" over 1–10 Oct 2025 returned the CNBC/Houston/Yahoo coverage.
+   It is written but **not run**: GDELT rate-limited this IP after the probes (429 for several minutes).
+   Run it when the quota resets: `node scripts/backfill-deals.mjs --from=2024-01`.
+2. **Search is also a lookup.** If the local book has no match for a term of 3+ characters, the client
+   calls `/api/deals/lookup?q=…`, which queries the news for that name, parses and merges the results,
+   then re-renders. Typing "OxyChem" now returns *Berkshire Hathaway → OxyChem, $9.7B, CLOSED*.
+**Parser work this needed:** sell-side headlines ("Occidental closes $9.7B sale of OxyChem to Berkshire"),
+possessive forms ("Berkshire Hathaway's $9.7bn Acquisition of OxyChem"), `$9.7B`/`$9.7bn` shorthand, and
+a tighter `validName` (no %/fragments/verbs, ≤5 words).
+**Entity resolution bug found and fixed:** the title-containment fallback attached OxyChem stories to an
+unrelated "Berkshire" row, and "OxyChem From Occidental" split into a second entity. Matching now uses
+a shared significant token and containment only when no target was parsed.
+`src/deals.js` is now the single home for parsing/sector/lifecycle/merge, imported by both the server and
+the backfill script — no duplicated logic.

@@ -2933,7 +2933,7 @@ $('macro-links')?.addEventListener('click', (e) => { const el = e.target.closest
 // Every row carries its evidence: VERIFIED (read from the filing), REPORTED (a wire says so) or
 // RUMOUR (the wire says talks/exploring). Verification is a flag, never a separate section.
 let dealsData = null, maView = 'highlights', maSector = null, maCompany = null, maDays = 0;
-let maQuery = '', maMin = 0, maStatus = 'all', maBuyer = 'all';
+let maQuery = '', maMin = 0, maStatus = 'all', maBuyer = 'all', maLookupFor = null, maLookupBusy = false;
 const PE_RE = /\b(capital|partners|equity|kkr|blackstone|apollo|carlyle|bain|vista|thoma bravo|advent|cvc|eqt|warburg|silver lake|tpg|permira|bc partners|cinven|kps|platinum|golden gate|hellman)\b/i;
 const dealDate = (d) => (d ? new Date(d + 'T00:00:00Z').toLocaleDateString('en-GB', { day: '2-digit', month: 'short', timeZone: 'UTC' }) : '');
 // For a span ("since …") the year matters once it is not this year.
@@ -2968,7 +2968,7 @@ async function loadDeals() {
   const el = $('deal-body');
   if (!el) return;
   if (!dealsData) el.innerHTML = stLoading('Reading the deal book…');
-  try { dealsData = await jget('/api/deals', 300000); } catch { dealsData = dealsData || null; }
+  try { dealsData = await getJSON('/api/deals'); } catch { dealsData = dealsData || null; }
   renderDeals();
 }
 
@@ -3034,6 +3034,16 @@ function renderHighlights(el, deals) {
       <span class="ma-val">${dealVal(d.value)}</span>
       <span class="ma-tags">${chipFor(d)}</span>
     </button>`;
+  // Nothing in the book for this term? Ask the news archive for it once, then re-render. This is how a
+  // deal from before the store existed (e.g. OxyChem) still surfaces when you search for it.
+  const term = maQuery.trim();
+  if (!deals.length && term.length >= 3 && maLookupFor !== term && !maLookupBusy) {
+    maLookupFor = term; maLookupBusy = true;
+    fetch('/api/deals/lookup?q=' + encodeURIComponent(term))
+      .then((r) => r.json())
+      .then(() => { maLookupBusy = false; return loadDeals(); })
+      .catch(() => { maLookupBusy = false; });
+  }
   const active = (maMin ? 1 : 0) + (maStatus !== 'all' ? 1 : 0) + (maBuyer !== 'all' ? 1 : 0) + (maQuery.trim() ? 1 : 0);
   const summary = `<div class="ma-sumline">${deals.length} deal${deals.length === 1 ? '' : 's'}${active ? ' · filtered' : ''}</div>`;
   if (!deals.length) { el.innerHTML = summary + '<div class="macro-note">No deals match these filters. Use CLEAR to reset.</div>'; return; }
