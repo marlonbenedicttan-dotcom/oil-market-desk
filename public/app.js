@@ -2149,7 +2149,7 @@ function renderBrief(b) {
   const ctx = (b.happened || []).filter((x) => x.kind !== 'move').map((x) => x.text).join(' · ');
   // M&A only when there is something worth flagging — a quiet week renders nothing at all.
   const deals = b.deals || [];
-  const dealRows = deals.length ? `<div class="brief-deals"><div class="gtitle">DEALS</div>${deals.map((d) => `<button class="brief-deal" data-sector="${esc(d.sector || '')}" data-company="${esc(d.acquirer || d.target || '')}">
+  const dealRows = deals.length ? `<div class="brief-deals"><div class="gtitle">DEALS</div>${deals.map((d) => `<button class="brief-deal" data-sector="${esc(d.sector || '')}" data-company="${esc(maName(d.acquirer) || maName(d.target) || '')}">
       <span class="bd-date">${dealDate(d.date)}</span>
       <span class="bd-pair"><b>${esc(maName(d.acquirer) || '—')}</b> <span class="dimtext">→</span> ${esc(maName(d.target) || '—')}</span>
       <span class="bd-val">${dealVal(d.value)}</span>
@@ -2569,6 +2569,10 @@ function currentRoute() {
     return `#/commodities/${currentMarket}${m ? '/' + encodeURIComponent(m) : ''}`;
   }
   if (tab === 'macro') return `#/macro/${macroRegion}/${macroCountry}`;
+  if (tab === 'deals') {
+    if (!maSector) return '#/deals';
+    return `#/deals/sector/${encodeURIComponent(maSector)}${maCompany ? '/company/' + encodeURIComponent(maCompany) : ''}`;
+  }
   return '#/home';
 }
 function syncRoute(push) {
@@ -2588,6 +2592,14 @@ function applyRoute(hash) {
   routeSuppress = true;
   try {
     if (tab === 'home') { showTab('home'); return true; }
+    if (tab === 'deals') {
+      maView = a ? 'sectors' : 'highlights';
+      maSector = null; maCompany = null;
+      if (a === 'sector' && b) { maSector = b; if (c === 'company' && parts[3]) maCompany = parts[3]; }
+      if (a === 'company' && b) { maCompany = b; }
+      showTab('deals');
+      return true;
+    }
     if (tab === 'commodities') {
       if (a && (markets || []).some((m) => m.id === a)) selectMarket(a);
       showTab('commodities');
@@ -2997,10 +3009,13 @@ function renderDeals() {
 function renderMaTools() {
   const box = $('ma-chips');
   if (!box) return;
-  const chip = (id, label, on, kind) => `<button class="ma-chip${on ? ' on' : ''}" data-${kind}="${id}">${label}</button>`;
-  box.innerHTML = chip(0, 'ALL SIZES', maMin === 0, 'min') + chip(1000, '$1B+', maMin === 1000, 'min') + chip(5000, '$5B+', maMin === 5000, 'min')
-    + chip('pe', 'PE BUYERS', maBuyer === 'pe', 'buyer') + chip('rumour', 'RUMOURS', maStatus === 'rumour', 'status')
-    + chip('verified', 'VERIFIED', maStatus === 'verified', 'status');
+  const chip = (label, on, attrs) => `<button class="ma-chip${on ? ' on' : ''}" ${attrs}>${label}</button>`;
+  const group = (label, inner) => `<span class="ma-fgroup"><span class="ma-flabel">${label}</span>${inner}</span>`;
+  const size = group('SIZE', chip('All', maMin === 0, 'data-min="0"') + chip('$1B+', maMin === 1000, 'data-min="1000"') + chip('$5B+', maMin === 5000, 'data-min="5000"'));
+  const evidence = group('EVIDENCE', chip('All', maStatus === 'all', 'data-status="all"') + chip('Verified', maStatus === 'verified', 'data-status="verified"') + chip('Rumour', maStatus === 'rumour', 'data-status="rumour"'));
+  const buyer = group('BUYER', chip('All', maBuyer === 'all', 'data-buyer="all"') + chip('PE', maBuyer === 'pe', 'data-buyer="pe"'));
+  const active = (maMin ? 1 : 0) + (maStatus !== 'all' ? 1 : 0) + (maBuyer !== 'all' ? 1 : 0) + (maQuery.trim() ? 1 : 0);
+  box.innerHTML = size + evidence + buyer + (active ? `<button class="ma-reset" data-reset="1">CLEAR ${active} FILTER${active === 1 ? '' : 'S'}</button>` : '');
 }
 
 function renderHighlights(el, deals) {
@@ -3013,13 +3028,16 @@ function renderHighlights(el, deals) {
   const year = deals.filter((d) => d.value && (d.key || d.id) !== heroKey).sort((a, b) => b.value - a.value).slice(0, 8);
   const shown = new Set(year.map((d) => d.key || d.id));
   const latest = deals.filter((d) => !shown.has(d.key || d.id)).slice(0, 10);
-  const row = (d, i) => `<button class="ma-row" data-status="${esc(d.status || 'reported')}" data-deal="${esc(d.key || d.id)}" data-sector="${esc(d.sector || '')}" data-company="${esc(d.acquirer || d.target || '')}">
+  const row = (d, i) => `<button class="ma-row" data-status="${esc(d.status || 'reported')}" data-deal="${esc(d.key || d.id)}" data-sector="${esc(d.sector || '')}" data-company="${esc(maName(d.acquirer) || maName(d.target) || '')}">
       ${i != null ? `<span class="ma-rank">${i + 1}</span>` : `<span class="ma-when">${dealDateY(d.date)}</span>`}
       <span class="ma-who">${maMono(maName(d.target) || maName(d.acquirer))}<span class="ma-names"><b>${esc(maName(d.acquirer) || '—')}</b> <span class="dimtext">→</span> ${esc(maName(d.target) || '—')}</span></span>
       <span class="ma-val">${dealVal(d.value)}</span>
       <span class="ma-tags">${chipFor(d)}</span>
     </button>`;
-  el.innerHTML = (hero ? `<div class="ma-hero" data-deal="${esc(hero.key || hero.id)}" data-sector="${esc(hero.sector || '')}" data-company="${esc(hero.acquirer || hero.target || '')}" role="button" tabindex="0">
+  const active = (maMin ? 1 : 0) + (maStatus !== 'all' ? 1 : 0) + (maBuyer !== 'all' ? 1 : 0) + (maQuery.trim() ? 1 : 0);
+  const summary = `<div class="ma-sumline">${deals.length} deal${deals.length === 1 ? '' : 's'}${active ? ' · filtered' : ''}</div>`;
+  if (!deals.length) { el.innerHTML = summary + '<div class="macro-note">No deals match these filters. Use CLEAR to reset.</div>'; return; }
+  el.innerHTML = summary + (hero ? `<div class="ma-hero" data-deal="${esc(hero.key || hero.id)}" data-sector="${esc(hero.sector || '')}" data-company="${esc(hero.acquirer || hero.target || '')}" role="button" tabindex="0">
       <div class="ma-hero-l">${hero.verified ? 'BIGGEST VERIFIED DEAL' : 'BIGGEST LOGGED'} · ${esc(hero.sector || '')}</div>
       <div class="ma-hero-pair">${maMono(maName(hero.target))}<span><b>${esc(maName(hero.acquirer) || '—')}</b> <span class="dimtext">→</span> ${esc(maName(hero.target) || '—')}</span></div>
       <div class="ma-hero-v">${dealVal(hero.value)}</div>
@@ -3085,7 +3103,7 @@ function renderCompanyList(el, deals) {
   const total = rows.reduce((a, b) => a + (b.value || 0), 0);
   const verified = rows.filter((d) => d.verified).length;
   const top = rows.slice().sort((a, b) => (b.value || 0) - (a.value || 0))[0];
-  const dealRow = (d) => `<button class="ma-row ma-deal-row" data-status="${esc(d.status || 'announced')}" data-deal="${esc(d.key || d.id)}" data-sector="${esc(d.sector || '')}" data-company="${esc(d.acquirer || d.target || '')}">
+  const dealRow = (d) => `<button class="ma-row ma-deal-row" data-status="${esc(d.status || 'announced')}" data-deal="${esc(d.key || d.id)}" data-sector="${esc(d.sector || '')}" data-company="${esc(maName(d.acquirer) || maName(d.target) || '')}">
       <span class="ma-when">${dealDateY(d.date)}</span>
       <span class="ma-who">${maMono(maName(d.target))}<span class="ma-names"><b>${esc(maName(d.acquirer) || '—')}</b> <span class="dimtext">→</span> ${esc(maName(d.target) || '—')}</span></span>
       <span class="ma-val">${dealVal(d.value) || '—'}</span>
@@ -3123,7 +3141,7 @@ function renderCompanyDeals(el, deals) {
   el.innerHTML = `<div class="ma-crumb"><button class="ma-back" data-back="1">← ${esc(maSector || 'SECTORS')}</button> <span>${esc(maCompany)}</span></div>`
     + stats
     + `<div class="ma-deal">
-        <div class="ma-deal-pair">${maMono(d.target)}<span><b>${esc(d.acquirer || '—')}</b> <span class="dimtext">→</span> ${esc(d.target || '—')}</span></div>
+        <div class="ma-deal-pair">${maMono(d.target)}<span><button class="ma-part" data-company="${esc(d.acquirer || '')}">${esc(maName(d.acquirer) || '—')}</button> <span class="dimtext">→</span> <button class="ma-part" data-company="${esc(d.target || '')}">${esc(maName(d.target) || '—')}</button></span></div>
         <div class="ma-deal-v">${dealVal(d.value) || 'value not disclosed'} ${chipFor(d)}</div>
         <div class="ma-deal-m">announced ${dealDate(d.date)}${d.closed ? ' · closed ' + dealDate(d.closed) : ''} · ${esc(d.sector || '')}${d.consideration ? ' · ' + esc(d.consideration) : ''}</div>
         ${d.rationale ? `<div class="dc-why">“${esc(d.rationale)}”</div>` : ''}
@@ -3145,11 +3163,18 @@ document.addEventListener('input', (e) => {
 });
 
 document.addEventListener('click', (e) => {
+  if (e.target.closest('[data-reset]')) {
+    maMin = 0; maStatus = 'all'; maBuyer = 'all'; maQuery = '';
+    const inp = $('ma-search'); if (inp) inp.value = '';
+    renderDeals();
+    return;
+  }
   const mc = e.target.closest('#ma-chips .ma-chip');
   if (mc) {
-    if (mc.dataset.min != null) { maMin = Number(mc.dataset.min); if (maMin === 0) maStatus = 'all'; }
-    if (mc.dataset.buyer != null) maBuyer = maBuyer === 'pe' ? 'all' : 'pe';
-    if (mc.dataset.status != null) maStatus = maStatus === mc.dataset.status ? 'all' : mc.dataset.status;
+    // Single-select per group: pressing one chip always means "show me this", never "toggle something".
+    if (mc.dataset.min != null) maMin = Number(mc.dataset.min);
+    if (mc.dataset.buyer != null) maBuyer = mc.dataset.buyer;
+    if (mc.dataset.status != null) maStatus = mc.dataset.status;
     renderDeals();
     return;
   }
@@ -3174,12 +3199,15 @@ document.addEventListener('click', (e) => {
   if (e.target.closest('[data-back]')) {
     if (maCompany) maCompany = null; else maSector = null;
     renderDeals();
+    syncRoute(true);
     return;
   }
+  const part = e.target.closest('.ma-part');
+  if (part && part.dataset.company) { maCompany = part.dataset.company; renderDeals(); syncRoute(true); return; }
   const co = e.target.closest('[data-company]');
-  if (co && maView === 'sectors') { maCompany = co.dataset.company; renderDeals(); return; }
+  if (co && maView === 'sectors') { maCompany = co.dataset.company; renderDeals(); syncRoute(true); return; }
   const sec = e.target.closest('[data-sector]');
-  if (sec && maView === 'sectors' && !sec.dataset.deal) { maSector = sec.dataset.sector; maCompany = null; renderDeals(); return; }
+  if (sec && maView === 'sectors' && !sec.dataset.deal) { maSector = sec.dataset.sector; maCompany = null; renderDeals(); syncRoute(true); return; }
   const deal = e.target.closest('[data-deal]');
   if (deal && deal.dataset.company) { maView = 'sectors'; maSector = deal.dataset.sector; maCompany = deal.dataset.company; syncMaTabs(); renderDeals(); }
 });

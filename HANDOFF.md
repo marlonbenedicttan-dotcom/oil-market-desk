@@ -1358,3 +1358,14 @@ is the sharpest *move*, M&A is a separate signal.
   Vista, Thoma Bravo, Apollo, Carlyle, Bain, Advent, CVC…), `RUMOURS`, `VERIFIED`.
 - **Company page** gained a summary line: N deals, how many as buyer vs target, total disclosed.
 - Dates in lists now carry the year when it is not the current one (23 Oct 2023, not 23 Oct).
+
+## M&A: filters that say what they are, deep links, clickable parties (2026-10-23)
+- **Filters regrouped** into three labelled, single-select groups — `SIZE (All / $1B+ / $5B+)`,
+  `EVIDENCE (All / Verified / Rumour)`, `BUYER (All / PE)`. Before, eight chips of mixed semantics sat
+  in one row, so pressing several could produce an empty page with no explanation. Now one press means
+  one thing, the active chip is obvious, a `CLEAR n FILTERS` button appears when anything is set, and a
+  line under the bar reports `N deals · filtered`. Empty results say so instead of showing a blank.
+- **Deep links**: `#/deals`, `#/deals/sector/Energy`, `#/deals/sector/Energy/company/EQT`. Back/forward
+  work, and a link opens the exact view.
+- **Parties are clickable** on a deal: the acquirer and target are buttons, so you can hop from a deal
+  to either company page without going back to the sector.

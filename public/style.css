@@ -994,3 +994,16 @@ button.deal-sec-tile:hover { background: #10151b; }
   .ma-tools { flex-direction: column; }
   .ma-search { flex: 1 1 auto; }
 }
+
+/* Filter groups: labelled, single-select, with a visible clear. */
+.ma-fgroup { display: inline-flex; align-items: center; gap: 4px; }
+.ma-flabel { font-size: 8px; letter-spacing: 1px; color: #5b6773; text-transform: uppercase; margin-right: 2px; }
+.ma-reset { background: transparent; border: 1px solid rgba(255, 158, 0, .5); color: var(--amber); font: inherit; font-size: 9px;
+  letter-spacing: .8px; padding: 5px 9px; min-height: 28px; cursor: pointer; }
+.ma-sumline { padding: 6px 12px; font-size: 9.5px; color: var(--dim); letter-spacing: .4px; border-bottom: 1px solid var(--line); }
+.ma-part { background: transparent; border: 0; padding: 0; color: var(--text); font: inherit; font-size: inherit; cursor: pointer; text-decoration: underline; text-decoration-color: #3a4652; text-underline-offset: 3px; }
+.ma-part:hover { color: var(--amber); text-decoration-color: var(--amber); }
+@media (max-width: 640px) {
+  .ma-fgroup { width: 100%; }
+  .ma-reset { min-height: 32px; }
+}
