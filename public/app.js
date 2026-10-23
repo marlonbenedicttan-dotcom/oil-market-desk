@@ -2137,28 +2137,24 @@ function renderBrief(b) {
   // The server ranked these already (one leaderboard for commodities and countries). Do NOT re-sort:
   // WHAT HAPPENED is simply the next five on the same board.
   const rest = b.rows || [];
-  const rows = rest.slice(0, 5).map((x) => `<div class="mvr${x.flat != null && x.flat >= 10 ? ' thin' : ''}">`
-    + `<span class="mvr-tag">${esc(x.tag)}</span><span class="mvr-n">${esc(x.label)}</span>`
-    + `<span class="mvr-v ${cls(x.d1)}">${pctf(x.d1)}</span><span class="mvr-sp">${spark(x.spark, x.d1 >= 0)}</span>`
-    + whyLine(x) + `</div>`).join('')
+  const rows = rest.slice(0, 7).map((x) => x.kind === 'deal'
+    ? `<div class="mvr deal">`
+      + `<span class="mvr-tag">M&A</span><span class="mvr-n" title="${esc(x.label)}">${esc(x.label)}</span>`
+      + `<span class="mvr-v deal-v">${dealVal(x.value)}</span><span class="mvr-sp">${chipFor(x)}</span>`
+      + `<span class="mvr-why">announced ${dealDateY(x.date)}${x.closed ? ' · closed ' + dealDateY(x.closed) : ''}</span></div>`
+    : `<div class="mvr${x.flat != null && x.flat >= 10 ? ' thin' : ''}">`
+      + `<span class="mvr-tag">${esc(x.tag)}</span><span class="mvr-n" title="${esc(x.label)}">${esc(x.label)}</span>`
+      + `<span class="mvr-v ${cls(x.d1)}">${pctf(x.d1)}</span><span class="mvr-sp">${spark(x.spark, x.d1 >= 0)}</span>`
+      + whyLine(x) + `</div>`).join('')
     || '<div class="mvr"><span class="mvr-tag"></span><span class="mvr-n dimtext">Nothing moved enough to flag today.</span><span></span><span></span></div>';
   const nextRows = (b.next || []).slice(0, 4).map((e) => `<div class="mvr">`
     + `<span class="mvr-tag">${esc(relDay(e.date))}</span><span class="mvr-n">${esc(e.name)}</span>`
     + `<span class="mvr-v dimtext" style="font-weight:400">${esc(e.time || '')}</span><span class="mvr-sp"></span></div>`).join('')
     || '<div class="mvr"><span class="mvr-tag"></span><span class="mvr-n dimtext">Nothing scheduled.</span><span></span><span></span></div>';
   const ctx = (b.happened || []).filter((x) => x.kind !== 'move').map((x) => x.text).join(' · ');
-  // M&A only when there is something worth flagging — a quiet week renders nothing at all.
-  const deals = b.deals || [];
-  const dealRows = deals.length ? `<div class="brief-deals"><div class="gtitle">DEALS</div>${deals.map((d) => `<button class="brief-deal" data-sector="${esc(d.sector || '')}" data-company="${esc(maName(d.acquirer) || maName(d.target) || '')}">
-      <span class="bd-date">${dealDate(d.date)}</span>
-      <span class="bd-pair"><b>${esc(maName(d.acquirer) || '—')}</b> <span class="dimtext">→</span> ${esc(maName(d.target) || '—')}</span>
-      <span class="bd-val">${dealVal(d.value)}</span>
-      <span class="bd-st">${chipFor(d)}</span>
-    </button>`).join('')}</div>` : '';
   el.innerHTML = heroHtml
     + `<div class="brief-cols"><div class="brief-col"><div class="gtitle">WHAT HAPPENED</div>${rows}</div>`
     + `<div class="brief-col"><div class="gtitle">WHAT'S NEXT</div>${nextRows}</div></div>`
-    + dealRows
     + (ctx ? `<div class="brief-ctx dimtext">${ctx}</div>` : '');
 }
 async function loadBrief() {
@@ -3118,7 +3114,7 @@ function renderCompanyList(el, allDeals) {
   const ranges = [[0, 'ALL'], [365 * 3, '3Y'], [365, '12M'], [180, '6M']];
   const dealRow = (d) => `<button class="ma-row ma-deal-row" data-status="${esc(d.status || 'announced')}" data-deal="${esc(d.key || d.id)}" data-sector="${esc(d.sector || '')}" data-company="${esc(maName(d.acquirer) || maName(d.target) || '')}">
       <span class="ma-when">${dealDateY(d.date)}</span>
-      <span class="ma-who">${maMono(maName(d.target))}<span class="ma-names"><b>${esc(maName(d.acquirer) || '—')}</b> <span class="dimtext">→</span> ${esc(maName(d.target) || '—')}</span></span>
+      <span class="ma-who">${maMono(maName(d.target))}<span class="ma-names" title="${esc((maName(d.acquirer) || '') + ' → ' + (maName(d.target) || ''))}"><b>${esc(maName(d.acquirer) || '—')}</b> <span class="dimtext">→</span> ${esc(maName(d.target) || '—')}</span></span>
       <span class="ma-val">${dealVal(d.value) || '—'}</span>
       <span class="ma-tags">${chipFor(d)}</span>
     </button>`;

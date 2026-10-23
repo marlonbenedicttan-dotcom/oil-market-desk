@@ -123,7 +123,7 @@ test('/api/brief returns the on-screen daily brief (headline + happened + next +
 test('/api/brief ranks one leaderboard and explains every row', async () => {
   const b = await (await fetch(`http://localhost:${PORT}/api/brief`)).json();
   const rows = b.rows || [];
-  assert.ok(rows.length <= 5, 'the brief lists at most five rows under the hero');
+  assert.ok(rows.length <= 7, 'the brief lists at most seven rows under the hero (moves + deals)');
   if (b.hero) {
     assert.ok(Array.isArray(b.hero.facts) && b.hero.facts.length > 0, 'the hero always carries a computed line');
     assert.ok(['bench', 'index', 'fx'].includes(b.hero.srcKind), 'the hero knows what kind of market it is');
@@ -131,9 +131,13 @@ test('/api/brief ranks one leaderboard and explains every row', async () => {
   const ids = new Set();
   for (let i = 0; i < rows.length; i++) {
     const r = rows[i];
-    assert.ok(r.label && typeof r.d1 === 'number', 'each row is a real move');
-    assert.ok((r.why && /^https?:/.test(r.why.url || '')) || (r.facts && r.facts.length),
-      `${r.label} must carry a wire story or a computed driver — never a bare number`);
+    assert.ok(r.label && (r.kind === 'deal' ? typeof r.value === 'number' : typeof r.d1 === 'number'),
+      'each row is a real move or a priced deal');
+    // A deal row is explained by its price and status; a move row by a wire story or computed driver.
+    const explained = r.kind === 'deal'
+      ? (r.value != null || r.status)
+      : ((r.why && /^https?:/.test(r.why.url || '')) || (r.facts && r.facts.length));
+    assert.ok(explained, `${r.label} must carry an explanation — never a bare number`);
     assert.ok(!ids.has(r.id), 'the same instrument never appears twice');
     ids.add(r.id);
     if (i) assert.ok((rows[i - 1].score ?? 0) >= (r.score ?? 0), 'rows stay in rank order');

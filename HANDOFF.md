@@ -1456,3 +1456,11 @@ saves after every month, and "completed the acquisition" alone adds ~30 deals pe
 2024–2026 it took the book from 271 to **412+ deals** in ten minutes, with more still arriving.
 Lesson recorded: when a free API throttles globally, the answer is a different *kind* of source (filings),
 not a faster retry loop.
+
+## Brief: M&A belongs IN "what happened", not beside it (2026-10-23)
+Removed the separate DEALS block. A big deal is a thing that happened that day, so it now joins the
+same WHAT HAPPENED list, tagged **M&A**, with its price in the value column, its status chip where the
+sparkline sits, and one dim line (`announced 27 Feb · closed 6 Oct`). Threshold unchanged: verified or
+≥ $1B, seen in the last 21 days, max two deals, and the list is capped at seven rows.
+Also fixed the truncation complaint: company names and headlines now wrap to **two lines** with a
+`title` tooltip instead of being chopped by the value column.

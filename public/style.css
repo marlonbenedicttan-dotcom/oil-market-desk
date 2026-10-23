@@ -1007,3 +1007,11 @@ button.deal-sec-tile:hover { background: #10151b; }
   .ma-fgroup { width: 100%; }
   .ma-reset { min-height: 32px; }
 }
+
+/* Long company names: wrap to two lines with a tooltip instead of being chopped by the value column. */
+.ma-names, .mvr-n { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; white-space: normal; line-height: 1.3; }
+.ma-row { align-items: center; }
+/* A deal inside WHAT HAPPENED reads like a move, but its "move" is money. */
+.mvr.deal .deal-v { color: var(--amber2); }
+.mvr.deal .mvr-sp { display: flex; justify-content: flex-end; }
+.mvr.deal .mvr-why { color: var(--dim); }

@@ -3470,15 +3470,23 @@ async function buildBrief() {
     } catch {}
 
     // WHAT HAPPENED is the rest of the same leaderboard — no second ranking, no re-sorting downstream.
-    const rows = mix.filter((x) => x !== heroRaw).slice(0, 5).map((x) => ({
+    const moveRows = mix.filter((x) => x !== heroRaw).slice(0, 5).map((x) => ({
       kind: x.kind === 'bench' ? 'bench' : (x.kind === 'fx' ? 'fx' : 'index'),
       id: x.id, label: x.label, tag: x.tag || (x.kind === 'fx' ? 'FX' : 'Index'),
       d1: x.d1, m1: x.m1 ?? null, y1: x.y1 ?? null, score: x.score ?? null,
       sigma: x.sigma ?? null, flat: x.flat ?? null, roll: x.roll || null,
       spark: x.spark || null, why: x.why || null, facts: x.facts || [], route: x.route || null,
     }));
+    // A big deal is a thing that HAPPENED that day, not a separate section: it joins the same list,
+    // tagged M&A, with its price where the value column would be.
+    const dealRows = briefDeals.map((d) => ({
+      kind: 'deal', id: d.key || d.target || d.acquirer, tag: 'M&A', label: d.target ? `${d.acquirer || '—'} → ${d.target}` : (d.acquirer || '—'),
+      d1: null, value: d.value, status: d.status, verified: d.verified, date: d.date, closed: d.closed || null,
+      sector: d.sector || null, spark: null, why: null, facts: [], route: null,
+    }));
+    const rows = [...moveRows, ...dealRows].slice(0, 7);
     return {
-      updated: new Date().toISOString(), headline, happened, next, macro: macroTop, hero, rows, deals: briefDeals,
+      updated: new Date().toISOString(), headline, happened, next, macro: macroTop, hero, rows,
       alerts: alerts.map((a) => ({ level: a.level, text: a.text })),
       movers: movers.slice(0, 3),
     };
