@@ -1247,3 +1247,28 @@ TradingView's scanner (same host the calendar already uses) whenever FRED return
 note names the fallback instead of passing it off as the same series. China (no FRED long end) is served
 by it permanently; Japan/Germany/UK/Korea use it only when FRED is down.
 100 tests pass.
+
+## M&A tab — deal wire + a verified seed (2026-10-23)
+A global, 10-year M&A database with valuations and advisers is licensed data (Dealogic, Refinitiv,
+PitchBook, Mergermarket). No free source provides it, so the tab states exactly what it covers.
+**WIRE (default)** — announced deals as tier-1 wires reported them, last 7 days, from Google News.
+Each row: date · acquirer → target · value · sector · the headline, linked.
+- `parseDealTitle` pulls the parties and the price out of the headline; `dealSector` tags the sector.
+- Relevance is enforced, because the raw feed is full of non-deals: procurement ("US agrees to buy 850
+  F-35s"), law-firm moves, analyst ratings ("upgraded to buy"), court/trial stories, and speculative
+  "would/could merge" pieces are all filtered out.
+- One row per deal: deduped on acquirer+price AND on the target's key word, because Reuters, Bloomberg
+  and CNBC all report the same deal with slightly different wording.
+**SECTORS** — the week's stories counted and summed by sector. The note says it is not a census.
+**VERIFIED (2)** — deals read out of the company's own 8-K press release: Microsoft/Activision $68.7B
+(Goldman, Allen & Co) and Kroger/Albertsons $24.6B (Goldman), each with the verbatim rationale and a
+link to the filing. This is a seed, labelled as one.
+**What we tried first, and why it is not the default:** `scripts/fetch-ma.mjs` discovers 8-Ks via EDGAR
+full-text search and parses the press-release exhibit. Mechanically it works (the exhibit lookup bug —
+files named `tm223212d1_ex99-1.htm` — cost most of the yield), but the *values* are unreliable: on a
+120-filing sample it produced 1-8 rows and mispriced Xilinx at "$135 billion". Deal terms live in prose
+next to revenue and market-cap figures, so a wrong number is one regex away. It stays as a QA tool
+(`--dry` parses the cache without network) until the extraction is good enough to trust at scale.
+`scripts/verify-deal.mjs` is the manual counterpart: give it a target and a month, and it prints the
+deal-value sentence from the filing, which is how the two verified rows were confirmed.
+Verified: 15 wire rows, 0 horizontal overflow at 390px, 0 tap targets under 32px, 101 tests.

@@ -23,7 +23,7 @@
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
   <link rel="preconnect" href="https://unpkg.com" crossorigin />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <link rel="stylesheet" href="style.css?v=79" />
+  <link rel="stylesheet" href="style.css?v=83" />
   <noscript><style>#boot{display:none!important}</style></noscript>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -78,6 +78,7 @@
       <button class="tab active" data-tab="home" id="tab-home" role="tab" aria-selected="true" aria-controls="pane-home">HOME</button>
       <button class="tab" data-tab="commodities" id="tab-commodities" role="tab" aria-selected="false" aria-controls="pane-commodities">COMMODITIES</button>
       <button class="tab" data-tab="macro" id="tab-macro" role="tab" aria-selected="false" aria-controls="pane-macro">MACRO</button>
+      <button class="tab" data-tab="deals" id="tab-deals" role="tab" aria-selected="false" aria-controls="pane-deals">M&amp;A</button>
     </nav>
 
     <!-- HOME: daily brief + markets + screener + risk + calendar + watchlist + headlines -->
@@ -325,6 +326,18 @@
     </div>
 
     <!-- MACRO -->
+    <div class="tabpane hidden" data-pane="deals" id="pane-deals" role="tabpanel" aria-labelledby="tab-deals">
+      <section class="panel" id="p-deals">
+        <div class="ph"><span class="ph-t">M&amp;A — THE DEAL WIRE</span><span class="dimtext" id="deals-sub">tier-1 wires · last 7 days</span></div>
+        <div class="deal-views" id="deal-views" role="tablist">
+          <button class="deal-view active" data-view="wire" role="tab" aria-selected="true">WIRE</button>
+          <button class="deal-view" data-view="sectors" role="tab" aria-selected="false">SECTORS</button>
+          <button class="deal-view" data-view="verified" role="tab" aria-selected="false">VERIFIED</button>
+        </div>
+        <div id="deal-body"><div class="macro-note">READING THE WIRE…</div></div>
+        <div class="macro-note" id="deals-note">Announced deals as tier-1 wires reported them. A value appears only when the headline states one; VERIFIED is read out of the company's own filing. This is not a complete market.</div>
+      </section>
+    </div>
     <div class="tabpane hidden" data-pane="macro" id="pane-macro" role="tabpanel" aria-labelledby="tab-macro">
       <nav class="jumpnav" aria-label="Jump to a section">
         <a href="#m-region">Country</a>
@@ -420,6 +433,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=138"></script>
+  <script src="app.js?v=140"></script>
 </body>
 </html>

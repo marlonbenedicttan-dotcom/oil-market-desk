@@ -1,0 +1,38 @@
+{
+ "updated": "2026-10-23T00:00:00.000Z",
+ "coverage": {
+  "scope": "US-listed parties · verified against the filing",
+  "minValueUsdM": 250,
+  "source": "SEC EDGAR 8-K press releases",
+  "note": "Only deals whose value and parties were read out of the company's own press release. This is a growing seed, not the whole market."
+ },
+ "count": 2,
+ "deals": [
+  {
+   "id": "0001104659-22-004729",
+   "date": "2022-01-18",
+   "acquirer": "Microsoft",
+   "target": "Activision Blizzard",
+   "value": 68700,
+   "sector": "Technology",
+   "consideration": "cash",
+   "advisers": ["Goldman Sachs", "Allen & Company"],
+   "rationale": "This acquisition will accelerate the growth in Microsoft's gaming business across mobile, PC, console and cloud and will provide building blocks for the metaverse.",
+   "url": "https://www.sec.gov/Archives/edgar/data/0000718877/000110465922004729/tm223212d1_ex99-1.htm",
+   "source": "Microsoft 8-K, EX-99.1"
+  },
+  {
+   "id": "0001104659-22-108671",
+   "date": "2022-10-14",
+   "acquirer": "Kroger",
+   "target": "Albertsons",
+   "value": 24600,
+   "sector": "Consumer",
+   "consideration": "mixed",
+   "advisers": ["Goldman Sachs"],
+   "rationale": "the companies will merge two complementary organizations with iconic brands and deep roots in their local communities to establish a national footprint",
+   "url": "https://www.sec.gov/Archives/edgar/data/0000056873/000110465922108671/tm2227942d1_ex99-1.htm",
+   "source": "Kroger 8-K, EX-99.1"
+  }
+ ]
+}

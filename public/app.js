@@ -2635,6 +2635,7 @@ function showTab(name) {
     if (map) setTimeout(() => map.invalidateSize(), 80);
     if (crackHistChart && currentMarket === 'refined') setTimeout(() => crackHistChart.resize(), 80);
   }
+  if (name === 'deals') loadDeals();
   if (name === 'macro') { loadMacroTickers(); if (!extraSlowDone) setTimeout(() => loadExtraSlow().catch(() => {}), 0); if (macroChart) setTimeout(() => macroChart.resize(), 60); if (policyChart) setTimeout(() => policyChart.resize(), 70); if (cpiChart) setTimeout(() => cpiChart.resize(), 80); if (yieldsChart) setTimeout(() => yieldsChart.resize(), 85); if (usjpChart) setTimeout(() => usjpChart.resize(), 90); }
   if (data) renderTicker(data);
   syncJumpnavs();
@@ -2905,3 +2906,67 @@ $('macro-links')?.addEventListener('click', (e) => { const el = e.target.closest
   setInterval(loadExtra, 600000);                                   // slow feeds every 10 min
   setInterval(() => { nextRefresh -= 5; if (nextRefresh <= 0) { nextRefresh = 60; refreshLive(); } const cd = $('countdown'); if (cd) cd.textContent = `auto ${nextRefresh}s`; }, 5000);
 })();
+
+// ---------------------------------------------------------------------------
+// M&A — a live deal wire plus a small verified archive. The wire is what tier-1 wires reported in the
+// last week; the archive is read out of the company's own filing. Both are labelled, because neither
+// is the whole market and the app never pretends otherwise.
+let dealsData = null, dealView = 'wire';
+const dealDate = (d) => (d ? new Date(d + 'T00:00:00Z').toLocaleDateString('en-GB', { day: '2-digit', month: 'short', timeZone: 'UTC' }) : '');
+const dealVal = (v) => (v == null ? '' : v >= 1000 ? `$${(v / 1000).toFixed(1)}B` : `$${Math.round(v)}M`);
+
+async function loadDeals() {
+  const el = $('deal-body');
+  if (!el) return;
+  if (!dealsData && !el.querySelector('.deal-row')) el.innerHTML = stLoading('Reading the deal wire…');
+  try { dealsData = await jget('/api/deals', 600000); } catch { dealsData = dealsData || null; }
+  renderDeals();
+}
+
+function renderDeals() {
+  const el = $('deal-body');
+  if (!el) return;
+  if (!dealsData) { el.innerHTML = stError('Couldn’t load the deal wire — retrying.'); return; }
+  const wire = dealsData.wire || [], arch = dealsData.archive || [], secs = dealsData.sectors || [];
+  const sub = $('deals-sub');
+  if (sub) sub.textContent = `${wire.length} stories this week · ${arch.length} verified deals · tier-1 wires`;
+  if (dealView === 'sectors') {
+    el.innerHTML = secs.length
+      ? `<div class="deal-secs">${secs.map((s) => `<div class="deal-sec-tile">
+          <div class="dsc-l">${esc(s.id)}</div>
+          <div class="dsc-v">${s.count}<span class="dsc-u">deals</span></div>
+          <div class="dsc-s">${s.value ? dealVal(s.value) + ' disclosed' : 'value not disclosed'}</div>
+        </div>`).join('')}</div>
+        <div class="macro-note">Counts are stories on the wire this week, not a census — wires do not report every deal.</div>`
+      : '<div class="macro-note">No sector activity on the wire this week.</div>';
+    return;
+  }
+  if (dealView === 'verified') {
+    el.innerHTML = arch.length
+      ? arch.map((d) => `<div class="deal-card">
+          <div class="dc-top"><span class="dc-pair"><b>${esc(d.acquirer || '—')}</b> <span class="dimtext">→</span> ${esc(d.target || '—')}</span><span class="dc-val">${dealVal(d.value)}</span></div>
+          <div class="dc-meta">${dealDate(d.date)} · ${esc(d.sector || '')} · ${esc(d.consideration || '')}</div>
+          ${d.rationale ? `<div class="dc-why">“${esc(d.rationale)}”</div>` : ''}
+          <div class="dc-foot">${(d.advisers || []).length ? `advisers disclosed: ${esc(d.advisers.join(', '))}` : 'advisers not disclosed in the filing'}${d.url ? ` · <a href="${esc(d.url)}" target="_blank" rel="noopener noreferrer">filing</a>` : ''}</div>
+        </div>`).join('') + '<div class="macro-note">Each of these was read out of the company’s own press release. The archive grows as filings are verified — it is a seed, not the market.</div>'
+      : '<div class="macro-note">No verified deals yet.</div>';
+    return;
+  }
+  el.innerHTML = wire.length
+    ? wire.map((w) => `<div class="deal-row">
+        <span class="deal-date">${dealDate(w.date)}</span>
+        <span class="deal-parties">${w.acquirer ? `<b>${esc(w.acquirer)}</b> <span class="dimtext">→</span> ` : ''}${esc(w.target || w.title)}</span>
+        <span class="deal-val">${dealVal(w.value)}</span>
+        <span class="deal-sec">${esc(w.sector || '')}</span>
+        <a class="deal-head" href="${esc(w.url)}" target="_blank" rel="noopener noreferrer">${esc(w.title)} <span class="dimtext">— ${esc(w.source || '')}</span></a>
+      </div>`).join('')
+    : '<div class="macro-note">Nothing on the wire this week.</div>';
+}
+
+$('deal-views')?.addEventListener('click', (e) => {
+  const b = e.target.closest('.deal-view');
+  if (!b) return;
+  dealView = b.dataset.view;
+  document.querySelectorAll('.deal-view').forEach((x) => { const on = x === b; x.classList.toggle('active', on); x.setAttribute('aria-selected', String(on)); });
+  renderDeals();
+});

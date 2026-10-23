@@ -140,6 +140,20 @@ test('/api/brief ranks one leaderboard and explains every row', async () => {
   }
 });
 
+test('/api/deals returns a sourced wire and a labelled archive', async () => {
+  const d = await (await fetch(`http://localhost:${PORT}/api/deals`)).json();
+  assert.ok(Array.isArray(d.wire), 'wire is an array (empty is fine on a dead feed)');
+  for (const w of d.wire) {
+    assert.ok(w.title && w.source, 'every wire item carries a headline and a source');
+    assert.ok(/^https?:/.test(w.url), 'and links to it');
+    assert.ok(w.value == null || (typeof w.value === 'number' && w.value > 0), 'a value is a real number or null');
+  }
+  assert.ok(Array.isArray(d.sectors));
+  assert.ok(Array.isArray(d.archive));
+  for (const a of d.archive) assert.ok(a.target && a.value > 0 && /^https?:/.test(a.url), 'archive rows are sourced');
+  assert.match(String(d.coverage && d.coverage.scope || ''), /verified/i, 'the archive says what it is');
+});
+
 test('/api/alerts returns the server alert engine output', async () => {
   const r = await fetch(`http://localhost:${PORT}/api/alerts`);
   assert.equal(r.status, 200);

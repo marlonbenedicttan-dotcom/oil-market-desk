@@ -664,6 +664,86 @@ async function getRegime() {
 }
 
 // ---------------------------------------------------------------------------
+// M&A — a live deal wire from tier-1 wires, plus a small verified archive.
+// There is no free structured M&A database, so this is honest about what it is: the wire carries
+// announced deals as they were reported, with a value only when the headline states one; the archive
+// is hand-verified against the company's own press release. Both are labelled on screen.
+// ---------------------------------------------------------------------------
+const DEAL_ARCHIVE = (() => { try { return JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'ma.json'), 'utf8')); } catch { return { deals: [], coverage: {} }; } })();
+const DEAL_SECTOR_RULES = [
+  { id: 'Energy', re: /\b(oil|gas|energy|refiner|pipeline|drilling|shale|lng|utility|power|solar|wind)\b/i },
+  { id: 'Technology', re: /\b(software|tech|ai\b|cloud|data centre|data center|semi|chip|cyber|saas|platform|computing|robot)\b/i },
+  { id: 'Healthcare', re: /\b(pharma|biotech|drug|health|medical|hospital|diagnostic|therapeutic|clinical|life science|oncology|cancer|genomic|laborator|testing)\b/i },
+  { id: 'Financials', re: /\b(bank|insur|fintech|lender|asset manager|broker|payments?|exchange|wealth|trading platform|marketplace|life insurance)\b/i },
+  { id: 'Industrials', re: /\b(industrial|manufactur|machin|aerospace|defen[cs]e|chemical|material|mining|steel|cement|logistics|packaging|waste|recycl|equipment)\b/i },
+  { id: 'Consumer', re: /\b(retail|consumer|food|beverage|restaurant|apparel|grocery|brand|cosmetic|drinks?)\b/i },
+  { id: 'Media', re: /\b(media|entertainment|studio|film|streaming|gaming|music|publish|advertis|sports)\b/i },
+  { id: 'Telecom', re: /\b(telecom|wireless|broadband|fibre|fiber|spectrum|mobile operator)\b/i },
+  { id: 'Real estate', re: /\b(reit|real estate|property|warehouse)\b/i },
+];
+const DEAL_QUERY = '(acquire OR acquisition OR merger OR takeover OR "to buy") ("billion" OR "million") '
+  + '(site:reuters.com OR site:bloomberg.com OR site:ft.com OR site:cnbc.com OR site:apnews.com OR site:wsj.com)';
+
+const dealSector = (title) => (DEAL_SECTOR_RULES.find((s) => s.re.test(title)) || { id: 'Other' }).id;
+
+function parseDealTitle(t) {
+  const cur = /([$\u20ac\u00a3])\s?([\d.,]+)\s?(billion|million|bn|mn)\b/i.exec(t);
+  let value = null;
+  if (cur) { const n = parseFloat(cur[2].replace(/,/g, '')); value = /^b/i.test(cur[3]) ? Math.round(n * 1000) : Math.round(n); }
+  const cut = (s) => String(s || '').replace(/\s+/g, ' ').replace(/[\u2019']s$/, '').replace(/[,.;:]+$/, '').replace(/^(?:the)\s+/i, '').trim();
+  const pats = [
+    /^(.{2,42}?)\s+(?:to|will|is to|agrees? to|nears?|seals?|closes?|wraps? up)\s+(?:buy|acquire|purchase|take over|merge with|snap up)\s+(.{2,58}?)(?=\s+(?:for|in|from|at|worth|as)\b|,|$)/i,
+    /^(.{2,42}?)\s+(?:announces?|unveils?)\s+(?:a\s+)?\$[\d.]+\s?(?:billion|million)\s+(?:deal|takeover)\s+(?:for|to buy)\s+(.{2,58})$/i,
+  ];
+  const stake = /^(.{2,42}?)\s+(?:to|will|agrees? to)\s+(?:buy|acquire|purchase)\s+(?:a\s+)?(?:[\d.]+%\s+)?(?:majority\s+|minority\s+)?stake in\s+(.{2,58}?)(?=\s+(?:for|from|at)\b|,|$)/i.exec(t);
+  if (stake) return { acquirer: cut(stake[1]), target: cut(stake[2]), value };
+  for (const re of pats) {
+    const m = re.exec(t);
+    if (m) {
+      let target = cut(m[2]);
+      target = target.replace(/^(?:a\s+)?(?:majority\s+|minority\s+)?stake in\s+/i, '');
+      return { acquirer: cut(m[1]), target, value };
+    }
+  }
+  return { acquirer: null, target: null, value };
+}
+
+async function getDealWire() {
+  return cached('dealwire', 600e3, async () => {
+    const items = await fetchGoogleNews(DEAL_QUERY, 100).catch(() => []);
+    const seenA = new Set(), seenT = new Set();
+    const out = [];
+    for (const it of items) {
+      if (!TIER1_RE.test(it.source || '')) continue;
+      const t = String(it.title || '');
+      if (!/\b(acquire|acquisition|merger|takeover|to buy|buys|stake in|deal for)\b/i.test(t)) continue;
+      // A deal story is company-to-company. Procurement ("US agrees to buy 850 F-35s"), law-firm moves,
+      // and speculative "would/could merge" pieces are not M&A and must not reach the tape.
+      if (/\b(fighter jets?|military|weapons?|missiles?|pentagon|nato|arms deal|defence ministry|defense department)\b/i.test(t)) continue;
+      if (/\b(lawyers?|law firm|hires?|appoints?|names? (?:a )?new)\b/i.test(t)) continue;
+      if (/\b(would|could|might|should|weighs|considering|explainer|analysis|opinion)\b/i.test(t) && !/\$\s?[\d.]+\s?(?:billion|million)/i.test(t)) continue;
+      if (/\b(fortune|billionaire|wealth|pegs|cost estimate|would cost|supply (?:deal|agreement)|to 20\d\d)\b/i.test(t)) continue;
+      if (/\b(upgraded to buy|downgraded|price target|rating|overweight|outperform|analyst|trial|lawsuit|antitrust case)\b/i.test(t)) continue;
+      const p = parseDealTitle(t);
+      if (!p.acquirer && !p.value) continue;               // needs a real party or a price
+      // One row per deal: the same story arrives from Reuters, Bloomberg and CNBC with slightly
+      // different values, so dedupe on the target (or the headline when no target was parsed).
+      // Same deal, three wires: drop when EITHER the acquirer+value pair or the target's key word has
+      // already appeared ("LSEG to buy Octus" vs "London Stock Exchange Group Agrees to Buy Octus").
+      const word = (p.target || '').toLowerCase().replace(/[^a-z0-9 ]/g, '').trim().split(' ').filter((w) => w.length >= 4).pop();
+      const keyA = (p.acquirer && p.value) ? `a:${p.acquirer.toLowerCase().replace(/[^a-z0-9]/g, '')}|v:${Math.round(p.value / 500)}` : null;
+      const keyT = word ? `t:${word}` : null;
+      if ((keyA && seenA.has(keyA)) || (keyT && seenT.has(keyT))) continue;
+      if (keyA) seenA.add(keyA);
+      if (keyT) seenT.add(keyT);
+      out.push({ ...p, title: t, sector: dealSector(t), source: it.source, url: it.url, date: it.date ? it.date.slice(0, 10) : null });
+    }
+    out.sort((a, b) => (a.date < b.date ? 1 : -1));
+    return out.slice(0, 40);
+  });
+}
+
+// ---------------------------------------------------------------------------
 // Currency-adjusted returns (Tier 2). A EUR/JPY investor wants local-currency P&L, not just USD.
 // We take each instrument's USD window return and fold in the base currency's own move over the
 // same window. 'div' = the pair is USD-per-base (EUR/USD); 'mul' = base-per-USD (USD/JPY).
@@ -3704,6 +3784,15 @@ const server = http.createServer(async (req, res) => {
     }
     if (url.pathname === '/api/reroute') return sendJSON(res, 200, { series: rerouteSeries, current: rerouteSeries[rerouteSeries.length - 1] || null });
     if (url.pathname === '/api/inventories') return sendJSON(res, 200, await getInventories());
+    if (url.pathname === '/api/deals') {
+      const wire = await getDealWire().catch(() => []);
+      const archive = DEAL_ARCHIVE.deals || [];
+      const sectors = DEAL_SECTOR_RULES.map((sec) => {
+        const rows = wire.filter((w) => w.sector === sec.id);
+        return { id: sec.id, count: rows.length, value: rows.reduce((a, b) => a + (b.value || 0), 0) };
+      }).filter((sec) => sec.count).sort((a, b) => b.count - a.count);
+      return sendJSON(res, 200, { updated: new Date().toISOString(), coverage: DEAL_ARCHIVE.coverage || {}, wire, archive, sectors });
+    }
     if (url.pathname === '/api/regime') return sendJSON(res, 200, await getRegime().catch((e) => ({ error: String(e.message), rows: [] })));
     if (url.pathname === '/api/screen') return sendJSON(res, 200, await getScreen().catch((e) => ({ error: String(e.message), rows: [] })));
     if (url.pathname === '/api/risk') return sendJSON(res, 200, await getRisk().catch((e) => ({ error: String(e.message), metrics: [], matrix: {} })));
