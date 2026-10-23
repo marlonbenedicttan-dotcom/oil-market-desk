@@ -2147,9 +2147,18 @@ function renderBrief(b) {
     + `<span class="mvr-v dimtext" style="font-weight:400">${esc(e.time || '')}</span><span class="mvr-sp"></span></div>`).join('')
     || '<div class="mvr"><span class="mvr-tag"></span><span class="mvr-n dimtext">Nothing scheduled.</span><span></span><span></span></div>';
   const ctx = (b.happened || []).filter((x) => x.kind !== 'move').map((x) => x.text).join(' · ');
+  // M&A only when there is something worth flagging — a quiet week renders nothing at all.
+  const deals = b.deals || [];
+  const dealRows = deals.length ? `<div class="brief-deals"><div class="gtitle">DEALS</div>${deals.map((d) => `<button class="brief-deal" data-sector="${esc(d.sector || '')}" data-company="${esc(d.acquirer || d.target || '')}">
+      <span class="bd-date">${dealDate(d.date)}</span>
+      <span class="bd-pair"><b>${esc(maName(d.acquirer) || '—')}</b> <span class="dimtext">→</span> ${esc(maName(d.target) || '—')}</span>
+      <span class="bd-val">${dealVal(d.value)}</span>
+      <span class="bd-st">${chipFor(d)}</span>
+    </button>`).join('')}</div>` : '';
   el.innerHTML = heroHtml
     + `<div class="brief-cols"><div class="brief-col"><div class="gtitle">WHAT HAPPENED</div>${rows}</div>`
     + `<div class="brief-col"><div class="gtitle">WHAT'S NEXT</div>${nextRows}</div></div>`
+    + dealRows
     + (ctx ? `<div class="brief-ctx dimtext">${ctx}</div>` : '');
 }
 async function loadBrief() {
@@ -2934,6 +2943,10 @@ function maMono(name) {
   return `<span class="ma-mono" style="--h:${h}">${esc(ini)}</span>`;
 }
 const companyKey = (n) => String(n || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+// Keep the two segment buttons in step with the state, however the state was reached.
+function syncMaTabs() {
+  document.querySelectorAll('.deal-view').forEach((x) => { const on = x.dataset.view === maView; x.classList.toggle('active', on); x.setAttribute('aria-selected', String(on)); });
+}
 // Headline fragments ("ADNOC's XRG in talks", "Daiichi Life Offers $4.4 Billion") are not company names.
 const maName = (n) => String(n || '').replace(/\s+(?:is )?(?:in|in advanced) talks\b.*$/i, '').replace(/\s+offers?\b.*$/i, '').replace(/[,;:.]+$/, '').trim();
 
@@ -3109,6 +3122,15 @@ function renderCompanyDeals(el, deals) {
 }
 
 document.addEventListener('click', (e) => {
+  const bd = e.target.closest('.brief-deal');
+  if (bd) {
+    maView = 'sectors';
+    maSector = bd.dataset.sector || null;
+    maCompany = bd.dataset.company || null;
+    syncMaTabs();
+    showTab('deals');
+    return;
+  }
   const days = e.target.closest('[data-days]');
   if (days) { maDays = Number(days.dataset.days); renderDeals(); return; }
   const view = e.target.closest('.deal-view');
@@ -3128,5 +3150,5 @@ document.addEventListener('click', (e) => {
   const sec = e.target.closest('[data-sector]');
   if (sec && maView === 'sectors' && !sec.dataset.deal) { maSector = sec.dataset.sector; maCompany = null; renderDeals(); return; }
   const deal = e.target.closest('[data-deal]');
-  if (deal && deal.dataset.company) { maView = 'sectors'; maSector = deal.dataset.sector; maCompany = deal.dataset.company; renderDeals(); }
+  if (deal && deal.dataset.company) { maView = 'sectors'; maSector = deal.dataset.sector; maCompany = deal.dataset.company; syncMaTabs(); renderDeals(); }
 });

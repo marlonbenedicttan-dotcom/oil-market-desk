@@ -3534,6 +3534,19 @@ async function buildBrief() {
         route: heroRaw.route || null, why: heroRaw.why || null, facts: heroRaw.facts || [], srcKind: heroRaw.srcKind || 'bench' };
       hero.spark = heroRaw.spark || null;
     }
+    // M&A on the brief: only deals that matter (verified, or $1B+) and only if they are recent. A quiet
+    // week produces no block at all rather than an empty heading.
+    let briefDeals = [];
+    try {
+      const book = await refreshDeals();
+      const since = new Date(Date.now() - 21 * 864e5).toISOString().slice(0, 10);
+      briefDeals = (book.deals || [])
+        .filter((d) => (d.verified || (d.value || 0) >= 1000) && (d.lastSeen || d.date || '') >= since)
+        .sort((a, b) => (b.value || 0) - (a.value || 0))
+        .slice(0, 3)
+        .map((d) => ({ key: d.key, acquirer: d.acquirer, target: d.target, value: d.value || null, status: d.status, verified: !!d.verified, date: d.date, sector: d.sector || null }));
+    } catch {}
+
     // WHAT HAPPENED is the rest of the same leaderboard — no second ranking, no re-sorting downstream.
     const rows = mix.filter((x) => x !== heroRaw).slice(0, 5).map((x) => ({
       kind: x.kind === 'bench' ? 'bench' : (x.kind === 'fx' ? 'fx' : 'index'),
@@ -3543,7 +3556,7 @@ async function buildBrief() {
       spark: x.spark || null, why: x.why || null, facts: x.facts || [], route: x.route || null,
     }));
     return {
-      updated: new Date().toISOString(), headline, happened, next, macro: macroTop, hero, rows,
+      updated: new Date().toISOString(), headline, happened, next, macro: macroTop, hero, rows, deals: briefDeals,
       alerts: alerts.map((a) => ({ level: a.level, text: a.text })),
       movers: movers.slice(0, 3),
     };

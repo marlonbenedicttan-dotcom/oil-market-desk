@@ -967,3 +967,17 @@ button.deal-sec-tile:hover { background: #10151b; }
 .ma-co-bar { grid-column: 1 / -1; height: 3px; background: #141a21; margin-top: 4px; }
 .ma-co-bar i { display: block; height: 100%; background: var(--amber2); }
 @media (max-width: 640px) { .ma-chip { min-height: 32px; } .ma-sec-mix { width: 44px; } }
+
+/* M&A on the daily brief — only rendered when a deal is worth flagging. */
+.brief-deals { border-top: 1px solid var(--line); }
+.brief-deal { display: grid; grid-template-columns: 54px 1fr 72px 88px; gap: 9px; align-items: center; width: 100%;
+  padding: 7px 12px; background: transparent; border: 0; border-top: 1px solid var(--line); color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.brief-deal:hover { background: #10151b; }
+.bd-date { font-size: 9.5px; color: var(--dim); text-transform: uppercase; letter-spacing: .5px; white-space: nowrap; }
+.bd-pair { font-size: 12px; color: #c9d4df; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bd-val { font-size: 12px; font-weight: 700; text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.bd-st { text-align: right; }
+@media (max-width: 640px) {
+  .brief-deal { grid-template-columns: 46px 1fr 64px; }
+  .bd-st { display: none; }
+}

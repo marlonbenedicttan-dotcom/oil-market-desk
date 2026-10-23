@@ -1337,3 +1337,13 @@ tap. Rebuilt as a ranked board:
 - Fixed on the way: the header counted `status === 'verified'` after verification became a boolean, so
   it read "0 verified" while five deals were verified; and the "since" span now includes the year when
   it is not the current one.
+
+## Daily brief: M&A when it matters (2026-10-23)
+The brief now carries a **DEALS** block under the two columns — but only when something qualifies:
+a deal that is verified, or worth ≥ $1B, seen in the last 21 days. A quiet stretch renders nothing at
+all rather than an empty heading. Three rows max, largest first, each with date · acquirer → target ·
+value · status chip (VERIFIED / RUMOUR / ANNOUNCED / CLOSED). Tapping one opens that deal in M&A
+(segment buttons kept in step via `syncMaTabs`, since the state can now be entered from HOME).
+Today it shows Paramount/WBD ($110B, VERIFIED), SoftBank → Allied Universal ($18B, RUMOUR) and
+Proofpoint → Varonis ($6.3B, ANNOUNCED) beneath a Natural Gas hero — which is the right split: the hero
+is the sharpest *move*, M&A is a separate signal.
