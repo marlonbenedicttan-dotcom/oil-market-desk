@@ -1418,3 +1418,13 @@ from words in the filing text. `scripts/fix-deals.mjs` fixes that properly:
 Result: 124 deals — Financials 23, Technology 20, Healthcare 20, Industrials 19, Energy 14, Materials 6,
 Mining 6, Consumer 5, Construction 3, Other 8.
 Run it after any backfill: `node scripts/fix-deals.mjs`.
+
+## Sectors: a real historical list per segment (2026-10-23)
+Opening a sector used to inherit the board's time window and offered no way to change it, so the list
+looked like a snapshot. Now:
+- The sector view reads the **whole book**, not the board's filtered slice.
+- Its own range filter: `ALL / 3Y / 12M / 6M`, plus `LATEST / LARGEST` sorting.
+- A span line (`11 Oct 2023 → 31 Aug`) and a header with count, disclosed value and how many are
+  verified.
+- Dates carry the year when it is not the current one, so a 2023 deal is never mistaken for this year.
+Energy now shows its 14 deals across the range; 12M narrows to 3.

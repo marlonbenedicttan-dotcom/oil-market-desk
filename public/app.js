@@ -2934,6 +2934,7 @@ $('macro-links')?.addEventListener('click', (e) => { const el = e.target.closest
 // RUMOUR (the wire says talks/exploring). Verification is a flag, never a separate section.
 let dealsData = null, maView = 'highlights', maSector = null, maCompany = null, maDays = 0;
 let maQuery = '', maMin = 0, maStatus = 'all', maBuyer = 'all', maLookupFor = null, maLookupBusy = false;
+let maSecDays = 0, maSecSort = 'date';   // the sector's own window + sort, independent of the board's
 const PE_RE = /\b(capital|partners|equity|kkr|blackstone|apollo|carlyle|bain|vista|thoma bravo|advent|cvc|eqt|warburg|silver lake|tpg|permira|bc partners|cinven|kps|platinum|golden gate|hellman)\b/i;
 const dealDate = (d) => (d ? new Date(d + 'T00:00:00Z').toLocaleDateString('en-GB', { day: '2-digit', month: 'short', timeZone: 'UTC' }) : '');
 // For a span ("since …") the year matters once it is not this year.
@@ -2999,8 +3000,8 @@ function renderDeals() {
     ? 'The year’s biggest verified deal, the largest logged, and what came in this week.'
     : 'Pick a sector, then a deal, to see the parties, the price and the timeline.';
   if (maView === 'sectors') {
-    if (maCompany) return renderCompanyDeals(el, deals);
-    if (maSector) return renderCompanyList(el, deals);
+    if (maCompany) return renderCompanyDeals(el, allDeals);
+    if (maSector) return renderCompanyList(el, allDeals);
     return renderSectorGrid(el, deals);
   }
   return renderHighlights(el, deals);
@@ -3106,13 +3107,15 @@ function renderSectorGrid(el, deals) {
     + (secs.length ? `<div class="macro-note">Book starts ${dealsData.log && dealsData.log.since ? dealDateY(dealsData.log.since) : 'this week'} — earlier deals are still being backfilled, so a sector can look thinner than the market was.</div>` : '<div class="macro-note">Nothing in this window.</div>');
 }
 
-function renderCompanyList(el, deals) {
-  // One row per DEAL, both parties on it. Listing Chevron and Hess separately made a single deal look
-  // like two, which is exactly what it was doing.
-  const rows = deals.filter((d) => d.sector === maSector);
+function renderCompanyList(el, allDeals) {
+  const cutoff = maSecDays ? new Date(Date.now() - maSecDays * 864e5).toISOString().slice(0, 10) : null;
+  const rows = allDeals
+    .filter((d) => d.sector === maSector && (!cutoff || (d.date || '') >= cutoff))
+    .sort((a, b) => (maSecSort === 'value' ? (b.value || 0) - (a.value || 0) : (a.date < b.date ? 1 : -1)));
   const total = rows.reduce((a, b) => a + (b.value || 0), 0);
   const verified = rows.filter((d) => d.verified).length;
-  const top = rows.slice().sort((a, b) => (b.value || 0) - (a.value || 0))[0];
+  const span = rows.length ? `${dealDateY(rows[rows.length - 1].date)} → ${dealDateY(rows[0].date)}` : '';
+  const ranges = [[0, 'ALL'], [365 * 3, '3Y'], [365, '12M'], [180, '6M']];
   const dealRow = (d) => `<button class="ma-row ma-deal-row" data-status="${esc(d.status || 'announced')}" data-deal="${esc(d.key || d.id)}" data-sector="${esc(d.sector || '')}" data-company="${esc(maName(d.acquirer) || maName(d.target) || '')}">
       <span class="ma-when">${dealDateY(d.date)}</span>
       <span class="ma-who">${maMono(maName(d.target))}<span class="ma-names"><b>${esc(maName(d.acquirer) || '—')}</b> <span class="dimtext">→</span> ${esc(maName(d.target) || '—')}</span></span>
@@ -3121,8 +3124,11 @@ function renderCompanyList(el, deals) {
     </button>`;
   el.innerHTML = `<div class="ma-crumb"><button class="ma-back" data-back="1">← SECTORS</button> <span>${esc(maSector)}</span></div>`
     + `<div class="ma-sec-head"><span class="ma-sec-head-n">${rows.length} deal${rows.length === 1 ? '' : 's'}</span><span class="ma-sec-head-v">${total ? dealVal(total) + ' disclosed' : 'no value disclosed'}</span><span class="ma-sec-head-c">${verified} verified</span></div>`
+    + `<div class="ma-filters">${ranges.map(([d, l]) => `<button class="ma-chip${maSecDays === d ? ' on' : ''}" data-secdays="${d}">${l}</button>`).join('')}`
+    + `<span class="ma-gap"></span><button class="ma-chip${maSecSort === 'date' ? ' on' : ''}" data-secsort="date">LATEST</button><button class="ma-chip${maSecSort === 'value' ? ' on' : ''}" data-secsort="value">LARGEST</button></div>`
+    + (span ? `<div class="ma-sumline">${esc(span)}</div>` : '')
     + `<div class="gtitle">DEALS</div>`
-    + rows.map(dealRow).join('');
+    + (rows.length ? rows.map(dealRow).join('') : '<div class="macro-note">No deals in this window — widen the range.</div>');
 }
 
 function renderCompanyDeals(el, deals) {
@@ -3173,6 +3179,10 @@ document.addEventListener('input', (e) => {
 });
 
 document.addEventListener('click', (e) => {
+  const sd = e.target.closest('[data-secdays]');
+  if (sd) { maSecDays = Number(sd.dataset.secdays); renderDeals(); return; }
+  const ss = e.target.closest('[data-secsort]');
+  if (ss) { maSecSort = ss.dataset.secsort; renderDeals(); return; }
   if (e.target.closest('[data-reset]')) {
     maMin = 0; maStatus = 'all'; maBuyer = 'all'; maQuery = '';
     const inp = $('ma-search'); if (inp) inp.value = '';
