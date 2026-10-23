@@ -1428,3 +1428,15 @@ looked like a snapshot. Now:
   verified.
 - Dates carry the year when it is not the current one, so a 2023 deal is never mistaken for this year.
 Energy now shows its 14 deals across the range; 12M narrows to 3.
+
+## GDELT: unlocked once, then re-blocked (2026-10-23)
+Status check: the 429 cleared briefly, GDELT served exactly one request, and re-blocked immediately.
+There is no published cooldown; it is not a reliable backfill channel from this IP. Two things learned:
+- The query syntax matters: GDELT rejects `(a OR b) (c)` — parentheses may only wrap OR'd terms. The
+  working form is `(acquisition OR merger OR takeover) billion`.
+- Pacing at 12s, then 30s, still 429s after the first success. A 34-month walk would take days.
+So the historical book came from EDGAR instead: **backfilled 2016–2023 as well**, 1,725 filings read,
++233 deals. The book is now **268 deals (2020–2026)**, 62 with a disclosed value, sectors:
+Industrials 55 · Technology 52 · Healthcare 50 · Financials 48 · Energy 19 · Consumer 16 · Materials 11 ·
+Mining 7 · Other 5 · Construction 3 · Agriculture 1 · Real estate 1.
+(EDGAR's full-text index returns nothing for this phrase before 2020, which is why the book starts there.)
