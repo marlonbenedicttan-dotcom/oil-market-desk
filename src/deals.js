@@ -77,6 +77,7 @@ const validName = (n) => !!n && /^[A-Z]/.test(String(n)) && String(n).length <= 
   && !/%|\?|\b(part of|rival|unit|struggling|including|which|that|its|their|stake in|transfers?|ownership|announces?|completes?|closes?|acquires?|sells?)\b/i.test(String(n));
 
 export {
+  SIC_SECTOR, isGenericTarget,
   DEAL_SECTOR_RULES, dealSector, DEAL_SITES, DEAL_RUMOUR, DEAL_CLOSED, DEAL_ENDED, eventStatus,
   STATUS_RANK, CHANNELS, nameTokens, nameKey, parseDealTitle, validName,
 };
@@ -139,3 +140,43 @@ export function mergeEvent(store, ev) {
   if (ev.sector && hit.sector === 'Other') hit.sector = ev.sector;
   return true;
 }
+
+// SEC SIC code -> sector. The filings' own classification is far better than guessing from headline words,
+// which is why "Other" was 31 deals before this existed.
+const SIC_SECTOR = (sic) => {
+  const n = Number(sic) || 0;
+  if (n >= 100 && n < 1000) return 'Agriculture';
+  if (n >= 1300 && n < 1400) return 'Energy';          // crude petroleum & natural gas
+  if (n >= 1000 && n < 1500) return 'Mining';
+  if (n >= 1500 && n < 1800) return 'Construction';
+  if (n >= 2000 && n < 2200) return 'Consumer';
+  if (n >= 2200 && n < 2400) return 'Consumer';
+  if (n >= 2400 && n < 2800) return 'Materials';
+  if (n >= 2830 && n < 2840) return 'Healthcare';
+  if (n >= 2800 && n < 2900) return 'Materials';
+  if (n >= 2900 && n < 3200) return 'Energy';
+  if (n >= 3200 && n < 3400) return 'Materials';
+  if (n >= 3400 && n < 3600) return 'Industrials';
+  if (n >= 3570 && n < 3580) return 'Technology';      // computers
+  if (n >= 3600 && n < 3700) return 'Technology';
+  if (n >= 3700 && n < 3800) return 'Industrials';
+  if (n >= 3800 && n < 4000) return 'Healthcare';
+  if (n >= 4000 && n < 4900) return 'Industrials';
+  if (n >= 4900 && n < 5000) return 'Energy';
+  if (n >= 5000 && n < 5200) return 'Consumer';
+  if (n >= 5200 && n < 6000) return 'Consumer';
+  if (n >= 6000 && n < 6200) return 'Financials';
+  if (n >= 6200 && n < 6300) return 'Financials';
+  if (n >= 6300 && n < 6500) return 'Financials';
+  if (n >= 6500 && n < 6600) return 'Real estate';
+  if (n >= 6700 && n < 6800) return 'Financials';
+  if (n >= 7000 && n < 7300) return 'Consumer';
+  if (n >= 7370 && n < 7380) return 'Technology';      // prepackaged software, data processing
+  if (n >= 7300 && n < 8000) return 'Industrials';
+  if (n >= 8000 && n < 8100) return 'Healthcare';
+  if (n >= 8100 && n < 9000) return 'Industrials';
+  return 'Other';
+};
+// A target that is an object, not a company: leases, share counts, "membership interests".
+const isGenericTarget = (t) => /^(?:new |the |certain )?(?:lease|leases|shares|stock|interests?|notes?|units?|assets|business|operations?|rights?|licen[cs]es?|permits?|properties)\b/i.test(String(t || ''))
+  || /\b(?:fixed shares|membership interests|equity interests|common stock|previous lease|and previous)\b/i.test(String(t || ''));

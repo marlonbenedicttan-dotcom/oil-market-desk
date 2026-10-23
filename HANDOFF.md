@@ -1406,3 +1406,15 @@ GDELT stayed blocked (429 on every attempt, minutes apart), so the backfill ran 
 Result: **126 deals** across 2024–2026 (Financials 39, Other 31, Energy 16, Technology 13, Healthcare 12,
 Industrials 7, Media 3, Consumer 3, Telecom 2). Quality caveat: EDGAR identity is solid, but many rows
 have no value, and the sector tag comes from the filing text so "Other" is large.
+
+## Deal quality: SIC sectors, junk targets, duplicates (2026-10-23)
+The EDGAR backfill's weakest point was classification: 31 deals sat in "Other" because the sector came
+from words in the filing text. `scripts/fix-deals.mjs` fixes that properly:
+- **Sector from the filer's SEC SIC code** (`SIC_SECTOR` in `src/deals.js`), using the CIK already in the
+  stored filing URL — 80 deals retagged, "Other" fell from 31 to 8.
+- **Generic objects dropped** (`isGenericTarget`): "New Lease and Previous Lease", "Fixed Shares",
+  "membership interests" are not companies.
+- **Duplicates merged** by target token, keeping the row with a value and the most events.
+Result: 124 deals — Financials 23, Technology 20, Healthcare 20, Industrials 19, Energy 14, Materials 6,
+Mining 6, Consumer 5, Construction 3, Other 8.
+Run it after any backfill: `node scripts/fix-deals.mjs`.
