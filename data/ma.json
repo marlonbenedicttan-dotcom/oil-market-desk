@@ -6,8 +6,22 @@
   "source": "SEC EDGAR 8-K press releases",
   "note": "Only deals whose value and parties were read out of the company's own press release. This is a growing seed, not the whole market."
  },
- "count": 4,
+ "count": 5,
  "deals": [
+  {
+   "id": "0001437107-26-000018",
+   "date": "2026-02-27",
+   "closed": "2026-10-06",
+   "acquirer": "Paramount Skydance",
+   "target": "Warner Bros. Discovery",
+   "value": 110000,
+   "sector": "Media",
+   "consideration": "cash",
+   "advisers": [],
+   "rationale": "The newly merged company will be well positioned to compete in the rapidly evolving entertainment industry where storytelling combined with world class technology expertise will be an important driver of value creation across the ecosystem and for shareholders.",
+   "url": "https://www.sec.gov/Archives/edgar/data/1437107/000143710726000018/exhibit991.htm",
+   "source": "Paramount 8-K, EX-99.1"
+  },
   {
    "id": "0000950103-23-014885",
    "date": "2023-10-11",

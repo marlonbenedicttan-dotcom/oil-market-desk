@@ -2972,7 +2972,7 @@ function renderHighlights(el, deals) {
       <div class="ma-hero-pair">${maMono(maName(hero.target))}<span><b>${esc(maName(hero.acquirer) || '—')}</b> <span class="dimtext">→</span> ${esc(maName(hero.target) || '—')}</span></div>
       <div class="ma-hero-v">${dealVal(hero.value)}</div>
       ${hero.rationale ? `<div class="ma-hero-w">“${esc(hero.rationale)}”</div>` : ''}
-      <div class="ma-hero-m">${dealDate(hero.date)} · ${(hero.advisers || []).length ? 'advisers: ' + esc(hero.advisers.join(', ')) : 'advisers not disclosed'}</div>
+      <div class="ma-hero-m">announced ${dealDate(hero.date)}${hero.closed ? ' · closed ' + dealDate(hero.closed) : ''} · ${(hero.advisers || []).length ? 'advisers: ' + esc(hero.advisers.join(', ')) : 'advisers not disclosed'}</div>
     </div>` : '')
     + `<div class="gtitle">BIGGEST LOGGED</div>${year.map((d, i) => row(d, i)).join('')}`
     + `<div class="gtitle">LATEST</div>${latest.map((d) => row(d, null)).join('')}`;
@@ -3032,7 +3032,7 @@ function renderCompanyDeals(el, deals) {
     + `<div class="ma-deal">
         <div class="ma-deal-pair">${maMono(d.target)}<span><b>${esc(d.acquirer || '—')}</b> <span class="dimtext">→</span> ${esc(d.target || '—')}</span></div>
         <div class="ma-deal-v">${dealVal(d.value) || 'value not disclosed'} ${statusChip(d.status)}</div>
-        <div class="ma-deal-m">${dealDate(d.date)} · ${esc(d.sector || '')}${d.consideration ? ' · ' + esc(d.consideration) : ''}</div>
+        <div class="ma-deal-m">announced ${dealDate(d.date)}${d.closed ? ' · closed ' + dealDate(d.closed) : ''} · ${esc(d.sector || '')}${d.consideration ? ' · ' + esc(d.consideration) : ''}</div>
         ${d.rationale ? `<div class="dc-why">“${esc(d.rationale)}”</div>` : ''}
         <div class="ma-deal-foot">${advisers}${link}</div>
       </div>`
