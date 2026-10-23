@@ -981,3 +981,16 @@ button.deal-sec-tile:hover { background: #10151b; }
   .brief-deal { grid-template-columns: 46px 1fr 64px; }
   .bd-st { display: none; }
 }
+
+/* M&A tools — search + quick filters. */
+.ma-tools { display: flex; flex-wrap: wrap; gap: 8px; padding: 9px 12px; border-bottom: 1px solid var(--line); }
+.ma-search { flex: 1 1 220px; min-width: 0; background: #0c0f13; border: 1px solid var(--line2); color: var(--text);
+  font: inherit; font-size: 11px; padding: 7px 10px; min-height: 32px; outline: none; }
+.ma-search:focus { border-color: var(--amber); }
+.ma-search::placeholder { color: #5b6773; }
+.ma-chips { display: flex; flex-wrap: wrap; gap: 5px; }
+.ma-tools.hidden { display: none; }
+@media (max-width: 640px) {
+  .ma-tools { flex-direction: column; }
+  .ma-search { flex: 1 1 auto; }
+}

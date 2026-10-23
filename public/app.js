@@ -2921,6 +2921,8 @@ $('macro-links')?.addEventListener('click', (e) => { const el = e.target.closest
 // Every row carries its evidence: VERIFIED (read from the filing), REPORTED (a wire says so) or
 // RUMOUR (the wire says talks/exploring). Verification is a flag, never a separate section.
 let dealsData = null, maView = 'highlights', maSector = null, maCompany = null, maDays = 0;
+let maQuery = '', maMin = 0, maStatus = 'all', maBuyer = 'all';
+const PE_RE = /\b(capital|partners|equity|kkr|blackstone|apollo|carlyle|bain|vista|thoma bravo|advent|cvc|eqt|warburg|silver lake|tpg|permira|bc partners|cinven|kps|platinum|golden gate|hellman)\b/i;
 const dealDate = (d) => (d ? new Date(d + 'T00:00:00Z').toLocaleDateString('en-GB', { day: '2-digit', month: 'short', timeZone: 'UTC' }) : '');
 // For a span ("since …") the year matters once it is not this year.
 const dealDateY = (d) => {
@@ -2964,14 +2966,26 @@ function renderDeals() {
   if (!dealsData) { el.innerHTML = stError('Couldn’t load the deal book — retrying.'); return; }
   const allDeals = dealsData.deals || [];
   const cutoff = maDays ? new Date(Date.now() - maDays * 864e5).toISOString().slice(0, 10) : null;
-  const deals = cutoff ? allDeals.filter((d) => (d.lastSeen || d.date || '') >= cutoff) : allDeals;
+  const q = maQuery.trim().toLowerCase();
+  const deals = allDeals.filter((d) => {
+    if (cutoff && (d.lastSeen || d.date || '') < cutoff) return false;
+    if (maMin && (d.value || 0) < maMin) return false;
+    if (maStatus === 'verified' && !d.verified) return false;
+    if (maStatus === 'rumour' && d.status !== 'rumour') return false;
+    if (maBuyer === 'pe' && !PE_RE.test(d.acquirer || '')) return false;
+    if (q && !(`${d.acquirer || ''} ${d.target || ''} ${d.sector || ''}`.toLowerCase().includes(q))) return false;
+    return true;
+  });
   const sub = $('deals-sub');
   const ver = deals.filter((d) => d.verified).length;
   if (sub) sub.textContent = `${deals.length} deals · ${ver} verified · ${(dealsData.log && dealsData.log.since) ? 'since ' + dealDateY(dealsData.log.since) : 'live'}`;
+  const tools = $('ma-tools');
+  if (tools) tools.classList.toggle('hidden', maView !== 'highlights');
+  renderMaTools();
   const hint = $('deal-hint');
   if (hint) hint.textContent = maView === 'highlights'
     ? 'The year’s biggest verified deal, the largest logged, and what came in this week.'
-    : 'Pick a sector, then a company, to see the deal itself.';
+    : 'Pick a sector, then a deal, to see the parties, the price and the timeline.';
   if (maView === 'sectors') {
     if (maCompany) return renderCompanyDeals(el, deals);
     if (maSector) return renderCompanyList(el, deals);
@@ -2980,14 +2994,27 @@ function renderDeals() {
   return renderHighlights(el, deals);
 }
 
+function renderMaTools() {
+  const box = $('ma-chips');
+  if (!box) return;
+  const chip = (id, label, on, kind) => `<button class="ma-chip${on ? ' on' : ''}" data-${kind}="${id}">${label}</button>`;
+  box.innerHTML = chip(0, 'ALL SIZES', maMin === 0, 'min') + chip(1000, '$1B+', maMin === 1000, 'min') + chip(5000, '$5B+', maMin === 5000, 'min')
+    + chip('pe', 'PE BUYERS', maBuyer === 'pe', 'buyer') + chip('rumour', 'RUMOURS', maStatus === 'rumour', 'status')
+    + chip('verified', 'VERIFIED', maStatus === 'verified', 'status');
+}
+
 function renderHighlights(el, deals) {
   const verified = deals.filter((d) => d.status === 'verified' && d.value);
   const hero = verified.slice().sort((a, b) => b.value - a.value)[0]
     || deals.filter((d) => d.value).sort((a, b) => b.value - a.value)[0];
-  const year = deals.filter((d) => d.value).sort((a, b) => b.value - a.value).slice(0, 8);
-  const latest = deals.slice(0, 10);
+  // No deal twice on one page: the hero is out of the rankings, and whatever the rankings show is out
+  // of LATEST. (The same deal appearing in two lists read as two deals.)
+  const heroKey = hero ? (hero.key || hero.id) : null;
+  const year = deals.filter((d) => d.value && (d.key || d.id) !== heroKey).sort((a, b) => b.value - a.value).slice(0, 8);
+  const shown = new Set(year.map((d) => d.key || d.id));
+  const latest = deals.filter((d) => !shown.has(d.key || d.id)).slice(0, 10);
   const row = (d, i) => `<button class="ma-row" data-status="${esc(d.status || 'reported')}" data-deal="${esc(d.key || d.id)}" data-sector="${esc(d.sector || '')}" data-company="${esc(d.acquirer || d.target || '')}">
-      ${i != null ? `<span class="ma-rank">${i + 1}</span>` : `<span class="ma-when">${dealDate(d.date)}</span>`}
+      ${i != null ? `<span class="ma-rank">${i + 1}</span>` : `<span class="ma-when">${dealDateY(d.date)}</span>`}
       <span class="ma-who">${maMono(maName(d.target) || maName(d.acquirer))}<span class="ma-names"><b>${esc(maName(d.acquirer) || '—')}</b> <span class="dimtext">→</span> ${esc(maName(d.target) || '—')}</span></span>
       <span class="ma-val">${dealVal(d.value)}</span>
       <span class="ma-tags">${chipFor(d)}</span>
@@ -3052,38 +3079,22 @@ function renderSectorGrid(el, deals) {
 }
 
 function renderCompanyList(el, deals) {
+  // One row per DEAL, both parties on it. Listing Chevron and Hess separately made a single deal look
+  // like two, which is exactly what it was doing.
   const rows = deals.filter((d) => d.sector === maSector);
-  const map = new Map();
-  const add = (name, role, d) => {
-    if (!name) return;
-    const k = companyKey(name);
-    if (!map.has(k)) map.set(k, { name: maName(name), role, count: 0, value: 0 });
-    const c = map.get(k);
-    c.count++; c.value += d.value || 0;
-    if (c.role !== role) c.role = 'both';
-  };
-  for (const d of rows) { add(d.acquirer, 'acquirer', d); add(d.target, 'target', d); }
-  const list = [...map.values()].sort((a, b) => b.value - a.value || a.name.localeCompare(b.name));
-  const max = Math.max(1, ...list.map((c) => c.value));
   const total = rows.reduce((a, b) => a + (b.value || 0), 0);
   const verified = rows.filter((d) => d.verified).length;
   const top = rows.slice().sort((a, b) => (b.value || 0) - (a.value || 0))[0];
-  const topCard = top ? `<div class="ma-top-deal" data-deal="${esc(top.key || top.id)}" data-sector="${esc(top.sector || '')}" data-company="${esc(top.acquirer || top.target || '')}" role="button" tabindex="0">
-      <span class="ma-hero-l">BIGGEST HERE</span>
-      <span class="ma-top-pair">${maMono(maName(top.target))}<span><b>${esc(maName(top.acquirer) || '—')}</b> <span class="dimtext">→</span> ${esc(maName(top.target) || '—')}</span></span>
-      <span class="ma-top-v">${dealVal(top.value) || '—'} ${chipFor(top)}</span>
-    </div>` : '';
+  const dealRow = (d) => `<button class="ma-row ma-deal-row" data-status="${esc(d.status || 'announced')}" data-deal="${esc(d.key || d.id)}" data-sector="${esc(d.sector || '')}" data-company="${esc(d.acquirer || d.target || '')}">
+      <span class="ma-when">${dealDateY(d.date)}</span>
+      <span class="ma-who">${maMono(maName(d.target))}<span class="ma-names"><b>${esc(maName(d.acquirer) || '—')}</b> <span class="dimtext">→</span> ${esc(maName(d.target) || '—')}</span></span>
+      <span class="ma-val">${dealVal(d.value) || '—'}</span>
+      <span class="ma-tags">${chipFor(d)}</span>
+    </button>`;
   el.innerHTML = `<div class="ma-crumb"><button class="ma-back" data-back="1">← SECTORS</button> <span>${esc(maSector)}</span></div>`
     + `<div class="ma-sec-head"><span class="ma-sec-head-n">${rows.length} deal${rows.length === 1 ? '' : 's'}</span><span class="ma-sec-head-v">${total ? dealVal(total) + ' disclosed' : 'no value disclosed'}</span><span class="ma-sec-head-c">${verified} verified</span></div>`
-    + topCard
-    + `<div class="gtitle">COMPANIES</div>`
-    + list.map((c) => `<button class="ma-row ma-co" data-company="${esc(c.name)}">
-        ${maMono(c.name)}
-        <span class="ma-names"><b>${esc(c.name)}</b><span class="ma-role">${esc(c.role)}</span></span>
-        <span class="ma-val">${c.value ? dealVal(c.value) : '—'}</span>
-        <span class="ma-count">${c.count} deal${c.count === 1 ? '' : 's'}</span>
-        <span class="ma-co-bar"><i style="width:${Math.max(2, (c.value / max) * 100)}%"></i></span>
-      </button>`).join('');
+    + `<div class="gtitle">DEALS</div>`
+    + rows.map(dealRow).join('');
 }
 
 function renderCompanyDeals(el, deals) {
@@ -3105,7 +3116,12 @@ function renderCompanyDeals(el, deals) {
   const link = d.url
     ? `<a href="${esc(d.url)}" target="_blank" rel="noopener noreferrer">${d.status === 'verified' ? 'the filing' : 'the story'} ↗</a>`
     : '';
+  const asAcq = mine.filter((x) => companyKey(x.acquirer) === companyKey(maCompany)).length;
+  const asTgt = mine.filter((x) => companyKey(x.target) === companyKey(maCompany)).length;
+  const total = mine.reduce((a2, b2) => a2 + (b2.value || 0), 0);
+  const stats = `<div class="ma-sec-head"><span class="ma-sec-head-n">${mine.length} deal${mine.length === 1 ? '' : 's'}</span><span class="ma-sec-head-v">${asAcq} as buyer · ${asTgt} as target</span>${total ? `<span class="ma-sec-head-c">${dealVal(total)}</span>` : ''}</div>`;
   el.innerHTML = `<div class="ma-crumb"><button class="ma-back" data-back="1">← ${esc(maSector || 'SECTORS')}</button> <span>${esc(maCompany)}</span></div>`
+    + stats
     + `<div class="ma-deal">
         <div class="ma-deal-pair">${maMono(d.target)}<span><b>${esc(d.acquirer || '—')}</b> <span class="dimtext">→</span> ${esc(d.target || '—')}</span></div>
         <div class="ma-deal-v">${dealVal(d.value) || 'value not disclosed'} ${chipFor(d)}</div>
@@ -3121,7 +3137,22 @@ function renderCompanyDeals(el, deals) {
     + (other.length ? `<div class="gtitle">ALSO INVOLVED</div>${otherHtml}` : '');
 }
 
+document.addEventListener('input', (e) => {
+  if (e.target && e.target.id === 'ma-search') {
+    maQuery = e.target.value || '';
+    renderDeals();
+  }
+});
+
 document.addEventListener('click', (e) => {
+  const mc = e.target.closest('#ma-chips .ma-chip');
+  if (mc) {
+    if (mc.dataset.min != null) { maMin = Number(mc.dataset.min); if (maMin === 0) maStatus = 'all'; }
+    if (mc.dataset.buyer != null) maBuyer = maBuyer === 'pe' ? 'all' : 'pe';
+    if (mc.dataset.status != null) maStatus = maStatus === mc.dataset.status ? 'all' : mc.dataset.status;
+    renderDeals();
+    return;
+  }
   const bd = e.target.closest('.brief-deal');
   if (bd) {
     maView = 'sectors';

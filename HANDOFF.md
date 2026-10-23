@@ -1347,3 +1347,14 @@ value · status chip (VERIFIED / RUMOUR / ANNOUNCED / CLOSED). Tapping one opens
 Today it shows Paramount/WBD ($110B, VERIFIED), SoftBank → Allied Universal ($18B, RUMOUR) and
 Proofpoint → Varonis ($6.3B, ANNOUNCED) beneath a Natural Gas hero — which is the right split: the hero
 is the sharpest *move*, M&A is a separate signal.
+
+## M&A: one row per deal, search, filters (2026-10-23)
+- **The doubling is gone.** The sector page listed companies, so one deal produced two rows (Chevron
+  and Hess). It now lists **deals** — `acquirer → target`, one line, both monograms — which is what a
+  reader is actually scanning. The sector's biggest deal is no longer repeated in a "BIGGEST HERE"
+  card above the same list, and HIGHLIGHTS no longer shows a deal in both BIGGEST LOGGED and LATEST.
+- **Search** across acquirer, target and sector, filtering instantly (client-side, no refetch).
+- **Quick filters**: `ALL SIZES / $1B+ / $5B+`, `PE BUYERS` (a keyword map over KKR, Blackstone, EQT,
+  Vista, Thoma Bravo, Apollo, Carlyle, Bain, Advent, CVC…), `RUMOURS`, `VERIFIED`.
+- **Company page** gained a summary line: N deals, how many as buyer vs target, total disclosed.
+- Dates in lists now carry the year when it is not the current one (23 Oct 2023, not 23 Oct).
