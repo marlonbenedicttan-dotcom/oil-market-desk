@@ -724,10 +724,26 @@ function parseDealTitle(t) {
 let STORE = (() => { try { const j = JSON.parse(fs.readFileSync(DEAL_STORE_FILE, 'utf8')); return Array.isArray(j.deals) ? j : { deals: [] }; } catch { return { deals: [] }; } })();
 
 function seedFromArchive() {
-  const have = new Set(STORE.deals.map((d) => d.key));
   for (const a of (DEAL_ARCHIVE.deals || [])) {
     const key = `${nameKey(a.target)}|${nameKey(a.acquirer)}`;
-    if (have.has(key)) continue;
+    // A wire entity for the same target may already exist. The filing does not create a second row —
+    // it upgrades that one to verified and fills in the value, advisers and rationale.
+    const existing = STORE.deals.find((d) => d.key === key || nameKey(d.target) === nameKey(a.target));
+    if (existing) {
+      existing.verified = true;
+      existing.value = a.value || existing.value;
+      existing.rationale = a.rationale || existing.rationale;
+      if ((a.advisers || []).length) existing.advisers = a.advisers;
+      existing.closed = a.closed || existing.closed;
+      existing.url = a.url || existing.url;
+      existing.source = a.source || existing.source;
+      if (!existing.acquirer) existing.acquirer = a.acquirer;
+      if (a.closed) existing.status = 'closed';
+      if (!existing.events.some((e) => e.url === a.url)) {
+        existing.events.unshift({ date: a.date, status: 'announced', title: `${a.acquirer} to acquire ${a.target}`, source: a.source || 'filing', url: a.url || null });
+      }
+      continue;
+    }
     STORE.deals.push({
       key, acquirer: a.acquirer, target: a.target, sector: a.sector || dealSector(`${a.acquirer} ${a.target}`),
       value: a.value || null, status: a.closed ? 'closed' : 'announced', verified: true,
@@ -738,7 +754,6 @@ function seedFromArchive() {
         ...(a.closed ? [{ date: a.closed, status: 'closed', title: `${a.acquirer} completes the acquisition of ${a.target}`, source: a.source || 'filing', url: a.url || null }] : []),
       ],
     });
-    have.add(key);
   }
 }
 
@@ -766,6 +781,11 @@ function attachEvent(ev) {
       const t = nameKey(d.target);
       return t && t.length >= 5 && ev.title.toLowerCase().includes(t);
     }) || null;
+  }
+  if (!hit && ev.acquirer && ev.value) {
+    // Same buyer, same price (within 15%) = the same deal reported by another wire.
+    hit = STORE.deals.find((d) => nameKey(d.acquirer) === ak && d.value
+      && Math.abs(d.value - ev.value) / Math.max(d.value, ev.value) < 0.15) || null;
   }
   if (!hit) {
     if (!ev.target || !tk) return false;            // no company name, no entity
@@ -804,6 +824,7 @@ function ensureSeeded() {
 }
 
 async function refreshDeals() {
+  ensureSeeded();                       // the brief can reach the store before /api/deals ever does
   return cached('dealstore', 600e3, async () => {
     for (const ch of CHANNELS) {
       const items = await fetchGoogleNews(`${ch.q} ${DEAL_SITES}`, 60).catch(() => []);
