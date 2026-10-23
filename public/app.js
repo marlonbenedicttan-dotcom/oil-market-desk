@@ -2914,8 +2914,11 @@ $('macro-links')?.addEventListener('click', (e) => { const el = e.target.closest
 let dealsData = null, maView = 'highlights', maSector = null, maCompany = null;
 const dealDate = (d) => (d ? new Date(d + 'T00:00:00Z').toLocaleDateString('en-GB', { day: '2-digit', month: 'short', timeZone: 'UTC' }) : '');
 const dealVal = (v) => (v == null ? '' : v >= 1000 ? `$${(v / 1000).toFixed(1)}B` : `$${Math.round(v)}M`);
-const STATUS_LABEL = { verified: 'VERIFIED', reported: 'REPORTED', rumour: 'RUMOUR' };
-const statusChip = (st) => `<span class="ma-status s-${esc(st || 'reported')}">${STATUS_LABEL[st] || 'REPORTED'}</span>`;
+const STATUS_LABEL = { rumour: 'RUMOUR', announced: 'ANNOUNCED', closed: 'CLOSED', terminated: 'TERMINATED' };
+// Two dimensions, one chip: verified beats everything (it is evidence), otherwise show the lifecycle.
+const chipFor = (d) => d.verified
+  ? '<span class="ma-status s-verified">VERIFIED</span>'
+  : `<span class="ma-status s-${esc(d.status || 'announced')}">${STATUS_LABEL[d.status] || 'ANNOUNCED'}</span>`;
 function maMono(name) {
   const parts = String(name || '?').replace(/[^A-Za-z0-9 ]/g, ' ').trim().split(/\s+/).filter(Boolean);
   const ini = ((parts[0] || '?')[0] + (parts[1] ? parts[1][0] : '')).toUpperCase();
@@ -2965,10 +2968,10 @@ function renderHighlights(el, deals) {
       ${i != null ? `<span class="ma-rank">${i + 1}</span>` : `<span class="ma-when">${dealDate(d.date)}</span>`}
       <span class="ma-who">${maMono(maName(d.target) || maName(d.acquirer))}<span class="ma-names"><b>${esc(maName(d.acquirer) || '—')}</b> <span class="dimtext">→</span> ${esc(maName(d.target) || '—')}</span></span>
       <span class="ma-val">${dealVal(d.value)}</span>
-      <span class="ma-tags">${statusChip(d.status)}</span>
+      <span class="ma-tags">${chipFor(d)}</span>
     </button>`;
   el.innerHTML = (hero ? `<div class="ma-hero" data-deal="${esc(hero.key || hero.id)}" data-sector="${esc(hero.sector || '')}" data-company="${esc(hero.acquirer || hero.target || '')}" role="button" tabindex="0">
-      <div class="ma-hero-l">BIGGEST VERIFIED DEAL${hero.status === 'verified' ? '' : ' (unverified)'} · ${esc(hero.sector || '')}</div>
+      <div class="ma-hero-l">${hero.verified ? 'BIGGEST VERIFIED DEAL' : 'BIGGEST LOGGED'} · ${esc(hero.sector || '')}</div>
       <div class="ma-hero-pair">${maMono(maName(hero.target))}<span><b>${esc(maName(hero.acquirer) || '—')}</b> <span class="dimtext">→</span> ${esc(maName(hero.target) || '—')}</span></div>
       <div class="ma-hero-v">${dealVal(hero.value)}</div>
       ${hero.rationale ? `<div class="ma-hero-w">“${esc(hero.rationale)}”</div>` : ''}
@@ -3020,7 +3023,7 @@ function renderCompanyDeals(el, deals) {
         <span class="ma-when">${dealDate(x.date)}</span>
         <span class="ma-names">${esc(x.acquirer || '—')} <span class="dimtext">→</span> ${esc(x.target || '—')}</span>
         <span class="ma-val">${dealVal(x.value)}</span>
-        <span class="ma-tags">${statusChip(x.status)}</span></button>`;
+        <span class="ma-tags">${chipFor(x)}</span></button>`;
   }).join('');
   const advisers = (d.advisers || []).length
     ? `<div>advisers: ${esc(d.advisers.join(', '))}</div>`
@@ -3031,11 +3034,16 @@ function renderCompanyDeals(el, deals) {
   el.innerHTML = `<div class="ma-crumb"><button class="ma-back" data-back="1">← ${esc(maSector || 'SECTORS')}</button> <span>${esc(maCompany)}</span></div>`
     + `<div class="ma-deal">
         <div class="ma-deal-pair">${maMono(d.target)}<span><b>${esc(d.acquirer || '—')}</b> <span class="dimtext">→</span> ${esc(d.target || '—')}</span></div>
-        <div class="ma-deal-v">${dealVal(d.value) || 'value not disclosed'} ${statusChip(d.status)}</div>
+        <div class="ma-deal-v">${dealVal(d.value) || 'value not disclosed'} ${chipFor(d)}</div>
         <div class="ma-deal-m">announced ${dealDate(d.date)}${d.closed ? ' · closed ' + dealDate(d.closed) : ''} · ${esc(d.sector || '')}${d.consideration ? ' · ' + esc(d.consideration) : ''}</div>
         ${d.rationale ? `<div class="dc-why">“${esc(d.rationale)}”</div>` : ''}
         <div class="ma-deal-foot">${advisers}${link}</div>
       </div>`
+    + ((d.events || []).length > 1 ? `<div class="gtitle">TIMELINE</div><div class="ma-tl">${(d.events || []).slice().sort((a, b) => (a.date < b.date ? -1 : 1)).map((e) => `<div class="ma-tl-row">
+        <span class="ma-tl-d">${dealDate(e.date)}</span>
+        <span class="ma-tl-s s-${esc(e.status)}">${STATUS_LABEL[e.status] || esc(e.status || '')}</span>
+        <a href="${esc(e.url || '#')}" target="_blank" rel="noopener noreferrer">${esc(e.title)} <span class="dimtext">— ${esc(e.source || '')}</span></a>
+      </div>`).join('')}</div>` : '')
     + (other.length ? `<div class="gtitle">ALSO INVOLVED</div>${otherHtml}` : '');
 }
 

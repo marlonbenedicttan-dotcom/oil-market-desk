@@ -921,3 +921,18 @@ button.deal-sec-tile:hover { background: #10151b; }
   .ma-row[data-status="verified"] .ma-val::after { content: " ✓"; color: var(--green); font-size: 10px; }
   .ma-row[data-status="rumour"] .ma-val::after { content: " ●"; color: var(--amber); font-size: 7px; vertical-align: 2px; }
 }
+.ma-status.s-closed { color: var(--blue); border-color: rgba(74, 163, 255, .45); }
+.ma-status.s-terminated { color: var(--red); border-color: rgba(255, 59, 48, .45); }
+.ma-tl { border-top: 1px solid var(--line); }
+.ma-tl-row { display: grid; grid-template-columns: 54px 86px 1fr; gap: 9px; padding: 7px 12px; align-items: baseline; border-bottom: 1px solid var(--line); font-size: 10.5px; }
+.ma-tl-d { font-size: 9.5px; color: var(--dim); text-transform: uppercase; letter-spacing: .5px; }
+.ma-tl-s { font-size: 8px; letter-spacing: .8px; color: var(--dim); }
+.ma-tl-s.s-closed { color: var(--blue); }
+.ma-tl-s.s-terminated { color: var(--red); }
+.ma-tl-s.s-rumour { color: var(--amber); }
+.ma-tl-row a { color: #a9b6c3; text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ma-tl-row a:hover { color: var(--amber); }
+@media (max-width: 640px) {
+  .ma-tl-row { grid-template-columns: 46px 1fr; }
+  .ma-tl-row a { grid-column: 1 / -1; white-space: normal; }
+}

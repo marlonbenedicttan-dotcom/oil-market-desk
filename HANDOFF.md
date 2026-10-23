@@ -1302,3 +1302,22 @@ levels of confidence. On a phone the chip is replaced by a ✓ (verified) or ●
 companies, Clearbit's free endpoint is unreliable and a broken image is worse than a clean monogram.
 `/api/deals` now returns one unified `deals` list (verified + wire, deduped) with `sectors` counts.
 101 tests pass; mobile 0 overflow, 0 tap targets under 32px.
+
+## M&A: a deal store with a lifecycle, not a feed (2026-10-23)
+The wire only looked for *new announcements with a price*, so the biggest deal in the world was
+invisible: Paramount/WBD was announced 27 Feb and completed 6 Oct, and neither moment had a value in a
+headline on the day we looked. Rebuilt as a store:
+- **Four discovery channels** feed one entity: announcement (needs a price), rumour ("in talks",
+  "exploring"), completion ("completes", "closes", "wraps up") and termination ("scraps", "calls off").
+- **Entity matching**: an article is attached to an existing deal when its target matches, or when the
+  title contains both the target and the acquirer (completion headlines drop the acquirer). One deal =
+  one row with an `events[]` timeline, never two rows at two confidence levels.
+- **Status** is derived from the latest event: `rumour → announced → closed / terminated`. `verified`
+  is a separate boolean (read from the filing), so a verified deal can still show CLOSED.
+- **The UI** shows the lifecycle chip (RUMOUR / ANNOUNCED / CLOSED / TERMINATED, or VERIFIED when we
+  have the filing) and the detail panel carries the timeline: announced 27 Feb → closed 6 Oct.
+- Seeded from `data/ma.json` (verified) + `data/deals-log.json` (wire), then grows on each refresh.
+  The store is generated (`data/deals-store.json`, gitignored).
+- Guards: no entity without a company name, no duplicate keys, no events before 2020, and prose
+  fragments ("struggling rival WOW Air", "Part of Cranes Unit") are rejected as names.
+Paramount/WBD now leads the page at $110B with both events. 101 tests pass.

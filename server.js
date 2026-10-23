@@ -664,12 +664,12 @@ async function getRegime() {
 }
 
 // ---------------------------------------------------------------------------
-// M&A — a live deal wire from tier-1 wires, plus a small verified archive.
-// There is no free structured M&A database, so this is honest about what it is: the wire carries
-// announced deals as they were reported, with a value only when the headline states one; the archive
-// is hand-verified against the company's own press release. Both are labelled on screen.
+// M&A — a deal STORE, not a feed. Four discovery channels (announcement, rumour, completion,
+// termination) merge into one entity per deal, so a deal announced in February and closed in October
+// is the same row with a lifecycle, not two unrelated headlines.
 // ---------------------------------------------------------------------------
 const DEAL_ARCHIVE = (() => { try { return JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'ma.json'), 'utf8')); } catch { return { deals: [], coverage: {} }; } })();
+const DEAL_STORE_FILE = path.join(__dirname, 'data', 'deals-store.json');
 const DEAL_SECTOR_RULES = [
   { id: 'Energy', re: /\b(oil|gas|energy|refiner|pipeline|drilling|shale|lng|utility|power|solar|wind)\b/i },
   { id: 'Technology', re: /\b(software|tech|ai\b|cloud|data centre|data center|semi|chip|cyber|saas|platform|computing|robot)\b/i },
@@ -677,89 +677,154 @@ const DEAL_SECTOR_RULES = [
   { id: 'Financials', re: /\b(bank|insur|fintech|lender|asset manager|broker|payments?|exchange|wealth|trading platform|marketplace|life insurance)\b/i },
   { id: 'Industrials', re: /\b(industrial|manufactur|machin|aerospace|defen[cs]e|chemical|material|mining|steel|cement|logistics|packaging|waste|recycl|equipment)\b/i },
   { id: 'Consumer', re: /\b(retail|consumer|food|beverage|restaurant|apparel|grocery|brand|cosmetic|drinks?)\b/i },
-  { id: 'Media', re: /\b(media|entertainment|studio|film|streaming|gaming|music|publish|advertis|sports)\b/i },
+  { id: 'Media', re: /\b(media|entertainment|studio|film|streaming|gaming|music|publish|advertis|sports|hollywood|broadcast|tv)\b/i },
   { id: 'Telecom', re: /\b(telecom|wireless|broadband|fibre|fiber|spectrum|mobile operator)\b/i },
   { id: 'Real estate', re: /\b(reit|real estate|property|warehouse)\b/i },
 ];
-const DEAL_QUERY = '(acquire OR acquisition OR merger OR takeover OR "to buy") ("billion" OR "million") '
-  + '(site:reuters.com OR site:bloomberg.com OR site:ft.com OR site:cnbc.com OR site:apnews.com OR site:wsj.com)';
-
 const dealSector = (title) => (DEAL_SECTOR_RULES.find((s) => s.re.test(title)) || { id: 'Other' }).id;
-// Talks and exploration are not a deal yet — the row is flagged, not hidden.
+const DEAL_SITES = '(site:reuters.com OR site:bloomberg.com OR site:ft.com OR site:cnbc.com OR site:apnews.com OR site:wsj.com)';
+// The four states a deal passes through. Each channel below feeds the same store.
 const DEAL_RUMOUR = /\b(in talks|in advanced talks|explores|exploring|weighs|weighing|considers|considering|approaches|approached|mulls|said to|reportedly|is said|potential|may|could|would)\b/i;
-const dealStatus = (x) => x.status || (DEAL_RUMOUR.test(x.title || '') ? 'rumour' : 'reported');
+const DEAL_CLOSED = /\b(completes?|completed|closes?|closed|wraps? up|finali[sz]es?|merger (?:is )?complete|deal (?:is )?done)\b/i;
+const DEAL_ENDED = /\b(terminates?|terminated|scraps?|abandons?|calls? off|called off|walks? away|blocked|halts?|rejects?)\b/i;
+const eventStatus = (t) => DEAL_ENDED.test(t) ? 'terminated' : DEAL_CLOSED.test(t) ? 'closed' : DEAL_RUMOUR.test(t) ? 'rumour' : 'announced';
+const STATUS_RANK = { rumour: 1, announced: 2, closed: 3, terminated: 3 };
+const CHANNELS = [
+  { id: 'announce', q: '(acquire OR acquisition OR merger OR takeover OR "to buy") ("billion" OR "million")', needValue: true },
+  { id: 'rumour', q: '("in talks" OR exploring OR weighs OR considers) (acquire OR acquisition OR merger OR takeover)', needValue: false },
+  { id: 'close', q: '("completes" OR "closes" OR "completion of" OR "wraps up") (acquisition OR merger)', needValue: false },
+  { id: 'end', q: '(terminates OR scraps OR abandons OR "calls off") (merger OR acquisition OR takeover)', needValue: false },
+];
+
+const NAME_STOP = new Set(['inc', 'corp', 'corporation', 'company', 'group', 'holdings', 'holding', 'partners', 'capital', 'global', 'international', 'technologies', 'technology', 'solutions', 'systems', 'industries', 'the', 'and', 'for', 'from', 'with', 'ltd', 'plc', 'llc', 'limited', 'sa', 'nv', 'ag']);
+const nameTokens = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9 ]/g, ' ').split(/\s+/).filter((w) => w.length >= 4 && !NAME_STOP.has(w));
+const nameKey = (s) => nameTokens(s).sort((a, b) => b.length - a.length)[0] || '';
 
 function parseDealTitle(t) {
   const cur = /([$\u20ac\u00a3])\s?([\d.,]+)\s?(billion|million|bn|mn)\b/i.exec(t);
   let value = null;
   if (cur) { const n = parseFloat(cur[2].replace(/,/g, '')); value = /^b/i.test(cur[3]) ? Math.round(n * 1000) : Math.round(n); }
   const cut = (s) => String(s || '').replace(/\s+/g, ' ').replace(/[\u2019']s$/, '').replace(/[,.;:]+$/, '').replace(/^(?:the)\s+/i, '').trim();
-  const pats = [
-    /^(.{2,42}?)\s+(?:to|will|is to|agrees? to|nears?|seals?|closes?|wraps? up)\s+(?:buy|acquire|purchase|take over|merge with|snap up)\s+(.{2,58}?)(?=\s+(?:for|in|from|at|worth|as)\b|,|$)/i,
-    /^(.{2,42}?)\s+(?:announces?|unveils?)\s+(?:a\s+)?\$[\d.]+\s?(?:billion|million)\s+(?:deal|takeover)\s+(?:for|to buy)\s+(.{2,58})$/i,
-  ];
   const stake = /^(.{2,42}?)\s+(?:to|will|agrees? to)\s+(?:buy|acquire|purchase)\s+(?:a\s+)?(?:[\d.]+%\s+)?(?:majority\s+|minority\s+)?stake in\s+(.{2,58}?)(?=\s+(?:for|from|at)\b|,|$)/i.exec(t);
   if (stake) return { acquirer: cut(stake[1]), target: cut(stake[2]), value };
+  const pats = [
+    /^(.{2,42}?)\s+(?:to|will|is to|agrees? to|nears?|seals?|closes?|wraps? up|completes?)\s+(?:buy|acquire|purchase|take over|merge with|snap up)\s+(.{2,58}?)(?=\s+(?:for|in|from|at|worth|as)\b|,|$)/i,
+    /^(.{2,42}?)\s+(?:announces?|unveils?)\s+(?:a\s+)?\$[\d.]+\s?(?:billion|million)\s+(?:deal|takeover)\s+(?:for|to buy)\s+(.{2,58})$/i,
+  ];
   for (const re of pats) {
     const m = re.exec(t);
     if (m) {
-      let target = cut(m[2]);
-      target = target.replace(/^(?:a\s+)?(?:majority\s+|minority\s+)?stake in\s+/i, '');
+      let target = cut(m[2]).replace(/^(?:a\s+)?(?:majority\s+|minority\s+)?stake in\s+/i, '');
       return { acquirer: cut(m[1]), target, value };
     }
   }
   return { acquirer: null, target: null, value };
 }
 
-// Wire items accumulate into a local log so a sector can be browsed beyond today's fetch. The file is
-// best-effort on a free host (the disk is ephemeral), so the UI always says how far back it actually goes.
-const DEAL_LOG_FILE = path.join(__dirname, 'data', 'deals-log.json');
-let DEAL_LOG = (() => { try { const j = JSON.parse(fs.readFileSync(DEAL_LOG_FILE, 'utf8')); return Array.isArray(j) ? j : (j.deals || []); } catch { return []; } })();
-let dealLogWritten = 0;
-function rememberDeals(items) {
-  const have = new Set(DEAL_LOG.map((x) => x.key));
-  const fresh = items.filter((x) => x.key && !have.has(x.key));
-  if (!fresh.length) return;
-  DEAL_LOG = [...fresh, ...DEAL_LOG].slice(0, 2000);
-  if (Date.now() - dealLogWritten > 60e3) {
-    dealLogWritten = Date.now();
-    try { fs.writeFileSync(DEAL_LOG_FILE, JSON.stringify({ updated: new Date().toISOString(), deals: DEAL_LOG })); } catch {}
+let STORE = (() => { try { const j = JSON.parse(fs.readFileSync(DEAL_STORE_FILE, 'utf8')); return Array.isArray(j.deals) ? j : { deals: [] }; } catch { return { deals: [] }; } })();
+
+function seedFromArchive() {
+  const have = new Set(STORE.deals.map((d) => d.key));
+  for (const a of (DEAL_ARCHIVE.deals || [])) {
+    const key = `${nameKey(a.target)}|${nameKey(a.acquirer)}`;
+    if (have.has(key)) continue;
+    STORE.deals.push({
+      key, acquirer: a.acquirer, target: a.target, sector: a.sector || dealSector(`${a.acquirer} ${a.target}`),
+      value: a.value || null, status: a.closed ? 'closed' : 'announced', verified: true,
+      date: a.date, lastSeen: a.closed || a.date, closed: a.closed || null,
+      rationale: a.rationale || null, advisers: a.advisers || [], url: a.url || null, source: a.source || 'filing',
+      events: [
+        { date: a.date, status: 'announced', title: `${a.acquirer} to acquire ${a.target}`, source: a.source || 'filing', url: a.url || null },
+        ...(a.closed ? [{ date: a.closed, status: 'closed', title: `${a.acquirer} completes the acquisition of ${a.target}`, source: a.source || 'filing', url: a.url || null }] : []),
+      ],
+    });
+    have.add(key);
   }
 }
 
-async function getDealWire() {
-  return cached('dealwire', 600e3, async () => {
-    const items = await fetchGoogleNews(DEAL_QUERY, 100).catch(() => []);
-    const seenA = new Set(), seenT = new Set();
-    const out = [];
-    for (const it of items) {
-      if (!TIER1_RE.test(it.source || '')) continue;
-      const t = String(it.title || '');
-      if (!/\b(acquire|acquisition|merger|takeover|to buy|buys|stake in|deal for)\b/i.test(t)) continue;
-      // A deal story is company-to-company. Procurement ("US agrees to buy 850 F-35s"), law-firm moves,
-      // and speculative "would/could merge" pieces are not M&A and must not reach the tape.
-      if (/\b(fighter jets?|military|weapons?|missiles?|pentagon|nato|arms deal|defence ministry|defense department)\b/i.test(t)) continue;
-      if (/\b(lawyers?|law firm|hires?|appoints?|names? (?:a )?new)\b/i.test(t)) continue;
-      if (/\b(would|could|might|should|weighs|considering|explainer|analysis|opinion)\b/i.test(t) && !/\$\s?[\d.]+\s?(?:billion|million)/i.test(t)) continue;
-      if (/\b(fortune|billionaire|wealth|pegs|cost estimate|would cost|supply (?:deal|agreement)|to 20\d\d)\b/i.test(t)) continue;
-      if (/\b(upgraded to buy|downgraded|price target|rating|overweight|outperform|analyst|trial|lawsuit|antitrust case)\b/i.test(t)) continue;
-      const p = parseDealTitle(t);
-      if (!p.acquirer && !p.value) continue;               // needs a real party or a price
-      // One row per deal: the same story arrives from Reuters, Bloomberg and CNBC with slightly
-      // different values, so dedupe on the target (or the headline when no target was parsed).
-      // Same deal, three wires: drop when EITHER the acquirer+value pair or the target's key word has
-      // already appeared ("LSEG to buy Octus" vs "London Stock Exchange Group Agrees to Buy Octus").
-      const word = (p.target || '').toLowerCase().replace(/[^a-z0-9 ]/g, '').trim().split(' ').filter((w) => w.length >= 4).pop();
-      const keyA = (p.acquirer && p.value) ? `a:${p.acquirer.toLowerCase().replace(/[^a-z0-9]/g, '')}|v:${Math.round(p.value / 500)}` : null;
-      const keyT = word ? `t:${word}` : null;
-      if ((keyA && seenA.has(keyA)) || (keyT && seenT.has(keyT))) continue;
-      if (keyA) seenA.add(keyA);
-      if (keyT) seenT.add(keyT);
-      out.push({ ...p, key: keyA || keyT, status: DEAL_RUMOUR.test(t) ? 'rumour' : 'reported', title: t, sector: dealSector(t), source: it.source, url: it.url, date: it.date ? it.date.slice(0, 10) : null });
+// "struggling rival WOW Air" and "Part of Cranes Unit" are prose, not companies.
+const validName = (n) => !!n && /^[A-Z0-9]/.test(String(n)) && String(n).length <= 55
+  && !/\b(part of|rival|unit|struggling|including|which|that|its|their)\b/i.test(String(n));
+function attachEvent(ev) {
+  if (ev.date && ev.date < '2020-01-01') return false;        // the store is about current deals
+  if (ev.target && !validName(ev.target)) ev.target = null;
+  if (ev.acquirer && !validName(ev.acquirer)) ev.acquirer = null;
+  const tk = nameKey(ev.target), ak = nameKey(ev.acquirer);
+  let hit = null;
+  if (tk) hit = STORE.deals.find((d) => nameKey(d.target) === tk) || null;
+  if (!hit) {
+    // Completion/termination headlines often drop the acquirer ("Paramount wraps up Warner Bros merger"),
+    // so look for an entity whose target AND acquirer both appear in the title.
+    hit = STORE.deals.find((d) => {
+      const t = nameKey(d.target), a = nameKey(d.acquirer);
+      const lower = ev.title.toLowerCase();
+      return t && lower.includes(t) && (!a || lower.includes(a));
+    }) || null;
+  }
+  if (!hit) {
+    hit = STORE.deals.find((d) => {
+      const t = nameKey(d.target);
+      return t && t.length >= 5 && ev.title.toLowerCase().includes(t);
+    }) || null;
+  }
+  if (!hit) {
+    if (!ev.target || !tk) return false;            // no company name, no entity
+    const key = `${tk}|${ak}`;
+    if (STORE.deals.some((d) => d.key === key)) return false;
+    STORE.deals.push({
+      key, acquirer: ev.acquirer, target: ev.target, sector: ev.sector,
+      value: ev.value, status: ev.status, verified: false,
+      date: ev.date, lastSeen: ev.date, closed: ev.status === 'closed' ? ev.date : null,
+      rationale: null, advisers: [], url: ev.url, source: ev.source, events: [ev],
+    });
+    return true;
+  }
+  if (!hit.events.some((e) => e.url === ev.url)) hit.events.push(ev);
+  hit.lastSeen = ev.date > (hit.lastSeen || '') ? ev.date : hit.lastSeen;
+  if (STATUS_RANK[ev.status] >= STATUS_RANK[hit.status]) hit.status = ev.status;
+  if (ev.status === 'closed') hit.closed = ev.date;
+  if (ev.value && !hit.verified) hit.value = ev.value;
+  if (ev.acquirer && !hit.acquirer) hit.acquirer = ev.acquirer;
+  if (ev.sector && hit.sector === 'Other') hit.sector = ev.sector;
+  return true;
+}
+
+let dealsSeeded = false;
+function ensureSeeded() {
+  if (dealsSeeded) return;
+  dealsSeeded = true;
+  seedFromArchive();
+  try {   // the wire log collected before the store existed
+    const log = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'deals-log.json'), 'utf8'));
+    for (const w of (log.deals || [])) {
+      if (!w.title) continue;
+      attachEvent({ date: w.date, status: w.status || eventStatus(w.title), title: w.title, source: w.source, url: w.url, acquirer: w.acquirer, target: w.target, value: w.value, sector: w.sector || dealSector(w.title) });
     }
-    out.sort((a, b) => (a.date < b.date ? 1 : -1));
-    rememberDeals(out);
-    return out.slice(0, 40);
+  } catch {}
+}
+
+async function refreshDeals() {
+  return cached('dealstore', 600e3, async () => {
+    for (const ch of CHANNELS) {
+      const items = await fetchGoogleNews(`${ch.q} ${DEAL_SITES}`, 60).catch(() => []);
+      for (const it of items) {
+        const t = String(it.title || '');
+        if (!it.source || !TIER1_RE.test(it.source)) continue;
+        if (!/\b(acquire|acquisition|merger|takeover|to buy|buys|stake in|deal)\b/i.test(t)) continue;
+        if (/\b(fighter jets?|military|weapons?|missiles?|pentagon|nato|arms deal|defence ministry|defense department)\b/i.test(t)) continue;
+        if (/\b(lawyers?|law firm|hires?|appoints?|names? (?:a )?new)\b/i.test(t)) continue;
+        if (/\b(upgraded to buy|downgraded|price target|rating|overweight|outperform|analyst|trial|lawsuit|antitrust case)\b/i.test(t)) continue;
+        if (/\b(fortune|billionaire|wealth|pegs|cost estimate|would cost|supply (?:deal|agreement)|to 20\d\d)\b/i.test(t)) continue;
+        if (ch.needValue && !/\$\s?[\d.]+\s?(?:billion|million)/i.test(t)) continue;
+        const p = parseDealTitle(t);
+        if (!p.acquirer && !p.value && !p.target) continue;
+        attachEvent({ date: it.date ? it.date.slice(0, 10) : new Date().toISOString().slice(0, 10), status: eventStatus(t), title: t, source: it.source, url: it.url, ...p, sector: dealSector(t) });
+      }
+    }
+    STORE.deals.sort((a, b) => (a.lastSeen < b.lastSeen ? 1 : -1));
+    STORE.updated = new Date().toISOString();
+    try { fs.writeFileSync(DEAL_STORE_FILE, JSON.stringify(STORE)); } catch {}
+    return STORE;
   });
 }
 
@@ -3805,33 +3870,25 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname === '/api/reroute') return sendJSON(res, 200, { series: rerouteSeries, current: rerouteSeries[rerouteSeries.length - 1] || null });
     if (url.pathname === '/api/inventories') return sendJSON(res, 200, await getInventories());
     if (url.pathname === '/api/deals') {
-      const wire = await getDealWire().catch(() => []);
-      const archive = DEAL_ARCHIVE.deals || [];
+      ensureSeeded();
+      const store = await refreshDeals().catch(() => STORE);
       const days = Number(url.searchParams.get('days') || 0);
       const sector = url.searchParams.get('sector') || null;
       const cutoff = days ? new Date(Date.now() - days * 864e5).toISOString().slice(0, 10) : null;
-      // One list, one status field: 'verified' (read from the filing), 'reported' (a wire says so) or
-      // 'rumour' (the wire says talks / exploring). A verified row replaces the wire version of the
-      // same target so a deal never appears twice with two different levels of confidence.
-      const verified = (DEAL_ARCHIVE.deals || []).map((d) => ({ ...d, status: 'verified' }));
-      const vWords = new Set(verified.map((d) => (d.target || '').toLowerCase().replace(/[^a-z0-9 ]/g, '').trim().split(' ').filter((w) => w.length >= 4).pop()));
-      const wireOnly = DEAL_LOG.filter((w) => {
-        const word = (w.target || '').toLowerCase().replace(/[^a-z0-9 ]/g, '').trim().split(' ').filter((x) => x.length >= 4).pop();
-        return !word || !vWords.has(word);
-      }).map((w) => ({ ...w, status: dealStatus(w) }));
-      const all = [...verified, ...wireOnly]
-        .filter((d) => (!cutoff || (d.date || '') >= cutoff) && (!sector || d.sector === sector))
-        .sort((a, b) => (a.date < b.date ? 1 : -1))
+      const deals = (store.deals || [])
+        .filter((d) => (!cutoff || (d.lastSeen || d.date || '') >= cutoff) && (!sector || d.sector === sector))
+        .sort((a, b) => ((b.lastSeen || b.date) < (a.lastSeen || a.date) ? -1 : 1))
         .slice(0, 400);
       const sectors = DEAL_SECTOR_RULES.map((sec) => {
-        const rows = all.filter((w) => w.sector === sec.id);
+        const rows = deals.filter((w) => w.sector === sec.id);
         return { id: sec.id, count: rows.length, value: rows.reduce((a, b) => a + (b.value || 0), 0) };
       }).filter((sec) => sec.count).sort((a, b) => b.value - a.value || b.count - a.count);
+      const since = (store.deals || []).map((d) => d.date).filter(Boolean).sort()[0] || null;
       return sendJSON(res, 200, {
         updated: new Date().toISOString(),
         coverage: DEAL_ARCHIVE.coverage || {},
-        wire, archive, sectors, deals: all,
-        log: { count: DEAL_LOG.length, since: DEAL_LOG.length ? [...DEAL_LOG].map((d) => d.date).filter(Boolean).sort()[0] : null },
+        sectors, deals,
+        log: { count: (store.deals || []).length, since },
       });
     }
     if (url.pathname === '/api/regime') return sendJSON(res, 200, await getRegime().catch((e) => ({ error: String(e.message), rows: [] })));
