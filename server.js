@@ -685,6 +685,9 @@ const DEAL_QUERY = '(acquire OR acquisition OR merger OR takeover OR "to buy") (
   + '(site:reuters.com OR site:bloomberg.com OR site:ft.com OR site:cnbc.com OR site:apnews.com OR site:wsj.com)';
 
 const dealSector = (title) => (DEAL_SECTOR_RULES.find((s) => s.re.test(title)) || { id: 'Other' }).id;
+// Talks and exploration are not a deal yet — the row is flagged, not hidden.
+const DEAL_RUMOUR = /\b(in talks|in advanced talks|explores|exploring|weighs|weighing|considers|considering|approaches|approached|mulls|said to|reportedly|is said|potential|may|could|would)\b/i;
+const dealStatus = (x) => x.status || (DEAL_RUMOUR.test(x.title || '') ? 'rumour' : 'reported');
 
 function parseDealTitle(t) {
   const cur = /([$\u20ac\u00a3])\s?([\d.,]+)\s?(billion|million|bn|mn)\b/i.exec(t);
@@ -752,7 +755,7 @@ async function getDealWire() {
       if ((keyA && seenA.has(keyA)) || (keyT && seenT.has(keyT))) continue;
       if (keyA) seenA.add(keyA);
       if (keyT) seenT.add(keyT);
-      out.push({ ...p, key: keyA || keyT, title: t, sector: dealSector(t), source: it.source, url: it.url, date: it.date ? it.date.slice(0, 10) : null });
+      out.push({ ...p, key: keyA || keyT, status: DEAL_RUMOUR.test(t) ? 'rumour' : 'reported', title: t, sector: dealSector(t), source: it.source, url: it.url, date: it.date ? it.date.slice(0, 10) : null });
     }
     out.sort((a, b) => (a.date < b.date ? 1 : -1));
     rememberDeals(out);
@@ -3807,16 +3810,27 @@ const server = http.createServer(async (req, res) => {
       const days = Number(url.searchParams.get('days') || 0);
       const sector = url.searchParams.get('sector') || null;
       const cutoff = days ? new Date(Date.now() - days * 864e5).toISOString().slice(0, 10) : null;
-      const log = DEAL_LOG.filter((d) => (!cutoff || (d.date || '') >= cutoff) && (!sector || d.sector === sector));
-      const base = cutoff || sector ? log : DEAL_LOG;
+      // One list, one status field: 'verified' (read from the filing), 'reported' (a wire says so) or
+      // 'rumour' (the wire says talks / exploring). A verified row replaces the wire version of the
+      // same target so a deal never appears twice with two different levels of confidence.
+      const verified = (DEAL_ARCHIVE.deals || []).map((d) => ({ ...d, status: 'verified' }));
+      const vWords = new Set(verified.map((d) => (d.target || '').toLowerCase().replace(/[^a-z0-9 ]/g, '').trim().split(' ').filter((w) => w.length >= 4).pop()));
+      const wireOnly = DEAL_LOG.filter((w) => {
+        const word = (w.target || '').toLowerCase().replace(/[^a-z0-9 ]/g, '').trim().split(' ').filter((x) => x.length >= 4).pop();
+        return !word || !vWords.has(word);
+      }).map((w) => ({ ...w, status: dealStatus(w) }));
+      const all = [...verified, ...wireOnly]
+        .filter((d) => (!cutoff || (d.date || '') >= cutoff) && (!sector || d.sector === sector))
+        .sort((a, b) => (a.date < b.date ? 1 : -1))
+        .slice(0, 400);
       const sectors = DEAL_SECTOR_RULES.map((sec) => {
-        const rows = base.filter((w) => w.sector === sec.id);
+        const rows = all.filter((w) => w.sector === sec.id);
         return { id: sec.id, count: rows.length, value: rows.reduce((a, b) => a + (b.value || 0), 0) };
-      }).filter((sec) => sec.count).sort((a, b) => b.count - a.count);
+      }).filter((sec) => sec.count).sort((a, b) => b.value - a.value || b.count - a.count);
       return sendJSON(res, 200, {
         updated: new Date().toISOString(),
         coverage: DEAL_ARCHIVE.coverage || {},
-        wire, archive, sectors, deals: log,
+        wire, archive, sectors, deals: all,
         log: { count: DEAL_LOG.length, since: DEAL_LOG.length ? [...DEAL_LOG].map((d) => d.date).filter(Boolean).sort()[0] : null },
       });
     }

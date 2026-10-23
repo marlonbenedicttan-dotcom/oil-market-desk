@@ -2908,101 +2908,154 @@ $('macro-links')?.addEventListener('click', (e) => { const el = e.target.closest
 })();
 
 // ---------------------------------------------------------------------------
-// M&A — a live deal wire, browsable by sector, plus a small verified archive.
-let dealsData = null, dealView = 'wire', dealSector = 'all', dealRange = 30;
+// M&A — two pages: HIGHLIGHTS (what happened) and SECTORS (browse sector → company → deal).
+// Every row carries its evidence: VERIFIED (read from the filing), REPORTED (a wire says so) or
+// RUMOUR (the wire says talks/exploring). Verification is a flag, never a separate section.
+let dealsData = null, maView = 'highlights', maSector = null, maCompany = null;
 const dealDate = (d) => (d ? new Date(d + 'T00:00:00Z').toLocaleDateString('en-GB', { day: '2-digit', month: 'short', timeZone: 'UTC' }) : '');
 const dealVal = (v) => (v == null ? '' : v >= 1000 ? `$${(v / 1000).toFixed(1)}B` : `$${Math.round(v)}M`);
+const STATUS_LABEL = { verified: 'VERIFIED', reported: 'REPORTED', rumour: 'RUMOUR' };
+const statusChip = (st) => `<span class="ma-status s-${esc(st || 'reported')}">${STATUS_LABEL[st] || 'REPORTED'}</span>`;
+function maMono(name) {
+  const parts = String(name || '?').replace(/[^A-Za-z0-9 ]/g, ' ').trim().split(/\s+/).filter(Boolean);
+  const ini = ((parts[0] || '?')[0] + (parts[1] ? parts[1][0] : '')).toUpperCase();
+  let h = 0;
+  for (const ch of String(name || '')) h = (h * 31 + ch.charCodeAt(0)) % 360;
+  return `<span class="ma-mono" style="--h:${h}">${esc(ini)}</span>`;
+}
+const companyKey = (n) => String(n || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+// Headline fragments ("ADNOC's XRG in talks", "Daiichi Life Offers $4.4 Billion") are not company names.
+const maName = (n) => String(n || '').replace(/\s+(?:is )?(?:in|in advanced) talks\b.*$/i, '').replace(/\s+offers?\b.*$/i, '').replace(/[,;:.]+$/, '').trim();
 
 async function loadDeals() {
   const el = $('deal-body');
   if (!el) return;
-  if (!dealsData) el.innerHTML = stLoading('Reading the deal wire…');
+  if (!dealsData) el.innerHTML = stLoading('Reading the deal book…');
   try { dealsData = await jget('/api/deals', 300000); } catch { dealsData = dealsData || null; }
   renderDeals();
-}
-
-function dealFilters() {
-  const secs = (dealsData.sectors || []).map((x) => x.id);
-  const chip = (id, label, kind) => `<button class="deal-chip${(kind === 'sec' ? dealSector : dealRange) == id ? ' on' : ''}" data-${kind}="${id}">${esc(label)}</button>`;
-  return `<div class="deal-filters">${chip('all', 'ALL SECTORS', 'sec')}${secs.map((x) => chip(x, x, 'sec')).join('')}`
-    + `<span class="deal-gap"></span>${chip(7, '7D', 'range')}${chip(30, '30D', 'range')}${chip(0, 'ALL', 'range')}</div>`;
 }
 
 function renderDeals() {
   const el = $('deal-body');
   if (!el) return;
-  if (!dealsData) { el.innerHTML = stError('Couldn’t load the deal wire — retrying.'); return; }
-  const wire = dealsData.wire || [], arch = dealsData.archive || [], secs = dealsData.sectors || [];
-  const log = dealsData.deals || [];
+  if (!dealsData) { el.innerHTML = stError('Couldn’t load the deal book — retrying.'); return; }
+  const deals = dealsData.deals || [];
   const sub = $('deals-sub');
-  const scan = dealsData.log || {};
-  if (sub) sub.textContent = `${scan.count || log.length} deals logged${scan.since ? ` · since ${dealDate(scan.since)}` : ''} · ${wire.length} on the wire now`;
+  const ver = deals.filter((d) => d.status === 'verified').length;
+  if (sub) sub.textContent = `${deals.length} deals · ${ver} verified · ${(dealsData.log && dealsData.log.since) ? 'since ' + dealDate(dealsData.log.since) : 'live'}`;
   const hint = $('deal-hint');
-  if (hint) hint.textContent = dealView === 'sectors'
-    ? 'Tap a sector to see every deal logged in it.'
-    : dealView === 'verified'
-      ? 'Confirmed from the company’s own SEC filing: the price, the stated reason and the advisers. The wire gives you the headline; this gives you the detail.'
-      : 'Announced deals as the wires reported them — parties, price where stated, and the link. Switch to a sector to narrow it.';
-
-  if (dealView === 'sectors') {
-    el.innerHTML = secs.length
-      ? `<div class="deal-secs">${secs.map((s) => `<button class="deal-sec-tile" data-sector="${esc(s.id)}">
-          <div class="dsc-l">${esc(s.id)}</div>
-          <div class="dsc-v">${s.count}<span class="dsc-u">deals</span></div>
-          <div class="dsc-s">${s.value ? dealVal(s.value) + ' disclosed' : 'value not disclosed'}</div>
-        </button>`).join('')}</div>
-        <div class="macro-note">Tap a sector to see its deals. Counts are stories the wires reported, not a census.</div>`
-      : '<div class="macro-note">No sector activity logged yet.</div>';
-    return;
+  if (hint) hint.textContent = maView === 'highlights'
+    ? 'The year’s biggest verified deal, the largest logged, and what came in this week.'
+    : 'Pick a sector, then a company, to see the deal itself.';
+  if (maView === 'sectors') {
+    if (maCompany) return renderCompanyDeals(el, deals);
+    if (maSector) return renderCompanyList(el, deals);
+    return renderSectorGrid(el, deals);
   }
+  return renderHighlights(el, deals);
+}
 
-  if (dealView === 'verified') {
-    el.innerHTML = arch.length
-      ? arch.map((d) => `<div class="deal-card">
-          <div class="dc-top"><span class="dc-pair"><b>${esc(d.acquirer || '—')}</b> <span class="dimtext">→</span> ${esc(d.target || '—')}</span><span class="dc-val">${dealVal(d.value)}</span></div>
-          <div class="dc-meta">${dealDate(d.date)} · ${esc(d.sector || '')} · ${esc(d.consideration || '')}</div>
-          ${d.rationale ? `<div class="dc-why">“${esc(d.rationale)}”</div>` : ''}
-          <div class="dc-foot">${(d.advisers || []).length ? `advisers disclosed: ${esc(d.advisers.join(', '))}` : 'advisers not disclosed in the filing'}${d.url ? ` · <a href="${esc(d.url)}" target="_blank" rel="noopener noreferrer">filing</a>` : ''}</div>
-        </div>`).join('') + '<div class="macro-note">Each of these was read out of the company’s own press release. The archive grows as filings are verified — it is a seed, not the market.</div>'
-      : '<div class="macro-note">No verified deals yet.</div>';
-    return;
-  }
+function renderHighlights(el, deals) {
+  const verified = deals.filter((d) => d.status === 'verified' && d.value);
+  const hero = verified.slice().sort((a, b) => b.value - a.value)[0]
+    || deals.filter((d) => d.value).sort((a, b) => b.value - a.value)[0];
+  const year = deals.filter((d) => d.value).sort((a, b) => b.value - a.value).slice(0, 8);
+  const latest = deals.slice(0, 10);
+  const row = (d, i) => `<button class="ma-row" data-status="${esc(d.status || 'reported')}" data-deal="${esc(d.key || d.id)}" data-sector="${esc(d.sector || '')}" data-company="${esc(d.acquirer || d.target || '')}">
+      ${i != null ? `<span class="ma-rank">${i + 1}</span>` : `<span class="ma-when">${dealDate(d.date)}</span>`}
+      <span class="ma-who">${maMono(maName(d.target) || maName(d.acquirer))}<span class="ma-names"><b>${esc(maName(d.acquirer) || '—')}</b> <span class="dimtext">→</span> ${esc(maName(d.target) || '—')}</span></span>
+      <span class="ma-val">${dealVal(d.value)}</span>
+      <span class="ma-tags">${statusChip(d.status)}</span>
+    </button>`;
+  el.innerHTML = (hero ? `<div class="ma-hero" data-deal="${esc(hero.key || hero.id)}" data-sector="${esc(hero.sector || '')}" data-company="${esc(hero.acquirer || hero.target || '')}" role="button" tabindex="0">
+      <div class="ma-hero-l">BIGGEST VERIFIED DEAL${hero.status === 'verified' ? '' : ' (unverified)'} · ${esc(hero.sector || '')}</div>
+      <div class="ma-hero-pair">${maMono(maName(hero.target))}<span><b>${esc(maName(hero.acquirer) || '—')}</b> <span class="dimtext">→</span> ${esc(maName(hero.target) || '—')}</span></div>
+      <div class="ma-hero-v">${dealVal(hero.value)}</div>
+      ${hero.rationale ? `<div class="ma-hero-w">“${esc(hero.rationale)}”</div>` : ''}
+      <div class="ma-hero-m">${dealDate(hero.date)} · ${(hero.advisers || []).length ? 'advisers: ' + esc(hero.advisers.join(', ')) : 'advisers not disclosed'}</div>
+    </div>` : '')
+    + `<div class="gtitle">BIGGEST LOGGED</div>${year.map((d, i) => row(d, i)).join('')}`
+    + `<div class="gtitle">LATEST</div>${latest.map((d) => row(d, null)).join('')}`;
+}
 
-  const cutoff = dealRange ? new Date(Date.now() - dealRange * 864e5).toISOString().slice(0, 10) : null;
-  const rows = log.filter((d) => (dealSector === 'all' || d.sector === dealSector) && (!cutoff || (d.date || '') >= cutoff));
-  const total = rows.reduce((a, b) => a + (b.value || 0), 0);
-  el.innerHTML = dealFilters() + (rows.length
-    ? `<div class="deal-sum">${rows.length} deal${rows.length === 1 ? '' : 's'}${dealSector !== 'all' ? ` in ${esc(dealSector)}` : ''}${total ? ` · ${dealVal(total)} disclosed` : ''}</div>`
-      + rows.map((w) => `<div class="deal-row">
-        <span class="deal-date">${dealDate(w.date)}</span>
-        <span class="deal-parties">${w.acquirer ? `<b>${esc(w.acquirer)}</b> <span class="dimtext">→</span> ` : ''}${esc(w.target || w.title)}</span>
-        <span class="deal-val">${dealVal(w.value)}</span>
-        <span class="deal-sec">${esc(w.sector || '')}</span>
-        <a class="deal-head" href="${esc(w.url)}" target="_blank" rel="noopener noreferrer">${esc(w.title)} <span class="dimtext">— ${esc(w.source || '')}</span></a>
-      </div>`).join('')
-    : '<div class="macro-note">Nothing logged for this filter yet. The wire fills in as deals are reported.</div>');
+function renderSectorGrid(el, deals) {
+  const secs = (dealsData.sectors || []);
+  el.innerHTML = `<div class="deal-secs">${secs.map((s) => `<button class="deal-sec-tile" data-sector="${esc(s.id)}">
+      <div class="dsc-l">${esc(s.id)}</div>
+      <div class="dsc-v">${s.count}<span class="dsc-u">deals</span></div>
+      <div class="dsc-s">${s.value ? dealVal(s.value) + ' disclosed' : 'value not disclosed'}</div>
+    </button>`).join('')}</div>`;
+}
+
+function renderCompanyList(el, deals) {
+  const rows = deals.filter((d) => d.sector === maSector);
+  const map = new Map();
+  const add = (name, role, d) => {
+    if (!name) return;
+    const k = companyKey(name);
+    if (!map.has(k)) map.set(k, { name: maName(name), role, count: 0, value: 0 });
+    const c = map.get(k);
+    c.count++; c.value += d.value || 0;
+    if (c.role !== role) c.role = 'both';
+  };
+  for (const d of rows) { add(d.acquirer, 'acquirer', d); add(d.target, 'target', d); }
+  const list = [...map.values()].sort((a, b) => b.value - a.value || a.name.localeCompare(b.name));
+  el.innerHTML = `<div class="ma-crumb"><button class="ma-back" data-back="1">← SECTORS</button> <span>${esc(maSector)}</span></div>`
+    + list.map((c) => `<button class="ma-row ma-co" data-company="${esc(c.name)}">
+        ${maMono(c.name)}
+        <span class="ma-names"><b>${esc(c.name)}</b><span class="ma-role">${esc(c.role)}</span></span>
+        <span class="ma-val">${c.value ? dealVal(c.value) : '—'}</span>
+        <span class="ma-count">${c.count} deal${c.count === 1 ? '' : 's'}</span>
+      </button>`).join('');
+}
+
+function renderCompanyDeals(el, deals) {
+  const mine = deals.filter((d) => companyKey(d.acquirer) === companyKey(maCompany) || companyKey(d.target) === companyKey(maCompany));
+  const d = mine[0];
+  if (!d) { el.innerHTML = `<div class="ma-crumb"><button class="ma-back" data-back="1">← BACK</button></div><div class="macro-note">No deals for this company.</div>`; return; }
+  const other = mine.slice(1);
+  const otherHtml = other.map((x) => {
+    const attrs = `data-deal="${esc(x.key || x.id)}" data-sector="${esc(x.sector || '')}" data-company="${esc(x.acquirer || x.target || '')}"`;
+    return `<button class="ma-row" ${attrs}>
+        <span class="ma-when">${dealDate(x.date)}</span>
+        <span class="ma-names">${esc(x.acquirer || '—')} <span class="dimtext">→</span> ${esc(x.target || '—')}</span>
+        <span class="ma-val">${dealVal(x.value)}</span>
+        <span class="ma-tags">${statusChip(x.status)}</span></button>`;
+  }).join('');
+  const advisers = (d.advisers || []).length
+    ? `<div>advisers: ${esc(d.advisers.join(', '))}</div>`
+    : '<div class="dimtext">advisers not disclosed</div>';
+  const link = d.url
+    ? `<a href="${esc(d.url)}" target="_blank" rel="noopener noreferrer">${d.status === 'verified' ? 'the filing' : 'the story'} ↗</a>`
+    : '';
+  el.innerHTML = `<div class="ma-crumb"><button class="ma-back" data-back="1">← ${esc(maSector || 'SECTORS')}</button> <span>${esc(maCompany)}</span></div>`
+    + `<div class="ma-deal">
+        <div class="ma-deal-pair">${maMono(d.target)}<span><b>${esc(d.acquirer || '—')}</b> <span class="dimtext">→</span> ${esc(d.target || '—')}</span></div>
+        <div class="ma-deal-v">${dealVal(d.value) || 'value not disclosed'} ${statusChip(d.status)}</div>
+        <div class="ma-deal-m">${dealDate(d.date)} · ${esc(d.sector || '')}${d.consideration ? ' · ' + esc(d.consideration) : ''}</div>
+        ${d.rationale ? `<div class="dc-why">“${esc(d.rationale)}”</div>` : ''}
+        <div class="ma-deal-foot">${advisers}${link}</div>
+      </div>`
+    + (other.length ? `<div class="gtitle">ALSO INVOLVED</div>${otherHtml}` : '');
 }
 
 document.addEventListener('click', (e) => {
   const view = e.target.closest('.deal-view');
   if (view && view.dataset.view) {
-    dealView = view.dataset.view;
+    maView = view.dataset.view; maSector = null; maCompany = null;
     document.querySelectorAll('.deal-view').forEach((x) => { const on = x === view; x.classList.toggle('active', on); x.setAttribute('aria-selected', String(on)); });
     renderDeals();
     return;
   }
-  const chip = e.target.closest('.deal-chip');
-  if (chip) {
-    if (chip.dataset.sec) dealSector = chip.dataset.sec;
-    if (chip.dataset.range != null) dealRange = Number(chip.dataset.range);
+  if (e.target.closest('[data-back]')) {
+    if (maCompany) maCompany = null; else maSector = null;
     renderDeals();
     return;
   }
-  const tile = e.target.closest('.deal-sec-tile');
-  if (tile && tile.dataset.sector) {
-    dealSector = tile.dataset.sector;
-    dealView = 'wire';
-    document.querySelectorAll('.deal-view').forEach((x) => { const on = x.dataset.view === 'wire'; x.classList.toggle('active', on); x.setAttribute('aria-selected', String(on)); });
-    renderDeals();
-  }
+  const co = e.target.closest('[data-company]');
+  if (co && maView === 'sectors') { maCompany = co.dataset.company; renderDeals(); return; }
+  const sec = e.target.closest('[data-sector]');
+  if (sec && maView === 'sectors' && !sec.dataset.deal) { maSector = sec.dataset.sector; maCompany = null; renderDeals(); return; }
+  const deal = e.target.closest('[data-deal]');
+  if (deal && deal.dataset.company) { maView = 'sectors'; maSector = deal.dataset.sector; maCompany = deal.dataset.company; renderDeals(); }
 });

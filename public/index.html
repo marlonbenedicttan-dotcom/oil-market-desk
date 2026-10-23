@@ -23,7 +23,7 @@
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
   <link rel="preconnect" href="https://unpkg.com" crossorigin />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <link rel="stylesheet" href="style.css?v=85" />
+  <link rel="stylesheet" href="style.css?v=87" />
   <noscript><style>#boot{display:none!important}</style></noscript>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -328,11 +328,10 @@
     <!-- MACRO -->
     <div class="tabpane hidden" data-pane="deals" id="pane-deals" role="tabpanel" aria-labelledby="tab-deals">
       <section class="panel" id="p-deals">
-        <div class="ph"><span class="ph-t">M&amp;A — THE DEAL WIRE</span><span class="dimtext" id="deals-sub">tier-1 wires · last 7 days</span></div>
+        <div class="ph"><span class="ph-t">M&amp;A — DEAL BOOK</span><span class="dimtext" id="deals-sub">tier-1 wires · last 7 days</span></div>
         <div class="deal-views" id="deal-views" role="tablist">
-          <button class="deal-view active" data-view="wire" role="tab" aria-selected="true">WIRE</button>
+          <button class="deal-view active" data-view="highlights" role="tab" aria-selected="true">HIGHLIGHTS</button>
           <button class="deal-view" data-view="sectors" role="tab" aria-selected="false">SECTORS</button>
-          <button class="deal-view" data-view="verified" role="tab" aria-selected="false">FILINGS</button>
         </div>
         <div class="deal-hint" id="deal-hint">Announced deals as the wires reported them — parties, price where stated, and the link.</div>
         <div id="deal-body"><div class="macro-note">READING THE WIRE…</div></div>
@@ -434,6 +433,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=143"></script>
+  <script src="app.js?v=146"></script>
 </body>
 </html>

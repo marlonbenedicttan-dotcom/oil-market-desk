@@ -1287,3 +1287,18 @@ The sector view was read-only. Now every sector tile is a button, and the wire h
 - What a wire row can and cannot tell you: date, acquirer, target, value (when the headline states one),
   sector and a source link. It cannot tell you advisers, multiples or the rationale — those come from
   the filing, which is what VERIFIED is for.
+
+## M&A rebuilt as two pages, with status on every deal (2026-10-23)
+The tab was three equal segments over a table. It is now the two things a reader actually does:
+- **HIGHLIGHTS** — the biggest VERIFIED deal as a hero (price, quoted rationale, advisers), then the
+  eight largest deals logged, then the latest ten with dates.
+- **SECTORS** — sector grid → company list (monogram, role, deal count, value) → the deal itself
+  (price, date, consideration, rationale, advisers, link). Breadcrumb back at each level.
+**Verification is a flag, not a page.** Every row carries `VERIFIED` (read from the filing),
+`REPORTED` (a wire says so) or `RUMOUR` (the wire says talks/exploring — `DEAL_RUMOUR` in server.js).
+A verified row replaces the wire version of the same target, so a deal never appears twice at two
+levels of confidence. On a phone the chip is replaced by a ✓ (verified) or ● (rumour) on the value.
+**Logos are monograms** — initials in a colour derived from the name. We have no domain for most
+companies, Clearbit's free endpoint is unreliable and a broken image is worse than a clean monogram.
+`/api/deals` now returns one unified `deals` list (verified + wire, deduped) with `sectors` counts.
+101 tests pass; mobile 0 overflow, 0 tap targets under 32px.

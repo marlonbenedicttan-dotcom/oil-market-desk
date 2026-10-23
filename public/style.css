@@ -873,3 +873,51 @@ button.deal-sec-tile { display: block; width: 100%; text-align: left; border: 0;
 button.deal-sec-tile:hover { background: #10151b; }
 @media (max-width: 640px) { .deal-chip { min-height: 32px; } }
 .deal-hint { padding: 7px 12px; font-size: 10px; color: var(--dim); line-height: 1.4; border-bottom: 1px solid var(--line); }
+
+/* M&A — highlights + sector → company → deal. */
+.ma-hero { padding: 13px 12px 12px; background: #0c0f13; border-bottom: 1px solid var(--line); cursor: pointer; }
+.ma-hero:hover { background: #10151b; }
+.ma-hero-l { font-size: 9px; letter-spacing: 1.3px; color: var(--amber); text-transform: uppercase; }
+.ma-hero-pair { display: flex; align-items: center; gap: 10px; margin-top: 6px; font-size: 15px; color: var(--text); }
+.ma-hero-v { font-size: 32px; font-weight: 800; font-variant-numeric: tabular-nums; margin-top: 4px; }
+.ma-hero-w { font-size: 11px; color: #c9d4df; line-height: 1.5; margin-top: 6px; border-left: 2px solid var(--line2); padding-left: 8px; }
+.ma-hero-m { font-size: 10px; color: var(--dim); margin-top: 6px; }
+.ma-mono { flex: 0 0 auto; width: 30px; height: 30px; display: inline-grid; place-items: center; font-size: 11px; font-weight: 700;
+  border: 1px solid hsl(var(--h, 210) 35% 28%); background: hsl(var(--h, 210) 40% 12%); color: hsl(var(--h, 210) 65% 70%); }
+.ma-row { display: grid; grid-template-columns: 56px 1fr 78px 92px; align-items: center; gap: 9px; width: 100%;
+  padding: 7px 12px; background: transparent; border: 0; border-top: 1px solid var(--line); color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.ma-row:hover { background: #10151b; }
+.ma-when { font-size: 9.5px; color: var(--dim); text-transform: uppercase; letter-spacing: .5px; white-space: nowrap; }
+.ma-rank { font-size: 10px; color: var(--dim); font-variant-numeric: tabular-nums; }
+.ma-who { display: flex; align-items: center; gap: 9px; min-width: 0; }
+.ma-names { font-size: 12.5px; color: #c9d4df; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ma-names b { color: var(--text); font-weight: 600; }
+.ma-val { font-size: 12.5px; font-weight: 700; text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.ma-tags { text-align: right; }
+.ma-status { font-size: 8px; letter-spacing: .8px; padding: 2px 5px; border: 1px solid var(--line2); color: var(--dim); white-space: nowrap; }
+.ma-status.s-verified { color: var(--green); border-color: rgba(0, 200, 83, .45); }
+.ma-status.s-rumour { color: var(--amber); border-color: rgba(255, 158, 0, .45); }
+.ma-crumb { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-bottom: 1px solid var(--line); font-size: 9.5px; letter-spacing: 1px; color: var(--dim); text-transform: uppercase; }
+.ma-back { background: transparent; border: 0; color: var(--amber); font: inherit; font-size: 9.5px; letter-spacing: 1px; cursor: pointer; padding: 4px 0; }
+.ma-co { grid-template-columns: 34px 1fr 78px 62px; }
+.ma-role { font-size: 8.5px; color: var(--dim); letter-spacing: .7px; text-transform: uppercase; margin-left: 8px; }
+.ma-count { font-size: 9.5px; color: var(--dim); text-align: right; white-space: nowrap; }
+.ma-deal { padding: 14px 12px 12px; }
+.ma-deal-pair { display: flex; align-items: center; gap: 10px; font-size: 15px; color: var(--text); }
+.ma-deal-v { font-size: 26px; font-weight: 800; font-variant-numeric: tabular-nums; margin-top: 8px; display: flex; align-items: center; gap: 10px; }
+.ma-deal-m { font-size: 9.5px; color: var(--dim); letter-spacing: .6px; text-transform: uppercase; margin-top: 3px; }
+.ma-deal-foot { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; font-size: 10px; color: var(--dim); margin-top: 10px; }
+.ma-deal-foot a { color: var(--blue); text-decoration: none; }
+@media (max-width: 640px) {
+  .ma-row { grid-template-columns: 46px 1fr 70px; }
+  .ma-tags { display: none; }
+  .ma-row .ma-status { display: none; }
+  .ma-hero-v { font-size: 28px; }
+  .ma-co { grid-template-columns: 34px 1fr 66px; }
+  .ma-count { display: none; }
+}
+/* On a phone the status chip is hidden, so the value carries a marker instead. */
+@media (max-width: 640px) {
+  .ma-row[data-status="verified"] .ma-val::after { content: " ✓"; color: var(--green); font-size: 10px; }
+  .ma-row[data-status="rumour"] .ma-val::after { content: " ●"; color: var(--amber); font-size: 7px; vertical-align: 2px; }
+}
