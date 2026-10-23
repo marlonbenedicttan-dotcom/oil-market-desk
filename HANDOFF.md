@@ -1494,3 +1494,17 @@ the UI shows them as `≈ $59.0B` with the basis on hover. A value read from the
 only 16 of 200 had a per-share figure. The book is 1,536 deals with 223 priced (15%). The method is
 accurate where it applies; the universe, not the parser, is the constraint.
 Consequence for the UI: a `PRICED` filter was added so the defensible subset is one tap away.
+
+## The real value problem: a polluted corpus, not a parser (2026-10-23)
+Sampled six unpriced "deals" and opened their filings: an **earnings presentation**, a **quarterly
+results release**, a **lawsuit description**. The EDGAR backfill matched any 8-K containing "has agreed
+to acquire" anywhere in the document, so earnings releases and credit agreements were being stored as
+acquisitions. That is why values looked impossible — most of those documents never stated a price
+because they were not deal announcements.
+**New admission test** (`scripts/audit-deals.mjs`): the filing's own text must name an acquisition in
+the first 2,500 characters and the target within 4,000. 1,535 → **872 deals**, 663 dropped (earnings
+releases, unrelated 8-Ks), documents cached so a re-run is instant.
+The year spread is now sane (2020 137 · 2021 186 · 2022 129 · 2023 75 · 2024 115 · 2025 107 · 2026 123)
+because the audit applies the same test to every year.
+Priced: 140 of 872 (16%) — 133 disclosed, 7 computed. The audit does not create prices; it removes the
+rows that made the denominator dishonest.
