@@ -2937,6 +2937,12 @@ function renderDeals() {
   const sub = $('deals-sub');
   const scan = dealsData.log || {};
   if (sub) sub.textContent = `${scan.count || log.length} deals logged${scan.since ? ` · since ${dealDate(scan.since)}` : ''} · ${wire.length} on the wire now`;
+  const hint = $('deal-hint');
+  if (hint) hint.textContent = dealView === 'sectors'
+    ? 'Tap a sector to see every deal logged in it.'
+    : dealView === 'verified'
+      ? 'Confirmed from the company’s own SEC filing: the price, the stated reason and the advisers. The wire gives you the headline; this gives you the detail.'
+      : 'Announced deals as the wires reported them — parties, price where stated, and the link. Switch to a sector to narrow it.';
 
   if (dealView === 'sectors') {
     el.innerHTML = secs.length
@@ -2978,6 +2984,13 @@ function renderDeals() {
 }
 
 document.addEventListener('click', (e) => {
+  const view = e.target.closest('.deal-view');
+  if (view && view.dataset.view) {
+    dealView = view.dataset.view;
+    document.querySelectorAll('.deal-view').forEach((x) => { const on = x === view; x.classList.toggle('active', on); x.setAttribute('aria-selected', String(on)); });
+    renderDeals();
+    return;
+  }
   const chip = e.target.closest('.deal-chip');
   if (chip) {
     if (chip.dataset.sec) dealSector = chip.dataset.sec;

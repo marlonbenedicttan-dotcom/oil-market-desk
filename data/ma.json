@@ -6,8 +6,45 @@
   "source": "SEC EDGAR 8-K press releases",
   "note": "Only deals whose value and parties were read out of the company's own press release. This is a growing seed, not the whole market."
  },
- "count": 2,
+ "count": 4,
  "deals": [
+  {
+   "id": "0000950103-23-014885",
+   "date": "2023-10-11",
+   "acquirer": "ExxonMobil",
+   "target": "Pioneer Natural Resources",
+   "value": 59500,
+   "sector": "Energy",
+   "consideration": "stock",
+   "advisers": [
+    "Goldman Sachs",
+    "Morgan Stanley",
+    "Bank of America",
+    "Citi",
+    "Centerview Partners"
+   ],
+   "rationale": "The merger combines Pioneer’s more than 850,000 net acres in the Midland Basin with ExxonMobil’s 570,000 net acres in the Delaware and Midland Basins, creating the industry’s leading high-quality undeveloped U.S. position.",
+   "url": "https://www.sec.gov/Archives/edgar/data/0000034088/000095010323014885/dp201349_ex9901.htm",
+   "source": "Exxon Mobil 8-K, EX-99.1"
+  },
+  {
+   "id": "0000950142-23-002657",
+   "date": "2023-10-23",
+   "acquirer": "Chevron",
+   "target": "Hess",
+   "value": 53000,
+   "sector": "Energy",
+   "consideration": "stock",
+   "advisers": [
+    "Goldman Sachs",
+    "Morgan Stanley",
+    "J.P. Morgan",
+    "Evercore"
+   ],
+   "rationale": "The combined company is expected to grow production and free cash flow faster and for longer than Chevron’s current five-year guidance.",
+   "url": "https://www.sec.gov/Archives/edgar/data/0000093410/000095014223002657/eh230413256_ex9901.htm",
+   "source": "Chevron 8-K, EX-99.1"
+  },
   {
    "id": "0001104659-22-004729",
    "date": "2022-01-18",
@@ -16,7 +53,10 @@
    "value": 68700,
    "sector": "Technology",
    "consideration": "cash",
-   "advisers": ["Goldman Sachs", "Allen & Company"],
+   "advisers": [
+    "Goldman Sachs",
+    "Allen & Company"
+   ],
    "rationale": "This acquisition will accelerate the growth in Microsoft's gaming business across mobile, PC, console and cloud and will provide building blocks for the metaverse.",
    "url": "https://www.sec.gov/Archives/edgar/data/0000718877/000110465922004729/tm223212d1_ex99-1.htm",
    "source": "Microsoft 8-K, EX-99.1"
@@ -29,7 +69,9 @@
    "value": 24600,
    "sector": "Consumer",
    "consideration": "mixed",
-   "advisers": ["Goldman Sachs"],
+   "advisers": [
+    "Goldman Sachs"
+   ],
    "rationale": "the companies will merge two complementary organizations with iconic brands and deep roots in their local communities to establish a national footprint",
    "url": "https://www.sec.gov/Archives/edgar/data/0000056873/000110465922108671/tm2227942d1_ex99-1.htm",
    "source": "Kroger 8-K, EX-99.1"

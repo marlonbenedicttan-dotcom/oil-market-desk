@@ -872,3 +872,4 @@ canvas { display: block; }
 button.deal-sec-tile { display: block; width: 100%; text-align: left; border: 0; font: inherit; color: inherit; cursor: pointer; }
 button.deal-sec-tile:hover { background: #10151b; }
 @media (max-width: 640px) { .deal-chip { min-height: 32px; } }
+.deal-hint { padding: 7px 12px; font-size: 10px; color: var(--dim); line-height: 1.4; border-bottom: 1px solid var(--line); }
