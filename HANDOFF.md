@@ -1272,3 +1272,18 @@ next to revenue and market-cap figures, so a wrong number is one regex away. It 
 `scripts/verify-deal.mjs` is the manual counterpart: give it a target and a month, and it prints the
 deal-value sentence from the filing, which is how the two verified rows were confirmed.
 Verified: 15 wire rows, 0 horizontal overflow at 390px, 0 tap targets under 32px, 101 tests.
+
+## M&A: browse the wire by sector (2026-10-23)
+The sector view was read-only. Now every sector tile is a button, and the wire has a filter bar:
+`ALL SECTORS · <sectors present>` on the left, `7D / 30D / ALL` on the right, with a running summary
+("4 deals in Healthcare · $15.8B disclosed").
+- Wire items accumulate into a local log (`data/deals-log.json`, capped at 2,000, deduped by the same
+  key as the tape) so a sector can be browsed beyond the current fetch. The header states the real
+  span — "11 deals logged · since 15 Oct" — rather than claiming a fixed window.
+- The free host's disk is ephemeral, so the log survives restarts on the same instance but not a
+  redeploy; the UI never implies otherwise.
+- `/api/deals` accepts `?days=` and `?sector=` and returns `deals` (filtered), `sectors` (over the
+  filtered set) and `log {count, since}`. The client filters locally for instant switching.
+- What a wire row can and cannot tell you: date, acquirer, target, value (when the headline states one),
+  sector and a source link. It cannot tell you advisers, multiples or the rationale — those come from
+  the filing, which is what VERIFIED is for.

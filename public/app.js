@@ -2908,19 +2908,24 @@ $('macro-links')?.addEventListener('click', (e) => { const el = e.target.closest
 })();
 
 // ---------------------------------------------------------------------------
-// M&A — a live deal wire plus a small verified archive. The wire is what tier-1 wires reported in the
-// last week; the archive is read out of the company's own filing. Both are labelled, because neither
-// is the whole market and the app never pretends otherwise.
-let dealsData = null, dealView = 'wire';
+// M&A — a live deal wire, browsable by sector, plus a small verified archive.
+let dealsData = null, dealView = 'wire', dealSector = 'all', dealRange = 30;
 const dealDate = (d) => (d ? new Date(d + 'T00:00:00Z').toLocaleDateString('en-GB', { day: '2-digit', month: 'short', timeZone: 'UTC' }) : '');
 const dealVal = (v) => (v == null ? '' : v >= 1000 ? `$${(v / 1000).toFixed(1)}B` : `$${Math.round(v)}M`);
 
 async function loadDeals() {
   const el = $('deal-body');
   if (!el) return;
-  if (!dealsData && !el.querySelector('.deal-row')) el.innerHTML = stLoading('Reading the deal wire…');
-  try { dealsData = await jget('/api/deals', 600000); } catch { dealsData = dealsData || null; }
+  if (!dealsData) el.innerHTML = stLoading('Reading the deal wire…');
+  try { dealsData = await jget('/api/deals', 300000); } catch { dealsData = dealsData || null; }
   renderDeals();
+}
+
+function dealFilters() {
+  const secs = (dealsData.sectors || []).map((x) => x.id);
+  const chip = (id, label, kind) => `<button class="deal-chip${(kind === 'sec' ? dealSector : dealRange) == id ? ' on' : ''}" data-${kind}="${id}">${esc(label)}</button>`;
+  return `<div class="deal-filters">${chip('all', 'ALL SECTORS', 'sec')}${secs.map((x) => chip(x, x, 'sec')).join('')}`
+    + `<span class="deal-gap"></span>${chip(7, '7D', 'range')}${chip(30, '30D', 'range')}${chip(0, 'ALL', 'range')}</div>`;
 }
 
 function renderDeals() {
@@ -2928,19 +2933,23 @@ function renderDeals() {
   if (!el) return;
   if (!dealsData) { el.innerHTML = stError('Couldn’t load the deal wire — retrying.'); return; }
   const wire = dealsData.wire || [], arch = dealsData.archive || [], secs = dealsData.sectors || [];
+  const log = dealsData.deals || [];
   const sub = $('deals-sub');
-  if (sub) sub.textContent = `${wire.length} stories this week · ${arch.length} verified deals · tier-1 wires`;
+  const scan = dealsData.log || {};
+  if (sub) sub.textContent = `${scan.count || log.length} deals logged${scan.since ? ` · since ${dealDate(scan.since)}` : ''} · ${wire.length} on the wire now`;
+
   if (dealView === 'sectors') {
     el.innerHTML = secs.length
-      ? `<div class="deal-secs">${secs.map((s) => `<div class="deal-sec-tile">
+      ? `<div class="deal-secs">${secs.map((s) => `<button class="deal-sec-tile" data-sector="${esc(s.id)}">
           <div class="dsc-l">${esc(s.id)}</div>
           <div class="dsc-v">${s.count}<span class="dsc-u">deals</span></div>
           <div class="dsc-s">${s.value ? dealVal(s.value) + ' disclosed' : 'value not disclosed'}</div>
-        </div>`).join('')}</div>
-        <div class="macro-note">Counts are stories on the wire this week, not a census — wires do not report every deal.</div>`
-      : '<div class="macro-note">No sector activity on the wire this week.</div>';
+        </button>`).join('')}</div>
+        <div class="macro-note">Tap a sector to see its deals. Counts are stories the wires reported, not a census.</div>`
+      : '<div class="macro-note">No sector activity logged yet.</div>';
     return;
   }
+
   if (dealView === 'verified') {
     el.innerHTML = arch.length
       ? arch.map((d) => `<div class="deal-card">
@@ -2952,21 +2961,35 @@ function renderDeals() {
       : '<div class="macro-note">No verified deals yet.</div>';
     return;
   }
-  el.innerHTML = wire.length
-    ? wire.map((w) => `<div class="deal-row">
+
+  const cutoff = dealRange ? new Date(Date.now() - dealRange * 864e5).toISOString().slice(0, 10) : null;
+  const rows = log.filter((d) => (dealSector === 'all' || d.sector === dealSector) && (!cutoff || (d.date || '') >= cutoff));
+  const total = rows.reduce((a, b) => a + (b.value || 0), 0);
+  el.innerHTML = dealFilters() + (rows.length
+    ? `<div class="deal-sum">${rows.length} deal${rows.length === 1 ? '' : 's'}${dealSector !== 'all' ? ` in ${esc(dealSector)}` : ''}${total ? ` · ${dealVal(total)} disclosed` : ''}</div>`
+      + rows.map((w) => `<div class="deal-row">
         <span class="deal-date">${dealDate(w.date)}</span>
         <span class="deal-parties">${w.acquirer ? `<b>${esc(w.acquirer)}</b> <span class="dimtext">→</span> ` : ''}${esc(w.target || w.title)}</span>
         <span class="deal-val">${dealVal(w.value)}</span>
         <span class="deal-sec">${esc(w.sector || '')}</span>
         <a class="deal-head" href="${esc(w.url)}" target="_blank" rel="noopener noreferrer">${esc(w.title)} <span class="dimtext">— ${esc(w.source || '')}</span></a>
       </div>`).join('')
-    : '<div class="macro-note">Nothing on the wire this week.</div>';
+    : '<div class="macro-note">Nothing logged for this filter yet. The wire fills in as deals are reported.</div>');
 }
 
-$('deal-views')?.addEventListener('click', (e) => {
-  const b = e.target.closest('.deal-view');
-  if (!b) return;
-  dealView = b.dataset.view;
-  document.querySelectorAll('.deal-view').forEach((x) => { const on = x === b; x.classList.toggle('active', on); x.setAttribute('aria-selected', String(on)); });
-  renderDeals();
+document.addEventListener('click', (e) => {
+  const chip = e.target.closest('.deal-chip');
+  if (chip) {
+    if (chip.dataset.sec) dealSector = chip.dataset.sec;
+    if (chip.dataset.range != null) dealRange = Number(chip.dataset.range);
+    renderDeals();
+    return;
+  }
+  const tile = e.target.closest('.deal-sec-tile');
+  if (tile && tile.dataset.sector) {
+    dealSector = tile.dataset.sector;
+    dealView = 'wire';
+    document.querySelectorAll('.deal-view').forEach((x) => { const on = x.dataset.view === 'wire'; x.classList.toggle('active', on); x.setAttribute('aria-selected', String(on)); });
+    renderDeals();
+  }
 });

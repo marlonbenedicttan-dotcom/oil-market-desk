@@ -8,3 +8,4 @@ node_modules/
 
 # SEC filing cache used by scripts/fetch-ma.mjs
 data/.ma-cache/
+data/deals-log.json

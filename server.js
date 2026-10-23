@@ -708,6 +708,22 @@ function parseDealTitle(t) {
   return { acquirer: null, target: null, value };
 }
 
+// Wire items accumulate into a local log so a sector can be browsed beyond today's fetch. The file is
+// best-effort on a free host (the disk is ephemeral), so the UI always says how far back it actually goes.
+const DEAL_LOG_FILE = path.join(__dirname, 'data', 'deals-log.json');
+let DEAL_LOG = (() => { try { const j = JSON.parse(fs.readFileSync(DEAL_LOG_FILE, 'utf8')); return Array.isArray(j) ? j : (j.deals || []); } catch { return []; } })();
+let dealLogWritten = 0;
+function rememberDeals(items) {
+  const have = new Set(DEAL_LOG.map((x) => x.key));
+  const fresh = items.filter((x) => x.key && !have.has(x.key));
+  if (!fresh.length) return;
+  DEAL_LOG = [...fresh, ...DEAL_LOG].slice(0, 2000);
+  if (Date.now() - dealLogWritten > 60e3) {
+    dealLogWritten = Date.now();
+    try { fs.writeFileSync(DEAL_LOG_FILE, JSON.stringify({ updated: new Date().toISOString(), deals: DEAL_LOG })); } catch {}
+  }
+}
+
 async function getDealWire() {
   return cached('dealwire', 600e3, async () => {
     const items = await fetchGoogleNews(DEAL_QUERY, 100).catch(() => []);
@@ -736,9 +752,10 @@ async function getDealWire() {
       if ((keyA && seenA.has(keyA)) || (keyT && seenT.has(keyT))) continue;
       if (keyA) seenA.add(keyA);
       if (keyT) seenT.add(keyT);
-      out.push({ ...p, title: t, sector: dealSector(t), source: it.source, url: it.url, date: it.date ? it.date.slice(0, 10) : null });
+      out.push({ ...p, key: keyA || keyT, title: t, sector: dealSector(t), source: it.source, url: it.url, date: it.date ? it.date.slice(0, 10) : null });
     }
     out.sort((a, b) => (a.date < b.date ? 1 : -1));
+    rememberDeals(out);
     return out.slice(0, 40);
   });
 }
@@ -3787,11 +3804,21 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname === '/api/deals') {
       const wire = await getDealWire().catch(() => []);
       const archive = DEAL_ARCHIVE.deals || [];
+      const days = Number(url.searchParams.get('days') || 0);
+      const sector = url.searchParams.get('sector') || null;
+      const cutoff = days ? new Date(Date.now() - days * 864e5).toISOString().slice(0, 10) : null;
+      const log = DEAL_LOG.filter((d) => (!cutoff || (d.date || '') >= cutoff) && (!sector || d.sector === sector));
+      const base = cutoff || sector ? log : DEAL_LOG;
       const sectors = DEAL_SECTOR_RULES.map((sec) => {
-        const rows = wire.filter((w) => w.sector === sec.id);
+        const rows = base.filter((w) => w.sector === sec.id);
         return { id: sec.id, count: rows.length, value: rows.reduce((a, b) => a + (b.value || 0), 0) };
       }).filter((sec) => sec.count).sort((a, b) => b.count - a.count);
-      return sendJSON(res, 200, { updated: new Date().toISOString(), coverage: DEAL_ARCHIVE.coverage || {}, wire, archive, sectors });
+      return sendJSON(res, 200, {
+        updated: new Date().toISOString(),
+        coverage: DEAL_ARCHIVE.coverage || {},
+        wire, archive, sectors, deals: log,
+        log: { count: DEAL_LOG.length, since: DEAL_LOG.length ? [...DEAL_LOG].map((d) => d.date).filter(Boolean).sort()[0] : null },
+      });
     }
     if (url.pathname === '/api/regime') return sendJSON(res, 200, await getRegime().catch((e) => ({ error: String(e.message), rows: [] })));
     if (url.pathname === '/api/screen') return sendJSON(res, 200, await getScreen().catch((e) => ({ error: String(e.message), rows: [] })));
