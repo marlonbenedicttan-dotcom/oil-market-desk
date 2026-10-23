@@ -1480,3 +1480,17 @@ Also fixed the truncation complaint: company names and headlines now wrap to **t
   the same clause. Yield is low (7 in 120) — most 8-Ks simply don't state a price — so values remain
   ~15% of the book. Better to be empty than wrong.
 - SIC retag of 425 deals cut "Other" from 131 to **8**.
+
+## Deal values: computed from price × shares, validated (2026-10-23)
+`scripts/value-by-shares.mjs` computes equity value = **offer price per share × shares outstanding**,
+both public: the price from the press release, the share count from XBRL
+(`dei:EntityCommonStockSharesOutstanding`). Delisted targets are resolved through full-text search of
+their old 10-Ks, since they vanish from `company_tickers.json`.
+**Validation against five known deals** (equity basis, since price × shares gives equity):
+Pioneer −0.9%, Hess −0.9%, WBD −5.1%, Activision +7.7%, Albertsons −8.3% → all within 9%.
+Values are rounded to two significant figures and carry `valueSource: 'computed'` plus `valueBasis`;
+the UI shows them as `≈ $59.0B` with the basis on hover. A value read from the filing is never marked.
+**The honest limit:** the EDGAR corpus is dominated by small asset purchases that state no price at all —
+only 16 of 200 had a per-share figure. The book is 1,536 deals with 223 priced (15%). The method is
+accurate where it applies; the universe, not the parser, is the constraint.
+Consequence for the UI: a `PRICED` filter was added so the defensible subset is one tap away.

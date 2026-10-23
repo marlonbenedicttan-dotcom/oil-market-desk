@@ -2930,7 +2930,7 @@ $('macro-links')?.addEventListener('click', (e) => { const el = e.target.closest
 // RUMOUR (the wire says talks/exploring). Verification is a flag, never a separate section.
 let dealsData = null, maView = 'highlights', maSector = null, maCompany = null, maDays = 0;
 let maQuery = '', maMin = 0, maStatus = 'all', maBuyer = 'all', maLookupFor = null, maLookupBusy = false;
-let maSecDays = 0, maSecSort = 'date';   // the sector's own window + sort, independent of the board's
+let maSecDays = 0, maSecSort = 'date', maPriced = false;   // the sector's own window + sort, independent of the board's
 const PE_RE = /\b(capital|partners|equity|kkr|blackstone|apollo|carlyle|bain|vista|thoma bravo|advent|cvc|eqt|warburg|silver lake|tpg|permira|bc partners|cinven|kps|platinum|golden gate|hellman)\b/i;
 const dealDate = (d) => (d ? new Date(d + 'T00:00:00Z').toLocaleDateString('en-GB', { day: '2-digit', month: 'short', timeZone: 'UTC' }) : '');
 // Two-digit years everywhere: "23 Oct 26" is unambiguous next to "23 Oct" and leaves the company
@@ -2942,6 +2942,8 @@ const dealDateY = (d) => {
   return dt.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: '2-digit', timeZone: 'UTC' });
 };
 const dealVal = (v) => (v == null ? '' : v >= 1000 ? `$${(v / 1000).toFixed(1)}B` : `$${Math.round(v)}M`);
+// A computed value is marked: "≈" plus the basis on hover. It is never shown as if the filing said it.
+const valCell = (d) => d.value == null ? '' : (d.valueSource === 'computed' ? `≈ ${dealVal(d.value)}` : dealVal(d.value));
 const STATUS_LABEL = { rumour: 'RUMOUR', announced: 'ANNOUNCED', closed: 'CLOSED', terminated: 'TERMINATED' };
 // Two dimensions, one chip: verified beats everything (it is evidence), otherwise show the lifecycle.
 const chipFor = (d) => d.verified
@@ -2983,6 +2985,7 @@ function renderDeals() {
     if (maStatus === 'verified' && !d.verified) return false;
     if (maStatus === 'rumour' && d.status !== 'rumour') return false;
     if (maBuyer === 'pe' && !PE_RE.test(d.acquirer || '')) return false;
+    if (maPriced && !d.value) return false;
     if (q && !(`${d.acquirer || ''} ${d.target || ''} ${d.sector || ''}`.toLowerCase().includes(q))) return false;
     return true;
   });
@@ -3012,8 +3015,8 @@ function renderMaTools() {
   const size = group('SIZE', chip('All', maMin === 0, 'data-min="0"') + chip('$1B+', maMin === 1000, 'data-min="1000"') + chip('$5B+', maMin === 5000, 'data-min="5000"'));
   const evidence = group('EVIDENCE', chip('All', maStatus === 'all', 'data-status="all"') + chip('Verified', maStatus === 'verified', 'data-status="verified"') + chip('Rumour', maStatus === 'rumour', 'data-status="rumour"'));
   const buyer = group('BUYER', chip('All', maBuyer === 'all', 'data-buyer="all"') + chip('PE', maBuyer === 'pe', 'data-buyer="pe"'));
-  const active = (maMin ? 1 : 0) + (maStatus !== 'all' ? 1 : 0) + (maBuyer !== 'all' ? 1 : 0) + (maQuery.trim() ? 1 : 0);
-  box.innerHTML = size + evidence + buyer + (active ? `<button class="ma-reset" data-reset="1">CLEAR ${active} FILTER${active === 1 ? '' : 'S'}</button>` : '');
+  const active = (maMin ? 1 : 0) + (maStatus !== 'all' ? 1 : 0) + (maBuyer !== 'all' ? 1 : 0) + (maQuery.trim() ? 1 : 0) + (maPriced ? 1 : 0);
+  box.innerHTML = size + evidence + buyer + chip('Priced', maPriced, 'data-priced="1"') + (active ? `<button class="ma-reset" data-reset="1">CLEAR ${active} FILTER${active === 1 ? '' : 'S'}</button>` : '');
 }
 
 function renderHighlights(el, deals) {
@@ -3042,7 +3045,7 @@ function renderHighlights(el, deals) {
       .then(() => { maLookupBusy = false; return loadDeals(); })
       .catch(() => { maLookupBusy = false; });
   }
-  const active = (maMin ? 1 : 0) + (maStatus !== 'all' ? 1 : 0) + (maBuyer !== 'all' ? 1 : 0) + (maQuery.trim() ? 1 : 0);
+  const active = (maMin ? 1 : 0) + (maStatus !== 'all' ? 1 : 0) + (maBuyer !== 'all' ? 1 : 0) + (maQuery.trim() ? 1 : 0) + (maPriced ? 1 : 0);
   const summary = `<div class="ma-sumline">${deals.length} deal${deals.length === 1 ? '' : 's'}${active ? ' · filtered' : ''}</div>`;
   if (!deals.length) { el.innerHTML = summary + '<div class="macro-note">No deals match these filters. Use CLEAR to reset.</div>'; return; }
   el.innerHTML = summary + (hero ? `<div class="ma-hero" data-deal="${esc(hero.key || hero.id)}" data-sector="${esc(hero.sector || '')}" data-company="${esc(hero.acquirer || hero.target || '')}" role="button" tabindex="0">
@@ -3116,7 +3119,7 @@ function renderCompanyList(el, allDeals) {
   const dealRow = (d) => `<button class="ma-row ma-deal-row" data-status="${esc(d.status || 'announced')}" data-deal="${esc(d.key || d.id)}" data-sector="${esc(d.sector || '')}" data-company="${esc(maName(d.acquirer) || maName(d.target) || '')}">
       <span class="ma-when">${dealDateY(d.date)}</span>
       <span class="ma-who">${maMono(maName(d.target))}<span class="ma-names" title="${esc((maName(d.acquirer) || '') + ' → ' + (maName(d.target) || ''))}"><b>${esc(maName(d.acquirer) || '—')}</b> <span class="dimtext">→</span> ${esc(maName(d.target) || '—')}</span></span>
-      <span class="ma-val">${dealVal(d.value) || '—'}</span>
+      <span class="ma-val" title="${d.valueSource === 'computed' ? esc(d.valueBasis || 'computed from price × shares') : ''}">${valCell(d) || '—'}</span>
       <span class="ma-tags">${chipFor(d)}</span>
     </button>`;
   el.innerHTML = `<div class="ma-crumb"><button class="ma-back" data-back="1">← SECTORS</button> <span>${esc(maSector)}</span></div>`
@@ -3160,7 +3163,8 @@ function renderCompanyDeals(el, deals) {
     + stats
     + `<div class="ma-deal">
         <div class="ma-deal-pair">${maMono(d.target)}<span><button class="ma-part" data-company="${esc(d.acquirer || '')}">${esc(maName(d.acquirer) || '—')}</button> <span class="dimtext">→</span> <button class="ma-part" data-company="${esc(d.target || '')}">${esc(maName(d.target) || '—')}</button></span></div>
-        <div class="ma-deal-v">${dealVal(d.value) || 'value not disclosed'} ${chipFor(d)}</div>
+        <div class="ma-deal-v">${valCell(d) || 'value not disclosed'} ${chipFor(d)}</div>
+        ${d.valueSource === 'computed' ? `<div class="ma-deal-m">computed · ${esc(d.valueBasis || 'price × shares')}</div>` : ''}
         <div class="ma-deal-m">announced ${dealDate(d.date)}${d.closed ? ' · closed ' + dealDate(d.closed) : ''} · ${esc(d.sector || '')}${d.consideration ? ' · ' + esc(d.consideration) : ''}</div>
         ${d.rationale ? `<div class="dc-why">“${esc(d.rationale)}”</div>` : ''}
         <div class="ma-deal-foot">${advisers}${link}</div>
@@ -3200,6 +3204,7 @@ document.addEventListener('click', (e) => {
     return;
   }
   const mc = e.target.closest('#ma-chips .ma-chip');
+  if (e.target.closest('[data-priced]')) { maPriced = !maPriced; renderDeals(); return; }
   if (mc) {
     // Single-select per group: pressing one chip always means "show me this", never "toggle something".
     if (mc.dataset.min != null) maMin = Number(mc.dataset.min);
