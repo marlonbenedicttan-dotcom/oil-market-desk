@@ -87,6 +87,11 @@ export function mergeEvent(store, ev) {
   if (ev.date && ev.date < '2020-01-01') return false;        // the store is about current deals
   if (ev.target && !validName(ev.target)) ev.target = null;
   if (ev.acquirer && !validName(ev.acquirer)) ev.acquirer = null;
+  // Validation at INGESTION, not only in the cleanup script: objects and headline fragments must never
+  // become companies in the first place.
+  if (ev.target && (isGenericTarget(ev.target) || /company announcement|press release|\bannouncement\b/i.test(ev.target))) ev.target = null;
+  if (ev.acquirer && /\$|\boffers?\b|\bweighs?\b|\bin talks\b/i.test(ev.acquirer)) ev.acquirer = null;
+  if (ev.target && ev.acquirer && nameKey(ev.target) === nameKey(ev.acquirer)) return false;
   const tk = nameKey(ev.target), ak = nameKey(ev.acquirer);
   let hit = null;
   // Match on a shared significant token: "OxyChem" and "OxyChem From Occidental" are the same target
