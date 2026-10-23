@@ -3839,7 +3839,7 @@ const server = http.createServer(async (req, res) => {
       const deals = (store.deals || [])
         .filter((d) => (!cutoff || (d.lastSeen || d.date || '') >= cutoff) && (!sector || d.sector === sector))
         .sort((a, b) => ((b.lastSeen || b.date) < (a.lastSeen || a.date) ? -1 : 1))
-        .slice(0, 400);
+        .slice(0, 2000);
       const sectors = DEAL_SECTOR_RULES.map((sec) => {
         const rows = deals.filter((w) => w.sector === sec.id);
         return { id: sec.id, count: rows.length, value: rows.reduce((a, b) => a + (b.value || 0), 0) };
