@@ -92,6 +92,7 @@ export function mergeEvent(store, ev) {
   if (ev.target && (isGenericTarget(ev.target) || /company announcement|press release|\bannouncement\b/i.test(ev.target))) ev.target = null;
   if (ev.acquirer && /\$|\boffers?\b|\bweighs?\b|\bin talks\b/i.test(ev.acquirer)) ev.acquirer = null;
   if (ev.target && ev.acquirer && nameKey(ev.target) === nameKey(ev.acquirer)) return false;
+  if (!ev.acquirer && !ev.value) return false;                 // nothing to show but a target name
   const tk = nameKey(ev.target), ak = nameKey(ev.acquirer);
   let hit = null;
   // Match on a shared significant token: "OxyChem" and "OxyChem From Occidental" are the same target
