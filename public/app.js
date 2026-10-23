@@ -3103,7 +3103,7 @@ function renderSectorGrid(el, deals) {
         </span>
       </button>`;
     }).join('')
-    + (secs.length ? '' : '<div class="macro-note">Nothing in this window.</div>');
+    + (secs.length ? `<div class="macro-note">Book starts ${dealsData.log && dealsData.log.since ? dealDateY(dealsData.log.since) : 'this week'} — earlier deals are still being backfilled, so a sector can look thinner than the market was.</div>` : '<div class="macro-note">Nothing in this window.</div>');
 }
 
 function renderCompanyList(el, deals) {
