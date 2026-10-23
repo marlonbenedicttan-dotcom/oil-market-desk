@@ -1440,3 +1440,19 @@ So the historical book came from EDGAR instead: **backfilled 2016–2023 as well
 Industrials 55 · Technology 52 · Healthcare 50 · Financials 48 · Energy 19 · Consumer 16 · Materials 11 ·
 Mining 7 · Other 5 · Construction 3 · Agriculture 1 · Real estate 1.
 (EDGAR's full-text index returns nothing for this phrase before 2020, which is why the book starts there.)
+
+## Archive hunt: four sources tested, one works (2026-10-23)
+The demand was historical/global coverage now. Tested in order:
+1. **GDELT DOC API** — the 429 is **global, not per-IP**: the same request through r.jina.ai (different
+   network) also returned 429. It serves roughly one request per window, then closes. A patient crawler
+   (exponential backoff, resumable, saves per window) ran for ~40 minutes and never completed a window,
+   so it was stopped rather than left racing the store.
+2. **Wayback CDX** — works for single queries (Reuters slugs are headlines with dates) but 503/504s on
+   bulk/paginated queries; not viable as a bulk archive right now.
+3. **Reuters sitemaps** — only ~2 weeks deep (`from=` beyond 5,000 returns empty).
+4. **Google News** — no date operators; relevance search returns mostly recent items.
+**The source that works: EDGAR, with more phrasings.** `backfill-edgar.mjs --q='…'` now accepts a phrase,
+saves after every month, and "completed the acquisition" alone adds ~30 deals per month. Running over
+2024–2026 it took the book from 271 to **412+ deals** in ten minutes, with more still arriving.
+Lesson recorded: when a free API throttles globally, the answer is a different *kind* of source (filings),
+not a faster retry loop.

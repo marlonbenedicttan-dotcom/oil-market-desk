@@ -9,20 +9,22 @@
 // GDELT allows one request every ~5s; the walker waits 6s between calls and splits a month into weeks
 // when it hits the 250-record cap, so nothing is silently truncated.
 
-import { readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync, renameSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseDealTitle, eventStatus, dealSector, mergeEvent, validName } from '../src/deals.js';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const STORE_FILE = join(ROOT, 'data', 'deals-store.json');
+const PROGRESS_FILE = join(ROOT, 'data', '.gdelt-progress.json');
 const arg = (k, d) => { const a = process.argv.find((x) => x.startsWith(`--${k}=`)); return a ? a.split('=').slice(1).join('=') : d; };
 const FROM = arg('from', '2024-01');
 const TO = arg('to', new Date().toISOString().slice(0, 7));
 const DRY = process.argv.includes('--dry');
 const MAXREC = 250;
 
-const QUERY = '(acquisition OR merger OR takeover OR "to buy") (billion OR million)';
+// GDELT only accepts parentheses around OR'd terms, and one group per query — "(a OR b) (c)" is rejected.
+const QUERY = '(acquisition OR merger OR takeover) billion';
 const OK_DOMAIN = /(^|\.)(reuters\.com|bloomberg\.com|ft\.com|wsj\.com|cnbc\.com|apnews\.com|barrons\.com|marketwatch\.com|nytimes\.com|forbes\.com|fortune\.com|axios\.com|businessinsider\.com|theguardian\.com|bbc\.co\.uk|bbc\.com|scmp\.com|nikkei\.com|economictimes\.indiatimes\.com|livemint\.com|cnn\.com|foxbusiness\.com|telegraph\.co\.uk|politico\.com|law360\.com|theinformation\.com|semianalysis\.com)$/;
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -38,19 +40,37 @@ async function gdelt(start, end) {
   const url = 'https://api.gdeltproject.org/api/v2/doc/doc'
     + `?query=${encodeURIComponent(QUERY)}&mode=artlist&maxrecords=${MAXREC}`
     + `&startdatetime=${stamp(start)}&enddatetime=${stamp(end)}&format=json&sort=date`;
-  for (let attempt = 0; attempt < 4; attempt++) {
+  // GDELT throttles globally and opens windows unpredictably. Wait it out rather than give up:
+  // exponential backoff with jitter, up to ~8 minutes per attempt, 10 attempts per window.
+  for (let attempt = 0; attempt < 10; attempt++) {
     try {
       const res = await fetch(url);
-      if (res.status === 429) { await sleep(15000); continue; }
-      if (!res.ok) { await sleep(5000); continue; }
+      if (res.status === 429 || res.status === 503) {
+        const wait = Math.min(480000, 20000 * 2 ** attempt) + Math.floor(Math.random() * 8000);
+        console.log(`    429 — waiting ${Math.round(wait / 1000)}s (attempt ${attempt + 1}/10)`);
+        await sleep(wait);
+        continue;
+      }
+      if (!res.ok) { await sleep(15000); continue; }
       const j = await res.json();
       return j.articles || [];
-    } catch { await sleep(5000); }
+    } catch { await sleep(10000); }
   }
   return null;
 }
 
 const store = (() => { try { const j = JSON.parse(readFileSync(STORE_FILE, 'utf8')); return Array.isArray(j.deals) ? j : { deals: [] }; } catch { return { deals: [] }; } })();
+const progress = (() => { try { return JSON.parse(readFileSync(PROGRESS_FILE, 'utf8')); } catch { return { done: [] }; } })();
+const save = () => {
+  store.deals.sort((a, b) => ((a.lastSeen || a.date) < (b.lastSeen || b.date) ? 1 : -1));
+  store.updated = new Date().toISOString();
+  if (!DRY) {
+    // Write through a temp file so a kill mid-write cannot corrupt the book.
+    writeFileSync(STORE_FILE + '.tmp', JSON.stringify(store));
+    renameSync(STORE_FILE + '.tmp', STORE_FILE);
+    writeFileSync(PROGRESS_FILE, JSON.stringify(progress));
+  }
+};
 const before = store.deals.length;
 let added = 0, kept = 0, calls = 0;
 
@@ -89,12 +109,16 @@ async function walk(start, end) {
 const [fy, fm] = FROM.split('-').map(Number);
 const [ty, tm] = TO.split('-').map(Number);
 for (let y = fy, m = fm; y < ty || (y === ty && m <= tm); m === 12 ? (m = 1, y++) : m++) {
+  const key = `${y}-${pad(m)}`;
+  if (progress.done.includes(key)) { continue; }
   const start = new Date(Date.UTC(y, m - 1, 1));
   const end = new Date(Date.UTC(y, m, 1));
-  process.stdout.write(`${y}-${pad(m)} … `);
+  process.stdout.write(`${key} … `);
   await walk(start, end);
-  console.log(`${store.deals.length} deals`);
-  await sleep(6000);
+  progress.done.push(key);
+  save();
+  console.log(`${store.deals.length} deals (saved)`);
+  await sleep(12000);
 }
 
 store.deals.sort((a, b) => ((a.lastSeen || a.date) < (b.lastSeen || b.date) ? 1 : -1));

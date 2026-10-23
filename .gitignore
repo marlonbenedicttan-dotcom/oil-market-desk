@@ -10,3 +10,4 @@ node_modules/
 data/.ma-cache/
 
 data/.sic-cache.json
+data/.gdelt-progress.json

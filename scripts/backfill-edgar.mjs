@@ -22,6 +22,7 @@ const UA = process.env.SEC_UA || 'MarlonWatchtower/1.0 (marlonbenedicttan@gmail.
 const arg = (k, d) => { const a = process.argv.find((x) => x.startsWith(`--${k}=`)); return a ? a.split('=').slice(1).join('=') : d; };
 const FROM = arg('from', '2024-01');
 const TO = arg('to', new Date().toISOString().slice(0, 7));
+const PHRASE = arg('q', '"has agreed to acquire"');   // different phrasings find different deals
 const DRY = process.argv.includes('--dry');
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -89,7 +90,7 @@ let filings = 0, added = 0;
 async function month(y, m) {
   const start = `${y}-${pad(m)}-01`;
   const end = new Date(Date.UTC(y, m, 0)).toISOString().slice(0, 10);
-  const url = 'https://efts.sec.gov/LATEST/search-index?q=' + encodeURIComponent('"has agreed to acquire"')
+  const url = 'https://efts.sec.gov/LATEST/search-index?q=' + encodeURIComponent(PHRASE)
     + `&forms=8-K&dateRange=custom&startdt=${start}&enddt=${end}`;
   const j = await get(url, true);
   const hits = j?.hits?.hits || [];
@@ -120,6 +121,10 @@ async function month(y, m) {
     if (mergeEvent(store, ev)) { added++; if (DRY) console.log(`  + ${date} ${filer} → ${target} ${value ? '$' + value + 'm' : ''}`); }
   }
   console.log(`${store.deals.length} deals`);
+  // Save after every month: a long walk must not lose everything if it is interrupted.
+  store.deals.sort((x, y) => ((x.lastSeen || x.date) < (y.lastSeen || y.date) ? 1 : -1));
+  store.updated = new Date().toISOString();
+  if (!DRY) writeFileSync(STORE_FILE, JSON.stringify(store));
 }
 
 const [fy, fm] = FROM.split('-').map(Number);
