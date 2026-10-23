@@ -2911,8 +2911,15 @@ $('macro-links')?.addEventListener('click', (e) => { const el = e.target.closest
 // M&A — two pages: HIGHLIGHTS (what happened) and SECTORS (browse sector → company → deal).
 // Every row carries its evidence: VERIFIED (read from the filing), REPORTED (a wire says so) or
 // RUMOUR (the wire says talks/exploring). Verification is a flag, never a separate section.
-let dealsData = null, maView = 'highlights', maSector = null, maCompany = null;
+let dealsData = null, maView = 'highlights', maSector = null, maCompany = null, maDays = 0;
 const dealDate = (d) => (d ? new Date(d + 'T00:00:00Z').toLocaleDateString('en-GB', { day: '2-digit', month: 'short', timeZone: 'UTC' }) : '');
+// For a span ("since …") the year matters once it is not this year.
+const dealDateY = (d) => {
+  if (!d) return '';
+  const dt = new Date(d + 'T00:00:00Z');
+  const same = dt.getUTCFullYear() === new Date().getUTCFullYear();
+  return dt.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', ...(same ? {} : { year: 'numeric' }), timeZone: 'UTC' });
+};
 const dealVal = (v) => (v == null ? '' : v >= 1000 ? `$${(v / 1000).toFixed(1)}B` : `$${Math.round(v)}M`);
 const STATUS_LABEL = { rumour: 'RUMOUR', announced: 'ANNOUNCED', closed: 'CLOSED', terminated: 'TERMINATED' };
 // Two dimensions, one chip: verified beats everything (it is evidence), otherwise show the lifecycle.
@@ -2942,10 +2949,12 @@ function renderDeals() {
   const el = $('deal-body');
   if (!el) return;
   if (!dealsData) { el.innerHTML = stError('Couldn’t load the deal book — retrying.'); return; }
-  const deals = dealsData.deals || [];
+  const allDeals = dealsData.deals || [];
+  const cutoff = maDays ? new Date(Date.now() - maDays * 864e5).toISOString().slice(0, 10) : null;
+  const deals = cutoff ? allDeals.filter((d) => (d.lastSeen || d.date || '') >= cutoff) : allDeals;
   const sub = $('deals-sub');
-  const ver = deals.filter((d) => d.status === 'verified').length;
-  if (sub) sub.textContent = `${deals.length} deals · ${ver} verified · ${(dealsData.log && dealsData.log.since) ? 'since ' + dealDate(dealsData.log.since) : 'live'}`;
+  const ver = deals.filter((d) => d.verified).length;
+  if (sub) sub.textContent = `${deals.length} deals · ${ver} verified · ${(dealsData.log && dealsData.log.since) ? 'since ' + dealDateY(dealsData.log.since) : 'live'}`;
   const hint = $('deal-hint');
   if (hint) hint.textContent = maView === 'highlights'
     ? 'The year’s biggest verified deal, the largest logged, and what came in this week.'
@@ -2981,13 +2990,52 @@ function renderHighlights(el, deals) {
     + `<div class="gtitle">LATEST</div>${latest.map((d) => row(d, null)).join('')}`;
 }
 
+function sectorStats(deals) {
+  const map = new Map();
+  for (const d of deals) {
+    if (!d.sector) continue;
+    if (!map.has(d.sector)) map.set(d.sector, { id: d.sector, count: 0, value: 0, verified: 0, reported: 0, rumour: 0, companies: new Map(), top: null });
+    const s = map.get(d.sector);
+    s.count++;
+    s.value += d.value || 0;
+    if (d.verified) s.verified++; else if (d.status === 'rumour') s.rumour++; else s.reported++;
+    for (const n of [d.acquirer, d.target]) {
+      if (!n) continue;
+      const k = companyKey(n);
+      if (!s.companies.has(k)) s.companies.set(k, { name: maName(n), value: 0 });
+      s.companies.get(k).value += d.value || 0;
+    }
+    if (!s.top || (d.value || 0) > (s.top.value || 0)) s.top = d;
+  }
+  return [...map.values()].sort((a, b) => b.value - a.value || b.count - a.count);
+}
+
 function renderSectorGrid(el, deals) {
-  const secs = (dealsData.sectors || []);
-  el.innerHTML = `<div class="deal-secs">${secs.map((s) => `<button class="deal-sec-tile" data-sector="${esc(s.id)}">
-      <div class="dsc-l">${esc(s.id)}</div>
-      <div class="dsc-v">${s.count}<span class="dsc-u">deals</span></div>
-      <div class="dsc-s">${s.value ? dealVal(s.value) + ' disclosed' : 'value not disclosed'}</div>
-    </button>`).join('')}</div>`;
+  const secs = sectorStats(deals);
+  const max = Math.max(1, ...secs.map((s) => s.value));
+  const total = secs.reduce((a, s) => a + s.value, 0) || 1;
+  const ranges = [[7, '7D'], [30, '30D'], [365, '1Y'], [0, 'ALL']];
+  el.innerHTML = `<div class="ma-filters">${ranges.map(([d, l]) => `<button class="ma-chip${maDays === d ? ' on' : ''}" data-days="${d}">${l}</button>`).join('')}</div>`
+    + secs.map((s) => {
+      const companies = [...s.companies.values()].sort((a, b) => b.value - a.value).slice(0, 3);
+      const mix = (n) => (s.count ? (n / s.count) * 100 : 0);
+      return `<button class="ma-sec" data-sector="${esc(s.id)}">
+        <span class="ma-sec-top">
+          <span class="ma-sec-name">${esc(s.id)}</span>
+          <span class="ma-sec-count">${s.count} deal${s.count === 1 ? '' : 's'}</span>
+          <span class="ma-sec-val">${s.value ? dealVal(s.value) : '—'}</span>
+        </span>
+        <span class="ma-sec-bar"><i style="width:${Math.max(2, (s.value / max) * 100)}%"></i></span>
+        <span class="ma-sec-foot">
+          <span class="ma-sec-mono">${companies.map((c) => maMono(c.name)).join('')}</span>
+          <span class="ma-sec-share">${Math.round((s.value / total) * 100)}% of disclosed</span>
+          <span class="ma-sec-mix" title="${s.verified} verified · ${s.reported} reported · ${s.rumour} rumour">
+            <i class="v" style="width:${mix(s.verified)}%"></i><i class="r" style="width:${mix(s.reported)}%"></i><i class="u" style="width:${mix(s.rumour)}%"></i>
+          </span>
+        </span>
+      </button>`;
+    }).join('')
+    + (secs.length ? '' : '<div class="macro-note">Nothing in this window.</div>');
 }
 
 function renderCompanyList(el, deals) {
@@ -3003,12 +3051,25 @@ function renderCompanyList(el, deals) {
   };
   for (const d of rows) { add(d.acquirer, 'acquirer', d); add(d.target, 'target', d); }
   const list = [...map.values()].sort((a, b) => b.value - a.value || a.name.localeCompare(b.name));
+  const max = Math.max(1, ...list.map((c) => c.value));
+  const total = rows.reduce((a, b) => a + (b.value || 0), 0);
+  const verified = rows.filter((d) => d.verified).length;
+  const top = rows.slice().sort((a, b) => (b.value || 0) - (a.value || 0))[0];
+  const topCard = top ? `<div class="ma-top-deal" data-deal="${esc(top.key || top.id)}" data-sector="${esc(top.sector || '')}" data-company="${esc(top.acquirer || top.target || '')}" role="button" tabindex="0">
+      <span class="ma-hero-l">BIGGEST HERE</span>
+      <span class="ma-top-pair">${maMono(maName(top.target))}<span><b>${esc(maName(top.acquirer) || '—')}</b> <span class="dimtext">→</span> ${esc(maName(top.target) || '—')}</span></span>
+      <span class="ma-top-v">${dealVal(top.value) || '—'} ${chipFor(top)}</span>
+    </div>` : '';
   el.innerHTML = `<div class="ma-crumb"><button class="ma-back" data-back="1">← SECTORS</button> <span>${esc(maSector)}</span></div>`
+    + `<div class="ma-sec-head"><span class="ma-sec-head-n">${rows.length} deal${rows.length === 1 ? '' : 's'}</span><span class="ma-sec-head-v">${total ? dealVal(total) + ' disclosed' : 'no value disclosed'}</span><span class="ma-sec-head-c">${verified} verified</span></div>`
+    + topCard
+    + `<div class="gtitle">COMPANIES</div>`
     + list.map((c) => `<button class="ma-row ma-co" data-company="${esc(c.name)}">
         ${maMono(c.name)}
         <span class="ma-names"><b>${esc(c.name)}</b><span class="ma-role">${esc(c.role)}</span></span>
         <span class="ma-val">${c.value ? dealVal(c.value) : '—'}</span>
         <span class="ma-count">${c.count} deal${c.count === 1 ? '' : 's'}</span>
+        <span class="ma-co-bar"><i style="width:${Math.max(2, (c.value / max) * 100)}%"></i></span>
       </button>`).join('');
 }
 
@@ -3048,6 +3109,8 @@ function renderCompanyDeals(el, deals) {
 }
 
 document.addEventListener('click', (e) => {
+  const days = e.target.closest('[data-days]');
+  if (days) { maDays = Number(days.dataset.days); renderDeals(); return; }
   const view = e.target.closest('.deal-view');
   if (view && view.dataset.view) {
     maView = view.dataset.view; maSector = null; maCompany = null;

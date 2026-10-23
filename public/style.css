@@ -936,3 +936,34 @@ button.deal-sec-tile:hover { background: #10151b; }
   .ma-tl-row { grid-template-columns: 46px 1fr; }
   .ma-tl-row a { grid-column: 1 / -1; white-space: normal; }
 }
+
+/* Sectors — ranked bars, evidence mix, company value bars. */
+.ma-filters { display: flex; gap: 5px; padding: 8px 12px; border-bottom: 1px solid var(--line); }
+.ma-chip { background: #11161c; border: 1px solid var(--line); color: var(--dim); font: inherit; font-size: 9px; letter-spacing: .8px; padding: 5px 9px; min-height: 28px; cursor: pointer; }
+.ma-chip.on { color: #0a0c0f; background: var(--amber); border-color: var(--amber); font-weight: 700; }
+.ma-sec { display: grid; gap: 6px; width: 100%; padding: 11px 12px; background: transparent; border: 0; border-top: 1px solid var(--line); color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.ma-sec:hover { background: #10151b; }
+.ma-sec-top { display: flex; align-items: baseline; gap: 10px; }
+.ma-sec-name { font-size: 12px; letter-spacing: 1.2px; color: var(--amber); text-transform: uppercase; }
+.ma-sec-count { font-size: 9.5px; color: var(--dim); }
+.ma-sec-val { margin-left: auto; font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.ma-sec-bar { display: block; height: 6px; background: #141a21; }
+.ma-sec-bar i { display: block; height: 100%; background: var(--amber); }
+.ma-sec-foot { display: flex; align-items: center; gap: 8px; }
+.ma-sec-mono { display: flex; gap: 3px; }
+.ma-sec-mono .ma-mono { width: 20px; height: 20px; font-size: 8px; }
+.ma-sec-share { font-size: 9px; color: var(--dim); margin-left: auto; }
+.ma-sec-mix { display: flex; width: 54px; height: 4px; background: #141a21; }
+.ma-sec-mix i { display: block; height: 100%; }
+.ma-sec-mix .v { background: var(--green); }
+.ma-sec-mix .r { background: #3a4652; }
+.ma-sec-mix .u { background: var(--amber); }
+.ma-sec-head { display: flex; gap: 12px; padding: 9px 12px; border-bottom: 1px solid var(--line); font-size: 10px; color: var(--dim); }
+.ma-sec-head-n { color: var(--text); font-weight: 600; }
+.ma-sec-head-c { margin-left: auto; color: var(--green); }
+.ma-top-deal { display: grid; gap: 4px; padding: 11px 12px; background: #0c0f13; border-bottom: 1px solid var(--line); cursor: pointer; }
+.ma-top-pair { display: flex; align-items: center; gap: 9px; font-size: 13px; }
+.ma-top-v { font-size: 15px; font-weight: 800; font-variant-numeric: tabular-nums; display: flex; align-items: center; gap: 8px; }
+.ma-co-bar { grid-column: 1 / -1; height: 3px; background: #141a21; margin-top: 4px; }
+.ma-co-bar i { display: block; height: 100%; background: var(--amber2); }
+@media (max-width: 640px) { .ma-chip { min-height: 32px; } .ma-sec-mix { width: 44px; } }

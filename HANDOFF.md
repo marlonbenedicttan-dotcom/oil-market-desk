@@ -1321,3 +1321,19 @@ headline on the day we looked. Rebuilt as a store:
 - Guards: no entity without a company name, no duplicate keys, no events before 2020, and prose
   fragments ("struggling rival WOW Air", "Part of Cranes Unit") are rejected as names.
 Paramount/WBD now leads the page at $110B with both events. 101 tests pass.
+
+## Sectors page: ranked bars, evidence mix, company value bars (2026-10-23)
+The sector grid was five identical boxes with a number — no sense of scale, no identity, no reason to
+tap. Rebuilt as a ranked board:
+- **Ranked rows, not tiles**: sector · deal count · disclosed value · a bar whose width is proportional
+  to the largest sector · share of total disclosed · the top three company monograms · a thin evidence
+  bar (green verified / grey reported / amber rumour). Sorted by value.
+- **Time filter** `7D / 30D / 1Y / ALL` at the top; the whole board recomputes client-side.
+- **Drill-down header**: `3 deals · $112.5B disclosed · 2 verified`, then a **BIGGEST HERE** card (the
+  sector's largest deal, tappable), then the company list.
+- **Company rows carry a value bar** relative to the sector's largest, so "Paramount $110B" visibly
+  dwarfs everything else.
+- Empty sectors disappear rather than showing a zero row.
+- Fixed on the way: the header counted `status === 'verified'` after verification became a boolean, so
+  it read "0 verified" while five deals were verified; and the "since" span now includes the year when
+  it is not the current one.
