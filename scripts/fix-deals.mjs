@@ -44,10 +44,14 @@ async function sicFor(cik) {
 const before = store.deals.length;
 let retagged = 0, dropped = 0;
 
-// 1. drop objects masquerading as companies
+// 1. drop objects masquerading as companies, self-deals, and headline fragments
+const fragment = (v) => !v || /\$|\b(offers?|weigh|weighs|in talks|reportedly|said to)\b/i.test(v) || /[\u2013\u2014-]\s*$/.test(v) || /\b(special project delivery|and previous|unknown)\b/i.test(v);
 store.deals = store.deals.filter((d) => {
   if (!d.target) { dropped++; return false; }
   if (isGenericTarget(d.target)) { dropped++; return false; }
+  if (nameKey(d.target) === nameKey(d.acquirer)) { dropped++; return false; }   // "Pacira -> Pacira"
+  if (fragment(d.target) || fragment(d.acquirer)) { dropped++; return false; }
+  if (!d.acquirer && !d.value) { dropped++; return false; }                     // nothing to show
   return true;
 });
 
