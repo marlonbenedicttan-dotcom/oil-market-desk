@@ -1390,3 +1390,19 @@ unrelated "Berkshire" row, and "OxyChem From Occidental" split into a second ent
 a shared significant token and containment only when no target was parsed.
 `src/deals.js` is now the single home for parsing/sector/lifecycle/merge, imported by both the server and
 the backfill script — no duplicated logic.
+
+## M&A: EDGAR backfill — the book now has history (2026-10-23)
+GDELT stayed blocked (429 on every attempt, minutes apart), so the backfill ran on the source that works:
+**SEC EDGAR full-text search**, month by month from Jan 2024 to Oct 2026.
+- `scripts/backfill-edgar.mjs` walks each month's 8-Ks matching "has agreed to acquire" (567 filings
+  read), fetches the filing, and extracts the counterparty from the merger paragraph.
+- **Only identity is asserted**: filer (acquirer), target, date, filing link. A value is recorded only
+  when the filing states one in an unambiguous phrase ("purchase price … $X"), otherwise the deal is
+  stored with no value rather than a guess. 42 of 126 have one.
+- Guards added after inspecting the first run: reject the filing company "acquiring itself"
+  (Bowhead → Bowhead, Whitestone → Whitestone) and generic objects (Fixed Shares, Equity Interests).
+- `data/deals-store.json` is now committed (124 KB) so a redeploy keeps the book; the server seeds from
+  it on boot, then merges live news on top.
+Result: **126 deals** across 2024–2026 (Financials 39, Other 31, Energy 16, Technology 13, Healthcare 12,
+Industrials 7, Media 3, Consumer 3, Telecom 2). Quality caveat: EDGAR identity is solid, but many rows
+have no value, and the sector tag comes from the filing text so "Other" is large.
