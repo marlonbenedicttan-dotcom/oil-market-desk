@@ -2933,19 +2933,20 @@ let maQuery = '', maMin = 0, maStatus = 'all', maBuyer = 'all', maLookupFor = nu
 let maSecDays = 0, maSecSort = 'date';   // the sector's own window + sort, independent of the board's
 const PE_RE = /\b(capital|partners|equity|kkr|blackstone|apollo|carlyle|bain|vista|thoma bravo|advent|cvc|eqt|warburg|silver lake|tpg|permira|bc partners|cinven|kps|platinum|golden gate|hellman)\b/i;
 const dealDate = (d) => (d ? new Date(d + 'T00:00:00Z').toLocaleDateString('en-GB', { day: '2-digit', month: 'short', timeZone: 'UTC' }) : '');
-// For a span ("since …") the year matters once it is not this year.
+// Two-digit years everywhere: "23 Oct 26" is unambiguous next to "23 Oct" and leaves the company
+// name room to breathe in a narrow column.
 const dealDateY = (d) => {
   if (!d) return '';
   const dt = new Date(d + 'T00:00:00Z');
-  const same = dt.getUTCFullYear() === new Date().getUTCFullYear();
-  return dt.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', ...(same ? {} : { year: 'numeric' }), timeZone: 'UTC' });
+  if (Number.isNaN(dt.getTime())) return '';
+  return dt.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: '2-digit', timeZone: 'UTC' });
 };
 const dealVal = (v) => (v == null ? '' : v >= 1000 ? `$${(v / 1000).toFixed(1)}B` : `$${Math.round(v)}M`);
 const STATUS_LABEL = { rumour: 'RUMOUR', announced: 'ANNOUNCED', closed: 'CLOSED', terminated: 'TERMINATED' };
 // Two dimensions, one chip: verified beats everything (it is evidence), otherwise show the lifecycle.
 const chipFor = (d) => d.verified
-  ? '<span class="ma-status s-verified">VERIFIED</span>'
-  : `<span class="ma-status s-${esc(d.status || 'announced')}">${STATUS_LABEL[d.status] || 'ANNOUNCED'}</span>`;
+  ? '<span class="ma-status s-verified" title="read out of the company’s own filing">VERIFIED</span>'
+  : `<span class="ma-status s-${esc(d.status || 'announced')}"${d.statusInferred ? ' title="no closing filing on record — closed inferred from age"' : ''}>${STATUS_LABEL[d.status] || 'ANNOUNCED'}</span>`;
 function maMono(name) {
   const parts = String(name || '?').replace(/[^A-Za-z0-9 ]/g, ' ').trim().split(/\s+/).filter(Boolean);
   const ini = ((parts[0] || '?')[0] + (parts[1] ? parts[1][0] : '')).toUpperCase();
@@ -3132,6 +3133,11 @@ function renderCompanyDeals(el, deals) {
   const d = mine[0];
   if (!d) { el.innerHTML = `<div class="ma-crumb"><button class="ma-back" data-back="1">← BACK</button></div><div class="macro-note">No deals for this company.</div>`; return; }
   const other = mine.slice(1);
+  // Comparables: same sector, a price within half to twice this deal, within three years either side.
+  const similar = d.value
+    ? deals.filter((x) => x !== d && x.sector === d.sector && x.value && x.value >= d.value * 0.5 && x.value <= d.value * 2
+      && Math.abs(Date.parse(x.date) - Date.parse(d.date)) < 3 * 365 * 864e5).slice(0, 4)
+    : [];
   const otherHtml = other.map((x) => {
     const attrs = `data-deal="${esc(x.key || x.id)}" data-sector="${esc(x.sector || '')}" data-company="${esc(x.acquirer || x.target || '')}"`;
     return `<button class="ma-row" ${attrs}>
@@ -3164,7 +3170,15 @@ function renderCompanyDeals(el, deals) {
         <span class="ma-tl-s s-${esc(e.status)}">${STATUS_LABEL[e.status] || esc(e.status || '')}</span>
         <a href="${esc(e.url || '#')}" target="_blank" rel="noopener noreferrer">${esc(e.title)} <span class="dimtext">— ${esc(e.source || '')}</span></a>
       </div>`).join('')}</div>` : '')
-    + (other.length ? `<div class="gtitle">ALSO INVOLVED</div>${otherHtml}` : '');
+    + (other.length ? `<div class="gtitle">ALSO INVOLVED</div>${otherHtml}` : '')
+    + (similar.length ? `<div class="gtitle">COMPARABLE DEALS</div>${similar.map((x) => {
+        const attrs = `data-deal="${esc(x.key || x.id)}" data-sector="${esc(x.sector || '')}" data-company="${esc(maName(x.acquirer) || maName(x.target) || '')}"`;
+        return `<button class="ma-row" ${attrs}>
+          <span class="ma-when">${dealDateY(x.date)}</span>
+          <span class="ma-names" title="${esc((maName(x.acquirer) || '') + ' → ' + (maName(x.target) || ''))}">${esc(maName(x.acquirer) || '—')} <span class="dimtext">→</span> ${esc(maName(x.target) || '—')}</span>
+          <span class="ma-val">${dealVal(x.value)}</span>
+          <span class="ma-tags">${chipFor(x)}</span></button>`;
+      }).join('')}` : '');
 }
 
 document.addEventListener('input', (e) => {

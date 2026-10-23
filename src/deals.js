@@ -186,3 +186,22 @@ const SIC_SECTOR = (sic) => {
 // A target that is an object, not a company: leases, share counts, "membership interests".
 const isGenericTarget = (t) => /^(?:new |the |certain )?(?:lease|leases|shares|stock|interests?|notes?|units?|assets|business|operations?|rights?|licen[cs]es?|permits?|properties)\b/i.test(String(t || ''))
   || /\b(?:fixed shares|membership interests|equity interests|common stock|previous lease|and previous)\b/i.test(String(t || ''));
+
+// A deal announced 18+ months ago with no termination event is, in practice, closed. We say so — but
+// flag it as inferred so the UI can be honest that no closing filing was found.
+export function inferStatus(d, now = Date.now()) {
+  const st = d.status || 'announced';
+  if (st !== 'announced') return { status: st, inferred: false };
+  const t = Date.parse(d.date || '');
+  if (!t) return { status: st, inferred: false };
+  const months = (now - t) / (30 * 864e5);
+  return months >= 18 ? { status: 'closed', inferred: true } : { status: st, inferred: false };
+}
+export const dealType = (t) => {
+  const s = String(t || '');
+  if (/tender offer/i.test(s)) return 'tender';
+  if (/\b(stake|minority|majority interest)\b/i.test(s)) return 'stake';
+  if (/\bassets?\b/i.test(s)) return 'asset';
+  if (/\bmerger\b/i.test(s)) return 'merger';
+  return 'acquisition';
+};

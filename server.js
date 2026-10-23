@@ -671,7 +671,7 @@ async function getRegime() {
 const DEAL_ARCHIVE = (() => { try { return JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'ma.json'), 'utf8')); } catch { return { deals: [], coverage: {} }; } })();
 const DEAL_STORE_FILE = path.join(__dirname, 'data', 'deals-store.json');
 import { DEAL_SECTOR_RULES, dealSector, DEAL_SITES, DEAL_RUMOUR, DEAL_CLOSED, DEAL_ENDED, eventStatus,
-  STATUS_RANK, CHANNELS, nameKey, parseDealTitle, validName, mergeEvent } from './src/deals.js';
+  STATUS_RANK, CHANNELS, nameKey, parseDealTitle, validName, mergeEvent, inferStatus, dealType } from './src/deals.js';
 let STORE = (() => { try { const j = JSON.parse(fs.readFileSync(DEAL_STORE_FILE, 'utf8')); return Array.isArray(j.deals) ? j : { deals: [] }; } catch { return { deals: [] }; } })();
 
 function seedFromArchive() {
@@ -3847,7 +3847,11 @@ const server = http.createServer(async (req, res) => {
       const deals = (store.deals || [])
         .filter((d) => (!cutoff || (d.lastSeen || d.date || '') >= cutoff) && (!sector || d.sector === sector))
         .sort((a, b) => ((b.lastSeen || b.date) < (a.lastSeen || a.date) ? -1 : 1))
-        .slice(0, 2000);
+        .slice(0, 2000)
+        .map((d) => {
+          const inf = inferStatus(d);
+          return { ...d, status: inf.status, statusInferred: inf.inferred, type: d.type || dealType(d.title || '') };
+        });
       const sectors = DEAL_SECTOR_RULES.map((sec) => {
         const rows = deals.filter((w) => w.sector === sec.id);
         return { id: sec.id, count: rows.length, value: rows.reduce((a, b) => a + (b.value || 0), 0) };

@@ -1464,3 +1464,19 @@ sparkline sits, and one dim line (`announced 27 Feb · closed 6 Oct`). Threshold
 ≥ $1B, seen in the last 21 days, max two deals, and the list is capped at seven rows.
 Also fixed the truncation complaint: company names and headlines now wrap to **two lines** with a
 `title` tooltip instead of being chopped by the value column.
+
+## M&A: honest status, two-digit dates, comparables, deeper book (2026-10-23)
+- **Status is no longer frozen at "announced".** `inferStatus()` marks a deal closed when it is 18+
+  months old and has no termination event, and the chip says so in a tooltip ("no closing filing on
+  record — closed inferred from age"). We never claim a filing we don't have.
+- **Dates use two-digit years** ("23 Oct 26"), which frees the column so company names stop being cut.
+- **Comparable deals** on a deal page: same sector, value between 0.5× and 2×, within three years.
+- **Deal type** is classified in the data (`merger / asset / tender / stake / acquisition`).
+- The book grew to **796 deals** after the "completed the acquisition" phrase walk (2,028 filings read,
+  +1,118 deals), and a balanced walk over 2020–2023 is running so the year-on-year shape isn't an
+  artefact of which phrases we happened to run.
+- **Value enrichment** (`scripts/enrich-values.mjs`) was built and tested: it reads the EX-99.1 and
+  accepts a price only from an explicit phrase ("valued at", "purchase price of") or a deal verb within
+  the same clause. Yield is low (7 in 120) — most 8-Ks simply don't state a price — so values remain
+  ~15% of the book. Better to be empty than wrong.
+- SIC retag of 425 deals cut "Other" from 131 to **8**.
