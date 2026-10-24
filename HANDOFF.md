@@ -1508,3 +1508,17 @@ The year spread is now sane (2020 137 · 2021 186 · 2022 129 · 2023 75 · 2024
 because the audit applies the same test to every year.
 Priced: 140 of 872 (16%) — 133 disclosed, 7 computed. The audit does not create prices; it removes the
 rows that made the denominator dishonest.
+
+## Tender offers: the bidder matcher works, the volume doesn't (2026-10-24)
+`scripts/backfill-offers.mjs` reads SC TO-T cover pages. Two fixes made it correct:
+- The cover page is a **table**, so cell boundaries (`</td>`) must break lines or the issuer name and
+  its label collapse into one string.
+- The filer is often a merger subsidiary; the real acquirer is the line above
+  "(Name of Filing Persons (Parent of Offeror))" — a flat regex now extracts it
+  (Concentra Biosciences → Theseus, $3.90/share, par value $0.0001 correctly rejected).
+**But the yield is small.** Over six months of 2024 it added 3 deals and priced 1: most tender targets
+are already in the book from the 8-K walk, and the tenders that aren't are small companies with no
+other coverage. The pipeline is in the repo and correct, not a game-changer for coverage.
+Current book: **875 deals, 145 priced (16.6%), 14 computed.**
+The honest ceiling: EDGAR gives identity and occasional price; tender offers give price but only for the
+subset that tenders. A mostly-priced book needs a licensed feed.
