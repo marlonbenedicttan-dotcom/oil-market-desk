@@ -141,7 +141,13 @@ export function mergeEvent(store, ev) {
   hit.lastSeen = ev.date > (hit.lastSeen || '') ? ev.date : hit.lastSeen;
   if (STATUS_RANK[ev.status] >= STATUS_RANK[hit.status]) hit.status = ev.status;
   if (ev.status === 'closed') hit.closed = ev.date;
-  if (ev.value && !hit.verified) hit.value = ev.value;
+  // Value provenance has a priority: a filing beats a computed number beats a Wikipedia table.
+  const VRANK = { verified: 4, filing: 3, computed: 2, wikipedia: 1, wire: 0 };
+  if (ev.value && (!hit.value || (VRANK[ev.valueSource] || 0) > (VRANK[hit.valueSource] || 0))) {
+    hit.value = ev.value;
+    hit.valueSource = ev.valueSource || 'wire';
+    hit.valueBasis = ev.valueBasis || null;
+  }
   if (ev.acquirer && !hit.acquirer) hit.acquirer = ev.acquirer;
   if (ev.sector && hit.sector === 'Other') hit.sector = ev.sector;
   return true;

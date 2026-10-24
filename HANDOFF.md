@@ -1522,3 +1522,18 @@ other coverage. The pipeline is in the repo and correct, not a game-changer for 
 Current book: **875 deals, 145 priced (16.6%), 14 computed.**
 The honest ceiling: EDGAR gives identity and occasional price; tender offers give price but only for the
 subset that tenders. A mostly-priced book needs a licensed feed.
+
+## Free trusted source that actually works: Wikipedia's acquisition tables (2026-10-24)
+Searched the free landscape properly. Results: **Discoperi is a mockup** (its "download" is
+`href="#"` plus an `alert()`), **Acquirezy is Cloudflare-walled**, the GitHub/Kaggle tech datasets stop at
+2014–2021 and are narrow, and ONS/Eurostat are aggregate only.
+**Wikipedia's "List of mergers and acquisitions by X" pages are real**: community-maintained, cited,
+tabular (Date · Company · Business · Country · Value), and current. `scripts/import-wikipedia.mjs` reads
+them through the MediaWiki API, maps columns by header name, parses dates and values, and merges into the
+store with `source: 'Wikipedia'` and a link to the page (CC BY-SA, attribution shown).
+- 20 pages, 1,602 rows read, **+182 deals, +42 priced**.
+- Value provenance now has a priority order in `mergeEvent`: **verified > filing > computed > wikipedia >
+  wire**, so a Wikipedia figure can never overwrite a filing's.
+- Book: **994 deals, 172 priced (17.3%)**, sources: SEC 8-K 854 · Wikipedia 119 · wires 13 · SC TO-T 3.
+The honest note: Wikipedia's tables are historical — most rows predate 2020 — so the modern-period yield
+is modest. It adds depth, not the missing 80%.
