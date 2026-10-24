@@ -1537,3 +1537,8 @@ store with `source: 'Wikipedia'` and a link to the page (CC BY-SA, attribution s
 - Book: **994 deals, 172 priced (17.3%)**, sources: SEC 8-K 854 · Wikipedia 119 · wires 13 · SC TO-T 3.
 The honest note: Wikipedia's tables are historical — most rows predate 2020 — so the modern-period yield
 is modest. It adds depth, not the missing 80%.
+
+## Wikipedia removed at the user's request (2026-10-24)
+Deleted all 119 Wikipedia-sourced deals and the importer. The book is back to **875 deals, 150 priced**,
+every row from a primary source (SEC 8-K / SC TO-T) or a tier-1 wire. Value provenance priority stays in
+`mergeEvent` for future sources, but Wikipedia is no longer one of them.
