@@ -1565,3 +1565,16 @@ that is structured, free and primary — no parsing, no estimates.
 - The tab id stays `deals` so routing and the brief keep working; the label is COMPANIES.
 Honest coverage line on screen: companies that file with the SEC — US listings and foreign issuers with
 ADRs. Other markets have no free structured fundamentals.
+
+## Companies: ticker mapping bug, full pricing, screener (2026-10-25)
+- **The wrong-ticker bug**: `company_tickers.json` maps a CIK to several symbols (classes, preferreds) and
+  a naive "last one wins" picked `JPM-PM`, `GOOGM`, `BRK-A`. Tickers are now chosen by preference
+  (no dash, no `-P` preferred suffix, shortest), which fixed Alphabet, JPMorgan, Meta and others.
+- **Share-count fallback**: `WeightedAverageNumberOfDilutedSharesOutstanding` where the cover page has no
+  count — companies with shares went 2,517 → 6,050.
+- **Full pricing run**: 2,992 companies now carry market cap / P/E (TTM) / P/B / EV/EBITDA.
+- **Screener**: sort chips (MKT CAP · P/E · EV/EBITDA · MARGIN · GROWTH, toggling direction), plus CSV
+  export of the current filter.
+- **Peers** on the company page: same SIC industry, ranked by market cap.
+- **Forward P/E removed** entirely — no free consensus estimates exist, so the field is gone rather than
+  shown as a dash.

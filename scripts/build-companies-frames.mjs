@@ -108,8 +108,23 @@ console.log('');
 
 // names + tickers for every filer
 const tickers = await get('https://www.sec.gov/files/company_tickers.json');
+// A CIK can map to several tickers (share classes, preferreds). company_tickers.json is ordered, so a
+// naive "last one wins" picked JPM-PM and GOOGM. Prefer common stock: no dash, no -P preferred suffix.
+const tickScore = (t) => (/[-.]/.test(t) ? (/-P/i.test(t) ? 4 : 2) : 0) + (t.length > 5 ? 1 : 0);
 const meta = {};
-for (const r of Object.values(tickers || {})) meta[r.cik_str] = { ticker: r.ticker, title: r.title };
+for (const r of Object.values(tickers || {})) {
+  const cik = String(r.cik_str);
+  const cur = meta[cik];
+  if (!cur || tickScore(r.ticker) < tickScore(cur.ticker)) meta[cik] = { ticker: r.ticker, title: r.title };
+}
+
+// Diluted share count as a fallback where the cover page has none.
+const sharesAlt = {};
+{
+  const j = await get(`https://data.sec.gov/api/xbrl/frames/us-gaap/WeightedAverageNumberOfDilutedSharesOutstanding/shares/CY${thisYear - 1}.json`);
+  for (const r of j?.data || []) if (r.cik != null && r.val != null) sharesAlt[r.cik] = r.val;
+  await sleep(120);
+}
 
 // keep SIC where the previous build already knew it
 let sicByCik = {};
@@ -168,7 +183,7 @@ for (const cik of ciks) {
     shares: (() => {
       const sh = sharesByCik[cik] || {};
       const y = Object.keys(sh).map(Number).filter((n) => n <= latest.fy).sort((a2, b2) => b2 - a2)[0];
-      return y ? sh[y] : null;
+      return (y ? sh[y] : null) || sharesAlt[cik] || null;
     })(),
     growth: first.revenue && latest.revenue ? ((latest.revenue - first.revenue) / Math.abs(first.revenue)) * 100 : null,
     years: series.length,

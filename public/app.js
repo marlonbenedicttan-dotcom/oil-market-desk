@@ -3250,6 +3250,7 @@ document.addEventListener('click', (e) => {
 // ---------------------------------------------------------------------------
 // COMPANIES — profiles and financials from SEC XBRL (tagged facts, no estimates).
 let companiesData = null, coQuery = '', coSector = 'all', coMin = 0, coCik = null, coTicker = null, coRange = '10y', coCompare = '';
+let coSort = 'cap', coDir = -1;   // screener: which column, and which way
 
 async function loadCompanies() {
   const el = $('co-body');
@@ -3287,7 +3288,15 @@ function renderCompanies() {
     if (coMin && (c.marketCap || 0) < coMin) return false;
     if (q && !(`${c.name} ${c.ticker || ''} ${c.industry || ''}`.toLowerCase().includes(q))) return false;
     return true;
-  }).sort((a, b) => (b.marketCap || 0) - (a.marketCap || 0) || (b.revenue || 0) - (a.revenue || 0));
+  });
+  const sortVal = (c) => (coSort === 'cap' ? c.marketCap : coSort === 'pe' ? c.pe : coSort === 'ev' ? c.evEbitda : coSort === 'margin' ? coMargin(c) : c.growth);
+  rows.sort((a, b) => {
+    const av = sortVal(a), bv = sortVal(b);
+    if (av == null && bv == null) return 0;
+    if (av == null) return 1;            // blanks always last, whichever direction
+    if (bv == null) return -1;
+    return (av - bv) * coDir;
+  });
 
   const chips = $('co-chips');
   if (chips) {
@@ -3298,7 +3307,11 @@ function renderCompanies() {
     chips.innerHTML = chip('All', coSector === 'all', 'data-cosec="all"')
       + sectors.map((x) => chip(esc(x), coSector === x, `data-cosec="${esc(x)}"`)).join('')
       + '<span class="ma-gap"></span>'
-      + chip('All sizes', coMin === 0, 'data-comin="0"') + chip('$10B+', coMin === 1e10, 'data-comin="10000000000"') + chip('$100B+', coMin === 1e11, 'data-comin="100000000000"');
+      + chip('All sizes', coMin === 0, 'data-comin="0"') + chip('$10B+', coMin === 1e10, 'data-comin="10000000000"') + chip('$100B+', coMin === 1e11, 'data-comin="100000000000"')
+      + '<span class="ma-gap"></span>'
+      + [['cap', 'MKT CAP'], ['pe', 'P/E'], ['ev', 'EV/EBITDA'], ['margin', 'MARGIN'], ['growth', 'GROWTH']]
+        .map(([k, l]) => chip(l + (coSort === k ? (coDir === -1 ? ' ↓' : ' ↑') : ''), coSort === k, `data-cosort="${k}"`)).join('')
+      + `<button class="ma-chip" data-coexport="1">CSV</button>`;
   }
 
   const priced = rows.filter((c) => c.marketCap);
@@ -3306,11 +3319,13 @@ function renderCompanies() {
   const max = Math.max(1, ...rows.map((c) => c.marketCap || 0));
   const pe = priced.map((c) => c.pe).filter((x) => x != null && x > 0 && x < 200).sort((a, b) => a - b);
   const medPe = pe.length ? pe[Math.floor(pe.length / 2)] : null;
+  const evs = priced.map((c) => c.evEbitda).filter((x) => x != null && x > 0 && x < 100).sort((a, b) => a - b);
+  const medEv = evs.length ? evs[Math.floor(evs.length / 2)] : null;
 
   el.innerHTML = `<div class="co-hero">
       <div class="co-hero-cell"><span class="co-k">MARKET CAP</span><span class="co-hero-v">${coMoney(totalCap)}</span><span class="co-hero-m">${priced.length} of ${rows.length} priced</span></div>
       <div class="co-hero-cell"><span class="co-k">MEDIAN P/E</span><span class="co-hero-v">${medPe ? medPe.toFixed(1) : '—'}</span><span class="co-hero-m">trailing, TTM where available</span></div>
-      <div class="co-hero-cell"><span class="co-k">FORWARD P/E</span><span class="co-hero-v">—</span><span class="co-hero-m">needs consensus estimates</span></div>
+      <div class="co-hero-cell"><span class="co-k">MEDIAN EV/EBITDA</span><span class="co-hero-v">${medEv ? medEv.toFixed(1) : '—'}</span><span class="co-hero-m">${rows.filter((c) => c.evEbitda).length} with the inputs</span></div>
     </div>`
     + `<div class="co-hrow"><span>#</span><span></span><span>COMPANY</span><span>MARKET CAP</span><span>P/E</span><span>MARGIN</span></div>`
     + rows.slice(0, 150).map((c, i) => {
@@ -3384,7 +3399,6 @@ async function renderCompanyPage(el, all) {
     + `<div class="co-stats co-stats-12">
         <div class="co-stat"><span class="co-k">MARKET CAP</span><span class="co-v">${val(c.marketCap)}</span></div>
         <div class="co-stat"><span class="co-k">P/E (TRAILING${c.peBasis ? ' · ' + c.peBasis : ''})</span><span class="co-v">${c.pe != null ? c.pe.toFixed(1) : '—'}</span></div>
-        <div class="co-stat"><span class="co-k">P/E (FORWARD)</span><span class="co-v dimtext" title="needs consensus EPS estimates, which no free source provides">—</span></div>
         <div class="co-stat"><span class="co-k">EV / EBITDA</span><span class="co-v">${c.evEbitda != null ? c.evEbitda.toFixed(1) : '—'}</span></div>
         <div class="co-stat"><span class="co-k">P/B</span><span class="co-v">${c.pb != null ? c.pb.toFixed(1) : '—'}</span></div>
         <div class="co-stat"><span class="co-k">ENTERPRISE VALUE</span><span class="co-v">${val(c.ev)}</span></div>
@@ -3412,6 +3426,17 @@ async function renderCompanyPage(el, all) {
           return `<div class="co-tr"><span>${s.fy}</span><span>${val(s.revenue)}</span><span class="${s.netIncome >= 0 ? 'pos' : 'neg'}">${val(s.netIncome)}</span><span>${mg == null ? '—' : mg.toFixed(1) + '%'}</span><span>${val(s.assets)}</span><span>${val(s.equity)}</span><span>${s.eps != null ? '$' + s.eps.toFixed(2) : '—'}</span></div>`;
         }).join('')}
       </div>` : '')
+    + (() => {
+        const peers = all.filter((x) => x.sic && x.sic === c.sic && x.cik !== c.cik && x.marketCap).sort((a, b) => (b.marketCap || 0) - (a.marketCap || 0)).slice(0, 6);
+        return peers.length ? `<div class="gtitle">PEERS · ${esc(c.industry || 'same industry')}</div>`
+          + peers.map((x) => `<button class="co-row" data-cik="${esc(x.cik)}">
+              <span class="co-rank"></span>${coMono(x)}
+              <span class="co-id"><b>${esc(x.name)}</b><span class="co-tick">${esc(x.ticker || '')}${x.sector ? ' · ' + esc(x.sector) : ''}</span></span>
+              <span class="co-cap">${coMoney(x.marketCap)}<i class="co-bar"><i style="width:${Math.max(2, ((x.marketCap || 0) / Math.max(1, peers[0].marketCap)) * 100)}%"></i></i></span>
+              <span class="co-pe">${x.pe != null ? x.pe.toFixed(1) : '—'}</span>
+              <span class="co-mar ${coMargin(x) >= 0 ? 'pos' : 'neg'}">${coMargin(x) == null ? '—' : coMargin(x).toFixed(1) + '%'}</span>
+            </button>`).join('') : '';
+      })()
     + `<div class="gtitle">DEALS</div><div id="co-deals" class="macro-note">looking up deals…</div>`;
 
   // Price chart (1Y, daily) — the only place a price is plotted, so it stays cheap.
@@ -3441,6 +3466,24 @@ document.addEventListener('click', (e) => {
   if (e.target.closest('[data-coback]')) { coCik = null; renderCompanies(); return; }
   const row = e.target.closest('.co-row');
   if (row && row.dataset.cik) { coCik = row.dataset.cik; renderCompanies(); window.scrollTo({ top: 0, behavior: 'smooth' }); return; }
+  if (e.target.closest('[data-coexport]')) {
+    const q = coQuery.trim().toLowerCase();
+    const rows = (companiesData.companies || []).filter((c) => (coSector === 'all' || c.sector === coSector) && (!coMin || (c.marketCap || 0) >= coMin)
+      && (!q || `${c.name} ${c.ticker || ''}`.toLowerCase().includes(q)));
+    const cols = ['name', 'ticker', 'sector', 'marketCap', 'pe', 'evEbitda', 'pb', 'revenue', 'netIncome', 'growth', 'cik'];
+    const csv = [cols.join(',')].concat(rows.map((c) => cols.map((k) => JSON.stringify(c[k] ?? '')).join(','))).join('\n');
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
+    a.download = 'companies.csv';
+    a.click();
+    return;
+  }
+  const cs = e.target.closest('[data-cosort]');
+  if (cs) {
+    if (coSort === cs.dataset.cosort) coDir = -coDir; else { coSort = cs.dataset.cosort; coDir = -1; }
+    renderCompanies();
+    return;
+  }
   const chip = e.target.closest('[data-cosec],[data-comin]');
   if (chip) {
     if (chip.dataset.cosec != null) coSector = chip.dataset.cosec;
