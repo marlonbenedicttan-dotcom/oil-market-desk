@@ -3251,6 +3251,7 @@ document.addEventListener('click', (e) => {
 // COMPANIES — profiles and financials from SEC XBRL (tagged facts, no estimates).
 let companiesData = null, coQuery = '', coSector = 'all', coMin = 0, coCik = null, coTicker = null, coRange = '10y', coCompare = '';
 let coSort = 'cap', coDir = -1;   // screener: which column, and which way
+let coPe = 'all', coMinMargin = 0, coGrowth = null, coPriced = false, coView = 'list';
 
 async function loadCompanies() {
   const el = $('co-body');
@@ -3268,7 +3269,8 @@ const coMono = (c) => {
   return `<span class="ma-mono" style="--h:${h}">${esc(ini)}</span>`;
 };
 const coMoney = (v) => (v == null ? '—' : Math.abs(v) >= 1e9 ? `$${(v / 1e9).toFixed(1)}B` : Math.abs(v) >= 1e6 ? `$${(v / 1e6).toFixed(0)}M` : `$${Math.round(v)}`);
-const coMargin = (c) => (c.revenue && c.netIncome != null ? (c.netIncome / c.revenue) * 100 : null);
+const coMarginOf = (c) => (c.revenue && c.netIncome != null ? (c.netIncome / c.revenue) * 100 : null);
+const coMargin = coMarginOf;
 
 function renderCompanies() {
   const el = $('co-body');
@@ -3276,7 +3278,7 @@ function renderCompanies() {
   if (!companiesData) { el.innerHTML = stError('Couldn’t load companies — retrying.'); return; }
   const all = companiesData.companies || [];
   const sub = $('deals-sub');
-  if (sub) sub.textContent = `${all.length} companies · ranked by market cap · SEC XBRL`;
+  if (sub) sub.textContent = `${all.length} companies · S&P 500 · SEC XBRL · ranked by market cap`;
 
   if (coCik) return renderCompanyPage(el, all);
 
@@ -3286,6 +3288,16 @@ function renderCompanies() {
     if (/\b(warrant|unit|right|preferred)\b/i.test(c.name)) return false;
     if (coSector !== 'all' && c.sector !== coSector) return false;
     if (coMin && (c.marketCap || 0) < coMin) return false;
+    if (coPriced && !c.marketCap) return false;
+    if (coPe !== 'all') {
+      const p = c.pe;
+      if (p == null) return false;
+      if (coPe === 'lt15' && p >= 15) return false;
+      if (coPe === '15to25' && (p < 15 || p > 25)) return false;
+      if (coPe === 'gt25' && p <= 25) return false;
+    }
+    if (coMinMargin) { const m = coMarginOf(c); if (m == null || m < coMinMargin) return false; }
+    if (coGrowth != null) { if (c.growth == null || c.growth < coGrowth) return false; }
     if (q && !(`${c.name} ${c.ticker || ''} ${c.industry || ''}`.toLowerCase().includes(q))) return false;
     return true;
   });
@@ -3311,10 +3323,20 @@ function renderCompanies() {
       + '<span class="ma-gap"></span>'
       + [['cap', 'MKT CAP'], ['pe', 'P/E'], ['ev', 'EV/EBITDA'], ['margin', 'MARGIN'], ['growth', 'GROWTH']]
         .map(([k, l]) => chip(l + (coSort === k ? (coDir === -1 ? ' ↓' : ' ↑') : ''), coSort === k, `data-cosort="${k}"`)).join('')
-      + `<button class="ma-chip" data-coexport="1">CSV</button>`;
+      + `<button class="ma-chip" data-coexport="1">CSV</button>`
+      + '<span class="ma-gap"></span>'
+      + chip('Sector board', coView === 'sectors', 'data-coview="1"')
+      + '<span class="ma-gap"></span>'
+      + chip('P/E any', coPe === 'all', 'data-cope="all"') + chip('<15', coPe === 'lt15', 'data-cope="lt15"')
+      + chip('15-25', coPe === '15to25', 'data-cope="15to25"') + chip('>25', coPe === 'gt25', 'data-cope="gt25"')
+      + chip('Margin any', coMinMargin === 0, 'data-comargin="0"') + chip('>10%', coMinMargin === 10, 'data-comargin="10"') + chip('>20%', coMinMargin === 20, 'data-comargin="20"')
+      + chip('Growth any', coGrowth === null, 'data-cogrowth="any"') + chip('>0', coGrowth === 0, 'data-cogrowth="0"') + chip('>10%', coGrowth === 10, 'data-cogrowth="10"')
+      + chip('Priced only', coPriced, 'data-copriced="1"');
   }
 
   const priced = rows.filter((c) => c.marketCap);
+  if (coView === 'sectors') return renderSectorBoard(el, all);
+
   const totalCap = priced.reduce((a, b) => a + (b.marketCap || 0), 0);
   const max = Math.max(1, ...rows.map((c) => c.marketCap || 0));
   const pe = priced.map((c) => c.pe).filter((x) => x != null && x > 0 && x < 200).sort((a, b) => a - b);
@@ -3323,7 +3345,7 @@ function renderCompanies() {
   const medEv = evs.length ? evs[Math.floor(evs.length / 2)] : null;
 
   el.innerHTML = `<div class="co-hero">
-      <div class="co-hero-cell"><span class="co-k">MARKET CAP</span><span class="co-hero-v">${coMoney(totalCap)}</span><span class="co-hero-m">${priced.length} of ${rows.length} priced</span></div>
+      <div class="co-hero-cell"><span class="co-k">MARKET CAP</span><span class="co-hero-v">${coMoney(totalCap)}</span><span class="co-hero-m">${priced.length} of ${rows.length} priced · S&amp;P 500</span></div>
       <div class="co-hero-cell"><span class="co-k">MEDIAN P/E</span><span class="co-hero-v">${medPe ? medPe.toFixed(1) : '—'}</span><span class="co-hero-m">trailing, TTM where available</span></div>
       <div class="co-hero-cell"><span class="co-k">MEDIAN EV/EBITDA</span><span class="co-hero-v">${medEv ? medEv.toFixed(1) : '—'}</span><span class="co-hero-m">${rows.filter((c) => c.evEbitda).length} with the inputs</span></div>
     </div>`
@@ -3346,6 +3368,35 @@ const rebase = (arr) => {
   const first = arr.find((v) => v != null);
   return arr.map((v) => (v == null || !first ? null : +((v / first) * 100).toFixed(2)));
 };
+
+// Sector board: one row per sector with count, market cap, median P/E and median margin.
+function renderSectorBoard(el, all) {
+  const groups = new Map();
+  for (const c of all) {
+    if (!c.sector || c.sector === 'Other') continue;
+    if (!groups.has(c.sector)) groups.set(c.sector, []);
+    groups.get(c.sector).push(c);
+  }
+  const med = (arr) => { const v = arr.filter((x) => x != null && Number.isFinite(x)).sort((a, b) => a - b); return v.length ? v[Math.floor(v.length / 2)] : null; };
+  const rows = [...groups.entries()].map(([sector, list]) => ({
+    sector, n: list.length,
+    cap: list.reduce((a, c) => a + (c.marketCap || 0), 0),
+    pe: med(list.map((c) => (c.pe != null && c.pe < 200 ? c.pe : null))),
+    margin: med(list.map((c) => coMarginOf(c))),
+    priced: list.filter((c) => c.marketCap).length,
+  })).sort((a, b) => b.cap - a.cap);
+  const max = Math.max(1, ...rows.map((r) => r.cap));
+  el.innerHTML = `<div class="ma-sumline">${rows.length} sectors · ${all.length} companies</div>`
+    + rows.map((r) => `<button class="ma-sec" data-cosec="${esc(r.sector)}">
+        <span class="ma-sec-top"><span class="ma-sec-name">${esc(r.sector)}</span>
+          <span class="ma-sec-count">${r.n} companies</span>
+          <span class="ma-sec-val">${coMoney(r.cap)}</span></span>
+        <span class="ma-sec-bar"><i style="width:${Math.max(2, (r.cap / max) * 100)}%"></i></span>
+        <span class="ma-sec-foot"><span class="ma-sec-share">${r.priced} priced</span>
+          <span class="ma-sec-share">median P/E ${r.pe != null ? r.pe.toFixed(1) : '—'}</span>
+          <span class="ma-sec-share">margin ${r.margin != null ? r.margin.toFixed(1) + '%' : '—'}</span></span>
+      </button>`).join('');
+}
 
 async function loadCoChart(ticker, range, compare) {
   if (!ticker) return;
@@ -3397,7 +3448,7 @@ async function renderCompanyPage(el, all) {
         ${c.description ? `<div class="co-desc">${esc(c.description)}</div>` : ''}</div>
       </div>`
     + `<div class="co-stats co-stats-12">
-        <div class="co-stat"><span class="co-k">MARKET CAP</span><span class="co-v">${val(c.marketCap)}</span></div>
+        <div class="co-stat"><span class="co-k">MARKET CAP</span><span class="co-v">${c.adrNA ? 'ADR' : val(c.marketCap)}</span></div>
         <div class="co-stat"><span class="co-k">P/E (TRAILING${c.peBasis ? ' · ' + c.peBasis : ''})</span><span class="co-v">${c.pe != null ? c.pe.toFixed(1) : '—'}</span></div>
         <div class="co-stat"><span class="co-k">EV / EBITDA</span><span class="co-v">${c.evEbitda != null ? c.evEbitda.toFixed(1) : (c.sector === 'Financials' ? 'n/a' : '—')}</span></div>
         <div class="co-stat"><span class="co-k">P/B</span><span class="co-v">${c.pb != null ? c.pb.toFixed(1) : '—'}</span></div>
@@ -3478,6 +3529,14 @@ document.addEventListener('click', (e) => {
     a.click();
     return;
   }
+  if (e.target.closest('[data-coview]')) { coView = coView === 'sectors' ? 'list' : 'sectors'; renderCompanies(); return; }
+  const cp = e.target.closest('[data-cope]');
+  if (cp) { coPe = cp.dataset.cope; renderCompanies(); return; }
+  const cm = e.target.closest('[data-comargin]');
+  if (cm) { coMinMargin = Number(cm.dataset.comargin); renderCompanies(); return; }
+  const cg = e.target.closest('[data-cogrowth]');
+  if (cg) { coGrowth = cg.dataset.cogrowth === 'any' ? null : Number(cg.dataset.cogrowth); renderCompanies(); return; }
+  if (e.target.closest('[data-copriced]')) { coPriced = !coPriced; renderCompanies(); return; }
   const cs = e.target.closest('[data-cosort]');
   if (cs) {
     if (coSort === cs.dataset.cosort) coDir = -coDir; else { coSort = cs.dataset.cosort; coDir = -1; }

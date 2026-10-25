@@ -22,8 +22,20 @@ const MAX_PE = 400;
 const MAX_DE = 20;
 const MAX_CR = 50;
 
+// Foreign private issuers list ORDINARY shares on the cover page, but the quoted price is per ADR.
+// Multiplying them directly inflates market cap by the ADR ratio (Alibaba: 8 ordinary per ADS -> $1.9T
+// instead of ~$240B). Convert where the ratio is known; otherwise mark the company rather than guess.
+const US_STATES = new Set(('AL AK AZ AR CA CO CT DE FL GA HI ID IL IN IA KS KY LA ME MD MA MI MN MS MO MT NE NV NH NJ NM NY NC ND OH OK OR PA RI SC SD TN TX UT VT VA WA WV WI WY DC PR VI GU').split(' '));
+const ADR_RATIO = { BABA: 8, TSM: 5, JD: 2, PDD: 4, BIDU: 8, NTES: 5, TCOM: 1, BZ: 1, YUMC: 1 };
+
 let fixed = 0;
 for (const c of data.companies) {
+  const foreign = c.state && !US_STATES.has(String(c.state).toUpperCase());
+  if (foreign) {
+    const ratio = ADR_RATIO[c.ticker];
+    if (ratio && c.shares) c.shares = Math.round(c.shares / ratio);
+    else { c.shares = null; c.adrNA = true; }
+  }
   const before = JSON.stringify([c.marketCap, c.pe, c.pb, c.ev, c.evEbitda, c.currentRatio, c.debtEquity]);
 
   if (c.shares != null && c.shares < MIN_SHARES) c.shares = null;
