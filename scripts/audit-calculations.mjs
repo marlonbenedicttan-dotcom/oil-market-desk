@@ -24,17 +24,19 @@ for (const c of C) {
   checked++;
 
   // --- recompute and compare -------------------------------------------------
-  if (c.marketCap != null && c.price != null && c.shares != null) {
+  // Market cap from Nasdaq is the source of truth; price × shares is only a fallback, so it is not a
+  // reconciliation error when they differ.
+  if (c.marketCap != null && c.marketCapSource !== 'nasdaq' && c.price != null && c.shares != null) {
     const want = Math.round(c.price * c.shares);
     if (!near(c.marketCap, want, Math.max(1e6, want * 1e-6))) issues.marketCap.push([c.ticker, c.marketCap, want]);
   }
   if (c.pe != null) {
-    const eps = c.epsTTM > 0 ? c.epsTTM : (c.eps > 0 ? c.eps : null);
-    const want = eps ? +(c.price / eps).toFixed(1) : null;
-    if (want == null || !near(c.pe, want, 0.15)) issues.pe.push([c.ticker, c.pe, want, c.epsTTM, c.eps]);
+    // P/E is market cap ÷ net income — the same primitives derive() uses.
+    const want = c.marketCap && c.netIncome > 0 ? +(c.marketCap / c.netIncome).toFixed(1) : null;
+    if (want == null || !near(c.pe, want, 0.15)) issues.pe.push([c.ticker, c.pe, want]);
   }
-  if (c.pb != null && c.equity > 0 && c.shares) {
-    const want = +(c.price / (c.equity / c.shares)).toFixed(1);
+  if (c.pb != null && c.equity > 0 && c.marketCap) {
+    const want = +(c.marketCap / c.equity).toFixed(1);
     if (!near(c.pb, want, 0.15)) issues.pb.push([c.ticker, c.pb, want]);
   }
   if (c.ev != null && c.marketCap != null) {

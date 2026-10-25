@@ -1596,3 +1596,16 @@ build), with guards that encode *why* a number is meaningless:
 Pipeline order, now explicit: `build-companies-frames` → `price-companies` → `derive-companies` →
 `audit-calculations` (`npm run audit:companies` runs the last two).
 **Audit result: 8,297 companies · 0 reconciliation mismatches · 0 out-of-range values · reference checks pass.**
+
+## Market cap now comes from Nasdaq, not from a share count (2026-10-25)
+Deriving market cap as price × shares kept breaking on dual-class shares, ADRs and stale cover-page
+counts — the last audit found 26 companies where the two paths disagreed by more than 10% (BRK-B 2,400×,
+BKNG 24×, KLAC 10×, V 3.8×). Fixed at the source: **Nasdaq's quote summary publishes MarketCap directly**,
+so `scripts/fetch-nasdaq.mjs` pulls it for all 499 constituents (498 succeeded, BRK-B via the dot ticker),
+along with dividend yield, sector and industry.
+- P/E = market cap ÷ net income; P/B = market cap ÷ equity; EV = market cap + debt − cash. All from the
+  authoritative cap, so class/ADR mismatches cannot propagate into the ratios.
+- **Cross-check between two independent paths**: Nasdaq market cap vs Yahoo price × SEC share count agree
+  within 10% for **415 of 441 companies (94.1%)**. The 26 exceptions are exactly the multi-class names.
+- Audit updated to reconcile against the same primitives: **0 mismatches, 0 out-of-range values**.
+- Money formatting now goes to trillions ($5.07T, not $5074.8B).

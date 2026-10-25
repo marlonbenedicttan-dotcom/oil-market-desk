@@ -3268,7 +3268,11 @@ const coMono = (c) => {
   for (const ch of String(c.name || '')) h = (h * 31 + ch.charCodeAt(0)) % 360;
   return `<span class="ma-mono" style="--h:${h}">${esc(ini)}</span>`;
 };
-const coMoney = (v) => (v == null ? '—' : Math.abs(v) >= 1e9 ? `$${(v / 1e9).toFixed(1)}B` : Math.abs(v) >= 1e6 ? `$${(v / 1e6).toFixed(0)}M` : `$${Math.round(v)}`);
+const coMoney = (v) => (v == null ? '—'
+  : Math.abs(v) >= 1e12 ? `$${(v / 1e12).toFixed(2)}T`
+  : Math.abs(v) >= 1e9 ? `$${(v / 1e9).toFixed(1)}B`
+  : Math.abs(v) >= 1e6 ? `$${(v / 1e6).toFixed(0)}M`
+  : `$${Math.round(v)}`);
 const coMarginOf = (c) => (c.revenue && c.netIncome != null ? (c.netIncome / c.revenue) * 100 : null);
 const coMargin = coMarginOf;
 

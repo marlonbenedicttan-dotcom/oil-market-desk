@@ -41,16 +41,18 @@ for (const c of data.companies) {
   if (c.shares != null && c.shares < MIN_SHARES) c.shares = null;
   if (c.revenue != null && c.revenue < 0) c.revenue = null;
 
-  c.marketCap = c.price != null && c.shares != null ? Math.round(c.price * c.shares) : null;
-  if (c.marketCap != null && (c.marketCap <= 0 || c.marketCap < 1e6)) c.marketCap = null;   // a $200k "company" is a bad fact
+  // Market cap comes from Nasdaq where available (it already handles classes, ADRs and buybacks);
+  // price × shares is only the fallback for names Nasdaq doesn't cover.
+  if (c.marketCapSource !== 'nasdaq') c.marketCap = c.price != null && c.shares != null ? Math.round(c.price * c.shares) : null;
+  if (c.marketCap != null && (c.marketCap <= 0 || c.marketCap < 1e6)) c.marketCap = null;
 
-  const eps = c.epsTTM > 0 ? c.epsTTM : (c.eps > 0 ? c.eps : null);
-  const pe = eps != null && eps >= MIN_EPS && c.price ? +(c.price / eps).toFixed(1) : null;
+  // P/E on the authoritative market cap ÷ net income: consistent with the cap, and immune to
+  // per-share class/ADR mismatches.
+  const pe = c.marketCap && c.netIncome > 0 ? +(c.marketCap / c.netIncome).toFixed(1) : null;
   c.pe = pe != null && pe <= MAX_PE && pe >= 0.5 ? pe : null;
-  c.peBasis = c.pe == null ? null : (c.epsTTM > 0 ? 'TTM' : 'FY');
+  c.peBasis = c.pe == null ? null : 'FY';
 
-  const bvps = c.equity > 0 && c.shares ? c.equity / c.shares : null;
-  c.pb = bvps && bvps > 0 && c.price ? +(c.price / bvps).toFixed(1) : null;
+  c.pb = c.marketCap && c.equity > 0 ? +(c.marketCap / c.equity).toFixed(1) : null;
   if (c.pb != null && c.pb > 100) c.pb = null;
 
   c.ev = c.marketCap != null ? c.marketCap + (c.debt || 0) - (c.cash || 0) : null;
