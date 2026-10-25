@@ -3850,9 +3850,10 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname === '/api/company-chart') {
       const ticker = String(url.searchParams.get('ticker') || '').trim();
       const range = String(url.searchParams.get('range') || '1y');
+      const interval = String(url.searchParams.get('interval') || (range === '10y' ? '1mo' : range === '5y' ? '1wk' : '1d'));
       if (!/^[A-Za-z0-9.\-]{1,12}$/.test(ticker)) return sendJSON(res, 400, { error: 'bad ticker' });
-      const out = await cached('cochart:' + ticker + ':' + range, 600e3, async () => {
-        const { series } = await yahooSeries(ticker, range, '1d');
+      const out = await cached('cochart:' + ticker + ':' + range + ':' + interval, 600e3, async () => {
+        const { series } = await yahooSeries(ticker, range, interval);
         const dates = Object.keys(series).sort();
         return { ticker, range, dates, closes: dates.map((d) => series[d]) };
       }).catch(() => null);

@@ -3281,6 +3281,8 @@ function renderCompanies() {
 
   const q = coQuery.trim().toLowerCase();
   const rows = all.filter((c) => {
+    // Warrants, units, rights and preferreds are separate securities, not the company's common stock.
+    if (/\b(warrant|unit|right|preferred)\b/i.test(c.name)) return false;
     if (coSector !== 'all' && c.sector !== coSector) return false;
     if (coMin && (c.marketCap || 0) < coMin) return false;
     if (q && !(`${c.name} ${c.ticker || ''} ${c.industry || ''}`.toLowerCase().includes(q))) return false;
@@ -3299,15 +3301,16 @@ function renderCompanies() {
       + chip('All sizes', coMin === 0, 'data-comin="0"') + chip('$10B+', coMin === 1e10, 'data-comin="10000000000"') + chip('$100B+', coMin === 1e11, 'data-comin="100000000000"');
   }
 
-  const totalCap = rows.reduce((a, b) => a + (b.marketCap || 0), 0);
+  const priced = rows.filter((c) => c.marketCap);
+  const totalCap = priced.reduce((a, b) => a + (b.marketCap || 0), 0);
   const max = Math.max(1, ...rows.map((c) => c.marketCap || 0));
-  const pe = rows.map((c) => c.pe).filter((x) => x != null && x > 0).sort((a, b) => a - b);
+  const pe = priced.map((c) => c.pe).filter((x) => x != null && x > 0 && x < 200).sort((a, b) => a - b);
   const medPe = pe.length ? pe[Math.floor(pe.length / 2)] : null;
 
   el.innerHTML = `<div class="co-hero">
-      <div class="co-hero-k">MARKET CAP COVERED</div>
-      <div class="co-hero-v">${coMoney(totalCap)}</div>
-      <div class="co-hero-m">${rows.length} compan${rows.length === 1 ? 'y' : 'ies'}${medPe ? ` · median P/E ${medPe.toFixed(1)}` : ''}</div>
+      <div class="co-hero-cell"><span class="co-k">MARKET CAP</span><span class="co-hero-v">${coMoney(totalCap)}</span><span class="co-hero-m">${priced.length} of ${rows.length} priced</span></div>
+      <div class="co-hero-cell"><span class="co-k">MEDIAN P/E</span><span class="co-hero-v">${medPe ? medPe.toFixed(1) : '—'}</span><span class="co-hero-m">trailing, latest FY</span></div>
+      <div class="co-hero-cell"><span class="co-k">FORWARD P/E</span><span class="co-hero-v">—</span><span class="co-hero-m">needs consensus estimates</span></div>
     </div>`
     + `<div class="co-hrow"><span>#</span><span></span><span>COMPANY</span><span>MARKET CAP</span><span>P/E</span><span>MARGIN</span></div>`
     + rows.slice(0, 150).map((c, i) => {
@@ -3317,7 +3320,7 @@ function renderCompanies() {
         ${coMono(c)}
         <span class="co-id"><b>${esc(c.name)}</b><span class="co-tick">${esc(c.ticker || '')}${c.sector ? ' · ' + esc(c.sector) : ''}</span></span>
         <span class="co-cap">${coMoney(c.marketCap)}<i class="co-bar"><i style="width:${Math.max(2, ((c.marketCap || 0) / max) * 100)}%"></i></i></span>
-        <span class="co-pe">${c.pe != null ? 'P/E ' + c.pe.toFixed(1) : '—'}</span>
+        <span class="co-pe" title="${c.pe != null ? 'trailing P/E: price ÷ latest FY diluted EPS' : 'no positive trailing EPS'}">${c.pe != null ? c.pe.toFixed(1) : '—'}</span>
         <span class="co-mar ${m == null ? 'dimtext' : m >= 0 ? 'pos' : 'neg'}">${m == null ? '—' : `${m.toFixed(1)}%`}</span>
       </button>`;
     }).join('') || '<div class="macro-note">Nothing matches — clear the filters.</div>';
@@ -3331,9 +3334,16 @@ const rebase = (arr) => {
 
 async function loadCoChart(ticker, range, compare) {
   if (!ticker) return;
+  const canvas = $('co-chart');
+  const fail = () => {
+    const wrap = canvas && canvas.parentElement;
+    if (wrap) wrap.setAttribute('data-empty', `No price history for ${ticker} — the ticker may be delisted or not covered by Yahoo.`);
+  };
   try {
     const ch = await getJSON(`/api/company-chart?ticker=${encodeURIComponent(ticker)}&range=${range}`);
-    if (!ch || !ch.dates || ch.dates.length <= 5) return;
+    if (!ch || !ch.dates || ch.dates.length <= 5) { fail(); return; }
+    const wrap0 = canvas && canvas.parentElement;
+    if (wrap0) wrap0.removeAttribute('data-empty');
     if (!compare) {
       mountChart('co-chart', { labels: ch.dates, datasets: [line(`${ticker} · ${range.toUpperCase()}`, ch.closes, CT.c1)] }, baseOptions({ dp: 2 }));
       return;
@@ -3371,9 +3381,10 @@ async function renderCompanyPage(el, all) {
         <div class="co-sub">${esc(c.ticker || '')}${c.sector ? ' · ' + esc(c.sector) : ''}${c.industry ? ' · ' + esc(c.industry) : ''}${c.state ? ' · ' + esc(c.state) : ''}</div>
         ${c.description ? `<div class="co-desc">${esc(c.description)}</div>` : ''}</div>
       </div>`
-    + `<div class="co-stats">
+    + `<div class="co-stats co-stats-9">
         <div class="co-stat"><span class="co-k">MARKET CAP</span><span class="co-v">${val(c.marketCap)}</span></div>
-        <div class="co-stat"><span class="co-k">P/E</span><span class="co-v">${c.pe != null ? c.pe.toFixed(1) : '—'}</span></div>
+        <div class="co-stat"><span class="co-k">P/E (TRAILING)</span><span class="co-v">${c.pe != null ? c.pe.toFixed(1) : '—'}</span></div>
+        <div class="co-stat"><span class="co-k">P/E (FORWARD)</span><span class="co-v dimtext">—</span></div>
         <div class="co-stat"><span class="co-k">P/B</span><span class="co-v">${c.pb != null ? c.pb.toFixed(1) : '—'}</span></div>
         <div class="co-stat"><span class="co-k">REVENUE</span><span class="co-v">${val(c.revenue)}</span></div>
         <div class="co-stat"><span class="co-k">NET INCOME</span><span class="co-v ${c.netIncome >= 0 ? 'pos' : 'neg'}">${val(c.netIncome)}</span></div>
