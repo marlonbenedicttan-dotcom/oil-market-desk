@@ -3399,7 +3399,7 @@ async function renderCompanyPage(el, all) {
     + `<div class="co-stats co-stats-12">
         <div class="co-stat"><span class="co-k">MARKET CAP</span><span class="co-v">${val(c.marketCap)}</span></div>
         <div class="co-stat"><span class="co-k">P/E (TRAILING${c.peBasis ? ' · ' + c.peBasis : ''})</span><span class="co-v">${c.pe != null ? c.pe.toFixed(1) : '—'}</span></div>
-        <div class="co-stat"><span class="co-k">EV / EBITDA</span><span class="co-v">${c.evEbitda != null ? c.evEbitda.toFixed(1) : '—'}</span></div>
+        <div class="co-stat"><span class="co-k">EV / EBITDA</span><span class="co-v">${c.evEbitda != null ? c.evEbitda.toFixed(1) : (c.sector === 'Financials' ? 'n/a' : '—')}</span></div>
         <div class="co-stat"><span class="co-k">P/B</span><span class="co-v">${c.pb != null ? c.pb.toFixed(1) : '—'}</span></div>
         <div class="co-stat"><span class="co-k">ENTERPRISE VALUE</span><span class="co-v">${val(c.ev)}</span></div>
         <div class="co-stat"><span class="co-k">CURRENT RATIO</span><span class="co-v">${c.currentRatio != null ? c.currentRatio.toFixed(2) : '—'}</span></div>

@@ -117,6 +117,14 @@ for (const r of Object.values(tickers || {})) {
   const cur = meta[cik];
   if (!cur || tickScore(r.ticker) < tickScore(cur.ticker)) meta[cik] = { ticker: r.ticker, title: r.title };
 }
+// A CIK with no ticker of its own may still be the operating company whose ticker sits on a sibling
+// CIK (Exxon Mobil Corporation vs "ExxonMobil Holdings Corp"). Match on the normalised name.
+const normName = (x) => String(x || '').toLowerCase().replace(/\b(inc|corp|corporation|company|co|ltd|limited|plc|llc|holdings?|group|the)\b/g, '').replace(/[^a-z0-9]/g, '');
+const byName = {};
+for (const [cik, m] of Object.entries(meta)) {
+  const k = normName(m.title);
+  if (k && !byName[k]) byName[k] = m;
+}
 
 // Diluted share count as a fallback where the cover page has none.
 const sharesAlt = {};
@@ -160,7 +168,7 @@ for (const cik of ciks) {
   const name = meta[cik]?.title || concepts.revenue[cik]?.name || concepts.revenue2[cik]?.name || concepts.revenue3[cik]?.name || concepts.assets[cik]?.name || `CIK ${cik}`;
   const prevSic = sicByCik[cik];
   companies.push({
-    cik, ticker: meta[cik]?.ticker || null, name,
+    cik, ticker: meta[cik]?.ticker || byName[normName(name)]?.ticker || null, name,
     sic: prevSic?.sic || null, sector: prevSic?.sector || 'Other', industry: prevSic?.industry || null, state: prevSic?.state || null,
     debt: extra.debt[cik] ?? null, cash: extra.cash[cik] ?? null, da: extra.da[cik] ?? null,
     currentAssets: extra.ca[cik] ?? null, currentLiabilities: extra.cl[cik] ?? null,

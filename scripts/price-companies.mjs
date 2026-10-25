@@ -17,7 +17,7 @@ const LIMIT = Number((process.argv.find((x) => x.startsWith('--limit=')) || '--l
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const data = JSON.parse(readFileSync(FILE, 'utf8'));
-const targets = data.companies.filter((c) => c.ticker && c.shares && c.revenue).slice(0, LIMIT);
+const targets = data.companies.filter((c) => c.ticker && c.shares && c.revenue && !c.marketCap).slice(0, LIMIT);
 console.log(`${targets.length} companies with a ticker and share count`);
 
 let ok = 0;
