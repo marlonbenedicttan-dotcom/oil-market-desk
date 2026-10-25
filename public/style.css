@@ -1082,3 +1082,11 @@ button.deal-sec-tile:hover { background: #10151b; }
 .co-hero-m { display: block; font-size: 9.5px; color: var(--dim); margin-top: 2px; }
 .co-stats-12 { grid-template-columns: repeat(4, 1fr); }
 @media (max-width: 640px) { .co-hero { grid-template-columns: 1fr; } .co-stats-12 { grid-template-columns: repeat(2, 1fr); } }
+.co-frow { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; padding: 2px 0; }
+.co-flabel { width: 68px; flex: 0 0 68px; font-size: 8px; letter-spacing: 1px; color: #5b6773; text-transform: uppercase; }
+#co-chips { display: flex; flex-direction: column; gap: 1px; }
+@media (max-width: 640px) { .co-flabel { width: 100%; flex-basis: 100%; } }
+/* Search sits at a readable width instead of stretching into an empty box. */
+#co-search { flex: 0 0 300px; max-width: 300px; }
+.co-tools { align-items: flex-start; }
+@media (max-width: 640px) { #co-search { flex: 1 1 auto; max-width: none; } }

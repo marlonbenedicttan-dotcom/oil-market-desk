@@ -28,8 +28,17 @@ const MAX_CR = 50;
 const US_STATES = new Set(('AL AK AZ AR CA CO CT DE FL GA HI ID IL IN IA KS KY LA ME MD MA MI MN MS MO MT NE NV NH NJ NM NY NC ND OH OK OR PA RI SC SD TN TX UT VT VA WA WV WI WY DC PR VI GU').split(' '));
 const ADR_RATIO = { BABA: 8, TSM: 5, JD: 2, PDD: 4, BIDU: 8, NTES: 5, TCOM: 1, BZ: 1, YUMC: 1 };
 
+// The exchange's own sector beats SIC codes, which put Apple in Industrials and Amazon in Other.
+const NASDAQ_SECTOR = {
+  'Technology': 'Technology', 'Health Care': 'Healthcare', 'Consumer Discretionary': 'Consumer',
+  'Consumer Staples': 'Consumer', 'Finance': 'Financials', 'Industrials': 'Industrials', 'Energy': 'Energy',
+  'Materials': 'Materials', 'Utilities': 'Utilities', 'Real Estate': 'Real estate',
+  'Telecommunications': 'Telecom', 'Communication Services': 'Media',
+};
+
 let fixed = 0;
 for (const c of data.companies) {
+  if (c.nasdaqSector && NASDAQ_SECTOR[c.nasdaqSector]) c.sector = NASDAQ_SECTOR[c.nasdaqSector];
   const foreign = c.state && !US_STATES.has(String(c.state).toUpperCase());
   if (foreign) {
     const ratio = ADR_RATIO[c.ticker];

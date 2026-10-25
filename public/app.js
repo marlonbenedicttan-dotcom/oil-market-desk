@@ -3273,6 +3273,14 @@ const coMoney = (v) => (v == null ? '—'
   : Math.abs(v) >= 1e9 ? `$${(v / 1e9).toFixed(1)}B`
   : Math.abs(v) >= 1e6 ? `$${(v / 1e6).toFixed(0)}M`
   : `$${Math.round(v)}`);
+// Common names people type that are not the legal name on the filing.
+const CO_ALIAS = {
+  google: 'GOOGL', alphabet: 'GOOGL', youtube: 'GOOGL', facebook: 'META', instagram: 'META', whatsapp: 'META',
+  berkshire: 'BRK-B', jpmorgan: 'JPM', 'jp morgan': 'JPM', exxon: 'XOM', 'johnson & johnson': 'JNJ', jnj: 'JNJ',
+  procter: 'PG', 'coca cola': 'KO', cocacola: 'KO', 'home depot': 'HD', 'bank of america': 'BAC', 'wells fargo': 'WFC',
+  goldman: 'GS', 'morgan stanley': 'MS', 'at&t': 'T', att: 'T', 't mobile': 'TMUS', 'eli lilly': 'LLY',
+  unitedhealth: 'UNH', 'united health': 'UNH', 'general motors': 'GM', 'ford': 'F', 'boeing': 'BA',
+};
 const coMarginOf = (c) => (c.revenue && c.netIncome != null ? (c.netIncome / c.revenue) * 100 : null);
 const coMargin = coMarginOf;
 
@@ -3302,7 +3310,11 @@ function renderCompanies() {
     }
     if (coMinMargin) { const m = coMarginOf(c); if (m == null || m < coMinMargin) return false; }
     if (coGrowth != null) { if (c.growth == null || c.growth < coGrowth) return false; }
-    if (q && !(`${c.name} ${c.ticker || ''} ${c.industry || ''}`.toLowerCase().includes(q))) return false;
+    if (q) {
+      const hay = `${c.name} ${c.ticker || ''} ${c.industry || ''} ${c.indexName || ''}`.toLowerCase();
+      const alias = CO_ALIAS[q];
+      if (!hay.includes(q) && (!alias || c.ticker !== alias)) return false;
+    }
     return true;
   });
   const sortVal = (c) => (coSort === 'cap' ? c.marketCap : coSort === 'pe' ? c.pe : coSort === 'ev' ? c.evEbitda : coSort === 'margin' ? coMargin(c) : c.growth);
@@ -3320,22 +3332,20 @@ function renderCompanies() {
     for (const c of all) if (c.sector && c.sector !== 'Other') counts[c.sector] = (counts[c.sector] || 0) + 1;
     const sectors = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 7).map(([x]) => x);
     const chip = (label, on, attrs) => `<button class="ma-chip${on ? ' on' : ''}" ${attrs}>${label}</button>`;
-    chips.innerHTML = chip('All', coSector === 'all', 'data-cosec="all"')
-      + sectors.map((x) => chip(esc(x), coSector === x, `data-cosec="${esc(x)}"`)).join('')
-      + '<span class="ma-gap"></span>'
-      + chip('All sizes', coMin === 0, 'data-comin="0"') + chip('$10B+', coMin === 1e10, 'data-comin="10000000000"') + chip('$100B+', coMin === 1e11, 'data-comin="100000000000"')
-      + '<span class="ma-gap"></span>'
-      + [['cap', 'MKT CAP'], ['pe', 'P/E'], ['ev', 'EV/EBITDA'], ['margin', 'MARGIN'], ['growth', 'GROWTH']]
-        .map(([k, l]) => chip(l + (coSort === k ? (coDir === -1 ? ' ↓' : ' ↑') : ''), coSort === k, `data-cosort="${k}"`)).join('')
-      + `<button class="ma-chip" data-coexport="1">CSV</button>`
-      + '<span class="ma-gap"></span>'
-      + chip('Sector board', coView === 'sectors', 'data-coview="1"')
-      + '<span class="ma-gap"></span>'
-      + chip('P/E any', coPe === 'all', 'data-cope="all"') + chip('<15', coPe === 'lt15', 'data-cope="lt15"')
-      + chip('15-25', coPe === '15to25', 'data-cope="15to25"') + chip('>25', coPe === 'gt25', 'data-cope="gt25"')
-      + chip('Margin any', coMinMargin === 0, 'data-comargin="0"') + chip('>10%', coMinMargin === 10, 'data-comargin="10"') + chip('>20%', coMinMargin === 20, 'data-comargin="20"')
-      + chip('Growth any', coGrowth === null, 'data-cogrowth="any"') + chip('>0', coGrowth === 0, 'data-cogrowth="0"') + chip('>10%', coGrowth === 10, 'data-cogrowth="10"')
-      + chip('Priced only', coPriced, 'data-copriced="1"');
+    const row = (label, inner) => `<div class="co-frow"><span class="co-flabel">${label}</span>${inner}</div>`;
+    const active = (coSector !== 'all' ? 1 : 0) + (coMin ? 1 : 0) + (coPe !== 'all' ? 1 : 0)
+      + (coMinMargin ? 1 : 0) + (coGrowth != null ? 1 : 0) + (coPriced ? 1 : 0) + (coQuery.trim() ? 1 : 0);
+    chips.innerHTML =
+      row('SECTOR', chip('All', coSector === 'all', 'data-cosec="all"')
+        + sectors.map((x) => chip(esc(x), coSector === x, `data-cosec="${esc(x)}"`)).join(''))
+      + row('SIZE', chip('All', coMin === 0, 'data-comin="0"') + chip('$10B+', coMin === 1e10, 'data-comin="10000000000"') + chip('$100B+', coMin === 1e11, 'data-comin="100000000000"'))
+      + row('VALUATION', chip('P/E any', coPe === 'all', 'data-cope="all"') + chip('<15', coPe === 'lt15', 'data-cope="lt15"')
+        + chip('15–25', coPe === '15to25', 'data-cope="15to25"') + chip('>25', coPe === 'gt25', 'data-cope="gt25"'))
+      + row('QUALITY', chip('Margin any', coMinMargin === 0, 'data-comargin="0"') + chip('>10%', coMinMargin === 10, 'data-comargin="10"') + chip('>20%', coMinMargin === 20, 'data-comargin="20"')
+        + chip('Growth any', coGrowth === null, 'data-cogrowth="any"') + chip('>0', coGrowth === 0, 'data-cogrowth="0"') + chip('>10%', coGrowth === 10, 'data-cogrowth="10"'))
+      + row('VIEW', chip('Priced only', coPriced, 'data-copriced="1"') + chip('Sector board', coView === 'sectors', 'data-coview="1"')
+        + `<button class="ma-chip" data-coexport="1">Export CSV</button>`
+        + (active ? `<button class="ma-reset" data-coreset="1">CLEAR ${active}</button>` : ''));
   }
 
   const priced = rows.filter((c) => c.marketCap);
@@ -3354,6 +3364,7 @@ function renderCompanies() {
       <div class="co-hero-cell"><span class="co-k">MEDIAN EV/EBITDA</span><span class="co-hero-v">${medEv ? medEv.toFixed(1) : '—'}</span><span class="co-hero-m">${rows.filter((c) => c.evEbitda).length} with the inputs</span></div>
     </div>`
     + `<div class="co-hrow"><span>#</span><span></span><span>COMPANY</span><span>MARKET CAP</span><span>P/E</span><span>MARGIN</span></div>`
+    + (rows.length ? '' : `<div class="macro-note">No company matches “${esc(coQuery.trim())}”. Try a ticker (AAPL) or a sector name.</div>`)
     + rows.slice(0, 150).map((c, i) => {
       const m = coMargin(c);
       return `<button class="co-row" data-cik="${esc(c.cik)}">
@@ -3533,6 +3544,12 @@ document.addEventListener('click', (e) => {
     a.click();
     return;
   }
+  if (e.target.closest('[data-coreset]')) {
+    coSector = 'all'; coMin = 0; coPe = 'all'; coMinMargin = 0; coGrowth = null; coPriced = false; coQuery = '';
+    const inp = $('co-search'); if (inp) inp.value = '';
+    renderCompanies();
+    return;
+  }
   if (e.target.closest('[data-coview]')) { coView = coView === 'sectors' ? 'list' : 'sectors'; renderCompanies(); return; }
   const cp = e.target.closest('[data-cope]');
   if (cp) { coPe = cp.dataset.cope; renderCompanies(); return; }
@@ -3556,7 +3573,7 @@ document.addEventListener('click', (e) => {
 });
 
 document.addEventListener('input', (e) => {
-  if (e.target && e.target.id === 'co-search') { coQuery = e.target.value || ''; renderCompanies(); return; }
+  if (e.target && e.target.id === 'co-search') { coQuery = e.target.value || ''; coCik = null; renderCompanies(); return; }
   if (e.target && e.target.id === 'co-cmp') {
     coCompare = (e.target.value || '').trim().toUpperCase();
     if (!coCompare || coCompare.length >= 1) loadCoChart(coTicker, coRange, coCompare);

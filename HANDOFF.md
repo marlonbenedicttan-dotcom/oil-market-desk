@@ -1609,3 +1609,16 @@ along with dividend yield, sector and industry.
   within 10% for **415 of 441 companies (94.1%)**. The 26 exceptions are exactly the multi-class names.
 - Audit updated to reconcile against the same primitives: **0 mismatches, 0 out-of-range values**.
 - Money formatting now goes to trillions ($5.07T, not $5074.8B).
+
+## Companies: filters, search and missing data (2026-10-25)
+- **Filter bar rebuilt** into labelled rows — SECTOR / SIZE / VALUATION / QUALITY / VIEW — with a CLEAR
+  button when anything is active. The search box no longer stretches into an empty half-panel.
+- **Search from a company page was broken**: typing left you on the company (renderCompanies early-returns
+  when a CIK is selected). Search now clears the selection, and an alias map covers names that differ
+  from the filing ("google" → GOOGL, "facebook" → META, "berkshire" → BRK-B, ~25 entries). An empty
+  result now says so instead of showing nothing.
+- **Sectors now come from the exchange** (Nasdaq's own sector), not SIC: Apple was "Industrials",
+  Amazon "Other"; now Technology and Consumer. SIC only fills gaps.
+- **Missing data**: added `RevenueFromContractWithCustomerIncludingAssessedTax` and `LongTermDebt` frames,
+  plus a fourth revenue tag. Revenue 468 → **488 of 499**, TTM earnings 445 → 447, descriptions 0 → **406**.
+- Audit after the rebuild: **0 mismatches, 0 out-of-range**.

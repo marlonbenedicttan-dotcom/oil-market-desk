@@ -36,11 +36,12 @@ async function get(url) {
 }
 
 // concept -> { cik: { year: value } }
-const concepts = { revenue: {}, revenue2: {}, revenue3: {}, netIncome: {}, assets: {}, equity: {}, gross: {}, opInc: {}, eps: {}, shares: {} };
+const concepts = { revenue: {}, revenue2: {}, revenue3: {}, revenue4: {}, netIncome: {}, assets: {}, equity: {}, gross: {}, opInc: {}, eps: {}, shares: {} };
 const TAGS = {
   revenue: 'Revenues',
   revenue2: 'RevenueFromContractWithCustomerExcludingAssessedTax',
   revenue3: 'SalesRevenueNet',
+  revenue4: 'RevenueFromContractWithCustomerIncludingAssessedTax',
   netIncome: 'NetIncomeLoss',
   assets: 'Assets',
   equity: 'StockholdersEquity',
@@ -69,13 +70,14 @@ for (const y of years) {
 }
 
 // Balance-sheet inputs for EV and liquidity ratios, plus quarterly EPS for a trailing-twelve-month P/E.
-const extra = { debt: {}, cash: {}, da: {}, ca: {}, cl: {}, qeps: {} };
-for (const [key, tag] of [['debt', 'LongTermDebtNoncurrent'], ['cash', 'CashAndCashEquivalentsAtCarryingValue'],
+const extra = { debt: {}, debt2: {}, cash: {}, da: {}, ca: {}, cl: {}, qeps: {} };
+for (const [key, tag] of [['debt', 'LongTermDebtNoncurrent'], ['debt2', 'LongTermDebt'], ['cash', 'CashAndCashEquivalentsAtCarryingValue'],
   ['ca', 'AssetsCurrent'], ['cl', 'LiabilitiesCurrent']]) {
   const j = await get(`https://data.sec.gov/api/xbrl/frames/us-gaap/${tag}/USD/CY${thisYear - 1}Q4I.json`);
   for (const r of j?.data || []) if (r.cik != null && r.val != null) extra[key][r.cik] = r.val;
   await sleep(120);
 }
+for (const [cik, v] of Object.entries(extra.debt2)) if (extra.debt[cik] == null) extra.debt[cik] = v;
 {
   const j = await get(`https://data.sec.gov/api/xbrl/frames/us-gaap/DepreciationDepletionAndAmortization/USD/CY${thisYear - 1}.json`);
   for (const r of j?.data || []) if (r.cik != null && r.val != null) extra.da[r.cik] = r.val;
@@ -155,7 +157,7 @@ try {
 const ciks = new Set([...Object.keys(concepts.revenue), ...Object.keys(concepts.revenue2), ...Object.keys(concepts.assets)]);
 const companies = [];
 for (const cik of ciks) {
-  const rev = { ...(concepts.revenue3[cik] || {}), ...(concepts.revenue[cik] || {}), ...(concepts.revenue2[cik] || {}) };
+  const rev = { ...(concepts.revenue3[cik] || {}), ...(concepts.revenue4[cik] || {}), ...(concepts.revenue[cik] || {}), ...(concepts.revenue2[cik] || {}) };
   const ni = concepts.netIncome[cik] || {};
   const assets = concepts.assets[cik] || {};
   const equity = concepts.equity[cik] || {};
