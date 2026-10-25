@@ -31,8 +31,11 @@ for (const c of targets) {
     if (!price) continue;
     c.price = +price.toFixed(2);
     c.marketCap = Math.round(price * c.shares);
-    c.pe = c.netIncome > 0 ? +(c.marketCap / c.netIncome).toFixed(1) : null;
-    c.pb = c.equity > 0 ? +(c.marketCap / c.equity).toFixed(1) : null;
+    // P/E from price ÷ diluted EPS: per-share on both sides, so a wrong share count can't distort it.
+    c.pe = c.eps > 0 ? +(price / c.eps).toFixed(1) : (c.netIncome > 0 ? +(c.marketCap / c.netIncome).toFixed(1) : null);
+    // P/B from price ÷ book value per share (equity ÷ shares), same reason.
+    const bvps = c.equity > 0 && c.shares ? c.equity / c.shares : null;
+    c.pb = bvps && bvps > 0 ? +(price / bvps).toFixed(1) : (c.equity > 0 ? +(c.marketCap / c.equity).toFixed(1) : null);
     ok++;
   } catch {}
   await sleep(120);

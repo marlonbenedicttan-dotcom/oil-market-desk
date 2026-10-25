@@ -3249,7 +3249,7 @@ document.addEventListener('click', (e) => {
 
 // ---------------------------------------------------------------------------
 // COMPANIES — profiles and financials from SEC XBRL (tagged facts, no estimates).
-let companiesData = null, coQuery = '', coSector = 'all', coMin = 0, coCik = null;
+let companiesData = null, coQuery = '', coSector = 'all', coMin = 0, coCik = null, coTicker = null, coRange = '10y', coCompare = '';
 
 async function loadCompanies() {
   const el = $('co-body');
@@ -3259,6 +3259,13 @@ async function loadCompanies() {
   renderCompanies();
 }
 
+const coMono = (c) => {
+  const src = String(c.ticker || c.name || '?').replace(/[^A-Za-z0-9]/g, '');
+  const ini = src.slice(0, 2).toUpperCase();
+  let h = 0;
+  for (const ch of String(c.name || '')) h = (h * 31 + ch.charCodeAt(0)) % 360;
+  return `<span class="ma-mono" style="--h:${h}">${esc(ini)}</span>`;
+};
 const coMoney = (v) => (v == null ? '—' : Math.abs(v) >= 1e9 ? `$${(v / 1e9).toFixed(1)}B` : Math.abs(v) >= 1e6 ? `$${(v / 1e6).toFixed(0)}M` : `$${Math.round(v)}`);
 const coMargin = (c) => (c.revenue && c.netIncome != null ? (c.netIncome / c.revenue) * 100 : null);
 
@@ -3268,44 +3275,85 @@ function renderCompanies() {
   if (!companiesData) { el.innerHTML = stError('Couldn’t load companies — retrying.'); return; }
   const all = companiesData.companies || [];
   const sub = $('deals-sub');
-  if (sub) sub.textContent = `${all.length} companies · SEC XBRL · latest 10-K`;
+  if (sub) sub.textContent = `${all.length} companies · ranked by market cap · SEC XBRL`;
 
   if (coCik) return renderCompanyPage(el, all);
 
   const q = coQuery.trim().toLowerCase();
   const rows = all.filter((c) => {
     if (coSector !== 'all' && c.sector !== coSector) return false;
-    if (coMin && (c.revenue || 0) < coMin) return false;
+    if (coMin && (c.marketCap || 0) < coMin) return false;
     if (q && !(`${c.name} ${c.ticker || ''} ${c.industry || ''}`.toLowerCase().includes(q))) return false;
     return true;
-  }).sort((a, b) => (b.revenue || 0) - (a.revenue || 0));
+  }).sort((a, b) => (b.marketCap || 0) - (a.marketCap || 0) || (b.revenue || 0) - (a.revenue || 0));
 
   const chips = $('co-chips');
   if (chips) {
-    // Sector chips: by how many companies they hold, and "Other" only if you pick it — it is a
-    // residual bucket, not a sector, and it would otherwise lead the list.
     const counts = {};
     for (const c of all) if (c.sector && c.sector !== 'Other') counts[c.sector] = (counts[c.sector] || 0) + 1;
-    const sectors = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 8).map(([s]) => s);
+    const sectors = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 7).map(([x]) => x);
     const chip = (label, on, attrs) => `<button class="ma-chip${on ? ' on' : ''}" ${attrs}>${label}</button>`;
-    chips.innerHTML = chip('All sectors', coSector === 'all', 'data-cosec="all"')
-      + sectors.map((s) => chip(esc(s), coSector === s, `data-cosec="${esc(s)}"`)).join('')
+    chips.innerHTML = chip('All', coSector === 'all', 'data-cosec="all"')
+      + sectors.map((x) => chip(esc(x), coSector === x, `data-cosec="${esc(x)}"`)).join('')
       + '<span class="ma-gap"></span>'
-      + chip('All sizes', coMin === 0, 'data-comin="0"') + chip('$1B+', coMin === 1e9, 'data-comin="1000000000"') + chip('$10B+', coMin === 1e10, 'data-comin="10000000000"');
+      + chip('All sizes', coMin === 0, 'data-comin="0"') + chip('$10B+', coMin === 1e10, 'data-comin="10000000000"') + chip('$100B+', coMin === 1e11, 'data-comin="100000000000"');
   }
 
-  const total = rows.reduce((a, b) => a + (b.revenue || 0), 0);
-  const max = Math.max(1, ...rows.map((c) => c.revenue || 0));
-  el.innerHTML = `<div class="ma-sumline">${rows.length} compan${rows.length === 1 ? 'y' : 'ies'}${total ? ` · ${coMoney(total)} revenue` : ''}</div>`
-    + rows.slice(0, 120).map((c) => {
+  const totalCap = rows.reduce((a, b) => a + (b.marketCap || 0), 0);
+  const max = Math.max(1, ...rows.map((c) => c.marketCap || 0));
+  const pe = rows.map((c) => c.pe).filter((x) => x != null && x > 0).sort((a, b) => a - b);
+  const medPe = pe.length ? pe[Math.floor(pe.length / 2)] : null;
+
+  el.innerHTML = `<div class="co-hero">
+      <div class="co-hero-k">MARKET CAP COVERED</div>
+      <div class="co-hero-v">${coMoney(totalCap)}</div>
+      <div class="co-hero-m">${rows.length} compan${rows.length === 1 ? 'y' : 'ies'}${medPe ? ` · median P/E ${medPe.toFixed(1)}` : ''}</div>
+    </div>`
+    + `<div class="co-hrow"><span>#</span><span></span><span>COMPANY</span><span>MARKET CAP</span><span>P/E</span><span>MARGIN</span></div>`
+    + rows.slice(0, 150).map((c, i) => {
       const m = coMargin(c);
       return `<button class="co-row" data-cik="${esc(c.cik)}">
-        ${maMono(c.name)}
+        <span class="co-rank">${i + 1}</span>
+        ${coMono(c)}
         <span class="co-id"><b>${esc(c.name)}</b><span class="co-tick">${esc(c.ticker || '')}${c.sector ? ' · ' + esc(c.sector) : ''}</span></span>
-        <span class="co-rev">${coMoney(c.revenue)}<i class="co-bar"><i style="width:${Math.max(2, ((c.revenue || 0) / max) * 100)}%"></i></i></span>
-        <span class="co-mar ${m == null ? 'dimtext' : m >= 0 ? 'pos' : 'neg'}">${m == null ? '—' : `${m >= 0 ? '+' : ''}${m.toFixed(1)}%`}</span>
+        <span class="co-cap">${coMoney(c.marketCap)}<i class="co-bar"><i style="width:${Math.max(2, ((c.marketCap || 0) / max) * 100)}%"></i></i></span>
+        <span class="co-pe">${c.pe != null ? 'P/E ' + c.pe.toFixed(1) : '—'}</span>
+        <span class="co-mar ${m == null ? 'dimtext' : m >= 0 ? 'pos' : 'neg'}">${m == null ? '—' : `${m.toFixed(1)}%`}</span>
       </button>`;
     }).join('') || '<div class="macro-note">Nothing matches — clear the filters.</div>';
+}
+
+// Rebase a series to 100 at its first point, so two stocks of different prices are comparable.
+const rebase = (arr) => {
+  const first = arr.find((v) => v != null);
+  return arr.map((v) => (v == null || !first ? null : +((v / first) * 100).toFixed(2)));
+};
+
+async function loadCoChart(ticker, range, compare) {
+  if (!ticker) return;
+  try {
+    const ch = await getJSON(`/api/company-chart?ticker=${encodeURIComponent(ticker)}&range=${range}`);
+    if (!ch || !ch.dates || ch.dates.length <= 5) return;
+    if (!compare) {
+      mountChart('co-chart', { labels: ch.dates, datasets: [line(`${ticker} · ${range.toUpperCase()}`, ch.closes, CT.c1)] }, baseOptions({ dp: 2 }));
+      return;
+    }
+    const c2 = await getJSON(`/api/company-chart?ticker=${encodeURIComponent(compare)}&range=${range}`);
+    if (!c2 || !c2.dates || c2.dates.length <= 5) {
+      mountChart('co-chart', { labels: ch.dates, datasets: [line(`${ticker} · ${range.toUpperCase()}`, ch.closes, CT.c1)] }, baseOptions({ dp: 2 }));
+      return;
+    }
+    // Align on the union of dates, forward-filling each series, then rebase both to 100.
+    const dates = [...new Set([...ch.dates, ...c2.dates])].sort();
+    const fill = (src, key) => {
+      const m = new Map(src.dates.map((d, i) => [d, src[key][i]]));
+      let lastV = null;
+      return dates.map((d) => { if (m.has(d) && m.get(d) != null) lastV = m.get(d); return lastV; });
+    };
+    const a = rebase(fill(ch, 'closes'));
+    const b = rebase(fill(c2, 'closes'));
+    mountChart('co-chart', { labels: dates, datasets: [line(ticker, a, CT.c1), line(compare, b, CT.c2)] }, baseOptions({ dp: 0, log: true, yTitle: 'indexed to 100' }));
+  } catch {}
 }
 
 async function renderCompanyPage(el, all) {
@@ -3318,9 +3366,10 @@ async function renderCompanyPage(el, all) {
 
   el.innerHTML = `<div class="ma-crumb"><button class="ma-back" data-coback="1">← COMPANIES</button> <span>${esc(c.ticker || c.name)}</span></div>`
     + `<div class="co-head">
-        ${maMono(c.name)}
+        ${coMono(c)}
         <div><div class="co-name">${esc(c.name)}</div>
-        <div class="co-sub">${esc(c.ticker || '')}${c.sector ? ' · ' + esc(c.sector) : ''}${c.industry ? ' · ' + esc(c.industry) : ''}${c.state ? ' · ' + esc(c.state) : ''}</div></div>
+        <div class="co-sub">${esc(c.ticker || '')}${c.sector ? ' · ' + esc(c.sector) : ''}${c.industry ? ' · ' + esc(c.industry) : ''}${c.state ? ' · ' + esc(c.state) : ''}</div>
+        ${c.description ? `<div class="co-desc">${esc(c.description)}</div>` : ''}</div>
       </div>`
     + `<div class="co-stats">
         <div class="co-stat"><span class="co-k">MARKET CAP</span><span class="co-v">${val(c.marketCap)}</span></div>
@@ -3332,7 +3381,13 @@ async function renderCompanyPage(el, all) {
         <div class="co-stat"><span class="co-k">RETURN ON EQUITY</span><span class="co-v ${roe >= 0 ? 'pos' : 'neg'}">${roe == null ? '—' : `${roe.toFixed(1)}%`}</span></div>
         <div class="co-stat"><span class="co-k">TOTAL ASSETS</span><span class="co-v">${val(c.assets)}</span></div>
       </div>`
-    + (c.ticker ? `<div class="co-chartwrap"><canvas id="co-chart"></canvas></div>` : '')
+    + (c.ticker ? `<div class="co-chartwrap">
+        <div class="co-ranges">
+          <span class="co-cmp-l">COMPARE</span><input class="co-cmp" id="co-cmp" list="co-cmp-list" placeholder="ticker…" value="${esc(coCompare || '')}" autocomplete="off">
+          <datalist id="co-cmp-list">${(companiesData.companies || []).filter((x) => x.ticker).slice(0, 400).map((x) => `<option value="${esc(x.ticker)}">${esc(x.name)}</option>`).join('')}</datalist>
+          ${['1y', '5y', '10y'].map((r) => `<button class="ma-chip${coRange === r ? ' on' : ''}" data-corange="${r}">${r.toUpperCase()}</button>`).join('')}
+        </div>
+        <canvas id="co-chart"></canvas></div>` : '')
     + `<div class="macro-note">Market cap, P/E and P/B are current (price × shares, price ÷ earnings); the table below is the filings’ own history. Latest annual 10-K${c.fiscal ? ` FY${c.fiscal}` : ''}${c.asOf ? ` · as of ${dealDateY(c.asOf)}` : ''} · <a href="https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=${esc(c.cik)}&type=10-K" target="_blank" rel="noopener noreferrer">filings ↗</a></div>`
     + (series.length ? `<div class="gtitle">FIVE-YEAR FINANCIALS</div>
       <div class="co-table">
@@ -3345,14 +3400,8 @@ async function renderCompanyPage(el, all) {
     + `<div class="gtitle">DEALS</div><div id="co-deals" class="macro-note">looking up deals…</div>`;
 
   // Price chart (1Y, daily) — the only place a price is plotted, so it stays cheap.
-  if (c.ticker) {
-    try {
-      const ch = await getJSON('/api/company-chart?ticker=' + encodeURIComponent(c.ticker) + '&range=1y');
-      if (ch && ch.dates && ch.dates.length > 5) {
-        mountChart('co-chart', { labels: ch.dates, datasets: [line(c.ticker + ' price', ch.closes, CT.c1)] }, baseOptions({ dp: 2 }));
-      }
-    } catch {}
-  }
+  coTicker = c.ticker || null;
+  if (coTicker) loadCoChart(coTicker, coRange, coCompare);
 
   try {
     const d = await getJSON('/api/deals');
@@ -3367,6 +3416,13 @@ async function renderCompanyPage(el, all) {
 }
 
 document.addEventListener('click', (e) => {
+  const cr = e.target.closest('[data-corange]');
+  if (cr) {
+    coRange = cr.dataset.corange;
+    document.querySelectorAll('[data-corange]').forEach((b) => b.classList.toggle('on', b.dataset.corange === coRange));
+    loadCoChart(coTicker, coRange);
+    return;
+  }
   if (e.target.closest('[data-coback]')) { coCik = null; renderCompanies(); return; }
   const row = e.target.closest('.co-row');
   if (row && row.dataset.cik) { coCik = row.dataset.cik; renderCompanies(); window.scrollTo({ top: 0, behavior: 'smooth' }); return; }
@@ -3379,5 +3435,9 @@ document.addEventListener('click', (e) => {
 });
 
 document.addEventListener('input', (e) => {
-  if (e.target && e.target.id === 'co-search') { coQuery = e.target.value || ''; renderCompanies(); }
+  if (e.target && e.target.id === 'co-search') { coQuery = e.target.value || ''; renderCompanies(); return; }
+  if (e.target && e.target.id === 'co-cmp') {
+    coCompare = (e.target.value || '').trim().toUpperCase();
+    if (!coCompare || coCompare.length >= 1) loadCoChart(coTicker, coRange, coCompare);
+  }
 });

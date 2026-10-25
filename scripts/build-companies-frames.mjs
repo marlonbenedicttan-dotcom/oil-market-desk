@@ -36,10 +36,11 @@ async function get(url) {
 }
 
 // concept -> { cik: { year: value } }
-const concepts = { revenue: {}, revenue2: {}, netIncome: {}, assets: {}, equity: {}, gross: {}, opInc: {}, eps: {}, shares: {} };
+const concepts = { revenue: {}, revenue2: {}, revenue3: {}, netIncome: {}, assets: {}, equity: {}, gross: {}, opInc: {}, eps: {}, shares: {} };
 const TAGS = {
   revenue: 'Revenues',
   revenue2: 'RevenueFromContractWithCustomerExcludingAssessedTax',
+  revenue3: 'SalesRevenueNet',
   netIncome: 'NetIncomeLoss',
   assets: 'Assets',
   equity: 'StockholdersEquity',
@@ -95,7 +96,7 @@ try {
 const ciks = new Set([...Object.keys(concepts.revenue), ...Object.keys(concepts.revenue2), ...Object.keys(concepts.assets)]);
 const companies = [];
 for (const cik of ciks) {
-  const rev = { ...(concepts.revenue[cik] || {}), ...(concepts.revenue2[cik] || {}) };
+  const rev = { ...(concepts.revenue3[cik] || {}), ...(concepts.revenue[cik] || {}), ...(concepts.revenue2[cik] || {}) };
   const ni = concepts.netIncome[cik] || {};
   const assets = concepts.assets[cik] || {};
   const equity = concepts.equity[cik] || {};
@@ -109,16 +110,28 @@ for (const cik of ciks) {
     .filter((s) => s.revenue != null || s.netIncome != null || s.assets != null)
     .sort((a, b) => a.fy - b.fy);
   if (!series.length) continue;
-  const latest = series[series.length - 1];
+  // Headline figures take the latest NON-NULL value of each metric. Using the last row of the series
+  // meant a year with only assets reported blanked out revenue and net income (and dropped the company
+  // out of pricing entirely).
+  const pick = (key) => { for (let i = series.length - 1; i >= 0; i--) if (series[i][key] != null) return { val: series[i][key], fy: series[i].fy }; return null; };
+  const revPick = pick('revenue'), niPick = pick('netIncome'), asPick = pick('assets'), eqPick = pick('equity'), epPick = pick('eps');
+  const latest = { fy: Math.max(...[revPick, niPick, asPick, eqPick, epPick].filter(Boolean).map((x) => x.fy), 0) };
   const first = series[0];
-  const name = meta[cik]?.title || concepts.revenue[cik]?.name || concepts.revenue2[cik]?.name || concepts.assets[cik]?.name || `CIK ${cik}`;
+  const name = meta[cik]?.title || concepts.revenue[cik]?.name || concepts.revenue2[cik]?.name || concepts.revenue3[cik]?.name || concepts.assets[cik]?.name || `CIK ${cik}`;
   const prevSic = sicByCik[cik];
   companies.push({
     cik, ticker: meta[cik]?.ticker || null, name,
     sic: prevSic?.sic || null, sector: prevSic?.sector || 'Other', industry: prevSic?.industry || null, state: prevSic?.state || null,
-    fiscal: latest.fy, revenue: latest.revenue, netIncome: latest.netIncome, assets: latest.assets,
-    equity: latest.equity, gross: latest.gross, opInc: latest.opInc, eps: latest.eps,
-    shares: (sharesByCik[cik] || {})[latest.fy] || null,
+    fiscal: latest.fy, revenue: revPick?.val ?? null, netIncome: niPick?.val ?? null, assets: asPick?.val ?? null,
+    equity: eqPick?.val ?? null, eps: epPick?.val ?? null,
+    fyRevenue: revPick?.fy ?? null, fyNetIncome: niPick?.fy ?? null, fyAssets: asPick?.fy ?? null,
+    // Shares from the newest year that actually reported them (a fiscal year that has not closed yet
+    // has no cover-page count, which left MSFT unpriced).
+    shares: (() => {
+      const sh = sharesByCik[cik] || {};
+      const y = Object.keys(sh).map(Number).filter((n) => n <= latest.fy).sort((a2, b2) => b2 - a2)[0];
+      return y ? sh[y] : null;
+    })(),
     growth: first.revenue && latest.revenue ? ((latest.revenue - first.revenue) / Math.abs(first.revenue)) * 100 : null,
     years: series.length,
     series,
