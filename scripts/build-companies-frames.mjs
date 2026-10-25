@@ -84,14 +84,25 @@ for (const [key, tag] of [['debt', 'LongTermDebtNoncurrent'], ['cash', 'CashAndC
 // Six recent calendar quarters of diluted EPS -> sum the latest four (TTM) when it agrees with the FY figure.
 const quarters = [];
 for (const y of [thisYear - 1, thisYear - 2]) for (const q of [1, 2, 3, 4]) quarters.push(`CY${y}Q${q}`);
+const qni = {};   // quarterly net income, same frames as the EPS so TTM is period-consistent
 for (const frame of quarters.slice(-6)) {
   const j = await get(`https://data.sec.gov/api/xbrl/frames/us-gaap/EarningsPerShareDiluted/USD-per-shares/${frame}.json`);
   for (const r of j?.data || []) {
     if (r.cik == null || r.val == null) continue;
     (extra.qeps[r.cik] = extra.qeps[r.cik] || {})[frame] = r.val;
   }
+  const jn = await get(`https://data.sec.gov/api/xbrl/frames/us-gaap/NetIncomeLoss/USD/${frame}.json`);
+  for (const r of jn?.data || []) {
+    if (r.cik == null || r.val == null) continue;
+    (qni[r.cik] = qni[r.cik] || {})[frame] = r.val;
+  }
   await sleep(120);
 }
+const ttm = (map) => {
+  const q = map || {};
+  const keys = Object.keys(q).sort().slice(-4);
+  return keys.length === 4 ? keys.reduce((a2, k) => a2 + q[k], 0) : null;
+};
 
 // shares outstanding (dei) — needed for market cap = price x shares
 const sharesByCik = {};
@@ -172,6 +183,7 @@ for (const cik of ciks) {
     sic: prevSic?.sic || null, sector: prevSic?.sector || 'Other', industry: prevSic?.industry || null, state: prevSic?.state || null,
     debt: extra.debt[cik] ?? null, cash: extra.cash[cik] ?? null, da: extra.da[cik] ?? null,
     currentAssets: extra.ca[cik] ?? null, currentLiabilities: extra.cl[cik] ?? null,
+    netIncomeTTM: ttm(qni[cik]),
     epsTTM: (() => {
       const q = extra.qeps[cik];
       if (!q) return null;

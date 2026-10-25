@@ -48,9 +48,11 @@ for (const c of data.companies) {
 
   // P/E on the authoritative market cap ÷ net income: consistent with the cap, and immune to
   // per-share class/ADR mismatches.
-  const pe = c.marketCap && c.netIncome > 0 ? +(c.marketCap / c.netIncome).toFixed(1) : null;
+  // Prefer TTM earnings (same four quarters as the EPS), fall back to the fiscal year.
+  const earn = c.netIncomeTTM > 0 ? c.netIncomeTTM : (c.netIncome > 0 ? c.netIncome : null);
+  const pe = c.marketCap && earn ? +(c.marketCap / earn).toFixed(1) : null;
   c.pe = pe != null && pe <= MAX_PE && pe >= 0.5 ? pe : null;
-  c.peBasis = c.pe == null ? null : 'FY';
+  c.peBasis = c.pe == null ? null : (c.netIncomeTTM > 0 ? 'TTM' : 'FY');
 
   c.pb = c.marketCap && c.equity > 0 ? +(c.marketCap / c.equity).toFixed(1) : null;
   if (c.pb != null && c.pb > 100) c.pb = null;
@@ -69,6 +71,10 @@ for (const c of data.companies) {
 
   // A net income larger than revenue means the two figures are not the same scope. Banks are the
   // systematic case: their "revenue" tag is often net interest income, so a margin is meaningless.
+  // A net income of a few thousand dollars against billions of revenue is a broken tag (partial
+  // period or wrong unit), not a company having a bad year.
+  if (c.revenue && c.netIncome != null && Math.abs(c.netIncome) < c.revenue * 0.001) c.netIncome = null;
+  if (c.revenue && c.netIncomeTTM != null && Math.abs(c.netIncomeTTM) < c.revenue * 0.001) c.netIncomeTTM = null;
   if (c.revenue != null && c.netIncome != null && (Math.abs(c.netIncome) > c.revenue * 1.2 || c.sector === 'Financials')) {
     if (c.sector === 'Financials') c.marginNA = true;
     else c.netIncome = null;

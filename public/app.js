@@ -3282,7 +3282,7 @@ function renderCompanies() {
   if (!companiesData) { el.innerHTML = stError('Couldn’t load companies — retrying.'); return; }
   const all = companiesData.companies || [];
   const sub = $('deals-sub');
-  if (sub) sub.textContent = `${all.length} companies · S&P 500 · SEC XBRL · ranked by market cap`;
+  if (sub) sub.textContent = `${all.length} of 503 S&P 500 constituents · SEC XBRL · ranked by market cap`;
 
   if (coCik) return renderCompanyPage(el, all);
 

@@ -32,7 +32,8 @@ for (const c of C) {
   }
   if (c.pe != null) {
     // P/E is market cap ÷ net income — the same primitives derive() uses.
-    const want = c.marketCap && c.netIncome > 0 ? +(c.marketCap / c.netIncome).toFixed(1) : null;
+    const earn = c.netIncomeTTM > 0 ? c.netIncomeTTM : (c.netIncome > 0 ? c.netIncome : null);
+    const want = c.marketCap && earn ? +(c.marketCap / earn).toFixed(1) : null;
     if (want == null || !near(c.pe, want, 0.15)) issues.pe.push([c.ticker, c.pe, want]);
   }
   if (c.pb != null && c.equity > 0 && c.marketCap) {

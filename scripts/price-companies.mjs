@@ -17,7 +17,9 @@ const LIMIT = Number((process.argv.find((x) => x.startsWith('--limit=')) || '--l
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const data = JSON.parse(readFileSync(FILE, 'utf8'));
-const targets = data.companies.filter((c) => c.ticker && c.shares && c.revenue && !c.marketCap).slice(0, LIMIT);
+// Price is needed for the chart and for the market-cap cross-check, independent of whether Nasdaq
+// already gave us a market cap.
+const targets = data.companies.filter((c) => c.ticker && !c.price).slice(0, LIMIT);
 console.log(`${targets.length} companies with a ticker and share count`);
 
 let ok = 0;
@@ -30,7 +32,7 @@ for (const c of targets) {
     const price = meta?.regularMarketPrice ?? null;
     if (!price) continue;
     c.price = +price.toFixed(2);
-    c.marketCap = Math.round(price * c.shares);
+    if (c.marketCapSource !== 'nasdaq') c.marketCap = Math.round(price * c.shares);
     // Trailing P/E prefers TTM EPS (four quarters) and falls back to the fiscal-year figure.
     const epsT = c.epsTTM > 0 ? c.epsTTM : (c.eps > 0 ? c.eps : null);
     c.peTTM = epsT ? +(price / epsT).toFixed(1) : null;
