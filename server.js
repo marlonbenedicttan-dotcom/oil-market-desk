@@ -3847,6 +3847,18 @@ const server = http.createServer(async (req, res) => {
       const hit = STORE.deals.filter((d) => `${d.acquirer || ''} ${d.target || ''}`.toLowerCase().includes(q.toLowerCase())).length;
       return sendJSON(res, 200, { added, matches: hit, total: STORE.deals.length });
     }
+    if (url.pathname === '/api/company-chart') {
+      const ticker = String(url.searchParams.get('ticker') || '').trim();
+      const range = String(url.searchParams.get('range') || '1y');
+      if (!/^[A-Za-z0-9.\-]{1,12}$/.test(ticker)) return sendJSON(res, 400, { error: 'bad ticker' });
+      const out = await cached('cochart:' + ticker + ':' + range, 600e3, async () => {
+        const { series } = await yahooSeries(ticker, range, '1d');
+        const dates = Object.keys(series).sort();
+        return { ticker, range, dates, closes: dates.map((d) => series[d]) };
+      }).catch(() => null);
+      if (!out) return sendJSON(res, 200, { error: 'no chart', dates: [], closes: [] });
+      return sendJSON(res, 200, out);
+    }
     if (url.pathname === '/api/companies') {
       return sendJSON(res, 200, {
         updated: COMPANIES.updated || null,

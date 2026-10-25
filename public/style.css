@@ -1044,3 +1044,16 @@ button.deal-sec-tile:hover { background: #10151b; }
   .co-mar { display: none; }
   .co-stats { grid-template-columns: repeat(2, 1fr); }
 }
+
+/* Company page: price chart + five-year table. */
+.co-chartwrap { height: 210px; padding: 10px 12px 6px; border-bottom: 1px solid var(--line); }
+.co-table { border-top: 1px solid var(--line); overflow-x: auto; }
+.co-tr { display: grid; grid-template-columns: 46px repeat(6, minmax(70px, 1fr)); gap: 8px; padding: 6px 12px; font-size: 10.5px; border-bottom: 1px solid var(--line); font-variant-numeric: tabular-nums; }
+.co-th { color: var(--dim); font-size: 8.5px; letter-spacing: .8px; text-transform: uppercase; }
+.co-tr span:not(:first-child) { text-align: right; }
+.co-tr .pos { color: var(--green); }
+.co-tr .neg { color: var(--red); }
+@media (max-width: 640px) {
+  .co-chartwrap { height: 180px; }
+  .co-tr { grid-template-columns: 40px repeat(6, minmax(64px, 1fr)); font-size: 10px; }
+}

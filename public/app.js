@@ -3282,7 +3282,11 @@ function renderCompanies() {
 
   const chips = $('co-chips');
   if (chips) {
-    const sectors = [...new Set(all.map((c) => c.sector).filter(Boolean))].slice(0, 8);
+    // Sector chips: by how many companies they hold, and "Other" only if you pick it — it is a
+    // residual bucket, not a sector, and it would otherwise lead the list.
+    const counts = {};
+    for (const c of all) if (c.sector && c.sector !== 'Other') counts[c.sector] = (counts[c.sector] || 0) + 1;
+    const sectors = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 8).map(([s]) => s);
     const chip = (label, on, attrs) => `<button class="ma-chip${on ? ' on' : ''}" ${attrs}>${label}</button>`;
     chips.innerHTML = chip('All sectors', coSector === 'all', 'data-cosec="all"')
       + sectors.map((s) => chip(esc(s), coSector === s, `data-cosec="${esc(s)}"`)).join('')
@@ -3308,6 +3312,10 @@ async function renderCompanyPage(el, all) {
   const c = all.find((x) => String(x.cik) === String(coCik));
   if (!c) { coCik = null; return renderCompanies(); }
   const m = coMargin(c);
+  const roe = c.equity && c.netIncome != null ? (c.netIncome / c.equity) * 100 : null;
+  const series = (c.series || []).slice().sort((a, b) => a.fy - b.fy);
+  const val = (v, dp = 1) => (v == null ? '—' : Math.abs(v) >= 1e9 ? `$${(v / 1e9).toFixed(dp)}B` : `$${(v / 1e6).toFixed(0)}M`);
+
   el.innerHTML = `<div class="ma-crumb"><button class="ma-back" data-coback="1">← COMPANIES</button> <span>${esc(c.ticker || c.name)}</span></div>`
     + `<div class="co-head">
         ${maMono(c.name)}
@@ -3315,15 +3323,37 @@ async function renderCompanyPage(el, all) {
         <div class="co-sub">${esc(c.ticker || '')}${c.sector ? ' · ' + esc(c.sector) : ''}${c.industry ? ' · ' + esc(c.industry) : ''}${c.state ? ' · ' + esc(c.state) : ''}</div></div>
       </div>`
     + `<div class="co-stats">
-        <div class="co-stat"><span class="co-k">REVENUE</span><span class="co-v">${coMoney(c.revenue)}</span></div>
-        <div class="co-stat"><span class="co-k">NET INCOME</span><span class="co-v ${c.netIncome >= 0 ? 'pos' : 'neg'}">${coMoney(c.netIncome)}</span></div>
+        <div class="co-stat"><span class="co-k">MARKET CAP</span><span class="co-v">${val(c.marketCap)}</span></div>
+        <div class="co-stat"><span class="co-k">P/E</span><span class="co-v">${c.pe != null ? c.pe.toFixed(1) : '—'}</span></div>
+        <div class="co-stat"><span class="co-k">P/B</span><span class="co-v">${c.pb != null ? c.pb.toFixed(1) : '—'}</span></div>
+        <div class="co-stat"><span class="co-k">REVENUE</span><span class="co-v">${val(c.revenue)}</span></div>
+        <div class="co-stat"><span class="co-k">NET INCOME</span><span class="co-v ${c.netIncome >= 0 ? 'pos' : 'neg'}">${val(c.netIncome)}</span></div>
         <div class="co-stat"><span class="co-k">NET MARGIN</span><span class="co-v ${m >= 0 ? 'pos' : 'neg'}">${m == null ? '—' : `${m.toFixed(1)}%`}</span></div>
-        <div class="co-stat"><span class="co-k">TOTAL ASSETS</span><span class="co-v">${coMoney(c.assets)}</span></div>
+        <div class="co-stat"><span class="co-k">RETURN ON EQUITY</span><span class="co-v ${roe >= 0 ? 'pos' : 'neg'}">${roe == null ? '—' : `${roe.toFixed(1)}%`}</span></div>
+        <div class="co-stat"><span class="co-k">TOTAL ASSETS</span><span class="co-v">${val(c.assets)}</span></div>
       </div>`
-    + `<div class="macro-note">Latest annual 10-K${c.fiscal ? ` (FY${c.fiscal})` : ''}${c.asOf ? ` · as of ${dealDateY(c.asOf)}` : ''} · tagged in XBRL, no estimates · <a href="https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=${esc(c.cik)}&type=10-K" target="_blank" rel="noopener noreferrer">filings ↗</a></div>`
+    + (c.ticker ? `<div class="co-chartwrap"><canvas id="co-chart"></canvas></div>` : '')
+    + `<div class="macro-note">Market cap, P/E and P/B are current (price × shares, price ÷ earnings); the table below is the filings’ own history. Latest annual 10-K${c.fiscal ? ` FY${c.fiscal}` : ''}${c.asOf ? ` · as of ${dealDateY(c.asOf)}` : ''} · <a href="https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=${esc(c.cik)}&type=10-K" target="_blank" rel="noopener noreferrer">filings ↗</a></div>`
+    + (series.length ? `<div class="gtitle">FIVE-YEAR FINANCIALS</div>
+      <div class="co-table">
+        <div class="co-tr co-th"><span>FY</span><span>REVENUE</span><span>NET INCOME</span><span>MARGIN</span><span>ASSETS</span><span>EQUITY</span><span>EPS</span></div>
+        ${series.map((s) => {
+          const mg = s.revenue && s.netIncome != null ? (s.netIncome / s.revenue) * 100 : null;
+          return `<div class="co-tr"><span>${s.fy}</span><span>${val(s.revenue)}</span><span class="${s.netIncome >= 0 ? 'pos' : 'neg'}">${val(s.netIncome)}</span><span>${mg == null ? '—' : mg.toFixed(1) + '%'}</span><span>${val(s.assets)}</span><span>${val(s.equity)}</span><span>${s.eps != null ? '$' + s.eps.toFixed(2) : '—'}</span></div>`;
+        }).join('')}
+      </div>` : '')
     + `<div class="gtitle">DEALS</div><div id="co-deals" class="macro-note">looking up deals…</div>`;
 
-  // Deals involving this company, from the same store the brief uses.
+  // Price chart (1Y, daily) — the only place a price is plotted, so it stays cheap.
+  if (c.ticker) {
+    try {
+      const ch = await getJSON('/api/company-chart?ticker=' + encodeURIComponent(c.ticker) + '&range=1y');
+      if (ch && ch.dates && ch.dates.length > 5) {
+        mountChart('co-chart', { labels: ch.dates, datasets: [line(c.ticker + ' price', ch.closes, CT.c1)] }, baseOptions({ dp: 2 }));
+      }
+    } catch {}
+  }
+
   try {
     const d = await getJSON('/api/deals');
     const key = String(c.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
