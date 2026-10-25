@@ -1578,3 +1578,21 @@ ADRs. Other markets have no free structured fundamentals.
 - **Peers** on the company page: same SIC industry, ranked by market cap.
 - **Forward P/E removed** entirely — no free consensus estimates exist, so the field is gone rather than
   shown as a dash.
+
+## The calculation engine is now audited, not trusted (2026-10-25)
+Before adding anything else, every derived number was recomputed from its primitives and checked.
+`scripts/audit-calculations.mjs` re-derives market cap, P/E, P/B, EV, EV/EBITDA, current ratio, D/E and
+growth, compares them with what is stored, then runs sanity ranges and reference checks.
+**First run: 2601 companies had stale or wrong derived values** — P/B computed before share counts were
+filled, P/E on a one-cent EPS, and 183 cases where net income exceeded revenue (the two tags came from
+different scopes). Fixes are structural, in `scripts/derive-companies.mjs` (one place, run after any
+build), with guards that encode *why* a number is meaningless:
+- EPS below $0.05 → no P/E (a penny of earnings is noise).
+- Market cap below $1M or ≤ 0 → null (a broken share count, not a company).
+- Net income > 1.2 × revenue → the pair is inconsistent; drop the net income.
+- **Financials → margin and EV/EBITDA are `n/a`**: banks report net interest income as "revenue", so a
+  margin is meaningless by construction, not missing.
+- Current ratio > 50, D/E > 20, P/B > 100 → null (equity is a rounding error, not leverage).
+Pipeline order, now explicit: `build-companies-frames` → `price-companies` → `derive-companies` →
+`audit-calculations` (`npm run audit:companies` runs the last two).
+**Audit result: 8,297 companies · 0 reconciliation mismatches · 0 out-of-range values · reference checks pass.**

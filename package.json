@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "start": "node --env-file-if-exists=.env server.js",
-    "test": "node --test"
+    "test": "node --test",
+    "audit:companies": "node scripts/derive-companies.mjs && node scripts/audit-calculations.mjs"
   },
   "engines": {
     "node": ">=22"

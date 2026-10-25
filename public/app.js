@@ -3406,7 +3406,7 @@ async function renderCompanyPage(el, all) {
         <div class="co-stat"><span class="co-k">DEBT / EQUITY</span><span class="co-v">${c.debtEquity != null ? c.debtEquity.toFixed(2) : '—'}</span></div>
         <div class="co-stat"><span class="co-k">REVENUE</span><span class="co-v">${val(c.revenue)}</span></div>
         <div class="co-stat"><span class="co-k">NET INCOME</span><span class="co-v ${c.netIncome >= 0 ? 'pos' : 'neg'}">${val(c.netIncome)}</span></div>
-        <div class="co-stat"><span class="co-k">NET MARGIN</span><span class="co-v ${m >= 0 ? 'pos' : 'neg'}">${m == null ? '—' : `${m.toFixed(1)}%`}</span></div>
+        <div class="co-stat"><span class="co-k">NET MARGIN</span><span class="co-v ${m >= 0 ? 'pos' : 'neg'}">${m == null ? (c.marginNA ? 'n/a' : '—') : `${m.toFixed(1)}%`}</span></div>
         <div class="co-stat"><span class="co-k">RETURN ON EQUITY</span><span class="co-v ${roe >= 0 ? 'pos' : 'neg'}">${roe == null ? '—' : `${roe.toFixed(1)}%`}</span></div>
         <div class="co-stat"><span class="co-k">TOTAL ASSETS</span><span class="co-v">${val(c.assets)}</span></div>
       </div>`
