@@ -1080,5 +1080,5 @@ button.deal-sec-tile:hover { background: #10151b; }
 .co-hero .co-k { font-size: 8.5px; letter-spacing: 1px; color: var(--dim); text-transform: uppercase; }
 .co-hero-v { display: block; font-size: 22px; font-weight: 800; font-variant-numeric: tabular-nums; margin-top: 3px; color: var(--text); }
 .co-hero-m { display: block; font-size: 9.5px; color: var(--dim); margin-top: 2px; }
-.co-stats-9 { grid-template-columns: repeat(3, 1fr); }
-@media (max-width: 640px) { .co-hero { grid-template-columns: 1fr; } .co-stats-9 { grid-template-columns: repeat(2, 1fr); } }
+.co-stats-12 { grid-template-columns: repeat(4, 1fr); }
+@media (max-width: 640px) { .co-hero { grid-template-columns: 1fr; } .co-stats-12 { grid-template-columns: repeat(2, 1fr); } }

@@ -31,11 +31,22 @@ for (const c of targets) {
     if (!price) continue;
     c.price = +price.toFixed(2);
     c.marketCap = Math.round(price * c.shares);
-    // P/E from price ÷ diluted EPS: per-share on both sides, so a wrong share count can't distort it.
-    c.pe = c.eps > 0 ? +(price / c.eps).toFixed(1) : (c.netIncome > 0 ? +(c.marketCap / c.netIncome).toFixed(1) : null);
-    // P/B from price ÷ book value per share (equity ÷ shares), same reason.
+    // Trailing P/E prefers TTM EPS (four quarters) and falls back to the fiscal-year figure.
+    const epsT = c.epsTTM > 0 ? c.epsTTM : (c.eps > 0 ? c.eps : null);
+    c.peTTM = epsT ? +(price / epsT).toFixed(1) : null;
+    c.pe = c.peTTM;
+    c.peBasis = c.epsTTM > 0 ? 'TTM' : (c.eps > 0 ? 'FY' : null);
+    // P/B from price ÷ book value per share (equity ÷ shares).
     const bvps = c.equity > 0 && c.shares ? c.equity / c.shares : null;
-    c.pb = bvps && bvps > 0 ? +(price / bvps).toFixed(1) : (c.equity > 0 ? +(c.marketCap / c.equity).toFixed(1) : null);
+    c.pb = bvps && bvps > 0 ? +(price / bvps).toFixed(1) : null;
+    // EV = market cap + debt - cash; EBITDA = operating income + D&A.
+    c.ev = c.debt != null || c.cash != null ? c.marketCap + (c.debt || 0) - (c.cash || 0) : null;
+    // Operating income may only exist inside the series (the headline block doesn't carry it).
+    const opInc = c.opInc ?? [...(c.series || [])].reverse().find((x) => x.opInc != null)?.opInc ?? null;
+    const ebitda = opInc != null ? opInc + (c.da || 0) : null;
+    c.evEbitda = c.ev && ebitda > 0 ? +(c.ev / ebitda).toFixed(1) : null;
+    c.currentRatio = c.currentAssets != null && c.currentLiabilities > 0 ? +(c.currentAssets / c.currentLiabilities).toFixed(2) : null;
+    c.debtEquity = c.debt != null && c.equity > 0 ? +(c.debt / c.equity).toFixed(2) : null;
     ok++;
   } catch {}
   await sleep(120);

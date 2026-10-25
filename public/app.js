@@ -3309,7 +3309,7 @@ function renderCompanies() {
 
   el.innerHTML = `<div class="co-hero">
       <div class="co-hero-cell"><span class="co-k">MARKET CAP</span><span class="co-hero-v">${coMoney(totalCap)}</span><span class="co-hero-m">${priced.length} of ${rows.length} priced</span></div>
-      <div class="co-hero-cell"><span class="co-k">MEDIAN P/E</span><span class="co-hero-v">${medPe ? medPe.toFixed(1) : '—'}</span><span class="co-hero-m">trailing, latest FY</span></div>
+      <div class="co-hero-cell"><span class="co-k">MEDIAN P/E</span><span class="co-hero-v">${medPe ? medPe.toFixed(1) : '—'}</span><span class="co-hero-m">trailing, TTM where available</span></div>
       <div class="co-hero-cell"><span class="co-k">FORWARD P/E</span><span class="co-hero-v">—</span><span class="co-hero-m">needs consensus estimates</span></div>
     </div>`
     + `<div class="co-hrow"><span>#</span><span></span><span>COMPANY</span><span>MARKET CAP</span><span>P/E</span><span>MARGIN</span></div>`
@@ -3381,11 +3381,15 @@ async function renderCompanyPage(el, all) {
         <div class="co-sub">${esc(c.ticker || '')}${c.sector ? ' · ' + esc(c.sector) : ''}${c.industry ? ' · ' + esc(c.industry) : ''}${c.state ? ' · ' + esc(c.state) : ''}</div>
         ${c.description ? `<div class="co-desc">${esc(c.description)}</div>` : ''}</div>
       </div>`
-    + `<div class="co-stats co-stats-9">
+    + `<div class="co-stats co-stats-12">
         <div class="co-stat"><span class="co-k">MARKET CAP</span><span class="co-v">${val(c.marketCap)}</span></div>
-        <div class="co-stat"><span class="co-k">P/E (TRAILING)</span><span class="co-v">${c.pe != null ? c.pe.toFixed(1) : '—'}</span></div>
-        <div class="co-stat"><span class="co-k">P/E (FORWARD)</span><span class="co-v dimtext">—</span></div>
+        <div class="co-stat"><span class="co-k">P/E (TRAILING${c.peBasis ? ' · ' + c.peBasis : ''})</span><span class="co-v">${c.pe != null ? c.pe.toFixed(1) : '—'}</span></div>
+        <div class="co-stat"><span class="co-k">P/E (FORWARD)</span><span class="co-v dimtext" title="needs consensus EPS estimates, which no free source provides">—</span></div>
+        <div class="co-stat"><span class="co-k">EV / EBITDA</span><span class="co-v">${c.evEbitda != null ? c.evEbitda.toFixed(1) : '—'}</span></div>
         <div class="co-stat"><span class="co-k">P/B</span><span class="co-v">${c.pb != null ? c.pb.toFixed(1) : '—'}</span></div>
+        <div class="co-stat"><span class="co-k">ENTERPRISE VALUE</span><span class="co-v">${val(c.ev)}</span></div>
+        <div class="co-stat"><span class="co-k">CURRENT RATIO</span><span class="co-v">${c.currentRatio != null ? c.currentRatio.toFixed(2) : '—'}</span></div>
+        <div class="co-stat"><span class="co-k">DEBT / EQUITY</span><span class="co-v">${c.debtEquity != null ? c.debtEquity.toFixed(2) : '—'}</span></div>
         <div class="co-stat"><span class="co-k">REVENUE</span><span class="co-v">${val(c.revenue)}</span></div>
         <div class="co-stat"><span class="co-k">NET INCOME</span><span class="co-v ${c.netIncome >= 0 ? 'pos' : 'neg'}">${val(c.netIncome)}</span></div>
         <div class="co-stat"><span class="co-k">NET MARGIN</span><span class="co-v ${m >= 0 ? 'pos' : 'neg'}">${m == null ? '—' : `${m.toFixed(1)}%`}</span></div>

@@ -68,6 +68,31 @@ for (const y of years) {
   console.log('');
 }
 
+// Balance-sheet inputs for EV and liquidity ratios, plus quarterly EPS for a trailing-twelve-month P/E.
+const extra = { debt: {}, cash: {}, da: {}, ca: {}, cl: {}, qeps: {} };
+for (const [key, tag] of [['debt', 'LongTermDebtNoncurrent'], ['cash', 'CashAndCashEquivalentsAtCarryingValue'],
+  ['ca', 'AssetsCurrent'], ['cl', 'LiabilitiesCurrent']]) {
+  const j = await get(`https://data.sec.gov/api/xbrl/frames/us-gaap/${tag}/USD/CY${thisYear - 1}Q4I.json`);
+  for (const r of j?.data || []) if (r.cik != null && r.val != null) extra[key][r.cik] = r.val;
+  await sleep(120);
+}
+{
+  const j = await get(`https://data.sec.gov/api/xbrl/frames/us-gaap/DepreciationDepletionAndAmortization/USD/CY${thisYear - 1}.json`);
+  for (const r of j?.data || []) if (r.cik != null && r.val != null) extra.da[r.cik] = r.val;
+  await sleep(120);
+}
+// Six recent calendar quarters of diluted EPS -> sum the latest four (TTM) when it agrees with the FY figure.
+const quarters = [];
+for (const y of [thisYear - 1, thisYear - 2]) for (const q of [1, 2, 3, 4]) quarters.push(`CY${y}Q${q}`);
+for (const frame of quarters.slice(-6)) {
+  const j = await get(`https://data.sec.gov/api/xbrl/frames/us-gaap/EarningsPerShareDiluted/USD-per-shares/${frame}.json`);
+  for (const r of j?.data || []) {
+    if (r.cik == null || r.val == null) continue;
+    (extra.qeps[r.cik] = extra.qeps[r.cik] || {})[frame] = r.val;
+  }
+  await sleep(120);
+}
+
 // shares outstanding (dei) — needed for market cap = price x shares
 const sharesByCik = {};
 for (const y of years) {
@@ -122,6 +147,19 @@ for (const cik of ciks) {
   companies.push({
     cik, ticker: meta[cik]?.ticker || null, name,
     sic: prevSic?.sic || null, sector: prevSic?.sector || 'Other', industry: prevSic?.industry || null, state: prevSic?.state || null,
+    debt: extra.debt[cik] ?? null, cash: extra.cash[cik] ?? null, da: extra.da[cik] ?? null,
+    currentAssets: extra.ca[cik] ?? null, currentLiabilities: extra.cl[cik] ?? null,
+    epsTTM: (() => {
+      const q = extra.qeps[cik];
+      if (!q) return null;
+      const keys = Object.keys(q).sort().slice(-4);
+      if (keys.length < 4) return null;
+      const sum = keys.reduce((a2, k) => a2 + q[k], 0);
+      // Guard: a calendar-quarter sum that disagrees wildly with the fiscal-year EPS is not TTM.
+      const fyEps = epPick?.val;
+      if (fyEps != null && fyEps !== 0 && Math.abs(sum - fyEps) / Math.abs(fyEps) > 0.6) return null;
+      return +sum.toFixed(2);
+    })(),
     fiscal: latest.fy, revenue: revPick?.val ?? null, netIncome: niPick?.val ?? null, assets: asPick?.val ?? null,
     equity: eqPick?.val ?? null, eps: epPick?.val ?? null,
     fyRevenue: revPick?.fy ?? null, fyNetIncome: niPick?.fy ?? null, fyAssets: asPick?.fy ?? null,
