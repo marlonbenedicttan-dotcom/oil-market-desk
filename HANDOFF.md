@@ -1542,3 +1542,11 @@ is modest. It adds depth, not the missing 80%.
 Deleted all 119 Wikipedia-sourced deals and the importer. The book is back to **875 deals, 150 priced**,
 every row from a primary source (SEC 8-K / SC TO-T) or a tier-1 wire. Value provenance priority stays in
 `mergeEvent` for future sources, but Wikipedia is no longer one of them.
+
+## Brief: M&A is news, not size (2026-10-25)
+Paramount kept appearing because the rule was "verified or ≥ $1B, seen in the last 21 days" — a deal's
+size kept it on the page long after the news. It now needs an **event today or yesterday**: the deal's
+`lastSeen` must be today/yesterday, which only happens when an article attaches (announced, closed,
+terminated). Size is only a floor (verified or ≥ $1B), not a reason to stay.
+Result today: no M&A row at all — nothing happened to a qualifying deal in the last two days, and that
+is the correct behaviour. Paramount will surface again only on a day it makes news.

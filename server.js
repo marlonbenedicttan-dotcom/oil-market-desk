@@ -3461,11 +3461,18 @@ async function buildBrief() {
     let briefDeals = [];
     try {
       const book = await refreshDeals();
-      const since = new Date(Date.now() - 21 * 864e5).toISOString().slice(0, 10);
+      // "News", not "big": a deal only belongs on the brief on the day something happened to it —
+      // announced, closed, terminated. A large deal from three weeks ago is not today's news.
+      const today = new Date().toISOString().slice(0, 10);
+      const yesterday = new Date(Date.now() - 864e5).toISOString().slice(0, 10);
       briefDeals = (book.deals || [])
-        .filter((d) => (d.verified || (d.value || 0) >= 1000) && (d.lastSeen || d.date || '') >= since)
-        .sort((a, b) => (b.value || 0) - (a.value || 0))
-        .slice(0, 3)
+        .filter((d) => {
+          const seen = d.lastSeen || d.date || '';
+          if (seen !== today && seen !== yesterday) return false;
+          return d.verified || (d.value || 0) >= 1000;
+        })
+        .sort((a, b) => String(b.lastSeen || '').localeCompare(String(a.lastSeen || '')) || (b.value || 0) - (a.value || 0))
+        .slice(0, 2)
         .map((d) => ({ key: d.key, acquirer: d.acquirer, target: d.target, value: d.value || null, status: d.status, verified: !!d.verified, date: d.date, sector: d.sector || null }));
     } catch {}
 
