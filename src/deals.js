@@ -173,6 +173,8 @@ const SIC_SECTOR = (sic) => {
   if (n >= 3600 && n < 3700) return 'Technology';
   if (n >= 3700 && n < 3800) return 'Industrials';
   if (n >= 3800 && n < 4000) return 'Healthcare';
+  if (n >= 4830 && n < 4900) return 'Media';          // broadcast, cable, publishing
+  if (n >= 4810 && n < 4830) return 'Telecom';        // telephone communications
   if (n >= 4000 && n < 4900) return 'Industrials';
   if (n >= 4900 && n < 5000) return 'Energy';
   if (n >= 5000 && n < 5200) return 'Consumer';

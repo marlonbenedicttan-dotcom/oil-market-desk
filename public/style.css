@@ -1015,3 +1015,32 @@ button.deal-sec-tile:hover { background: #10151b; }
 .mvr.deal .deal-v { color: var(--amber2); }
 .mvr.deal .mvr-sp { display: flex; justify-content: flex-end; }
 .mvr.deal .mvr-why { color: var(--dim); }
+
+/* COMPANIES — profile rows with a revenue bar and a margin column. */
+.co-tools { display: flex; flex-wrap: wrap; gap: 8px; padding: 9px 12px; border-bottom: 1px solid var(--line); }
+.co-row { display: grid; grid-template-columns: 34px 1fr 150px 70px; align-items: center; gap: 10px; width: 100%;
+  padding: 8px 12px; background: transparent; border: 0; border-top: 1px solid var(--line); color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.co-row:hover { background: #10151b; }
+.co-id { min-width: 0; }
+.co-id b { display: block; font-size: 12.5px; color: var(--text); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.co-tick { font-size: 9px; color: var(--dim); letter-spacing: .6px; text-transform: uppercase; }
+.co-rev { font-size: 12px; font-weight: 700; text-align: right; font-variant-numeric: tabular-nums; }
+.co-bar { display: block; height: 3px; background: #141a21; margin-top: 4px; }
+.co-bar i { display: block; height: 100%; background: var(--amber); }
+.co-mar { font-size: 11px; text-align: right; font-variant-numeric: tabular-nums; }
+.co-mar.pos { color: var(--green); } .co-mar.neg { color: var(--red); }
+.co-head { display: flex; align-items: center; gap: 12px; padding: 13px 12px 10px; }
+.co-name { font-size: 17px; color: var(--text); font-weight: 700; }
+.co-sub { font-size: 10px; color: var(--dim); letter-spacing: .5px; text-transform: uppercase; margin-top: 2px; }
+.co-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; background: var(--line); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.co-stat { background: #0c0f13; padding: 10px 12px; }
+.co-k { display: block; font-size: 8.5px; letter-spacing: 1px; color: var(--dim); text-transform: uppercase; }
+.co-v { display: block; font-size: 18px; font-weight: 800; margin-top: 3px; font-variant-numeric: tabular-nums; }
+.co-v.pos { color: var(--green); } .co-v.neg { color: var(--red); }
+.co-deals { border-top: 1px solid var(--line); }
+.co-deal { display: grid; grid-template-columns: 56px 1fr 78px; gap: 9px; padding: 7px 12px; font-size: 11px; border-bottom: 1px solid var(--line); align-items: baseline; }
+@media (max-width: 640px) {
+  .co-row { grid-template-columns: 30px 1fr 86px; }
+  .co-mar { display: none; }
+  .co-stats { grid-template-columns: repeat(2, 1fr); }
+}

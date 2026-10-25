@@ -1550,3 +1550,18 @@ size kept it on the page long after the news. It now needs an **event today or y
 terminated). Size is only a floor (verified or ≥ $1B), not a reason to stay.
 Result today: no M&A row at all — nothing happened to a qualifying deal in the last two days, and that
 is the correct behaviour. Paramount will surface again only on a day it makes news.
+
+## M&A tab replaced by COMPANIES (SEC XBRL) — 2026-10-25
+The deal tab is now a **company directory** built from SEC XBRL, because that is the one global dataset
+that is structured, free and primary — no parsing, no estimates.
+- `scripts/build-companies.mjs` walks every company with an SEC CIK in the deal book, pulls the latest
+  annual 10-K facts for **revenue, net income and total assets** plus SIC industry from submissions.
+  Four concepts are fetched in parallel; the file is saved every 25 companies so a long run can't lose
+  its work.
+- **338 companies, 294 with revenue** (Exxon $276.7B, Chevron $184.4B, WBD $37.3B…). Sectors from SIC,
+  with broadcast/cable → Media and telephone → Telecom fixed.
+- UI: search, sector chips, size bands ($1B/$10B), revenue bars, margin column. A company page shows the
+  four headline figures, the fiscal year, a link to its 10-Ks, and **its deals from the same store**.
+- The tab id stays `deals` so routing and the brief keep working; the label is COMPANIES.
+Honest coverage line on screen: companies that file with the SEC — US listings and foreign issuers with
+ADRs. Other markets have no free structured fundamentals.

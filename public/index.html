@@ -23,7 +23,7 @@
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
   <link rel="preconnect" href="https://unpkg.com" crossorigin />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <link rel="stylesheet" href="style.css?v=93" />
+  <link rel="stylesheet" href="style.css?v=94" />
   <noscript><style>#boot{display:none!important}</style></noscript>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -78,7 +78,7 @@
       <button class="tab active" data-tab="home" id="tab-home" role="tab" aria-selected="true" aria-controls="pane-home">HOME</button>
       <button class="tab" data-tab="commodities" id="tab-commodities" role="tab" aria-selected="false" aria-controls="pane-commodities">COMMODITIES</button>
       <button class="tab" data-tab="macro" id="tab-macro" role="tab" aria-selected="false" aria-controls="pane-macro">MACRO</button>
-      <button class="tab" data-tab="deals" id="tab-deals" role="tab" aria-selected="false" aria-controls="pane-deals">M&amp;A</button>
+      <button class="tab" data-tab="deals" id="tab-deals" role="tab" aria-selected="false" aria-controls="pane-deals">COMPANIES</button>
     </nav>
 
     <!-- HOME: daily brief + markets + screener + risk + calendar + watchlist + headlines -->
@@ -328,18 +328,13 @@
     <!-- MACRO -->
     <div class="tabpane hidden" data-pane="deals" id="pane-deals" role="tabpanel" aria-labelledby="tab-deals">
       <section class="panel" id="p-deals">
-        <div class="ph"><span class="ph-t">M&amp;A — DEAL BOOK</span><span class="dimtext" id="deals-sub">tier-1 wires · last 7 days</span></div>
-        <div class="deal-views" id="deal-views" role="tablist">
-          <button class="deal-view active" data-view="highlights" role="tab" aria-selected="true">HIGHLIGHTS</button>
-          <button class="deal-view" data-view="sectors" role="tab" aria-selected="false">SECTORS</button>
+        <div class="ph"><span class="ph-t">COMPANIES — profiles &amp; financials</span><span class="dimtext" id="deals-sub">SEC XBRL · US filers</span></div>
+        <div class="co-tools">
+          <input class="ma-search" id="co-search" type="search" placeholder="Search a company or ticker…" autocomplete="off">
+          <div class="ma-chips" id="co-chips"></div>
         </div>
-        <div class="deal-hint" id="deal-hint">Announced deals as the wires reported them — parties, price where stated, and the link.</div>
-        <div class="ma-tools" id="ma-tools">
-          <input class="ma-search" id="ma-search" type="search" placeholder="Search company, sector or deal…" autocomplete="off">
-          <div class="ma-chips" id="ma-chips"></div>
-        </div>
-        <div id="deal-body"><div class="macro-note">READING THE WIRE…</div></div>
-        <div class="macro-note" id="deals-note">Announced deals as tier-1 wires reported them. A value appears only when the headline states one; VERIFIED is read out of the company's own filing. This is not a complete market.</div>
+        <div id="co-body"><div class="macro-note">LOADING COMPANIES…</div></div>
+        <div class="macro-note" id="co-note">Figures are the latest annual 10-K values tagged in XBRL — revenue, net income and assets. No estimates. Coverage: companies that file with the SEC (US listings and foreign issuers with ADRs).</div>
       </section>
     </div>
     <div class="tabpane hidden" data-pane="macro" id="pane-macro" role="tabpanel" aria-labelledby="tab-macro">
@@ -437,6 +432,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=163"></script>
+  <script src="app.js?v=164"></script>
 </body>
 </html>

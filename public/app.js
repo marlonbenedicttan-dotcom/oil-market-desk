@@ -2652,7 +2652,7 @@ function showTab(name) {
     if (map) setTimeout(() => map.invalidateSize(), 80);
     if (crackHistChart && currentMarket === 'refined') setTimeout(() => crackHistChart.resize(), 80);
   }
-  if (name === 'deals') loadDeals();
+  if (name === 'deals') loadCompanies();
   if (name === 'macro') { loadMacroTickers(); if (!extraSlowDone) setTimeout(() => loadExtraSlow().catch(() => {}), 0); if (macroChart) setTimeout(() => macroChart.resize(), 60); if (policyChart) setTimeout(() => policyChart.resize(), 70); if (cpiChart) setTimeout(() => cpiChart.resize(), 80); if (yieldsChart) setTimeout(() => yieldsChart.resize(), 85); if (usjpChart) setTimeout(() => usjpChart.resize(), 90); }
   if (data) renderTicker(data);
   syncJumpnavs();
@@ -3245,4 +3245,109 @@ document.addEventListener('click', (e) => {
   if (sec && maView === 'sectors' && !sec.dataset.deal) { maSector = sec.dataset.sector; maCompany = null; renderDeals(); syncRoute(true); return; }
   const deal = e.target.closest('[data-deal]');
   if (deal && deal.dataset.company) { maView = 'sectors'; maSector = deal.dataset.sector; maCompany = deal.dataset.company; syncMaTabs(); renderDeals(); }
+});
+
+// ---------------------------------------------------------------------------
+// COMPANIES — profiles and financials from SEC XBRL (tagged facts, no estimates).
+let companiesData = null, coQuery = '', coSector = 'all', coMin = 0, coCik = null;
+
+async function loadCompanies() {
+  const el = $('co-body');
+  if (!el) return;
+  if (!companiesData) el.innerHTML = stLoading('Reading the filings…');
+  try { companiesData = await getJSON('/api/companies'); } catch { companiesData = companiesData || null; }
+  renderCompanies();
+}
+
+const coMoney = (v) => (v == null ? '—' : Math.abs(v) >= 1e9 ? `$${(v / 1e9).toFixed(1)}B` : Math.abs(v) >= 1e6 ? `$${(v / 1e6).toFixed(0)}M` : `$${Math.round(v)}`);
+const coMargin = (c) => (c.revenue && c.netIncome != null ? (c.netIncome / c.revenue) * 100 : null);
+
+function renderCompanies() {
+  const el = $('co-body');
+  if (!el) return;
+  if (!companiesData) { el.innerHTML = stError('Couldn’t load companies — retrying.'); return; }
+  const all = companiesData.companies || [];
+  const sub = $('deals-sub');
+  if (sub) sub.textContent = `${all.length} companies · SEC XBRL · latest 10-K`;
+
+  if (coCik) return renderCompanyPage(el, all);
+
+  const q = coQuery.trim().toLowerCase();
+  const rows = all.filter((c) => {
+    if (coSector !== 'all' && c.sector !== coSector) return false;
+    if (coMin && (c.revenue || 0) < coMin) return false;
+    if (q && !(`${c.name} ${c.ticker || ''} ${c.industry || ''}`.toLowerCase().includes(q))) return false;
+    return true;
+  }).sort((a, b) => (b.revenue || 0) - (a.revenue || 0));
+
+  const chips = $('co-chips');
+  if (chips) {
+    const sectors = [...new Set(all.map((c) => c.sector).filter(Boolean))].slice(0, 8);
+    const chip = (label, on, attrs) => `<button class="ma-chip${on ? ' on' : ''}" ${attrs}>${label}</button>`;
+    chips.innerHTML = chip('All sectors', coSector === 'all', 'data-cosec="all"')
+      + sectors.map((s) => chip(esc(s), coSector === s, `data-cosec="${esc(s)}"`)).join('')
+      + '<span class="ma-gap"></span>'
+      + chip('All sizes', coMin === 0, 'data-comin="0"') + chip('$1B+', coMin === 1e9, 'data-comin="1000000000"') + chip('$10B+', coMin === 1e10, 'data-comin="10000000000"');
+  }
+
+  const total = rows.reduce((a, b) => a + (b.revenue || 0), 0);
+  const max = Math.max(1, ...rows.map((c) => c.revenue || 0));
+  el.innerHTML = `<div class="ma-sumline">${rows.length} compan${rows.length === 1 ? 'y' : 'ies'}${total ? ` · ${coMoney(total)} revenue` : ''}</div>`
+    + rows.slice(0, 120).map((c) => {
+      const m = coMargin(c);
+      return `<button class="co-row" data-cik="${esc(c.cik)}">
+        ${maMono(c.name)}
+        <span class="co-id"><b>${esc(c.name)}</b><span class="co-tick">${esc(c.ticker || '')}${c.sector ? ' · ' + esc(c.sector) : ''}</span></span>
+        <span class="co-rev">${coMoney(c.revenue)}<i class="co-bar"><i style="width:${Math.max(2, ((c.revenue || 0) / max) * 100)}%"></i></i></span>
+        <span class="co-mar ${m == null ? 'dimtext' : m >= 0 ? 'pos' : 'neg'}">${m == null ? '—' : `${m >= 0 ? '+' : ''}${m.toFixed(1)}%`}</span>
+      </button>`;
+    }).join('') || '<div class="macro-note">Nothing matches — clear the filters.</div>';
+}
+
+async function renderCompanyPage(el, all) {
+  const c = all.find((x) => String(x.cik) === String(coCik));
+  if (!c) { coCik = null; return renderCompanies(); }
+  const m = coMargin(c);
+  el.innerHTML = `<div class="ma-crumb"><button class="ma-back" data-coback="1">← COMPANIES</button> <span>${esc(c.ticker || c.name)}</span></div>`
+    + `<div class="co-head">
+        ${maMono(c.name)}
+        <div><div class="co-name">${esc(c.name)}</div>
+        <div class="co-sub">${esc(c.ticker || '')}${c.sector ? ' · ' + esc(c.sector) : ''}${c.industry ? ' · ' + esc(c.industry) : ''}${c.state ? ' · ' + esc(c.state) : ''}</div></div>
+      </div>`
+    + `<div class="co-stats">
+        <div class="co-stat"><span class="co-k">REVENUE</span><span class="co-v">${coMoney(c.revenue)}</span></div>
+        <div class="co-stat"><span class="co-k">NET INCOME</span><span class="co-v ${c.netIncome >= 0 ? 'pos' : 'neg'}">${coMoney(c.netIncome)}</span></div>
+        <div class="co-stat"><span class="co-k">NET MARGIN</span><span class="co-v ${m >= 0 ? 'pos' : 'neg'}">${m == null ? '—' : `${m.toFixed(1)}%`}</span></div>
+        <div class="co-stat"><span class="co-k">TOTAL ASSETS</span><span class="co-v">${coMoney(c.assets)}</span></div>
+      </div>`
+    + `<div class="macro-note">Latest annual 10-K${c.fiscal ? ` (FY${c.fiscal})` : ''}${c.asOf ? ` · as of ${dealDateY(c.asOf)}` : ''} · tagged in XBRL, no estimates · <a href="https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=${esc(c.cik)}&type=10-K" target="_blank" rel="noopener noreferrer">filings ↗</a></div>`
+    + `<div class="gtitle">DEALS</div><div id="co-deals" class="macro-note">looking up deals…</div>`;
+
+  // Deals involving this company, from the same store the brief uses.
+  try {
+    const d = await getJSON('/api/deals');
+    const key = String(c.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    const mine = (d.deals || []).filter((x) => String(x.acquirer || '').toLowerCase().replace(/[^a-z0-9]/g, '') === key
+      || String(x.target || '').toLowerCase().replace(/[^a-z0-9]/g, '') === key);
+    const box = $('co-deals');
+    if (box) box.outerHTML = mine.length
+      ? `<div class="co-deals">${mine.slice(0, 8).map((x) => `<div class="co-deal"><span class="ma-when">${dealDateY(x.date)}</span><span>${esc(maName(x.acquirer) || '—')} <span class="dimtext">→</span> ${esc(maName(x.target) || '—')}</span><span class="ma-val">${valCell(x) || '—'}</span></div>`).join('')}</div>`
+      : '<div class="macro-note">No deals for this company in the book.</div>';
+  } catch {}
+}
+
+document.addEventListener('click', (e) => {
+  if (e.target.closest('[data-coback]')) { coCik = null; renderCompanies(); return; }
+  const row = e.target.closest('.co-row');
+  if (row && row.dataset.cik) { coCik = row.dataset.cik; renderCompanies(); window.scrollTo({ top: 0, behavior: 'smooth' }); return; }
+  const chip = e.target.closest('[data-cosec],[data-comin]');
+  if (chip) {
+    if (chip.dataset.cosec != null) coSector = chip.dataset.cosec;
+    if (chip.dataset.comin != null) coMin = Number(chip.dataset.comin);
+    renderCompanies();
+  }
+});
+
+document.addEventListener('input', (e) => {
+  if (e.target && e.target.id === 'co-search') { coQuery = e.target.value || ''; renderCompanies(); }
 });

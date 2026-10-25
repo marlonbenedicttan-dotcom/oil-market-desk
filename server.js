@@ -668,6 +668,8 @@ async function getRegime() {
 // termination) merge into one entity per deal, so a deal announced in February and closed in October
 // is the same row with a lifecycle, not two unrelated headlines.
 // ---------------------------------------------------------------------------
+const COMPANIES_FILE = path.join(__dirname, 'data', 'companies.json');
+const COMPANIES = (() => { try { return JSON.parse(fs.readFileSync(COMPANIES_FILE, 'utf8')); } catch { return { companies: [] }; } })();
 const DEAL_ARCHIVE = (() => { try { return JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'ma.json'), 'utf8')); } catch { return { deals: [], coverage: {} }; } })();
 const DEAL_STORE_FILE = path.join(__dirname, 'data', 'deals-store.json');
 import { DEAL_SECTOR_RULES, dealSector, DEAL_SITES, DEAL_RUMOUR, DEAL_CLOSED, DEAL_ENDED, eventStatus,
@@ -3844,6 +3846,13 @@ const server = http.createServer(async (req, res) => {
       if (added) { try { fs.writeFileSync(DEAL_STORE_FILE, JSON.stringify(STORE)); } catch {} }
       const hit = STORE.deals.filter((d) => `${d.acquirer || ''} ${d.target || ''}`.toLowerCase().includes(q.toLowerCase())).length;
       return sendJSON(res, 200, { added, matches: hit, total: STORE.deals.length });
+    }
+    if (url.pathname === '/api/companies') {
+      return sendJSON(res, 200, {
+        updated: COMPANIES.updated || null,
+        count: (COMPANIES.companies || []).length,
+        companies: COMPANIES.companies || [],
+      });
     }
     if (url.pathname === '/api/deals') {
       ensureSeeded();
