@@ -3450,8 +3450,12 @@ async function loadCoChart(ticker, range, compare) {
 async function renderCompanyPage(el, all) {
   const c = all.find((x) => String(x.cik) === String(coCik));
   if (!c) { coCik = null; return renderCompanies(); }
-  const m = coMargin(c);
-  const roe = c.equity && c.netIncome != null ? (c.netIncome / c.equity) * 100 : null;
+  // The page shows the same earnings basis as the P/E above it: trailing when we have it, else the
+  // fiscal year. The five-year table below stays on reported fiscal years.
+  const ni = c.netIncomeTTM != null ? c.netIncomeTTM : c.netIncome;
+  const niTag = c.netIncomeTTM != null ? 'TTM' : 'FY';
+  const m = c.revenue && ni != null && !c.marginNA ? (ni / c.revenue) * 100 : null;
+  const roe = c.equity && ni != null ? (ni / c.equity) * 100 : null;
   const series = (c.series || []).slice().sort((a, b) => a.fy - b.fy);
   const val = (v, dp = 1) => (v == null ? '—' : Math.abs(v) >= 1e9 ? `$${(v / 1e9).toFixed(dp)}B` : `$${(v / 1e6).toFixed(0)}M`);
 
@@ -3467,12 +3471,12 @@ async function renderCompanyPage(el, all) {
         <div class="co-stat"><span class="co-k">P/E (TRAILING${c.peBasis ? ' · ' + c.peBasis : ''})</span><span class="co-v">${c.pe != null ? c.pe.toFixed(1) : '—'}</span></div>
         <div class="co-stat"><span class="co-k">EV / EBITDA</span><span class="co-v">${c.evEbitda != null ? c.evEbitda.toFixed(1) : (c.sector === 'Financials' ? 'n/a' : '—')}</span></div>
         <div class="co-stat"><span class="co-k">P/B</span><span class="co-v">${c.pb != null ? c.pb.toFixed(1) : '—'}</span></div>
-        <div class="co-stat"><span class="co-k">ENTERPRISE VALUE</span><span class="co-v">${val(c.ev)}</span></div>
+        <div class="co-stat"><span class="co-k">ENTERPRISE VALUE</span><span class="co-v">${val(c.ev)}${c.evApprox && c.ev != null ? ' <em class="co-approx" title="Neither debt nor cash is tagged in the filings, so this equals market cap">≈ cap</em>' : ''}</span></div>
         <div class="co-stat"><span class="co-k">CURRENT RATIO</span><span class="co-v">${c.currentRatio != null ? c.currentRatio.toFixed(2) : '—'}</span></div>
         <div class="co-stat"><span class="co-k">DEBT / EQUITY</span><span class="co-v">${c.debtEquity != null ? c.debtEquity.toFixed(2) : '—'}</span></div>
         <div class="co-stat"><span class="co-k">REVENUE</span><span class="co-v">${val(c.revenue)}</span></div>
-        <div class="co-stat"><span class="co-k">NET INCOME</span><span class="co-v ${c.netIncome >= 0 ? 'pos' : 'neg'}">${val(c.netIncome)}</span></div>
-        <div class="co-stat"><span class="co-k">NET MARGIN</span><span class="co-v ${m >= 0 ? 'pos' : 'neg'}">${m == null ? (c.marginNA ? 'n/a' : '—') : `${m.toFixed(1)}%`}</span></div>
+        <div class="co-stat"><span class="co-k">NET INCOME · ${niTag}</span><span class="co-v ${ni >= 0 ? 'pos' : 'neg'}">${val(ni)}</span></div>
+        <div class="co-stat"><span class="co-k">NET MARGIN · ${niTag}</span><span class="co-v ${m >= 0 ? 'pos' : 'neg'}">${m == null ? (c.marginNA ? 'n/a' : '—') : `${m.toFixed(1)}%`}</span></div>
         <div class="co-stat"><span class="co-k">RETURN ON EQUITY</span><span class="co-v ${roe >= 0 ? 'pos' : 'neg'}">${roe == null ? '—' : `${roe.toFixed(1)}%`}</span></div>
         <div class="co-stat"><span class="co-k">TOTAL ASSETS</span><span class="co-v">${val(c.assets)}</span></div>
       </div>`

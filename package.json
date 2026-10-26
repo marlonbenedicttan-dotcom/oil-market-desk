@@ -6,7 +6,9 @@
   "scripts": {
     "start": "node --env-file-if-exists=.env server.js",
     "test": "node --test",
-    "audit:companies": "node scripts/derive-companies.mjs && node scripts/audit-calculations.mjs"
+    "audit:companies": "node scripts/derive-companies.mjs && node scripts/audit-calculations.mjs",
+    "companies:fill": "node scripts/fill-gaps.mjs && node scripts/ttm-earnings.mjs && node scripts/repair-revenue.mjs",
+    "companies:describe": "node scripts/describe-companies.mjs --limit=500 && node scripts/describe-nasdaq.mjs"
   },
   "engines": {
     "node": ">=22"

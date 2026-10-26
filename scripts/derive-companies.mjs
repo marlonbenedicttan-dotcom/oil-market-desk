@@ -36,8 +36,16 @@ const NASDAQ_SECTOR = {
   'Telecommunications': 'Telecom', 'Communication Services': 'Media',
 };
 
+// The newest quarterly report in the universe is the reference point for "current". A TTM built from
+// quarters that stopped years ago (Mastercard's tag ends in 2014) is not a trailing figure.
+const newestTTM = Math.max(0, ...data.companies.map((c) => Date.parse(c.netIncomeTTMAsOf || '')).filter(Number.isFinite));
+
 let fixed = 0;
 for (const c of data.companies) {
+  if (c.netIncomeTTMAsOf && newestTTM && newestTTM - Date.parse(c.netIncomeTTMAsOf) > 500 * 86400000) {
+    c.netIncomeTTM = null;
+    c.netIncomeTTMAsOf = null;
+  }
   if (c.nasdaqSector && NASDAQ_SECTOR[c.nasdaqSector]) c.sector = NASDAQ_SECTOR[c.nasdaqSector];
   const foreign = c.state && !US_STATES.has(String(c.state).toUpperCase());
   if (foreign) {
@@ -55,9 +63,28 @@ for (const c of data.companies) {
   if (c.marketCapSource !== 'nasdaq') c.marketCap = c.price != null && c.shares != null ? Math.round(c.price * c.shares) : null;
   if (c.marketCap != null && (c.marketCap <= 0 || c.marketCap < 1e6)) c.marketCap = null;
 
+  // A net income larger than revenue means the two figures are not the same scope. Banks are the
+  // systematic case: their "revenue" tag is often net interest income, so a margin is meaningless.
+  // A net income of a few thousand dollars against billions of revenue is a broken tag (partial
+  // period or wrong unit), not a company having a bad year.
+  if (c.revenue && c.netIncome != null && Math.abs(c.netIncome) < c.revenue * 0.001) c.netIncome = null;
+  if (c.revenue && c.netIncomeTTM != null && Math.abs(c.netIncomeTTM) < c.revenue * 0.001) c.netIncomeTTM = null;
+  // A profit cannot exceed revenue, but a loss can: a company with collapsing sales and a write-down
+  // can lose more than it earns. Only cap profits, and only reject losses beyond 3x revenue.
+  if (c.revenue != null && c.netIncome != null
+      && (c.netIncome > c.revenue * 1.2 || c.netIncome < c.revenue * -3 || c.sector === 'Financials')) {
+    if (c.sector === 'Financials') c.marginNA = true;
+    else c.netIncome = null;
+  }
+
+
   // P/E on the authoritative market cap ÷ net income: consistent with the cap, and immune to
   // per-share class/ADR mismatches.
   // Prefer TTM earnings (same four quarters as the EPS), fall back to the fiscal year.
+  // A TTM from stale quarters is worse than the fiscal year: if the two disagree by more than 5x,
+  // the quarterly series is out of date or a component, so fall back to the audited annual figure.
+  if (c.netIncomeTTM != null && c.netIncome > 0
+      && (c.netIncomeTTM / c.netIncome < 0.2 || c.netIncomeTTM / c.netIncome > 5)) c.netIncomeTTM = null;
   const earn = c.netIncomeTTM > 0 ? c.netIncomeTTM : (c.netIncome > 0 ? c.netIncome : null);
   const pe = c.marketCap && earn ? +(c.marketCap / earn).toFixed(1) : null;
   c.pe = pe != null && pe <= MAX_PE && pe >= 0.5 ? pe : null;
@@ -66,10 +93,14 @@ for (const c of data.companies) {
   c.pb = c.marketCap && c.equity > 0 ? +(c.marketCap / c.equity).toFixed(1) : null;
   if (c.pb != null && c.pb > 100) c.pb = null;
 
+  // EV needs net debt. When a company tags neither debt nor cash, EV would silently equal market cap,
+  // so mark it rather than present a guess as a measurement.
+  c.evApprox = c.debt == null && c.cash == null;
   c.ev = c.marketCap != null ? c.marketCap + (c.debt || 0) - (c.cash || 0) : null;
   const opInc = c.opInc ?? [...(c.series || [])].reverse().find((x) => x.opInc != null)?.opInc ?? null;
   const ebitda = opInc != null ? opInc + (c.da || 0) : null;
-  c.evEbitda = c.ev && ebitda > 0 ? +(c.ev / ebitda).toFixed(1) : null;
+  // EBITDA is not a bank metric: deposits are operating liabilities and interest is the business.
+  c.evEbitda = c.ev && ebitda > 0 && c.sector !== 'Financials' ? +(c.ev / ebitda).toFixed(1) : null;
   if (c.evEbitda != null && c.evEbitda > 200) c.evEbitda = null;
 
   c.currentRatio = c.currentAssets != null && c.currentLiabilities > 0 ? +(c.currentAssets / c.currentLiabilities).toFixed(2) : null;
@@ -77,17 +108,6 @@ for (const c of data.companies) {
 
   c.debtEquity = c.debt != null && c.equity > 0 ? +(c.debt / c.equity).toFixed(2) : null;
   if (c.debtEquity != null && c.debtEquity > MAX_DE) c.debtEquity = null;
-
-  // A net income larger than revenue means the two figures are not the same scope. Banks are the
-  // systematic case: their "revenue" tag is often net interest income, so a margin is meaningless.
-  // A net income of a few thousand dollars against billions of revenue is a broken tag (partial
-  // period or wrong unit), not a company having a bad year.
-  if (c.revenue && c.netIncome != null && Math.abs(c.netIncome) < c.revenue * 0.001) c.netIncome = null;
-  if (c.revenue && c.netIncomeTTM != null && Math.abs(c.netIncomeTTM) < c.revenue * 0.001) c.netIncomeTTM = null;
-  if (c.revenue != null && c.netIncome != null && (Math.abs(c.netIncome) > c.revenue * 1.2 || c.sector === 'Financials')) {
-    if (c.sector === 'Financials') c.marginNA = true;
-    else c.netIncome = null;
-  }
 
   if (JSON.stringify([c.marketCap, c.pe, c.pb, c.ev, c.evEbitda, c.currentRatio, c.debtEquity]) !== before) fixed++;
 }

@@ -1090,3 +1090,4 @@ button.deal-sec-tile:hover { background: #10151b; }
 #co-search { flex: 0 0 300px; max-width: 300px; }
 .co-tools { align-items: flex-start; }
 @media (max-width: 640px) { #co-search { flex: 1 1 auto; max-width: none; } }
+.co-approx { font-style: normal; font-size: 9px; letter-spacing: .4px; color: #7d8894; }

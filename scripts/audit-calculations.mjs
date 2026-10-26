@@ -16,12 +16,21 @@ const C = data.companies || [];
 const near = (a, b, tol) => Math.abs(a - b) <= tol;
 const pct = (n, d) => (n == null || d == null || d === 0 ? null : (n / d) * 100);
 
-const issues = { marketCap: [], pe: [], pb: [], ev: [], evEbitda: [], current: [], de: [], margin: [], growth: [] };
+const issues = { marketCap: [], pe: [], pb: [], ev: [], evEbitda: [], current: [], de: [], margin: [], growth: [], ttm: [] };
 const anomalies = [];
 let checked = 0;
 
+// The newest quarterly report in the universe is the reference point for "stale".
+const newestTTM = Math.max(0, ...C.map((c) => Date.parse(c.netIncomeTTMAsOf || '')).filter(Number.isFinite));
+
 for (const c of C) {
   checked++;
+
+  // A trailing-twelve-month figure built from quarters that stopped years ago is not trailing.
+  if (c.netIncomeTTMAsOf && newestTTM) {
+    const age = (newestTTM - Date.parse(c.netIncomeTTMAsOf)) / 86400000;
+    if (age > 500) issues.ttm.push([c.ticker, c.netIncomeTTMAsOf, Math.round(age) + ' days old']);
+  }
 
   // --- recompute and compare -------------------------------------------------
   // Market cap from Nasdaq is the source of truth; price × shares is only a fallback, so it is not a

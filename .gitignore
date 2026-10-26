@@ -12,3 +12,8 @@ data/.ma-cache/
 data/.sic-cache.json
 data/.gdelt-progress.json
 data/.doc-heads/
+
+# Concept-level XBRL responses cached by scripts/fill-gaps.mjs (rebuilt on demand)
+data/cache/
+# Raw SPY holdings download used by scripts/filter-sp500.mjs
+data/.spy-holdings.xlsx

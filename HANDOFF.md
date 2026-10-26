@@ -1622,3 +1622,53 @@ along with dividend yield, sector and industry.
 - **Missing data**: added `RevenueFromContractWithCustomerIncludingAssessedTax` and `LongTermDebt` frames,
   plus a fourth revenue tag. Revenue 468 → **488 of 499**, TTM earnings 445 → 447, descriptions 0 → **406**.
 - Audit after the rebuild: **0 mismatches, 0 out-of-range**.
+
+## Companies: the missing-data pass (2026-10-26)
+Goal was to stop showing "—" wherever a filing actually has the number, without inventing anything.
+
+**Where the gaps came from**
+- The annual XBRL *frames* pass only returns companies that tagged a given concept for that exact
+  period, so banks (revenue = "Revenues, Net of Interest Expense"), utilities ("Regulated and
+  Unregulated Operating Revenue") and REITs (rental revenue) came back empty.
+- The 10-K Item 1 description pass failed on ~90 companies (wrapper documents, exhibits, boilerplate
+  filter), and the earlier rebuild had wiped descriptions entirely.
+
+**What was added**
+- `scripts/fill-gaps.mjs` — per-company SEC `companyconcept` lookups with a fallback family per field
+  (revenue, equity, debt, cash, D&A, operating income, net income). Every response is cached under
+  `data/cache/concepts/`; failed fetches are never cached (a 403 used to look like "this tag does not
+  exist" forever — that is how Mastercard's net income became a 2013 figure).
+- `scripts/ttm-earnings.mjs` — recomputes FY and TTM net income from the freshest of `NetIncomeLoss`,
+  `ProfitLoss`, `NetIncomeLossAvailableToCommonStockholdersBasic`. Two real bugs fixed here:
+  Broadcom's `NetIncomeLoss` stops in 2019, so "last four quarters" summed 2018–19; and Q4 is never
+  tagged as a quarter, so it is rebuilt as FY minus the three quarters inside that year. Guards: TTM
+  must be newer than the FY, within 5× of it, four contiguous quarters, and no quarter may be more
+  than 3× the trailing median (one 2026 quarter doubling would have halved Alphabet's P/E).
+- `scripts/repair-revenue.mjs` — where net income exceeded revenue, the revenue tag was a component
+  (MetLife $2.4B instead of $77B). Re-asks for total revenue and clears the field if none qualifies.
+- `scripts/fix-net-income.mjs` — for the handful whose tag stopped years ago, reads the whole XBRL
+  index and picks the newest after-tax concept (never "…BeforeIncomeTaxes…", which is pre-tax).
+- `scripts/describe-nasdaq.mjs` — Nasdaq's own company profile as the description fallback.
+
+**Coverage now (of 499)**
+| field | before | after |
+|---|---|---|
+| revenue | 488 | **495** |
+| net income (FY) | 457 | **497** |
+| net income (TTM) | 447 (wrong for some) | 361, all verified |
+| equity | 476 | **499** |
+| debt | 349 | **464** |
+| cash | 426 | **498** |
+| D&A | 306 | **441** |
+| description | 406 | **499** |
+| P/E | 458 | **468** (347 on TTM, 121 on FY) |
+| EV/EBITDA | 373 | **387** |
+| debt/equity | 305 | **431** |
+
+**Guards added**
+- derive: TTM within 5× of FY; TTM not older than 500 days vs the newest filing; profits capped at
+  1.2× revenue but losses allowed to 3× (a collapsing company can lose more than it sells); EV marked
+  `≈ cap` when neither debt nor cash is tagged; EV/EBITDA is n/a for financials.
+- audit: a new `ttm` check flags any trailing figure built from quarters more than 500 days old.
+
+Audit: **0 reconciliation mismatches, 0 out-of-range values, 0 stale TTM**. 101/101 tests pass.

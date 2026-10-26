@@ -157,7 +157,9 @@ try {
 const ciks = new Set([...Object.keys(concepts.revenue), ...Object.keys(concepts.revenue2), ...Object.keys(concepts.assets)]);
 const companies = [];
 for (const cik of ciks) {
-  const rev = { ...(concepts.revenue3[cik] || {}), ...(concepts.revenue4[cik] || {}), ...(concepts.revenue[cik] || {}), ...(concepts.revenue2[cik] || {}) };
+  // Total revenue wins over contract revenue: for an insurer, "revenue from contracts" is premiums
+  // only, so letting it override "Revenues" understates the top line by an order of magnitude.
+  const rev = { ...(concepts.revenue3[cik] || {}), ...(concepts.revenue2[cik] || {}), ...(concepts.revenue4[cik] || {}), ...(concepts.revenue[cik] || {}) };
   const ni = concepts.netIncome[cik] || {};
   const assets = concepts.assets[cik] || {};
   const equity = concepts.equity[cik] || {};
