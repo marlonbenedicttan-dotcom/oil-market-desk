@@ -1672,3 +1672,46 @@ Goal was to stop showing "—" wherever a filing actually has the number, withou
 - audit: a new `ttm` check flags any trailing figure built from quarters more than 500 days old.
 
 Audit: **0 reconciliation mismatches, 0 out-of-range values, 0 stale TTM**. 101/101 tests pass.
+
+## Companies: the verification harness (2026-10-26, later)
+Stopped fixing companies one at a time. Three layers now catch a wrong input before it ships.
+
+**1. Second source — `scripts/reconcile-nasdaq.mjs`**
+Compares revenue, net income, assets and equity for all 499 against Nasdaq's own annual tables
+(`api.nasdaq.com/api/company/{t}/financials?frequency=1`), matched line-for-line (parent net income,
+parent equity) and by period end date, ranked by absolute dollars rather than percent.
+Agreement: **87.7% of 489 comparable companies within 10%**. The residual is dominated by bank revenue
+definitions (24) and period offsets, not errors.
+
+**2. Input invariants — `scripts/invariants.mjs`**
+Eleven checks on whether a number is *possible*, grouped by cause: profit above revenue, revenue
+implausibly small against assets, equity above assets, current assets above total assets, debt above
+assets, stale fiscal year, stale trailing quarters, TTM disagreeing with the fiscal year, and cap not
+reproducible from price × shares. Output is a work queue by cause, with informational flags separated:
+**62 flags · 4 actionable · 58 informational**.
+
+**3. Golden-file gate — `scripts/check-snapshot.mjs`**
+`data/snapshot.json` holds the current value of eight fields per company. Any rebuild that moves one
+beyond tolerance fails unless the baseline is deliberately refreshed, so a 6× change cannot ship unseen.
+
+**Real errors this found (all fixed)**
+- **DTE** was mapped to CIK 28385, which stopped filing in 2014 — the correct CIK is 936340. Every
+  DTE figure was a decade old.
+- **Stale equity tags**: UnitedHealth's `StockholdersEquity` last filed 2014 ($32.5B), Qualcomm's 2019
+  ($4.9B), Broadcom's 2019 ($24.9B), Garmin's 2010 ($3.0B). P/B was wrong by 2–4×. Fixed by
+  `scripts/balance-pass.mjs`, which takes the newest 10-K instant across the acceptable tag family and
+  refuses anything more than two years behind the universe.
+- **Revenue components**: URI $3.7B→$16.1B, FIX $1.8B→$9.1B, ADM $25.0B→$80.3B, BG $16.9B→$70.3B,
+  DOC $0.6B→$2.8B, CFG $1.6B→$8.2B, KEY $1.7B→$7.5B, HBAN $0→$6.0B, IBKR $2.4B→$6.2B.
+- **Stale assets** for companies with off-calendar fiscal years: PANW $25B→$48.5B, MU $86B→$195.9B.
+  Cause: frames key on CY…Q4I, not on the company's fiscal year.
+- **Impossible debt**: TDG $29.3B against $22.9B of assets — now nulled rather than shown.
+- Bunge's `Revenues` was a transient 404 cached as "no such tag"; 404s are no longer cached.
+
+**Commands**
+- `npm run companies:verify` — audit + reconciliation + invariants
+- `npm run companies:rebuild` — the whole pipeline, in dependency order
+- `npm run companies:reconcile` / `companies:invariants` / `companies:diff`
+- `node scripts/fix-from-facts.mjs TICKER…` — exception-queue repair from a company's full XBRL index
+
+Audit: **0 reconciliation mismatches, 0 out-of-range**. 101/101 tests. Reconciliation 87.7% within 10%.

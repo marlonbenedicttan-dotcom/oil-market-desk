@@ -139,6 +139,7 @@ for (const c of todo) {
   if (best.fy) {
     c.netIncome = best.fy.val;
     c.fyNetIncome = best.fy.year;
+    c.netIncomeEnd = best.fy.end;
     c.netIncomeTag = best.tag;
   }
   // A TTM is only useful when it is newer than the fiscal year and lands in the same order of

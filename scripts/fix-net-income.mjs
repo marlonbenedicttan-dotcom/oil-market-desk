@@ -130,6 +130,7 @@ for (const c of targets) {
   }
   c.netIncome = best.fy.val;
   c.fyNetIncome = best.fy.year;
+  c.netIncomeEnd = best.fy.end;
   c.netIncomeTag = best.tag;
   if (best.ttm && Date.parse(best.ttm.asOf) > Date.parse(best.fy.end)) {
     c.netIncomeTTM = best.ttm.val;

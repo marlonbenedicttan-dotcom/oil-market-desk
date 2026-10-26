@@ -93,6 +93,10 @@ for (const c of data.companies) {
   c.pb = c.marketCap && c.equity > 0 ? +(c.marketCap / c.equity).toFixed(1) : null;
   if (c.pb != null && c.pb > 100) c.pb = null;
 
+  // Debt cannot exceed total assets. Where a tag says it does, the tag is measuring something else
+  // (a gross figure or a subsidiary's obligation); showing it would imply impossible leverage.
+  if (c.debt != null && c.assets != null && c.debt > c.assets) { c.debt = null; c.debtNA = true; }
+
   // EV needs net debt. When a company tags neither debt nor cash, EV would silently equal market cap,
   // so mark it rather than present a guess as a measurement.
   c.evApprox = c.debt == null && c.cash == null;
