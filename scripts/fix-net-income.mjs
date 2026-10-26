@@ -85,10 +85,10 @@ for (const c of targets) {
   // a "continuing operations including NCI" variant, which is a different scope.
   const RANK = {
     NetIncomeLoss: 0,
-    ProfitLoss: 1,
-    NetIncomeLossAvailableToCommonStockholdersBasic: 2,
-    NetIncomeLossAvailableToCommonStockholdersDiluted: 3,
-    NetIncomeLossAttributableToParent: 4,
+    NetIncomeLossAvailableToCommonStockholdersBasic: 1,
+    NetIncomeLossAttributableToParent: 2,
+    ProfitLoss: 3,                       // includes NCI: last resort
+    NetIncomeLossAvailableToCommonStockholdersDiluted: 4,
     IncomeLossFromContinuingOperations: 5,
     IncomeLossFromContinuingOperationsIncludingPortionAttributableToNoncontrollingInterest: 6,
   };

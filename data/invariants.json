@@ -1,7 +1,7 @@
 {
- "generated": "2026-10-26T13:11:02.397Z",
+ "generated": "2026-10-26T13:54:41.981Z",
  "companies": 499,
- "total": 26,
+ "total": 25,
  "causes": {
   "EV/EBITDA above 100 (check D&A)": [
    {
@@ -50,7 +50,7 @@
    },
    {
     "ticker": "TTWO",
-    "detail": "407.3"
+    "detail": "413.9"
    },
    {
     "ticker": "DOW",
@@ -97,10 +97,6 @@
    {
     "ticker": "GPC",
     "detail": "546.4"
-   },
-   {
-    "ticker": "CPT",
-    "detail": "545.8"
    }
   ],
   "P/B above 100 (check equity)": [

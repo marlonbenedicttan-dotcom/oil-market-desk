@@ -23,7 +23,7 @@
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
   <link rel="preconnect" href="https://unpkg.com" crossorigin />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <link rel="stylesheet" href="style.css?v=106" />
+  <link rel="stylesheet" href="style.css?v=107" />
   <noscript><style>#boot{display:none!important}</style></noscript>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -334,7 +334,7 @@
           <div class="ma-chips" id="co-chips"></div>
         </div>
         <div id="co-body"><div class="macro-note">LOADING COMPANIES…</div></div>
-        <div class="macro-note" id="co-note">S&amp;P 500 constituents (SPDR SPY holdings, State Street). Financials are the latest annual 10-K values tagged in XBRL — no estimates. Market cap comes from Nasdaq's own quote data (so share classes and buybacks are handled at the source); ratios are computed from it and the filing's earnings, equity and cash.</div>
+        <div class="macro-note" id="co-note">S&amp;P 500 constituents (SPDR SPY holdings, State Street). Financials are the latest annual 10-K values tagged in XBRL — no estimates. Market cap comes from Nasdaq's own quote data (so share classes and buybacks are handled at the source); ratios are computed from it and the filing's earnings, equity and cash. Every figure is cross-checked against Nasdaq's own financial tables — where the two disagree by more than 5%, the cell is marked and both values are shown on hover.</div>
       </section>
     </div>
     <div class="tabpane hidden" data-pane="macro" id="pane-macro" role="tabpanel" aria-labelledby="tab-macro">
@@ -432,6 +432,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=185"></script>
+  <script src="app.js?v=187"></script>
 </body>
 </html>

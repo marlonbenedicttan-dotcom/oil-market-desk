@@ -1114,3 +1114,9 @@ button.deal-sec-tile:hover { background: #10151b; }
   #co-search { flex: 1 1 100%; max-width: none; }
   #co-chips { width: 100%; }
 }
+/* Cross-check badge and per-field dispute marker. */
+.co-verif { margin: 0 14px 12px; padding: 5px 9px; border: 1px solid #1d242c; border-radius: 4px;
+  font-size: 9px; letter-spacing: .7px; color: #7d8894; display: inline-block; }
+.co-verif.ok { color: #5fbf7a; border-color: #1e3a2a; background: #0d1a12; }
+.co-verif.bad { color: #e0a03a; border-color: #3d2f14; background: #1a1408; }
+.co-dispute { font-style: normal; color: #e0a03a; font-size: 10px; cursor: help; margin-left: 2px; }

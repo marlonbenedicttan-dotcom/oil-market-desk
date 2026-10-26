@@ -808,8 +808,11 @@ function mountChart(id, data, options, plugins) {
     cv.setAttribute('role', 'img');
     cv.setAttribute('aria-label', `Line chart — ${desc}. Values are approximate; hover a point for detail.`);
   }
-  if (charts[id]) { charts[id].data = data; charts[id].options = options; charts[id].update(); return charts[id]; }
+  if (charts[id]) { charts[id].data = data; charts[id].options = options; charts[id].resize(); charts[id].update(); return charts[id]; }
   charts[id] = new Chart(cv, { type: 'line', data, options, plugins: plugins || [] });
+  // The canvas can be mounted before the layout settles (a page rendered from a search), which leaves
+  // it zero-height and draws nothing. Nudge it once the frame is painted.
+  requestAnimationFrame(() => { try { charts[id]?.resize(); } catch {} });
   return charts[id];
 }
 function chartEmpty(id, msg) { const cv = $(id); if (cv && cv.parentElement) cv.parentElement.setAttribute('data-empty', msg || 'no data for this range'); }
@@ -3250,9 +3253,9 @@ document.addEventListener('click', (e) => {
 
 // ---------------------------------------------------------------------------
 // COMPANIES — profiles and financials from SEC XBRL (tagged facts, no estimates).
-let companiesData = null, coQuery = '', coSector = 'all', coMin = 0, coCik = null, coTicker = null, coRange = '10y', coCompare = '';
+let companiesData = null, coQuery = '', coSector = 'all', coMin = 0, coCik = null, coTicker = null, coRange = '5y', coCompare = '';
 let coSort = 'cap', coDir = -1;   // screener: which column, and which way
-let coPe = 'all', coMinMargin = 0, coGrowth = null, coPriced = false, coView = 'list';
+let coPe = 'all', coMinMargin = 0, coGrowth = null, coPriced = false, coVerified = false, coView = 'list';
 
 async function loadCompanies() {
   const el = $('co-body');
@@ -3302,6 +3305,7 @@ function renderCompanies() {
     if (coSector !== 'all' && c.sector !== coSector) return false;
     if (coMin && (c.marketCap || 0) < coMin) return false;
     if (coPriced && !c.marketCap) return false;
+    if (coVerified && c.verification?.status !== 'verified') return false;
     if (coPe !== 'all') {
       const p = c.pe;
       if (p == null) return false;
@@ -3333,7 +3337,7 @@ function renderCompanies() {
     for (const c of all) if (c.sector && c.sector !== 'Other') counts[c.sector] = (counts[c.sector] || 0) + 1;
     const sectors = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 8).map(([x]) => x);
     const active = (coSector !== 'all' ? 1 : 0) + (coMin ? 1 : 0) + (coPe !== 'all' ? 1 : 0)
-      + (coMinMargin ? 1 : 0) + (coGrowth != null ? 1 : 0) + (coPriced ? 1 : 0) + (coQuery.trim() ? 1 : 0);
+      + (coMinMargin ? 1 : 0) + (coGrowth != null ? 1 : 0) + (coPriced ? 1 : 0) + (coVerified ? 1 : 0) + (coQuery.trim() ? 1 : 0);
     const sel = (key, label, opts, cur) => `<label class="co-sel"><span>${label}</span><select data-cosel="${key}">`
       + opts.map(([v, t]) => `<option value="${v}"${String(v) === String(cur) ? ' selected' : ''}>${t}</option>`).join('')
       + '</select></label>';
@@ -3346,6 +3350,7 @@ function renderCompanies() {
       + sel('growth', 'GROWTH', [['any', 'Any'], ['0', '>0'], ['10', '>10%']], coGrowth === null ? 'any' : coGrowth)
       + '<span class="co-sep"></span>'
       + tgl('Priced', coPriced, 'data-copriced="1"')
+      + tgl('Cross-checked', coVerified, 'data-coverified="1"')
       + tgl('Board', coView === 'sectors', 'data-coview="1"')
       + '<button class="co-tgl" data-coexport="1">CSV</button>'
       + (active ? `<button class="ma-reset" data-coreset="1">CLEAR ${active}</button>` : '');
@@ -3424,8 +3429,19 @@ async function loadCoChart(ticker, range, compare) {
     if (wrap) wrap.setAttribute('data-empty', `No price history for ${ticker} — the ticker may be delisted or not covered by Yahoo.`);
   };
   try {
-    const ch = await getJSON(`/api/company-chart?ticker=${encodeURIComponent(ticker)}&range=${range}`);
-    if (!ch || !ch.dates || ch.dates.length <= 5) { fail(); return; }
+    let ch = await getJSON(`/api/company-chart?ticker=${encodeURIComponent(ticker)}&range=${range}`);
+    // A recent listing has fewer than six points over ten years — that is not "no history", it is a
+    // shorter life. Step down the range and move the active button with it.
+    for (const shorter of ['5y', '1y']) {
+      if (ch && ch.dates && ch.dates.length > 5) break;
+      if (range === '1y') break;
+      if (range === '10y' || (range === '5y' && shorter === '1y')) {
+        range = shorter;
+        ch = await getJSON(`/api/company-chart?ticker=${encodeURIComponent(ticker)}&range=${range}`);
+        document.querySelectorAll('[data-corange]').forEach((b) => b.classList.toggle('on', b.dataset.corange === range));
+      }
+    }
+    if (!ch || !ch.dates || ch.dates.length < 2) { fail(); return; }
     const wrap0 = canvas && canvas.parentElement;
     if (wrap0) wrap0.removeAttribute('data-empty');
     if (!compare) {
@@ -3433,7 +3449,7 @@ async function loadCoChart(ticker, range, compare) {
       return;
     }
     const c2 = await getJSON(`/api/company-chart?ticker=${encodeURIComponent(compare)}&range=${range}`);
-    if (!c2 || !c2.dates || c2.dates.length <= 5) {
+    if (!c2 || !c2.dates || c2.dates.length < 2) {
       mountChart('co-chart', { labels: ch.dates, datasets: [line(`${ticker} · ${range.toUpperCase()}`, ch.closes, CT.c1)] }, baseOptions({ dp: 2 }));
       return;
     }
@@ -3453,7 +3469,7 @@ async function loadCoChart(ticker, range, compare) {
 // Descriptions are truncated at a sentence boundary, never mid-clause ("… or SDKs, and a").
 const coDesc = (t) => {
   if (!t) return '';
-  const s = String(t).replace(/\s+/g, ' ').trim();
+  const s = String(t).replace(/\s+/g, ' ').replace(/\s+([),.;:])/g, '$1').trim();
   if (s.length <= 300) return s;
   const cut = s.slice(0, 300);
   const i = Math.max(cut.lastIndexOf('. '), cut.lastIndexOf('; '));
@@ -3469,6 +3485,16 @@ async function renderCompanyPage(el, all) {
   const niTag = c.netIncomeTTM != null ? 'TTM' : 'FY';
   const m = c.revenue && ni != null && !c.marginNA ? (ni / c.revenue) * 100 : null;
   const roe = c.equity && ni != null ? (ni / c.equity) * 100 : null;
+  const ver = c.verification || {};
+  const vfields = ver.fields || {};
+  const dsp = (f) => (vfields[f]
+    ? ` <em class="co-dispute" title="SEC ${coMoney(vfields[f].ours)} · Nasdaq ${coMoney(vfields[f].alt)} (${Math.round(vfields[f].diff * 100)}% apart)">≠</em>`
+    : '');
+  const vtext = ver.status === 'verified' ? `✓ CROSS-CHECKED · ${ver.checked} FIELDS VS NASDAQ`
+    : ver.status === 'definition' ? 'REVENUE BASIS DIFFERS FROM NASDAQ (BANK DEFINITION)'
+      : ver.status === 'disputed' ? `${Object.keys(vfields).length} FIELD${Object.keys(vfields).length > 1 ? 'S DIFFER' : ' DIFFERS'} FROM NASDAQ — BOTH VALUES SHOWN`
+        : 'NOT CROSS-CHECKED';
+  const vcls = ver.status === 'verified' ? ' ok' : ver.status === 'definition' ? '' : ver.status === 'disputed' ? ' bad' : '';
   const series = (c.series || []).slice().sort((a, b) => a.fy - b.fy);
   const val = (v) => coMoney(v);
 
@@ -3478,20 +3504,21 @@ async function renderCompanyPage(el, all) {
         <div><div class="co-name">${esc(c.name)}</div>
         <div class="co-sub">${esc(c.ticker || '')}${c.sector ? ' · ' + esc(c.sector) : ''}${c.industry ? ' · ' + esc(c.industry) : ''}${c.state ? ' · ' + esc(c.state) : ''}</div>
         ${c.description ? `<div class="co-desc">${esc(coDesc(c.description))}</div>` : ''}</div>
-      </div>`
+      </div>
+      <div class="co-verif${vcls}">${vtext}</div>`
     + `<div class="co-stats co-stats-12">
         <div class="co-stat"><span class="co-k">MARKET CAP</span><span class="co-v">${c.adrNA ? 'ADR' : val(c.marketCap)}</span></div>
         <div class="co-stat"><span class="co-k">P/E (TRAILING${c.peBasis ? ' · ' + c.peBasis : ''})</span><span class="co-v">${c.pe != null ? c.pe.toFixed(1) : '—'}</span></div>
         <div class="co-stat"><span class="co-k">EV / EBITDA</span><span class="co-v">${c.evEbitda != null ? c.evEbitda.toFixed(1) : (c.sector === 'Financials' ? 'n/a' : '—')}</span></div>
-        <div class="co-stat"><span class="co-k">P/B</span><span class="co-v">${c.pb != null ? c.pb.toFixed(1) : '—'}</span></div>
+        <div class="co-stat"><span class="co-k">P/B</span><span class="co-v">${c.pb != null ? c.pb.toFixed(1) : '—'}${dsp('equity')}</span></div>
         <div class="co-stat"><span class="co-k">ENTERPRISE VALUE</span><span class="co-v">${val(c.ev)}${c.evApprox && c.ev != null ? ' <em class="co-approx" title="Neither debt nor cash is tagged in the filings, so this equals market cap">≈ cap</em>' : ''}</span></div>
         <div class="co-stat"><span class="co-k">CURRENT RATIO</span><span class="co-v">${c.currentRatio != null ? c.currentRatio.toFixed(2) : '—'}</span></div>
         <div class="co-stat"><span class="co-k">DEBT / EQUITY</span><span class="co-v">${c.debtEquity != null ? c.debtEquity.toFixed(2) : '—'}</span></div>
-        <div class="co-stat"><span class="co-k">REVENUE</span><span class="co-v">${val(c.revenue)}</span></div>
-        <div class="co-stat"><span class="co-k">NET INCOME · ${niTag}</span><span class="co-v ${ni >= 0 ? 'pos' : 'neg'}">${val(ni)}</span></div>
+        <div class="co-stat"><span class="co-k">REVENUE</span><span class="co-v">${val(c.revenue)}${dsp('revenue')}</span></div>
+        <div class="co-stat"><span class="co-k">NET INCOME · ${niTag}</span><span class="co-v ${ni >= 0 ? 'pos' : 'neg'}">${val(ni)}${dsp('netIncome')}</span></div>
         <div class="co-stat"><span class="co-k">NET MARGIN · ${niTag}</span><span class="co-v ${m >= 0 ? 'pos' : 'neg'}">${m == null ? (c.marginNA ? 'n/a' : '—') : `${m.toFixed(1)}%`}</span></div>
         <div class="co-stat"><span class="co-k">RETURN ON EQUITY</span><span class="co-v ${roe >= 0 ? 'pos' : 'neg'}">${roe == null ? '—' : `${roe.toFixed(1)}%`}</span></div>
-        <div class="co-stat"><span class="co-k">TOTAL ASSETS</span><span class="co-v">${val(c.assets)}</span></div>
+        <div class="co-stat"><span class="co-k">TOTAL ASSETS</span><span class="co-v">${val(c.assets)}${dsp('assets')}</span></div>
       </div>`
     + (c.ticker ? `<div class="co-chartwrap">
         <div class="co-ranges">
@@ -3562,7 +3589,7 @@ document.addEventListener('click', (e) => {
     return;
   }
   if (e.target.closest('[data-coreset]')) {
-    coSector = 'all'; coMin = 0; coPe = 'all'; coMinMargin = 0; coGrowth = null; coPriced = false; coQuery = '';
+    coSector = 'all'; coMin = 0; coPe = 'all'; coMinMargin = 0; coGrowth = null; coPriced = false; coVerified = false; coQuery = '';
     const inp = $('co-search'); if (inp) inp.value = '';
     renderCompanies();
     return;
@@ -3575,6 +3602,7 @@ document.addEventListener('click', (e) => {
   const cg = e.target.closest('[data-cogrowth]');
   if (cg) { coGrowth = cg.dataset.cogrowth === 'any' ? null : Number(cg.dataset.cogrowth); renderCompanies(); return; }
   if (e.target.closest('[data-copriced]')) { coPriced = !coPriced; renderCompanies(); return; }
+  if (e.target.closest('[data-coverified]')) { coVerified = !coVerified; renderCompanies(); return; }
   const cs = e.target.closest('[data-cosort]');
   if (cs) {
     if (coSort === cs.dataset.cosort) coDir = -coDir; else { coSort = cs.dataset.cosort; coDir = -1; }

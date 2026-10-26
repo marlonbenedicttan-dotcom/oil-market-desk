@@ -1747,3 +1747,28 @@ genuinely thin). Audit: 0 mismatches. Reconciliation: **87.9% within 10%**, 21 d
   comma-led fragments repaired. 0 bad starts.
 - Description truncation now cuts at a sentence boundary, not mid-clause.
 - Footnote corrected: market cap is Nasdaq quote data, not price × shares.
+
+## Companies: arbitration, and the earnings-scope bug (2026-10-26, evening)
+**B is now enforced.** `scripts/arbitrate.mjs` stamps a verdict on every company:
+`verified` (all four reconciled fields within 5% and $250m), `disputed` (both values recorded),
+`definition` (a bank's revenue basis), or `unchecked` (different fiscal period / no second source).
+Current: **451 verified · 12 disputed · 23 definition · 13 unchecked**.
+
+- The company page shows a badge and a `≠` on any disputed cell; hovering gives "SEC $X · Nasdaq $Y".
+- The screener has a **Cross-checked** toggle.
+- `npm run companies:verify` now runs audit → reconcile → arbitrate → invariants.
+
+**Two real bugs the arbitration exposed**
+1. **Earnings scope.** Freeport and Interactive Brokers were using `ProfitLoss` — total earnings
+   *including* non-controlling interests — against a common-share market cap. FCX showed $4.15B when
+   common holders earned $2.20B (P/E 18 vs 34); IBKR showed $4.36B vs $0.98B (P/E 7.4 vs 32.3).
+   Net income now prefers `NetIncomeLoss` → `NetIncomeLossAvailableToCommonStockholdersBasic` →
+   `ProfitLoss`, and **scope beats freshness**: a total-earnings figure six months newer is still the
+   wrong number for a common-share cap.
+2. **Line matching.** Nasdaq publishes both consolidated and parent-attributable net income, and parent
+   and total equity. Comparing across scopes invented disputes that were just NCI. The comparator now
+   picks the line matching our tag.
+
+**Charts.** `loadCoChart` rejected any series with ≤5 points and defaulted to 10Y, so recent spin-offs
+(HONA: 5 monthly points) showed "No price history". Default is now 5Y, with a step-down to 1Y, and the
+canvas gets a resize nudge after mount.

@@ -59,19 +59,25 @@ const num = (s) => {
 const row = (table, re) => (table?.rows || []).find((r) => re.test(String(r.value1 || '')));
 const thousands = (v) => (v == null ? null : v * 1000);
 
-function readTable(j) {
+function readTable(j, c) {
   const inc = j?.data?.incomeStatementTable;
   const bal = j?.data?.balanceSheetTable;
   const period = inc?.headers?.value2 || null;
   const rev = thousands(num(row(inc, /^total revenue/i)?.value2));
-  // Ours is parent-attributable net income and parent stockholders' equity, so compare against the
-  // same lines. Nasdaq's "Net Income" and "Total Equity" include noncontrolling interests.
-  const ni = thousands(num(row(inc, /net income applicable to common/i)?.value2))
-    ?? thousands(num(row(inc, /^net income$/i)?.value2));
+  // Match the line to the scope of *our* value. Nasdaq publishes both consolidated and
+  // parent-attributable net income, and parent and total equity; comparing across scopes invents
+  // disputes that are really just noncontrolling interests (Freeport, Occidental).
+  const niCommon = thousands(num(row(inc, /net income applicable to common/i)?.value2));
+  const niTotal = thousands(num(row(inc, /^net income$/i)?.value2));
+  const eqParent = thousands(num(row(bal, /^stock holders equity$/i)?.value2));
+  const eqTotal = thousands(num(row(bal, /^total equity$/i)?.value2));
+  const totalScope = /ProfitLoss/i.test(c?.netIncomeTag || '');
+  const ni = totalScope ? (niTotal ?? niCommon) : (niCommon ?? niTotal);
   const assets = thousands(num(row(bal, /^total assets/i)?.value2));
-  const equity = thousands(num(row(bal, /^stock holders equity$/i)?.value2))
-    ?? thousands(num(row(bal, /^total equity$/i)?.value2));
-  return { period, rev, ni, assets, equity };
+  const equity = /IncludingPortionAttributableToNoncontrollingInterest/i.test(c?.equityTag || '')
+    ? (eqTotal ?? eqParent)
+    : (eqParent ?? eqTotal);
+  return { period, rev, ni, assets, equity, niTotal, niCommon };
 }
 
 // A bank's "total revenue" means net interest income plus fees at one publisher and gross interest
@@ -98,7 +104,7 @@ for (const c of todo) {
   if (done % 50 === 0) console.log(`  … ${done}`);
   if (!j) { out.push({ ticker: c.ticker, status: 'no-nasdaq-data' }); continue; }
 
-  const n = readTable(j);
+  const n = readTable(j, c);
   // Only compare like with like: a period a year apart is not a disagreement.
   // Compare by period end date when we have it: a June fiscal year makes the year number ambiguous.
   const ourEnd = c.netIncomeEnd ? Date.parse(c.netIncomeEnd) : null;

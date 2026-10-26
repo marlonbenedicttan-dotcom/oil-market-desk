@@ -111,7 +111,9 @@ function trailing(doc) {
   return { val: parts.reduce((a, e) => a + e.val, 0), asOf: parts[3].end };
 }
 
-const TAGS = ['NetIncomeLoss', 'ProfitLoss', 'NetIncomeLossAvailableToCommonStockholdersBasic'];
+// Order matters. ProfitLoss is total earnings *including* non-controlling interests, and using it
+// against a common-share market cap doubled Freeport's and Interactive Brokers' earnings.
+const TAGS = ['NetIncomeLoss', 'NetIncomeLossAvailableToCommonStockholdersBasic', 'NetIncomeLossAttributableToParent', 'ProfitLoss'];
 
 const data = JSON.parse(readFileSync(FILE, 'utf8'));
 const todo = data.companies.filter((c) => c.cik).slice(0, LIMIT);
@@ -120,14 +122,19 @@ console.log(`${todo.length} companies`);
 let changed = 0;
 let done = 0;
 for (const c of todo) {
-  let best = null;
+  // Scope beats freshness: a total-earnings figure six months newer is still the wrong number for a
+  // common-share market cap. Take the highest-priority tag that has a current fiscal year.
+  const cands = [];
   for (const tag of TAGS) {
     const doc = await concept(c.cik, tag);
     const fy = fiscalYear(doc);
-    const ttm = trailing(doc);
-    const stamp = Math.max(fy ? Date.parse(fy.end) : 0, ttm ? Date.parse(ttm.asOf) : 0);
-    if (!stamp) continue;
-    if (!best || stamp > best.stamp) best = { tag, fy, ttm, stamp };
+    if (!fy) continue;
+    cands.push({ tag, fy, ttm: trailing(doc) });
+  }
+  let best = null;
+  if (cands.length) {
+    const newestEnd = Math.max(...cands.map((x) => Date.parse(x.fy.end)));
+    best = cands.find((x) => Date.parse(x.fy.end) >= newestEnd - 730 * 86400000) || cands[0];
   }
   done++;
   if (done % 50 === 0) console.log(`  … ${done}`);
