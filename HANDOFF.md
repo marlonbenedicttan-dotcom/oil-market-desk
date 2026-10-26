@@ -1733,3 +1733,17 @@ Audit: **0 reconciliation mismatches, 0 out-of-range**. 101/101 tests. Reconcili
 
 Invariants: **0 actionable**, 32 informational (high P/E, high P/B, EV/EBITDA above 60 where EBITDA is
 genuinely thin). Audit: 0 mismatches. Reconciliation: **87.9% within 10%**, 21 definition, 8 period, 4 none.
+
+## Companies: compact filters, trillions, and the "missing" Tesla (2026-10-26)
+- **Filter bar** rebuilt as one row: search + five labelled selects (SECTOR / SIZE / P/E / MARGIN / GROWTH)
+  + Priced / Board / CSV + a CLEAR count. Five rows of chips became 28px tall.
+- **Money formatting** now steps B → T everywhere. The company page and the five-year table were still
+  using a B-only formatter, so $1.47T rendered as $1,472.5B. One helper (`coMoney`) now serves both.
+- **Tesla was not missing — it was hidden.** P/E 457 and EV/EBITDA 285 were nulled by caps meant to
+  catch broken data (400x / 200x). A genuine extreme multiple is data, not an error: caps raised to
+  2000x / 500x, with the invariants report flagging extremes instead of the UI hiding them.
+- **Descriptions**: 64 started mid-sentence ("(“AI”) into the real world…"). Nasdaq's profile text is a
+  continuation of the company name, so the parenthetical is stripped and the name restored; four
+  comma-led fragments repaired. 0 bad starts.
+- Description truncation now cuts at a sentence boundary, not mid-clause.
+- Footnote corrected: market cap is Nasdaq quote data, not price × shares.

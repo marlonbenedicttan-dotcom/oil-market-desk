@@ -729,6 +729,7 @@ const charts = {};   // canvas id -> Chart instance (re-render updates in place;
 const fmtNum = (v, dp = 2) => {
   if (v == null || Number.isNaN(v)) return '—';
   const a = Math.abs(v);
+  if (a >= 1e12) return (v / 1e12).toFixed(2).replace(/\.?0+$/, '') + 'T';
   if (a >= 1e9) return (v / 1e9).toFixed(1).replace(/\.0$/, '') + 'B';
   if (a >= 1e6) return (v / 1e6).toFixed(1).replace(/\.0$/, '') + 'M';
   if (a >= 1e5) return (v / 1e3).toFixed(0) + 'k';
@@ -3330,22 +3331,24 @@ function renderCompanies() {
   if (chips) {
     const counts = {};
     for (const c of all) if (c.sector && c.sector !== 'Other') counts[c.sector] = (counts[c.sector] || 0) + 1;
-    const sectors = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 7).map(([x]) => x);
-    const chip = (label, on, attrs) => `<button class="ma-chip${on ? ' on' : ''}" ${attrs}>${label}</button>`;
-    const row = (label, inner) => `<div class="co-frow"><span class="co-flabel">${label}</span>${inner}</div>`;
+    const sectors = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 8).map(([x]) => x);
     const active = (coSector !== 'all' ? 1 : 0) + (coMin ? 1 : 0) + (coPe !== 'all' ? 1 : 0)
       + (coMinMargin ? 1 : 0) + (coGrowth != null ? 1 : 0) + (coPriced ? 1 : 0) + (coQuery.trim() ? 1 : 0);
+    const sel = (key, label, opts, cur) => `<label class="co-sel"><span>${label}</span><select data-cosel="${key}">`
+      + opts.map(([v, t]) => `<option value="${v}"${String(v) === String(cur) ? ' selected' : ''}>${t}</option>`).join('')
+      + '</select></label>';
+    const tgl = (label, on, attr) => `<button class="co-tgl${on ? ' on' : ''}" ${attr}>${label}</button>`;
     chips.innerHTML =
-      row('SECTOR', chip('All', coSector === 'all', 'data-cosec="all"')
-        + sectors.map((x) => chip(esc(x), coSector === x, `data-cosec="${esc(x)}"`)).join(''))
-      + row('SIZE', chip('All', coMin === 0, 'data-comin="0"') + chip('$10B+', coMin === 1e10, 'data-comin="10000000000"') + chip('$100B+', coMin === 1e11, 'data-comin="100000000000"'))
-      + row('VALUATION', chip('P/E any', coPe === 'all', 'data-cope="all"') + chip('<15', coPe === 'lt15', 'data-cope="lt15"')
-        + chip('15–25', coPe === '15to25', 'data-cope="15to25"') + chip('>25', coPe === 'gt25', 'data-cope="gt25"'))
-      + row('QUALITY', chip('Margin any', coMinMargin === 0, 'data-comargin="0"') + chip('>10%', coMinMargin === 10, 'data-comargin="10"') + chip('>20%', coMinMargin === 20, 'data-comargin="20"')
-        + chip('Growth any', coGrowth === null, 'data-cogrowth="any"') + chip('>0', coGrowth === 0, 'data-cogrowth="0"') + chip('>10%', coGrowth === 10, 'data-cogrowth="10"'))
-      + row('VIEW', chip('Priced only', coPriced, 'data-copriced="1"') + chip('Sector board', coView === 'sectors', 'data-coview="1"')
-        + `<button class="ma-chip" data-coexport="1">Export CSV</button>`
-        + (active ? `<button class="ma-reset" data-coreset="1">CLEAR ${active}</button>` : ''));
+      sel('sector', 'SECTOR', [['all', 'All'], ...sectors.map((x) => [x, x])], coSector)
+      + sel('size', 'SIZE', [['0', 'Any'], ['10000000000', '$10B+'], ['100000000000', '$100B+'], ['500000000000', '$500B+']], coMin)
+      + sel('pe', 'P/E', [['all', 'Any'], ['lt15', '<15'], ['15to25', '15–25'], ['gt25', '>25']], coPe)
+      + sel('margin', 'MARGIN', [['0', 'Any'], ['10', '>10%'], ['20', '>20%']], coMinMargin)
+      + sel('growth', 'GROWTH', [['any', 'Any'], ['0', '>0'], ['10', '>10%']], coGrowth === null ? 'any' : coGrowth)
+      + '<span class="co-sep"></span>'
+      + tgl('Priced', coPriced, 'data-copriced="1"')
+      + tgl('Board', coView === 'sectors', 'data-coview="1"')
+      + '<button class="co-tgl" data-coexport="1">CSV</button>'
+      + (active ? `<button class="ma-reset" data-coreset="1">CLEAR ${active}</button>` : '');
   }
 
   const priced = rows.filter((c) => c.marketCap);
@@ -3447,6 +3450,16 @@ async function loadCoChart(ticker, range, compare) {
   } catch {}
 }
 
+// Descriptions are truncated at a sentence boundary, never mid-clause ("… or SDKs, and a").
+const coDesc = (t) => {
+  if (!t) return '';
+  const s = String(t).replace(/\s+/g, ' ').trim();
+  if (s.length <= 300) return s;
+  const cut = s.slice(0, 300);
+  const i = Math.max(cut.lastIndexOf('. '), cut.lastIndexOf('; '));
+  return i > 120 ? cut.slice(0, i + 1) : cut.replace(/[,;\s]+\S*$/, '') + '…';
+};
+
 async function renderCompanyPage(el, all) {
   const c = all.find((x) => String(x.cik) === String(coCik));
   if (!c) { coCik = null; return renderCompanies(); }
@@ -3457,14 +3470,14 @@ async function renderCompanyPage(el, all) {
   const m = c.revenue && ni != null && !c.marginNA ? (ni / c.revenue) * 100 : null;
   const roe = c.equity && ni != null ? (ni / c.equity) * 100 : null;
   const series = (c.series || []).slice().sort((a, b) => a.fy - b.fy);
-  const val = (v, dp = 1) => (v == null ? '—' : Math.abs(v) >= 1e9 ? `$${(v / 1e9).toFixed(dp)}B` : `$${(v / 1e6).toFixed(0)}M`);
+  const val = (v) => coMoney(v);
 
   el.innerHTML = `<div class="ma-crumb"><button class="ma-back" data-coback="1">← COMPANIES</button> <span>${esc(c.ticker || c.name)}</span></div>`
     + `<div class="co-head">
         ${coMono(c)}
         <div><div class="co-name">${esc(c.name)}</div>
         <div class="co-sub">${esc(c.ticker || '')}${c.sector ? ' · ' + esc(c.sector) : ''}${c.industry ? ' · ' + esc(c.industry) : ''}${c.state ? ' · ' + esc(c.state) : ''}</div>
-        ${c.description ? `<div class="co-desc">${esc(c.description)}</div>` : ''}</div>
+        ${c.description ? `<div class="co-desc">${esc(coDesc(c.description))}</div>` : ''}</div>
       </div>`
     + `<div class="co-stats co-stats-12">
         <div class="co-stat"><span class="co-k">MARKET CAP</span><span class="co-v">${c.adrNA ? 'ADR' : val(c.marketCap)}</span></div>
@@ -3487,7 +3500,7 @@ async function renderCompanyPage(el, all) {
           ${['1y', '5y', '10y'].map((r) => `<button class="ma-chip${coRange === r ? ' on' : ''}" data-corange="${r}">${r.toUpperCase()}</button>`).join('')}
         </div>
         <canvas id="co-chart"></canvas></div>` : '')
-    + `<div class="macro-note">Market cap, P/E and P/B are current (price × shares, price ÷ earnings); the table below is the filings’ own history. Latest annual 10-K${c.fiscal ? ` FY${c.fiscal}` : ''}${c.asOf ? ` · as of ${dealDateY(c.asOf)}` : ''} · <a href="https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=${esc(c.cik)}&type=10-K" target="_blank" rel="noopener noreferrer">filings ↗</a></div>`
+    + `<div class="macro-note">Market cap is Nasdaq's quote data; P/E, P/B and EV/EBITDA are computed from it and the filing's own earnings, equity, debt and cash. The table below is the filings’ own history. Latest annual 10-K${c.fiscal ? ` FY${c.fiscal}` : ''}${c.asOf ? ` · as of ${dealDateY(c.asOf)}` : ''} · <a href="https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=${esc(c.cik)}&type=10-K" target="_blank" rel="noopener noreferrer">filings ↗</a></div>`
     + (series.length ? `<div class="gtitle">FIVE-YEAR FINANCIALS</div>
       <div class="co-table">
         <div class="co-tr co-th"><span>FY</span><span>REVENUE</span><span>NET INCOME</span><span>MARGIN</span><span>ASSETS</span><span>EQUITY</span><span>EPS</span></div>
@@ -3574,6 +3587,18 @@ document.addEventListener('click', (e) => {
     if (chip.dataset.comin != null) coMin = Number(chip.dataset.comin);
     renderCompanies();
   }
+});
+
+document.addEventListener('change', (e) => {
+  const s = e.target.closest('[data-cosel]');
+  if (!s) return;
+  const v = s.value;
+  if (s.dataset.cosel === 'sector') coSector = v;
+  else if (s.dataset.cosel === 'size') coMin = Number(v);
+  else if (s.dataset.cosel === 'pe') coPe = v;
+  else if (s.dataset.cosel === 'margin') coMinMargin = Number(v);
+  else if (s.dataset.cosel === 'growth') coGrowth = v === 'any' ? null : Number(v);
+  renderCompanies();
 });
 
 document.addEventListener('input', (e) => {

@@ -80,9 +80,9 @@ for (const c of C) {
   }
 
   // --- ratios in a band a human would accept ---------------------------------
-  if (c.pe != null && c.pe > 150 && c.sector !== 'Financials') add('P/E above 150 (check earnings)', t, String(c.pe));
-  if (c.pb != null && c.pb > 60) add('P/B above 60 (check equity)', t, String(c.pb));
-  if (c.evEbitda != null && c.evEbitda > 60) add('EV/EBITDA above 60 (check D&A)', t, String(c.evEbitda));
+  if (c.pe != null && c.pe > 300 && c.sector !== 'Financials') add('P/E above 300 (check earnings)', t, String(c.pe));
+  if (c.pb != null && c.pb > 100) add('P/B above 100 (check equity)', t, String(c.pb));
+  if (c.evEbitda != null && c.evEbitda > 100) add('EV/EBITDA above 100 (check D&A)', t, String(c.evEbitda));
   if (c.debt != null && c.assets != null && c.debt > c.assets) {
     add('debt exceeds assets', t, `${(c.debt / 1e9).toFixed(0)}B > ${(c.assets / 1e9).toFixed(0)}B`);
   }

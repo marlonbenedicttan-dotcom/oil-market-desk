@@ -18,7 +18,7 @@ const data = JSON.parse(readFileSync(FILE, 'utf8'));
 
 const MIN_EPS = 0.05;          // below this a P/E is noise
 const MIN_SHARES = 1e5;        // a company with 100k shares is a broken fact
-const MAX_PE = 400;
+const MAX_PE = 2000;   // a genuine 450x P/E (Tesla on thin GAAP earnings) is data, not an error
 const MAX_DE = 20;
 const MAX_CR = 50;
 
@@ -101,7 +101,7 @@ for (const c of data.companies) {
   if (c.quarterly) { c.pe = null; c.peBasis = null; }
 
   c.pb = c.marketCap && c.equity > 0 ? +(c.marketCap / c.equity).toFixed(1) : null;
-  if (c.pb != null && c.pb > 100) c.pb = null;
+  if (c.pb != null && c.pb > 200) c.pb = null;
 
   // Debt cannot exceed total assets. Where a tag says it does, the tag is measuring something else
   // (a gross figure or a subsidiary's obligation); showing it would imply impossible leverage.
@@ -118,7 +118,7 @@ for (const c of data.companies) {
   const ebitda = opInc != null ? opInc + (c.da || 0) : null;
   // EBITDA is not a bank metric: deposits are operating liabilities and interest is the business.
   c.evEbitda = c.ev && ebitda > 0 && c.sector !== 'Financials' ? +(c.ev / ebitda).toFixed(1) : null;
-  if (c.evEbitda != null && c.evEbitda > 200) c.evEbitda = null;
+  if (c.evEbitda != null && c.evEbitda > 500) c.evEbitda = null;
 
   c.currentRatio = c.currentAssets != null && c.currentLiabilities > 0 ? +(c.currentAssets / c.currentLiabilities).toFixed(2) : null;
   if (c.currentRatio != null && c.currentRatio > MAX_CR) c.currentRatio = null;

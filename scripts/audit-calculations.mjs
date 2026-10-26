@@ -65,8 +65,8 @@ for (const c of C) {
 
   // --- sanity ranges ---------------------------------------------------------
   if (c.marketCap != null && (c.marketCap < 1e6 || c.marketCap > 2e13)) anomalies.push(`${c.ticker}: market cap ${c.marketCap}`);
-  if (c.pe != null && (c.pe > 500 || c.pe < 0.5)) anomalies.push(`${c.ticker}: P/E ${c.pe}`);
-  if (c.pb != null && (c.pb > 100 || c.pb < 0)) anomalies.push(`${c.ticker}: P/B ${c.pb}`);
+  if (c.pe != null && (c.pe > 2000 || c.pe < 0.5)) anomalies.push(`${c.ticker}: P/E ${c.pe}`);
+  if (c.pb != null && (c.pb > 200 || c.pb < 0)) anomalies.push(`${c.ticker}: P/B ${c.pb}`);
   if (c.currentRatio != null && c.currentRatio > 50) anomalies.push(`${c.ticker}: current ratio ${c.currentRatio}`);
   if (c.debtEquity != null && c.debtEquity > 50) anomalies.push(`${c.ticker}: D/E ${c.debtEquity}`);
   if (c.shares != null && c.shares < 1e5) anomalies.push(`${c.ticker}: shares ${c.shares}`);

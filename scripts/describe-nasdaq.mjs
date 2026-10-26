@@ -31,7 +31,8 @@ async function profile(ticker) {
       });
       if (!res.ok) { await sleep(600 * (i + 1)); continue; }
       const j = await res.json();
-      return j?.data?.CompanyDescription?.value || null;
+      if (!j?.data) return null;
+      return { desc: j.data.CompanyDescription?.value || null, name: j.data.CompanyName?.value || null };
     } catch { await sleep(600 * (i + 1)); }
   }
   return null;
@@ -49,14 +50,27 @@ function tidy(text) {
 }
 
 const data = JSON.parse(readFileSync(FILE, 'utf8'));
-const todo = data.companies.filter((c) => !c.description && c.marketCap && c.ticker);
+// --bad re-does descriptions that survived the 10-K pass but start mid-sentence ("(“AI”) into the
+// real world…"), which is worse than no description at all.
+const BAD = process.argv.includes('--bad');
+const todo = data.companies.filter((c) => c.marketCap && c.ticker
+  && (BAD ? (c.description && !/^[A-Z0-9"“]/.test(c.description)) : !c.description));
 console.log(`${todo.length} companies without a description`);
 
 let done = 0;
 const failed = [];
 for (const c of todo) {
-  const raw = await profile(c.ticker);
-  const d = raw ? tidy(raw) : null;
+  const p = await profile(c.ticker);
+  let d = p?.desc ? tidy(p.desc) : null;
+  // Nasdaq writes the profile as a continuation of the name — "Walmart Inc. (Nasdaq: WMT) is a …" —
+  // so a bare parenthetical is the tail of that sentence. Put the name back in front of it.
+  if (d) {
+    const nm = p.name || c.name || '';
+    d = d.replace(/^\([^)]*\)\s*/, '');
+    if (/^,\s*is\b/i.test(d)) d = `${nm}${d.replace(/^,\s*is\b/i, ' is')}`;
+    else if (/^,\s*/.test(d)) d = `${nm}${d}`;
+    else if (/^[a-z]/.test(d) && !d.toLowerCase().startsWith(nm.toLowerCase())) d = `${nm} ${d}`;
+  }
   if (d && !/^(n\/?a|null|undefined)$/i.test(d)) {
     c.description = d;
     c.descriptionSource = 'nasdaq';

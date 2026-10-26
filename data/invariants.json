@@ -1,12 +1,24 @@
 {
- "generated": "2026-10-26T10:24:20.746Z",
+ "generated": "2026-10-26T13:11:02.397Z",
  "companies": 499,
- "total": 32,
+ "total": 26,
  "causes": {
-  "EV/EBITDA above 60 (check D&A)": [
+  "EV/EBITDA above 100 (check D&A)": [
    {
-    "ticker": "AVGO",
-    "detail": "62.1"
+    "ticker": "TSLA",
+    "detail": "285.2"
+   },
+   {
+    "ticker": "AMD",
+    "detail": "214.6"
+   },
+   {
+    "ticker": "PLTR",
+    "detail": "327.2"
+   },
+   {
+    "ticker": "PANW",
+    "detail": "200.5"
    },
    {
     "ticker": "GEV",
@@ -17,14 +29,6 @@
     "detail": "123.9"
    },
    {
-    "ticker": "ADI",
-    "detail": "66.5"
-   },
-   {
-    "ticker": "NOW",
-    "detail": "63.3"
-   },
-   {
     "ticker": "APD",
     "detail": "106.2"
    },
@@ -33,16 +37,8 @@
     "detail": "126.7"
    },
    {
-    "ticker": "MPWR",
-    "detail": "70.3"
-   },
-   {
-    "ticker": "TER",
-    "detail": "61.7"
-   },
-   {
-    "ticker": "COHR",
-    "detail": "70"
+    "ticker": "CIEN",
+    "detail": "231.9"
    },
    {
     "ticker": "P",
@@ -53,88 +49,68 @@
     "detail": "114.7"
    },
    {
+    "ticker": "TTWO",
+    "detail": "407.3"
+   },
+   {
     "ticker": "DOW",
     "detail": "116.4"
+   },
+   {
+    "ticker": "VTRS",
+    "detail": "235.4"
    },
    {
     "ticker": "HAS",
     "detail": "126.6"
    }
   ],
-  "P/E above 150 (check earnings)": [
+  "P/E above 300 (check earnings)": [
    {
-    "ticker": "AMD",
-    "detail": "194.6"
+    "ticker": "TSLA",
+    "detail": "457.2"
    },
    {
-    "ticker": "PLTR",
-    "detail": "290.8"
+    "ticker": "PANW",
+    "detail": "1014"
+   },
+   {
+    "ticker": "DDOG",
+    "detail": "545.2"
+   },
+   {
+    "ticker": "HPE",
+    "detail": "1320.2"
    },
    {
     "ticker": "CIEN",
     "detail": "368.2"
    },
    {
-    "ticker": "WAT",
-    "detail": "267.5"
-   },
-   {
-    "ticker": "VTR",
-    "detail": "163.1"
-   },
-   {
-    "ticker": "MCHP",
-    "detail": "174.8"
-   },
-   {
-    "ticker": "P",
-    "detail": "162.3"
-   },
-   {
-    "ticker": "AXON",
-    "detail": "274"
-   },
-   {
-    "ticker": "ON",
-    "detail": "232.5"
+    "ticker": "TWLO",
+    "detail": "1188.3"
    },
    {
     "ticker": "LYV",
     "detail": "303.4"
    },
    {
-    "ticker": "EL",
-    "detail": "216.3"
+    "ticker": "GPC",
+    "detail": "546.4"
+   },
+   {
+    "ticker": "CPT",
+    "detail": "545.8"
    }
   ],
-  "P/B above 60 (check equity)": [
+  "P/B above 100 (check equity)": [
    {
-    "ticker": "AAPL",
-    "detail": "68.8"
+    "ticker": "FTNT",
+    "detail": "106.7"
    },
    {
-    "ticker": "MA",
-    "detail": "70.6"
-   },
-   {
-    "ticker": "PLTR",
-    "detail": "64"
-   },
-   {
-    "ticker": "STX",
-    "detail": "66.5"
-   },
-   {
-    "ticker": "BE",
-    "detail": "74.1"
-   },
-   {
-    "ticker": "VRSK",
-    "detail": "82.5"
-   },
-   {
-    "ticker": "GDDY",
-    "detail": "66.4"
+    "ticker": "LYV",
+    "detail": "150.8"
    }
   ]
  }
