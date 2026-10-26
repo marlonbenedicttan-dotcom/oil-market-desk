@@ -56,6 +56,13 @@ for (const c of data.companies) {
   const before = JSON.stringify([c.marketCap, c.pe, c.pb, c.ev, c.evEbitda, c.currentRatio, c.debtEquity]);
 
   if (c.shares != null && c.shares < MIN_SHARES) c.shares = null;
+  // A dual-class company's XBRL share count covers one class, so price x shares cannot reproduce the
+  // cap. Derive the total from the two authoritative numbers and mark it, rather than leave a count
+  // that contradicts the market cap.
+  if (c.marketCap && c.price && c.shares && Math.abs(c.price * c.shares - c.marketCap) / c.marketCap > 0.10) {
+    c.shares = Math.round(c.marketCap / c.price);
+    c.sharesDerived = true;
+  }
   if (c.revenue != null && c.revenue < 0) c.revenue = null;
 
   // Market cap comes from Nasdaq where available (it already handles classes, ADRs and buybacks);
@@ -90,6 +97,9 @@ for (const c of data.companies) {
   c.pe = pe != null && pe <= MAX_PE && pe >= 0.5 ? pe : null;
   c.peBasis = c.pe == null ? null : (c.netIncomeTTM > 0 ? 'TTM' : 'FY');
 
+  // A quarterly figure cannot produce an annual P/E (it would understate it four-fold).
+  if (c.quarterly) { c.pe = null; c.peBasis = null; }
+
   c.pb = c.marketCap && c.equity > 0 ? +(c.marketCap / c.equity).toFixed(1) : null;
   if (c.pb != null && c.pb > 100) c.pb = null;
 
@@ -101,6 +111,9 @@ for (const c of data.companies) {
   // so mark it rather than present a guess as a measurement.
   c.evApprox = c.debt == null && c.cash == null;
   c.ev = c.marketCap != null ? c.marketCap + (c.debt || 0) - (c.cash || 0) : null;
+  // Operating income from a decade ago is not operating income. KLA's tag last filed in 2014, which
+  // made EV/EBITDA look like 166x on a 2014 profit.
+  if (c.opIncEnd && newestTTM && newestTTM - Date.parse(c.opIncEnd) > 730 * 86400000) { c.opInc = null; c.opIncStale = true; }
   const opInc = c.opInc ?? [...(c.series || [])].reverse().find((x) => x.opInc != null)?.opInc ?? null;
   const ebitda = opInc != null ? opInc + (c.da || 0) : null;
   // EBITDA is not a bank metric: deposits are operating liabilities and interest is the business.

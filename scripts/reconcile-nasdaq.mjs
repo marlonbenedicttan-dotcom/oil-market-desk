@@ -74,6 +74,13 @@ function readTable(j) {
   return { period, rev, ni, assets, equity };
 }
 
+// A bank's "total revenue" means net interest income plus fees at one publisher and gross interest
+// income at another. When revenue is the only line that differs at a financial, it is a definition,
+// not an error.
+const onlyRevenue = (fields, abs) => Object.entries(fields)
+  .filter(([k, v]) => v != null && v > 0.10 && (abs[k] || 0) > 5e8)
+  .every(([k]) => k === 'revenue');
+
 const rel = (a, b) => {
   if (a == null || b == null || a === 0 || b === 0) return null;
   return Math.abs(a - b) / Math.max(Math.abs(a), Math.abs(b));
@@ -126,7 +133,8 @@ for (const c of todo) {
     abs,
     worst: sameYear ? worst : null,
     status: !sameYear ? 'period-mismatch'
-      : worst > 0.10 && worstAbs > 5e8 ? 'diverge'
+      : worst > 0.10 && worstAbs > 5e8
+        ? (c.sector === 'Financials' && onlyRevenue(fields, abs) ? 'definition' : 'diverge')
         : worst > 0.10 ? 'diverge-immaterial'
           : worst > 0.02 ? 'close' : 'match',
   });
@@ -135,7 +143,7 @@ for (const c of todo) {
 
 const usable = out.filter((r) => r.worst != null);
 const bucket = (s) => out.filter((r) => r.status === s).length;
-const STATES = ['match', 'close', 'diverge', 'diverge-immaterial', 'period-mismatch', 'no-nasdaq-data'];
+const STATES = ['match', 'close', 'diverge', 'diverge-immaterial', 'definition', 'period-mismatch', 'no-nasdaq-data'];
 const diverging = usable.filter((r) => r.status === 'diverge').sort((a, b) => b.worst - a.worst);
 
 // Group by cause: a bank's "total revenue" excludes items SEC's Revenues includes, so those are a
@@ -154,7 +162,7 @@ for (const r of diverging) {
   causes[k].push(r.ticker);
 }
 
-console.log(`\nmatched ${bucket('match')} · close ${bucket('close')} · diverge ${bucket('diverge')} · immaterial ${bucket('diverge-immaterial')} · period-mismatch ${bucket('period-mismatch')} · no-data ${bucket('no-nasdaq-data')}`);
+console.log(`\nmatched ${bucket('match')} · close ${bucket('close')} · diverge ${bucket('diverge')} · definition ${bucket('definition')} · immaterial ${bucket('diverge-immaterial')} · period-mismatch ${bucket('period-mismatch')} · no-data ${bucket('no-nasdaq-data')}`);
 console.log(`of ${usable.length} comparable companies, ${((bucket('match') + bucket('close')) / usable.length * 100).toFixed(1)}% agree within 10%`);
 
 console.log('\nby cause:');

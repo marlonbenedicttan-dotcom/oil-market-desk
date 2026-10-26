@@ -1,12 +1,13 @@
 {
- "generated": "2026-10-26T07:07:10.940Z",
+ "generated": "2026-10-26T10:24:11.101Z",
  "summary": {
-  "usable": 489,
-  "match": 349,
-  "close": 80,
-  "diverge": 60,
+  "usable": 487,
+  "match": 350,
+  "close": 78,
+  "diverge": 38,
   "diverge-immaterial": 0,
-  "period-mismatch": 6,
+  "definition": 21,
+  "period-mismatch": 8,
   "no-nasdaq-data": 4
  },
  "companies": [
@@ -193,7 +194,7 @@
    "our": {
     "revenue": 63887000000,
     "netIncome": 23126000000,
-    "assets": 169903000000,
+    "assets": 171092000000,
     "equity": 81292000000,
     "marketCap": 1535581254973,
     "price": 321.68,
@@ -208,16 +209,16 @@
    "diff": {
     "revenue": 0,
     "netIncome": 0,
-    "assets": 0.006949477474107498,
+    "assets": 0,
     "equity": 0
    },
    "abs": {
     "revenue": 63887000000,
     "netIncome": 23126000000,
-    "assets": 1189000000,
+    "assets": 0,
     "equity": 0
    },
-   "worst": 0.006949477474107498,
+   "worst": 0,
    "status": "match"
   },
   {
@@ -358,7 +359,7 @@
     "equity": 0
    },
    "worst": 0.3977326428303477,
-   "status": "diverge"
+   "status": "definition"
   },
   {
    "ticker": "MU",
@@ -1023,7 +1024,7 @@
     "equity": 0
    },
    "worst": 0.40962169893562045,
-   "status": "diverge"
+   "status": "definition"
   },
   {
    "ticker": "HD",
@@ -1443,7 +1444,7 @@
     "equity": 0
    },
    "worst": 0.3224344081146937,
-   "status": "diverge"
+   "status": "definition"
   },
   {
    "ticker": "TMO",
@@ -1492,7 +1493,7 @@
     "equity": 4428390000,
     "marketCap": 263734897254,
     "price": 257.57,
-    "shares": 252098440
+    "shares": 1023934842
    },
    "nasdaq": {
     "revenue": 4812005000,
@@ -1758,7 +1759,7 @@
     "equity": 0
    },
    "worst": 0.12184218245819889,
-   "status": "diverge"
+   "status": "definition"
   },
   {
    "ticker": "CRM",
@@ -1772,7 +1773,7 @@
     "equity": 59142000000,
     "marketCap": 204573110000,
     "price": 248.57,
-    "shares": 937000000
+    "shares": 823000000
    },
    "nasdaq": {
     "revenue": 41525000000,
@@ -1908,11 +1909,11 @@
    "our": {
     "revenue": 13579476000,
     "netIncome": 4830771000,
-    "assets": 16720228000,
+    "assets": 17951535000,
     "equity": 6349820000,
     "marketCap": 190021995300,
     "price": 145.61,
-    "shares": 131076611
+    "shares": 1305006492
    },
    "nasdaq": {
     "revenue": 13579476000,
@@ -1923,17 +1924,17 @@
    "diff": {
     "revenue": 0,
     "netIncome": 0,
-    "assets": 0.0685906247014531,
+    "assets": 0,
     "equity": 0
    },
    "abs": {
     "revenue": 13579476000,
     "netIncome": 4830771000,
-    "assets": 1231307000,
+    "assets": 0,
     "equity": 0
    },
-   "worst": 0.0685906247014531,
-   "status": "close"
+   "worst": 0,
+   "status": "match"
   },
   {
    "ticker": "PEP",
@@ -1978,7 +1979,7 @@
    "our": {
     "revenue": 11019707000,
     "netIncome": 2267342000,
-    "assets": 47991190000,
+    "assets": 47992712000,
     "equity": 33815755000,
     "marketCap": 189499016398,
     "price": 391.07,
@@ -1993,16 +1994,16 @@
    "diff": {
     "revenue": 0,
     "netIncome": 0,
-    "assets": 0.00003171314844637244,
+    "assets": 0,
     "equity": 0
    },
    "abs": {
     "revenue": 11019707000,
     "netIncome": 2267342000,
-    "assets": 1522000,
+    "assets": 0,
     "equity": 0
    },
-   "worst": 0.00003171314844637244,
+   "worst": 0,
    "status": "match"
   },
   {
@@ -2122,7 +2123,7 @@
     "equity": 13413100000,
     "marketCap": 182703488658,
     "price": 74.09,
-    "shares": 1229214930
+    "shares": 2465966914
    },
    "nasdaq": {
     "revenue": 23094700000,
@@ -2361,7 +2362,7 @@
    "period": "12/31/2025",
    "sameYear": true,
    "our": {
-    "revenue": 41304000000,
+    "revenue": 72229000000,
     "netIncome": 10833000000,
     "assets": 300052000000,
     "equity": 33474000000,
@@ -2376,19 +2377,19 @@
     "equity": 33474000000
    },
    "diff": {
-    "revenue": 0.4866708922113269,
+    "revenue": 0.1023327492139244,
     "netIncome": 0,
     "assets": 0,
     "equity": 0
    },
    "abs": {
-    "revenue": 41304000000,
+    "revenue": 72229000000,
     "netIncome": 10833000000,
     "assets": 0,
     "equity": 0
    },
-   "worst": 0.4866708922113269,
-   "status": "diverge"
+   "worst": 0.1023327492139244,
+   "status": "definition"
   },
   {
    "ticker": "WELL",
@@ -3236,7 +3237,7 @@
    "period": "12/31/2025",
    "sameYear": true,
    "our": {
-    "revenue": 8062000000,
+    "revenue": 53434000000,
     "netIncome": 2453000000,
     "assets": 669009000000,
     "equity": 113616000000,
@@ -3251,18 +3252,18 @@
     "equity": 113616000000
    },
    "diff": {
-    "revenue": 0.8835845896147404,
+    "revenue": 0.22841217582163692,
     "netIncome": 0.11088463106400326,
     "assets": 0,
     "equity": 0
    },
    "abs": {
-    "revenue": 8062000000,
+    "revenue": 53434000000,
     "netIncome": 2453000000,
     "assets": 0,
     "equity": 0
    },
-   "worst": 0.8835845896147404,
+   "worst": 0.22841217582163692,
    "status": "diverge"
   },
   {
@@ -3347,7 +3348,7 @@
     "equity": -5578000000,
     "marketCap": 117087623315,
     "price": 155.83,
-    "shares": 31673346
+    "shares": 751380500
    },
    "nasdaq": {
     "revenue": 26917000000,
@@ -4243,7 +4244,7 @@
     "equity": 0
    },
    "worst": 0.33142017218450337,
-   "status": "diverge"
+   "status": "definition"
   },
   {
    "ticker": "FCX",
@@ -4383,7 +4384,7 @@
     "equity": 0
    },
    "worst": 0.320537710318861,
-   "status": "diverge"
+   "status": "definition"
   },
   {
    "ticker": "EMR",
@@ -6042,7 +6043,7 @@
     "equity": 13904000000,
     "marketCap": 70091283212,
     "price": 221.15,
-    "shares": 635675701
+    "shares": 316940010
    },
    "nasdaq": {
     "revenue": 37442000000,
@@ -6108,7 +6109,7 @@
    "our": {
     "revenue": 12037300000,
     "netIncome": -394500000,
-    "assets": 41240700000,
+    "assets": 41059500000,
     "equity": 15024900000,
     "marketCap": 68397860540,
     "price": 307.15,
@@ -6123,16 +6124,16 @@
    "diff": {
     "revenue": 0,
     "netIncome": 0,
-    "assets": 0.00439371785638944,
+    "assets": 0,
     "equity": 0
    },
    "abs": {
     "revenue": 12037300000,
     "netIncome": 394500000,
-    "assets": 181200000,
+    "assets": 0,
     "equity": 0
    },
-   "worst": 0.00439371785638944,
+   "worst": 0,
    "status": "match"
   },
   {
@@ -6217,7 +6218,7 @@
     "equity": 8254108000,
     "marketCap": 135733037221,
     "price": 46.19,
-    "shares": 978270734
+    "shares": 2938580585
    },
    "nasdaq": {
     "revenue": 8294343000,
@@ -6318,11 +6319,11 @@
    "our": {
     "revenue": 3014000000,
     "netIncome": -6935100000,
-    "assets": 4805300000,
+    "assets": 7307500000,
     "equity": 4643900000,
     "marketCap": 68496038222,
     "price": 756.17,
-    "shares": 71400000
+    "shares": 90582856
    },
    "nasdaq": {
     "revenue": 3014000000,
@@ -6333,17 +6334,17 @@
    "diff": {
     "revenue": 0,
     "netIncome": 0,
-    "assets": 0.34241532671912417,
+    "assets": 0,
     "equity": 0
    },
    "abs": {
     "revenue": 3014000000,
     "netIncome": 6935100000,
-    "assets": 2502200000,
+    "assets": 0,
     "equity": 0
    },
-   "worst": 0.34241532671912417,
-   "status": "diverge"
+   "worst": 0,
+   "status": "match"
   },
   {
    "ticker": "BSX",
@@ -6553,7 +6554,7 @@
     "equity": 0
    },
    "worst": 0.15782298337156314,
-   "status": "diverge"
+   "status": "definition"
   },
   {
    "ticker": "BE",
@@ -6598,7 +6599,7 @@
    "our": {
     "revenue": 8831000000,
     "netIncome": 2074000000,
-    "assets": 23757000000,
+    "assets": 22909000000,
     "equity": -9686000000,
     "marketCap": 61071715881,
     "price": 1104.84,
@@ -6613,13 +6614,13 @@
    "diff": {
     "revenue": 0,
     "netIncome": 0.10028929604628736,
-    "assets": 0.03569474260218041,
+    "assets": 0,
     "equity": 0
    },
    "abs": {
     "revenue": 8831000000,
     "netIncome": 2074000000,
-    "assets": 848000000,
+    "assets": 0,
     "equity": 0
    },
    "worst": 0.10028929604628736,
@@ -6903,7 +6904,7 @@
     "equity": 0
    },
    "worst": 0.5261515211249097,
-   "status": "diverge"
+   "status": "definition"
   },
   {
    "ticker": "GWW",
@@ -7323,7 +7324,7 @@
     "equity": 0
    },
    "worst": 0.21738587787450467,
-   "status": "diverge"
+   "status": "definition"
   },
   {
    "ticker": "O",
@@ -7407,7 +7408,7 @@
     "equity": 15528000000,
     "marketCap": 56529000000,
     "price": 51.39,
-    "shares": 620000000
+    "shares": 1100000000
    },
    "nasdaq": {
     "revenue": 17188000000,
@@ -7922,7 +7923,7 @@
     "equity": 0
    },
    "worst": 0.5376410573504405,
-   "status": "diverge"
+   "status": "definition"
   },
   {
    "ticker": "VEEV",
@@ -8342,7 +8343,7 @@
     "equity": 0
    },
    "worst": 0.3837723174827647,
-   "status": "diverge"
+   "status": "definition"
   },
   {
    "ticker": "IQV",
@@ -8426,7 +8427,7 @@
     "equity": 11041499000,
     "marketCap": 49636125000,
     "price": 63.03,
-    "shares": 377547108
+    "shares": 787500000
    },
    "nasdaq": {
     "revenue": 3093959000,
@@ -8527,7 +8528,7 @@
    "our": {
     "revenue": 3134459000,
     "netIncome": 1202305000,
-    "assets": 5702500000,
+    "assets": 5702459000,
     "equity": -2654540000,
     "marketCap": 44016830000,
     "price": 615.62,
@@ -8542,16 +8543,16 @@
    "diff": {
     "revenue": 0,
     "netIncome": 0,
-    "assets": 0.000007189829022358615,
+    "assets": 0,
     "equity": 0
    },
    "abs": {
     "revenue": 3134459000,
     "netIncome": 1202305000,
-    "assets": 41000,
+    "assets": 0,
     "equity": 0
    },
-   "worst": 0.000007189829022358615,
+   "worst": 0,
    "status": "match"
   },
   {
@@ -8636,7 +8637,7 @@
     "equity": 2561242000,
     "marketCap": 44572220517,
     "price": 453.67,
-    "shares": 59706000
+    "shares": 98248111
    },
    "nasdaq": {
     "revenue": 3165286000,
@@ -8920,7 +8921,7 @@
     "equity": 3441000000,
     "marketCap": 63617810544,
     "price": 57.81,
-    "shares": 224277000
+    "shares": 1100463770
    },
    "nasdaq": {
     "revenue": 20322000000,
@@ -8990,7 +8991,7 @@
     "equity": 7805000000,
     "marketCap": 50607590000,
     "price": 209.99,
-    "shares": 268117000
+    "shares": 241000000
    },
    "nasdaq": {
     "revenue": 9552000000,
@@ -9056,7 +9057,7 @@
    "our": {
     "revenue": 7118181000,
     "netIncome": 804998000,
-    "assets": 15087717000,
+    "assets": 18299852000,
     "equity": 10903495000,
     "marketCap": 41216454782,
     "price": 209.29,
@@ -9071,17 +9072,17 @@
    "diff": {
     "revenue": 0,
     "netIncome": 0.043605077279695106,
-    "assets": 0.17552792230232245,
+    "assets": 0,
     "equity": 0
    },
    "abs": {
     "revenue": 7118181000,
     "netIncome": 804998000,
-    "assets": 3212135000,
+    "assets": 0,
     "equity": 0
    },
-   "worst": 0.17552792230232245,
-   "status": "diverge"
+   "worst": 0.043605077279695106,
+   "status": "close"
   },
   {
    "ticker": "ILMN",
@@ -10005,7 +10006,7 @@
     "equity": 24206000000,
     "marketCap": 34699589823,
     "price": 101.69,
-    "shares": 375900000
+    "shares": 341229126
    },
    "nasdaq": {
     "revenue": 19929000000,
@@ -10114,7 +10115,7 @@
     "equity": 1284000000,
     "marketCap": 33090457458,
     "price": 289.01,
-    "shares": 131943000
+    "shares": 114495891
    },
    "nasdaq": {
     "revenue": 14733000000,
@@ -10485,7 +10486,7 @@
     "equity": 0
    },
    "worst": 0.27101602661022073,
-   "status": "diverge"
+   "status": "definition"
   },
   {
    "ticker": "HBAN",
@@ -10493,7 +10494,7 @@
    "period": "12/31/2025",
    "sameYear": true,
    "our": {
-    "revenue": null,
+    "revenue": 5991000000,
     "netIncome": 2211000000,
     "assets": 225106000000,
     "equity": 24342000000,
@@ -10508,18 +10509,19 @@
     "equity": 24342000000
    },
    "diff": {
-    "revenue": null,
+    "revenue": 0.5201441730076092,
     "netIncome": 0.05608322026232474,
     "assets": 0,
     "equity": 0
    },
    "abs": {
+    "revenue": 5991000000,
     "netIncome": 2211000000,
     "assets": 0,
     "equity": 0
    },
-   "worst": 0.05608322026232474,
-   "status": "close"
+   "worst": 0.5201441730076092,
+   "status": "definition"
   },
   {
    "ticker": "MLM",
@@ -10533,7 +10535,7 @@
     "equity": 10032000000,
     "marketCap": 36019381273,
     "price": 507.17,
-    "shares": 60600000
+    "shares": 71020331
    },
    "nasdaq": {
     "revenue": 6150000000,
@@ -10702,7 +10704,7 @@
    "period": "12/31/2025",
    "sameYear": true,
    "our": {
-    "revenue": 5017800000,
+    "revenue": 8086400000,
     "netIncome": 1736900000,
     "assets": 177132700000,
     "equity": 12957900000,
@@ -10717,19 +10719,19 @@
     "equity": 12957900000
    },
    "diff": {
-    "revenue": 0.6491048951048951,
+    "revenue": 0.4345174825174825,
     "netIncome": 0.024065864471184292,
     "assets": 0,
     "equity": 0
    },
    "abs": {
-    "revenue": 5017800000,
+    "revenue": 8086400000,
     "netIncome": 1736900000,
     "assets": 0,
     "equity": 0
    },
-   "worst": 0.6491048951048951,
-   "status": "diverge"
+   "worst": 0.4345174825174825,
+   "status": "definition"
   },
   {
    "ticker": "EXR",
@@ -11359,7 +11361,7 @@
     "equity": 0
    },
    "worst": 0.11607591754650579,
-   "status": "diverge"
+   "status": "definition"
   },
   {
    "ticker": "CFG",
@@ -11367,7 +11369,7 @@
    "period": "12/31/2025",
    "sameYear": true,
    "our": {
-    "revenue": 1635000000,
+    "revenue": 8247000000,
     "netIncome": 1831000000,
     "assets": 226351000000,
     "equity": 26317000000,
@@ -11382,19 +11384,19 @@
     "equity": 26317000000
    },
    "diff": {
-    "revenue": 0.8643941278925106,
+    "revenue": 0.31599900472754416,
     "netIncome": 0.0780993992353905,
     "assets": 0,
     "equity": 0
    },
    "abs": {
-    "revenue": 1635000000,
+    "revenue": 8247000000,
     "netIncome": 1831000000,
     "assets": 0,
     "equity": 0
    },
-   "worst": 0.8643941278925106,
-   "status": "diverge"
+   "worst": 0.31599900472754416,
+   "status": "definition"
   },
   {
    "ticker": "CINF",
@@ -12339,7 +12341,7 @@
     "equity": 0
    },
    "worst": 0.20133212231304876,
-   "status": "diverge"
+   "status": "definition"
   },
   {
    "ticker": "RF",
@@ -12374,7 +12376,7 @@
     "equity": 0
    },
    "worst": 0.4805370524562864,
-   "status": "diverge"
+   "status": "definition"
   },
   {
    "ticker": "FE",
@@ -12598,7 +12600,7 @@
     "equity": 12045800000,
     "marketCap": 22682924552,
     "price": 82.68,
-    "shares": 310336344
+    "shares": 274345967
    },
    "nasdaq": {
     "revenue": 17271900000,
@@ -13572,7 +13574,7 @@
    "period": "12/31/2025",
    "sameYear": true,
    "our": {
-    "revenue": 1749000000,
+    "revenue": 7513000000,
     "netIncome": 1829000000,
     "assets": 184381000000,
     "equity": 20381000000,
@@ -13587,19 +13589,19 @@
     "equity": 20381000000
    },
    "diff": {
-    "revenue": 0.8442287139294621,
+    "revenue": 0.33086925543284645,
     "netIncome": 0.07818480043739748,
     "assets": 0,
     "equity": 0
    },
    "abs": {
-    "revenue": 1749000000,
+    "revenue": 7513000000,
     "netIncome": 1829000000,
     "assets": 0,
     "equity": 0
    },
-   "worst": 0.8442287139294621,
-   "status": "diverge"
+   "worst": 0.33086925543284645,
+   "status": "definition"
   },
   {
    "ticker": "GPN",
@@ -13817,7 +13819,7 @@
    "period": "12/31/2025",
    "sameYear": true,
    "our": {
-    "revenue": 3174000000,
+    "revenue": 18454000000,
     "netIncome": 1667000000,
     "assets": 86348000000,
     "equity": 18686000000,
@@ -13832,19 +13834,19 @@
     "equity": 18686000000
    },
    "diff": {
-    "revenue": 0.8280047686138506,
+    "revenue": 0,
     "netIncome": 0,
     "assets": 0,
     "equity": 0
    },
    "abs": {
-    "revenue": 3174000000,
+    "revenue": 18454000000,
     "netIncome": 1667000000,
     "assets": 0,
     "equity": 0
    },
-   "worst": 0.8280047686138506,
-   "status": "diverge"
+   "worst": 0,
+   "status": "match"
   },
   {
    "ticker": "SNA",
@@ -13928,7 +13930,7 @@
     "equity": 13919000000,
     "marketCap": 18440118236,
     "price": 136.55,
-    "shares": 408923857
+    "shares": 135042975
    },
    "nasdaq": {
     "revenue": 6849000000,
@@ -13963,7 +13965,7 @@
     "equity": 6453400000,
     "marketCap": 18196527383,
     "price": 60.25,
-    "shares": 334600000
+    "shares": 302017052
    },
    "nasdaq": {
     "revenue": 4159100000,
@@ -14204,7 +14206,7 @@
    "our": {
     "revenue": 1990869000,
     "netIncome": 651946000,
-    "assets": 1854160000,
+    "assets": 1868133000,
     "equity": -1745784000,
     "marketCap": 17608767792,
     "price": 815.31,
@@ -14219,16 +14221,16 @@
    "diff": {
     "revenue": 0,
     "netIncome": 0,
-    "assets": 0.007479660174088247,
+    "assets": 0,
     "equity": 0
    },
    "abs": {
     "revenue": 1990869000,
     "netIncome": 651946000,
-    "assets": 13973000,
+    "assets": 0,
     "equity": 0
    },
-   "worst": 0.007479660174088247,
+   "worst": 0,
    "status": "match"
   },
   {
@@ -14340,10 +14342,10 @@
    "ticker": "APA",
    "sector": "Energy",
    "period": "12/31/2025",
-   "sameYear": true,
+   "sameYear": false,
    "our": {
-    "revenue": null,
-    "netIncome": 1434000000,
+    "revenue": 8920000000,
+    "netIncome": 747000000,
     "assets": 17761000000,
     "equity": 6093000000,
     "marketCap": 18183243369,
@@ -14357,18 +14359,19 @@
     "equity": 6093000000
    },
    "diff": {
-    "revenue": null,
-    "netIncome": 0,
+    "revenue": 0,
+    "netIncome": 0.4790794979079498,
     "assets": 0,
     "equity": 0
    },
    "abs": {
-    "netIncome": 1434000000,
+    "revenue": 8920000000,
+    "netIncome": 747000000,
     "assets": 0,
     "equity": 0
    },
-   "worst": 0,
-   "status": "match"
+   "worst": null,
+   "status": "period-mismatch"
   },
   {
    "ticker": "J",
@@ -14691,7 +14694,7 @@
    "period": "12/28/2025",
    "sameYear": true,
    "our": {
-    "revenue": 4701300000,
+    "revenue": 5365900000,
     "netIncome": -322400000,
     "assets": 5552000000,
     "equity": 565500000,
@@ -14706,19 +14709,19 @@
     "equity": 538500000
    },
    "diff": {
-    "revenue": 0,
+    "revenue": 0.12385620306006448,
     "netIncome": 0,
     "assets": 0,
     "equity": 0.04774535809018567
    },
    "abs": {
-    "revenue": 4701300000,
+    "revenue": 5365900000,
     "netIncome": 322400000,
     "assets": 0,
     "equity": 27000000
    },
-   "worst": 0.04774535809018567,
-   "status": "close"
+   "worst": 0.12385620306006448,
+   "status": "diverge"
   },
   {
    "ticker": "CRL",
@@ -15152,7 +15155,7 @@
     "equity": 319908000,
     "marketCap": 14541946193,
     "price": 230.28,
-    "shares": 70450294
+    "shares": 63148976
    },
    "nasdaq": {
     "revenue": 6497226000,
@@ -15222,7 +15225,7 @@
     "equity": 215100000,
     "marketCap": 14284594534,
     "price": 112.79,
-    "shares": 141355906
+    "shares": 126647704
    },
    "nasdaq": {
     "revenue": 4951100000,
@@ -15837,7 +15840,7 @@
     "equity": 0
    },
    "worst": 0.7593281013355363,
-   "status": "diverge"
+   "status": "definition"
   },
   {
    "ticker": "SOLV",
@@ -15886,7 +15889,7 @@
     "equity": 16054000000,
     "marketCap": 12444261406,
     "price": 108.61,
-    "shares": 137743676
+    "shares": 114577492
    },
    "nasdaq": {
     "revenue": 54774000000,
@@ -16613,10 +16616,10 @@
    "ticker": "CPT",
    "sector": "Real estate",
    "period": "12/31/2025",
-   "sameYear": true,
+   "sameYear": false,
    "our": {
-    "revenue": null,
-    "netIncome": 384462000,
+    "revenue": 1586511000,
+    "netIncome": 18790000,
     "assets": 9042989000,
     "equity": 4362523000,
     "marketCap": 10255013700,
@@ -16630,18 +16633,19 @@
     "equity": 4362523000
    },
    "diff": {
-    "revenue": null,
-    "netIncome": 0,
+    "revenue": 0,
+    "netIncome": 0.9511265092518897,
     "assets": 0,
     "equity": 0
    },
    "abs": {
-    "netIncome": 384462000,
+    "revenue": 1586511000,
+    "netIncome": 18790000,
     "assets": 0,
     "equity": 0
    },
-   "worst": 0,
-   "status": "match"
+   "worst": null,
+   "status": "period-mismatch"
   },
   {
    "ticker": "PODD",
@@ -16970,7 +16974,7 @@
     "equity": 3245000000,
     "marketCap": 9468498208,
     "price": 84.96,
-    "shares": 131283515
+    "shares": 111446542
    },
    "nasdaq": {
     "revenue": 13184000000,

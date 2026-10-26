@@ -1715,3 +1715,21 @@ beyond tolerance fails unless the baseline is deliberately refreshed, so a 6× c
 - `node scripts/fix-from-facts.mjs TICKER…` — exception-queue repair from a company's full XBRL index
 
 Audit: **0 reconciliation mismatches, 0 out-of-range**. 101/101 tests. Reconciliation 87.7% within 10%.
+
+## Companies: closing the remaining flags (2026-10-26, final)
+- **Banks**: revenue now uses each issuer's own "revenues net of interest expense" where that is the
+  top line (COF 8.1→53.4B, L 3.2→18.5B, NTRS 5.0→8.1B, AXP 41.3→72.2B, CFG/KEY/HBAN already done).
+  The 21 remaining revenue gaps against Nasdaq are classified as **definition**, not error: the two
+  publishers scope bank revenue differently, and we keep the issuer's figure.
+- **HONA** (Honeywell Aerospace) has only a 10-Q and Form 10 — no 10-K. It now carries the latest
+  quarter (revenue $4.5B, net income $0.2B, assets $19.4B, equity −$5.7B) marked `quarterly`, and derive
+  refuses to build a P/E from a quarter.
+- **APA / CPT** have no consolidated revenue tag in XBRL; they now take the exchange's total revenue
+  with `revenueSource: 'nasdaq'` and `revenueBasis: 'total revenue (exchange)'`.
+- **Share counts** that could not reproduce the market cap (one class of a dual-class company) are now
+  derived as cap ÷ price and marked `sharesDerived`, instead of contradicting the cap.
+- **Operating income** is period-checked: KLA's `OperatingIncomeLoss` last filed in 2014, so EV/EBITDA
+  was 166× on a 2014 profit. Stale operating income is now dropped and the ratio shown as n/a.
+
+Invariants: **0 actionable**, 32 informational (high P/E, high P/B, EV/EBITDA above 60 where EBITDA is
+genuinely thin). Audit: 0 mismatches. Reconciliation: **87.9% within 10%**, 21 definition, 8 period, 4 none.

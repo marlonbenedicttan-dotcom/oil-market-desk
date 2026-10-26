@@ -17,11 +17,13 @@ const RECON = join(ROOT, 'data', 'reconciliation.json');
 const UA = process.env.SEC_UA || 'MarlonWatchtower/1.0 (marlonbenedicttan@gmail.com)';
 const DAY = 86400000;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const QUARTERLY = process.argv.includes('--quarterly');
 
 const FLOW = {
   revenue: ['Revenues', 'RevenueFromContractWithCustomerExcludingAssessedTax', 'RevenueFromContractWithCustomerIncludingAssessedTax', 'RevenuesNetOfInterestExpense', 'OperatingRevenues'],
   netIncome: ['NetIncomeLoss', 'ProfitLoss', 'NetIncomeLossAvailableToCommonStockholdersBasic'],
   da: ['DepreciationDepletionAndAmortization', 'DepreciationAmortizationAndAccretionNet', 'DepreciationAndAmortization'],
+  opInc: ['OperatingIncomeLoss'],
 };
 const INSTANT = {
   assets: ['Assets'],
@@ -102,7 +104,46 @@ for (const t of targets) {
     c[endKey] = best.end;
     c[field + 'Tag'] = best.tag;
     if (field === 'netIncome') { c.fyNetIncome = Number(best.end.slice(0, 4)); c.netIncomeEnd = best.end; }
+    if (field === 'opInc') c.opIncEnd = best.end;
   }
+  // A newly listed spin-off may have only a 10-Q. Show the latest quarter, labelled, and let derive
+  // refuse to build a P/E from it.
+  if (QUARTERLY && c.revenue == null) {
+    const q = (tag) => {
+      const usd = g[tag]?.units?.USD;
+      if (!Array.isArray(usd)) return null;
+      const rows = usd.filter((e) => e.start && e.end && dur(e) > 75 && dur(e) < 105);
+      if (!rows.length) return null;
+      rows.sort((x, y) => x.end.localeCompare(y.end));
+      const x = rows[rows.length - 1];
+      return { val: x.val, end: x.end };
+    };
+    const rev = q('Revenues') || q('RevenueFromContractWithCustomerExcludingAssessedTax') || q('RevenueFromContractWithCustomerIncludingAssessedTax');
+    const ni = q('NetIncomeLoss') || q('ProfitLoss');
+    if (rev) { c.revenue = rev.val; c.revenueEnd = rev.end; c.quarterly = true; changes.push(`revenue ${(rev.val / 1e9).toFixed(1)}B (quarter)`); }
+    if (ni) { c.netIncome = ni.val; c.netIncomeEnd = ni.end; c.quarterly = true; changes.push(`netIncome ${(ni.val / 1e9).toFixed(1)}B (quarter)`); }
+  }
+
+  // Last resort for revenue: the exchange's own total-revenue line, marked as such.
+  if (c.revenue == null) {
+    try {
+      const res = await fetch(`https://api.nasdaq.com/api/company/${encodeURIComponent(String(c.ticker).replace('-', '.'))}/financials?frequency=1`, {
+        headers: { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/124 Safari/537.36', Accept: 'application/json' },
+      });
+      if (res.ok) {
+        const j = await res.json();
+        const row = (j?.data?.incomeStatementTable?.rows || []).find((r) => /^total revenue/i.test(String(r.value1 || '')));
+        const n = row ? Number(String(row.value2).replace(/[$,()\s]/g, '')) : null;
+        if (Number.isFinite(n) && n > 0) {
+          c.revenue = n * 1000;
+          c.revenueSource = 'nasdaq';
+          c.revenueBasis = 'total revenue (exchange)';
+          changes.push(`revenue ${(n * 1000 / 1e9).toFixed(1)}B (nasdaq)`);
+        }
+      }
+    } catch { /* leave empty */ }
+  }
+
   console.log(`  ${t}: ${changes.length ? changes.join(' · ') : 'no change'}`);
   await sleep(600);
 }
