@@ -1823,3 +1823,26 @@ and one 2026 spin-off (VYLR) had no row at all.
 
 Result: **462 verified · 23 definition · 11 disputed · 7 unchecked**, 0 actionable invariant flags,
 0 audit mismatches.
+
+## Companies: period alignment and a deep audit (2026-10-27, later)
+**The defect:** five companies carried a balance sheet from one year beside earnings from another
+(FTV showed $11.7B of assets next to 2024 earnings when its 2024 balance was $17.0B). The frames pass
+dates an instant by calendar period; the earnings pass dates a fiscal year, and they did not have to
+agree.
+
+- `scripts/align-periods.mjs` pins assets and equity to the **same fiscal date as net income**, reading
+  the company's own instants. Two data traps it now handles: the SEC returns a valid document with an
+  empty `units.USD` for some CIKs (falls back to the full filing index), and the same date can appear
+  as a zero-valued shell 10-Q beside the real 10-K (zeros are skipped, 10-K wins).
+- `scripts/sync-series.mjs` makes the five-year table's latest row agree with the audited headline.
+  The series predated the revenue/equity repairs, so AXP printed $41.3B in the table and $72.2B above
+  it for the same year. 248 companies synced.
+
+**New audit — `scripts/audit-deep.mjs`** (in `npm run companies:verify`)
+Checks what arithmetic cannot: coverage per field, the universe count, share classes pointing at a real
+sibling with the same CIK, the five-year table agreeing with the headline *for the same year*,
+description quality, and ratios that have their inputs. **0 coherence issues.**
+
+Result: **463 verified · 23 definition · 10 disputed · 7 unchecked**, 7 reconciliation divergences
+(LYV, BE, DTE, VMRK, T, HAS, TDG — one-offs and revenue definitions), 0 audit mismatches,
+0 actionable invariants, 101/101 tests.
