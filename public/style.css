@@ -1120,3 +1120,4 @@ button.deal-sec-tile:hover { background: #10151b; }
 .co-verif.ok { color: #5fbf7a; border-color: #1e3a2a; background: #0d1a12; }
 .co-verif.bad { color: #e0a03a; border-color: #3d2f14; background: #1a1408; }
 .co-dispute { font-style: normal; color: #e0a03a; font-size: 10px; cursor: help; margin-left: 2px; }
+.co-cl { font-style: normal; color: #7d8894; letter-spacing: .4px; }

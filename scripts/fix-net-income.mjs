@@ -57,14 +57,22 @@ function trailing(usd, fy) {
   parts.reverse();
   const span = (Date.parse(parts[3].end) - Date.parse(parts[0].end)) / DAY;
   if (span < 250 || span > 300) return null;
+  const prior = qs.filter((e) => Date.parse(e.end) < Date.parse(parts[0].end)).slice(-4).map((e) => e.val);
+  if (prior.length >= 2) {
+    const sorted = [...prior].sort((x, y) => x - y);
+    const median = (sorted[Math.floor(sorted.length / 2) - 1] + sorted[Math.floor(sorted.length / 2)]) / 2;
+    if (median > 0 && parts.some((p) => p.val > median * 3)) return null;
+  }
   return { val: parts.reduce((a, e) => a + e.val, 0), asOf: parts[3].end };
 }
 
 const data = JSON.parse(readFileSync(FILE, 'utf8'));
+// Only the genuinely broken ones. This used to reprocess every company whose tag was not
+// NetIncomeLoss/ProfitLoss, which re-inserted trailing figures the outlier guard had just rejected.
 const targets = data.companies.filter((c) => c.cik && (
   c.netIncome == null
   || (c.fyNetIncome && c.fyNetIncome < 2024)
-  || !['NetIncomeLoss', 'ProfitLoss'].includes(c.netIncomeTag || '')
+  || /BeforeIncomeTaxes/.test(c.netIncomeTag || '')
 ));
 console.log(`${targets.length} companies to repair`);
 
@@ -120,6 +128,8 @@ for (const c of targets) {
   const was = c.netIncome == null ? 'none' : `${(c.netIncome / 1e9).toFixed(2)}B (${c.fyNetIncome})`;
   // A decade-old annual figure is not a current net income; better to show nothing than 2014.
   if (best.fy.year < 2024) {
+    // Only clear if we have nothing better; never wipe a fresh value another pass installed.
+    if (c.netIncome != null && (c.fyNetIncome || 0) >= 2024) { console.log(`  ${c.ticker}: kept existing ${(c.netIncome / 1e9).toFixed(2)}B (${c.fyNetIncome})`); continue; }
     c.netIncome = null;
     c.fyNetIncome = null;
     c.netIncomeTag = null;

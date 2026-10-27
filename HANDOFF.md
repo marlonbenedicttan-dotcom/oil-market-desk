@@ -1800,3 +1800,26 @@ Live brief after the fix: `DoorDash → Instacart` (rumour, 26 Oct) and `Bon Sec
 - Reconciliation matches the Nasdaq column by fiscal-period date instead of always the newest, which
   cleared most of the 13 "unchecked".
 Result: **458 verified · 12 disputed · 23 definition · 6 unchecked**.
+
+## Companies: the full 503 / 500 set (2026-10-27)
+The list stopped at 499 because three companies are dual-class pairs (GOOGL/GOOG, FOXA/FOX, NWSA/NWS)
+and one 2026 spin-off (VYLR) had no row at all.
+
+- `scripts/add-share-classes.mjs` adds the three second classes by cloning the sibling's filings and
+  taking their own Nasdaq price and market cap, marked `shareClass`. VYLR is added as a new listing
+  with its Nasdaq quote and description, marked `noFilings` (Form 10 filed, no 10-K yet).
+- Second classes appear in the list with a `2ND CLASS` badge but are **excluded from totals, medians and
+  the sector board**, so Alphabet/Fox/News are not counted twice. Header now reads
+  **"503 securities · 500 companies"**; total market cap stays $69.55T.
+
+**Two regressions found and fixed while doing this**
+1. Alphabet's TTM was accepted at $244B (a 61% net margin) because the quarter-outlier guard required
+   four prior quarters and only two existed. The guard now works with two.
+2. `fix-net-income` reprocessed every company whose tag was not NetIncomeLoss/ProfitLoss, re-inserting
+   trailing figures the guard had just rejected — and the two passes cleared each other's values
+   (ABT, WELL, CB, BIIB, CTSH oscillated between $0 and their real earnings). It now targets only
+   genuinely broken rows, never wipes a fresh value, and the stale sweep only clears what that pass
+   itself wrote.
+
+Result: **462 verified · 23 definition · 11 disputed · 7 unchecked**, 0 actionable invariant flags,
+0 audit mismatches.

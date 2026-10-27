@@ -31,6 +31,10 @@ const add = (cause, ticker, detail) => {
 for (const c of C) {
   const t = c.ticker || c.name;
 
+  // A company that has not filed a 10-K yet (a 2026 spin-off) cannot have financials; that is a fact
+  // about the company, not a defect in the pipeline.
+  if (c.noFilings) { add('no annual report yet (new listing)', t, 'Form 10 filed, no 10-K'); continue; }
+
   // --- coverage, with a reason rather than a bare dash ------------------------
   for (const [field, reason] of [
     ['revenue', 'no consolidated revenue tag'],
@@ -90,7 +94,7 @@ for (const c of C) {
 
 // Not every flag is a defect. A high P/B at an asset-light company and a market cap that cannot be
 // reproduced from one share class are expected; they are review items, not work items.
-const INFORMATIONAL = /cap vs price|P\/B above|P\/E above|EV\/EBITDA above/;
+const INFORMATIONAL = /cap vs price|P\/B above|P\/E above|EV\/EBITDA above|no annual report yet/;
 
 const rows = [...issues.entries()].sort((a, b) => b[1].length - a[1].length);
 const total = rows.reduce((a, [, v]) => a + v.length, 0);

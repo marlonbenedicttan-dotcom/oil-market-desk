@@ -102,7 +102,7 @@ function trailing(doc) {
   // filed as a quarter, or a restated scope), not earnings. Without this, one such quarter can double
   // a company's trailing net income and halve its P/E.
   const prior = qs.filter((e) => Date.parse(e.end) < Date.parse(parts[0].end)).slice(-4).map((e) => e.val);
-  if (prior.length === 4) {
+  if (prior.length >= 2) {
     const sorted = [...prior].sort((x, y) => x - y);
     const median = (sorted[1] + sorted[2]) / 2;
     if (median > 0 && parts.some((p) => p.val > median * 3)) return null;
@@ -121,6 +121,7 @@ console.log(`${todo.length} companies`);
 
 let changed = 0;
 let done = 0;
+const touched = new Set();   // companies this pass wrote, so the stale sweep cannot clear someone else's value
 for (const c of todo) {
   // Scope beats freshness: a total-earnings figure six months newer is still the wrong number for a
   // common-share market cap. Take the highest-priority tag that has a current fiscal year.
@@ -134,7 +135,9 @@ for (const c of todo) {
   let best = null;
   if (cands.length) {
     const newestEnd = Math.max(...cands.map((x) => Date.parse(x.fy.end)));
-    best = cands.find((x) => Date.parse(x.fy.end) >= newestEnd - 730 * 86400000) || cands[0];
+    // Same fiscal year first (a 30-day window covers 52/53-week years), then scope priority.
+    // A two-year window let Broadcom's FY2024 figure beat its FY2025 one.
+    best = cands.find((x) => Date.parse(x.fy.end) >= newestEnd - 30 * 86400000) || cands[0];
   }
   done++;
   if (done % 50 === 0) console.log(`  … ${done}`);
@@ -148,6 +151,7 @@ for (const c of todo) {
     c.fyNetIncome = best.fy.year;
     c.netIncomeEnd = best.fy.end;
     c.netIncomeTag = best.tag;
+    touched.add(c.ticker);
   }
   // A TTM is only useful when it is newer than the fiscal year and lands in the same order of
   // magnitude; otherwise the fiscal year is the honest number.
@@ -170,7 +174,7 @@ for (const c of todo) {
 const maxYear = Math.max(...data.companies.map((c) => c.fyNetIncome || 0));
 let cleared = 0;
 for (const c of data.companies) {
-  if (c.fyNetIncome && c.fyNetIncome < maxYear - 2) {
+  if (touched.has(c.ticker) && c.fyNetIncome && c.fyNetIncome < maxYear - 2) {
     c.netIncome = null;
     c.fyNetIncome = null;
     c.netIncomeTag = null;

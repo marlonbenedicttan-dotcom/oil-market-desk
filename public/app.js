@@ -3294,7 +3294,10 @@ function renderCompanies() {
   if (!companiesData) { el.innerHTML = stError('Couldn’t load companies — retrying.'); return; }
   const all = companiesData.companies || [];
   const sub = $('deals-sub');
-  if (sub) sub.textContent = `${all.length} of 503 S&P 500 constituents · SEC XBRL · ranked by market cap`;
+  if (sub) {
+    const cos = new Set(all.filter((c) => c.cik).map((c) => String(c.cik))).size;
+    sub.textContent = `${all.length} securities · ${cos} companies · S&P 500 · ranked by market cap`;
+  }
 
   if (coCik) return renderCompanyPage(el, all);
 
@@ -3359,15 +3362,17 @@ function renderCompanies() {
   const priced = rows.filter((c) => c.marketCap);
   if (coView === 'sectors') return renderSectorBoard(el, all);
 
-  const totalCap = priced.reduce((a, b) => a + (b.marketCap || 0), 0);
+  // A second share class is the same company: include it in the list, exclude it from totals.
+  const uniq = priced.filter((c) => !c.shareClass);
+  const totalCap = uniq.reduce((a, b) => a + (b.marketCap || 0), 0);
   const max = Math.max(1, ...rows.map((c) => c.marketCap || 0));
-  const pe = priced.map((c) => c.pe).filter((x) => x != null && x > 0 && x < 200).sort((a, b) => a - b);
+  const pe = uniq.map((c) => c.pe).filter((x) => x != null && x > 0 && x < 200).sort((a, b) => a - b);
   const medPe = pe.length ? pe[Math.floor(pe.length / 2)] : null;
-  const evs = priced.map((c) => c.evEbitda).filter((x) => x != null && x > 0 && x < 100).sort((a, b) => a - b);
+  const evs = uniq.map((c) => c.evEbitda).filter((x) => x != null && x > 0 && x < 100).sort((a, b) => a - b);
   const medEv = evs.length ? evs[Math.floor(evs.length / 2)] : null;
 
   el.innerHTML = `<div class="co-hero">
-      <div class="co-hero-cell"><span class="co-k">MARKET CAP</span><span class="co-hero-v">${coMoney(totalCap)}</span><span class="co-hero-m">${priced.length} of ${rows.length} priced · S&amp;P 500</span></div>
+      <div class="co-hero-cell"><span class="co-k">MARKET CAP</span><span class="co-hero-v">${coMoney(totalCap)}</span><span class="co-hero-m">${uniq.length} companies priced · ${priced.length} securities</span></div>
       <div class="co-hero-cell"><span class="co-k">MEDIAN P/E</span><span class="co-hero-v">${medPe ? medPe.toFixed(1) : '—'}</span><span class="co-hero-m">trailing, TTM where available</span></div>
       <div class="co-hero-cell"><span class="co-k">MEDIAN EV/EBITDA</span><span class="co-hero-v">${medEv ? medEv.toFixed(1) : '—'}</span><span class="co-hero-m">${rows.filter((c) => c.evEbitda).length} with the inputs</span></div>
     </div>`
@@ -3378,7 +3383,7 @@ function renderCompanies() {
       return `<button class="co-row" data-cik="${esc(c.cik)}">
         <span class="co-rank">${i + 1}</span>
         ${coMono(c)}
-        <span class="co-id"><b>${esc(c.name)}</b><span class="co-tick">${esc(c.ticker || '')}${c.sector ? ' · ' + esc(c.sector) : ''}</span></span>
+        <span class="co-id"><b>${esc(c.name)}</b><span class="co-tick">${esc(c.ticker || '')}${c.sector ? ' · ' + esc(c.sector) : ''}${c.shareClass ? ` · <em class="co-cl">2ND CLASS</em>` : ''}</span></span>
         <span class="co-cap">${coMoney(c.marketCap)}<i class="co-bar"><i style="width:${Math.max(2, ((c.marketCap || 0) / max) * 100)}%"></i></i></span>
         <span class="co-pe" title="${c.pe != null ? 'trailing P/E: price ÷ latest FY diluted EPS' : 'no positive trailing EPS'}">${c.pe != null ? c.pe.toFixed(1) : '—'}</span>
         <span class="co-mar ${m == null ? 'dimtext' : m >= 0 ? 'pos' : 'neg'}">${m == null ? '—' : `${m.toFixed(1)}%`}</span>
@@ -3401,15 +3406,18 @@ function renderSectorBoard(el, all) {
     groups.get(c.sector).push(c);
   }
   const med = (arr) => { const v = arr.filter((x) => x != null && Number.isFinite(x)).sort((a, b) => a - b); return v.length ? v[Math.floor(v.length / 2)] : null; };
-  const rows = [...groups.entries()].map(([sector, list]) => ({
+  const rows = [...groups.entries()].map(([sector, listAll]) => {
+    const list = listAll.filter((c) => !c.shareClass);
+    return ({
     sector, n: list.length,
     cap: list.reduce((a, c) => a + (c.marketCap || 0), 0),
     pe: med(list.map((c) => (c.pe != null && c.pe < 200 ? c.pe : null))),
     margin: med(list.map((c) => coMarginOf(c))),
     priced: list.filter((c) => c.marketCap).length,
-  })).sort((a, b) => b.cap - a.cap);
+  });
+  }).sort((a, b) => b.cap - a.cap);
   const max = Math.max(1, ...rows.map((r) => r.cap));
-  el.innerHTML = `<div class="ma-sumline">${rows.length} sectors · ${all.length} companies</div>`
+  el.innerHTML = `<div class="ma-sumline">${rows.length} sectors · ${new Set(all.filter((c) => c.cik).map((c) => String(c.cik))).size} companies</div>`
     + rows.map((r) => `<button class="ma-sec" data-cosec="${esc(r.sector)}">
         <span class="ma-sec-top"><span class="ma-sec-name">${esc(r.sector)}</span>
           <span class="ma-sec-count">${r.n} companies</span>
@@ -3490,7 +3498,8 @@ async function renderCompanyPage(el, all) {
   const dsp = (f) => (vfields[f]
     ? ` <em class="co-dispute" title="SEC ${coMoney(vfields[f].ours)} · Nasdaq ${coMoney(vfields[f].alt)} (${Math.round(vfields[f].diff * 100)}% apart)">≠</em>`
     : '');
-  const vtext = ver.status === 'verified' ? `✓ CROSS-CHECKED · ${ver.checked} FIELDS VS NASDAQ`
+  const vtext = c.noFilings ? 'NEW LISTING · NO ANNUAL REPORT YET (FORM 10 FILED)'
+    : ver.status === 'verified' ? `✓ CROSS-CHECKED · ${ver.checked} FIELDS VS NASDAQ`
     : ver.status === 'definition' ? 'REVENUE BASIS DIFFERS FROM NASDAQ (BANK DEFINITION)'
       : ver.status === 'disputed' ? `${Object.keys(vfields).length} FIELD${Object.keys(vfields).length > 1 ? 'S DIFFER' : ' DIFFERS'} FROM NASDAQ — BOTH VALUES SHOWN`
         : 'NOT CROSS-CHECKED';

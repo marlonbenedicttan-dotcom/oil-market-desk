@@ -1,6 +1,6 @@
 {
- "generated": "2026-10-26T13:54:41.981Z",
- "companies": 499,
+ "generated": "2026-10-27T04:27:14.024Z",
+ "companies": 503,
  "total": 25,
  "causes": {
   "EV/EBITDA above 100 (check D&A)": [
@@ -68,7 +68,7 @@
   "P/E above 300 (check earnings)": [
    {
     "ticker": "TSLA",
-    "detail": "457.2"
+    "detail": "387.8"
    },
    {
     "ticker": "PANW",
@@ -79,20 +79,16 @@
     "detail": "545.2"
    },
    {
-    "ticker": "HPE",
-    "detail": "1320.2"
-   },
-   {
     "ticker": "CIEN",
     "detail": "368.2"
    },
    {
-    "ticker": "TWLO",
-    "detail": "1188.3"
+    "ticker": "MCHP",
+    "detail": "338.5"
    },
    {
-    "ticker": "LYV",
-    "detail": "303.4"
+    "ticker": "TWLO",
+    "detail": "1188.3"
    },
    {
     "ticker": "GPC",
@@ -107,6 +103,12 @@
    {
     "ticker": "LYV",
     "detail": "150.8"
+   }
+  ],
+  "no annual report yet (new listing)": [
+   {
+    "ticker": "VYLR",
+    "detail": "Form 10 filed, no 10-K"
    }
   ]
  }
