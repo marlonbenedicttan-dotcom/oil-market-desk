@@ -1,13 +1,13 @@
 {
- "generated": "2026-10-26T13:47:20.311Z",
+ "generated": "2026-10-27T03:29:12.162Z",
  "summary": {
-  "usable": 486,
-  "match": 396,
+  "usable": 493,
+  "match": 402,
   "close": 55,
-  "diverge": 15,
+  "diverge": 16,
   "diverge-immaterial": 0,
   "definition": 20,
-  "period-mismatch": 9,
+  "period-mismatch": 2,
   "no-nasdaq-data": 4
  },
  "companies": [
@@ -190,10 +190,10 @@
    "ticker": "AVGO",
    "sector": "Technology",
    "period": "11/2/2025",
-   "sameYear": false,
+   "sameYear": true,
    "our": {
     "revenue": 63887000000,
-    "netIncome": 5895000000,
+    "netIncome": 23126000000,
     "assets": 171092000000,
     "equity": 81292000000,
     "marketCap": 1535581254973,
@@ -208,18 +208,18 @@
    },
    "diff": {
     "revenue": 0,
-    "netIncome": 0.745092104125227,
+    "netIncome": 0,
     "assets": 0,
     "equity": 0
    },
    "abs": {
     "revenue": 63887000000,
-    "netIncome": 5895000000,
+    "netIncome": 23126000000,
     "assets": 0,
     "equity": 0
    },
-   "worst": null,
-   "status": "period-mismatch"
+   "worst": 0,
+   "status": "match"
   },
   {
    "ticker": "META",
@@ -895,7 +895,7 @@
     "revenue": 447567000000,
     "netIncome": 12056000000,
     "assets": 309581000000,
-    "equity": 100090000000,
+    "equity": 94110000000,
     "marketCap": 375275429582,
     "price": 418.09,
     "shares": 914712333
@@ -910,16 +910,16 @@
     "revenue": 0,
     "netIncome": 0,
     "assets": 0,
-    "equity": 0.059746228394445
+    "equity": 0
    },
    "abs": {
     "revenue": 447567000000,
     "netIncome": 12056000000,
     "assets": 0,
-    "equity": 5980000000
+    "equity": 0
    },
-   "worst": 0.059746228394445,
-   "status": "close"
+   "worst": 0,
+   "status": "match"
   },
   {
    "ticker": "KO",
@@ -2680,7 +2680,7 @@
     "revenue": 125648000000,
     "netIncome": 21953000000,
     "assets": 420198000000,
-    "equity": 126491000000,
+    "equity": 110531000000,
     "marketCap": 140994388953,
     "price": 20.93,
     "shares": 7000577201
@@ -2695,16 +2695,16 @@
     "revenue": 0,
     "netIncome": 0.0029153190907848583,
     "assets": 0,
-    "equity": 0.12615917337992427
+    "equity": 0.000018094143830349306
    },
    "abs": {
     "revenue": 125648000000,
     "netIncome": 21953000000,
     "assets": 0,
-    "equity": 15958000000
+    "equity": 2000000
    },
-   "worst": 0.12615917337992427,
-   "status": "diverge"
+   "worst": 0.0029153190907848583,
+   "status": "match"
   },
   {
    "ticker": "SCHW",
@@ -3690,10 +3690,10 @@
    "ticker": "PH",
    "sector": "Industrials",
    "period": "6/30/2026",
-   "sameYear": false,
+   "sameYear": true,
    "our": {
     "revenue": 21499000000,
-    "netIncome": 2844215000,
+    "netIncome": 3648000000,
     "assets": 30511000000,
     "equity": 15404000000,
     "marketCap": 111050809277,
@@ -3708,18 +3708,18 @@
    },
    "diff": {
     "revenue": 0,
-    "netIncome": 0.2203358004385965,
+    "netIncome": 0,
     "assets": 0.011853483175178935,
     "equity": 0
    },
    "abs": {
     "revenue": 21499000000,
-    "netIncome": 2844215000,
+    "netIncome": 3648000000,
     "assets": 366000000,
     "equity": 0
    },
-   "worst": null,
-   "status": "period-mismatch"
+   "worst": 0.011853483175178935,
+   "status": "match"
   },
   {
    "ticker": "CME",
@@ -8138,8 +8138,8 @@
   {
    "ticker": "F",
    "sector": "Industrials",
-   "period": "12/31/2025",
-   "sameYear": false,
+   "period": "12/31/2024",
+   "sameYear": true,
    "our": {
     "revenue": 187267000000,
     "netIncome": 5879000000,
@@ -8150,25 +8150,25 @@
     "shares": 3979000000
    },
    "nasdaq": {
-    "revenue": 187267000000,
-    "netIncome": -8182000000,
-    "assets": 289160000000,
-    "equity": 35952000000
+    "revenue": 184992000000,
+    "netIncome": 5879000000,
+    "assets": 285196000000,
+    "equity": 44835000000
    },
    "diff": {
-    "revenue": 0,
-    "netIncome": 1.7185284771449523,
-    "assets": 0,
-    "equity": 0
+    "revenue": 0.01214842978207586,
+    "netIncome": 0,
+    "assets": 0.013708673398810347,
+    "equity": 0.19812646370023418
    },
    "abs": {
     "revenue": 187267000000,
     "netIncome": 5879000000,
-    "assets": 0,
-    "equity": 0
+    "assets": 3964000000,
+    "equity": 8883000000
    },
-   "worst": null,
-   "status": "period-mismatch"
+   "worst": 0.19812646370023418,
+   "status": "diverge"
   },
   {
    "ticker": "WAB",
@@ -15811,10 +15811,10 @@
    "ticker": "IVZ",
    "sector": "Financials",
    "period": "12/31/2025",
-   "sameYear": false,
+   "sameYear": true,
    "our": {
     "revenue": 6377100000,
-    "netIncome": 538000000,
+    "netIncome": -726300000,
     "assets": 27094000000,
     "equity": 12231000000,
     "marketCap": 12388483827,
@@ -15829,18 +15829,18 @@
    },
    "diff": {
     "revenue": 0,
-    "netIncome": 1.7407407407407407,
+    "netIncome": 0,
     "assets": 0,
     "equity": 0
    },
    "abs": {
     "revenue": 6377100000,
-    "netIncome": 538000000,
+    "netIncome": 726300000,
     "assets": 0,
     "equity": 0
    },
-   "worst": null,
-   "status": "period-mismatch"
+   "worst": 0,
+   "status": "match"
   },
   {
    "ticker": "SOLV",
@@ -16196,10 +16196,10 @@
    "ticker": "TECH",
    "sector": "Healthcare",
    "period": "6/30/2026",
-   "sameYear": false,
+   "sameYear": true,
    "our": {
     "revenue": 1215039000,
-    "netIncome": 73400000,
+    "netIncome": 181840000,
     "assets": 2522699000,
     "equity": 2108221000,
     "marketCap": 11377163167,
@@ -16214,18 +16214,18 @@
    },
    "diff": {
     "revenue": 0,
-    "netIncome": 0.5963972682583497,
+    "netIncome": 0.0001209708460261077,
     "assets": 0.024752138417443517,
     "equity": 0
    },
    "abs": {
     "revenue": 1215039000,
-    "netIncome": 73400000,
+    "netIncome": 181840000,
     "assets": 64027000,
     "equity": 0
    },
-   "worst": null,
-   "status": "period-mismatch"
+   "worst": 0.024752138417443517,
+   "status": "close"
   },
   {
    "ticker": "NWSA",
@@ -16405,8 +16405,8 @@
   {
    "ticker": "CLX",
    "sector": "Consumer",
-   "period": "6/30/2026",
-   "sameYear": false,
+   "period": "6/30/2025",
+   "sameYear": true,
    "our": {
     "revenue": 7104000000,
     "netIncome": 810000000,
@@ -16417,25 +16417,25 @@
     "shares": 120911863
    },
    "nasdaq": {
-    "revenue": 6720000000,
-    "netIncome": 587000000,
-    "assets": 7794000000,
-    "equity": 90000000
+    "revenue": 7104000000,
+    "netIncome": 810000000,
+    "assets": 5561000000,
+    "equity": 321000000
    },
    "diff": {
-    "revenue": 0.05405405405405406,
-    "netIncome": 0.27530864197530863,
-    "assets": 0.2798306389530408,
-    "equity": 0.719626168224299
+    "revenue": 0,
+    "netIncome": 0,
+    "assets": 0.009264208088366293,
+    "equity": 0
    },
    "abs": {
     "revenue": 7104000000,
     "netIncome": 810000000,
-    "assets": 2181000000,
-    "equity": 231000000
+    "assets": 52000000,
+    "equity": 0
    },
-   "worst": null,
-   "status": "period-mismatch"
+   "worst": 0.009264208088366293,
+   "status": "match"
   },
   {
    "ticker": "UDR",
@@ -17319,8 +17319,8 @@
   {
    "ticker": "SKYD",
    "sector": "Industrials",
-   "period": "12/31/2025",
-   "sameYear": false,
+   "period": "12/31/2024",
+   "sameYear": true,
    "our": {
     "revenue": 29213000000,
     "netIncome": -6190000000,
@@ -17331,25 +17331,25 @@
     "shares": null
    },
    "nasdaq": {
-    "revenue": 28891000000,
-    "netIncome": -621000000,
-    "assets": 43342000000,
-    "equity": 11693000000
+    "revenue": 29213000000,
+    "netIncome": -6190000000,
+    "assets": 46172000000,
+    "equity": 16320000000
    },
    "diff": {
-    "revenue": 0.011022489987334405,
-    "netIncome": 0.8996768982229403,
-    "assets": 0,
-    "equity": 0
+    "revenue": 0,
+    "netIncome": 0,
+    "assets": 0.061292558260417566,
+    "equity": 0.2835171568627451
    },
    "abs": {
     "revenue": 29213000000,
     "netIncome": 6190000000,
-    "assets": 0,
-    "equity": 0
+    "assets": 2830000000,
+    "equity": 4627000000
    },
-   "worst": null,
-   "status": "period-mismatch"
+   "worst": 0.2835171568627451,
+   "status": "diverge"
   }
  ]
 }

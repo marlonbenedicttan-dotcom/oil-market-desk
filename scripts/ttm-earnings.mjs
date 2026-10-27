@@ -113,7 +113,7 @@ function trailing(doc) {
 
 // Order matters. ProfitLoss is total earnings *including* non-controlling interests, and using it
 // against a common-share market cap doubled Freeport's and Interactive Brokers' earnings.
-const TAGS = ['NetIncomeLoss', 'NetIncomeLossAvailableToCommonStockholdersBasic', 'NetIncomeLossAttributableToParent', 'ProfitLoss'];
+const TAGS = ['NetIncomeLossAvailableToCommonStockholdersBasic', 'NetIncomeLoss', 'NetIncomeLossAttributableToParent', 'ProfitLoss'];
 
 const data = JSON.parse(readFileSync(FILE, 'utf8'));
 const todo = data.companies.filter((c) => c.cik).slice(0, LIMIT);

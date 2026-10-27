@@ -1772,3 +1772,31 @@ Current: **451 verified · 12 disputed · 23 definition · 13 unchecked**.
 **Charts.** `loadCoChart` rejected any series with ≤5 points and defaulted to 10Y, so recent spin-offs
 (HONA: 5 monthly points) showed "No price history". Default is now 5Y, with a step-down to 1Y, and the
 canvas gets a resize nudge after mount.
+
+## Daily brief: M&A freshness, and party-name cleanup (2026-10-27)
+**The bug:** Exxon→Pioneer (announced October 2023) appeared on the brief because a retrospective
+article dated yesterday was appended to the deal's `events`, which bumped `lastSeen` to today. The
+brief trusted the last *mention*, not the last *development*.
+
+- `mergeEvent` now only appends an event when the status moves forward (announced → closed/terminated).
+  Re-mentions increment a counter instead of becoming timeline entries.
+- The brief's deal gate is now about the deal, not the wire: it qualifies only if it was **announced in
+  the last two days**, or something **happened to it** (closed/terminated/withdrawn) in the last two
+  days. Value no longer admits an old deal.
+- Cleaned 221 deals that carried retrospective "announced" mentions, and 10 party names mangled by
+  headline grammar ("DoorDash Is Said to Near" → "DoorDash", "Bain-backed Surgery Partners, FT reports"
+  → "Surgery Partners"). `cleanParty` now runs at ingestion.
+
+Live brief after the fix: `DoorDash → Instacart` (rumour, 26 Oct) and `Bon Secours → Surgery Partners`
+(announced, 25 Oct) — nothing older.
+
+## Companies: dispute count down to 12 (2026-10-27)
+- Fiscal-year window tightened: Broadcom's FY2024 `NetIncomeLoss` was beating its FY2025 `ProfitLoss`
+  under the 2-year window; it is now 30 days.
+- Net income prefers **after-preferred, attributable to common** (GS, BA, GM, COF disputes were
+  preferred dividends).
+- Equity subtracts non-controlling interests when only the including-NCI tag is available
+  (UNH 100.1 → 94.1, T 126.5 → 110.5) — the market cap covers common shares only.
+- Reconciliation matches the Nasdaq column by fiscal-period date instead of always the newest, which
+  cleared most of the 13 "unchecked".
+Result: **458 verified · 12 disputed · 23 definition · 6 unchecked**.

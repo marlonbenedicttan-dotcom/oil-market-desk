@@ -62,18 +62,35 @@ const thousands = (v) => (v == null ? null : v * 1000);
 function readTable(j, c) {
   const inc = j?.data?.incomeStatementTable;
   const bal = j?.data?.balanceSheetTable;
-  const period = inc?.headers?.value2 || null;
-  const rev = thousands(num(row(inc, /^total revenue/i)?.value2));
-  // Match the line to the scope of *our* value. Nasdaq publishes both consolidated and
-  // parent-attributable net income, and parent and total equity; comparing across scopes invents
-  // disputes that are really just noncontrolling interests (Freeport, Occidental).
-  const niCommon = thousands(num(row(inc, /net income applicable to common/i)?.value2));
-  const niTotal = thousands(num(row(inc, /^net income$/i)?.value2));
-  const eqParent = thousands(num(row(bal, /^stock holders equity$/i)?.value2));
-  const eqTotal = thousands(num(row(bal, /^total equity$/i)?.value2));
+  // Nasdaq prints four annual columns. Pick the one that matches our fiscal year instead of always
+  // taking the newest: a company whose 10-K is a year behind would otherwise look like a disagreement.
+  const cols = ['value2', 'value3', 'value4', 'value5'].filter((k) => inc?.headers?.[k]);
+  const want = c?.netIncomeEnd ? Date.parse(c.netIncomeEnd) : null;
+  let col = 'value2';
+  if (want) {
+    let bestDiff = Infinity;
+    for (const k of cols) {
+      const d = Date.parse(inc.headers[k]);
+      if (!Number.isFinite(d)) continue;
+      const diff = Math.abs(d - want);
+      if (diff < bestDiff) { bestDiff = diff; col = k; }
+    }
+    if (bestDiff > 60 * 86400000) col = 'value2';   // no matching column
+  }
+  const balCol = bal?.headers?.[col] ? col : 'value2';
+  const period = inc?.headers?.[col] || null;
+  const at = (table, re, key) => thousands(num(row(table, re)?.[key]));
+
+  const rev = at(inc, /^total revenue/i, col);
+  // Match the line to the scope of *our* value: parent-attributable net income and parent equity,
+  // unless our tag is the total-including-NCI variant.
+  const niCommon = at(inc, /net income applicable to common/i, col);
+  const niTotal = at(inc, /^net income$/i, col);
+  const eqParent = at(bal, /^stock holders equity$/i, balCol);
+  const eqTotal = at(bal, /^total equity$/i, balCol);
   const totalScope = /ProfitLoss/i.test(c?.netIncomeTag || '');
   const ni = totalScope ? (niTotal ?? niCommon) : (niCommon ?? niTotal);
-  const assets = thousands(num(row(bal, /^total assets/i)?.value2));
+  const assets = at(bal, /^total assets/i, balCol);
   const equity = /IncludingPortionAttributableToNoncontrollingInterest/i.test(c?.equityTag || '')
     ? (eqTotal ?? eqParent)
     : (eqParent ?? eqTotal);

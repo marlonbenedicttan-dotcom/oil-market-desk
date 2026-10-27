@@ -104,6 +104,12 @@ async function worker() {
         if (!v) continue;
         if (!best || v.end > best.end) best = { ...v, tag };
       }
+      // Total equity includes non-controlling interests, which a common-share market cap does not.
+      // Subtract them so the denominator matches the numerator (UnitedHealth 100.1 → 94.1).
+      if (best && field === 'equity' && /IncludingPortionAttributableToNoncontrollingInterest/.test(best.tag)) {
+        const mi = latestInstant(await concept(c.cik, 'MinorityInterest'));
+        if (mi && mi.end === best.end) best = { val: best.val - mi.val, end: best.end, tag: `${best.tag} less MinorityInterest` };
+      }
       if (best) found[field] = best;
     }
     done++;

@@ -71,6 +71,18 @@ function parseDealTitle(t) {
   return { acquirer: null, target: null, value };
 }
 
+// Headline grammar leaks into party names: "DoorDash Is Said to Near Instacart" gives an acquirer of
+// "DoorDash Is Said to Near". Strip the reporting verbs and newsroom tags before storing.
+const PARTY_TAIL = /\s+(?:is said to(?: be)?|said to(?: be)?|is nearing|nears?|is near|near|in talks(?: to)?|plans? to|weighs?|to buy|to acquire|to take over|to merge with)\b[\s\S]*$/i;
+const PARTY_HEAD = /^(?:(?:[\w&.'-]+-backed|privately held|state-owned|publicly traded|u\.s\.|us|uk|british|french|german|japanese|chinese|canadian|australian)\s+)+/i;
+const PARTY_TAG = /[,\s]+(?:ft|reuters|bloomberg|wsj|the wall street journal|sources?|people familiar|reports?)\b[\s\S]*$/i;
+function cleanParty(n) {
+  if (!n) return null;
+  let s = String(n).replace(/\s+/g, ' ').trim();
+  s = s.replace(PARTY_TAIL, '').replace(PARTY_TAG, '').replace(PARTY_HEAD, '').replace(/[,.;:]+$/, '').trim();
+  return s || null;
+}
+
 // "struggling rival WOW Air" and "Part of Cranes Unit" are prose, not companies.
 const validName = (n) => !!n && /^[A-Z]/.test(String(n)) && String(n).length <= 55
   && String(n).trim().split(/\s+/).length <= 5
@@ -79,12 +91,14 @@ const validName = (n) => !!n && /^[A-Z]/.test(String(n)) && String(n).length <= 
 export {
   SIC_SECTOR, isGenericTarget,
   DEAL_SECTOR_RULES, dealSector, DEAL_SITES, DEAL_RUMOUR, DEAL_CLOSED, DEAL_ENDED, eventStatus,
-  STATUS_RANK, CHANNELS, nameTokens, nameKey, parseDealTitle, validName,
+  STATUS_RANK, CHANNELS, nameTokens, nameKey, parseDealTitle, validName, cleanParty,
 };
 
 // Merge one article into the store: attach to the deal it belongs to, or create a new entity.
 export function mergeEvent(store, ev) {
   if (ev.date && ev.date < '2020-01-01') return false;        // the store is about current deals
+  ev.acquirer = cleanParty(ev.acquirer);
+  ev.target = cleanParty(ev.target);
   if (ev.target && !validName(ev.target)) ev.target = null;
   if (ev.acquirer && !validName(ev.acquirer)) ev.acquirer = null;
   // Validation at INGESTION, not only in the cleanup script: objects and headline fragments must never
@@ -137,7 +151,12 @@ export function mergeEvent(store, ev) {
     });
     return true;
   }
-  if (!hit.events.some((e) => e.url === ev.url)) hit.events.push(ev);
+  // A re-mention is not an event. Only a status that moves forward (announced → closed/terminated)
+  // belongs on the timeline; an anniversary piece about a 2023 deal must not look like news.
+  if (!hit.events.some((e) => e.url === ev.url)) {
+    if ((STATUS_RANK[ev.status] || 0) > (STATUS_RANK[hit.status] || 0)) hit.events.push(ev);
+    else hit.mentions = (hit.mentions || 0) + 1;
+  }
   hit.lastSeen = ev.date > (hit.lastSeen || '') ? ev.date : hit.lastSeen;
   if (STATUS_RANK[ev.status] >= STATUS_RANK[hit.status]) hit.status = ev.status;
   if (ev.status === 'closed') hit.closed = ev.date;

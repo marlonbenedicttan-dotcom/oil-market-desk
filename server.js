@@ -3465,13 +3465,18 @@ async function buildBrief() {
       const book = await refreshDeals();
       // "News", not "big": a deal only belongs on the brief on the day something happened to it —
       // announced, closed, terminated. A large deal from three weeks ago is not today's news.
-      const today = new Date().toISOString().slice(0, 10);
-      const yesterday = new Date(Date.now() - 864e5).toISOString().slice(0, 10);
+      // Freshness is about the DEAL, not about the last time a wire mentioned it. A deal is news only
+      // if it was announced in the last two days, or something happened to it (closed, terminated,
+      // withdrawn) in the last two days. A retrospective article about a 2023 merger is not news.
+      const freshFrom = new Date(Date.now() - 2 * 864e5).toISOString().slice(0, 10);
+      const lastEvent = (d) => (d.events || [])[(d.events || []).length - 1] || null;
       briefDeals = (book.deals || [])
         .filter((d) => {
-          const seen = d.lastSeen || d.date || '';
-          if (seen !== today && seen !== yesterday) return false;
-          return d.verified || (d.value || 0) >= 1000;
+          if (!d.target && !d.acquirer) return false;
+          const announcedFresh = d.date && d.date >= freshFrom;
+          const ev = lastEvent(d);
+          const changedFresh = ev && ev.status && ev.status !== 'announced' && (ev.date || '') >= freshFrom;
+          return !!(announcedFresh || changedFresh);
         })
         .sort((a, b) => String(b.lastSeen || '').localeCompare(String(a.lastSeen || '')) || (b.value || 0) - (a.value || 0))
         .slice(0, 2)
