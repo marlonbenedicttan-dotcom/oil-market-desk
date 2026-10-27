@@ -131,8 +131,12 @@ test('/api/brief ranks one leaderboard and explains every row', async () => {
   const ids = new Set();
   for (let i = 0; i < rows.length; i++) {
     const r = rows[i];
-    assert.ok(r.label && (r.kind === 'deal' ? typeof r.value === 'number' : typeof r.d1 === 'number'),
-      'each row is a real move or a priced deal');
+    // A fresh deal can be a rumour with no disclosed price — it still belongs on the brief if both
+    // parties are named. Freshness, not price, is what admits a deal now.
+    assert.ok(r.label && (r.kind === 'deal'
+      ? (typeof r.value === 'number' || (r.acquirer && r.target))
+      : typeof r.d1 === 'number'),
+      'each row is a real move or a named deal');
     // A deal row is explained by its price and status; a move row by a wire story or computed driver.
     const explained = r.kind === 'deal'
       ? (r.value != null || r.status)

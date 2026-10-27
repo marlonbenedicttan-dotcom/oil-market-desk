@@ -3496,6 +3496,7 @@ async function buildBrief() {
     const dealRows = briefDeals.map((d) => ({
       kind: 'deal', id: d.key || d.target || d.acquirer, tag: 'M&A', label: d.target ? `${d.acquirer || '—'} → ${d.target}` : (d.acquirer || '—'),
       d1: null, value: d.value, status: d.status, verified: d.verified, date: d.date, closed: d.closed || null,
+      acquirer: d.acquirer || null, target: d.target || null,
       sector: d.sector || null, spark: null, why: null, facts: [], route: null,
     }));
     const rows = [...moveRows, ...dealRows].slice(0, 7);
