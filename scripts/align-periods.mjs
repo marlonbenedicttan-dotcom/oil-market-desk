@@ -72,6 +72,22 @@ function at(doc, target) {
 // company's full index once instead of giving up on the balance sheet.
 const FACTS = join(ROOT, 'data', 'cache', 'facts');
 mkdirSync(FACTS, { recursive: true });
+// Cache only the concepts we read: a full filing index is 10–20 MB, and 500 of them is over a gigabyte.
+const SLIM = new Set(['Assets', 'AssetsCurrent', 'LiabilitiesCurrent', 'StockholdersEquity',
+  'StockholdersEquityIncludingPortionAttributableToNoncontrollingInterest', 'CommonStockholdersEquity',
+  'MinorityInterest', 'NetIncomeLoss', 'ProfitLoss', 'NetIncomeLossAvailableToCommonStockholdersBasic',
+  'NetIncomeLossAttributableToParent', 'DepreciationDepletionAndAmortization',
+  'DepreciationAmortizationAndAccretionNet', 'DepreciationAndAmortization', 'OperatingIncomeLoss',
+  'CashAndCashEquivalentsAtCarryingValue', 'LongTermDebtNoncurrent', 'LongTermDebt']);
+const slimFacts = (j) => {
+  const g = j?.facts?.['us-gaap'] || {};
+  const out = {};
+  for (const [k, v] of Object.entries(g)) {
+    if (SLIM.has(k) && Array.isArray(v?.units?.USD)) out[k] = { units: { USD: v.units.USD } };
+  }
+  return { facts: { 'us-gaap': out } };
+};
+
 async function factsDoc(cik) {
   const file = join(FACTS, `${cik}.json`);
   if (existsSync(file)) {
@@ -83,7 +99,7 @@ async function factsDoc(cik) {
     });
     if (!res.ok) return null;
     const j = await res.json();
-    writeFileSync(file, JSON.stringify(j));
+    writeFileSync(file, JSON.stringify(slimFacts(j)));
     return j;
   } catch { return null; }
 }

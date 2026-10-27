@@ -1846,3 +1846,31 @@ description quality, and ratios that have their inputs. **0 coherence issues.**
 Result: **463 verified · 23 definition · 10 disputed · 7 unchecked**, 7 reconciliation divergences
 (LYV, BE, DTE, VMRK, T, HAS, TDG — one-offs and revenue definitions), 0 audit mismatches,
 0 actionable invariants, 101/101 tests.
+
+## More audits (2026-10-28)
+Three new audit layers, all wired into `npm run audit:all`:
+
+- **`audit-universe.mjs`** — counts against the SPY file, ticker/CIK uniqueness, identity fields, sector
+  coverage, share classes resolving to a sibling with the same CIK, index weights present and summing to
+  ~100, and market cap vs weight (float-adjusted, so only a 10× gap is flagged). Found VYLR missing a
+  weight and SKYD's 8.8× gap — which turned out to be legitimate low float, not an error.
+- **`audit-freshness.mjs`** — age of the dataset, the universe snapshot and every company's fiscal data,
+  plus a check that the balance sheet shares the earnings date. Found Ford/Fortive/Masco a full year
+  behind.
+- **`audit-deals.mjs`** — party names, generic nouns, future dates, duplicate keys, event order, and the
+  brief's own freshness gate. Found 122 deals with out-of-order events.
+
+**The big catch: the per-concept endpoint returns `units.USD: {}` for most CIKs.** `ttm-earnings` now
+falls back to the company's full filing index (like `align-periods` already did). Ford had been showing
+**+$5.88B of FY2024 profit** when its FY2025 result was a **$8.18B loss**; Fortive and Masco were a year
+stale too. 1,000+ companies were reading empty concept documents.
+
+Also fixed:
+- 13 descriptions that were table-of-contents residue ("Market for Registrant's Common Equity…") or
+  mid-sentence fragments (JPM, HD, ECL, DOW, KHC, DPZ, ROL, GOOGL, GOOG, FOXA, FOX, NWSA, NWS).
+- Prices for the four new rows via the quote `info` endpoint (the `summary` endpoint returns a null
+  `primaryData` for some share classes).
+- `apply-weights.mjs` — index weights are now a pass, not a one-time edit; 503/503 matched, sum 99.92%
+  (SPY holds the rest in cash).
+- Deal events sorted chronologically on insert and in the store.
+- The filing-index cache is slimmed to the eight concepts we read: it had reached **1.8 GB**.

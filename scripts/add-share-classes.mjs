@@ -40,7 +40,18 @@ async function quote(ticker) {
       const d = j?.data;
       if (!d) return null;
       const s = d.summaryData || {};
-      const price = Number(String(d.primaryData?.lastSalePrice || '').replace(/[$,]/g, '')) || null;
+      let price = Number(String(d.primaryData?.lastSalePrice || '').replace(/[$,]/g, '')) || null;
+      if (!price) {
+        // The summary endpoint returns a null primaryData for some share classes; the quote info
+        // endpoint still carries the last sale.
+        try {
+          const r2 = await fetch(`https://api.nasdaq.com/api/quote/${encodeURIComponent(sym)}/info?assetclass=stocks`, {
+            headers: { 'User-Agent': UA, Accept: 'application/json, text/plain, */*' },
+          });
+          const j2 = await r2.json();
+          price = Number(String(j2?.data?.primaryData?.lastSalePrice || '').replace(/[$,]/g, '')) || null;
+        } catch { /* leave null */ }
+      }
       const cap = Number(String(s.MarketCap?.value || '').replace(/[$,]/g, '')) || null;
       return {
         price, cap,

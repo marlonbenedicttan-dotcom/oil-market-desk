@@ -154,7 +154,10 @@ export function mergeEvent(store, ev) {
   // A re-mention is not an event. Only a status that moves forward (announced → closed/terminated)
   // belongs on the timeline; an anniversary piece about a 2023 deal must not look like news.
   if (!hit.events.some((e) => e.url === ev.url)) {
-    if ((STATUS_RANK[ev.status] || 0) > (STATUS_RANK[hit.status] || 0)) hit.events.push(ev);
+    if ((STATUS_RANK[ev.status] || 0) > (STATUS_RANK[hit.status] || 0)) {
+      hit.events.push(ev);
+      hit.events.sort((x, y) => String(x.date || '').localeCompare(String(y.date || '')));
+    }
     else hit.mentions = (hit.mentions || 0) + 1;
   }
   hit.lastSeen = ev.date > (hit.lastSeen || '') ? ev.date : hit.lastSeen;

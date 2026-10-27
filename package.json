@@ -16,7 +16,11 @@
     "companies:diff": "node scripts/check-snapshot.mjs",
     "companies:arbitrate": "node scripts/arbitrate.mjs",
     "companies:align": "node scripts/align-periods.mjs",
-    "companies:deep": "node scripts/audit-deep.mjs"
+    "companies:deep": "node scripts/audit-deep.mjs",
+    "audit:universe": "node scripts/audit-universe.mjs",
+    "audit:freshness": "node scripts/audit-freshness.mjs",
+    "audit:deals": "node scripts/audit-deals.mjs",
+    "audit:all": "node scripts/audit-calculations.mjs && node scripts/audit-deep.mjs && node scripts/audit-universe.mjs && node scripts/audit-freshness.mjs && node scripts/audit-deals.mjs && node scripts/invariants.mjs && node scripts/reconcile-nasdaq.mjs && node scripts/arbitrate.mjs && node scripts/check-snapshot.mjs"
   },
   "engines": {
     "node": ">=22"

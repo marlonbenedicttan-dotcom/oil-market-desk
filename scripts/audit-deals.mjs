@@ -1,78 +1,81 @@
-import { readFileSync, writeFileSync, renameSync, existsSync, mkdirSync } from 'node:fs';
+// Deal-store audit: can anything wrong reach the M&A brief?
+//
+// The brief only shows deals whose announcement or status change is fresh, so the store's integrity is
+// what keeps old or malformed rows off it. This checks parties, dates, duplicates, event order and the
+// freshness gate itself.
+//
+//   node scripts/audit-deals.mjs
+
+import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { isGenericTarget, nameKey } from '../src/deals.js';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
-const STORE = join(ROOT, 'data', 'deals-store.json');
-const CACHE = join(ROOT, 'data', '.doc-heads');
-const UA = process.env.SEC_UA || 'MarlonWatchtower/1.0 (marlonbenedicttan@gmail.com)';
-const DRY = process.argv.includes('--dry');
-mkdirSync(CACHE, { recursive: true });
+const store = JSON.parse(readFileSync(join(ROOT, 'data', 'deals-store.json'), 'utf8'));
+const deals = store.deals || [];
+const TODAY = new Date().toISOString().slice(0, 10);
+const issues = [];
 
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-const textOf = (html) => String(html || '')
-  .replace(/<script[\s\S]*?<\/script>/gi, ' ').replace(/<style[\s\S]*?<\/style>/gi, ' ')
-  .replace(/<\/(p|div|tr|h\d|li)>/gi, '\n').replace(/<[^>]+>/g, ' ')
-  .replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&#39;/g, "'").replace(/&quot;/g, '"')
-  .replace(/[ \t\u00a0]+/g, ' ').replace(/\n{2,}/g, '\n').trim();
+const GENERIC = /^(?:a |an |the )?(?:competitor|rival|peer|company|firm|startup|buyer|seller|target|entity|business|group|partner|operator|provider|maker|manufacturer)$/i;
+const RESIDUE = /(Item\s+\d+[A-Z]?\.|PART\s+I{1,3}\b|Mine Safety Disclosures|Table of Contents)/i;
 
-let last = 0;
-async function get(url, asText = false) {
-  for (let i = 0; i < 3; i++) {
-    const wait = Math.max(0, 170 - (Date.now() - last));
-    if (wait) await sleep(wait);
-    last = Date.now();
-    try {
-      const res = await fetch(url, { headers: { 'User-Agent': UA, 'Accept-Encoding': 'gzip, deflate' } });
-      if (res.status === 403 || res.status === 429) { await sleep(1200 * (i + 1)); continue; }
-      if (!res.ok) return null;
-      return asText ? res.text() : res.json();
-    } catch { await sleep(600 * (i + 1)); }
-  }
-  return null;
+console.log(`DEAL AUDIT · ${deals.length} deals · ${deals.filter((d) => d.value).length} priced · updated ${String(store.updated || '').slice(0, 10)}\n`);
+
+// --- parties ---------------------------------------------------------------
+const noParty = deals.filter((d) => !d.target && !d.acquirer);
+if (noParty.length) issues.push(`${noParty.length} deals with neither party named`);
+
+const generic = deals.filter((d) => d.target && GENERIC.test(String(d.target).trim()));
+if (generic.length) issues.push(`${generic.length} generic targets: ${generic.slice(0, 5).map((d) => d.target).join(' ')}`);
+
+const prose = deals.filter((d) => (d.target && RESIDUE.test(d.target)) || (d.acquirer && RESIDUE.test(d.acquirer)));
+if (prose.length) issues.push(`${prose.length} party names look like prose`);
+
+const selfDeal = deals.filter((d) => d.target && d.acquirer && String(d.target).toLowerCase() === String(d.acquirer).toLowerCase());
+if (selfDeal.length) issues.push(`${selfDeal.length} deals where acquirer = target`);
+
+// --- dates -----------------------------------------------------------------
+const future = deals.filter((d) => (d.date || '') > TODAY || (d.lastSeen || '') > TODAY);
+if (future.length) issues.push(`${future.length} deals dated in the future: ${future.slice(0, 5).map((d) => `${d.target} ${d.date}`).join(' ')}`);
+
+const ancient = deals.filter((d) => d.date && d.date < '2020-01-01');
+if (ancient.length) issues.push(`${ancient.length} deals dated before 2020`);
+
+const backwards = deals.filter((d) => d.date && d.lastSeen && d.lastSeen < d.date);
+if (backwards.length) issues.push(`${backwards.length} deals last seen before they were announced`);
+
+// --- events ----------------------------------------------------------------
+let badEvents = 0;
+for (const d of deals) {
+  const evs = d.events || [];
+  if (!evs.length) continue;
+  const dates = evs.map((e) => e.date).filter(Boolean);
+  const sorted = [...dates].sort();
+  if (dates.join() !== sorted.join()) badEvents++;
+  if (evs.some((e) => e.date && e.date > TODAY)) badEvents++;
 }
+if (badEvents) issues.push(`${badEvents} deals with out-of-order or future events`);
 
-// The document is about this deal if the headline/lead names an acquisition AND the target.
-function aboutDeal(head, target) {
-  // Real deals do get announced inside earnings releases, so give the document some room: a deal verb
-  // in the first 2,500 characters and the target named within 4,000.
-  if (!/\b(acquire|acquisition|merger|takeover|to buy|buys)\b/i.test(head.slice(0, 2500))) return false;
-  const key = nameKey(target);
-  if (!key) return false;
-  return head.slice(0, 4000).toLowerCase().includes(key);
+// --- duplicates ------------------------------------------------------------
+const keys = new Map();
+for (const d of deals) {
+  const k = d.key || `${d.target}|${d.acquirer}`;
+  keys.set(k, (keys.get(k) || 0) + 1);
 }
+const dupes = [...keys.entries()].filter(([, n]) => n > 1);
+if (dupes.length) issues.push(`${dupes.length} duplicate deal keys`);
 
-const store = JSON.parse(readFileSync(STORE, 'utf8'));
-const before = store.deals.length;
-let kept = 0, dropped = 0, unfetched = 0;
-const survivors = [];
-const sample = [];
+// --- what the brief would show --------------------------------------------
+const freshFrom = new Date(Date.now() - 2 * 864e5).toISOString().slice(0, 10);
+const brief = deals.filter((d) => {
+  const ev = (d.events || [])[(d.events || []).length - 1] || null;
+  return (d.date && d.date >= freshFrom) || (ev && ev.status && ev.status !== 'announced' && (ev.date || '') >= freshFrom);
+});
+console.log(`brief-eligible (fresh in the last 2 days): ${brief.length}`);
+for (const d of brief.slice(0, 6)) console.log(`  ${d.date} ${d.acquirer || '—'} → ${d.target || '—'} (${d.status}, ${d.value ? '$' + d.value + 'm' : 'no value'})`);
+if (brief.some((d) => !d.target && !d.acquirer)) issues.push('a brief-eligible deal has no party named');
 
-for (const d of store.deals) {
-  if (!/\/Archives\/edgar\/data\//.test(d.url || '')) { survivors.push(d); kept++; continue; }
-  const acc = (/\/data\/(\d+)\/(\d+)\//.exec(d.url) || [])[2] || String(Math.random());
-  const file = join(CACHE, acc + '.txt');
-  let head;
-  if (existsSync(file)) head = readFileSync(file, 'utf8');
-  else {
-    const body = await get(d.url, true);
-    if (!body) { unfetched++; survivors.push(d); kept++; continue; }   // network hiccup: keep, retry next run
-    head = textOf(body).slice(0, 4000);
-    try { writeFileSync(file, head); } catch {}
-  }
-  if (aboutDeal(head, d.target)) { survivors.push(d); kept++; }
-  else {
-    dropped++;
-    if (sample.length < 8) sample.push(`${d.date} ${d.acquirer} → ${d.target} :: ${head.slice(0, 90).replace(/\s+/g, ' ')}`);
-  }
-}
-
-store.deals = survivors;
-store.updated = new Date().toISOString();
-const priced = survivors.filter((x) => x.value).length;
-console.log(`deals ${before} → ${survivors.length} · kept ${kept} · dropped ${dropped} · unfetched ${unfetched}`);
-console.log(`priced ${priced} (${Math.round((priced / survivors.length) * 100)}%)`);
-for (const s of sample) console.log('  dropped:', s);
-
-if (!DRY) { writeFileSync(STORE + '.tmp', JSON.stringify(store)); renameSync(STORE + '.tmp', STORE); console.log('written'); }
+// --- results ---------------------------------------------------------------
+console.log(`\n${issues.length} deal issues`);
+for (const i of issues.slice(0, 20)) console.log('  ' + i);
+if (issues.length > 20) console.log(`  … ${issues.length - 20} more`);

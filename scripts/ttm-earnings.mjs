@@ -53,8 +53,52 @@ async function concept(cik, tag) {
 const DAY = 86400000;
 const dur = (e) => (Date.parse(e.end) - Date.parse(e.start)) / DAY;
 
-function fiscalYear(doc) {
-  const usd = Array.isArray(doc?.units?.USD) ? doc.units.USD : [];
+// The per-concept endpoint returns a valid document with an empty USD object for some CIKs. The full
+// filing index always has the values, so fall back to it once per company.
+const FACTS = join(ROOT, 'data', 'cache', 'facts');
+mkdirSync(FACTS, { recursive: true });
+// Cache only the concepts we read: a full filing index is 10–20 MB, and 500 of them is over a gigabyte.
+const SLIM = new Set(['Assets', 'AssetsCurrent', 'LiabilitiesCurrent', 'StockholdersEquity',
+  'StockholdersEquityIncludingPortionAttributableToNoncontrollingInterest', 'CommonStockholdersEquity',
+  'MinorityInterest', 'NetIncomeLoss', 'ProfitLoss', 'NetIncomeLossAvailableToCommonStockholdersBasic',
+  'NetIncomeLossAttributableToParent', 'DepreciationDepletionAndAmortization',
+  'DepreciationAmortizationAndAccretionNet', 'DepreciationAndAmortization', 'OperatingIncomeLoss',
+  'CashAndCashEquivalentsAtCarryingValue', 'LongTermDebtNoncurrent', 'LongTermDebt']);
+const slimFacts = (j) => {
+  const g = j?.facts?.['us-gaap'] || {};
+  const out = {};
+  for (const [k, v] of Object.entries(g)) {
+    if (SLIM.has(k) && Array.isArray(v?.units?.USD)) out[k] = { units: { USD: v.units.USD } };
+  }
+  return { facts: { 'us-gaap': out } };
+};
+
+async function factsDoc(cik) {
+  const file = join(FACTS, `${cik}.json`);
+  if (existsSync(file)) {
+    try { return JSON.parse(readFileSync(file, 'utf8')); } catch { /* refetch */ }
+  }
+  try {
+    const res = await fetch(`https://data.sec.gov/api/xbrl/companyfacts/CIK${String(cik).padStart(10, '0')}.json`, {
+      headers: { 'User-Agent': UA },
+    });
+    if (!res.ok) return null;
+    const j = await res.json();
+    writeFileSync(file, JSON.stringify(slimFacts(j)));
+    return j;
+  } catch { return null; }
+}
+async function units(cik, tag) {
+  const doc = await concept(cik, tag);
+  const u = doc?.units?.USD;
+  if (Array.isArray(u) && u.length) return u;
+  const f = await factsDoc(cik);
+  const u2 = f?.facts?.['us-gaap']?.[tag]?.units?.USD;
+  return Array.isArray(u2) ? u2 : null;
+}
+
+function fiscalYear(usd) {
+  if (!Array.isArray(usd)) return null;
   const rows = usd.filter((e) => e.start && e.end && e.form === '10-K' && dur(e) > 300 && dur(e) < 400);
   if (!rows.length) return null;
   rows.sort((a, b) => a.end.localeCompare(b.end));
@@ -62,10 +106,8 @@ function fiscalYear(doc) {
   return { val: x.val, end: x.end, year: Number(x.end.slice(0, 4)) };
 }
 
-function trailing(doc) {
-  const fy = fiscalYear(doc);
-  const usd = Array.isArray(doc?.units?.USD) ? doc.units.USD : [];
-  const rows = usd.filter((e) => e.start && e.end && dur(e) > 75 && dur(e) < 105);
+function trailing(usd, fy) {
+  const rows = (Array.isArray(usd) ? usd : []).filter((e) => e.start && e.end && dur(e) > 75 && dur(e) < 105);
   const byEnd = new Map();
   for (const e of rows) {
     const cur = byEnd.get(e.end);
@@ -127,10 +169,11 @@ for (const c of todo) {
   // common-share market cap. Take the highest-priority tag that has a current fiscal year.
   const cands = [];
   for (const tag of TAGS) {
-    const doc = await concept(c.cik, tag);
-    const fy = fiscalYear(doc);
+    const usd = await units(c.cik, tag);
+    if (!usd) continue;
+    const fy = fiscalYear(usd);
     if (!fy) continue;
-    cands.push({ tag, fy, ttm: trailing(doc) });
+    cands.push({ tag, fy, ttm: trailing(usd, fy) });
   }
   let best = null;
   if (cands.length) {
