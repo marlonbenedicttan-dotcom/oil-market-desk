@@ -212,7 +212,10 @@ const SIC_SECTOR = (sic) => {
 };
 // A target that is an object, not a company: leases, share counts, "membership interests".
 const isGenericTarget = (t) => /^(?:new |the |certain )?(?:lease|leases|shares|stock|interests?|notes?|units?|assets|business|operations?|rights?|licen[cs]es?|permits?|properties)\b/i.test(String(t || ''))
-  || /\b(?:fixed shares|membership interests|equity interests|common stock|previous lease|and previous)\b/i.test(String(t || ''));
+  || /\b(?:fixed shares|membership interests|equity interests|common stock|previous lease|and previous)\b/i.test(String(t || ''))
+  // "Ares fund buys competitor" names no company. Exact match only, so "London Stock Exchange Group"
+  // and "Target Corp" are not caught.
+  || /^(?:a |an |the )?(?:competitor|rival|peer|company|firm|startup|buyer|seller|target|entity|business|group|partner|operator|provider|maker|manufacturer)$/i.test(String(t || '').trim());
 
 // A deal announced 18+ months ago with no termination event is, in practice, closed. We say so — but
 // flag it as inferred so the UI can be honest that no closing filing was found.
