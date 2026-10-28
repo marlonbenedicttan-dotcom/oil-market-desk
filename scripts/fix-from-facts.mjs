@@ -23,7 +23,6 @@ const FLOW = {
   revenue: ['Revenues', 'RevenueFromContractWithCustomerExcludingAssessedTax', 'RevenueFromContractWithCustomerIncludingAssessedTax', 'RevenuesNetOfInterestExpense', 'OperatingRevenues'],
   netIncome: ['NetIncomeLoss', 'ProfitLoss', 'NetIncomeLossAvailableToCommonStockholdersBasic'],
   da: ['DepreciationDepletionAndAmortization', 'DepreciationAmortizationAndAccretionNet', 'DepreciationAndAmortization'],
-  opInc: ['OperatingIncomeLoss'],
 };
 const INSTANT = {
   assets: ['Assets'],
@@ -37,7 +36,7 @@ const INSTANT = {
 const dur = (e) => (Date.parse(e.end) - Date.parse(e.start)) / DAY;
 
 function annual(usd) {
-  const rows = usd.filter((e) => e.start && e.end && e.form === '10-K' && dur(e) > 300 && dur(e) < 400);
+  const rows = (Array.isArray(usd) ? usd : []).filter((e) => e.start && e.end && e.form === '10-K' && dur(e) > 300 && dur(e) < 400);
   if (!rows.length) return null;
   rows.sort((a, b) => a.end.localeCompare(b.end));
   const x = rows[rows.length - 1];
@@ -142,6 +141,38 @@ for (const t of targets) {
         }
       }
     } catch { /* leave empty */ }
+  }
+
+  // D&A is sometimes only tagged as its parts.
+  if (c.da == null) {
+    const dep = annual(g.Depreciation?.units?.USD);
+    const am = annual(g.AmortizationOfIntangibleAssets?.units?.USD);
+    if (dep && am && Math.abs(Date.parse(dep.end) - Date.parse(am.end)) < 40 * 86400000) {
+      c.da = dep.val + am.val;
+      c.daTag = 'Depreciation + AmortizationOfIntangibleAssets';
+      changes.push(`da ${(c.da / 1e9).toFixed(1)}B (sum of parts)`);
+    }
+  }
+  // Operating income: take the newest of the direct tag and the pre-tax proxies. A stale direct tag
+  // (J&J last tagged it in 2014) must not beat a current pre-tax figure.
+  const opStale = !c.opIncEnd || Date.now() - Date.parse(c.opIncEnd) > 730 * 86400000;
+  if (c.opInc == null || opStale) {
+    const cands = [
+      ['OperatingIncomeLoss', 'operating income'],
+      ['IncomeLossFromContinuingOperationsBeforeIncomeTaxesExtraordinaryItemsNoncontrollingInterest', 'pre-tax income'],
+      ['IncomeLossFromContinuingOperationsBeforeIncomeTaxesMinorityInterestAndIncomeLossFromEquityMethodInvestments', 'pre-tax income'],
+    ];
+    let best = null;
+    for (const [tag, basis] of cands) {
+      const v = annual(g[tag]?.units?.USD);
+      if (v && (!best || v.end > best.end)) best = { ...v, tag, basis };
+    }
+    if (best) {
+      c.opInc = best.val;
+      c.opIncEnd = best.end;
+      c.opIncBasis = best.basis;
+      changes.push(`opInc ${(best.val / 1e9).toFixed(1)}B (${best.basis})`);
+    }
   }
 
   console.log(`  ${t}: ${changes.length ? changes.join(' · ') : 'no change'}`);

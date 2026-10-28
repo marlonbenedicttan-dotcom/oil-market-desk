@@ -1936,3 +1936,22 @@ annual). AZO's assets and equity were also wrong (19.4B vs 21.6B) and are now ta
 
 Verdicts: **500 verified · 2 definition · 1 unchecked**. 0 audit mismatches, 0 coherence issues,
 0 universe issues, 0 deal issues, 101/101 tests.
+
+## EV/EBITDA coverage and regression tests (2026-10-28, later)
+The blocker for EV/EBITDA was not D&A (5 companies) but **operating income** (29). Filers either never
+tag `OperatingIncomeLoss` or stopped years ago — J&J's last tag was 2014, so the "latest" value was a
+decade stale and derive rightly discarded it.
+
+- `fix-from-facts` now picks the **newest** of `OperatingIncomeLoss` and two pre-tax proxies, and marks
+  the basis when it uses pre-tax (`opIncBasis: 'pre-tax income'`, 24 companies). D&A falls back to
+  `Depreciation + AmortizationOfIntangibleAssets` when the combined tag is absent.
+- **EV/EBITDA 394 → 415.** The 19 remaining are 10 with negative EBITDA (INTC, MRNA, CNC, KHC, ECHO…,
+  where the ratio is meaningless) and 9 with no operating-income tag at all.
+
+**`tests/companies-data.test.js`** encodes the classes of bug rather than exact numbers, so new filings
+do not break it but regressions do: Ford's FY2025 loss, MetLife's revenue total, Broadcom's stopped tag,
+DTE's CIK, AutoZone's balance sheet, share classes sharing a CIK but not a cap, TTM/FY magnitude, P/E
+basis consistency, description residue, VYLR's missing filings, and the index weights.
+
+It immediately caught two live defects: **BBY and IP** had table-of-contents descriptions again, and
+VYLR's revenue was absent rather than null. Both fixed. 115 tests, all passing.
