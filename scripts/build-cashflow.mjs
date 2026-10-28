@@ -53,6 +53,30 @@ function annual(usd, year) {
   return { val: x.val, end: x.end };
 }
 
+// Cash flow is reported year-to-date, not quarterly: a 10-Q shows six or nine months, never three.
+// TTM = last fiscal year + current YTD − the same YTD a year earlier.
+function ttm(usd) {
+  const rows = (Array.isArray(usd) ? usd : []).filter((e) => e.start && e.end);
+  const annual = rows.filter((e) => dur(e) > 300 && dur(e) < 400).sort((a, b) => a.end.localeCompare(b.end));
+  const fy = annual[annual.length - 1];
+  if (!fy) return null;
+  const ytd = rows.filter((e) => dur(e) >= 120 && dur(e) <= 330 && Date.parse(e.end) > Date.parse(fy.end))
+    .sort((a, b) => a.end.localeCompare(b.end));
+  const latest = ytd[ytd.length - 1];
+  if (!latest) return { val: fy.val, asOf: fy.end };        // the fiscal year is the latest period
+  const prior = rows.find((e) => Math.abs(dur(e) - dur(latest)) < 20
+    && Math.abs(Date.parse(e.end) - (Date.parse(latest.end) - 365 * DAY)) < 30 * DAY);
+  if (!prior) return null;
+  return { val: fy.val + latest.val - prior.val, asOf: latest.end };
+}
+async function ttmOf(cik, tags) {
+  for (const tag of tags) {
+    const v = ttm(await units(cik, tag));
+    if (v) return { ...v, tag };
+  }
+  return null;
+}
+
 async function firstOf(cik, tags, year) {
   for (const tag of tags) {
     const v = annual(await units(cik, tag), year);
@@ -109,6 +133,16 @@ for (const c of todo) {
   c.fcfEnd = ocf.end;
   c.fcfTag = ocf.tag;
   c.capexTag = capex.tag;
+
+  // Trailing twelve months, when four contiguous quarters exist.
+  const ocfT = await ttmOf(c.cik, OCF);
+  const capT = await ttmOf(c.cik, CAPEX);
+  if (ocfT && capT) {
+    c.operatingCashFlowTTM = ocfT.val;
+    c.capexTTM = Math.abs(capT.val);
+    c.fcfTTM = ocfT.val - Math.abs(capT.val);
+    c.fcfTTMAsOf = ocfT.asOf;
+  }
   built++;
 }
 

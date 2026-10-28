@@ -80,9 +80,14 @@ async function worker() {
     const c = todo[i++];
     const rows = await chart(c.ticker);
     if (!rows) continue;
+    // A share count can be missing for multi-class names; the cap and price imply it.
+    if (!c.shares && c.marketCap && c.price) c.shares = Math.round(c.marketCap / c.price);
     const md = fyMonthDay(c);
     const years = [];
     for (const s of c.series) {
+      // Some filers never tag diluted EPS (multi-class: Visa, Berkshire; Monster). Net income over the
+      // share count is the same number and lets the band exist.
+      if (!(s.eps > 0) && s.netIncome > 0 && c.shares) s.eps = +(s.netIncome / c.shares).toFixed(2);
       if (!(s.eps > 0)) continue;
       const target = Date.parse(`${s.fy}-${md}`);
       const hit = closeAt(rows, target);
@@ -97,9 +102,9 @@ async function worker() {
         indexYears.set(s.fy, agg);
       }
     }
-    if (years.length < 3) continue;
+    if (years.length < 2) continue;
     const pes = years.map((y) => y.pe).filter((x) => x > 0 && x < 500);
-    if (pes.length < 3) continue;
+    if (pes.length < 2) continue;
     const cur = c.pe;
     const below = cur != null ? pes.filter((x) => x <= cur).length : null;
     c.peHistory = {

@@ -1046,8 +1046,14 @@ button.deal-sec-tile:hover { background: #10151b; }
 }
 
 /* Company page: price chart + five-year table. */
-.co-chartwrap { height: 280px; padding: 10px 12px 8px; border-bottom: 1px solid var(--line); position: relative; }
-.co-chartwrap canvas { max-height: 235px; }
+.co-chartwrap { height: 300px; padding: 10px 12px 8px; border-bottom: 1px solid var(--line); position: relative;
+  display: flex; flex-direction: column; gap: 4px; overflow: hidden; }
+/* The canvas gets its own box so it fills what is left after the compare controls, instead of
+   overflowing the wrapper and printing its axis labels over the note below. */
+.co-canvas { flex: 1 1 auto; min-height: 0; position: relative; }
+.co-canvas canvas { width: 100% !important; height: 100% !important; }
+/* The note under the chart needs its own space; on mobile the axis labels were printing over it. */
+.co-chartwrap + .macro-note, .co-chartwrap + .co-band { margin-top: 6px; }
 .co-table { border-top: 1px solid var(--line); overflow-x: auto; }
 .co-tr { display: grid; grid-template-columns: 46px repeat(6, minmax(70px, 1fr)); gap: 8px; padding: 6px 12px; font-size: 10.5px; border-bottom: 1px solid var(--line); font-variant-numeric: tabular-nums; }
 .co-th { color: var(--dim); font-size: 8.5px; letter-spacing: .8px; text-transform: uppercase; }
@@ -1055,7 +1061,7 @@ button.deal-sec-tile:hover { background: #10151b; }
 .co-tr .pos { color: var(--green); }
 .co-tr .neg { color: var(--red); }
 @media (max-width: 640px) {
-  .co-chartwrap { height: 180px; }
+  .co-chartwrap { height: 270px; padding-bottom: 6px; }
   .co-tr { grid-template-columns: 40px repeat(6, minmax(64px, 1fr)); font-size: 10px; }
 }
 .co-ranges { display: flex; gap: 5px; justify-content: flex-end; padding-bottom: 6px; }
@@ -1144,3 +1150,11 @@ button.deal-sec-tile:hover { background: #10151b; }
 .co-band-track i { position: absolute; top: -4px; width: 2px; height: 12px; background: var(--amber); transform: translateX(-1px); }
 .co-band-n { font-size: 9.5px; color: #7d8894; white-space: nowrap; }
 @media (max-width: 640px) { .co-band { flex-wrap: wrap; } .co-band-n { white-space: normal; } }
+/* Company price strip: price and the three horizons, above the stats. */
+.co-price { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; padding: 8px 14px; border-bottom: 1px solid var(--line); }
+.co-price-v { font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.co-price-c { font-size: 11px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.co-star { margin-left: auto; align-self: flex-start; background: none; border: 0; color: #5b6773; font-size: 18px; cursor: pointer; padding: 0 4px; }
+.co-star.on { color: var(--amber); }
+.co-tick em { font-style: normal; }
+@media (max-width: 640px) { .co-price { gap: 8px; } .co-price-v { font-size: 17px; } }

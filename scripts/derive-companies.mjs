@@ -128,14 +128,18 @@ for (const c of data.companies) {
   c.evEbitda = c.ev && ebitda > 0 && c.sector !== 'Financials' ? +(c.ev / ebitda).toFixed(1) : null;
   if (c.evEbitda != null && c.evEbitda > 500) c.evEbitda = null;
 
-  // Cash-based ratios. FCF is the check on earnings: profit that never becomes cash is not profit.
-  c.fcfYield = c.fcf != null && c.marketCap > 0 ? +((c.fcf / c.marketCap) * 100).toFixed(2) : null;
+  // Cash-based ratios, on a trailing basis where the quarters allow it. FCF is the check on earnings:
+  // profit that never becomes cash is not profit.
+  const fcf = c.fcfTTM != null ? c.fcfTTM : c.fcf;
+  c.fcfBasis = fcf == null ? null : (c.fcfTTM != null ? 'TTM' : 'FY');
+  c.fcfYield = fcf != null && c.marketCap > 0 ? +((fcf / c.marketCap) * 100).toFixed(2) : null;
   if (c.fcfYield != null && Math.abs(c.fcfYield) > 100) c.fcfYield = null;
-  c.fcfMargin = c.fcf != null && c.revenue > 0 ? +((c.fcf / c.revenue) * 100).toFixed(1) : null;
+  c.fcfMargin = fcf != null && c.revenue > 0 ? +((fcf / c.revenue) * 100).toFixed(1) : null;
   if (c.fcfMargin != null && Math.abs(c.fcfMargin) > 100) c.fcfMargin = null;
-  c.cashConversion = c.fcf != null && c.netIncome > 0 ? +(c.fcf / c.netIncome).toFixed(2) : null;
+  const cashEarn = c.netIncomeTTM > 0 ? c.netIncomeTTM : (c.netIncome > 0 ? c.netIncome : null);
+  c.cashConversion = fcf != null && cashEarn ? +(fcf / cashEarn).toFixed(2) : null;
   if (c.cashConversion != null && Math.abs(c.cashConversion) > 5) c.cashConversion = null;
-  c.netDebtToFcf = c.fcf > 0 && c.debt != null ? +((c.debt - (c.cash || 0)) / c.fcf).toFixed(1) : null;
+  c.netDebtToFcf = fcf > 0 && c.debt != null ? +((c.debt - (c.cash || 0)) / fcf).toFixed(1) : null;
   if (c.netDebtToFcf != null && (c.netDebtToFcf < -20 || c.netDebtToFcf > 100)) c.netDebtToFcf = null;
 
   c.currentRatio = c.currentAssets != null && c.currentLiabilities > 0 ? +(c.currentAssets / c.currentLiabilities).toFixed(2) : null;

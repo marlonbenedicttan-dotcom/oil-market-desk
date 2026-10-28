@@ -296,14 +296,31 @@ function setCardsTitle() {
   if (el) el.textContent = 'INSTRUMENTS — ' + (mk ? mk.label.toUpperCase() : 'ALL');
 }
 
-// Home: the pinned instruments, across every segment, in one board.
+// A pinned company: same tile grammar as an instrument, but it opens the company page.
+function companyTile(c) {
+  const chg = (v) => (v == null ? '' : `<em class="${v >= 0 ? 'pos' : 'neg'}">${v >= 0 ? '+' : ''}${v.toFixed(1)}%</em>`);
+  return `<div class="tile" data-cik="${esc(c.cik)}" title="${esc(c.name)} — open the company page">
+    <span class="t-name">${esc(c.ticker || c.name)}</span>
+    <span class="star on" data-star="${esc(c.ticker)}" title="Unpin from watchlist">★</span>
+    <span class="t-px">${c.price != null ? '$' + c.price.toFixed(2) : '—'}</span>
+    <span class="t-foot">${chg(c.chg1d)} today · ${chg(c.chg6m)} 6M · ${chg(c.chgYtd)} YTD</span>
+  </div>`;
+}
+
+// Home: the pinned instruments AND companies, in one board.
 function renderWatchlist() {
   const el = $('home-watch');
-  if (!el || !data) return;
-  const items = watchlist().map((id) => data.benchmarks.find((b) => b.id === id)).filter(Boolean);
-  el.innerHTML = items.length
-    ? `<div class="tiles">${items.map(tileHtml).join('')}</div>`
-    : stEmpty('Nothing pinned yet — open <b>COMMODITIES</b> and click <b>☆</b> on any instrument to pin it here.');
+  if (!el) return;
+  const ids = watchlist();
+  const tiles = ids.map((id) => {
+    const b = data?.benchmarks?.find((x) => x.id === id);
+    if (b) return tileHtml(b);
+    const c = companiesData?.companies?.find((x) => x.ticker === id);
+    return c ? companyTile(c) : null;
+  }).filter(Boolean);
+  el.innerHTML = tiles.length
+    ? `<div class="tiles">${tiles.join('')}</div>`
+    : stEmpty('Nothing pinned yet — open <b>COMMODITIES</b> and click <b>☆</b> on an instrument, or open a company and click <b>☆</b> next to its name.');
 }
 
 // ---------------------------------------------------------------------------
@@ -744,7 +761,13 @@ const chgText = (v, absolute) => {
   return `${v >= 0 ? '+' : ''}${v.toFixed(1)}%`;
 };
 const moveText = (e) => chgText(e.move, e.mode === 'abs');
-function baseOptions({ dp = 2, unit = '', percentAxis = false, yTitle = '', y1Title = '', legend = true, log = false, anchorable = false } = {}) {
+const MONTHS_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+// "2021-10-25" is 80px of label; "Oct 21" is 40px and fits four to a phone screen.
+const shortDate = (v) => {
+  const [y, m] = String(v).split('-');
+  return m && MONTHS_SHORT[+m - 1] ? `${MONTHS_SHORT[+m - 1]} ${y.slice(2)}` : String(v);
+};
+function baseOptions({ dp = 2, unit = '', percentAxis = false, yTitle = '', y1Title = '', legend = true, log = false, anchorable = false, dateAxis = false } = {}) {
   const tick = (v) => (percentAxis ? v + '%' : fmtNum(v, dp) + unit);
   return {
     responsive: true, maintainAspectRatio: false,
@@ -778,7 +801,14 @@ function baseOptions({ dp = 2, unit = '', percentAxis = false, yTitle = '', y1Ti
       },
     },
     scales: {
-      x: { ticks: { color: CT.text, maxTicksLimit: 7, autoSkip: true, maxRotation: 0 }, grid: { color: CT.grid } },
+      x: {
+        ticks: {
+          color: CT.text, autoSkip: true, maxRotation: 0,
+          maxTicksLimit: dateAxis ? (typeof window !== 'undefined' && window.innerWidth < 640 ? 4 : 6) : 7,
+          callback: dateAxis ? function (value) { return shortDate(this.getLabelForValue(value)); } : undefined,
+        },
+        grid: { color: CT.grid },
+      },
       y: {
         type: log ? 'logarithmic' : 'linear',
         ...(yTitle ? { title: { display: true, text: yTitle, color: CT.text } } : {}),
@@ -2841,7 +2871,9 @@ $('home-watch')?.addEventListener('click', (e) => {
   const star = e.target.closest('.star');
   if (star) { toggleWatch(star.dataset.star); renderWatchlist(); if (data) renderCards(data); return; }
   const tile = e.target.closest('.tile[data-id]');
-  if (tile) goToInstrument(tile.dataset.id);
+  if (tile) { goToInstrument(tile.dataset.id); return; }
+  const co = e.target.closest('.tile[data-cik]');
+  if (co) { coCik = co.dataset.cik; document.querySelector('[data-tab="deals"]')?.click(); renderCompanies(); window.scrollTo({ top: 0, behavior: 'smooth' }); }
 });
 $('macro-fx')?.addEventListener('click', (e) => { const el = e.target.closest('[data-metric]'); if (el) pickMetric(el.dataset.metric, '1y'); });
 $('macro-links')?.addEventListener('click', (e) => { const el = e.target.closest('[data-metric]'); if (el) pickMetric(el.dataset.metric, '1y'); });
@@ -3393,7 +3425,7 @@ function renderCompanies() {
       return `<button class="co-row" data-cik="${esc(c.cik)}">
         <span class="co-rank">${i + 1}</span>
         ${coMono(c)}
-        <span class="co-id"><b>${esc(c.name)}</b><span class="co-tick">${esc(c.ticker || '')}${c.sector ? ' · ' + esc(c.sector) : ''}${c.shareClass ? ` · <em class="co-cl">2ND CLASS</em>` : ''}</span></span>
+        <span class="co-id"><b>${esc(c.name)}</b><span class="co-tick">${esc(c.ticker || '')}${c.sector ? ' · ' + esc(c.sector) : ''}${c.price != null ? ` · $${c.price.toFixed(2)} <em class="${c.chg1d >= 0 ? 'pos' : 'neg'}">${c.chg1d >= 0 ? '+' : ''}${c.chg1d?.toFixed(1)}%</em>` : ''}${c.shareClass ? ` · <em class="co-cl">2ND CLASS</em>` : ''}</span></span>
         <span class="co-cap">${coMoney(c.marketCap)}<i class="co-bar"><i style="width:${Math.max(2, ((c.marketCap || 0) / max) * 100)}%"></i></i></span>
         <span class="co-pe" title="${c.pe != null ? 'trailing P/E: price ÷ latest FY diluted EPS' : 'no positive trailing EPS'}">${c.pe != null ? c.pe.toFixed(1) : '—'}</span>
         <span class="co-mar ${m == null ? 'dimtext' : m >= 0 ? 'pos' : 'neg'}">${m == null ? '—' : `${m.toFixed(1)}%`}</span>
@@ -3463,12 +3495,12 @@ async function loadCoChart(ticker, range, compare) {
     const wrap0 = canvas && canvas.parentElement;
     if (wrap0) wrap0.removeAttribute('data-empty');
     if (!compare) {
-      mountChart('co-chart', { labels: ch.dates, datasets: [line(`${ticker} · ${range.toUpperCase()}`, ch.closes, CT.c1)] }, baseOptions({ dp: 2 }));
+      mountChart('co-chart', { labels: ch.dates, datasets: [line(`${ticker} · ${range.toUpperCase()}`, ch.closes, CT.c1)] }, baseOptions({ dp: 2, dateAxis: true }));
       return;
     }
     const c2 = await getJSON(`/api/company-chart?ticker=${encodeURIComponent(compare)}&range=${range}`);
     if (!c2 || !c2.dates || c2.dates.length < 2) {
-      mountChart('co-chart', { labels: ch.dates, datasets: [line(`${ticker} · ${range.toUpperCase()}`, ch.closes, CT.c1)] }, baseOptions({ dp: 2 }));
+      mountChart('co-chart', { labels: ch.dates, datasets: [line(`${ticker} · ${range.toUpperCase()}`, ch.closes, CT.c1)] }, baseOptions({ dp: 2, dateAxis: true }));
       return;
     }
     // Align on the union of dates, forward-filling each series, then rebase both to 100.
@@ -3480,7 +3512,7 @@ async function loadCoChart(ticker, range, compare) {
     };
     const a = rebase(fill(ch, 'closes'));
     const b = rebase(fill(c2, 'closes'));
-    mountChart('co-chart', { labels: dates, datasets: [line(ticker, a, CT.c1), line(compare, b, CT.c2)] }, baseOptions({ dp: 0, log: true, yTitle: 'indexed to 100' }));
+    mountChart('co-chart', { labels: dates, datasets: [line(ticker, a, CT.c1), line(compare, b, CT.c2)] }, baseOptions({ dp: 0, log: true, yTitle: 'indexed to 100', dateAxis: true }));
   } catch {}
 }
 
@@ -3525,6 +3557,14 @@ async function renderCompanyPage(el, all) {
         <div><div class="co-name">${esc(c.name)}</div>
         <div class="co-sub">${esc(c.ticker || '')}${c.sector ? ' · ' + esc(c.sector) : ''}${c.industry ? ' · ' + esc(c.industry) : ''}${c.state ? ' · ' + esc(c.state) : ''}</div>
         ${c.description ? `<div class="co-desc">${esc(coDesc(c.description))}</div>` : ''}</div>
+        <button class="co-star ${watchlist().includes(c.ticker) ? 'on' : ''}" data-coticker="${esc(c.ticker || '')}" title="${watchlist().includes(c.ticker) ? 'Unpin from watchlist' : 'Pin to watchlist'}">${watchlist().includes(c.ticker) ? '★' : '☆'}</button>
+      </div>
+      <div class="co-price">
+        <span class="co-price-v">${c.price != null ? '$' + c.price.toFixed(2) : '—'}</span>
+        <span class="co-price-c ${c.chg1d >= 0 ? 'pos' : 'neg'}">${c.chg1d != null ? `${c.chg1d >= 0 ? '+' : ''}${c.chg1d.toFixed(2)}% today` : ''}</span>
+        <span class="co-price-c ${c.chg6m >= 0 ? 'pos' : 'neg'}">${c.chg6m != null ? `${c.chg6m >= 0 ? '+' : ''}${c.chg6m.toFixed(1)}% 6M` : ''}</span>
+        <span class="co-price-c ${c.chgYtd >= 0 ? 'pos' : 'neg'}">${c.chgYtd != null ? `${c.chgYtd >= 0 ? '+' : ''}${c.chgYtd.toFixed(1)}% YTD` : ''}</span>
+        <span class="dimtext">${c.priceAsOf ? `as of ${dealDateY(c.priceAsOf)}` : ''}</span>
       </div>
       <div class="co-verif${vcls}">${vtext}</div>`
     + (c.restatement ? (() => {
@@ -3546,7 +3586,7 @@ async function renderCompanyPage(el, all) {
         <div class="co-stat"><span class="co-k">NET MARGIN · ${niTag}</span><span class="co-v ${m >= 0 ? 'pos' : 'neg'}">${m == null ? (c.marginNA ? 'n/a' : '—') : `${m.toFixed(1)}%`}</span></div>
         <div class="co-stat"><span class="co-k">RETURN ON EQUITY</span><span class="co-v ${roe >= 0 ? 'pos' : 'neg'}">${roe == null ? '—' : `${roe.toFixed(1)}%`}</span></div>
         <div class="co-stat" title="${esc(`us-gaap:Assets · ${c.assetsEnd || ''}`)}"><span class="co-k">TOTAL ASSETS</span><span class="co-v">${val(c.assets)}${dsp('assets')}</span></div>
-        <div class="co-stat" title="${esc(c.fcfNA ? 'Free cash flow is not a bank metric — operating cash flow moves with loans and deposits.' : `Operating cash flow ${coMoney(c.operatingCashFlow)} − capex ${coMoney(c.capex)}${c.capexOmitted ? ' (not reported)' : ''}`)}"><span class="co-k">FREE CASH FLOW</span><span class="co-v ${c.fcf >= 0 ? 'pos' : 'neg'}">${c.fcfNA ? 'n/a' : val(c.fcf)}</span></div>
+        <div class="co-stat" title="${esc(c.fcfNA ? 'Free cash flow is not a bank metric — operating cash flow moves with loans and deposits.' : `Operating cash flow ${coMoney(c.operatingCashFlow)} − capex ${coMoney(c.capex)}${c.capexOmitted ? ' (not reported)' : ''}`)}"><span class="co-k">FREE CASH FLOW${c.fcfBasis ? ' · ' + c.fcfBasis : ''}</span><span class="co-v ${(c.fcfTTM ?? c.fcf) >= 0 ? 'pos' : 'neg'}">${c.fcfNA ? 'n/a' : val(c.fcfTTM ?? c.fcf)}</span></div>
         <div class="co-stat" title="Free cash flow ÷ market cap"><span class="co-k">FCF YIELD</span><span class="co-v ${c.fcfYield >= 0 ? 'pos' : 'neg'}">${c.fcfYield != null ? c.fcfYield.toFixed(1) + '%' : (c.fcfNA ? 'n/a' : '—')}</span></div>
         <div class="co-stat" title="Free cash flow ÷ net income — below 1 means profit is not turning into cash"><span class="co-k">CASH CONVERSION</span><span class="co-v">${c.cashConversion != null ? c.cashConversion.toFixed(2) + '×' : (c.fcfNA ? 'n/a' : '—')}</span></div>
         <div class="co-stat" title="Net debt ÷ free cash flow — years of cash to repay debt"><span class="co-k">NET DEBT / FCF</span><span class="co-v">${c.netDebtToFcf != null ? c.netDebtToFcf.toFixed(1) + '×' : (c.fcfNA ? 'n/a' : '—')}</span></div>
@@ -3561,13 +3601,14 @@ async function renderCompanyPage(el, all) {
           <span class="co-band-n">${h.min}–${h.max} · median ${h.median}${h.percentile != null && c.pe != null ? ` · ${h.percentile}th percentile` : ''}</span>
         </div>`;
       })() : '')
+    + (!c.peHistory && c.pe == null ? `<div class="co-band"><span class="co-band-k">P/E vs ITS OWN 5 YEARS</span><span class="co-band-n">no band — the company lost money in most of the last five years, so a P/E range does not exist</span></div>` : '')
     + (c.ticker ? `<div class="co-chartwrap">
         <div class="co-ranges">
           <span class="co-cmp-l">COMPARE</span><input class="co-cmp" id="co-cmp" list="co-cmp-list" placeholder="ticker…" value="${esc(coCompare || '')}" autocomplete="off">
           <datalist id="co-cmp-list">${(companiesData.companies || []).filter((x) => x.ticker).slice(0, 400).map((x) => `<option value="${esc(x.ticker)}">${esc(x.name)}</option>`).join('')}</datalist>
           ${['1y', '5y', '10y'].map((r) => `<button class="ma-chip${coRange === r ? ' on' : ''}" data-corange="${r}">${r.toUpperCase()}</button>`).join('')}
         </div>
-        <canvas id="co-chart"></canvas></div>` : '')
+        <div class="co-canvas"><canvas id="co-chart"></canvas></div></div>` : '')
     + (() => {
         const lf = c.lastFiling;
         const link = lf?.url
@@ -3637,6 +3678,8 @@ document.addEventListener('click', (e) => {
     return;
   }
   if (e.target.closest('[data-coback]')) { coCik = null; renderCompanies(); return; }
+  const star = e.target.closest('[data-coticker]');
+  if (star) { toggleWatch(star.dataset.coticker); renderCompanyPage($('co-body'), companiesData.companies || []); renderWatchlist(); return; }
   const row = e.target.closest('.co-row');
   if (row && row.dataset.cik) { coCik = row.dataset.cik; renderCompanies(); window.scrollTo({ top: 0, behavior: 'smooth' }); return; }
   if (e.target.closest('[data-coexport]')) {

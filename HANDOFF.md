@@ -2028,3 +2028,20 @@ latest filing and applied to earlier years.
 
 The company page shows a band with a marker at the current percentile; the companies header gains a
 fourth hero cell for the index P/E. 121 tests.
+
+## Bands completed, TTM cash flow, live prices, mixed watchlist, mobile (2026-10-29)
+- **P/E bands 478/503.** The gap was mostly missing EPS for multi-class names (Visa, Berkshire, Monster):
+  EPS now falls back to net income ÷ shares, and shares fall back to cap ÷ price. The band minimum is two
+  years. The remaining 25 lost money in most of the last five years — a P/E range cannot exist, and the
+  page says so instead of leaving a blank.
+- **FCF is trailing.** Cash flow is reported year-to-date, not quarterly, so TTM = last fiscal year +
+  current YTD − the same YTD a year earlier. AAPL: $98.8B FY → **$136.7B TTM**, cash conversion 0.88× →
+  **1.06×**. Ratios use the TTM figure with a basis label.
+- **Live price and change.** `build-price-changes.mjs` reads the cached daily closes and stores price,
+  price date, and 1-day / 6-month / year-to-date change. The company page shows a price strip; every
+  screener row carries its price and day change under the ticker.
+- **Watchlist is mixed.** Company tiles live beside commodity tiles in the same board; pin with the star
+  on a company page, unpin from the tile. Clicking a company tile opens its page.
+- **Mobile.** The chart canvas sat below the compare controls inside a fixed-height box, so it overflowed
+  by 25px and printed its axis labels over the note. The canvas now has its own flex box, and the date
+  axis uses four short labels ("Oct 21") on narrow screens.
