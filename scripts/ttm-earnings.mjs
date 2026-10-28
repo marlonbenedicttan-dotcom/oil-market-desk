@@ -63,7 +63,10 @@ const SLIM = new Set(['Assets', 'AssetsCurrent', 'LiabilitiesCurrent', 'Stockhol
   'MinorityInterest', 'NetIncomeLoss', 'ProfitLoss', 'NetIncomeLossAvailableToCommonStockholdersBasic',
   'NetIncomeLossAttributableToParent', 'DepreciationDepletionAndAmortization',
   'DepreciationAmortizationAndAccretionNet', 'DepreciationAndAmortization', 'OperatingIncomeLoss',
-  'CashAndCashEquivalentsAtCarryingValue', 'LongTermDebtNoncurrent', 'LongTermDebt']);
+  'CashAndCashEquivalentsAtCarryingValue', 'LongTermDebtNoncurrent', 'LongTermDebt',
+  'Revenues', 'RevenuesNetOfInterestExpense', 'RevenueFromContractWithCustomerIncludingAssessedTax',
+  'RevenueFromContractWithCustomerExcludingAssessedTax', 'RegulatedAndUnregulatedOperatingRevenue', 'OperatingRevenues',
+]);
 const slimFacts = (j) => {
   const g = j?.facts?.['us-gaap'] || {};
   const out = {};

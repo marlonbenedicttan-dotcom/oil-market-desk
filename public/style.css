@@ -1131,3 +1131,6 @@ button.deal-sec-tile:hover { background: #10151b; }
 .co-restate { margin: 0 14px 12px; padding: 5px 9px; border: 1px solid #4a3a12; border-radius: 4px;
   background: #1b1507; color: #e0b35a; font-size: 9px; letter-spacing: .5px; display: inline-block; }
 .co-restate a { color: #f0c86a; }
+/* Quarterly table: four columns instead of the annual table's seven. */
+.co-qtr .co-tr { grid-template-columns: 1.1fr 1fr 1fr 0.8fr; }
+@media (max-width: 640px) { .co-qtr .co-tr { grid-template-columns: 1fr 1fr 1fr 0.7fr; font-size: 10px; } }

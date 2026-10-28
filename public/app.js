@@ -3573,6 +3573,18 @@ async function renderCompanyPage(el, all) {
         }).join('')}
       </div>` : '')
     + (() => {
+        const qs = (c.quarters || []).filter((q) => q.revenue != null || q.netIncome != null);
+        if (!qs.length) return '';
+        return `<div class="gtitle">LAST EIGHT QUARTERS</div>
+          <div class="co-table co-qtr">
+            <div class="co-tr co-th"><span>PERIOD</span><span>REVENUE</span><span>NET INCOME</span><span>MARGIN</span></div>
+            ${qs.map((q) => {
+              const m = q.revenue && q.netIncome != null ? (q.netIncome / q.revenue) * 100 : null;
+              return `<div class="co-tr"><span>${dealDateY(q.end)}</span><span>${val(q.revenue)}</span><span class="${q.netIncome >= 0 ? 'pos' : 'neg'}">${val(q.netIncome)}</span><span>${m == null ? '—' : m.toFixed(1) + '%'}</span></div>`;
+            }).join('')}
+          </div>`;
+      })()
+    + (() => {
         const peers = all.filter((x) => x.sic && x.sic === c.sic && x.cik !== c.cik && x.marketCap).sort((a, b) => (b.marketCap || 0) - (a.marketCap || 0)).slice(0, 6);
         return peers.length ? `<div class="gtitle">PEERS · ${esc(c.industry || 'same industry')}</div>`
           + peers.map((x) => `<button class="co-row" data-cik="${esc(x.cik)}">

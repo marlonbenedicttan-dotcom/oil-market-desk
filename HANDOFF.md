@@ -1971,3 +1971,18 @@ A test asserts that every restatement carries a filing date, at least one change
 stored value equals the amended one. Added to the weekly rebuild chain.
 
 116 tests. 500 verified · 2 definition · 1 unchecked · 99.0% within 10%.
+
+## Quarterly table (2026-10-28, later)
+`scripts/build-quarters.mjs` builds the last eight quarters of revenue and net income per company from
+the same filing index as the annual figures, and the company page renders them under the five-year table
+(period, revenue, net income, margin). 461/503 have revenue quarters; the rest file annually only.
+
+Two traps, both the same lesson as elsewhere:
+- The slim facts cache did not keep revenue tags (the earnings passes never needed them), so revenue is
+  read per concept and falls back to the full index for the CIKs where that endpoint is empty.
+- The picker took the first tag with four rows. Apple's `Revenues` stopped being tagged quarterly in
+  **2018**, so the table would have shown 2018 quarters. It now picks the tag whose latest quarter is
+  newest — Apple's current series lives under `RevenueFromContractWithCustomerExcludingAssessedTax`.
+
+A test asserts the series is chronological, capped at eight, and never contains an empty row.
+117 tests.

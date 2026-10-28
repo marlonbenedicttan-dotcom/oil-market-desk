@@ -113,6 +113,17 @@ test('a restatement keeps both figures and the amended one wins', () => {
   }
 });
 
+test('the quarterly series is chronological, capped at eight, and never empty', () => {
+  for (const c of data.companies) {
+    const q = c.quarters || [];
+    if (!q.length) continue;
+    assert.ok(q.length <= 8, `${c.ticker}: ${q.length} quarters`);
+    const ends = q.map((x) => x.end);
+    assert.deepEqual(ends, [...ends].sort(), `${c.ticker}: quarters out of order`);
+    for (const x of q) assert.ok(x.revenue != null || x.netIncome != null, `${c.ticker}: empty quarter ${x.end}`);
+  }
+});
+
 test('the index weights sum to about 100', () => {
   const sum = data.companies.reduce((a, c) => a + (c.indexWeight || 0), 0);
   assert.ok(sum > 99 && sum < 101, `weights sum to ${sum}`);
