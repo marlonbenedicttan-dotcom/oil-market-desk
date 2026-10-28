@@ -63,7 +63,7 @@ const data = JSON.parse(readFileSync(FILE, 'utf8'));
 const BAD = process.argv.includes('--bad');
 // A description that survived the 10-K pass can still be table-of-contents residue:
 // "Mine Safety Disclosures 31 PART II Item 5. Market for Registrant's Common Equity".
-const RESIDUE = /(Item\s+\d+[A-Z]?\.|PART\s+I{1,3}\b|Mine Safety Disclosures|Table of Contents|FORM 10-K|^General\s+\w+\s+of\s+Business|^Market for Registrant)/i;
+const RESIDUE = /(Item\s+\d+[A-Z]?\.|PART\s+I{1,3}\b|Mine Safety Disclosures|Table of Contents|FORM 10-K|^General\s+\w+\s+of\s+Business|^Market for Registrant|^Market for .{0,80}Common Equity|Issuer Purchases of Equity)/i;
 const isBad = (d) => !/^[A-Z0-9"“]/.test(d) || RESIDUE.test(d);
 const ONLY = (process.argv.find((x) => x.startsWith('--only=')) || '').split('=')[1];
 const onlySet = ONLY ? new Set(ONLY.split(',').map((x) => x.trim().toUpperCase())) : null;

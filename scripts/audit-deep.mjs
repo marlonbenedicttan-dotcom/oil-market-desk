@@ -67,7 +67,7 @@ for (const c of C) {
 console.log(`\nSERIES  ${seriesChecked} companies with history · checked against headline figures`);
 
 // --- 5. descriptions --------------------------------------------------------
-const RESIDUE = /(Item\s+\d+[A-Z]?\.|PART\s+I{1,3}\b|Mine Safety Disclosures|Table of Contents|FORM 10-K)/i;
+const RESIDUE = /(Item\s+\d+[A-Z]?\.|PART\s+I{1,3}\b|Mine Safety Disclosures|Table of Contents|FORM 10-K|Market for .{0,80}Common Equity|Issuer Purchases of Equity)/i;
 // A lowercase first letter is fine when it is a brand ("eBay Inc. is …"); only punctuation is wrong.
 const badDesc = C.filter((c) => c.description && (RESIDUE.test(c.description) || !/^[A-Za-z0-9"“]/.test(c.description)));
 if (badDesc.length) issues.push(`${badDesc.length} descriptions look wrong: ${badDesc.slice(0, 5).map((c) => c.ticker).join(' ')}`);

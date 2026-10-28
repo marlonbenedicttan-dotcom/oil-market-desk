@@ -20,7 +20,7 @@ const DRY = process.argv.includes('--dry');
 
 const HEADING = /^(?:(?:general|overview|business|item\s*\d+[a-z]?\.?|part\s+i{1,3})\s*[:.\-–]?\s*)+/i;
 const LEGAL = /^The terms\s+[^.]{0,120}?\b(?:mean|refer to|are used)\b[^.]*\.\s*/i;
-const RESIDUE = /(Item\s+\d+[A-Z]?\.|PART\s+I{1,3}\b|Mine Safety Disclosures|Table of Contents|Market for Registrant)/i;
+const RESIDUE = /(Item\s+\d+[A-Z]?\.|PART\s+I{1,3}\b|Mine Safety Disclosures|Table of Contents|Market for Registrant|Market for .{0,80}Common Equity|Issuer Purchases of Equity)/i;
 
 const data = JSON.parse(readFileSync(FILE, 'utf8'));
 let stripped = 0;
