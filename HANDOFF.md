@@ -1955,3 +1955,19 @@ basis consistency, description residue, VYLR's missing filings, and the index we
 
 It immediately caught two live defects: **BBY and IP** had table-of-contents descriptions again, and
 VYLR's revenue was absent rather than null. Both fixed. 115 tests, all passing.
+
+## Restatements (2026-10-28, later)
+`scripts/detect-restatements.mjs` scans for 10-K/A and 10-Q/A, matches the amendment's period to our
+fiscal date, re-derives the four headline figures from the filing index (the last-filed value for a
+period wins), and records what changed. The stored figure becomes the amended one — it is the correct
+number — but the previous value is kept in `restatement.changes`, with the form, filing date and a
+direct link to the amendment.
+
+129 companies in the universe have an amendment on file; **2 actually changed a headline figure**:
+Tesla equity $81.47B → $82.14B and EchoStar $5.72B → $5.77B, both from a 10-K/A filed 30 Apr 2026.
+The company page shows a `RESTATED · 10-K/A filed … · equity $81.5B → $82.1B · amendment ↗` badge.
+
+A test asserts that every restatement carries a filing date, at least one changed field, and that the
+stored value equals the amended one. Added to the weekly rebuild chain.
+
+116 tests. 500 verified · 2 definition · 1 unchecked · 99.0% within 10%.

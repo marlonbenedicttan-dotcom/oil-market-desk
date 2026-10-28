@@ -3526,6 +3526,12 @@ async function renderCompanyPage(el, all) {
         ${c.description ? `<div class="co-desc">${esc(coDesc(c.description))}</div>` : ''}</div>
       </div>
       <div class="co-verif${vcls}">${vtext}</div>`
+    + (c.restatement ? (() => {
+        const r = c.restatement;
+        const parts = Object.entries(r.changes || {}).map(([k, v]) => `${k} ${coMoney(v.was)} → ${coMoney(v.now)}`);
+        const link = r.url ? ` · <a href="${esc(r.url)}" target="_blank" rel="noopener noreferrer">amendment ↗</a>` : '';
+        return `<div class="co-restate">RESTATED · ${esc(r.form)} filed ${dealDateY(r.filed)} · ${esc(parts.join(' · '))}${link}</div>`;
+      })() : '')
     + `<div class="co-stats co-stats-12">
         <div class="co-stat"><span class="co-k">MARKET CAP</span><span class="co-v">${c.adrNA ? 'ADR' : val(c.marketCap)}</span></div>
         <div class="co-stat" title="${esc(c.peBasis === 'FY' && c.ttmRejected ? 'Quarterly data is inconsistent with the annual filing, so this uses fiscal-year earnings.' : c.peBasis === 'TTM' && c.ttmFromFY ? 'The fiscal year is the latest twelve months.' : 'Market cap ÷ trailing earnings.')}"><span class="co-k">P/E (TRAILING${c.peBasis ? ' · ' + c.peBasis : ''})</span><span class="co-v">${c.pe != null ? c.pe.toFixed(1) : '—'}</span></div>

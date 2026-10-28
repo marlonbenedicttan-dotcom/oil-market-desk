@@ -1,5 +1,5 @@
 {
- "generated": "2026-10-28T14:57:55.604Z",
+ "generated": "2026-10-28T15:17:20.729Z",
  "summary": {
   "usable": 495,
   "match": 469,
@@ -265,7 +265,7 @@
     "revenue": 94827000000,
     "netIncome": 3794000000,
     "assets": 137806000000,
-    "equity": 81467000000,
+    "equity": 82137000000,
     "marketCap": 1471254846631,
     "price": 410.6686,
     "shares": 3752431984
@@ -280,15 +280,15 @@
     "revenue": 0,
     "netIncome": 0,
     "assets": 0,
-    "equity": 0.008157103376066815
+    "equity": 0
    },
    "abs": {
     "revenue": 94827000000,
     "netIncome": 3794000000,
     "assets": 0,
-    "equity": 670000000
+    "equity": 0
    },
-   "worst": 0.008157103376066815,
+   "worst": 0,
    "status": "match"
   },
   {
@@ -16097,7 +16097,7 @@
     "revenue": 15004989000,
     "netIncome": -14497180000,
     "assets": 43016355000,
-    "equity": 5719570000,
+    "equity": 5765784000,
     "marketCap": 25905875384,
     "price": 90.85,
     "shares": 287589000
@@ -16112,15 +16112,15 @@
     "revenue": 0,
     "netIncome": 0,
     "assets": 0,
-    "equity": 0.008015215276881687
+    "equity": 0
    },
    "abs": {
     "revenue": 15004989000,
     "netIncome": 14497180000,
     "assets": 0,
-    "equity": 46214000
+    "equity": 0
    },
-   "worst": 0.008015215276881687,
+   "worst": 0,
    "status": "match"
   },
   {

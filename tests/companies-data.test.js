@@ -101,6 +101,18 @@ test('a company with no annual report is flagged, not faked', () => {
   assert.ok(vy.revenue == null, 'VYLR has no revenue');
 });
 
+test('a restatement keeps both figures and the amended one wins', () => {
+  for (const c of data.companies) {
+    if (!c.restatement) continue;
+    const changes = c.restatement.changes || {};
+    assert.ok(Object.keys(changes).length > 0, `${c.ticker}: restatement with no change recorded`);
+    assert.ok(c.restatement.filed, `${c.ticker}: restatement without a filing date`);
+    for (const [f, v] of Object.entries(changes)) {
+      assert.equal(c[f], v.now, `${c.ticker}: ${f} should hold the amended value`);
+    }
+  }
+});
+
 test('the index weights sum to about 100', () => {
   const sum = data.companies.reduce((a, c) => a + (c.indexWeight || 0), 0);
   assert.ok(sum > 99 && sum < 101, `weights sum to ${sum}`);
