@@ -1,0 +1,38 @@
+name: macro-snapshot
+
+# Refresh data/macro.json from the IMF World Economic Outlook (which the deploy host can't
+# reach) and commit it. The app serves that file. Runs weekly, on demand, and whenever the
+# fetcher itself changes.
+on:
+  schedule:
+    - cron: '17 4 * * 1' # Mondays 04:17 UTC
+  workflow_dispatch: {}
+  push:
+    paths:
+      - 'scripts/fetch-macro.mjs'
+      - '.github/workflows/macro-snapshot.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Fetch IMF WEO snapshot
+        run: node scripts/fetch-macro.mjs
+      - name: Commit if changed
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add data/macro.json
+          if git diff --staged --quiet; then
+            echo 'No change to data/macro.json'
+          else
+            git commit -m 'chore: refresh macro snapshot (IMF WEO)'
+            git push
+          fi

@@ -1,0 +1,41 @@
+name: companies-daily
+
+# Prices and market caps every weekday after the US close, plus a fundamentals refresh for any company
+# that filed a new 10-K or 10-Q. Render auto-deploys on the resulting commit.
+on:
+  schedule:
+    - cron: '40 22 * * 1-5'   # 22:40 UTC, Mon–Fri (after the 16:00 ET close)
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Cache SEC responses
+        uses: actions/cache@v4
+        with:
+          path: data/cache
+          key: sec-cache-${{ github.run_id }}
+          restore-keys: sec-cache-
+      - name: Refresh prices, caps and new filings
+        env:
+          SEC_UA: 'MarlonWatchtower/1.0 (marlonbenedicttan@gmail.com)'
+        run: node scripts/refresh-daily.mjs
+      - name: Commit if changed
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add data/companies.json data/reconciliation.json data/invariants.json data/filings-state.json data/filings-changed.json data/snapshot.json 2>/dev/null || true
+          if git diff --staged --quiet; then
+            echo 'no data change'
+          else
+            git commit -m "chore: daily companies refresh ($(date -u +%Y-%m-%d))"
+            git push
+          fi

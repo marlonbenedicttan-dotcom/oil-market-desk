@@ -1,0 +1,70 @@
+name: companies-weekly
+
+# Full rebuild: re-read the annual frames and every fundamentals pass. Catches drift the daily
+# incremental job cannot see (a tag that stopped being used, a restatement, a new index member).
+on:
+  schedule:
+    - cron: '20 5 * * 6'   # Saturdays 05:20 UTC
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  rebuild:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Cache SEC responses
+        uses: actions/cache@v4
+        with:
+          path: data/cache
+          key: sec-cache-weekly-${{ github.run_id }}
+          restore-keys: sec-cache-
+      - name: Rebuild the company dataset
+        env:
+          SEC_UA: 'MarlonWatchtower/1.0 (marlonbenedicttan@gmail.com)'
+        run: |
+          node scripts/filter-sp500.mjs
+          node scripts/fetch-nasdaq.mjs
+          node scripts/refresh-prices.mjs
+          node scripts/add-share-classes.mjs
+          node scripts/apply-weights.mjs
+          node scripts/fill-gaps.mjs
+          node scripts/ttm-earnings.mjs
+          node scripts/balance-pass.mjs
+          node scripts/repair-revenue.mjs
+          node scripts/repair-revenue.mjs --recon
+          node scripts/fix-net-income.mjs
+          node scripts/describe-companies.mjs --limit=500
+          node scripts/describe-nasdaq.mjs
+          node scripts/describe-nasdaq.mjs --bad
+          node scripts/align-periods.mjs
+          node scripts/attach-provenance.mjs
+          node scripts/detect-restatements.mjs
+          node scripts/build-quarters.mjs
+          node scripts/sync-series.mjs
+          node scripts/derive-companies.mjs
+          node scripts/reconcile-nasdaq.mjs
+          node scripts/align-revenue.mjs
+          node scripts/derive-companies.mjs
+          node scripts/reconcile-nasdaq.mjs
+          node scripts/arbitrate.mjs
+          node scripts/verify-filing-index.mjs
+          node scripts/audit-calculations.mjs
+          node scripts/audit-deep.mjs
+      - name: Commit if changed
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add data/companies.json data/reconciliation.json data/invariants.json data/snapshot.json
+          if git diff --staged --quiet; then
+            echo 'no data change'
+          else
+            git commit -m "chore: weekly companies rebuild ($(date -u +%Y-%m-%d))"
+            git push
+          fi
