@@ -133,8 +133,20 @@ async function worker() {
     if (a && (c.assets !== a.val || c.assetsEnd !== a.end)) {
       c.assets = a.val; c.assetsEnd = a.end; c.assetsTag = 'Assets'; changed++;
     }
-    if (e && (c.equity !== e.val || c.equityEnd !== e.end)) {
-      c.equity = e.val; c.equityEnd = e.end; c.equityTag = 'StockholdersEquity'; changed++;
+    if (e) {
+      // Some filers report the *total* equity under the parent tag at quarter-end. If the value equals
+      // the including-NCI figure, subtract the minority interest so the denominator matches the cap.
+      const incl = atFacts(await factsDoc(c.cik), 'StockholdersEquityIncludingPortionAttributableToNoncontrollingInterest', target);
+      const mi = atFacts(await factsDoc(c.cik), 'MinorityInterest', target);
+      let val = e.val;
+      let tag = 'StockholdersEquity';
+      if (incl && mi && Math.abs(val - incl.val) / Math.max(Math.abs(val), Math.abs(incl.val)) < 0.01) {
+        val = val - mi.val;
+        tag = 'StockholdersEquity less MinorityInterest';
+      }
+      if (c.equity !== val || c.equityEnd !== e.end) {
+        c.equity = val; c.equityEnd = e.end; c.equityTag = tag; changed++;
+      }
     }
   }
 }

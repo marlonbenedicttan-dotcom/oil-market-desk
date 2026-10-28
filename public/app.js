@@ -2143,7 +2143,12 @@ function renderBrief(b) {
   const rest = b.rows || [];
   const rows = rest.slice(0, 7).map((x) => x.kind === 'deal'
     ? `<div class="mvr deal">`
-      + `<span class="mvr-tag">M&A</span><span class="mvr-n" title="${esc(x.label)}">${esc(x.label)}</span>`
+      + `<span class="mvr-tag">M&A</span>`
+      + `<span class="mvr-n deal-name" title="${esc(x.label)}">`
+      + (x.acquirer ? `<b>${esc(x.acquirer)}</b>` : '')
+      + (x.acquirer && x.target ? '<i class="deal-arrow">→</i>' : '')
+      + (x.target ? `<b>${esc(x.target)}</b>` : '')
+      + `</span>`
       + `<span class="mvr-v deal-v">${dealVal(x.value)}</span><span class="mvr-sp">${chipFor(x)}</span>`
       + `<span class="mvr-why">announced ${dealDateY(x.date)}${x.closed ? ' · closed ' + dealDateY(x.closed) : ''}</span></div>`
     : `<div class="mvr${x.flat != null && x.flat >= 10 ? ' thin' : ''}">`
@@ -3353,7 +3358,7 @@ function renderCompanies() {
       + sel('growth', 'GROWTH', [['any', 'Any'], ['0', '>0'], ['10', '>10%']], coGrowth === null ? 'any' : coGrowth)
       + '<span class="co-sep"></span>'
       + tgl('Priced', coPriced, 'data-copriced="1"')
-      + tgl('Cross-checked', coVerified, 'data-coverified="1"')
+      + tgl('Verified', coVerified, 'data-coverified="1"')
       + tgl('Board', coView === 'sectors', 'data-coview="1"')
       + '<button class="co-tgl" data-coexport="1">CSV</button>'
       + (active ? `<button class="ma-reset" data-coreset="1">CLEAR ${active}</button>` : '');
@@ -3499,7 +3504,9 @@ async function renderCompanyPage(el, all) {
     ? ` <em class="co-dispute" title="SEC ${coMoney(vfields[f].ours)} · Nasdaq ${coMoney(vfields[f].alt)} (${Math.round(vfields[f].diff * 100)}% apart)">≠</em>`
     : '');
   const vtext = c.noFilings ? 'NEW LISTING · NO ANNUAL REPORT YET (FORM 10 FILED)'
-    : ver.status === 'verified' ? `✓ CROSS-CHECKED · ${ver.checked} FIELDS VS NASDAQ`
+    : ver.status === 'verified' && ver.method === 'filing-index'
+      ? `✓ VERIFIED · ${ver.checked} FIELDS RE-DERIVED FROM THE FILING INDEX`
+      : ver.status === 'verified' ? `✓ CROSS-CHECKED · ${ver.checked} FIELDS VS NASDAQ`
     : ver.status === 'definition' ? 'REVENUE BASIS DIFFERS FROM NASDAQ (BANK DEFINITION)'
       : ver.status === 'disputed' ? `${Object.keys(vfields).length} FIELD${Object.keys(vfields).length > 1 ? 'S DIFFER' : ' DIFFERS'} FROM NASDAQ — BOTH VALUES SHOWN`
         : 'NOT CROSS-CHECKED';

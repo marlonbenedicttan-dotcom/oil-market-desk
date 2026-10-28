@@ -50,8 +50,14 @@ for (const c of data.companies) {
     }
   }
   const n = Object.keys(disputes).length;
-  // A bank's revenue definition differs by construction; that is a labelled basis, not a dispute.
-  const definitional = n > 0 && c.sector === 'Financials' && Object.keys(disputes).every((k) => k === 'revenue');
+  // Two kinds of legitimate difference:
+  //  - a bank's revenue definition;
+  //  - net income before vs after preferred dividends (Nasdaq reports the former, we use the latter
+  //    because the market cap is common equity). Detect it: their figure is higher and our tag is the
+  //    attributable-to-common one.
+  const prefOnly = n === 1 && disputes.netIncome && disputes.netIncome.alt > disputes.netIncome.ours
+    && /AvailableToCommon/i.test(c.netIncomeTag || '');
+  const definitional = n > 0 && ((c.sector === 'Financials' && Object.keys(disputes).every((k) => k === 'revenue')) || prefOnly);
   c.verification = {
     status: n === 0 ? 'verified' : definitional ? 'definition' : 'disputed',
     checked,

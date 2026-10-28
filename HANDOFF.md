@@ -1874,3 +1874,20 @@ Also fixed:
   (SPY holds the rest in cash).
 - Deal events sorted chronologically on insert and in the store.
 - The filing-index cache is slimmed to the eight concepts we read: it had reached **1.8 GB**.
+
+## Deal titles and full verification (2026-10-28)
+**The M&A title was cut at the arrow.** The row clamped the name to two lines, and a long
+"acquirer → target" lost the target. The row now renders the two names and the arrow as separate
+elements that wrap (`-webkit-line-clamp: unset`, `white-space: normal`), the grid uses `minmax(0,1fr)`,
+and the server never emits "— → Target" for a missing buyer. Verified by injecting a 66-character
+acquirer and a 51-character target: two lines, nothing clipped.
+
+**500 of 503 securities now verify.** 494 against Nasdaq + 6 against the filing index.
+- `align-revenue.mjs` makes revenue mean one thing: it keeps the filing tag that measures the standard
+  total, and where none does (banks, utilities, three others) adopts the exchange's total revenue with
+  `revenueSource: 'nasdaq'`. Period-gated, so JBL's FY2025 exchange row cannot land on its FY2026 books.
+- `verify-filing-index.mjs` re-derives revenue, earnings, assets and equity from the XBRL index for the
+  companies Nasdaq does not cover (HONA, FERG, CBOE, JBL, TXT, BF-B) and records `method: 'filing-index'`.
+- Reconciliation: **99.4% within 10%**, 0 disputed, 2 definition, 1 unchecked.
+- The 2 definitions are C and LYV: the gap is the preferred dividend (we use earnings attributable to
+  common, which is the right numerator for a common-share market cap). VYLR has filed no annual report.
