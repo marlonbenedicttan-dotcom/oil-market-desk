@@ -2045,3 +2045,16 @@ fourth hero cell for the index P/E. 121 tests.
 - **Mobile.** The chart canvas sat below the compare controls inside a fixed-height box, so it overflowed
   by 25px and printed its axis labels over the note. The canvas now has its own flex box, and the date
   axis uses four short labels ("Oct 21") on narrow screens.
+
+## Screener, copy, and a structural description fix (2026-10-29)
+- **Home screener covers companies.** A COMMODITIES / COMPANIES switch at the top; the company view sorts
+  by price, 1D, 6M, YTD, P/E, FCF yield or market cap, filters by sector and search, and opens the company
+  on click. It lazy-loads the companies payload if the home page is the first thing opened.
+- **Copy**: the tagline is now `COMMODITIES · COMPANIES · MACRO`, and the onboarding explains the three
+  universes plus the data basis (SEC filings, cross-checked against Nasdaq).
+- **Descriptions are resolved, not patched.** `finalize-descriptions.mjs` scores every candidate — the
+  10-K Item 1 text and the Nasdaq profile — against one gate: names the company in the first 90
+  characters, 80–420 characters, a complete sentence, no TOC residue, not about a foundation. The best
+  candidate wins; if neither passes, it writes an honest generated line with the sector, industry and
+  revenue. Result: **495 from filings, 7 from Nasdaq, 1 generated, 0 failing**. A test enforces the gate
+  so this cannot regress.

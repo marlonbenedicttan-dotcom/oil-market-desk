@@ -1,13 +1,13 @@
 {
- "generated": "2026-10-28T16:28:10.137Z",
+ "generated": "2026-10-28T18:03:23.558Z",
  "summary": {
-  "usable": 497,
-  "match": 471,
+  "usable": 495,
+  "match": 470,
   "close": 21,
-  "diverge": 4,
+  "diverge": 3,
   "diverge-immaterial": 0,
   "definition": 1,
-  "period-mismatch": 1,
+  "period-mismatch": 3,
   "no-nasdaq-data": 5
  },
  "companies": [
@@ -21,8 +21,8 @@
     "netIncome": 120067000000,
     "assets": 206803000000,
     "equity": 157293000000,
-    "marketCap": 5232351000000,
-    "price": 217.052,
+    "marketCap": 5084136000000,
+    "price": 217.94,
     "shares": 24490000000
    },
    "nasdaq": {
@@ -56,8 +56,8 @@
     "netIncome": 112010000000,
     "assets": 359241000000,
     "equity": 73733000000,
-    "marketCap": 5040246004800,
-    "price": 345.38,
+    "marketCap": 5074761240500,
+    "price": 347.1,
     "shares": 14681140000
    },
    "nasdaq": {
@@ -91,8 +91,8 @@
     "netIncome": 133749000000,
     "assets": 758376000000,
     "equity": 442387000000,
-    "marketCap": 3924532331789,
-    "price": 528.32,
+    "marketCap": 3895235078383,
+    "price": 531.33,
     "shares": 7425629076
    },
    "nasdaq": {
@@ -126,8 +126,8 @@
     "netIncome": 77670000000,
     "assets": 818042000000,
     "equity": 411065000000,
-    "marketCap": 2725162123966,
-    "price": 252.6,
+    "marketCap": 2675005765856,
+    "price": 253.1,
     "shares": 10734920870
    },
    "nasdaq": {
@@ -161,8 +161,8 @@
     "netIncome": 132170000000,
     "assets": 595281000000,
     "equity": 415265000000,
-    "marketCap": 3960196300000,
-    "price": 323.785,
+    "marketCap": 3916168300000,
+    "price": 320.58,
     "shares": 12230000000
    },
    "nasdaq": {
@@ -196,8 +196,8 @@
     "netIncome": 23126000000,
     "assets": 171092000000,
     "equity": 81292000000,
-    "marketCap": 1655900595721,
-    "price": 347.27,
+    "marketCap": 1535581254973,
+    "price": 342.33,
     "shares": 4741273799
    },
    "nasdaq": {
@@ -231,8 +231,8 @@
     "netIncome": 60458000000,
     "assets": 366021000000,
     "equity": 217243000000,
-    "marketCap": 1567400479761,
-    "price": 613.24,
+    "marketCap": 1642691812481,
+    "price": 620.19,
     "shares": 2574000000
    },
    "nasdaq": {
@@ -266,8 +266,8 @@
     "netIncome": 3794000000,
     "assets": 137806000000,
     "equity": 82137000000,
-    "marketCap": 1584937353608,
-    "price": 401.0409,
+    "marketCap": 1471254846631,
+    "price": 407.46,
     "shares": 3752431984
    },
    "nasdaq": {
@@ -301,8 +301,8 @@
     "netIncome": 20640000000,
     "assets": 112476000000,
     "equity": 26535000000,
-    "marketCap": 1210170988481,
-    "price": 1286.42,
+    "marketCap": 1198780567995,
+    "price": 1281.91,
     "shares": 943357420
    },
    "nasdaq": {
@@ -336,9 +336,9 @@
     "netIncome": 66968000000,
     "assets": 1222176000000,
     "equity": 715135000000,
-    "marketCap": 1200332669836,
-    "price": 544.09,
-    "shares": null
+    "marketCap": 1196239962242,
+    "price": 542.99,
+    "shares": 2196547856
    },
    "nasdaq": {
     "revenue": 410522000000,
@@ -371,9 +371,9 @@
     "netIncome": 84969000000,
     "assets": 195888000000,
     "equity": 138378000000,
-    "marketCap": 1100478787152,
-    "price": 972.44,
-    "shares": 1125509261
+    "marketCap": 992880439691,
+    "price": 928.76,
+    "shares": 1021303311
    },
    "nasdaq": {
     "revenue": 133188000000,
@@ -406,8 +406,8 @@
     "netIncome": 55681000000,
     "assets": 4424900000000,
     "equity": 362438000000,
-    "marketCap": 902813068339,
-    "price": 339.56,
+    "marketCap": 881401378538,
+    "price": 335.79,
     "shares": 2697032375
    },
    "nasdaq": {
@@ -441,8 +441,8 @@
     "netIncome": 4335000000,
     "assets": 76926000000,
     "equity": 62999000000,
-    "marketCap": 926530963035,
-    "price": 567.245,
+    "marketCap": 843646776955,
+    "price": 560.26,
     "shares": 1630410843
    },
    "nasdaq": {
@@ -476,8 +476,8 @@
     "netIncome": 28844000000,
     "assets": 448980000000,
     "equity": 259386000000,
-    "marketCap": 754186332143,
-    "price": 183.425,
+    "marketCap": 753343390192,
+    "price": 179.91,
     "shares": 4166763453
    },
    "nasdaq": {
@@ -511,9 +511,9 @@
     "netIncome": 20058000000,
     "assets": 99627000000,
     "equity": 37909000000,
-    "marketCap": 719115375406,
-    "price": 402.505,
-    "shares": null
+    "marketCap": 728853191382,
+    "price": 401.86,
+    "shares": 1812549125
    },
    "nasdaq": {
     "revenue": 40000000000,
@@ -546,8 +546,8 @@
     "netIncome": 26804000000,
     "assets": 199210000000,
     "equity": 81544000000,
-    "marketCap": 650479306976,
-    "price": 270.11,
+    "marketCap": 635072521273,
+    "price": 268.73,
     "shares": 2409898936
    },
    "nasdaq": {
@@ -581,8 +581,8 @@
     "netIncome": 21893000000,
     "assets": 284668000000,
     "equity": 99617000000,
-    "marketCap": 941299322763,
-    "price": 118.6501,
+    "marketCap": 951176836833,
+    "price": 119.32,
     "shares": 7970166964
    },
    "nasdaq": {
@@ -616,8 +616,8 @@
     "netIncome": 14968000000,
     "assets": 54157000000,
     "equity": 7728000000,
-    "marketCap": 537462758538,
-    "price": 613.24,
+    "marketCap": 546279798584,
+    "price": 609.85,
     "shares": 906000000
    },
    "nasdaq": {
@@ -651,8 +651,8 @@
     "netIncome": 4186000000,
     "assets": 133960000000,
     "equity": -3270000000,
-    "marketCap": 506818072924,
-    "price": 286.775,
+    "marketCap": 504759381287,
+    "price": 286.39,
     "shares": 1768169012
    },
    "nasdaq": {
@@ -686,8 +686,8 @@
     "netIncome": 9226000000,
     "assets": 89045000000,
     "equity": 35803000000,
-    "marketCap": 435808852155,
-    "price": 983.465,
+    "marketCap": 444600538439,
+    "price": 992.13,
     "shares": 443869411
    },
    "nasdaq": {
@@ -721,8 +721,8 @@
     "netIncome": 1625033000,
     "assets": 8900392000,
     "equity": 7387268000,
-    "marketCap": 466911155442,
-    "price": 194.22,
+    "marketCap": 472604022190,
+    "price": 198.73,
     "shares": 2565197000
    },
    "nasdaq": {
@@ -756,8 +756,8 @@
     "netIncome": 12299000000,
     "assets": 324012000000,
     "equity": 186450000000,
-    "marketCap": 456937412846,
-    "price": 231.3573,
+    "marketCap": 460769618810,
+    "price": 228.23,
     "shares": 1995385539
    },
    "nasdaq": {
@@ -791,8 +791,8 @@
     "netIncome": -267000000,
     "assets": 211429000000,
     "equity": 114281000000,
-    "marketCap": 496003773607,
-    "price": 93.7705,
+    "marketCap": 459589644677,
+    "price": 93.74,
     "shares": 4995000000
    },
    "nasdaq": {
@@ -826,8 +826,8 @@
     "netIncome": 13267000000,
     "assets": 129637000000,
     "equity": 50285000000,
-    "marketCap": 433566278424,
-    "price": 109.95,
+    "marketCap": 419885501975,
+    "price": 111.38,
     "shares": 3949893042
    },
    "nasdaq": {
@@ -861,8 +861,8 @@
     "netIncome": 15754000000,
     "assets": 126521000000,
     "equity": 54081000000,
-    "marketCap": 368979487450,
-    "price": 159.2572,
+    "marketCap": 374280211321,
+    "price": 159.23,
     "shares": 2324000685
    },
    "nasdaq": {
@@ -896,8 +896,8 @@
     "netIncome": 12056000000,
     "assets": 309581000000,
     "equity": 94110000000,
-    "marketCap": 371002878111,
-    "price": 413.325,
+    "marketCap": 375275429582,
+    "price": 410.39,
     "shares": 914712333
    },
    "nasdaq": {
@@ -931,8 +931,8 @@
     "netIncome": 13107000000,
     "assets": 104816000000,
     "equity": 32169000000,
-    "marketCap": 395103096985,
-    "price": 91.86,
+    "marketCap": 398889340319,
+    "price": 91.18,
     "shares": 4313000000
    },
    "nasdaq": {
@@ -966,8 +966,8 @@
     "netIncome": 18254000000,
     "assets": 136866000000,
     "equity": 52550000000,
-    "marketCap": 346144180811,
-    "price": 140.38,
+    "marketCap": 358406023852,
+    "price": 141.82,
     "shares": 2472392003
    },
    "nasdaq": {
@@ -1001,8 +1001,8 @@
     "netIncome": 29055000000,
     "assets": 3411738000000,
     "equity": 303243000000,
-    "marketCap": 357218956027,
-    "price": 51.075,
+    "marketCap": 353553357334,
+    "price": 50.68,
     "shares": 6952868384
    },
    "nasdaq": {
@@ -1036,8 +1036,8 @@
     "netIncome": 14156000000,
     "assets": 105095000000,
     "equity": 12813000000,
-    "marketCap": 317784099674,
-    "price": 318.6351,
+    "marketCap": 319091073084,
+    "price": 318.5,
     "shares": 995511485
    },
    "nasdaq": {
@@ -1071,8 +1071,8 @@
     "netIncome": 8884000000,
     "assets": 98585000000,
     "equity": 21318000000,
-    "marketCap": 329062866040,
-    "price": 715.77,
+    "marketCap": 315796648743,
+    "price": 713.31,
     "shares": 465287332
    },
    "nasdaq": {
@@ -1106,8 +1106,8 @@
     "netIncome": 11316000000,
     "assets": 69185000000,
     "equity": -9994000000,
-    "marketCap": 316138224591,
-    "price": 203.03,
+    "marketCap": 310896622677,
+    "price": 202.62,
     "shares": 1556679579
    },
    "nasdaq": {
@@ -1141,8 +1141,8 @@
     "netIncome": 8704000000,
     "assets": 130169000000,
     "equity": 18677000000,
-    "marketCap": 313508639312,
-    "price": 303.2584,
+    "marketCap": 295166642714,
+    "price": 297.66,
     "shares": 1048813612
    },
    "nasdaq": {
@@ -1176,8 +1176,8 @@
     "netIncome": 6998000000,
     "assets": 36299000000,
     "equity": 20415000000,
-    "marketCap": 328839004469,
-    "price": 413.95,
+    "marketCap": 299376699397,
+    "price": 395.93,
     "shares": 793609867
    },
    "nasdaq": {
@@ -1211,8 +1211,8 @@
     "netIncome": 307000000,
     "assets": 48460000000,
     "equity": 27492000000,
-    "marketCap": 324946410000,
-    "price": 397.53,
+    "marketCap": 311289900000,
+    "price": 401.7,
     "shares": 816000000
    },
    "nasdaq": {
@@ -1246,9 +1246,9 @@
     "netIncome": 7265396000,
     "assets": 23529743000,
     "equity": 12470921000,
-    "marketCap": 317501793070,
-    "price": 253.97,
-    "shares": 1248771000
+    "marketCap": 287952745696,
+    "price": 240.85,
+    "shares": 1134476187
    },
    "nasdaq": {
     "revenue": 23232690000,
@@ -1281,8 +1281,8 @@
     "netIncome": 10981201000,
     "assets": 55596993000,
     "equity": 26615488000,
-    "marketCap": 253565624510,
-    "price": 61.725,
+    "marketCap": 270401560713,
+    "price": 62.52,
     "shares": 4222162150
    },
    "nasdaq": {
@@ -1316,8 +1316,8 @@
     "netIncome": 6732000000,
     "assets": 171079000000,
     "equity": 65245000000,
-    "marketCap": 265988226416,
-    "price": 197.06,
+    "marketCap": 257756639073,
+    "price": 194.6,
     "shares": 1342287676
    },
    "nasdaq": {
@@ -1351,8 +1351,8 @@
     "netIncome": 16300000000,
     "assets": 1809320000000,
     "equity": 124972000000,
-    "marketCap": 268998705281,
-    "price": 923.7725,
+    "marketCap": 254972978557,
+    "price": 911.77,
     "shares": 296752922
    },
    "nasdaq": {
@@ -1386,8 +1386,8 @@
     "netIncome": 4973000000,
     "assets": 34585000000,
     "equity": 16273000000,
-    "marketCap": 279261915124,
-    "price": 305.7,
+    "marketCap": 259992483727,
+    "price": 308.91,
     "shares": 907550774
    },
    "nasdaq": {
@@ -1421,8 +1421,8 @@
     "netIncome": 20285000000,
     "assets": 2148631000000,
     "equity": 181117000000,
-    "marketCap": 254998744008,
-    "price": 84.29,
+    "marketCap": 249147305293,
+    "price": 82.66,
     "shares": 3085635641
    },
    "nasdaq": {
@@ -1456,8 +1456,8 @@
     "netIncome": 6704000000,
     "assets": 110343000000,
     "equity": 53400000000,
-    "marketCap": 258982091533,
-    "price": 700.725,
+    "marketCap": 249143116253,
+    "price": 693.02,
     "shares": 371484244
    },
    "nasdaq": {
@@ -1491,8 +1491,8 @@
     "netIncome": -162502000,
     "assets": 11086684000,
     "equity": 4384175000,
-    "marketCap": 272602172986,
-    "price": 266.32,
+    "marketCap": 263734897254,
+    "price": 268.02,
     "shares": 1023934842
    },
    "nasdaq": {
@@ -1526,8 +1526,8 @@
     "netIncome": 7711000000,
     "assets": 90586000000,
     "equity": 8658000000,
-    "marketCap": 243024898888,
-    "price": 449.86,
+    "marketCap": 237478014516,
+    "price": 447.95,
     "shares": 539067675
    },
    "nasdaq": {
@@ -1561,8 +1561,8 @@
     "netIncome": 10593000000,
     "assets": 151880000000,
     "equity": 32555000000,
-    "marketCap": 237650626417,
-    "price": 251.41,
+    "marketCap": 238887595928,
+    "price": 250.25,
     "shares": 938034404
    },
    "nasdaq": {
@@ -1596,8 +1596,8 @@
     "netIncome": 6898000000,
     "assets": 86817000000,
     "equity": 38245000000,
-    "marketCap": 234362314869,
-    "price": 508.3101,
+    "marketCap": 234560536339,
+    "price": 508.65,
     "shares": null
    },
    "nasdaq": {
@@ -1631,8 +1631,8 @@
     "netIncome": 4884000000,
     "assets": 63016000000,
     "equity": 11178000000,
-    "marketCap": 237257943962,
-    "price": 890.57,
+    "marketCap": 217061868515,
+    "price": 895.08,
     "shares": 244026834
    },
    "nasdaq": {
@@ -1666,8 +1666,8 @@
     "netIncome": 16249000000,
     "assets": 1420270000000,
     "equity": 111632000000,
-    "marketCap": 297595141537,
-    "price": 189.4,
+    "marketCap": 281900943751,
+    "price": 186.91,
     "shares": 1587860206
    },
    "nasdaq": {
@@ -1701,8 +1701,8 @@
     "netIncome": 16984000000,
     "assets": 261759000000,
     "equity": 42508000000,
-    "marketCap": 395927991840,
-    "price": 131,
+    "marketCap": 381474533760,
+    "price": 130.53,
     "shares": 2873130000
    },
    "nasdaq": {
@@ -1736,8 +1736,8 @@
     "netIncome": 13021000000,
     "assets": 2657202000000,
     "equity": 210760000000,
-    "marketCap": 208312486897,
-    "price": 124.105,
+    "marketCap": 202332424765,
+    "price": 122.69,
     "shares": 1749319009
    },
    "nasdaq": {
@@ -1771,8 +1771,8 @@
     "netIncome": 7457000000,
     "assets": 112305000000,
     "equity": 59142000000,
-    "marketCap": 198231895000,
-    "price": 240.595,
+    "marketCap": 204573110000,
+    "price": 240.89,
     "shares": 823000000
    },
    "nasdaq": {
@@ -1806,8 +1806,8 @@
     "netIncome": 2670100000,
     "assets": 22285300000,
     "equity": 14308400000,
-    "marketCap": 218374407000,
-    "price": 249.04,
+    "marketCap": 200380419000,
+    "price": 243.57,
     "shares": 848100000
    },
    "nasdaq": {
@@ -1841,8 +1841,8 @@
     "netIncome": 12404000000,
     "assets": 197514000000,
     "equity": 109869000000,
-    "marketCap": 188476508788,
-    "price": 109.11,
+    "marketCap": 194286810213,
+    "price": 110.23,
     "shares": 1771519851
    },
    "nasdaq": {
@@ -1876,8 +1876,8 @@
     "netIncome": 8510000000,
     "assets": 59023000000,
     "equity": 22787000000,
-    "marketCap": 197398380766,
-    "price": 159.23,
+    "marketCap": 193482602386,
+    "price": 159.08,
     "shares": 1241420528
    },
    "nasdaq": {
@@ -1911,8 +1911,8 @@
     "netIncome": 4830771000,
     "assets": 17951535000,
     "equity": 6349820000,
-    "marketCap": 207848383981,
-    "price": 159.225,
+    "marketCap": 190021995300,
+    "price": 153.66,
     "shares": 1305006492
    },
    "nasdaq": {
@@ -1946,8 +1946,8 @@
     "netIncome": 8240000000,
     "assets": 107399000000,
     "equity": 20265000000,
-    "marketCap": 180290646472,
-    "price": 132.33,
+    "marketCap": 185019358061,
+    "price": 133.5,
     "shares": 1366649053
    },
    "nasdaq": {
@@ -1981,8 +1981,8 @@
     "netIncome": 2267342000,
     "assets": 47992712000,
     "equity": 33815755000,
-    "marketCap": 205121406989,
-    "price": 423.4,
+    "marketCap": 189499016398,
+    "price": 425.35,
     "shares": 488204157
    },
    "nasdaq": {
@@ -2016,8 +2016,8 @@
     "netIncome": 17174000000,
     "assets": 404258000000,
     "equity": 104460000000,
-    "marketCap": 181532515513,
-    "price": 43.7,
+    "marketCap": 185552260521,
+    "price": 43.93,
     "shares": 4217684168
    },
    "nasdaq": {
@@ -2051,8 +2051,8 @@
     "netIncome": 5541000000,
     "assets": 50143000000,
     "equity": 21206000000,
-    "marketCap": 190633210170,
-    "price": 181.52,
+    "marketCap": 184746649043,
+    "price": 184.17,
     "shares": 1067000000
    },
    "nasdaq": {
@@ -2086,8 +2086,8 @@
     "netIncome": 11433000000,
     "assets": 22507000000,
     "equity": 15736000000,
-    "marketCap": 200380714495,
-    "price": 1378.405,
+    "marketCap": 179920030146,
+    "price": 1304.84,
     "shares": 132682431
    },
    "nasdaq": {
@@ -2121,9 +2121,9 @@
     "netIncome": 4270300000,
     "assets": 36236900000,
     "equity": 13325800000,
-    "marketCap": 201679104061,
-    "price": 81.76,
-    "shares": 2466720940
+    "marketCap": 182703488658,
+    "price": 78.21,
+    "shares": 2177893535
    },
    "nasdaq": {
     "revenue": 23094700000,
@@ -2156,8 +2156,8 @@
     "netIncome": 3511400000,
     "assets": 19448600000,
     "equity": 12370500000,
-    "marketCap": 236504845993,
-    "price": 187.685,
+    "marketCap": 217397292576,
+    "price": 187,
     "shares": 1256537906
    },
    "nasdaq": {
@@ -2191,8 +2191,8 @@
     "netIncome": 8563000000,
     "assets": 59515000000,
     "equity": -1791000000,
-    "marketCap": 177982459669,
-    "price": 251.62,
+    "marketCap": 175820614792,
+    "price": 249.47,
     "shares": 710398642
    },
    "nasdaq": {
@@ -2226,8 +2226,8 @@
     "netIncome": 6500000000,
     "assets": 86713000000,
     "equity": 52130000000,
-    "marketCap": 178393865901,
-    "price": 103.13,
+    "marketCap": 179440747795,
+    "price": 103.1,
     "shares": 1737682887
    },
    "nasdaq": {
@@ -2261,8 +2261,8 @@
     "netIncome": 7138000000,
     "assets": 69698000000,
     "equity": 18467000000,
-    "marketCap": 179445798120,
-    "price": 301.95,
+    "marketCap": 173986891099,
+    "price": 299.88,
     "shares": 593391460
    },
    "nasdaq": {
@@ -2296,8 +2296,8 @@
     "netIncome": 7961000000,
     "assets": 121939000000,
     "equity": 64487000000,
-    "marketCap": 180543003032,
-    "price": 150.255,
+    "marketCap": 181161691833,
+    "price": 147.96,
     "shares": 1222339152
    },
    "nasdaq": {
@@ -2331,8 +2331,8 @@
     "netIncome": 7771000000,
     "assets": 208160000000,
     "equity": 86177000000,
-    "marketCap": 167370914941,
-    "price": 29.385,
+    "marketCap": 171161197878,
+    "price": 29.8,
     "shares": 5713000000
    },
    "nasdaq": {
@@ -2366,8 +2366,8 @@
     "netIncome": 10775000000,
     "assets": 300052000000,
     "equity": 33474000000,
-    "marketCap": 212015137051,
-    "price": 316.11,
+    "marketCap": 211520545892,
+    "price": 312.91,
     "shares": 686614005
    },
    "nasdaq": {
@@ -2398,32 +2398,32 @@
    "sameYear": true,
    "our": {
     "revenue": 10838034000,
-    "netIncome": 961837000,
+    "netIncome": 936845000,
     "assets": 67303047000,
     "equity": 42129498000,
-    "marketCap": 163753252867,
-    "price": 227.315,
+    "marketCap": 171047191771,
+    "price": 226.72,
     "shares": 697752530
    },
    "nasdaq": {
     "revenue": 10591829000,
-    "netIncome": 927600000,
+    "netIncome": 936845000,
     "assets": 67303047000,
     "equity": 42129498000
    },
    "diff": {
     "revenue": 0.022716758408397684,
-    "netIncome": 0.03559542833141166,
+    "netIncome": 0,
     "assets": 0,
     "equity": 0
    },
    "abs": {
     "revenue": 10838034000,
-    "netIncome": 961837000,
+    "netIncome": 936845000,
     "assets": 0,
     "equity": 0
    },
-   "worst": 0.03559542833141166,
+   "worst": 0.022716758408397684,
    "status": "close"
   },
   {
@@ -2436,8 +2436,8 @@
     "netIncome": 6835000000,
     "assets": 212721000000,
     "equity": 54608000000,
-    "marketCap": 171863744185,
-    "price": 81.95,
+    "marketCap": 172188826623,
+    "price": 82.42,
     "shares": 2083521964
    },
    "nasdaq": {
@@ -2471,8 +2471,8 @@
     "netIncome": 5553000000,
     "assets": 169998000000,
     "equity": 55661000000,
-    "marketCap": 178111263044,
-    "price": 1150.12,
+    "marketCap": 173182548877,
+    "price": 1136.05,
     "shares": 155253443
    },
    "nasdaq": {
@@ -2506,8 +2506,8 @@
     "netIncome": 5494000000,
     "assets": 35767000000,
     "equity": 10190000000,
-    "marketCap": 152769897462,
-    "price": 138.8801,
+    "marketCap": 159562237289,
+    "price": 140.2,
     "shares": 1110467095
    },
    "nasdaq": {
@@ -2541,8 +2541,8 @@
     "netIncome": 1748000000,
     "assets": 26038000000,
     "equity": 12964000000,
-    "marketCap": 155772100000,
-    "price": 150.615,
+    "marketCap": 164364640000,
+    "price": 154.78,
     "shares": 1046000000
    },
    "nasdaq": {
@@ -2576,8 +2576,8 @@
     "netIncome": 5027000000,
     "assets": 105996000000,
     "equity": 25944000000,
-    "marketCap": 172660025082,
-    "price": 640.3,
+    "marketCap": 174218459964,
+    "price": 639.58,
     "shares": 270107282
    },
    "nasdaq": {
@@ -2611,8 +2611,8 @@
     "netIncome": 8367056000,
     "assets": 73597792000,
     "equity": 31567256000,
-    "marketCap": 164057767959,
-    "price": 245.38,
+    "marketCap": 166759408127,
+    "price": 235.16,
     "shares": null
    },
    "nasdaq": {
@@ -2646,8 +2646,8 @@
     "netIncome": 2856000000,
     "assets": 20458700000,
     "equity": 17706300000,
-    "marketCap": 154918544011,
-    "price": 446.9074,
+    "marketCap": 156783487214,
+    "price": 445.88,
     "shares": 355130237
    },
    "nasdaq": {
@@ -2681,8 +2681,8 @@
     "netIncome": 21889000000,
     "assets": 420198000000,
     "equity": 110533000000,
-    "marketCap": 141432259726,
-    "price": 20.9867,
+    "marketCap": 140994388953,
+    "price": 20.94,
     "shares": 7000577201
    },
    "nasdaq": {
@@ -2716,8 +2716,8 @@
     "netIncome": 8417000000,
     "assets": 490995000000,
     "equity": 49425000000,
-    "marketCap": 153600981586,
-    "price": 88.79,
+    "marketCap": 156643228974,
+    "price": 89.3,
     "shares": 1752210425
    },
    "nasdaq": {
@@ -2751,9 +2751,9 @@
     "netIncome": 1890000000,
     "assets": 168235000000,
     "equity": 5451000000,
-    "marketCap": 131849526736,
-    "price": 166.725,
-    "shares": 790820373
+    "marketCap": 148866193267,
+    "price": 168.18,
+    "shares": 884528778
    },
    "nasdaq": {
     "revenue": 89463000000,
@@ -2786,8 +2786,8 @@
     "netIncome": 3184000000,
     "assets": 9972000000,
     "equity": 2167000000,
-    "marketCap": 155902569511,
-    "price": 681.485,
+    "marketCap": 144204759220,
+    "price": 667.85,
     "shares": 218073067
    },
    "nasdaq": {
@@ -2821,8 +2821,8 @@
     "netIncome": 3614000000,
     "assets": 83464000000,
     "equity": 52527000000,
-    "marketCap": 164911140690,
-    "price": 234.365,
+    "marketCap": 162163852858,
+    "price": 232,
     "shares": 707139356
    },
    "nasdaq": {
@@ -2856,8 +2856,8 @@
     "netIncome": 4087000000,
     "assets": 41251000000,
     "equity": 19381000000,
-    "marketCap": 153285944000,
-    "price": 394.15,
+    "marketCap": 142197124000,
+    "price": 384.2,
     "shares": 387900000
    },
    "nasdaq": {
@@ -2891,8 +2891,8 @@
     "netIncome": 10053000000,
     "assets": 61802000000,
     "equity": 27041000000,
-    "marketCap": 133879603131,
-    "price": 65.57,
+    "marketCap": 136238760071,
+    "price": 65.78,
     "shares": 2058115983
    },
    "nasdaq": {
@@ -2926,8 +2926,8 @@
     "netIncome": 5936000000,
     "assets": 101286000000,
     "equity": -2470000000,
-    "marketCap": 313516087961,
-    "price": 493.29,
+    "marketCap": 290210371610,
+    "price": 501.96,
     "shares": 574151014
    },
    "nasdaq": {
@@ -2961,8 +2961,8 @@
     "netIncome": 4471000000,
     "assets": 61200000000,
     "equity": 31019000000,
-    "marketCap": 129965069000,
-    "price": 448.32,
+    "marketCap": 132751388000,
+    "price": 448.93,
     "shares": 298800000
    },
    "nasdaq": {
@@ -2996,8 +2996,8 @@
     "netIncome": 3953200000,
     "assets": 25643000000,
     "equity": 18665800000,
-    "marketCap": 133231734701,
-    "price": 525.655,
+    "marketCap": 132795781911,
+    "price": 521.03,
     "shares": 254034190
    },
    "nasdaq": {
@@ -3031,8 +3031,8 @@
     "netIncome": 11308000000,
     "assets": 123039000000,
     "equity": 30323000000,
-    "marketCap": 131424902326,
-    "price": 226.11,
+    "marketCap": 132593459584,
+    "price": 225.6,
     "shares": 585906353
    },
    "nasdaq": {
@@ -3066,8 +3066,8 @@
     "netIncome": 4043000000,
     "assets": 83955000000,
     "equity": 17314000000,
-    "marketCap": 123502518396,
-    "price": 439.77,
+    "marketCap": 128398698139,
+    "price": 435.98,
     "shares": 306000000
    },
    "nasdaq": {
@@ -3101,8 +3101,8 @@
     "netIncome": 7054000000,
     "assets": 90038000000,
     "equity": 18440000000,
-    "marketCap": 123410605942,
-    "price": 60.42,
+    "marketCap": 125586097051,
+    "price": 61.55,
     "shares": 2036473705
    },
    "nasdaq": {
@@ -3136,8 +3136,8 @@
     "netIncome": 10310000000,
     "assets": 272327000000,
     "equity": 73757000000,
-    "marketCap": 138214728486,
-    "price": 358.46,
+    "marketCap": 137001387929,
+    "price": 356.25,
     "shares": null
    },
    "nasdaq": {
@@ -3171,8 +3171,8 @@
     "netIncome": 9286000000,
     "assets": 13861000000,
     "equity": 8864000000,
-    "marketCap": 147313050899,
-    "price": 393.12,
+    "marketCap": 128384107687,
+    "price": 380.88,
     "shares": 339037922
    },
    "nasdaq": {
@@ -3206,7 +3206,7 @@
     "netIncome": 6927000000,
     "assets": 35017000000,
     "equity": -3502000000,
-    "marketCap": 122659388804,
+    "marketCap": 124078671141,
     "price": 73.49,
     "shares": 1671898087
    },
@@ -3241,8 +3241,8 @@
     "netIncome": 2181000000,
     "assets": 669009000000,
     "equity": 113616000000,
-    "marketCap": 125377895933,
-    "price": 204.34,
+    "marketCap": 123519036880,
+    "price": 203.44,
     "shares": 621931593
    },
    "nasdaq": {
@@ -3276,8 +3276,8 @@
     "netIncome": 2341000000,
     "assets": 57988000000,
     "equity": 23725000000,
-    "marketCap": 111497029998,
-    "price": 387.525,
+    "marketCap": 120722225848,
+    "price": 387.34,
     "shares": 309000000
    },
    "nasdaq": {
@@ -3311,8 +3311,8 @@
     "netIncome": 4413500000,
     "assets": 63193300000,
     "equity": 6031200000,
-    "marketCap": 112945559984,
-    "price": 285.01,
+    "marketCap": 120523870840,
+    "price": 293.11,
     "shares": 402644364
    },
    "nasdaq": {
@@ -3346,8 +3346,8 @@
     "netIncome": 5404000000,
     "assets": 29264000000,
     "equity": -5578000000,
-    "marketCap": 111193043293,
-    "price": 147.98,
+    "marketCap": 117087623315,
+    "price": 150.14,
     "shares": 751380500
    },
    "nasdaq": {
@@ -3381,8 +3381,8 @@
     "netIncome": 1768000000,
     "assets": 253538000000,
     "equity": 75046000000,
-    "marketCap": 115989822765,
-    "price": 90.69,
+    "marketCap": 119545360390,
+    "price": 91.13,
     "shares": 1272211063
    },
    "nasdaq": {
@@ -3416,8 +3416,8 @@
     "netIncome": 3322349000,
     "assets": 98724256000,
     "equity": 53193178000,
-    "marketCap": 119130489780,
-    "price": 125.675,
+    "marketCap": 119884210200,
+    "price": 126.47,
     "shares": 929559000
    },
    "nasdaq": {
@@ -3451,8 +3451,8 @@
     "netIncome": 7085000000,
     "assets": 57121000000,
     "equity": 33692000000,
-    "marketCap": 116244149674,
-    "price": 111.86,
+    "marketCap": 114715477544,
+    "price": 112.64,
     "shares": 1087874212
    },
    "nasdaq": {
@@ -3486,8 +3486,8 @@
     "netIncome": 5017000000,
     "assets": 59840000000,
     "equity": 6721000000,
-    "marketCap": 145327329070,
-    "price": 629.09,
+    "marketCap": 139439157148,
+    "price": 622.99,
     "shares": 230080240
    },
    "nasdaq": {
@@ -3521,8 +3521,8 @@
     "netIncome": 4801000000,
     "assets": 93028000000,
     "equity": 49463000000,
-    "marketCap": 121339020245,
-    "price": 94.86,
+    "marketCap": 122042546085,
+    "price": 93.95,
     "shares": 1282014208
    },
    "nasdaq": {
@@ -3556,8 +3556,8 @@
     "netIncome": 4762000000,
     "assets": 82323000000,
     "equity": -2172000000,
-    "marketCap": 111989707276,
-    "price": 960.81,
+    "marketCap": 116680137580,
+    "price": 967.02,
     "shares": 122487456
    },
    "nasdaq": {
@@ -3591,8 +3591,8 @@
     "netIncome": 1856400000,
     "assets": 32019700000,
     "equity": -8104000000,
-    "marketCap": 118890600000,
-    "price": 104.315,
+    "marketCap": 114912000000,
+    "price": 103.04,
     "shares": 1139300000
    },
    "nasdaq": {
@@ -3626,8 +3626,8 @@
     "netIncome": 6636000000,
     "assets": 54144000000,
     "equity": -9917000000,
-    "marketCap": 111492654656,
-    "price": 198.75,
+    "marketCap": 111470212495,
+    "price": 198.18,
     "shares": 560951457
    },
    "nasdaq": {
@@ -3658,11 +3658,11 @@
    "sameYear": true,
    "our": {
     "revenue": 132376000000,
-    "netIncome": 4403000000,
+    "netIncome": 4394000000,
     "assets": 73680000000,
     "equity": 29093000000,
-    "marketCap": 108547654884,
-    "price": 272.08,
+    "marketCap": 112994742993,
+    "price": 268.53,
     "shares": 400744022
    },
    "nasdaq": {
@@ -3673,17 +3673,17 @@
    },
    "diff": {
     "revenue": 0,
-    "netIncome": 0,
+    "netIncome": 0.0020440608675902795,
     "assets": 0,
     "equity": 0
    },
    "abs": {
     "revenue": 132376000000,
-    "netIncome": 4403000000,
+    "netIncome": 4394000000,
     "assets": 0,
     "equity": 0
    },
-   "worst": 0,
+   "worst": 0.0020440608675902795,
    "status": "match"
   },
   {
@@ -3696,8 +3696,8 @@
     "netIncome": 3648000000,
     "assets": 30877000000,
     "equity": 15395000000,
-    "marketCap": 115192340985,
-    "price": 913.41,
+    "marketCap": 111050809277,
+    "price": 900.73,
     "shares": 126216529
    },
    "nasdaq": {
@@ -3731,8 +3731,8 @@
     "netIncome": 4021000000,
     "assets": 198424200000,
     "equity": 28728200000,
-    "marketCap": 104999167683,
-    "price": 293.41,
+    "marketCap": 109926976492,
+    "price": 293.48,
     "shares": 360310000
    },
    "nasdaq": {
@@ -3766,8 +3766,8 @@
     "netIncome": 4341000000,
     "assets": 155720000000,
     "equity": 36016000000,
-    "marketCap": 106512107022,
-    "price": 92.57,
+    "marketCap": 106857215912,
+    "price": 92.65,
     "shares": 1119391291
    },
    "nasdaq": {
@@ -3801,8 +3801,8 @@
     "netIncome": 7130000000,
     "assets": 29496000000,
     "equity": 11623000000,
-    "marketCap": 96494356000,
-    "price": 247.67,
+    "marketCap": 102678744000,
+    "price": 248.36,
     "shares": 410500000
    },
    "nasdaq": {
@@ -3836,8 +3836,8 @@
     "netIncome": 3246000000,
     "assets": 47844000000,
     "equity": 22420000000,
-    "marketCap": 116154548722,
-    "price": 303.08,
+    "marketCap": 117814461079,
+    "price": 301.42,
     "shares": 382688675
    },
    "nasdaq": {
@@ -3871,8 +3871,8 @@
     "netIncome": 1853400000,
     "assets": 10389200000,
     "equity": 1237500000,
-    "marketCap": 132237211680,
-    "price": 180.175,
+    "marketCap": 132061120403,
+    "price": 185,
     "shares": 764600000
    },
    "nasdaq": {
@@ -3906,8 +3906,8 @@
     "netIncome": 2918600000,
     "assets": 21420700000,
     "equity": 8557500000,
-    "marketCap": 101580300357,
-    "price": 461.675,
+    "marketCap": 97888311447,
+    "price": 461.07,
     "shares": null
    },
    "nasdaq": {
@@ -3941,8 +3941,8 @@
     "netIncome": 5306000000,
     "assets": 472300000000,
     "equity": 43905000000,
-    "marketCap": 101002126578,
-    "price": 148.84,
+    "marketCap": 98566296708,
+    "price": 147.58,
     "shares": 686907398
    },
    "nasdaq": {
@@ -3976,8 +3976,8 @@
     "netIncome": 1596000000,
     "assets": 30976000000,
     "equity": 11807000000,
-    "marketCap": 112970045945,
-    "price": 131.17,
+    "marketCap": 106545122661,
+    "price": 126.3,
     "shares": 857948109
    },
    "nasdaq": {
@@ -4011,8 +4011,8 @@
     "netIncome": 4912000000,
     "assets": 195736000000,
     "equity": 51842000000,
-    "marketCap": 97245393154,
-    "price": 124.73,
+    "marketCap": 97447180081,
+    "price": 124.8,
     "shares": 777670866
    },
    "nasdaq": {
@@ -4046,8 +4046,8 @@
     "netIncome": 4566000000,
     "assets": 36786000000,
     "equity": 18992000000,
-    "marketCap": 88293438220,
-    "price": 329.7,
+    "marketCap": 91766170040,
+    "price": 328.45,
     "shares": 279936000
    },
    "nasdaq": {
@@ -4081,8 +4081,8 @@
     "netIncome": 5662000000,
     "assets": 121494000000,
     "equity": 43738000000,
-    "marketCap": 91034609533,
-    "price": 421.265,
+    "marketCap": 95053789245,
+    "price": 421.49,
     "shares": 220704667
    },
    "nasdaq": {
@@ -4116,8 +4116,8 @@
     "netIncome": 2889000000,
     "assets": 43682000000,
     "equity": 13155000000,
-    "marketCap": 96170084616,
-    "price": 52.175,
+    "marketCap": 93626195086,
+    "price": 52.27,
     "shares": 1859556799
    },
    "nasdaq": {
@@ -4151,8 +4151,8 @@
     "netIncome": 4160000000,
     "assets": 58710000000,
     "equity": 15100000000,
-    "marketCap": 91721958535,
-    "price": 192.77,
+    "marketCap": 93904569296,
+    "price": 190.67,
     "shares": 484124253
    },
    "nasdaq": {
@@ -4186,8 +4186,8 @@
     "netIncome": 1350000000,
     "assets": 40141000000,
     "equity": 14159000000,
-    "marketCap": 98706714449,
-    "price": 1000.46,
+    "marketCap": 94234420281,
+    "price": 999.38,
     "shares": 98254928
    },
    "nasdaq": {
@@ -4221,8 +4221,8 @@
     "netIncome": 7194000000,
     "assets": 692345000000,
     "equity": 64735000000,
-    "marketCap": 92922188239,
-    "price": 59.635,
+    "marketCap": 92828705153,
+    "price": 59.74,
     "shares": 1553695799
    },
    "nasdaq": {
@@ -4256,8 +4256,8 @@
     "netIncome": 2204000000,
     "assets": 58167000000,
     "equity": 18899000000,
-    "marketCap": 94375071612,
-    "price": 65.72,
+    "marketCap": 93599622149,
+    "price": 65.95,
     "shares": 1437201606
    },
    "nasdaq": {
@@ -4291,8 +4291,8 @@
     "netIncome": 3315000000,
     "assets": 136887000000,
     "equity": 28861000000,
-    "marketCap": 86785973745,
-    "price": 154.59,
+    "marketCap": 91361338814,
+    "price": 155.44,
     "shares": 567896513
    },
    "nasdaq": {
@@ -4326,8 +4326,8 @@
     "netIncome": 3250000000,
     "assets": 37733000000,
     "equity": 4657000000,
-    "marketCap": 88923992390,
-    "price": 172.225,
+    "marketCap": 89631911906,
+    "price": 171.58,
     "shares": 526700000
    },
    "nasdaq": {
@@ -4361,8 +4361,8 @@
     "netIncome": 6576000000,
     "assets": 573572000000,
     "equity": 60534000000,
-    "marketCap": 90823515229,
-    "price": 227.72,
+    "marketCap": 89546895495,
+    "price": 227.54,
     "shares": 403370923
    },
    "nasdaq": {
@@ -4396,8 +4396,8 @@
     "netIncome": 2293000000,
     "assets": 41964000000,
     "equity": 20266000000,
-    "marketCap": 93442656000,
-    "price": 167.455,
+    "marketCap": 90134902000,
+    "price": 166.27,
     "shares": 562000000
    },
    "nasdaq": {
@@ -4431,8 +4431,8 @@
     "netIncome": 4210000000,
     "assets": 57249000000,
     "equity": 25622000000,
-    "marketCap": 95863825332,
-    "price": 354.29,
+    "marketCap": 94521861645,
+    "price": 354.89,
     "shares": 270389759
    },
    "nasdaq": {
@@ -4466,8 +4466,8 @@
     "netIncome": 3019214000,
     "assets": 47708975000,
     "equity": 8665526000,
-    "marketCap": 87740569575,
-    "price": 116.825,
+    "marketCap": 88551244699,
+    "price": 116.7,
     "shares": 780215856
    },
    "nasdaq": {
@@ -4501,8 +4501,8 @@
     "netIncome": 2708000000,
     "assets": 45835000000,
     "equity": 9989000000,
-    "marketCap": 91240986476,
-    "price": 228.295,
+    "marketCap": 95683820746,
+    "price": 235.81,
     "shares": 403335781
    },
    "nasdaq": {
@@ -4536,8 +4536,8 @@
     "netIncome": 3291000000,
     "assets": 37939000000,
     "equity": 12900000000,
-    "marketCap": 95501200160,
-    "price": 157.745,
+    "marketCap": 87202542021,
+    "price": 155.88,
     "shares": null
    },
    "nasdaq": {
@@ -4571,8 +4571,8 @@
     "netIncome": 2615000000,
     "assets": 58573000000,
     "equity": 12807000000,
-    "marketCap": 91431768532,
-    "price": 74.73,
+    "marketCap": 87701107742,
+    "price": 74.09,
     "shares": 1225000000
    },
    "nasdaq": {
@@ -4606,8 +4606,8 @@
     "netIncome": 107741000,
     "assets": 6643844000,
     "equity": 3732206000,
-    "marketCap": 99542778153,
-    "price": 277.23,
+    "marketCap": 96824580222,
+    "price": 280.82,
     "shares": 363472000
    },
    "nasdaq": {
@@ -4641,8 +4641,8 @@
     "netIncome": 1108888000,
     "assets": 10153148000,
     "equity": 5474181000,
-    "marketCap": 94327610360,
-    "price": 342.63,
+    "marketCap": 87159130570,
+    "price": 343.08,
     "shares": 272651000
    },
    "nasdaq": {
@@ -4676,8 +4676,8 @@
     "netIncome": 2529500000,
     "assets": 63190400000,
     "equity": 3652500000,
-    "marketCap": 82852356135,
-    "price": 177.68,
+    "marketCap": 88052470271,
+    "price": 183.83,
     "shares": 468757000
    },
    "nasdaq": {
@@ -4711,8 +4711,8 @@
     "netIncome": 2601000000,
     "assets": 27540000000,
     "equity": -3771000000,
-    "marketCap": 102113470718,
-    "price": 391.4404,
+    "marketCap": 101883996384,
+    "price": 390.23,
     "shares": 264984554
    },
    "nasdaq": {
@@ -4746,8 +4746,8 @@
     "netIncome": 6242000000,
     "assets": 143708000000,
     "equity": 32894000000,
-    "marketCap": 81449777225,
-    "price": 397.93,
+    "marketCap": 81626031083,
+    "price": 397.03,
     "shares": 216237902
    },
    "nasdaq": {
@@ -4781,8 +4781,8 @@
     "netIncome": 2319000000,
     "assets": 57249000000,
     "equity": 14517000000,
-    "marketCap": 91786869604,
-    "price": 259.02,
+    "marketCap": 89799205208,
+    "price": 258.98,
     "shares": 361990335
    },
    "nasdaq": {
@@ -4816,8 +4816,8 @@
     "netIncome": 5957000000,
     "assets": 157919000000,
     "equity": 41552000000,
-    "marketCap": 78454321496,
-    "price": 296.99,
+    "marketCap": 81108617178,
+    "price": 298.28,
     "shares": 263528277
    },
    "nasdaq": {
@@ -4851,8 +4851,8 @@
     "netIncome": 1028378000,
     "assets": 24926901000,
     "equity": 8848624000,
-    "marketCap": 88648328024,
-    "price": 602,
+    "marketCap": 80505411139,
+    "price": 578.83,
     "shares": 132766436
    },
    "nasdaq": {
@@ -4886,8 +4886,8 @@
     "netIncome": 2451000000,
     "assets": 71487000000,
     "equity": 25785000000,
-    "marketCap": 78946034866,
-    "price": 61.89,
+    "marketCap": 81428454037,
+    "price": 62.35,
     "shares": 1281845669
    },
    "nasdaq": {
@@ -4921,8 +4921,8 @@
     "netIncome": 4980000000,
     "assets": 51799000000,
     "equity": 29833000000,
-    "marketCap": 84994707679,
-    "price": 162.09,
+    "marketCap": 85513991563,
+    "price": 161.1,
     "shares": 536491493
    },
    "nasdaq": {
@@ -4956,8 +4956,8 @@
     "netIncome": 1332220000,
     "assets": 48224461000,
     "equity": 28328189000,
-    "marketCap": 91721131509,
-    "price": 478.75,
+    "marketCap": 82430586910,
+    "price": 474.42,
     "shares": 173916410
    },
    "nasdaq": {
@@ -4991,8 +4991,8 @@
     "netIncome": 19998000000,
     "assets": 272631000000,
     "equity": 96654000000,
-    "marketCap": 76897042184,
-    "price": 21.6734,
+    "marketCap": 80518563841,
+    "price": 21.84,
     "shares": 3709000000
    },
    "nasdaq": {
@@ -5026,8 +5026,8 @@
     "netIncome": 1457000000,
     "assets": 16774000000,
     "equity": -5417000000,
-    "marketCap": 78558906836,
-    "price": 348.835,
+    "marketCap": 78689444483,
+    "price": 344.65,
     "shares": 229291615
    },
    "nasdaq": {
@@ -5061,8 +5061,8 @@
     "netIncome": 4504900000,
     "assets": 40558700000,
     "equity": 31256900000,
-    "marketCap": 83454798498,
-    "price": 810.65,
+    "marketCap": 82880824440,
+    "price": 816.1,
     "shares": 108600000
    },
    "nasdaq": {
@@ -5096,8 +5096,8 @@
     "netIncome": 2154000000,
     "assets": 19389000000,
     "equity": 2393000000,
-    "marketCap": 79629818503,
-    "price": 481.21,
+    "marketCap": 79739871872,
+    "price": 483.61,
     "shares": 165658912
    },
    "nasdaq": {
@@ -5131,8 +5131,8 @@
     "netIncome": 2568500000,
     "assets": 25901700000,
     "equity": 4598300000,
-    "marketCap": 77617063619,
-    "price": 319.86,
+    "marketCap": 81824062376,
+    "price": 326.01,
     "shares": 247774767
    },
    "nasdaq": {
@@ -5166,8 +5166,8 @@
     "netIncome": 2132000000,
     "assets": 16330000000,
     "equity": 54000000,
-    "marketCap": 73244239529,
-    "price": 91.93,
+    "marketCap": 74966132839,
+    "price": 92.17,
     "shares": 801548028
    },
    "nasdaq": {
@@ -5201,8 +5201,8 @@
     "netIncome": 1993656000,
     "assets": 10529140000,
     "equity": 5139887000,
-    "marketCap": 84715971092,
-    "price": 213.47,
+    "marketCap": 88984528341,
+    "price": 214.8,
     "shares": 399889646
    },
    "nasdaq": {
@@ -5236,8 +5236,8 @@
     "netIncome": 1506000000,
     "assets": 11179000000,
     "equity": 5353000000,
-    "marketCap": 78902856792,
-    "price": 197.87,
+    "marketCap": 74141168088,
+    "price": 191.99,
     "shares": 400940063
    },
    "nasdaq": {
@@ -5271,8 +5271,8 @@
     "netIncome": 10992000000,
     "assets": 219237000000,
     "equity": 59203000000,
-    "marketCap": 157505736295,
-    "price": 146.71,
+    "marketCap": 157189298169,
+    "price": 146.83,
     "shares": 1101862739
    },
    "nasdaq": {
@@ -5306,8 +5306,8 @@
     "netIncome": 1883000000,
     "assets": 38137000000,
     "equity": 9140000000,
-    "marketCap": 81645661211,
-    "price": 90.79,
+    "marketCap": 85475751694,
+    "price": 94.56,
     "shares": 918781846
    },
    "nasdaq": {
@@ -5341,8 +5341,8 @@
     "netIncome": 5572000000,
     "assets": 73090000000,
     "equity": 16199000000,
-    "marketCap": 89227079663,
-    "price": 104.93,
+    "marketCap": 85979986677,
+    "price": 106.09,
     "shares": 850000000
    },
    "nasdaq": {
@@ -5376,8 +5376,8 @@
     "netIncome": 2870000000,
     "assets": 45236000000,
     "equity": 15547000000,
-    "marketCap": 76731306104,
-    "price": 341.55,
+    "marketCap": 74118517006,
+    "price": 339.74,
     "shares": 224572025
    },
    "nasdaq": {
@@ -5411,8 +5411,8 @@
     "netIncome": 2145044000,
     "assets": 15548737000,
     "equity": 6187443000,
-    "marketCap": 72645234480,
-    "price": 227.42,
+    "marketCap": 73250598123,
+    "price": 230.09,
     "shares": 329929197
    },
    "nasdaq": {
@@ -5446,9 +5446,9 @@
     "netIncome": 1332800000,
     "assets": 12212400000,
     "equity": 3941300000,
-    "marketCap": 91469340023,
-    "price": 237.32,
-    "shares": 385426176
+    "marketCap": 74810901777,
+    "price": 208.56,
+    "shares": 358702061
    },
    "nasdaq": {
     "revenue": 10229900000,
@@ -5481,8 +5481,8 @@
     "netIncome": -2822000000,
     "assets": 12338000000,
     "equity": 8650000000,
-    "marketCap": 85895601518,
-    "price": 215.505,
+    "marketCap": 79887101389,
+    "price": 207.97,
     "shares": 394939424
    },
    "nasdaq": {
@@ -5516,8 +5516,8 @@
     "netIncome": 2538209000,
     "assets": 16538253000,
     "equity": -763352000,
-    "marketCap": 72110764999,
-    "price": 89.145,
+    "marketCap": 72741754417,
+    "price": 89.82,
     "shares": 855919000
    },
    "nasdaq": {
@@ -5551,8 +5551,8 @@
     "netIncome": 4182000000,
     "assets": 51377000000,
     "equity": 16674000000,
-    "marketCap": 78494892107,
-    "price": 552.425,
+    "marketCap": 78340041814,
+    "price": 551.23,
     "shares": 141921621
    },
    "nasdaq": {
@@ -5586,8 +5586,8 @@
     "netIncome": 2511000000,
     "assets": 22208000000,
     "equity": 8199000000,
-    "marketCap": 99643925342,
-    "price": 166.325,
+    "marketCap": 102997125161,
+    "price": 168.82,
     "shares": 623000000
    },
    "nasdaq": {
@@ -5621,8 +5621,8 @@
     "netIncome": 2075600000,
     "assets": 24696300000,
     "equity": 9737100000,
-    "marketCap": 81749427207,
-    "price": 291.65,
+    "marketCap": 80883211824,
+    "price": 291.27,
     "shares": 281969448
    },
    "nasdaq": {
@@ -5656,8 +5656,8 @@
     "netIncome": -59000000,
     "assets": 75906000000,
     "equity": 24688000000,
-    "marketCap": 80391267016,
-    "price": 60.54,
+    "marketCap": 75253978322,
+    "price": 60.84,
     "shares": 1334533171
    },
    "nasdaq": {
@@ -5691,8 +5691,8 @@
     "netIncome": 3374000000,
     "assets": 54868000000,
     "equity": 26109000000,
-    "marketCap": 80499928849,
-    "price": 54.22,
+    "marketCap": 78748639837,
+    "price": 54.08,
     "shares": null
    },
    "nasdaq": {
@@ -5726,8 +5726,8 @@
     "netIncome": 2459000000,
     "assets": 15830000000,
     "equity": 4054000000,
-    "marketCap": 82126188000,
-    "price": 476.26,
+    "marketCap": 83346780000,
+    "price": 474,
     "shares": 177300000
    },
    "nasdaq": {
@@ -5761,8 +5761,8 @@
     "netIncome": 3066000000,
     "assets": 16148000000,
     "equity": 3225000000,
-    "marketCap": 78458128000,
-    "price": 275.4,
+    "marketCap": 78533600000,
+    "price": 275.93,
     "shares": 288200000
    },
    "nasdaq": {
@@ -5796,8 +5796,8 @@
     "netIncome": 3705000000,
     "assets": 59490000000,
     "equity": 16165000000,
-    "marketCap": 67622069154,
-    "price": 148.86,
+    "marketCap": 69398369391,
+    "price": 148.01,
     "shares": 452806418
    },
    "nasdaq": {
@@ -5831,8 +5831,8 @@
     "netIncome": 3333286000,
     "assets": 7259610000,
     "equity": 2134671000,
-    "marketCap": 86448719575,
-    "price": 258.25,
+    "marketCap": 87092922750,
+    "price": 262.82,
     "shares": 341970000
    },
    "nasdaq": {
@@ -5866,8 +5866,8 @@
     "netIncome": 2843000000,
     "assets": 33992000000,
     "equity": 12349000000,
-    "marketCap": 72942905082,
-    "price": 529.82,
+    "marketCap": 71227605574,
+    "price": 530.61,
     "shares": 138165463
    },
    "nasdaq": {
@@ -5901,8 +5901,8 @@
     "netIncome": 3580000000,
     "assets": 114460000000,
     "equity": 31138000000,
-    "marketCap": 70532120925,
-    "price": 129.55,
+    "marketCap": 70602892581,
+    "price": 130.3,
     "shares": 540861473
    },
    "nasdaq": {
@@ -5936,8 +5936,8 @@
     "netIncome": 4268000000,
     "assets": 41619000000,
     "equity": 10037000000,
-    "marketCap": 78882317655,
-    "price": 294.965,
+    "marketCap": 73945152184,
+    "price": 295.92,
     "shares": 270528303
    },
    "nasdaq": {
@@ -5971,8 +5971,8 @@
     "netIncome": 935000000,
     "assets": 19659000000,
     "equity": 10033000000,
-    "marketCap": 73474331177,
-    "price": 169.83,
+    "marketCap": 77724983939,
+    "price": 170.56,
     "shares": 439686000
    },
    "nasdaq": {
@@ -6006,8 +6006,8 @@
     "netIncome": 1494000000,
     "assets": 70665000000,
     "equity": 23295000000,
-    "marketCap": 66919930000,
-    "price": 261.03,
+    "marketCap": 68698652000,
+    "price": 259.01,
     "shares": 257100000
    },
    "nasdaq": {
@@ -6041,8 +6041,8 @@
     "netIncome": 4729000000,
     "assets": 73681000000,
     "equity": 13904000000,
-    "marketCap": 69541185257,
-    "price": 219.28,
+    "marketCap": 70091283212,
+    "price": 218.81,
     "shares": 316940010
    },
    "nasdaq": {
@@ -6076,8 +6076,8 @@
     "netIncome": 2494000000,
     "assets": 29866000000,
     "equity": 8968000000,
-    "marketCap": 72721032606,
-    "price": 1174.5,
+    "marketCap": 68038900221,
+    "price": 1162,
     "shares": 62998147
    },
    "nasdaq": {
@@ -6111,8 +6111,8 @@
     "netIncome": -394500000,
     "assets": 41059500000,
     "equity": 15024900000,
-    "marketCap": 68534255427,
-    "price": 307.505,
+    "marketCap": 68397860540,
+    "price": 307.11,
     "shares": 222656008
    },
    "nasdaq": {
@@ -6146,8 +6146,8 @@
     "netIncome": 6784000000,
     "assets": 60720000000,
     "equity": -6027000000,
-    "marketCap": 100244524530,
-    "price": 463.3,
+    "marketCap": 101545698545,
+    "price": 449.96,
     "shares": 223622200
    },
    "nasdaq": {
@@ -6181,8 +6181,8 @@
     "netIncome": 4624275000,
     "assets": 40606466000,
     "equity": 5208268000,
-    "marketCap": 68618805301,
-    "price": 212.165,
+    "marketCap": 68473207119,
+    "price": 212.28,
     "shares": 326366632
    },
    "nasdaq": {
@@ -6216,8 +6216,8 @@
     "netIncome": 1905432000,
     "assets": 9988945000,
     "equity": 8254108000,
-    "marketCap": 133646645006,
-    "price": 45.485,
+    "marketCap": 135733037221,
+    "price": 45.44,
     "shares": 2938580585
    },
    "nasdaq": {
@@ -6251,8 +6251,8 @@
     "netIncome": 3180000000,
     "assets": 281284000000,
     "equity": 61119000000,
-    "marketCap": 68441382435,
-    "price": 81.11,
+    "marketCap": 64042272194,
+    "price": 80.54,
     "shares": 789573076
    },
    "nasdaq": {
@@ -6286,8 +6286,8 @@
     "netIncome": 4426000000,
     "assets": 98937000000,
     "equity": 31647000000,
-    "marketCap": 71415303761,
-    "price": 301.65,
+    "marketCap": 70698192343,
+    "price": 307.1,
     "shares": 235122816
    },
    "nasdaq": {
@@ -6321,9 +6321,9 @@
     "netIncome": -6935100000,
     "assets": 7307500000,
     "equity": 4643900000,
-    "marketCap": 81173108919,
-    "price": 897.378,
-    "shares": 90455871
+    "marketCap": 68496038222,
+    "price": 866.18,
+    "shares": 78418307
    },
    "nasdaq": {
     "revenue": 3014000000,
@@ -6356,9 +6356,9 @@
     "netIncome": 2898000000,
     "assets": 43673000000,
     "equity": 23994000000,
-    "marketCap": 61250671456,
-    "price": 42.24,
-    "shares": 1450063245
+    "marketCap": 66215297043,
+    "price": 45.06,
+    "shares": 1469491723
    },
    "nasdaq": {
     "revenue": 20074000000,
@@ -6391,8 +6391,8 @@
     "netIncome": 3056000000,
     "assets": 72748000000,
     "equity": 31162000000,
-    "marketCap": 75508407687,
-    "price": 33.8783,
+    "marketCap": 76668795924,
+    "price": 33.85,
     "shares": 2224806397
    },
    "nasdaq": {
@@ -6426,8 +6426,8 @@
     "netIncome": 10165000000,
     "assets": 119758000000,
     "equity": 30631000000,
-    "marketCap": 63509067012,
-    "price": 251.245,
+    "marketCap": 64021104361,
+    "price": 251.71,
     "shares": 259535842
    },
    "nasdaq": {
@@ -6461,8 +6461,8 @@
     "netIncome": 3695000000,
     "assets": 50784000000,
     "equity": 9352000000,
-    "marketCap": 67161033659,
-    "price": 316.47,
+    "marketCap": 64384311728,
+    "price": 302.5,
     "shares": null
    },
    "nasdaq": {
@@ -6496,8 +6496,8 @@
     "netIncome": 1554169000,
     "assets": 76590112000,
     "equity": 1508019000,
-    "marketCap": 62161948999,
-    "price": 325.91,
+    "marketCap": 63163791615,
+    "price": 325.37,
     "shares": 194530682
    },
    "nasdaq": {
@@ -6531,9 +6531,9 @@
     "netIncome": 2251867000,
     "assets": 410144072000,
     "equity": 30902561000,
-    "marketCap": 82595939826,
-    "price": 92.005,
-    "shares": null
+    "marketCap": 81990035795,
+    "price": 91.92,
+    "shares": 887578195
    },
    "nasdaq": {
     "revenue": 16392392000,
@@ -6566,9 +6566,9 @@
     "netIncome": -87140000,
     "assets": 4396711000,
     "equity": 768641000,
-    "marketCap": 66454753987,
-    "price": 224.815,
-    "shares": 295597509
+    "marketCap": 56932135982,
+    "price": 218.5,
+    "shares": 253764814
    },
    "nasdaq": {
     "revenue": 2023994000,
@@ -6601,8 +6601,8 @@
     "netIncome": 2074000000,
     "assets": 22909000000,
     "equity": -9693000000,
-    "marketCap": 63364033373,
-    "price": 1145.76,
+    "marketCap": 61071715881,
+    "price": 1130.23,
     "shares": 56473563
    },
    "nasdaq": {
@@ -6636,8 +6636,8 @@
     "netIncome": 1852500000,
     "assets": 25218400000,
     "equity": 3067900000,
-    "marketCap": 65939683268,
-    "price": 307.625,
+    "marketCap": 64837507820,
+    "price": 302.61,
     "shares": 214951798
    },
    "nasdaq": {
@@ -6671,8 +6671,8 @@
     "netIncome": 1258400000,
     "assets": 5052900000,
     "equity": 3943600000,
-    "marketCap": 58787728245,
-    "price": 51.24,
+    "marketCap": 59556420242,
+    "price": 51.55,
     "shares": 1148179210
    },
    "nasdaq": {
@@ -6706,8 +6706,8 @@
     "netIncome": 1842000000,
     "assets": 25081000000,
     "equity": 12585000000,
-    "marketCap": 64179292383,
-    "price": 221.68,
+    "marketCap": 60233227085,
+    "price": 225.35,
     "shares": 293434273
    },
    "nasdaq": {
@@ -6741,8 +6741,8 @@
     "netIncome": 1267865000,
     "assets": 49410468000,
     "equity": 22925663000,
-    "marketCap": 66380789613,
-    "price": 179.27,
+    "marketCap": 63783135657,
+    "price": 179.01,
     "shares": 343615444
    },
    "nasdaq": {
@@ -6776,8 +6776,8 @@
     "netIncome": 2021000000,
     "assets": 26560000000,
     "equity": 10056000000,
-    "marketCap": 62192511054,
-    "price": 246.645,
+    "marketCap": 59238407756,
+    "price": 253.5,
     "shares": 252692845
    },
    "nasdaq": {
@@ -6811,8 +6811,8 @@
     "netIncome": 3393000000,
     "assets": 66641000000,
     "equity": 22401000000,
-    "marketCap": 60153025473,
-    "price": 95.335,
+    "marketCap": 60408325189,
+    "price": 96.01,
     "shares": 625900000
    },
    "nasdaq": {
@@ -6846,8 +6846,8 @@
     "netIncome": 1714000000,
     "assets": 57299000000,
     "equity": -2883000000,
-    "marketCap": 56868335355,
-    "price": 245.7075,
+    "marketCap": 57790265732,
+    "price": 246.45,
     "shares": 235316016
    },
    "nasdaq": {
@@ -6881,8 +6881,8 @@
     "netIncome": 4974000000,
     "assets": 547538000000,
     "equity": 65189000000,
-    "marketCap": 59035085535,
-    "price": 48.315,
+    "marketCap": 59175572547,
+    "price": 48.54,
     "shares": 1249168322
    },
    "nasdaq": {
@@ -6916,8 +6916,8 @@
     "netIncome": 1706000000,
     "assets": 8962000000,
     "equity": 3736000000,
-    "marketCap": 63205465294,
-    "price": 1341.06,
+    "marketCap": 63581561606,
+    "price": 1342.72,
     "shares": 47373024
    },
    "nasdaq": {
@@ -6951,8 +6951,8 @@
     "netIncome": 1737000000,
     "assets": 35104000000,
     "equity": 20936000000,
-    "marketCap": 61308613925,
-    "price": 270.01,
+    "marketCap": 58558880732,
+    "price": 270.79,
     "shares": 231000000
    },
    "nasdaq": {
@@ -6986,8 +6986,8 @@
     "netIncome": 2375800000,
     "assets": 44336200000,
     "equity": 19264000000,
-    "marketCap": 53420779080,
-    "price": 101.405,
+    "marketCap": 56299995373,
+    "price": 103.73,
     "shares": 525894443
    },
    "nasdaq": {
@@ -7021,8 +7021,8 @@
     "netIncome": 2968000000,
     "assets": 115857000000,
     "equity": 29083000000,
-    "marketCap": 57217560612,
-    "price": 65.055,
+    "marketCap": 57345091875,
+    "price": 65.36,
     "shares": 855300000
    },
    "nasdaq": {
@@ -7056,8 +7056,8 @@
     "netIncome": 621483000,
     "assets": 4194199000,
     "equity": 3531497000,
-    "marketCap": 59167189140,
-    "price": 1203.83,
+    "marketCap": 56028917160,
+    "price": 1211.89,
     "shares": 48309000
    },
    "nasdaq": {
@@ -7091,8 +7091,8 @@
     "netIncome": 3730000000,
     "assets": 58329000000,
     "equity": 24004000000,
-    "marketCap": 57660208568,
-    "price": 86.61,
+    "marketCap": 56820224382,
+    "price": 85.77,
     "shares": null
    },
    "nasdaq": {
@@ -7126,8 +7126,8 @@
     "netIncome": 1796000000,
     "assets": 110878000000,
     "equity": 31594000000,
-    "marketCap": 55751543670,
-    "price": 85.24,
+    "marketCap": 54966863253,
+    "price": 85.01,
     "shares": 653826000
    },
    "nasdaq": {
@@ -7161,8 +7161,8 @@
     "netIncome": 3173000000,
     "assets": 745166000000,
     "equity": 28116000000,
-    "marketCap": 63515918854,
-    "price": 99.92,
+    "marketCap": 62797829926,
+    "price": 99.98,
     "shares": 652053867
    },
    "nasdaq": {
@@ -7196,8 +7196,8 @@
     "netIncome": 3646000000,
     "assets": 116470000000,
     "equity": 29490000000,
-    "marketCap": 60998439068,
-    "price": 121.64,
+    "marketCap": 60416880842,
+    "price": 121.99,
     "shares": 534878000
    },
    "nasdaq": {
@@ -7231,8 +7231,8 @@
     "netIncome": 1480142000,
     "assets": 16067543000,
     "equity": 10628786000,
-    "marketCap": 56979443278,
-    "price": 248.535,
+    "marketCap": 55029576397,
+    "price": 246.22,
     "shares": 228977202
    },
    "nasdaq": {
@@ -7266,8 +7266,8 @@
     "netIncome": 1678000000,
     "assets": 55325000000,
     "equity": 25390000000,
-    "marketCap": 52881445739,
-    "price": 194.26,
+    "marketCap": 54180458388,
+    "price": 195.03,
     "shares": 284741809
    },
    "nasdaq": {
@@ -7301,8 +7301,8 @@
     "netIncome": 3395000000,
     "assets": 460949000000,
     "equity": 23341000000,
-    "marketCap": 67103419157,
-    "price": 113.535,
+    "marketCap": 66630984630,
+    "price": 114.26,
     "shares": 593657223
    },
    "nasdaq": {
@@ -7336,8 +7336,8 @@
     "netIncome": 1058590000,
     "assets": 72795612000,
     "equity": 39438695000,
-    "marketCap": 53328848340,
-    "price": 56.375,
+    "marketCap": 53830343897,
+    "price": 56.82,
     "shares": 908334000
    },
    "nasdaq": {
@@ -7371,8 +7371,8 @@
     "netIncome": 1124000000,
     "assets": 12467000000,
     "equity": 3045000000,
-    "marketCap": 50870600000,
-    "price": 243.13,
+    "marketCap": 52709800000,
+    "price": 242.1,
     "shares": 212000000
    },
    "nasdaq": {
@@ -7406,8 +7406,8 @@
     "netIncome": 2642000000,
     "assets": 31599000000,
     "equity": 15528000000,
-    "marketCap": 56978680000,
-    "price": 51.815,
+    "marketCap": 56529000000,
+    "price": 51.23,
     "shares": 1100000000
    },
    "nasdaq": {
@@ -7441,8 +7441,8 @@
     "netIncome": 850000000,
     "assets": 11301000000,
     "equity": 5881000000,
-    "marketCap": 57471221017,
-    "price": 337.58,
+    "marketCap": 53587938384,
+    "price": 336.1,
     "shares": 171817127
    },
    "nasdaq": {
@@ -7476,8 +7476,8 @@
     "netIncome": 2588000000,
     "assets": 40881000000,
     "equity": 18658000000,
-    "marketCap": 55490480569,
-    "price": 55.85,
+    "marketCap": 55450773606,
+    "price": 59,
     "shares": 988236510
    },
    "nasdaq": {
@@ -7504,37 +7504,37 @@
   {
    "ticker": "AZO",
    "sector": "Consumer",
-   "period": "8/29/2026",
-   "sameYear": true,
+   "period": "8/30/2025",
+   "sameYear": false,
    "our": {
-    "revenue": 20338555000,
+    "revenue": 18938717000,
     "netIncome": 2572777000,
     "assets": 21630510000,
     "equity": -2502470000,
-    "marketCap": 50752538683,
-    "price": 3151.73,
+    "marketCap": 52253543270,
+    "price": 3143.16,
     "shares": 16567821
    },
    "nasdaq": {
-    "revenue": 20338555000,
-    "netIncome": 2572777000,
-    "assets": 21630510000,
-    "equity": -2502470000
+    "revenue": 18938717000,
+    "netIncome": 2498247000,
+    "assets": 19355324000,
+    "equity": -3414313000
    },
    "diff": {
     "revenue": 0,
-    "netIncome": 0,
-    "assets": 0,
-    "equity": 0
+    "netIncome": 0.02896869802551873,
+    "assets": 0.10518411262610082,
+    "equity": 0.26706485316372575
    },
    "abs": {
-    "revenue": 20338555000,
+    "revenue": 18938717000,
     "netIncome": 2572777000,
-    "assets": 0,
-    "equity": 0
+    "assets": 2275186000,
+    "equity": 911843000
    },
-   "worst": 0,
-   "status": "match"
+   "worst": null,
+   "status": "period-mismatch"
   },
   {
    "ticker": "EW",
@@ -7546,8 +7546,8 @@
     "netIncome": 1073500000,
     "assets": 13697200000,
     "equity": 10337600000,
-    "marketCap": 52682960000,
-    "price": 91.5,
+    "marketCap": 51339948000,
+    "price": 90.82,
     "shares": 580800000
    },
    "nasdaq": {
@@ -7578,11 +7578,11 @@
    "sameYear": true,
    "our": {
     "revenue": 4824113000,
-    "netIncome": 1784348000,
+    "netIncome": 1585585000,
     "assets": 20208604000,
     "equity": 9248128000,
-    "marketCap": 58520302444,
-    "price": 313.6225,
+    "marketCap": 57903657698,
+    "price": 312.47,
     "shares": 175506447
    },
    "nasdaq": {
@@ -7593,18 +7593,18 @@
    },
    "diff": {
     "revenue": 0,
-    "netIncome": 0.11139250863620774,
+    "netIncome": 0,
     "assets": 0,
     "equity": 0
    },
    "abs": {
     "revenue": 4824113000,
-    "netIncome": 1784348000,
+    "netIncome": 1585585000,
     "assets": 0,
     "equity": 0
    },
-   "worst": 0.11139250863620774,
-   "status": "diverge"
+   "worst": 0,
+   "status": "match"
   },
   {
    "ticker": "HONA",
@@ -7620,8 +7620,8 @@
     "netIncome": 1188000000,
     "assets": 48909000000,
     "equity": 17577000000,
-    "marketCap": 50436130966,
-    "price": 420.02,
+    "marketCap": 50682295598,
+    "price": 414.85,
     "shares": 120595967
    },
    "nasdaq": {
@@ -7655,8 +7655,8 @@
     "netIncome": 1758272000,
     "assets": 71890730000,
     "equity": 16923076000,
-    "marketCap": 50634183848,
-    "price": 108.54,
+    "marketCap": 50088224995,
+    "price": 108.43,
     "shares": 452989837
    },
    "nasdaq": {
@@ -7690,8 +7690,8 @@
     "netIncome": 2018000000,
     "assets": 81371000000,
     "equity": 23609000000,
-    "marketCap": 48665258780,
-    "price": 77.92,
+    "marketCap": 48752707583,
+    "price": 78.135,
     "shares": 589000000
    },
    "nasdaq": {
@@ -7725,8 +7725,8 @@
     "netIncome": 1303000000,
     "assets": 12727000000,
     "equity": 6741000000,
-    "marketCap": 51108062653,
-    "price": 181.11,
+    "marketCap": 48793426762,
+    "price": 177.49,
     "shares": 283498871
    },
    "nasdaq": {
@@ -7760,8 +7760,8 @@
     "netIncome": 5233000000,
     "assets": 80173000000,
     "equity": 20256000000,
-    "marketCap": 47777489813,
-    "price": 55.85,
+    "marketCap": 48778379035,
+    "price": 56.09,
     "shares": 920664542
    },
    "nasdaq": {
@@ -7795,8 +7795,8 @@
     "netIncome": 1663887000,
     "assets": 10993669000,
     "equity": 8972564000,
-    "marketCap": 51352773286,
-    "price": 266,
+    "marketCap": 56648503925,
+    "price": 289.34,
     "shares": null
    },
    "nasdaq": {
@@ -7830,8 +7830,8 @@
     "netIncome": 2031000000,
     "assets": 17610000000,
     "equity": 4615000000,
-    "marketCap": 51717900000,
-    "price": 116.21,
+    "marketCap": 54027450000,
+    "price": 117.83,
     "shares": 448000000
    },
    "nasdaq": {
@@ -7865,8 +7865,8 @@
     "netIncome": 554047000,
     "assets": 4183599000,
     "equity": 2795752000,
-    "marketCap": 48644642659,
-    "price": 310.67,
+    "marketCap": 48285840638,
+    "price": 323.68,
     "shares": 161718766
    },
    "nasdaq": {
@@ -7900,8 +7900,8 @@
     "netIncome": 2376000000,
     "assets": 214376000000,
     "equity": 21724000000,
-    "marketCap": 48328304736,
-    "price": 53.29,
+    "marketCap": 48047168041,
+    "price": 53.59,
     "shares": 901819022
    },
    "nasdaq": {
@@ -7935,8 +7935,8 @@
     "netIncome": 908906000,
     "assets": 8979343000,
     "equity": 7214752000,
-    "marketCap": 51172911131,
-    "price": 315.99,
+    "marketCap": 52303034904,
+    "price": 313.46,
     "shares": 164381855
    },
    "nasdaq": {
@@ -7970,8 +7970,8 @@
     "netIncome": 2079000000,
     "assets": 55459000000,
     "equity": 25516000000,
-    "marketCap": 47256725409,
-    "price": 34.72,
+    "marketCap": 47193446998,
+    "price": 34.86,
     "shares": 1362800000
    },
    "nasdaq": {
@@ -8005,8 +8005,8 @@
     "netIncome": 1606000000,
     "assets": 41195000000,
     "equity": 19635000000,
-    "marketCap": 48339452167,
-    "price": 259.445,
+    "marketCap": 47292926026,
+    "price": 259.4,
     "shares": 186776263
    },
    "nasdaq": {
@@ -8040,8 +8040,8 @@
     "netIncome": 867000000,
     "assets": 11219000000,
     "equity": 3654000000,
-    "marketCap": 49276557347,
-    "price": 442.885,
+    "marketCap": 47414944113,
+    "price": 439.2,
     "shares": 112357908
    },
    "nasdaq": {
@@ -8075,8 +8075,8 @@
     "netIncome": 2139249000,
     "assets": 34366000000,
     "equity": 11967000000,
-    "marketCap": 72174398915,
-    "price": 235.7,
+    "marketCap": 73628910560,
+    "price": 235.66,
     "shares": 308804970
    },
    "nasdaq": {
@@ -8110,8 +8110,8 @@
     "netIncome": 5005000000,
     "assets": 81317000000,
     "equity": 20853000000,
-    "marketCap": 53264586285,
-    "price": 80.965,
+    "marketCap": 50514512536,
+    "price": 81.45,
     "shares": 653130708
    },
    "nasdaq": {
@@ -8145,8 +8145,8 @@
     "netIncome": -8182000000,
     "assets": 289160000000,
     "equity": 35924000000,
-    "marketCap": 46432995271,
-    "price": 11.855,
+    "marketCap": 45434225656,
+    "price": 11.71,
     "shares": 3979000000
    },
    "nasdaq": {
@@ -8180,8 +8180,8 @@
     "netIncome": 1167000000,
     "assets": 22069000000,
     "equity": 11094000000,
-    "marketCap": 47555195626,
-    "price": 283.41,
+    "marketCap": 45700979282,
+    "price": 278.95,
     "shares": 170517190
    },
    "nasdaq": {
@@ -8215,8 +8215,8 @@
     "netIncome": 1484000000,
     "assets": 37190000000,
     "equity": 13804000000,
-    "marketCap": 46681527978,
-    "price": 56.56,
+    "marketCap": 46360041206,
+    "price": 57.83,
     "shares": 835843882
    },
    "nasdaq": {
@@ -8250,8 +8250,8 @@
     "netIncome": 2768000000,
     "assets": 116570000000,
     "equity": 28798000000,
-    "marketCap": 46317132274,
-    "price": 44.86,
+    "marketCap": 45863043754,
+    "price": 44.7,
     "shares": 1022892585
    },
    "nasdaq": {
@@ -8285,8 +8285,8 @@
     "netIncome": 3108000000,
     "assets": 38410000000,
     "equity": 14865000000,
-    "marketCap": 55364886601,
-    "price": 37.255,
+    "marketCap": 55402019322,
+    "price": 37.56,
     "shares": 1481000000
    },
    "nasdaq": {
@@ -8320,8 +8320,8 @@
     "netIncome": 2717000000,
     "assets": 366047000000,
     "equity": 27841000000,
-    "marketCap": 47770636934,
-    "price": 174.01,
+    "marketCap": 46103197220,
+    "price": 170.89,
     "shares": 278728211
    },
    "nasdaq": {
@@ -8355,8 +8355,8 @@
     "netIncome": 1360000000,
     "assets": 29944000000,
     "equity": 6503000000,
-    "marketCap": 45658394000,
-    "price": 277.13,
+    "marketCap": 45982656000,
+    "price": 271.55,
     "shares": 169700000
    },
    "nasdaq": {
@@ -8390,9 +8390,9 @@
     "netIncome": 123338000,
     "assets": 5864667000,
     "equity": 2729323000,
-    "marketCap": 51460895637,
-    "price": 363.405,
-    "shares": 141607561
+    "marketCap": 45415598217,
+    "price": 351.15,
+    "shares": 127210997
    },
    "nasdaq": {
     "revenue": 4769507000,
@@ -8425,8 +8425,8 @@
     "netIncome": 1118667000,
     "assets": 20746023000,
     "equity": 11041499000,
-    "marketCap": 48191062500,
-    "price": 61.205,
+    "marketCap": 49636125000,
+    "price": 62.55,
     "shares": 787500000
    },
    "nasdaq": {
@@ -8460,8 +8460,8 @@
     "netIncome": 1788000000,
     "assets": 31053000000,
     "equity": 12222000000,
-    "marketCap": 58246115531,
-    "price": 105.01,
+    "marketCap": 57328719272,
+    "price": 104.36,
     "shares": 568443856
    },
    "nasdaq": {
@@ -8495,8 +8495,8 @@
     "netIncome": 1612000000,
     "assets": 84186000000,
     "equity": 36034000000,
-    "marketCap": 63591931356,
-    "price": 63.64,
+    "marketCap": 64146730097,
+    "price": 62.73,
     "shares": 986266656
    },
    "nasdaq": {
@@ -8530,8 +8530,8 @@
     "netIncome": 1202305000,
     "assets": 5702459000,
     "equity": -2654540000,
-    "marketCap": 43035135000,
-    "price": 602.81,
+    "marketCap": 44016830000,
+    "price": 601.75,
     "shares": 73474042
    },
    "nasdaq": {
@@ -8565,9 +8565,9 @@
     "netIncome": 1022558000,
     "assets": 6441169000,
     "equity": 2448774000,
-    "marketCap": 46945485423,
-    "price": 1342.3,
-    "shares": 34973914
+    "marketCap": 40855688763,
+    "price": 1288.61,
+    "shares": 30463494
    },
    "nasdaq": {
     "revenue": 9101641000,
@@ -8600,8 +8600,8 @@
     "netIncome": 1059464000,
     "assets": 3350759000,
     "equity": 1605383000,
-    "marketCap": 44557023587,
-    "price": 565.715,
+    "marketCap": 44147361784,
+    "price": 561.25,
     "shares": 79624034
    },
    "nasdaq": {
@@ -8635,8 +8635,8 @@
     "netIncome": 642629000,
     "assets": 5076550000,
     "equity": 2561242000,
-    "marketCap": 46920841611,
-    "price": 477.59,
+    "marketCap": 44572220517,
+    "price": 468.55,
     "shares": 98248111
    },
    "nasdaq": {
@@ -8670,8 +8670,8 @@
     "netIncome": 251381000,
     "assets": 27591945000,
     "equity": 12468698000,
-    "marketCap": 41651244351,
-    "price": 81.225,
+    "marketCap": 44523743961,
+    "price": 83.34,
     "shares": 538051287
    },
    "nasdaq": {
@@ -8705,8 +8705,8 @@
     "netIncome": 752000000,
     "assets": 41550000000,
     "equity": 5084000000,
-    "marketCap": 48395238767,
-    "price": 143.96,
+    "marketCap": 47042628931,
+    "price": 146.66,
     "shares": 345656067
    },
    "nasdaq": {
@@ -8744,8 +8744,8 @@
     "netIncome": 3563000000,
     "assets": 190904000000,
     "equity": 6549000000,
-    "marketCap": 43648180680,
-    "price": 485.29,
+    "marketCap": 44246445774,
+    "price": 492.85,
     "shares": 91178997
    },
    "nasdaq": {
@@ -8779,8 +8779,8 @@
     "netIncome": 3096000000,
     "assets": 161254000000,
     "equity": 41116000000,
-    "marketCap": 41870670508,
-    "price": 80.0949,
+    "marketCap": 42490298913,
+    "price": 79.58,
     "shares": 536559663
    },
    "nasdaq": {
@@ -8814,8 +8814,8 @@
     "netIncome": 1536300000,
     "assets": 34577000000,
     "equity": 19881500000,
-    "marketCap": 43002594520,
-    "price": 434.69,
+    "marketCap": 43332428934,
+    "price": 434.48,
     "shares": 107385207
    },
    "nasdaq": {
@@ -8849,8 +8849,8 @@
     "netIncome": 2023000000,
     "assets": 74603000000,
     "equity": 24190000000,
-    "marketCap": 42578370517,
-    "price": 115.14,
+    "marketCap": 42803965983,
+    "price": 115.03,
     "shares": 361247438
    },
    "nasdaq": {
@@ -8884,8 +8884,8 @@
     "netIncome": 1305636000,
     "assets": 39549887000,
     "equity": 22238674000,
-    "marketCap": 44849346750,
-    "price": 74.64,
+    "marketCap": 45936785700,
+    "price": 74.87,
     "shares": 622838000
    },
    "nasdaq": {
@@ -8919,8 +8919,8 @@
     "netIncome": 1407000000,
     "assets": 13201000000,
     "equity": 3441000000,
-    "marketCap": 65323529387,
-    "price": 59.39,
+    "marketCap": 63617810544,
+    "price": 59.23,
     "shares": 1100463770
    },
    "nasdaq": {
@@ -8954,8 +8954,8 @@
     "netIncome": 1559000000,
     "assets": 8197000000,
     "equity": -7325000000,
-    "marketCap": 41051145711,
-    "price": 150.46,
+    "marketCap": 40853292425,
+    "price": 149.54,
     "shares": 281000000
    },
    "nasdaq": {
@@ -8989,8 +8989,8 @@
     "netIncome": 693000000,
     "assets": 18074000000,
     "equity": 7805000000,
-    "marketCap": 49365235000,
-    "price": 204.835,
+    "marketCap": 50607590000,
+    "price": 205.46,
     "shares": 241000000
    },
    "nasdaq": {
@@ -9024,8 +9024,8 @@
     "netIncome": 1276000000,
     "assets": 10744000000,
     "equity": 1351000000,
-    "marketCap": 44180526795,
-    "price": 224.62,
+    "marketCap": 42324367197,
+    "price": 227.58,
     "shares": 198060348
    },
    "nasdaq": {
@@ -9059,8 +9059,8 @@
     "netIncome": 769896000,
     "assets": 18299852000,
     "equity": 10903495000,
-    "marketCap": 46537629268,
-    "price": 236.52,
+    "marketCap": 41216454782,
+    "price": 235.79,
     "shares": 187481852
    },
    "nasdaq": {
@@ -9094,8 +9094,8 @@
     "netIncome": 850000000,
     "assets": 6644000000,
     "equity": 2723000000,
-    "marketCap": 43471390000,
-    "price": 288.005,
+    "marketCap": 40682420000,
+    "price": 279.47,
     "shares": 152900000
    },
    "nasdaq": {
@@ -9129,8 +9129,8 @@
     "netIncome": 3535000000,
     "assets": 773740000000,
     "equity": 32438000000,
-    "marketCap": 39882000000,
-    "price": 115.59,
+    "marketCap": 39671550000,
+    "price": 115.21,
     "shares": 348000000
    },
    "nasdaq": {
@@ -9164,8 +9164,8 @@
     "netIncome": 118800000,
     "assets": 14370100000,
     "equity": 6432400000,
-    "marketCap": 42653332678,
-    "price": 78.45,
+    "marketCap": 40209793569,
+    "price": 80.17,
     "shares": 541135458
    },
    "nasdaq": {
@@ -9199,8 +9199,8 @@
     "netIncome": 1656000000,
     "assets": 71059000000,
     "equity": 36972000000,
-    "marketCap": 58007044724,
-    "price": 207.19,
+    "marketCap": 57615010630,
+    "price": 204.48,
     "shares": 289079000
    },
    "nasdaq": {
@@ -9234,9 +9234,9 @@
     "netIncome": 188181000,
     "assets": 4674259000,
     "equity": 1445668000,
-    "marketCap": 46438549699,
-    "price": 139.515,
-    "shares": 332857038
+    "marketCap": 41096916866,
+    "price": 138.73,
+    "shares": 290951624
    },
    "nasdaq": {
     "revenue": 3662843000,
@@ -9269,8 +9269,8 @@
     "netIncome": 1757000000,
     "assets": 28397000000,
     "equity": 2666000000,
-    "marketCap": 40554495928,
-    "price": 82.4225,
+    "marketCap": 40028133596,
+    "price": 82.3,
     "shares": 478930649
    },
    "nasdaq": {
@@ -9304,8 +9304,8 @@
     "netIncome": 33834000,
     "assets": 9770890000,
     "equity": 7821546000,
-    "marketCap": 38800011457,
-    "price": 252.5,
+    "marketCap": 40204456844,
+    "price": 254.56,
     "shares": 151513999
    },
    "nasdaq": {
@@ -9339,8 +9339,8 @@
     "netIncome": 1009000000,
     "assets": 49953000000,
     "equity": 5918000000,
-    "marketCap": 38807583477,
-    "price": 65.69,
+    "marketCap": 39433607499,
+    "price": 65.87,
     "shares": 632849160
    },
    "nasdaq": {
@@ -9374,8 +9374,8 @@
     "netIncome": 1078000000,
     "assets": 52389000000,
     "equity": 22733000000,
-    "marketCap": 37371146066,
-    "price": 77.53,
+    "marketCap": 38624240982,
+    "price": 78.2,
     "shares": 481201844
    },
    "nasdaq": {
@@ -9409,8 +9409,8 @@
     "netIncome": 1470000000,
     "assets": 27076000000,
     "equity": 10765000000,
-    "marketCap": 37214985923,
-    "price": 19.3799,
+    "marketCap": 37589536749,
+    "price": 19.43,
     "shares": 1916732090
    },
    "nasdaq": {
@@ -9444,8 +9444,8 @@
     "netIncome": 1760100000,
     "assets": 16174500000,
     "equity": 3735100000,
-    "marketCap": 38143307682,
-    "price": 107.1525,
+    "marketCap": 42019935033,
+    "price": 109.26,
     "shares": 358967450
    },
    "nasdaq": {
@@ -9479,8 +9479,8 @@
     "netIncome": 1260327000,
     "assets": 29671832000,
     "equity": 14793058000,
-    "marketCap": 41810237188,
-    "price": 158.61,
+    "marketCap": 43387981987,
+    "price": 161.09,
     "shares": 287209000
    },
    "nasdaq": {
@@ -9514,8 +9514,8 @@
     "netIncome": 3815000000,
     "assets": 85997000000,
     "equity": 18979000000,
-    "marketCap": 35092660088,
-    "price": 131.055,
+    "marketCap": 37044454994,
+    "price": 133.51,
     "shares": 286500000
    },
    "nasdaq": {
@@ -9549,8 +9549,8 @@
     "netIncome": 1292900000,
     "assets": 29439500000,
     "equity": 18256800000,
-    "marketCap": 36809953522,
-    "price": 248.985,
+    "marketCap": 37040449759,
+    "price": 252.73,
     "shares": 146758528
    },
    "nasdaq": {
@@ -9584,8 +9584,8 @@
     "netIncome": 3585200000,
     "assets": 35471200000,
     "equity": 24190400000,
-    "marketCap": 40523119563,
-    "price": 145.22,
+    "marketCap": 41250342857,
+    "price": 147.02,
     "shares": 289703395
    },
    "nasdaq": {
@@ -9619,8 +9619,8 @@
     "netIncome": 2021000000,
     "assets": 17098000000,
     "equity": 1502000000,
-    "marketCap": 36187093677,
-    "price": 108.8154,
+    "marketCap": 36633581036,
+    "price": 109.1,
     "shares": 331922371
    },
    "nasdaq": {
@@ -9654,8 +9654,8 @@
     "netIncome": 1157000000,
     "assets": 30877000000,
     "equity": 8878000000,
-    "marketCap": 35776682972,
-    "price": 124,
+    "marketCap": 35704634243,
+    "price": 121.65,
     "shares": 295158554
    },
    "nasdaq": {
@@ -9689,8 +9689,8 @@
     "netIncome": 984000000,
     "assets": 203240000000,
     "equity": 5363000000,
-    "marketCap": 37489953259,
-    "price": 82.675,
+    "marketCap": 36373115568,
+    "price": 82.25,
     "shares": 443859546
    },
    "nasdaq": {
@@ -9724,8 +9724,8 @@
     "netIncome": 1557500000,
     "assets": 51518300000,
     "equity": 14052800000,
-    "marketCap": 36353190905,
-    "price": 111.5443,
+    "marketCap": 36198607957,
+    "price": 111.43,
     "shares": 325531361
    },
    "nasdaq": {
@@ -9759,8 +9759,8 @@
     "netIncome": -298200000,
     "assets": 9383200000,
     "equity": 3510900000,
-    "marketCap": 37287639943,
-    "price": 199.17,
+    "marketCap": 38086046435,
+    "price": 201.28,
     "shares": 185175456
    },
    "nasdaq": {
@@ -9794,8 +9794,8 @@
     "netIncome": 1523293000,
     "assets": 8965950000,
     "equity": 6585393000,
-    "marketCap": 35271351734,
-    "price": 250.99,
+    "marketCap": 35562038985,
+    "price": 250.8,
     "shares": 145678401
    },
    "nasdaq": {
@@ -9829,8 +9829,8 @@
     "netIncome": 2111000000,
     "assets": 57576000000,
     "equity": 16982000000,
-    "marketCap": 36240120381,
-    "price": 72.71,
+    "marketCap": 35896210561,
+    "price": 72.82,
     "shares": 501000000
    },
    "nasdaq": {
@@ -9864,8 +9864,8 @@
     "netIncome": 1535761000,
     "assets": 8994531000,
     "equity": 2830607000,
-    "marketCap": 36697122000,
-    "price": 29.06,
+    "marketCap": 34824303360,
+    "price": 27.98,
     "shares": 1302423000
    },
    "nasdaq": {
@@ -9899,8 +9899,8 @@
     "netIncome": 1023703000,
     "assets": 5470160000,
     "equity": 4311057000,
-    "marketCap": 36633694409,
-    "price": 176.8,
+    "marketCap": 37884054839,
+    "price": 187.03,
     "shares": 211598000
    },
    "nasdaq": {
@@ -9934,8 +9934,8 @@
     "netIncome": -6674000000,
     "assets": 76747000000,
     "equity": 19873000000,
-    "marketCap": 33828777600,
-    "price": 68.495,
+    "marketCap": 34663629150,
+    "price": 68.71,
     "shares": 491771000
    },
    "nasdaq": {
@@ -9969,8 +9969,8 @@
     "netIncome": 1076700000,
     "assets": 16700400000,
     "equity": 8501300000,
-    "marketCap": 34203603946,
-    "price": 264.175,
+    "marketCap": 33909460209,
+    "price": 262.5,
     "shares": 130580384
    },
    "nasdaq": {
@@ -10004,8 +10004,8 @@
     "netIncome": 4359000000,
     "assets": 79241000000,
     "equity": 24206000000,
-    "marketCap": 35163661434,
-    "price": 103.1861,
+    "marketCap": 34699589823,
+    "price": 100.34,
     "shares": 341229126
    },
    "nasdaq": {
@@ -10039,8 +10039,8 @@
     "netIncome": 2760000000,
     "assets": 51687000000,
     "equity": 12270000000,
-    "marketCap": 37487730397,
-    "price": 27.8901,
+    "marketCap": 35107770468,
+    "price": 27.74,
     "shares": null
    },
    "nasdaq": {
@@ -10078,8 +10078,8 @@
     "netIncome": 2039247000,
     "assets": 41792874000,
     "equity": 23752677000,
-    "marketCap": 34741158640,
-    "price": 55.6011,
+    "marketCap": 34797455080,
+    "price": 56.27,
     "shares": 624274000
    },
    "nasdaq": {
@@ -10113,8 +10113,8 @@
     "netIncome": 1294000000,
     "assets": 24452000000,
     "equity": 1284000000,
-    "marketCap": 31715361807,
-    "price": 276.85,
+    "marketCap": 33090457458,
+    "price": 278.08,
     "shares": 114495891
    },
    "nasdaq": {
@@ -10148,8 +10148,8 @@
     "netIncome": 869193000,
     "assets": 3712646000,
     "equity": -23636000,
-    "marketCap": 34069764192,
-    "price": 1701.765,
+    "marketCap": 33466864132,
+    "price": 1685.32,
     "shares": 20325250
    },
    "nasdaq": {
@@ -10183,8 +10183,8 @@
     "netIncome": 2673000000,
     "assets": 15467000000,
     "equity": 3331000000,
-    "marketCap": 32016564683,
-    "price": 77.52,
+    "marketCap": 33483508470,
+    "price": 78.23,
     "shares": 422127709
    },
    "nasdaq": {
@@ -10218,8 +10218,8 @@
     "netIncome": 124656000,
     "assets": 7000313000,
     "equity": 3242658000,
-    "marketCap": 33975924075,
-    "price": 417.84,
+    "marketCap": 34149772144,
+    "price": 425.87,
     "shares": 82370000
    },
    "nasdaq": {
@@ -10253,8 +10253,8 @@
     "netIncome": 444000000,
     "assets": 31518000000,
     "equity": -1635000000,
-    "marketCap": 35870148062,
-    "price": 84.395,
+    "marketCap": 36576404091,
+    "price": 87.87,
     "shares": 437000000
    },
    "nasdaq": {
@@ -10288,8 +10288,8 @@
     "netIncome": 2230000000,
     "assets": 20692000000,
     "equity": 15015000000,
-    "marketCap": 30017602088,
-    "price": 66.68,
+    "marketCap": 31774334503,
+    "price": 66.22,
     "shares": 478246920
    },
    "nasdaq": {
@@ -10323,8 +10323,8 @@
     "netIncome": 3353000000,
     "assets": 76448000000,
     "equity": 15282000000,
-    "marketCap": 33878360953,
-    "price": 104.18,
+    "marketCap": 31816906144,
+    "price": 104.71,
     "shares": 323430419
    },
    "nasdaq": {
@@ -10358,8 +10358,8 @@
     "netIncome": 144591000,
     "assets": 21125019000,
     "equity": -981007000,
-    "marketCap": 34046782094,
-    "price": 114.39,
+    "marketCap": 32735401208,
+    "price": 115.34,
     "shares": 295835206
    },
    "nasdaq": {
@@ -10393,8 +10393,8 @@
     "netIncome": 1185595000,
     "assets": 16419780000,
     "equity": 8957182000,
-    "marketCap": 34767909047,
-    "price": 244.045,
+    "marketCap": 34618033095,
+    "price": 246.8,
     "shares": 148404000
    },
    "nasdaq": {
@@ -10428,8 +10428,8 @@
     "netIncome": 2084000000,
     "assets": 36906000000,
     "equity": 10368000000,
-    "marketCap": 34651110822,
-    "price": 76.915,
+    "marketCap": 32272982705,
+    "price": 71.11,
     "shares": 455749767
    },
    "nasdaq": {
@@ -10463,8 +10463,8 @@
     "netIncome": 2699000000,
     "assets": 213510000000,
     "equity": 29177000000,
-    "marketCap": 31830788307,
-    "price": 220.56,
+    "marketCap": 32011308635,
+    "price": 221.31,
     "shares": 149000252
    },
    "nasdaq": {
@@ -10498,8 +10498,8 @@
     "netIncome": 2087000000,
     "assets": 225106000000,
     "equity": 24305000000,
-    "marketCap": 31670002398,
-    "price": 15.675,
+    "marketCap": 31781125213,
+    "price": 15.71,
     "shares": 2029792391
    },
    "nasdaq": {
@@ -10533,8 +10533,8 @@
     "netIncome": 1137000000,
     "assets": 18711000000,
     "equity": 10030000000,
-    "marketCap": 36060928167,
-    "price": 507.53,
+    "marketCap": 36019381273,
+    "price": 503.69,
     "shares": 71020331
    },
    "nasdaq": {
@@ -10568,8 +10568,8 @@
     "netIncome": 2529000000,
     "assets": 41769000000,
     "equity": -346000000,
-    "marketCap": 29359969294,
-    "price": 32.54,
+    "marketCap": 30336248197,
+    "price": 33.58,
     "shares": 917984523
    },
    "nasdaq": {
@@ -10603,8 +10603,8 @@
     "netIncome": 1605000000,
     "assets": 29530000000,
     "equity": 7900000000,
-    "marketCap": 29700909812,
-    "price": 319.75,
+    "marketCap": 30184308244,
+    "price": 319.66,
     "shares": null
    },
    "nasdaq": {
@@ -10638,8 +10638,8 @@
     "netIncome": 1088437000,
     "assets": 5411912000,
     "equity": 2082559000,
-    "marketCap": 29455393376,
-    "price": 250.325,
+    "marketCap": 29735707807,
+    "price": 250.45,
     "shares": 119380711
    },
    "nasdaq": {
@@ -10673,8 +10673,8 @@
     "netIncome": 1512311000,
     "assets": 30963730000,
     "equity": 8511962000,
-    "marketCap": 27870519081,
-    "price": 126.31,
+    "marketCap": 29273641865,
+    "price": 126.86,
     "shares": 220118871
    },
    "nasdaq": {
@@ -10708,8 +10708,8 @@
     "netIncome": 1695100000,
     "assets": 177132700000,
     "equity": 12957900000,
-    "marketCap": 31475690542,
-    "price": 171.84,
+    "marketCap": 30721913252,
+    "price": 170.35,
     "shares": 185827803
    },
    "nasdaq": {
@@ -10743,8 +10743,8 @@
     "netIncome": 972260000,
     "assets": 29264046000,
     "equity": 13433166000,
-    "marketCap": 31184443109,
-    "price": 147.71,
+    "marketCap": 30298167313,
+    "price": 144.55,
     "shares": 211137672
    },
    "nasdaq": {
@@ -10778,8 +10778,8 @@
     "netIncome": 1456000000,
     "assets": 48476000000,
     "equity": 13272000000,
-    "marketCap": 30175914359,
-    "price": 108.985,
+    "marketCap": 29910144838,
+    "price": 108.74,
     "shares": 276424515
    },
    "nasdaq": {
@@ -10813,8 +10813,8 @@
     "netIncome": 836300000,
     "assets": 6339900000,
     "equity": 2746000000,
-    "marketCap": 29756783124,
-    "price": 78.83,
+    "marketCap": 29411498024,
+    "price": 78.56,
     "shares": 384864842
    },
    "nasdaq": {
@@ -10848,8 +10848,8 @@
     "netIncome": 1198267000,
     "assets": 28249522000,
     "equity": 13558890000,
-    "marketCap": 28966327870,
-    "price": 171.41,
+    "marketCap": 29101518712,
+    "price": 171.37,
     "shares": 165438946
    },
    "nasdaq": {
@@ -10883,8 +10883,8 @@
     "netIncome": 1272817000,
     "assets": 9291399000,
     "equity": 3672907000,
-    "marketCap": 29930332225,
-    "price": 678.1,
+    "marketCap": 28568218482,
+    "price": 666.36,
     "shares": 45145767
    },
    "nasdaq": {
@@ -10918,8 +10918,8 @@
     "netIncome": 894800000,
     "assets": 15285300000,
     "equity": 10513900000,
-    "marketCap": 30487847340,
-    "price": 662.775,
+    "marketCap": 28991301451,
+    "price": 654.99,
     "shares": 46305311
    },
    "nasdaq": {
@@ -10953,8 +10953,8 @@
     "netIncome": 1384000000,
     "assets": 10653000000,
     "equity": -5438000000,
-    "marketCap": 27990616497,
-    "price": 73.6,
+    "marketCap": 28607300826,
+    "price": 74.19,
     "shares": 388720773
    },
    "nasdaq": {
@@ -10988,8 +10988,8 @@
     "netIncome": 2593000000,
     "assets": 141611000000,
     "equity": 32288000000,
-    "marketCap": 35552498732,
-    "price": 13.275,
+    "marketCap": 33849795564,
+    "price": 12.96,
     "shares": 2675711544
    },
    "nasdaq": {
@@ -11023,9 +11023,9 @@
     "netIncome": 121000000,
     "assets": 12524100000,
     "equity": 7654700000,
-    "marketCap": 29171604740,
-    "price": 74.87,
-    "shares": 394020530
+    "marketCap": 28128269789,
+    "price": 78.67,
+    "shares": 357547601
    },
    "nasdaq": {
     "revenue": 5995400000,
@@ -11058,8 +11058,8 @@
     "netIncome": 1111000000,
     "assets": 35442000000,
     "equity": 10837000000,
-    "marketCap": 27967130622,
-    "price": 140.71,
+    "marketCap": 28368563180,
+    "price": 141.1,
     "shares": 195208666
    },
    "nasdaq": {
@@ -11093,8 +11093,8 @@
     "netIncome": 880000000,
     "assets": 22060000000,
     "equity": 5144000000,
-    "marketCap": 33801935930,
-    "price": 91.55,
+    "marketCap": 28282196912,
+    "price": 83.35,
     "shares": null
    },
    "nasdaq": {
@@ -11121,37 +11121,37 @@
   {
    "ticker": "JBL",
    "sector": "Technology",
-   "period": "8/31/2026",
-   "sameYear": true,
+   "period": "8/31/2025",
+   "sameYear": false,
    "our": {
     "revenue": 35950000000,
     "netIncome": 1042000000,
     "assets": 27435000000,
     "equity": 1609000000,
-    "marketCap": 29904815833,
-    "price": 289.995,
+    "marketCap": 28708518773,
+    "price": 283.29,
     "shares": 105595267
    },
    "nasdaq": {
-    "revenue": 35954000000,
-    "netIncome": 1042000000,
-    "assets": 27435000000,
-    "equity": 1613000000
+    "revenue": 29802000000,
+    "netIncome": 657000000,
+    "assets": 18543000000,
+    "equity": 1513000000
    },
    "diff": {
-    "revenue": 0.00011125326806474941,
-    "netIncome": 0,
-    "assets": 0,
-    "equity": 0.0024798512089274642
+    "revenue": 0.1710152990264256,
+    "netIncome": 0.3694817658349328,
+    "assets": 0.32411153635866596,
+    "equity": 0.05966438781852082
    },
    "abs": {
     "revenue": 35950000000,
     "netIncome": 1042000000,
-    "assets": 0,
-    "equity": 4000000
+    "assets": 8892000000,
+    "equity": 96000000
    },
-   "worst": 0.0024798512089274642,
-   "status": "match"
+   "worst": null,
+   "status": "period-mismatch"
   },
   {
    "ticker": "WST",
@@ -11163,8 +11163,8 @@
     "netIncome": 493700000,
     "assets": 4270000000,
     "equity": 3176000000,
-    "marketCap": 28105968070,
-    "price": 399.37,
+    "marketCap": 27597855068,
+    "price": 398.29,
     "shares": 72021491
    },
    "nasdaq": {
@@ -11198,8 +11198,8 @@
     "netIncome": 1283000000,
     "assets": 25010000000,
     "equity": 10417000000,
-    "marketCap": 29693835678,
-    "price": 35.89,
+    "marketCap": 29092912416,
+    "price": 35.62,
     "shares": 837548345
    },
    "nasdaq": {
@@ -11233,9 +11233,9 @@
     "netIncome": 1459000000,
     "assets": 54066000000,
     "equity": 12298000000,
-    "marketCap": 27576871344,
-    "price": 132.53,
-    "shares": null
+    "marketCap": 27444735420,
+    "price": 132.67,
+    "shares": 207255214
    },
    "nasdaq": {
     "revenue": 15814000000,
@@ -11268,9 +11268,9 @@
     "netIncome": 426112000,
     "assets": 28633369000,
     "equity": 4275463000,
-    "marketCap": 40622447781,
-    "price": 122.875,
-    "shares": null
+    "marketCap": 40320244116,
+    "price": 122.19,
+    "shares": 327926836
    },
    "nasdaq": {
     "revenue": 4834022000,
@@ -11303,8 +11303,8 @@
     "netIncome": -54829000,
     "assets": 22912533000,
     "equity": 271007000,
-    "marketCap": 40498391518,
-    "price": 171.59,
+    "marketCap": 40868336678,
+    "price": 171.97,
     "shares": 234801922
    },
    "nasdaq": {
@@ -11338,8 +11338,8 @@
     "netIncome": 2130000000,
     "assets": 88230000000,
     "equity": 12502000000,
-    "marketCap": 30208483095,
-    "price": 157.06,
+    "marketCap": 30335441825,
+    "price": 158.12,
     "shares": 197091037
    },
    "nasdaq": {
@@ -11373,8 +11373,8 @@
     "netIncome": 1688000000,
     "assets": 226351000000,
     "equity": 26317000000,
-    "marketCap": 27500738372,
-    "price": 65.285,
+    "marketCap": 27435455970,
+    "price": 65.31,
     "shares": 424983657
    },
    "nasdaq": {
@@ -11408,8 +11408,8 @@
     "netIncome": 2393000000,
     "assets": 41002000000,
     "equity": 15911000000,
-    "marketCap": 27665630591,
-    "price": 180.48,
+    "marketCap": 27058179334,
+    "price": 181.41,
     "shares": 156523953
    },
    "nasdaq": {
@@ -11443,8 +11443,8 @@
     "netIncome": 1068346000,
     "assets": 26408135000,
     "equity": 3883864000,
-    "marketCap": 25875134774,
-    "price": 394.02,
+    "marketCap": 26819319808,
+    "price": 397.02,
     "shares": 71058000
    },
    "nasdaq": {
@@ -11478,8 +11478,8 @@
     "netIncome": 3480000000,
     "assets": 80133000000,
     "equity": 25775000000,
-    "marketCap": 25147248236,
-    "price": 47.27,
+    "marketCap": 26513888709,
+    "price": 47.4,
     "shares": 534777512
    },
    "nasdaq": {
@@ -11513,8 +11513,8 @@
     "netIncome": 1153479000,
     "assets": 6999294000,
     "equity": 2803451000,
-    "marketCap": 26511128531,
-    "price": 619.13,
+    "marketCap": 26700330341,
+    "price": 626.88,
     "shares": 44362172
    },
    "nasdaq": {
@@ -11548,8 +11548,8 @@
     "netIncome": 1052000000,
     "assets": 46534000000,
     "equity": 11153000000,
-    "marketCap": 27751885733,
-    "price": 42.105,
+    "marketCap": 27053642228,
+    "price": 41.97,
     "shares": 652871584
    },
    "nasdaq": {
@@ -11583,8 +11583,8 @@
     "netIncome": 992000000,
     "assets": 16225000000,
     "equity": 7134000000,
-    "marketCap": 27098797871,
-    "price": 246.17,
+    "marketCap": 26698212050,
+    "price": 242.56,
     "shares": 109866320
    },
    "nasdaq": {
@@ -11618,8 +11618,8 @@
     "netIncome": 908300000,
     "assets": 6195500000,
     "equity": 308200000,
-    "marketCap": 24437442033,
-    "price": 187.67,
+    "marketCap": 25494959631,
+    "price": 187.73,
     "shares": 137941888
    },
    "nasdaq": {
@@ -11653,8 +11653,8 @@
     "netIncome": 1179000000,
     "assets": 45244000000,
     "equity": 14881000000,
-    "marketCap": 26500114031,
-    "price": 35.205,
+    "marketCap": 26324018538,
+    "price": 35.18,
     "shares": 751306792
    },
    "nasdaq": {
@@ -11688,9 +11688,9 @@
     "netIncome": 876500000,
     "assets": 18392700000,
     "equity": 8619800000,
-    "marketCap": 29678545000,
-    "price": 364.66,
-    "shares": 83800000
+    "marketCap": 26677845000,
+    "price": 331.17,
+    "shares": 73280717
    },
    "nasdaq": {
     "revenue": 13951700000,
@@ -11723,8 +11723,8 @@
     "netIncome": 182000000,
     "assets": 19762000000,
     "equity": 3806000000,
-    "marketCap": 39435210831,
-    "price": 108.845,
+    "marketCap": 39373615959,
+    "price": 108.35,
     "shares": 360100000
    },
    "nasdaq": {
@@ -11758,8 +11758,8 @@
     "netIncome": 714448000,
     "assets": 8936055000,
     "equity": 3951719000,
-    "marketCap": 24878073209,
-    "price": 673.22,
+    "marketCap": 25844766376,
+    "price": 697.54,
     "shares": 37066933
    },
    "nasdaq": {
@@ -11793,8 +11793,8 @@
     "netIncome": 2775493000,
     "assets": 46724168000,
     "equity": 27797640000,
-    "marketCap": 25935881973,
-    "price": 23.545,
+    "marketCap": 26161602873,
+    "price": 23.7,
     "shares": 1062693062
    },
    "nasdaq": {
@@ -11828,8 +11828,8 @@
     "netIncome": 1093956000,
     "assets": 13422423000,
     "equity": 7405206000,
-    "marketCap": 27641657512,
-    "price": 207.715,
+    "marketCap": 26828300820,
+    "price": 206.18,
     "shares": 134866626
    },
    "nasdaq": {
@@ -11863,8 +11863,8 @@
     "netIncome": 736800000,
     "assets": 8912400000,
     "equity": 4002200000,
-    "marketCap": 24835249063,
-    "price": 104.745,
+    "marketCap": 24951478977,
+    "price": 105.01,
     "shares": 236694241
    },
    "nasdaq": {
@@ -11898,8 +11898,8 @@
     "netIncome": 810332000,
     "assets": 4893638000,
     "equity": 2353173000,
-    "marketCap": 25518459005,
-    "price": 196.35,
+    "marketCap": 25505459943,
+    "price": 199.64,
     "shares": 136249000
    },
    "nasdaq": {
@@ -11933,8 +11933,8 @@
     "netIncome": 940000000,
     "assets": 7693000000,
     "equity": 3104000000,
-    "marketCap": 25049766096,
-    "price": 102.745,
+    "marketCap": 25434959580,
+    "price": 103.19,
     "shares": null
    },
    "nasdaq": {
@@ -11968,9 +11968,9 @@
     "netIncome": 883259000,
     "assets": 13741297000,
     "equity": 4636750000,
-    "marketCap": 32726750920,
-    "price": 162.63,
-    "shares": null
+    "marketCap": 34085028453,
+    "price": 164.51,
+    "shares": 208560414
    },
    "nasdaq": {
     "revenue": 11692576000,
@@ -12003,8 +12003,8 @@
     "netIncome": 1692372000,
     "assets": 63786711000,
     "equity": 16197271000,
-    "marketCap": 25369044682,
-    "price": 67.35,
+    "marketCap": 25410478905,
+    "price": 67.76,
     "shares": 375496611
    },
    "nasdaq": {
@@ -12038,9 +12038,9 @@
     "netIncome": 957000000,
     "assets": 17634000000,
     "equity": 11469000000,
-    "marketCap": 20768651927,
-    "price": 88.935,
-    "shares": 233526192
+    "marketCap": 25389355937,
+    "price": 92.86,
+    "shares": 276271555
    },
    "nasdaq": {
     "revenue": 9035000000,
@@ -12073,8 +12073,8 @@
     "netIncome": 581400000,
     "assets": 18297200000,
     "equity": 10025600000,
-    "marketCap": 29383196758,
-    "price": 75.725,
+    "marketCap": 28510198043,
+    "price": 75.53,
     "shares": 391617994
    },
    "nasdaq": {
@@ -12108,9 +12108,9 @@
     "netIncome": 692380000,
     "assets": 6319492000,
     "equity": 3591999000,
-    "marketCap": 20973462415,
-    "price": 370.06,
-    "shares": 56519273
+    "marketCap": 25789151226,
+    "price": 459.36,
+    "shares": 56141482
    },
    "nasdaq": {
     "revenue": 3088072000,
@@ -12143,8 +12143,8 @@
     "netIncome": 1576000000,
     "assets": 22098000000,
     "equity": 7941000000,
-    "marketCap": 26553735000,
-    "price": 119.555,
+    "marketCap": 24588603000,
+    "price": 113.44,
     "shares": 223494714
    },
    "nasdaq": {
@@ -12178,8 +12178,8 @@
     "netIncome": 1282500000,
     "assets": 13466200000,
     "equity": 3754900000,
-    "marketCap": 23573870766,
-    "price": 125.45,
+    "marketCap": 23511952768,
+    "price": 123.65,
     "shares": 198853187
    },
    "nasdaq": {
@@ -12213,8 +12213,8 @@
     "netIncome": 825700000,
     "assets": 1325900000,
     "equity": -2154200000,
-    "marketCap": 27353118000,
-    "price": 304.93,
+    "marketCap": 27118896000,
+    "price": 304.04,
     "shares": 91700000
    },
    "nasdaq": {
@@ -12248,8 +12248,8 @@
     "netIncome": 1206700000,
     "assets": 12862400000,
     "equity": 2207500000,
-    "marketCap": 24667485696,
-    "price": 218.18,
+    "marketCap": 24031620778,
+    "price": 213.96,
     "shares": 115139249
    },
    "nasdaq": {
@@ -12283,8 +12283,8 @@
     "netIncome": 1484270000,
     "assets": 10027810000,
     "equity": 9097295000,
-    "marketCap": 26634850165,
-    "price": 28.715,
+    "marketCap": 26863583108,
+    "price": 28.92,
     "shares": 968017684
    },
    "nasdaq": {
@@ -12318,9 +12318,9 @@
     "netIncome": 3469000000,
     "assets": 119095000000,
     "equity": 16766000000,
-    "marketCap": 23363149171,
-    "price": 75,
-    "shares": 311508656
+    "marketCap": 27398317835,
+    "price": 74.97,
+    "shares": 347596279
    },
    "nasdaq": {
     "revenue": 23121000000,
@@ -12353,8 +12353,8 @@
     "netIncome": 2061000000,
     "assets": 158814000000,
     "equity": 18983000000,
-    "marketCap": 24139422553,
-    "price": 28.32,
+    "marketCap": 24254433036,
+    "price": 28.5,
     "shares": 896000000
    },
    "nasdaq": {
@@ -12388,8 +12388,8 @@
     "netIncome": 1020000000,
     "assets": 55904000000,
     "equity": 12510000000,
-    "marketCap": 27112174014,
-    "price": 46.835,
+    "marketCap": 26704232862,
+    "price": 46.27,
     "shares": 577932879
    },
    "nasdaq": {
@@ -12423,8 +12423,8 @@
     "netIncome": -361000000,
     "assets": 25539000000,
     "equity": 14122000000,
-    "marketCap": 23091071652,
-    "price": 90.38,
+    "marketCap": 24022369016,
+    "price": 93.21,
     "shares": 256000000
    },
    "nasdaq": {
@@ -12458,8 +12458,8 @@
     "netIncome": 885600000,
     "assets": 8228800000,
     "equity": 3837900000,
-    "marketCap": 23004358065,
-    "price": 436.33,
+    "marketCap": 23674275065,
+    "price": 434.28,
     "shares": 53161602
    },
    "nasdaq": {
@@ -12493,8 +12493,8 @@
     "netIncome": -2623000000,
     "assets": 58538000000,
     "equity": 16008000000,
-    "marketCap": 24706523815,
-    "price": 34.15,
+    "marketCap": 23555530586,
+    "price": 33.78,
     "shares": 717534072
    },
    "nasdaq": {
@@ -12528,8 +12528,8 @@
     "netIncome": 782300000,
     "assets": 10737200000,
     "equity": 7170000000,
-    "marketCap": 22231000081,
-    "price": 228.18,
+    "marketCap": 22634650537,
+    "price": 228.49,
     "shares": null
    },
    "nasdaq": {
@@ -12563,8 +12563,8 @@
     "netIncome": 692000000,
     "assets": 14070000000,
     "equity": 7095000000,
-    "marketCap": 25226366115,
-    "price": 120.58,
+    "marketCap": 22977374278,
+    "price": 118.75,
     "shares": 190320337
    },
    "nasdaq": {
@@ -12598,8 +12598,8 @@
     "netIncome": -54500000,
     "assets": 54415300000,
     "equity": 12045800000,
-    "marketCap": 21200248264,
-    "price": 77.625,
+    "marketCap": 22682924552,
+    "price": 78.73,
     "shares": 274345967
    },
    "nasdaq": {
@@ -12633,8 +12633,8 @@
     "netIncome": 1527700000,
     "assets": 6691700000,
     "equity": 692100000,
-    "marketCap": 22218239439,
-    "price": 111.1075,
+    "marketCap": 22046454076,
+    "price": 111.39,
     "shares": 202464223
    },
    "nasdaq": {
@@ -12668,8 +12668,8 @@
     "netIncome": 2218730000,
     "assets": 18048423000,
     "equity": 12985442000,
-    "marketCap": 22088569612,
-    "price": 120.26,
+    "marketCap": 22717373323,
+    "price": 121.63,
     "shares": 192327885
    },
    "nasdaq": {
@@ -12703,8 +12703,8 @@
     "netIncome": 4457000000,
     "assets": 94026000000,
     "equity": 17579000000,
-    "marketCap": 22740582089,
-    "price": 59.02,
+    "marketCap": 22069081696,
+    "price": 58.19,
     "shares": 384790927
    },
    "nasdaq": {
@@ -12738,8 +12738,8 @@
     "netIncome": 699000000,
     "assets": 45157000000,
     "equity": 18300000000,
-    "marketCap": 20826182062,
-    "price": 39.745,
+    "marketCap": 21951283700,
+    "price": 42.54,
     "shares": null
    },
    "nasdaq": {
@@ -12773,8 +12773,8 @@
     "netIncome": 2036500000,
     "assets": 14341800000,
     "equity": 10860100000,
-    "marketCap": 22001396769,
-    "price": 103.125,
+    "marketCap": 22227511570,
+    "price": 103.63,
     "shares": 218072901
    },
    "nasdaq": {
@@ -12808,8 +12808,8 @@
     "netIncome": 768900000,
     "assets": 10725500000,
     "equity": 4598000000,
-    "marketCap": 22052719985,
-    "price": 247.725,
+    "marketCap": 22033118360,
+    "price": 253.01,
     "shares": 89600000
    },
    "nasdaq": {
@@ -12843,8 +12843,8 @@
     "netIncome": 1061000000,
     "assets": 39941000000,
     "equity": 9144000000,
-    "marketCap": 21564897494,
-    "price": 68.71,
+    "marketCap": 21822070500,
+    "price": 69,
     "shares": 306420901
    },
    "nasdaq": {
@@ -12878,8 +12878,8 @@
     "netIncome": 660300000,
     "assets": 11864200000,
     "equity": 4584800000,
-    "marketCap": 20655871554,
-    "price": 176.49,
+    "marketCap": 21339251851,
+    "price": 175.71,
     "shares": 120269998
    },
    "nasdaq": {
@@ -12913,8 +12913,8 @@
     "netIncome": 529721000,
     "assets": 3239173000,
     "equity": 2929038000,
-    "marketCap": 26216333246,
-    "price": 136.22,
+    "marketCap": 27753196568,
+    "price": 136.46,
     "shares": 202107978
    },
    "nasdaq": {
@@ -12948,8 +12948,8 @@
     "netIncome": -5846000000,
     "assets": 81786000000,
     "equity": 41551000000,
-    "marketCap": 28240392797,
-    "price": 23.795,
+    "marketCap": 29408429198,
+    "price": 24.06,
     "shares": 1183744751
    },
    "nasdaq": {
@@ -12983,8 +12983,8 @@
     "netIncome": 1185100000,
     "assets": 341376500000,
     "equity": 11850800000,
-    "marketCap": 23945463049,
-    "price": 111.73,
+    "marketCap": 23244270350,
+    "price": 111.98,
     "shares": 216835141
    },
    "nasdaq": {
@@ -13018,8 +13018,8 @@
     "netIncome": 1043000000,
     "assets": 29991000000,
     "equity": 12547000000,
-    "marketCap": 21981217508,
-    "price": 66.28,
+    "marketCap": 24416517750,
+    "price": 67.55,
     "shares": 340420023
    },
    "nasdaq": {
@@ -13053,8 +13053,8 @@
     "netIncome": 1819000000,
     "assets": 28287000000,
     "equity": 18578000000,
-    "marketCap": 21547215161,
-    "price": 92.95,
+    "marketCap": 21583098248,
+    "price": 94.62,
     "shares": 240398260
    },
    "nasdaq": {
@@ -13088,8 +13088,8 @@
     "netIncome": 1106000000,
     "assets": 37095000000,
     "equity": 11779000000,
-    "marketCap": 21036728895,
-    "price": 45.5123,
+    "marketCap": 21318759766,
+    "price": 45.94,
     "shares": null
    },
    "nasdaq": {
@@ -13123,9 +13123,9 @@
     "netIncome": -3514900000,
     "assets": 37193100000,
     "equity": 14711300000,
-    "marketCap": 21553307563,
-    "price": 18.775,
-    "shares": null
+    "marketCap": 20674635552,
+    "price": 18.72,
+    "shares": 1101472326
    },
    "nasdaq": {
     "revenue": 14299900000,
@@ -13158,8 +13158,8 @@
     "netIncome": 1124300000,
     "assets": 8945300000,
     "equity": 2840500000,
-    "marketCap": 20011530672,
-    "price": 177.185,
+    "marketCap": 20692317865,
+    "price": 177.09,
     "shares": 116748715
    },
    "nasdaq": {
@@ -13193,8 +13193,8 @@
     "netIncome": 929500000,
     "assets": 35858700000,
     "equity": 9450100000,
-    "marketCap": 21285275039,
-    "price": 44.355,
+    "marketCap": 20755361128,
+    "price": 43.6,
     "shares": 478533171
    },
    "nasdaq": {
@@ -13228,9 +13228,9 @@
     "netIncome": 1686700000,
     "assets": 21900500000,
     "equity": 8082400000,
-    "marketCap": 22014415144,
-    "price": 130.01,
-    "shares": null
+    "marketCap": 23464446177,
+    "price": 130.63,
+    "shares": 179309538
    },
    "nasdaq": {
     "revenue": 9139000000,
@@ -13263,9 +13263,9 @@
     "netIncome": 733997000,
     "assets": 6617172000,
     "equity": 3826229000,
-    "marketCap": 21086021700,
-    "price": 194.32,
-    "shares": 118996116
+    "marketCap": 21028513382,
+    "price": 194.62,
+    "shares": 108049087
    },
    "nasdaq": {
     "revenue": 2739226000,
@@ -13298,8 +13298,8 @@
     "netIncome": 442000000,
     "assets": 29061000000,
     "equity": 7981000000,
-    "marketCap": 21371143887,
-    "price": 43.62,
+    "marketCap": 20424442392,
+    "price": 43.44,
     "shares": 491317990
    },
    "nasdaq": {
@@ -13333,8 +13333,8 @@
     "netIncome": 1066600000,
     "assets": 16028200000,
     "equity": 2606100000,
-    "marketCap": 20272825800,
-    "price": 162.17,
+    "marketCap": 20641627207,
+    "price": 161.41,
     "shares": 132100000
    },
    "nasdaq": {
@@ -13368,8 +13368,8 @@
     "netIncome": 797000000,
     "assets": 29140000000,
     "equity": 1681000000,
-    "marketCap": 20346272650,
-    "price": 96.826,
+    "marketCap": 19404529686,
+    "price": 95.27,
     "shares": 214677543
    },
    "nasdaq": {
@@ -13403,8 +13403,8 @@
     "netIncome": 1286650000,
     "assets": 6957973000,
     "equity": 5167478000,
-    "marketCap": 23758202809,
-    "price": 117.215,
+    "marketCap": 23454156190,
+    "price": 116.6,
     "shares": 199014486
    },
    "nasdaq": {
@@ -13438,8 +13438,8 @@
     "netIncome": 382000000,
     "assets": 33488000000,
     "equity": 13896000000,
-    "marketCap": 18459693299,
-    "price": 35.735,
+    "marketCap": 19354443065,
+    "price": 35.61,
     "shares": 529691586
    },
    "nasdaq": {
@@ -13473,8 +13473,8 @@
     "netIncome": 1069000000,
     "assets": 14670000000,
     "equity": 2964000000,
-    "marketCap": 20305835720,
-    "price": 96.95,
+    "marketCap": 20945505199,
+    "price": 98.5,
     "shares": 209535103
    },
    "nasdaq": {
@@ -13508,8 +13508,8 @@
     "netIncome": 855600000,
     "assets": 33948500000,
     "equity": 10174800000,
-    "marketCap": 19628183352,
-    "price": 85.11,
+    "marketCap": 19466786332,
+    "price": 85.3,
     "shares": 230281586
    },
    "nasdaq": {
@@ -13543,8 +13543,8 @@
     "netIncome": 481376000,
     "assets": 1623278000,
     "equity": 1458907000,
-    "marketCap": 23297578677,
-    "price": 337.77,
+    "marketCap": 23331376272,
+    "price": 330.43,
     "shares": 68941554
    },
    "nasdaq": {
@@ -13578,8 +13578,8 @@
     "netIncome": 1686000000,
     "assets": 184381000000,
     "equity": 20381000000,
-    "marketCap": 22585775845,
-    "price": 21.1571,
+    "marketCap": 22495069918,
+    "price": 21.15,
     "shares": 1107994000
    },
    "nasdaq": {
@@ -13613,8 +13613,8 @@
     "netIncome": 1400107000,
     "assets": 53338484000,
     "equity": 22888767000,
-    "marketCap": 21809847704,
-    "price": 82.42,
+    "marketCap": 21915695060,
+    "price": 81.43,
     "shares": 279901327
    },
    "nasdaq": {
@@ -13648,8 +13648,8 @@
     "netIncome": 2195842000,
     "assets": 29945467000,
     "equity": 14479288000,
-    "marketCap": 22859110536,
-    "price": 34.795,
+    "marketCap": 21640439749,
+    "price": 35.09,
     "shares": 598989428
    },
    "nasdaq": {
@@ -13683,8 +13683,8 @@
     "netIncome": 1053632000,
     "assets": 11575012000,
     "equity": -4853519000,
-    "marketCap": 19090555395,
-    "price": 180.02,
+    "marketCap": 19599778323,
+    "price": 184.24,
     "shares": 107615241
    },
    "nasdaq": {
@@ -13718,8 +13718,8 @@
     "netIncome": 705100000,
     "assets": 23091700000,
     "equity": 12689600000,
-    "marketCap": 18347058305,
-    "price": 96.175,
+    "marketCap": 18799106628,
+    "price": 96.06,
     "shares": 195652004
    },
    "nasdaq": {
@@ -13753,8 +13753,8 @@
     "netIncome": 477100000,
     "assets": 7917000000,
     "equity": 5757100000,
-    "marketCap": 12903916978,
-    "price": 86.79,
+    "marketCap": 12404352961,
+    "price": 85.48,
     "shares": 149935620
    },
    "nasdaq": {
@@ -13788,8 +13788,8 @@
     "netIncome": -87600000,
     "assets": 30016700000,
     "equity": 7356200000,
-    "marketCap": 17706164774,
-    "price": 33.09,
+    "marketCap": 18387890882,
+    "price": 33.47,
     "shares": 533582081
    },
    "nasdaq": {
@@ -13823,8 +13823,8 @@
     "netIncome": 1667000000,
     "assets": 86348000000,
     "equity": 18686000000,
-    "marketCap": 22679211257,
-    "price": 110.94,
+    "marketCap": 22897948917,
+    "price": 111.02,
     "shares": 206052874
    },
    "nasdaq": {
@@ -13858,8 +13858,8 @@
     "netIncome": 1016900000,
     "assets": 8412300000,
     "equity": 5906800000,
-    "marketCap": 18508893837,
-    "price": 358.83,
+    "marketCap": 18467617810,
+    "price": 357.51,
     "shares": 51913121
    },
    "nasdaq": {
@@ -13893,8 +13893,8 @@
     "netIncome": 1528229000,
     "assets": 13321310000,
     "equity": 9537993000,
-    "marketCap": 18807212900,
-    "price": 174.729,
+    "marketCap": 18483728838,
+    "price": 175.85,
     "shares": 107537000
    },
    "nasdaq": {
@@ -13928,8 +13928,8 @@
     "netIncome": -779000000,
     "assets": 21575000000,
     "equity": 13919000000,
-    "marketCap": 18704802467,
-    "price": 138.41,
+    "marketCap": 18440118236,
+    "price": 137.67,
     "shares": 135042975
    },
    "nasdaq": {
@@ -13963,8 +13963,8 @@
     "netIncome": 579200000,
     "assets": 11737700000,
     "equity": 6445700000,
-    "marketCap": 19597886504,
-    "price": 64.82,
+    "marketCap": 18196527383,
+    "price": 61.62,
     "shares": 302017052
    },
    "nasdaq": {
@@ -13998,8 +13998,8 @@
     "netIncome": 419000000,
     "assets": 8502000000,
     "equity": 3588000000,
-    "marketCap": 17917020049,
-    "price": 378.71,
+    "marketCap": 18283204557,
+    "price": 381.67,
     "shares": 49191704
    },
    "nasdaq": {
@@ -14033,8 +14033,8 @@
     "netIncome": 1096087000,
     "assets": 10933679000,
     "equity": 2581293000,
-    "marketCap": 16701941592,
-    "price": 32.05,
+    "marketCap": 17413161379,
+    "price": 32.24,
     "shares": 526351286
    },
    "nasdaq": {
@@ -14068,8 +14068,8 @@
     "netIncome": 669666000,
     "assets": 13159009000,
     "equity": 5541372000,
-    "marketCap": 16986791112,
-    "price": 264.195,
+    "marketCap": 17889119996,
+    "price": 274.85,
     "shares": 64475506
    },
    "nasdaq": {
@@ -14103,8 +14103,8 @@
     "netIncome": 810000000,
     "assets": 24991000000,
     "equity": 7334000000,
-    "marketCap": 18173264553,
-    "price": 70.09,
+    "marketCap": 18061772132,
+    "price": 70.04,
     "shares": 257140829
    },
    "nasdaq": {
@@ -14138,8 +14138,8 @@
     "netIncome": 1455000000,
     "assets": 14088000000,
     "equity": 4838000000,
-    "marketCap": 18177222794,
-    "price": 119.99,
+    "marketCap": 18263485528,
+    "price": 120.54,
     "shares": 153668821
    },
    "nasdaq": {
@@ -14173,8 +14173,8 @@
     "netIncome": -3516000000,
     "assets": 37964000000,
     "equity": 14827000000,
-    "marketCap": 17761774278,
-    "price": 33.55,
+    "marketCap": 17576424815,
+    "price": 33.38,
     "shares": 526125614
    },
    "nasdaq": {
@@ -14208,8 +14208,8 @@
     "netIncome": 651946000,
     "assets": 1868133000,
     "equity": -1745784000,
-    "marketCap": 15214885928,
-    "price": 705.45,
+    "marketCap": 17608767792,
+    "price": 691.74,
     "shares": 23722134
    },
    "nasdaq": {
@@ -14243,8 +14243,8 @@
     "netIncome": 65945000,
     "assets": 20795540000,
     "equity": 4405619000,
-    "marketCap": 16787782327,
-    "price": 121.82,
+    "marketCap": 16960113180,
+    "price": 121.8,
     "shares": 139250000
    },
    "nasdaq": {
@@ -14278,8 +14278,8 @@
     "netIncome": 241201000,
     "assets": 12168411000,
     "equity": 7250360000,
-    "marketCap": 18529479818,
-    "price": 165.91,
+    "marketCap": 17716572887,
+    "price": 161.86,
     "shares": 116595000
    },
    "nasdaq": {
@@ -14313,8 +14313,8 @@
     "netIncome": 912000000,
     "assets": 19524000000,
     "equity": 5421000000,
-    "marketCap": 16644547088,
-    "price": 62.785,
+    "marketCap": 17142189399,
+    "price": 64.1,
     "shares": 275972000
    },
    "nasdaq": {
@@ -14348,8 +14348,8 @@
     "netIncome": 1434000000,
     "assets": 17761000000,
     "equity": 6093000000,
-    "marketCap": 18214775005,
-    "price": 52.03,
+    "marketCap": 18183243369,
+    "price": 50.79,
     "shares": 353251476
    },
    "nasdaq": {
@@ -14383,8 +14383,8 @@
     "netIncome": 289336000,
     "assets": 11252535000,
     "equity": 3633709000,
-    "marketCap": 17552280492,
-    "price": 150.05,
+    "marketCap": 16977620912,
+    "price": 148.34,
     "shares": 117446713
    },
    "nasdaq": {
@@ -14418,8 +14418,8 @@
     "netIncome": 598282000,
     "assets": 7927155000,
     "equity": 3565085000,
-    "marketCap": 20920145591,
-    "price": 224.33,
+    "marketCap": 21227593662,
+    "price": 231.95,
     "shares": 97688000
    },
    "nasdaq": {
@@ -14453,8 +14453,8 @@
     "netIncome": 1779403000,
     "assets": 44071071000,
     "equity": 9689742000,
-    "marketCap": 26797059181,
-    "price": 72.17,
+    "marketCap": 27222114702,
+    "price": 72.38,
     "shares": 379226056
    },
    "nasdaq": {
@@ -14488,8 +14488,8 @@
     "netIncome": 765000000,
     "assets": 13049000000,
     "equity": 6555000000,
-    "marketCap": 17313093563,
-    "price": 25.27,
+    "marketCap": 16936275143,
+    "price": 25.22,
     "shares": 694100000
    },
    "nasdaq": {
@@ -14523,8 +14523,8 @@
     "netIncome": 1448000000,
     "assets": 13493000000,
     "equity": 4870000000,
-    "marketCap": 17420828453,
-    "price": 138.815,
+    "marketCap": 17076979801,
+    "price": 139.64,
     "shares": 126392684
    },
    "nasdaq": {
@@ -14558,8 +14558,8 @@
     "netIncome": -738000000,
     "assets": 34003000000,
     "equity": 10071000000,
-    "marketCap": 21753375688,
-    "price": 67.35,
+    "marketCap": 21465871910,
+    "price": 67.43,
     "shares": null
    },
    "nasdaq": {
@@ -14593,8 +14593,8 @@
     "netIncome": 484474000,
     "assets": 5917681000,
     "equity": 3043571000,
-    "marketCap": 18082242178,
-    "price": 324.125,
+    "marketCap": 17759185855,
+    "price": 324.3,
     "shares": 55823516
    },
    "nasdaq": {
@@ -14628,8 +14628,8 @@
     "netIncome": 483200000,
     "assets": 6927000000,
     "equity": 4028800000,
-    "marketCap": 17311643178,
-    "price": 234.44,
+    "marketCap": 16885542179,
+    "price": 233.21,
     "shares": 74347824
    },
    "nasdaq": {
@@ -14663,8 +14663,8 @@
     "netIncome": 587081000,
     "assets": 5058381000,
     "equity": 1845647000,
-    "marketCap": 15159113700,
-    "price": 129.16,
+    "marketCap": 16495892092,
+    "price": 143.59,
     "shares": 118620833
    },
    "nasdaq": {
@@ -14698,8 +14698,8 @@
     "netIncome": -322400000,
     "assets": 5552000000,
     "equity": 538500000,
-    "marketCap": 16860455585,
-    "price": 119.6505,
+    "marketCap": 16564262204,
+    "price": 118.33,
     "shares": 140685758
    },
    "nasdaq": {
@@ -14733,9 +14733,9 @@
     "netIncome": -144338000,
     "assets": 7135422000,
     "equity": 3159329000,
-    "marketCap": 17722578841,
-    "price": 371.07,
-    "shares": 49227800
+    "marketCap": 16487574223,
+    "price": 358.84,
+    "shares": 44448089
    },
    "nasdaq": {
     "revenue": 4015382000,
@@ -14768,8 +14768,8 @@
     "netIncome": 816000000,
     "assets": 44528000000,
     "equity": 15904000000,
-    "marketCap": 19409794997,
-    "price": 101.035,
+    "marketCap": 19830535876,
+    "price": 101.36,
     "shares": null
    },
    "nasdaq": {
@@ -14803,9 +14803,9 @@
     "netIncome": 2058083000,
     "assets": 34430437000,
     "equity": 21778225000,
-    "marketCap": 19855153947,
-    "price": 83.61,
-    "shares": null
+    "marketCap": 20202488296,
+    "price": 84.58,
+    "shares": 241916996
    },
    "nasdaq": {
     "revenue": 34186934000,
@@ -14838,8 +14838,8 @@
     "netIncome": 474000000,
     "assets": 36658000000,
     "equity": 17943000000,
-    "marketCap": 19549610022,
-    "price": 55.53,
+    "marketCap": 19947145730,
+    "price": 55.75,
     "shares": 357000000
    },
    "nasdaq": {
@@ -14873,8 +14873,8 @@
     "netIncome": 554430000,
     "assets": 19688250000,
     "equity": 10391836000,
-    "marketCap": 15860814725,
-    "price": 23.6401,
+    "marketCap": 15844044990,
+    "price": 23.7,
     "shares": 674066654
    },
    "nasdaq": {
@@ -14908,8 +14908,8 @@
     "netIncome": 1339816000,
     "assets": 5856930000,
     "equity": 3864869000,
-    "marketCap": 15424236329,
-    "price": 5797.36,
+    "marketCap": 15945669485,
+    "price": 5806.02,
     "shares": 2793760
    },
    "nasdaq": {
@@ -14943,8 +14943,8 @@
     "netIncome": 810000000,
     "assets": 5201000000,
     "equity": -185000000,
-    "marketCap": 15203150853,
-    "price": 76.955,
+    "marketCap": 14988216554,
+    "price": 75.17,
     "shares": 182783129
    },
    "nasdaq": {
@@ -14978,8 +14978,8 @@
     "netIncome": 643800000,
     "assets": 5223700000,
     "equity": 2067600000,
-    "marketCap": 15187554725,
-    "price": 179.985,
+    "marketCap": 15219883958,
+    "price": 180.55,
     "shares": null
    },
    "nasdaq": {
@@ -15013,8 +15013,8 @@
     "netIncome": 424000000,
     "assets": 9312000000,
     "equity": 5836200000,
-    "marketCap": 14886201496,
-    "price": 63.79,
+    "marketCap": 14804588550,
+    "price": 63.16,
     "shares": 245792054
    },
    "nasdaq": {
@@ -15048,8 +15048,8 @@
     "netIncome": 315603000,
     "assets": 5638908000,
     "equity": 3702789000,
-    "marketCap": 15411978797,
-    "price": 376.02,
+    "marketCap": 15977120178,
+    "price": 378.62,
     "shares": 43812000
    },
    "nasdaq": {
@@ -15083,8 +15083,8 @@
     "netIncome": 401900000,
     "assets": 21243700000,
     "equity": 9054600000,
-    "marketCap": 15258721407,
-    "price": 100.84,
+    "marketCap": 14986891453,
+    "price": 99.32,
     "shares": 154413950
    },
    "nasdaq": {
@@ -15118,8 +15118,8 @@
     "netIncome": 586964000,
     "assets": 18680290000,
     "equity": 9492372000,
-    "marketCap": 15849374270,
-    "price": 26.825,
+    "marketCap": 16265763644,
+    "price": 27.19,
     "shares": 551381818
    },
    "nasdaq": {
@@ -15153,8 +15153,8 @@
     "netIncome": 729231000,
     "assets": 8085400000,
     "equity": 319908000,
-    "marketCap": 13931295595,
-    "price": 220.39,
+    "marketCap": 14541946193,
+    "price": 220.93,
     "shares": 63148976
    },
    "nasdaq": {
@@ -15188,8 +15188,8 @@
     "netIncome": 1573000000,
     "assets": 62514000000,
     "equity": 15461000000,
-    "marketCap": 14918390945,
-    "price": 389.25,
+    "marketCap": 15283413772,
+    "price": 391.09,
     "shares": null
    },
    "nasdaq": {
@@ -15223,8 +15223,8 @@
     "netIncome": 875000000,
     "assets": 8034900000,
     "equity": 215100000,
-    "marketCap": 13456318550,
-    "price": 106.25,
+    "marketCap": 14284594534,
+    "price": 106.21,
     "shares": 126647704
    },
    "nasdaq": {
@@ -15258,9 +15258,9 @@
     "netIncome": 7000000,
     "assets": 10538000000,
     "equity": 8297000000,
-    "marketCap": 11232077139,
-    "price": 27.745,
-    "shares": 404832479
+    "marketCap": 13744302185,
+    "price": 32.01,
+    "shares": 466224633
    },
    "nasdaq": {
     "revenue": 3247000000,
@@ -15293,8 +15293,8 @@
     "netIncome": 941100000,
     "assets": 7739500000,
     "equity": 2841400000,
-    "marketCap": 23098246593,
-    "price": 387.67,
+    "marketCap": 22486336999,
+    "price": 391.25,
     "shares": 62300000
    },
    "nasdaq": {
@@ -15328,8 +15328,8 @@
     "netIncome": 865000000,
     "assets": 36289600000,
     "equity": 5871600000,
-    "marketCap": 14114242546,
-    "price": 286.155,
+    "marketCap": 14044942653,
+    "price": 286.3,
     "shares": 49699769
    },
    "nasdaq": {
@@ -15363,8 +15363,8 @@
     "netIncome": -138700000,
     "assets": 16219400000,
     "equity": 5543800000,
-    "marketCap": 13363580193,
-    "price": 125.13,
+    "marketCap": 13884877326,
+    "price": 127.41,
     "shares": 106694327
    },
    "nasdaq": {
@@ -15398,8 +15398,8 @@
     "netIncome": 324000000,
     "assets": 16613000000,
     "equity": 9426000000,
-    "marketCap": 13877771680,
-    "price": 19.25,
+    "marketCap": 14047144640,
+    "price": 19.39,
     "shares": 720665000
    },
    "nasdaq": {
@@ -15433,8 +15433,8 @@
     "netIncome": 688000000,
     "assets": 8801700000,
     "equity": 2242100000,
-    "marketCap": 13769189639,
-    "price": 181.8083,
+    "marketCap": 13780557860,
+    "price": 181.71,
     "shares": 76877940
    },
    "nasdaq": {
@@ -15468,8 +15468,8 @@
     "netIncome": 443221000,
     "assets": 11975383000,
     "equity": 5662851000,
-    "marketCap": 13578049628,
-    "price": 116.94,
+    "marketCap": 13897110009,
+    "price": 118.75,
     "shares": 116901020
    },
    "nasdaq": {
@@ -15503,8 +15503,8 @@
     "netIncome": 1685000000,
     "assets": 22482000000,
     "equity": 11528000000,
-    "marketCap": 26928077501,
-    "price": 63.855,
+    "marketCap": 28083463225,
+    "price": 64.53,
     "shares": 461000000
    },
    "nasdaq": {
@@ -15538,8 +15538,8 @@
     "netIncome": 921000000,
     "assets": 18129000000,
     "equity": 7875000000,
-    "marketCap": 13430458349,
-    "price": 78.09,
+    "marketCap": 13213754833,
+    "price": 78.18,
     "shares": 174162437
    },
    "nasdaq": {
@@ -15573,8 +15573,8 @@
     "netIncome": 70513000,
     "assets": 20336018000,
     "equity": 7500094000,
-    "marketCap": 12859683399,
-    "price": 18.6432,
+    "marketCap": 13273399755,
+    "price": 19.02,
     "shares": 695043997
    },
    "nasdaq": {
@@ -15608,8 +15608,8 @@
     "netIncome": 973000000,
     "assets": 15589000000,
     "equity": 2611000000,
-    "marketCap": 14434926277,
-    "price": 24.12,
+    "marketCap": 14892845356,
+    "price": 24.25,
     "shares": 605663774
    },
    "nasdaq": {
@@ -15643,8 +15643,8 @@
     "netIncome": -957000000,
     "assets": 20055000000,
     "equity": 6156000000,
-    "marketCap": 13183397975,
-    "price": 25.51,
+    "marketCap": 13079998775,
+    "price": 24.92,
     "shares": 514490045
    },
    "nasdaq": {
@@ -15678,8 +15678,8 @@
     "netIncome": 452031000,
     "assets": 11479643000,
     "equity": 4977371000,
-    "marketCap": 14095006428,
-    "price": 98.06,
+    "marketCap": 13441814440,
+    "price": 99.59,
     "shares": 147023000
    },
    "nasdaq": {
@@ -15713,8 +15713,8 @@
     "netIncome": 655000000,
     "assets": 6884000000,
     "equity": -497000000,
-    "marketCap": 15955079972,
-    "price": 106.69,
+    "marketCap": 16454470537,
+    "price": 108.5,
     "shares": 149505248
    },
    "nasdaq": {
@@ -15748,8 +15748,8 @@
     "netIncome": 1161238000,
     "assets": 30813692000,
     "equity": 5974579000,
-    "marketCap": 12150028215,
-    "price": 158.195,
+    "marketCap": 11895525901,
+    "price": 156.99,
     "shares": 78637130
    },
    "nasdaq": {
@@ -15783,8 +15783,8 @@
     "netIncome": 616531000,
     "assets": 30031599000,
     "equity": 7005841000,
-    "marketCap": 12868116320,
-    "price": 106.14,
+    "marketCap": 12832363136,
+    "price": 106.31,
     "shares": 121971000
    },
    "nasdaq": {
@@ -15818,8 +15818,8 @@
     "netIncome": -726300000,
     "assets": 27094000000,
     "equity": 12231000000,
-    "marketCap": 12558461242,
-    "price": 28.4377,
+    "marketCap": 12388483827,
+    "price": 28.43,
     "shares": null
    },
    "nasdaq": {
@@ -15853,8 +15853,8 @@
     "netIncome": 1556000000,
     "assets": 14294000000,
     "equity": 5049000000,
-    "marketCap": 14006008422,
-    "price": 82.23,
+    "marketCap": 14538808694,
+    "price": 82.98,
     "shares": 175300000
    },
    "nasdaq": {
@@ -15888,8 +15888,8 @@
     "netIncome": 4987000000,
     "assets": 154213000000,
     "equity": 16054000000,
-    "marketCap": 12157817676,
-    "price": 106.23,
+    "marketCap": 12444261406,
+    "price": 104.93,
     "shares": 114577492
    },
    "nasdaq": {
@@ -15923,8 +15923,8 @@
     "netIncome": 789400000,
     "assets": 13200400000,
     "equity": 5704900000,
-    "marketCap": 12280102822,
-    "price": 45.64,
+    "marketCap": 12947382729,
+    "price": 47.48,
     "shares": 269400000
    },
    "nasdaq": {
@@ -15958,8 +15958,8 @@
     "netIncome": 513810000,
     "assets": 13001283000,
     "equity": 6906890000,
-    "marketCap": 13513380766,
-    "price": 73.775,
+    "marketCap": 13547258067,
+    "price": 74.28,
     "shares": 182906561
    },
    "nasdaq": {
@@ -15993,8 +15993,8 @@
     "netIncome": 374900000,
     "assets": 12394800000,
     "equity": 8238700000,
-    "marketCap": 11361778817,
-    "price": 59.79,
+    "marketCap": 11639405546,
+    "price": 59.88,
     "shares": 195978026
    },
    "nasdaq": {
@@ -16028,8 +16028,8 @@
     "netIncome": 805800000,
     "assets": 4081800000,
     "equity": 1163100000,
-    "marketCap": 11729201882,
-    "price": 339.175,
+    "marketCap": 12995159407,
+    "price": 372.05,
     "shares": 34802911
    },
    "nasdaq": {
@@ -16063,8 +16063,8 @@
     "netIncome": 533481000,
     "assets": 4140023000,
     "equity": 2001866000,
-    "marketCap": 10953763526,
-    "price": 310.57,
+    "marketCap": 11680905271,
+    "price": 309.54,
     "shares": 37099259
    },
    "nasdaq": {
@@ -16098,8 +16098,8 @@
     "netIncome": -14497180000,
     "assets": 43016355000,
     "equity": 5765784000,
-    "marketCap": 25841895898,
-    "price": 88.61,
+    "marketCap": 25905875384,
+    "price": 90.39,
     "shares": 287589000
    },
    "nasdaq": {
@@ -16133,8 +16133,8 @@
     "netIncome": 502776000,
     "assets": 3145711000,
     "equity": 2051949000,
-    "marketCap": 11041938723,
-    "price": 157.265,
+    "marketCap": 11396705437,
+    "price": 158.25,
     "shares": 72167368
    },
    "nasdaq": {
@@ -16168,8 +16168,8 @@
     "netIncome": 1024071000,
     "assets": 3687765000,
     "equity": 2499638000,
-    "marketCap": 10940421005,
-    "price": 80.23,
+    "marketCap": 11061829667,
+    "price": 80.54,
     "shares": 141949971
    },
    "nasdaq": {
@@ -16203,8 +16203,8 @@
     "netIncome": 181840000,
     "assets": 2586726000,
     "equity": 2108221000,
-    "marketCap": 11395197264,
-    "price": 72.67,
+    "marketCap": 11377163167,
+    "price": 72.6,
     "shares": 156453292
    },
    "nasdaq": {
@@ -16238,8 +16238,8 @@
     "netIncome": 573000000,
     "assets": 15544000000,
     "equity": 8526000000,
-    "marketCap": 15691849697,
-    "price": 28.995,
+    "marketCap": 16610607902,
+    "price": 29.965,
     "shares": 569900000
    },
    "nasdaq": {
@@ -16273,8 +16273,8 @@
     "netIncome": 159554000,
     "assets": 5573679000,
     "equity": 2626540000,
-    "marketCap": 11483817978,
-    "price": 195.5851,
+    "marketCap": 11029468998,
+    "price": 193.71,
     "shares": 58675827
    },
    "nasdaq": {
@@ -16308,8 +16308,8 @@
     "netIncome": 605000000,
     "assets": 12749000000,
     "equity": 5073000000,
-    "marketCap": 11067766463,
-    "price": 280.875,
+    "marketCap": 10800012220,
+    "price": 281.32,
     "shares": 39242688
    },
    "nasdaq": {
@@ -16343,8 +16343,8 @@
     "netIncome": -677378000,
     "assets": 16374211000,
     "equity": 9533365000,
-    "marketCap": 11428400354,
-    "price": 96.735,
+    "marketCap": 11053533689,
+    "price": 98.96,
     "shares": 117847220
    },
    "nasdaq": {
@@ -16378,8 +16378,8 @@
     "netIncome": 1579183000,
     "assets": 8456743000,
     "equity": 4961840000,
-    "marketCap": 11115887117,
-    "price": 105.415,
+    "marketCap": 10454868277,
+    "price": 104.59,
     "shares": 100326733
    },
    "nasdaq": {
@@ -16413,8 +16413,8 @@
     "netIncome": 810000000,
     "assets": 5561000000,
     "equity": 321000000,
-    "marketCap": 10433882985,
-    "price": 86.22,
+    "marketCap": 10449000173,
+    "price": 87.36,
     "shares": 120911863
    },
    "nasdaq": {
@@ -16448,8 +16448,8 @@
     "netIncome": 372865000,
     "assets": 10605674000,
     "equity": 3288127000,
-    "marketCap": 11223365596,
-    "price": 34.895,
+    "marketCap": 11514109716,
+    "price": 35.61,
     "shares": 328571965
    },
    "nasdaq": {
@@ -16483,8 +16483,8 @@
     "netIncome": 900000000,
     "assets": 51768000000,
     "equity": 4063000000,
-    "marketCap": 10715848223,
-    "price": 15.02,
+    "marketCap": 10701579450,
+    "price": 15.03,
     "shares": 714000000
    },
    "nasdaq": {
@@ -16518,8 +16518,8 @@
     "netIncome": 195403000,
     "assets": 15495821000,
     "equity": 3737381000,
-    "marketCap": 32700128315,
-    "price": 172.79,
+    "marketCap": 32756909229,
+    "price": 172.18,
     "shares": 194011072
    },
    "nasdaq": {
@@ -16553,8 +16553,8 @@
     "netIncome": 601704000,
     "assets": 1716459000,
     "equity": -3901142000,
-    "marketCap": 10204356571,
-    "price": 310.295,
+    "marketCap": 10316532122,
+    "price": 312.03,
     "shares": 34237646
    },
    "nasdaq": {
@@ -16588,8 +16588,8 @@
     "netIncome": 526705000,
     "assets": 3140523000,
     "equity": 1374321000,
-    "marketCap": 16055150729,
-    "price": 33.57,
+    "marketCap": 16753482967,
+    "price": 34.01,
     "shares": 481092221
    },
    "nasdaq": {
@@ -16620,11 +16620,11 @@
    "sameYear": true,
    "our": {
     "revenue": 1586511000,
-    "netIncome": 384462000,
+    "netIncome": 383638000,
     "assets": 9042989000,
     "equity": 4362523000,
-    "marketCap": 9999643751,
-    "price": 99.46,
+    "marketCap": 10255013700,
+    "price": 101.52,
     "shares": 103408210
    },
    "nasdaq": {
@@ -16635,17 +16635,17 @@
    },
    "diff": {
     "revenue": 0,
-    "netIncome": 0,
+    "netIncome": 0.0021432547299863186,
     "assets": 0,
     "equity": 0
    },
    "abs": {
     "revenue": 1586511000,
-    "netIncome": 384462000,
+    "netIncome": 383638000,
     "assets": 0,
     "equity": 0
    },
-   "worst": 0,
+   "worst": 0.0021432547299863186,
    "status": "match"
   },
   {
@@ -16658,8 +16658,8 @@
     "netIncome": 247100000,
     "assets": 3190400000,
     "equity": 1515200000,
-    "marketCap": 10346259407,
-    "price": 148.64,
+    "marketCap": 10334469193,
+    "price": 149.83,
     "shares": 70395848
    },
    "nasdaq": {
@@ -16693,8 +16693,8 @@
     "netIncome": 410351000,
     "assets": 6233693000,
     "equity": 4049147000,
-    "marketCap": 10932322824,
-    "price": 153.93,
+    "marketCap": 10976367533,
+    "price": 151.95,
     "shares": 72588000
    },
    "nasdaq": {
@@ -16728,8 +16728,8 @@
     "netIncome": 276800000,
     "assets": 26166164000,
     "equity": 5147190000,
-    "marketCap": 9868680776,
-    "price": 61.72,
+    "marketCap": 9914982628,
+    "price": 60.89,
     "shares": 158869000
    },
    "nasdaq": {
@@ -16763,8 +16763,8 @@
     "netIncome": 1488796000,
     "assets": 15527593000,
     "equity": 7212796000,
-    "marketCap": 10407009819,
-    "price": 176.52,
+    "marketCap": 11014645288,
+    "price": 177.32,
     "shares": 64462000
    },
    "nasdaq": {
@@ -16798,8 +16798,8 @@
     "netIncome": 1627000000,
     "assets": 21920000000,
     "equity": 1590000000,
-    "marketCap": 22744067075,
-    "price": 36.25,
+    "marketCap": 23109978245,
+    "price": 36.12,
     "shares": 671910723
    },
    "nasdaq": {
@@ -16833,8 +16833,8 @@
     "netIncome": 165000000,
     "assets": 23413000000,
     "equity": 9207000000,
-    "marketCap": 9106797898,
-    "price": 43.8468,
+    "marketCap": 8863866900,
+    "price": 43.65,
     "shares": null
    },
    "nasdaq": {
@@ -16868,8 +16868,8 @@
     "netIncome": 471700000,
     "assets": 32368300000,
     "equity": 12077800000,
-    "marketCap": 15925670744,
-    "price": 31.345,
+    "marketCap": 15780868825,
+    "price": 31.23,
     "shares": 520763448
    },
    "nasdaq": {
@@ -16903,8 +16903,8 @@
     "netIncome": 653800000,
     "assets": 6868800000,
     "equity": 3869200000,
-    "marketCap": 10390035976,
-    "price": 65.18,
+    "marketCap": 8827978635,
+    "price": 62.29,
     "shares": null
    },
    "nasdaq": {
@@ -16938,8 +16938,8 @@
     "netIncome": 403045000,
     "assets": 9130460000,
     "equity": 3248731000,
-    "marketCap": 9474391062,
-    "price": 109.0578,
+    "marketCap": 9446586540,
+    "price": 109.67,
     "shares": 86276033
    },
    "nasdaq": {
@@ -16973,8 +16973,8 @@
     "netIncome": 398000000,
     "assets": 11215000000,
     "equity": 3245000000,
-    "marketCap": 9498588775,
-    "price": 85.15,
+    "marketCap": 9468498208,
+    "price": 84.25,
     "shares": 111446542
    },
    "nasdaq": {
@@ -17008,8 +17008,8 @@
     "netIncome": 423246000,
     "assets": 22541401000,
     "equity": 2209888000,
-    "marketCap": 7271239541,
-    "price": 15.8299,
+    "marketCap": 6933736475,
+    "price": 15.75,
     "shares": 477742311
    },
    "nasdaq": {
@@ -17043,8 +17043,8 @@
     "netIncome": 546200000,
     "assets": 3142800000,
     "equity": 1858000000,
-    "marketCap": 8345465925,
-    "price": 61.38,
+    "marketCap": 8378763525,
+    "price": 62.06,
     "shares": 141914840
    },
    "nasdaq": {
@@ -17075,11 +17075,11 @@
    "sameYear": true,
    "our": {
     "revenue": 3026556000,
-    "netIncome": -1429570000,
+    "netIncome": -1437987000,
     "assets": 34081835000,
     "equity": 15470070000,
-    "marketCap": 6854962987,
-    "price": 39.42,
+    "marketCap": 7496130461,
+    "price": 40.86,
     "shares": 173300361
    },
    "nasdaq": {
@@ -17090,17 +17090,17 @@
    },
    "diff": {
     "revenue": 0,
-    "netIncome": 0.005853321344351513,
+    "netIncome": 0,
     "assets": 0,
     "equity": 0
    },
    "abs": {
     "revenue": 3026556000,
-    "netIncome": 1429570000,
+    "netIncome": 1437987000,
     "assets": 0,
     "equity": 0
    },
-   "worst": 0.005853321344351513,
+   "worst": 0,
    "status": "match"
   },
   {
@@ -17113,9 +17113,9 @@
     "netIncome": 559335000,
     "assets": 3355481000,
     "equity": 2283374000,
-    "marketCap": 11341956593,
-    "price": 245.555,
-    "shares": null
+    "marketCap": 11709852519,
+    "price": 246.88,
+    "shares": 47558495
    },
    "nasdaq": {
     "revenue": 4152119000,
@@ -17148,8 +17148,8 @@
     "netIncome": 746803000,
     "assets": 17480103000,
     "equity": -651082000,
-    "marketCap": 11690712000,
-    "price": 183.24,
+    "marketCap": 11716232000,
+    "price": 181.69,
     "shares": 66800000
    },
    "nasdaq": {
@@ -17183,8 +17183,8 @@
     "netIncome": 478197000,
     "assets": 13393119000,
     "equity": 7886527000,
-    "marketCap": 11392261560,
-    "price": 20.68,
+    "marketCap": 11590387848,
+    "price": 20.87,
     "shares": 550496000
    },
    "nasdaq": {
@@ -17218,8 +17218,8 @@
     "netIncome": 540700000,
     "assets": 24480100000,
     "equity": 12084900000,
-    "marketCap": 5900143190,
-    "price": 18.56,
+    "marketCap": 5671258325,
+    "price": 18.79,
     "shares": 317505258
    },
    "nasdaq": {
@@ -17253,8 +17253,8 @@
     "netIncome": 327334000,
     "assets": 13108117000,
     "equity": -275492000,
-    "marketCap": 7421328324,
-    "price": 71.985,
+    "marketCap": 7489291092,
+    "price": 72.42,
     "shares": 106401372
    },
    "nasdaq": {
@@ -17292,8 +17292,8 @@
     "netIncome": 211090000,
     "assets": 41373786000,
     "equity": 2429917000,
-    "marketCap": 7363501191,
-    "price": 28.495,
+    "marketCap": 7248547393,
+    "price": 27.99,
     "shares": 255828519
    },
    "nasdaq": {
@@ -17327,9 +17327,9 @@
     "netIncome": -6190000000,
     "assets": 46172000000,
     "equity": 16320000000,
-    "marketCap": 38370975242,
-    "price": 7.615,
-    "shares": null
+    "marketCap": 39177723736,
+    "price": 7.75,
+    "shares": 5161755433
    },
    "nasdaq": {
     "revenue": 29213000000,
@@ -17362,8 +17362,8 @@
     "netIncome": 132170000000,
     "assets": 595281000000,
     "equity": 415265000000,
-    "marketCap": 3916657500000,
-    "price": 320.48,
+    "marketCap": 3842543700000,
+    "price": 316.83,
     "shares": 12090694755
    },
    "nasdaq": {
@@ -17397,8 +17397,8 @@
     "netIncome": 1685000000,
     "assets": 22482000000,
     "equity": 11528000000,
-    "marketCap": 23938411521,
-    "price": 56.74,
+    "marketCap": 24520321119,
+    "price": 57.43,
     "shares": 428152979
    },
    "nasdaq": {
@@ -17432,8 +17432,8 @@
     "netIncome": 573000000,
     "assets": 15544000000,
     "equity": 8526000000,
-    "marketCap": 17167267285,
-    "price": 31.72,
+    "marketCap": 18088727720,
+    "price": 32.76,
     "shares": 549892924
    },
    "nasdaq": {

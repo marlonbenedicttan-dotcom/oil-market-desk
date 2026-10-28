@@ -1158,3 +1158,8 @@ button.deal-sec-tile:hover { background: #10151b; }
 .co-star.on { color: var(--amber); }
 .co-tick em { font-style: normal; }
 @media (max-width: 640px) { .co-price { gap: 8px; } .co-price-v { font-size: 17px; } }
+/* Home screener: switch between instruments and companies. */
+.sc-modes { display: inline-flex; gap: 0; border: 1px solid #1d242c; border-radius: 5px; overflow: hidden; }
+.sc-modes button { background: #0e1319; border: 0; color: #8fa0b2; font: inherit; font-size: 10px; letter-spacing: .5px; padding: 6px 10px; cursor: pointer; }
+.sc-modes button.on { background: #1b2733; color: #cfe3f7; }
+.sc-tick { color: #5b6773; font-size: 9px; letter-spacing: .5px; margin-left: 7px; }

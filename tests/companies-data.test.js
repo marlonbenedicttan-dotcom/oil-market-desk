@@ -97,6 +97,22 @@ test('descriptions are sentences, not table-of-contents residue', () => {
   }
 });
 
+test('every description passes the quality gate', () => {
+  const RESIDUE = /(Item\s+\d+[A-Z]?\.|PART\s+I{1,3}\b|Mine Safety Disclosures|Table of Contents|Market for Registrant|Common Equity, Related|Issuer Purchases|herein by reference)/i;
+  const NOT_BUSINESS = /\b(foundation|charitable|political action committee|PAC)\b/i;
+  for (const c of data.companies) {
+    const d = c.description || '';
+    assert.ok(d.length >= 80 && d.length <= 420, `${c.ticker}: ${d.length} chars`);
+    assert.ok(!RESIDUE.test(d), `${c.ticker}: residue`);
+    assert.ok(!NOT_BUSINESS.test(d), `${c.ticker}: not about the business`);
+    const w = String(c.name || '').split(/\s+/).filter((x) => !/^(the|a|an|of|and|&)$/i.test(x));
+    const key = (w[0] || '').replace(/[.,]/g, '').toLowerCase();
+    if (key.length > 1) {
+      assert.ok(d.slice(0, 90).toLowerCase().replace(/[.]/g, '').includes(key), `${c.ticker}: does not name the company`);
+    }
+  }
+});
+
 test('a company with no annual report is flagged, not faked', () => {
   const vy = by.VYLR;
   assert.ok(vy.noFilings, 'VYLR is marked noFilings');

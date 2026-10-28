@@ -2245,6 +2245,9 @@ function renderRegime(d) {
 }
 // Screener — every instrument in one sortable table (assembled server-side at /api/screen).
 let screenRows = null, screenSort = { key: 'absd1', dir: -1 }, fxBase = 'USD', fxRows = null;
+// The home screener covers two universes: instruments and companies.
+let screenMode = (() => { try { return localStorage.getItem('oilbasis.screenMode') === 'companies' ? 'companies' : 'commodities'; } catch { return 'commodities'; } })();
+let coScreen = { sort: 'marketCap', dir: -1, q: '', sector: 'all' };
 let screenSegs = [];                  // the segment list from /api/screen
 let screenSeg = 'all';                // segment filter
 let screenPicks = null;               // Set of instrument ids to show; null = show every one
@@ -2287,6 +2290,10 @@ function syncScreenBar() {
   const s = $('sc-seg'); if (s) s.value = screenSeg;
   document.querySelectorAll('#sc-pick-list input[data-id]').forEach((cb) => { cb.checked = screenPicks === null || screenPicks.has(cb.dataset.id); });
 }
+function screenModeHtml() {
+  return `<div class="sc-modes"><button type="button" class="${screenMode === 'commodities' ? 'on' : ''}" data-screen-mode="commodities">COMMODITIES</button><button type="button" class="${screenMode === 'companies' ? 'on' : ''}" data-screen-mode="companies">COMPANIES</button></div>`;
+}
+
 function scBarHtml() {
   const groups = [];
   for (const r of screenRows) {
@@ -2305,11 +2312,57 @@ function scBarHtml() {
     + `<button type="button" class="ghost" data-sc-act="reset">RESET</button>`
     + `<span class="sc-count dimtext" id="sc-count"></span>`;
 }
+const CO_SCREEN_COLS = [
+  { k: 'label', t: 'COMPANY' }, { k: 'price', t: 'PRICE' }, { k: 'chg1d', t: '1D' },
+  { k: 'chg6m', t: '6M' }, { k: 'chgYtd', t: 'YTD' }, { k: 'pe', t: 'P/E' },
+  { k: 'fcfYield', t: 'FCF YLD' }, { k: 'marketCap', t: 'MKT CAP' },
+];
+function renderCompanyScreen(el) {
+  // The companies payload is normally fetched when the COMPANIES tab opens; the home screener can ask
+  // for it first, so load it here and re-render when it lands.
+  if (!companiesData) {
+    el.innerHTML = stLoading('Reading the filings…');
+    getJSON('/api/companies').then((d) => { companiesData = d; renderScreen(true); }).catch(() => {});
+    return;
+  }
+  const all = (companiesData?.companies || []).filter((c) => !c.shareClass && c.ticker);
+  if (!all.length) { el.innerHTML = stError('Couldn’t load companies — retrying.'); return; }
+  const sectors = [...new Set(all.map((c) => c.sector).filter(Boolean))].sort();
+  const q = coScreen.q.trim().toLowerCase();
+  let rows = all.filter((c) => (coScreen.sector === 'all' || c.sector === coScreen.sector)
+    && (!q || `${c.name} ${c.ticker} ${c.industry || ''}`.toLowerCase().includes(q)));
+  const { sort, dir } = coScreen;
+  rows = [...rows].sort((a, b) => {
+    const x = sort === 'label' ? (a.name || '') : a[sort];
+    const y = sort === 'label' ? (b.name || '') : b[sort];
+    if (x == null && y == null) return 0;
+    if (x == null) return 1;
+    if (y == null) return -1;
+    return sort === 'label' ? x.localeCompare(y) * dir : (x - y) * dir;
+  });
+  const head = CO_SCREEN_COLS.map((c) => `<th class="${sort === c.k ? 'on' : ''}" data-cokey="${c.k}">${c.t}${sort === c.k ? (dir < 0 ? ' ▼' : ' ▲') : ''}</th>`).join('');
+  const cell = (v, dp = 1, suffix = '') => (v == null ? '<td class="num">—</td>' : `<td class="num">${v.toFixed(dp)}${suffix}</td>`);
+  const pct = (v) => (v == null ? '<td class="num">—</td>' : `<td class="num ${cls(v)}">${v >= 0 ? '+' : ''}${v.toFixed(1)}%</td>`);
+  const body = rows.map((c) => `<tr data-cocik="${esc(c.cik)}" title="${esc(c.name)}">
+      <td class="sc-name">${esc(c.name)}<span class="sc-tick">${esc(c.ticker)}</span></td>
+      <td class="num">${c.price != null ? '$' + c.price.toFixed(2) : '—'}</td>
+      ${pct(c.chg1d)}${pct(c.chg6m)}${pct(c.chgYtd)}
+      ${cell(c.pe, 1, '×')}${c.fcfYield != null ? cell(c.fcfYield, 1, '%') : '<td class="num">' + (c.fcfNA ? 'n/a' : '—') + '</td>'}
+      <td class="num">${coMoney(c.marketCap)}</td></tr>`).join('');
+  el.innerHTML = `<div class="sc-bar">${screenModeHtml()}
+      <label class="sc-f">SEARCH <input id="cos-q" type="search" placeholder="company or ticker…" value="${esc(coScreen.q)}"></label>
+      <label class="sc-f">SECTOR <select id="cos-sector"><option value="all">All sectors</option>${sectors.map((x) => `<option value="${esc(x)}"${coScreen.sector === x ? ' selected' : ''}>${esc(x)}</option>`).join('')}</select></label>
+      <span class="sc-count dimtext">${rows.length} of ${all.length} companies</span>
+    </div><div class="sc-wrap" id="sc-table"><table class="sc-table"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>
+    <div class="sc-note dimtext">S&amp;P 500 companies · SEC filings, GAAP as filed · prices from Nasdaq. Click a row to open the company.</div>`;
+}
+
 function renderScreen(full) {
   const el = $('screen'); if (!el) return;
+  if (screenMode === 'companies') return renderCompanyScreen(el);
   if (!screenRows || !screenRows.length) { el.innerHTML = stError('Couldn’t load the screener — retrying.'); return; }
   if (full || !$('sc-table')) {
-    el.innerHTML = '<div class="sc-bar">' + scBarHtml() + '</div><div class="sc-wrap" id="sc-table"></div><div class="sc-note dimtext" id="sc-note"></div>';
+    el.innerHTML = '<div class="sc-bar">' + screenModeHtml() + scBarHtml() + '</div><div class="sc-wrap" id="sc-table"></div><div class="sc-note dimtext" id="sc-note"></div>';
   }
   const rows = screenVisible();
   const { key, dir } = screenSort;
@@ -2352,6 +2405,28 @@ $('base-cur')?.addEventListener('change', async (e) => {
   renderScreen(false);
 });
 $('screen')?.addEventListener('click', (e) => {
+  const mode = e.target.closest('[data-screen-mode]');
+  if (mode) {
+    screenMode = mode.dataset.screenMode;
+    try { localStorage.setItem('oilbasis.screenMode', screenMode); } catch {}
+    renderScreen(true);
+    return;
+  }
+  const cokey = e.target.closest('th[data-cokey]');
+  if (cokey) {
+    const k = cokey.dataset.cokey;
+    coScreen = { ...coScreen, sort: k, dir: coScreen.sort === k ? -coScreen.dir : (k === 'label' ? 1 : -1) };
+    renderScreen(true);
+    return;
+  }
+  const corow = e.target.closest('tr[data-cocik]');
+  if (corow) {
+    coCik = corow.dataset.cocik;
+    document.querySelector('[data-tab="deals"]')?.click();
+    renderCompanies();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    return;
+  }
   const act = e.target.closest('[data-sc-act]');
   if (act) {
     const a = act.dataset.scAct;
@@ -2367,7 +2442,11 @@ $('screen')?.addEventListener('click', (e) => {
   if (tr) goToInstrument(tr.dataset.id);
 });
 // The bar's own controls: the segment select and the instrument checkboxes.
+$('screen')?.addEventListener('input', (e) => {
+  if (e.target.id === 'cos-q') { coScreen = { ...coScreen, q: e.target.value || '' }; renderScreen(true); }
+});
 $('screen')?.addEventListener('change', (e) => {
+  if (e.target.id === 'cos-sector') { coScreen = { ...coScreen, sector: e.target.value }; renderScreen(true); return; }
   const t = e.target;
   if (t.id === 'sc-seg') { screenSeg = t.value; persistScreenFilter(); renderScreen(false); return; }
   if (t.matches && t.matches('#sc-pick-list input[data-id]')) {
