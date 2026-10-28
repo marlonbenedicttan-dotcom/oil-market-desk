@@ -158,7 +158,9 @@ function trailing(usd, fy) {
 const TAGS = ['NetIncomeLossAvailableToCommonStockholdersBasic', 'NetIncomeLoss', 'NetIncomeLossAttributableToParent', 'ProfitLoss'];
 
 const data = JSON.parse(readFileSync(FILE, 'utf8'));
-const todo = data.companies.filter((c) => c.cik).slice(0, LIMIT);
+const ONLY = (process.argv.find((x) => x.startsWith('--only=')) || '').split('=')[1];
+const onlySet = ONLY ? new Set(ONLY.split(',').map((x) => x.trim().toUpperCase())) : null;
+const todo = data.companies.filter((c) => c.cik && (!onlySet || onlySet.has(String(c.ticker || '').toUpperCase()))).slice(0, LIMIT);
 console.log(`${todo.length} companies`);
 
 let changed = 0;

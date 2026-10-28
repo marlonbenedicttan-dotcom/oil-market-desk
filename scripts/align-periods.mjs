@@ -106,7 +106,10 @@ async function factsDoc(cik) {
 const atFacts = (facts, tag, target) => at({ units: { USD: facts?.facts?.['us-gaap']?.[tag]?.units?.USD } }, target);
 
 const data = JSON.parse(readFileSync(FILE, 'utf8'));
-const todo = data.companies.filter((c) => c.cik && c.netIncomeEnd && !c.noFilings);
+const ONLY = (process.argv.find((x) => x.startsWith('--only=')) || '').split('=')[1];
+const onlySet = ONLY ? new Set(ONLY.split(',').map((x) => x.trim().toUpperCase())) : null;
+const todo = data.companies.filter((c) => c.cik && c.netIncomeEnd && !c.noFilings
+  && (!onlySet || onlySet.has(String(c.ticker || '').toUpperCase())));
 console.log(`${todo.length} companies with a fiscal date`);
 
 let aligned = 0;

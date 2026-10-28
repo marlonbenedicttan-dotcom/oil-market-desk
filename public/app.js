@@ -808,6 +808,9 @@ function mountChart(id, data, options, plugins) {
     cv.setAttribute('role', 'img');
     cv.setAttribute('aria-label', `Line chart — ${desc}. Values are approximate; hover a point for detail.`);
   }
+  // The page replaces its innerHTML on every navigation, so the canvas a chart was mounted on is gone.
+  // Reusing the instance then draws into a detached element — the "chart not loading" bug.
+  if (charts[id] && charts[id].canvas !== cv) { try { charts[id].destroy(); } catch {} delete charts[id]; }
   if (charts[id]) { charts[id].data = data; charts[id].options = options; charts[id].resize(); charts[id].update(); return charts[id]; }
   charts[id] = new Chart(cv, { type: 'line', data, options, plugins: plugins || [] });
   // The canvas can be mounted before the layout settles (a page rendered from a search), which leaves
@@ -3295,6 +3298,7 @@ const coMargin = coMarginOf;
 
 function renderCompanies() {
   const el = $('co-body');
+  if (charts['co-chart']) { try { charts['co-chart'].destroy(); } catch {} delete charts['co-chart']; }
   if (!el) return;
   if (!companiesData) { el.innerHTML = stError('Couldn’t load companies — retrying.'); return; }
   const all = companiesData.companies || [];
@@ -3530,11 +3534,11 @@ async function renderCompanyPage(el, all) {
         <div class="co-stat"><span class="co-k">ENTERPRISE VALUE</span><span class="co-v">${val(c.ev)}${c.evApprox && c.ev != null ? ' <em class="co-approx" title="Neither debt nor cash is tagged in the filings, so this equals market cap">≈ cap</em>' : ''}</span></div>
         <div class="co-stat"><span class="co-k">CURRENT RATIO</span><span class="co-v">${c.currentRatio != null ? c.currentRatio.toFixed(2) : '—'}</span></div>
         <div class="co-stat"><span class="co-k">DEBT / EQUITY</span><span class="co-v">${c.debtEquity != null ? c.debtEquity.toFixed(2) : '—'}</span></div>
-        <div class="co-stat"><span class="co-k">REVENUE</span><span class="co-v">${val(c.revenue)}${dsp('revenue')}</span></div>
-        <div class="co-stat"><span class="co-k">NET INCOME · ${niTag}</span><span class="co-v ${ni >= 0 ? 'pos' : 'neg'}">${val(ni)}${dsp('netIncome')}</span></div>
+        <div class="co-stat" title="${esc(`us-gaap:${c.revenueTag || 'Revenues'} · ${c.fyRevenue || ''}${c.revenueSource === 'nasdaq' ? ' · exchange total revenue' : ''}`)}"><span class="co-k">REVENUE</span><span class="co-v">${val(c.revenue)}${dsp('revenue')}</span></div>
+        <div class="co-stat" title="${esc(`us-gaap:${c.netIncomeTag || 'NetIncomeLoss'} · ${niTag}${c.netIncomeEnd ? ' · period ' + c.netIncomeEnd : ''}`)}"><span class="co-k">NET INCOME · ${niTag}</span><span class="co-v ${ni >= 0 ? 'pos' : 'neg'}">${val(ni)}${dsp('netIncome')}</span></div>
         <div class="co-stat"><span class="co-k">NET MARGIN · ${niTag}</span><span class="co-v ${m >= 0 ? 'pos' : 'neg'}">${m == null ? (c.marginNA ? 'n/a' : '—') : `${m.toFixed(1)}%`}</span></div>
         <div class="co-stat"><span class="co-k">RETURN ON EQUITY</span><span class="co-v ${roe >= 0 ? 'pos' : 'neg'}">${roe == null ? '—' : `${roe.toFixed(1)}%`}</span></div>
-        <div class="co-stat"><span class="co-k">TOTAL ASSETS</span><span class="co-v">${val(c.assets)}${dsp('assets')}</span></div>
+        <div class="co-stat" title="${esc(`us-gaap:Assets · ${c.assetsEnd || ''}`)}"><span class="co-k">TOTAL ASSETS</span><span class="co-v">${val(c.assets)}${dsp('assets')}</span></div>
       </div>`
     + (c.ticker ? `<div class="co-chartwrap">
         <div class="co-ranges">
@@ -3543,7 +3547,17 @@ async function renderCompanyPage(el, all) {
           ${['1y', '5y', '10y'].map((r) => `<button class="ma-chip${coRange === r ? ' on' : ''}" data-corange="${r}">${r.toUpperCase()}</button>`).join('')}
         </div>
         <canvas id="co-chart"></canvas></div>` : '')
-    + `<div class="macro-note">Market cap is Nasdaq's quote data; P/E, P/B and EV/EBITDA are computed from it and the filing's own earnings, equity, debt and cash. The table below is the filings’ own history. Latest annual 10-K${c.fiscal ? ` FY${c.fiscal}` : ''}${c.asOf ? ` · as of ${dealDateY(c.asOf)}` : ''} · <a href="https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=${esc(c.cik)}&type=10-K" target="_blank" rel="noopener noreferrer">filings ↗</a></div>`
+    + (() => {
+        const lf = c.lastFiling;
+        const link = lf?.url
+          ? `<a href="${esc(lf.url)}" target="_blank" rel="noopener noreferrer">${esc(lf.form)} ↗</a>`
+          : `<a href="https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=${esc(c.cik)}&type=10-K" target="_blank" rel="noopener noreferrer">filings ↗</a>`;
+        // A 10-Q is not a fiscal year: show the filing's own period, not the series year.
+        const stamp = lf
+          ? ` · ${esc(lf.form)}${lf.period ? ' · period ' + dealDateY(lf.period) : ''} · filed ${dealDateY(lf.filed)}`
+          : '';
+        return `<div class="macro-note">GAAP, as filed — no estimates, no adjusted figures. Market cap is Nasdaq's quote data; P/E, P/B and EV/EBITDA are computed from it and the filing's own earnings, equity, debt and cash. ${lf ? 'Latest filing' : 'Latest annual report'}${stamp} · ${link}</div>`;
+      })()
     + (series.length ? `<div class="gtitle">FIVE-YEAR FINANCIALS</div>
       <div class="co-table">
         <div class="co-tr co-th"><span>FY</span><span>REVENUE</span><span>NET INCOME</span><span>MARGIN</span><span>ASSETS</span><span>EQUITY</span><span>EPS</span></div>

@@ -1891,3 +1891,27 @@ acquirer and a 51-character target: two lines, nothing clipped.
 - Reconciliation: **99.4% within 10%**, 0 disputed, 2 definition, 1 unchecked.
 - The 2 definitions are C and LYV: the gap is the preferred dividend (we use earnings attributable to
   common, which is the right numerator for a common-share market cap). VYLR has filed no annual report.
+
+## Auto-update, provenance, and the chart bug (2026-10-28, later)
+**The chart bug was real and client-side.** The API returned data for all 1,509 ticker/range
+combinations, so the failure was in the browser: `renderCompanyPage` replaces its innerHTML, which
+destroys the canvas, but `charts['co-chart']` kept pointing at the detached element. The second company
+you opened drew into a canvas that was no longer in the document. `mountChart` now checks
+`charts[id].canvas !== cv`, destroys the stale instance and recreates it; `renderCompanies` destroys the
+chart when returning to the list. Verified by navigating AAPL → MSFT → TSLA: each mounts a live chart
+with 263 points.
+
+**Provenance.** `scripts/attach-provenance.mjs` stores the exact filing behind each company: form,
+period, filing date, accession number and a direct document URL (502/503; VYLR has no 10-K/10-Q).
+The company page now reads "GAAP, as filed … Latest filing · 10-Q · period 27 Jun 2026 · filed 31 Jul
+2026 · 10-Q ↗" with a link straight to the document, and the revenue / net income / assets cells carry
+the XBRL tag in their tooltip.
+
+**Auto-update.** `.github/workflows/companies-daily.yml` runs `scripts/refresh-daily.mjs` every weekday
+at 22:40 UTC: refresh prices and caps, detect new 10-K/10-Q filings, re-derive earnings and the balance
+sheet only for the companies that filed, then ratios → second source → verdicts. A weekly workflow does
+the full rebuild. Both commit and let Render's `autoDeploy` publish. The SEC response cache is shared
+between runs, so the daily job is minutes rather than an hour.
+
+NOTE: `.github/` was previously untracked by choice; scheduling is impossible without it, so the two
+workflows are now committed.

@@ -69,7 +69,9 @@ function trailing(usd, fy) {
 const data = JSON.parse(readFileSync(FILE, 'utf8'));
 // Only the genuinely broken ones. This used to reprocess every company whose tag was not
 // NetIncomeLoss/ProfitLoss, which re-inserted trailing figures the outlier guard had just rejected.
-const targets = data.companies.filter((c) => c.cik && (
+const ONLY = (process.argv.find((x) => x.startsWith('--only=')) || '').split('=')[1];
+const onlySet = ONLY ? new Set(ONLY.split(',').map((x) => x.trim().toUpperCase())) : null;
+const targets = data.companies.filter((c) => c.cik && (!onlySet || onlySet.has(String(c.ticker || '').toUpperCase())) && (
   c.netIncome == null
   || (c.fyNetIncome && c.fyNetIncome < 2024)
   || /BeforeIncomeTaxes/.test(c.netIncomeTag || '')
