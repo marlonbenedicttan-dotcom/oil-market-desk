@@ -3384,6 +3384,7 @@ function renderCompanies() {
       <div class="co-hero-cell"><span class="co-k">MARKET CAP</span><span class="co-hero-v">${coMoney(totalCap)}</span><span class="co-hero-m">${uniq.length} companies priced · ${priced.length} securities</span></div>
       <div class="co-hero-cell"><span class="co-k">MEDIAN P/E</span><span class="co-hero-v">${medPe ? medPe.toFixed(1) : '—'}</span><span class="co-hero-m">trailing, TTM where available</span></div>
       <div class="co-hero-cell"><span class="co-k">MEDIAN EV/EBITDA</span><span class="co-hero-v">${medEv ? medEv.toFixed(1) : '—'}</span><span class="co-hero-m">${rows.filter((c) => c.evEbitda).length} with the inputs</span></div>
+      <div class="co-hero-cell" title="${esc((companiesData.valuation && companiesData.valuation.basis) || '')}"><span class="co-k">S&amp;P 500 P/E</span><span class="co-hero-v">${companiesData.valuation?.pe != null ? companiesData.valuation.pe.toFixed(1) : '—'}</span><span class="co-hero-m">${companiesData.valuation?.percentile != null ? `${companiesData.valuation.percentile}th pctile of ${companiesData.valuation.min}–${companiesData.valuation.max}` : 'index earnings ÷ cap'}</span></div>
     </div>`
     + `<div class="co-hrow"><span>#</span><span></span><span>COMPANY</span><span>MARKET CAP</span><span>P/E</span><span>MARGIN</span></div>`
     + (rows.length ? '' : `<div class="macro-note">No company matches “${esc(coQuery.trim())}”. Try a ticker (AAPL) or a sector name.</div>`)
@@ -3550,6 +3551,16 @@ async function renderCompanyPage(el, all) {
         <div class="co-stat" title="Free cash flow ÷ net income — below 1 means profit is not turning into cash"><span class="co-k">CASH CONVERSION</span><span class="co-v">${c.cashConversion != null ? c.cashConversion.toFixed(2) + '×' : (c.fcfNA ? 'n/a' : '—')}</span></div>
         <div class="co-stat" title="Net debt ÷ free cash flow — years of cash to repay debt"><span class="co-k">NET DEBT / FCF</span><span class="co-v">${c.netDebtToFcf != null ? c.netDebtToFcf.toFixed(1) + '×' : (c.fcfNA ? 'n/a' : '—')}</span></div>
       </div>`
+    + (c.peHistory ? (() => {
+        const h = c.peHistory;
+        const span = Math.max(0.1, h.max - h.min);
+        const at = c.pe != null ? Math.max(0, Math.min(100, ((c.pe - h.min) / span) * 100)) : null;
+        return `<div class="co-band" title="Price at each fiscal year end ÷ that year's EPS. Current P/E is market cap ÷ trailing earnings.">
+          <span class="co-band-k">P/E vs ITS OWN 5 YEARS</span>
+          <span class="co-band-track">${at != null ? `<i style="left:${at.toFixed(1)}%"></i>` : ''}</span>
+          <span class="co-band-n">${h.min}–${h.max} · median ${h.median}${h.percentile != null && c.pe != null ? ` · ${h.percentile}th percentile` : ''}</span>
+        </div>`;
+      })() : '')
     + (c.ticker ? `<div class="co-chartwrap">
         <div class="co-ranges">
           <span class="co-cmp-l">COMPARE</span><input class="co-cmp" id="co-cmp" list="co-cmp-list" placeholder="ticker…" value="${esc(coCompare || '')}" autocomplete="off">

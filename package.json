@@ -9,7 +9,7 @@
     "audit:companies": "node scripts/derive-companies.mjs && node scripts/audit-calculations.mjs",
     "companies:fill": "node scripts/fill-gaps.mjs && node scripts/ttm-earnings.mjs && node scripts/repair-revenue.mjs",
     "companies:describe": "node scripts/describe-companies.mjs --limit=500 && node scripts/describe-nasdaq.mjs",
-    "companies:rebuild": "node scripts/build-companies-frames.mjs --years=5 && node scripts/filter-sp500.mjs && node scripts/fetch-nasdaq.mjs && node scripts/price-companies.mjs --limit=600 && node scripts/add-share-classes.mjs && node scripts/apply-weights.mjs && node scripts/fill-gaps.mjs && node scripts/ttm-earnings.mjs && node scripts/balance-pass.mjs && node scripts/repair-revenue.mjs && node scripts/repair-revenue.mjs --recon && node scripts/fix-net-income.mjs && node scripts/describe-companies.mjs --limit=500 && node scripts/describe-nasdaq.mjs && node scripts/describe-nasdaq.mjs --bad && node scripts/clean-descriptions.mjs && node scripts/align-periods.mjs && node scripts/attach-provenance.mjs && node scripts/detect-restatements.mjs && node scripts/build-cashflow.mjs && node scripts/build-quarters.mjs && node scripts/sync-series.mjs && node scripts/derive-companies.mjs && node scripts/reconcile-nasdaq.mjs && node scripts/align-revenue.mjs && node scripts/derive-companies.mjs && node scripts/reconcile-nasdaq.mjs && node scripts/arbitrate.mjs && node scripts/verify-filing-index.mjs",
+    "companies:rebuild": "node scripts/build-companies-frames.mjs --years=5 && node scripts/filter-sp500.mjs && node scripts/fetch-nasdaq.mjs && node scripts/price-companies.mjs --limit=600 && node scripts/add-share-classes.mjs && node scripts/apply-weights.mjs && node scripts/fill-gaps.mjs && node scripts/ttm-earnings.mjs && node scripts/balance-pass.mjs && node scripts/repair-revenue.mjs && node scripts/repair-revenue.mjs --recon && node scripts/fix-net-income.mjs && node scripts/describe-companies.mjs --limit=500 && node scripts/describe-nasdaq.mjs && node scripts/describe-nasdaq.mjs --bad && node scripts/clean-descriptions.mjs && node scripts/align-periods.mjs && node scripts/attach-provenance.mjs && node scripts/detect-restatements.mjs && node scripts/build-cashflow.mjs && node scripts/build-quarters.mjs && node scripts/build-valuation.mjs && node scripts/sync-series.mjs && node scripts/derive-companies.mjs && node scripts/reconcile-nasdaq.mjs && node scripts/align-revenue.mjs && node scripts/derive-companies.mjs && node scripts/reconcile-nasdaq.mjs && node scripts/arbitrate.mjs && node scripts/verify-filing-index.mjs",
     "companies:verify": "node scripts/audit-calculations.mjs && node scripts/reconcile-nasdaq.mjs && node scripts/arbitrate.mjs && node scripts/invariants.mjs && node scripts/audit-deep.mjs && node scripts/verify-filing-index.mjs",
     "companies:reconcile": "node scripts/reconcile-nasdaq.mjs",
     "companies:invariants": "node scripts/invariants.mjs",
@@ -24,7 +24,8 @@
     "companies:daily": "node scripts/refresh-daily.mjs",
     "companies:restatements": "node scripts/detect-restatements.mjs",
     "companies:quarters": "node scripts/build-quarters.mjs",
-    "companies:cashflow": "node scripts/build-cashflow.mjs"
+    "companies:cashflow": "node scripts/build-cashflow.mjs",
+    "companies:valuation": "node scripts/build-valuation.mjs"
   },
   "engines": {
     "node": ">=22"

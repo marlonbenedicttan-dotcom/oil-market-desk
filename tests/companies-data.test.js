@@ -142,6 +142,23 @@ test('the quarterly series is chronological, capped at eight, and never empty', 
   }
 });
 
+test('a valuation band is ordered and its percentile is in range', () => {
+  for (const c of data.companies) {
+    const h = c.peHistory;
+    if (!h) continue;
+    assert.ok(h.min <= h.median && h.median <= h.max, `${c.ticker}: band ${h.min}/${h.median}/${h.max}`);
+    if (h.percentile != null) assert.ok(h.percentile >= 0 && h.percentile <= 100, `${c.ticker}: percentile ${h.percentile}`);
+    for (const y of h.years) assert.ok(y.pe > 0, `${c.ticker}: FY${y.fy} P/E ${y.pe}`);
+  }
+});
+
+test('the index valuation carries a current P/E and a history', () => {
+  const v = JSON.parse(readFileSync(new URL('../data/valuation.json', import.meta.url), 'utf8'));
+  assert.ok(v.index.pe > 5 && v.index.pe < 100, `index P/E ${v.index.pe}`);
+  assert.ok(v.index.years.length >= 3, 'at least three years of history');
+  assert.ok(v.index.min <= v.index.max);
+});
+
 test('the index weights sum to about 100', () => {
   const sum = data.companies.reduce((a, c) => a + (c.indexWeight || 0), 0);
   assert.ok(sum > 99 && sum < 101, `weights sum to ${sum}`);

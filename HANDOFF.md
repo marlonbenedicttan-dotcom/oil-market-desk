@@ -2013,3 +2013,18 @@ used to be net interest income. Revenue is now a consistent total, so the margin
 13.4%, JPM 33.1%, Visa 50.1%. Only a profit above revenue still marks the margin n/a.
 
 119 tests (FCF cannot exceed operating cash flow; banks have FCF n/a but a margin).
+
+## Valuation bands (2026-10-29)
+`scripts/build-valuation.mjs` takes the price at each fiscal-year end and divides by that year's EPS,
+giving a five-year P/E range per company and a percentile for today's figure. Prices come from Nasdaq's
+historical chart (one request per company, cached); the fiscal year end month/day is taken from the
+latest filing and applied to earlier years.
+
+- **442 companies** have a band. Apple: 24.8–37.5, median 34.2, today 39.4 → 100th percentile.
+- **Index**: Σ market cap ÷ Σ trailing net income = **28.5**, against 18.9–27.2 over the last five fiscal
+  years (median 22.9) → **100th percentile**. The page says so in the fourth hero cell.
+- Shares are today's, so historical caps are approximate (buybacks/issuance). That is stated in the
+  tooltip rather than hidden.
+
+The company page shows a band with a marker at the current percentile; the companies header gains a
+fourth hero cell for the index P/E. 121 tests.

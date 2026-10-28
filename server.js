@@ -3869,10 +3869,13 @@ const server = http.createServer(async (req, res) => {
       return sendJSON(res, 200, out);
     }
     if (url.pathname === '/api/companies') {
+      let valuation = null;
+      try { valuation = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'valuation.json'), 'utf8')); } catch { /* none yet */ }
       return sendJSON(res, 200, {
         updated: COMPANIES.updated || null,
         count: (COMPANIES.companies || []).length,
         companies: COMPANIES.companies || [],
+        valuation: valuation?.index || null,
       });
     }
     if (url.pathname === '/api/deals') {

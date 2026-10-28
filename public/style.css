@@ -1134,3 +1134,13 @@ button.deal-sec-tile:hover { background: #10151b; }
 /* Quarterly table: four columns instead of the annual table's seven. */
 .co-qtr .co-tr { grid-template-columns: 1.1fr 1fr 1fr 0.8fr; }
 @media (max-width: 640px) { .co-qtr .co-tr { grid-template-columns: 1fr 1fr 1fr 0.7fr; font-size: 10px; } }
+/* Four hero cells now: cap, P/E, EV/EBITDA, index P/E. */
+.co-hero { grid-template-columns: repeat(4, 1fr); }
+@media (max-width: 760px) { .co-hero { grid-template-columns: repeat(2, 1fr); } }
+/* Valuation band: where today's P/E sits inside the company's own five-year range. */
+.co-band { display: flex; align-items: center; gap: 10px; padding: 8px 14px; border-bottom: 1px solid var(--line); }
+.co-band-k { font-size: 8px; letter-spacing: .9px; color: #5b6773; white-space: nowrap; }
+.co-band-track { position: relative; flex: 1 1 auto; height: 4px; background: #171d24; border-radius: 2px; min-width: 80px; }
+.co-band-track i { position: absolute; top: -4px; width: 2px; height: 12px; background: var(--amber); transform: translateX(-1px); }
+.co-band-n { font-size: 9.5px; color: #7d8894; white-space: nowrap; }
+@media (max-width: 640px) { .co-band { flex-wrap: wrap; } .co-band-n { white-space: normal; } }
