@@ -42,7 +42,9 @@ const newestTTM = Math.max(0, ...data.companies.map((c) => Date.parse(c.netIncom
 
 let fixed = 0;
 for (const c of data.companies) {
-  if (c.netIncomeTTMAsOf && newestTTM && newestTTM - Date.parse(c.netIncomeTTMAsOf) > 500 * 86400000) {
+  // A fiscal-year figure is current for its own period even when the company has not filed since; only a
+  // trailing figure built from old quarters is stale.
+  if (c.netIncomeTTMAsOf && newestTTM && !c.ttmFromFY && newestTTM - Date.parse(c.netIncomeTTMAsOf) > 500 * 86400000) {
     c.netIncomeTTM = null;
     c.netIncomeTTMAsOf = null;
   }
@@ -90,8 +92,11 @@ for (const c of data.companies) {
   // Prefer TTM earnings (same four quarters as the EPS), fall back to the fiscal year.
   // A TTM from stale quarters is worse than the fiscal year: if the two disagree by more than 5x,
   // the quarterly series is out of date or a component, so fall back to the audited annual figure.
-  if (c.netIncomeTTM != null && c.netIncome > 0
-      && (c.netIncomeTTM / c.netIncome < 0.2 || c.netIncomeTTM / c.netIncome > 5)) c.netIncomeTTM = null;
+  // A trailing figure that swings from a profit to a loss (or triples) can be real — an impairment or a
+  // recovery. Judge it against revenue, not against last year: earnings above revenue is the actual
+  // impossibility.
+  if (c.netIncomeTTM != null && c.revenue
+      && (c.netIncomeTTM > c.revenue * 1.2 || c.netIncomeTTM < c.revenue * -3)) c.netIncomeTTM = null;
   const earn = c.netIncomeTTM > 0 ? c.netIncomeTTM : (c.netIncome > 0 ? c.netIncome : null);
   const pe = c.marketCap && earn ? +(c.marketCap / earn).toFixed(1) : null;
   c.pe = pe != null && pe <= MAX_PE && pe >= 0.5 ? pe : null;
