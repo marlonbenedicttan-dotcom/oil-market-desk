@@ -1986,3 +1986,15 @@ Two traps, both the same lesson as elsewhere:
 
 A test asserts the series is chronological, capped at eight, and never contains an empty row.
 117 tests.
+
+## 503 rows, TTM for all, and description cleanup (2026-10-29)
+- **The list was capped at 150 rows** (`rows.slice(0, 150)`), so two thirds of the index were invisible.
+  It now renders every row; the last one is #503.
+- **TTM is on 502/503.** Where no quarterly series exists or the quarters are inconsistent with the
+  annual, the fiscal year is used as the twelve-month figure (`ttmFromFY`) and the reason is kept
+  (`ttmRejected`), with the P/E tooltip explaining it. Only VYLR — no annual report — has none.
+- **Descriptions**: a cleaning pass strips heading residue ("GENERAL At Pentair", "Overview IDEX"),
+  drops legal-terms openings ("The terms 'we', 'us' … mean …"), and prefixes the company name when the
+  text never names it (190 companies). 23 headings and 2 legal openings removed, 0 residue left.
+  The Nasdaq sentence splitter now respects abbreviations, so "U.S. Bancorp" is one sentence rather
+  than a truncation at "U.S.".

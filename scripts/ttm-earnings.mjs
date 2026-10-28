@@ -202,7 +202,20 @@ for (const c of todo) {
   done++;
   if (done % 50 === 0) console.log(`  … ${done}`);
 
-  if (!best) { c.netIncomeTTM = null; c.netIncomeTTMAsOf = null; continue; }
+  if (!best) {
+    // No tag in the family produced an annual figure. If a net income is already on the record, it is
+    // still a twelve-month number (or the only period we have) — expose it rather than a blank.
+    if (c.netIncome != null) {
+      c.netIncomeTTM = c.netIncome;
+      c.netIncomeTTMAsOf = c.netIncomeEnd || null;
+      c.ttmFromFY = true;
+      c.ttmRejected = 'no-quarterly-data';
+    } else {
+      c.netIncomeTTM = null;
+      c.netIncomeTTMAsOf = null;
+    }
+    continue;
+  }
 
   const before = JSON.stringify([c.netIncome, c.netIncomeTTM, c.netIncomeTTMAsOf]);
 
@@ -231,6 +244,13 @@ for (const c of todo) {
     c.netIncomeTTMAsOf = fy.end;
     c.ttmFromFY = true;
     c.ttmRejected = null;
+  } else if (fy) {
+    // No usable quarterly series. The fiscal year is still a twelve-month figure — use it, and keep the
+    // reason so the page can say why the number is a year-end rather than a trailing one.
+    c.netIncomeTTM = fy.val;
+    c.netIncomeTTMAsOf = fy.end;
+    c.ttmFromFY = true;
+    c.ttmRejected = hasTTM ? (sane ? 'stale' : 'implausible') : (t?.reason || 'none');
   } else {
     c.netIncomeTTM = null;
     c.netIncomeTTMAsOf = null;

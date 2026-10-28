@@ -42,7 +42,15 @@ async function profile(ticker) {
 function tidy(text) {
   let t = String(text).replace(/\s+/g, ' ').trim();
   t = t.replace(/^(The Company|Company Description)[:\s-]*/i, '');
-  const sentences = t.split(/(?<=[.!?])\s+/).filter((s) => s.length > 25);
+  // "U.S. Bancorp" is one sentence, not two: re-join splits that follow a known abbreviation.
+  const ABBR = /\b(U\.S|U\.K|Inc|Corp|Co|Ltd|Mr|Ms|Dr|No|St|vs|etc)\.$/i;
+  const sentences = [];
+  let buf = '';
+  for (const part of t.split(/(?<=[.!?])\s+/)) {
+    buf = buf ? `${buf} ${part}` : part;
+    if (!ABBR.test(buf)) { if (buf.length > 25) sentences.push(buf); buf = ''; }
+  }
+  if (buf && buf.length > 25) sentences.push(buf);
   if (!sentences.length) return null;
   let out = sentences.slice(0, 2).join(' ');
   if (out.length > 320) out = out.slice(0, 317).replace(/[,;\s]+\S*$/, '') + '…';
