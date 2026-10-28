@@ -3528,7 +3528,7 @@ async function renderCompanyPage(el, all) {
       <div class="co-verif${vcls}">${vtext}</div>`
     + `<div class="co-stats co-stats-12">
         <div class="co-stat"><span class="co-k">MARKET CAP</span><span class="co-v">${c.adrNA ? 'ADR' : val(c.marketCap)}</span></div>
-        <div class="co-stat"><span class="co-k">P/E (TRAILING${c.peBasis ? ' · ' + c.peBasis : ''})</span><span class="co-v">${c.pe != null ? c.pe.toFixed(1) : '—'}</span></div>
+        <div class="co-stat" title="${esc(c.peBasis === 'FY' && c.ttmRejected ? 'Quarterly data is inconsistent with the annual filing, so this uses fiscal-year earnings.' : c.peBasis === 'TTM' && c.ttmFromFY ? 'The fiscal year is the latest twelve months.' : 'Market cap ÷ trailing earnings.')}"><span class="co-k">P/E (TRAILING${c.peBasis ? ' · ' + c.peBasis : ''})</span><span class="co-v">${c.pe != null ? c.pe.toFixed(1) : '—'}</span></div>
         <div class="co-stat"><span class="co-k">EV / EBITDA</span><span class="co-v">${c.evEbitda != null ? c.evEbitda.toFixed(1) : (c.sector === 'Financials' ? 'n/a' : '—')}</span></div>
         <div class="co-stat"><span class="co-k">P/B</span><span class="co-v">${c.pb != null ? c.pb.toFixed(1) : '—'}${dsp('equity')}</span></div>
         <div class="co-stat"><span class="co-k">ENTERPRISE VALUE</span><span class="co-v">${val(c.ev)}${c.evApprox && c.ev != null ? ' <em class="co-approx" title="Neither debt nor cash is tagged in the filings, so this equals market cap">≈ cap</em>' : ''}</span></div>

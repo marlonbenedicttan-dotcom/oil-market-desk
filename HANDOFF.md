@@ -1915,3 +1915,24 @@ between runs, so the daily job is minutes rather than an hour.
 
 NOTE: `.github/` was previously untracked by choice; scheduling is impossible without it, so the two
 workflows are now committed.
+
+## TTM coverage (2026-10-28, later)
+Trailing earnings were missing for 146 companies because of three separate faults:
+1. The per-concept endpoint was read before the filing index, and it is sometimes truncated to an older
+   quarter. `units()` now reads the index first.
+2. The tag with the best scope was chosen even when it had no quarterly data (NVIDIA, Microsoft, AMD
+   kept an annual figure and lost the TTM). The selection now prefers a same-year tag that has quarters.
+3. The outlier guard compared each quarter with the trailing median, which rejects genuine ramps. It now
+   compares with the **same quarter a year earlier** — NVIDIA's latest is 2.3× last year's (real), while
+   Alphabet's is 4.0× (an artifact).
+
+Where no quarter is newer than the fiscal year, the fiscal year *is* the trailing twelve months, and it
+is now used as TTM (`ttmFromFY`). Where the quarters are implausible, the company stays on FY and
+`ttmRejected` says why; the P/E tooltip explains it.
+
+Result: **TTM 391/503** (was 357), 52 of them the fiscal year by definition, 60 rejected as implausible
+(NVDA's implied TTM margin would be 89%, Alphabet's 61% — the quarterly data does not reconcile with the
+annual). AZO's assets and equity were also wrong (19.4B vs 21.6B) and are now taken from its filing index.
+
+Verdicts: **500 verified · 2 definition · 1 unchecked**. 0 audit mismatches, 0 coherence issues,
+0 universe issues, 0 deal issues, 101/101 tests.

@@ -89,12 +89,14 @@ async function factsDoc(cik) {
   } catch { return null; }
 }
 async function units(cik, tag) {
-  const doc = await concept(cik, tag);
-  const u = doc?.units?.USD;
-  if (Array.isArray(u) && u.length) return u;
+  // The filing index is the complete record; the per-concept endpoint is sometimes truncated to an
+  // older quarter. Read the index first and only fall back to the concept endpoint.
   const f = await factsDoc(cik);
   const u2 = f?.facts?.['us-gaap']?.[tag]?.units?.USD;
-  return Array.isArray(u2) ? u2 : null;
+  if (Array.isArray(u2) && u2.length) return u2;
+  const doc = await concept(cik, tag);
+  const u = doc?.units?.USD;
+  return Array.isArray(u) && u.length ? u : null;
 }
 
 function fiscalYear(usd) {
@@ -114,7 +116,7 @@ function trailing(usd, fy) {
     if (!cur || String(e.filed) > String(cur.filed)) byEnd.set(e.end, e);
   }
   const qs = [...byEnd.values()].sort((a, b) => a.end.localeCompare(b.end));
-  if (!qs.length) return null;
+  if (!qs.length) return { reason: 'no-quarters', latest: null };
   const latest = qs[qs.length - 1];
 
   // The fourth quarter is normally only tagged inside the 10-K, never as its own quarter. Rebuild it
@@ -133,24 +135,32 @@ function trailing(usd, fy) {
   const parts = [];
   for (let i = 0; i < 4; i++) {
     const q = quarterFor(Date.parse(latest.end) - i * 91 * DAY);
-    if (!q) return null;
+    if (!q) return { reason: 'gap', latest: latest.end };
     parts.push(q);
   }
   parts.reverse();
   const span = (Date.parse(parts[3].end) - Date.parse(parts[0].end)) / DAY;
-  if (span < 250 || span > 300) return null;
+  if (span < 250 || span > 300) return { reason: 'span', latest: latest.end };
 
-  // A quarter that is several times the trailing norm is a tagging artifact (a year-to-date figure
-  // filed as a quarter, or a restated scope), not earnings. Without this, one such quarter can double
-  // a company's trailing net income and halve its P/E.
-  const prior = qs.filter((e) => Date.parse(e.end) < Date.parse(parts[0].end)).slice(-4).map((e) => e.val);
-  if (prior.length >= 2) {
-    const sorted = [...prior].sort((x, y) => x - y);
-    const median = (sorted[1] + sorted[2]) / 2;
-    if (median > 0 && parts.some((p) => p.val > median * 3)) return null;
+  // A quarter several times the SAME quarter a year earlier is a tagging artifact (a year-to-date
+  // figure filed as a quarter, or a restated scope). Comparing year-over-year rather than against the
+  // trailing median keeps genuine ramps: NVIDIA's latest quarter is 2.3x last year's (real growth),
+  // while Alphabet's is 4.0x (an artifact).
+  const sameQuarterLastYear = (end) => qs.find((e) => Math.abs(Date.parse(e.end) - (Date.parse(end) - 365 * DAY)) <= 20 * DAY);
+  const spike = parts.some((p) => {
+    const py = sameQuarterLastYear(p.end);
+    return py && py.val > 0 && p.val > py.val * 3;
+  });
+  if (spike) return { reason: 'outlier', latest: latest.end };
+  if (!parts.every((p) => sameQuarterLastYear(p.end))) {
+    const prior = qs.filter((e) => Date.parse(e.end) < Date.parse(parts[0].end)).slice(-4).map((e) => e.val);
+    if (prior.length >= 2) {
+      const sorted = [...prior].sort((x, y) => x - y);
+      const median = (sorted[Math.floor(sorted.length / 2) - 1] + sorted[Math.floor(sorted.length / 2)]) / 2;
+      if (median > 0 && parts.some((p) => p.val > median * 4)) return { reason: 'outlier', latest: latest.end };
+    }
   }
-
-  return { val: parts.reduce((a, e) => a + e.val, 0), asOf: parts[3].end };
+  return { val: parts.reduce((a, e) => a + e.val, 0), asOf: parts[3].end, latest: latest.end };
 }
 
 // Order matters. ProfitLoss is total earnings *including* non-controlling interests, and using it
@@ -180,9 +190,11 @@ for (const c of todo) {
   let best = null;
   if (cands.length) {
     const newestEnd = Math.max(...cands.map((x) => Date.parse(x.fy.end)));
-    // Same fiscal year first (a 30-day window covers 52/53-week years), then scope priority.
-    // A two-year window let Broadcom's FY2024 figure beat its FY2025 one.
-    best = cands.find((x) => Date.parse(x.fy.end) >= newestEnd - 30 * 86400000) || cands[0];
+    // Same fiscal year first (a 30-day window covers 52/53-week years), then a tag that actually has
+    // quarterly data, then scope priority. Without the middle rule, a tag with an annual figure but no
+    // quarters wins on priority and the company loses its TTM entirely (NVIDIA, Microsoft, AMD).
+    const fresh = cands.filter((x) => Date.parse(x.fy.end) >= newestEnd - 30 * 86400000);
+    best = fresh.find((x) => x.ttm) || fresh[0] || cands[0];
   }
   done++;
   if (done % 50 === 0) console.log(`  … ${done}`);
@@ -202,14 +214,25 @@ for (const c of todo) {
   // magnitude; otherwise the fiscal year is the honest number.
   const t = best.ttm;
   const fy = best.fy;
-  const fresh = t && (!fy || Date.parse(t.asOf) > Date.parse(fy.end));
+  const hasTTM = t && t.val != null;
+  const fresh = hasTTM && (!fy || Date.parse(t.asOf) > Date.parse(fy.end));
   const sane = !fresh || !fy || fy.val === 0 ? fresh : (Math.abs(t.val / fy.val) >= 0.2 && Math.abs(t.val / fy.val) <= 5);
   if (fresh && sane) {
     c.netIncomeTTM = t.val;
     c.netIncomeTTMAsOf = t.asOf;
+    c.ttmFromFY = false;
+    c.ttmRejected = null;
+  } else if (fy && (!t?.latest || Date.parse(t.latest) <= Date.parse(fy.end))) {
+    // No quarter is newer than the fiscal year: the fiscal year IS the trailing twelve months.
+    c.netIncomeTTM = fy.val;
+    c.netIncomeTTMAsOf = fy.end;
+    c.ttmFromFY = true;
+    c.ttmRejected = null;
   } else {
     c.netIncomeTTM = null;
     c.netIncomeTTMAsOf = null;
+    c.ttmFromFY = false;
+    c.ttmRejected = hasTTM ? (sane ? 'stale' : 'implausible') : (t?.reason || 'none');
   }
 
   if (JSON.stringify([c.netIncome, c.netIncomeTTM, c.netIncomeTTMAsOf]) !== before) changed++;
