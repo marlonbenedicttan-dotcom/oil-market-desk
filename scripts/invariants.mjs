@@ -85,6 +85,14 @@ for (const c of C) {
     if (d > 0.10) add('cap vs price x shares (class/ADR/buyback)', t, `${(d * 100).toFixed(0)}%`);
   }
 
+  // --- cash flow -------------------------------------------------------------
+  if (c.fcf != null && c.operatingCashFlow != null && c.fcf > c.operatingCashFlow + 1) {
+    add('free cash flow above operating cash flow', t, `${(c.fcf / 1e9).toFixed(1)}B vs ${(c.operatingCashFlow / 1e9).toFixed(1)}B`);
+  }
+  if (c.fcf != null && c.revenue && Math.abs(c.fcf) > c.revenue * 2) {
+    add('free cash flow implausible vs revenue', t, `${(c.fcf / 1e9).toFixed(1)}B vs ${(c.revenue / 1e9).toFixed(1)}B`);
+  }
+
   // --- ratios in a band a human would accept ---------------------------------
   if (c.pe != null && c.pe > 300 && c.sector !== 'Financials') add('P/E above 300 (check earnings)', t, String(c.pe));
   if (c.pb != null && c.pb > 100) add('P/B above 100 (check equity)', t, String(c.pb));

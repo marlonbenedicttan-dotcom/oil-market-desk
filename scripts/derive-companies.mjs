@@ -80,10 +80,13 @@ for (const c of data.companies) {
   if (c.revenue && c.netIncomeTTM != null && Math.abs(c.netIncomeTTM) < c.revenue * 0.001) c.netIncomeTTM = null;
   // A profit cannot exceed revenue, but a loss can: a company with collapsing sales and a write-down
   // can lose more than it earns. Only cap profits, and only reject losses beyond 3x revenue.
+  // Revenue is now a consistent total for every sector, so a bank's net margin is computable. Only
+  // reject a margin when profit exceeds revenue — the two figures are then different scopes.
+  c.marginNA = false;
   if (c.revenue != null && c.netIncome != null
-      && (c.netIncome > c.revenue * 1.2 || c.netIncome < c.revenue * -3 || c.sector === 'Financials')) {
-    if (c.sector === 'Financials') c.marginNA = true;
-    else c.netIncome = null;
+      && (c.netIncome > c.revenue * 1.2 || c.netIncome < c.revenue * -3)) {
+    c.marginNA = true;
+    if (c.sector !== 'Financials') c.netIncome = null;
   }
 
 
@@ -124,6 +127,16 @@ for (const c of data.companies) {
   // EBITDA is not a bank metric: deposits are operating liabilities and interest is the business.
   c.evEbitda = c.ev && ebitda > 0 && c.sector !== 'Financials' ? +(c.ev / ebitda).toFixed(1) : null;
   if (c.evEbitda != null && c.evEbitda > 500) c.evEbitda = null;
+
+  // Cash-based ratios. FCF is the check on earnings: profit that never becomes cash is not profit.
+  c.fcfYield = c.fcf != null && c.marketCap > 0 ? +((c.fcf / c.marketCap) * 100).toFixed(2) : null;
+  if (c.fcfYield != null && Math.abs(c.fcfYield) > 100) c.fcfYield = null;
+  c.fcfMargin = c.fcf != null && c.revenue > 0 ? +((c.fcf / c.revenue) * 100).toFixed(1) : null;
+  if (c.fcfMargin != null && Math.abs(c.fcfMargin) > 100) c.fcfMargin = null;
+  c.cashConversion = c.fcf != null && c.netIncome > 0 ? +(c.fcf / c.netIncome).toFixed(2) : null;
+  if (c.cashConversion != null && Math.abs(c.cashConversion) > 5) c.cashConversion = null;
+  c.netDebtToFcf = c.fcf > 0 && c.debt != null ? +((c.debt - (c.cash || 0)) / c.fcf).toFixed(1) : null;
+  if (c.netDebtToFcf != null && (c.netDebtToFcf < -20 || c.netDebtToFcf > 100)) c.netDebtToFcf = null;
 
   c.currentRatio = c.currentAssets != null && c.currentLiabilities > 0 ? +(c.currentAssets / c.currentLiabilities).toFixed(2) : null;
   if (c.currentRatio != null && c.currentRatio > MAX_CR) c.currentRatio = null;

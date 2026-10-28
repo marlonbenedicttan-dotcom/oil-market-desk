@@ -1998,3 +1998,18 @@ A test asserts the series is chronological, capped at eight, and never contains 
   text never names it (190 companies). 23 headings and 2 legal openings removed, 0 residue left.
   The Nasdaq sentence splitter now respects abbreviations, so "U.S. Bancorp" is one sentence rather
   than a truncation at "U.S.".
+
+## Free cash flow and bank margins (2026-10-29)
+`scripts/build-cashflow.mjs` computes FCF = operating cash flow − capex from the same fiscal year as the
+income statement, and derive adds FCF yield, FCF margin, cash conversion (FCF ÷ net income) and net
+debt/FCF. **405/503 have FCF**; the 69 financials are marked n/a (a bank's operating cash flow moves with
+loans and deposits — JPM's is −$148B, which is not a cash-flow signal) and 29 lack one of the two tags.
+
+The company page gains four cells: free cash flow, FCF yield, cash conversion, net debt/FCF, each with a
+tooltip explaining the inputs.
+
+**Net margin for financials is back.** It had been suppressed for the whole sector because bank revenue
+used to be net interest income. Revenue is now a consistent total, so the margin is computable — Amex
+13.4%, JPM 33.1%, Visa 50.1%. Only a profit above revenue still marks the margin n/a.
+
+119 tests (FCF cannot exceed operating cash flow; banks have FCF n/a but a margin).

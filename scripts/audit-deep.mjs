@@ -20,7 +20,7 @@ const pct = (n) => `${((n / C.length) * 100).toFixed(1)}%`;
 console.log(`DEEP AUDIT · ${C.length} securities · ${new Set(C.filter((c) => c.cik).map((c) => c.cik)).size} companies\n`);
 
 // --- 1. coverage ------------------------------------------------------------
-const FIELDS = ['price', 'marketCap', 'revenue', 'netIncome', 'netIncomeTTM', 'assets', 'equity', 'debt', 'cash', 'description', 'sector', 'cik'];
+const FIELDS = ['price', 'marketCap', 'revenue', 'netIncome', 'netIncomeTTM', 'assets', 'equity', 'debt', 'cash', 'fcf', 'description', 'sector', 'cik'];
 console.log('COVERAGE');
 for (const f of FIELDS) {
   const n = C.filter((c) => c[f] != null && c[f] !== '').length;

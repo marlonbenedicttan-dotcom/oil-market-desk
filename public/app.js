@@ -3545,6 +3545,10 @@ async function renderCompanyPage(el, all) {
         <div class="co-stat"><span class="co-k">NET MARGIN · ${niTag}</span><span class="co-v ${m >= 0 ? 'pos' : 'neg'}">${m == null ? (c.marginNA ? 'n/a' : '—') : `${m.toFixed(1)}%`}</span></div>
         <div class="co-stat"><span class="co-k">RETURN ON EQUITY</span><span class="co-v ${roe >= 0 ? 'pos' : 'neg'}">${roe == null ? '—' : `${roe.toFixed(1)}%`}</span></div>
         <div class="co-stat" title="${esc(`us-gaap:Assets · ${c.assetsEnd || ''}`)}"><span class="co-k">TOTAL ASSETS</span><span class="co-v">${val(c.assets)}${dsp('assets')}</span></div>
+        <div class="co-stat" title="${esc(c.fcfNA ? 'Free cash flow is not a bank metric — operating cash flow moves with loans and deposits.' : `Operating cash flow ${coMoney(c.operatingCashFlow)} − capex ${coMoney(c.capex)}${c.capexOmitted ? ' (not reported)' : ''}`)}"><span class="co-k">FREE CASH FLOW</span><span class="co-v ${c.fcf >= 0 ? 'pos' : 'neg'}">${c.fcfNA ? 'n/a' : val(c.fcf)}</span></div>
+        <div class="co-stat" title="Free cash flow ÷ market cap"><span class="co-k">FCF YIELD</span><span class="co-v ${c.fcfYield >= 0 ? 'pos' : 'neg'}">${c.fcfYield != null ? c.fcfYield.toFixed(1) + '%' : (c.fcfNA ? 'n/a' : '—')}</span></div>
+        <div class="co-stat" title="Free cash flow ÷ net income — below 1 means profit is not turning into cash"><span class="co-k">CASH CONVERSION</span><span class="co-v">${c.cashConversion != null ? c.cashConversion.toFixed(2) + '×' : (c.fcfNA ? 'n/a' : '—')}</span></div>
+        <div class="co-stat" title="Net debt ÷ free cash flow — years of cash to repay debt"><span class="co-k">NET DEBT / FCF</span><span class="co-v">${c.netDebtToFcf != null ? c.netDebtToFcf.toFixed(1) + '×' : (c.fcfNA ? 'n/a' : '—')}</span></div>
       </div>`
     + (c.ticker ? `<div class="co-chartwrap">
         <div class="co-ranges">

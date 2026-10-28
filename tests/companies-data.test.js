@@ -115,6 +115,22 @@ test('a restatement keeps both figures and the amended one wins', () => {
   }
 });
 
+test('free cash flow is cash, not a second earnings figure', () => {
+  for (const c of data.companies) {
+    if (c.fcf == null) continue;
+    assert.ok(c.operatingCashFlow != null, `${c.ticker}: FCF without operating cash flow`);
+    assert.ok(c.fcf <= c.operatingCashFlow + 1, `${c.ticker}: FCF above operating cash flow`);
+    if (c.revenue) assert.ok(Math.abs(c.fcf) <= c.revenue * 2, `${c.ticker}: FCF implausible vs revenue`);
+  }
+  assert.ok(by.AAPL.fcf > 5e10, 'Apple free cash flow should exceed $50B');
+});
+
+test('banks have no free cash flow but do have a margin', () => {
+  assert.ok(by.JPM.fcfNA, 'JPM FCF is marked n/a');
+  assert.equal(by.JPM.fcf, null, 'JPM FCF is null');
+  assert.notEqual(by.AXP.marginNA, true, 'Amex margin is computable');
+});
+
 test('the quarterly series is chronological, capped at eight, and never empty', () => {
   for (const c of data.companies) {
     const q = c.quarters || [];
