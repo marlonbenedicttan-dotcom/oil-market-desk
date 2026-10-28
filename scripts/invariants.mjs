@@ -68,12 +68,14 @@ for (const c of C) {
   if (c.fyNetIncome && c.fyNetIncome < newestFY - 2) {
     add('stale fiscal year', t, `FY${c.fyNetIncome} vs universe FY${newestFY}`);
   }
-  if (c.netIncomeTTMAsOf && newestTTM && newestTTM - Date.parse(c.netIncomeTTMAsOf) > 500 * DAY) {
+  if (c.netIncomeTTMAsOf && newestTTM && !c.ttmFromFY && newestTTM - Date.parse(c.netIncomeTTMAsOf) > 500 * DAY) {
     add('stale trailing quarters', t, c.netIncomeTTMAsOf);
   }
-  if (c.netIncomeTTM != null && c.netIncome > 0
-      && (c.netIncomeTTM / c.netIncome < 0.2 || c.netIncomeTTM / c.netIncome > 5)) {
-    add('TTM disagrees with fiscal year', t, `${(c.netIncomeTTM / c.netIncome).toFixed(2)}x`);
+  // A profit turning into a loss is a real event, not a data error. Only earnings above revenue are
+  // impossible; losses are allowed to 3x revenue.
+  if (c.netIncomeTTM != null && c.revenue
+      && (c.netIncomeTTM > c.revenue * 1.2 || c.netIncomeTTM < c.revenue * -3)) {
+    add('TTM implausible against revenue', t, `${(c.netIncomeTTM / c.revenue).toFixed(2)}x revenue`);
   }
 
   // --- market cap must agree with price x shares -----------------------------

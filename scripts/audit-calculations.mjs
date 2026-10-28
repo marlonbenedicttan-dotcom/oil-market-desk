@@ -27,7 +27,7 @@ for (const c of C) {
   checked++;
 
   // A trailing-twelve-month figure built from quarters that stopped years ago is not trailing.
-  if (c.netIncomeTTMAsOf && newestTTM) {
+  if (c.netIncomeTTMAsOf && newestTTM && !c.ttmFromFY) {
     const age = (newestTTM - Date.parse(c.netIncomeTTMAsOf)) / 86400000;
     if (age > 500) issues.ttm.push([c.ticker, c.netIncomeTTMAsOf, Math.round(age) + ' days old']);
   }

@@ -1,7 +1,7 @@
 {
- "generated": "2026-10-28T16:45:17.199Z",
+ "generated": "2026-10-28T16:47:22.354Z",
  "companies": 503,
- "total": 29,
+ "total": 25,
  "causes": {
   "EV/EBITDA above 100 (check D&A)": [
    {
@@ -95,20 +95,6 @@
     "detail": "546.4"
    }
   ],
-  "TTM disagrees with fiscal year": [
-   {
-    "ticker": "GILD",
-    "detail": "-0.38x"
-   },
-   {
-    "ticker": "GPN",
-    "detail": "-0.67x"
-   },
-   {
-    "ticker": "TRMB",
-    "detail": "-0.25x"
-   }
-  ],
   "P/B above 100 (check equity)": [
    {
     "ticker": "FTNT",
@@ -117,12 +103,6 @@
    {
     "ticker": "LYV",
     "detail": "150.8"
-   }
-  ],
-  "stale trailing quarters": [
-   {
-    "ticker": "SKYD",
-    "detail": "2024-12-31"
    }
   ],
   "no annual report yet (new listing)": [

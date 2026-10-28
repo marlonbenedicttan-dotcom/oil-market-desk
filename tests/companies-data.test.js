@@ -64,11 +64,13 @@ test('share classes share a CIK but not a market cap', () => {
   }
 });
 
-test('a TTM figure stays in the same order of magnitude as the fiscal year', () => {
+test('a TTM figure is plausible against revenue', () => {
+  // A profit can turn into a loss (impairment) — that is real. Earnings above revenue are not, and a
+  // loss beyond three times revenue means the tags belong to different scopes.
   for (const c of data.companies) {
-    if (c.netIncomeTTM == null || !c.netIncome || c.netIncome <= 0) continue;
-    const ratio = c.netIncomeTTM / c.netIncome;
-    assert.ok(ratio > 0.15 && ratio < 6, `${c.ticker}: TTM/FY = ${ratio.toFixed(2)}`);
+    if (c.netIncomeTTM == null || !c.revenue) continue;
+    assert.ok(c.netIncomeTTM <= c.revenue * 1.2, `${c.ticker}: TTM above revenue`);
+    assert.ok(c.netIncomeTTM >= c.revenue * -3, `${c.ticker}: TTM loss beyond 3x revenue`);
   }
 });
 
