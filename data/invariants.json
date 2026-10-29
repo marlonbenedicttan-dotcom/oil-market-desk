@@ -1,20 +1,20 @@
 {
- "generated": "2026-10-29T03:27:43.351Z",
+ "generated": "2026-10-29T05:37:29.495Z",
  "companies": 503,
- "total": 25,
+ "total": 22,
  "causes": {
   "EV/EBITDA above 100 (check D&A)": [
    {
     "ticker": "TSLA",
-    "detail": "285.2"
+    "detail": "324.9"
    },
    {
     "ticker": "AMD",
-    "detail": "214.6"
+    "detail": "131.1"
    },
    {
     "ticker": "PLTR",
-    "detail": "327.2"
+    "detail": "177"
    },
    {
     "ticker": "PANW",
@@ -22,47 +22,35 @@
    },
    {
     "ticker": "GEV",
-    "detail": "150"
+    "detail": "115.7"
    },
    {
     "ticker": "MRVL",
-    "detail": "123.9"
-   },
-   {
-    "ticker": "APD",
-    "detail": "106.2"
+    "detail": "108.1"
    },
    {
     "ticker": "LITE",
     "detail": "126.7"
    },
    {
-    "ticker": "CIEN",
-    "detail": "231.9"
+    "ticker": "BE",
+    "detail": "100.6"
+   },
+   {
+    "ticker": "WAT",
+    "detail": "136.3"
    },
    {
     "ticker": "P",
-    "detail": "159.9"
+    "detail": "106.5"
    },
    {
-    "ticker": "TWLO",
-    "detail": "114.7"
-   },
-   {
-    "ticker": "TTWO",
-    "detail": "413.9"
+    "ticker": "AXON",
+    "detail": "260.5"
    },
    {
     "ticker": "DOW",
     "detail": "116.4"
-   },
-   {
-    "ticker": "VTRS",
-    "detail": "235.4"
-   },
-   {
-    "ticker": "HAS",
-    "detail": "126.6"
    }
   ],
   "P/E above 300 (check earnings)": [

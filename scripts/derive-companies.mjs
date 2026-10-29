@@ -123,9 +123,13 @@ for (const c of data.companies) {
   // made EV/EBITDA look like 166x on a 2014 profit.
   if (c.opIncEnd && newestTTM && newestTTM - Date.parse(c.opIncEnd) > 730 * 86400000) { c.opInc = null; c.opIncStale = true; }
   const opInc = c.opInc ?? [...(c.series || [])].reverse().find((x) => x.opInc != null)?.opInc ?? null;
-  const ebitda = opInc != null ? opInc + (c.da || 0) : null;
+  // Prefer the trailing EBITDA where we have it; fall back to the fiscal-year figure.
+  const ebitda = c.ebitdaTTM != null ? c.ebitdaTTM : (opInc != null ? opInc + (c.da || 0) : null);
   // EBITDA is not a bank metric: deposits are operating liabilities and interest is the business.
-  c.evEbitda = c.ev && ebitda > 0 && c.sector !== 'Financials' ? +(c.ev / ebitda).toFixed(1) : null;
+  // EBITDA is not a bank metric, but a conglomerate classified as Financials (Berkshire) operates real
+  // assets and reports capex — for those the ratio is meaningful.
+  const bankLike = c.sector === 'Financials' && c.fcf == null;
+  c.evEbitda = c.ev && ebitda > 0 && !bankLike ? +(c.ev / ebitda).toFixed(1) : null;
   if (c.evEbitda != null && c.evEbitda > 500) c.evEbitda = null;
 
   // Cash-based ratios, on a trailing basis where the quarters allow it. FCF is the check on earnings:
@@ -144,21 +148,36 @@ for (const c of data.companies) {
 
   // --- growth and quality ---------------------------------------------------
   const hist = (c.series || []).slice().sort((x, y) => x.fy - y.fy);
+  // Some filers never tag EPS (Berkshire, Visa, Monster). Net income ÷ shares is the same number and
+  // lets the growth series exist at all.
+  if (c.shares) {
+    for (const s of hist) {
+      if (!(s.eps > 0) && s.netIncome != null) s.eps = +(s.netIncome / c.shares).toFixed(2);
+    }
+    if (!(c.eps > 0) && c.netIncome != null) c.eps = +(c.netIncome / c.shares).toFixed(2);
+  }
   const first = hist[0];
   const last = hist[hist.length - 1];
   const span = first && last ? last.fy - first.fy : 0;
   const cagr = (a0, b0) => (a0 > 0 && b0 > 0 && span >= 2 ? +(((b0 / a0) ** (1 / span) - 1) * 100).toFixed(1) : null);
   c.revenueCagr = cagr(first?.revenue, last?.revenue);
   c.epsCagr = cagr(first?.eps, last?.eps);
+  c.cagrYears = span >= 2 ? span : null;
+  // Say why a growth rate is absent rather than leaving a dash: a loss at either end makes it meaningless.
+  c.cagrNA = c.revenueCagr == null ? (span < 2 ? 'history too short' : 'loss at either end') : null;
+  c.epsCagrNA = c.epsCagr == null ? (span < 2 ? 'history too short' : 'a loss in the first or last year') : null;
   c.marginDelta = first?.revenue && last?.revenue && first.netIncome != null && last.netIncome != null
     ? +(((last.netIncome / last.revenue) - (first.netIncome / first.revenue)) * 100).toFixed(1) : null;
 
   // Return on capital: net income ÷ (equity + debt − cash). Approximate, and only where the inputs exist.
   const invested = c.equity != null ? c.equity + (c.debt || 0) - (c.cash || 0) : null;
-  c.roic = invested > 0 && c.netIncome != null ? +((c.netIncome / invested) * 100).toFixed(1) : null;
+  const roicEarn = c.netIncomeTTM != null ? c.netIncomeTTM : c.netIncome;
+  c.roicBasis = roicEarn == null ? null : (c.netIncomeTTM != null ? 'TTM' : 'FY');
+  c.roic = invested > 0 && roicEarn != null ? +((roicEarn / invested) * 100).toFixed(1) : null;
   if (c.roic != null && (c.roic < -100 || c.roic > 200)) c.roic = null;
 
-  const ebitdaQ = (c.opInc != null ? c.opInc : null) != null ? c.opInc + (c.da || 0) : null;
+  const ebitdaQ = c.ebitdaTTM != null ? c.ebitdaTTM : (c.opInc != null ? c.opInc + (c.da || 0) : null);
+  c.netDebtEbitdaBasis = ebitdaQ == null ? null : (c.ebitdaTTM != null ? 'TTM' : 'FY');
   c.netDebtEbitda = c.debt != null && ebitdaQ > 0 ? +(((c.debt - (c.cash || 0)) / ebitdaQ)).toFixed(1) : null;
   if (c.netDebtEbitda != null && (c.netDebtEbitda < -20 || c.netDebtEbitda > 50)) c.netDebtEbitda = null;
 

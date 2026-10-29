@@ -2072,3 +2072,17 @@ fourth hero cell for the index P/E. 121 tests.
   Financials 14.8× (75th), Utilities 22.6× (25th). Shown on the sector board.
 - The company screener gained REV CAGR and ROIC columns; the company page gained four cells.
 123 tests.
+
+## CAGR labels, trailing ratios, and the Berkshire class (2026-10-29)
+- **CAGR is labelled with its period** (`REVENUE CAGR · 3Y`) and every missing rate carries a reason
+  ("loss at either end", "history too short") in the tooltip. EPS now falls back to net income ÷ shares
+  for filers that never tag it — Berkshire, Visa, Monster.
+- **ROIC and net debt/EBITDA are trailing.** ROIC uses TTM earnings; net debt/EBITDA uses a trailing
+  EBITDA built by `build-ebitda.mjs` (quarterly operating income + YTD D&A), with a staleness guard so a
+  tag that stopped in 2012 cannot supply a quarter.
+- **The Berkshire class.** A blanket "Financials → no FCF, no EV/EBITDA" rule was wrong for conglomerates.
+  The test is now whether the company reports **material capex** (>4% of revenue): Berkshire (5.6%) gets
+  FCF $24.2B and EV/EBITDA 11.9×; Amex (2.9%) and JPM (none) stay n/a. Operating income falls back to
+  pre-tax income when the direct tag is stale — Berkshire's last filed in 2012.
+- The audit now reconciles EV/EBITDA (it never did), and uses the same series fallback as derive.
+FCF 480/503 (17 banks n/a) · EV/EBITDA 423.

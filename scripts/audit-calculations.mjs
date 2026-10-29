@@ -53,6 +53,12 @@ for (const c of C) {
     const want = c.marketCap + (c.debt || 0) - (c.cash || 0);
     if (!near(c.ev, want, 1)) issues.ev.push([c.ticker, c.ev, want]);
   }
+  if (c.evEbitda != null && c.ev) {
+    const op = c.opInc ?? [...(c.series || [])].reverse().find((x) => x.opInc != null)?.opInc ?? null;
+    const eb = c.ebitdaTTM != null ? c.ebitdaTTM : (op != null ? op + (c.da || 0) : null);
+    const want = eb > 0 ? +(c.ev / eb).toFixed(1) : null;
+    if (want == null || !near(c.evEbitda, want, 0.15)) issues.evEbitda.push([c.ticker, c.evEbitda, want]);
+  }
   if (c.currentRatio != null && c.currentAssets != null && c.currentLiabilities > 0) {
     const want = +(c.currentAssets / c.currentLiabilities).toFixed(2);
     if (!near(c.currentRatio, want, 0.02)) issues.current.push([c.ticker, c.currentRatio, want]);

@@ -123,7 +123,10 @@ async function firstOf(cik, tags, year) {
 }
 
 const data = JSON.parse(readFileSync(FILE, 'utf8'));
-const todo = data.companies.filter((c) => c.cik && !c.noFilings && (!onlySet || onlySet.has(String(c.ticker || '').toUpperCase())));
+const SECTOR = (process.argv.find((x) => x.startsWith('--sector=')) || '').split('=')[1];
+const todo = data.companies.filter((c) => c.cik && !c.noFilings
+  && (!onlySet || onlySet.has(String(c.ticker || '').toUpperCase()))
+  && (!SECTOR || c.sector === SECTOR));
 console.log(`${todo.length} companies`);
 
 let built = 0;
@@ -133,17 +136,22 @@ for (const c of todo) {
   const year = c.netIncomeEnd ? Number(String(c.netIncomeEnd).slice(0, 4)) : null;
   const ocf = await firstOf(c.cik, OCF, year);
   if (!ocf) { c.fcf = null; c.operatingCashFlow = null; c.capex = null; noOcf++; continue; }
-  // Free cash flow is not a bank metric: operating cash flow moves with loans and deposits, not with
-  // the business. Record the cash flow, mark FCF n/a — the same rule as EV/EBITDA.
-  if (c.sector === 'Financials') {
+  // A bank's operating cash flow moves with loans and deposits, so "free cash flow" is not a signal.
+  // But a conglomerate classified as Financials (Berkshire: railroad, utilities, manufacturing) does
+  // report capex — the test is whether capex exists, not the sector label.
+  let capex = await firstOf(c.cik, CAPEX, year);
+  // A card bank reports a little capex (branches, technology); that does not make its operating cash
+  // flow a free-cash-flow signal. Real assets mean capex above ~4% of revenue (Berkshire: 5.6%, Amex: 2.9%).
+  if (capex && c.sector === 'Financials' && c.revenue && Math.abs(capex.val) / c.revenue < 0.04) capex = null;
+  if (!capex && c.sector === 'Financials') {
     c.operatingCashFlow = ocf.val;
     c.capex = null;
     c.fcf = null;
+    c.fcfTTM = null;
     c.fcfNA = true;
     noCapex++;
     continue;
   }
-  let capex = await firstOf(c.cik, CAPEX, year);
   if (!capex) {
     // A bank's operating cash flow is dominated by loan and deposit movements, so "free cash flow" is
     // not a meaningful number for it (JPM: -$148B). Mark it n/a rather than publish a false signal.
@@ -163,6 +171,7 @@ for (const c of todo) {
       continue;
     }
   }
+  c.fcfNA = false;                 // a company that reports capex has a real FCF, whatever its sector
   c.operatingCashFlow = ocf.val;
   c.capex = Math.abs(capex.val);
   c.capexOmitted = capex.tag === 'none (financial)';
