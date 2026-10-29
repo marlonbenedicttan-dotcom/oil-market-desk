@@ -2319,6 +2319,15 @@ function scBarHtml() {
     + `<button type="button" class="ghost" data-sc-act="reset">RESET</button>`
     + `<span class="sc-count dimtext" id="sc-count"></span>`;
 }
+let screenMarket = (() => { try { return localStorage.getItem('oilbasis.screenMarket') || 'us'; } catch { return 'us'; } })();
+const coScreenJp = { q: '', sector: 'all', sort: 'marketCap', dir: -1 };
+const JP_SCREEN_COLS = [
+  { k: 'label', t: 'COMPANY' }, { k: 'price', t: 'PRICE' }, { k: 'chg1d', t: '1D' },
+  { k: 'chg6m', t: '6M' }, { k: 'chgYtd', t: 'YTD' }, { k: 'pe', t: 'P/E' },
+  { k: 'pb', t: 'P/B' }, { k: 'roe', t: 'ROE' }, { k: 'marketCap', t: 'MKT CAP' },
+];
+const screenMarketHtml = () => `<div class="sc-modes sc-mkt"><button type="button" class="${screenMarket === 'us' ? 'on' : ''}" data-screen-market="us">US</button><button type="button" class="${screenMarket === 'jp' ? 'on' : ''}" data-screen-market="jp">JAPAN</button></div>`;
+
 const CO_SCREEN_COLS = [
   { k: 'label', t: 'COMPANY' }, { k: 'price', t: 'PRICE' }, { k: 'chg1d', t: '1D' },
   { k: 'chg6m', t: '6M' }, { k: 'chgYtd', t: 'YTD' }, { k: 'pe', t: 'P/E' },
@@ -2326,6 +2335,7 @@ const CO_SCREEN_COLS = [
   { k: 'marketCap', t: 'MKT CAP' },
 ];
 function renderCompanyScreen(el) {
+  if (screenMarket === 'jp') return renderJapanScreen(el);
   // The companies payload is normally fetched when the COMPANIES tab opens; the home screener can ask
   // for it first, so load it here and re-render when it lands.
   if (!companiesData) {
@@ -2358,7 +2368,7 @@ function renderCompanyScreen(el) {
       ${cell(c.pe, 1, '×')}${c.fcfYield != null ? cell(c.fcfYield, 1, '%') : '<td class="num">' + (c.fcfNA ? 'n/a' : '—') + '</td>'}
       ${cell(c.revenueCagr, 1, '%')}${cell(c.roic, 1, '%')}
       <td class="num">${coMoney(c.marketCap)}</td></tr>`).join('');
-  el.innerHTML = `<div class="sc-bar">${screenModeHtml()}
+  el.innerHTML = `<div class="sc-bar">${screenModeHtml()}${screenMarketHtml()}
       <label class="sc-f">SEARCH <input id="cos-q" type="search" placeholder="company or ticker…" value="${esc(coScreen.q)}"></label>
       <label class="sc-f">SECTOR <select id="cos-sector"><option value="all">All sectors</option>${sectors.map((x) => `<option value="${esc(x)}"${coScreen.sector === x ? ' selected' : ''}>${esc(x)}</option>`).join('')}</select></label>
       <span class="sc-count dimtext">${rows.length} of ${all.length} companies</span>
@@ -2366,8 +2376,51 @@ function renderCompanyScreen(el) {
     <div class="sc-note dimtext">S&amp;P 500 companies · SEC filings, GAAP as filed · prices from Nasdaq. Click a row to open the company.</div>`;
 }
 
+// The same screener, on the Japanese market. Yen, its own columns, its own filters — never mixed
+// into the dollar table, because a ¥ and a $ in one column would be a lie.
+function renderJapanScreen(el) {
+  if (!japanData) {
+    el.innerHTML = stLoading('Reading the Japanese filings…');
+    loadJapan().then(() => renderScreen(true));
+    return;
+  }
+  const all = japanData.companies || [];
+  const sectors = [...new Set(all.map((c) => c.sector).filter(Boolean))].sort();
+  const q = coScreenJp.q.trim().toLowerCase();
+  const { sort, dir } = coScreenJp;
+  const keyOf = (c) => (sort === 'label' ? (c.name || '') : c[sort]);
+  let rows = all.filter((c) => (coScreenJp.sector === 'all' || c.sector === coScreenJp.sector)
+    && (!q || `${c.name} ${c.nameJa || ''} ${c.ticker} ${c.sector}`.toLowerCase().includes(q)));
+  rows = [...rows].sort((a, b) => {
+    const x = keyOf(a), y = keyOf(b);
+    if (x == null && y == null) return 0;
+    if (x == null) return 1;
+    if (y == null) return -1;
+    return sort === 'label' ? x.localeCompare(y) * dir : (x - y) * dir;
+  });
+  const shown = rows;
+  const head = JP_SCREEN_COLS.map((c) => `<th class="${sort === c.k ? 'on' : ''}" data-jpkey="${c.k}">${c.t}${sort === c.k ? (dir < 0 ? ' ▼' : ' ▲') : ''}</th>`).join('');
+  const pct = (v) => (v == null ? '<td class="num">—</td>' : `<td class="num ${cls(v)}">${v >= 0 ? '+' : ''}${v.toFixed(1)}%</td>`);
+  const num = (v, dp, suffix = '') => (v == null ? '<td class="num">—</td>' : `<td class="num">${v.toFixed(dp)}${suffix}</td>`);
+  const body = shown.map((c) => `<tr data-jpcode="${esc(c.code)}" title="${esc(c.name)}">
+      <td class="sc-name">${esc(c.name)}<span class="sc-tick">${esc(c.ticker)} · ${esc(c.sector)}</span></td>
+      <td class="num">${yen(c.price)}</td>
+      ${pct(c.chg1d)}${pct(c.chg6m)}${pct(c.chgYtd)}
+      ${num(c.pe, 1, '×')}${num(c.pb, 2, '×')}${num(c.roe, 1, '%')}
+      <td class="num">${yen(c.marketCap)}</td></tr>`).join('');
+  el.innerHTML = `<div class="sc-bar">${screenModeHtml()}${screenMarketHtml()}
+      <label class="sc-f">SEARCH <input id="cosj-q" type="search" placeholder="company or ticker…" value="${esc(coScreenJp.q)}"></label>
+      <label class="sc-f">SECTOR <select id="cosj-sector"><option value="all">All sectors</option>${sectors.map((x) => `<option value="${esc(x)}"${coScreenJp.sector === x ? ' selected' : ''}>${esc(x)}</option>`).join('')}</select></label>
+      <span class="sc-count dimtext">${rows.length} of ${all.length} companies</span>
+    </div><div class="sc-wrap" id="sc-table"><table class="sc-table"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>
+    <div class="sc-note dimtext">TSE Prime companies · J-Quants (JPX) · yen, not dollars · P/E and ROE are trailing twelve months. Click a row to open the company.</div>`;
+}
+
 function renderScreen(full) {
   const el = $('screen'); if (!el) return;
+  // "returns in USD" belongs to the commodity table; above a yen table it would be a lie.
+  const curCtl = document.querySelector('#p-screen .controls');
+  if (curCtl) curCtl.classList.toggle('hidden', screenMarket === 'jp' && screenMode === 'companies');
   if (screenMode === 'companies') return renderCompanyScreen(el);
   if (!screenRows || !screenRows.length) { el.innerHTML = stError('Couldn’t load the screener — retrying.'); return; }
   if (full || !$('sc-table')) {
@@ -2421,6 +2474,23 @@ $('screen')?.addEventListener('click', (e) => {
     renderScreen(true);
     return;
   }
+  const mkt = e.target.closest('[data-screen-market]');
+  if (mkt) {
+    screenMarket = mkt.dataset.screenMarket;
+    try { localStorage.setItem('oilbasis.screenMarket', screenMarket); } catch {}
+    const cur = document.querySelector('#p-screen .controls');
+    if (cur) cur.classList.toggle('hidden', screenMarket === 'jp');
+    renderScreen(true);
+    return;
+  }
+  const jpkey = e.target.closest('th[data-jpkey]');
+  if (jpkey) {
+    const k = jpkey.dataset.jpkey;
+    coScreenJp.sort = k;
+    coScreenJp.dir = coScreenJp.sort === k ? -coScreenJp.dir : (k === 'label' ? 1 : -1);
+    renderScreen(true);
+    return;
+  }
   const cokey = e.target.closest('th[data-cokey]');
   if (cokey) {
     const k = cokey.dataset.cokey;
@@ -2453,9 +2523,11 @@ $('screen')?.addEventListener('click', (e) => {
 // The bar's own controls: the segment select and the instrument checkboxes.
 $('screen')?.addEventListener('input', (e) => {
   if (e.target.id === 'cos-q') { coScreen = { ...coScreen, q: e.target.value || '' }; renderScreen(true); }
+  if (e.target.id === 'cosj-q') { coScreenJp.q = e.target.value || ''; renderScreen(true); }
 });
 $('screen')?.addEventListener('change', (e) => {
   if (e.target.id === 'cos-sector') { coScreen = { ...coScreen, sector: e.target.value }; renderScreen(true); return; }
+  if (e.target.id === 'cosj-sector') { coScreenJp.sector = e.target.value; renderScreen(true); return; }
   const t = e.target;
   if (t.id === 'sc-seg') { screenSeg = t.value; persistScreenFilter(); renderScreen(false); return; }
   if (t.matches && t.matches('#sc-pick-list input[data-id]')) {
@@ -3630,8 +3702,7 @@ function renderJapanScreener(all, d) {
   const key = { cap: (c) => c.marketCap || 0, pe: (c) => (c.pe == null ? Infinity : c.pe), pb: (c) => (c.pb == null ? Infinity : c.pb), roe: (c) => (c.roe == null ? -Infinity : c.roe), yield: (c) => (jpYield(c) == null ? -Infinity : jpYield(c)), ytd: (c) => c.chgYtd };
   const dir = jpSort === 'cap' || jpSort === 'ytd' ? -1 : 1;
   matched.sort((a, b) => (key[jpSort](a) - key[jpSort](b)) * dir);
-  // 1,500 rows in the DOM is slow on a phone; the first 500 of the chosen sort is plenty to browse.
-  const rows = matched.slice(0, 500);
+  const rows = matched;
 
   const max = Math.max(...all.map((c) => c.marketCap || 0), 1);
   const opt = (v, label, cur) => `<option value="${v}" ${String(cur || '') === String(v) ? 'selected' : ''}>${label}</option>`;
@@ -3655,7 +3726,7 @@ function renderJapanScreener(all, d) {
         <span class="co-pe" title="${c.peBasis === 'TTM' ? 'trailing twelve months, from JPX' : 'fiscal year'}">${c.pe != null ? c.pe.toFixed(1) : '—'}</span>
         <span class="co-mar ${c.roe == null ? 'dimtext' : c.roe >= 0 ? 'pos' : 'neg'}">${c.roe == null ? '—' : `${c.roe.toFixed(1)}%`}</span>
       </button>`).join('')
-    + `<div class="macro-note">${matched.length === rows.length ? `${rows.length} of ${all.length}` : `${rows.length} shown of ${matched.length} matches (${all.length} total) — narrow with the filters`} · ${esc(d.universe || '')} · P/E and ROE are trailing twelve months, from JPX · forward P/E uses the company's own guidance · market cap excludes treasury shares · FX ${d.fx && d.fx.rate ? d.fx.rate.toFixed(2) : '—'} JPY per USD.</div>`;
+    + `<div class="macro-note">${rows.length === all.length ? `all ${all.length}` : `${rows.length} of ${all.length}`} companies · ${esc(d.universe || '')} · P/E and ROE are trailing twelve months, from JPX · forward P/E uses the company's own guidance · market cap excludes treasury shares · FX ${d.fx && d.fx.rate ? d.fx.rate.toFixed(2) : '—'} JPY per USD.</div>`;
 }
 
 function jpBand(label, current, b, unit) {

@@ -1250,3 +1250,11 @@ button.deal-sec-tile:hover { background: #10151b; }
 }
 .jp-bank-row span:nth-child(2) { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
 .jp-bank-row span:nth-child(2) b { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Home screener: the search box and market switch, in the site's own language. */
+.sc-f input { background: #0c0f13; border: 1px solid var(--line2); color: var(--text); font: inherit;
+  font-size: 11px; padding: 6px 9px; min-height: 30px; min-width: 190px; outline: none; border-radius: 2px; }
+.sc-f input:focus { border-color: var(--amber); }
+.sc-f input::placeholder { color: #5b6773; }
+.sc-mkt { margin-left: 6px; }
+@media (max-width: 640px) { .sc-f input { min-width: 0; width: 100%; } .sc-f { flex: 1 1 100%; } }

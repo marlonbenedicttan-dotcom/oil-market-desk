@@ -2198,3 +2198,12 @@ FCF 480/503 (17 banks n/a) · EV/EBITDA 423.
   YTD for exactly that reason.
 - The daily workflow no longer passes `--limit`, so CI keeps the full universe.
 - 137 tests.
+
+## Home screener covers Japan; every company listed (2026-10-30)
+- The home screener's COMPANIES mode now has a **US / JAPAN** switch. Japan gets its own columns
+  (¥ price, 1D, 6M, YTD, P/E, P/B, ROE, market cap) and its own filters — never mixed into the dollar table.
+- **The 500-row cap is gone**: both the COMPANIES tab and the home screener render all 1,543 companies.
+  Measured re-render at a 390px viewport: **115 ms**, no horizontal overflow, so no virtualisation needed.
+- The screener's search input was unstyled (a browser default); it now uses the same dark field, amber
+  focus and 30px height as the rest of the site.
+- The "returns in USD" control is hidden on the Japan table, where it would be meaningless.
