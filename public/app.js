@@ -3538,6 +3538,8 @@ function renderJapanPage(c) {
 }
 
 function renderCompanies() {
+  // Keep the market switch in sync with the remembered choice (it also survives a reload).
+  document.querySelectorAll('[data-region]').forEach((b) => b.classList.toggle('on', b.dataset.region === coRegion));
   if (coRegion === 'jp') return renderJapan();
   const el = $('co-body');
   if (charts['co-chart']) { try { charts['co-chart'].destroy(); } catch {} delete charts['co-chart']; }
