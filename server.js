@@ -3886,6 +3886,25 @@ const server = http.createServer(async (req, res) => {
         return sendJSON(res, 200, { companies: [], error: 'Japan has not been built yet' });
       }
     }
+    if (url.pathname === '/api/japan-chart') {
+      const code = url.searchParams.get('code');
+      const range = url.searchParams.get('range') || '6m';
+      const iso = (t) => new Date(t).toISOString().slice(0, 10);
+      let store = null;
+      try { store = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'japan-series.json'), 'utf8')); } catch { store = null; }
+      const block = store ? ((range === '1m' || range === '6m') ? store.daily : store.weekly) : null;
+      const arr = block && block.series ? block.series[code] : null;
+      if (!arr) return sendJSON(res, 200, { dates: [], closes: [], range });
+      const now = Date.now();
+      const from = range === '1m' ? iso(now - 31 * 864e5)
+        : range === '6m' ? iso(now - 190 * 864e5)
+        : range === 'ytd' ? `${new Date().getUTCFullYear()}-01-01`
+        : range === '1y' ? iso(now - 366 * 864e5)
+        : '1900-01-01';
+      const dates = [], closes = [];
+      block.dates.forEach((d, i) => { if (d >= from && arr[i] != null) { dates.push(d); closes.push(arr[i]); } });
+      return sendJSON(res, 200, { dates, closes, range });
+    }
     if (url.pathname === '/api/deals') {
       ensureSeeded();
       const store = await refreshDeals().catch(() => STORE);

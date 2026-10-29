@@ -2207,3 +2207,16 @@ FCF 480/503 (17 banks n/a) · EV/EBITDA 423.
 - The screener's search input was unstyled (a browser default); it now uses the same dark field, amber
   focus and 30px height as the rest of the site.
 - The "returns in USD" control is hidden on the Japan table, where it would be meaningless.
+
+## Japan: five-year charts, on demand (2026-10-30)
+- The Japan price chart now offers **1M / 6M / YTD / 1Y / 5Y**, the same idea as the US page's 1Y/5Y/10Y.
+- Five years of daily closes for 1,552 issues would be ~10 MB, so charts moved out of the list payload:
+  `data/japan-series.json` holds two shared-axis blocks — **140 daily dates** for the recent window and
+  **245 weekly dates** back to Nov 2021 — and `/api/japan-chart?code=&range=` slices one company at a time.
+- Effect on the wire: `japan.json` fell from 6.45 MB to **3.67 MB raw / 0.69 MB gzipped**, and a chart
+  costs ~250 numbers instead of a whole market history.
+- Price history now goes back 1,900 days in the build; the daily workflow passes the same window.
+- Mobile: Japan rows were 73 px tall because ticker · sector · price · 1D · YTD wrapped onto three lines.
+  Sector is now its own span, hidden under 640 px, so rows are **51 px** and the metadata is one line.
+  The filter row is two-per-line at 8.5 px instead of five stacked full-width selects.
+- The search box is hidden in MARKET and BANKS, where it has nothing to act on.

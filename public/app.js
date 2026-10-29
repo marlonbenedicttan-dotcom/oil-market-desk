@@ -3535,6 +3535,7 @@ const coMargin = coMarginOf;
 // so it reads as one product. Different currency and fiscal year, same layout.
 let japanData = null, jpSel = null, jpQuery = '';
 let jpView = (() => { try { return localStorage.getItem('oilbasis.jpView') || 'screener'; } catch { return 'screener'; } })();
+let jpRange = (() => { try { return localStorage.getItem('oilbasis.jpRange') || '6m'; } catch { return '6m'; } })();
 let jpSort = (() => { try { return localStorage.getItem('oilbasis.jpSort') || 'cap'; } catch { return 'cap'; } })();
 let jpPreset = null;
 let jpFilter = (() => { try { return JSON.parse(localStorage.getItem('oilbasis.jpFilter') || '{}'); } catch { return {}; } })();
@@ -3573,6 +3574,15 @@ function japanTile(c) {
     <span class="t-px">${yen(c.price)}</span>
     <span class="t-foot">${chg(c.chg1d)} today · ${chg(c.chg6m)} 6M · ${chg(c.chgYtd)} YTD</span>
   </div>`;
+}
+
+// The search box only makes sense over a list. In MARKET or BANKS, or on a company page, it has
+// nothing to act on, so it is hidden rather than left there doing nothing.
+function syncCoTools() {
+  const tools = document.querySelector('.co-tools');
+  if (!tools) return;
+  const wanted = coRegion === 'jp' ? (!jpSel && jpView === 'screener') : true;
+  tools.classList.toggle('hidden', !wanted);
 }
 
 const jpViewsBar = () => `<div class="jp-views">
@@ -3624,7 +3634,8 @@ async function renderJapan() {
     return;
   }
   const sel = all.find((c) => c.code === jpSel);
-  if (sel) return renderJapanPage(sel);
+  if (sel) { syncCoTools(); return renderJapanPage(sel); }
+  syncCoTools();
   if (jpView === 'market') return renderJapanMarket(all, d);
   if (jpView === 'banks') return renderJapanBanks(all);
   return renderJapanScreener(all, d);
@@ -3633,6 +3644,7 @@ async function renderJapan() {
 // Whole-market view, computed from the constituent set rather than an index file.
 function renderJapanMarket(all, d) {
   const el = $('co-body'); if (!el) return;
+  syncCoTools();
   const m = d.market || {};
   const t = d.topix || {};
   const cell = (k, val, title, cls = '') => `<div class="co-stat" title="${esc(title)}"><span class="co-k">${k}</span><span class="co-v ${cls}">${val}</span></div>`;
@@ -3677,6 +3689,7 @@ function renderJapanMarket(all, d) {
 // Banks deserve their own table: P/B against ROE is the whole argument, and operating metrics are noise.
 function renderJapanBanks(all) {
   const el = $('co-body'); if (!el) return;
+  syncCoTools();
   const banks = all.filter((c) => c.sector === 'Banks').sort((a, b) => (a.pb == null ? 9 : a.pb) - (b.pb == null ? 9 : b.pb));
   const chg = (x) => (x == null ? '—' : `${x >= 0 ? '+' : ''}${x.toFixed(1)}%`);
   el.innerHTML = jpViewsBar()
@@ -3697,6 +3710,7 @@ function renderJapanBanks(all) {
 
 function renderJapanScreener(all, d) {
   const el = $('co-body'); if (!el) return;
+  syncCoTools();
   const sectors = [...new Set(all.map((c) => c.sector))].sort();
   const matched = all.filter(jpMatches);
   const key = { cap: (c) => c.marketCap || 0, pe: (c) => (c.pe == null ? Infinity : c.pe), pb: (c) => (c.pb == null ? Infinity : c.pb), roe: (c) => (c.roe == null ? -Infinity : c.roe), yield: (c) => (jpYield(c) == null ? -Infinity : jpYield(c)), ytd: (c) => c.chgYtd };
@@ -3721,7 +3735,7 @@ function renderJapanScreener(all, d) {
     + rows.map((c, i) => `<button class="co-row" data-jp="${esc(c.code)}">
         <span class="co-rank">${i + 1}</span>
         ${jpMono(c)}
-        <span class="co-id"><b>${esc(c.name)}</b><span class="co-tick">${esc(c.ticker)} · ${esc(c.sector)} · ${yen(c.price)} <em class="${(c.chg1d || 0) >= 0 ? 'pos' : 'neg'}">${c.chg1d == null ? '' : `${c.chg1d >= 0 ? '+' : ''}${c.chg1d.toFixed(1)}%`}</em> · <em class="${(c.chgYtd || 0) >= 0 ? 'pos' : 'neg'}">${c.chgYtd == null ? '—' : `${c.chgYtd >= 0 ? '+' : ''}${c.chgYtd.toFixed(1)}%`} ${c.chgYtdBasis === 'YTD' ? 'YTD' : 'SINCE ' + String(c.chgYtdBasis || '').slice(6)}</em></span></span>
+        <span class="co-id"><b>${esc(c.name)}</b><span class="co-tick">${esc(c.ticker)}<span class="jp-sector"> · ${esc(c.sector)}</span> · ${yen(c.price)} <em class="${(c.chg1d || 0) >= 0 ? 'pos' : 'neg'}">${c.chg1d == null ? '' : `${c.chg1d >= 0 ? '+' : ''}${c.chg1d.toFixed(1)}%`}</em> · <em class="${(c.chgYtd || 0) >= 0 ? 'pos' : 'neg'}">${c.chgYtd == null ? '—' : `${c.chgYtd >= 0 ? '+' : ''}${c.chgYtd.toFixed(1)}%`} ${c.chgYtdBasis === 'YTD' ? 'YTD' : 'SINCE ' + String(c.chgYtdBasis || '').slice(6)}</em></span></span>
         <span class="co-cap">${yen(c.marketCap)}<i class="co-bar"><i style="width:${Math.max(2, ((c.marketCap || 0) / max) * 100)}%"></i></i></span>
         <span class="co-pe" title="${c.peBasis === 'TTM' ? 'trailing twelve months, from JPX' : 'fiscal year'}">${c.pe != null ? c.pe.toFixed(1) : '—'}</span>
         <span class="co-mar ${c.roe == null ? 'dimtext' : c.roe >= 0 ? 'pos' : 'neg'}">${c.roe == null ? '—' : `${c.roe.toFixed(1)}%`}</span>
@@ -3803,6 +3817,7 @@ function renderJapanPage(c) {
         ${cell('EQUITY RATIO', c.eqAr != null ? `${(c.eqAr * 100).toFixed(1)}%` : '—', 'Equity ÷ total assets, as reported')}
         ${cell('PAYOUT RATIO', d && d.payoutRatio != null ? `${(d.payoutRatio * 100).toFixed(0)}%` : '—', 'Dividends ÷ net profit for the fiscal year')}
       </div>`
+    + `<div class="co-chart-tabs">${[['1m', '1M'], ['6m', '6M'], ['ytd', 'YTD'], ['1y', '1Y'], ['5y', '5Y']].map(([k, t]) => `<button type="button" data-jprange="${k}" class="${jpRange === k ? 'on' : ''}">${t}</button>`).join('')}</div>`
     + `<div class="co-chartwrap"><canvas id="jp-chart"></canvas></div>`
     + jpQuartersHtml(c)
     + `<div class="macro-note">
@@ -3850,12 +3865,18 @@ function jpQuartersHtml(c) {
     </div>`;
 }
 
-function drawJpPrice(c) {
+// The price chart is fetched per company and range, the same way the US chart is.
+async function drawJpPrice(c, range = jpRange) {
   if (charts['jp-chart']) { try { charts['jp-chart'].destroy(); } catch {} delete charts['jp-chart']; }
-  const s = c.series || [];
-  if (s.length > 1) {
-    mountChart('jp-chart', { labels: s.map((p) => p.d), datasets: [line(`${c.ticker} · JPY`, s.map((p) => p.c), CT.c1)] }, baseOptions({ dp: 0, dateAxis: true }));
+  const wrap = $('jp-chart') && $('jp-chart').parentElement;
+  let ch = null;
+  try { ch = await jget(`/api/japan-chart?code=${encodeURIComponent(c.code)}&range=${encodeURIComponent(range)}`, 600000); } catch { ch = null; }
+  if (!ch || !ch.dates || ch.dates.length < 2) {
+    if (wrap) wrap.setAttribute('data-empty', `No price history for ${c.ticker} over ${range.toUpperCase()}.`);
+    return;
   }
+  if (wrap) wrap.removeAttribute('data-empty');
+  mountChart('jp-chart', { labels: ch.dates, datasets: [line(`${c.ticker} · JPY · ${range.toUpperCase()}`, ch.closes, CT.c1)] }, baseOptions({ dp: 0, dateAxis: true }));
 }
 
 function drawJpQuarters(c) {
@@ -3879,6 +3900,7 @@ function renderCompanies() {
   if (charts['co-chart']) { try { charts['co-chart'].destroy(); } catch {} delete charts['co-chart']; }
   if (!el) return;
   const noteUs = $('co-note'); if (noteUs) noteUs.classList.remove('hidden');
+  syncCoTools();
   if (!companiesData) { el.innerHTML = stError('Couldn’t load companies — retrying.'); return; }
   const all = companiesData.companies || [];
   const sub = $('deals-sub');
@@ -4274,6 +4296,15 @@ document.addEventListener('click', (e) => {
     }
     saveJpFilter();
     renderJapan();
+    return;
+  }
+  const jr = e.target.closest('[data-jprange]');
+  if (jr) {
+    jpRange = jr.dataset.jprange;
+    try { localStorage.setItem('oilbasis.jpRange', jpRange); } catch {}
+    document.querySelectorAll('[data-jprange]').forEach((b) => b.classList.toggle('on', b.dataset.jprange === jpRange));
+    const cur = ((japanData && japanData.companies) || []).find((x) => x.code === jpSel);
+    if (cur) drawJpPrice(cur, jpRange);
     return;
   }
   const jstar = e.target.closest('[data-jpstar]');

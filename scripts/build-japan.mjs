@@ -21,9 +21,9 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const OUT = join(ROOT, 'data', 'japan.json');
 const CACHE = join(ROOT, 'data', 'cache', 'jquants');
 const SIZE = Number((process.argv.find((x) => x.startsWith('--limit=')) || '').split('=')[1] || 2000);
-// 300 days clears 1 January, so "YTD" is measured from the first session of the year, not from the
-// start of the window.
-const DAYS = Number((process.argv.find((x) => x.startsWith('--days=')) || '').split('=')[1] || 300);
+// Five years of sessions, so the chart can offer 1Y and 5Y the way the US page does. YTD is measured
+// from the first session of the year, which this window always clears.
+const DAYS = Number((process.argv.find((x) => x.startsWith('--days=')) || '').split('=')[1] || 1900);
 const DAY = 864e5;
 mkdirSync(CACHE, { recursive: true });
 
@@ -131,6 +131,37 @@ for (const [k, v] of series) {
   const floor = iso(Date.now() - (DAYS + 10) * DAY);
   for (const [k, v] of series) keep[k] = v.filter((p) => p.d >= floor);
   writeFileSync(SERIES_CACHE, JSON.stringify(keep));
+}
+
+// Chart blocks: daily for the recent window, weekly for the full five years. One shared date axis per
+// block keeps the file to a few megabytes; the client only ever asks for one company.
+{
+  const dailyDays = 140;
+  const all = [...series.entries()].filter(([, v]) => v.length > 20);
+  const recent = all.map(([, v]) => v.slice(-dailyDays));
+  const dailyDates = recent[0] ? recent[0].map((p) => p.d) : [];
+  const dailySeries = {};
+  for (const [code, v] of all) {
+    const tail = v.slice(-dailyDays);
+    const byDate = new Map(tail.map((p) => [p.d, p.c]));
+    dailySeries[code] = dailyDates.map((d) => (byDate.has(d) ? byDate.get(d) : null));
+  }
+  const weeklyDates = [];
+  const longest = all.reduce((a2, [, v]) => (v.length > a2.length ? v : a2), []);
+  for (let i = 0; i < longest.length; i += 5) weeklyDates.push(longest[i].d);
+  if (longest.length && weeklyDates[weeklyDates.length - 1] !== longest[longest.length - 1].d) weeklyDates.push(longest[longest.length - 1].d);
+  const weeklySeries = {};
+  for (const [code, v] of all) {
+    const byDate = new Map(v.map((p) => [p.d, p.c]));
+    // A company listed later simply has no value on the earlier dates.
+    weeklySeries[code] = weeklyDates.map((d) => (byDate.has(d) ? byDate.get(d) : null));
+  }
+  writeFileSync(join(ROOT, 'data', 'japan-series.json'), JSON.stringify({
+    updated: new Date().toISOString(),
+    daily: { dates: dailyDates, series: dailySeries },
+    weekly: { dates: weeklyDates, series: weeklySeries },
+  }));
+  console.log(`charts: ${dailyDates.length} daily + ${weeklyDates.length} weekly points`);
 }
 
 // --- 3. valuation: the exchange's own ratios and ex-treasury market cap ------------------------

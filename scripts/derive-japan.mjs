@@ -194,8 +194,9 @@ export function deriveJapan({ ranked, fins, series, val = new Map(), nextByCode 
       priceDate: s.length ? s[s.length - 1].d : null,
       marketCap: cap,
       marketCapUsd: cap && fx ? Math.round(cap / fx) : null,
-      // 60 points is visually identical over six months and keeps 1,500 companies inside one payload.
-      series: thin(s, 60),
+      // No per-company series here: charts come from /api/japan-chart, which serves daily and weekly
+      // blocks on demand. Keeping 1,500 five-year series in the list payload would be ~10 MB.
+      series: [],
       chg1d: s.length > 1 ? round(((s[s.length - 1].c / s[s.length - 2].c) - 1) * 100, 2) : null,
       chg6m: sixBase && sixBase.c ? round(((price / sixBase.c) - 1) * 100, 2) : null,
       chgYtd: ytdBase && ytdBase.c ? round(((price / ytdBase.c) - 1) * 100, 2) : null,
