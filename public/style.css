@@ -1163,3 +1163,12 @@ button.deal-sec-tile:hover { background: #10151b; }
 .sc-modes button { background: #0e1319; border: 0; color: #8fa0b2; font: inherit; font-size: 10px; letter-spacing: .5px; padding: 6px 10px; cursor: pointer; }
 .sc-modes button.on { background: #1b2733; color: #cfe3f7; }
 .sc-tick { color: #5b6773; font-size: 9px; letter-spacing: .5px; margin-left: 7px; }
+/* Calendar: company events layer. */
+.cal-modes { display: flex; gap: 0; border-bottom: 1px solid var(--line); }
+.cal-modes button { flex: 1; background: #0c0f13; border: 0; border-right: 1px solid var(--line); color: #7d8894;
+  font: inherit; font-size: 9px; letter-spacing: .8px; padding: 7px 4px; cursor: pointer; }
+.cal-modes button:last-child { border-right: 0; }
+.cal-modes button.on { background: #1b2733; color: #cfe3f7; }
+.cal-cos { display: block; font-size: 8px; letter-spacing: .4px; color: #8fa0b2; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cal-crow { cursor: pointer; }
+.cal-crow:hover { background: #10151b; }

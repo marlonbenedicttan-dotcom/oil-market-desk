@@ -2097,3 +2097,11 @@ FCF 480/503 (17 banks n/a) · EV/EBITDA 423.
 - **Fallbacks for non-financials without FCF**: EBIT yield and asset turnover now render instead of a
   wall of dashes; net debt/EBITDA is suppressed for bank-like financials.
 - 24 tests.
+
+## Company events in the calendar (2026-10-29)
+- `build-events.mjs` estimates each company's next report date from **its own filing lag** (quarter end →
+  filed date, clamped 18–60 days), not a generic +30. Every event is labelled `expected` or `confirmed`.
+- `/api/calendar` now returns `companies`; the calendar has a mode row — **MACRO / WATCHLIST / TOP 50 /
+  ALL 500** — defaulting to the watchlist so 500 companies never flood the grid. Day cells show the
+  tickers reporting; clicking a company row opens its page.
+- Deals (last 30 days) and restatements are added as confirmed events.

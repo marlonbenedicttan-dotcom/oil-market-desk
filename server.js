@@ -3919,7 +3919,11 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname === '/api/macrodash') return sendJSON(res, 200, await getMacroDash().catch((e) => ({ error: String(e.message) })));
     if (url.pathname === '/api/correlations') return sendJSON(res, 200, await getCorrelations().catch((e) => ({ error: String(e.message) })));
     if (url.pathname === '/api/events') return sendJSON(res, 200, getEvents());
-    if (url.pathname === '/api/calendar') return sendJSON(res, 200, await getCalendar().catch((e) => ({ error: String(e.message), events: [] })));
+    if (url.pathname === '/api/calendar') {
+      const cal = await getCalendar().catch((e) => ({ error: String(e.message), events: [] }));
+      try { cal.companies = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'events.json'), 'utf8')).events || []; } catch { cal.companies = []; }
+      return sendJSON(res, 200, cal);
+    }
     if (url.pathname === '/api/chokepoints') return sendJSON(res, 200, getChokepoints());
     if (url.pathname === '/api/curve') return sendJSON(res, 200, await getCurves());
     if (url.pathname === '/api/termstructure') {

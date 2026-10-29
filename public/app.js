@@ -2462,11 +2462,15 @@ $('screen')?.addEventListener('change', (e) => {
 const CAL_DOW = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const MONTH_NAMES = ['JANUARY', 'FEBRUARY', 'MARCH', 'APRIL', 'MAY', 'JUNE', 'JULY', 'AUGUST', 'SEPTEMBER', 'OCTOBER', 'NOVEMBER', 'DECEMBER'];
 let calEvents = null, calMonth = null, calSel = null, calFomc = null;
+let calCompany = [];
+// Which company events to show: the watchlist by default, the index on request.
+let calMode = (() => { try { return localStorage.getItem('oilbasis.calMode') || 'watch'; } catch { return 'watch'; } })();
 async function loadCalendar() {
   const el = $('calendar'); if (!el) return;
   if (!el.innerHTML) el.innerHTML = stLoading('Loading the calendar…');
   let d = null; try { d = await jget('/api/calendar', 1800000); } catch { d = null; }
   calEvents = (d && d.events) || null;
+  calCompany = (d && d.companies) || [];
   calFomc = d && d.fomc;
   markReady('calendar');
   renderCalendar();
@@ -2486,6 +2490,18 @@ function renderCalendar() {
     if (!e.date || (e.cc && !(e.importance >= 1))) continue;   // structural, or a high-impact release
     (byDate[e.date] = byDate[e.date] || []).push(e);
   }
+  // Company events, filtered to the mode. Five hundred companies would flood the grid, so the default
+  // is the watchlist; the index is one click away.
+  if (calMode !== 'macro' && calCompany.length) {
+    const pinned = new Set(watchlist());
+    const top = calMode === 'top' ? new Set([...calCompany].sort((x, y) => (y.weight || 0) - (x.weight || 0)).slice(0, 50).map((x) => x.ticker)) : null;
+    for (const e of calCompany) {
+      if (!e.date) continue;
+      if (calMode === 'watch' && !pinned.has(e.ticker)) continue;
+      if (calMode === 'top' && !top.has(e.ticker)) continue;
+      (byDate[e.date] = byDate[e.date] || []).push({ ...e, company: true });
+    }
+  }
   for (const k of Object.keys(byDate)) byDate[k].sort((x, y) => (x.time || '').localeCompare(y.time || ''));
   const { y, m } = calMonth;
   const mk = `${y}-${String(m + 1).padStart(2, '0')}`;
@@ -2501,9 +2517,11 @@ function renderCalendar() {
   const grid = cells.map((c) => {
     if (!c) return '<div class="cal-day pad"></div>';
     const shown = c.ev.slice(0, CAL_MAX), more = c.ev.length - shown.length;
+    const cos = c.ev.filter((e) => e.company);
     return `<div class="cal-day${c.k === today ? ' today' : ''}${c.ev.length ? ' has' : ''}${c.k === calSel ? ' sel' : ''}" data-date="${c.k}" role="button" tabindex="0" aria-label="${c.k}${c.ev.length ? ' — ' + c.ev.length + ' release' + (c.ev.length > 1 ? 's' : '') : ', nothing scheduled'}">`
       + `<span class="cal-dn">${c.day}</span>`
       + shown.map((e) => `<span class="cal-ev" title="${tipOf(e)}">${e.cc ? `<em class="cal-cc">${esc(e.cc)}</em>` : ''}${esc(e.name)}</span>`).join('')
+      + (cos.length ? `<span class="cal-cos" title="${esc(cos.map((e) => e.label).join(' · '))}">${esc(cos.slice(0, 3).map((e) => e.ticker).join(' '))}${cos.length > 3 ? ` +${cos.length - 3}` : ''}</span>` : '')
       + (more > 0 ? `<span class="cal-more">+${more}</span>` : '')
       + '</div>';
   }).join('');
@@ -2511,8 +2529,12 @@ function renderCalendar() {
   const d0 = new Date(calSel + 'T00:00:00Z');
   const md = `${MONTH_NAMES[d0.getUTCMonth()].slice(0, 3)} ${d0.getUTCDate()}`;
   const dayLabel = calSel === today ? `TODAY · ${md}` : `${CAL_DOW[(d0.getUTCDay() + 6) % 7].toUpperCase()} · ${md}`;
-  const row = (e) => `<div class="cal-row"><span class="cal-date">${esc(e.time || '—')}</span><span class="cal-name">${e.cc ? `<em class="cal-cc">${esc(e.cc)}</em>` : ''}${esc(e.name)}</span><span class="cal-src">${esc(e.source || '')}</span>${e.note ? `<span class="cal-note dimtext">${esc(e.note)}</span>` : ''}</div>`;
-  el.innerHTML = `<div class="cal-head"><div class="cal-nav"><button id="cal-prev" type="button" aria-label="Previous month">‹</button><span class="cal-title">${MONTH_NAMES[m]} ${y}</span><button id="cal-next" type="button" aria-label="Next month">›</button></div><button id="cal-today" class="ghost small" type="button">TODAY</button></div>`
+  const row = (e) => (e.company
+    ? `<div class="cal-row cal-crow" data-calco="${esc(e.ticker || '')}"><span class="cal-date">${esc(e.basis === 'expected' ? 'EST' : 'FILED')}</span><span class="cal-name">${esc(e.label)}</span><span class="cal-src">${esc(e.kind === 'earnings' ? 'company' : e.kind)}</span><span class="cal-note dimtext">${esc(e.detail || '')}</span></div>`
+    : `<div class="cal-row"><span class="cal-date">${esc(e.time || '—')}</span><span class="cal-name">${e.cc ? `<em class="cal-cc">${esc(e.cc)}</em>` : ''}${esc(e.name)}</span><span class="cal-src">${esc(e.source || '')}</span>${e.note ? `<span class="cal-note dimtext">${esc(e.note)}</span>` : ''}</div>`);
+  const modes = [['macro', 'MACRO'], ['watch', 'WATCHLIST'], ['top', 'TOP 50'], ['all', 'ALL 500']];
+  el.innerHTML = `<div class="cal-modes">${modes.map(([k, t]) => `<button type="button" class="${calMode === k ? 'on' : ''}" data-calmode="${k}">${t}</button>`).join('')}</div>`
+    + `<div class="cal-head"><div class="cal-nav"><button id="cal-prev" type="button" aria-label="Previous month">‹</button><span class="cal-title">${MONTH_NAMES[m]} ${y}</span><button id="cal-next" type="button" aria-label="Next month">›</button></div><button id="cal-today" class="ghost small" type="button">TODAY</button></div>`
     + `<div class="cal-grid">${CAL_DOW.map((x) => `<div class="cal-dow">${x}</div>`).join('')}${grid}</div>`
     + `<div class="cal-dayh">${dayLabel}</div>`
     + (selEv.length ? selEv.map(row).join('') : '<div class="cal-foot dimtext">Nothing high-impact scheduled on this day.</div>')
@@ -2521,6 +2543,15 @@ function renderCalendar() {
 const calPick = (k) => { if (k) { calSel = k; renderCalendar(); } };
 $('calendar')?.addEventListener('click', (e) => {
   if (!calMonth) return;
+  const mode = e.target.closest('[data-calmode]');
+  if (mode) { calMode = mode.dataset.calmode; try { localStorage.setItem('oilbasis.calMode', calMode); } catch {} renderCalendar(); return; }
+  const crow = e.target.closest('[data-calco]');
+  if (crow && crow.dataset.calco) {
+    coCik = null;
+    const c = (companiesData?.companies || []).find((x) => x.ticker === crow.dataset.calco);
+    if (c) { coCik = c.cik; document.querySelector('[data-tab="deals"]')?.click(); renderCompanies(); window.scrollTo({ top: 0, behavior: 'smooth' }); }
+    return;
+  }
   if (e.target.id === 'cal-prev') { calMonth.m--; if (calMonth.m < 0) { calMonth.m = 11; calMonth.y--; } calSel = null; renderCalendar(); return; }
   if (e.target.id === 'cal-next') { calMonth.m++; if (calMonth.m > 11) { calMonth.m = 0; calMonth.y++; } calSel = null; renderCalendar(); return; }
   if (e.target.id === 'cal-today') { const n = new Date(); calMonth = { y: n.getUTCFullYear(), m: n.getUTCMonth() }; calSel = n.toISOString().slice(0, 10); renderCalendar(); return; }
