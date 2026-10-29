@@ -3901,7 +3901,7 @@ function renderCompanies() {
       return `<button class="co-row" data-cik="${esc(c.cik)}">
         <span class="co-rank">${i + 1}</span>
         ${coMono(c)}
-        <span class="co-id"><b>${esc(c.name)}</b><span class="co-tick">${esc(c.ticker || '')}${c.sector ? ' · ' + esc(c.sector) : ''}${c.price != null ? ` · $${c.price.toFixed(2)} <em class="${c.chg1d >= 0 ? 'pos' : 'neg'}">${c.chg1d >= 0 ? '+' : ''}${c.chg1d?.toFixed(1)}%</em>` : ''}${c.shareClass ? ` · <em class="co-cl">2ND CLASS</em>` : ''}</span></span>
+        <span class="co-id"><b>${esc(c.name)}</b><span class="co-tick">${esc(c.ticker || '')}${c.sector ? ' · ' + esc(c.sector) : ''}${c.price != null ? ` · $${c.price.toFixed(2)} <em class="${(c.chg1d || 0) >= 0 ? 'pos' : 'neg'}">${c.chg1d == null ? '' : `${c.chg1d >= 0 ? '+' : ''}${c.chg1d.toFixed(1)}%`}</em>${c.chgYtd != null ? ` · <em class="${c.chgYtd >= 0 ? 'pos' : 'neg'}">${c.chgYtd >= 0 ? '+' : ''}${c.chgYtd.toFixed(1)}% YTD</em>` : ''}` : ''}${c.shareClass ? ` · <em class="co-cl">2ND CLASS</em>` : ''}</span></span>
         <span class="co-cap">${coMoney(c.marketCap)}<i class="co-bar"><i style="width:${Math.max(2, ((c.marketCap || 0) / max) * 100)}%"></i></i></span>
         <span class="co-pe" title="${c.pe != null ? 'trailing P/E: price ÷ latest FY diluted EPS' : 'no positive trailing EPS'}">${c.pe != null ? c.pe.toFixed(1) : '—'}</span>
         <span class="co-mar ${m == null ? 'dimtext' : m >= 0 ? 'pos' : 'neg'}">${m == null ? '—' : `${m.toFixed(1)}%`}</span>
