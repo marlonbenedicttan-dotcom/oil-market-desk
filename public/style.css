@@ -1213,3 +1213,40 @@ button.deal-sec-tile:hover { background: #10151b; }
   .jp-q-table th:nth-child(3), .jp-q-table td:nth-child(3),
   .jp-q-table th:nth-child(6), .jp-q-table td:nth-child(6) { display: none; }
 }
+
+/* Japan: market / screener / banks views. */
+.jp-views { display: flex; gap: 18px; padding: 0 12px; border-bottom: 1px solid var(--line); }
+.jp-views button { background: none; border: 0; border-bottom: 2px solid transparent; color: var(--dim);
+  font: inherit; font-size: 9.5px; letter-spacing: 1px; padding: 9px 1px 8px; cursor: pointer; }
+.jp-views button.on { color: var(--amber); border-bottom-color: var(--amber); }
+.jp-market-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 14px; padding: 14px 12px 10px; }
+.jp-market-lvl { font-size: 20px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.jp-breadth { display: flex; align-items: center; gap: 10px; padding: 0 12px 12px; font-size: 10px; }
+.jp-breadth i { flex: 1; height: 4px; background: #7a2e2e; border-radius: 2px; overflow: hidden; }
+.jp-breadth i i { display: block; height: 100%; background: #2e7a4e; }
+.jp-mkt-hrow, .jp-mkt-row { display: grid; grid-template-columns: 1.6fr 42px 92px 62px 62px 62px 62px 66px; gap: 8px;
+  align-items: center; padding: 7px 12px; font-size: 10px; font-variant-numeric: tabular-nums; }
+.jp-mkt-hrow { font-size: 8px; letter-spacing: 1px; color: #5b6773; border-bottom: 1px solid var(--line); }
+.jp-mkt-row { border-bottom: 1px solid #141a21; }
+.jp-mkt-row span:not(:first-child) { text-align: right; }
+.jp-mkt-row:hover { background: #10151b; }
+.jp-bank-hrow, .jp-bank-row { display: grid; grid-template-columns: 26px 1fr 88px 58px 58px 58px 58px 62px; gap: 8px;
+  align-items: center; padding: 7px 12px; font-size: 10px; font-variant-numeric: tabular-nums; }
+.jp-bank-hrow { font-size: 8px; letter-spacing: 1px; color: #5b6773; border-bottom: 1px solid var(--line); }
+.jp-bank-row { width: 100%; background: transparent; border: 0; border-bottom: 1px solid #141a21; color: inherit;
+  font: inherit; text-align: left; cursor: pointer; }
+.jp-bank-row:hover { background: #10151b; }
+.jp-bank-row span:not(:nth-child(2)) { text-align: right; }
+.jp-presets { display: flex; flex-wrap: wrap; gap: 6px; padding: 10px 12px 6px; }
+.jp-presets button { background: #0c0f13; border: 1px solid var(--line); color: var(--dim); font: inherit;
+  font-size: 8.5px; letter-spacing: .8px; padding: 5px 9px; cursor: pointer; border-radius: 2px; }
+.jp-presets button.on { background: #1b2733; color: var(--amber); border-color: #3a4a5a; }
+.jp-presets .jp-clear { color: #8b6a6a; }
+@media (max-width: 760px) {
+  .jp-mkt-hrow, .jp-mkt-row { grid-template-columns: 1.4fr 34px 80px 56px; }
+  .jp-mkt-hrow span:nth-child(n+5), .jp-mkt-row span:nth-child(n+5) { display: none; }
+  .jp-bank-hrow, .jp-bank-row { grid-template-columns: 20px 1fr 70px 52px; }
+  .jp-bank-hrow span:nth-child(n+5), .jp-bank-row span:nth-child(n+5) { display: none; }
+}
+.jp-bank-row span:nth-child(2) { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.jp-bank-row span:nth-child(2) b { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

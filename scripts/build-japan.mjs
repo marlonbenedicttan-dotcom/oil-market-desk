@@ -15,12 +15,12 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { makeClient } from './jquants.mjs';
 import { deriveJapan } from './derive-japan.mjs';
-import { bandsFromHistory } from './japan-bands.mjs';
+import { bandsFromHistory, seriesFromRows } from './japan-bands.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const OUT = join(ROOT, 'data', 'japan.json');
 const CACHE = join(ROOT, 'data', 'cache', 'jquants');
-const SIZE = Number((process.argv.find((x) => x.startsWith('--limit=')) || '').split('=')[1] || 225);
+const SIZE = Number((process.argv.find((x) => x.startsWith('--limit=')) || '').split('=')[1] || 2000);
 // 300 days clears 1 January, so "YTD" is measured from the first session of the year, not from the
 // start of the window.
 const DAYS = Number((process.argv.find((x) => x.startsWith('--days=')) || '').split('=')[1] || 300);
@@ -187,19 +187,21 @@ const bands = new Map();
 for (let i = 0; i < ranked.length; i++) {
   const c = ranked[i];
   const f = join(CACHE, `val-${c.code}.json`);
-  let rows = null;
+  let hist = null;
   try {
     const cached = existsSync(f) ? JSON.parse(readFileSync(f, 'utf8')) : null;
-    if (cached && Date.parse(cached.fetched) > Date.now() - 7 * DAY) rows = cached.rows;
+    if (cached && Date.parse(cached.fetched) > Date.now() - 7 * DAY) {
+      hist = cached.per ? cached : (cached.rows ? seriesFromRows(cached.rows) : null);
+    }
   } catch { /* refetch */ }
-  if (!rows) {
+  if (!hist) {
     try {
-      rows = await api.valuationByCode(c.code);
-      writeFileSync(f, JSON.stringify({ fetched: new Date().toISOString(), rows }));
+      hist = seriesFromRows(await api.valuationByCode(c.code));
+      writeFileSync(f, JSON.stringify({ fetched: new Date().toISOString(), ...hist }));
     } catch (e) { console.log(`  ${c.code}: ${e.message}`); }
   }
-  if (rows && rows.length) bands.set(c.code, rows);
-  if ((i + 1) % 50 === 0) console.log(`  ${i + 1}/${ranked.length}`);
+  if (hist && hist.per && hist.per.length) bands.set(c.code, hist);
+  if ((i + 1) % 100 === 0) console.log(`  ${i + 1}/${ranked.length}`);
 }
 
 // --- 7. earnings dates and FX -------------------------------------------------------------------
@@ -275,9 +277,44 @@ for (const c of companies) {
   for (const c of companies) c.sectorMedian = stats.get(c.sector) || null;
 }
 
+// Whole-market aggregates, computed from the constituents rather than taken from an index file.
+const median = (xs) => {
+  const a = xs.filter((x) => x != null && Number.isFinite(x)).sort((x, y) => x - y);
+  if (!a.length) return null;
+  const m = Math.floor(a.length / 2);
+  return a.length % 2 ? a[m] : +((a[m - 1] + a[m]) / 2).toFixed(2);
+};
+const sectorStats = new Map();
+for (const c of companies) {
+  if (!sectorStats.has(c.sector)) sectorStats.set(c.sector, []);
+  sectorStats.get(c.sector).push(c);
+}
+const market = {
+  companies: companies.length,
+  totalCap: companies.reduce((a, c) => a + (c.marketCap || 0), 0),
+  medianPe: median(companies.map((c) => c.pe)),
+  medianPb: median(companies.map((c) => c.pb)),
+  medianRoe: median(companies.map((c) => c.roe)),
+  medianYield: median(companies.map((c) => (c.dividend ? c.dividend.yield : null))),
+  belowBook: companies.filter((c) => c.pb != null && c.pb < 1).length,
+  advancing: companies.filter((c) => c.chg1d != null && c.chg1d > 0).length,
+  declining: companies.filter((c) => c.chg1d != null && c.chg1d < 0).length,
+  upYtd: companies.filter((c) => c.chgYtd != null && c.chgYtd > 0).length,
+  sectors: [...sectorStats].map(([name, list]) => ({
+    name, count: list.length,
+    cap: list.reduce((a, c) => a + (c.marketCap || 0), 0),
+    pe: median(list.map((c) => c.pe)),
+    pb: median(list.map((c) => c.pb)),
+    roe: median(list.map((c) => c.roe)),
+    yield: median(list.map((c) => (c.dividend ? c.dividend.yield : null))),
+    chgYtd: median(list.map((c) => c.chgYtd)),
+  })).sort((a, b) => b.cap - a.cap),
+};
+
 const out = {
   updated: new Date().toISOString(),
-  universe: `TSE Prime · top ${companies.length} by market cap`,
+  universe: `TSE Prime · ${companies.length} companies with a market cap`,
+  market,
   currency: 'JPY',
   fx: { pair: 'USDJPY', rate: fx, date: iso(Date.now()) },
   topix,

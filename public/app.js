@@ -3462,9 +3462,18 @@ const coMargin = coMarginOf;
 // Built from the same components as the US page — ma-crumb, co-head, coMono, co-price, co-stats —
 // so it reads as one product. Different currency and fiscal year, same layout.
 let japanData = null, jpSel = null, jpQuery = '';
+let jpView = (() => { try { return localStorage.getItem('oilbasis.jpView') || 'screener'; } catch { return 'screener'; } })();
 let jpSort = (() => { try { return localStorage.getItem('oilbasis.jpSort') || 'cap'; } catch { return 'cap'; } })();
+let jpPreset = null;
 let jpFilter = (() => { try { return JSON.parse(localStorage.getItem('oilbasis.jpFilter') || '{}'); } catch { return {}; } })();
 const saveJpFilter = () => { try { localStorage.setItem('oilbasis.jpFilter', JSON.stringify(jpFilter)); } catch {} };
+
+const JP_PRESETS = [
+  { id: 'book', label: 'BELOW BOOK', f: { pbMax: 0.8, roeMin: 0, capMin: 20e9 } },
+  { id: 'banks', label: 'REGIONAL BANKS', f: { sector: 'Banks', capMax: 300e9 } },
+  { id: 'yield', label: 'HIGH YIELD', f: { yieldMin: 3.5 } },
+  { id: 'cash', label: 'CASH RICH', f: { cashMin: 0.2 } },
+];
 
 function yen(v) {
   if (v == null || !Number.isFinite(v)) return '—';
@@ -3494,11 +3503,45 @@ function japanTile(c) {
   </div>`;
 }
 
+const jpViewsBar = () => `<div class="jp-views">
+    ${[['market', 'MARKET'], ['screener', 'SCREENER'], ['banks', 'BANKS']].map(([k, t]) =>
+      `<button type="button" data-jpview="${k}" class="${jpView === k ? 'on' : ''}">${t}</button>`).join('')}
+  </div>`;
+
+const jpYield = (c) => (c.dividend && c.dividend.yield != null ? c.dividend.yield : null);
+const jpCashRatio = (c) => (c.cash && c.marketCap ? c.cash / c.marketCap : 0);
+
+function jpMatches(c) {
+  const f = jpFilter;
+  if (jpQuery) {
+    const hay = `${c.name} ${c.nameJa || ''} ${c.ticker} ${c.sector}`.toLowerCase();
+    if (!hay.includes(jpQuery.trim().toLowerCase())) return false;
+  }
+  if (f.sector && c.sector !== f.sector) return false;
+  if (f.pe) {
+    if (c.pe == null) return false;
+    if (f.pe === 'lt10' && c.pe >= 10) return false;
+    if (f.pe === '10to15' && (c.pe < 10 || c.pe >= 15)) return false;
+    if (f.pe === '15to25' && (c.pe < 15 || c.pe >= 25)) return false;
+    if (f.pe === 'gt25' && c.pe < 25) return false;
+  }
+  if (f.roe && !(c.roe != null && c.roe >= Number(f.roe))) return false;
+  if (f.roeMin != null && !(c.roe != null && c.roe >= f.roeMin)) return false;
+  if (f.yield && !(jpYield(c) != null && jpYield(c) >= Number(f.yield))) return false;
+  if (f.yieldMin != null && !(jpYield(c) != null && jpYield(c) >= f.yieldMin)) return false;
+  if (f.pbMax != null && !(c.pb != null && c.pb <= f.pbMax)) return false;
+  if (f.capMin != null && !((c.marketCap || 0) >= f.capMin)) return false;
+  if (f.capMax != null && !((c.marketCap || 0) <= f.capMax)) return false;
+  if (f.cashMin != null && jpCashRatio(c) < f.cashMin) return false;
+  return true;
+}
+
 async function renderJapan() {
   const el = $('co-body'); if (!el) return;
   const noteUs = $('co-note'); if (noteUs) noteUs.classList.add('hidden');
-  if (charts['jp-chart']) { try { charts['jp-chart'].destroy(); } catch {} delete charts['jp-chart']; }
-  if (charts['jp-q-chart']) { try { charts['jp-q-chart'].destroy(); } catch {} delete charts['jp-q-chart']; }
+  for (const k of ['jp-chart', 'jp-q-chart']) {
+    if (charts[k]) { try { charts[k].destroy(); } catch {} delete charts[k]; }
+  }
   el.innerHTML = stLoading('Loading Japan…');
   const d = await loadJapan();
   const all = (d && d.companies) || [];
@@ -3510,36 +3553,92 @@ async function renderJapan() {
   }
   const sel = all.find((c) => c.code === jpSel);
   if (sel) return renderJapanPage(sel);
+  if (jpView === 'market') return renderJapanMarket(all, d);
+  if (jpView === 'banks') return renderJapanBanks(all);
+  return renderJapanScreener(all, d);
+}
 
-  const q = jpQuery.trim().toLowerCase();
+// Whole-market view, computed from the constituent set rather than an index file.
+function renderJapanMarket(all, d) {
+  const el = $('co-body'); if (!el) return;
+  const m = d.market || {};
+  const t = d.topix || {};
+  const cell = (k, val, title, cls = '') => `<div class="co-stat" title="${esc(title)}"><span class="co-k">${k}</span><span class="co-v ${cls}">${val}</span></div>`;
+  const chg = (x) => (x == null ? '—' : `${x >= 0 ? '+' : ''}${x.toFixed(1)}%`);
+  const sectors = (m.sectors || []);
+  const breadth = m.advancing != null && m.declining != null
+    ? `<div class="jp-breadth"><span class="pos">${m.advancing} up</span><i><i style="width:${Math.round((m.advancing / Math.max(1, m.advancing + m.declining)) * 100)}%"></i></i><span class="neg">${m.declining} down</span></div>` : '';
+
+  el.innerHTML = jpViewsBar()
+    + `<div class="jp-market-head"><span class="ph-t">TOPIX</span><span class="jp-market-lvl">${t.level != null ? t.level.toFixed(2) : '—'}</span>
+        <span class="${(t.chg1d || 0) >= 0 ? 'pos' : 'neg'}">${chg(t.chg1d)} today</span>
+        <span class="${(t.chg6m || 0) >= 0 ? 'pos' : 'neg'}">${chg(t.chg6m)} 6M</span>
+        <span class="${(t.chgYtd || 0) >= 0 ? 'pos' : 'neg'}">${chg(t.chgYtd)} YTD</span>
+        <span class="dimtext">official index · whole market</span></div>`
+    + `<div class="co-stats co-stats-12">
+        ${cell('PRIME MARKET CAP', yen(m.totalCap), 'Sum of every Prime constituent we hold, ex-treasury')}
+        ${cell('COMPANIES', String(m.companies || all.length), 'Prime issues with a market cap')}
+        ${cell('MEDIAN P/E', m.medianPe != null ? `${m.medianPe.toFixed(1)}×` : '—', 'Median across the market — not cap-weighted')}
+        ${cell('MEDIAN P/B', m.medianPb != null ? `${m.medianPb.toFixed(2)}×` : '—', 'Median across the market')}
+        ${cell('MEDIAN ROE', m.medianRoe != null ? `${m.medianRoe.toFixed(1)}%` : '—', 'Trailing twelve months, median')}
+        ${cell('MEDIAN YIELD', m.medianYield != null ? `${m.medianYield.toFixed(2)}%` : '—', 'Median dividend yield')}
+        ${cell('BELOW BOOK', m.belowBook != null ? `${m.belowBook}` : '—', 'Companies trading under 1× book value', 'pos')}
+        ${cell('UP THIS YEAR', m.upYtd != null ? `${m.upYtd}` : '—', 'Companies with a positive year-to-date return')}
+      </div>`
+    + breadth
+    + (t.series && t.series.length > 1 ? '<div class="co-chartwrap"><canvas id="jp-mkt-chart"></canvas></div>' : '')
+    + `<div class="co-hrow jp-mkt-hrow"><span>SECTOR</span><span>N</span><span>CAP</span><span>P/E</span><span>P/B</span><span>ROE</span><span>YIELD</span><span>YTD</span></div>`
+    + sectors.map((s) => `<div class="jp-mkt-row">
+        <span>${esc(s.name)}</span><span>${s.count}</span><span>${yen(s.cap)}</span>
+        <span>${s.pe != null ? s.pe.toFixed(1) : '—'}</span>
+        <span>${s.pb != null ? s.pb.toFixed(2) : '—'}</span>
+        <span class="${(s.roe || 0) >= 0 ? 'pos' : 'neg'}">${s.roe != null ? s.roe.toFixed(1) + '%' : '—'}</span>
+        <span>${s.yield != null ? s.yield.toFixed(2) + '%' : '—'}</span>
+        <span class="${(s.chgYtd || 0) >= 0 ? 'pos' : 'neg'}">${chg(s.chgYtd)}</span>
+      </div>`).join('')
+    + `<div class="macro-note">Aggregates are computed from the ${all.length} Prime constituents in this dataset, not from an index file — medians are equal-weighted, so they describe the typical company rather than the largest. TOPIX is the exchange's official index and covers Prime, Standard and Growth.</div>`;
+  if (t.series && t.series.length > 1) {
+    mountChart('jp-mkt-chart', { labels: t.series.map((p) => p.d), datasets: [line('TOPIX', t.series.map((p) => p.c), CT.c1)] }, baseOptions({ dp: 0, dateAxis: true }));
+  }
+}
+
+// Banks deserve their own table: P/B against ROE is the whole argument, and operating metrics are noise.
+function renderJapanBanks(all) {
+  const el = $('co-body'); if (!el) return;
+  const banks = all.filter((c) => c.sector === 'Banks').sort((a, b) => (a.pb == null ? 9 : a.pb) - (b.pb == null ? 9 : b.pb));
+  const chg = (x) => (x == null ? '—' : `${x >= 0 ? '+' : ''}${x.toFixed(1)}%`);
+  el.innerHTML = jpViewsBar()
+    + `<div class="jp-market-head"><span class="ph-t">BANKS</span><span class="dimtext">${banks.length} listed Prime banks · sorted by price to book</span></div>`
+    + `<div class="co-hrow jp-bank-hrow"><span>#</span><span>BANK</span><span>CAP</span><span>P/B</span><span>P/E</span><span>ROE</span><span>YIELD</span><span>YTD</span></div>`
+    + banks.map((c, i) => `<button class="jp-bank-row" data-jp="${esc(c.code)}">
+        <span>${i + 1}</span>
+        <span><b>${esc(c.name)}</b><span class="co-tick">${esc(c.ticker)}</span></span>
+        <span>${yen(c.marketCap)}</span>
+        <span class="${c.pb != null && c.pb < 1 ? 'pos' : ''}">${c.pb != null ? c.pb.toFixed(2) + '×' : '—'}</span>
+        <span>${c.pe != null ? c.pe.toFixed(1) : '—'}</span>
+        <span class="${(c.roe || 0) >= 0 ? 'pos' : 'neg'}">${c.roe != null ? c.roe.toFixed(1) + '%' : '—'}</span>
+        <span>${jpYield(c) != null ? jpYield(c).toFixed(2) + '%' : '—'}</span>
+        <span class="${(c.chgYtd || 0) >= 0 ? 'pos' : 'neg'}">${chg(c.chgYtd)}</span>
+      </button>`).join('')
+    + `<div class="macro-note">Price to book is the number the Tokyo Stock Exchange has been pressing companies below 1× to fix. A bank trading under book with a positive return on equity is the classic Japanese value setup — or a value trap, which is why ROE sits beside it.</div>`;
+}
+
+function renderJapanScreener(all, d) {
+  const el = $('co-body'); if (!el) return;
   const sectors = [...new Set(all.map((c) => c.sector))].sort();
-  const inPe = (c) => {
-    const v = jpFilter.pe;
-    if (!v) return true;
-    if (c.pe == null) return false;
-    if (v === 'lt10') return c.pe < 10;
-    if (v === '10to15') return c.pe >= 10 && c.pe < 15;
-    if (v === '15to25') return c.pe >= 15 && c.pe < 25;
-    if (v === 'gt25') return c.pe >= 25;
-    return true;
-  };
-  const inRoe = (c) => (!jpFilter.roe ? true : c.roe != null && c.roe >= Number(jpFilter.roe));
-  const inYield = (c) => (!jpFilter.yield ? true : !!(c.dividend && c.dividend.yield != null && c.dividend.yield >= Number(jpFilter.yield)));
-  const rows = all.filter((c) =>
-    (!q || `${c.name} ${c.nameJa || ''} ${c.ticker} ${c.sector}`.toLowerCase().includes(q))
-    && (!jpFilter.sector || c.sector === jpFilter.sector)
-    && inPe(c) && inRoe(c) && inYield(c));
-
-  const key = { cap: (c) => c.marketCap || 0, pe: (c) => (c.pe == null ? Infinity : c.pe), pb: (c) => (c.pb == null ? Infinity : c.pb), roe: (c) => (c.roe == null ? -Infinity : c.roe), yield: (c) => (c.dividend && c.dividend.yield != null ? c.dividend.yield : -Infinity), ytd: (c) => c.chgYtd };
-  const dir = jpSort === 'cap' ? -1 : jpSort === 'ytd' ? -1 : 1;
-  rows.sort((a, b) => {
-    const av = key[jpSort](a), bv = key[jpSort](b);
-    return (av - bv) * dir;
-  });
+  const matched = all.filter(jpMatches);
+  const key = { cap: (c) => c.marketCap || 0, pe: (c) => (c.pe == null ? Infinity : c.pe), pb: (c) => (c.pb == null ? Infinity : c.pb), roe: (c) => (c.roe == null ? -Infinity : c.roe), yield: (c) => (jpYield(c) == null ? -Infinity : jpYield(c)), ytd: (c) => c.chgYtd };
+  const dir = jpSort === 'cap' || jpSort === 'ytd' ? -1 : 1;
+  matched.sort((a, b) => (key[jpSort](a) - key[jpSort](b)) * dir);
+  // 1,500 rows in the DOM is slow on a phone; the first 500 of the chosen sort is plenty to browse.
+  const rows = matched.slice(0, 500);
 
   const max = Math.max(...all.map((c) => c.marketCap || 0), 1);
   const opt = (v, label, cur) => `<option value="${v}" ${String(cur || '') === String(v) ? 'selected' : ''}>${label}</option>`;
-  el.innerHTML = `<div class="jp-filters">
+  el.innerHTML = jpViewsBar()
+    + `<div class="jp-presets">${JP_PRESETS.map((p) => `<button type="button" data-jppreset="${p.id}" class="${jpPreset === p.id ? 'on' : ''}">${p.label}</button>`).join('')}
+        ${jpPreset || Object.keys(jpFilter).length ? '<button type="button" data-jppreset="clear" class="jp-clear">CLEAR</button>' : ''}</div>`
+    + `<div class="jp-filters">
       <select data-jpf="sort" aria-label="Sort">${opt('cap', 'MARKET CAP', jpSort)}${opt('pe', 'P/E LOW→HIGH', jpSort)}${opt('pb', 'P/B LOW→HIGH', jpSort)}${opt('roe', 'ROE HIGH→LOW', jpSort)}${opt('yield', 'DIVIDEND HIGH→LOW', jpSort)}${opt('ytd', 'YTD BEST→WORST', jpSort)}</select>
       <select data-jpf="pe" aria-label="P/E">${opt('', 'ANY P/E', jpFilter.pe)}${opt('lt10', 'P/E < 10', jpFilter.pe)}${opt('10to15', 'P/E 10–15', jpFilter.pe)}${opt('15to25', 'P/E 15–25', jpFilter.pe)}${opt('gt25', 'P/E > 25', jpFilter.pe)}</select>
       <select data-jpf="roe" aria-label="ROE">${opt('', 'ANY ROE', jpFilter.roe)}${opt('10', 'ROE > 10%', jpFilter.roe)}${opt('15', 'ROE > 15%', jpFilter.roe)}</select>
@@ -3556,7 +3655,7 @@ async function renderJapan() {
         <span class="co-pe" title="${c.peBasis === 'TTM' ? 'trailing twelve months, from JPX' : 'fiscal year'}">${c.pe != null ? c.pe.toFixed(1) : '—'}</span>
         <span class="co-mar ${c.roe == null ? 'dimtext' : c.roe >= 0 ? 'pos' : 'neg'}">${c.roe == null ? '—' : `${c.roe.toFixed(1)}%`}</span>
       </button>`).join('')
-    + `<div class="macro-note">${rows.length} of ${all.length} shown · ${esc(d.universe || '')} · P/E and ROE are trailing twelve months, from JPX · forward P/E uses the company's own guidance · market cap excludes treasury shares · FX ${d.fx && d.fx.rate ? d.fx.rate.toFixed(2) : '—'} JPY per USD.</div>`;
+    + `<div class="macro-note">${matched.length === rows.length ? `${rows.length} of ${all.length}` : `${rows.length} shown of ${matched.length} matches (${all.length} total) — narrow with the filters`} · ${esc(d.universe || '')} · P/E and ROE are trailing twelve months, from JPX · forward P/E uses the company's own guidance · market cap excludes treasury shares · FX ${d.fx && d.fx.rate ? d.fx.rate.toFixed(2) : '—'} JPY per USD.</div>`;
 }
 
 function jpBand(label, current, b, unit) {
@@ -4085,6 +4184,27 @@ document.addEventListener('click', (e) => {
   const jrow = e.target.closest('[data-jp]');
   if (jrow) { jpSel = jrow.dataset.jp; renderJapan(); window.scrollTo({ top: 0, behavior: 'smooth' }); return; }
   if (e.target.closest('[data-jpback]')) { jpSel = null; renderJapan(); return; }
+  const jv = e.target.closest('[data-jpview]');
+  if (jv) {
+    jpView = jv.dataset.jpview;
+    try { localStorage.setItem('oilbasis.jpView', jpView); } catch {}
+    jpSel = null;
+    renderJapan();
+    return;
+  }
+  const jp = e.target.closest('[data-jppreset]');
+  if (jp) {
+    const id = jp.dataset.jppreset;
+    if (id === 'clear' || id === jpPreset) { jpPreset = null; jpFilter = {}; }
+    else {
+      const preset = JP_PRESETS.find((x) => x.id === id);
+      jpPreset = id;
+      jpFilter = { ...(preset ? preset.f : {}) };
+    }
+    saveJpFilter();
+    renderJapan();
+    return;
+  }
   const jstar = e.target.closest('[data-jpstar]');
   if (jstar) {
     toggleWatch(`jp:${jstar.dataset.jpstar}`);

@@ -19,6 +19,16 @@ export function num(v) {
 
 const TOLERANCE = 0.05;
 
+// Keep every nth point, always the last, so the chart ends on the latest close.
+function thin(points, n) {
+  if (points.length <= n) return points.map((p) => ({ d: p.d, c: p.c }));
+  const step = points.length / n;
+  const out = [];
+  for (let i = 0; i < n - 1; i++) out.push(points[Math.floor(i * step)]);
+  out.push(points[points.length - 1]);
+  return out.map((p) => ({ d: p.d, c: p.c }));
+}
+
 // Japanese summaries report cumulative year-to-date figures: 1Q is three months, 2Q is six, 3Q is nine,
 // FY is twelve. Standalone quarters are the differences between them.
 export function buildQuarters(rows) {
@@ -184,7 +194,8 @@ export function deriveJapan({ ranked, fins, series, val = new Map(), nextByCode 
       priceDate: s.length ? s[s.length - 1].d : null,
       marketCap: cap,
       marketCapUsd: cap && fx ? Math.round(cap / fx) : null,
-      series: s.map((p) => ({ d: p.d, c: p.c })),
+      // 60 points is visually identical over six months and keeps 1,500 companies inside one payload.
+      series: thin(s, 60),
       chg1d: s.length > 1 ? round(((s[s.length - 1].c / s[s.length - 2].c) - 1) * 100, 2) : null,
       chg6m: sixBase && sixBase.c ? round(((price / sixBase.c) - 1) * 100, 2) : null,
       chgYtd: ytdBase && ytdBase.c ? round(((price / ytdBase.c) - 1) * 100, 2) : null,

@@ -2179,3 +2179,22 @@ FCF 480/503 (17 banks n/a) · EV/EBITDA 423.
 - **Still to do (requested):** Japan has no market-level stats — aggregate market cap, market median P/E, the
   valuation distribution and sector-level aggregates that the US index panel has. Compute them from the 225
   names (or from the full master) and add a Japan market summary.
+
+## Japan: the whole Prime market, three views (2026-10-30)
+- **Universe expanded from 225 to 1,543** — every TSE Prime issue with a market cap. This is where the
+  regional banks and the below-book names live; Standard/Growth added almost none of them (41 of 949
+  below-book names are outside Prime).
+- **Payload kept flat.** Chart series are thinned to 60 points and the valuation cache stores only the
+  distribution, not 1,220 dated rows. Result: 6.45 MB raw, **1.20 MB gzipped** — the same wire weight as
+  the US file. One payload, no new endpoints.
+- **Three views**: MARKET / SCREENER / BANKS.
+  - MARKET: TOPIX level and changes, Prime market cap ¥1,270T, median P/E 14.4×, P/B 1.27×, ROE 9.9%,
+    yield 2.79%, 527 companies below book, 729 up / 777 down today, TOPIX chart, and a 33-sector table.
+  - SCREENER: 1,543 names, four presets (below book, regional banks, high yield, cash rich), sort and
+    filter. Rendered capped at 500 rows so a phone stays responsive; the count line says so.
+  - BANKS: all 69 Prime banks sorted by P/B — Shimizu Bank 0.39×, Tsukuba 0.49×, FIDEA 0.50×.
+- **Observation worth recording**: the re-rating has already started — regional banks are +50% to +120% YTD,
+  so "below book" today is not the same setup as "below book" two years ago. The screen shows both P/B and
+  YTD for exactly that reason.
+- The daily workflow no longer passes `--limit`, so CI keeps the full universe.
+- 137 tests.

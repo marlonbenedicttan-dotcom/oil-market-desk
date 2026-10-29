@@ -33,7 +33,7 @@ jobs:
           JQUANTS_API_KEY: ${{ secrets.JQUANTS_API_KEY }}
         run: |
           if [ -z "$JQUANTS_API_KEY" ]; then echo 'no J-Quants key — skipping Japan'; exit 0; fi
-          node scripts/build-japan.mjs --limit=225 --days=300
+          node scripts/build-japan.mjs --days=300
       - name: Commit if changed
         run: |
           git config user.name 'github-actions[bot]'

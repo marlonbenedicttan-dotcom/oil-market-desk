@@ -19,12 +19,15 @@ export function band(values, current) {
   };
 }
 
-// One pass over the valuation history for both multiples.
-export function bandsFromHistory(rows, current) {
-  const per = rows.map((r) => r.PER);
-  const pbr = rows.map((r) => r.PBR);
+// The cache keeps only the numbers, not 1,220 dated rows per company.
+export function seriesFromRows(rows) {
+  const keep = (k) => rows.map((r) => r[k]).filter((v) => v != null && Number.isFinite(v) && v > 0);
+  return { per: keep('PER'), pbr: keep('PBR') };
+}
+
+export function bandsFromHistory(hist, current) {
   return {
-    pe: band(per, current.pe),
-    pb: band(pbr, current.pb),
+    pe: band(hist.per || [], current.pe),
+    pb: band(hist.pbr || [], current.pb),
   };
 }
