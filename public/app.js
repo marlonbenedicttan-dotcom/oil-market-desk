@@ -315,6 +315,13 @@ function renderWatchlist() {
   const tiles = ids.map((id) => {
     const b = data?.benchmarks?.find((x) => x.id === id);
     if (b) return tileHtml(b);
+    if (String(id).startsWith('jp:')) {
+      const code = String(id).slice(3);
+      const j = japanData?.companies?.find((x) => x.code === code);
+      if (j) return japanTile(j);
+      if (!japanData) loadJapan().then(() => renderWatchlist());
+      return null;
+    }
     const c = companiesData?.companies?.find((x) => x.ticker === id);
     return c ? companyTile(c) : null;
   }).filter(Boolean);
@@ -2499,7 +2506,7 @@ function renderCalendar() {
     const top = calMode === 'top' ? new Set([...calCompany].sort((x, y) => (y.weight || 0) - (x.weight || 0)).slice(0, 50).map((x) => x.ticker)) : null;
     for (const e of calCompany) {
       if (!e.date) continue;
-      if (calMode === 'watch' && !pinned.has(e.ticker)) continue;
+      if (calMode === 'watch' && !(e.market === 'JP' ? pinned.has(`jp:${e.code}`) : pinned.has(e.ticker))) continue;
       if (calMode === 'top' && !top.has(e.ticker)) continue;
       (byDate[e.date] = byDate[e.date] || []).push({ ...e, company: true });
     }
@@ -2532,7 +2539,7 @@ function renderCalendar() {
   const md = `${MONTH_NAMES[d0.getUTCMonth()].slice(0, 3)} ${d0.getUTCDate()}`;
   const dayLabel = calSel === today ? `TODAY · ${md}` : `${CAL_DOW[(d0.getUTCDay() + 6) % 7].toUpperCase()} · ${md}`;
   const row = (e) => (e.company
-    ? `<div class="cal-row cal-crow" data-calco="${esc(e.ticker || '')}"><span class="cal-date">${esc(e.basis === 'expected' ? 'EST' : 'FILED')}</span><span class="cal-name">${esc(e.label)}</span><span class="cal-src">${esc(e.kind === 'earnings' ? 'company' : e.kind)}</span><span class="cal-note dimtext">${esc(e.detail || '')}</span></div>`
+    ? `<div class="cal-row cal-crow" ${e.market === 'JP' ? `data-caljp="${esc(e.code || '')}"` : `data-calco="${esc(e.ticker || '')}"`}><span class="cal-date">${esc(e.basis === 'expected' ? 'EST' : 'FILED')}</span><span class="cal-name">${esc(e.label)}</span><span class="cal-src">${esc(e.kind === 'earnings' ? 'company' : e.kind)}</span><span class="cal-note dimtext">${esc(e.detail || '')}</span></div>`
     : `<div class="cal-row"><span class="cal-date">${esc(e.time || '—')}</span><span class="cal-name">${e.cc ? `<em class="cal-cc">${esc(e.cc)}</em>` : ''}${esc(e.name)}</span><span class="cal-src">${esc(e.source || '')}</span>${e.note ? `<span class="cal-note dimtext">${esc(e.note)}</span>` : ''}</div>`);
   const modes = [['macro', 'MACRO'], ['watch', 'WATCHLIST'], ['top', 'TOP 50'], ['all', 'ALL 500']];
   el.innerHTML = `<div class="cal-modes">${modes.map(([k, t]) => `<button type="button" class="${calMode === k ? 'on' : ''}" data-calmode="${k}">${t}</button>`).join('')}</div>`
@@ -2547,6 +2554,15 @@ $('calendar')?.addEventListener('click', (e) => {
   if (!calMonth) return;
   const mode = e.target.closest('[data-calmode]');
   if (mode) { calMode = mode.dataset.calmode; try { localStorage.setItem('oilbasis.calMode', calMode); } catch {} renderCalendar(); return; }
+  const cjp = e.target.closest('[data-caljp]');
+  if (cjp && cjp.dataset.caljp) {
+    coRegion = 'jp'; try { localStorage.setItem('oilbasis.coRegion', 'jp'); } catch {}
+    jpSel = cjp.dataset.caljp;
+    document.querySelector('[data-tab="deals"]')?.click();
+    renderJapan();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    return;
+  }
   const crow = e.target.closest('[data-calco]');
   if (crow && crow.dataset.calco) {
     coCik = null;
@@ -3446,7 +3462,9 @@ const coMargin = coMarginOf;
 // Built from the same components as the US page — ma-crumb, co-head, coMono, co-price, co-stats —
 // so it reads as one product. Different currency and fiscal year, same layout.
 let japanData = null, jpSel = null, jpQuery = '';
-let jpChartMode = (() => { try { return localStorage.getItem('oilbasis.jpChart') || 'price'; } catch { return 'price'; } })();
+let jpSort = (() => { try { return localStorage.getItem('oilbasis.jpSort') || 'cap'; } catch { return 'cap'; } })();
+let jpFilter = (() => { try { return JSON.parse(localStorage.getItem('oilbasis.jpFilter') || '{}'); } catch { return {}; } })();
+const saveJpFilter = () => { try { localStorage.setItem('oilbasis.jpFilter', JSON.stringify(jpFilter)); } catch {} };
 
 function yen(v) {
   if (v == null || !Number.isFinite(v)) return '—';
@@ -3466,10 +3484,21 @@ async function loadJapan() {
   return japanData;
 }
 
+function japanTile(c) {
+  const chg = (v) => (v == null ? '' : `<em class="${v >= 0 ? 'pos' : 'neg'}">${v >= 0 ? '+' : ''}${v.toFixed(1)}%</em>`);
+  return `<div class="tile" data-jpcode="${esc(c.code)}" title="${esc(c.name)} — open the company page">
+    <span class="t-name">${esc(c.ticker)} · ${esc(c.name.length > 14 ? c.name.slice(0, 13) + '…' : c.name)}</span>
+    <span class="star on" data-star="jp:${esc(c.code)}" title="Unpin from watchlist">★</span>
+    <span class="t-px">${yen(c.price)}</span>
+    <span class="t-foot">${chg(c.chg1d)} today · ${chg(c.chg6m)} 6M · ${chg(c.chgYtd)} YTD</span>
+  </div>`;
+}
+
 async function renderJapan() {
   const el = $('co-body'); if (!el) return;
   const noteUs = $('co-note'); if (noteUs) noteUs.classList.add('hidden');
   if (charts['jp-chart']) { try { charts['jp-chart'].destroy(); } catch {} delete charts['jp-chart']; }
+  if (charts['jp-q-chart']) { try { charts['jp-q-chart'].destroy(); } catch {} delete charts['jp-q-chart']; }
   el.innerHTML = stLoading('Loading Japan…');
   const d = await loadJapan();
   const all = (d && d.companies) || [];
@@ -3483,18 +3512,67 @@ async function renderJapan() {
   if (sel) return renderJapanPage(sel);
 
   const q = jpQuery.trim().toLowerCase();
-  const rows = all.filter((c) => !q || `${c.name} ${c.nameJa || ''} ${c.ticker} ${c.sector}`.toLowerCase().includes(q));
+  const sectors = [...new Set(all.map((c) => c.sector))].sort();
+  const inPe = (c) => {
+    const v = jpFilter.pe;
+    if (!v) return true;
+    if (c.pe == null) return false;
+    if (v === 'lt10') return c.pe < 10;
+    if (v === '10to15') return c.pe >= 10 && c.pe < 15;
+    if (v === '15to25') return c.pe >= 15 && c.pe < 25;
+    if (v === 'gt25') return c.pe >= 25;
+    return true;
+  };
+  const inRoe = (c) => (!jpFilter.roe ? true : c.roe != null && c.roe >= Number(jpFilter.roe));
+  const inYield = (c) => (!jpFilter.yield ? true : !!(c.dividend && c.dividend.yield != null && c.dividend.yield >= Number(jpFilter.yield)));
+  const rows = all.filter((c) =>
+    (!q || `${c.name} ${c.nameJa || ''} ${c.ticker} ${c.sector}`.toLowerCase().includes(q))
+    && (!jpFilter.sector || c.sector === jpFilter.sector)
+    && inPe(c) && inRoe(c) && inYield(c));
+
+  const key = { cap: (c) => c.marketCap || 0, pe: (c) => (c.pe == null ? Infinity : c.pe), pb: (c) => (c.pb == null ? Infinity : c.pb), roe: (c) => (c.roe == null ? -Infinity : c.roe), yield: (c) => (c.dividend && c.dividend.yield != null ? c.dividend.yield : -Infinity), ytd: (c) => c.chgYtd };
+  const dir = jpSort === 'cap' ? -1 : jpSort === 'ytd' ? -1 : 1;
+  rows.sort((a, b) => {
+    const av = key[jpSort](a), bv = key[jpSort](b);
+    return (av - bv) * dir;
+  });
+
   const max = Math.max(...all.map((c) => c.marketCap || 0), 1);
-  el.innerHTML = `<div class="co-hrow"><span>#</span><span></span><span>COMPANY</span><span>MARKET CAP</span><span>P/E</span><span>ROE</span></div>`
+  const opt = (v, label, cur) => `<option value="${v}" ${String(cur || '') === String(v) ? 'selected' : ''}>${label}</option>`;
+  el.innerHTML = `<div class="jp-filters">
+      <select data-jpf="sort" aria-label="Sort">${opt('cap', 'MARKET CAP', jpSort)}${opt('pe', 'P/E LOW→HIGH', jpSort)}${opt('pb', 'P/B LOW→HIGH', jpSort)}${opt('roe', 'ROE HIGH→LOW', jpSort)}${opt('yield', 'DIVIDEND HIGH→LOW', jpSort)}${opt('ytd', 'YTD BEST→WORST', jpSort)}</select>
+      <select data-jpf="pe" aria-label="P/E">${opt('', 'ANY P/E', jpFilter.pe)}${opt('lt10', 'P/E < 10', jpFilter.pe)}${opt('10to15', 'P/E 10–15', jpFilter.pe)}${opt('15to25', 'P/E 15–25', jpFilter.pe)}${opt('gt25', 'P/E > 25', jpFilter.pe)}</select>
+      <select data-jpf="roe" aria-label="ROE">${opt('', 'ANY ROE', jpFilter.roe)}${opt('10', 'ROE > 10%', jpFilter.roe)}${opt('15', 'ROE > 15%', jpFilter.roe)}</select>
+      <select data-jpf="yield" aria-label="Dividend yield">${opt('', 'ANY YIELD', jpFilter.yield)}${opt('2', 'YIELD > 2%', jpFilter.yield)}${opt('3', 'YIELD > 3%', jpFilter.yield)}${opt('4', 'YIELD > 4%', jpFilter.yield)}</select>
+      <select data-jpf="sector" aria-label="Sector">${opt('', 'ALL SECTORS', jpFilter.sector)}${sectors.map((s) => opt(s, s.toUpperCase(), jpFilter.sector)).join('')}</select>
+    </div>`
+    + `<div class="co-hrow"><span>#</span><span></span><span>COMPANY</span><span>MARKET CAP</span><span>P/E</span><span>ROE</span></div>`
+    + (rows.length ? '' : `<div class="macro-note">No company matches those filters.</div>`)
     + rows.map((c, i) => `<button class="co-row" data-jp="${esc(c.code)}">
         <span class="co-rank">${i + 1}</span>
         ${jpMono(c)}
-        <span class="co-id"><b>${esc(c.name)}</b><span class="co-tick">${esc(c.ticker)} · ${esc(c.sector)} · ${yen(c.price)} <em class="${(c.chg1d || 0) >= 0 ? 'pos' : 'neg'}">${c.chg1d == null ? '' : `${c.chg1d >= 0 ? '+' : ''}${c.chg1d.toFixed(1)}%`}</em> · <em class="${(c.chgYtd || 0) >= 0 ? 'pos' : 'neg'}">${c.chgYtd == null ? '—' : `${c.chgYtd >= 0 ? '+' : ''}${c.chgYtd.toFixed(1)}%`} ${esc(c.chgYtdBasis === 'YTD' ? 'YTD' : 'SINCE ' + String(c.chgYtdBasis || '').slice(6))}</em></span></span>
+        <span class="co-id"><b>${esc(c.name)}</b><span class="co-tick">${esc(c.ticker)} · ${esc(c.sector)} · ${yen(c.price)} <em class="${(c.chg1d || 0) >= 0 ? 'pos' : 'neg'}">${c.chg1d == null ? '' : `${c.chg1d >= 0 ? '+' : ''}${c.chg1d.toFixed(1)}%`}</em> · <em class="${(c.chgYtd || 0) >= 0 ? 'pos' : 'neg'}">${c.chgYtd == null ? '—' : `${c.chgYtd >= 0 ? '+' : ''}${c.chgYtd.toFixed(1)}%`} ${c.chgYtdBasis === 'YTD' ? 'YTD' : 'SINCE ' + String(c.chgYtdBasis || '').slice(6)}</em></span></span>
         <span class="co-cap">${yen(c.marketCap)}<i class="co-bar"><i style="width:${Math.max(2, ((c.marketCap || 0) / max) * 100)}%"></i></i></span>
         <span class="co-pe" title="${c.peBasis === 'TTM' ? 'trailing twelve months, from JPX' : 'fiscal year'}">${c.pe != null ? c.pe.toFixed(1) : '—'}</span>
         <span class="co-mar ${c.roe == null ? 'dimtext' : c.roe >= 0 ? 'pos' : 'neg'}">${c.roe == null ? '—' : `${c.roe.toFixed(1)}%`}</span>
       </button>`).join('')
-    + `<div class="macro-note">${esc(d.universe || '')} · P/E and ROE are trailing twelve months, from JPX · forward P/E uses the company's own guidance, not analyst consensus · market cap excludes treasury shares · FX ${d.fx && d.fx.rate ? d.fx.rate.toFixed(2) : '—'} JPY per USD.</div>`;
+    + `<div class="macro-note">${rows.length} of ${all.length} shown · ${esc(d.universe || '')} · P/E and ROE are trailing twelve months, from JPX · forward P/E uses the company's own guidance · market cap excludes treasury shares · FX ${d.fx && d.fx.rate ? d.fx.rate.toFixed(2) : '—'} JPY per USD.</div>`;
+}
+
+function jpBand(label, current, b, unit) {
+  if (!b || current == null) return '';
+  const span = b.max - b.min || 1;
+  const pos = Math.max(0, Math.min(100, ((current - b.min) / span) * 100));
+  const med = Math.max(0, Math.min(100, ((b.median - b.min) / span) * 100));
+  return `<div class="jp-band">
+      <span class="jp-band-k">${label}</span>
+      <span class="jp-band-v">${current.toFixed(2)}${unit}</span>
+      <span class="jp-band-track" title="Range over the last ${b.years} years">
+        <i class="jp-band-med" style="left:${med}%"></i>
+        <i class="jp-band-dot" style="left:${pos}%"></i>
+      </span>
+      <span class="jp-band-r">${b.min.toFixed(1)}–${b.max.toFixed(1)}${unit} · median ${b.median.toFixed(1)}${unit} · <b>${b.percentile}th</b> percentile of ${b.years}y</span>
+    </div>`;
 }
 
 function renderJapanPage(c) {
@@ -3511,12 +3589,14 @@ function renderJapanPage(c) {
   const cell = (k, val, title, cls = '') => `<div class="co-stat" title="${esc(title)}"><span class="co-k">${k}</span><span class="co-v ${cls}">${val}</span></div>`;
   const chg = (x) => (x == null ? '' : `${x >= 0 ? '+' : ''}${x.toFixed(1)}%`);
   const pbOurs = v.fields && v.fields.equity ? v.fields.equity.ours : null;
+  const starred = watchlist().includes(`jp:${c.code}`);
 
   el.innerHTML = `<div class="ma-crumb"><button class="ma-back" data-jpback="1">← COMPANIES</button> <span>${esc(c.ticker)}</span></div>`
     + `<div class="co-head">${jpMono(c)}
         <div><div class="co-name">${esc(c.name)}</div>
         <div class="co-sub">${esc(c.ticker)}${c.sector ? ' · ' + esc(c.sector) : ''}${c.size ? ' · ' + esc(c.size) : ''}</div>
         ${c.nameJa ? `<div class="co-desc">${esc(c.nameJa)}</div>` : ''}</div>
+        <button class="co-star ${starred ? 'on' : ''}" data-jpstar="${esc(c.code)}" title="${starred ? 'Unpin from watchlist' : 'Pin to watchlist'}">${starred ? '★' : '☆'}</button>
       </div>`
     + `<div class="co-price">
         <span class="co-price-v">${yen(c.price)}</span>
@@ -3541,6 +3621,10 @@ function renderJapanPage(c) {
         ${cell('NET PROFIT', yen(c.np), 'Fiscal year, attributable to owners of the parent', c.np >= 0 ? 'pos' : 'neg')}
         ${cell('CASH AFTER INVESTING', yen(c.fcf), 'Operating cash flow + investing cash flow — capex sits inside investing and is not broken out in the summary')}
       </div>`
+    + (c.bands && (c.bands.pe || c.bands.pb) ? `<div class="jp-bands">
+        ${jpBand('P/E', c.pe, c.bands.pe, '×')}
+        ${jpBand('P/B', c.pb, c.bands.pb, '×')}
+      </div>` : '')
     + `<div class="co-stats co-stats-12">
         ${c.odp != null
           ? cell('ORDINARY PROFIT', yen(c.odp), 'Operating profit plus non-operating items — the line Japanese GAAP filers report; IFRS filers do not have it', c.odp >= 0 ? 'pos' : 'neg')
@@ -3549,8 +3633,8 @@ function renderJapanPage(c) {
         ${cell('EQUITY RATIO', c.eqAr != null ? `${(c.eqAr * 100).toFixed(1)}%` : '—', 'Equity ÷ total assets, as reported')}
         ${cell('PAYOUT RATIO', d && d.payoutRatio != null ? `${(d.payoutRatio * 100).toFixed(0)}%` : '—', 'Dividends ÷ net profit for the fiscal year')}
       </div>`
-    + `<div class="co-chart-tabs"><button type="button" data-jpchart="price" class="${jpChartMode === 'price' ? 'on' : ''}">PRICE</button><button type="button" data-jpchart="quarters" class="${jpChartMode === 'quarters' ? 'on' : ''}">QUARTERS</button></div>`
     + `<div class="co-chartwrap"><canvas id="jp-chart"></canvas></div>`
+    + jpQuartersHtml(c)
     + `<div class="macro-note">
         Fiscal year ending ${esc(c.period || '—')} · statement figures from the company's summary of financial statements (J-Quants); P/E, P/B and ROE from JPX's own valuation file.
         ${pbOurs != null && v.status === 'disputed' ? `Our P/B from the filing is ${pbOurs.toFixed(2)}× against JPX's ${c.pb.toFixed(2)}×.` : ''}
@@ -3559,33 +3643,62 @@ function renderJapanPage(c) {
         ${c.earnings ? ` Next results: ${esc(c.earnings.date)} (${esc(c.earnings.quarter || 'scheduled')}).` : ''}
         Currency is yen throughout; the USD figure is a conversion, not a separate quote.
       </div>`;
-  drawJpChart(c);
+  drawJpPrice(c);
+  drawJpQuarters(c);
 }
 
-// Two views: the share price, or the quarters behind the annual numbers. The second is the one the
-// summary file actually supports and almost nobody shows.
-function drawJpChart(c) {
+// Quarters get their own section under the price chart: a chart plus a table an investor can read
+// line by line, because the shape of the year matters more than the annual total.
+function jpQuartersHtml(c) {
+  const q = c.quarters || [];
+  if (q.length < 2) return '';
+  const yoy = (x) => {
+    const target = Date.parse(x.d);
+    const prev = q.find((y) => y.q === x.q && Math.abs(Date.parse(y.d) - (target - 365.25 * 864e5)) < 45 * 864e5);
+    return prev && prev.sales && x.sales ? ((x.sales / prev.sales) - 1) * 100 : null;
+  };
+  const rows = [...q].reverse().map((x) => {
+    const y = yoy(x);
+    const margin = x.sales && x.op != null ? (x.op / x.sales) * 100 : null;
+    return `<tr>
+        <td>${esc(x.d)} <em>${esc(x.q)}</em></td>
+        <td>${yen(x.sales)}</td>
+        <td class="${y == null ? 'dimtext' : y >= 0 ? 'pos' : 'neg'}">${y == null ? '—' : `${y >= 0 ? '+' : ''}${y.toFixed(1)}%`}</td>
+        <td class="${x.op == null ? 'dimtext' : x.op >= 0 ? 'pos' : 'neg'}">${x.op == null ? '—' : yen(x.op)}</td>
+        <td>${margin == null ? '—' : `${margin.toFixed(1)}%`}</td>
+        <td class="${x.np == null ? 'dimtext' : x.np >= 0 ? 'pos' : 'neg'}">${x.np == null ? '—' : yen(x.np)}</td>
+      </tr>`;
+  }).join('');
+  return `<div class="jp-q">
+      <div class="jp-q-head"><span class="ph-t">QUARTERLY RESULTS</span><span class="dimtext">${q.length} quarters · ¥ yen</span></div>
+      <div class="co-chartwrap"><canvas id="jp-q-chart"></canvas></div>
+      <table class="jp-q-table">
+        <thead><tr><th>QUARTER</th><th>NET SALES</th><th>YOY</th><th>OPERATING PROFIT</th><th>MARGIN</th><th>NET PROFIT</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+      <div class="macro-note">Standalone quarters, derived from the cumulative year-to-date figures companies publish (Q2 = 2Q − 1Q, Q4 = FY − 3Q). Year-on-year compares the same quarter a year earlier.</div>
+    </div>`;
+}
+
+function drawJpPrice(c) {
   if (charts['jp-chart']) { try { charts['jp-chart'].destroy(); } catch {} delete charts['jp-chart']; }
-  if (jpChartMode === 'quarters') {
-    const q = c.quarters || [];
-    if (q.length < 2) {
-      const wrap = $('jp-chart') && $('jp-chart').parentElement;
-      if (wrap) wrap.setAttribute('data-empty', 'This company does not report quarterly figures.');
-      return;
-    }
-    mountChart('jp-chart', {
-      labels: q.map((x) => x.d),
-      datasets: [
-        { type: 'bar', label: 'Net sales', data: q.map((x) => (x.sales == null ? null : x.sales / 1e9)), backgroundColor: '#1b2733', borderColor: '#2a3440', borderWidth: 1, yAxisID: 'y', order: 2 },
-        { type: 'line', label: 'Operating profit', data: q.map((x) => (x.op == null ? null : x.op / 1e9)), borderColor: CT.c1, backgroundColor: 'transparent', tension: 0.25, pointRadius: 2, yAxisID: 'y1', order: 1 },
-      ],
-    }, baseOptions({ dp: 0, yTitle: '¥bn sales', y1Title: '¥bn profit', dateAxis: true }));
-    return;
-  }
   const s = c.series || [];
   if (s.length > 1) {
     mountChart('jp-chart', { labels: s.map((p) => p.d), datasets: [line(`${c.ticker} · JPY`, s.map((p) => p.c), CT.c1)] }, baseOptions({ dp: 0, dateAxis: true }));
   }
+}
+
+function drawJpQuarters(c) {
+  if (charts['jp-q-chart']) { try { charts['jp-q-chart'].destroy(); } catch {} delete charts['jp-q-chart']; }
+  const q = c.quarters || [];
+  if (q.length < 2) return;
+  mountChart('jp-q-chart', {
+    labels: q.map((x) => x.d),
+    datasets: [
+      { type: 'bar', label: 'Net sales', data: q.map((x) => (x.sales == null ? null : x.sales / 1e9)), backgroundColor: '#1b2733', borderColor: '#2a3440', borderWidth: 1, yAxisID: 'y', order: 2 },
+      { type: 'line', label: 'Operating profit', data: q.map((x) => (x.op == null ? null : x.op / 1e9)), borderColor: CT.c1, backgroundColor: 'transparent', tension: 0.25, pointRadius: 2, yAxisID: 'y1', order: 1 },
+    ],
+  }, baseOptions({ dp: 0, yTitle: '¥bn sales', y1Title: '¥bn profit', dateAxis: true }));
 }
 
 function renderCompanies() {
@@ -3972,13 +4085,21 @@ document.addEventListener('click', (e) => {
   const jrow = e.target.closest('[data-jp]');
   if (jrow) { jpSel = jrow.dataset.jp; renderJapan(); window.scrollTo({ top: 0, behavior: 'smooth' }); return; }
   if (e.target.closest('[data-jpback]')) { jpSel = null; renderJapan(); return; }
-  const jc = e.target.closest('[data-jpchart]');
-  if (jc) {
-    jpChartMode = jc.dataset.jpchart;
-    try { localStorage.setItem('oilbasis.jpChart', jpChartMode); } catch {}
-    document.querySelectorAll('[data-jpchart]').forEach((b) => b.classList.toggle('on', b.dataset.jpchart === jpChartMode));
-    const cur = (japanData && japanData.companies || []).find((x) => x.code === jpSel);
-    if (cur) drawJpChart(cur);
+  const jstar = e.target.closest('[data-jpstar]');
+  if (jstar) {
+    toggleWatch(`jp:${jstar.dataset.jpstar}`);
+    const cur = ((japanData && japanData.companies) || []).find((x) => x.code === jpSel);
+    if (cur) renderJapanPage(cur);
+    renderWatchlist();
+    return;
+  }
+  const jtile = e.target.closest('[data-jpcode]');
+  if (jtile) {
+    coRegion = 'jp'; try { localStorage.setItem('oilbasis.coRegion', 'jp'); } catch {}
+    jpSel = jtile.dataset.jpcode;
+    document.querySelector('[data-tab="deals"]')?.click();
+    renderJapan();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
     return;
   }
   if (e.target.closest('[data-coback]')) { coCik = null; renderCompanies(); return; }
@@ -4039,7 +4160,23 @@ document.addEventListener('change', (e) => {
   renderCompanies();
 });
 
+// Selects fire 'change' on some browsers where they never fire 'input' — handle both.
+document.addEventListener('change', (e) => {
+  if (!(e.target && e.target.dataset && e.target.dataset.jpf)) return;
+  const k = e.target.dataset.jpf;
+  if (k === 'sort') { jpSort = e.target.value; try { localStorage.setItem('oilbasis.jpSort', jpSort); } catch {} }
+  else { jpFilter[k] = e.target.value; saveJpFilter(); }
+  renderJapan();
+});
+
 document.addEventListener('input', (e) => {
+  if (e.target && e.target.dataset && e.target.dataset.jpf) {
+    const k = e.target.dataset.jpf;
+    if (k === 'sort') { jpSort = e.target.value; try { localStorage.setItem('oilbasis.jpSort', jpSort); } catch {} }
+    else { jpFilter[k] = e.target.value; saveJpFilter(); }
+    renderJapan();
+    return;
+  }
   if (e.target && e.target.id === 'co-search') {
     if (coRegion === 'jp') { jpQuery = e.target.value || ''; jpSel = null; renderJapan(); return; }
     coQuery = e.target.value || ''; coCik = null; renderCompanies(); return;

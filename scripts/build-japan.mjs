@@ -15,6 +15,7 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { makeClient } from './jquants.mjs';
 import { deriveJapan } from './derive-japan.mjs';
+import { bandsFromHistory } from './japan-bands.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const OUT = join(ROOT, 'data', 'japan.json');
@@ -179,7 +180,29 @@ for (let i = 0; i < ranked.length; i++) {
   if ((i + 1) % 25 === 0) console.log(`  ${i + 1}/${ranked.length}`);
 }
 
-// --- 6. earnings dates and FX -------------------------------------------------------------------
+// --- 6. five-year valuation bands ---------------------------------------------------------------
+// One request per company returns the full history; we keep only the distribution. Cached for a week.
+console.log('valuation history…');
+const bands = new Map();
+for (let i = 0; i < ranked.length; i++) {
+  const c = ranked[i];
+  const f = join(CACHE, `val-${c.code}.json`);
+  let rows = null;
+  try {
+    const cached = existsSync(f) ? JSON.parse(readFileSync(f, 'utf8')) : null;
+    if (cached && Date.parse(cached.fetched) > Date.now() - 7 * DAY) rows = cached.rows;
+  } catch { /* refetch */ }
+  if (!rows) {
+    try {
+      rows = await api.valuationByCode(c.code);
+      writeFileSync(f, JSON.stringify({ fetched: new Date().toISOString(), rows }));
+    } catch (e) { console.log(`  ${c.code}: ${e.message}`); }
+  }
+  if (rows && rows.length) bands.set(c.code, rows);
+  if ((i + 1) % 50 === 0) console.log(`  ${i + 1}/${ranked.length}`);
+}
+
+// --- 7. earnings dates and FX -------------------------------------------------------------------
 console.log('calendar + fx…');
 const cal = await api.earningsCalendar().catch(() => []);
 const nextByCode = new Map();
@@ -217,8 +240,14 @@ try {
   fx = closes.filter((x) => x != null).pop() || null;
 } catch { fx = null; }
 
-// --- 7. derive ----------------------------------------------------------------------------------
+// --- 8. derive ----------------------------------------------------------------------------------
 const companies = deriveJapan({ ranked, fins, series, val: valByCode, nextByCode, fx });
+
+// Attach the bands once the multiples exist.
+for (const c of companies) {
+  const hist = bands.get(c.code);
+  if (hist) c.bands = bandsFromHistory(hist, { pe: c.pe, pb: c.pb });
+}
 
 // Sector medians, so a multiple can be read against its own industry rather than the whole market.
 {

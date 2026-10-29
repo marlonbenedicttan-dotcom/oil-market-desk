@@ -2163,3 +2163,19 @@ FCF 480/503 (17 banks n/a) · EV/EBITDA 423.
 - Ordinary profit is only shown where it exists — IFRS filers (Toyota, Sony) have no such line, so the cell
   falls back to total assets rather than displaying a dash.
 - 137 tests.
+
+## Japan: valuation bands, screener, calendar, quarters section (2026-10-30)
+- **Five-year valuation bands.** `/equities/valuation?code=X` returns the daily PER/PBR history; we keep the
+  distribution (min/p25/median/p75/max/percentile). 215/225 have a P/E band, 225/225 a P/B band. Toyota's
+  8.81× sits at the **26th percentile** of five years (5.94–13.92, median 9.81). `scripts/japan-bands.mjs`.
+- **Screener.** Sort by cap / P/E / P/B / ROE / dividend / YTD; filter by P/E band, ROE floor, yield floor and
+  the 33 sectors. Persisted in localStorage. (Selects fire `change` on some browsers, so both `input` and
+  `change` are handled.)
+- **Calendar.** Japan results now appear in the home calendar as scheduled events (23 currently); clicking one
+  opens the Japanese company page. Watchlist mode matches `jp:code` pins.
+- **Watchlist.** Japanese companies can be pinned (`jp:7203`) and render as tiles with ¥ prices.
+- **Quarters moved out of the toggle**: the price chart is always shown, and a dedicated **QUARTERLY RESULTS**
+  section follows with its own chart and a table (quarter, net sales, YoY, operating profit, margin, net profit).
+- **Still to do (requested):** Japan has no market-level stats — aggregate market cap, market median P/E, the
+  valuation distribution and sector-level aggregates that the US index panel has. Compute them from the 225
+  names (or from the full master) and add a Japan market summary.

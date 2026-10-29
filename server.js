@@ -3930,6 +3930,19 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname === '/api/calendar') {
       const cal = await getCalendar().catch((e) => ({ error: String(e.message), events: [] }));
       try { cal.companies = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'events.json'), 'utf8')).events || []; } catch { cal.companies = []; }
+      try {
+        const jp = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'japan.json'), 'utf8'));
+        const today = new Date().toISOString().slice(0, 10);
+        for (const c of (jp.companies || [])) {
+          if (!c.earnings || !c.earnings.date || c.earnings.date < today) continue;
+          cal.companies.push({
+            date: c.earnings.date, kind: 'earnings', market: 'JP', ticker: c.ticker, code: c.code,
+            name: c.name, label: `${c.ticker} · ${c.name} · results`,
+            detail: `TSE Prime · ${c.sector}`, basis: 'scheduled', weight: 0,
+            days: Math.round((Date.parse(c.earnings.date) - Date.now()) / 864e5),
+          });
+        }
+      } catch { /* no japan data yet */ }
       return sendJSON(res, 200, cal);
     }
     if (url.pathname === '/api/chokepoints') return sendJSON(res, 200, getChokepoints());

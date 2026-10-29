@@ -1184,3 +1184,32 @@ button.deal-sec-tile:hover { background: #10151b; }
 .co-chart-tabs button { background: none; border: 0; border-bottom: 2px solid transparent; color: var(--dim);
   font: inherit; font-size: 9px; letter-spacing: 1px; padding: 4px 1px; cursor: pointer; }
 .co-chart-tabs button.on { color: var(--amber); border-bottom-color: var(--amber); }
+
+/* Japan: filters, valuation bands, quarterly table. */
+.jp-filters { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 12px 10px; }
+.jp-filters select { background: #0c0f13; border: 1px solid var(--line); color: var(--text); font: inherit;
+  font-size: 9px; letter-spacing: .8px; padding: 6px 8px; border-radius: 2px; cursor: pointer; }
+.jp-filters select:focus { outline: 1px solid var(--amber); }
+.jp-bands { display: grid; gap: 8px; padding: 12px; border-bottom: 1px solid var(--line); }
+.jp-band { display: grid; grid-template-columns: 42px 64px 1fr auto; align-items: center; gap: 10px; }
+.jp-band-k { font-size: 9px; letter-spacing: 1px; color: #5b6773; }
+.jp-band-v { font-variant-numeric: tabular-nums; font-size: 12px; }
+.jp-band-track { position: relative; height: 3px; background: #1b2733; border-radius: 2px; }
+.jp-band-med { position: absolute; top: -3px; width: 1px; height: 9px; background: #3a4a5a; }
+.jp-band-dot { position: absolute; top: -4px; width: 9px; height: 9px; margin-left: -4px; border-radius: 50%; background: var(--amber); }
+.jp-band-r { font-size: 9px; color: var(--dim); letter-spacing: .3px; white-space: nowrap; }
+.jp-q { border-top: 1px solid var(--line); }
+.jp-q-head { display: flex; justify-content: space-between; align-items: baseline; padding: 12px 12px 6px; }
+.jp-q-table { width: 100%; border-collapse: collapse; font-size: 11px; font-variant-numeric: tabular-nums; }
+.jp-q-table th { text-align: right; font-size: 8px; letter-spacing: 1px; color: #5b6773; font-weight: 400;
+  padding: 6px 8px; border-bottom: 1px solid var(--line); }
+.jp-q-table th:first-child, .jp-q-table td:first-child { text-align: left; }
+.jp-q-table td { padding: 6px 8px; text-align: right; border-bottom: 1px solid #141a21; }
+.jp-q-table td em { font-style: normal; color: #6f7b88; font-size: 9px; margin-left: 4px; }
+.jp-q-table tbody tr:hover { background: #10151b; }
+@media (max-width: 640px) {
+  .jp-band { grid-template-columns: 34px 54px 1fr; }
+  .jp-band-r { grid-column: 1 / -1; white-space: normal; }
+  .jp-q-table th:nth-child(3), .jp-q-table td:nth-child(3),
+  .jp-q-table th:nth-child(6), .jp-q-table td:nth-child(6) { display: none; }
+}
