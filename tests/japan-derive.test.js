@@ -112,3 +112,31 @@ test('P/B rebuilt from the filing is cross-checked against the exchange', () => 
   assert.equal(v.status, 'disputed');
   assert.ok(v.fields.equity.ours > v.fields.equity.alt);
 });
+
+test('cumulative year-to-date figures become standalone quarters', async () => {
+  const { buildQuarters } = await import('../scripts/derive-japan.mjs');
+  const rows = [
+    { CurPerType: '1Q', CurFYEn: '2026-03-31', CurPerEn: '2025-06-30', DiscDate: '2025-08-01', Sales: '100', OP: '10', NP: '7' },
+    { CurPerType: '2Q', CurFYEn: '2026-03-31', CurPerEn: '2025-09-30', DiscDate: '2025-11-01', Sales: '210', OP: '22', NP: '15' },
+    { CurPerType: '3Q', CurFYEn: '2026-03-31', CurPerEn: '2025-12-31', DiscDate: '2026-02-01', Sales: '330', OP: '36', NP: '24' },
+    { CurPerType: 'FY', CurFYEn: '2026-03-31', CurPerEn: '2026-03-31', DiscDate: '2026-05-01', Sales: '450', OP: '50', NP: '34' },
+  ];
+  const q = buildQuarters(rows);
+  assert.deepEqual(q.map((x) => x.sales), [100, 110, 120, 120]);
+  assert.deepEqual(q.map((x) => x.op), [10, 12, 14, 14]);
+  assert.deepEqual(q.map((x) => x.d), ['2025-06-30', '2025-09-30', '2025-12-31', '2026-03-31']);
+});
+
+test('guidance is compared with the first forecast of that year, not a late revision', async () => {
+  const { guidanceVsDelivered } = await import('../scripts/derive-japan.mjs');
+  const rows = [
+    { CurPerType: '1Q', CurFYEn: '2026-03-31', DiscDate: '2025-08-01', FNP: '500' },
+    { CurPerType: '3Q', CurFYEn: '2026-03-31', DiscDate: '2026-02-01', FNP: '550' },   // revised up
+    { CurPerType: 'FY', CurFYEn: '2026-03-31', DiscDate: '2026-05-01', NP: '560' },
+  ];
+  const g = guidanceVsDelivered(rows);
+  assert.equal(g.forecast, 500);
+  assert.equal(g.actual, 560);
+  assert.equal(g.deltaPct, 12);
+  assert.equal(g.basis, 'first forecast published that fiscal year');
+});

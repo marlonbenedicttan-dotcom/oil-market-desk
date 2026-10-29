@@ -19,6 +19,67 @@ export function num(v) {
 
 const TOLERANCE = 0.05;
 
+// Japanese summaries report cumulative year-to-date figures: 1Q is three months, 2Q is six, 3Q is nine,
+// FY is twelve. Standalone quarters are the differences between them.
+export function buildQuarters(rows) {
+  const byFy = new Map();
+  for (const r of rows) {
+    if (!r.CurFYEn || !['1Q', '2Q', '3Q', 'FY'].includes(r.CurPerType)) continue;
+    const rec = byFy.get(r.CurFYEn) || {};
+    const prev = rec[r.CurPerType];
+    if (!prev || String(r.DiscDate) > String(prev.DiscDate)) rec[r.CurPerType] = r;
+    byFy.set(r.CurFYEn, rec);
+  }
+  const out = [];
+  const pick = (r, f) => (r ? num(r[f]) : null);
+  for (const [fyEnd, rec] of byFy) {
+    const flow = (f) => {
+      const q1 = pick(rec['1Q'], f), q2 = pick(rec['2Q'], f), q3 = pick(rec['3Q'], f), fy = pick(rec.FY, f);
+      return {
+        q1, q2: q1 != null && q2 != null ? q2 - q1 : null,
+        q3: q2 != null && q3 != null ? q3 - q2 : null,
+        q4: q3 != null && fy != null ? fy - q3 : null,
+      };
+    };
+    const sales = flow('Sales'), op = flow('OP'), np = flow('NP');
+    const dates = {
+      q1: rec['1Q']?.CurPerEn, q2: rec['2Q']?.CurPerEn, q3: rec['3Q']?.CurPerEn, q4: rec.FY?.CurPerEn,
+    };
+    for (const k of ['q1', 'q2', 'q3', 'q4']) {
+      if (!dates[k] || sales[k] == null) continue;
+      out.push({ d: dates[k], fy: fyEnd, q: k.toUpperCase(), sales: sales[k], op: op[k], np: np[k] });
+    }
+  }
+  return out.sort((a, b) => a.d.localeCompare(b.d));
+}
+
+// What the company said it would earn, against what it actually earned. Guidance is taken from the
+// first forecast published during that fiscal year, so a late-in-the-year revision does not flatter it.
+export function guidanceVsDelivered(rows) {
+  const fys = rows
+    .filter((r) => r.CurPerType === 'FY' && r.CurFYEn && num(r.NP) != null)
+    .sort((a, b) => String(a.CurFYEn).localeCompare(String(b.CurFYEn)));
+  for (let i = fys.length - 1; i >= 0; i--) {
+    const fy = fys[i];
+    const during = rows
+      .filter((r) => r.CurFYEn === fy.CurFYEn && ['1Q', '2Q', '3Q'].includes(r.CurPerType) && num(r.FNP) != null)
+      .sort((a, b) => String(a.DiscDate).localeCompare(String(b.DiscDate)));
+    if (!during.length) continue;
+    const forecast = num(during[0].FNP);
+    const actual = num(fy.NP);
+    if (!forecast || actual == null) continue;
+    return {
+      fy: fy.CurFYEn,
+      forecast,
+      actual,
+      deltaPct: round(((actual / forecast) - 1) * 100, 1),
+      basis: 'first forecast published that fiscal year',
+    };
+  }
+  return null;
+}
+
+
 export function deriveJapan({ ranked, fins, series, val = new Map(), nextByCode = new Map(), fx = null }) {
   const companies = [];
   for (const c of ranked) {
@@ -103,6 +164,9 @@ export function deriveJapan({ ranked, fins, series, val = new Map(), nextByCode 
     }
 
     const jan1 = `${new Date().getUTCFullYear()}-01-01`;
+    const quarters = buildQuarters(rows).slice(-8);
+    const guidedVsActual = guidanceVsDelivered(rows);
+
     const ytdBase = s.find((p) => p.d >= jan1);
     // If the history starts after January, say so rather than calling it a year-to-date return.
     const ytdPartial = !!ytdBase && ytdBase.d > `${new Date().getUTCFullYear()}-01-20`;
@@ -149,6 +213,8 @@ export function deriveJapan({ ranked, fins, series, val = new Map(), nextByCode 
         eps: jpx.EPS, bps: jpx.BPS, marketCap: cap,
       } : null,
       verification,
+      quarters,
+      guidanceVsDelivered: guidedVsActual,
       earnings: nextByCode.get(c.code) || null,
     });
   }

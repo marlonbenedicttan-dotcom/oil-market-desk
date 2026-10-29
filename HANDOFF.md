@@ -2148,3 +2148,18 @@ FCF 480/503 (17 banks n/a) · EV/EBITDA 423.
 - Price series are cached for the whole Prime market (`data/cache/jquants/series.json`) and deduplicated —
   an overlapping run was appending the same trading day twice.
 - 135 tests.
+
+## Japan: quarters, guidance vs delivered, TOPIX, sector medians (2026-10-30)
+- **Quarterly series.** Japanese summaries report *cumulative* YTD figures, so standalone quarters are the
+  differences (Q2 = 2Q − 1Q, Q4 = FY − 3Q). The page has a **PRICE / QUARTERS** toggle: sales bars against
+  operating profit on a second axis, eight quarters. 224/225 companies have at least four.
+- **Guidance vs delivered.** The first forecast published during a fiscal year is compared with what was
+  actually reported — a late revision cannot flatter it. Toyota guided ¥2.66T and delivered ¥3.85T (+45%);
+  213/225 have the comparison. This is the Japanese-conservative-guidance signal, from the same source.
+- **TOPIX** (`/indices/bars/daily/topix`, included in Light) gives the benchmark: level, 1D/6M/YTD, shown in
+  the price strip so a return can be read against the market.
+- **Sector medians** across the 33 TSE sectors appear inline beside P/E and P/B ("sector 11.6×"), computed
+  from our own 225 names.
+- Ordinary profit is only shown where it exists — IFRS filers (Toyota, Sony) have no such line, so the cell
+  falls back to total assets rather than displaying a dash.
+- 137 tests.

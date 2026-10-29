@@ -3446,6 +3446,7 @@ const coMargin = coMarginOf;
 // Built from the same components as the US page — ma-crumb, co-head, coMono, co-price, co-stats —
 // so it reads as one product. Different currency and fiscal year, same layout.
 let japanData = null, jpSel = null, jpQuery = '';
+let jpChartMode = (() => { try { return localStorage.getItem('oilbasis.jpChart') || 'price'; } catch { return 'price'; } })();
 
 function yen(v) {
   if (v == null || !Number.isFinite(v)) return '—';
@@ -3523,13 +3524,14 @@ function renderJapanPage(c) {
         <span class="co-price-c ${c.chg6m >= 0 ? 'pos' : 'neg'}">${c.chg6m == null ? '' : `${chg(c.chg6m)} 6M`}</span>
         <span class="co-price-c ${c.chgYtd >= 0 ? 'pos' : 'neg'}">${c.chgYtd == null ? '' : `${chg(c.chgYtd)} ${c.chgYtdBasis === 'YTD' ? 'YTD' : 'since ' + String(c.chgYtdBasis || '').slice(6)}`}</span>
         <span class="dimtext">${c.priceDate ? `as of ${c.priceDate}` : ''}</span>
+        ${japanData && japanData.topix && japanData.topix.chgYtd != null ? `<span class="dimtext" title="TOPIX, the exchange's own index">TOPIX ${japanData.topix.chgYtd >= 0 ? '+' : ''}${japanData.topix.chgYtd.toFixed(1)}% YTD</span>` : ''}
       </div>`
     + `<div class="co-verif${vcls}">${vtext}</div>`
     + `<div class="co-stats co-stats-12">
         ${cell('MARKET CAP', yen(c.marketCap), 'Shares outstanding less treasury, at the last close — JPX\u2019s definition')}
         ${cell('MARKET CAP · USD', c.marketCapUsd ? `$${(c.marketCapUsd / 1e9).toFixed(1)}B` : '—', 'Converted at the current USD/JPY rate')}
-        ${cell(`P/E · ${c.peBasis || 'FY'}`, c.pe != null ? `${c.pe.toFixed(2)}×` : '—', c.peBasis === 'TTM' ? 'Trailing twelve months, computed by JPX from disclosed earnings' : 'Market cap ÷ fiscal-year net profit')}
-        ${cell('P/B', c.pb != null ? `${c.pb.toFixed(2)}×` : '—', 'Market cap ÷ shareholders\u2019 equity attributable to the parent')}
+        ${cell(`P/E · ${c.peBasis || 'FY'}`, c.pe != null ? `${c.pe.toFixed(2)}×${c.sectorMedian && c.sectorMedian.pe ? ` <em class="co-approx" title="Median across ${c.sectorMedian.count} companies in ${esc(c.sector)}">sector ${c.sectorMedian.pe.toFixed(1)}×</em>` : ''}` : '—', c.peBasis === 'TTM' ? 'Trailing twelve months, computed by JPX from disclosed earnings' : 'Market cap ÷ fiscal-year net profit')}
+        ${cell('P/B', c.pb != null ? `${c.pb.toFixed(2)}×${c.sectorMedian && c.sectorMedian.pb ? ` <em class="co-approx" title="Median across ${c.sectorMedian.count} companies in ${esc(c.sector)}">sector ${c.sectorMedian.pb.toFixed(1)}×</em>` : ''}` : '—', 'Market cap ÷ shareholders\u2019 equity attributable to the parent')}
         ${cell('RETURN ON EQUITY', c.roe != null ? `${c.roe.toFixed(1)}%` : '—', 'Trailing twelve months, from JPX', c.roe >= 0 ? 'pos' : 'neg')}
         ${cell('FORWARD P/E', c.forwardPe != null ? `${c.forwardPe.toFixed(1)}×` : '—', 'Market cap ÷ the company\u2019s own full-year profit forecast — guidance, not consensus')}
         ${cell(c.marginBasis === 'ordinary' ? 'ORDINARY MARGIN' : 'OPERATING MARGIN', c.opMargin != null ? `${c.opMargin.toFixed(1)}%` : '—', c.marginBasis === 'ordinary' ? 'Ordinary profit ÷ net sales — the line Japanese financials report' : 'Operating profit ÷ net sales, fiscal year', c.opMargin >= 0 ? 'pos' : 'neg')}
@@ -3540,21 +3542,46 @@ function renderJapanPage(c) {
         ${cell('CASH AFTER INVESTING', yen(c.fcf), 'Operating cash flow + investing cash flow — capex sits inside investing and is not broken out in the summary')}
       </div>`
     + `<div class="co-stats co-stats-12">
-        ${c.op != null
-          ? cell('ORDINARY PROFIT', yen(c.odp), 'The headline profit line Japanese financials report — operating profit plus non-operating items', c.odp >= 0 ? 'pos' : 'neg')
+        ${c.odp != null
+          ? cell('ORDINARY PROFIT', yen(c.odp), 'Operating profit plus non-operating items — the line Japanese GAAP filers report; IFRS filers do not have it', c.odp >= 0 ? 'pos' : 'neg')
           : cell('TOTAL ASSETS', yen(c.ta), 'As reported — banks carry their loan book here')}
         ${cell('SHAREHOLDERS\u2019 EQUITY', yen(c.eqLatest), `Attributable to the parent${c.eqLatestPeriod ? `, as of ${c.eqLatestPeriod}` : ''}`)}
         ${cell('EQUITY RATIO', c.eqAr != null ? `${(c.eqAr * 100).toFixed(1)}%` : '—', 'Equity ÷ total assets, as reported')}
         ${cell('PAYOUT RATIO', d && d.payoutRatio != null ? `${(d.payoutRatio * 100).toFixed(0)}%` : '—', 'Dividends ÷ net profit for the fiscal year')}
       </div>`
+    + `<div class="co-chart-tabs"><button type="button" data-jpchart="price" class="${jpChartMode === 'price' ? 'on' : ''}">PRICE</button><button type="button" data-jpchart="quarters" class="${jpChartMode === 'quarters' ? 'on' : ''}">QUARTERS</button></div>`
     + `<div class="co-chartwrap"><canvas id="jp-chart"></canvas></div>`
     + `<div class="macro-note">
         Fiscal year ending ${esc(c.period || '—')} · statement figures from the company's summary of financial statements (J-Quants); P/E, P/B and ROE from JPX's own valuation file.
         ${pbOurs != null && v.status === 'disputed' ? `Our P/B from the filing is ${pbOurs.toFixed(2)}× against JPX's ${c.pb.toFixed(2)}×.` : ''}
         ${c.guidance ? `Guidance for FY ${esc(c.guidance.fy || '—')}: sales ${yen(c.guidance.sales)}, operating profit ${yen(c.guidance.op)}, net profit ${yen(c.guidance.np)}.` : 'No company forecast on file.'}
+        ${c.guidanceVsDelivered ? ` FY ${esc(c.guidanceVsDelivered.fy)}: the company guided ${yen(c.guidanceVsDelivered.forecast)} and delivered ${yen(c.guidanceVsDelivered.actual)} (${c.guidanceVsDelivered.deltaPct >= 0 ? '+' : ''}${c.guidanceVsDelivered.deltaPct}%).` : ''}
         ${c.earnings ? ` Next results: ${esc(c.earnings.date)} (${esc(c.earnings.quarter || 'scheduled')}).` : ''}
         Currency is yen throughout; the USD figure is a conversion, not a separate quote.
       </div>`;
+  drawJpChart(c);
+}
+
+// Two views: the share price, or the quarters behind the annual numbers. The second is the one the
+// summary file actually supports and almost nobody shows.
+function drawJpChart(c) {
+  if (charts['jp-chart']) { try { charts['jp-chart'].destroy(); } catch {} delete charts['jp-chart']; }
+  if (jpChartMode === 'quarters') {
+    const q = c.quarters || [];
+    if (q.length < 2) {
+      const wrap = $('jp-chart') && $('jp-chart').parentElement;
+      if (wrap) wrap.setAttribute('data-empty', 'This company does not report quarterly figures.');
+      return;
+    }
+    mountChart('jp-chart', {
+      labels: q.map((x) => x.d),
+      datasets: [
+        { type: 'bar', label: 'Net sales', data: q.map((x) => (x.sales == null ? null : x.sales / 1e9)), backgroundColor: '#1b2733', borderColor: '#2a3440', borderWidth: 1, yAxisID: 'y', order: 2 },
+        { type: 'line', label: 'Operating profit', data: q.map((x) => (x.op == null ? null : x.op / 1e9)), borderColor: CT.c1, backgroundColor: 'transparent', tension: 0.25, pointRadius: 2, yAxisID: 'y1', order: 1 },
+      ],
+    }, baseOptions({ dp: 0, yTitle: '¥bn sales', y1Title: '¥bn profit', dateAxis: true }));
+    return;
+  }
   const s = c.series || [];
   if (s.length > 1) {
     mountChart('jp-chart', { labels: s.map((p) => p.d), datasets: [line(`${c.ticker} · JPY`, s.map((p) => p.c), CT.c1)] }, baseOptions({ dp: 0, dateAxis: true }));
@@ -3945,6 +3972,15 @@ document.addEventListener('click', (e) => {
   const jrow = e.target.closest('[data-jp]');
   if (jrow) { jpSel = jrow.dataset.jp; renderJapan(); window.scrollTo({ top: 0, behavior: 'smooth' }); return; }
   if (e.target.closest('[data-jpback]')) { jpSel = null; renderJapan(); return; }
+  const jc = e.target.closest('[data-jpchart]');
+  if (jc) {
+    jpChartMode = jc.dataset.jpchart;
+    try { localStorage.setItem('oilbasis.jpChart', jpChartMode); } catch {}
+    document.querySelectorAll('[data-jpchart]').forEach((b) => b.classList.toggle('on', b.dataset.jpchart === jpChartMode));
+    const cur = (japanData && japanData.companies || []).find((x) => x.code === jpSel);
+    if (cur) drawJpChart(cur);
+    return;
+  }
   if (e.target.closest('[data-coback]')) { coCik = null; renderCompanies(); return; }
   const star = e.target.closest('[data-coticker]');
   if (star) { toggleWatch(star.dataset.coticker); renderCompanyPage($('co-body'), companiesData.companies || []); renderWatchlist(); return; }

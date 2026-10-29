@@ -58,6 +58,7 @@ export function makeClient(opts = {}) {
     // treasury shares (the bars endpoint includes them).
     valuation: (date) => all('/equities/valuation', { date }),
     valuationByCode: (code, from, to) => all('/equities/valuation', { code, from, to }),
+    topix: (from, to) => all('/indices/bars/daily/topix', { from, to }),
     finsByCode: (code) => all('/fins/summary', { code }),
     finsByDate: (date) => all('/fins/summary', { date }),
     earningsCalendar: () => all('/equities/earnings-calendar'),

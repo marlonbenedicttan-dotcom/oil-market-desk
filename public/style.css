@@ -1180,3 +1180,7 @@ button.deal-sec-tile:hover { background: #10151b; }
 .co-region button:hover { color: var(--text); }
 .co-region button.on { color: var(--amber); border-bottom-color: var(--amber); }
 @media (max-width: 640px) { .co-region { gap: 14px; } .co-region button { font-size: 9px; letter-spacing: .6px; } }
+.co-chart-tabs { display: flex; gap: 16px; padding: 10px 12px 0; }
+.co-chart-tabs button { background: none; border: 0; border-bottom: 2px solid transparent; color: var(--dim);
+  font: inherit; font-size: 9px; letter-spacing: 1px; padding: 4px 1px; cursor: pointer; }
+.co-chart-tabs button.on { color: var(--amber); border-bottom-color: var(--amber); }

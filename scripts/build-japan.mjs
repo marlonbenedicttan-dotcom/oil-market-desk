@@ -189,6 +189,26 @@ for (const r of cal) {
     nextByCode.set(r.Code, { date: r.Date, quarter: r.FQ || '', basis: 'scheduled' });
   }
 }
+// TOPIX, for relative performance. Light includes the index; only TOPIX, not the other indices.
+let topix = null;
+try {
+  const rows = await api.topix(iso(Date.now() - DAYS * DAY), iso(Date.now()));
+  const closes = rows.filter((r) => r.C != null).sort((a, b) => a.Date.localeCompare(b.Date));
+  if (closes.length > 1) {
+    const last = closes[closes.length - 1];
+    const jan1 = closes.find((r) => r.Date >= `${new Date().getUTCFullYear()}-01-01`);
+    const six = closes[Math.max(0, closes.length - 126)];
+    topix = {
+      level: last.C,
+      date: last.Date,
+      chg1d: +(((last.C / closes[closes.length - 2].C) - 1) * 100).toFixed(2),
+      chg6m: six ? +(((last.C / six.C) - 1) * 100).toFixed(2) : null,
+      chgYtd: jan1 ? +(((last.C / jan1.C) - 1) * 100).toFixed(2) : null,
+      series: closes.map((r) => ({ d: r.Date, c: r.C })),
+    };
+  }
+} catch (e) { console.log(`  topix: ${e.message}`); }
+
 let fx = null;
 try {
   const r = await fetch('https://query1.finance.yahoo.com/v8/finance/chart/USDJPY=X?range=5d&interval=1d', { headers: { 'User-Agent': 'Mozilla/5.0' } });
@@ -200,11 +220,38 @@ try {
 // --- 7. derive ----------------------------------------------------------------------------------
 const companies = deriveJapan({ ranked, fins, series, val: valByCode, nextByCode, fx });
 
+// Sector medians, so a multiple can be read against its own industry rather than the whole market.
+{
+  const median = (xs) => {
+    const a = xs.filter((x) => x != null && Number.isFinite(x)).sort((x, y) => x - y);
+    if (!a.length) return null;
+    const m = Math.floor(a.length / 2);
+    return a.length % 2 ? a[m] : +((a[m - 1] + a[m]) / 2).toFixed(2);
+  };
+  const bySector = new Map();
+  for (const c of companies) {
+    if (!bySector.has(c.sector)) bySector.set(c.sector, []);
+    bySector.get(c.sector).push(c);
+  }
+  const stats = new Map();
+  for (const [sector, list] of bySector) {
+    stats.set(sector, {
+      count: list.length,
+      pe: median(list.map((c) => c.pe)),
+      pb: median(list.map((c) => c.pb)),
+      roe: median(list.map((c) => c.roe)),
+      yield: median(list.map((c) => (c.dividend ? c.dividend.yield : null))),
+    });
+  }
+  for (const c of companies) c.sectorMedian = stats.get(c.sector) || null;
+}
+
 const out = {
   updated: new Date().toISOString(),
   universe: `TSE Prime · top ${companies.length} by market cap`,
   currency: 'JPY',
   fx: { pair: 'USDJPY', rate: fx, date: iso(Date.now()) },
+  topix,
   companies,
 };
 writeFileSync(OUT + '.tmp', JSON.stringify(out));
