@@ -1173,25 +1173,10 @@ button.deal-sec-tile:hover { background: #10151b; }
 .cal-crow { cursor: pointer; }
 .cal-crow:hover { background: #10151b; }
 
-/* Companies: market switch (S&P 500 / Japan). */
-.co-region { display: flex; gap: 0; border-bottom: 1px solid var(--line); margin: 0 0 10px; }
-.co-region button { background: #0c0f13; border: 0; border-right: 1px solid var(--line); color: #7d8894;
-  font: inherit; font-size: 9px; letter-spacing: .8px; padding: 8px 14px; cursor: pointer; }
-.co-region button.on { background: #1b2733; color: #cfe3f7; }
-.jp-row { display: grid; grid-template-columns: 26px 1fr 110px 70px 150px 62px 58px; align-items: center; gap: 10px;
-  width: 100%; background: transparent; border: 0; border-bottom: 1px solid #151b22; color: inherit;
-  font: inherit; text-align: left; padding: 8px 6px; cursor: pointer; }
-.jp-row:hover { background: #10151b; }
-.jp-px { font-variant-numeric: tabular-nums; }
-.jp-px em, .jp-price em { font-style: normal; color: #6f7b88; font-size: 9px; margin-left: 4px; }
-.jp-ytd { font-variant-numeric: tabular-nums; font-size: 11px; }
-.jp-price { display: flex; flex-wrap: wrap; align-items: baseline; gap: 14px; padding: 10px 0 14px; }
-.jp-big { font-size: 22px; font-weight: 600; font-variant-numeric: tabular-nums; }
-.jp-price .pos, .jp-price .neg { font-size: 12px; }
-@media (max-width: 760px) {
-  .jp-row { grid-template-columns: 22px 1fr 92px; }
-  .jp-row .jp-ytd, .jp-row .co-cap, .jp-row .co-pe, .jp-row .co-mar { display: none; }
-}
-.jp-hrow { display: grid; grid-template-columns: 26px 1fr 110px 70px 150px 62px 58px; gap: 10px;
-  padding: 4px 6px 6px; font-size: 8px; letter-spacing: 1px; color: #5b6773; border-bottom: 1px solid var(--line); }
-@media (max-width: 760px) { .jp-hrow { grid-template-columns: 22px 1fr 92px; } .jp-hrow span:nth-child(n+4) { display: none; } }
+/* Companies: market switch — same language as the main tab bar (amber underline, no boxes). */
+.co-region { display: flex; gap: 20px; padding: 0 12px; border-bottom: 1px solid var(--line); margin: 0 0 2px; }
+.co-region button { background: none; border: 0; border-bottom: 2px solid transparent; color: var(--dim);
+  font: inherit; font-size: 9.5px; letter-spacing: 1px; padding: 9px 1px 8px; cursor: pointer; }
+.co-region button:hover { color: var(--text); }
+.co-region button.on { color: var(--amber); border-bottom-color: var(--amber); }
+@media (max-width: 640px) { .co-region { gap: 14px; } .co-region button { font-size: 9px; letter-spacing: .6px; } }

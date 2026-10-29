@@ -54,6 +54,10 @@ export function makeClient(opts = {}) {
     master: (date) => all('/equities/master', { date }),
     barsByDate: (date) => all('/equities/bars/daily', { date }),
     barsByCode: (code, from, to) => all('/equities/bars/daily', { code, from, to }),
+    // JPX's own ratios: PER and ROE are TTM, FwdPER uses company guidance, and MktCap excludes
+    // treasury shares (the bars endpoint includes them).
+    valuation: (date) => all('/equities/valuation', { date }),
+    valuationByCode: (code, from, to) => all('/equities/valuation', { code, from, to }),
     finsByCode: (code) => all('/fins/summary', { code }),
     finsByDate: (date) => all('/fins/summary', { date }),
     earningsCalendar: () => all('/equities/earnings-calendar'),

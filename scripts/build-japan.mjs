@@ -20,7 +20,9 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const OUT = join(ROOT, 'data', 'japan.json');
 const CACHE = join(ROOT, 'data', 'cache', 'jquants');
 const SIZE = Number((process.argv.find((x) => x.startsWith('--limit=')) || '').split('=')[1] || 225);
-const DAYS = Number((process.argv.find((x) => x.startsWith('--days=')) || '').split('=')[1] || 200);
+// 300 days clears 1 January, so "YTD" is measured from the first session of the year, not from the
+// start of the window.
+const DAYS = Number((process.argv.find((x) => x.startsWith('--days=')) || '').split('=')[1] || 300);
 const DAY = 864e5;
 mkdirSync(CACHE, { recursive: true });
 
@@ -72,11 +74,24 @@ console.log(`  ${prime.size} Prime issues`);
 
 // --- 2. prices: one request per trading day, all issues ---------------------------------------
 const prev = existsSync(OUT) ? JSON.parse(readFileSync(OUT, 'utf8')) : null;
+// Prices are cached for the whole Prime market, not just the names in the last output — otherwise a
+// small --limit run would silently shrink the universe on the next full run.
+const SERIES_CACHE = join(CACHE, 'series.json');
 const series = new Map();                              // code -> [{d, c}]
+try {
+  const raw = JSON.parse(readFileSync(SERIES_CACHE, 'utf8'));
+  for (const [k, v] of Object.entries(raw)) if (Array.isArray(v)) series.set(k, v);
+} catch { /* first run */ }
 for (const c of (prev?.companies || [])) {
-  if (Array.isArray(c.series)) series.set(c.code, c.series.map((p) => ({ d: p.d, c: p.c })));
+  if (!series.has(c.code) && Array.isArray(c.series)) series.set(c.code, c.series.map((p) => ({ d: p.d, c: p.c })));
 }
-const have = new Set([...series.values()].flatMap((s) => s.map((p) => p.d)));
+// A date counts as fetched only if most of the market has it. Otherwise a run that once had a small
+// universe would leave every other company with a handful of points.
+const dateCoverage = new Map();
+for (const arr of series.values()) for (const p of arr) dateCoverage.set(p.d, (dateCoverage.get(p.d) || 0) + 1);
+const coverageFloor = Math.max(1, Math.floor(prime.size * 0.5));
+const have = new Set([...dateCoverage].filter(([, n]) => n >= coverageFloor).map(([d]) => d));
+const capToday = new Map();
 const start = Date.now() - DAYS * DAY;
 const dates = [];
 for (let t = start; t <= Date.now(); t += DAY) {
@@ -86,35 +101,70 @@ for (let t = start; t <= Date.now(); t += DAY) {
   dates.push(d);
 }
 console.log(`prices… ${dates.length} days to fetch`);
-const capToday = new Map();
 let fetched = 0;
 for (const d of dates) {
   let rows;
   try { rows = await api.barsByDate(d); } catch (e) { console.log(`  ${d}: ${e.message}`); continue; }
   for (const r of rows) {
     if (!prime.has(r.Code) || r.AdjC == null) continue;
+    if (r.MktCap) capToday.set(r.Code, r.MktCap);
     const arr = series.get(r.Code) || [];
     arr.push({ d, c: r.AdjC });
     series.set(r.Code, arr);
-    if (r.MktCap) capToday.set(r.Code, r.MktCap);
   }
   fetched++;
   if (fetched % 20 === 0) console.log(`  ${fetched}/${dates.length} days`);
 }
 
-// --- 3. rank by market cap and take the top N --------------------------------------------------
-// MktCap is quoted in millions of yen (verified: JPX itself reads ~1,083,850 at a ¥1.08T cap).
-// Prices already cached carry their market cap forward, so a run that fetches only today's bar
-// still ranks the whole universe.
+// Normalise before anything reads it: one point per date, oldest first. A run that overlaps another
+// would otherwise append the same day twice.
+for (const [k, v] of series) {
+  const byDate = new Map();
+  for (const p of v) byDate.set(p.d, p);
+  series.set(k, [...byDate.values()].sort((a, b) => a.d.localeCompare(b.d)));
+}
+
+// Persist every price series (trimmed to the window) so the cache outlives the output file.
+{
+  const keep = {};
+  const floor = iso(Date.now() - (DAYS + 10) * DAY);
+  for (const [k, v] of series) keep[k] = v.filter((p) => p.d >= floor);
+  writeFileSync(SERIES_CACHE, JSON.stringify(keep));
+}
+
+// --- 3. valuation: the exchange's own ratios and ex-treasury market cap ------------------------
+// One request covers every issue. PER and ROE here are TTM; MktCap excludes treasury shares and is
+// split-adjusted, which the bars endpoint's field is not (and is being retired).
+// Ask for the most recent day we actually have bars for, and step back if the exchange has not
+// published that day's valuation yet (it appears after the Tokyo close).
+let lastBarDate = null;
+for (const arr of series.values()) {
+  const d = arr.length ? arr[arr.length - 1].d : null;
+  if (d && (!lastBarDate || d > lastBarDate)) lastBarDate = d;
+}
+let valRows = [];
+for (let back = 0; back < 6 && !valRows.length && lastBarDate; back++) {
+  const d = iso(Date.parse(lastBarDate + 'T00:00:00Z') - back * DAY);
+  try { valRows = await api.valuation(d); } catch (e) { console.log(`  valuation ${d}: ${e.message}`); }
+  if (valRows.length) console.log(`  valuation as of ${d}`);
+}
+const valByCode = new Map(valRows.filter((r) => prime.has(r.Code)).map((r) => [r.Code, r]));
+console.log(`  valuation rows for ${valByCode.size} Prime issues`);
+
+// --- 4. rank by market cap and take the top N --------------------------------------------------
 const prevCap = new Map(((prev && prev.companies) || []).map((c) => [c.code, c.marketCap]));
 const ranked = [...prime.values()]
-  .map((c) => ({ ...c, cap: capToday.has(c.code) ? capToday.get(c.code) * 1e6 : (prevCap.get(c.code) || 0) }))
+  .map((c) => ({
+    ...c,
+    cap: valByCode.get(c.code)?.MktCap ? valByCode.get(c.code).MktCap * 1e6
+      : (prevCap.get(c.code) || (capToday.get(c.code) || 0) * 1e6 || 0),
+  }))
   .filter((c) => c.cap > 0 && (series.get(c.code)?.length || 0) > 20)
   .sort((a, b) => b.cap - a.cap)
   .slice(0, SIZE);
 console.log(`universe: ${ranked.length} companies`);
 
-// --- 4. financials, one company at a time ------------------------------------------------------
+// --- 5. financials, one company at a time ------------------------------------------------------
 console.log('financials…');
 const fins = new Map();
 for (let i = 0; i < ranked.length; i++) {
@@ -129,7 +179,7 @@ for (let i = 0; i < ranked.length; i++) {
   if ((i + 1) % 25 === 0) console.log(`  ${i + 1}/${ranked.length}`);
 }
 
-// --- 5. earnings dates and FX -------------------------------------------------------------------
+// --- 6. earnings dates and FX -------------------------------------------------------------------
 console.log('calendar + fx…');
 const cal = await api.earningsCalendar().catch(() => []);
 const nextByCode = new Map();
@@ -147,8 +197,8 @@ try {
   fx = closes.filter((x) => x != null).pop() || null;
 } catch { fx = null; }
 
-// --- 6. derive ----------------------------------------------------------------------------------
-const companies = deriveJapan({ ranked, fins, series, nextByCode, fx });
+// --- 7. derive ----------------------------------------------------------------------------------
+const companies = deriveJapan({ ranked, fins, series, val: valByCode, nextByCode, fx });
 
 const out = {
   updated: new Date().toISOString(),

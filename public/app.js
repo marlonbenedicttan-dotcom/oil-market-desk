@@ -3443,8 +3443,8 @@ const coMarginOf = (c) => (c.revenue && c.netIncome != null ? (c.netIncome / c.r
 const coMargin = coMarginOf;
 
 // --- Japan: TSE Prime, from J-Quants (JPX's own API) -------------------------------------------
-// Kept separate from the US list on purpose: different currency, different fiscal year, different
-// accounting basis. Mixing them into one table would silently compare yen to dollars.
+// Built from the same components as the US page — ma-crumb, co-head, coMono, co-price, co-stats —
+// so it reads as one product. Different currency and fiscal year, same layout.
 let japanData = null, jpSel = null, jpQuery = '';
 
 function yen(v) {
@@ -3455,6 +3455,9 @@ function yen(v) {
   if (a >= 1e6) return `¥${(v / 1e6).toFixed(1)}M`;
   return `¥${Math.round(v).toLocaleString('en-US')}`;
 }
+
+// Japanese codes are four digits, so the US ticker monogram would read "83". Use the name instead.
+const jpMono = (c) => coMono({ ticker: String(c.name || '?').replace(/[^A-Za-z]/g, '').slice(0, 2), name: c.name });
 
 async function loadJapan() {
   if (japanData) return japanData;
@@ -3481,56 +3484,77 @@ async function renderJapan() {
   const q = jpQuery.trim().toLowerCase();
   const rows = all.filter((c) => !q || `${c.name} ${c.nameJa || ''} ${c.ticker} ${c.sector}`.toLowerCase().includes(q));
   const max = Math.max(...all.map((c) => c.marketCap || 0), 1);
-  el.innerHTML = `<div class="jp-hrow"><span>#</span><span>COMPANY</span><span>PRICE · 1D</span><span>YTD</span><span>MARKET CAP</span><span>P/E</span><span>ROE</span></div>`
-    + `<div class="jp-list">${rows.map((c, i) => `<button class="jp-row" data-jp="${esc(c.code)}">
-      <span class="co-rank">${i + 1}</span>
-      <span class="co-id"><b>${esc(c.name)}</b><span class="co-tick">${esc(c.ticker)} · ${esc(c.sector)}</span></span>
-      <span class="jp-px">${yen(c.price)}<em class="${(c.chg1d || 0) >= 0 ? 'pos' : 'neg'}">${c.chg1d == null ? '' : `${c.chg1d >= 0 ? '+' : ''}${c.chg1d.toFixed(1)}%`}</em></span>
-      <span class="jp-ytd ${(c.chgYtd || 0) >= 0 ? 'pos' : 'neg'}">${c.chgYtd == null ? '—' : `${c.chgYtd >= 0 ? '+' : ''}${c.chgYtd.toFixed(1)}%`}</span>
-      <span class="co-cap">${yen(c.marketCap)}<i class="co-bar"><i style="width:${Math.max(2, ((c.marketCap || 0) / max) * 100)}%"></i></i></span>
-      <span class="co-pe">${c.pe != null ? c.pe.toFixed(1) : '—'}</span>
-      <span class="co-mar ${c.roe == null ? 'dimtext' : c.roe >= 0 ? 'pos' : 'neg'}">${c.roe == null ? '—' : `${c.roe.toFixed(1)}%`}</span>
-    </button>`).join('')}</div>
-    <div class="macro-note">${esc(d.universe || '')} · fiscal-year figures (not TTM) · forward P/E uses the company's own guidance, not analyst consensus · FX ${d.fx && d.fx.rate ? d.fx.rate.toFixed(2) : '—'} JPY per USD · source J-Quants (JPX).</div>`;
+  el.innerHTML = `<div class="co-hrow"><span>#</span><span></span><span>COMPANY</span><span>MARKET CAP</span><span>P/E</span><span>ROE</span></div>`
+    + rows.map((c, i) => `<button class="co-row" data-jp="${esc(c.code)}">
+        <span class="co-rank">${i + 1}</span>
+        ${jpMono(c)}
+        <span class="co-id"><b>${esc(c.name)}</b><span class="co-tick">${esc(c.ticker)} · ${esc(c.sector)} · ${yen(c.price)} <em class="${(c.chg1d || 0) >= 0 ? 'pos' : 'neg'}">${c.chg1d == null ? '' : `${c.chg1d >= 0 ? '+' : ''}${c.chg1d.toFixed(1)}%`}</em> · <em class="${(c.chgYtd || 0) >= 0 ? 'pos' : 'neg'}">${c.chgYtd == null ? '—' : `${c.chgYtd >= 0 ? '+' : ''}${c.chgYtd.toFixed(1)}%`} ${esc(c.chgYtdBasis === 'YTD' ? 'YTD' : 'SINCE ' + String(c.chgYtdBasis || '').slice(6))}</em></span></span>
+        <span class="co-cap">${yen(c.marketCap)}<i class="co-bar"><i style="width:${Math.max(2, ((c.marketCap || 0) / max) * 100)}%"></i></i></span>
+        <span class="co-pe" title="${c.peBasis === 'TTM' ? 'trailing twelve months, from JPX' : 'fiscal year'}">${c.pe != null ? c.pe.toFixed(1) : '—'}</span>
+        <span class="co-mar ${c.roe == null ? 'dimtext' : c.roe >= 0 ? 'pos' : 'neg'}">${c.roe == null ? '—' : `${c.roe.toFixed(1)}%`}</span>
+      </button>`).join('')
+    + `<div class="macro-note">${esc(d.universe || '')} · P/E and ROE are trailing twelve months, from JPX · forward P/E uses the company's own guidance, not analyst consensus · market cap excludes treasury shares · FX ${d.fx && d.fx.rate ? d.fx.rate.toFixed(2) : '—'} JPY per USD.</div>`;
 }
 
 function renderJapanPage(c) {
   const el = $('co-body'); if (!el) return;
   const sub = $('deals-sub'); if (sub) sub.textContent = `${c.name} · ${c.ticker} · TSE Prime`;
-  const cell = (k, v, title, cls = '') => `<div class="co-stat" title="${esc(title)}"><span class="co-k">${k}</span><span class="co-v ${cls}">${v}</span></div>`;
-  const g = c.guidance;
-  const chg = (v) => (v == null ? '—' : `${v >= 0 ? '+' : ''}${v.toFixed(1)}%`);
-  el.innerHTML = `
-    <div class="co-top"><button class="co-back" data-jpback>← All companies</button></div>
-    <div class="co-name"><h2>${esc(c.name)}</h2><span class="dimtext">${esc(c.nameJa || '')}${c.sector ? ` · ${esc(c.sector)}` : ''}${c.size ? ` · ${esc(c.size)}` : ''}</span></div>
-    <div class="jp-price">
-      <span class="jp-big">${yen(c.price)}</span>
-      <span class="${(c.chg1d || 0) >= 0 ? 'pos' : 'neg'}">${chg(c.chg1d)} <em>1D</em></span>
-      <span class="${(c.chg6m || 0) >= 0 ? 'pos' : 'neg'}">${chg(c.chg6m)} <em>6M</em></span>
-      <span class="${(c.chgYtd || 0) >= 0 ? 'pos' : 'neg'}">${chg(c.chgYtd)} <em>YTD</em></span>
-      ${c.priceDate ? `<span class="dimtext">${esc(c.priceDate)} close</span>` : ''}
-    </div>
-    <div class="co-stats co-stats-12">
-      ${cell('MARKET CAP', yen(c.marketCap), 'Shares × price, in yen')}
-      ${cell('MARKET CAP · USD', c.marketCapUsd ? `$${(c.marketCapUsd / 1e9).toFixed(1)}B` : '—', 'Converted at the current USD/JPY rate')}
-      ${cell('P / E', c.pe != null ? `${c.pe.toFixed(1)}×` : '—', 'Market cap ÷ net profit, fiscal year')}
-      ${cell('P / B', c.pb != null ? `${c.pb.toFixed(1)}×` : '—', 'Market cap ÷ shareholders\u2019 equity')}
-      ${cell('RETURN ON EQUITY', c.roe != null ? `${c.roe.toFixed(1)}%` : '—', 'Net profit ÷ equity, fiscal year', c.roe >= 0 ? 'pos' : 'neg')}
-      ${cell('OPERATING MARGIN', c.opMargin != null ? `${c.opMargin.toFixed(1)}%` : '—', 'Operating profit ÷ sales', c.opMargin >= 0 ? 'pos' : 'neg')}
-      ${cell('FORWARD P / E', c.forwardPe != null ? `${c.forwardPe.toFixed(1)}×` : '—', 'Market cap ÷ the company\u2019s own full-year profit forecast — guidance, not consensus')}
-      ${cell('SALES', yen(c.sales), 'Net sales, fiscal year')}
-      ${cell('OPERATING PROFIT', yen(c.op), 'Operating profit, fiscal year')}
-      ${cell('NET PROFIT', yen(c.np), 'Profit attributable to owners of the parent', c.np >= 0 ? 'pos' : 'neg')}
-      ${cell('TOTAL EQUITY', yen(c.eq), 'Shareholders\u2019 equity')}
-      ${cell('CASH AFTER INVESTING', yen(c.fcf), 'Operating cash flow + investing cash flow — capex is inside investing, not broken out')}
-    </div>
-    <div class="co-chartwrap"><canvas id="jp-chart"></canvas></div>
-    <div class="macro-note">
-      Fiscal year ending ${esc(c.period || '—')} · figures from the company's summary of financial statements (J-Quants).
-      ${g ? `Guidance for FY ${esc(g.fy || '—')}: sales ${yen(g.sales)}, operating profit ${yen(g.op)}, net profit ${yen(g.np)}.` : 'No company forecast on file.'}
-      ${c.earnings ? ` Next results: ${esc(c.earnings.date)} (${esc(c.earnings.quarter || 'scheduled')}).` : ''}
-      Currency is yen throughout; the USD figure is a conversion, not a separate quote.
-    </div>`;
+  const v = c.verification || {};
+  const vtext = v.status === 'verified'
+    ? '✓ CROSS-CHECKED · P/B REBUILT FROM THE FILING AGREES WITH JPX'
+    : v.status === 'disputed'
+      ? `P/B DIFFERS FROM JPX · ${Math.round(((v.fields && v.fields.equity && v.fields.equity.diff) || 0) * 100)}% APART · BOTH VALUES BELOW`
+      : 'NOT CROSS-CHECKED';
+  const vcls = v.status === 'verified' ? ' ok' : v.status === 'disputed' ? ' bad' : '';
+  const d = c.dividend;
+  const cell = (k, val, title, cls = '') => `<div class="co-stat" title="${esc(title)}"><span class="co-k">${k}</span><span class="co-v ${cls}">${val}</span></div>`;
+  const chg = (x) => (x == null ? '' : `${x >= 0 ? '+' : ''}${x.toFixed(1)}%`);
+  const pbOurs = v.fields && v.fields.equity ? v.fields.equity.ours : null;
+
+  el.innerHTML = `<div class="ma-crumb"><button class="ma-back" data-jpback="1">← COMPANIES</button> <span>${esc(c.ticker)}</span></div>`
+    + `<div class="co-head">${jpMono(c)}
+        <div><div class="co-name">${esc(c.name)}</div>
+        <div class="co-sub">${esc(c.ticker)}${c.sector ? ' · ' + esc(c.sector) : ''}${c.size ? ' · ' + esc(c.size) : ''}</div>
+        ${c.nameJa ? `<div class="co-desc">${esc(c.nameJa)}</div>` : ''}</div>
+      </div>`
+    + `<div class="co-price">
+        <span class="co-price-v">${yen(c.price)}</span>
+        <span class="co-price-c ${c.chg1d >= 0 ? 'pos' : 'neg'}">${c.chg1d == null ? '' : `${chg(c.chg1d)} today`}</span>
+        <span class="co-price-c ${c.chg6m >= 0 ? 'pos' : 'neg'}">${c.chg6m == null ? '' : `${chg(c.chg6m)} 6M`}</span>
+        <span class="co-price-c ${c.chgYtd >= 0 ? 'pos' : 'neg'}">${c.chgYtd == null ? '' : `${chg(c.chgYtd)} ${c.chgYtdBasis === 'YTD' ? 'YTD' : 'since ' + String(c.chgYtdBasis || '').slice(6)}`}</span>
+        <span class="dimtext">${c.priceDate ? `as of ${c.priceDate}` : ''}</span>
+      </div>`
+    + `<div class="co-verif${vcls}">${vtext}</div>`
+    + `<div class="co-stats co-stats-12">
+        ${cell('MARKET CAP', yen(c.marketCap), 'Shares outstanding less treasury, at the last close — JPX\u2019s definition')}
+        ${cell('MARKET CAP · USD', c.marketCapUsd ? `$${(c.marketCapUsd / 1e9).toFixed(1)}B` : '—', 'Converted at the current USD/JPY rate')}
+        ${cell(`P/E · ${c.peBasis || 'FY'}`, c.pe != null ? `${c.pe.toFixed(2)}×` : '—', c.peBasis === 'TTM' ? 'Trailing twelve months, computed by JPX from disclosed earnings' : 'Market cap ÷ fiscal-year net profit')}
+        ${cell('P/B', c.pb != null ? `${c.pb.toFixed(2)}×` : '—', 'Market cap ÷ shareholders\u2019 equity attributable to the parent')}
+        ${cell('RETURN ON EQUITY', c.roe != null ? `${c.roe.toFixed(1)}%` : '—', 'Trailing twelve months, from JPX', c.roe >= 0 ? 'pos' : 'neg')}
+        ${cell('FORWARD P/E', c.forwardPe != null ? `${c.forwardPe.toFixed(1)}×` : '—', 'Market cap ÷ the company\u2019s own full-year profit forecast — guidance, not consensus')}
+        ${cell(c.marginBasis === 'ordinary' ? 'ORDINARY MARGIN' : 'OPERATING MARGIN', c.opMargin != null ? `${c.opMargin.toFixed(1)}%` : '—', c.marginBasis === 'ordinary' ? 'Ordinary profit ÷ net sales — the line Japanese financials report' : 'Operating profit ÷ net sales, fiscal year', c.opMargin >= 0 ? 'pos' : 'neg')}
+        ${cell('DIVIDEND YIELD', d && d.yield != null ? `${d.yield.toFixed(2)}%` : '—', d && d.perShare != null ? `¥${d.perShare} per share for the fiscal year${d.forecast ? `, forecast ¥${d.forecast}` : ''}` : 'No dividend disclosed')}
+        ${cell('NET SALES', yen(c.sales), 'Fiscal year, as reported')}
+        ${cell(c.op != null ? 'OPERATING PROFIT' : 'ORDINARY PROFIT', yen(c.op != null ? c.op : c.odp), c.op != null ? 'Fiscal year, as reported' : 'Banks report ordinary profit instead of operating profit', (c.op != null ? c.op : c.odp) >= 0 ? 'pos' : 'neg')}
+        ${cell('NET PROFIT', yen(c.np), 'Fiscal year, attributable to owners of the parent', c.np >= 0 ? 'pos' : 'neg')}
+        ${cell('CASH AFTER INVESTING', yen(c.fcf), 'Operating cash flow + investing cash flow — capex sits inside investing and is not broken out in the summary')}
+      </div>`
+    + `<div class="co-stats co-stats-12">
+        ${c.op != null
+          ? cell('ORDINARY PROFIT', yen(c.odp), 'The headline profit line Japanese financials report — operating profit plus non-operating items', c.odp >= 0 ? 'pos' : 'neg')
+          : cell('TOTAL ASSETS', yen(c.ta), 'As reported — banks carry their loan book here')}
+        ${cell('SHAREHOLDERS\u2019 EQUITY', yen(c.eqLatest), `Attributable to the parent${c.eqLatestPeriod ? `, as of ${c.eqLatestPeriod}` : ''}`)}
+        ${cell('EQUITY RATIO', c.eqAr != null ? `${(c.eqAr * 100).toFixed(1)}%` : '—', 'Equity ÷ total assets, as reported')}
+        ${cell('PAYOUT RATIO', d && d.payoutRatio != null ? `${(d.payoutRatio * 100).toFixed(0)}%` : '—', 'Dividends ÷ net profit for the fiscal year')}
+      </div>`
+    + `<div class="co-chartwrap"><canvas id="jp-chart"></canvas></div>`
+    + `<div class="macro-note">
+        Fiscal year ending ${esc(c.period || '—')} · statement figures from the company's summary of financial statements (J-Quants); P/E, P/B and ROE from JPX's own valuation file.
+        ${pbOurs != null && v.status === 'disputed' ? `Our P/B from the filing is ${pbOurs.toFixed(2)}× against JPX's ${c.pb.toFixed(2)}×.` : ''}
+        ${c.guidance ? `Guidance for FY ${esc(c.guidance.fy || '—')}: sales ${yen(c.guidance.sales)}, operating profit ${yen(c.guidance.op)}, net profit ${yen(c.guidance.np)}.` : 'No company forecast on file.'}
+        ${c.earnings ? ` Next results: ${esc(c.earnings.date)} (${esc(c.earnings.quarter || 'scheduled')}).` : ''}
+        Currency is yen throughout; the USD figure is a conversion, not a separate quote.
+      </div>`;
   const s = c.series || [];
   if (s.length > 1) {
     mountChart('jp-chart', { labels: s.map((p) => p.d), datasets: [line(`${c.ticker} · JPY`, s.map((p) => p.c), CT.c1)] }, baseOptions({ dp: 0, dateAxis: true }));

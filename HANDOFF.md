@@ -2124,3 +2124,27 @@ FCF 480/503 (17 banks n/a) · EV/EBITDA 423.
   conversion, sectors mapped from the exchange's 33 into English, 225-row list + detail page with chart.
 - Coverage: 214/225 P/E, 225/225 P/B and cash flow, 212/225 forward P/E, 23 with a scheduled results date.
 - 133 tests.
+
+## Japan, round two: native UI and the exchange as the second source (2026-10-30)
+- **Visual parity.** The Japan page was rebuilt on the components the US page already uses — `ma-crumb`,
+  `co-head`, `coMono`, `co-price`, `co-stats` — instead of its own `co-top`/`jp-price`/`<h2>`. That fixes
+  the unstyled back button (`.co-back` never existed), the oversized title, and the text sitting on the
+  panel edge (the 12px inset comes from those components, not the container). The market switch is now
+  the same amber-underline tab pattern as the main nav, and list rows use `.co-row` with a monogram.
+- **Market cap now comes from `/equities/valuation`**, not the bars endpoint: it excludes treasury shares
+  and is split-adjusted (JPX is retiring the bars field). Median treasury is 2.1% of shares; Ricoh is 34%.
+- **P/E, P/B, ROE and forward P/E are JPX's own**, on a TTM basis — so Japan finally matches the US page's
+  TTM preference. `peBasis` says TTM or FY per company.
+- **Cross-check**: P/B is rebuilt from the filing's equity and compared with JPX's. 220 of 225 agree within
+  5%; the 5 that do not keep both values and say so. Two definition traps found on the way:
+  - `Eq` includes non-controlling interests; `ShEq` is the parent's equity. P/B must use `ShEq`
+    (SoftBank: 21.35T vs 18.42T — a 14% error).
+  - JPX's BPS uses the latest disclosed period, not the fiscal year, so the comparison is period-matched.
+- **Data used, not discarded**: ordinary profit, equity ratio, cash, dividends (yield, payout, forecast),
+  total assets. Banks show ordinary margin and total assets instead of an operating margin they do not
+  report, and cash-after-investing is withheld for financials (it is loans and securities, not FCF).
+- **YTD is measured from 1 January**, not from the start of the price window: the default history is now
+  300 days. A company listed mid-year says "since <date>" instead of "YTD".
+- Price series are cached for the whole Prime market (`data/cache/jquants/series.json`) and deduplicated —
+  an overlapping run was appending the same trading day twice.
+- 135 tests.

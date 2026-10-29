@@ -87,3 +87,28 @@ test('currency is yen and the USD equivalent uses the FX rate', () => {
   assert.equal(t.currency, 'JPY');
   assert.equal(t.marketCapUsd, Math.round(40e12 / 150));
 });
+
+test('the exchange\u2019s TTM ratios are published over our fiscal-year ones', () => {
+  const v = new Map([['72030', { PER: 8.81, PBR: 0.98, ROE: 0.1223, FwdPER: 11.21, EPS: 349.33, BPS: 3150.6, MktCap: 36437322 }]]);
+  const out = deriveJapan({ ranked, fins, series: map, val: v, fx: 150 });
+  const t = out.find((c) => c.code === '72030');
+  assert.equal(t.pe, 8.81);
+  assert.equal(t.peBasis, 'TTM');
+  assert.equal(t.pb, 0.98);
+  assert.equal(t.roe, 12.2);
+  assert.equal(t.forwardPe, 11.2);
+  assert.equal(t.marketCap, 36437322 * 1e6, 'cap comes from the exchange, ex-treasury');
+  assert.equal(t.eps, 349.33);
+});
+
+test('P/B rebuilt from the filing is cross-checked against the exchange', () => {
+  // Our equity says 40e12 / 26e12 = 1.54. The exchange says 1.54 → agree.
+  const agree = new Map([['72030', { PER: 8.81, PBR: 1.538, ROE: 0.1223, MktCap: 40e6 }]]);
+  assert.equal(deriveJapan({ ranked, fins, series: map, val: agree }).find((c) => c.code === '72030').verification.status, 'verified');
+
+  // A P/B 20% away is recorded as a dispute with both numbers, never silently replaced.
+  const disagree = new Map([['72030', { PER: 8.81, PBR: 1.2, ROE: 0.1223, MktCap: 40e6 }]]);
+  const v = deriveJapan({ ranked, fins, series: map, val: disagree }).find((c) => c.code === '72030').verification;
+  assert.equal(v.status, 'disputed');
+  assert.ok(v.fields.equity.ours > v.fields.equity.alt);
+});
