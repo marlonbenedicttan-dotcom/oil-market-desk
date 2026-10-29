@@ -142,6 +142,26 @@ for (const c of data.companies) {
   c.netDebtToFcf = fcf > 0 && c.debt != null ? +((c.debt - (c.cash || 0)) / fcf).toFixed(1) : null;
   if (c.netDebtToFcf != null && (c.netDebtToFcf < -20 || c.netDebtToFcf > 100)) c.netDebtToFcf = null;
 
+  // --- growth and quality ---------------------------------------------------
+  const hist = (c.series || []).slice().sort((x, y) => x.fy - y.fy);
+  const first = hist[0];
+  const last = hist[hist.length - 1];
+  const span = first && last ? last.fy - first.fy : 0;
+  const cagr = (a0, b0) => (a0 > 0 && b0 > 0 && span >= 2 ? +(((b0 / a0) ** (1 / span) - 1) * 100).toFixed(1) : null);
+  c.revenueCagr = cagr(first?.revenue, last?.revenue);
+  c.epsCagr = cagr(first?.eps, last?.eps);
+  c.marginDelta = first?.revenue && last?.revenue && first.netIncome != null && last.netIncome != null
+    ? +(((last.netIncome / last.revenue) - (first.netIncome / first.revenue)) * 100).toFixed(1) : null;
+
+  // Return on capital: net income ÷ (equity + debt − cash). Approximate, and only where the inputs exist.
+  const invested = c.equity != null ? c.equity + (c.debt || 0) - (c.cash || 0) : null;
+  c.roic = invested > 0 && c.netIncome != null ? +((c.netIncome / invested) * 100).toFixed(1) : null;
+  if (c.roic != null && (c.roic < -100 || c.roic > 200)) c.roic = null;
+
+  const ebitdaQ = (c.opInc != null ? c.opInc : null) != null ? c.opInc + (c.da || 0) : null;
+  c.netDebtEbitda = c.debt != null && ebitdaQ > 0 ? +(((c.debt - (c.cash || 0)) / ebitdaQ)).toFixed(1) : null;
+  if (c.netDebtEbitda != null && (c.netDebtEbitda < -20 || c.netDebtEbitda > 50)) c.netDebtEbitda = null;
+
   c.currentRatio = c.currentAssets != null && c.currentLiabilities > 0 ? +(c.currentAssets / c.currentLiabilities).toFixed(2) : null;
   if (c.currentRatio != null && c.currentRatio > MAX_CR) c.currentRatio = null;
 

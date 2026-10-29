@@ -1,5 +1,5 @@
 {
- "updated": "2026-10-28T17:33:20.249Z",
+ "updated": "2026-10-29T03:26:48.591Z",
  "index": {
   "pe": 28.5,
   "years": [
@@ -29,5 +29,313 @@
   "max": 27,
   "percentile": 100,
   "basis": "Σ market cap ÷ Σ trailing net income, current shares applied to past prices"
+ },
+ "sectors": {
+  "Technology": {
+   "pe": 33.6,
+   "years": [
+    {
+     "fy": 2022,
+     "pe": 22.5
+    },
+    {
+     "fy": 2023,
+     "pe": 26.4
+    },
+    {
+     "fy": 2024,
+     "pe": 30.9
+    },
+    {
+     "fy": 2025,
+     "pe": 33
+    },
+    {
+     "fy": 2026,
+     "pe": 20
+    }
+   ],
+   "min": 20,
+   "median": 26.4,
+   "max": 33,
+   "percentile": 100,
+   "companies": 67
+  },
+  "Consumer": {
+   "pe": 27.5,
+   "years": [
+    {
+     "fy": 2022,
+     "pe": 24.2
+    },
+    {
+     "fy": 2023,
+     "pe": 26
+    },
+    {
+     "fy": 2024,
+     "pe": 27.4
+    },
+    {
+     "fy": 2025,
+     "pe": 27.7
+    },
+    {
+     "fy": 2026,
+     "pe": 26.5
+    }
+   ],
+   "min": 24.2,
+   "median": 26.5,
+   "max": 27.7,
+   "percentile": 80,
+   "companies": 107
+  },
+  "Industrials": {
+   "pe": 35.8,
+   "years": [
+    {
+     "fy": 2022,
+     "pe": 17.3
+    },
+    {
+     "fy": 2023,
+     "pe": 23.1
+    },
+    {
+     "fy": 2024,
+     "pe": 29
+    },
+    {
+     "fy": 2025,
+     "pe": 36.1
+    },
+    {
+     "fy": 2026,
+     "pe": 26.9
+    }
+   ],
+   "min": 17.3,
+   "median": 26.9,
+   "max": 36.1,
+   "percentile": 80,
+   "companies": 75
+  },
+  "Healthcare": {
+   "pe": 30.5,
+   "years": [
+    {
+     "fy": 2022,
+     "pe": 21.8
+    },
+    {
+     "fy": 2023,
+     "pe": 26.3
+    },
+    {
+     "fy": 2024,
+     "pe": 26.9
+    },
+    {
+     "fy": 2025,
+     "pe": 26.3
+    },
+    {
+     "fy": 2026,
+     "pe": 27.6
+    }
+   ],
+   "min": 21.8,
+   "median": 26.3,
+   "max": 27.6,
+   "percentile": 100,
+   "companies": 48
+  },
+  "Financials": {
+   "pe": 14.8,
+   "years": [
+    {
+     "fy": 2022,
+     "pe": 12.6
+    },
+    {
+     "fy": 2023,
+     "pe": 12.6
+    },
+    {
+     "fy": 2024,
+     "pe": 14.6
+    },
+    {
+     "fy": 2025,
+     "pe": 17
+    }
+   ],
+   "min": 12.6,
+   "median": 14.6,
+   "max": 17,
+   "percentile": 75,
+   "companies": 68
+  },
+  "Energy": {
+   "pe": 27.5,
+   "years": [
+    {
+     "fy": 2022,
+     "pe": 7.8
+    },
+    {
+     "fy": 2023,
+     "pe": 10.9
+    },
+    {
+     "fy": 2024,
+     "pe": 14.2
+    },
+    {
+     "fy": 2025,
+     "pe": 17.6
+    }
+   ],
+   "min": 7.8,
+   "median": 14.2,
+   "max": 17.6,
+   "percentile": 100,
+   "companies": 16
+  },
+  "Telecom": {
+   "pe": 16.8,
+   "years": [
+    {
+     "fy": 2022,
+     "pe": 14.7
+    },
+    {
+     "fy": 2023,
+     "pe": 13.6
+    },
+    {
+     "fy": 2024,
+     "pe": 14.5
+    },
+    {
+     "fy": 2025,
+     "pe": 12.5
+    },
+    {
+     "fy": 2026,
+     "pe": 32.4
+    }
+   ],
+   "min": 12.5,
+   "median": 14.5,
+   "max": 32.4,
+   "percentile": 80,
+   "companies": 8
+  },
+  "Materials": {
+   "pe": 32.4,
+   "years": [
+    {
+     "fy": 2022,
+     "pe": 18.6
+    },
+    {
+     "fy": 2023,
+     "pe": 30.9
+    },
+    {
+     "fy": 2024,
+     "pe": 26.3
+    },
+    {
+     "fy": 2025,
+     "pe": 28.5
+    }
+   ],
+   "min": 18.6,
+   "median": 28.5,
+   "max": 30.9,
+   "percentile": 100,
+   "companies": 1
+  },
+  "Real estate": {
+   "pe": 35.7,
+   "years": [
+    {
+     "fy": 2022,
+     "pe": 34.1
+    },
+    {
+     "fy": 2023,
+     "pe": 40.5
+    },
+    {
+     "fy": 2024,
+     "pe": 42.2
+    },
+    {
+     "fy": 2025,
+     "pe": 35.7
+    }
+   ],
+   "min": 34.1,
+   "median": 40.5,
+   "max": 42.2,
+   "percentile": 50,
+   "companies": 26
+  },
+  "Utilities": {
+   "pe": 22.6,
+   "years": [
+    {
+     "fy": 2022,
+     "pe": 28.6
+    },
+    {
+     "fy": 2023,
+     "pe": 20.5
+    },
+    {
+     "fy": 2024,
+     "pe": 24
+    },
+    {
+     "fy": 2025,
+     "pe": 22.7
+    }
+   ],
+   "min": 20.5,
+   "median": 24,
+   "max": 28.6,
+   "percentile": 25,
+   "companies": 35
+  },
+  "Mining": {
+   "pe": 17.4,
+   "years": [
+    {
+     "fy": 2022,
+     "pe": 15.6
+    },
+    {
+     "fy": 2023,
+     "pe": 32.7
+    },
+    {
+     "fy": 2024,
+     "pe": 17.6
+    },
+    {
+     "fy": 2025,
+     "pe": 18.7
+    }
+   ],
+   "min": 15.6,
+   "median": 18.7,
+   "max": 32.7,
+   "percentile": 25,
+   "companies": 2
+  }
  }
 }

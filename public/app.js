@@ -2315,7 +2315,8 @@ function scBarHtml() {
 const CO_SCREEN_COLS = [
   { k: 'label', t: 'COMPANY' }, { k: 'price', t: 'PRICE' }, { k: 'chg1d', t: '1D' },
   { k: 'chg6m', t: '6M' }, { k: 'chgYtd', t: 'YTD' }, { k: 'pe', t: 'P/E' },
-  { k: 'fcfYield', t: 'FCF YLD' }, { k: 'marketCap', t: 'MKT CAP' },
+  { k: 'fcfYield', t: 'FCF YLD' }, { k: 'revenueCagr', t: 'REV CAGR' }, { k: 'roic', t: 'ROIC' },
+  { k: 'marketCap', t: 'MKT CAP' },
 ];
 function renderCompanyScreen(el) {
   // The companies payload is normally fetched when the COMPANIES tab opens; the home screener can ask
@@ -2348,6 +2349,7 @@ function renderCompanyScreen(el) {
       <td class="num">${c.price != null ? '$' + c.price.toFixed(2) : '—'}</td>
       ${pct(c.chg1d)}${pct(c.chg6m)}${pct(c.chgYtd)}
       ${cell(c.pe, 1, '×')}${c.fcfYield != null ? cell(c.fcfYield, 1, '%') : '<td class="num">' + (c.fcfNA ? 'n/a' : '—') + '</td>'}
+      ${cell(c.revenueCagr, 1, '%')}${cell(c.roic, 1, '%')}
       <td class="num">${coMoney(c.marketCap)}</td></tr>`).join('');
   el.innerHTML = `<div class="sc-bar">${screenModeHtml()}
       <label class="sc-f">SEARCH <input id="cos-q" type="search" placeholder="company or ticker…" value="${esc(coScreen.q)}"></label>
@@ -3546,7 +3548,12 @@ function renderSectorBoard(el, all) {
         <span class="ma-sec-bar"><i style="width:${Math.max(2, (r.cap / max) * 100)}%"></i></span>
         <span class="ma-sec-foot"><span class="ma-sec-share">${r.priced} priced</span>
           <span class="ma-sec-share">median P/E ${r.pe != null ? r.pe.toFixed(1) : '—'}</span>
-          <span class="ma-sec-share">margin ${r.margin != null ? r.margin.toFixed(1) + '%' : '—'}</span></span>
+          <span class="ma-sec-share">margin ${r.margin != null ? r.margin.toFixed(1) + '%' : '—'}</span>
+          ${(() => {
+            const sv = companiesData?.valuation?.sectors?.[r.sector];
+            if (!sv || sv.pe == null) return '';
+            return `<span class="ma-sec-share" title="Cap-weighted P/E of this sector against its own five fiscal years (${sv.min}–${sv.max}, median ${sv.median})">sector P/E ${sv.pe.toFixed(1)} · ${sv.percentile}th pctile</span>`;
+          })()}</span>
       </button>`).join('');
 }
 
@@ -3669,6 +3676,10 @@ async function renderCompanyPage(el, all) {
         <div class="co-stat" title="Free cash flow ÷ market cap"><span class="co-k">FCF YIELD</span><span class="co-v ${c.fcfYield >= 0 ? 'pos' : 'neg'}">${c.fcfYield != null ? c.fcfYield.toFixed(1) + '%' : (c.fcfNA ? 'n/a' : '—')}</span></div>
         <div class="co-stat" title="Free cash flow ÷ net income — below 1 means profit is not turning into cash"><span class="co-k">CASH CONVERSION</span><span class="co-v">${c.cashConversion != null ? c.cashConversion.toFixed(2) + '×' : (c.fcfNA ? 'n/a' : '—')}</span></div>
         <div class="co-stat" title="Net debt ÷ free cash flow — years of cash to repay debt"><span class="co-k">NET DEBT / FCF</span><span class="co-v">${c.netDebtToFcf != null ? c.netDebtToFcf.toFixed(1) + '×' : (c.fcfNA ? 'n/a' : '—')}</span></div>
+        <div class="co-stat" title="Compound annual growth of revenue across the filed history"><span class="co-k">REVENUE CAGR</span><span class="co-v ${c.revenueCagr >= 0 ? 'pos' : 'neg'}">${c.revenueCagr != null ? c.revenueCagr.toFixed(1) + '%' : '—'}</span></div>
+        <div class="co-stat" title="Compound annual growth of earnings per share"><span class="co-k">EPS CAGR</span><span class="co-v ${c.epsCagr >= 0 ? 'pos' : 'neg'}">${c.epsCagr != null ? c.epsCagr.toFixed(1) + '%' : '—'}</span></div>
+        <div class="co-stat" title="Net income ÷ (equity + debt − cash) — approximate return on capital"><span class="co-k">RETURN ON CAPITAL</span><span class="co-v ${c.roic >= 0 ? 'pos' : 'neg'}">${c.roic != null ? c.roic.toFixed(1) + '%' : '—'}</span></div>
+        <div class="co-stat" title="(Debt − cash) ÷ (operating income + D&A) — years of EBITDA to clear net debt"><span class="co-k">NET DEBT / EBITDA</span><span class="co-v">${c.netDebtEbitda != null ? c.netDebtEbitda.toFixed(1) + '×' : '—'}</span></div>
       </div>`
     + (c.peHistory ? (() => {
         const h = c.peHistory;

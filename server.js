@@ -3875,7 +3875,7 @@ const server = http.createServer(async (req, res) => {
         updated: COMPANIES.updated || null,
         count: (COMPANIES.companies || []).length,
         companies: COMPANIES.companies || [],
-        valuation: valuation?.index || null,
+        valuation: valuation ? { ...valuation.index, sectors: valuation.sectors || {} } : null,
       });
     }
     if (url.pathname === '/api/deals') {

@@ -22,7 +22,37 @@ const dur = (e) => (Date.parse(e.end) - Date.parse(e.start)) / DAY;
 mkdirSync(CACHE, { recursive: true });
 
 const OCF = ['NetCashProvidedByUsedInOperatingActivities', 'NetCashProvidedByUsedInOperatingActivitiesContinuingOperations'];
-const CAPEX = ['PaymentsToAcquirePropertyPlantAndEquipment', 'PaymentsToAcquireProductiveAssets', 'PaymentsForCapitalImprovements'];
+const CAPEX = [
+  'PaymentsToAcquirePropertyPlantAndEquipment',
+  'PaymentsToAcquireProductiveAssets',
+  'PaymentsForCapitalImprovements',
+  // Industry variants: pharma tags "other PP&E", E&Ps tag oil-and-gas property, REITs tag development.
+  'PaymentsToAcquireOtherPropertyPlantAndEquipment',
+  'PaymentsToAcquireOilAndGasPropertyAndEquipment',
+  'PaymentsToAcquireOilAndGasProperty',
+  'PaymentsToDevelopRealEstateAssets',
+  'PaymentsToAcquireRealEstate',
+  'PaymentsForConstructionInProcess',
+  'PaymentsToAcquireMachineryAndEquipment',
+];
+
+const ALL_TAGS = [...OCF, ...CAPEX];
+const factsDone = new Set();
+async function factsFallback(cik) {
+  if (factsDone.has(cik)) return;
+  factsDone.add(cik);
+  try {
+    const res = await fetch(`https://data.sec.gov/api/xbrl/companyfacts/CIK${String(cik).padStart(10, '0')}.json`, { headers: { 'User-Agent': UA } });
+    if (!res.ok) return;
+    const j = await res.json();
+    const g = j.facts?.['us-gaap'] || {};
+    // Cache every cash-flow tag we might ask for, so the index is fetched once per company.
+    for (const tag of ALL_TAGS) {
+      const u = g[tag]?.units?.USD;
+      if (Array.isArray(u) && u.length) writeFileSync(join(CACHE, `${cik}_${tag}.json`), JSON.stringify({ units: { USD: u } }));
+    }
+  } catch { /* leave uncached */ }
+}
 
 async function units(cik, tag) {
   const f = join(CACHE, `${cik}_${tag}.json`);
@@ -32,15 +62,22 @@ async function units(cik, tag) {
   for (let i = 0; i < 3; i++) {
     try {
       const res = await fetch(`https://data.sec.gov/api/xbrl/companyconcept/CIK${String(cik).padStart(10, '0')}/us-gaap/${tag}.json`, { headers: { 'User-Agent': UA } });
-      if (res.status === 404) return null;
+      if (res.status === 404) break;
       if (!res.ok) { await new Promise((r) => setTimeout(r, 1200 * (i + 1))); continue; }
       const j = await res.json();
       writeFileSync(f, JSON.stringify(j));
       const u = j?.units?.USD;
-      return Array.isArray(u) ? u : null;
+      if (Array.isArray(u) && u.length) return u;
+      break;
     } catch { await new Promise((r) => setTimeout(r, 800 * (i + 1))); }
   }
-  return null;
+  // The per-concept endpoint is empty or missing for some CIKs; the index has the values.
+  await factsFallback(cik);
+  try {
+    const j = JSON.parse(readFileSync(f, 'utf8'));
+    const u = j?.units?.USD;
+    return Array.isArray(u) && u.length ? u : null;
+  } catch { return null; }
 }
 
 // The annual value for the fiscal year of the income statement, else the latest annual one.

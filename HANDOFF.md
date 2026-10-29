@@ -2058,3 +2058,17 @@ fourth hero cell for the index P/E. 121 tests.
   candidate wins; if neither passes, it writes an honest generated line with the sector, industry and
   revenue. Result: **495 from filings, 7 from Nasdaq, 1 generated, 0 failing**. A test enforces the gate
   so this cannot regress.
+
+## FCF completion, growth/quality, sector valuation (2026-10-29)
+- **FCF 405 → 428 of 503.** The per-concept endpoint 404s on capex for many filers; the cash-flow pass now
+  falls back to the filing index, and the capex family gained the industry variants that actually get
+  tagged — `PaymentsToAcquireOtherPropertyPlantAndEquipment` (Lilly), `…OilAndGasPropertyAndEquipment`
+  (EOG), `…DevelopRealEstateAssets` (Digital Realty). 69 financials remain n/a by design.
+- **Growth and quality, previously absent entirely:** revenue CAGR, EPS CAGR, margin change over the filed
+  history, return on capital (net income ÷ equity + debt − cash, marked approximate) and net debt/EBITDA.
+  Coverage: revenue CAGR 487, EPS CAGR 427, ROIC 480, net debt/EBITDA 320.
+- **Sector valuation.** `build-sector-valuation.mjs` applies the index construction per sector on a
+  like-for-like company set: Technology 33.6× (100th percentile of 20–33), Energy 27.5× (100th of 7.8–17.6),
+  Financials 14.8× (75th), Utilities 22.6× (25th). Shown on the sector board.
+- The company screener gained REV CAGR and ROIC columns; the company page gained four cells.
+123 tests.

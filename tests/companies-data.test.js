@@ -168,6 +168,17 @@ test('a valuation band is ordered and its percentile is in range', () => {
   }
 });
 
+test('sector valuation is ordered and covers the main sectors', () => {
+  const v = JSON.parse(readFileSync(new URL('../data/valuation.json', import.meta.url), 'utf8'));
+  const sectors = v.sectors || {};
+  assert.ok(Object.keys(sectors).length >= 8, 'at least eight sectors');
+  for (const [name, x] of Object.entries(sectors)) {
+    assert.ok(x.min <= x.median && x.median <= x.max, `${name}: ${x.min}/${x.median}/${x.max}`);
+    assert.ok(x.percentile == null || (x.percentile >= 0 && x.percentile <= 100), `${name}: percentile`);
+    assert.ok(x.pe == null || (x.pe > 3 && x.pe < 200), `${name}: P/E ${x.pe}`);
+  }
+});
+
 test('the index valuation carries a current P/E and a history', () => {
   const v = JSON.parse(readFileSync(new URL('../data/valuation.json', import.meta.url), 'utf8'));
   assert.ok(v.index.pe > 5 && v.index.pe < 100, `index P/E ${v.index.pe}`);
