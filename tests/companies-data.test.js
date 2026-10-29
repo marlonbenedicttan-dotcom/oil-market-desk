@@ -141,6 +141,23 @@ test('free cash flow is cash, not a second earnings figure', () => {
   assert.ok(by.AAPL.fcf > 5e10, 'Apple free cash flow should exceed $50B');
 });
 
+test('a company without free cash flow still carries its own metrics', () => {
+  for (const c of data.companies) {
+    if (c.sector !== 'Financials') continue;
+    // Banks get tangible book / efficiency / margin; asset managers and exchanges may have none of
+    // those, but every financial still has a return on equity.
+    assert.ok(c.ptbv != null || c.efficiencyRatio != null || c.nim != null || c.roe != null,
+      `${c.ticker}: no financial metric at all`);
+  }
+});
+
+test('shareholder yield is a percentage in a plausible range', () => {
+  for (const c of data.companies) {
+    if (c.shareholderYield == null) continue;
+    assert.ok(c.shareholderYield > -5 && c.shareholderYield < 40, `${c.ticker}: ${c.shareholderYield}`);
+  }
+});
+
 test('banks have no free cash flow but do have a margin', () => {
   assert.ok(by.JPM.fcfNA, 'JPM FCF is marked n/a');
   assert.equal(by.JPM.fcf, null, 'JPM FCF is null');

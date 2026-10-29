@@ -146,6 +146,34 @@ for (const c of data.companies) {
   c.netDebtToFcf = fcf > 0 && c.debt != null ? +((c.debt - (c.cash || 0)) / fcf).toFixed(1) : null;
   if (c.netDebtToFcf != null && (c.netDebtToFcf < -20 || c.netDebtToFcf > 100)) c.netDebtToFcf = null;
 
+  // --- capital metrics ------------------------------------------------------
+  // Tangible book strips goodwill and intangibles: the number a bank is actually valued on.
+  const tangible = c.equity != null ? c.equity - (c.goodwill || 0) - (c.intangibles || 0) : null;
+  c.tangibleEquity = tangible;
+  c.ptbv = c.marketCap && tangible > 0 ? +(c.marketCap / tangible).toFixed(2) : null;
+  if (c.ptbv != null && (c.ptbv < 0.05 || c.ptbv > 50)) c.ptbv = null;
+
+  c.efficiencyRatio = c.noninterestExpense != null && c.revenue > 0
+    ? +((c.noninterestExpense / c.revenue) * 100).toFixed(1) : null;
+  if (c.efficiencyRatio != null && (c.efficiencyRatio < 10 || c.efficiencyRatio > 150)) c.efficiencyRatio = null;
+
+  c.nim = c.netInterestIncome != null && c.assets > 0 ? +((c.netInterestIncome / c.assets) * 100).toFixed(2) : null;
+  if (c.nim != null && (c.nim < 0 || c.nim > 15)) c.nim = null;
+
+  // What the company returns: dividends (from the exchange) plus buybacks (from the filing).
+  // Prefer cash actually paid (dividends + buybacks) over the exchange's yield field, which is missing
+  // for several large caps (Coca-Cola, Exxon, JPMorgan).
+  const cashReturned = (c.dividendsPaid || 0) + (c.buybacks || 0);
+  c.shareholderYield = c.marketCap
+    ? +((cashReturned > 0 ? (cashReturned / c.marketCap) * 100 : (c.dividendYield || 0))).toFixed(2)
+    : null;
+  if (c.shareholderYield != null && (c.shareholderYield < -5 || c.shareholderYield > 40)) c.shareholderYield = null;
+
+  // Fallbacks for companies where free cash flow does not exist.
+  c.ebitYield = c.opInc != null && c.ev > 0 ? +((c.opInc / c.ev) * 100).toFixed(1) : null;
+  if (c.ebitYield != null && Math.abs(c.ebitYield) > 100) c.ebitYield = null;
+  c.assetTurnover = c.revenue && c.assets > 0 ? +(c.revenue / c.assets).toFixed(2) : null;
+
   // --- growth and quality ---------------------------------------------------
   const hist = (c.series || []).slice().sort((x, y) => x.fy - y.fy);
   // Some filers never tag EPS (Berkshire, Visa, Monster). Net income ÷ shares is the same number and
@@ -174,11 +202,12 @@ for (const c of data.companies) {
   const roicEarn = c.netIncomeTTM != null ? c.netIncomeTTM : c.netIncome;
   c.roicBasis = roicEarn == null ? null : (c.netIncomeTTM != null ? 'TTM' : 'FY');
   c.roic = invested > 0 && roicEarn != null ? +((roicEarn / invested) * 100).toFixed(1) : null;
+  c.roe = c.equity > 0 && roicEarn != null ? +((roicEarn / c.equity) * 100).toFixed(1) : null;
   if (c.roic != null && (c.roic < -100 || c.roic > 200)) c.roic = null;
 
   const ebitdaQ = c.ebitdaTTM != null ? c.ebitdaTTM : (c.opInc != null ? c.opInc + (c.da || 0) : null);
   c.netDebtEbitdaBasis = ebitdaQ == null ? null : (c.ebitdaTTM != null ? 'TTM' : 'FY');
-  c.netDebtEbitda = c.debt != null && ebitdaQ > 0 ? +(((c.debt - (c.cash || 0)) / ebitdaQ)).toFixed(1) : null;
+  c.netDebtEbitda = c.debt != null && ebitdaQ > 0 && !bankLike ? +(((c.debt - (c.cash || 0)) / ebitdaQ)).toFixed(1) : null;
   if (c.netDebtEbitda != null && (c.netDebtEbitda < -20 || c.netDebtEbitda > 50)) c.netDebtEbitda = null;
 
   c.currentRatio = c.currentAssets != null && c.currentLiabilities > 0 ? +(c.currentAssets / c.currentLiabilities).toFixed(2) : null;

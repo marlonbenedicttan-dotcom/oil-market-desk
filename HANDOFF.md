@@ -2086,3 +2086,14 @@ fourth hero cell for the index P/E. 121 tests.
   pre-tax income when the direct tag is stale — Berkshire's last filed in 2012.
 - The audit now reconciles EV/EBITDA (it never did), and uses the same series fallback as derive.
 FCF 480/503 (17 banks n/a) · EV/EBITDA 423.
+
+## Metrics for the companies FCF does not fit (2026-10-29)
+- **Bank metrics**: `build-capital-metrics.mjs` reads goodwill, non-interest expense, net interest income
+  and buybacks for the financials. The company page swaps the FCF row for **P/TBV, efficiency ratio, net
+  interest margin and shareholder yield** when the company is a financial. JPM: 2.86× tangible book,
+  57% efficiency, 2.16% NIM.
+- **Shareholder yield for everyone**: dividends + buybacks ÷ market cap, from the filings rather than the
+  exchange's yield field (which is missing for Coca-Cola, Exxon, JPMorgan). Coverage 502/503.
+- **Fallbacks for non-financials without FCF**: EBIT yield and asset turnover now render instead of a
+  wall of dashes; net debt/EBITDA is suppressed for bank-like financials.
+- 24 tests.
