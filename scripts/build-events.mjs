@@ -39,7 +39,8 @@ for (const c of data.companies) {
   let nextEnd = period + 91 * DAY;
   let expected = nextEnd + lag * DAY;
   // If that date is already past, the next quarter is the one after.
-  while (expected < today - 7 * DAY) { nextEnd += 91 * DAY; expected = nextEnd + lag * DAY; }
+  // An estimate that has already passed is no longer forward-looking — roll to the next quarter.
+  while (expected < today) { nextEnd += 91 * DAY; expected = nextEnd + lag * DAY; }
   if (expected > horizon) continue;
 
   const days = Math.round((expected - today) / DAY);
