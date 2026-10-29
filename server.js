@@ -3878,6 +3878,14 @@ const server = http.createServer(async (req, res) => {
         valuation: valuation ? { ...valuation.index, sectors: valuation.sectors || {} } : null,
       });
     }
+    if (url.pathname === '/api/japan') {
+      try {
+        const jp = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'japan.json'), 'utf8'));
+        return sendJSON(res, 200, jp);
+      } catch {
+        return sendJSON(res, 200, { companies: [], error: 'Japan has not been built yet' });
+      }
+    }
     if (url.pathname === '/api/deals') {
       ensureSeeded();
       const store = await refreshDeals().catch(() => STORE);

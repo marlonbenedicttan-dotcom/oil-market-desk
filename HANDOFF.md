@@ -2105,3 +2105,22 @@ FCF 480/503 (17 banks n/a) · EV/EBITDA 423.
   ALL 500** — defaulting to the watchlist so 500 companies never flood the grid. Day cells show the
   tickers reporting; clicking a company row opens its page.
 - Deals (last 30 days) and restatements are added as confirmed events.
+
+## Japan — TSE Prime from J-Quants (2026-10-29)
+- **Source**: J-Quants (JPX's own API), Light plan. No scraping, no EDINET, no JP-GAAP XBRL mapping.
+  Prices come one trading day at a time (all issues per call); financials one company at a time.
+- **Universe**: TSE Prime, top 225 by market cap — not the Nikkei 225, which is a licensed index whose
+  membership is not in the exchange master.
+- **`scripts/jquants.mjs`** — client: `x-api-key`, 1.1s pacing (Light allows 60/min), 429 backoff, pagination.
+- **`scripts/build-japan.mjs`** — master → prices → rank → financials → calendar → FX → `data/japan.json`
+  (0.85MB). Cache in `data/cache/jquants/` (gitignored). `--limit=N` for a smoke test.
+- **`scripts/derive-japan.mjs`** — FY basis (labelled with the period end), P/E, P/B, ROE, operating margin,
+  cash after investing (CFO + CFI — capex is inside investing, not broken out), and **forward P/E from the
+  company's own guidance** (never consensus).
+- **Split trap**: BPS and EPS in the summary are not restated for splits (Tokyo Electron, SMFG, Kioxia), so
+  share count is market cap ÷ price and forward P/E uses the profit forecast only — never EPS × shares.
+- **Market cap unit**: the bars API returns `MktCap` in **millions of yen** (verified against JPX itself).
+- **UI**: COMPANIES now has an `S&P 500 / JAPAN · TSE PRIME` switch. Yen throughout, USD shown as a
+  conversion, sectors mapped from the exchange's 33 into English, 225-row list + detail page with chart.
+- Coverage: 214/225 P/E, 225/225 P/B and cash flow, 212/225 forward P/E, 23 with a scheduled results date.
+- 133 tests.

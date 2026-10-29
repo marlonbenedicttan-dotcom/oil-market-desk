@@ -2463,6 +2463,8 @@ const CAL_DOW = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const MONTH_NAMES = ['JANUARY', 'FEBRUARY', 'MARCH', 'APRIL', 'MAY', 'JUNE', 'JULY', 'AUGUST', 'SEPTEMBER', 'OCTOBER', 'NOVEMBER', 'DECEMBER'];
 let calEvents = null, calMonth = null, calSel = null, calFomc = null;
 let calCompany = [];
+// Which market the companies tab is showing: the S&P 500 or TSE Prime.
+let coRegion = (() => { try { return localStorage.getItem('oilbasis.coRegion') || 'us'; } catch { return 'us'; } })();
 // Which company events to show: the watchlist by default, the index on request.
 let calMode = (() => { try { return localStorage.getItem('oilbasis.calMode') || 'watch'; } catch { return 'watch'; } })();
 async function loadCalendar() {
@@ -3440,10 +3442,107 @@ const CO_ALIAS = {
 const coMarginOf = (c) => (c.revenue && c.netIncome != null ? (c.netIncome / c.revenue) * 100 : null);
 const coMargin = coMarginOf;
 
+// --- Japan: TSE Prime, from J-Quants (JPX's own API) -------------------------------------------
+// Kept separate from the US list on purpose: different currency, different fiscal year, different
+// accounting basis. Mixing them into one table would silently compare yen to dollars.
+let japanData = null, jpSel = null, jpQuery = '';
+
+function yen(v) {
+  if (v == null || !Number.isFinite(v)) return '—';
+  const a = Math.abs(v);
+  if (a >= 1e12) return `¥${(v / 1e12).toFixed(2)}T`;
+  if (a >= 1e9) return `¥${(v / 1e9).toFixed(1)}B`;
+  if (a >= 1e6) return `¥${(v / 1e6).toFixed(1)}M`;
+  return `¥${Math.round(v).toLocaleString('en-US')}`;
+}
+
+async function loadJapan() {
+  if (japanData) return japanData;
+  try { japanData = await jget('/api/japan', 3600000); } catch { japanData = { companies: [] }; }
+  return japanData;
+}
+
+async function renderJapan() {
+  const el = $('co-body'); if (!el) return;
+  const noteUs = $('co-note'); if (noteUs) noteUs.classList.add('hidden');
+  if (charts['jp-chart']) { try { charts['jp-chart'].destroy(); } catch {} delete charts['jp-chart']; }
+  el.innerHTML = stLoading('Loading Japan…');
+  const d = await loadJapan();
+  const all = (d && d.companies) || [];
+  const sub = $('deals-sub');
+  if (sub) sub.textContent = all.length ? `${all.length} companies · TSE Prime · ¥ JPY · J-Quants` : 'TSE Prime · J-Quants (JPX)';
+  if (!all.length) {
+    el.innerHTML = `<div class="macro-note">Japan is not built yet. With a J-Quants key in the environment, run <code>node scripts/build-japan.mjs</code> — the whole pipeline is ready.</div>`;
+    return;
+  }
+  const sel = all.find((c) => c.code === jpSel);
+  if (sel) return renderJapanPage(sel);
+
+  const q = jpQuery.trim().toLowerCase();
+  const rows = all.filter((c) => !q || `${c.name} ${c.nameJa || ''} ${c.ticker} ${c.sector}`.toLowerCase().includes(q));
+  const max = Math.max(...all.map((c) => c.marketCap || 0), 1);
+  el.innerHTML = `<div class="jp-hrow"><span>#</span><span>COMPANY</span><span>PRICE · 1D</span><span>YTD</span><span>MARKET CAP</span><span>P/E</span><span>ROE</span></div>`
+    + `<div class="jp-list">${rows.map((c, i) => `<button class="jp-row" data-jp="${esc(c.code)}">
+      <span class="co-rank">${i + 1}</span>
+      <span class="co-id"><b>${esc(c.name)}</b><span class="co-tick">${esc(c.ticker)} · ${esc(c.sector)}</span></span>
+      <span class="jp-px">${yen(c.price)}<em class="${(c.chg1d || 0) >= 0 ? 'pos' : 'neg'}">${c.chg1d == null ? '' : `${c.chg1d >= 0 ? '+' : ''}${c.chg1d.toFixed(1)}%`}</em></span>
+      <span class="jp-ytd ${(c.chgYtd || 0) >= 0 ? 'pos' : 'neg'}">${c.chgYtd == null ? '—' : `${c.chgYtd >= 0 ? '+' : ''}${c.chgYtd.toFixed(1)}%`}</span>
+      <span class="co-cap">${yen(c.marketCap)}<i class="co-bar"><i style="width:${Math.max(2, ((c.marketCap || 0) / max) * 100)}%"></i></i></span>
+      <span class="co-pe">${c.pe != null ? c.pe.toFixed(1) : '—'}</span>
+      <span class="co-mar ${c.roe == null ? 'dimtext' : c.roe >= 0 ? 'pos' : 'neg'}">${c.roe == null ? '—' : `${c.roe.toFixed(1)}%`}</span>
+    </button>`).join('')}</div>
+    <div class="macro-note">${esc(d.universe || '')} · fiscal-year figures (not TTM) · forward P/E uses the company's own guidance, not analyst consensus · FX ${d.fx && d.fx.rate ? d.fx.rate.toFixed(2) : '—'} JPY per USD · source J-Quants (JPX).</div>`;
+}
+
+function renderJapanPage(c) {
+  const el = $('co-body'); if (!el) return;
+  const sub = $('deals-sub'); if (sub) sub.textContent = `${c.name} · ${c.ticker} · TSE Prime`;
+  const cell = (k, v, title, cls = '') => `<div class="co-stat" title="${esc(title)}"><span class="co-k">${k}</span><span class="co-v ${cls}">${v}</span></div>`;
+  const g = c.guidance;
+  const chg = (v) => (v == null ? '—' : `${v >= 0 ? '+' : ''}${v.toFixed(1)}%`);
+  el.innerHTML = `
+    <div class="co-top"><button class="co-back" data-jpback>← All companies</button></div>
+    <div class="co-name"><h2>${esc(c.name)}</h2><span class="dimtext">${esc(c.nameJa || '')}${c.sector ? ` · ${esc(c.sector)}` : ''}${c.size ? ` · ${esc(c.size)}` : ''}</span></div>
+    <div class="jp-price">
+      <span class="jp-big">${yen(c.price)}</span>
+      <span class="${(c.chg1d || 0) >= 0 ? 'pos' : 'neg'}">${chg(c.chg1d)} <em>1D</em></span>
+      <span class="${(c.chg6m || 0) >= 0 ? 'pos' : 'neg'}">${chg(c.chg6m)} <em>6M</em></span>
+      <span class="${(c.chgYtd || 0) >= 0 ? 'pos' : 'neg'}">${chg(c.chgYtd)} <em>YTD</em></span>
+      ${c.priceDate ? `<span class="dimtext">${esc(c.priceDate)} close</span>` : ''}
+    </div>
+    <div class="co-stats co-stats-12">
+      ${cell('MARKET CAP', yen(c.marketCap), 'Shares × price, in yen')}
+      ${cell('MARKET CAP · USD', c.marketCapUsd ? `$${(c.marketCapUsd / 1e9).toFixed(1)}B` : '—', 'Converted at the current USD/JPY rate')}
+      ${cell('P / E', c.pe != null ? `${c.pe.toFixed(1)}×` : '—', 'Market cap ÷ net profit, fiscal year')}
+      ${cell('P / B', c.pb != null ? `${c.pb.toFixed(1)}×` : '—', 'Market cap ÷ shareholders\u2019 equity')}
+      ${cell('RETURN ON EQUITY', c.roe != null ? `${c.roe.toFixed(1)}%` : '—', 'Net profit ÷ equity, fiscal year', c.roe >= 0 ? 'pos' : 'neg')}
+      ${cell('OPERATING MARGIN', c.opMargin != null ? `${c.opMargin.toFixed(1)}%` : '—', 'Operating profit ÷ sales', c.opMargin >= 0 ? 'pos' : 'neg')}
+      ${cell('FORWARD P / E', c.forwardPe != null ? `${c.forwardPe.toFixed(1)}×` : '—', 'Market cap ÷ the company\u2019s own full-year profit forecast — guidance, not consensus')}
+      ${cell('SALES', yen(c.sales), 'Net sales, fiscal year')}
+      ${cell('OPERATING PROFIT', yen(c.op), 'Operating profit, fiscal year')}
+      ${cell('NET PROFIT', yen(c.np), 'Profit attributable to owners of the parent', c.np >= 0 ? 'pos' : 'neg')}
+      ${cell('TOTAL EQUITY', yen(c.eq), 'Shareholders\u2019 equity')}
+      ${cell('CASH AFTER INVESTING', yen(c.fcf), 'Operating cash flow + investing cash flow — capex is inside investing, not broken out')}
+    </div>
+    <div class="co-chartwrap"><canvas id="jp-chart"></canvas></div>
+    <div class="macro-note">
+      Fiscal year ending ${esc(c.period || '—')} · figures from the company's summary of financial statements (J-Quants).
+      ${g ? `Guidance for FY ${esc(g.fy || '—')}: sales ${yen(g.sales)}, operating profit ${yen(g.op)}, net profit ${yen(g.np)}.` : 'No company forecast on file.'}
+      ${c.earnings ? ` Next results: ${esc(c.earnings.date)} (${esc(c.earnings.quarter || 'scheduled')}).` : ''}
+      Currency is yen throughout; the USD figure is a conversion, not a separate quote.
+    </div>`;
+  const s = c.series || [];
+  if (s.length > 1) {
+    mountChart('jp-chart', { labels: s.map((p) => p.d), datasets: [line(`${c.ticker} · JPY`, s.map((p) => p.c), CT.c1)] }, baseOptions({ dp: 0, dateAxis: true }));
+  }
+}
+
 function renderCompanies() {
+  if (coRegion === 'jp') return renderJapan();
   const el = $('co-body');
   if (charts['co-chart']) { try { charts['co-chart'].destroy(); } catch {} delete charts['co-chart']; }
   if (!el) return;
+  const noteUs = $('co-note'); if (noteUs) noteUs.classList.remove('hidden');
   if (!companiesData) { el.innerHTML = stError('Couldn’t load companies — retrying.'); return; }
   const all = companiesData.companies || [];
   const sub = $('deals-sub');
@@ -3806,6 +3905,20 @@ document.addEventListener('click', (e) => {
     loadCoChart(coTicker, coRange);
     return;
   }
+  const region = e.target.closest('[data-region]');
+  if (region) {
+    coRegion = region.dataset.region;
+    try { localStorage.setItem('oilbasis.coRegion', coRegion); } catch {}
+    document.querySelectorAll('[data-region]').forEach((b) => b.classList.toggle('on', b.dataset.region === coRegion));
+    coCik = null; jpSel = null;
+    const inp = $('co-search'); if (inp) inp.value = '';
+    const note = $('co-note'); if (note) note.classList.toggle('hidden', coRegion === 'jp');
+    renderCompanies();
+    return;
+  }
+  const jrow = e.target.closest('[data-jp]');
+  if (jrow) { jpSel = jrow.dataset.jp; renderJapan(); window.scrollTo({ top: 0, behavior: 'smooth' }); return; }
+  if (e.target.closest('[data-jpback]')) { jpSel = null; renderJapan(); return; }
   if (e.target.closest('[data-coback]')) { coCik = null; renderCompanies(); return; }
   const star = e.target.closest('[data-coticker]');
   if (star) { toggleWatch(star.dataset.coticker); renderCompanyPage($('co-body'), companiesData.companies || []); renderWatchlist(); return; }
@@ -3865,7 +3978,10 @@ document.addEventListener('change', (e) => {
 });
 
 document.addEventListener('input', (e) => {
-  if (e.target && e.target.id === 'co-search') { coQuery = e.target.value || ''; coCik = null; renderCompanies(); return; }
+  if (e.target && e.target.id === 'co-search') {
+    if (coRegion === 'jp') { jpQuery = e.target.value || ''; jpSel = null; renderJapan(); return; }
+    coQuery = e.target.value || ''; coCik = null; renderCompanies(); return;
+  }
   if (e.target && e.target.id === 'co-cmp') {
     coCompare = (e.target.value || '').trim().toUpperCase();
     if (!coCompare || coCompare.length >= 1) loadCoChart(coTicker, coRange, coCompare);
