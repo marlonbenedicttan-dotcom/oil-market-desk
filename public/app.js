@@ -3680,6 +3680,7 @@ function jpMatches(c) {
 
 async function renderJapan() {
   const el = $('co-body'); if (!el) return;
+  const token = takeToken();
   syncMarketBar();
   const noteUs = $('co-note'); if (noteUs) noteUs.classList.add('hidden');
   for (const k of ['jp-chart', 'jp-q-chart']) {
@@ -3687,6 +3688,7 @@ async function renderJapan() {
   }
   if (!japanData) el.innerHTML = stLoading('Loading Japan…');
   const d = await loadJapan();
+  if (stale(token)) return;          // another market was chosen while this one loaded
   syncMarketBar();
   const all = (d && d.companies) || [];
   const sub = $('deals-sub');
@@ -3698,6 +3700,7 @@ async function renderJapan() {
   const sel = all.find((c) => c.code === jpSel);
   if (sel) { syncCoTools(); return renderJapanPage(sel); }
   syncCoTools();
+  warmMarkets();
   if (jpView === 'market') return renderJapanMarket(all, d);
   if (jpView === 'themes') return renderJapanThemes(all, d);
   return renderJapanScreener(all, d);
@@ -4122,6 +4125,11 @@ function drawJpQuarters(c) {
 // Same three views as the other two markets. What Korea does not have is guidance — Korean companies
 // do not publish full-year forecasts — so there is no forward P/E and no guidance-versus-delivered.
 let koreaData = null, krSel = null, krQuery = '';
+// Every market render takes a token. If you switch again while one is still fetching, the older one
+// bails instead of painting over the market you actually chose.
+let renderSeq = 0;
+const takeToken = () => ++renderSeq;
+const stale = (t) => t !== renderSeq;
 let krRange = (() => { try { return localStorage.getItem('oilbasis.krRange') || '1y'; } catch { return '1y'; } })();
 let krPreset = null, krSector = 'all', krCompare = '';
 let krView = (() => { try { return localStorage.getItem('oilbasis.krView') || 'screener'; } catch { return 'screener'; } })();
@@ -4148,11 +4156,13 @@ const krViewsBar = () => `<div class="co-views">${[['market', 'MARKET'], ['scree
 
 async function renderKorea() {
   const el = $('co-body'); if (!el) return;
+  const token = takeToken();
   syncMarketBar();
   const noteUs = $('co-note'); if (noteUs) noteUs.classList.add('hidden');
   syncCoTools();
   if (!koreaData) el.innerHTML = stLoading('Loading KOSPI…');
   const d = await loadKorea();
+  if (stale(token)) return;
   syncMarketBar();
   const all = (d && d.companies) || [];
   const sub = $('deals-sub');
@@ -4163,6 +4173,7 @@ async function renderKorea() {
   }
   const sel = all.find((c) => c.code === krSel);
   if (sel) return renderKoreaPage(sel);
+  warmMarkets();
   if (krView === 'market') return renderKoreaMarket(all, d);
   if (krView === 'themes') return renderKoreaThemes(all, d);
   return renderKoreaScreener(all, d);
@@ -4379,9 +4390,23 @@ async function syncMarketBar() {
   bar.innerHTML = `<span class="mb-name">${name}</span><span class="mb-lvl">${lvl}</span>${chgHtml}<span class="dimtext">${count}</span>`;
 }
 
+// Prefetch the other two markets after the first one paints. Three payloads is ~370 KB gzipped, and it
+// makes the market switch instant instead of a spinner.
+let warmed = false;
+function warmMarkets() {
+  if (warmed) return;
+  warmed = true;
+  setTimeout(() => {
+    if (!companiesData) getJSON('/api/companies').then((d) => { companiesData = d; }).catch(() => {});
+    if (!japanData) loadJapan().catch(() => {});
+    if (!koreaData) loadKorea().catch(() => {});
+  }, 1500);
+}
+
 function renderCompanies() {
   // Keep the market switch in sync with the remembered choice (it also survives a reload).
   document.querySelectorAll('[data-region]').forEach((b) => b.classList.toggle('on', b.dataset.region === coRegion));
+  if (coRegion !== 'us') takeToken();   // leaving the US invalidates any in-flight US render
   syncMarketBar();
   if (coRegion === 'jp') return renderJapan();
   if (coRegion === 'kr') return renderKorea();
@@ -4479,6 +4504,7 @@ function renderCompanies() {
   const medEv = evs.length ? evs[Math.floor(evs.length / 2)] : null;
 
   // The aggregates live in the MARKET view now; the screener opens straight on the rows.
+  warmMarkets();
   el.innerHTML = usViewsBar()
     + `<div class="co-hrow"><span>#</span><span></span><span>COMPANY</span><span>MARKET CAP</span><span>P/E</span><span>MARGIN</span></div>`
     + (rows.length ? '' : `<div class="macro-note">No company matches “${esc(coQuery.trim())}”. Try a ticker (AAPL) or a sector name.</div>`)

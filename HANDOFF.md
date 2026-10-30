@@ -2545,3 +2545,10 @@ they are filed. Today's run picked up **295 companies** that had filed.
 - **Alphabet appeared twice** in the US list: GOOGL and GOOG are the same company, and a second share class
   was getting its own row. Second classes are now excluded from the list (500 rows, one per company); they
   remain in the data and in the index weights, so nothing is lost from the totals.
+
+## Companies: no stale renders, instant switches (2026-10-31)
+- **Race fixed**: each market render takes a token; if you switch again while one is still fetching, the
+  older render bails instead of painting the S&P list over Korea. Verified: US → JP → KR with no pause ends
+  on 737 Korea rows and zero US rows.
+- **Prefetch**: once the first market paints, the other two payloads load in the background (~370 KB
+  gzipped total), so switching is instant rather than a spinner.
