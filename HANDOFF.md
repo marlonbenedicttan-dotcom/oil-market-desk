@@ -2491,3 +2491,16 @@ they are filed. Today's run picked up **295 companies** that had filed.
   requests. Verified in the UI: SAMSUNG ELECTRONICS CO LTD, SK HYNIX INC, HANA FINANCIAL GROUP,
   INDUSTRIAL BANK OF KOREA.
 - OpenFIGI rejects 25 identifiers without a key — 10 is the working batch size, at 10 requests a minute.
+
+## Korea: descriptions, brands, full market live (2026-10-31)
+- **737 KOSPI companies** with statements, prices, TTM ratios, five-year history and quarterly tables.
+  Market aggregates: median P/E 10.3×, median P/B 0.57×, median ROE 4.5%, 491 of 737 below book — the
+  Korea discount, measured rather than asserted.
+- **Descriptions**: 727 fetched from stockanalysis.com KRX company pages, 10 generated from filing data.
+  Zero blanks. **46 companies carry brand chips** (Samsung → Galaxy, Exynos, Bespoke; Hyundai → Genesis,
+  IONIQ; Naver → LINE, Webtoon; Nongshim → Shin Ramyun).
+- **Quarter bug fixed**: DART's quarterly filings carry the period NAME but no date (`thstrm_dt` is null),
+  so every quarter was being skipped. The end date is now derived from the report code — Q1 31 March,
+  H1 30 June, Q3 30 September. 662 of 737 now have quarters.
+- UI reuses the Japan components, so the Korea page looks like the other two: price strip, eight ratios,
+  five-year record, quarterly table, description and brand chips.

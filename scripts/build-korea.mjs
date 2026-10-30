@@ -216,15 +216,19 @@ const collected = await pool(withPrices, 2, async (c) => {
     if (!rows.length) continue;
     const m = mapAccounts(rows);
     const end = (rows.find((r) => r.thstrm_dt) || {}).thstrm_dt || `${y}-12-31`;
-    reports.push({ report: 'annual', end: end.slice(0, 10), ...m });
+    reports.push({ report: 'annual', end: end.slice(0, 10).replace(/\./g, '-'), ...m });
   }
   // The current year's quarters, for a TTM figure that is not a year old.
+  // Quarterly filings carry the period NAME but no date field (thstrm_dt is null), so the end date is
+  // derived from the report code: Q1 ends 31 March, H1 30 June, Q3 30 September.
+  const QUARTER_END = { q1: '03-31', h1: '06-30', q3: '09-30' };
   for (const [k, code] of [['q1', REPORTS.q1], ['h1', REPORTS.h1], ['q3', REPORTS.q3]]) {
     const rows = await statements(c.corp, thisYear, code);
     if (!rows.length) continue;
     const m = mapAccounts(rows);
-    const end = (rows.find((r) => r.thstrm_dt) || {}).thstrm_dt || null;
-    if (end) reports.push({ report: k, end: end.slice(0, 10), ...m });
+    const raw = (rows.find((r) => r.thstrm_dt) || {}).thstrm_dt;
+    const end = raw ? raw.slice(0, 10).replace(/\./g, '-') : `${thisYear}-${QUARTER_END[k]}`;
+    reports.push({ report: k, end, ...m });
   }
   if (!reports.length) return null;
   return {
