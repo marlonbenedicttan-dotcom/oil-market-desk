@@ -58,10 +58,11 @@ if (!book || Date.parse(book.fetched) < Date.now() - 7 * DAY) {
 const universeFile = readJson(join(ROOT, 'data', 'korea-universe.json'));
 if (universeFile && universeFile.companies && universeFile.companies.length) {
   console.log(`universe: ${universeFile.companies.length} KOSPI companies from data/korea-universe.json`);
-  const kospiCached = universeFile.companies.filter((c) => c.shares);
-  const todo = LIMIT ? kospiCached.slice(0, LIMIT) : kospiCached;
-  // fall through to the price/financial stages with this list
-  globalThis.__kospi = todo;
+  const norm = universeFile.companies
+    .filter((c) => c.shares)
+    .map((c) => ({ corp: c.code, stock: c.ticker, name: c.name, nameEn: c.nameEn, industry: c.industry, shares: c.shares }));
+  const picked = CODES ? norm.filter((c) => CODES.split(',').includes(c.corp)) : norm;
+  globalThis.__kospi = LIMIT ? picked.slice(0, LIMIT) : picked;
 }
 const listed = book.rows.filter((r) => String(r.stock || '').trim());
 console.log(`  ${book.rows.length} filers · ${listed.length} with a stock code`);
@@ -133,7 +134,7 @@ const found = globalThis.__kospi ? [] : await pool(scan, 3, async (c) => {
   if (scanned % 250 === 0) console.log(`  ${scanned}/${scan.length}`);
   if (info.cls !== 'Y') return null;
   const sh = await sharesOf(c.corp);
-  return sh.shares ? { ...c, shares: sh.shares, industry: info.industry, nameEn: info.nameEn } : null;
+  return sh.shares ? { ...c, shares: sh.shares, industry: info.industry, nameEn: c.nameEn || info.nameEn } : null;
 });
 const kospi = globalThis.__kospi || found.filter(Boolean);
 console.log(`  ${kospi.length} KOSPI companies`);

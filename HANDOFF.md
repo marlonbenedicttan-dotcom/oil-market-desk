@@ -2482,3 +2482,12 @@ they are filed. Today's run picked up **295 companies** that had filed.
 - **`data/korea-universe.json`** now commits the KOSPI universe (821 companies, 816 with share counts,
   99 KB) so a CI run does not rescan 4,000 filers — that scan is what tripped the limiter. The build uses
   it when present and falls through straight to prices and statements.
+
+## Korea: English names via OpenFIGI (2026-10-30)
+- DART's `corp_name_eng` is the right field but the API is still blocking us, so English names come from
+  **OpenFIGI** (Bloomberg's open symbology): batches of 10 tickers with `exchCode: KS`, 83 requests,
+  ~9 minutes. **820 of 821** KOSPI companies now have an English name.
+- Names are stored in `data/korea-universe.json` and carried through the build, so a CI run needs no extra
+  requests. Verified in the UI: SAMSUNG ELECTRONICS CO LTD, SK HYNIX INC, HANA FINANCIAL GROUP,
+  INDUSTRIAL BANK OF KOREA.
+- OpenFIGI rejects 25 identifiers without a key — 10 is the working batch size, at 10 requests a minute.
