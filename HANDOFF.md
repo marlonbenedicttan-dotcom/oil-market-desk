@@ -2552,3 +2552,14 @@ they are filed. Today's run picked up **295 companies** that had filed.
   on 737 Korea rows and zero US rows.
 - **Prefetch**: once the first market paints, the other two payloads load in the background (~370 KB
   gzipped total), so switching is instant rather than a spinner.
+
+## Korea in the home screener, and cross-market compare (2026-10-31)
+- **Home screener**: US / JAPAN / KOREA. Korea gets its own columns (won price, 1D, 6M, YTD, P/E, P/B, ROE,
+  cap), a sector filter, sorting and pagination — 737 companies, 15 pages. Clicking a row opens the company.
+- **Cross-market compare**: the compare box on any company page accepts a prefixed reference —
+  `us:AAPL`, `jp:7203`, `kr:005930` — and a shared `seriesFor()` resolves it to the right market's series.
+  Both are indexed to 100 at the first shared date, so currencies never mix. Verified: Samsung vs US:AAPL
+  renders two datasets.
+- **Won prices** now print in full (₩222,500) rather than the compact 만 form used for market caps.
+- The compare handler had been wired into the home-screener listener again, so it never fired inside the
+  COMPANIES tab; moved to the document-level listener.
