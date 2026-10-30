@@ -1,0 +1,20 @@
+{
+  "updated": "2026-10-30",
+  "note": "Curated themes: each list is a deliberate subset, not a sector renamed. The rule-based themes are computed on the client from the live data so they never go stale.",
+  "themes": [
+    {
+      "id": "ai",
+      "label": "AI & SEMICONDUCTORS",
+      "kind": "curated",
+      "note": "Companies whose revenue depends on chipmaking or AI infrastructure — equipment, materials, memory, components and the platforms selling the compute.",
+      "codes": ["80350","68570","69200","61460","77350","65250","63610","77290","63230","68710","69250","67280","40630","34360","41860","40040","285A0","67230","65260","69630","69810","67620","69760","58030","58010","58020","65010","67020","46890","43070","65320","36970"]
+    },
+    {
+      "id": "defence",
+      "label": "DEFENCE",
+      "kind": "curated",
+      "note": "Prime-listed suppliers to Japan's defence budget expansion — platforms, engines, electronics and specialised components.",
+      "codes": ["70110","70120","70130","67010","65030","56310","72240","77210"]
+    }
+  ]
+}

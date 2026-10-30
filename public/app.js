@@ -3598,7 +3598,7 @@ function syncCoTools() {
 }
 
 const jpViewsBar = () => `<div class="co-views">
-    ${[['market', 'MARKET'], ['screener', 'SCREENER'], ['banks', 'BANKS']].map(([k, t]) =>
+    ${[['market', 'MARKET'], ['screener', 'SCREENER'], ['themes', 'THEMES']].map(([k, t]) =>
       `<button type="button" data-jpview="${k}" class="${jpView === k ? 'on' : ''}">${t}</button>`).join('')}
   </div>`;
 
@@ -3650,7 +3650,7 @@ async function renderJapan() {
   if (sel) { syncCoTools(); return renderJapanPage(sel); }
   syncCoTools();
   if (jpView === 'market') return renderJapanMarket(all, d);
-  if (jpView === 'banks') return renderJapanBanks(all);
+  if (jpView === 'themes') return renderJapanThemes(all, d);
   return renderJapanScreener(all, d);
 }
 
@@ -3699,16 +3699,34 @@ function renderJapanMarket(all, d) {
   }
 }
 
-// Banks deserve their own table: P/B against ROE is the whole argument, and operating metrics are noise.
-function renderJapanBanks(all) {
+// Themes: two written lists and two rules. The rules are computed here from live data so they never
+// go stale; the written lists come from data/japan-themes.json.
+let jpTheme = (() => { try { return localStorage.getItem('oilbasis.jpTheme') || 'banks'; } catch { return 'banks'; } })();
+
+function jpThemeList(d) {
+  const curated = (d && d.themes) || [];
+  return [
+    { id: 'banks', label: 'BANKS', kind: 'rule', note: 'Every Prime-listed bank, sorted by price to book. A bank under book with a positive return on equity is the classic Japanese value setup — or a value trap, which is why ROE sits beside it.', pick: (c) => c.sector === 'Banks' },
+    ...curated,
+    { id: 'reform', label: 'TSE REFORM', kind: 'rule', note: 'Trading below book, profitable, but earning less than 8% on equity — the companies the Tokyo Stock Exchange has been pressing to change. This is the pool, not a list of activist targets.', pick: (c) => c.pb != null && c.pb < 1 && (c.roe || 0) < 8 && (c.np || 0) > 0 },
+  ];
+}
+
+function renderJapanThemes(all, d) {
   const el = $('co-body'); if (!el) return;
   syncCoTools();
-  const banks = all.filter((c) => c.sector === 'Banks').sort((a, b) => (a.pb == null ? 9 : a.pb) - (b.pb == null ? 9 : b.pb));
+  const themes = jpThemeList(d);
+  const active = themes.find((t) => t.id === jpTheme) || themes[0];
+  const set = active.codes ? new Set(active.codes) : null;
+  const rows = all
+    .filter((c) => (set ? set.has(c.code) : active.pick ? active.pick(c) : false))
+    .sort((a, b) => (b.marketCap || 0) - (a.marketCap || 0));
   const chg = (x) => (x == null ? '—' : `${x >= 0 ? '+' : ''}${x.toFixed(1)}%`);
   el.innerHTML = jpViewsBar()
-    + `<div class="jp-market-head"><span class="ph-t">BANKS</span><span class="dimtext">${banks.length} listed Prime banks · sorted by price to book</span></div>`
-    + `<div class="co-hrow jp-bank-hrow"><span>#</span><span>BANK</span><span>CAP</span><span>P/B</span><span>P/E</span><span>ROE</span><span>YIELD</span><span>YTD</span></div>`
-    + banks.map((c, i) => `<button class="jp-bank-row" data-jp="${esc(c.code)}">
+    + `<div class="jp-presets">${themes.map((t) => `<button type="button" data-jptheme="${t.id}" class="${t.id === active.id ? 'on' : ''}">${t.label}</button>`).join('')}</div>`
+    + `<div class="jp-market-head"><span class="ph-t">${esc(active.label)}</span><span class="dimtext">${rows.length} companies · ${active.kind === 'curated' ? 'curated list' : 'computed from the data'}</span></div>`
+    + `<div class="co-hrow jp-bank-hrow"><span>#</span><span>COMPANY</span><span>CAP</span><span>P/B</span><span>P/E</span><span>ROE</span><span>YIELD</span><span>YTD</span></div>`
+    + rows.map((c, i) => `<button class="jp-bank-row" data-jp="${esc(c.code)}">
         <span>${i + 1}</span>
         <span><b>${esc(c.name)}</b><span class="co-tick">${esc(c.ticker)}</span></span>
         <span>${yen(c.marketCap)}</span>
@@ -3718,7 +3736,7 @@ function renderJapanBanks(all) {
         <span>${jpYield(c) != null ? jpYield(c).toFixed(2) + '%' : '—'}</span>
         <span class="${(c.chgYtd || 0) >= 0 ? 'pos' : 'neg'}">${chg(c.chgYtd)}</span>
       </button>`).join('')
-    + `<div class="macro-note">Price to book is the number the Tokyo Stock Exchange has been pressing companies below 1× to fix. A bank trading under book with a positive return on equity is the classic Japanese value setup — or a value trap, which is why ROE sits beside it.</div>`;
+    + `<div class="macro-note">${esc(active.note || '')}</div>`;
 }
 
 function renderJapanScreener(all, d) {
@@ -4555,6 +4573,13 @@ document.addEventListener('click', (e) => {
     try { localStorage.setItem('oilbasis.usView', usView); } catch {}
     coCik = null;
     renderCompanies();
+    return;
+  }
+  const jt = e.target.closest('[data-jptheme]');
+  if (jt) {
+    jpTheme = jt.dataset.jptheme;
+    try { localStorage.setItem('oilbasis.jpTheme', jpTheme); } catch {}
+    renderJapan();
     return;
   }
   const jv = e.target.closest('[data-jpview]');

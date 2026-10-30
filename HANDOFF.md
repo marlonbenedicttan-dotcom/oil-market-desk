@@ -2329,3 +2329,19 @@ Result: 502 of 503 prices dated **2026-10-29**, AAPL $348.91 +1.48%.
 ## US screener: aggregates moved out (2026-10-30)
 - The four-cell header (market cap, median P/E, median EV/EBITDA, index P/E) is gone from the SCREENER.
   Those numbers now live in the MARKET view, so the screener opens straight on the rows.
+
+## Japan: THEMES view (2026-10-30)
+- **BANKS became THEMES**, a picker instead of more tabs: BANKS · AI & SEMICONDUCTORS · DEFENCE · TSE REFORM.
+  Adding a fourth theme would otherwise have pushed the view bar past what a phone can hold.
+- **AI & SEMICONDUCTORS** — 32 curated names: equipment (Tokyo Electron, Advantest, Lasertec, DISCO, SCREEN,
+  Kokusai, Ebara), materials (Shin-Etsu, SUMCO, Tokyo Ohka, Resonac), memory and logic (Kioxia, Renesas,
+  Socionext, ROHM), components and connectivity (Murata, TDK, Taiyo Yuden, Fujikura, Furukawa, Sumitomo
+  Electric) and the platforms (Hitachi, Fujitsu, LY, NRI, BayCurrent, SHIFT).
+- **DEFENCE** — 8 curated: Mitsubishi Heavy, Kawasaki Heavy, IHI, NEC, Mitsubishi Electric, Japan Steel Works,
+  ShinMaywa, Tokyo Keiki.
+- **TSE REFORM** — computed, 328: below book, profitable, ROE under 8%. The pool the exchange has been
+  pressuring, not a list of activist targets.
+- Curated lists live in `data/japan-themes.json`; rules are computed client-side so they never go stale.
+- **Rebuild safety**: `build-japan.mjs` rewrites the dataset from scratch, which would have wiped every
+  description and theme on the next daily run. It now re-attaches both at the end, and fetched profiles are
+  committed to `data/japan-profiles.json` so the gitignored cache is not required.

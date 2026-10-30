@@ -13,6 +13,7 @@ import { fileURLToPath } from 'node:url';
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const FILE = join(ROOT, 'data', 'japan.json');
 const DESC = join(ROOT, 'data', 'japan-descriptions.json');
+const PROFILES = join(ROOT, 'data', 'japan-profiles.json');
 
 const yen = (v) => {
   if (v == null || !Number.isFinite(v)) return null;
@@ -91,6 +92,15 @@ function generated(c, peers) {
 
 const jp = JSON.parse(readFileSync(FILE, 'utf8'));
 const book = JSON.parse(readFileSync(DESC, 'utf8'));
+// Fetched profiles live in a committed file so a rebuild cannot lose them.
+let profiles = {};
+try { profiles = JSON.parse(readFileSync(PROFILES, 'utf8')).profiles || {}; } catch { /* none yet */ }
+const shorten = (text, max = 300) => {
+  if (text.length <= max) return text;
+  const cut = text.slice(0, max);
+  const i = Math.max(cut.lastIndexOf('. '), cut.lastIndexOf('; '));
+  return i > 80 ? cut.slice(0, i + 1) : `${cut.replace(/[,;\s]+\S*$/, '')}\u2026`;
+};
 const entries = book.entries || {};
 const counts = new Map();
 for (const c of jp.companies) counts.set(c.sector, (counts.get(c.sector) || 0) + 1);
@@ -104,9 +114,13 @@ for (const c of jp.companies) {
     c.descSource = 'curated';
     c.descReviewed = book.updated;
     curated++;
-  } else if (c.descSource === 'profile' && c.description) {
-    // A fetched profile beats a generated line — never overwrite it.
-    continue;
+  } else if (profiles[String(c.code).slice(0, 4)]) {
+    // A fetched profile beats a generated line, and survives a rebuild.
+    c.description = shorten(profiles[String(c.code).slice(0, 4)]);
+    c.brands = [];
+    c.descSource = 'profile';
+    c.descSourceName = 'stockanalysis.com';
+    c.descReviewed = book.updated;
   } else {
     c.description = generated(c, counts.get(c.sector) || 0);
     c.brands = [];

@@ -14,6 +14,7 @@ import { readFileSync, writeFileSync, renameSync, existsSync, mkdirSync } from '
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { makeClient } from './jquants.mjs';
+import { execFileSync } from 'node:child_process';
 import { deriveJapan } from './derive-japan.mjs';
 import { bandsFromHistory, seriesFromRows } from './japan-bands.mjs';
 
@@ -393,6 +394,13 @@ const out = {
 };
 writeFileSync(OUT + '.tmp', JSON.stringify(out));
 renameSync(OUT + '.tmp', OUT);
+
+// Descriptions and theme lists are attached by their own scripts. Running them here means a rebuild
+// can never silently drop them — which it would, because this file is rewritten from scratch.
+for (const step of ['attach-japan-descriptions.mjs', 'attach-japan-themes.mjs']) {
+  try { execFileSync(process.execPath, [join(ROOT, 'scripts', step)], { stdio: 'inherit' }); }
+  catch (e) { console.log(`  ${step} failed: ${e.message}`); }
+}
 
 const withPe = companies.filter((c) => c.pe != null).length;
 const withFcf = companies.filter((c) => c.fcf != null).length;

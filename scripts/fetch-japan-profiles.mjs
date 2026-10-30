@@ -81,6 +81,13 @@ for (const c of jp.companies) {
   c.descSourceName = 'stockanalysis.com';
   c.descReviewed = new Date().toISOString().slice(0, 10);
 }
+// Keep a committed copy too: the cache is gitignored and would vanish in CI.
+const store = {};
+for (const c of jp.companies) {
+  const t = profiles.get(c.code);
+  if (t) store[String(c.code).slice(0, 4)] = t;
+}
+writeFileSync(join(ROOT, 'data', 'japan-profiles.json'), JSON.stringify({ updated: new Date().toISOString().slice(0, 10), note: 'Fetched company profiles from stockanalysis.com, keyed by 4-digit TSE code.', profiles: store }));
 writeFileSync(FILE + '.tmp', JSON.stringify(jp));
 renameSync(FILE + '.tmp', FILE);
 console.log(`fetched ${ok} · already cached ${miss} · failed ${fail}`);

@@ -693,7 +693,7 @@ const projectJp = (c) => ({
   code: c.code, ticker: c.ticker, name: c.name, nameJa: c.nameJa, sector: c.sector, size: c.size,
   price: c.price, priceDate: c.priceDate, marketCap: c.marketCap, marketCapUsd: c.marketCapUsd,
   chg1d: c.chg1d, chg6m: c.chg6m, chgYtd: c.chgYtd, chgYtdBasis: c.chgYtdBasis,
-  pe: c.pe, peBasis: c.peBasis, pb: c.pb, roe: c.roe,
+  pe: c.pe, peBasis: c.peBasis, pb: c.pb, roe: c.roe, np: c.np,
   dividend: c.dividend ? { yield: c.dividend.yield } : null,
   cash: c.cash,
   bands: c.bands && c.bands.pe ? { pe: { percentile: c.bands.pe.percentile } } : null,
@@ -3936,7 +3936,7 @@ const server = http.createServer(async (req, res) => {
       const jp = readJapan();
       if (!jp.companies || !jp.companies.length) return sendJSON(res, 200, { companies: [], error: 'Japan has not been built yet' });
       return sendJSONCached(res, 200, {
-        updated: jp.updated, universe: jp.universe, currency: jp.currency, fx: jp.fx, market: jp.market, topix: jp.topix,
+        updated: jp.updated, universe: jp.universe, currency: jp.currency, fx: jp.fx, market: jp.market, topix: jp.topix, themes: jp.themes || [],
         companies: jp.companies.map(projectJp),
       });
     }
