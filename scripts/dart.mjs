@@ -114,7 +114,9 @@ export function makeDartClient(opts = {}) {
     );
   }
   if (String(key).length !== 40) throw new Error(`DART_API_KEY should be 40 characters, got ${String(key).length}`);
-  const gap = opts.gap ?? 220;      // DART allows a generous rate; stay polite
+  // DART asks for roughly one request a second. A parallel burst tripped their limiter and got this
+  // machine blocked for hours, so the default is deliberately slower than the theoretical maximum.
+  const gap = opts.gap ?? 700;
   let last = 0;
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
