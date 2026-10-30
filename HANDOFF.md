@@ -2390,3 +2390,18 @@ Result: 502 of 503 prices dated **2026-10-29**, AAPL $348.91 +1.48%.
   list is reachable and the sort still applies to the full set, not the page.
 - Changing the search, sector or sort resets to page 1; changing the page size resets to page 1.
 - Same pager on the US screener (503 rows, 11 pages).
+
+## Auto-update audit: three files were never being committed (2026-10-30)
+Checked whether new results actually reach the site on their own. They did not, for three reasons:
+1. **`data/japan-series.json` was not in the commit list.** Japan price charts would have frozen at the last
+   manual commit. Now committed daily.
+2. **`data/valuation.json` was never committed** by either workflow — the S&P 500 index P/E and its
+   five-year percentile were stuck at 29 Oct. Now committed daily and weekly.
+3. **`build-events.mjs` never ran in CI**, and `data/events.json` was not committed, so company earnings
+   dates in the calendar were frozen. It now runs daily and is committed.
+Also: Japan financials had a **7-day cache TTL**, so a company reporting on Monday could show old numbers
+until the following week. The build now asks J-Quants which companies disclosed in the last four sessions
+(one request per trading day for the whole market) and refreshes exactly those — results land the day after
+they are filed. Today's run picked up **295 companies** that had filed.
+- **US home screener bug**: `coScreen` had no `page`/`per` after the pagination change, so `slice(NaN, NaN)`
+  returned nothing. US now shows 50 of 500.

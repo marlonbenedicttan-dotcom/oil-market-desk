@@ -2256,7 +2256,7 @@ function renderRegime(d) {
 let screenRows = null, screenSort = { key: 'absd1', dir: -1 }, fxBase = 'USD', fxRows = null;
 // The home screener covers two universes: instruments and companies.
 let screenMode = (() => { try { return localStorage.getItem('oilbasis.screenMode') === 'companies' ? 'companies' : 'commodities'; } catch { return 'commodities'; } })();
-let coScreen = { sort: 'marketCap', dir: -1, q: '', sector: 'all' };
+let coScreen = { sort: 'marketCap', dir: -1, q: '', sector: 'all', page: 1, per: 50 };
 let screenSegs = [];                  // the segment list from /api/screen
 let screenSeg = 'all';                // segment filter
 let screenPicks = null;               // Set of instrument ids to show; null = show every one

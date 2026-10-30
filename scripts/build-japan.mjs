@@ -215,13 +215,27 @@ const ranked = [...prime.values()]
   .slice(0, SIZE);
 console.log(`universe: ${ranked.length} companies`);
 
+// Which companies published results in the last few days? One request per trading day covers the whole
+// market, so new numbers land the day after they are filed instead of waiting for the cache to age out.
+const justFiled = new Set();
+for (let back = 1; back <= 4; back++) {
+  const d = iso(Date.now() - back * DAY);
+  const dow = new Date(d + 'T00:00:00Z').getUTCDay();
+  if (dow === 0 || dow === 6) continue;
+  try {
+    for (const r of await api.finsByDate(d)) justFiled.add(r.Code);
+  } catch { /* a missed day just means the cache TTL covers it */ }
+}
+if (justFiled.size) console.log(`  ${justFiled.size} companies filed results in the last 4 sessions`);
+
 // --- 5. financials, one company at a time ------------------------------------------------------
 console.log('financials…');
 const fins = new Map();
 for (let i = 0; i < ranked.length; i++) {
   const c = ranked[i];
   const cached = readCache(`fins-${c.code}.json`);
-  if (cached && Date.parse(cached.fetched) > Date.now() - 7 * DAY) { fins.set(c.code, cached.rows); continue; }
+  const stale = !cached || Date.parse(cached.fetched) <= Date.now() - 7 * DAY;
+  if (cached && !stale && !justFiled.has(c.code)) { fins.set(c.code, cached.rows); continue; }
   try {
     const rows = await api.finsByCode(c.code);
     fins.set(c.code, rows);

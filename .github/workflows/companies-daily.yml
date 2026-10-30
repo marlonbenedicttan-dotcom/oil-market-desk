@@ -38,11 +38,13 @@ jobs:
         run: |
           if [ -z "$JQUANTS_API_KEY" ]; then echo 'no J-Quants key — skipping Japan'; exit 0; fi
           node scripts/build-japan.mjs --days=1900
+      - name: Calendar events
+        run: node scripts/build-events.mjs
       - name: Commit if changed
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email 'github-actions[bot]@users.noreply.github.com'
-          git add data/companies.json data/japan.json data/reconciliation.json data/invariants.json data/filings-state.json data/filings-changed.json data/snapshot.json 2>/dev/null || true
+          git add data/companies.json data/japan.json data/japan-series.json data/valuation.json data/events.json data/reconciliation.json data/invariants.json data/filings-state.json data/filings-changed.json data/snapshot.json 2>/dev/null || true
           if git diff --staged --quiet; then
             echo 'no data change'
           else
