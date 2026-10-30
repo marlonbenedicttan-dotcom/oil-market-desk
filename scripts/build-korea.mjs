@@ -27,6 +27,20 @@ mkdirSync(CACHE, { recursive: true });
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/126 Safari/537.36';
 
+// DART tolerates a handful of parallel requests; one at a time made a 4,000-filer scan take 80 minutes.
+async function pool(items, limit, fn) {
+  const out = new Array(items.length);
+  let at = 0;
+  const workers = Array.from({ length: Math.min(limit, items.length) }, async () => {
+    while (at < items.length) {
+      const i = at++;
+      out[i] = await fn(items[i], i);
+    }
+  });
+  await Promise.all(workers);
+  return out;
+}
+
 const readJson = (f) => { try { return JSON.parse(readFileSync(f, 'utf8')); } catch { return null; } };
 const writeJson = (f, v) => writeFileSync(f, JSON.stringify(v));
 
@@ -95,15 +109,16 @@ const sharesOf = async (corp) => {
 
 // A smoke test should not scan 4,000 filers first — cap the scan, not just the output.
 const scan = CODES ? listed.filter((r) => CODES.split(',').includes(r.corp)) : listed;
-const kospi = [];
-for (let i = 0; i < scan.length; i++) {
-  const c = scan[i];
+let scanned = 0;
+const found = await pool(scan, 3, async (c) => {
   const info = await infoOf(c.corp);
-  if (info.cls !== 'Y') continue;
-  const s = await sharesOf(c.corp);
-  if (s.shares) kospi.push({ ...c, shares: s.shares, industry: info.industry });
-  if ((i + 1) % 250 === 0) console.log(`  ${i + 1}/${scan.length} · ${kospi.length} KOSPI`);
-}
+  scanned++;
+  if (scanned % 250 === 0) console.log(`  ${scanned}/${scan.length}`);
+  if (info.cls !== 'Y') return null;
+  const sh = await sharesOf(c.corp);
+  return sh.shares ? { ...c, shares: sh.shares, industry: info.industry } : null;
+});
+const kospi = found.filter(Boolean);
 console.log(`  ${kospi.length} KOSPI companies`);
 const universe = LIMIT ? kospi.slice(0, LIMIT) : kospi;
 
@@ -139,16 +154,14 @@ async function chart(ticker) {
   return null;
 }
 
-const withPrices = [];
-for (let i = 0; i < universe.length; i++) {
-  const c = universe[i];
+const priced = await pool(universe, 4, async (c) => {
   const rows = await chart(c.stock.trim());
-  if (!rows || rows.length < 20) continue;
+  if (!rows || rows.length < 20) return null;
   const last = rows[rows.length - 1];
   const prev = rows[rows.length - 2];
   const six = rows[Math.max(0, rows.length - 126)];
   const jan1 = rows.find((p) => p.d >= `${new Date().getUTCFullYear()}-01-01`);
-  withPrices.push({
+  return {
     ...c,
     ticker: c.stock.trim(),
     price: last.c,
@@ -157,9 +170,9 @@ for (let i = 0; i < universe.length; i++) {
     chg6m: six ? +(((last.c / six.c) - 1) * 100).toFixed(2) : null,
     chgYtd: jan1 ? +(((last.c / jan1.c) - 1) * 100).toFixed(2) : null,
     series: rows.slice(-260).map((p) => ({ d: p.d, c: p.c })),
-  });
-  if ((i + 1) % 100 === 0) console.log(`  ${i + 1}/${universe.length}`);
-}
+  };
+});
+const withPrices = priced.filter(Boolean);
 console.log(`  ${withPrices.length} with prices`);
 
 // --- 4. financial statements --------------------------------------------------------------------
@@ -178,9 +191,7 @@ async function statements(corp, year, report) {
   } catch { return []; }
 }
 
-const companies = [];
-for (let i = 0; i < withPrices.length; i++) {
-  const c = withPrices[i];
+const collected = await pool(withPrices, 2, async (c) => {
   const reports = [];
   for (const y of years) {
     const rows = await statements(c.corp, y, REPORTS.annual);
@@ -197,15 +208,15 @@ for (let i = 0; i < withPrices.length; i++) {
     const end = (rows.find((r) => r.thstrm_dt) || {}).thstrm_dt || null;
     if (end) reports.push({ report: k, end: end.slice(0, 10), ...m });
   }
-  if (!reports.length) continue;
-  companies.push({
+  if (!reports.length) return null;
+  return {
     code: c.corp, ticker: c.ticker, name: c.name,
     price: c.price, priceDate: c.priceDate,
     chg1d: c.chg1d, chg6m: c.chg6m, chgYtd: c.chgYtd,
     series: c.series, shares: c.shares, reports,
-  });
-  if ((i + 1) % 50 === 0) console.log(`  ${i + 1}/${withPrices.length}`);
-}
+  };
+});
+const companies = collected.filter(Boolean);
 console.log(`  ${companies.length} with statements`);
 
 // --- 5. derive and write ------------------------------------------------------------------------

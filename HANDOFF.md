@@ -2454,3 +2454,12 @@ they are filed. Today's run picked up **295 companies** that had filed.
 - **UI**: a third region button `KOREA · KOSPI` with the list and a company page carrying price strip,
   eight stats, five-year record and quarterly table. No guidance section — Korean companies do not
   publish forecasts.
+
+## Korea: 816 KOSPI companies identified; statements blocked by DART rate limiting (2026-10-30)
+- The full run found **816 KOSPI companies** (`corp_cls === 'Y'`) and fetched prices for all of them.
+- Financial statements stalled: DART stopped answering after a parallel burst, then refused connections
+  entirely (even the homepage). This is a rate limit, not a bug — the build is **resumable from cache**
+  (`data/cache/dart/`), so a later run picks up where it stopped.
+- Pacing lowered for the retry: scan pool 6 → 3, statement pool 4 → 2.
+- Validated on four companies before the block, with correct ratios: Samsung ₩222,500 · P/E 33.7 · P/B 3.49;
+  SK Hynix P/E 22.7; Hana Financial 8.6; IBK 6.1.
