@@ -4407,6 +4407,9 @@ function renderCompanies() {
   const rows = all.filter((c) => {
     // Warrants, units, rights and preferreds are separate securities, not the company's common stock.
     if (/\b(warrant|unit|right|preferred)\b/i.test(c.name)) return false;
+    // A second share class is the same company — Alphabet listed twice reads as a duplicate, not a choice.
+    // The class still exists in the data and in the index weights; it just does not get its own row.
+    if (c.shareClass) return false;
     if (coSector !== 'all' && c.sector !== coSector) return false;
     if (coMin && (c.marketCap || 0) < coMin) return false;
     if (coPriced && !c.marketCap) return false;

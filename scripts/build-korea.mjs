@@ -11,6 +11,7 @@ import { readFileSync, writeFileSync, renameSync, existsSync, mkdirSync } from '
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { makeDartClient, mapAccounts, REPORTS, num } from './dart.mjs';
+import { execFileSync } from 'node:child_process';
 import { deriveKorea } from './derive-korea.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -378,5 +379,9 @@ writeJson(OUT, {
   market, index: idx, themes,
   companies: out,
 });
+// Descriptions and brands are attached by their own script; without this a rebuild wipes them.
+try { execFileSync(process.execPath, [join(ROOT, 'scripts', 'attach-korea-descriptions.mjs')], { stdio: 'inherit' }); }
+catch (e) { console.log(`  descriptions: ${e.message}`); }
+
 console.log(`${out.length} companies · ${out.filter((c) => c.pe != null).length} with P/E · FX ${fx}`);
 console.log(out.slice(0, 5).map((c) => `  ${c.ticker} ${c.name} · ₩${Math.round(c.price)} · P/E ${c.pe ?? '—'} · P/B ${c.pb ?? '—'}`).join('\n'));

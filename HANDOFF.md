@@ -2537,3 +2537,11 @@ they are filed. Today's run picked up **295 companies** that had filed.
   straight after the stats grid, so the chips sat flush against it. A rule on `.co-stats + .co-ranges`,
   `.co-verif + .co-ranges` and `.jp-bands + .co-ranges` now gives 12px of padding plus a hairline border —
   measured as a 15px separation. The US is untouched, because it never had the problem.
+
+## Korea descriptions survive rebuilds; one row per company in the US (2026-10-31)
+- **Korea lost its descriptions** because `build-korea.mjs` rewrites `korea.json` from scratch and nothing
+  re-attached them — the same trap Japan had. `attach-korea-descriptions.mjs` now runs at the end of every
+  build: 727 fetched, 10 generated, 46 with brand chips. Samsung reads with Galaxy / Exynos / Bespoke.
+- **Alphabet appeared twice** in the US list: GOOGL and GOOG are the same company, and a second share class
+  was getting its own row. Second classes are now excluded from the list (500 rows, one per company); they
+  remain in the data and in the index weights, so nothing is lost from the totals.
