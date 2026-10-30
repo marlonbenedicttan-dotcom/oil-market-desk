@@ -93,7 +93,9 @@ for (const arr of series.values()) for (const p of arr) dateCoverage.set(p.d, (d
 const coverageFloor = Math.max(1, Math.floor(prime.size * 0.5));
 const have = new Set([...dateCoverage].filter(([, n]) => n >= coverageFloor).map(([d]) => d));
 const capToday = new Map();
-const start = Date.now() - DAYS * DAY;
+// Light's history is five years measured from today; asking for anything older fails every time, so
+// clamp the window rather than retrying impossible dates on every run.
+const start = Math.max(Date.now() - DAYS * DAY, Date.now() - 1795 * DAY);
 const dates = [];
 for (let t = start; t <= Date.now(); t += DAY) {
   const d = iso(t);
@@ -132,6 +134,22 @@ for (const [k, v] of series) {
   for (const [k, v] of series) keep[k] = v.filter((p) => p.d >= floor);
   writeFileSync(SERIES_CACHE, JSON.stringify(keep));
 }
+
+// Liquidity: average daily traded value over the last 30 sessions. The bars carry `Va` (traded value
+// in yen) and we throw it away everywhere else; for 1,500 names it is the difference between a company
+// you can buy and a line in a table.
+console.log('liquidity…');
+const traded = new Map();
+const recentDates = [...new Set([...series.values()].flatMap((v) => v.map((p) => p.d)))].sort().slice(-30);
+for (const d of recentDates) {
+  try {
+    const rows = await api.barsByDate(d);
+    for (const r of rows) if (prime.has(r.Code) && r.Va) traded.set(r.Code, (traded.get(r.Code) || 0) + r.Va);
+  } catch (e) { console.log(`  ${d}: ${e.message}`); }
+}
+const liquidity = new Map();
+for (const [code, total] of traded) liquidity.set(code, { avg: Math.round(total / Math.max(1, recentDates.length)), days: recentDates.length });
+console.log(`  ${liquidity.size} issues with traded value`);
 
 // Chart blocks: daily for the recent window, weekly for the full five years. One shared date axis per
 // block keeps the file to a few megabytes; the client only ever asks for one company.
@@ -247,10 +265,11 @@ for (const r of cal) {
 }
 // TOPIX, for relative performance. Light includes the index; only TOPIX, not the other indices.
 let topix = null;
-try {
-  const rows = await api.topix(iso(Date.now() - DAYS * DAY), iso(Date.now()));
-  const closes = rows.filter((r) => r.C != null).sort((a, b) => a.Date.localeCompare(b.Date));
-  if (closes.length > 1) {
+for (let attempt = 0; attempt < 3 && !topix; attempt++) {
+  try {
+    const rows = await api.topix(iso(Math.max(Date.now() - DAYS * DAY, Date.now() - 1795 * DAY)), iso(Date.now()));
+    const closes = rows.filter((r) => r.C != null).sort((a, b) => a.Date.localeCompare(b.Date));
+    if (closes.length > 1) {
     const last = closes[closes.length - 1];
     const jan1 = closes.find((r) => r.Date >= `${new Date().getUTCFullYear()}-01-01`);
     const six = closes[Math.max(0, closes.length - 126)];
@@ -260,10 +279,11 @@ try {
       chg1d: +(((last.C / closes[closes.length - 2].C) - 1) * 100).toFixed(2),
       chg6m: six ? +(((last.C / six.C) - 1) * 100).toFixed(2) : null,
       chgYtd: jan1 ? +(((last.C / jan1.C) - 1) * 100).toFixed(2) : null,
-      series: closes.map((r) => ({ d: r.Date, c: r.C })),
-    };
-  }
-} catch (e) { console.log(`  topix: ${e.message}`); }
+        series: closes.map((r) => ({ d: r.Date, c: r.C })),
+      };
+    }
+  } catch (e) { console.log(`  topix: ${e.message}`); await new Promise((r) => setTimeout(r, 3000)); }
+}
 
 let fx = null;
 try {
@@ -275,6 +295,7 @@ try {
 
 // --- 8. derive ----------------------------------------------------------------------------------
 const companies = deriveJapan({ ranked, fins, series, val: valByCode, nextByCode, fx });
+for (const c of companies) c.liquidity = liquidity.get(c.code) || null;
 
 // Attach the bands once the multiples exist.
 for (const c of companies) {

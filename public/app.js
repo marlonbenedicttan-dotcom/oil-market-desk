@@ -3536,6 +3536,7 @@ const coMargin = coMarginOf;
 let japanData = null, jpSel = null, jpQuery = '';
 let jpView = (() => { try { return localStorage.getItem('oilbasis.jpView') || 'screener'; } catch { return 'screener'; } })();
 let jpRange = (() => { try { return localStorage.getItem('oilbasis.jpRange') || '6m'; } catch { return '6m'; } })();
+let jpCompare = '';
 let jpSort = (() => { try { return localStorage.getItem('oilbasis.jpSort') || 'cap'; } catch { return 'cap'; } })();
 let jpPreset = null;
 let jpFilter = (() => { try { return JSON.parse(localStorage.getItem('oilbasis.jpFilter') || '{}'); } catch { return {}; } })();
@@ -3546,6 +3547,7 @@ const JP_PRESETS = [
   { id: 'banks', label: 'REGIONAL BANKS', f: { sector: 'Banks', capMax: 300e9 } },
   { id: 'yield', label: 'HIGH YIELD', f: { yieldMin: 3.5 } },
   { id: 'cash', label: 'CASH RICH', f: { cashMin: 0.2 } },
+  { id: 'cheap', label: 'CHEAP VS ITSELF', f: { pePercentileMax: 20, roeMin: 0 } },
 ];
 
 function yen(v) {
@@ -3615,6 +3617,7 @@ function jpMatches(c) {
   if (f.capMin != null && !((c.marketCap || 0) >= f.capMin)) return false;
   if (f.capMax != null && !((c.marketCap || 0) <= f.capMax)) return false;
   if (f.cashMin != null && jpCashRatio(c) < f.cashMin) return false;
+  if (f.pePercentileMax != null && !(c.bands && c.bands.pe && c.bands.pe.percentile <= f.pePercentileMax)) return false;
   return true;
 }
 
@@ -3817,9 +3820,19 @@ function renderJapanPage(c) {
         ${cell('EQUITY RATIO', c.eqAr != null ? `${(c.eqAr * 100).toFixed(1)}%` : '—', 'Equity ÷ total assets, as reported')}
         ${cell('PAYOUT RATIO', d && d.payoutRatio != null ? `${(d.payoutRatio * 100).toFixed(0)}%` : '—', 'Dividends ÷ net profit for the fiscal year')}
       </div>`
-    + `<div class="co-chart-tabs">${[['1m', '1M'], ['6m', '6M'], ['ytd', 'YTD'], ['1y', '1Y'], ['5y', '5Y']].map(([k, t]) => `<button type="button" data-jprange="${k}" class="${jpRange === k ? 'on' : ''}">${t}</button>`).join('')}</div>`
+    + `<div class="co-stats co-stats-12">
+        ${cell('DAILY TRADED VALUE', c.liquidity ? yen(c.liquidity.avg) : '—', `Average over the last ${(c.liquidity && c.liquidity.days) || 30} sessions — what actually changes hands, not what is listed`)}
+        ${cell('CASH', yen(c.cash), 'Cash and equivalents, as reported')}
+        ${cell('OPERATING CASH FLOW', yen(c.cfo), 'Fiscal year, as reported')}
+        ${cell('FINANCING CASH FLOW', yen(c.cff), 'Dividends, buybacks and borrowings, net')}
+      </div>`
+    + `<div class="co-chart-tabs">${[['1m', '1M'], ['6m', '6M'], ['ytd', 'YTD'], ['1y', '1Y'], ['5y', '5Y']].map(([k, t]) => `<button type="button" data-jprange="${k}" class="${jpRange === k ? 'on' : ''}">${t}</button>`).join('')}
+        <input class="jp-cmp" id="jp-cmp" list="jp-cmp-list" placeholder="compare a company…" value="${esc(jpCompare)}" autocomplete="off">
+        <datalist id="jp-cmp-list">${((japanData && japanData.companies) || []).slice(0, 400).map((x) => `<option value="${esc(x.code)}">${esc(x.name)}</option>`).join('')}</datalist>
+      </div>`
     + `<div class="co-chartwrap"><canvas id="jp-chart"></canvas></div>`
     + jpQuartersHtml(c)
+    + jpHistoryHtml(c)
     + `<div class="macro-note">
         Fiscal year ending ${esc(c.period || '—')} · statement figures from the company's summary of financial statements (J-Quants); P/E, P/B and ROE from JPX's own valuation file.
         ${pbOurs != null && v.status === 'disputed' ? `Our P/B from the filing is ${pbOurs.toFixed(2)}× against JPX's ${c.pb.toFixed(2)}×.` : ''}
@@ -3865,17 +3878,66 @@ function jpQuartersHtml(c) {
     </div>`;
 }
 
+// Five reported fiscal years, so a single year can be read against its own record.
+function jpHistoryHtml(c) {
+  const h = c.history || [];
+  if (h.length < 2) return '';
+  const rows = [...h].reverse().map((x) => {
+    const roe = x.n != null && x.q ? (x.n / x.q) * 100 : null;
+    const eqAr = x.q != null && x.a ? (x.q / x.a) * 100 : null;
+    return `<tr>
+        <td>${esc(x.y)}</td>
+        <td>${yen(x.s)}</td>
+        <td class="${x.o == null ? 'dimtext' : x.o >= 0 ? 'pos' : 'neg'}">${x.o == null ? '—' : yen(x.o)}</td>
+        <td class="${x.n == null ? 'dimtext' : x.n >= 0 ? 'pos' : 'neg'}">${x.n == null ? '—' : yen(x.n)}</td>
+        <td class="${roe == null ? 'dimtext' : roe >= 0 ? 'pos' : 'neg'}">${roe == null ? '—' : `${roe.toFixed(1)}%`}</td>
+        <td>${eqAr == null ? '—' : `${eqAr.toFixed(1)}%`}</td>
+        <td>${x.d == null ? '—' : `¥${x.d}`}</td>
+      </tr>`;
+  }).join('');
+  return `<div class="jp-q">
+      <div class="jp-q-head"><span class="ph-t">FIVE-YEAR RECORD</span><span class="dimtext">${h.length} fiscal years · ¥ yen</span></div>
+      <table class="jp-q-table">
+        <thead><tr><th>FISCAL YEAR</th><th>NET SALES</th><th>OP PROFIT</th><th>NET PROFIT</th><th>ROE</th><th>EQUITY RATIO</th><th>DIV / SHARE</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+      <div class="macro-note">As reported in each year's summary of financial statements. ROE and the equity ratio are computed from the reported figures, not restated for later share issues.</div>
+    </div>`;
+}
+
 // The price chart is fetched per company and range, the same way the US chart is.
 async function drawJpPrice(c, range = jpRange) {
   if (charts['jp-chart']) { try { charts['jp-chart'].destroy(); } catch {} delete charts['jp-chart']; }
   const wrap = $('jp-chart') && $('jp-chart').parentElement;
-  let ch = null;
-  try { ch = await jget(`/api/japan-chart?code=${encodeURIComponent(c.code)}&range=${encodeURIComponent(range)}`, 600000); } catch { ch = null; }
+  const fetchOne = async (code) => {
+    try { return await jget(`/api/japan-chart?code=${encodeURIComponent(code)}&range=${encodeURIComponent(range)}`, 600000); } catch { return null; }
+  };
+  const ch = await fetchOne(c.code);
   if (!ch || !ch.dates || ch.dates.length < 2) {
     if (wrap) wrap.setAttribute('data-empty', `No price history for ${c.ticker} over ${range.toUpperCase()}.`);
     return;
   }
   if (wrap) wrap.removeAttribute('data-empty');
+
+  // A second company is indexed to 100 at the first shared date, the way the US chart compares.
+  const other = jpCompare && jpCompare !== c.code ? await fetchOne(jpCompare) : null;
+  if (other && other.dates && other.dates.length > 1) {
+    const bmap = new Map(other.dates.map((d, i) => [d, other.closes[i]]));
+    const dates = ch.dates.filter((d, i) => ch.closes[i] != null && bmap.get(d) != null);
+    if (dates.length > 1) {
+      const a0 = ch.closes[ch.dates.indexOf(dates[0])];
+      const b0 = bmap.get(dates[0]);
+      const peer = ((japanData && japanData.companies) || []).find((x) => x.code === jpCompare);
+      mountChart('jp-chart', {
+        labels: dates,
+        datasets: [
+          line(`${c.ticker} · ${c.name.slice(0, 14)}`, dates.map((d) => (ch.closes[ch.dates.indexOf(d)] / a0) * 100), CT.c1),
+          line(`${jpCompare} · ${peer ? peer.name.slice(0, 14) : ''}`, dates.map((d) => (bmap.get(d) / b0) * 100), CT.c2),
+        ],
+      }, baseOptions({ dp: 0, dateAxis: true, yTitle: 'indexed to 100' }));
+      return;
+    }
+  }
   mountChart('jp-chart', { labels: ch.dates, datasets: [line(`${c.ticker} · JPY · ${range.toUpperCase()}`, ch.closes, CT.c1)] }, baseOptions({ dp: 0, dateAxis: true }));
 }
 
@@ -4384,6 +4446,12 @@ document.addEventListener('change', (e) => {
 
 // Selects fire 'change' on some browsers where they never fire 'input' — handle both.
 document.addEventListener('change', (e) => {
+  if (e.target && e.target.id === 'jp-cmp') {
+    jpCompare = (e.target.value || '').trim();
+    const cur = ((japanData && japanData.companies) || []).find((x) => x.code === jpSel);
+    if (cur) drawJpPrice(cur);
+    return;
+  }
   if (!(e.target && e.target.dataset && e.target.dataset.jpf)) return;
   const k = e.target.dataset.jpf;
   if (k === 'sort') { jpSort = e.target.value; try { localStorage.setItem('oilbasis.jpSort', jpSort); } catch {} }

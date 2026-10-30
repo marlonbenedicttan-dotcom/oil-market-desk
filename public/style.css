@@ -1272,3 +1272,8 @@ button.deal-sec-tile:hover { background: #10151b; }
   .co-row[data-jp] .co-tick { font-size: 8.5px; letter-spacing: .3px; }
   .co-row[data-jp] .jp-sector { display: none; }
 }
+.jp-cmp { margin-left: auto; background: #0c0f13; border: 1px solid var(--line2); color: var(--text);
+  font: inherit; font-size: 9px; letter-spacing: .6px; padding: 5px 8px; min-height: 26px; width: 170px; outline: none; }
+.jp-cmp:focus { border-color: var(--amber); }
+.jp-cmp::placeholder { color: #5b6773; }
+@media (max-width: 640px) { .jp-cmp { width: 100%; margin: 6px 0 0; } .co-chart-tabs { flex-wrap: wrap; } }

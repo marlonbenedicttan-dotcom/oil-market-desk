@@ -174,6 +174,18 @@ export function deriveJapan({ ranked, fins, series, val = new Map(), nextByCode 
     }
 
     const jan1 = `${new Date().getUTCFullYear()}-01-01`;
+    // Five years of fiscal-year figures, short keys to keep 1,500 companies inside one payload.
+    const history = rows
+      .filter((r) => r.CurPerType === 'FY' && r.CurFYEn && num(r.Sales) != null)
+      .sort((a, b) => String(a.CurFYEn).localeCompare(String(b.CurFYEn)))
+      .slice(-5)
+      .map((r) => ({
+        y: r.CurFYEn,
+        s: num(r.Sales), o: num(r.OP) ?? num(r.OdP), n: num(r.NP),
+        e: num(r.EPS), b: num(r.BPS), a: num(r.TA), q: eqOf(r),
+        c: num(r.CFO), i: num(r.CFI), d: num(r.DivAnn),
+      }));
+
     const quarters = buildQuarters(rows).slice(-8);
     const guidedVsActual = guidanceVsDelivered(rows);
 
@@ -226,6 +238,7 @@ export function deriveJapan({ ranked, fins, series, val = new Map(), nextByCode 
       } : null,
       verification,
       quarters,
+      history,
       guidanceVsDelivered: guidedVsActual,
       earnings: nextByCode.get(c.code) || null,
     });

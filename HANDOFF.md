@@ -2220,3 +2220,19 @@ FCF 480/503 (17 banks n/a) · EV/EBITDA 423.
   Sector is now its own span, hidden under 640 px, so rows are **51 px** and the metadata is one line.
   The filter row is two-per-line at 8.5 px instead of five stacked full-width selects.
 - The search box is hidden in MARKET and BANKS, where it has nothing to act on.
+
+## Japan: five-year record, liquidity, valuation-percentile screen, compare (2026-10-30)
+Built and verified in that order.
+1. **Five-year record.** `history` carries five fiscal years per company (1,512 of 1,544 have 4+), shown as a
+   table under the quarterly section: sales, operating profit, net profit, ROE, equity ratio, dividend per
+   share. Short keys (`y,s,o,n,e,b,a,q,c,i,d`) keep 1,500 companies inside the payload.
+2. **Liquidity.** The bars carry `Va` (traded value in yen), which was being discarded. The build now averages
+   it over the last 30 sessions and shows **daily traded value** on the page. Toyota ¥72.7B/day. This is the
+   filter that separates an investable company from a list entry.
+3. **CHEAP VS ITSELF preset.** P/E at or below its own 20th percentile of five years with positive ROE —
+   353 companies today. This is the closest thing to a "hidden gem" screen the dataset supports.
+4. **Compare**, mirroring the US chart: type a code next to the ranges and both companies are indexed to 100
+   at the first shared date. Toyota vs Sony over 6M: Sony +20%, Toyota −1%.
+- **Build fix**: the price loop was retrying 2021 dates on every run. Light's history is five years measured
+  from today, so the window is now clamped to 1,795 days; TOPIX gets the same clamp and three attempts after
+  one transient failure left it null.
