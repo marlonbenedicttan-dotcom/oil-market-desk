@@ -2463,3 +2463,14 @@ they are filed. Today's run picked up **295 companies** that had filed.
 - Pacing lowered for the retry: scan pool 6 → 3, statement pool 4 → 2.
 - Validated on four companies before the block, with correct ratios: Samsung ₩222,500 · P/E 33.7 · P/B 3.49;
   SK Hynix P/E 22.7; Hana Financial 8.6; IBK 6.1.
+
+## Korea: MARKET / SCREENER / THEMES (2026-10-30)
+- The Korea segment now mirrors the other two: a **MARKET** view with the KOSPI level (5,730.74), 1D/6M/YTD,
+  total cap, median P/E, P/B, ROE, below-book count and breadth, plus a KOSPI chart; a **SCREENER**; and
+  **THEMES** with four curated lists — SEMICONDUCTORS, BATTERIES & EV, DEFENCE, BANKS.
+- KOSPI index history comes from Naver Finance (the same feed as the prices), 260 sessions.
+- Market aggregates and themes are written by the build and served through `/api/korea`.
+- **English names**: the build now captures `corp_name_eng` from DART's `company.json` (cache schema v2).
+  The 3,958 cached entries predate that field, so names show in Korean until the next DART run — DART has
+  been refusing connections since the rate-limit burst.
+- Guard added: a build that produces zero companies no longer overwrites a good `korea.json`.

@@ -4106,9 +4106,11 @@ function drawJpQuarters(c) {
 }
 
 // --- Korea: KOSPI, from DART (FSS) -------------------------------------------------------------
-// Same layout as the other two markets. What Korea does not have is guidance — Korean companies do not
-// publish full-year forecasts — so there is no forward P/E and no guidance-versus-delivered section.
+// Same three views as the other two markets. What Korea does not have is guidance — Korean companies
+// do not publish full-year forecasts — so there is no forward P/E and no guidance-versus-delivered.
 let koreaData = null, krSel = null, krQuery = '';
+let krView = (() => { try { return localStorage.getItem('oilbasis.krView') || 'screener'; } catch { return 'screener'; } })();
+let krTheme = (() => { try { return localStorage.getItem('oilbasis.krTheme') || 'semis'; } catch { return 'semis'; } })();
 
 const won = (v) => {
   if (v == null || !Number.isFinite(v)) return '—';
@@ -4118,13 +4120,16 @@ const won = (v) => {
   if (a >= 1e4) return `₩${(v / 1e4).toFixed(0)}만`;
   return `₩${Math.round(v).toLocaleString('en-US')}`;
 };
-const krMono = (c) => coMono({ ticker: String(c.name || '?').replace(/[^A-Za-z]/g, '').slice(0, 2) || 'KR', name: c.name });
+const krMono = (c) => coMono({ ticker: String(c.nameEn || c.name || '?').replace(/[^A-Za-z]/g, '').slice(0, 2) || 'KR', name: c.name });
+const krName = (c) => c.nameEn || c.name;
 
 async function loadKorea() {
   if (koreaData) return koreaData;
   try { koreaData = await jget('/api/korea', 3600000); } catch { koreaData = { companies: [] }; }
   return koreaData;
 }
+
+const krViewsBar = () => `<div class="co-views">${[['market', 'MARKET'], ['screener', 'SCREENER'], ['themes', 'THEMES']].map(([k, t]) => `<button type="button" data-krview="${k}" class="${krView === k ? 'on' : ''}">${t}</button>`).join('')}</div>`;
 
 async function renderKorea() {
   const el = $('co-body'); if (!el) return;
@@ -4141,38 +4146,98 @@ async function renderKorea() {
   }
   const sel = all.find((c) => c.code === krSel);
   if (sel) return renderKoreaPage(sel);
+  if (krView === 'market') return renderKoreaMarket(all, d);
+  if (krView === 'themes') return renderKoreaThemes(all, d);
+  return renderKoreaScreener(all, d);
+}
 
+function renderKoreaMarket(all, d) {
+  const el = $('co-body'); if (!el) return;
+  const m = d.market || {}; const idx = d.index || {};
+  const cell = (k, v, t, cls = '') => `<div class="co-stat" title="${esc(t)}"><span class="co-k">${k}</span><span class="co-v ${cls}">${v}</span></div>`;
+  const chg = (x) => (x == null ? '—' : `${x >= 0 ? '+' : ''}${x.toFixed(1)}%`);
+  const breadth = m.advancing != null ? `<div class="jp-breadth"><span class="pos">${m.advancing} up</span><i><i style="width:${Math.round((m.advancing / Math.max(1, m.advancing + m.declining)) * 100)}%"></i></i><span class="neg">${m.declining} down</span></div>` : '';
+  el.innerHTML = krViewsBar()
+    + `<div class="jp-market-head"><span class="ph-t">KOSPI</span>
+        ${idx.level != null ? `<span class="jp-market-lvl">${idx.level.toLocaleString('en-US', { maximumFractionDigits: 2 })}</span>` : '<span class="dimtext">index unavailable</span>'}
+        <span class="${(idx.chg1d || 0) >= 0 ? 'pos' : 'neg'}">${chg(idx.chg1d)} today</span>
+        <span class="${(idx.chg6m || 0) >= 0 ? 'pos' : 'neg'}">${chg(idx.chg6m)} 6M</span>
+        <span class="${(idx.chgYtd || 0) >= 0 ? 'pos' : 'neg'}">${chg(idx.chgYtd)} YTD</span>
+        <span class="dimtext">${all.length} companies · computed from the constituent set</span></div>`
+    + `<div class="co-stats co-stats-12">
+        ${cell('TOTAL MARKET CAP', won(m.totalCap), 'Sum of every KOSPI constituent we hold')}
+        ${cell('COMPANIES', String(m.companies || all.length), 'KOSPI issues with a price')}
+        ${cell('MEDIAN P/E', m.medianPe != null ? `${m.medianPe.toFixed(1)}×` : '—', 'Median — the typical company, not the index')}
+        ${cell('MEDIAN P/B', m.medianPb != null ? `${m.medianPb.toFixed(2)}×` : '—', 'Median across the market')}
+        ${cell('MEDIAN ROE', m.medianRoe != null ? `${m.medianRoe.toFixed(1)}%` : '—', 'Trailing twelve months, median')}
+        ${cell('BELOW BOOK', String(m.belowBook ?? '—'), 'Companies trading under 1× book')}
+        ${cell('UP THIS YEAR', String(m.upYtd ?? '—'), 'Companies with a positive year-to-date return')}
+      </div>`
+    + breadth
+    + (idx.series && idx.series.length > 1 ? `<div class="co-chartwrap"><canvas id="kr-mkt-chart"></canvas></div>` : '')
+    + `<div class="macro-note">Aggregates computed from the ${all.length} KOSPI constituents, not from an index file. KOSPI level and history from Naver Finance.</div>`;
+  if (idx.series && idx.series.length > 1) {
+    mountChart('kr-mkt-chart', { labels: idx.series.map((p) => p.d), datasets: [line('KOSPI', idx.series.map((p) => p.c), CT.c1)] }, baseOptions({ dp: 0, dateAxis: true }));
+  }
+}
+
+function renderKoreaThemes(all, d) {
+  const el = $('co-body'); if (!el) return;
+  const themes = (d && d.themes) || [];
+  if (!themes.length) { el.innerHTML = krViewsBar() + '<div class="macro-note">No themes loaded.</div>'; return; }
+  const active = themes.find((t) => t.id === krTheme) || themes[0];
+  const set = new Set(active.tickers || []);
+  const rows = all.filter((c) => set.has(c.ticker)).sort((a, b) => (b.marketCap || 0) - (a.marketCap || 0));
+  const chg = (x) => (x == null ? '—' : `${x >= 0 ? '+' : ''}${x.toFixed(1)}%`);
+  el.innerHTML = krViewsBar()
+    + `<div class="jp-presets">${themes.map((t) => `<button type="button" data-krtheme="${t.id}" class="${t.id === active.id ? 'on' : ''}">${t.label}</button>`).join('')}</div>`
+    + `<div class="jp-market-head"><span class="ph-t">${esc(active.label)}</span><span class="dimtext">${rows.length} companies · curated list</span></div>`
+    + `<div class="co-hrow jp-bank-hrow"><span>#</span><span>COMPANY</span><span>CAP</span><span>P/E</span><span>P/B</span><span>ROE</span><span>MARGIN</span><span>YTD</span></div>`
+    + rows.map((c, i) => `<button class="jp-bank-row" data-kr="${esc(c.code)}">
+        <span>${i + 1}</span>
+        <span><b>${esc(krName(c))}</b><span class="co-tick">${esc(c.ticker)}</span></span>
+        <span>${won(c.marketCap)}</span>
+        <span>${c.pe != null ? c.pe.toFixed(1) : '—'}</span>
+        <span class="${c.pb != null && c.pb < 1 ? 'pos' : ''}">${c.pb != null ? c.pb.toFixed(2) : '—'}</span>
+        <span class="${(c.roe || 0) >= 0 ? 'pos' : 'neg'}">${c.roe != null ? c.roe.toFixed(1) + '%' : '—'}</span>
+        <span>${c.opMargin != null ? c.opMargin.toFixed(1) + '%' : '—'}</span>
+        <span class="${(c.chgYtd || 0) >= 0 ? 'pos' : 'neg'}">${chg(c.chgYtd)}</span>
+      </button>`).join('')
+    + `<div class="macro-note">${esc(active.note || '')}</div>`;
+}
+
+function renderKoreaScreener(all, d) {
+  const el = $('co-body'); if (!el) return;
   const q = krQuery.trim().toLowerCase();
-  const rows = all.filter((c) => !q || `${c.name} ${c.ticker}`.toLowerCase().includes(q));
+  const rows = all.filter((c) => !q || `${c.name} ${c.nameEn || ''} ${c.ticker}`.toLowerCase().includes(q));
   const max = Math.max(...all.map((c) => c.marketCap || 0), 1);
-  el.innerHTML = `<div class="co-hrow"><span>#</span><span></span><span>COMPANY</span><span>MARKET CAP</span><span>P/E</span><span>ROE</span></div>`
+  el.innerHTML = krViewsBar()
+    + `<div class="co-hrow"><span>#</span><span></span><span>COMPANY</span><span>MARKET CAP</span><span>P/E</span><span>ROE</span></div>`
     + rows.map((c, i) => `<button class="co-row" data-kr="${esc(c.code)}">
         <span class="co-rank">${i + 1}</span>
         ${krMono(c)}
-        <span class="co-id"><b>${esc(c.name)}</b><span class="co-tick">${esc(c.ticker)} · ${won(c.price)} <em class="${(c.chg1d || 0) >= 0 ? 'pos' : 'neg'}">${c.chg1d == null ? '' : `${c.chg1d >= 0 ? '+' : ''}${c.chg1d.toFixed(1)}%`}</em> · <em class="${(c.chgYtd || 0) >= 0 ? 'pos' : 'neg'}">${c.chgYtd == null ? '—' : `${c.chgYtd >= 0 ? '+' : ''}${c.chgYtd.toFixed(1)}%`} YTD</em></span></span>
+        <span class="co-id"><b>${esc(krName(c))}</b><span class="co-tick">${esc(c.ticker)} · ${won(c.price)} <em class="${(c.chg1d || 0) >= 0 ? 'pos' : 'neg'}">${c.chg1d == null ? '' : `${c.chg1d >= 0 ? '+' : ''}${c.chg1d.toFixed(1)}%`}</em> · <em class="${(c.chgYtd || 0) >= 0 ? 'pos' : 'neg'}">${c.chgYtd == null ? '—' : `${c.chgYtd >= 0 ? '+' : ''}${c.chgYtd.toFixed(1)}%`} YTD</em></span></span>
         <span class="co-cap">${won(c.marketCap)}<i class="co-bar"><i style="width:${Math.max(2, ((c.marketCap || 0) / max) * 100)}%"></i></i></span>
         <span class="co-pe">${c.pe != null ? c.pe.toFixed(1) : '—'}</span>
         <span class="co-mar ${c.roe == null ? 'dimtext' : c.roe >= 0 ? 'pos' : 'neg'}">${c.roe == null ? '—' : `${c.roe.toFixed(1)}%`}</span>
       </button>`).join('')
-    + `<div class="macro-note">${rows.length} of ${all.length} · KOSPI · DART financial statements, Naver prices · P/E is trailing twelve months · FX ${d.fx && d.fx.rate ? d.fx.rate.toFixed(0) : '—'} KRW per USD.</div>`;
+    + `<div class="macro-note">${rows.length} of ${all.length} · KOSPI · DART statements, Naver prices · P/E is trailing twelve months · FX ${d.fx && d.fx.rate ? d.fx.rate.toFixed(0) : '—'} KRW per USD.</div>`;
 }
 
 async function renderKoreaPage(stub) {
   const el = $('co-body'); if (!el) return;
-  let c = koreaData && (koreaData.full || []).find((x) => x.code === stub.code);
-  if (!c) {
-    el.innerHTML = stLoading('Reading the filing…');
-    try { c = await jget(`/api/korea/company/${encodeURIComponent(stub.code)}`, 1800000); } catch { c = null; }
-  }
+  let c = null;
+  el.innerHTML = stLoading('Reading the filing…');
+  try { c = await jget(`/api/korea/company/${encodeURIComponent(stub.code)}`, 1800000); } catch { c = null; }
   if (!c) { el.innerHTML = stError('Couldn\u2019t load this company.'); return; }
-  const sub = $('deals-sub'); if (sub) sub.textContent = `${c.name} · ${c.ticker} · KOSPI`;
+  const sub = $('deals-sub'); if (sub) sub.textContent = `${krName(c)} · ${c.ticker} · KOSPI`;
   const cell = (k, v, t, cls = '') => `<div class="co-stat" title="${esc(t)}"><span class="co-k">${k}</span><span class="co-v ${cls}">${v}</span></div>`;
   const chg = (x) => (x == null ? '' : `${x >= 0 ? '+' : ''}${x.toFixed(1)}%`);
   const q = c.quarters || [];
   const h = c.history || [];
   el.innerHTML = `<div class="ma-crumb"><button class="ma-back" data-krback="1">← COMPANIES</button> <span>${esc(c.ticker)}</span></div>`
-    + `<div class="co-head">${krMono(c)}<div><div class="co-name">${esc(c.name)}</div>
-        <div class="co-sub">${esc(c.ticker)} · KOSPI</div></div></div>`
+    + `<div class="co-head">${krMono(c)}<div><div class="co-name">${esc(krName(c))}</div>
+        <div class="co-sub">${esc(c.ticker)} · KOSPI${c.name ? ' · ' + esc(c.name) : ''}</div></div></div>`
     + `<div class="co-price"><span class="co-price-v">${won(c.price)}</span>
         <span class="co-price-c ${c.chg1d >= 0 ? 'pos' : 'neg'}">${chg(c.chg1d)} today</span>
         <span class="co-price-c ${c.chg6m >= 0 ? 'pos' : 'neg'}">${chg(c.chg6m)} 6M</span>
@@ -4727,6 +4792,10 @@ document.addEventListener('click', (e) => {
     renderCompanies();
     return;
   }
+  const krv = e.target.closest('[data-krview]');
+  if (krv) { krView = krv.dataset.krview; try { localStorage.setItem('oilbasis.krView', krView); } catch {} krSel = null; renderKorea(); return; }
+  const krt = e.target.closest('[data-krtheme]');
+  if (krt) { krTheme = krt.dataset.krtheme; try { localStorage.setItem('oilbasis.krTheme', krTheme); } catch {} renderKorea(); return; }
   const krrow = e.target.closest('[data-kr]');
   if (krrow) { krSel = krrow.dataset.kr; renderKorea(); window.scrollTo({ top: 0, behavior: 'smooth' }); return; }
   if (e.target.closest('[data-krback]')) { krSel = null; renderKorea(); return; }

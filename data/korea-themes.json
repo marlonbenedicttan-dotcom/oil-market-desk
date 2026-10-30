@@ -1,0 +1,18 @@
+{
+  "updated": "2026-10-30",
+  "note": "Curated KOSPI themes. Each is a deliberate subset with a stated rule, not a sector renamed.",
+  "themes": [
+    { "id": "semis", "label": "SEMICONDUCTORS", "kind": "curated",
+      "note": "Memory, foundry and the equipment and materials behind them — the sector that drives the index.",
+      "tickers": ["005930","000660","042700","000990","108320","402340","009150","011070"] },
+    { "id": "battery", "label": "BATTERIES & EV", "kind": "curated",
+      "note": "Cell makers, cathode and materials producers, and the chemicals behind the Korean battery chain.",
+      "tickers": ["373220","006400","096770","003670","066970","011790","051910","005490"] },
+    { "id": "defence", "label": "DEFENCE", "kind": "curated",
+      "note": "Aerospace, land systems, missiles and the electronics suppliers behind Korea's export defence push.",
+      "tickers": ["012450","047810","079550","064350","272210","103140","047040","000880"] },
+    { "id": "banks", "label": "BANKS", "kind": "curated",
+      "note": "The four big financial holding companies plus the regional banks — the Korea discount in one table.",
+      "tickers": ["105560","055550","086790","316140","024110","138930","139130"] }
+  ]
+}

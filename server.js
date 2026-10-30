@@ -3986,6 +3986,7 @@ const server = http.createServer(async (req, res) => {
       if (!kr.companies || !kr.companies.length) return sendJSON(res, 200, { companies: [], error: 'Korea has not been built yet' });
       return sendJSONCached(res, 200, {
         updated: kr.updated, universe: kr.universe, currency: kr.currency, fx: kr.fx,
+        market: kr.market, index: kr.index, themes: kr.themes || [],
         companies: kr.companies.map(projectKr),
       });
     }

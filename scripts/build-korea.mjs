@@ -62,21 +62,28 @@ console.log('shares + market class…');
 const infoOf = async (corp) => {
   const f = join(CACHE, `info-${corp}.json`);
   const hit = readJson(f);
-  if (hit && Date.parse(hit.fetched) > Date.now() - 30 * DAY) return hit;
+  if (hit && hit.v === 2 && Date.parse(hit.fetched) > Date.now() - 30 * DAY) return hit;
   const url = `https://opendart.fss.or.kr/api/company.json?crtfc_key=${process.env.DART_API_KEY}&corp_code=${corp}`;
   for (let i = 0; i < 3; i++) {
     try {
       const res = await fetch(url, { headers: { 'User-Agent': UA } });
       if (res.status === 429) { await sleep(4000); continue; }
       const j = await res.json();
-      const out = { fetched: new Date().toISOString(), cls: j.corp_cls || null, industry: j.induty_code || null, name: j.stock_name || null };
+      const out = {
+        v: 2,
+        fetched: new Date().toISOString(),
+        cls: j.corp_cls || null,
+        industry: j.induty_code || null,
+        name: j.stock_name || null,
+        nameEn: j.corp_name_eng || null,
+      };
       writeJson(f, out);
       await sleep(150);
       return out;
     } catch { await sleep(1000); }
   }
   await sleep(150);
-  return { cls: null, industry: null };
+  return hit || { cls: null, industry: null };
 };
 
 // Shares come from the stock-total table, summed across common and preferred.
@@ -104,7 +111,7 @@ const sharesOf = async (corp) => {
     } catch { await sleep(1000); }
   }
   await sleep(150);
-  return { shares: null };
+  return hit || { shares: null };
 };
 
 // A smoke test should not scan 4,000 filers first — cap the scan, not just the output.
@@ -116,7 +123,7 @@ const found = await pool(scan, 3, async (c) => {
   if (scanned % 250 === 0) console.log(`  ${scanned}/${scan.length}`);
   if (info.cls !== 'Y') return null;
   const sh = await sharesOf(c.corp);
-  return sh.shares ? { ...c, shares: sh.shares, industry: info.industry } : null;
+  return sh.shares ? { ...c, shares: sh.shares, industry: info.industry, nameEn: info.nameEn } : null;
 });
 const kospi = found.filter(Boolean);
 console.log(`  ${kospi.length} KOSPI companies`);
@@ -210,7 +217,7 @@ const collected = await pool(withPrices, 2, async (c) => {
   }
   if (!reports.length) return null;
   return {
-    code: c.corp, ticker: c.ticker, name: c.name,
+    code: c.corp, ticker: c.ticker, name: c.name, nameEn: c.nameEn || null,
     price: c.price, priceDate: c.priceDate,
     chg1d: c.chg1d, chg6m: c.chg6m, chgYtd: c.chgYtd,
     series: c.series, shares: c.shares, reports,
@@ -229,12 +236,69 @@ try {
 } catch { fx = null; }
 
 const out = deriveKorea({ companies, fx });
+if (!out.length) {
+  console.log('no companies built — keeping the existing file');
+  process.exit(1);
+}
+
+// The index itself, from the same Naver feed the prices come from.
+async function indexSeries(symbol) {
+  const start = iso(Date.now() - 400 * DAY).replace(/-/g, '');
+  const end = iso(Date.now()).replace(/-/g, '');
+  try {
+    const res = await fetch(`https://api.finance.naver.com/siseJson.naver?symbol=${symbol}&requestType=1&startTime=${start}&endTime=${end}&timeframe=day`, { headers: { 'User-Agent': UA, Referer: 'https://finance.naver.com/' } });
+    const text = await res.text();
+    const rows = JSON.parse(text.replace(/'/g, '"').replace(/,\s*]/g, ']'));
+    return rows.slice(1).filter((r) => Array.isArray(r) && r[0] && r[4] != null)
+      .map((r) => ({ d: `${r[0].slice(0, 4)}-${r[0].slice(4, 6)}-${r[0].slice(6, 8)}`, c: Number(r[4]) }));
+  } catch { return []; }
+}
+const kospiIdx = await indexSeries('KOSPI');
+const idx = kospiIdx.length ? (() => {
+  const last = kospiIdx[kospiIdx.length - 1];
+  const prev = kospiIdx[kospiIdx.length - 2];
+  const six = kospiIdx[Math.max(0, kospiIdx.length - 126)];
+  const jan1 = kospiIdx.find((p) => p.d >= `${new Date().getUTCFullYear()}-01-01`);
+  return {
+    level: last.c, date: last.d,
+    chg1d: prev ? +(((last.c / prev.c) - 1) * 100).toFixed(2) : null,
+    chg6m: six ? +(((last.c / six.c) - 1) * 100).toFixed(2) : null,
+    chgYtd: jan1 ? +(((last.c / jan1.c) - 1) * 100).toFixed(2) : null,
+    series: kospiIdx.slice(-260),
+  };
+})() : null;
+
+const median = (xs) => {
+  const a = xs.filter((x) => x != null && Number.isFinite(x)).sort((x, y) => x - y);
+  if (!a.length) return null;
+  const m = Math.floor(a.length / 2);
+  return a.length % 2 ? a[m] : +((a[m - 1] + a[m]) / 2).toFixed(2);
+};
+const market = {
+  companies: out.length,
+  totalCap: out.reduce((a, c) => a + (c.marketCap || 0), 0),
+  medianPe: median(out.map((c) => c.pe)),
+  medianPb: median(out.map((c) => c.pb)),
+  medianRoe: median(out.map((c) => c.roe)),
+  belowBook: out.filter((c) => c.pb != null && c.pb < 1).length,
+  advancing: out.filter((c) => (c.chg1d || 0) > 0).length,
+  declining: out.filter((c) => (c.chg1d || 0) < 0).length,
+  upYtd: out.filter((c) => (c.chgYtd || 0) > 0).length,
+};
+
+const themeBook = readJson(join(ROOT, 'data', 'korea-themes.json')) || { themes: [] };
+const have = new Set(out.map((c) => c.ticker));
+const themes = (themeBook.themes || []).map((t) => ({
+  id: t.id, label: t.label, kind: t.kind, note: t.note,
+  tickers: (t.tickers || []).filter((x) => have.has(x)),
+}));
 out.sort((a, b) => (b.marketCap || 0) - (a.marketCap || 0));
 writeJson(OUT, {
   updated: new Date().toISOString(),
   universe: `KOSPI · ${out.length} companies`,
   currency: 'KRW',
   fx: { pair: 'USDKRW', rate: fx, date: iso(Date.now()) },
+  market, index: idx, themes,
   companies: out,
 });
 console.log(`${out.length} companies · ${out.filter((c) => c.pe != null).length} with P/E · FX ${fx}`);
