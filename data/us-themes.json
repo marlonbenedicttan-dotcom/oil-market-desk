@@ -62,7 +62,8 @@
     "LDOS",
     "AXON",
     "HWM",
-    "TDY"
+    "TDY",
+    "PLTR"
    ],
    "exclude": [
     "HON"
@@ -72,9 +73,10 @@
     "RTX",
     "NOC",
     "GD",
-    "LHX"
+    "LHX",
+    "PLTR"
    ],
-   "note": "Prime contractors, missile and radar makers, and the electronics and structures suppliers behind them."
+   "note": "Prime contractors, missile and radar makers, the electronics and structures suppliers behind them, and the software the intelligence and defence agencies run on."
   },
   {
    "id": "power",

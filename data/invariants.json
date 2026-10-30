@@ -1,96 +1,92 @@
 {
- "generated": "2026-10-29T12:46:54.572Z",
+ "generated": "2026-10-30T07:10:10.285Z",
  "companies": 503,
- "total": 22,
+ "total": 21,
  "causes": {
   "EV/EBITDA above 100 (check D&A)": [
    {
     "ticker": "TSLA",
-    "detail": "324.9"
+    "detail": "352.2"
    },
    {
     "ticker": "AMD",
-    "detail": "131.1"
+    "detail": "143.8"
    },
    {
     "ticker": "PLTR",
-    "detail": "177"
+    "detail": "176.7"
    },
    {
     "ticker": "PANW",
-    "detail": "200.5"
+    "detail": "200.6"
    },
    {
     "ticker": "GEV",
-    "detail": "115.7"
+    "detail": "126.6"
    },
    {
     "ticker": "MRVL",
-    "detail": "108.1"
+    "detail": "103.3"
    },
    {
     "ticker": "LITE",
-    "detail": "126.7"
+    "detail": "154.9"
    },
    {
     "ticker": "BE",
-    "detail": "100.6"
+    "detail": "116.1"
    },
    {
     "ticker": "WAT",
-    "detail": "136.3"
+    "detail": "144.2"
    },
    {
     "ticker": "P",
-    "detail": "106.5"
+    "detail": "118.7"
    },
    {
     "ticker": "AXON",
-    "detail": "260.5"
+    "detail": "271.2"
    },
    {
     "ticker": "DOW",
-    "detail": "116.4"
+    "detail": "118.8"
    }
   ],
   "P/E above 300 (check earnings)": [
    {
     "ticker": "TSLA",
-    "detail": "387.8"
+    "detail": "420.2"
    },
    {
     "ticker": "PANW",
-    "detail": "1014"
+    "detail": "1014.6"
    },
    {
     "ticker": "DDOG",
-    "detail": "898.7"
+    "detail": "886"
    },
    {
     "ticker": "CIEN",
-    "detail": "368.2"
+    "detail": "401.7"
    },
    {
     "ticker": "MCHP",
-    "detail": "338.5"
+    "detail": "370.8"
    },
    {
     "ticker": "TWLO",
-    "detail": "1188.3"
+    "detail": "1097.7"
    },
    {
     "ticker": "GPC",
-    "detail": "546.4"
+    "detail": "543.5"
    }
   ],
   "P/B above 100 (check equity)": [
    {
-    "ticker": "FTNT",
-    "detail": "106.7"
-   },
-   {
     "ticker": "LYV",
-    "detail": "150.8"
+    "detail": "154.6"
    }
   ],
   "no annual report yet (new listing)": [

@@ -2372,3 +2372,13 @@ Result: 502 of 503 prices dated **2026-10-29**, AAPL $348.91 +1.48%.
   across 500 companies. Better absent than wrong.
 - **Click-through fixed**: theme and peer rows use `.jp-bank-row`, and the handler matched only `.co-row`.
   It now matches any `#co-body [data-cik]`.
+
+## Defence theme, methodology and the intro (2026-10-30)
+- **Palantir is in DEFENCE.** It was in AI but not defence because the industry rule only caught `Aerospace`
+  and the curated list only held hardware primes. Added, anchored, and the audit's defence vocabulary now
+  includes "intelligence community", "national security", "government agency", "surveillance".
+- **DATA & METHODOLOGY now documents the company data**: 8 source rows (universe US/JP, SEC XBRL, Nasdaq,
+  J-Quants, Japan valuation history, descriptions, themes) and a **WHAT IS NOT COVERED** list — Prime and
+  S&P 500 only, no ownership data, estimated US earnings dates, no US cash-rich screen and why.
+- **The intro (? / onboarding) now describes both markets**: S&P 500 from SEC filings cross-checked against
+  Nasdaq, TSE Prime from J-Quants, three views each, and the brand names on company pages.

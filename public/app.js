@@ -129,6 +129,8 @@ function renderMethodology(data) {
     const scores = m.scores.map((s) => `<div class="m-score"><div class="m-score-h">${s.name}<span>${s.range}</span></div><p>${s.read}</p></div>`).join('');
     const rules = m.rules.map((r) => `<li>${r}</li>`).join('');
     html = `<div class="m-sec"><h4>WHERE THE DATA COMES FROM</h4><div class="m-tbl-wrap"><table class="m-tbl"><thead><tr><th>Source</th><th>What it covers</th><th>Freshness</th></tr></thead><tbody>${rows}</tbody></table></div></div>`
+      + (m.companies ? `<div class="m-sec"><h4>COMPANY DATA — WHAT EACH BASIS MEANS</h4><div class="m-tbl-wrap"><table class="m-tbl"><thead><tr><th>Source</th><th>Basis</th><th>Notes</th></tr></thead><tbody>${m.companies.map((c) => `<tr><td>${c.name}</td><td>${c.basis}</td><td class="m-fresh">${c.note}</td></tr>`).join('')}</tbody></table></div></div>` : '')
+      + (m.limits ? `<div class="m-sec"><h4>WHAT IS NOT COVERED</h4><ul class="m-rules">${m.limits.map((x) => `<li>${x}</li>`).join('')}</ul></div>` : '')
       + `<div class="m-sec"><h4>WHAT THE SCORES MEAN</h4>${scores}</div>`
       + `<div class="m-sec"><h4>HOW BASIS WORKS</h4><p>${m.basis}</p></div>`
       + `<div class="m-sec"><h4>THE RULES</h4><ul class="m-rules">${rules}</ul></div>`;

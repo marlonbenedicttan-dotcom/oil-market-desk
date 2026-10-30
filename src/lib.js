@@ -381,6 +381,23 @@ export const METHODOLOGY = {
     { name: 'Google News (tier-1 wire)', covers: 'Headlines and event tagging', freshness: 'Live — keyword + context matched' },
     { name: 'aisstream.io / NASA', covers: 'Ships, gas flares, radar satellite', freshness: 'Live / daily' },
   ],
+  companies: [
+    { name: 'Universe — US', basis: 'S&P 500 · 503 securities', note: 'Membership from the SPDR SPY holdings file. Three second share classes are listed but excluded from totals so nothing is double-counted.' },
+    { name: 'Universe — Japan', basis: 'TSE Prime · 1,544 companies', note: 'Every Prime issue with a market cap, from the JPX master file. Standard and Growth are not covered.' },
+    { name: 'US fundamentals', basis: 'SEC XBRL, as filed', note: 'GAAP as reported. TTM earnings from four quarters with Q4 rebuilt as FY − three quarters, guarded against outliers.' },
+    { name: 'US prices and caps', basis: 'Nasdaq', note: 'Last sale, daily change and market cap from Nasdaq’s own quote. Every filing figure is cross-checked against Nasdaq’s financial tables within 5%; where they disagree, both values are shown.' },
+    { name: 'Japan fundamentals', basis: 'J-Quants (JPX)', note: 'Financial summaries, daily prices, and the exchange’s own TTM P/E, P/B, ROE and forward P/E. Market cap excludes treasury shares and is split-adjusted.' },
+    { name: 'Japan valuation history', basis: 'J-Quants, 5 years daily', note: 'Used for the percentile bands; only the distribution is stored, not 1,200 rows per company.' },
+    { name: 'Company descriptions', basis: 'Curated, then fetched', note: '556 written here, 987 fetched from stockanalysis.com company profiles, 1 generated from the filing data. Each page says which it is.' },
+    { name: 'Themes', basis: 'Rule + curated list', note: 'A theme is an industry rule plus curated additions minus exclusions, so new listings join automatically. Anchors are tested on every audit.' },
+  ],
+  limits: [
+    'US coverage is the S&P 500 only; Japan is TSE Prime only. Neither covers mid- or small-caps.',
+    'Japan has no ownership or activist data — that needs EDINET large-shareholding filings, which this feed does not carry.',
+    'US earnings dates are estimated from each company’s own filing cadence, never presented as announced.',
+    'No cash-rich screen for the US: “cash” means cash and equivalents, and Treasury bills are not tagged in SEC XBRL (Berkshire is the obvious case). Better absent than wrong.',
+    'Japan P/E and ROE are the exchange’s TTM figures; the statement block below them is fiscal-year, and each is labelled.',
+  ],
   scores: [
     { name: 'Price vs its own history', range: '−100 … +100', read: 'Where today’s price sits in THIS market’s own history: + = rich (a premium), − = cheap (a discount), 0 = mid. Built from 2-year & 10-year range position plus self-normalised 3-month and 1-year moves — never compared across markets.' },
     { name: 'Supply & demand', range: '0 … 100', read: 'The physical balance from the curve, the real-vs-futures basis and stocks vs the seasonal norm. Above 50 = undersupplied, 50 = balanced, below 50 = oversupplied. Re-weighted over whatever data exists; missing inputs are shown, never faked.' },

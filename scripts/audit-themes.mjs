@@ -15,7 +15,7 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 
 const KEYWORDS = {
   ai: /semiconductor|wafer|lithograph|foundry|\bNAND\b|\bDRAM\b|\bGPU\b|AI accelerator|chip ?maker|chip designer|build-up film|memory chips?/i,
-  defence: /defence|defense|military|missile|radar|aerospace|aircraft|submarine|naval|munitions|fighter/i,
+  defence: /defence|defense|military|missile|radar|aerospace|aircraft|submarine|naval|munitions|fighter|intelligence community|national security|government agenc|surveillance|counterterrorism|DoD/i,
   power: /nuclear|electric utility|power generation|power grid|electricity generat|independent power/i,
 };
 
