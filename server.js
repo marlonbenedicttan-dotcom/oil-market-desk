@@ -701,7 +701,7 @@ const projectUs = (c) => {
   return o;
 };
 const projectKr = (c) => ({
-  code: c.code, ticker: c.ticker, name: c.name,
+  code: c.code, ticker: c.ticker, name: c.name, nameEn: c.nameEn || null, sector: c.sector || null,
   price: c.price, priceDate: c.priceDate, marketCap: c.marketCap, marketCapUsd: c.marketCapUsd,
   chg1d: c.chg1d, chg6m: c.chg6m, chgYtd: c.chgYtd,
   pe: c.pe, peBasis: c.peBasis, pb: c.pb, roe: c.roe, opMargin: c.opMargin, netMargin: c.netMargin,
@@ -3989,6 +3989,23 @@ const server = http.createServer(async (req, res) => {
         market: kr.market, index: kr.index, themes: kr.themes || [],
         companies: kr.companies.map(projectKr),
       });
+    }
+    if (url.pathname === '/api/korea/chart') {
+      const ticker = url.searchParams.get('ticker');
+      const range = url.searchParams.get('range') || '1y';
+      const kr = readKorea();
+      const c = (kr.companies || []).find((x) => x.ticker === ticker);
+      const series = (c && c.series) || [];
+      if (!series.length) return sendJSON(res, 200, { dates: [], closes: [] });
+      const iso = (t) => new Date(t).toISOString().slice(0, 10);
+      const now = Date.now();
+      const from = range === '1m' ? iso(now - 31 * 864e5)
+        : range === '6m' ? iso(now - 190 * 864e5)
+        : range === 'ytd' ? `${new Date().getUTCFullYear()}-01-01`
+        : range === '1y' ? iso(now - 366 * 864e5)
+        : '1900-01-01';
+      const rows = series.filter((p) => p.d >= from);
+      return sendJSONCached(res, 200, { dates: rows.map((p) => p.d), closes: rows.map((p) => p.c), range });
     }
     if (url.pathname.startsWith('/api/korea/company/')) {
       const code = decodeURIComponent(url.pathname.slice('/api/korea/company/'.length));

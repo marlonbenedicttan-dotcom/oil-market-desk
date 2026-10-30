@@ -2562,6 +2562,7 @@ $('screen')?.addEventListener('input', (e) => {
 $('screen')?.addEventListener('change', (e) => {
   if (e.target.id === 'cos-sector') { coScreen = { ...coScreen, sector: e.target.value, page: 1 }; renderScreen(true); return; }
   if (e.target.id === 'cosj-sector') { coScreenJp.sector = e.target.value; coScreenJp.page = 1; renderScreen(true); return; }
+  if (e.target.dataset && e.target.dataset.krsector) { krSector = e.target.value; renderKorea(); return; }
   if (e.target.dataset && e.target.dataset.jppageper) { coScreenJp.per = Number(e.target.value); coScreenJp.page = 1; renderScreen(true); return; }
   if (e.target.dataset && e.target.dataset.copageper) { coScreen.per = Number(e.target.value); coScreen.page = 1; renderScreen(true); return; }
   const t = e.target;
@@ -3632,7 +3633,7 @@ function syncCoTools() {
   if (chips) chips.classList.toggle('hidden', coRegion === 'jp');
   const wanted = coRegion === 'jp'
     ? (!jpSel && jpView === 'screener')
-    : coRegion === 'kr' ? !krSel
+    : coRegion === 'kr' ? (!krSel && krView === 'screener')
     : (coCik ? true : usView === 'screener');
   tools.classList.toggle('hidden', !wanted);
 }
@@ -4112,6 +4113,8 @@ function drawJpQuarters(c) {
 // Same three views as the other two markets. What Korea does not have is guidance — Korean companies
 // do not publish full-year forecasts — so there is no forward P/E and no guidance-versus-delivered.
 let koreaData = null, krSel = null, krQuery = '';
+let krRange = (() => { try { return localStorage.getItem('oilbasis.krRange') || '1y'; } catch { return '1y'; } })();
+let krPreset = null, krSector = 'all';
 let krView = (() => { try { return localStorage.getItem('oilbasis.krView') || 'screener'; } catch { return 'screener'; } })();
 let krTheme = (() => { try { return localStorage.getItem('oilbasis.krTheme') || 'semis'; } catch { return 'semis'; } })();
 
@@ -4178,7 +4181,16 @@ function renderKoreaMarket(all, d) {
       </div>`
     + breadth
     + (idx.series && idx.series.length > 1 ? `<div class="co-chartwrap"><canvas id="kr-mkt-chart"></canvas></div>` : '')
-    + `<div class="macro-note">Aggregates computed from the ${all.length} KOSPI constituents, not from an index file. KOSPI level and history from Naver Finance.</div>`;
+    + `<div class="co-hrow jp-mkt-hrow"><span>SECTOR</span><span>N</span><span>CAP</span><span>P/E</span><span>P/B</span><span>ROE</span><span>PAYOUT</span><span>YTD</span></div>`
+    + (m.sectors || []).map((x) => `<div class="jp-mkt-row">
+        <span>${esc(x.name)}</span><span>${x.count}</span><span>${won(x.cap)}</span>
+        <span>${x.pe != null ? x.pe.toFixed(1) : '—'}</span>
+        <span class="${x.pb != null && x.pb < 1 ? 'pos' : ''}">${x.pb != null ? x.pb.toFixed(2) : '—'}</span>
+        <span class="${(x.roe || 0) >= 0 ? 'pos' : 'neg'}">${x.roe != null ? x.roe.toFixed(1) + '%' : '—'}</span>
+        <span>${x.payout != null ? x.payout.toFixed(2) + '%' : '—'}</span>
+        <span class="${(x.chgYtd || 0) >= 0 ? 'pos' : 'neg'}">${chg(x.chgYtd)}</span>
+      </div>`).join('')
+    + `<div class="macro-note">Aggregates computed from the ${all.length} KOSPI constituents. Sectors from each company's KSIC industry code. KOSPI level and history from Naver Finance.</div>`;
   if (idx.series && idx.series.length > 1) {
     mountChart('kr-mkt-chart', { labels: idx.series.map((p) => p.d), datasets: [line('KOSPI', idx.series.map((p) => p.c), CT.c1)] }, baseOptions({ dp: 0, dateAxis: true }));
   }
@@ -4209,12 +4221,25 @@ function renderKoreaThemes(all, d) {
     + `<div class="macro-note">${esc(active.note || '')}</div>`;
 }
 
+const KR_PRESETS = [
+  { id: 'book', label: 'BELOW BOOK', test: (c) => c.pb != null && c.pb < 1 },
+  { id: 'roe', label: 'HIGH ROE', test: (c) => (c.roe || 0) > 12 },
+  { id: 'cheap', label: 'CHEAP VS ITSELF', test: (c) => c.bands && c.bands.pe && c.bands.pe.percentile <= 20 },
+  { id: 'payout', label: 'PAYS CASH', test: (c) => (c.payoutYield || 0) > 2 },
+];
+
 function renderKoreaScreener(all, d) {
   const el = $('co-body'); if (!el) return;
   const q = krQuery.trim().toLowerCase();
-  const rows = all.filter((c) => !q || `${c.name} ${c.nameEn || ''} ${c.ticker}`.toLowerCase().includes(q));
+  const sectors = [...new Set(all.map((c) => c.sector).filter(Boolean))].sort();
+  const preset = KR_PRESETS.find((p) => p.id === krPreset);
+  const rows = all.filter((c) => (!q || `${c.name} ${c.nameEn || ''} ${c.ticker}`.toLowerCase().includes(q))
+    && (krSector === 'all' || c.sector === krSector)
+    && (!preset || preset.test(c)));
   const max = Math.max(...all.map((c) => c.marketCap || 0), 1);
   el.innerHTML = krViewsBar()
+    + `<div class="jp-presets">${KR_PRESETS.map((p) => `<button type="button" data-krpreset="${p.id}" class="${krPreset === p.id ? 'on' : ''}">${p.label}</button>`).join('')}${krPreset ? '<button type="button" data-krpreset="clear" class="jp-clear">CLEAR</button>' : ''}</div>`
+    + `<div class="jp-filters"><select data-krsector="1" aria-label="Sector"><option value="all">ALL SECTORS</option>${sectors.map((x) => `<option value="${esc(x)}"${krSector === x ? ' selected' : ''}>${esc(x).toUpperCase()}</option>`).join('')}</select></div>`
     + `<div class="co-hrow"><span>#</span><span></span><span>COMPANY</span><span>MARKET CAP</span><span>P/E</span><span>ROE</span></div>`
     + rows.map((c, i) => `<button class="co-row" data-kr="${esc(c.code)}">
         <span class="co-rank">${i + 1}</span>
@@ -4258,6 +4283,8 @@ async function renderKoreaPage(stub) {
         ${cell('NET MARGIN', c.netMargin != null ? `${c.netMargin.toFixed(1)}%` : '—', 'Net profit ÷ revenue', c.netMargin >= 0 ? 'pos' : 'neg')}
         ${cell('FCF YIELD', c.fcfYield != null ? `${c.fcfYield.toFixed(1)}%` : '—', 'Operating plus investing cash flow ÷ market cap')}
       </div>`
+    + `<div class="co-chart-tabs">${[['1m', '1M'], ['6m', '6M'], ['ytd', 'YTD'], ['1y', '1Y'], ['5y', '5Y']].map(([k, t]) => `<button type="button" data-krrange="${k}" class="${krRange === k ? 'on' : ''}">${t}</button>`).join('')}</div>`
+    + `<div class="co-chartwrap"><canvas id="kr-chart"></canvas></div>`
     + (h.length > 1 ? `<div class="jp-q"><div class="jp-q-head"><span class="ph-t">FIVE-YEAR RECORD</span><span class="dimtext">${h.length} fiscal years · ₩</span></div>
         <table class="jp-q-table"><thead><tr><th>FISCAL YEAR</th><th>REVENUE</th><th>OP PROFIT</th><th>NET PROFIT</th><th>ROE</th></tr></thead><tbody>
         ${[...h].reverse().map((x) => `<tr><td>${esc(x.y)}</td><td>${won(x.s)}</td><td>${won(x.o)}</td><td>${won(x.n)}</td><td>${x.n != null && x.q ? `${((x.n / x.q) * 100).toFixed(1)}%` : '—'}</td></tr>`).join('')}
@@ -4267,6 +4294,20 @@ async function renderKoreaPage(stub) {
         ${[...q].reverse().map((x) => `<tr><td>${esc(x.d)} <em>${esc(x.q)}</em></td><td>${won(x.revenue)}</td><td>${won(x.operatingProfit)}</td><td>${x.revenue && x.operatingProfit != null ? `${((x.operatingProfit / x.revenue) * 100).toFixed(1)}%` : '—'}</td><td>${won(x.netIncome)}</td></tr>`).join('')}
         </tbody></table></div>` : '')
     + `<div class="macro-note">KOSPI · statements from DART (Financial Supervisory Service), prices from Naver Finance. Korean companies report cumulatively (Q1, H1, Q3, annual), so quarters here are the differences and the annual report is Q4. No guidance is published, so there is no forward P/E.${c.descSource === 'profile' ? ' Company description from stockanalysis.com.' : ''}</div>`;
+  drawKrChart(c);
+}
+
+async function drawKrChart(c, range = krRange) {
+  if (charts['kr-chart']) { try { charts['kr-chart'].destroy(); } catch {} delete charts['kr-chart']; }
+  const wrap = $('kr-chart') && $('kr-chart').parentElement;
+  let ch = null;
+  try { ch = await jget(`/api/korea/chart?ticker=${encodeURIComponent(c.ticker)}&range=${encodeURIComponent(range)}`, 600000); } catch { ch = null; }
+  if (!ch || !ch.dates || ch.dates.length < 2) {
+    if (wrap) wrap.setAttribute('data-empty', `No price history for ${c.ticker} over ${range.toUpperCase()}.`);
+    return;
+  }
+  if (wrap) wrap.removeAttribute('data-empty');
+  mountChart('kr-chart', { labels: ch.dates, datasets: [line(`${c.ticker} · KRW · ${range.toUpperCase()}`, ch.closes, CT.c1)] }, baseOptions({ dp: 0, dateAxis: true }));
 }
 
 function renderCompanies() {
@@ -4432,7 +4473,9 @@ async function loadCoChart(ticker, range, compare) {
     if (wrap) wrap.setAttribute('data-empty', `No price history for ${ticker} — the ticker may be delisted or not covered by Yahoo.`);
   };
   try {
-    let ch = await getJSON(`/api/company-chart?ticker=${encodeURIComponent(ticker)}&range=${range}`);
+    // Our labels are 1m/6m/ytd/1y/5y; Yahoo wants 1mo/6mo/ytd/1y/5y.
+    const yRange = (r) => (r === '1m' ? '1mo' : r === '6m' ? '6mo' : r);
+    let ch = await getJSON(`/api/company-chart?ticker=${encodeURIComponent(ticker)}&range=${yRange(range)}`);
     // A recent listing has fewer than six points over ten years — that is not "no history", it is a
     // shorter life. Step down the range and move the active button with it.
     for (const shorter of ['5y', '1y']) {
@@ -4440,7 +4483,7 @@ async function loadCoChart(ticker, range, compare) {
       if (range === '1y') break;
       if (range === '10y' || (range === '5y' && shorter === '1y')) {
         range = shorter;
-        ch = await getJSON(`/api/company-chart?ticker=${encodeURIComponent(ticker)}&range=${range}`);
+        ch = await getJSON(`/api/company-chart?ticker=${encodeURIComponent(ticker)}&range=${yRange(range)}`);
         document.querySelectorAll('[data-corange]').forEach((b) => b.classList.toggle('on', b.dataset.corange === range));
       }
     }
@@ -4715,7 +4758,7 @@ async function renderCompanyPageBody(el, c, all) {
         <div class="co-ranges">
           <span class="co-cmp-l">COMPARE</span><input class="co-cmp" id="co-cmp" list="co-cmp-list" placeholder="ticker…" value="${esc(coCompare || '')}" autocomplete="off">
           <datalist id="co-cmp-list">${(companiesData.companies || []).filter((x) => x.ticker).slice(0, 400).map((x) => `<option value="${esc(x.ticker)}">${esc(x.name)}</option>`).join('')}</datalist>
-          ${['1y', '5y', '10y'].map((r) => `<button class="ma-chip${coRange === r ? ' on' : ''}" data-corange="${r}">${r.toUpperCase()}</button>`).join('')}
+          ${['1m', '6m', 'ytd', '1y', '5y'].map((r) => `<button class="ma-chip${coRange === r ? ' on' : ''}" data-corange="${r}">${r.toUpperCase()}</button>`).join('')}
         </div>
         <div class="co-canvas"><canvas id="co-chart"></canvas></div></div>` : '')
     + (() => {
@@ -4801,6 +4844,22 @@ document.addEventListener('click', (e) => {
   if (krv) { krView = krv.dataset.krview; try { localStorage.setItem('oilbasis.krView', krView); } catch {} krSel = null; renderKorea(); return; }
   const krt = e.target.closest('[data-krtheme]');
   if (krt) { krTheme = krt.dataset.krtheme; try { localStorage.setItem('oilbasis.krTheme', krTheme); } catch {} renderKorea(); return; }
+  const krr = e.target.closest('[data-krrange]');
+  if (krr) {
+    krRange = krr.dataset.krrange;
+    try { localStorage.setItem('oilbasis.krRange', krRange); } catch {}
+    document.querySelectorAll('[data-krrange]').forEach((b) => b.classList.toggle('on', b.dataset.krrange === krRange));
+    const cur = (koreaData && koreaData.companies || []).find((x) => x.code === krSel);
+    if (cur) drawKrChart(cur, krRange);
+    return;
+  }
+  const krp = e.target.closest('[data-krpreset]');
+  if (krp) {
+    const id = krp.dataset.krpreset;
+    krPreset = (id === 'clear' || id === krPreset) ? null : id;
+    renderKorea();
+    return;
+  }
   const krrow = e.target.closest('[data-kr]');
   if (krrow) { krSel = krrow.dataset.kr; renderKorea(); window.scrollTo({ top: 0, behavior: 'smooth' }); return; }
   if (e.target.closest('[data-krback]')) { krSel = null; renderKorea(); return; }

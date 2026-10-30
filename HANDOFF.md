@@ -2504,3 +2504,19 @@ they are filed. Today's run picked up **295 companies** that had filed.
   H1 30 June, Q3 30 September. 662 of 737 now have quarters.
 - UI reuses the Japan components, so the Korea page looks like the other two: price strip, eight ratios,
   five-year record, quarterly table, description and brand chips.
+
+## Korea: sectors, dividends, bands, presets, charts (2026-10-31)
+- **Sectors**: DART's KSIC industry code (first two digits) maps to 29 English sectors. This unlocked the
+  sector table in MARKET (cap, P/E, P/B, ROE, payout, YTD), the sector filter in the SCREENER, and the
+  market aggregates. Electronics ₩2,822T across 43 companies; Finance & Insurance 103 companies.
+- **Dividends**: cash paid out ÷ market cap, from the cash-flow statement — 395 companies. Labelled
+  "payout" rather than dividend yield because it is total cash returned, not per-share.
+- **Five-year P/E bands**: year-end price against that year's EPS plus today, giving a percentile — 526
+  companies. "CHEAP VS ITSELF" is the preset built on it.
+- **Screener**: BELOW BOOK (491), HIGH ROE, CHEAP VS ITSELF, PAYS CASH, plus a sector filter. The filter row
+  is hidden on MARKET and THEMES, exactly like the other two markets.
+- **Charts**: the Korea company page now has the same 1M / 6M / YTD / 1Y / 5Y tabs as Japan, served by
+  `/api/korea/chart` from five years of stored Naver prices. The **US chart now uses the same range set** —
+  it was 1Y/5Y/10Y — so all three markets read identically.
+- **English names in the list**: `nameEn` was missing from the list projection, so rows fell back to Korean.
+  Fixed; the screener and theme tables now show SAMSUNG ELECTRONICS CO LTD.

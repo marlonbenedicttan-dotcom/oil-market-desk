@@ -187,7 +187,7 @@ const priced = await pool(universe, 4, async (c) => {
     chg1d: prev ? +(((last.c / prev.c) - 1) * 100).toFixed(2) : null,
     chg6m: six ? +(((last.c / six.c) - 1) * 100).toFixed(2) : null,
     chgYtd: jan1 ? +(((last.c / jan1.c) - 1) * 100).toFixed(2) : null,
-    series: rows.slice(-260).map((p) => ({ d: p.d, c: p.c })),
+    series: rows.slice(-1300).map((p) => ({ d: p.d, c: p.c })),
   };
 });
 const withPrices = priced.filter(Boolean);
@@ -232,7 +232,7 @@ const collected = await pool(withPrices, 2, async (c) => {
   }
   if (!reports.length) return null;
   return {
-    code: c.corp, ticker: c.ticker, name: c.name, nameEn: c.nameEn || null,
+    code: c.corp, ticker: c.ticker, name: c.name, nameEn: c.nameEn || null, industry: c.industry || null,
     price: c.price, priceDate: c.priceDate,
     chg1d: c.chg1d, chg6m: c.chg6m, chgYtd: c.chgYtd,
     series: c.series, shares: c.shares, reports,
@@ -251,6 +251,57 @@ try {
 } catch { fx = null; }
 
 const out = deriveKorea({ companies, fx });
+
+// KSIC division (first two digits of DART's induty_code) → one English sector. Coarse on purpose:
+// a dozen buckets that can be compared, not 100 codes that cannot.
+const KSIC = [
+  [['10','11','12'], 'Food & Beverage'], [['13','14','15'], 'Textiles & Apparel'], [['16'], 'Wood & Paper'],
+  [['17','18'], 'Paper & Printing'], [['19'], 'Oil & Gas'], [['20'], 'Chemicals'], [['21'], 'Pharma & Biotech'],
+  [['22'], 'Rubber & Plastics'], [['23'], 'Glass & Ceramics'], [['24'], 'Steel & Metals'],
+  [['25'], 'Metal Products'], [['26'], 'Electronics'], [['27'], 'Electrical Equipment'], [['28'], 'Machinery'],
+  [['29'], 'Vehicles & Parts'], [['30'], 'Shipbuilding & Transport Equip'], [['31','33'], 'Furniture & Other Mfg'],
+  [['35'], 'Utilities'], [['36'], 'Water'], [['41'], 'Construction'], [['45','46','47'], 'Trade & Retail'],
+  [['49','50','51','52'], 'Transport & Logistics'], [['55'], 'Hotels & Leisure'],
+  [['58','59','60','61','62','63'], 'Media & Telecom'], [['64','65','66'], 'Finance & Insurance'],
+  [['68'], 'Real Estate'], [['70','71','72','73','74','75'], 'Business Services'],
+  [['85'], 'Education'], [['86'], 'Healthcare'], [['90','91','92','93'], 'Arts & Sport'],
+];
+const sectorOf = (code) => {
+  const d2 = String(code || '').slice(0, 2);
+  for (const [codes, name] of KSIC) if (codes.includes(d2)) return name;
+  return 'Other';
+};
+
+for (const c of out) {
+  c.sector = sectorOf(c.industry);
+  // Cash returned to shareholders as a share of market cap — dividends paid sits in the cash-flow statement.
+  const last = (c.reports || []).filter((r) => r.report === 'annual').sort((a, b) => String(a.end).localeCompare(String(b.end))).pop();
+  const div = last ? last.dividendsPaid : null;
+  c.dividendPaid = div ?? null;
+  c.payoutYield = div && c.marketCap ? +((div / c.marketCap) * 100).toFixed(2) : null;
+}
+
+// Five-year P/E band: the year-end price against that year's EPS, plus where today sits.
+for (const c of out) {
+  const annual = (c.reports || []).filter((r) => r.report === 'annual' && r.eps && r.eps > 0);
+  const series = c.series || [];
+  const pes = [];
+  for (const r of annual) {
+    const px = series.find((p) => p.d >= r.end) || null;
+    if (px && r.eps > 0) pes.push(px.c / r.eps);
+  }
+  if (c.pe != null && c.pe > 0) pes.push(c.pe);
+  const a = pes.filter((x) => x > 0 && x < 500).sort((x, y) => x - y);
+  if (a.length < 3) { c.bands = null; continue; }
+  const at = (p) => a[Math.min(a.length - 1, Math.floor(p * (a.length - 1)))];
+  const below = a.filter((x) => x <= c.pe).length;
+  c.bands = {
+    pe: {
+      min: +at(0).toFixed(2), median: +at(0.5).toFixed(2), max: +at(1).toFixed(2),
+      percentile: Math.round((below / a.length) * 100), n: a.length,
+    },
+  };
+}
 if (!out.length) {
   console.log('no companies built — keeping the existing file');
   process.exit(1);
@@ -299,6 +350,17 @@ const market = {
   advancing: out.filter((c) => (c.chg1d || 0) > 0).length,
   declining: out.filter((c) => (c.chg1d || 0) < 0).length,
   upYtd: out.filter((c) => (c.chgYtd || 0) > 0).length,
+  sectors: [...out.reduce((m, c) => m.set(c.sector, [...(m.get(c.sector) || []), c]), new Map())]
+    .map(([name, list]) => ({
+      name, count: list.length,
+      cap: list.reduce((a, c) => a + (c.marketCap || 0), 0),
+      pe: median(list.map((c) => c.pe)),
+      pb: median(list.map((c) => c.pb)),
+      roe: median(list.map((c) => c.roe)),
+      payout: median(list.map((c) => c.payoutYield)),
+      chgYtd: median(list.map((c) => c.chgYtd)),
+    }))
+    .sort((a, b) => b.cap - a.cap),
 };
 
 const themeBook = readJson(join(ROOT, 'data', 'korea-themes.json')) || { themes: [] };
