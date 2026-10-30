@@ -21,7 +21,7 @@
     "audit:universe": "node scripts/audit-universe.mjs",
     "audit:freshness": "node scripts/audit-freshness.mjs",
     "audit:deals": "node scripts/audit-deals.mjs",
-    "audit:all": "node scripts/audit-calculations.mjs && node scripts/audit-deep.mjs && node scripts/audit-universe.mjs && node scripts/audit-freshness.mjs && node scripts/audit-deals.mjs && node scripts/invariants.mjs && node scripts/reconcile-nasdaq.mjs && node scripts/arbitrate.mjs && node scripts/check-snapshot.mjs",
+    "audit:all": "node scripts/audit-calculations.mjs && node scripts/audit-deep.mjs && node scripts/audit-universe.mjs && node scripts/audit-freshness.mjs && node scripts/audit-deals.mjs && node scripts/invariants.mjs && node scripts/reconcile-nasdaq.mjs && node scripts/arbitrate.mjs && node scripts/check-snapshot.mjs && node scripts/audit-themes.mjs",
     "companies:daily": "node scripts/refresh-daily.mjs",
     "companies:restatements": "node scripts/detect-restatements.mjs",
     "companies:quarters": "node scripts/build-quarters.mjs",

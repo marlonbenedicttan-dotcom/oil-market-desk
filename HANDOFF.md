@@ -2355,3 +2355,20 @@ Result: 502 of 503 prices dated **2026-10-29**, AAPL $348.91 +1.48%.
   HIGH YIELD (15).
 - Both needed fields the list projection did not carry (`buybacks`, `cash`) — the same class of bug as
   Japan's missing `np`, caught by the preset returning zero rows.
+
+## Themes rebuilt as rules, not typed lists (2026-10-30)
+- **The failure**: a hand-written list is always incomplete — Sandisk was missing from AI. Themes are now
+  `members = (industry rule ∪ curated additions) − exclusions`, so the taxonomy keeps them current and the
+  curated list only fills the gaps it misfiles (KLAC and LRCX are filed as "Industrial Machinery").
+- **AI & SEMICONDUCTORS** US: 40 (16 from `industry = Semiconductors` + 24 curated, now including SNDK, WDC,
+  STX, NTAP, LRCX, KLAC, TER, COHR). Japan: 50, now including **Ajinomoto** (build-up film for CPU
+  substrates), Ibiden, Toppan and DNP (photomasks), Canon and Nikon (lithography), Niterra, JX Metals.
+- **DEFENCE** US: 14 (+ Teledyne), Japan: 8.
+- **`scripts/audit-themes.mjs`** runs in `audit:all`: every theme must contain its **anchors** (NVDA, AMD, MU,
+  SNDK…) or the audit fails, and it prints every company whose own description mentions the business but
+  who is not in the theme — the list to review next time.
+- **CASH RICH removed from the US screener.** Berkshire's Treasury bills are not a tagged line in SEC XBRL
+  (`companyfacts` has no short-term-investment tag for it), so "cash ÷ market cap" cannot be made accurate
+  across 500 companies. Better absent than wrong.
+- **Click-through fixed**: theme and peer rows use `.jp-bank-row`, and the handler matched only `.co-row`.
+  It now matches any `#co-body [data-cik]`.

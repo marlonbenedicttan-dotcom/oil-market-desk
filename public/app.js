@@ -3505,7 +3505,6 @@ let coPreset = null;
 const CO_PRESETS = [
   { id: 'buyback', label: 'BUYBACK HEAVY', test: (c) => c.buybacks && c.marketCap && c.buybacks / c.marketCap > 0.03 },
   { id: 'quality', label: 'QUALITY', test: (c) => (c.roic || 0) > 15 && (c.revenueCagr || 0) > 10 },
-  { id: 'cash', label: 'CASH RICH', test: (c) => c.cash && c.marketCap && c.cash / c.marketCap > 0.2 },
   { id: 'yield', label: 'HIGH YIELD', test: (c) => (c.dividendYield || 0) > 3 },
 ];
 let coSort = 'cap', coDir = -1;   // screener: which column, and which way
@@ -4678,7 +4677,8 @@ document.addEventListener('click', (e) => {
   if (e.target.closest('[data-coback]')) { coCik = null; renderCompanies(); return; }
   const star = e.target.closest('[data-coticker]');
   if (star) { toggleWatch(star.dataset.coticker); renderCompanyPage($('co-body'), companiesData.companies || []); renderWatchlist(); return; }
-  const row = e.target.closest('.co-row');
+  // Themes and peer tables use .jp-bank-row, so match on the data attribute rather than the class.
+  const row = e.target.closest('#co-body [data-cik]');
   if (row && row.dataset.cik) { coCik = row.dataset.cik; renderCompanies(); window.scrollTo({ top: 0, behavior: 'smooth' }); return; }
   if (e.target.closest('[data-coexport]')) {
     const q = coQuery.trim().toLowerCase();
