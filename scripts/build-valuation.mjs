@@ -11,7 +11,7 @@
 //   node scripts/build-valuation.mjs
 //   node scripts/build-valuation.mjs --only=AAPL,MSFT
 
-import { readFileSync, writeFileSync, renameSync, mkdirSync, existsSync } from 'node:fs';
+import { readFileSync, writeFileSync, renameSync, mkdirSync, existsSync, statSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -28,7 +28,13 @@ mkdirSync(CACHE, { recursive: true });
 
 async function chart(ticker) {
   const f = join(CACHE, `${ticker}.json`);
-  if (existsSync(f)) { try { return JSON.parse(readFileSync(f, 'utf8')); } catch { /* refetch */ } }
+  // A chart older than a session is not a price. Without this the cache was permanent and every daily
+  // run computed "today" from a file written days earlier.
+  if (existsSync(f)) {
+    try {
+      if (Date.now() - statSync(f).mtimeMs < 18 * 3600e3) return JSON.parse(readFileSync(f, 'utf8'));
+    } catch { /* refetch */ }
+  }
   const sym = String(ticker).replace('-', '.');
   for (let i = 0; i < 3; i++) {
     try {

@@ -2236,3 +2236,18 @@ Built and verified in that order.
 - **Build fix**: the price loop was retrying 2021 dates on every run. Light's history is five years measured
   from today, so the window is now clamped to 1,795 days; TOPIX gets the same clamp and three attempts after
   one transient failure left it null.
+
+## Why the US daily change was two days old (2026-10-30)
+Three things stacked:
+1. **`build-price-changes.mjs` was only in `companies:rebuild`** — a manual command. It never ran in the
+   daily workflow, so `priceAsOf`, `chg1d`, `chg6m` and `chgYtd` froze at the last manual rebuild (27 Oct)
+   while `refresh-prices.mjs` kept updating `price` every day. Fresh price, stale change.
+2. **The chart cache never expired.** `build-valuation.mjs` returned any file that existed, so "today" was
+   computed from a chart written days earlier, and the Actions cache carried it forward.
+3. **A timezone bug.** `Date.parse('Oct 29, 2026')` is local midnight; in UTC+8 that is the 28th in UTC, so
+   even a correct quote was labelled a day early.
+
+Fixes: the live quote now supplies `chg1d` and `priceAsOf` (it carries `percentageChange` and
+`lastTradeTimestamp`), the quote timestamp is parsed as UTC, `build-price-changes` owns only the 6M/YTD
+windows and refreshes any chart older than 18 hours, and it runs in the daily workflow.
+Result: 502 of 503 prices dated **2026-10-29**, AAPL $348.91 +1.48%.

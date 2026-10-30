@@ -186,6 +186,32 @@ export function deriveJapan({ ranked, fins, series, val = new Map(), nextByCode 
         c: num(r.CFO), i: num(r.CFI), d: num(r.DivAnn),
       }));
 
+    // How many times the company moved its own full-year forecast this year, and in which direction.
+    let revisions = null;
+    {
+      const fys = [...new Set(rows.filter((r) => r.CurFYEn && num(r.FNP) != null).map((r) => r.CurFYEn))].sort();
+      const fyEnd = fys[fys.length - 1];
+      if (fyEnd) {
+        const seq = rows
+          .filter((r) => r.CurFYEn === fyEnd && num(r.FNP) != null)
+          .sort((a, b) => String(a.DiscDate).localeCompare(String(b.DiscDate)))
+          .map((r) => num(r.FNP));
+        const distinct = seq.filter((v, i) => i === 0 || v !== seq[i - 1]);
+        if (distinct.length > 1) {
+          let up = 0, down = 0;
+          for (let i = 1; i < distinct.length; i++) {
+            if (distinct[i] > distinct[i - 1]) up++;
+            else if (distinct[i] < distinct[i - 1]) down++;
+          }
+          revisions = {
+            fy: fyEnd, moves: distinct.length - 1, up, down,
+            first: distinct[0], last: distinct[distinct.length - 1],
+            deltaPct: distinct[0] ? round(((distinct[distinct.length - 1] / distinct[0]) - 1) * 100, 1) : null,
+          };
+        }
+      }
+    }
+
     const quarters = buildQuarters(rows).slice(-8);
     const guidedVsActual = guidanceVsDelivered(rows);
 
@@ -239,6 +265,7 @@ export function deriveJapan({ ranked, fins, series, val = new Map(), nextByCode 
       verification,
       quarters,
       history,
+      revisions,
       guidanceVsDelivered: guidedVsActual,
       earnings: nextByCode.get(c.code) || null,
     });

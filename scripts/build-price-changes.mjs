@@ -5,7 +5,7 @@
 //
 //   node scripts/build-price-changes.mjs
 
-import { readFileSync, writeFileSync, renameSync } from 'node:fs';
+import { readFileSync, writeFileSync, renameSync, existsSync, statSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -29,32 +29,59 @@ const near = (rows, target) => {
   return best;
 };
 
+const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126 Safari/537.36';
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+// The chart is the only source for the 6M and YTD windows, so a stale one is a wrong number. Refresh
+// anything older than a session instead of trusting whatever is on disk.
+async function chartFor(ticker) {
+  const f = join(CHARTS, `${ticker}.json`);
+  if (existsSync(f)) {
+    try {
+      if (Date.now() - statSync(f).mtimeMs < 18 * 3600e3) {
+        const rows = JSON.parse(readFileSync(f, 'utf8'));
+        if (Array.isArray(rows) && rows.length > 1) return rows;
+      }
+    } catch { /* refetch */ }
+  }
+  const sym = String(ticker).replace('-', '.');
+  try {
+    const res = await fetch(`https://api.nasdaq.com/api/quote/${encodeURIComponent(sym)}/chart?assetclass=stocks&fromdate=2019-01-01&todate=${new Date().toISOString().slice(0, 10)}`, {
+      headers: { 'User-Agent': UA, Accept: 'application/json, text/plain, */*' },
+    });
+    if (!res.ok) return null;
+    const j = await res.json();
+    const rows = j?.data?.chart;
+    if (!Array.isArray(rows) || !rows.length) return null;
+    const slim = rows.map((r) => [r.z?.dateTime, r.y]).filter((x) => x[0] && x[1] != null);
+    writeFileSync(f, JSON.stringify(slim));
+    return slim;
+  } catch { return null; }
+}
+
 const data = JSON.parse(readFileSync(FILE, 'utf8'));
 let built = 0;
 for (const c of data.companies) {
   if (!c.ticker) continue;
-  let rows;
-  try { rows = JSON.parse(readFileSync(join(CHARTS, `${c.ticker}.json`), 'utf8')); } catch { continue; }
+  const rows = await chartFor(c.ticker);
   if (!Array.isArray(rows) || rows.length < 2) continue;
+  await sleep(60);
 
   const last = rows[rows.length - 1];
   const prev = rows[rows.length - 2];
   const lastIso = toIso(last[0]);
   const lastT = Date.parse(lastIso);
 
-  const d1 = prev[1] ? ((last[1] / prev[1]) - 1) * 100 : null;
   const six = near(rows, lastT - 182 * DAY);
-  const d6m = six ? ((last[1] / six.v) - 1) * 100 : null;
   // Year-to-date: the last close of the previous calendar year.
   const jan1 = Date.parse(`${new Date(lastIso).getUTCFullYear()}-01-01`);
   const ytdBase = near(rows, jan1 - 5 * DAY);
-  const dYtd = ytdBase ? ((last[1] / ytdBase.v) - 1) * 100 : null;
 
-  c.priceAsOf = lastIso;
-  c.price = +Number(last[1]).toFixed(4);
-  c.chg1d = d1 == null ? null : +d1.toFixed(2);
-  c.chg6m = d6m == null ? null : +d6m.toFixed(2);
-  c.chgYtd = dYtd == null ? null : +dYtd.toFixed(2);
+  // Price, its date and the daily change belong to refresh-prices (the live quote). This script only
+  // supplies the two windows that need history, and uses the live price as the numerator.
+  const px = c.price != null ? c.price : Number(last[1]);
+  c.chg6m = six ? +(((px / six.v) - 1) * 100).toFixed(2) : null;
+  c.chgYtd = ytdBase ? +(((px / ytdBase.v) - 1) * 100).toFixed(2) : null;
   built++;
 }
 

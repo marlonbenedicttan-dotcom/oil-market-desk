@@ -3792,6 +3792,7 @@ function renderJapanPage(c) {
         <span class="co-price-c ${c.chgYtd >= 0 ? 'pos' : 'neg'}">${c.chgYtd == null ? '' : `${chg(c.chgYtd)} ${c.chgYtdBasis === 'YTD' ? 'YTD' : 'since ' + String(c.chgYtdBasis || '').slice(6)}`}</span>
         <span class="dimtext">${c.priceDate ? `as of ${c.priceDate}` : ''}</span>
         ${japanData && japanData.topix && japanData.topix.chgYtd != null ? `<span class="dimtext" title="TOPIX, the exchange's own index">TOPIX ${japanData.topix.chgYtd >= 0 ? '+' : ''}${japanData.topix.chgYtd.toFixed(1)}% YTD</span>` : ''}
+        ${c.vsTopix && c.vsTopix.ytd != null ? `<span class="dimtext ${c.vsTopix.ytd >= 0 ? 'pos' : 'neg'}" title="Percentage points above or below TOPIX over the same window">${c.vsTopix.ytd >= 0 ? '+' : ''}${c.vsTopix.ytd.toFixed(1)}pp vs TOPIX</span>` : ''}
       </div>`
     + `<div class="co-verif${vcls}">${vtext}</div>`
     + `<div class="co-stats co-stats-12">
@@ -3838,6 +3839,7 @@ function renderJapanPage(c) {
         ${pbOurs != null && v.status === 'disputed' ? `Our P/B from the filing is ${pbOurs.toFixed(2)}× against JPX's ${c.pb.toFixed(2)}×.` : ''}
         ${c.guidance ? `Guidance for FY ${esc(c.guidance.fy || '—')}: sales ${yen(c.guidance.sales)}, operating profit ${yen(c.guidance.op)}, net profit ${yen(c.guidance.np)}.` : 'No company forecast on file.'}
         ${c.guidanceVsDelivered ? ` FY ${esc(c.guidanceVsDelivered.fy)}: the company guided ${yen(c.guidanceVsDelivered.forecast)} and delivered ${yen(c.guidanceVsDelivered.actual)} (${c.guidanceVsDelivered.deltaPct >= 0 ? '+' : ''}${c.guidanceVsDelivered.deltaPct}%).` : ''}
+        ${c.revisions ? ` This year the forecast moved ${c.revisions.moves} time${c.revisions.moves > 1 ? 's' : ''} — ${c.revisions.up} up, ${c.revisions.down} down — from ${yen(c.revisions.first)} to ${yen(c.revisions.last)} (${c.revisions.deltaPct >= 0 ? '+' : ''}${c.revisions.deltaPct}%).` : ''}
         ${c.earnings ? ` Next results: ${esc(c.earnings.date)} (${esc(c.earnings.quarter || 'scheduled')}).` : ''}
         Currency is yen throughout; the USD figure is a conversion, not a separate quote.
       </div>`;
@@ -3920,14 +3922,22 @@ async function drawJpPrice(c, range = jpRange) {
   if (wrap) wrap.removeAttribute('data-empty');
 
   // A second company is indexed to 100 at the first shared date, the way the US chart compares.
-  const other = jpCompare && jpCompare !== c.code ? await fetchOne(jpCompare) : null;
+  let other = null;
+  if (jpCompare && jpCompare !== c.code) {
+    if (jpCompare.toUpperCase() === 'TOPIX' && japanData && japanData.topix && japanData.topix.series) {
+      const tmap = new Map(japanData.topix.series.map((p) => [p.d, p.c]));
+      other = { dates: ch.dates, closes: ch.dates.map((d) => (tmap.has(d) ? tmap.get(d) : null)) };
+    } else {
+      other = await fetchOne(jpCompare);
+    }
+  }
   if (other && other.dates && other.dates.length > 1) {
     const bmap = new Map(other.dates.map((d, i) => [d, other.closes[i]]));
     const dates = ch.dates.filter((d, i) => ch.closes[i] != null && bmap.get(d) != null);
     if (dates.length > 1) {
       const a0 = ch.closes[ch.dates.indexOf(dates[0])];
       const b0 = bmap.get(dates[0]);
-      const peer = ((japanData && japanData.companies) || []).find((x) => x.code === jpCompare);
+      const peer = jpCompare.toUpperCase() === 'TOPIX' ? { name: 'TOPIX' } : ((japanData && japanData.companies) || []).find((x) => x.code === jpCompare);
       mountChart('jp-chart', {
         labels: dates,
         datasets: [

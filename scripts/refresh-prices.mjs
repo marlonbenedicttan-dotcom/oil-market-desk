@@ -39,10 +39,20 @@ async function worker() {
       });
       if (!res.ok) { fail++; await sleep(250); continue; }
       const j = await res.json();
-      const px = num(j?.data?.primaryData?.lastSalePrice);
+      const pd = j?.data?.primaryData || {};
+      const px = num(pd.lastSalePrice);
       if (!px) { fail++; await sleep(250); continue; }
       c.price = +px.toFixed(4);
       c.priceAt = new Date().toISOString();
+      // The quote carries its own daily change and the session it belongs to. Deriving either from a
+      // cached chart is what made "today" two days old.
+      const pct = num(String(pd.percentageChange || '').replace('%', ''));
+      if (pct != null) c.chg1d = +pct.toFixed(2);
+      if (pd.lastTradeTimestamp) {
+        // "Oct 29, 2026" parses as local midnight; in a UTC+8 timezone that becomes the 28th in UTC.
+        const t = Date.parse(`${pd.lastTradeTimestamp} UTC`);
+        if (Number.isFinite(t)) c.priceAsOf = new Date(t).toISOString().slice(0, 10);
+      }
       // A Nasdaq-sourced cap stays authoritative; anything else is price × shares.
       if (c.marketCapSource !== 'nasdaq' && c.shares) {
         c.marketCap = Math.round(c.price * c.shares);

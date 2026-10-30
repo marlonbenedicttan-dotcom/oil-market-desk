@@ -297,6 +297,25 @@ try {
 const companies = deriveJapan({ ranked, fins, series, val: valByCode, nextByCode, fx });
 for (const c of companies) c.liquidity = liquidity.get(c.code) || null;
 
+// Relative strength against TOPIX, in percentage points: how much of the move is the stock and how
+// much is the market.
+if (topix && topix.series && topix.series.length) {
+  const tmap = new Map(topix.series.map((p) => [p.d, p.c]));
+  const yr = new Date().getUTCFullYear();
+  for (const c of companies) {
+    const s = (series.get(c.code) || []).filter((p) => tmap.has(p.d));
+    if (s.length < 30) continue;
+    const last = s[s.length - 1];
+    const six = s[Math.max(0, s.length - 126)];
+    const ytdBase = s.find((p) => p.d >= `${yr}-01-01`);
+    const rel = (a2, b2) => +((((a2.c / b2.c) - 1) - ((tmap.get(a2.d) / tmap.get(b2.d)) - 1)) * 100).toFixed(1);
+    c.vsTopix = {
+      m6: six && six !== last ? rel(last, six) : null,
+      ytd: ytdBase && ytdBase !== last ? rel(last, ytdBase) : null,
+    };
+  }
+}
+
 // Attach the bands once the multiples exist.
 for (const c of companies) {
   const hist = bands.get(c.code);
