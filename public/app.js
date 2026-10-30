@@ -3871,6 +3871,7 @@ function renderJapanPageBody(c) {
     + `<div class="co-chartwrap"><canvas id="jp-chart"></canvas></div>`
     + jpQuartersHtml(c)
     + jpHistoryHtml(c)
+    + jpPeersHtml(c)
     + `<div class="macro-note">
         Fiscal year ending ${esc(c.period || '—')} · statement figures from the company's summary of financial statements (J-Quants); P/E, P/B and ROE from JPX's own valuation file.
         ${pbOurs != null && v.status === 'disputed' ? `Our P/B from the filing is ${pbOurs.toFixed(2)}× against JPX's ${c.pb.toFixed(2)}×.` : ''}
@@ -3914,6 +3915,53 @@ function jpQuartersHtml(c) {
         <tbody>${rows}</tbody>
       </table>
       <div class="macro-note">Standalone quarters, derived from the cumulative year-to-date figures companies publish (Q2 = 2Q − 1Q, Q4 = FY − 3Q). Year-on-year compares the same quarter a year earlier.</div>
+    </div>`;
+}
+
+// The companies this one is actually compared with: same exchange sector, nearest by size.
+function jpPeersHtml(c) {
+  const all = (japanData && japanData.companies) || [];
+  if (!all.length || !c.marketCap) return '';
+  const cap = c.marketCap;
+  const pool = all.filter((x) => x.code !== c.code && x.sector === c.sector && x.marketCap);
+  // Within roughly a quarter to two and a half times the size — that is the comparison that means
+  // something. If the sector is thin, fall back to the sector alone rather than showing nothing.
+  let near = pool.filter((x) => x.marketCap >= cap * 0.4 && x.marketCap <= cap * 2.5);
+  if (near.length < 3) near = pool;
+  const peers = near
+    .sort((a, b) => Math.abs(Math.log(a.marketCap / cap)) - Math.abs(Math.log(b.marketCap / cap)))
+    .slice(0, 6);
+  if (!peers.length) return '';
+  const median = (xs) => {
+    const a = xs.filter((x) => x != null && Number.isFinite(x)).sort((x, y) => x - y);
+    if (!a.length) return null;
+    const m = Math.floor(a.length / 2);
+    return a.length % 2 ? a[m] : +((a[m - 1] + a[m]) / 2).toFixed(2);
+  };
+  const peerPe = median(peers.map((x) => x.pe));
+  const peerPb = median(peers.map((x) => x.pb));
+  const chg = (x) => (x == null ? '—' : `${x >= 0 ? '+' : ''}${x.toFixed(1)}%`);
+  const row = (x, i) => `<button class="jp-bank-row" data-jp="${esc(x.code)}">
+      <span>${i + 1}</span>
+      <span><b>${esc(x.name)}</b><span class="co-tick">${esc(x.ticker)}</span></span>
+      <span>${yen(x.marketCap)}</span>
+      <span>${x.pe != null ? x.pe.toFixed(1) : '—'}</span>
+      <span>${x.pb != null ? x.pb.toFixed(2) : '—'}</span>
+      <span class="${(x.roe || 0) >= 0 ? 'pos' : 'neg'}">${x.roe != null ? x.roe.toFixed(1) + '%' : '—'}</span>
+      <span>${jpYield(x) != null ? jpYield(x).toFixed(2) + '%' : '—'}</span>
+      <span class="${(x.chgYtd || 0) >= 0 ? 'pos' : 'neg'}">${chg(x.chgYtd)}</span>
+    </button>`;
+  const rel = (mine, theirs, dp, unit) => {
+    if (mine == null || theirs == null) return '—';
+    const pct = (mine / theirs - 1) * 100;
+    return `${mine.toFixed(dp)}${unit} vs ${theirs.toFixed(dp)}${unit} <em class="co-approx">${Math.abs(pct).toFixed(0)}% ${pct >= 0 ? 'above' : 'below'}</em>`;
+  };
+  return `<div class="jp-q">
+      <div class="jp-q-head"><span class="ph-t">PEERS</span><span class="dimtext">${esc(c.sector)} · nearest ${peers.length} by size</span></div>
+      <div class="co-hrow jp-bank-hrow"><span>#</span><span>COMPANY</span><span>CAP</span><span>P/E</span><span>P/B</span><span>ROE</span><span>YIELD</span><span>YTD</span></div>
+      <div class="jp-q-head" style="padding:8px 12px 4px"><span class="dimtext">THIS COMPANY</span><span class="dimtext">P/E ${rel(c.pe, peerPe, 1, '×')} · P/B ${rel(c.pb, peerPb, 2, '×')}</span></div>
+      ${peers.map(row).join('')}
+      <div class="macro-note">Same exchange sector, sized within a quarter to two and a half times this company. Peer medians are equal-weighted; a company that looks cheap against the market can still be expensive against its own industry.</div>
     </div>`;
 }
 

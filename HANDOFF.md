@@ -2285,3 +2285,10 @@ Result: 502 of 503 prices dated **2026-10-29**, AAPL $348.91 +1.48%.
 - `/api/japan` was re-reading and re-parsing 5 MB on every request; it is now a read-through cache keyed
   by file mtime.
 - Nothing was removed: every field is still available, just fetched when it is actually read.
+
+## Japan: peer comparison (2026-10-30)
+- The Japan company page now ends with **PEERS**: the nearest six companies by size within the same
+  exchange sector (a quarter to two and a half times the market cap), with P/E, P/B, ROE, yield and YTD,
+  and a header line stating where this company sits against the peer median ("P/E 8.8× vs 15.1×, 42% below").
+- Peers come from the list projection the page already holds, so this cost no new request and no new field.
+- Toyota against its own sector: 8.8× earnings against a peer median of 15.1×, 0.98× book against 1.03×.
