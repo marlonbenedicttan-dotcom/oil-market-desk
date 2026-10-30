@@ -4141,12 +4141,8 @@ function renderCompanies() {
   const evs = uniq.map((c) => c.evEbitda).filter((x) => x != null && x > 0 && x < 100).sort((a, b) => a - b);
   const medEv = evs.length ? evs[Math.floor(evs.length / 2)] : null;
 
-  el.innerHTML = usViewsBar() + `<div class="co-hero">
-      <div class="co-hero-cell"><span class="co-k">MARKET CAP</span><span class="co-hero-v">${coMoney(totalCap)}</span><span class="co-hero-m">${uniq.length} companies priced · ${priced.length} securities</span></div>
-      <div class="co-hero-cell"><span class="co-k">MEDIAN P/E</span><span class="co-hero-v">${medPe ? medPe.toFixed(1) : '—'}</span><span class="co-hero-m">trailing, TTM where available</span></div>
-      <div class="co-hero-cell"><span class="co-k">MEDIAN EV/EBITDA</span><span class="co-hero-v">${medEv ? medEv.toFixed(1) : '—'}</span><span class="co-hero-m">${rows.filter((c) => c.evEbitda).length} with the inputs</span></div>
-      <div class="co-hero-cell" title="${esc((companiesData.valuation && companiesData.valuation.basis) || '')}"><span class="co-k">S&amp;P 500 P/E</span><span class="co-hero-v">${companiesData.valuation?.pe != null ? companiesData.valuation.pe.toFixed(1) : '—'}</span><span class="co-hero-m">${companiesData.valuation?.percentile != null ? `${companiesData.valuation.percentile}th pctile of ${companiesData.valuation.min}–${companiesData.valuation.max}` : 'index earnings ÷ cap'}</span></div>
-    </div>`
+  // The aggregates live in the MARKET view now; the screener opens straight on the rows.
+  el.innerHTML = usViewsBar()
     + `<div class="co-hrow"><span>#</span><span></span><span>COMPANY</span><span>MARKET CAP</span><span>P/E</span><span>MARGIN</span></div>`
     + (rows.length ? '' : `<div class="macro-note">No company matches “${esc(coQuery.trim())}”. Try a ticker (AAPL) or a sector name.</div>`)
     + rows.map((c, i) => {

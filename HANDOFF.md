@@ -2325,3 +2325,7 @@ Result: 502 of 503 prices dated **2026-10-29**, AAPL $348.91 +1.48%.
   brands"; Procrea "operates as a holding company for the Aomori Michinoku Bank".
 - Precedence is curated → fetched → generated, and `attach-japan-descriptions.mjs` will not overwrite a
   fetched profile with a generated line. The page credits the source on fetched entries.
+
+## US screener: aggregates moved out (2026-10-30)
+- The four-cell header (market cap, median P/E, median EV/EBITDA, index P/E) is gone from the SCREENER.
+  Those numbers now live in the MARKET view, so the screener opens straight on the rows.
