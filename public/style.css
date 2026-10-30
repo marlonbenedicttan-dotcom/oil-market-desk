@@ -1305,3 +1305,10 @@ button.deal-sec-tile:hover { background: #10151b; }
 .mb-tag { font-size: 8px; letter-spacing: 1px; color: var(--mkt, var(--dim)); border: 1px solid var(--mkt, var(--line));
   padding: 1px 5px; border-radius: 2px; margin-left: 6px; }
 @media (max-width: 640px) { .co-marketbar { gap: 8px; font-size: 9px; } .co-marketbar .mb-lvl { font-size: 12px; } }
+
+/* The chart header sat flush against the stats grid in Japan and Korea — the US gets its inset from
+   the chart wrapper, they do not. Give it its own separation. */
+.co-stats + .co-ranges, .co-verif + .co-ranges, .jp-bands + .co-ranges {
+  padding-top: 12px; border-top: 1px solid var(--line); margin-top: 2px;
+}
+.co-ranges { padding-bottom: 8px; }

@@ -2531,3 +2531,9 @@ they are filed. Today's run picked up **295 companies** that had filed.
   `KOSPI 5,730.74 −3.48% · 737`. The bar re-reads after each market's data loads.
 - **A market badge follows you into the company page**: the breadcrumb now reads
   `← COMPANIES 005930 [KOREA]`, coloured to match.
+
+## Companies: breathing room above the chart header (2026-10-31)
+- The US chart gets its inset from `.co-chartwrap` (10px top padding). Japan and Korea put `.co-ranges`
+  straight after the stats grid, so the chips sat flush against it. A rule on `.co-stats + .co-ranges`,
+  `.co-verif + .co-ranges` and `.jp-bands + .co-ranges` now gives 12px of padding plus a hairline border —
+  measured as a 15px separation. The US is untouched, because it never had the problem.
