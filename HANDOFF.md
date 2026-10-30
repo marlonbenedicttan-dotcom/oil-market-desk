@@ -2474,3 +2474,11 @@ they are filed. Today's run picked up **295 companies** that had filed.
   The 3,958 cached entries predate that field, so names show in Korean until the next DART run — DART has
   been refusing connections since the rate-limit burst.
 - Guard added: a build that produces zero companies no longer overwrites a good `korea.json`.
+
+## DART: an IP block, and a committed universe to work around it (2026-10-30)
+- The site is **up** — fetched through a public reader while every direct call returned 000. So the failure
+  is an IP-level block from DART's firewall after a parallel burst, not an outage. DART documents a
+  20,000/day limit (error 020) but no block duration; we were well under the quota, so it is a rate block.
+- **`data/korea-universe.json`** now commits the KOSPI universe (821 companies, 816 with share counts,
+  99 KB) so a CI run does not rescan 4,000 filers — that scan is what tripped the limiter. The build uses
+  it when present and falls through straight to prices and statements.

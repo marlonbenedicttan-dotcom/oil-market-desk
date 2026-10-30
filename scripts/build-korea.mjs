@@ -53,6 +53,16 @@ if (!book || Date.parse(book.fetched) < Date.now() - 7 * DAY) {
   book = { fetched: new Date().toISOString(), rows: await api.corpCodes() };
   writeJson(join(CACHE, 'corp.json'), book);
 }
+// A committed universe means CI does not have to rescan 4,000 filers — that scan is what tripped
+// DART's rate limiter.
+const universeFile = readJson(join(ROOT, 'data', 'korea-universe.json'));
+if (universeFile && universeFile.companies && universeFile.companies.length) {
+  console.log(`universe: ${universeFile.companies.length} KOSPI companies from data/korea-universe.json`);
+  const kospiCached = universeFile.companies.filter((c) => c.shares);
+  const todo = LIMIT ? kospiCached.slice(0, LIMIT) : kospiCached;
+  // fall through to the price/financial stages with this list
+  globalThis.__kospi = todo;
+}
 const listed = book.rows.filter((r) => String(r.stock || '').trim());
 console.log(`  ${book.rows.length} filers · ${listed.length} with a stock code`);
 
@@ -117,7 +127,7 @@ const sharesOf = async (corp) => {
 // A smoke test should not scan 4,000 filers first — cap the scan, not just the output.
 const scan = CODES ? listed.filter((r) => CODES.split(',').includes(r.corp)) : listed;
 let scanned = 0;
-const found = await pool(scan, 3, async (c) => {
+const found = globalThis.__kospi ? [] : await pool(scan, 3, async (c) => {
   const info = await infoOf(c.corp);
   scanned++;
   if (scanned % 250 === 0) console.log(`  ${scanned}/${scan.length}`);
@@ -125,7 +135,7 @@ const found = await pool(scan, 3, async (c) => {
   const sh = await sharesOf(c.corp);
   return sh.shares ? { ...c, shares: sh.shares, industry: info.industry, nameEn: info.nameEn } : null;
 });
-const kospi = found.filter(Boolean);
+const kospi = globalThis.__kospi || found.filter(Boolean);
 console.log(`  ${kospi.length} KOSPI companies`);
 const universe = LIMIT ? kospi.slice(0, LIMIT) : kospi;
 
