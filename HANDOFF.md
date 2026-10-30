@@ -2292,3 +2292,14 @@ Result: 502 of 503 prices dated **2026-10-29**, AAPL $348.91 +1.48%.
   and a header line stating where this company sits against the peer median ("P/E 8.8× vs 15.1×, 42% below").
 - Peers come from the list projection the page already holds, so this cost no new request and no new field.
 - Toyota against its own sector: 8.8× earnings against a peer median of 15.1×, 0.98× book against 1.03×.
+
+## Japan: descriptions and brand search (2026-10-30)
+- Every one of the 1,544 companies now has a description. **150 are curated** (`data/japan-descriptions.json`):
+  what the business actually is, plus the brands that hide behind the corporate name — Fast Retailing is
+  Uniqlo, Recruit is Indeed, Seven & i is 7-Eleven, Kao is Bioré.
+- The other **1,394 are generated** from the filing data and labelled `generated` on the page: sector, size,
+  sales, margin, sector count, dividend. Honest, and clearly not a written profile.
+- **Brands are searchable**: typing "uniqlo", "7-eleven" or "indeed" in the Japan search finds the company.
+  This is the fastest fix for "I don't recognise the corporate name".
+- Brands appear as chips under the company name; only brands whose ownership is certain are listed.
+- The list payload carries brands only (~7 KB); descriptions travel with the detail record.

@@ -697,6 +697,7 @@ const projectJp = (c) => ({
   dividend: c.dividend ? { yield: c.dividend.yield } : null,
   cash: c.cash,
   bands: c.bands && c.bands.pe ? { pe: { percentile: c.bands.pe.percentile } } : null,
+  brands: c.brands && c.brands.length ? c.brands : null,
 });
 const DEAL_ARCHIVE = (() => { try { return JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'ma.json'), 'utf8')); } catch { return { deals: [], coverage: {} }; } })();
 const DEAL_STORE_FILE = path.join(__dirname, 'data', 'deals-store.json');

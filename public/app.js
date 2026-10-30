@@ -3608,7 +3608,7 @@ const jpCashRatio = (c) => (c.cash && c.marketCap ? c.cash / c.marketCap : 0);
 function jpMatches(c) {
   const f = jpFilter;
   if (jpQuery) {
-    const hay = `${c.name} ${c.nameJa || ''} ${c.ticker} ${c.sector}`.toLowerCase();
+    const hay = `${c.name} ${c.nameJa || ''} ${c.ticker} ${c.sector} ${(c.brands || []).join(' ')}`.toLowerCase();
     if (!hay.includes(jpQuery.trim().toLowerCase())) return false;
   }
   if (f.sector && c.sector !== f.sector) return false;
@@ -3818,8 +3818,9 @@ function renderJapanPageBody(c) {
   el.innerHTML = `<div class="ma-crumb"><button class="ma-back" data-jpback="1">← COMPANIES</button> <span>${esc(c.ticker)}</span></div>`
     + `<div class="co-head">${jpMono(c)}
         <div><div class="co-name">${esc(c.name)}</div>
-        <div class="co-sub">${esc(c.ticker)}${c.sector ? ' · ' + esc(c.sector) : ''}${c.size ? ' · ' + esc(c.size) : ''}</div>
-        ${c.nameJa ? `<div class="co-desc">${esc(c.nameJa)}</div>` : ''}</div>
+        <div class="co-sub">${esc(c.ticker)}${c.sector ? ' · ' + esc(c.sector) : ''}${c.size ? ' · ' + esc(c.size) : ''}${c.nameJa ? ' · ' + esc(c.nameJa) : ''}</div>
+        ${c.description ? `<div class="co-desc">${esc(c.description)}${c.descSource === 'generated' ? ' <em class="co-approx" title="Written from the filing data, not a company profile">generated</em>' : ''}</div>` : ''}
+        ${c.brands && c.brands.length ? `<div class="jp-brands">${c.brands.map((b) => `<span>${esc(b)}</span>`).join('')}</div>` : ''}</div>
         <button class="co-star ${starred ? 'on' : ''}" data-jpstar="${esc(c.code)}" title="${starred ? 'Unpin from watchlist' : 'Pin to watchlist'}">${starred ? '★' : '☆'}</button>
       </div>`
     + `<div class="co-price">

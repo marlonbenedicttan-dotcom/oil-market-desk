@@ -1277,3 +1277,8 @@ button.deal-sec-tile:hover { background: #10151b; }
 .jp-cmp:focus { border-color: var(--amber); }
 .jp-cmp::placeholder { color: #5b6773; }
 @media (max-width: 640px) { .jp-cmp { width: 100%; margin: 6px 0 0; } .co-chart-tabs { flex-wrap: wrap; } }
+
+/* Japan: the brands that hide behind a corporate name. */
+.jp-brands { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+.jp-brands span { font-size: 8.5px; letter-spacing: .6px; color: #8fa0b2; border: 1px solid #223040;
+  background: #0e141a; padding: 2px 6px; border-radius: 2px; }
