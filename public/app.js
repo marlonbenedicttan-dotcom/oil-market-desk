@@ -3637,7 +3637,7 @@ async function renderJapan() {
   for (const k of ['jp-chart', 'jp-q-chart']) {
     if (charts[k]) { try { charts[k].destroy(); } catch {} delete charts[k]; }
   }
-  el.innerHTML = stLoading('Loading Japan…');
+  if (!japanData) el.innerHTML = stLoading('Loading Japan…');
   const d = await loadJapan();
   const all = (d && d.companies) || [];
   const sub = $('deals-sub');
@@ -3745,15 +3745,29 @@ function renderJapanScreener(all, d) {
     </div>`
     + `<div class="co-hrow"><span>#</span><span></span><span>COMPANY</span><span>MARKET CAP</span><span>P/E</span><span>ROE</span></div>`
     + (rows.length ? '' : `<div class="macro-note">No company matches those filters.</div>`)
-    + rows.map((c, i) => `<button class="co-row" data-jp="${esc(c.code)}">
+    + `<div id="jp-rows"></div>`;
+  // 1,500 rows in one innerHTML blocks the paint. The first chunk lands immediately and the rest
+  // append over the next frames, so a tab switch feels instant and every row still ends up there.
+  const host = document.getElementById('jp-rows');
+  const noteHtml = `<div class="macro-note">${rows.length === all.length ? `all ${all.length}` : `${rows.length} of ${all.length}`} companies · ${esc(d.universe || '')} · P/E and ROE are trailing twelve months, from JPX · forward P/E uses the company's own guidance · market cap excludes treasury shares · FX ${d.fx && d.fx.rate ? d.fx.rate.toFixed(2) : '—'} JPY per USD.</div>`;
+  const rowHtml = (c, i) => `<button class="co-row" data-jp="${esc(c.code)}">
         <span class="co-rank">${i + 1}</span>
         ${jpMono(c)}
         <span class="co-id"><b>${esc(c.name)}</b><span class="co-tick">${esc(c.ticker)}<span class="jp-sector"> · ${esc(c.sector)}</span> · ${yen(c.price)} <em class="${(c.chg1d || 0) >= 0 ? 'pos' : 'neg'}">${c.chg1d == null ? '' : `${c.chg1d >= 0 ? '+' : ''}${c.chg1d.toFixed(1)}%`}</em> · <em class="${(c.chgYtd || 0) >= 0 ? 'pos' : 'neg'}">${c.chgYtd == null ? '—' : `${c.chgYtd >= 0 ? '+' : ''}${c.chgYtd.toFixed(1)}%`} ${c.chgYtdBasis === 'YTD' ? 'YTD' : 'SINCE ' + String(c.chgYtdBasis || '').slice(6)}</em></span></span>
         <span class="co-cap">${yen(c.marketCap)}<i class="co-bar"><i style="width:${Math.max(2, ((c.marketCap || 0) / max) * 100)}%"></i></i></span>
         <span class="co-pe" title="${c.peBasis === 'TTM' ? 'trailing twelve months, from JPX' : 'fiscal year'}">${c.pe != null ? c.pe.toFixed(1) : '—'}</span>
         <span class="co-mar ${c.roe == null ? 'dimtext' : c.roe >= 0 ? 'pos' : 'neg'}">${c.roe == null ? '—' : `${c.roe.toFixed(1)}%`}</span>
-      </button>`).join('')
-    + `<div class="macro-note">${rows.length === all.length ? `all ${all.length}` : `${rows.length} of ${all.length}`} companies · ${esc(d.universe || '')} · P/E and ROE are trailing twelve months, from JPX · forward P/E uses the company's own guidance · market cap excludes treasury shares · FX ${d.fx && d.fx.rate ? d.fx.rate.toFixed(2) : '—'} JPY per USD.</div>`;
+      </button>`;
+  if (!host) return;
+  if (!rows.length) { host.insertAdjacentHTML('afterend', '<div class="macro-note">No company matches those filters.</div>' + noteHtml); return; }
+  let at = 0;
+  const paint = () => {
+    host.insertAdjacentHTML('beforeend', rows.slice(at, at + 250).map((c, j) => rowHtml(c, at + j)).join(''));
+    at += 250;
+    if (at < rows.length) requestAnimationFrame(paint);
+    else host.insertAdjacentHTML('afterend', noteHtml);
+  };
+  paint();
 }
 
 function jpBand(label, current, b, unit) {
@@ -3772,7 +3786,20 @@ function jpBand(label, current, b, unit) {
     </div>`;
 }
 
-function renderJapanPage(c) {
+const jpDetailCache = new Map();
+async function renderJapanPage(stub) {
+  const el = $('co-body'); if (!el) return;
+  let c = jpDetailCache.get(stub.code);
+  if (!c) {
+    el.innerHTML = stLoading('Reading the filing…');
+    try { c = await jget(`/api/japan/company/${encodeURIComponent(stub.code)}`, 1800000); } catch { c = null; }
+    if (c) jpDetailCache.set(stub.code, c);
+  }
+  if (!c) { el.innerHTML = stError('Couldn\u2019t load this company \u2014 retrying.'); return; }
+  return renderJapanPageBody(c);
+}
+
+function renderJapanPageBody(c) {
   const el = $('co-body'); if (!el) return;
   const sub = $('deals-sub'); if (sub) sub.textContent = `${c.name} · ${c.ticker} · TSE Prime`;
   const v = c.verification || {};
@@ -4285,9 +4312,24 @@ function renderUsMag7(el, all) {
     + `<div class="macro-note">Weight is the SPDR SPY holding weight, so it is the index's own number rather than a derivation. Seven companies at ${weight.toFixed(1)}% of the index means the other 496 share the remaining ${(100 - weight).toFixed(1)}%.</div>`;
 }
 
+// The list payload is a projection; the full record (series, quarters, description, verification) is
+// fetched the first time a company is opened and kept for the session.
+const coDetailCache = new Map();
 async function renderCompanyPage(el, all) {
-  const c = all.find((x) => String(x.cik) === String(coCik));
-  if (!c) { coCik = null; return renderCompanies(); }
+  const stub = all.find((x) => String(x.cik) === String(coCik));
+  if (!stub) { coCik = null; return renderCompanies(); }
+  const key = String(stub.cik);
+  let full = coDetailCache.get(key);
+  if (!full) {
+    el.innerHTML = stLoading('Reading the filing…');
+    try { full = await jget(`/api/company/${encodeURIComponent(key)}`, 1800000); } catch { full = null; }
+    if (full) coDetailCache.set(key, full);
+  }
+  if (!full) { el.innerHTML = stError('Couldn\u2019t load this company \u2014 retrying.'); return; }
+  return renderCompanyPageBody(el, full, all);
+}
+
+async function renderCompanyPageBody(el, c, all) {
   // The page shows the same earnings basis as the P/E above it: trailing when we have it, else the
   // fiscal year. The five-year table below stays on reported fiscal years.
   const ni = c.netIncomeTTM != null ? c.netIncomeTTM : c.netIncome;

@@ -670,6 +670,34 @@ async function getRegime() {
 // ---------------------------------------------------------------------------
 const COMPANIES_FILE = path.join(__dirname, 'data', 'companies.json');
 const COMPANIES = (() => { try { return JSON.parse(fs.readFileSync(COMPANIES_FILE, 'utf8')); } catch { return { companies: [] }; } })();
+const JAPAN_FILE = path.join(__dirname, 'data', 'japan.json');
+let JP_CACHE = { mtime: 0, data: null };
+function readJapan() {
+  try {
+    const st = fs.statSync(JAPAN_FILE);
+    if (JP_CACHE.data && JP_CACHE.mtime === st.mtimeMs) return JP_CACHE.data;
+    JP_CACHE = { mtime: st.mtimeMs, data: JSON.parse(fs.readFileSync(JAPAN_FILE, 'utf8')) };
+    return JP_CACHE.data;
+  } catch { return { companies: [] }; }
+}
+
+// The screener needs thirteen fields; the other forty-five are only read when a company is opened.
+const US_LIST_FIELDS = ['cik', 'ticker', 'name', 'sector', 'industry', 'indexName', 'shareClass', 'price', 'chg1d', 'chg6m', 'chgYtd', 'pe', 'pb', 'evEbitda', 'roe', 'marketCap', 'revenue', 'netIncome', 'netIncomeTTM', 'marginNA', 'fcfYield', 'fcfNA', 'revenueCagr', 'roic', 'growth', 'adrNA', 'dividendYield', 'indexWeight', 'sic'];
+const projectUs = (c) => {
+  const o = {};
+  for (const k of US_LIST_FIELDS) if (c[k] !== undefined) o[k] = c[k];
+  if (c.verification && c.verification.status) o.verification = { status: c.verification.status };
+  return o;
+};
+const projectJp = (c) => ({
+  code: c.code, ticker: c.ticker, name: c.name, nameJa: c.nameJa, sector: c.sector, size: c.size,
+  price: c.price, priceDate: c.priceDate, marketCap: c.marketCap, marketCapUsd: c.marketCapUsd,
+  chg1d: c.chg1d, chg6m: c.chg6m, chgYtd: c.chgYtd, chgYtdBasis: c.chgYtdBasis,
+  pe: c.pe, peBasis: c.peBasis, pb: c.pb, roe: c.roe,
+  dividend: c.dividend ? { yield: c.dividend.yield } : null,
+  cash: c.cash,
+  bands: c.bands && c.bands.pe ? { pe: { percentile: c.bands.pe.percentile } } : null,
+});
 const DEAL_ARCHIVE = (() => { try { return JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'ma.json'), 'utf8')); } catch { return { deals: [], coverage: {} }; } })();
 const DEAL_STORE_FILE = path.join(__dirname, 'data', 'deals-store.json');
 import { DEAL_SECTOR_RULES, dealSector, DEAL_SITES, DEAL_RUMOUR, DEAL_CLOSED, DEAL_ENDED, eventStatus,
@@ -3690,6 +3718,18 @@ const pickEncoding = (ae) => (/\bbr\b/.test(ae || '') ? 'br' : /\bgzip\b/.test(a
 const encodeBuf = (raw, enc) => (enc === 'br'
   ? zlib.brotliCompressSync(raw, { params: { [zlib.constants.BROTLI_PARAM_QUALITY]: 5 } })
   : zlib.gzipSync(raw, { level: 6 }));
+// Same as sendJSON, but revalidates: a returning visitor gets 304 and transfers nothing.
+const sendJSONCached = (res, code, obj) => {
+  const body = Buffer.from(JSON.stringify(obj));
+  const etag = `W/"${crypto.createHash('sha1').update(body).digest('base64').slice(0, 22)}"`;
+  const hdr = { etag, 'cache-control': 'private, max-age=0, must-revalidate' };
+  if (res.req && res.req.headers['if-none-match'] === etag) { res.writeHead(304, hdr); return res.end(); }
+  const enc = body.length > 1024 ? pickEncoding(res.req && res.req.headers['accept-encoding']) : null;
+  if (enc) { res.writeHead(code, { ...hdr, 'content-type': 'application/json', 'content-encoding': enc, vary: 'Accept-Encoding' }); return res.end(encodeBuf(body, enc)); }
+  res.writeHead(code, { ...hdr, 'content-type': 'application/json' });
+  res.end(body);
+};
+
 const sendJSON = (res, code, obj) => {
   const body = Buffer.from(JSON.stringify(obj));
   const enc = body.length > 1024 ? pickEncoding(res.req && res.req.headers['accept-encoding']) : null;
@@ -3877,20 +3917,34 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname === '/api/companies') {
       let valuation = null;
       try { valuation = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'valuation.json'), 'utf8')); } catch { /* none yet */ }
-      return sendJSON(res, 200, {
+      const list = (COMPANIES.companies || []).map(projectUs);
+      return sendJSONCached(res, 200, {
         updated: COMPANIES.updated || null,
-        count: (COMPANIES.companies || []).length,
-        companies: COMPANIES.companies || [],
+        count: list.length,
+        companies: list,
         valuation: valuation ? { ...valuation.index, sectors: valuation.sectors || {} } : null,
       });
     }
+    if (url.pathname.startsWith('/api/company/')) {
+      const cik = decodeURIComponent(url.pathname.slice('/api/company/'.length));
+      const c = (COMPANIES.companies || []).find((x) => String(x.cik) === cik || x.ticker === cik);
+      if (!c) return sendJSON(res, 404, { error: 'not found' });
+      return sendJSONCached(res, 200, c);
+    }
     if (url.pathname === '/api/japan') {
-      try {
-        const jp = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'japan.json'), 'utf8'));
-        return sendJSON(res, 200, jp);
-      } catch {
-        return sendJSON(res, 200, { companies: [], error: 'Japan has not been built yet' });
-      }
+      const jp = readJapan();
+      if (!jp.companies || !jp.companies.length) return sendJSON(res, 200, { companies: [], error: 'Japan has not been built yet' });
+      return sendJSONCached(res, 200, {
+        updated: jp.updated, universe: jp.universe, currency: jp.currency, fx: jp.fx, market: jp.market, topix: jp.topix,
+        companies: jp.companies.map(projectJp),
+      });
+    }
+    if (url.pathname.startsWith('/api/japan/company/')) {
+      const code = decodeURIComponent(url.pathname.slice('/api/japan/company/'.length));
+      const jp = readJapan();
+      const c = (jp.companies || []).find((x) => x.code === code || x.ticker === code);
+      if (!c) return sendJSON(res, 404, { error: 'not found' });
+      return sendJSONCached(res, 200, c);
     }
     if (url.pathname === '/api/japan-chart') {
       const code = url.searchParams.get('code');

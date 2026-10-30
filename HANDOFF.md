@@ -2272,3 +2272,16 @@ Result: 502 of 503 prices dated **2026-10-29**, AAPL $348.91 +1.48%.
   verified), at most **two**. An empty day produces no M&A block at all. Today's brief returns zero deal rows.
 - **S&P 500 chart** in the US MARKET view, mirroring the TOPIX chart: one year of the index, 251 points. The
   `/api/company-chart` ticker guard rejected `^GSPC` because of the caret; it now accepts index symbols.
+
+## Loading: list and detail split, ETag, chunked rows (2026-10-30)
+- **The list payload was 90% detail nobody had opened.** `/api/companies` and `/api/japan` now send a
+  projection (the ~25 fields a screener row actually reads); the full record is fetched on open from
+  `/api/company/{cik}` or `/api/japan/company/{code}` and cached for the session.
+  - `/api/companies`  0.39 MB → **0.055 MB** gzip
+  - `/api/japan`      1.02 MB → **0.137 MB** gzip
+- **ETag / 304** on both list endpoints: a repeat visit transfers **nothing** (verified: 304).
+- **Japan's 1,543 rows now paint in chunks of 250** — first rows appear at 0 ms, all rows by ~160 ms,
+  instead of one blocking innerHTML. Tab switches no longer flash a loading state when the list is cached.
+- `/api/japan` was re-reading and re-parsing 5 MB on every request; it is now a read-through cache keyed
+  by file mtime.
+- Nothing was removed: every field is still available, just fetched when it is actually read.
