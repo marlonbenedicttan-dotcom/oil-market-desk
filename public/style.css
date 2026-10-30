@@ -1215,10 +1215,10 @@ button.deal-sec-tile:hover { background: #10151b; }
 }
 
 /* Japan: market / screener / banks views. */
-.jp-views { display: flex; gap: 18px; padding: 0 12px; border-bottom: 1px solid var(--line); }
-.jp-views button { background: none; border: 0; border-bottom: 2px solid transparent; color: var(--dim);
+.co-views, .jp-views { display: flex; gap: 18px; padding: 0 12px; border-bottom: 1px solid var(--line); }
+.co-views button, .jp-views button { background: none; border: 0; border-bottom: 2px solid transparent; color: var(--dim);
   font: inherit; font-size: 9.5px; letter-spacing: 1px; padding: 9px 1px 8px; cursor: pointer; }
-.jp-views button.on { color: var(--amber); border-bottom-color: var(--amber); }
+.co-views button.on, .jp-views button.on { color: var(--amber); border-bottom-color: var(--amber); }
 .jp-market-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 14px; padding: 14px 12px 10px; }
 .jp-market-lvl { font-size: 20px; font-weight: 600; font-variant-numeric: tabular-nums; }
 .jp-breadth { display: flex; align-items: center; gap: 10px; padding: 0 12px 12px; font-size: 10px; }
@@ -1261,8 +1261,8 @@ button.deal-sec-tile:hover { background: #10151b; }
 
 /* Japan on a phone: the filter row and the row metadata were both too heavy. */
 @media (max-width: 640px) {
-  .jp-views { gap: 14px; padding: 0 10px; }
-  .jp-views button { font-size: 9px; letter-spacing: .6px; padding: 8px 1px 7px; }
+  .co-views, .jp-views { gap: 14px; padding: 0 10px; }
+  .co-views button, .jp-views button { font-size: 9px; letter-spacing: .6px; padding: 8px 1px 7px; }
   .jp-presets { gap: 4px; padding: 8px 10px 4px; }
   .jp-presets button { font-size: 8px; letter-spacing: .5px; padding: 5px 7px; }
   .jp-filters { gap: 4px; padding: 0 10px 8px; }

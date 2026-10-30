@@ -2319,6 +2319,10 @@ function scBarHtml() {
     + `<button type="button" class="ghost" data-sc-act="reset">RESET</button>`
     + `<span class="sc-count dimtext" id="sc-count"></span>`;
 }
+let usView = (() => { try { return localStorage.getItem('oilbasis.usView') || 'screener'; } catch { return 'screener'; } })();
+const MAG7 = ['AAPL', 'MSFT', 'NVDA', 'AMZN', 'GOOGL', 'META', 'TSLA'];
+const usViewsBar = () => `<div class="co-views">${[['market', 'MARKET'], ['screener', 'SCREENER'], ['mag7', 'MAG 7']].map(([k, t]) => `<button type="button" data-usview="${k}" class="${usView === k ? 'on' : ''}">${t}</button>`).join('')}</div>`;
+
 let screenMarket = (() => { try { return localStorage.getItem('oilbasis.screenMarket') || 'us'; } catch { return 'us'; } })();
 const coScreenJp = { q: '', sector: 'all', sort: 'marketCap', dir: -1 };
 const JP_SCREEN_COLS = [
@@ -3583,11 +3587,13 @@ function japanTile(c) {
 function syncCoTools() {
   const tools = document.querySelector('.co-tools');
   if (!tools) return;
-  const wanted = coRegion === 'jp' ? (!jpSel && jpView === 'screener') : true;
+  const wanted = coRegion === 'jp'
+    ? (!jpSel && jpView === 'screener')
+    : (coCik ? true : usView === 'screener');
   tools.classList.toggle('hidden', !wanted);
 }
 
-const jpViewsBar = () => `<div class="jp-views">
+const jpViewsBar = () => `<div class="co-views">
     ${[['market', 'MARKET'], ['screener', 'SCREENER'], ['banks', 'BANKS']].map(([k, t]) =>
       `<button type="button" data-jpview="${k}" class="${jpView === k ? 'on' : ''}">${t}</button>`).join('')}
   </div>`;
@@ -3971,7 +3977,7 @@ function renderCompanies() {
   const el = $('co-body');
   if (charts['co-chart']) { try { charts['co-chart'].destroy(); } catch {} delete charts['co-chart']; }
   if (!el) return;
-  const noteUs = $('co-note'); if (noteUs) noteUs.classList.remove('hidden');
+  const noteUs = $('co-note'); if (noteUs && usView === 'screener') noteUs.classList.remove('hidden');
   syncCoTools();
   if (!companiesData) { el.innerHTML = stError('Couldn’t load companies — retrying.'); return; }
   const all = companiesData.companies || [];
@@ -3982,6 +3988,8 @@ function renderCompanies() {
   }
 
   if (coCik) return renderCompanyPage(el, all);
+  if (usView === 'market') return renderUsMarket(el, all);
+  if (usView === 'mag7') return renderUsMag7(el, all);
 
   const q = coQuery.trim().toLowerCase();
   const rows = all.filter((c) => {
@@ -4053,7 +4061,7 @@ function renderCompanies() {
   const evs = uniq.map((c) => c.evEbitda).filter((x) => x != null && x > 0 && x < 100).sort((a, b) => a - b);
   const medEv = evs.length ? evs[Math.floor(evs.length / 2)] : null;
 
-  el.innerHTML = `<div class="co-hero">
+  el.innerHTML = usViewsBar() + `<div class="co-hero">
       <div class="co-hero-cell"><span class="co-k">MARKET CAP</span><span class="co-hero-v">${coMoney(totalCap)}</span><span class="co-hero-m">${uniq.length} companies priced · ${priced.length} securities</span></div>
       <div class="co-hero-cell"><span class="co-k">MEDIAN P/E</span><span class="co-hero-v">${medPe ? medPe.toFixed(1) : '—'}</span><span class="co-hero-m">trailing, TTM where available</span></div>
       <div class="co-hero-cell"><span class="co-k">MEDIAN EV/EBITDA</span><span class="co-hero-v">${medEv ? medEv.toFixed(1) : '—'}</span><span class="co-hero-m">${rows.filter((c) => c.evEbitda).length} with the inputs</span></div>
@@ -4171,6 +4179,97 @@ const coDesc = (t) => {
   const i = Math.max(cut.lastIndexOf('. '), cut.lastIndexOf('; '));
   return i > 120 ? cut.slice(0, i + 1) : cut.replace(/[,;\s]+\S*$/, '') + '…';
 };
+
+// The US market view: the same shape as Japan's, computed from the 503 constituents.
+async function renderUsMarket(el, all) {
+  const noteUs = $('co-note'); if (noteUs) noteUs.classList.add('hidden');
+  const uniq = all.filter((c) => !c.shareClass);
+  const median = (xs) => {
+    const a = xs.filter((x) => x != null && Number.isFinite(x)).sort((x, y) => x - y);
+    if (!a.length) return null;
+    const m = Math.floor(a.length / 2);
+    return a.length % 2 ? a[m] : +((a[m - 1] + a[m]) / 2).toFixed(2);
+  };
+  const totalCap = uniq.reduce((a, c) => a + (c.marketCap || 0), 0);
+  const belowBook = uniq.filter((c) => c.pb != null && c.pb < 1).length;
+  const adv = uniq.filter((c) => (c.chg1d || 0) > 0).length;
+  const dec = uniq.filter((c) => (c.chg1d || 0) < 0).length;
+  const v = companiesData.valuation || {};
+  const groups = new Map();
+  for (const c of uniq) { if (!groups.has(c.sector)) groups.set(c.sector, []); groups.get(c.sector).push(c); }
+  const sectors = [...groups].map(([name, list]) => ({
+    name, count: list.length, cap: list.reduce((a, c) => a + (c.marketCap || 0), 0),
+    pe: median(list.map((c) => c.pe)), pb: median(list.map((c) => c.pb)),
+    roe: median(list.map((c) => c.roe)), yield: median(list.map((c) => c.dividendYield)),
+    chgYtd: median(list.map((c) => c.chgYtd)),
+  })).sort((a, b) => b.cap - a.cap);
+  const cell = (k, val, title, cls = '') => `<div class="co-stat" title="${esc(title)}"><span class="co-k">${k}</span><span class="co-v ${cls}">${val}</span></div>`;
+  const chg = (x) => (x == null ? '—' : `${x >= 0 ? '+' : ''}${x.toFixed(1)}%`);
+  const breadth = adv + dec ? `<div class="jp-breadth"><span class="pos">${adv} up</span><i><i style="width:${Math.round((adv / Math.max(1, adv + dec)) * 100)}%"></i></i><span class="neg">${dec} down</span></div>` : '';
+  // The index level comes from the macro quote feed; the changes are cap-weighted from the
+  // constituents, which is stated rather than passed off as the official index return.
+  let spx = null;
+  try {
+    const mt = await jget('/api/macro-tickers', 900000);
+    spx = (mt && mt.items || []).find((x) => x.label === 'S&P 500');
+  } catch { spx = null; }
+  const wsum = uniq.reduce((a, c) => a + (c.marketCap || 0), 0) || 1;
+  const wChg = (k) => uniq.reduce((a, c) => a + (c.marketCap || 0) * (c[k] || 0), 0) / wsum;
+
+  el.innerHTML = usViewsBar()
+    + `<div class="jp-market-head"><span class="ph-t">S&amp;P 500</span>
+        ${spx && (spx.price != null || spx.last != null)
+          ? `<span class="jp-market-lvl">${Number(spx.price != null ? spx.price : spx.last).toLocaleString('en-US', { maximumFractionDigits: 2 })}</span>${spx.pct != null ? `<span class="${spx.pct >= 0 ? 'pos' : 'neg'}">${chg(spx.pct)} today</span>` : ''}`
+          : '<span class="dimtext">index quote unavailable</span>'}
+        <span class="${wChg('chgYtd') >= 0 ? 'pos' : 'neg'}">${chg(wChg('chgYtd'))} YTD cap-weighted</span>
+        <span class="dimtext">${uniq.length} companies · aggregates computed from the constituent set</span></div>`
+    + `<div class="co-stats co-stats-12">
+        ${cell('TOTAL MARKET CAP', coMoney(totalCap), 'Sum of every constituent, share classes excluded')}
+        ${cell('COMPANIES', String(uniq.length), 'Common stock only')}
+        ${cell('MEDIAN P/E', median(uniq.map((c) => c.pe)) != null ? `${median(uniq.map((c) => c.pe)).toFixed(1)}×` : '—', 'Median across constituents — the typical company, not the index')}
+        ${cell('MEDIAN P/B', median(uniq.map((c) => c.pb)) != null ? `${median(uniq.map((c) => c.pb)).toFixed(2)}×` : '—', 'Median across constituents')}
+        ${cell('MEDIAN ROE', median(uniq.map((c) => c.roe)) != null ? `${median(uniq.map((c) => c.roe)).toFixed(1)}%` : '—', 'Trailing twelve months, median')}
+        ${cell('MEDIAN YIELD', median(uniq.map((c) => c.dividendYield)) != null ? `${median(uniq.map((c) => c.dividendYield)).toFixed(2)}%` : '—', 'Median dividend yield')}
+        ${cell('BELOW BOOK', String(belowBook), 'Companies trading under 1× book value')}
+        ${cell('INDEX P/E', v.pe != null ? `${v.pe.toFixed(1)}×` : '—', 'Cap-weighted: Σ market cap ÷ Σ trailing earnings', '')}
+      </div>`
+    + breadth
+    + `<div class="co-hrow jp-mkt-hrow"><span>SECTOR</span><span>N</span><span>CAP</span><span>P/E</span><span>P/B</span><span>ROE</span><span>YIELD</span><span>YTD</span></div>`
+    + sectors.map((x) => `<div class="jp-mkt-row">
+        <span>${esc(x.name)}</span><span>${x.count}</span><span>${coMoney(x.cap)}</span>
+        <span>${x.pe != null ? x.pe.toFixed(1) : '—'}</span>
+        <span>${x.pb != null ? x.pb.toFixed(2) : '—'}</span>
+        <span class="${(x.roe || 0) >= 0 ? 'pos' : 'neg'}">${x.roe != null ? x.roe.toFixed(1) + '%' : '—'}</span>
+        <span>${x.yield != null ? x.yield.toFixed(2) + '%' : '—'}</span>
+        <span class="${(x.chgYtd || 0) >= 0 ? 'pos' : 'neg'}">${chg(x.chgYtd)}</span>
+      </div>`).join('')
+    + `<div class="macro-note">Constituent medians are equal-weighted; the index P/E is cap-weighted and comes from the annual filings. ${v.percentile != null ? `The index sits at the ${v.percentile}th percentile of ${v.min}–${v.max} over the last ${(v.years || []).length} years.` : ''}</div>`;
+}
+
+// The seven companies that decide the index's direction.
+function renderUsMag7(el, all) {
+  const noteUs = $('co-note'); if (noteUs) noteUs.classList.add('hidden');
+  const rows = MAG7.map((t) => all.find((c) => c.ticker === t)).filter(Boolean).sort((a, b) => (b.indexWeight || 0) - (a.indexWeight || 0));
+  const uniq = all.filter((c) => !c.shareClass);
+  const totalCap = uniq.reduce((a, c) => a + (c.marketCap || 0), 0);
+  const weight = rows.reduce((a, c) => a + (c.indexWeight || 0), 0);
+  const cap = rows.reduce((a, c) => a + (c.marketCap || 0), 0);
+  const chg = (x) => (x == null ? '—' : `${x >= 0 ? '+' : ''}${x.toFixed(1)}%`);
+  el.innerHTML = usViewsBar()
+    + `<div class="jp-market-head"><span class="ph-t">MAG 7</span><span class="jp-market-lvl">${weight.toFixed(1)}%</span><span class="dimtext">of the S&amp;P 500 by weight · ${coMoney(cap)} of ${coMoney(totalCap)}</span></div>`
+    + `<div class="co-hrow jp-bank-hrow"><span>#</span><span>COMPANY</span><span>WEIGHT</span><span>CAP</span><span>1D</span><span>YTD</span><span>P/E</span><span>MARGIN</span></div>`
+    + rows.map((c, i) => `<button class="jp-bank-row" data-cik="${esc(c.cik)}">
+        <span>${i + 1}</span>
+        <span><b>${esc(c.name)}</b><span class="co-tick">${esc(c.ticker)}</span></span>
+        <span>${c.indexWeight != null ? c.indexWeight.toFixed(2) + '%' : '—'}</span>
+        <span>${coMoney(c.marketCap)}</span>
+        <span class="${(c.chg1d || 0) >= 0 ? 'pos' : 'neg'}">${chg(c.chg1d)}</span>
+        <span class="${(c.chgYtd || 0) >= 0 ? 'pos' : 'neg'}">${chg(c.chgYtd)}</span>
+        <span>${c.pe != null ? c.pe.toFixed(1) : '—'}</span>
+        <span>${coMargin(c) != null ? coMargin(c).toFixed(1) + '%' : '—'}</span>
+      </button>`).join('')
+    + `<div class="macro-note">Weight is the SPDR SPY holding weight, so it is the index's own number rather than a derivation. Seven companies at ${weight.toFixed(1)}% of the index means the other 496 share the remaining ${(100 - weight).toFixed(1)}%.</div>`;
+}
 
 async function renderCompanyPage(el, all) {
   const c = all.find((x) => String(x.cik) === String(coCik));
@@ -4349,6 +4448,14 @@ document.addEventListener('click', (e) => {
   const jrow = e.target.closest('[data-jp]');
   if (jrow) { jpSel = jrow.dataset.jp; renderJapan(); window.scrollTo({ top: 0, behavior: 'smooth' }); return; }
   if (e.target.closest('[data-jpback]')) { jpSel = null; renderJapan(); return; }
+  const uv = e.target.closest('[data-usview]');
+  if (uv) {
+    usView = uv.dataset.usview;
+    try { localStorage.setItem('oilbasis.usView', usView); } catch {}
+    coCik = null;
+    renderCompanies();
+    return;
+  }
   const jv = e.target.closest('[data-jpview]');
   if (jv) {
     jpView = jv.dataset.jpview;

@@ -2251,3 +2251,14 @@ Fixes: the live quote now supplies `chg1d` and `priceAsOf` (it carries `percenta
 `lastTradeTimestamp`), the quote timestamp is parsed as UTC, `build-price-changes` owns only the 6M/YTD
 windows and refreshes any chart older than 18 hours, and it runs in the daily workflow.
 Result: 502 of 503 prices dated **2026-10-29**, AAPL $348.91 +1.48%.
+
+## US segment: MARKET / SCREENER / MAG 7 (2026-10-30)
+- The US side now mirrors Japan's shape: a **MARKET** view, the existing **SCREENER**, and **MAG 7**.
+- **MARKET**: S&P 500 level from the macro quote feed (7,720.39), a cap-weighted YTD computed from the
+  constituents (+23.1%), total cap $70.39T, median P/E 25.7×, P/B 4.10×, ROE 15.8%, yield 1.46%, 7 companies
+  below book, the cap-weighted index P/E (28.5×, 100th percentile of five years), breadth (403 up / 96 down)
+  and an 11-sector table. The note states which figures are equal-weighted and which are cap-weighted.
+- **MAG 7**: weight, cap, 1D, YTD, P/E and margin for the seven, sorted by index weight. They are **31.7%** of
+  the index — $23.47T of $70.39T — so the other 493 share 68.3%. Weight comes from the SPY holdings file, so
+  it is the index's own number rather than a derivation.
+- The search box and the methodology note are hidden in MARKET and MAG 7, where they have nothing to act on.
