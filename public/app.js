@@ -2380,9 +2380,11 @@ function renderCompanyScreen(el) {
   const head = CO_SCREEN_COLS.map((c) => `<th class="${sort === c.k ? 'on' : ''}" data-cokey="${c.k}">${c.t}${sort === c.k ? (dir < 0 ? ' ▼' : ' ▲') : ''}</th>`).join('');
   const cell = (v, dp = 1, suffix = '') => (v == null ? '<td class="num">—</td>' : `<td class="num">${v.toFixed(dp)}${suffix}</td>`);
   const pct = (v) => (v == null ? '<td class="num">—</td>' : `<td class="num ${cls(v)}">${v >= 0 ? '+' : ''}${v.toFixed(1)}%</td>`);
-  const usPages = Math.max(1, Math.ceil(rows.length / coScreen.per));
-  if (coScreen.page > usPages) coScreen.page = usPages;
-  const usShown = rows.slice((coScreen.page - 1) * coScreen.per, coScreen.page * coScreen.per);
+  const usPer = coScreen.per || 50;
+  const usPage = coScreen.page || 1;
+  const usPages = Math.max(1, Math.ceil(rows.length / usPer));
+  if (usPage > usPages) coScreen.page = usPages;
+  const usShown = rows.slice(((coScreen.page || 1) - 1) * usPer, (coScreen.page || 1) * usPer);
   const body = usShown.map((c) => `<tr data-cocik="${esc(c.cik)}" title="${esc(c.name)}">
       <td class="sc-name">${esc(c.name)}<span class="sc-tick">${esc(c.ticker)}</span></td>
       <td class="num">${c.price != null ? '$' + c.price.toFixed(2) : '—'}</td>
@@ -2421,9 +2423,10 @@ function renderJapanScreen(el) {
     if (y == null) return -1;
     return sort === 'label' ? x.localeCompare(y) * dir : (x - y) * dir;
   });
-  const jpPages = Math.max(1, Math.ceil(rows.length / coScreenJp.per));
-  if (coScreenJp.page > jpPages) coScreenJp.page = jpPages;
-  const shown = rows.slice((coScreenJp.page - 1) * coScreenJp.per, coScreenJp.page * coScreenJp.per);
+  const jpPer = coScreenJp.per || 50;
+  const jpPages = Math.max(1, Math.ceil(rows.length / jpPer));
+  if ((coScreenJp.page || 1) > jpPages) coScreenJp.page = jpPages;
+  const shown = rows.slice(((coScreenJp.page || 1) - 1) * jpPer, (coScreenJp.page || 1) * jpPer);
   const head = JP_SCREEN_COLS.map((c) => `<th class="${sort === c.k ? 'on' : ''}" data-jpkey="${c.k}">${c.t}${sort === c.k ? (dir < 0 ? ' ▼' : ' ▲') : ''}</th>`).join('');
   const pct = (v) => (v == null ? '<td class="num">—</td>' : `<td class="num ${cls(v)}">${v >= 0 ? '+' : ''}${v.toFixed(1)}%</td>`);
   const num = (v, dp, suffix = '') => (v == null ? '<td class="num">—</td>' : `<td class="num">${v.toFixed(dp)}${suffix}</td>`);
