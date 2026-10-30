@@ -49,14 +49,22 @@ export function unzipFirstEntry(buf) {
   if (!Buffer.isBuffer(buf) || buf.length < 30 || buf.readUInt32LE(0) !== 0x04034b50) {
     throw new Error('not a zip file');
   }
-  const method = buf.readUInt16LE(8);
-  const compSize = buf.readUInt32LE(18);
-  const nameLen = buf.readUInt16LE(26);
-  const extraLen = buf.readUInt16LE(28);
-  const start = 30 + nameLen + extraLen;
+  // DART writes the sizes into a data descriptor (flag bit 3), so the local header has zeros.
+  // The authoritative sizes live in the central directory, which is what we read here.
+  const eocd = buf.lastIndexOf(Buffer.from([0x50, 0x4b, 0x05, 0x06]));
+  if (eocd < 0) throw new Error('no central directory');
+  const cd = buf.readUInt32LE(eocd + 16);
+  if (buf.readUInt32LE(cd) !== 0x02014b50) throw new Error('bad central directory');
+  const method = buf.readUInt16LE(cd + 10);
+  const compSize = buf.readUInt32LE(cd + 20);
+  const localOffset = buf.readUInt32LE(cd + 42);
+  if (buf.readUInt32LE(localOffset) !== 0x04034b50) throw new Error('bad local header');
+  const nameLen = buf.readUInt16LE(localOffset + 26);
+  const extraLen = buf.readUInt16LE(localOffset + 28);
+  const start = localOffset + 30 + nameLen + extraLen;
   const data = buf.subarray(start, start + compSize);
-  if (method === 0) return data;                    // stored
-  if (method === 8) return zlib.inflateRawSync(data); // deflate
+  if (method === 0) return data;
+  if (method === 8) return zlib.inflateRawSync(data);
   throw new Error(`unsupported zip method ${method}`);
 }
 

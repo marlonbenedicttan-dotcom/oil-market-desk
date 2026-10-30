@@ -670,6 +670,17 @@ async function getRegime() {
 // ---------------------------------------------------------------------------
 const COMPANIES_FILE = path.join(__dirname, 'data', 'companies.json');
 const COMPANIES = (() => { try { return JSON.parse(fs.readFileSync(COMPANIES_FILE, 'utf8')); } catch { return { companies: [] }; } })();
+const KOREA_FILE = path.join(__dirname, 'data', 'korea.json');
+let KR_CACHE = { mtime: 0, data: null };
+function readKorea() {
+  try {
+    const st = fs.statSync(KOREA_FILE);
+    if (KR_CACHE.data && KR_CACHE.mtime === st.mtimeMs) return KR_CACHE.data;
+    KR_CACHE = { mtime: st.mtimeMs, data: JSON.parse(fs.readFileSync(KOREA_FILE, 'utf8')) };
+    return KR_CACHE.data;
+  } catch { return { companies: [] }; }
+}
+
 const JAPAN_FILE = path.join(__dirname, 'data', 'japan.json');
 let JP_CACHE = { mtime: 0, data: null };
 function readJapan() {
@@ -689,6 +700,13 @@ const projectUs = (c) => {
   if (c.verification && c.verification.status) o.verification = { status: c.verification.status };
   return o;
 };
+const projectKr = (c) => ({
+  code: c.code, ticker: c.ticker, name: c.name,
+  price: c.price, priceDate: c.priceDate, marketCap: c.marketCap, marketCapUsd: c.marketCapUsd,
+  chg1d: c.chg1d, chg6m: c.chg6m, chgYtd: c.chgYtd,
+  pe: c.pe, peBasis: c.peBasis, pb: c.pb, roe: c.roe, opMargin: c.opMargin, netMargin: c.netMargin,
+  fcfYield: c.fcfYield, shares: c.shares,
+});
 const projectJp = (c) => ({
   code: c.code, ticker: c.ticker, name: c.name, nameJa: c.nameJa, sector: c.sector, size: c.size,
   price: c.price, priceDate: c.priceDate, marketCap: c.marketCap, marketCapUsd: c.marketCapUsd,
@@ -3962,6 +3980,21 @@ const server = http.createServer(async (req, res) => {
         updated: jp.updated, universe: jp.universe, currency: jp.currency, fx: jp.fx, market: jp.market, topix: jp.topix, themes: jp.themes || [],
         companies: jp.companies.map(projectJp),
       });
+    }
+    if (url.pathname === '/api/korea') {
+      const kr = readKorea();
+      if (!kr.companies || !kr.companies.length) return sendJSON(res, 200, { companies: [], error: 'Korea has not been built yet' });
+      return sendJSONCached(res, 200, {
+        updated: kr.updated, universe: kr.universe, currency: kr.currency, fx: kr.fx,
+        companies: kr.companies.map(projectKr),
+      });
+    }
+    if (url.pathname.startsWith('/api/korea/company/')) {
+      const code = decodeURIComponent(url.pathname.slice('/api/korea/company/'.length));
+      const kr = readKorea();
+      const c = (kr.companies || []).find((x) => x.code === code || x.ticker === code);
+      if (!c) return sendJSON(res, 404, { error: 'not found' });
+      return sendJSONCached(res, 200, c);
     }
     if (url.pathname.startsWith('/api/japan/company/')) {
       const code = decodeURIComponent(url.pathname.slice('/api/japan/company/'.length));

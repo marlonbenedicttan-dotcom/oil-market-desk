@@ -3629,6 +3629,7 @@ function syncCoTools() {
   if (chips) chips.classList.toggle('hidden', coRegion === 'jp');
   const wanted = coRegion === 'jp'
     ? (!jpSel && jpView === 'screener')
+    : coRegion === 'kr' ? !krSel
     : (coCik ? true : usView === 'screener');
   tools.classList.toggle('hidden', !wanted);
 }
@@ -4104,10 +4105,105 @@ function drawJpQuarters(c) {
   }, baseOptions({ dp: 0, yTitle: '¥bn sales', y1Title: '¥bn profit', dateAxis: true }));
 }
 
+// --- Korea: KOSPI, from DART (FSS) -------------------------------------------------------------
+// Same layout as the other two markets. What Korea does not have is guidance — Korean companies do not
+// publish full-year forecasts — so there is no forward P/E and no guidance-versus-delivered section.
+let koreaData = null, krSel = null, krQuery = '';
+
+const won = (v) => {
+  if (v == null || !Number.isFinite(v)) return '—';
+  const a = Math.abs(v);
+  if (a >= 1e12) return `₩${(v / 1e12).toFixed(2)}T`;
+  if (a >= 1e8) return `₩${(v / 1e8).toFixed(1)}B`;
+  if (a >= 1e4) return `₩${(v / 1e4).toFixed(0)}만`;
+  return `₩${Math.round(v).toLocaleString('en-US')}`;
+};
+const krMono = (c) => coMono({ ticker: String(c.name || '?').replace(/[^A-Za-z]/g, '').slice(0, 2) || 'KR', name: c.name });
+
+async function loadKorea() {
+  if (koreaData) return koreaData;
+  try { koreaData = await jget('/api/korea', 3600000); } catch { koreaData = { companies: [] }; }
+  return koreaData;
+}
+
+async function renderKorea() {
+  const el = $('co-body'); if (!el) return;
+  const noteUs = $('co-note'); if (noteUs) noteUs.classList.add('hidden');
+  syncCoTools();
+  if (!koreaData) el.innerHTML = stLoading('Loading KOSPI…');
+  const d = await loadKorea();
+  const all = (d && d.companies) || [];
+  const sub = $('deals-sub');
+  if (sub) sub.textContent = all.length ? `${all.length} companies · KOSPI · ₩ KRW · DART` : 'KOSPI · DART';
+  if (!all.length) {
+    el.innerHTML = `<div class="macro-note">Korea is not built yet. With a DART key in the environment, run <code>node scripts/build-korea.mjs</code>.</div>`;
+    return;
+  }
+  const sel = all.find((c) => c.code === krSel);
+  if (sel) return renderKoreaPage(sel);
+
+  const q = krQuery.trim().toLowerCase();
+  const rows = all.filter((c) => !q || `${c.name} ${c.ticker}`.toLowerCase().includes(q));
+  const max = Math.max(...all.map((c) => c.marketCap || 0), 1);
+  el.innerHTML = `<div class="co-hrow"><span>#</span><span></span><span>COMPANY</span><span>MARKET CAP</span><span>P/E</span><span>ROE</span></div>`
+    + rows.map((c, i) => `<button class="co-row" data-kr="${esc(c.code)}">
+        <span class="co-rank">${i + 1}</span>
+        ${krMono(c)}
+        <span class="co-id"><b>${esc(c.name)}</b><span class="co-tick">${esc(c.ticker)} · ${won(c.price)} <em class="${(c.chg1d || 0) >= 0 ? 'pos' : 'neg'}">${c.chg1d == null ? '' : `${c.chg1d >= 0 ? '+' : ''}${c.chg1d.toFixed(1)}%`}</em> · <em class="${(c.chgYtd || 0) >= 0 ? 'pos' : 'neg'}">${c.chgYtd == null ? '—' : `${c.chgYtd >= 0 ? '+' : ''}${c.chgYtd.toFixed(1)}%`} YTD</em></span></span>
+        <span class="co-cap">${won(c.marketCap)}<i class="co-bar"><i style="width:${Math.max(2, ((c.marketCap || 0) / max) * 100)}%"></i></i></span>
+        <span class="co-pe">${c.pe != null ? c.pe.toFixed(1) : '—'}</span>
+        <span class="co-mar ${c.roe == null ? 'dimtext' : c.roe >= 0 ? 'pos' : 'neg'}">${c.roe == null ? '—' : `${c.roe.toFixed(1)}%`}</span>
+      </button>`).join('')
+    + `<div class="macro-note">${rows.length} of ${all.length} · KOSPI · DART financial statements, Naver prices · P/E is trailing twelve months · FX ${d.fx && d.fx.rate ? d.fx.rate.toFixed(0) : '—'} KRW per USD.</div>`;
+}
+
+async function renderKoreaPage(stub) {
+  const el = $('co-body'); if (!el) return;
+  let c = koreaData && (koreaData.full || []).find((x) => x.code === stub.code);
+  if (!c) {
+    el.innerHTML = stLoading('Reading the filing…');
+    try { c = await jget(`/api/korea/company/${encodeURIComponent(stub.code)}`, 1800000); } catch { c = null; }
+  }
+  if (!c) { el.innerHTML = stError('Couldn\u2019t load this company.'); return; }
+  const sub = $('deals-sub'); if (sub) sub.textContent = `${c.name} · ${c.ticker} · KOSPI`;
+  const cell = (k, v, t, cls = '') => `<div class="co-stat" title="${esc(t)}"><span class="co-k">${k}</span><span class="co-v ${cls}">${v}</span></div>`;
+  const chg = (x) => (x == null ? '' : `${x >= 0 ? '+' : ''}${x.toFixed(1)}%`);
+  const q = c.quarters || [];
+  const h = c.history || [];
+  el.innerHTML = `<div class="ma-crumb"><button class="ma-back" data-krback="1">← COMPANIES</button> <span>${esc(c.ticker)}</span></div>`
+    + `<div class="co-head">${krMono(c)}<div><div class="co-name">${esc(c.name)}</div>
+        <div class="co-sub">${esc(c.ticker)} · KOSPI</div></div></div>`
+    + `<div class="co-price"><span class="co-price-v">${won(c.price)}</span>
+        <span class="co-price-c ${c.chg1d >= 0 ? 'pos' : 'neg'}">${chg(c.chg1d)} today</span>
+        <span class="co-price-c ${c.chg6m >= 0 ? 'pos' : 'neg'}">${chg(c.chg6m)} 6M</span>
+        <span class="co-price-c ${c.chgYtd >= 0 ? 'pos' : 'neg'}">${chg(c.chgYtd)} YTD</span>
+        <span class="dimtext">${c.priceDate ? `as of ${c.priceDate}` : ''}</span></div>`
+    + `<div class="co-stats co-stats-12">
+        ${cell('MARKET CAP', won(c.marketCap), 'Price × shares outstanding')}
+        ${cell('MARKET CAP · USD', c.marketCapUsd ? `$${(c.marketCapUsd / 1e9).toFixed(1)}B` : '—', 'Converted at the current USD/KRW rate')}
+        ${cell(`P/E · ${c.peBasis || 'FY'}`, c.pe != null ? `${c.pe.toFixed(2)}×` : '—', c.peBasis === 'TTM' ? 'Market cap ÷ the last four quarters of profit' : 'Market cap ÷ fiscal-year profit')}
+        ${cell('P/B', c.pb != null ? `${c.pb.toFixed(2)}×` : '—', 'Market cap ÷ shareholders\u2019 equity')}
+        ${cell('RETURN ON EQUITY', c.roe != null ? `${c.roe.toFixed(1)}%` : '—', 'Profit ÷ equity', c.roe >= 0 ? 'pos' : 'neg')}
+        ${cell('OPERATING MARGIN', c.opMargin != null ? `${c.opMargin.toFixed(1)}%` : '—', 'Operating profit ÷ revenue', c.opMargin >= 0 ? 'pos' : 'neg')}
+        ${cell('NET MARGIN', c.netMargin != null ? `${c.netMargin.toFixed(1)}%` : '—', 'Net profit ÷ revenue', c.netMargin >= 0 ? 'pos' : 'neg')}
+        ${cell('FCF YIELD', c.fcfYield != null ? `${c.fcfYield.toFixed(1)}%` : '—', 'Operating plus investing cash flow ÷ market cap')}
+      </div>`
+    + (h.length > 1 ? `<div class="jp-q"><div class="jp-q-head"><span class="ph-t">FIVE-YEAR RECORD</span><span class="dimtext">${h.length} fiscal years · ₩</span></div>
+        <table class="jp-q-table"><thead><tr><th>FISCAL YEAR</th><th>REVENUE</th><th>OP PROFIT</th><th>NET PROFIT</th><th>ROE</th></tr></thead><tbody>
+        ${[...h].reverse().map((x) => `<tr><td>${esc(x.y)}</td><td>${won(x.s)}</td><td>${won(x.o)}</td><td>${won(x.n)}</td><td>${x.n != null && x.q ? `${((x.n / x.q) * 100).toFixed(1)}%` : '—'}</td></tr>`).join('')}
+        </tbody></table></div>` : '')
+    + (q.length > 1 ? `<div class="jp-q"><div class="jp-q-head"><span class="ph-t">QUARTERLY RESULTS</span><span class="dimtext">${q.length} quarters · ₩</span></div>
+        <table class="jp-q-table"><thead><tr><th>QUARTER</th><th>REVENUE</th><th>OP PROFIT</th><th>MARGIN</th><th>NET PROFIT</th></tr></thead><tbody>
+        ${[...q].reverse().map((x) => `<tr><td>${esc(x.d)} <em>${esc(x.q)}</em></td><td>${won(x.revenue)}</td><td>${won(x.operatingProfit)}</td><td>${x.revenue && x.operatingProfit != null ? `${((x.operatingProfit / x.revenue) * 100).toFixed(1)}%` : '—'}</td><td>${won(x.netIncome)}</td></tr>`).join('')}
+        </tbody></table></div>` : '')
+    + `<div class="macro-note">KOSPI · statements from DART (Financial Supervisory Service), prices from Naver Finance. Korean companies report cumulatively (Q1, H1, Q3, annual), so quarters here are the differences and the annual report is Q4. No guidance is published, so there is no forward P/E.</div>`;
+}
+
 function renderCompanies() {
   // Keep the market switch in sync with the remembered choice (it also survives a reload).
   document.querySelectorAll('[data-region]').forEach((b) => b.classList.toggle('on', b.dataset.region === coRegion));
   if (coRegion === 'jp') return renderJapan();
+  if (coRegion === 'kr') return renderKorea();
   const el = $('co-body');
   if (charts['co-chart']) { try { charts['co-chart'].destroy(); } catch {} delete charts['co-chart']; }
   if (!el) return;
@@ -4631,6 +4727,9 @@ document.addEventListener('click', (e) => {
     renderCompanies();
     return;
   }
+  const krrow = e.target.closest('[data-kr]');
+  if (krrow) { krSel = krrow.dataset.kr; renderKorea(); window.scrollTo({ top: 0, behavior: 'smooth' }); return; }
+  if (e.target.closest('[data-krback]')) { krSel = null; renderKorea(); return; }
   const jrow = e.target.closest('[data-jp]');
   if (jrow) { jpSel = jrow.dataset.jp; renderJapan(); window.scrollTo({ top: 0, behavior: 'smooth' }); return; }
   if (e.target.closest('[data-jpback]')) { jpSel = null; renderJapan(); return; }
@@ -4793,6 +4892,7 @@ document.addEventListener('input', (e) => {
   }
   if (e.target && e.target.id === 'co-search') {
     if (coRegion === 'jp') { jpQuery = e.target.value || ''; jpSel = null; renderJapan(); return; }
+    if (coRegion === 'kr') { krQuery = e.target.value || ''; krSel = null; renderKorea(); return; }
     coQuery = e.target.value || ''; coCik = null; renderCompanies(); return;
   }
   if (e.target && e.target.id === 'co-cmp') {

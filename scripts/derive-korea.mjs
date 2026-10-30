@@ -59,7 +59,11 @@ export function deriveKorea({ companies, fx = null }) {
   const out = [];
   for (const c of companies) {
     const price = c.price ?? null;
-    const shares = c.shares ?? null;
+    // Shares from net income ÷ basic EPS where both exist: DART's stock table counts issued shares,
+    // which for a company that has cancelled treasury stock is not the count the market capitalises.
+    const annual = (c.reports || []).find((r) => r.report === 'annual') || null;
+    const epsShares = annual && annual.netIncome && annual.eps ? annual.netIncome / annual.eps : null;
+    const shares = epsShares || c.shares || null;
     const cap = price != null && shares != null ? price * shares : null;
 
     const q = buildQuartersKr(c.reports || []);

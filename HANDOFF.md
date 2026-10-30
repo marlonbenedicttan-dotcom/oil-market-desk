@@ -2437,3 +2437,20 @@ they are filed. Today's run picked up **295 companies** that had filed.
   investing cash flow. Guards reject P/E above 500 and P/B above 50.
 - **11 tests** across the two modules, all fixture-based — the maths is verified before a key exists.
 - **Blocked on**: a free DART API key (40 characters) to fetch the real market.
+
+## Korea: pipeline, endpoints and segment (2026-10-30)
+- **`scripts/build-korea.mjs`** — every KOSPI company. Market class and industry come from DART's
+  `company.json` (`corp_cls === 'Y'`), shares from `stockTotqySttus`, statements from `fnlttSinglAcntAll`
+  (five annual years plus the current year's Q1/H1/Q3), prices from **Naver Finance** (Yahoo is
+  rate-limiting this IP), FX from Frankfurter.
+- **Two real errors found and fixed while validating on four companies:**
+  1. DART's share table returns common, preferred **and a 합계 (total)** row — summing all three double
+     counted. Now the total row is used.
+  2. Issued shares are not the count the market capitalises after treasury cancellations, so shares are
+     now taken from net income ÷ basic EPS where both exist, with the DART total as fallback.
+  After both fixes: Samsung ₩222,500 · P/E 33.7 · P/B 3.49; SK Hynix P/E 22.7; Hana 8.6; IBK 6.1.
+- **Server**: `/api/korea` (list projection) and `/api/korea/company/{code}` (full record), ETag + cache,
+  same shape as Japan.
+- **UI**: a third region button `KOREA · KOSPI` with the list and a company page carrying price strip,
+  eight stats, five-year record and quarterly table. No guidance section — Korean companies do not
+  publish forecasts.
