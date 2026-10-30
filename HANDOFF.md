@@ -2520,3 +2520,14 @@ they are filed. Today's run picked up **295 companies** that had filed.
   it was 1Y/5Y/10Y — so all three markets read identically.
 - **English names in the list**: `nameEn` was missing from the list projection, so rows fell back to Korean.
   Fixed; the screener and theme tables now show SAMSUNG ELECTRONICS CO LTD.
+
+## Companies: one chart component, and a market you can see (2026-10-31)
+- **The chart header is now one component.** The US used solid amber chips with a COMPARE box; Japan and
+  Korea used underlined text tabs. All three now use the same `.co-ranges` header — chips plus a compare
+  field — so the graph looks identical in every market. Korea gained a working compare (indexed to 100).
+- **Market identity**: each market has a colour — US blue `#4f8cff`, Japan crimson `#e05252`, Korea teal
+  `#2fb5a8` — applied to the active tab and to a new **market bar** under the region switch:
+  `● S&P 500 7,569.87 −1.95% today · 500 companies`, which becomes `TOPIX 3,965.07 −0.95% · 1,547` or
+  `KOSPI 5,730.74 −3.48% · 737`. The bar re-reads after each market's data loads.
+- **A market badge follows you into the company page**: the breadcrumb now reads
+  `← COMPANIES 005930 [KOREA]`, coloured to match.

@@ -2563,6 +2563,12 @@ $('screen')?.addEventListener('change', (e) => {
   if (e.target.id === 'cos-sector') { coScreen = { ...coScreen, sector: e.target.value, page: 1 }; renderScreen(true); return; }
   if (e.target.id === 'cosj-sector') { coScreenJp.sector = e.target.value; coScreenJp.page = 1; renderScreen(true); return; }
   if (e.target.dataset && e.target.dataset.krsector) { krSector = e.target.value; renderKorea(); return; }
+  if (e.target.id === 'kr-cmp') {
+    krCompare = (e.target.value || '').trim().toUpperCase();
+    const cur = (koreaData && koreaData.companies || []).find((x) => x.code === krSel);
+    if (cur) drawKrChart(cur);
+    return;
+  }
   if (e.target.dataset && e.target.dataset.jppageper) { coScreenJp.per = Number(e.target.value); coScreenJp.page = 1; renderScreen(true); return; }
   if (e.target.dataset && e.target.dataset.copageper) { coScreen.per = Number(e.target.value); coScreen.page = 1; renderScreen(true); return; }
   const t = e.target;
@@ -3674,12 +3680,14 @@ function jpMatches(c) {
 
 async function renderJapan() {
   const el = $('co-body'); if (!el) return;
+  syncMarketBar();
   const noteUs = $('co-note'); if (noteUs) noteUs.classList.add('hidden');
   for (const k of ['jp-chart', 'jp-q-chart']) {
     if (charts[k]) { try { charts[k].destroy(); } catch {} delete charts[k]; }
   }
   if (!japanData) el.innerHTML = stLoading('Loading Japan…');
   const d = await loadJapan();
+  syncMarketBar();
   const all = (d && d.companies) || [];
   const sub = $('deals-sub');
   if (sub) sub.textContent = all.length ? `${all.length} companies · TSE Prime · ¥ JPY · J-Quants` : 'TSE Prime · J-Quants (JPX)';
@@ -3874,7 +3882,7 @@ function renderJapanPageBody(c) {
   const pbOurs = v.fields && v.fields.equity ? v.fields.equity.ours : null;
   const starred = watchlist().includes(`jp:${c.code}`);
 
-  el.innerHTML = `<div class="ma-crumb"><button class="ma-back" data-jpback="1">← COMPANIES</button> <span>${esc(c.ticker)}</span></div>`
+  el.innerHTML = `<div class="ma-crumb"><button class="ma-back" data-jpback="1">← COMPANIES</button> <span>${esc(c.ticker)}</span><span class="mb-tag">JAPAN</span></div>`
     + `<div class="co-head">${jpMono(c)}
         <div><div class="co-name">${esc(c.name)}</div>
         <div class="co-sub">${esc(c.ticker)}${c.sector ? ' · ' + esc(c.sector) : ''}${c.size ? ' · ' + esc(c.size) : ''}${c.nameJa ? ' · ' + esc(c.nameJa) : ''}</div>
@@ -3924,9 +3932,10 @@ function renderJapanPageBody(c) {
         ${cell('OPERATING CASH FLOW', yen(c.cfo), 'Fiscal year, as reported')}
         ${cell('FINANCING CASH FLOW', yen(c.cff), 'Dividends, buybacks and borrowings, net')}
       </div>`
-    + `<div class="co-chart-tabs">${[['1m', '1M'], ['6m', '6M'], ['ytd', 'YTD'], ['1y', '1Y'], ['5y', '5Y']].map(([k, t]) => `<button type="button" data-jprange="${k}" class="${jpRange === k ? 'on' : ''}">${t}</button>`).join('')}
-        <input class="jp-cmp" id="jp-cmp" list="jp-cmp-list" placeholder="compare a company…" value="${esc(jpCompare)}" autocomplete="off">
+    + `<div class="co-ranges">
+        <span class="co-cmp-l">COMPARE</span><input class="co-cmp" id="jp-cmp" list="jp-cmp-list" placeholder="code or TOPIX…" value="${esc(jpCompare)}" autocomplete="off">
         <datalist id="jp-cmp-list">${((japanData && japanData.companies) || []).slice(0, 400).map((x) => `<option value="${esc(x.code)}">${esc(x.name)}</option>`).join('')}</datalist>
+        ${[['1m', '1M'], ['6m', '6M'], ['ytd', 'YTD'], ['1y', '1Y'], ['5y', '5Y']].map(([k, t]) => `<button class="ma-chip${jpRange === k ? ' on' : ''}" data-jprange="${k}">${t}</button>`).join('')}
       </div>`
     + `<div class="co-chartwrap"><canvas id="jp-chart"></canvas></div>`
     + jpQuartersHtml(c)
@@ -4114,7 +4123,7 @@ function drawJpQuarters(c) {
 // do not publish full-year forecasts — so there is no forward P/E and no guidance-versus-delivered.
 let koreaData = null, krSel = null, krQuery = '';
 let krRange = (() => { try { return localStorage.getItem('oilbasis.krRange') || '1y'; } catch { return '1y'; } })();
-let krPreset = null, krSector = 'all';
+let krPreset = null, krSector = 'all', krCompare = '';
 let krView = (() => { try { return localStorage.getItem('oilbasis.krView') || 'screener'; } catch { return 'screener'; } })();
 let krTheme = (() => { try { return localStorage.getItem('oilbasis.krTheme') || 'semis'; } catch { return 'semis'; } })();
 
@@ -4139,10 +4148,12 @@ const krViewsBar = () => `<div class="co-views">${[['market', 'MARKET'], ['scree
 
 async function renderKorea() {
   const el = $('co-body'); if (!el) return;
+  syncMarketBar();
   const noteUs = $('co-note'); if (noteUs) noteUs.classList.add('hidden');
   syncCoTools();
   if (!koreaData) el.innerHTML = stLoading('Loading KOSPI…');
   const d = await loadKorea();
+  syncMarketBar();
   const all = (d && d.companies) || [];
   const sub = $('deals-sub');
   if (sub) sub.textContent = all.length ? `${all.length} companies · KOSPI · ₩ KRW · DART` : 'KOSPI · DART';
@@ -4263,7 +4274,7 @@ async function renderKoreaPage(stub) {
   const chg = (x) => (x == null ? '' : `${x >= 0 ? '+' : ''}${x.toFixed(1)}%`);
   const q = c.quarters || [];
   const h = c.history || [];
-  el.innerHTML = `<div class="ma-crumb"><button class="ma-back" data-krback="1">← COMPANIES</button> <span>${esc(c.ticker)}</span></div>`
+  el.innerHTML = `<div class="ma-crumb"><button class="ma-back" data-krback="1">← COMPANIES</button> <span>${esc(c.ticker)}</span><span class="mb-tag">KOREA</span></div>`
     + `<div class="co-head">${krMono(c)}<div><div class="co-name">${esc(krName(c))}</div>
         <div class="co-sub">${esc(c.ticker)} · KOSPI${c.name ? ' · ' + esc(c.name) : ''}</div>
         ${c.description ? `<div class="co-desc">${esc(c.description)}</div>` : ''}
@@ -4283,7 +4294,11 @@ async function renderKoreaPage(stub) {
         ${cell('NET MARGIN', c.netMargin != null ? `${c.netMargin.toFixed(1)}%` : '—', 'Net profit ÷ revenue', c.netMargin >= 0 ? 'pos' : 'neg')}
         ${cell('FCF YIELD', c.fcfYield != null ? `${c.fcfYield.toFixed(1)}%` : '—', 'Operating plus investing cash flow ÷ market cap')}
       </div>`
-    + `<div class="co-chart-tabs">${[['1m', '1M'], ['6m', '6M'], ['ytd', 'YTD'], ['1y', '1Y'], ['5y', '5Y']].map(([k, t]) => `<button type="button" data-krrange="${k}" class="${krRange === k ? 'on' : ''}">${t}</button>`).join('')}</div>`
+    + `<div class="co-ranges">
+        <span class="co-cmp-l">COMPARE</span><input class="co-cmp" id="kr-cmp" list="kr-cmp-list" placeholder="code…" value="${esc(krCompare)}" autocomplete="off">
+        <datalist id="kr-cmp-list">${((koreaData && koreaData.companies) || []).slice(0, 400).map((x) => `<option value="${esc(x.ticker)}">${esc(x.nameEn || x.name)}</option>`).join('')}</datalist>
+        ${[['1m', '1M'], ['6m', '6M'], ['ytd', 'YTD'], ['1y', '1Y'], ['5y', '5Y']].map(([k, t]) => `<button class="ma-chip${krRange === k ? ' on' : ''}" data-krrange="${k}">${t}</button>`).join('')}
+      </div>`
     + `<div class="co-chartwrap"><canvas id="kr-chart"></canvas></div>`
     + (h.length > 1 ? `<div class="jp-q"><div class="jp-q-head"><span class="ph-t">FIVE-YEAR RECORD</span><span class="dimtext">${h.length} fiscal years · ₩</span></div>
         <table class="jp-q-table"><thead><tr><th>FISCAL YEAR</th><th>REVENUE</th><th>OP PROFIT</th><th>NET PROFIT</th><th>ROE</th></tr></thead><tbody>
@@ -4307,12 +4322,67 @@ async function drawKrChart(c, range = krRange) {
     return;
   }
   if (wrap) wrap.removeAttribute('data-empty');
+  const other = krCompare && krCompare !== c.ticker
+    ? await jget(`/api/korea/chart?ticker=${encodeURIComponent(krCompare)}&range=${encodeURIComponent(range)}`, 600000).catch(() => null)
+    : null;
+  if (other && other.dates && other.dates.length > 1) {
+    const bmap = new Map(other.dates.map((d, i) => [d, other.closes[i]]));
+    const dates = ch.dates.filter((d, i) => ch.closes[i] != null && bmap.get(d) != null);
+    if (dates.length > 1) {
+      const a0 = ch.closes[ch.dates.indexOf(dates[0])];
+      const b0 = bmap.get(dates[0]);
+      mountChart('kr-chart', {
+        labels: dates,
+        datasets: [
+          line(`${c.ticker} · ${(c.nameEn || c.name).slice(0, 14)}`, dates.map((d) => (ch.closes[ch.dates.indexOf(d)] / a0) * 100), CT.c1),
+          line(`${krCompare}`, dates.map((d) => (bmap.get(d) / b0) * 100), CT.c2),
+        ],
+      }, baseOptions({ dp: 0, dateAxis: true, yTitle: 'indexed to 100' }));
+      return;
+    }
+  }
   mountChart('kr-chart', { labels: ch.dates, datasets: [line(`${c.ticker} · KRW · ${range.toUpperCase()}`, ch.closes, CT.c1)] }, baseOptions({ dp: 0, dateAxis: true }));
+}
+
+// Which market am I in? A colour, a name, the index level and the company count — refreshed whenever a
+// market or a view changes. Fetched once for the US index, reused after.
+let spxInfo = null;
+async function syncMarketBar() {
+  const pane = document.getElementById('p-deals');
+  const bar = document.getElementById('co-marketbar');
+  if (!pane || !bar) return;
+  pane.dataset.market = coRegion;
+  let name = '', lvl = '—', chg = null, count = '';
+  if (coRegion === 'us') {
+    if (!spxInfo) {
+      try { const mt = await jget('/api/macro-tickers', 900000); spxInfo = (mt && mt.items || []).find((x) => x.label === 'S&P 500') || {}; }
+      catch { spxInfo = {}; }
+    }
+    name = 'S&P 500';
+    lvl = spxInfo.price != null ? Number(spxInfo.price).toLocaleString('en-US', { maximumFractionDigits: 2 }) : '—';
+    chg = spxInfo.pct ?? null;
+    count = companiesData ? `${(companiesData.companies || []).filter((c) => !c.shareClass).length} companies` : '';
+  } else if (coRegion === 'jp') {
+    name = 'TOPIX';
+    const t = japanData && japanData.topix;
+    lvl = t && t.level != null ? t.level.toFixed(2) : '—';
+    chg = t ? t.chg1d : null;
+    count = japanData ? `${(japanData.companies || []).length} companies` : '';
+  } else {
+    name = 'KOSPI';
+    const i = koreaData && koreaData.index;
+    lvl = i && i.level != null ? i.level.toLocaleString('en-US', { maximumFractionDigits: 2 }) : '—';
+    chg = i ? i.chg1d : null;
+    count = koreaData ? `${(koreaData.companies || []).length} companies` : '';
+  }
+  const chgHtml = chg == null ? '' : `<span class="${chg >= 0 ? 'pos' : 'neg'}">${chg >= 0 ? '+' : ''}${chg.toFixed(2)}% today</span>`;
+  bar.innerHTML = `<span class="mb-name">${name}</span><span class="mb-lvl">${lvl}</span>${chgHtml}<span class="dimtext">${count}</span>`;
 }
 
 function renderCompanies() {
   // Keep the market switch in sync with the remembered choice (it also survives a reload).
   document.querySelectorAll('[data-region]').forEach((b) => b.classList.toggle('on', b.dataset.region === coRegion));
+  syncMarketBar();
   if (coRegion === 'jp') return renderJapan();
   if (coRegion === 'kr') return renderKorea();
   const el = $('co-body');
@@ -4691,7 +4761,7 @@ async function renderCompanyPageBody(el, c, all) {
   const series = (c.series || []).slice().sort((a, b) => a.fy - b.fy);
   const val = (v) => coMoney(v);
 
-  el.innerHTML = `<div class="ma-crumb"><button class="ma-back" data-coback="1">← COMPANIES</button> <span>${esc(c.ticker || c.name)}</span></div>`
+  el.innerHTML = `<div class="ma-crumb"><button class="ma-back" data-coback="1">← COMPANIES</button> <span>${esc(c.ticker || c.name)}</span><span class="mb-tag">S&amp;P 500</span></div>`
     + `<div class="co-head">
         ${coMono(c)}
         <div><div class="co-name">${esc(c.name)}</div>

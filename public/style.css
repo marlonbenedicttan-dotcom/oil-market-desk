@@ -1291,3 +1291,17 @@ button.deal-sec-tile:hover { background: #10151b; }
 .sc-pager select { background: #0c0f13; border: 1px solid var(--line2); color: var(--text); font: inherit;
   font-size: 9px; padding: 5px 6px; border-radius: 2px; }
 @media (max-width: 640px) { .sc-pager { gap: 6px; font-size: 9px; } .sc-pager .co-tgl { min-width: 0; padding: 5px 7px; } }
+
+/* Companies: one market at a time. A colour per market, a bar that names it, and a badge that follows
+   you into a company page — so you always know which market you are looking at. */
+#p-deals[data-market="us"] { --mkt: #4f8cff; }
+#p-deals[data-market="jp"] { --mkt: #e05252; }
+#p-deals[data-market="kr"] { --mkt: #2fb5a8; }
+.co-region button.on { color: var(--mkt, var(--amber)); border-bottom-color: var(--mkt, var(--amber)); }
+.co-marketbar { display: flex; align-items: baseline; gap: 12px; padding: 7px 12px; border-bottom: 1px solid var(--line);
+  border-left: 2px solid var(--mkt, var(--line)); font-size: 10px; letter-spacing: .4px; }
+.co-marketbar .mb-name { font-weight: 700; color: var(--mkt, var(--text)); letter-spacing: 1px; }
+.co-marketbar .mb-lvl { font-size: 14px; font-variant-numeric: tabular-nums; color: var(--text); }
+.mb-tag { font-size: 8px; letter-spacing: 1px; color: var(--mkt, var(--dim)); border: 1px solid var(--mkt, var(--line));
+  padding: 1px 5px; border-radius: 2px; margin-left: 6px; }
+@media (max-width: 640px) { .co-marketbar { gap: 8px; font-size: 9px; } .co-marketbar .mb-lvl { font-size: 12px; } }
