@@ -3183,6 +3183,9 @@ async function buildDigest() {
   const m = await getMarket();
   const [c, inv, pos] = await Promise.all([getCurves().catch(() => null), getInventories().catch(() => null), getPositioning().catch(() => null)]);
   const L = [`MARLON'S WATCHTOWER — daily digest (${new Date().toISOString()})`, ''];
+  // Freshness first: if the nightly refresh stopped, this email is the thing that tells you.
+  L.push(dataFreshnessLine());
+  L.push('');
   L.push('PRICES  futures | real | gap | age(days)');
   for (const b of m.benchmarks) L.push(`  ${b.label.padEnd(20)} ${(b.paper ?? '—').toString().padStart(9)} | ${(b.physical ?? '—').toString().padStart(9)} | ${(b.basis == null ? '—' : sgn(b.basis)).padStart(8)} | ${b.spotLagDays ?? '—'}`);
   if (c?.wti) L.push('', `PRICES FOR MONTHS AHEAD  WTI ${c.wti.shape} (this-vs-next ${sgn(c.wti.m1m2)}, vs 6mo ${sgn(c.wti.m1m6)})  |  Brent ${c.brent.shape} (this-vs-next ${sgn(c.brent.m1m2)})`);
@@ -3688,6 +3691,25 @@ async function fanOut(alerts) {
     await sleep(250);                        // spread the sends rather than bursting one host
   }
   if (changed) saveSubs(list);
+}
+
+// How old the company datasets are, in the email. A silent workflow failure is the one failure mode
+// nobody notices until the numbers are wrong.
+function dataFreshnessLine() {
+  const age = (file) => {
+    try {
+      const d = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', file), 'utf8'));
+      const t = Date.parse(d.updated || '');
+      if (!Number.isFinite(t)) return null;
+      return { at: d.updated.slice(0, 16).replace('T', ' '), h: (Date.now() - t) / 3600e3 };
+    } catch { return null; }
+  };
+  const us = age('companies.json');
+  const jp = age('japan.json');
+  const fmt = (label, x) => (x ? `${label} ${x.at}Z (${x.h.toFixed(0)}h old)` : `${label} missing`);
+  const stale = [us, jp].filter((x) => x && x.h > 36);
+  const head = stale.length ? 'DATA ⚠ STALE — the nightly refresh has not landed' : 'DATA current';
+  return `${head}\n  ${fmt('US', us)} · ${fmt('Japan', jp)}`;
 }
 
 async function maybeSendDigest() {

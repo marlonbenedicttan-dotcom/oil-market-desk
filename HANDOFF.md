@@ -2405,3 +2405,13 @@ until the following week. The build now asks J-Quants which companies disclosed 
 they are filed. Today's run picked up **295 companies** that had filed.
 - **US home screener bug**: `coScreen` had no `page`/`per` after the pagination change, so `slice(NaN, NaN)`
   returned nothing. US now shows 50 of 500.
+
+## Closing the silent-failure gap (2026-10-30)
+- **The daily digest email now leads with data age.** `DATA current — US 2026-10-30 07:46Z (0h) · Japan
+  07:53Z (0h)`, or `DATA ⚠ STALE — the nightly refresh has not landed` if either dataset is over 36 hours
+  old. The digest is server-side, so it still arrives when the workflow does not — that is the point.
+- **New workflow `data-freshness.yml`** runs daily at 12:00 UTC, ~13 hours after the evening refresh.
+  `scripts/check-freshness.mjs` exits non-zero if either market is older than 36h; the job then opens a
+  GitHub issue ("Data refresh is stale") and fails the run, so there is both a durable record and the usual
+  failure notification. It closes the issue automatically once data is fresh again.
+- Verified: the check reports both datasets at 0.1–0.2h, and the digest line renders at the top.

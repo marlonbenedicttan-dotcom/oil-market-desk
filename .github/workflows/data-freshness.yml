@@ -1,0 +1,44 @@
+name: data-freshness
+
+# The nightly refresh is silent when it fails: the site keeps serving numbers that look current.
+# This runs every day at noon UTC — hours after the 22:40 refresh should have landed — and fails loudly,
+# opening an issue so there is a durable record rather than a red mark nobody opens.
+on:
+  schedule:
+    - cron: '0 12 * * *'   # 12:00 UTC, ~13 hours after the evening refresh
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: How old is the data?
+        run: node scripts/check-freshness.mjs
+      - name: Open an issue if stale
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh issue list --repo "${{ github.repository }}" --state open --search "Data refresh is stale in:title" | grep -q .; then
+            echo 'issue already open'
+          else
+            gh issue create --repo "${{ github.repository }}" \
+              --title "Data refresh is stale" \
+              --body "The datasets are older than 36 hours. The nightly \`companies-daily\` run has not landed — check https://github.com/${{ github.repository }}/actions/workflows/companies-daily.yml. The site is serving prices that look current but are not."
+          fi
+      - name: Close the issue when fresh again
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          for n in $(gh issue list --repo "${{ github.repository }}" --state open --search "Data refresh is stale in:title" --json number -q '.[].number'); do
+            gh issue close "$n" --repo "${{ github.repository }}" --comment "Data is fresh again."
+          done
