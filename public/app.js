@@ -2465,7 +2465,7 @@ function renderKoreaScreen(el) {
   const { sort, dir } = coScreenKr;
   const keyOf = (c) => (sort === 'label' ? (c.nameEn || c.name || '') : c[sort]);
   let rows = all.filter((c) => (coScreenKr.sector === 'all' || c.sector === coScreenKr.sector)
-    && (!q || `${c.name} ${c.nameEn || ''} ${c.ticker} ${c.sector || ''}`.toLowerCase().includes(q)));
+    && (!q || `${c.name} ${c.nameEn || ''} ${c.ticker} ${c.sector || ''} ${(c.brands || []).join(' ')}`.toLowerCase().includes(q)));
   rows = [...rows].sort((a, b) => {
     const x = keyOf(a), y = keyOf(b);
     if (x == null && y == null) return 0;
@@ -4339,7 +4339,7 @@ function renderKoreaScreener(all, d) {
   const q = krQuery.trim().toLowerCase();
   const sectors = [...new Set(all.map((c) => c.sector).filter(Boolean))].sort();
   const preset = KR_PRESETS.find((p) => p.id === krPreset);
-  const rows = all.filter((c) => (!q || `${c.name} ${c.nameEn || ''} ${c.ticker}`.toLowerCase().includes(q))
+  const rows = all.filter((c) => (!q || `${c.name} ${c.nameEn || ''} ${c.ticker} ${(c.brands || []).join(' ')}`.toLowerCase().includes(q))
     && (krSector === 'all' || c.sector === krSector)
     && (!preset || preset.test(c)));
   const max = Math.max(...all.map((c) => c.marketCap || 0), 1);
@@ -4588,10 +4588,10 @@ function renderCompanies() {
   // The aggregates live in the MARKET view now; the screener opens straight on the rows.
   warmMarkets();
   el.innerHTML = usViewsBar()
-    + `<div class="co-hrow"><span>#</span><span></span><span>COMPANY</span><span>MARKET CAP</span><span>P/E</span><span>MARGIN</span></div>`
+    + `<div class="co-hrow"><span>#</span><span></span><span>COMPANY</span><span>MARKET CAP</span><span>P/E</span><span>ROE</span></div>`
     + (rows.length ? '' : `<div class="macro-note">No company matches “${esc(coQuery.trim())}”. Try a ticker (AAPL) or a sector name.</div>`)
     + rows.map((c, i) => {
-      const m = coMargin(c);
+      const m = c.roe != null ? c.roe : null;
       return `<button class="co-row" data-cik="${esc(c.cik)}">
         <span class="co-rank">${i + 1}</span>
         ${coMono(c)}

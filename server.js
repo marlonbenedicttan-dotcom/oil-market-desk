@@ -702,6 +702,7 @@ const projectUs = (c) => {
 };
 const projectKr = (c) => ({
   code: c.code, ticker: c.ticker, name: c.name, nameEn: c.nameEn || null, sector: c.sector || null,
+  brands: c.brands && c.brands.length ? c.brands : null,
   price: c.price, priceDate: c.priceDate, marketCap: c.marketCap, marketCapUsd: c.marketCapUsd,
   chg1d: c.chg1d, chg6m: c.chg6m, chgYtd: c.chgYtd,
   pe: c.pe, peBasis: c.peBasis, pb: c.pb, roe: c.roe, opMargin: c.opMargin, netMargin: c.netMargin,

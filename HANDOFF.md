@@ -2563,3 +2563,16 @@ they are filed. Today's run picked up **295 companies** that had filed.
 - **Won prices** now print in full (₩222,500) rather than the compact 만 form used for market caps.
 - The compare handler had been wired into the home-screener listener again, so it never fired inside the
   COMPANIES tab; moved to the document-level listener.
+
+## US list shows ROE; Korea searches by brand; universe gaps (2026-10-31)
+- **US screener column**: the list showed MARGIN while Japan and Korea showed ROE. Changed to ROE so all
+  three read the same (NVIDIA 76.3%).
+- **Brand search in Korea**: the filter only looked at name/ticker. It now also matches brands and the Korean
+  name — "galaxy" finds Samsung, "shin ramyun" finds Nongshim.
+- **Missing companies**: YG Entertainment, SM and JYP are **KOSDAQ** (`corp_cls: 'K'` in DART), not KOSPI, so
+  they are correctly outside the index. Ottogi *was* present but named "OTOKI CORP" by the symbology source;
+  corrected to OTTOGI CORP and now searchable.
+- **Universe gaps**: 48 listed filers had no market class because their `company.json` call failed during the
+  DART block. `refresh-korea-universe.mjs` refetches only those — the universe went 821 → 829.
+- **Regression caught**: that refresh overwrote the OpenFIGI English names with nulls; it now merges the
+  previous names instead of replacing them.
