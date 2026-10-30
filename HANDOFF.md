@@ -2316,3 +2316,12 @@ Result: 502 of 503 prices dated **2026-10-29**, AAPL $348.91 +1.48%.
   factual line and are labelled `generated` on the page.
 - Going further accurately needs EDINET — the annual securities report's business-description section —
   which is another API key and a Japanese-text extraction step, not a writing exercise.
+
+## Japan descriptions: fetched for the whole market (2026-10-30)
+- **987 more descriptions fetched** from stockanalysis.com's company-profile pages, which are server-rendered
+  and cover every TSE code. `scripts/fetch-japan-profiles.mjs`, cached per code in `data/cache/profiles/`.
+- Final split: **556 curated · 987 fetched · 1 generated** (Eco's Co. has no profile page). Zero blanks.
+- The fetched text is real: ARCHION "manufactures and sells commercial vehicles under the FUSO and HINO
+  brands"; Procrea "operates as a holding company for the Aomori Michinoku Bank".
+- Precedence is curated → fetched → generated, and `attach-japan-descriptions.mjs` will not overwrite a
+  fetched profile with a generated line. The page credits the source on fetched entries.

@@ -104,6 +104,9 @@ for (const c of jp.companies) {
     c.descSource = 'curated';
     c.descReviewed = book.updated;
     curated++;
+  } else if (c.descSource === 'profile' && c.description) {
+    // A fetched profile beats a generated line — never overwrite it.
+    continue;
   } else {
     c.description = generated(c, counts.get(c.sector) || 0);
     c.brands = [];

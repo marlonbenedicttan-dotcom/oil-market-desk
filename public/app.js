@@ -3880,7 +3880,7 @@ function renderJapanPageBody(c) {
         ${c.guidanceVsDelivered ? ` FY ${esc(c.guidanceVsDelivered.fy)}: the company guided ${yen(c.guidanceVsDelivered.forecast)} and delivered ${yen(c.guidanceVsDelivered.actual)} (${c.guidanceVsDelivered.deltaPct >= 0 ? '+' : ''}${c.guidanceVsDelivered.deltaPct}%).` : ''}
         ${c.revisions ? ` This year the forecast moved ${c.revisions.moves} time${c.revisions.moves > 1 ? 's' : ''} — ${c.revisions.up} up, ${c.revisions.down} down — from ${yen(c.revisions.first)} to ${yen(c.revisions.last)} (${c.revisions.deltaPct >= 0 ? '+' : ''}${c.revisions.deltaPct}%).` : ''}
         ${c.earnings ? ` Next results: ${esc(c.earnings.date)} (${esc(c.earnings.quarter || 'scheduled')}).` : ''}
-        Currency is yen throughout; the USD figure is a conversion, not a separate quote.
+        Currency is yen throughout; the USD figure is a conversion, not a separate quote.${c.descSource === 'profile' ? ' Company description from stockanalysis.com.' : ''}
       </div>`;
   drawJpPrice(c);
   drawJpQuarters(c);
