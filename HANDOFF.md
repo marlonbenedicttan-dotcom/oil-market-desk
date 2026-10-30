@@ -2303,3 +2303,16 @@ Result: 502 of 503 prices dated **2026-10-29**, AAPL $348.91 +1.48%.
   This is the fastest fix for "I don't recognise the corporate name".
 - Brands appear as chips under the company name; only brands whose ownership is certain are listed.
 - The list payload carries brands only (~7 KB); descriptions travel with the detail record.
+
+## Japan descriptions: 556 curated, the rest enriched (2026-10-30)
+- Curated coverage is now **556 companies** — every company above ¥226B of market cap, **93.6% of the index
+  by capitalisation**. Each entry says what the business is and, where ownership is certain, the brands
+  behind the corporate name (Dunlop is Sumitomo Rubber, Glico is Pocky, Tsumura is kampo medicine).
+- The remaining **988 are generated**, and the generator now uses the five-year record instead of a single
+  snapshot: revenue path, how many of the last five years were profitable, sector count, dividend.
+  *"Sales went from ¥X to ¥Y over five years (+Z%). Profitable in 4 of the last 5 years."*
+- **Why it stops there**: below roughly rank 550 the companies are small enough that writing a profile from
+  memory would be invention, not knowledge. The project's rule is accuracy over coverage, so those keep a
+  factual line and are labelled `generated` on the page.
+- Going further accurately needs EDINET — the annual securities report's business-description section —
+  which is another API key and a Japanese-text extraction step, not a writing exercise.

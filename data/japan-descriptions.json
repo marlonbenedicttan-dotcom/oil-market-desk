@@ -1,156 +1,3510 @@
 {
-  "updated": "2026-10-30",
-  "note": "Curated entries: what the company actually does, and the brands that hide behind the corporate name. Brands are only listed where ownership is certain. Companies without an entry get a generated line from the filing data.",
-  "entries": {
-    "83060": { "d": "Japan's largest banking group, spanning commercial lending, trust banking, cards and asset management, with a long-standing stake in Morgan Stanley.", "b": ["MUFG", "Mitsubishi UFJ Bank", "Mitsubishi UFJ Trust"] },
-    "72030": { "d": "The world's largest carmaker by volume: Toyota and Lexus passenger cars, trucks and hybrids, plus in-house financing and a controlling stake in Denso.", "b": ["Toyota", "Lexus", "Daihatsu", "Hino"] },
-    "99840": { "d": "A holding company for technology bets rather than a single business: the Arm chip-design stake, the Vision Funds, and a controlling interest in SoftBank Corp.", "b": ["Arm", "Vision Fund", "SoftBank"] },
-    "68570": { "d": "Semiconductor test equipment. Its testers sit at the end of the chip line, so every AI accelerator shipped passes through one.", "b": ["Advantest"] },
-    "60980": { "d": "Employment and staffing group. Most profit now comes from Indeed, the job site it bought in 2012, with Glassdoor and Japanese job boards alongside.", "b": ["Indeed", "Glassdoor", "Townwork", "Hot Pepper"] },
-    "83160": { "d": "Banking group built on Sumitomo Mitsui Banking, with SMBC Nikko in securities and a large card and consumer-finance arm.", "b": ["SMBC", "Sumitomo Mitsui Banking", "SMBC Nikko"] },
-    "285A0": { "d": "NAND flash memory, spun out of Toshiba. Sells memory chips for phones, data centres and SSDs — a cyclical business priced on the memory cycle.", "b": ["Kioxia"] },
-    "67580": { "d": "Entertainment and electronics group: PlayStation, image sensors that go into most phone cameras, music publishing and film.", "b": ["PlayStation", "Sony", "Bungie", "Crunchyroll"] },
-    "80350": { "d": "Semiconductor production equipment — coaters, developers and etch tools. One of the three or four companies the leading-edge fabs cannot build without.", "b": ["Tokyo Electron"] },
-    "99830": { "d": "Apparel retailer behind Uniqlo. Uniqlo International is now the larger half of the business; Japan remains the biggest single market.", "b": ["Uniqlo", "GU", "Theory"] },
-    "65010": { "d": "Industrial conglomerate that has pivoted to digital and energy: rail systems, power grids, Hitachi Astemo auto parts and the GlobalLogic software arm.", "b": ["Hitachi", "GlobalLogic", "Hitachi Astemo"] },
-    "84110": { "d": "One of Japan's three mega-banks, with retail and corporate lending, Mizuho Securities and a large asset-management business.", "b": ["Mizuho", "Mizuho Bank"] },
-    "68610": { "d": "Sensors and machine vision for factory automation. Sells high-margin inspection and measurement gear with famously little debt.", "b": ["Keyence"] },
-    "80580": { "d": "Japan's largest trading house: energy, metals, food, machinery and consumer goods, run as a portfolio of operating businesses worldwide.", "b": ["Mitsubishi Corporation"] },
-    "80010": { "d": "Trading house with an unusual consumer tilt — FamilyMart convenience stores, textiles and food alongside metals and machinery.", "b": ["Itochu", "FamilyMart"] },
-    "87660": { "d": "Property and casualty insurer, one of Japan's three largest, with overseas commercial insurance as its growth engine.", "b": ["Tokio Marine"] },
-    "80310": { "d": "Trading house spanning iron ore, energy, machinery and food, with a large stake in the Iseki agricultural business.", "b": ["Mitsui & Co"] },
-    "94320": { "d": "Telecom holding company: NTT Docomo mobile, NTT East and West fixed lines, and NTT Data in IT services.", "b": ["NTT", "Docomo", "NTT Data"] },
-    "29140": { "d": "Cigarettes and, increasingly, pharmaceuticals. International rights to Winston and Camel sit alongside the Mevius brand at home.", "b": ["Mevius", "Winston", "Camel"] },
-    "69810": { "d": "Ceramic capacitors and RF modules. The largest supplier of the small components that every phone and car needs by the thousand.", "b": ["Murata"] },
-    "70110": { "d": "Heavy industry: gas turbines, defence systems, aircraft engines and forklifts. Also builds the Mitsubishi regional jet's successor work.", "b": ["Mitsubishi Heavy Industries"] },
-    "94340": { "d": "Japan's third mobile operator (SoftBank, formerly Vodafone Japan), plus fixed broadband and enterprise IT.", "b": ["SoftBank", "Y!mobile"] },
-    "45190": { "d": "Roche-controlled drugmaker and Japan's most successful biotech exporter, built on Hemlibra for haemophilia and Actemra.", "b": ["Chugai", "Hemlibra", "Actemra"] },
-    "40630": { "d": "Silicon wafers, PVC and photoresists — the quiet upstream of the chip and construction industries, with famously high margins.", "b": ["Shin-Etsu"] },
-    "71820": { "d": "Japan's largest deposit-taking bank by accounts, operating through the post office network.", "b": ["Japan Post Bank", "Yucho"] },
-    "94330": { "d": "Mobile operator (au) and the country's second-largest telecom group, expanding into data centres and fintech.", "b": ["KDDI", "au"] },
-    "45020": { "d": "Japan's largest drugmaker by revenue, with Entyvio in immunology, Vyvanse in the US and a plasma-derived therapy business.", "b": ["Takeda", "Entyvio", "Vyvanse"] },
-    "65030": { "d": "Electrical equipment: elevators, air conditioners, satellites and factory automation, plus a large power-semiconductor line.", "b": ["Mitsubishi Electric"] },
-    "79740": { "d": "Video games and consoles. The Switch platform, Mario, Zelda and a stake in The Pokémon Company.", "b": ["Nintendo", "Switch", "Mario", "Pokémon"] },
-    "77410": { "d": "Optics and medical devices: eyeglass lenses, contact lenses and the Pentax endoscope business.", "b": ["HOYA", "Pentax"] },
-    "67520": { "d": "Consumer electronics turned automotive supplier: appliances, air conditioners and the lithium-ion cells sold to Tesla.", "b": ["Panasonic", "Technics"] },
-    "80530": { "d": "Trading house with heavy exposure to metals, energy and infrastructure, plus a large retail and property arm.", "b": ["Sumitomo Corporation"] },
-    "80020": { "d": "Trading house concentrated in food, energy, metals and machinery, with a big US grain and beef business.", "b": ["Marubeni"] },
-    "87250": { "d": "Insurance group formed from Mitsui Sumitomo and Aioi Nissay, with overseas commercial lines as its growth driver.", "b": ["MS&AD", "Mitsui Sumitomo", "Aioi Nissay"] },
-    "67020": { "d": "IT services and computing: Fujitsu is the mainframe and enterprise systems supplier behind much of Japan's public sector.", "b": ["Fujitsu"] },
-    "58030": { "d": "Optical fibre, cables and, more recently, data-centre connectivity — a supplier to the AI build-out.", "b": ["Fujikura"] },
-    "72670": { "d": "Cars, motorcycles and power equipment. The motorcycle business is the world's largest; cars are a distant second to Toyota at home.", "b": ["Honda", "Acura"] },
-    "80150": { "d": "Toyota group trading house, handling parts, vehicles and materials across the Toyota supply chain worldwide.", "b": ["Toyota Tsusho"] },
-    "67010": { "d": "IT and networking: telecom equipment, public-safety systems and enterprise computing.", "b": ["NEC"] },
-    "87500": { "d": "Life insurer, one of Japan's largest, with a large overseas insurance and asset-management arm.", "b": ["Daiichi Life"] },
-    "61780": { "d": "Holding company for Japan Post's insurance, banking and logistics businesses.", "b": ["Japan Post"] },
-    "45780": { "d": "Pharmaceutical group best known for Abilify and the Pocari Sweat drinks business, which sits outside the drug arm.", "b": ["Otsuka", "Pocari Sweat", "Abilify"] },
-    "85910": { "d": "Leasing and financial services conglomerate: aircraft and ship leasing, real estate, private equity and a bank.", "b": ["ORIX"] },
-    "86300": { "d": "Property and casualty insurer with a large US specialty business (Sompo International).", "b": ["Sompo"] },
-    "63670": { "d": "The world's largest air-conditioning maker, with a growing US and European commercial business.", "b": ["Daikin"] },
-    "58020": { "d": "Wiring harnesses, optical fibre and power cables — an auto and grid supplier with a large telecom cable arm.", "b": ["Sumitomo Electric"] },
-    "61460": { "d": "Semiconductor equipment for dicing, grinding and polishing wafers — the back end of the chip line.", "b": ["DISCO"] },
-    "63010": { "d": "Construction and mining machinery, competing with Caterpillar, with a large autonomous-haulage business.", "b": ["Komatsu"] },
-    "40620": { "d": "Chip package substrates and ceramic products. The substrates carry the GPU, which makes it an AI supply-chain name.", "b": ["Ibiden"] },
-    "67230": { "d": "Microcontrollers and automotive chips, built on the Renesas line after the NEC and Hitachi mergers.", "b": ["Renesas"] },
-    "69540": { "d": "Factory automation: industrial robots and CNC controls, the machinery behind automated plants.", "b": ["FANUC"] },
-    "67620": { "d": "Electronic components: ceramic capacitors, batteries and magnetic heads, with a large smartphone battery business.", "b": ["TDK"] },
-    "46610": { "d": "Operator of Tokyo Disneyland and DisneySea under licence — a property and hotel business as much as a theme park.", "b": ["Tokyo Disneyland", "Tokyo DisneySea"] },
-    "83080": { "d": "Regional banking group centred on Saitama and Osaka, rebuilding after a decade of restructuring.", "b": ["Resona"] },
-    "28020": { "d": "Seasonings and frozen food. The amino-acid business behind umami seasoning is the historical core.", "b": ["Ajinomoto", "Hondashi"] },
-    "51080": { "d": "The world's largest tyre maker by revenue, with a large US and European replacement-tyre business.", "b": ["Bridgestone", "Firestone"] },
-    "45680": { "d": "Drugmaker whose Enhertu, developed with AstraZeneca, became the defining antibody-drug conjugate.", "b": ["Daiichi Sankyo", "Enhertu"] },
-    "33820": { "d": "Convenience stores, supermarkets and finance, built around 7-Eleven Japan — the group's profit engine.", "b": ["7-Eleven", "Ito-Yokado", "Seven Bank"] },
-    "16050": { "d": "Japan's largest oil and gas explorer, with LNG projects in Australia and Indonesia and a stake in Ichthys.", "b": ["INPEX"] },
-    "69020": { "d": "Toyota group auto-parts maker: thermal systems, powertrain electronics and semiconductor sensors.", "b": ["Denso"] },
-    "69710": { "d": "Ceramics and electronics: components, solar cells and industrial tools, plus a large document-equipment business.", "b": ["Kyocera"] },
-    "83090": { "d": "Trust bank and asset manager, with a large custody and real-estate business.", "b": ["Sumitomo Mitsui Trust"] },
-    "88020": { "d": "Property developer behind much of the Marunouchi district beside Tokyo Station.", "b": ["Mitsubishi Estate", "Marunouchi"] },
-    "45030": { "d": "Drugmaker with Xtandi in prostate cancer and a growing gene-therapy pipeline.", "b": ["Astellas", "Xtandi"] },
-    "86040": { "d": "Japan's largest brokerage and investment bank, with a big US fixed-income business.", "b": ["Nomura"] },
-    "88010": { "d": "Property developer and landlord: offices, retail and hotels, including much of Nihonbashi and Toyosu.", "b": ["Mitsui Fudosan"] },
-    "49010": { "d": "Photography turned healthcare: medical imaging, endoscopes and contract biomanufacturing alongside Instax cameras.", "b": ["Fujifilm", "Instax"] },
-    "62730": { "d": "Pneumatic components — valves and actuators — with a near-monopoly in the factory-automation niche.", "b": ["SMC"] },
-    "72690": { "d": "Small cars, motorcycles and marine engines. India is now its largest market by volume.", "b": ["Suzuki", "Maruti Suzuki"] },
-    "90200": { "d": "The largest of the JR companies: commuter rail across eastern Japan, plus retail and property around its stations.", "b": ["JR East", "Suica"] },
-    "77510": { "d": "Cameras, printers and medical equipment, with a large lithography and optical business.", "b": ["Canon", "EOS"] },
-    "50200": { "d": "Japan's largest oil refiner and fuel retailer, moving into hydrogen and renewables.", "b": ["ENEOS"] },
-    "78320": { "d": "Toys, video games and animation: Gundam, Dragon Ball and Pac-Man, plus arcade and theme-park assets.", "b": ["Bandai Namco", "Gundam", "Dragon Ball", "Pac-Man"] },
-    "69200": { "d": "Inspection equipment for EUV photomasks — a near-monopoly supplier to the most advanced chip fabs.", "b": ["Lasertec"] },
-    "90220": { "d": "Operator of the Tokaido Shinkansen between Tokyo and Osaka, and the most profitable of the JR group.", "b": ["JR Central", "Shinkansen"] },
-    "45430": { "d": "Medical devices: catheters, blood-management systems and hospital equipment.", "b": ["Terumo"] },
-    "54010": { "d": "Japan's largest steelmaker, with overseas mills and a big automotive steel business.", "b": ["Nippon Steel"] },
-    "46890": { "d": "The Yahoo Japan and LINE business combined: search, messaging, advertising and fintech.", "b": ["LINE", "Yahoo Japan", "PayPay"] },
-    "43070": { "d": "IT consulting and research for Japanese financial services and industry.", "b": ["NRI"] },
-    "44520": { "d": "Consumer and chemical products: Bioré, Jergens, Goldwell and Merries, with a large hygiene and detergent arm.", "b": ["Kao", "Bioré", "Jergens", "Merries"] },
-    "79360": { "d": "Running shoes and sportswear, strongest in performance running and tennis.", "b": ["ASICS", "Onitsuka Tiger"] },
-    "82670": { "d": "Japan's largest retail group: supermarkets, shopping centres and drugstores, plus a stake in Daiei.", "b": ["AEON", "MaxValu"] },
-    "97660": { "d": "Video games, trading cards and fitness clubs: Yu-Gi-Oh, Metal Gear and Pro Evolution Soccer.", "b": ["Konami", "Yu-Gi-Oh"] },
-    "95030": { "d": "Kansai region electric utility, with nuclear generation at Ohi and Takahama.", "b": ["Kansai Electric"] },
-    "50160": { "d": "Titanium, copper and electronic materials spun out of ENEOS, with a large semiconductor-materials business.", "b": ["JX Advanced Metals"] },
-    "88300": { "d": "Property developer and landlord, concentrated in Tokyo offices and condominiums.", "b": ["Sumitomo Realty"] },
-    "63260": { "d": "Tractors, engines and water infrastructure, with a large North American agricultural business.", "b": ["Kubota"] },
-    "91010": { "d": "One of Japan's three large shipping lines: bulk carriers, LNG and car carriers.", "b": ["NYK", "Nippon Yusen"] },
-    "46120": { "d": "Paint and coatings, with a large decorative-paint business outside Japan.", "b": ["Nippon Paint"] },
-    "19250": { "d": "Housing and construction: prefabricated homes, rental housing and commercial buildings.", "b": ["Daiwa House"] },
-    "97350": { "d": "Security services and, increasingly, healthcare and insurance — a subscription-like recurring revenue model.", "b": ["SECOM"] },
-    "40040": { "d": "Chemicals and semiconductor materials, formed from the Showa Denko and Hitachi Chemical merger.", "b": ["Resonac"] },
-    "46840": { "d": "Business software for Japanese companies — ERP, payroll and payment systems.", "b": ["OBIC"] },
-    "91040": { "d": "Shipping line with a large dry-bulk and LNG business, and a growing car-carrier fleet.", "b": ["MOL", "Mitsui O.S.K."] },
-    "45070": { "d": "Drugmaker with a strong anti-infective and pain portfolio, and a growing overseas business.", "b": ["Shionogi"] },
-    "74530": { "d": "The MUJI retail chain: own-brand household goods, clothing and food, with a large overseas store base.", "b": ["MUJI"] },
-    "70130": { "d": "Heavy machinery: aircraft engines, gas turbines and construction equipment.", "b": ["IHI"] },
-    "86010": { "d": "Brokerage and asset management, the second-largest Japanese securities house.", "b": ["Daiwa Securities"] },
-    "40910": { "d": "Industrial and electronic gases — the gas supplier to Japan's chip fabs.", "b": ["Nippon Sanso", "Matheson"] },
-    "25020": { "d": "Beer and beverages: Asahi Super Dry, Peroni and Pilsner Urquell, with a large European business.", "b": ["Asahi", "Super Dry", "Peroni"] },
-    "87950": { "d": "Life insurance group built from Taiyo and Daido, with a large overseas arm.", "b": ["T&D"] },
-    "57130": { "d": "Copper, nickel and gold mining and smelting, plus battery materials for EVs.", "b": ["Sumitomo Metal Mining"] },
-    "77350": { "d": "Semiconductor cleaning equipment and printing systems for advanced fabs.", "b": ["SCREEN"] },
-    "25030": { "d": "Beer and beverages: Kirin Ichiban, and a large pharmaceutical and health-science arm.", "b": ["Kirin", "Ichiban"] },
-    "69880": { "d": "Adhesive tapes, polarising films and medical materials — components rather than consumer products.", "b": ["Nitto Denko"] },
-    "95320": { "d": "Kansai gas utility, with a growing overseas energy business.", "b": ["Osaka Gas"] },
-    "18120": { "d": "Construction and civil engineering, with a large overseas and data-centre building business.", "b": ["Kajima"] },
-    "19280": { "d": "Housing and urban development: detached homes, rental housing and overseas communities.", "b": ["Sekisui House"] },
-    "75320": { "d": "Discount stores: Don Quijote in Japan and a growing US and Asian store base.", "b": ["Don Quijote", "Don Don Donki"] },
-    "34070": { "d": "Chemicals and materials: fibres, plastics, battery separators and healthcare.", "b": ["Asahi Kasei"] },
-    "58010": { "d": "Cables, optical fibre and automotive components, with a large telecom infrastructure business.", "b": ["Furukawa Electric"] },
-    "86970": { "d": "The Tokyo Stock Exchange and Osaka Exchange operator, plus clearing and market data.", "b": ["JPX", "Tokyo Stock Exchange"] },
-    "65940": { "d": "Electric motors for hard drives, appliances and EVs — the world's largest small-motor maker.", "b": ["Nidec"] },
-    "95310": { "d": "Tokyo gas utility, with an expanding US shale and power business.", "b": ["Tokyo Gas"] },
-    "36590": { "d": "Online games, strongest in Korea and Japan, with Dungeon & Fighter and MapleStory.", "b": ["Nexon", "MapleStory"] },
-    "18020": { "d": "Construction and civil engineering, with a large overseas building business.", "b": ["Obayashi"] },
-    "91070": { "d": "Shipping line with a large car-carrier and dry-bulk fleet.", "b": ["K Line", "Kawasaki Kisen"] },
-    "95020": { "d": "Chubu region electric utility, serving Nagoya and the Toyota industrial belt.", "b": ["Chubu Electric"] },
-    "63830": { "d": "Logistics automation: airport baggage systems, warehouse robots and clean-room transport.", "b": ["Daifuku"] },
-    "65040": { "d": "Power electronics, industrial automation and vending machines.", "b": ["Fuji Electric"] },
-    "84730": { "d": "Online brokerage and financial conglomerate, with a bank, an asset manager and a crypto arm.", "b": ["SBI", "SBI Securities"] },
-    "71810": { "d": "Japan Post's life insurer, sold through the post office network.", "b": ["Japan Post Insurance", "Kampo"] },
-    "71860": { "d": "Regional banking group in Kanagawa, formed from the Concordia merger.", "b": ["Yokohama Bank"] },
-    "70120": { "d": "Heavy industry: motorcycles, ships, aircraft and hydrogen equipment.", "b": ["Kawasaki", "Ninja"] },
-    "75500": { "d": "Restaurant group: Sukiya beef bowls, COCO'S family restaurants and a large overseas franchise base.", "b": ["Sukiya", "COCO'S"] },
-    "77330": { "d": "Medical devices: endoscopes, the global leader, plus surgical and therapeutic equipment.", "b": ["Olympus"] },
-    "98430": { "d": "Furniture and home-furnishing retailer, with a large Asian store network.", "b": ["Nitori"] },
-    "18010": { "d": "Construction and civil engineering, with a large overseas and infrastructure business.", "b": ["Taisei"] },
-    "85930": { "d": "Leasing and asset finance, with aircraft, ships and real estate.", "b": ["Mitsubishi HC Capital"] },
-    "72700": { "d": "All-wheel-drive cars and a large US retail business; the smallest of Japan's major carmakers.", "b": ["Subaru"] },
-    "50190": { "d": "Oil refiner and fuel retailer, with a large lubricants and petrochemicals business.", "b": ["Idemitsu"] },
-    "63610": { "d": "Pumps, compressors and environmental plants, with a large semiconductor-equipment business.", "b": ["Ebara"] },
-    "83310": { "d": "Regional bank serving Chiba prefecture.", "b": ["Chiba Bank"] },
-    "34020": { "d": "Carbon fibre, films and textiles — the world's largest carbon-fibre producer.", "b": ["Toray"] },
-    "65250": { "d": "Batch deposition equipment for memory and logic fabs.", "b": ["Kokusai Electric"] },
-    "65320": { "d": "Consulting and digital transformation for Japanese corporates.", "b": ["BayCurrent"] },
-    "81130": { "d": "Diapers, sanitary products and pet care, with a large Asian consumer base.", "b": ["Unicharm", "MamyPoko"] },
-    "72720": { "d": "Motorcycles, marine engines and power products, with a large emerging-market business.", "b": ["Yamaha"] },
-    "73090": { "d": "Bicycle components and fishing tackle — the dominant supplier of bike drivetrains.", "b": ["Shimano", "Dura-Ace"] },
-    "58310": { "d": "Regional banking group in Shizuoka, formed from the Suruga and Shimizu mergers.", "b": ["Shizuoka Bank"] },
-    "28010": { "d": "Soy sauce and seasonings, the oldest of the Japanese food brands, now global.", "b": ["Kikkoman"] },
-    "47680": { "d": "IT systems reseller and outsourcing for Japanese companies.", "b": ["Otsuka"] },
-    "94350": { "d": "Telecom and IT reseller, with a large SME customer base.", "b": ["Hikari Tsushin"] },
-    "41880": { "d": "Chemicals and materials: petrochemicals, specialty materials and pharmaceuticals.", "b": ["Mitsubishi Chemical"] },
-    "96970": { "d": "Video games: Resident Evil, Monster Hunter and Street Fighter.", "b": ["Capcom", "Resident Evil", "Monster Hunter"] },
-    "81360": { "d": "Character licensing: Hello Kitty and a large merchandising and theme-park business.", "b": ["Sanrio", "Hello Kitty"] },
-    "69630": { "d": "Discrete semiconductors and power devices for automotive and industrial use.", "b": ["ROHM"] },
-    "49110": { "d": "Cosmetics and skincare, with a large Chinese and travel-retail business.", "b": ["Shiseido", "NARS"] },
-    "25870": { "d": "Soft drinks and bottled water outside Japan, spun out of Suntory.", "b": ["Suntory", "Lucozade", "Ribena"] },
-    "72590": { "d": "Toyota group auto-parts maker: transmissions, brakes and body components.", "b": ["Aisin"] }
+ "updated": "2026-10-30",
+ "note": "Curated entries: what the company actually does, and the brands that hide behind the corporate name. Brands are only listed where ownership is certain. Companies without an entry get a generated line from the filing data.",
+ "entries": {
+  "83060": {
+   "d": "Japan's largest banking group, spanning commercial lending, trust banking, cards and asset management, with a long-standing stake in Morgan Stanley.",
+   "b": [
+    "MUFG",
+    "Mitsubishi UFJ Bank",
+    "Mitsubishi UFJ Trust"
+   ]
+  },
+  "72030": {
+   "d": "The world's largest carmaker by volume: Toyota and Lexus passenger cars, trucks and hybrids, plus in-house financing and a controlling stake in Denso.",
+   "b": [
+    "Toyota",
+    "Lexus",
+    "Daihatsu",
+    "Hino"
+   ]
+  },
+  "99840": {
+   "d": "A holding company for technology bets rather than a single business: the Arm chip-design stake, the Vision Funds, and a controlling interest in SoftBank Corp.",
+   "b": [
+    "Arm",
+    "Vision Fund",
+    "SoftBank"
+   ]
+  },
+  "68570": {
+   "d": "Semiconductor test equipment. Its testers sit at the end of the chip line, so every AI accelerator shipped passes through one.",
+   "b": [
+    "Advantest"
+   ]
+  },
+  "60980": {
+   "d": "Employment and staffing group. Most profit now comes from Indeed, the job site it bought in 2012, with Glassdoor and Japanese job boards alongside.",
+   "b": [
+    "Indeed",
+    "Glassdoor",
+    "Townwork",
+    "Hot Pepper"
+   ]
+  },
+  "83160": {
+   "d": "Banking group built on Sumitomo Mitsui Banking, with SMBC Nikko in securities and a large card and consumer-finance arm.",
+   "b": [
+    "SMBC",
+    "Sumitomo Mitsui Banking",
+    "SMBC Nikko"
+   ]
+  },
+  "285A0": {
+   "d": "NAND flash memory, spun out of Toshiba. Sells memory chips for phones, data centres and SSDs — a cyclical business priced on the memory cycle.",
+   "b": [
+    "Kioxia"
+   ]
+  },
+  "67580": {
+   "d": "Entertainment and electronics group: PlayStation, image sensors that go into most phone cameras, music publishing and film.",
+   "b": [
+    "PlayStation",
+    "Sony",
+    "Bungie",
+    "Crunchyroll"
+   ]
+  },
+  "80350": {
+   "d": "Semiconductor production equipment — coaters, developers and etch tools. One of the three or four companies the leading-edge fabs cannot build without.",
+   "b": [
+    "Tokyo Electron"
+   ]
+  },
+  "99830": {
+   "d": "Apparel retailer behind Uniqlo. Uniqlo International is now the larger half of the business; Japan remains the biggest single market.",
+   "b": [
+    "Uniqlo",
+    "GU",
+    "Theory"
+   ]
+  },
+  "65010": {
+   "d": "Industrial conglomerate that has pivoted to digital and energy: rail systems, power grids, Hitachi Astemo auto parts and the GlobalLogic software arm.",
+   "b": [
+    "Hitachi",
+    "GlobalLogic",
+    "Hitachi Astemo"
+   ]
+  },
+  "84110": {
+   "d": "One of Japan's three mega-banks, with retail and corporate lending, Mizuho Securities and a large asset-management business.",
+   "b": [
+    "Mizuho",
+    "Mizuho Bank"
+   ]
+  },
+  "68610": {
+   "d": "Sensors and machine vision for factory automation. Sells high-margin inspection and measurement gear with famously little debt.",
+   "b": [
+    "Keyence"
+   ]
+  },
+  "80580": {
+   "d": "Japan's largest trading house: energy, metals, food, machinery and consumer goods, run as a portfolio of operating businesses worldwide.",
+   "b": [
+    "Mitsubishi Corporation"
+   ]
+  },
+  "80010": {
+   "d": "Trading house with an unusual consumer tilt — FamilyMart convenience stores, textiles and food alongside metals and machinery.",
+   "b": [
+    "Itochu",
+    "FamilyMart"
+   ]
+  },
+  "87660": {
+   "d": "Property and casualty insurer, one of Japan's three largest, with overseas commercial insurance as its growth engine.",
+   "b": [
+    "Tokio Marine"
+   ]
+  },
+  "80310": {
+   "d": "Trading house spanning iron ore, energy, machinery and food, with a large stake in the Iseki agricultural business.",
+   "b": [
+    "Mitsui & Co"
+   ]
+  },
+  "94320": {
+   "d": "Telecom holding company: NTT Docomo mobile, NTT East and West fixed lines, and NTT Data in IT services.",
+   "b": [
+    "NTT",
+    "Docomo",
+    "NTT Data"
+   ]
+  },
+  "29140": {
+   "d": "Cigarettes and, increasingly, pharmaceuticals. International rights to Winston and Camel sit alongside the Mevius brand at home.",
+   "b": [
+    "Mevius",
+    "Winston",
+    "Camel"
+   ]
+  },
+  "69810": {
+   "d": "Ceramic capacitors and RF modules. The largest supplier of the small components that every phone and car needs by the thousand.",
+   "b": [
+    "Murata"
+   ]
+  },
+  "70110": {
+   "d": "Heavy industry: gas turbines, defence systems, aircraft engines and forklifts. Also builds the Mitsubishi regional jet's successor work.",
+   "b": [
+    "Mitsubishi Heavy Industries"
+   ]
+  },
+  "94340": {
+   "d": "Japan's third mobile operator (SoftBank, formerly Vodafone Japan), plus fixed broadband and enterprise IT.",
+   "b": [
+    "SoftBank",
+    "Y!mobile"
+   ]
+  },
+  "45190": {
+   "d": "Roche-controlled drugmaker and Japan's most successful biotech exporter, built on Hemlibra for haemophilia and Actemra.",
+   "b": [
+    "Chugai",
+    "Hemlibra",
+    "Actemra"
+   ]
+  },
+  "40630": {
+   "d": "Silicon wafers, PVC and photoresists — the quiet upstream of the chip and construction industries, with famously high margins.",
+   "b": [
+    "Shin-Etsu"
+   ]
+  },
+  "71820": {
+   "d": "Japan's largest deposit-taking bank by accounts, operating through the post office network.",
+   "b": [
+    "Japan Post Bank",
+    "Yucho"
+   ]
+  },
+  "94330": {
+   "d": "Mobile operator (au) and the country's second-largest telecom group, expanding into data centres and fintech.",
+   "b": [
+    "KDDI",
+    "au"
+   ]
+  },
+  "45020": {
+   "d": "Japan's largest drugmaker by revenue, with Entyvio in immunology, Vyvanse in the US and a plasma-derived therapy business.",
+   "b": [
+    "Takeda",
+    "Entyvio",
+    "Vyvanse"
+   ]
+  },
+  "65030": {
+   "d": "Electrical equipment: elevators, air conditioners, satellites and factory automation, plus a large power-semiconductor line.",
+   "b": [
+    "Mitsubishi Electric"
+   ]
+  },
+  "79740": {
+   "d": "Video games and consoles. The Switch platform, Mario, Zelda and a stake in The Pokémon Company.",
+   "b": [
+    "Nintendo",
+    "Switch",
+    "Mario",
+    "Pokémon"
+   ]
+  },
+  "77410": {
+   "d": "Optics and medical devices: eyeglass lenses, contact lenses and the Pentax endoscope business.",
+   "b": [
+    "HOYA",
+    "Pentax"
+   ]
+  },
+  "67520": {
+   "d": "Consumer electronics turned automotive supplier: appliances, air conditioners and the lithium-ion cells sold to Tesla.",
+   "b": [
+    "Panasonic",
+    "Technics"
+   ]
+  },
+  "80530": {
+   "d": "Trading house with heavy exposure to metals, energy and infrastructure, plus a large retail and property arm.",
+   "b": [
+    "Sumitomo Corporation"
+   ]
+  },
+  "80020": {
+   "d": "Trading house concentrated in food, energy, metals and machinery, with a big US grain and beef business.",
+   "b": [
+    "Marubeni"
+   ]
+  },
+  "87250": {
+   "d": "Insurance group formed from Mitsui Sumitomo and Aioi Nissay, with overseas commercial lines as its growth driver.",
+   "b": [
+    "MS&AD",
+    "Mitsui Sumitomo",
+    "Aioi Nissay"
+   ]
+  },
+  "67020": {
+   "d": "IT services and computing: Fujitsu is the mainframe and enterprise systems supplier behind much of Japan's public sector.",
+   "b": [
+    "Fujitsu"
+   ]
+  },
+  "58030": {
+   "d": "Optical fibre, cables and, more recently, data-centre connectivity — a supplier to the AI build-out.",
+   "b": [
+    "Fujikura"
+   ]
+  },
+  "72670": {
+   "d": "Cars, motorcycles and power equipment. The motorcycle business is the world's largest; cars are a distant second to Toyota at home.",
+   "b": [
+    "Honda",
+    "Acura"
+   ]
+  },
+  "80150": {
+   "d": "Toyota group trading house, handling parts, vehicles and materials across the Toyota supply chain worldwide.",
+   "b": [
+    "Toyota Tsusho"
+   ]
+  },
+  "67010": {
+   "d": "IT and networking: telecom equipment, public-safety systems and enterprise computing.",
+   "b": [
+    "NEC"
+   ]
+  },
+  "87500": {
+   "d": "Life insurer, one of Japan's largest, with a large overseas insurance and asset-management arm.",
+   "b": [
+    "Daiichi Life"
+   ]
+  },
+  "61780": {
+   "d": "Holding company for Japan Post's insurance, banking and logistics businesses.",
+   "b": [
+    "Japan Post"
+   ]
+  },
+  "45780": {
+   "d": "Pharmaceutical group best known for Abilify and the Pocari Sweat drinks business, which sits outside the drug arm.",
+   "b": [
+    "Otsuka",
+    "Pocari Sweat",
+    "Abilify"
+   ]
+  },
+  "85910": {
+   "d": "Leasing and financial services conglomerate: aircraft and ship leasing, real estate, private equity and a bank.",
+   "b": [
+    "ORIX"
+   ]
+  },
+  "86300": {
+   "d": "Property and casualty insurer with a large US specialty business (Sompo International).",
+   "b": [
+    "Sompo"
+   ]
+  },
+  "63670": {
+   "d": "The world's largest air-conditioning maker, with a growing US and European commercial business.",
+   "b": [
+    "Daikin"
+   ]
+  },
+  "58020": {
+   "d": "Wiring harnesses, optical fibre and power cables — an auto and grid supplier with a large telecom cable arm.",
+   "b": [
+    "Sumitomo Electric"
+   ]
+  },
+  "61460": {
+   "d": "Semiconductor equipment for dicing, grinding and polishing wafers — the back end of the chip line.",
+   "b": [
+    "DISCO"
+   ]
+  },
+  "63010": {
+   "d": "Construction and mining machinery, competing with Caterpillar, with a large autonomous-haulage business.",
+   "b": [
+    "Komatsu"
+   ]
+  },
+  "40620": {
+   "d": "Chip package substrates and ceramic products. The substrates carry the GPU, which makes it an AI supply-chain name.",
+   "b": [
+    "Ibiden"
+   ]
+  },
+  "67230": {
+   "d": "Microcontrollers and automotive chips, built on the Renesas line after the NEC and Hitachi mergers.",
+   "b": [
+    "Renesas"
+   ]
+  },
+  "69540": {
+   "d": "Factory automation: industrial robots and CNC controls, the machinery behind automated plants.",
+   "b": [
+    "FANUC"
+   ]
+  },
+  "67620": {
+   "d": "Electronic components: ceramic capacitors, batteries and magnetic heads, with a large smartphone battery business.",
+   "b": [
+    "TDK"
+   ]
+  },
+  "46610": {
+   "d": "Operator of Tokyo Disneyland and DisneySea under licence — a property and hotel business as much as a theme park.",
+   "b": [
+    "Tokyo Disneyland",
+    "Tokyo DisneySea"
+   ]
+  },
+  "83080": {
+   "d": "Regional banking group centred on Saitama and Osaka, rebuilding after a decade of restructuring.",
+   "b": [
+    "Resona"
+   ]
+  },
+  "28020": {
+   "d": "Seasonings and frozen food. The amino-acid business behind umami seasoning is the historical core.",
+   "b": [
+    "Ajinomoto",
+    "Hondashi"
+   ]
+  },
+  "51080": {
+   "d": "The world's largest tyre maker by revenue, with a large US and European replacement-tyre business.",
+   "b": [
+    "Bridgestone",
+    "Firestone"
+   ]
+  },
+  "45680": {
+   "d": "Drugmaker whose Enhertu, developed with AstraZeneca, became the defining antibody-drug conjugate.",
+   "b": [
+    "Daiichi Sankyo",
+    "Enhertu"
+   ]
+  },
+  "33820": {
+   "d": "Convenience stores, supermarkets and finance, built around 7-Eleven Japan — the group's profit engine.",
+   "b": [
+    "7-Eleven",
+    "Ito-Yokado",
+    "Seven Bank"
+   ]
+  },
+  "16050": {
+   "d": "Japan's largest oil and gas explorer, with LNG projects in Australia and Indonesia and a stake in Ichthys.",
+   "b": [
+    "INPEX"
+   ]
+  },
+  "69020": {
+   "d": "Toyota group auto-parts maker: thermal systems, powertrain electronics and semiconductor sensors.",
+   "b": [
+    "Denso"
+   ]
+  },
+  "69710": {
+   "d": "Ceramics and electronics: components, solar cells and industrial tools, plus a large document-equipment business.",
+   "b": [
+    "Kyocera"
+   ]
+  },
+  "83090": {
+   "d": "Trust bank and asset manager, with a large custody and real-estate business.",
+   "b": [
+    "Sumitomo Mitsui Trust"
+   ]
+  },
+  "88020": {
+   "d": "Property developer behind much of the Marunouchi district beside Tokyo Station.",
+   "b": [
+    "Mitsubishi Estate",
+    "Marunouchi"
+   ]
+  },
+  "45030": {
+   "d": "Drugmaker with Xtandi in prostate cancer and a growing gene-therapy pipeline.",
+   "b": [
+    "Astellas",
+    "Xtandi"
+   ]
+  },
+  "86040": {
+   "d": "Japan's largest brokerage and investment bank, with a big US fixed-income business.",
+   "b": [
+    "Nomura"
+   ]
+  },
+  "88010": {
+   "d": "Property developer and landlord: offices, retail and hotels, including much of Nihonbashi and Toyosu.",
+   "b": [
+    "Mitsui Fudosan"
+   ]
+  },
+  "49010": {
+   "d": "Photography turned healthcare: medical imaging, endoscopes and contract biomanufacturing alongside Instax cameras.",
+   "b": [
+    "Fujifilm",
+    "Instax"
+   ]
+  },
+  "62730": {
+   "d": "Pneumatic components — valves and actuators — with a near-monopoly in the factory-automation niche.",
+   "b": [
+    "SMC"
+   ]
+  },
+  "72690": {
+   "d": "Small cars, motorcycles and marine engines. India is now its largest market by volume.",
+   "b": [
+    "Suzuki",
+    "Maruti Suzuki"
+   ]
+  },
+  "90200": {
+   "d": "The largest of the JR companies: commuter rail across eastern Japan, plus retail and property around its stations.",
+   "b": [
+    "JR East",
+    "Suica"
+   ]
+  },
+  "77510": {
+   "d": "Cameras, printers and medical equipment, with a large lithography and optical business.",
+   "b": [
+    "Canon",
+    "EOS"
+   ]
+  },
+  "50200": {
+   "d": "Japan's largest oil refiner and fuel retailer, moving into hydrogen and renewables.",
+   "b": [
+    "ENEOS"
+   ]
+  },
+  "78320": {
+   "d": "Toys, video games and animation: Gundam, Dragon Ball and Pac-Man, plus arcade and theme-park assets.",
+   "b": [
+    "Bandai Namco",
+    "Gundam",
+    "Dragon Ball",
+    "Pac-Man"
+   ]
+  },
+  "69200": {
+   "d": "Inspection equipment for EUV photomasks — a near-monopoly supplier to the most advanced chip fabs.",
+   "b": [
+    "Lasertec"
+   ]
+  },
+  "90220": {
+   "d": "Operator of the Tokaido Shinkansen between Tokyo and Osaka, and the most profitable of the JR group.",
+   "b": [
+    "JR Central",
+    "Shinkansen"
+   ]
+  },
+  "45430": {
+   "d": "Medical devices: catheters, blood-management systems and hospital equipment.",
+   "b": [
+    "Terumo"
+   ]
+  },
+  "54010": {
+   "d": "Japan's largest steelmaker, with overseas mills and a big automotive steel business.",
+   "b": [
+    "Nippon Steel"
+   ]
+  },
+  "46890": {
+   "d": "The Yahoo Japan and LINE business combined: search, messaging, advertising and fintech.",
+   "b": [
+    "LINE",
+    "Yahoo Japan",
+    "PayPay"
+   ]
+  },
+  "43070": {
+   "d": "IT consulting and research for Japanese financial services and industry.",
+   "b": [
+    "NRI"
+   ]
+  },
+  "44520": {
+   "d": "Consumer and chemical products: Bioré, Jergens, Goldwell and Merries, with a large hygiene and detergent arm.",
+   "b": [
+    "Kao",
+    "Bioré",
+    "Jergens",
+    "Merries"
+   ]
+  },
+  "79360": {
+   "d": "Running shoes and sportswear, strongest in performance running and tennis.",
+   "b": [
+    "ASICS",
+    "Onitsuka Tiger"
+   ]
+  },
+  "82670": {
+   "d": "Japan's largest retail group: supermarkets, shopping centres and drugstores, plus a stake in Daiei.",
+   "b": [
+    "AEON",
+    "MaxValu"
+   ]
+  },
+  "97660": {
+   "d": "Video games, trading cards and fitness clubs: Yu-Gi-Oh, Metal Gear and Pro Evolution Soccer.",
+   "b": [
+    "Konami",
+    "Yu-Gi-Oh"
+   ]
+  },
+  "95030": {
+   "d": "Kansai region electric utility, with nuclear generation at Ohi and Takahama.",
+   "b": [
+    "Kansai Electric"
+   ]
+  },
+  "50160": {
+   "d": "Titanium, copper and electronic materials spun out of ENEOS, with a large semiconductor-materials business.",
+   "b": [
+    "JX Advanced Metals"
+   ]
+  },
+  "88300": {
+   "d": "Property developer and landlord, concentrated in Tokyo offices and condominiums.",
+   "b": [
+    "Sumitomo Realty"
+   ]
+  },
+  "63260": {
+   "d": "Tractors, engines and water infrastructure, with a large North American agricultural business.",
+   "b": [
+    "Kubota"
+   ]
+  },
+  "91010": {
+   "d": "One of Japan's three large shipping lines: bulk carriers, LNG and car carriers.",
+   "b": [
+    "NYK",
+    "Nippon Yusen"
+   ]
+  },
+  "46120": {
+   "d": "Paint and coatings, with a large decorative-paint business outside Japan.",
+   "b": [
+    "Nippon Paint"
+   ]
+  },
+  "19250": {
+   "d": "Housing and construction: prefabricated homes, rental housing and commercial buildings.",
+   "b": [
+    "Daiwa House"
+   ]
+  },
+  "97350": {
+   "d": "Security services and, increasingly, healthcare and insurance — a subscription-like recurring revenue model.",
+   "b": [
+    "SECOM"
+   ]
+  },
+  "40040": {
+   "d": "Chemicals and semiconductor materials, formed from the Showa Denko and Hitachi Chemical merger.",
+   "b": [
+    "Resonac"
+   ]
+  },
+  "46840": {
+   "d": "Business software for Japanese companies — ERP, payroll and payment systems.",
+   "b": [
+    "OBIC"
+   ]
+  },
+  "91040": {
+   "d": "Shipping line with a large dry-bulk and LNG business, and a growing car-carrier fleet.",
+   "b": [
+    "MOL",
+    "Mitsui O.S.K."
+   ]
+  },
+  "45070": {
+   "d": "Drugmaker with a strong anti-infective and pain portfolio, and a growing overseas business.",
+   "b": [
+    "Shionogi"
+   ]
+  },
+  "74530": {
+   "d": "The MUJI retail chain: own-brand household goods, clothing and food, with a large overseas store base.",
+   "b": [
+    "MUJI"
+   ]
+  },
+  "70130": {
+   "d": "Heavy machinery: aircraft engines, gas turbines and construction equipment.",
+   "b": [
+    "IHI"
+   ]
+  },
+  "86010": {
+   "d": "Brokerage and asset management, the second-largest Japanese securities house.",
+   "b": [
+    "Daiwa Securities"
+   ]
+  },
+  "40910": {
+   "d": "Industrial and electronic gases — the gas supplier to Japan's chip fabs.",
+   "b": [
+    "Nippon Sanso",
+    "Matheson"
+   ]
+  },
+  "25020": {
+   "d": "Beer and beverages: Asahi Super Dry, Peroni and Pilsner Urquell, with a large European business.",
+   "b": [
+    "Asahi",
+    "Super Dry",
+    "Peroni"
+   ]
+  },
+  "87950": {
+   "d": "Life insurance group built from Taiyo and Daido, with a large overseas arm.",
+   "b": [
+    "T&D"
+   ]
+  },
+  "57130": {
+   "d": "Copper, nickel and gold mining and smelting, plus battery materials for EVs.",
+   "b": [
+    "Sumitomo Metal Mining"
+   ]
+  },
+  "77350": {
+   "d": "Semiconductor cleaning equipment and printing systems for advanced fabs.",
+   "b": [
+    "SCREEN"
+   ]
+  },
+  "25030": {
+   "d": "Beer and beverages: Kirin Ichiban, and a large pharmaceutical and health-science arm.",
+   "b": [
+    "Kirin",
+    "Ichiban"
+   ]
+  },
+  "69880": {
+   "d": "Adhesive tapes, polarising films and medical materials — components rather than consumer products.",
+   "b": [
+    "Nitto Denko"
+   ]
+  },
+  "95320": {
+   "d": "Kansai gas utility, with a growing overseas energy business.",
+   "b": [
+    "Osaka Gas"
+   ]
+  },
+  "18120": {
+   "d": "Construction and civil engineering, with a large overseas and data-centre building business.",
+   "b": [
+    "Kajima"
+   ]
+  },
+  "19280": {
+   "d": "Housing and urban development: detached homes, rental housing and overseas communities.",
+   "b": [
+    "Sekisui House"
+   ]
+  },
+  "75320": {
+   "d": "Discount stores: Don Quijote in Japan and a growing US and Asian store base.",
+   "b": [
+    "Don Quijote",
+    "Don Don Donki"
+   ]
+  },
+  "34070": {
+   "d": "Chemicals and materials: fibres, plastics, battery separators and healthcare.",
+   "b": [
+    "Asahi Kasei"
+   ]
+  },
+  "58010": {
+   "d": "Cables, optical fibre and automotive components, with a large telecom infrastructure business.",
+   "b": [
+    "Furukawa Electric"
+   ]
+  },
+  "86970": {
+   "d": "The Tokyo Stock Exchange and Osaka Exchange operator, plus clearing and market data.",
+   "b": [
+    "JPX",
+    "Tokyo Stock Exchange"
+   ]
+  },
+  "65940": {
+   "d": "Electric motors for hard drives, appliances and EVs — the world's largest small-motor maker.",
+   "b": [
+    "Nidec"
+   ]
+  },
+  "95310": {
+   "d": "Tokyo gas utility, with an expanding US shale and power business.",
+   "b": [
+    "Tokyo Gas"
+   ]
+  },
+  "36590": {
+   "d": "Online games, strongest in Korea and Japan, with Dungeon & Fighter and MapleStory.",
+   "b": [
+    "Nexon",
+    "MapleStory"
+   ]
+  },
+  "18020": {
+   "d": "Construction and civil engineering, with a large overseas building business.",
+   "b": [
+    "Obayashi"
+   ]
+  },
+  "91070": {
+   "d": "Shipping line with a large car-carrier and dry-bulk fleet.",
+   "b": [
+    "K Line",
+    "Kawasaki Kisen"
+   ]
+  },
+  "95020": {
+   "d": "Chubu region electric utility, serving Nagoya and the Toyota industrial belt.",
+   "b": [
+    "Chubu Electric"
+   ]
+  },
+  "63830": {
+   "d": "Logistics automation: airport baggage systems, warehouse robots and clean-room transport.",
+   "b": [
+    "Daifuku"
+   ]
+  },
+  "65040": {
+   "d": "Power electronics, industrial automation and vending machines.",
+   "b": [
+    "Fuji Electric"
+   ]
+  },
+  "84730": {
+   "d": "Online brokerage and financial conglomerate, with a bank, an asset manager and a crypto arm.",
+   "b": [
+    "SBI",
+    "SBI Securities"
+   ]
+  },
+  "71810": {
+   "d": "Japan Post's life insurer, sold through the post office network.",
+   "b": [
+    "Japan Post Insurance",
+    "Kampo"
+   ]
+  },
+  "71860": {
+   "d": "Regional banking group in Kanagawa, formed from the Concordia merger.",
+   "b": [
+    "Yokohama Bank"
+   ]
+  },
+  "70120": {
+   "d": "Heavy industry: motorcycles, ships, aircraft and hydrogen equipment.",
+   "b": [
+    "Kawasaki",
+    "Ninja"
+   ]
+  },
+  "75500": {
+   "d": "Restaurant group: Sukiya beef bowls, COCO'S family restaurants and a large overseas franchise base.",
+   "b": [
+    "Sukiya",
+    "COCO'S"
+   ]
+  },
+  "77330": {
+   "d": "Medical devices: endoscopes, the global leader, plus surgical and therapeutic equipment.",
+   "b": [
+    "Olympus"
+   ]
+  },
+  "98430": {
+   "d": "Furniture and home-furnishing retailer, with a large Asian store network.",
+   "b": [
+    "Nitori"
+   ]
+  },
+  "18010": {
+   "d": "Construction and civil engineering, with a large overseas and infrastructure business.",
+   "b": [
+    "Taisei"
+   ]
+  },
+  "85930": {
+   "d": "Leasing and asset finance, with aircraft, ships and real estate.",
+   "b": [
+    "Mitsubishi HC Capital"
+   ]
+  },
+  "72700": {
+   "d": "All-wheel-drive cars and a large US retail business; the smallest of Japan's major carmakers.",
+   "b": [
+    "Subaru"
+   ]
+  },
+  "50190": {
+   "d": "Oil refiner and fuel retailer, with a large lubricants and petrochemicals business.",
+   "b": [
+    "Idemitsu"
+   ]
+  },
+  "63610": {
+   "d": "Pumps, compressors and environmental plants, with a large semiconductor-equipment business.",
+   "b": [
+    "Ebara"
+   ]
+  },
+  "83310": {
+   "d": "Regional bank serving Chiba prefecture.",
+   "b": [
+    "Chiba Bank"
+   ]
+  },
+  "34020": {
+   "d": "Carbon fibre, films and textiles — the world's largest carbon-fibre producer.",
+   "b": [
+    "Toray"
+   ]
+  },
+  "65250": {
+   "d": "Batch deposition equipment for memory and logic fabs.",
+   "b": [
+    "Kokusai Electric"
+   ]
+  },
+  "65320": {
+   "d": "Consulting and digital transformation for Japanese corporates.",
+   "b": [
+    "BayCurrent"
+   ]
+  },
+  "81130": {
+   "d": "Diapers, sanitary products and pet care, with a large Asian consumer base.",
+   "b": [
+    "Unicharm",
+    "MamyPoko"
+   ]
+  },
+  "72720": {
+   "d": "Motorcycles, marine engines and power products, with a large emerging-market business.",
+   "b": [
+    "Yamaha"
+   ]
+  },
+  "73090": {
+   "d": "Bicycle components and fishing tackle — the dominant supplier of bike drivetrains.",
+   "b": [
+    "Shimano",
+    "Dura-Ace"
+   ]
+  },
+  "58310": {
+   "d": "Regional banking group in Shizuoka, formed from the Suruga and Shimizu mergers.",
+   "b": [
+    "Shizuoka Bank"
+   ]
+  },
+  "28010": {
+   "d": "Soy sauce and seasonings, the oldest of the Japanese food brands, now global.",
+   "b": [
+    "Kikkoman"
+   ]
+  },
+  "47680": {
+   "d": "IT systems reseller and outsourcing for Japanese companies.",
+   "b": [
+    "Otsuka"
+   ]
+  },
+  "94350": {
+   "d": "Telecom and IT reseller, with a large SME customer base.",
+   "b": [
+    "Hikari Tsushin"
+   ]
+  },
+  "41880": {
+   "d": "Chemicals and materials: petrochemicals, specialty materials and pharmaceuticals.",
+   "b": [
+    "Mitsubishi Chemical"
+   ]
+  },
+  "96970": {
+   "d": "Video games: Resident Evil, Monster Hunter and Street Fighter.",
+   "b": [
+    "Capcom",
+    "Resident Evil",
+    "Monster Hunter"
+   ]
+  },
+  "81360": {
+   "d": "Character licensing: Hello Kitty and a large merchandising and theme-park business.",
+   "b": [
+    "Sanrio",
+    "Hello Kitty"
+   ]
+  },
+  "69630": {
+   "d": "Discrete semiconductors and power devices for automotive and industrial use.",
+   "b": [
+    "ROHM"
+   ]
+  },
+  "49110": {
+   "d": "Cosmetics and skincare, with a large Chinese and travel-retail business.",
+   "b": [
+    "Shiseido",
+    "NARS"
+   ]
+  },
+  "25870": {
+   "d": "Soft drinks and bottled water outside Japan, spun out of Suntory.",
+   "b": [
+    "Suntory",
+    "Lucozade",
+    "Ribena"
+   ]
+  },
+  "72590": {
+   "d": "Toyota group auto-parts maker: transmissions, brakes and body components.",
+   "b": [
+    "Aisin"
+   ]
+  },
+  "71670": {
+   "d": "Regional banking group in Ibaraki, built on Joyo Bank and Ashikaga Bank.",
+   "b": [
+    "Joyo Bank",
+    "Ashikaga Bank"
+   ]
+  },
+  "18030": {
+   "d": "One of Japan's five large construction groups: civil engineering, buildings and overseas projects.",
+   "b": [
+    "Shimizu"
+   ]
+  },
+  "53340": {
+   "d": "Spark plugs and ceramics — the world's largest spark-plug maker, plus exhaust sensors and semiconductor parts.",
+   "b": [
+    "NGK",
+    "Niterra"
+   ]
+  },
+  "72020": {
+   "d": "Commercial vehicles: light and heavy trucks, pickups and diesel engines, strong in Asia and Africa.",
+   "b": [
+    "Isuzu",
+    "D-Max"
+   ]
+  },
+  "45230": {
+   "d": "Drugmaker known for Leqembi, the Alzheimer's antibody developed with Biogen, and a large Japanese oncology franchise.",
+   "b": [
+    "Eisai",
+    "Leqembi"
+   ]
+  },
+  "91470": {
+   "d": "Japan's largest freight forwarder and logistics group, with a big overseas air and sea forwarding business.",
+   "b": [
+    "Nippon Express"
+   ]
+  },
+  "96020": {
+   "d": "Film studio and distributor: Godzilla, animation and a large cinema chain.",
+   "b": [
+    "Toho",
+    "Godzilla"
+   ]
+  },
+  "83030": {
+   "d": "Bank controlled by SBI Holdings, focused on retail and mid-market lending.",
+   "b": [
+    "Shinsei Bank",
+    "SBI Shinsei"
+   ]
+  },
+  "90210": {
+   "d": "Rail operator across western Japan, including the Sanyo Shinkansen, plus retail and property.",
+   "b": [
+    "JR West"
+   ]
+  },
+  "53330": {
+   "d": "Ceramics: power-grid insulators, automotive ceramics and a sodium-sulfur battery business.",
+   "b": [
+    "NGK Insulators"
+   ]
+  },
+  "65860": {
+   "d": "Power tools and outdoor equipment, sold in more than 150 countries.",
+   "b": [
+    "Makita"
+   ]
+  },
+  "47550": {
+   "d": "E-commerce, fintech and mobile: Rakuten Ichiba marketplace, Rakuten Bank, Rakuten Securities and a mobile network.",
+   "b": [
+    "Rakuten",
+    "Rakuten Ichiba"
+   ]
+  },
+  "30030": {
+   "d": "Property company focused on Tokyo offices and redevelopment, with a large hotel and retail portfolio.",
+   "b": [
+    "Hulic"
+   ]
+  },
+  "83540": {
+   "d": "Regional banking group in Kyushu, built on Bank of Fukuoka and Kumamoto Bank.",
+   "b": [
+    "Fukuoka Bank",
+    "Kumamoto Bank"
+   ]
+  },
+  "64790": {
+   "d": "Precision components: ball bearings, motors and sensors, with a large smartphone and automotive business.",
+   "b": [
+    "MinebeaMitsumi"
+   ]
+  },
+  "77010": {
+   "d": "Analytical and measuring instruments: mass spectrometers, X-ray systems and medical imaging.",
+   "b": [
+    "Shimadzu"
+   ]
+  },
+  "92010": {
+   "d": "Japan's flag carrier, with a large international network and a domestic feeder business.",
+   "b": [
+    "JAL",
+    "Japan Airlines"
+   ]
+  },
+  "35630": {
+   "d": "Conveyor-belt sushi: Sushiro at home and a growing overseas store base.",
+   "b": [
+    "Sushiro"
+   ]
+  },
+  "41510": {
+   "d": "Drugmaker specialising in antibodies and rare disease, with Crysvita as its lead product.",
+   "b": [
+    "Kyowa Kirin",
+    "Crysvita"
+   ]
+  },
+  "79110": {
+   "d": "Printing turned packaging and secure documents: payment cards, passports and semiconductor materials.",
+   "b": [
+    "Toppan"
+   ]
+  },
+  "92020": {
+   "d": "Japan's largest airline by domestic traffic, with a growing international network.",
+   "b": [
+    "ANA",
+    "All Nippon Airways"
+   ]
+  },
+  "79120": {
+   "d": "Printing group with a large photomask business supplying chipmakers, plus smart cards and packaging.",
+   "b": [
+    "DNP",
+    "Dai Nippon Printing"
+   ]
+  },
+  "84390": {
+   "d": "Leasing and finance: aircraft, real estate and IT equipment, with a growing energy business.",
+   "b": [
+    "Tokyo Century"
+   ]
+  },
+  "30990": {
+   "d": "Department stores: Isetan, Mitsukoshi and a large overseas store network.",
+   "b": [
+    "Isetan",
+    "Mitsukoshi"
+   ]
+  },
+  "24130": {
+   "d": "Medical information platform: m3.com for doctors, plus pharmaceutical marketing and clinical-trial recruitment.",
+   "b": [
+    "m3.com",
+    "M3"
+   ]
+  },
+  "57060": {
+   "d": "Copper and electronic materials: battery foils, semiconductor targets and automotive parts.",
+   "b": [
+    "Mitsui Kinzoku"
+   ]
+  },
+  "69760": {
+   "d": "Ceramic capacitors, inductors and RF components for phones and cars.",
+   "b": [
+    "Taiyo Yuden"
+   ]
+  },
+  "58440": {
+   "d": "Regional bank centred on Kyoto, with a large trust and asset-management arm.",
+   "b": [
+    "Bank of Kyoto"
+   ]
+  },
+  "64480": {
+   "d": "Printers, label makers, sewing machines and machine tools, sold mostly outside Japan.",
+   "b": [
+    "Brother"
+   ]
+  },
+  "68690": {
+   "d": "Haematology and laboratory diagnostics — the global leader in blood-testing analysers.",
+   "b": [
+    "Sysmex"
+   ]
+  },
+  "52010": {
+   "d": "Glass, chemicals and automotive glazing, with a large electronic-materials business.",
+   "b": [
+    "AGC"
+   ]
+  },
+  "68410": {
+   "d": "Industrial automation and measurement: process control, test instruments and aviation systems.",
+   "b": [
+    "Yokogawa"
+   ]
+  },
+  "22690": {
+   "d": "Dairy, chocolate and confectionery (Meiji), plus a pharmaceutical arm.",
+   "b": [
+    "Meiji",
+    "Chocolate"
+   ]
+  },
+  "27680": {
+   "d": "Trading house spanning machinery, energy, chemicals and consumer goods, with a large overseas network.",
+   "b": [
+    "Sojitz"
+   ]
+  },
+  "54110": {
+   "d": "Japan's second-largest steel group, with a big engineering and trading arm.",
+   "b": [
+    "JFE Steel"
+   ]
+  },
+  "83590": {
+   "d": "Regional bank serving Nagano prefecture.",
+   "b": [
+    "Hachijuni Bank"
+   ]
+  },
+  "63050": {
+   "d": "Hydraulic excavators and mining machinery, majority-owned by Hitachi.",
+   "b": [
+    "Hitachi Construction Machinery"
+   ]
+  },
+  "67240": {
+   "d": "Printers, projectors and watches, with a large precision-component business.",
+   "b": [
+    "Epson",
+    "Seiko Epson"
+   ]
+  },
+  "65060": {
+   "d": "Servo motors and industrial robots — the machinery behind factory automation.",
+   "b": [
+    "Yaskawa"
+   ]
+  },
+  "66450": {
+   "d": "Sensors, control components and healthcare devices, with a large industrial automation business.",
+   "b": [
+    "Omron"
+   ]
+  },
+  "40210": {
+   "d": "Chemicals and agrochemicals, with a strong semiconductor-materials line.",
+   "b": [
+    "Nissan Chemical"
+   ]
+  },
+  "30640": {
+   "d": "Industrial supplies e-commerce for factories and construction, with fast next-day delivery.",
+   "b": [
+    "MonotaRO"
+   ]
+  },
+  "19440": {
+   "d": "Electrical and mechanical contracting for buildings and plants.",
+   "b": [
+    "Kinden"
+   ]
+  },
+  "19420": {
+   "d": "Electrical construction and infrastructure contracting.",
+   "b": [
+    "Kandenko"
+   ]
+  },
+  "58380": {
+   "d": "Online bank owned by Rakuten, funded by deposits gathered through the Rakuten ecosystem.",
+   "b": [
+    "Rakuten Bank"
+   ]
+  },
+  "77520": {
+   "d": "Office equipment and printers, now pivoting to digital services and workplace software.",
+   "b": [
+    "Ricoh"
+   ]
+  },
+  "45280": {
+   "d": "Drugmaker with Opdivo in immuno-oncology, developed with Bristol Myers Squibb.",
+   "b": [
+    "Ono",
+    "Opdivo"
+   ]
+  },
+  "96840": {
+   "d": "Video games: Final Fantasy, Dragon Quest and a large publishing and arcade business.",
+   "b": [
+    "Square Enix",
+    "Final Fantasy",
+    "Dragon Quest"
+   ]
+  },
+  "28750": {
+   "d": "Instant noodles and frozen food — Maruchan is the company's global brand.",
+   "b": [
+    "Maruchan"
+   ]
+  },
+  "30920": {
+   "d": "Fashion e-commerce through ZOZOTOWN, with its own brands and a logistics arm.",
+   "b": [
+    "ZOZOTOWN",
+    "ZOZO"
+   ]
+  },
+  "42040": {
+   "d": "Plastics, housing and medical materials, with a large prefabricated-housing business.",
+   "b": [
+    "Sekisui Chemical"
+   ]
+  },
+  "41860": {
+   "d": "Photoresists and process chemicals for semiconductor manufacturing.",
+   "b": [
+    "Tokyo Ohka",
+    "TOK"
+   ]
+  },
+  "90420": {
+   "d": "Rail, department stores, hotels and property across the Osaka-Kobe-Kyoto corridor.",
+   "b": [
+    "Hankyu",
+    "Hanshin"
+   ]
+  },
+  "51010": {
+   "d": "Tyres and industrial rubber, with a large motorsport and off-road tyre business.",
+   "b": [
+    "Yokohama Rubber",
+    "Advan"
+   ]
+  },
+  "99620": {
+   "d": "Configurable mechanical components sold online to machine builders — a catalogue business.",
+   "b": [
+    "MISUMI"
+   ]
+  },
+  "18780": {
+   "d": "Rental housing and condominiums, mostly built for individual landlords.",
+   "b": [
+    "Daito Trust"
+   ]
+  },
+  "83340": {
+   "d": "Regional bank serving Gunma prefecture.",
+   "b": [
+    "Gunma Bank"
+   ]
+  },
+  "30880": {
+   "d": "Drugstore chain combining Matsumoto Kiyoshi and Cocokara Fine.",
+   "b": [
+    "Matsumoto Kiyoshi",
+    "Cocokara Fine"
+   ]
+  },
+  "33910": {
+   "d": "Drugstore chain concentrated in Hokkaido and northern Japan.",
+   "b": [
+    "Tsuruha"
+   ]
+  },
+  "77470": {
+   "d": "Guidewires and catheters for minimally invasive surgery — a narrow, high-margin medical niche.",
+   "b": [
+    "Asahi Intecc"
+   ]
+  },
+  "58300": {
+   "d": "Regional banking group in Ehime, built on Iyo Bank.",
+   "b": [
+    "Iyo Bank"
+   ]
+  },
+  "68560": {
+   "d": "Analytical and measurement instruments for automotive, environmental and semiconductor use.",
+   "b": [
+    "Horiba"
+   ]
+  },
+  "40050": {
+   "d": "Chemicals and pharmaceuticals, with a large agrochemical and battery-materials business.",
+   "b": [
+    "Sumitomo Chemical"
+   ]
+  },
+  "53320": {
+   "d": "Bathroom and kitchen fixtures — the Washlet toilet seat is its best-known product.",
+   "b": [
+    "TOTO",
+    "Washlet"
+   ]
+  },
+  "87290": {
+   "d": "Insurance and banking arm of Sony: Sony Life, Sony Assurance and Sony Bank.",
+   "b": [
+    "Sony Life",
+    "Sony Bank"
+   ]
+  },
+  "47040": {
+   "d": "Cybersecurity software for enterprises and governments, with a large Japanese installed base.",
+   "b": [
+    "Trend Micro"
+   ]
+  },
+  "43240": {
+   "d": "Advertising and marketing group, one of the two largest in Japan, with a big overseas network.",
+   "b": [
+    "Dentsu"
+   ]
+  },
+  "72010": {
+   "d": "Carmaker with a large EV push and a long alliance with Renault; strong in the US and China.",
+   "b": [
+    "Nissan",
+    "Infiniti"
+   ]
+  },
+  "94010": {
+   "d": "Broadcaster and content producer, with a large animation and drama library.",
+   "b": [
+    "TBS"
+   ]
+  },
+  "36260": {
+   "d": "IT services for Japanese financial and industrial companies.",
+   "b": [
+    "TIS"
+   ]
+  },
+  "80500": {
+   "d": "Watches, clocks and precision instruments — Seiko is the group's core brand.",
+   "b": [
+    "Seiko",
+    "Grand Seiko"
+   ]
+  },
+  "83770": {
+   "d": "Regional banking group across the Hokuriku region.",
+   "b": [
+    "Hokuhoku"
+   ]
+  },
+  "90240": {
+   "d": "Rail, hotels and property in western Tokyo and Saitama, including the Seibu line.",
+   "b": [
+    "Seibu"
+   ]
+  },
+  "90050": {
+   "d": "Rail, retail and property along the Toyoko and Den-en-toshi lines.",
+   "b": [
+    "Tokyu"
+   ]
+  },
+  "34360": {
+   "d": "Silicon wafers — the substrate every chip is built on, sold to memory and logic makers.",
+   "b": [
+    "SUMCO"
+   ]
+  },
+  "45060": {
+   "d": "Drugmaker rebuilding around psychiatry and oncology after patent losses.",
+   "b": [
+    "Sumitomo Pharma"
+   ]
+  },
+  "32890": {
+   "d": "Property developer with a large rental and condominium business.",
+   "b": [
+    "Tokyu Fudosan"
+   ]
+  },
+  "91430": {
+   "d": "Logistics group behind Sagawa Express, one of Japan's largest parcel networks.",
+   "b": [
+    "Sagawa",
+    "SG Holdings"
+   ]
+  },
+  "28970": {
+   "d": "Instant noodles and frozen food — Cup Noodles and Top Ramen are its global brands.",
+   "b": [
+    "Nissin",
+    "Cup Noodles",
+    "Top Ramen"
+   ]
+  },
+  "32880": {
+   "d": "Housing developer selling detached homes and condominiums, mostly in Tokyo and Nagoya.",
+   "b": [
+    "Open House"
+   ]
+  },
+  "90230": {
+   "d": "Tokyo's subway operator, with a large property and retail business around its stations.",
+   "b": [
+    "Tokyo Metro"
+   ]
+  },
+  "83410": {
+   "d": "Regional bank serving Miyagi and northern Japan.",
+   "b": [
+    "77 Bank"
+   ]
+  },
+  "80600": {
+   "d": "Canon's Japanese sales and service arm for office and imaging equipment.",
+   "b": [
+    "Canon"
+   ]
+  },
+  "31970": {
+   "d": "Restaurant group: Gusto, Jonathan's and other family-restaurant chains.",
+   "b": [
+    "Gusto",
+    "Jonathan's",
+    "Skylark"
+   ]
+  },
+  "68060": {
+   "d": "Electrical connectors for phones, cars and industrial equipment.",
+   "b": [
+    "Hirose"
+   ]
+  },
+  "54060": {
+   "d": "Steel, aluminium and construction machinery, with a large automotive steel business.",
+   "b": [
+    "Kobe Steel",
+    "Kobelco"
+   ]
+  },
+  "47320": {
+   "d": "Used-car auctions — the dominant venue where Japanese dealers trade stock.",
+   "b": [
+    "USS"
+   ]
+  },
+  "22670": {
+   "d": "Probiotic drinks and dairy — Yakult is sold in dozens of countries.",
+   "b": [
+    "Yakult"
+   ]
+  },
+  "95010": {
+   "d": "Tokyo's electric utility, now focused on decommissioning Fukushima Daiichi and grid investment.",
+   "b": [
+    "TEPCO"
+   ]
+  },
+  "40420": {
+   "d": "Basic chemicals and specialty materials, with a large semiconductor-materials business.",
+   "b": [
+    "Tosoh"
+   ]
+  },
+  "63700": {
+   "d": "Water treatment plants and chemicals for industry and municipalities.",
+   "b": [
+    "Kurita"
+   ]
+  },
+  "61130": {
+   "d": "Sheet-metal working machinery: laser cutters, press brakes and punch presses.",
+   "b": [
+    "Amada"
+   ]
+  },
+  "41830": {
+   "d": "Chemicals and plastics, with a large mobility and healthcare materials business.",
+   "b": [
+    "Mitsui Chemicals"
+   ]
+  },
+  "25010": {
+   "d": "Beer and beverages: Sapporo, Yebisu and a large overseas brewery portfolio.",
+   "b": [
+    "Sapporo",
+    "Yebisu"
+   ]
+  },
+  "19110": {
+   "d": "Timber, housing and overseas forest assets, with a large US and New Zealand wood business.",
+   "b": [
+    "Sumitomo Forestry"
+   ]
+  },
+  "23270": {
+   "d": "IT services, originally the systems arm of Nippon Steel.",
+   "b": [
+    "NS Solutions"
+   ]
+  },
+  "94040": {
+   "d": "Broadcaster and content producer with a large animation and sports portfolio.",
+   "b": [
+    "Nippon TV"
+   ]
+  },
+  "68450": {
+   "d": "Building automation and control systems for commercial buildings and factories.",
+   "b": [
+    "Azbil"
+   ]
+  },
+  "22120": {
+   "d": "Bread and bakery products — Japan's largest bread maker.",
+   "b": [
+    "Yamazaki"
+   ]
+  },
+  "32310": {
+   "d": "Property developer with offices, rental housing and a large logistics portfolio.",
+   "b": [
+    "Nomura Real Estate"
+   ]
+  },
+  "42030": {
+   "d": "Plastics and electronic materials, including semiconductor encapsulants.",
+   "b": [
+    "Sumitomo Bakelite"
+   ]
+  },
+  "59290": {
+   "d": "Shutters, doors and building materials, with a large overseas façade business.",
+   "b": [
+    "Sanwa Shutter"
+   ]
+  },
+  "23710": {
+   "d": "Price-comparison sites and restaurant reviews: Kakaku.com and Tabelog.",
+   "b": [
+    "Kakaku.com",
+    "Tabelog"
+   ]
+  },
+  "26700": {
+   "d": "Shoe retailer, the Japanese licensee of Nike and a large own-brand business.",
+   "b": [
+    "ABC-Mart"
+   ]
+  },
+  "31320": {
+   "d": "Semiconductor and electronic-component distributor.",
+   "b": [
+    "Macnica"
+   ]
+  },
+  "54440": {
+   "d": "Steelmaker focused on sections and bars, with a large US rail and steel business.",
+   "b": [
+    "Yamato Kogyo"
+   ]
+  },
+  "64650": {
+   "d": "Commercial kitchen equipment: ice machines and refrigerators for restaurants and convenience stores.",
+   "b": [
+    "Hoshizaki"
+   ]
+  },
+  "47330": {
+   "d": "Accounting and ERP software for Japanese small and mid-sized businesses.",
+   "b": [
+    "OBC"
+   ]
+  },
+  "95130": {
+   "d": "Wholesale power generator, with large hydro and coal assets and a transmission business.",
+   "b": [
+    "J-Power"
+   ]
+  },
+  "41820": {
+   "d": "Methanol, aromatics and specialty chemicals, with a large semiconductor-materials arm.",
+   "b": [
+    "Mitsubishi Gas Chemical"
+   ]
+  },
+  "50760": {
+   "d": "Construction and infrastructure group formed from Maeda Road and Maeda Corporation.",
+   "b": [
+    "INFRONEER"
+   ]
+  },
+  "18080": {
+   "d": "Condominium developer and construction company.",
+   "b": [
+    "Haseko"
+   ]
+  },
+  "53440": {
+   "d": "Fine ceramics and electronic components, including substrates for chip packages.",
+   "b": [
+    "Maruwa"
+   ]
+  },
+  "74590": {
+   "d": "Pharmaceutical wholesaler distributing drugs to hospitals and pharmacies.",
+   "b": [
+    "Medipal"
+   ]
+  },
+  "38610": {
+   "d": "Paper and packaging group with large overseas pulp plantations.",
+   "b": [
+    "Oji"
+   ]
+  },
+  "82270": {
+   "d": "Clothing retailer selling own-brand and national brands at discount prices.",
+   "b": [
+    "Shimamura"
+   ]
+  },
+  "50210": {
+   "d": "Oil refiner and fuel retailer, with a large lubricants business.",
+   "b": [
+    "Cosmo",
+    "Cosmo Oil"
+   ]
+  },
+  "30860": {
+   "d": "Department stores: Daimaru and Matsuzakaya, with a large Tokyo flagship.",
+   "b": [
+    "Daimaru",
+    "Matsuzakaya"
+   ]
+  },
+  "59010": {
+   "d": "Metal packaging: cans, bottles and containers for food and beverages.",
+   "b": [
+    "Toyo Seikan"
+   ]
+  },
+  "72610": {
+   "d": "Carmaker with a small-car and SUV line-up, strong in the US and Australia.",
+   "b": [
+    "Mazda"
+   ]
+  },
+  "63230": {
+   "d": "Wafer-handling robots and load ports for semiconductor fabs.",
+   "b": [
+    "Rorze"
+   ]
+  },
+  "88040": {
+   "d": "Property developer and landlord in central Tokyo, with a large office portfolio.",
+   "b": [
+    "Tokyo Tatemono"
+   ]
+  },
+  "95060": {
+   "d": "Electric utility serving northern Honshu.",
+   "b": [
+    "Tohoku Electric"
+   ]
+  },
+  "90090": {
+   "d": "Rail operator between Tokyo and Narita, including the Skyliner.",
+   "b": [
+    "Keisei",
+    "Skyliner"
+   ]
+  },
+  "64810": {
+   "d": "Linear motion guides and ball screws — the components inside machine tools and robots.",
+   "b": [
+    "THK"
+   ]
+  },
+  "40880": {
+   "d": "Industrial gases, medical gases and a large overseas gas business.",
+   "b": [
+    "Air Water"
+   ]
+  },
+  "73370": {
+   "d": "Regional banking group in Hiroshima.",
+   "b": [
+    "Hirogin"
+   ]
+  },
+  "77290": {
+   "d": "Semiconductor testers and wafer-grinding equipment.",
+   "b": [
+    "Tokyo Seimitsu"
+   ]
+  },
+  "64600": {
+   "d": "Video games (Sonic), pachinko machines and resorts.",
+   "b": [
+    "Sega",
+    "Sonic",
+    "Sammy"
+   ]
+  },
+  "90410": {
+   "d": "Rail, department stores and hotels across Osaka, Nara and Mie.",
+   "b": [
+    "Kintetsu"
+   ]
+  },
+  "64730": {
+   "d": "Bearings, steering systems and driveline components for cars.",
+   "b": [
+    "JTEKT"
+   ]
+  },
+  "71800": {
+   "d": "Regional banking group in Kyushu, built on Bank of Fukuoka's peers in the region.",
+   "b": [
+    "Kyushu Financial"
+   ]
+  },
+  "37690": {
+   "d": "Online payment processing for Japanese e-commerce and utilities.",
+   "b": [
+    "GMO Payment Gateway"
+   ]
+  },
+  "17210": {
+   "d": "Telecom and electrical construction for carriers and municipalities.",
+   "b": [
+    "COMSYS"
+   ]
+  },
+  "84180": {
+   "d": "Regional banking group in Yamaguchi.",
+   "b": [
+    "Yamaguchi Bank"
+   ]
+  },
+  "63020": {
+   "d": "Heavy machinery: injection-moulding machines, gearboxes and defence equipment.",
+   "b": [
+    "Sumitomo Heavy"
+   ]
+  },
+  "53930": {
+   "d": "Industrial sealing, insulation and fluoropolymer materials.",
+   "b": [
+    "Nichias"
+   ]
+  },
+  "21810": {
+   "d": "Staffing and recruitment: Tempstaff, Persol Career and a large outsourcing business.",
+   "b": [
+    "Tempstaff",
+    "Persol"
+   ]
+  },
+  "69650": {
+   "d": "Photodetectors, photomultiplier tubes and imaging sensors for medical and scientific use.",
+   "b": [
+    "Hamamatsu"
+   ]
+  },
+  "71890": {
+   "d": "Regional banking group in Fukuoka.",
+   "b": [
+    "Nishi-Nippon"
+   ]
+  },
+  "30380": {
+   "d": "Discount supermarkets under the Gyomu Super banner, selling bulk goods cheaply.",
+   "b": [
+    "Gyomu Super",
+    "Kobe Bussan"
+   ]
+  },
+  "58320": {
+   "d": "Regional banking group in the Chugoku region.",
+   "b": [
+    "Chugin"
+   ]
+  },
+  "47510": {
+   "d": "Internet advertising, media (Abema TV) and games, with a large Japanese ad-tech business.",
+   "b": [
+    "CyberAgent",
+    "Abema"
+   ]
+  },
+  "73270": {
+   "d": "Regional banking group in Niigata.",
+   "b": [
+    "Daishi Hokuetsu"
+   ]
+  },
+  "59910": {
+   "d": "Suspension springs and precision components for cars.",
+   "b": [
+    "NHK Spring"
+   ]
+  },
+  "90640": {
+   "d": "Logistics group behind the Kuroneko parcel network and a large home-delivery business.",
+   "b": [
+    "Yamato",
+    "Kuroneko"
+   ]
+  },
+  "44030": {
+   "d": "Chemicals: functional materials, pharmaceuticals and a large bio-related business.",
+   "b": [
+    "NOF"
+   ]
+  },
+  "82330": {
+   "d": "Department store chain with a large Tokyo and Osaka flagship presence.",
+   "b": [
+    "Takashimaya"
+   ]
+  },
+  "37740": {
+   "d": "Enterprise internet and cloud services for Japanese corporates.",
+   "b": [
+    "IIJ"
+   ]
+  },
+  "25790": {
+   "d": "Coca-Cola's Japanese bottling and vending-machine business, handling production and distribution nationwide.",
+   "b": [
+    "Coca-Cola"
+   ]
+  },
+  "28090": {
+   "d": "Mayonnaise, dressings and prepared salads — Kewpie is the category leader in Japan.",
+   "b": [
+    "Kewpie"
+   ]
+  },
+  "45270": {
+   "d": "Eye drops, skincare and OTC medicines; Rohto is the best-known Japanese eye-care brand.",
+   "b": [
+    "Rohto",
+    "Melano CC"
+   ]
+  },
+  "72760": {
+   "d": "Automotive lighting: headlamps and rear lamps, mostly for Toyota group carmakers.",
+   "b": [
+    "Koito"
+   ]
+  },
+  "20020": {
+   "d": "Flour milling, pasta and processed food, with a large overseas milling business.",
+   "b": [
+    "Nisshin",
+    "Ma-Ma"
+   ]
+  },
+  "83660": {
+   "d": "Regional bank serving Shiga prefecture.",
+   "b": [
+    "Shiga Bank"
+   ]
+  },
+  "82530": {
+   "d": "Credit cards, leasing and consumer finance, with a large Asian card business.",
+   "b": [
+    "Saison",
+    "Credit Saison"
+   ]
+  },
+  "43850": {
+   "d": "Second-hand marketplace app where individuals buy and sell used goods.",
+   "b": [
+    "Mercari"
+   ]
+  },
+  "90070": {
+   "d": "Rail between Shinjuku and Hakone, plus department stores and hotels along the line.",
+   "b": [
+    "Odakyu"
+   ]
+  },
+  "57110": {
+   "d": "Copper, cement and cutting tools — a materials group built on smelting.",
+   "b": [
+    "Mitsubishi Materials"
+   ]
+  },
+  "23310": {
+   "d": "Security services for buildings and homes, and a large overseas security business.",
+   "b": [
+    "ALSOK"
+   ]
+  },
+  "32910": {
+   "d": "Detached housing and condominium developer.",
+   "b": [
+    "Iida Group"
+   ]
+  },
+  "77310": {
+   "d": "Cameras, lithography systems for chipmaking and industrial metrology.",
+   "b": [
+    "Nikon"
+   ]
+  },
+  "22820": {
+   "d": "Meat processing and prepared foods, with a large overseas meat business.",
+   "b": [
+    "NH Foods",
+    "Nippon Ham"
+   ]
+  },
+  "46760": {
+   "d": "Broadcasting and content: Fuji TV, plus a large animation and film library.",
+   "b": [
+    "Fuji TV"
+   ]
+  },
+  "45360": {
+   "d": "Prescription eye-care drugs, from glaucoma to dry eye — a pure ophthalmology company.",
+   "b": [
+    "Santen"
+   ]
+  },
+  "90010": {
+   "d": "Rail across Tokyo's northern suburbs and Nikko, plus department stores and the Skytree.",
+   "b": [
+    "Tobu",
+    "Tokyo Skytree"
+   ]
+  },
+  "61340": {
+   "d": "Surface-mount placement machines — the equipment that puts components on circuit boards.",
+   "b": [
+    "Fuji"
+   ]
+  },
+  "48120": {
+   "d": "IT services for the Dentsu group and Japanese corporates.",
+   "b": [
+    "Dentsu Soken"
+   ]
+  },
+  "72820": {
+   "d": "Rubber and plastic auto parts: airbags, weatherstrips and interior components.",
+   "b": [
+    "Toyoda Gosei"
+   ]
+  },
+  "31100": {
+   "d": "Glass fibre, electronic materials and textiles.",
+   "b": [
+    "Nittobo"
+   ]
+  },
+  "34050": {
+   "d": "Specialty chemicals and polymers, including PVA film and synthetic leather.",
+   "b": [
+    "Kuraray"
+   ]
+  },
+  "62690": {
+   "d": "Floating production platforms and offshore oil and gas equipment.",
+   "b": [
+    "MODEC"
+   ]
+  },
+  "77620": {
+   "d": "Watches, machine tools and precision components; Citizen is the core brand.",
+   "b": [
+    "Citizen"
+   ]
+  },
+  "36350": {
+   "d": "Video games: Nioh, Dynasty Warriors and a large mobile game business.",
+   "b": [
+    "Koei Tecmo",
+    "Nioh"
+   ]
+  },
+  "19690": {
+   "d": "Air-conditioning and plumbing contracting for large buildings.",
+   "b": [
+    "Takasago Thermal"
+   ]
+  },
+  "63680": {
+   "d": "Water treatment and filtration systems for industry.",
+   "b": [
+    "Organo"
+   ]
+  },
+  "79510": {
+   "d": "Musical instruments, audio equipment and a large piano business.",
+   "b": [
+    "Yamaha"
+   ]
+  },
+  "28710": {
+   "d": "Frozen food and a large cold-chain logistics business.",
+   "b": [
+    "Nichirei"
+   ]
+  },
+  "94680": {
+   "d": "Publishing, anime and games — owns FromSoftware, the studio behind Elden Ring.",
+   "b": [
+    "Kadokawa",
+    "FromSoftware",
+    "Elden Ring"
+   ]
+  },
+  "25310": {
+   "d": "Sake and shochu (Takara), plus food and a pharmaceutical arm.",
+   "b": [
+    "Takara",
+    "Shochu"
+   ]
+  },
+  "83680": {
+   "d": "Regional bank serving Mie prefecture.",
+   "b": [
+    "Hyakugo Bank"
+   ]
+  },
+  "97060": {
+   "d": "Operator of the Haneda Airport terminals, with a large retail and hotel business.",
+   "b": [
+    "Haneda"
+   ]
+  },
+  "94120": {
+   "d": "Satellite broadcasting and communications, with a large fleet of satellites.",
+   "b": [
+    "Sky Perfect",
+    "JSAT"
+   ]
+  },
+  "91420": {
+   "d": "Rail across Kyushu, including the Kyushu Shinkansen, plus property and retail.",
+   "b": [
+    "JR Kyushu"
+   ]
+  },
+  "80120": {
+   "d": "Chemicals and plastics trading, with a large specialty-chemicals distribution business.",
+   "b": [
+    "Nagase"
+   ]
+  },
+  "19510": {
+   "d": "Telecom and electrical construction for carriers and data centres.",
+   "b": [
+    "EXEO"
+   ]
+  },
+  "46260": {
+   "d": "Solder resist and insulating materials for printed circuit boards.",
+   "b": [
+    "Taiyo Holdings"
+   ]
+  },
+  "49670": {
+   "d": "OTC medicines and household products: heat pads, cooling sheets and painkillers.",
+   "b": [
+    "Kobayashi",
+    "Netsu-sama"
+   ]
+  },
+  "19630": {
+   "d": "Engineering and construction for LNG, refining and petrochemical plants worldwide.",
+   "b": [
+    "JGC"
+   ]
+  },
+  "63240": {
+   "d": "Precision strain-wave gears used in robots and machine tools.",
+   "b": [
+    "Harmonic Drive"
+   ]
+  },
+  "90720": {
+   "d": "Logistics and warehousing, with a large trucking network.",
+   "b": [
+    "Nikkon"
+   ]
+  },
+  "49800": {
+   "d": "Optical films and adhesives for displays and electronics.",
+   "b": [
+    "Dexerials"
+   ]
+  },
+  "62680": {
+   "d": "Precision reducers, brakes and aircraft components.",
+   "b": [
+    "Nabtesco"
+   ]
+  },
+  "51100": {
+   "d": "Tyres (Dunlop in Japan), golf and industrial rubber.",
+   "b": [
+    "Dunlop",
+    "Sumitomo Rubber"
+   ]
+  },
+  "46130": {
+   "d": "Paints and coatings for automotive and industrial use, with a large Asian business.",
+   "b": [
+    "Kansai Paint"
+   ]
+  },
+  "93010": {
+   "d": "Warehousing and distribution, with a large port and air-cargo business.",
+   "b": [
+    "Mitsubishi Logistics"
+   ]
+  },
+  "64710": {
+   "d": "Ball bearings, linear guides and automotive components.",
+   "b": [
+    "NSK"
+   ]
+  },
+  "69520": {
+   "d": "Watches (G-Shock), calculators and electronic instruments.",
+   "b": [
+    "Casio",
+    "G-Shock"
+   ]
+  },
+  "49120": {
+   "d": "Soap, toothpaste and household products, with a large Asian business.",
+   "b": [
+    "Lion",
+    "Clinica"
+   ]
+  },
+  "51050": {
+   "d": "Tyres and automotive parts, strong in the US replacement market.",
+   "b": [
+    "Toyo Tire"
+   ]
+  },
+  "67870": {
+   "d": "Printed circuit boards for automotive and industrial electronics.",
+   "b": [
+    "Meiko"
+   ]
+  },
+  "24330": {
+   "d": "Advertising and marketing, the second of Japan's two large agency groups.",
+   "b": [
+    "Hakuhodo"
+   ]
+  },
+  "82520": {
+   "d": "Shopping centres and credit cards, built around the Marui department stores.",
+   "b": [
+    "Marui"
+   ]
+  },
+  "83580": {
+   "d": "Regional bank in Shizuoka, rebuilding after a property-lending scandal.",
+   "b": [
+    "Suruga Bank"
+   ]
+  },
+  "98310": {
+   "d": "Consumer electronics retail, with a large store network and online business.",
+   "b": [
+    "Yamada Denki"
+   ]
+  },
+  "68710": {
+   "d": "Probe cards and test interfaces for semiconductor measurement.",
+   "b": [
+    "Micronics"
+   ]
+  },
+  "66740": {
+   "d": "Lead-acid and lithium-ion batteries for cars, motorcycles and industrial use.",
+   "b": [
+    "GS Yuasa"
+   ]
+  },
+  "57140": {
+   "d": "Metal refining and recycling, including copper, gold and electronic materials.",
+   "b": [
+    "Dowa"
+   ]
+  },
+  "76490": {
+   "d": "Drugstore chain concentrated in Aichi and central Japan.",
+   "b": [
+    "Sugi"
+   ]
+  },
+  "80560": {
+   "d": "IT services for Japanese corporates, formerly Nihon Unisys.",
+   "b": [
+    "Biprogy"
+   ]
+  },
+  "65080": {
+   "d": "Electrical equipment: generators, motors and power systems.",
+   "b": [
+    "Meidensha"
+   ]
+  },
+  "46310": {
+   "d": "Printing inks, pigments and specialty chemicals.",
+   "b": [
+    "DIC"
+   ]
+  },
+  "33490": {
+   "d": "Discount drugstores, concentrated in western Japan.",
+   "b": [
+    "Cosmos"
+   ]
+  },
+  "93640": {
+   "d": "Port and warehouse logistics, with a large overseas terminal business.",
+   "b": [
+    "Kamigumi"
+   ]
+  },
+  "59380": {
+   "d": "Bathroom, kitchen and housing products: INAX and Grohe are its main brands.",
+   "b": [
+    "LIXIL",
+    "INAX",
+    "Grohe"
+   ]
+  },
+  "59470": {
+   "d": "Gas water heaters, kitchen appliances and a growing overseas heating business.",
+   "b": [
+    "Rinnai"
+   ]
+  },
+  "72110": {
+   "d": "Carmaker with a small-car and SUV line-up, strong in Southeast Asia.",
+   "b": [
+    "Mitsubishi Motors"
+   ]
+  },
+  "85240": {
+   "d": "Regional bank in Hokkaido.",
+   "b": [
+    "North Pacific Bank"
+   ]
+  },
+  "56310": {
+   "d": "Steel castings and forgings for power plants, plus plastics machinery.",
+   "b": [
+    "Japan Steel Works"
+   ]
+  },
+  "52330": {
+   "d": "Cement producer with a large US and Asian business.",
+   "b": [
+    "Taiheiyo Cement"
+   ]
+  },
+  "16620": {
+   "d": "Oil and gas exploration and production in Japan and overseas.",
+   "b": [
+    "JAPEX"
+   ]
+  },
+  "44010": {
+   "d": "Chemicals and food additives, including flame retardants and plastics additives.",
+   "b": [
+    "Adeka"
+   ]
+  },
+  "95070": {
+   "d": "Electric utility serving Shikoku.",
+   "b": [
+    "Shikoku Electric"
+   ]
+  },
+  "95330": {
+   "d": "Gas utility serving the Nagoya region.",
+   "b": [
+    "Toho Gas"
+   ]
+  },
+  "80880": {
+   "d": "LPG, industrial gases and hydrogen — Japan's largest LPG distributor.",
+   "b": [
+    "Iwatani"
+   ]
+  },
+  "71730": {
+   "d": "Regional banking group in Tokyo, formed from Kiraboshi and Tokyo Tomin.",
+   "b": [
+    "Kiraboshi Bank"
+   ]
+  },
+  "73800": {
+   "d": "Regional banking group in Gifu.",
+   "b": [
+    "Juroku Bank"
+   ]
+  },
+  "90080": {
+   "d": "Rail in western Tokyo, plus department stores and property.",
+   "b": [
+    "Keio"
+   ]
+  },
+  "18600": {
+   "d": "Construction and civil engineering, with a large overseas business.",
+   "b": [
+    "Toda"
+   ]
+  },
+  "54710": {
+   "d": "Specialty steel for automotive and industrial use.",
+   "b": [
+    "Daido Steel"
+   ]
+  },
+  "79880": {
+   "d": "Plastic fasteners and precision components for cars and appliances.",
+   "b": [
+    "Nifco"
+   ]
+  },
+  "61410": {
+   "d": "Machine tools — milling and turning centres sold worldwide.",
+   "b": [
+    "DMG MORI"
+   ]
+  },
+  "42050": {
+   "d": "Synthetic rubber, specialty chemicals and battery materials.",
+   "b": [
+    "Zeon"
+   ]
+  },
+  "27840": {
+   "d": "Pharmaceutical wholesaler serving hospitals and pharmacies.",
+   "b": [
+    "Alfresa"
+   ]
+  },
+  "73890": {
+   "d": "Regional banking group in Aichi.",
+   "b": [
+    "Aichi Financial"
+   ]
+  },
+  "64170": {
+   "d": "Pachinko and pachislot machines.",
+   "b": [
+    "Sankyo"
+   ]
+  },
+  "83040": {
+   "d": "Bank focused on corporate lending and real estate finance.",
+   "b": [
+    "Aozora"
+   ]
+  },
+  "90760": {
+   "d": "Logistics and trucking, with a large cold-chain business.",
+   "b": [
+    "Seino"
+   ]
+  },
+  "65920": {
+   "d": "Small DC motors for automotive and consumer electronics.",
+   "b": [
+    "Mabuchi"
+   ]
+  },
+  "99890": {
+   "d": "Drugstore chain concentrated in Tokyo and western Japan.",
+   "b": [
+    "Sundrug"
+   ]
+  },
+  "90650": {
+   "d": "Logistics and heavy-haulage, with a large plant-engineering transport business.",
+   "b": [
+    "Sankyu"
+   ]
+  },
+  "90060": {
+   "d": "Rail between Tokyo and Yokohama, plus an airport line and property.",
+   "b": [
+    "Keikyu"
+   ]
+  },
+  "19610": {
+   "d": "Air-conditioning and plumbing contracting for buildings.",
+   "b": [
+    "Sanki"
+   ]
+  },
+  "71640": {
+   "d": "Credit guarantees on housing loans, collecting fees from lenders.",
+   "b": [
+    "Zenkoku Hosho"
+   ]
+  },
+  "53010": {
+   "d": "Carbon products: electrodes, carbon black and graphite for industry.",
+   "b": [
+    "Tokai Carbon"
+   ]
+  },
+  "33970": {
+   "d": "Udon restaurants — Marugame Seimen is the core chain, with a large overseas base.",
+   "b": [
+    "Marugame Seimen",
+    "Toridoll"
+   ]
+  },
+  "28100": {
+   "d": "Curry, tofu and processed foods, with a large overseas business.",
+   "b": [
+    "House Foods"
+   ]
+  },
+  "67700": {
+   "d": "Electronic components for cars and phones: switches, sensors and audio.",
+   "b": [
+    "Alps Alpine"
+   ]
+  },
+  "67540": {
+   "d": "Test and measurement equipment for telecom and networks.",
+   "b": [
+    "Anritsu"
+   ]
+  },
+  "19800": {
+   "d": "Air-conditioning and plumbing contracting for large buildings.",
+   "b": [
+    "Dai-Dan"
+   ]
+  },
+  "93360": {
+   "d": "Waste management and recycling, with a large industrial-waste business.",
+   "b": [
+    "Daiei Kankyo"
+   ]
+  },
+  "90690": {
+   "d": "Logistics and trucking, with a large distribution-centre business.",
+   "b": [
+    "Senko"
+   ]
+  },
+  "69230": {
+   "d": "Automotive lighting and electronic components.",
+   "b": [
+    "Stanley Electric"
+   ]
+  },
+  "84100": {
+   "d": "ATM network bank operating inside 7-Eleven stores.",
+   "b": [
+    "Seven Bank"
+   ]
+  },
+  "99870": {
+   "d": "Pharmaceutical wholesaler, one of Japan's largest.",
+   "b": [
+    "Suzuken"
+   ]
+  },
+  "80200": {
+   "d": "Trading house in electronics, food and industrial materials.",
+   "b": [
+    "Kanematsu"
+   ]
+  },
+  "75810": {
+   "d": "Italian family restaurants, with a large Asian store network.",
+   "b": [
+    "Saizeriya"
+   ]
+  },
+  "83880": {
+   "d": "Regional bank serving Tokushima.",
+   "b": [
+    "Awa Bank"
+   ]
+  },
+  "39230": {
+   "d": "Cloud accounting and HR software for small businesses.",
+   "b": [
+    "Rakus"
+   ]
+  },
+  "39410": {
+   "d": "Packaging: cardboard, flexible packaging and paper containers.",
+   "b": [
+    "Rengo"
+   ]
+  },
+  "84240": {
+   "d": "Leasing and asset finance for industry and the public sector.",
+   "b": [
+    "Fuyo General Lease"
+   ]
+  },
+  "67280": {
+   "d": "Vacuum pumps and deposition equipment for semiconductor and display manufacturing.",
+   "b": [
+    "Ulvac"
+   ]
+  },
+  "26070": {
+   "d": "Edible oils, chocolate ingredients and soy protein.",
+   "b": [
+    "Fuji Oil"
+   ]
+  },
+  "41140": {
+   "d": "Catalysts and acrylic acid — the chemical behind diapers and paints.",
+   "b": [
+    "Nippon Shokubai"
+   ]
+  },
+  "54630": {
+   "d": "Steel tubes and pipes for construction and industry.",
+   "b": [
+    "Maruichi"
+   ]
+  },
+  "78670": {
+   "d": "Toys: Tomica cars, Plarail trains and a large licensing business.",
+   "b": [
+    "Tomy",
+    "Tomica",
+    "Plarail"
+   ]
+  },
+  "18930": {
+   "d": "Marine construction and civil engineering.",
+   "b": [
+    "Penta-Ocean"
+   ]
+  },
+  "74190": {
+   "d": "Consumer electronics retail, concentrated in western Japan.",
+   "b": [
+    "Nojima"
+   ]
+  },
+  "41940": {
+   "d": "Job-matching platforms for professionals, led by BizReach.",
+   "b": [
+    "BizReach",
+    "Visional"
+   ]
+  },
+  "22220": {
+   "d": "Confectionery and souvenirs, including the Kotobuki brand.",
+   "b": [
+    "Kotobuki"
+   ]
+  },
+  "52140": {
+   "d": "Glass for displays and electronic devices, plus glass fibre.",
+   "b": [
+    "Nippon Electric Glass"
+   ]
+  },
+  "41180": {
+   "d": "Chemicals and pharmaceuticals, including biodegradable polymers and medical devices.",
+   "b": [
+    "Kaneka"
+   ]
+  },
+  "42020": {
+   "d": "Chemicals: airbag inflators, cellulose and specialty materials.",
+   "b": [
+    "Daicel"
+   ]
+  },
+  "46810": {
+   "d": "Membership resorts and hotels, selling long-term holiday memberships.",
+   "b": [
+    "Resorttrust"
+   ]
+  },
+  "39940": {
+   "d": "SaaS accounting and finance software for Japanese businesses.",
+   "b": [
+    "Money Forward"
+   ]
+  },
+  "96050": {
+   "d": "Film studio and distributor: Kamen Rider, Super Sentai and a large anime catalogue.",
+   "b": [
+    "Toei",
+    "Kamen Rider"
+   ]
+  },
+  "22290": {
+   "d": "Snacks: potato chips and虾条-style snacks, the category leader in Japan.",
+   "b": [
+    "Calbee"
+   ]
+  },
+  "88760": {
+   "d": "Rent guarantee and relocation services for landlords and corporate tenants.",
+   "b": [
+    "Relo"
+   ]
+  },
+  "95040": {
+   "d": "Electric utility serving the Chugoku region.",
+   "b": [
+    "Chugoku Electric"
+   ]
+  },
+  "31050": {
+   "d": "Textiles, electronics and automotive parts, with a large brake business.",
+   "b": [
+    "Nisshinbo"
+   ]
+  },
+  "79840": {
+   "d": "Stationery and office furniture, with a large Asian business.",
+   "b": [
+    "Kokuyo"
+   ]
+  },
+  "31160": {
+   "d": "Toyota group interior components: seats, door trim and filters.",
+   "b": [
+    "Toyota Boshoku"
+   ]
+  },
+  "70030": {
+   "d": "Shipbuilding, marine engines and industrial machinery.",
+   "b": [
+    "Mitsui E&S"
+   ]
+  },
+  "61350": {
+   "d": "Machine tools and machining centres.",
+   "b": [
+    "Makino"
+   ]
+  },
+  "90480": {
+   "d": "Rail across the Nagoya region, plus department stores and property.",
+   "b": [
+    "Meitetsu"
+   ]
+  },
+  "67530": {
+   "d": "Consumer electronics: TVs, appliances and displays, now majority-owned by Foxconn.",
+   "b": [
+    "Sharp",
+    "AQUOS"
+   ]
+  },
+  "80780": {
+   "d": "Steel and metal trading, with a large overseas network.",
+   "b": [
+    "Hanwa"
+   ]
+  },
+  "84250": {
+   "d": "Leasing and asset finance, part of the Mizuho group.",
+   "b": [
+    "Mizuho Leasing"
+   ]
+  },
+  "57410": {
+   "d": "Aluminium rolled products for cars, cans and construction.",
+   "b": [
+    "UACJ"
+   ]
+  },
+  "69510": {
+   "d": "Electron microscopes and analytical instruments.",
+   "b": [
+    "JEOL"
+   ]
+  },
+  "33870": {
+   "d": "Restaurant group operating multiple casual-dining chains in Japan and Asia.",
+   "b": [
+    "Create Restaurants"
+   ]
+  },
+  "58050": {
+   "d": "Power cables and wiring for infrastructure and industry.",
+   "b": [
+    "SWCC"
+   ]
+  },
+  "64320": {
+   "d": "Compact construction machinery: mini excavators and tracked loaders.",
+   "b": [
+    "Takeuchi"
+   ]
+  },
+  "79660": {
+   "d": "Adhesive materials, labels and semiconductor-related films.",
+   "b": [
+    "LINTEC"
+   ]
+  },
+  "60050": {
+   "d": "Industrial boilers and water-treatment equipment.",
+   "b": [
+    "Miura"
+   ]
+  },
+  "268A0": {
+   "d": "X-ray analytical instruments for materials and pharmaceutical research.",
+   "b": [
+    "Rigaku"
+   ]
+  },
+  "22640": {
+   "d": "Dairy products and infant formula, with a large overseas business.",
+   "b": [
+    "Morinaga"
+   ]
+  },
+  "65260": {
+   "d": "Custom system-on-chip design for customers — it builds the silicon others put their name on.",
+   "b": [
+    "Socionext"
+   ]
+  },
+  "99340": {
+   "d": "Wholesale distributor of electrical equipment and air-conditioning to contractors.",
+   "b": [
+    "Inaba Denki"
+   ]
+  },
+  "94090": {
+   "d": "Broadcaster and content producer, with a large news and sports operation.",
+   "b": [
+    "TV Asahi"
+   ]
+  },
+  "49020": {
+   "d": "Office equipment and printers, now focused on optical and healthcare imaging.",
+   "b": [
+    "Konica Minolta"
+   ]
+  },
+  "64540": {
+   "d": "Staplers, office equipment and construction tools.",
+   "b": [
+    "MAX"
+   ]
+  },
+  "65070": {
+   "d": "Motors, transport systems and power electronics.",
+   "b": [
+    "Sinfonia"
+   ]
+  },
+  "13320": {
+   "d": "Seafood: fishing, processing and a large overseas seafood trading business.",
+   "b": [
+    "Nissui"
+   ]
+  },
+  "31070": {
+   "d": "Textiles turned IT distribution, with a large systems business.",
+   "b": [
+    "Daiwabo"
+   ]
+  },
+  "94490": {
+   "d": "Internet group: domains and hosting, online payments and a securities arm.",
+   "b": [
+    "GMO",
+    "Onamae.com"
+   ]
+  },
+  "90450": {
+   "d": "Rail between Kyoto and Osaka, plus department stores and hotels.",
+   "b": [
+    "Keihan"
+   ]
+  },
+  "49220": {
+   "d": "Cosmetics: Sekkisei and Albion, with a large Chinese business.",
+   "b": [
+    "Kose",
+    "Sekkisei",
+    "Albion"
+   ]
+  },
+  "80220": {
+   "d": "Sportswear and running shoes, with a large baseball and golf business.",
+   "b": [
+    "Mizuno"
+   ]
+  },
+  "83860": {
+   "d": "Regional bank serving Kagawa.",
+   "b": [
+    "Hyakujushi Bank"
+   ]
+  },
+  "83610": {
+   "d": "Regional bank serving Gifu.",
+   "b": [
+    "Ogaki Kyoritsu"
+   ]
+  },
+  "46800": {
+   "d": "Bowling alleys, arcades and amusement facilities.",
+   "b": [
+    "Round One"
+   ]
+  },
+  "43680": {
+   "d": "Chemicals, including gluconic acid and electronic materials.",
+   "b": [
+    "Fuso Chemical"
+   ]
+  },
+  "94180": {
+   "d": "Streaming (U-NEXT) and telecom, with a large content library.",
+   "b": [
+    "U-NEXT"
+   ]
+  },
+  "42080": {
+   "d": "Chemicals, cement and machinery, with a large pharmaceutical arm.",
+   "b": [
+    "UBE"
+   ]
+  },
+  "64070": {
+   "d": "Pneumatic and fluid-control components for factory automation.",
+   "b": [
+    "CKD"
+   ]
+  },
+  "90440": {
+   "d": "Rail in Osaka and Wakayama, including the line to Koyasan.",
+   "b": [
+    "Nankai"
+   ]
+  },
+  "46860": {
+   "d": "Software for Japanese businesses and consumers, including the Ichitaro word processor.",
+   "b": [
+    "JustSystems",
+    "Ichitaro"
+   ]
+  },
+  "83810": {
+   "d": "Regional bank serving Shimane.",
+   "b": [
+    "San-in Godo Bank"
+   ]
+  },
+  "88480": {
+   "d": "Apartment developer and landlord, rebuilding after a construction scandal.",
+   "b": [
+    "Leopalace21"
+   ]
+  },
+  "93030": {
+   "d": "Warehousing and logistics, part of the Sumitomo group.",
+   "b": [
+    "Sumitomo Warehouse"
+   ]
+  },
+  "85700": {
+   "d": "Credit cards and consumer finance, tied to the AEON retail network.",
+   "b": [
+    "AEON Card"
+   ]
+  },
+  "83700": {
+   "d": "Regional bank serving Wakayama.",
+   "b": [
+    "Kiyo Bank"
+   ]
+  },
+  "34010": {
+   "d": "Fibres, films and pharmaceuticals, with a large carbon-fibre business.",
+   "b": [
+    "Teijin"
+   ]
+  },
+  "82420": {
+   "d": "Department stores (Hankyu and Hanshin) and supermarkets.",
+   "b": [
+    "Hankyu",
+    "Hanshin"
+   ]
+  },
+  "49270": {
+   "d": "Cosmetics: Pola and Orbis, sold mostly through direct channels.",
+   "b": [
+    "Pola",
+    "Orbis"
+   ]
+  },
+  "96160": {
+   "d": "Business hotels (Dormy Inn) and dormitory operations.",
+   "b": [
+    "Dormy Inn"
+   ]
+  },
+  "22060": {
+   "d": "Confectionery — Pocky and Pretz are the company's global brands.",
+   "b": [
+    "Glico",
+    "Pocky"
+   ]
+  },
+  "42720": {
+   "d": "Chemicals and pharmaceuticals, including dyes and catalysts.",
+   "b": [
+    "Nippon Kayaku"
+   ]
+  },
+  "81740": {
+   "d": "LPG and electricity retail for households and businesses.",
+   "b": [
+    "Nippon Gas"
+   ]
+  },
+  "85440": {
+   "d": "Regional bank serving Chiba.",
+   "b": [
+    "Keiyo Bank"
+   ]
+  },
+  "46660": {
+   "d": "Paid parking lots and car-sharing, with a large overseas parking business.",
+   "b": [
+    "Park24",
+    "Times"
+   ]
+  },
+  "85220": {
+   "d": "Regional bank serving Nagoya.",
+   "b": [
+    "Bank of Nagoya"
+   ]
+  },
+  "14170": {
+   "d": "Telecom and electrical construction for carriers and data centres.",
+   "b": [
+    "MIRAIT ONE"
+   ]
+  },
+  "61360": {
+   "d": "Cutting tools: taps, end mills and drills for machining.",
+   "b": [
+    "OSG"
+   ]
+  },
+  "30480": {
+   "d": "Consumer electronics retail, with large stores in Tokyo and Osaka.",
+   "b": [
+    "Bic Camera"
+   ]
+  },
+  "83670": {
+   "d": "Regional bank serving Nara.",
+   "b": [
+    "Nanto Bank"
+   ]
+  },
+  "36970": {
+   "d": "Software testing and quality assurance for Japanese enterprises.",
+   "b": [
+    "SHIFT"
+   ]
+  },
+  "81110": {
+   "d": "Sportswear and outdoor clothing, with a large North American business.",
+   "b": [
+    "Goldwin",
+    "The North Face"
+   ]
+  },
+  "40430": {
+   "d": "Chemicals, cement and electronic materials.",
+   "b": [
+    "Tokuyama"
+   ]
+  },
+  "45400": {
+   "d": "Kampo — traditional Chinese-medicine formulations — the largest maker in Japan.",
+   "b": [
+    "Tsumura"
+   ]
+  },
+  "66220": {
+   "d": "Welding equipment, power electronics and EV chargers.",
+   "b": [
+    "Daihen"
+   ]
+  },
+  "58570": {
+   "d": "Metal recycling and environmental services.",
+   "b": [
+    "ARE Holdings"
+   ]
+  },
+  "19410": {
+   "d": "Electrical construction and infrastructure contracting.",
+   "b": [
+    "Chudenko"
+   ]
+  },
+  "42060": {
+   "d": "Adhesives, decorative laminates and electronic materials.",
+   "b": [
+    "Aica"
+   ]
+  },
+  "98610": {
+   "d": "Beef-bowl restaurants, with a large Asian store network.",
+   "b": [
+    "Yoshinoya"
+   ]
+  },
+  "17190": {
+   "d": "Construction and civil engineering, with a large overseas business.",
+   "b": [
+    "Hazama Ando"
+   ]
+  },
+  "63710": {
+   "d": "Chains, power transmission and automotive components.",
+   "b": [
+    "Tsubakimoto"
+   ]
+  },
+  "86280": {
+   "d": "Online brokerage with a large retail investor base.",
+   "b": [
+    "Matsui"
+   ]
+  },
+  "22960": {
+   "d": "Meat processing and prepared foods.",
+   "b": [
+    "Itoham",
+    "Yonekyu"
+   ]
+  },
+  "87140": {
+   "d": "Regional banking group in Osaka.",
+   "b": [
+    "Senshu Ikeda"
+   ]
+  },
+  "65440": {
+   "d": "Elevator and escalator maintenance — a service business rather than a manufacturer.",
+   "b": [
+    "Japan Elevator Service"
+   ]
+  },
+  "40610": {
+   "d": "Chemicals: acetylene black, chloroprene and electronic materials.",
+   "b": [
+    "Denka"
+   ]
+  },
+  "69250": {
+   "d": "Lamps, LED light sources and lithography equipment for chipmaking.",
+   "b": [
+    "Ushio"
+   ]
+  },
+  "44430": {
+   "d": "Business-card and contract-management software, with a large Japanese enterprise base.",
+   "b": [
+    "Sansan"
+   ]
+  },
+  "61030": {
+   "d": "Machine tools and machining centres.",
+   "b": [
+    "Okuma"
+   ]
+  },
+  "25930": {
+   "d": "Green tea and beverages — Oi Ocha is Japan's best-selling tea brand.",
+   "b": [
+    "Ito En",
+    "Oi Ocha"
+   ]
+  },
+  "64570": {
+   "d": "Cash-handling machines and payment systems for banks and retailers.",
+   "b": [
+    "Glory"
+   ]
+  },
+  "89190": {
+   "d": "Buys and renovates used houses for resale.",
+   "b": [
+    "Katitas"
+   ]
+  },
+  "82820": {
+   "d": "Consumer electronics retail, concentrated in western Japan.",
+   "b": [
+    "K's Denki"
+   ]
+  },
+  "43730": {
+   "d": "IT services and cloud consulting for Japanese corporates.",
+   "b": [
+    "Simplex"
+   ]
+  },
+  "81290": {
+   "d": "Pharmaceutical wholesaler serving hospitals and pharmacies.",
+   "b": [
+    "Toho Holdings"
+   ]
+  },
+  "62780": {
+   "d": "Precision drills and cutting tools for circuit boards.",
+   "b": [
+    "Union Tool"
+   ]
+  },
+  "81540": {
+   "d": "Electronics trading and distribution.",
+   "b": [
+    "Kaga Electronics"
+   ]
+  },
+  "83360": {
+   "d": "Regional bank serving Saitama.",
+   "b": [
+    "Musashino Bank"
+   ]
+  },
+  "68490": {
+   "d": "Patient monitors and medical electronic equipment.",
+   "b": [
+    "Nihon Kohden"
+   ]
+  },
+  "75520": {
+   "d": "Toys, games and character goods distribution.",
+   "b": [
+    "Happinet"
+   ]
+  },
+  "81330": {
+   "d": "Energy retail: LPG, electricity and fuel for businesses.",
+   "b": [
+    "Itochu Enex"
+   ]
+  },
+  "27260": {
+   "d": "Clothing retail and wholesale, with a large store network.",
+   "b": [
+    "Pal"
+   ]
+  },
+  "14140": {
+   "d": "Bridge and road repair, using proprietary joint and waterproofing technology.",
+   "b": [
+    "Sho-Bond"
+   ]
+  },
+  "73810": {
+   "d": "Bank holding company in Mie and Aichi.",
+   "b": [
+    "CCI"
+   ]
+  },
+  "78260": {
+   "d": "Precious-metal refining and recycling, including catalysts.",
+   "b": [
+    "Furuya Metal"
+   ]
+  },
+  "64360": {
+   "d": "Time clocks, parking systems and clean-room equipment.",
+   "b": [
+    "Amano"
+   ]
+  },
+  "91100": {
+   "d": "Bulk shipping: iron ore, coal and grain carriers.",
+   "b": [
+    "NS United"
+   ]
+  },
+  "67440": {
+   "d": "Fire alarms and fire-protection systems.",
+   "b": [
+    "Nohmi Bosai"
+   ]
+  },
+  "97440": {
+   "d": "Engineering staffing — engineers dispatched to manufacturers.",
+   "b": [
+    "Meitec"
+   ]
+  },
+  "83460": {
+   "d": "Regional bank serving Fukushima.",
+   "b": [
+    "Toho Bank"
+   ]
+  },
+  "79560": {
+   "d": "Baby bottles, nursing products and childcare goods, with a large Chinese business.",
+   "b": [
+    "Pigeon"
+   ]
+  },
+  "21210": {
+   "d": "Social media and games, with a large sports and health business.",
+   "b": [
+    "MIXI",
+    "Monster Strike"
+   ]
+  },
+  "53840": {
+   "d": "Abrasives and polishing materials for semiconductors and optics.",
+   "b": [
+    "Fujimi"
+   ]
+  },
+  "27300": {
+   "d": "Consumer electronics retail, concentrated in western Japan.",
+   "b": [
+    "Edion"
+   ]
+  },
+  "28110": {
+   "d": "Tomato products, juices and food ingredients.",
+   "b": [
+    "Kagome"
+   ]
+  },
+  "80860": {
+   "d": "Medical devices: infusion, dialysis and injection equipment.",
+   "b": [
+    "Nipro"
+   ]
+  },
+  "68140": {
+   "d": "Marine electronics: radar, sonar and navigation for ships.",
+   "b": [
+    "Furuno"
+   ]
+  },
+  "93020": {
+   "d": "Warehousing and international logistics.",
+   "b": [
+    "Mitsui-Soko"
+   ]
+  },
+  "90030": {
+   "d": "Rail between Yokohama and Tokyo, plus department stores and hotels.",
+   "b": [
+    "Sotetsu"
+   ]
+  },
+  "44830": {
+   "d": "Healthcare data and analytics for insurers and employers.",
+   "b": [
+    "JMDC"
+   ]
+  },
+  "69950": {
+   "d": "Automotive switches and security systems.",
+   "b": [
+    "Tokai Rika"
+   ]
+  },
+  "80980": {
+   "d": "Trading house in chemicals, electronics and food.",
+   "b": [
+    "Inabata"
+   ]
+  },
+  "24320": {
+   "d": "Mobile games, sports teams and a large healthcare business.",
+   "b": [
+    "DeNA"
+   ]
+  },
+  "64900": {
+   "d": "Seals, gaskets and industrial components.",
+   "b": [
+    "Pillar"
+   ]
+  },
+  "46340": {
+   "d": "Printing inks and functional materials, formerly Toyo Ink.",
+   "b": [
+    "Artience"
+   ]
+  },
+  "40460": {
+   "d": "Chemicals: caustic soda, chlorine and pharmaceutical intermediates.",
+   "b": [
+    "Osaka Soda"
+   ]
+  },
+  "20010": {
+   "d": "Flour milling and food processing.",
+   "b": [
+    "Nippn"
+   ]
+  },
+  "19500": {
+   "d": "Electrical and telecom construction.",
+   "b": [
+    "Nippon Densetsu"
+   ]
+  },
+  "97590": {
+   "d": "IT services for financial and public-sector clients.",
+   "b": [
+    "NSD"
+   ]
+  },
+  "23840": {
+   "d": "Logistics and staffing, with a large third-party logistics business.",
+   "b": [
+    "SBS"
+   ]
+  },
+  "90750": {
+   "d": "Trucking and logistics, concentrated in western Japan.",
+   "b": [
+    "Fukuyama"
+   ]
+  },
+  "19790": {
+   "d": "Paint finishing lines and air-conditioning for automotive plants.",
+   "b": [
+    "Taikisha"
+   ]
+  },
+  "33600": {
+   "d": "Medical and hospital supplies distribution.",
+   "b": [
+    "Ship Healthcare"
+   ]
+  },
+  "45160": {
+   "d": "Drugmaker specialising in rare disease and nucleic-acid therapies.",
+   "b": [
+    "Nippon Shinyaku"
+   ]
+  },
+  "76160": {
+   "d": "Restaurant group: Gyu-Kaku, Shabu-shabu and other chains.",
+   "b": [
+    "Colowide",
+    "Gyu-Kaku"
+   ]
+  },
+  "95090": {
+   "d": "Electric utility serving Hokkaido.",
+   "b": [
+    "Hokkaido Electric"
+   ]
+  },
+  "77400": {
+   "d": "Interchangeable lenses for cameras, plus optical components.",
+   "b": [
+    "Tamron"
+   ]
+  },
+  "79470": {
+   "d": "Packaging: plastic containers and pharmaceutical packaging.",
+   "b": [
+    "FP"
+   ]
+  },
+  "95050": {
+   "d": "Electric utility serving the Hokuriku region.",
+   "b": [
+    "Hokuriku Electric"
+   ]
   }
+ }
 }

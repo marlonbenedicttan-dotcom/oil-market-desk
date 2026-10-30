@@ -60,9 +60,12 @@ const SECTOR_PHRASE = {
   Services: 'services company',
 };
 
+// The long tail has no written profile, so the line is built from what the filings actually say:
+// size, scale, the five-year revenue path, how often it made money, and what it pays out.
 function generated(c, peers) {
   const phrase = SECTOR_PHRASE[c.sector] || 'listed company';
   const size = (c.marketCap || 0) >= 1e12 ? 'large-cap' : (c.marketCap || 0) >= 2e11 ? 'mid-cap' : 'small-cap';
+  const h = (c.history || []).filter((x) => x.s);
   const bits = [`${c.name} is a ${size} ${phrase} on the TSE Prime market`];
   const sales = yen(c.sales);
   if (sales) bits.push(`with ${sales} of sales`);
@@ -70,6 +73,17 @@ function generated(c, peers) {
     bits.push(`and a ${c.opMargin.toFixed(1)}% ${c.marginBasis === 'ordinary' ? 'ordinary' : 'operating'} margin`);
   }
   let line = `${bits.join(' ')}.`;
+
+  if (h.length >= 3) {
+    const first = h[0], last = h[h.length - 1];
+    if (first.s && last.s) {
+      const chg = ((last.s / first.s) - 1) * 100;
+      line += ` Sales went from ${yen(first.s)} to ${yen(last.s)} over ${h.length} years (${chg >= 0 ? '+' : ''}${chg.toFixed(0)}%).`;
+    }
+    const profitable = h.filter((x) => x.n != null && x.n > 0).length;
+    line += ` Profitable in ${profitable} of the last ${h.length} years.`;
+  }
+
   if (peers > 1) line += ` One of ${peers} companies in the ${c.sector} sector.`;
   if (c.dividend && c.dividend.yield != null) line += ` Pays a ${c.dividend.yield.toFixed(1)}% dividend.`;
   return line;
