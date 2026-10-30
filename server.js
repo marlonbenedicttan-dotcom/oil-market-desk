@@ -3468,7 +3468,9 @@ async function buildBrief() {
       // Freshness is about the DEAL, not about the last time a wire mentioned it. A deal is news only
       // if it was announced in the last two days, or something happened to it (closed, terminated,
       // withdrawn) in the last two days. A retrospective article about a 2023 merger is not news.
-      const freshFrom = new Date(Date.now() - 2 * 864e5).toISOString().slice(0, 10);
+      // Today only. A deal from two days ago is not today's news, and an empty day should produce no
+      // M&A block at all rather than a stale note that never changes.
+      const freshFrom = new Date().toISOString().slice(0, 10);
       const lastEvent = (d) => (d.events || [])[(d.events || []).length - 1] || null;
       briefDeals = (book.deals || [])
         .filter((d) => {
@@ -3476,7 +3478,10 @@ async function buildBrief() {
           const announcedFresh = d.date && d.date >= freshFrom;
           const ev = lastEvent(d);
           const changedFresh = ev && ev.status && ev.status !== 'announced' && (ev.date || '') >= freshFrom;
-          return !!(announcedFresh || changedFresh);
+          if (!(announcedFresh || changedFresh)) return false;
+          // "Big" means a billion, unless the deal is independently verified — and never more than two.
+          if (d.value == null) return !!d.verified;
+          return d.value >= 1000 || !!d.verified;
         })
         .sort((a, b) => String(b.lastSeen || '').localeCompare(String(a.lastSeen || '')) || (b.value || 0) - (a.value || 0))
         .slice(0, 2)
@@ -3859,7 +3864,8 @@ const server = http.createServer(async (req, res) => {
       const ticker = String(url.searchParams.get('ticker') || '').trim();
       const range = String(url.searchParams.get('range') || '1y');
       const interval = String(url.searchParams.get('interval') || (range === '10y' ? '1mo' : range === '5y' ? '1wk' : '1d'));
-      if (!/^[A-Za-z0-9.\-]{1,12}$/.test(ticker)) return sendJSON(res, 400, { error: 'bad ticker' });
+      // Index symbols (^GSPC, ^VIX) are legitimate charts too, so the caret is allowed.
+      if (!/^[A-Za-z0-9.\-^]{1,12}$/.test(ticker)) return sendJSON(res, 400, { error: 'bad ticker' });
       const out = await cached('cochart:' + ticker + ':' + range + ':' + interval, 600e3, async () => {
         const { series } = await yahooSeries(ticker, range, interval);
         const dates = Object.keys(series).sort();

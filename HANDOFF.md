@@ -2262,3 +2262,13 @@ Result: 502 of 503 prices dated **2026-10-29**, AAPL $348.91 +1.48%.
   the index — $23.47T of $70.39T — so the other 493 share 68.3%. Weight comes from the SPY holdings file, so
   it is the index's own number rather than a derivation.
 - The search box and the methodology note are hidden in MARKET and MAG 7, where they have nothing to act on.
+
+## Filters, brief M&A, and the S&P chart (2026-10-30)
+- **The US filter chips stayed on screen after switching to Japan**, where they were inert — Japan has its
+  own filters inside the body and ignores SECTOR / SIZE / P/E. `syncCoTools()` now hides `#co-chips` whenever
+  the Japan segment is active. Verified: US 503 → 78 on Technology, Japan 1,544 → 69 on Banks, chips gone.
+- **Brief M&A is now same-day only.** It used a two-day window, so a deal announced on the 28th was still
+  appearing on the 30th. The rule is now: announced or changed **today**, worth **$1B+** (or independently
+  verified), at most **two**. An empty day produces no M&A block at all. Today's brief returns zero deal rows.
+- **S&P 500 chart** in the US MARKET view, mirroring the TOPIX chart: one year of the index, 251 points. The
+  `/api/company-chart` ticker guard rejected `^GSPC` because of the caret; it now accepts index symbols.

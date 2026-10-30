@@ -3587,6 +3587,10 @@ function japanTile(c) {
 function syncCoTools() {
   const tools = document.querySelector('.co-tools');
   if (!tools) return;
+  // The US filter chips stay in the DOM when you switch market, so they must be hidden — Japan has its
+  // own filters inside the body and would silently ignore SECTOR / SIZE / P/E.
+  const chips = document.getElementById('co-chips');
+  if (chips) chips.classList.toggle('hidden', coRegion === 'jp');
   const wanted = coRegion === 'jp'
     ? (!jpSel && jpView === 'screener')
     : (coCik ? true : usView === 'screener');
@@ -4234,6 +4238,7 @@ async function renderUsMarket(el, all) {
         ${cell('INDEX P/E', v.pe != null ? `${v.pe.toFixed(1)}×` : '—', 'Cap-weighted: Σ market cap ÷ Σ trailing earnings', '')}
       </div>`
     + breadth
+    + `<div class="co-chartwrap"><canvas id="us-mkt-chart"></canvas></div>`
     + `<div class="co-hrow jp-mkt-hrow"><span>SECTOR</span><span>N</span><span>CAP</span><span>P/E</span><span>P/B</span><span>ROE</span><span>YIELD</span><span>YTD</span></div>`
     + sectors.map((x) => `<div class="jp-mkt-row">
         <span>${esc(x.name)}</span><span>${x.count}</span><span>${coMoney(x.cap)}</span>
@@ -4244,6 +4249,15 @@ async function renderUsMarket(el, all) {
         <span class="${(x.chgYtd || 0) >= 0 ? 'pos' : 'neg'}">${chg(x.chgYtd)}</span>
       </div>`).join('')
     + `<div class="macro-note">Constituent medians are equal-weighted; the index P/E is cap-weighted and comes from the annual filings. ${v.percentile != null ? `The index sits at the ${v.percentile}th percentile of ${v.min}–${v.max} over the last ${(v.years || []).length} years.` : ''}</div>`;
+
+  // The index's own price history, the same way the Japan market view plots TOPIX.
+  if (charts['us-mkt-chart']) { try { charts['us-mkt-chart'].destroy(); } catch {} delete charts['us-mkt-chart']; }
+  try {
+    const ch = await jget('/api/company-chart?ticker=%5EGSPC&range=1y', 900000);
+    if (ch && ch.dates && ch.dates.length > 1) {
+      mountChart('us-mkt-chart', { labels: ch.dates, datasets: [line('S&P 500 · 1Y', ch.closes, CT.c1)] }, baseOptions({ dp: 0, dateAxis: true }));
+    }
+  } catch { /* leave the frame empty rather than a broken chart */ }
 }
 
 // The seven companies that decide the index's direction.
