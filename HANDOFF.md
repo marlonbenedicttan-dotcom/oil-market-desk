@@ -2424,3 +2424,16 @@ they are filed. Today's run picked up **295 companies** that had filed.
   like a feed problem (timeout, 429, 5xx, connection). Any other error still fails the assertion, so a real
   regression is not hidden.
 - Applied to the positioning and transmission tests; both assert on live feeds.
+
+## Korea: DART client and ratio maths (2026-10-30)
+- **`scripts/dart.mjs`** — DART (FSS) client. `corpCode.xml` (zipped XML, parsed with a hand-rolled ZIP
+  reader because the project has no dependencies), `fnlttMultiAcnt.json` for up to 100 companies per call,
+  and `fnlttSinglAcntAll.json` for a full statement. Key comes from `DART_API_KEY`.
+- **`scripts/derive-korea.mjs`** — Korean companies file cumulatively (Q1, H1, Q3, annual), so standalone
+  quarters are the differences and the annual report is Q4 — the same arithmetic as Japan, written for
+  DART's shape. TTM = last four standalone quarters; a company with fewer falls back to the fiscal year
+  and says so.
+- Ratios: P/E and P/B from market cap, ROE from equity, operating and net margin, FCF = operating +
+  investing cash flow. Guards reject P/E above 500 and P/B above 50.
+- **11 tests** across the two modules, all fixture-based — the maths is verified before a key exists.
+- **Blocked on**: a free DART API key (40 characters) to fetch the real market.
