@@ -361,10 +361,9 @@ test('/api/headlines + /api/fundamentals respond', async () => {
   assert.equal((await fetch(`http://localhost:${PORT}/api/fundamentals?id=nope`)).status, 404);
 });
 
-test('/api/transmission returns cross-asset logic with real triggers', async () => {
-  const r = await fetch(`http://localhost:${PORT}/api/transmission`);
-  assert.equal(r.status, 200);
-  const j = await r.json();
+test('/api/transmission returns cross-asset logic with real triggers', async (t) => {
+  const j = await softGet(t, '/api/transmission');
+  if (!j) return;
   assert.ok(j.error == null, JSON.stringify(j).slice(0, 100));
   assert.ok(Array.isArray(j.ideas));
   for (const i of j.ideas) {
@@ -374,10 +373,28 @@ test('/api/transmission returns cross-asset logic with real triggers', async () 
   }
 });
 
-test('/api/positioning works for any covered market', async () => {
-  const r = await fetch(`http://localhost:${PORT}/api/positioning?id=gold`);
-  assert.equal(r.status, 200);
-  const j = await r.json();
+// These endpoints fetch from live feeds (CFTC, Yahoo, news wires). A feed outage is not a defect here,
+// so retry once and then skip with the reason rather than failing the build — a false alarm trains you
+// to ignore the one that matters.
+const UPSTREAM = /fetch failed|network|timeout|ETIMEDOUT|ECONN|ENOTFOUND|\b429\b|\b50[234]\b|unavailable|rate limit|socket hang up/i;
+async function softGet(t, path) {
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const r = await fetch(`http://localhost:${PORT}${path}`);
+    assert.equal(r.status, 200, `${path} -> ${r.status}`);
+    const j = await r.json();
+    if (!j.error) return j;
+    if (!UPSTREAM.test(String(j.error))) return j;     // a real defect: let the assertion below fail
+    if (attempt === 0) { await new Promise((res) => setTimeout(res, 2000)); continue; }
+    t.diagnostic(`${path}: ${j.error}`);
+    t.skip('upstream feed unavailable');
+    return null;
+  }
+  return null;
+}
+
+test('/api/positioning works for any covered market', async (t) => {
+  const j = await softGet(t, '/api/positioning?id=gold');
+  if (!j) return;
   assert.ok(j.error == null && j.latest && typeof j.pct === 'number');
 });
 

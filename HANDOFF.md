@@ -2415,3 +2415,12 @@ they are filed. Today's run picked up **295 companies** that had filed.
   GitHub issue ("Data refresh is stale") and fails the run, so there is both a durable record and the usual
   failure notification. It closes the issue automatically once data is fresh again.
 - Verified: the check reports both datasets at 0.1–0.2h, and the digest line renders at the top.
+
+## Flaky test: a feed outage was failing the build (2026-10-30)
+- `/api/positioning works for any covered market` failed in CI after 45s. It hits the CFTC feed live; when
+  that feed is slow or unavailable the endpoint returns `{error}`, and the test treated an upstream outage
+  as a defect here. A false alarm is worse than no alarm — it teaches you to ignore the real one.
+- `softGet()` retries once, then **skips with the upstream error in the diagnostic** if the failure looks
+  like a feed problem (timeout, 429, 5xx, connection). Any other error still fails the assertion, so a real
+  regression is not hidden.
+- Applied to the positioning and transmission tests; both assert on live feeds.
