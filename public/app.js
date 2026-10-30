@@ -2326,7 +2326,20 @@ const MAG7 = ['AAPL', 'MSFT', 'NVDA', 'AMZN', 'GOOGL', 'META', 'TSLA'];
 const usViewsBar = () => `<div class="co-views">${[['market', 'MARKET'], ['screener', 'SCREENER'], ['themes', 'THEMES'], ['mag7', 'MAG 7']].map(([k, t]) => `<button type="button" data-usview="${k}" class="${usView === k ? 'on' : ''}">${t}</button>`).join('')}</div>`;
 
 let screenMarket = (() => { try { return localStorage.getItem('oilbasis.screenMarket') || 'us'; } catch { return 'us'; } })();
-const coScreenJp = { q: '', sector: 'all', sort: 'marketCap', dir: -1 };
+const coScreenJp = { q: '', sector: 'all', sort: 'marketCap', dir: -1, page: 1, per: 50 };
+// A 1,500-row page is a wall of scroll. Paging keeps one screenful at a time and the whole list one
+// click away — no infinite scroll, nothing hidden.
+const pagerHtml = (total, page, per, attr) => {
+  const pages = Math.max(1, Math.ceil(total / per));
+  const p = Math.min(Math.max(1, page), pages);
+  const from = total ? (p - 1) * per + 1 : 0;
+  const to = Math.min(total, p * per);
+  return `<div class="sc-pager"><span class="dimtext">${from}–${to} of ${total}</span>`
+    + `<button type="button" class="co-tgl" data-${attr}="${p - 1}" ${p <= 1 ? 'disabled' : ''}>‹ PREV</button>`
+    + `<span class="dimtext">PAGE ${p} OF ${pages}</span>`
+    + `<button type="button" class="co-tgl" data-${attr}="${p + 1}" ${p >= pages ? 'disabled' : ''}>NEXT ›</button>`
+    + `<select data-${attr}per="1" aria-label="Rows per page">${[25, 50, 100, 250].map((n) => `<option value="${n}"${n === per ? ' selected' : ''}>${n} / page</option>`).join('')}</select></div>`;
+};
 const JP_SCREEN_COLS = [
   { k: 'label', t: 'COMPANY' }, { k: 'price', t: 'PRICE' }, { k: 'chg1d', t: '1D' },
   { k: 'chg6m', t: '6M' }, { k: 'chgYtd', t: 'YTD' }, { k: 'pe', t: 'P/E' },
@@ -2367,7 +2380,10 @@ function renderCompanyScreen(el) {
   const head = CO_SCREEN_COLS.map((c) => `<th class="${sort === c.k ? 'on' : ''}" data-cokey="${c.k}">${c.t}${sort === c.k ? (dir < 0 ? ' ▼' : ' ▲') : ''}</th>`).join('');
   const cell = (v, dp = 1, suffix = '') => (v == null ? '<td class="num">—</td>' : `<td class="num">${v.toFixed(dp)}${suffix}</td>`);
   const pct = (v) => (v == null ? '<td class="num">—</td>' : `<td class="num ${cls(v)}">${v >= 0 ? '+' : ''}${v.toFixed(1)}%</td>`);
-  const body = rows.map((c) => `<tr data-cocik="${esc(c.cik)}" title="${esc(c.name)}">
+  const usPages = Math.max(1, Math.ceil(rows.length / coScreen.per));
+  if (coScreen.page > usPages) coScreen.page = usPages;
+  const usShown = rows.slice((coScreen.page - 1) * coScreen.per, coScreen.page * coScreen.per);
+  const body = usShown.map((c) => `<tr data-cocik="${esc(c.cik)}" title="${esc(c.name)}">
       <td class="sc-name">${esc(c.name)}<span class="sc-tick">${esc(c.ticker)}</span></td>
       <td class="num">${c.price != null ? '$' + c.price.toFixed(2) : '—'}</td>
       ${pct(c.chg1d)}${pct(c.chg6m)}${pct(c.chgYtd)}
@@ -2379,6 +2395,7 @@ function renderCompanyScreen(el) {
       <label class="sc-f">SECTOR <select id="cos-sector"><option value="all">All sectors</option>${sectors.map((x) => `<option value="${esc(x)}"${coScreen.sector === x ? ' selected' : ''}>${esc(x)}</option>`).join('')}</select></label>
       <span class="sc-count dimtext">${rows.length} of ${all.length} companies</span>
     </div><div class="sc-wrap" id="sc-table"><table class="sc-table"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>
+    ${pagerHtml(rows.length, coScreen.page, coScreen.per, 'copage')}
     <div class="sc-note dimtext">S&amp;P 500 companies · SEC filings, GAAP as filed · prices from Nasdaq. Click a row to open the company.</div>`;
 }
 
@@ -2404,7 +2421,9 @@ function renderJapanScreen(el) {
     if (y == null) return -1;
     return sort === 'label' ? x.localeCompare(y) * dir : (x - y) * dir;
   });
-  const shown = rows;
+  const jpPages = Math.max(1, Math.ceil(rows.length / coScreenJp.per));
+  if (coScreenJp.page > jpPages) coScreenJp.page = jpPages;
+  const shown = rows.slice((coScreenJp.page - 1) * coScreenJp.per, coScreenJp.page * coScreenJp.per);
   const head = JP_SCREEN_COLS.map((c) => `<th class="${sort === c.k ? 'on' : ''}" data-jpkey="${c.k}">${c.t}${sort === c.k ? (dir < 0 ? ' ▼' : ' ▲') : ''}</th>`).join('');
   const pct = (v) => (v == null ? '<td class="num">—</td>' : `<td class="num ${cls(v)}">${v >= 0 ? '+' : ''}${v.toFixed(1)}%</td>`);
   const num = (v, dp, suffix = '') => (v == null ? '<td class="num">—</td>' : `<td class="num">${v.toFixed(dp)}${suffix}</td>`);
@@ -2419,6 +2438,7 @@ function renderJapanScreen(el) {
       <label class="sc-f">SECTOR <select id="cosj-sector"><option value="all">All sectors</option>${sectors.map((x) => `<option value="${esc(x)}"${coScreenJp.sector === x ? ' selected' : ''}>${esc(x)}</option>`).join('')}</select></label>
       <span class="sc-count dimtext">${rows.length} of ${all.length} companies</span>
     </div><div class="sc-wrap" id="sc-table"><table class="sc-table"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>
+    ${pagerHtml(rows.length, coScreenJp.page, coScreenJp.per, 'jppage')}
     <div class="sc-note dimtext">TSE Prime companies · J-Quants (JPX) · yen, not dollars · P/E and ROE are trailing twelve months. Click a row to open the company.</div>`;
 }
 
@@ -2480,6 +2500,10 @@ $('screen')?.addEventListener('click', (e) => {
     renderScreen(true);
     return;
   }
+  const jpp = e.target.closest('[data-jppage]');
+  if (jpp && jpp.dataset.jppage !== 'per') { coScreenJp.page = Math.max(1, Number(jpp.dataset.jppage)); renderScreen(true); return; }
+  const usp = e.target.closest('[data-copage]');
+  if (usp && usp.dataset.copage !== 'per') { coScreen.page = Math.max(1, Number(usp.dataset.copage)); renderScreen(true); return; }
   const mkt = e.target.closest('[data-screen-market]');
   if (mkt) {
     screenMarket = mkt.dataset.screenMarket;
@@ -2492,8 +2516,9 @@ $('screen')?.addEventListener('click', (e) => {
   const jpkey = e.target.closest('th[data-jpkey]');
   if (jpkey) {
     const k = jpkey.dataset.jpkey;
-    coScreenJp.sort = k;
     coScreenJp.dir = coScreenJp.sort === k ? -coScreenJp.dir : (k === 'label' ? 1 : -1);
+    coScreenJp.sort = k;
+    coScreenJp.page = 1;
     renderScreen(true);
     return;
   }
@@ -2528,12 +2553,14 @@ $('screen')?.addEventListener('click', (e) => {
 });
 // The bar's own controls: the segment select and the instrument checkboxes.
 $('screen')?.addEventListener('input', (e) => {
-  if (e.target.id === 'cos-q') { coScreen = { ...coScreen, q: e.target.value || '' }; renderScreen(true); }
-  if (e.target.id === 'cosj-q') { coScreenJp.q = e.target.value || ''; renderScreen(true); }
+  if (e.target.id === 'cos-q') { coScreen = { ...coScreen, q: e.target.value || '', page: 1 }; renderScreen(true); }
+  if (e.target.id === 'cosj-q') { coScreenJp.q = e.target.value || ''; coScreenJp.page = 1; renderScreen(true); }
 });
 $('screen')?.addEventListener('change', (e) => {
-  if (e.target.id === 'cos-sector') { coScreen = { ...coScreen, sector: e.target.value }; renderScreen(true); return; }
-  if (e.target.id === 'cosj-sector') { coScreenJp.sector = e.target.value; renderScreen(true); return; }
+  if (e.target.id === 'cos-sector') { coScreen = { ...coScreen, sector: e.target.value, page: 1 }; renderScreen(true); return; }
+  if (e.target.id === 'cosj-sector') { coScreenJp.sector = e.target.value; coScreenJp.page = 1; renderScreen(true); return; }
+  if (e.target.dataset && e.target.dataset.jppageper) { coScreenJp.per = Number(e.target.value); coScreenJp.page = 1; renderScreen(true); return; }
+  if (e.target.dataset && e.target.dataset.copageper) { coScreen.per = Number(e.target.value); coScreen.page = 1; renderScreen(true); return; }
   const t = e.target;
   if (t.id === 'sc-seg') { screenSeg = t.value; persistScreenFilter(); renderScreen(false); return; }
   if (t.matches && t.matches('#sc-pick-list input[data-id]')) {

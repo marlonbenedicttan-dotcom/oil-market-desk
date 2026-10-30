@@ -1282,3 +1282,12 @@ button.deal-sec-tile:hover { background: #10151b; }
 .jp-brands { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
 .jp-brands span { font-size: 8.5px; letter-spacing: .6px; color: #8fa0b2; border: 1px solid #223040;
   background: #0e141a; padding: 2px 6px; border-radius: 2px; }
+
+/* Home screener: pagination instead of a 1,500-row page. */
+.sc-pager { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 10px 12px;
+  border-top: 1px solid var(--line); font-size: 10px; }
+.sc-pager .co-tgl { min-width: 64px; }
+.sc-pager .co-tgl:disabled { opacity: .35; cursor: default; }
+.sc-pager select { background: #0c0f13; border: 1px solid var(--line2); color: var(--text); font: inherit;
+  font-size: 9px; padding: 5px 6px; border-radius: 2px; }
+@media (max-width: 640px) { .sc-pager { gap: 6px; font-size: 9px; } .sc-pager .co-tgl { min-width: 0; padding: 5px 7px; } }

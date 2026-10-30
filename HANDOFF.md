@@ -2382,3 +2382,11 @@ Result: 502 of 503 prices dated **2026-10-29**, AAPL $348.91 +1.48%.
   S&P 500 only, no ownership data, estimated US earnings dates, no US cash-rich screen and why.
 - **The intro (? / onboarding) now describes both markets**: S&P 500 from SEC filings cross-checked against
   Nasdaq, TSE Prime from J-Quants, three views each, and the brand names on company pages.
+
+## Home screener: pagination instead of one endless page (2026-10-30)
+- The company screener rendered every match, so Japan was a 1,543-row page. It now pages at **50 rows**
+  (25 / 50 / 100 / 250 selectable), with `1–50 of 1,544`, PREV / PAGE n OF m / NEXT.
+- Page height for Japan fell from ~90,000 px to ~4,600 px. No infinite scroll, nothing hidden — the whole
+  list is reachable and the sort still applies to the full set, not the page.
+- Changing the search, sector or sort resets to page 1; changing the page size resets to page 1.
+- Same pager on the US screener (503 rows, 11 pages).
