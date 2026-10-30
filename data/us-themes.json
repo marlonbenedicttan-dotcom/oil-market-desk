@@ -1,0 +1,27 @@
+{
+  "updated": "2026-10-30",
+  "note": "Curated US themes. Each is a deliberate subset with a stated rule, not a sector renamed.",
+  "themes": [
+    {
+      "id": "ai",
+      "label": "AI & SEMICONDUCTORS",
+      "kind": "curated",
+      "note": "Chip designers and equipment, the memory and networking behind them, and the platforms selling the compute.",
+      "tickers": ["NVDA","AVGO","AMD","MU","AMAT","LRCX","KLAC","MRVL","ANET","VRT","SMCI","ORCL","MSFT","GOOGL","AMZN","META","PLTR","CRWD","DELL","TXN","ADI","QCOM","INTC","ON","NXPI","MCHP","SWKS","TER","MPWR","CDNS","SNPS","IBM","NOW"]
+    },
+    {
+      "id": "defence",
+      "label": "DEFENCE",
+      "kind": "curated",
+      "note": "Prime contractors, missile and radar makers, and the electronics and structures suppliers behind them.",
+      "tickers": ["LMT","RTX","NOC","GD","LHX","HII","TDG","LDOS","AXON","BA","TXT","HWM"]
+    },
+    {
+      "id": "power",
+      "label": "NUCLEAR & POWER",
+      "kind": "curated",
+      "note": "Utilities with nuclear fleets, independent power producers, and the equipment and engineering firms building the grid for data centres.",
+      "tickers": ["CEG","VST","NRG","GEV","ETN","PWR","NEE","SO","D","EXC","AEP","XEL","ETR","PEG","SRE","ED"]
+    }
+  ]
+}

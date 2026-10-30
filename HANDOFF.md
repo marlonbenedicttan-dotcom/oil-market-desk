@@ -2345,3 +2345,13 @@ Result: 502 of 503 prices dated **2026-10-29**, AAPL $348.91 +1.48%.
 - **Rebuild safety**: `build-japan.mjs` rewrites the dataset from scratch, which would have wiped every
   description and theme on the next daily run. It now re-attaches both at the end, and fetched profiles are
   committed to `data/japan-profiles.json` so the gitignored cache is not required.
+
+## US: THEMES view and screener presets (2026-10-30)
+- **THEMES** joins MARKET / SCREENER / MAG 7, curated only: AI & SEMICONDUCTORS (33), DEFENCE (12),
+  NUCLEAR & POWER (16). Lists live in `data/us-themes.json`; `attach-us-themes.mjs` runs in the daily
+  workflow so a rebuild cannot drop them.
+- The computed screens the user asked to keep out of THEMES are **screener presets** instead, matching the
+  Japan pattern: BUYBACK HEAVY (127), QUALITY (68, ROIC > 15% and revenue CAGR > 10%), CASH RICH (28),
+  HIGH YIELD (15).
+- Both needed fields the list projection did not carry (`buybacks`, `cash`) — the same class of bug as
+  Japan's missing `np`, caught by the preset returning zero rows.

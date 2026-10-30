@@ -28,6 +28,8 @@ jobs:
         env:
           SEC_UA: 'MarlonWatchtower/1.0 (marlonbenedicttan@gmail.com)'
         run: node scripts/refresh-daily.mjs
+      - name: Re-attach curated themes
+        run: node scripts/attach-us-themes.mjs
       - name: Price windows (6M, YTD)
         run: node scripts/build-price-changes.mjs
       - name: Japan (J-Quants, optional)

@@ -2321,7 +2321,7 @@ function scBarHtml() {
 }
 let usView = (() => { try { return localStorage.getItem('oilbasis.usView') || 'screener'; } catch { return 'screener'; } })();
 const MAG7 = ['AAPL', 'MSFT', 'NVDA', 'AMZN', 'GOOGL', 'META', 'TSLA'];
-const usViewsBar = () => `<div class="co-views">${[['market', 'MARKET'], ['screener', 'SCREENER'], ['mag7', 'MAG 7']].map(([k, t]) => `<button type="button" data-usview="${k}" class="${usView === k ? 'on' : ''}">${t}</button>`).join('')}</div>`;
+const usViewsBar = () => `<div class="co-views">${[['market', 'MARKET'], ['screener', 'SCREENER'], ['themes', 'THEMES'], ['mag7', 'MAG 7']].map(([k, t]) => `<button type="button" data-usview="${k}" class="${usView === k ? 'on' : ''}">${t}</button>`).join('')}</div>`;
 
 let screenMarket = (() => { try { return localStorage.getItem('oilbasis.screenMarket') || 'us'; } catch { return 'us'; } })();
 const coScreenJp = { q: '', sector: 'all', sort: 'marketCap', dir: -1 };
@@ -3500,6 +3500,14 @@ document.addEventListener('click', (e) => {
 // ---------------------------------------------------------------------------
 // COMPANIES — profiles and financials from SEC XBRL (tagged facts, no estimates).
 let companiesData = null, coQuery = '', coSector = 'all', coMin = 0, coCik = null, coTicker = null, coRange = '5y', coCompare = '';
+let coPreset = null;
+// Screens that are a rule, not a list — the US counterpart of Japan's BELOW BOOK / CASH RICH presets.
+const CO_PRESETS = [
+  { id: 'buyback', label: 'BUYBACK HEAVY', test: (c) => c.buybacks && c.marketCap && c.buybacks / c.marketCap > 0.03 },
+  { id: 'quality', label: 'QUALITY', test: (c) => (c.roic || 0) > 15 && (c.revenueCagr || 0) > 10 },
+  { id: 'cash', label: 'CASH RICH', test: (c) => c.cash && c.marketCap && c.cash / c.marketCap > 0.2 },
+  { id: 'yield', label: 'HIGH YIELD', test: (c) => (c.dividendYield || 0) > 3 },
+];
 let coSort = 'cap', coDir = -1;   // screener: which column, and which way
 let coPe = 'all', coMinMargin = 0, coGrowth = null, coPriced = false, coVerified = false, coView = 'list';
 
@@ -4087,6 +4095,7 @@ function renderCompanies() {
 
   if (coCik) return renderCompanyPage(el, all);
   if (usView === 'market') return renderUsMarket(el, all);
+  if (usView === 'themes') return renderUsThemes(el, all);
   if (usView === 'mag7') return renderUsMag7(el, all);
 
   const q = coQuery.trim().toLowerCase();
@@ -4105,6 +4114,7 @@ function renderCompanies() {
       if (coPe === 'gt25' && p <= 25) return false;
     }
     if (coMinMargin) { const m = coMarginOf(c); if (m == null || m < coMinMargin) return false; }
+    if (coPreset) { const pr = CO_PRESETS.find((x) => x.id === coPreset); if (pr && !pr.test(c)) return false; }
     if (coGrowth != null) { if (c.growth == null || c.growth < coGrowth) return false; }
     if (q) {
       const hay = `${c.name} ${c.ticker || ''} ${c.industry || ''} ${c.indexName || ''}`.toLowerCase();
@@ -4127,14 +4137,15 @@ function renderCompanies() {
     const counts = {};
     for (const c of all) if (c.sector && c.sector !== 'Other') counts[c.sector] = (counts[c.sector] || 0) + 1;
     const sectors = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 8).map(([x]) => x);
-    const active = (coSector !== 'all' ? 1 : 0) + (coMin ? 1 : 0) + (coPe !== 'all' ? 1 : 0)
+    const active = (coSector !== 'all' ? 1 : 0) + (coMin ? 1 : 0) + (coPe !== 'all' ? 1 : 0) + (coPreset ? 1 : 0)
       + (coMinMargin ? 1 : 0) + (coGrowth != null ? 1 : 0) + (coPriced ? 1 : 0) + (coVerified ? 1 : 0) + (coQuery.trim() ? 1 : 0);
     const sel = (key, label, opts, cur) => `<label class="co-sel"><span>${label}</span><select data-cosel="${key}">`
       + opts.map(([v, t]) => `<option value="${v}"${String(v) === String(cur) ? ' selected' : ''}>${t}</option>`).join('')
       + '</select></label>';
     const tgl = (label, on, attr) => `<button class="co-tgl${on ? ' on' : ''}" ${attr}>${label}</button>`;
     chips.innerHTML =
-      sel('sector', 'SECTOR', [['all', 'All'], ...sectors.map((x) => [x, x])], coSector)
+      `<div class="jp-presets" style="width:100%;padding:0 0 2px">${CO_PRESETS.map((p) => `<button type="button" class="co-tgl${coPreset === p.id ? ' on' : ''}" data-copreset="${p.id}">${p.label}</button>`).join('')}</div>`
+      + sel('sector', 'SECTOR', [['all', 'All'], ...sectors.map((x) => [x, x])], coSector)
       + sel('size', 'SIZE', [['0', 'Any'], ['10000000000', '$10B+'], ['100000000000', '$100B+'], ['500000000000', '$500B+']], coMin)
       + sel('pe', 'P/E', [['all', 'Any'], ['lt15', '<15'], ['15to25', '15–25'], ['gt25', '>25']], coPe)
       + sel('margin', 'MARGIN', [['0', 'Any'], ['10', '>10%'], ['20', '>20%']], coMinMargin)
@@ -4348,6 +4359,34 @@ async function renderUsMarket(el, all) {
       mountChart('us-mkt-chart', { labels: ch.dates, datasets: [line('S&P 500 · 1Y', ch.closes, CT.c1)] }, baseOptions({ dp: 0, dateAxis: true }));
     }
   } catch { /* leave the frame empty rather than a broken chart */ }
+}
+
+// Curated US themes. The computed screens (buybacks, quality, cash) live in the screener as presets.
+let usTheme = (() => { try { return localStorage.getItem('oilbasis.usTheme') || 'ai'; } catch { return 'ai'; } })();
+function renderUsThemes(el, all) {
+  const noteUs = $('co-note'); if (noteUs) noteUs.classList.add('hidden');
+  syncCoTools();
+  const themes = companiesData.themes || [];
+  if (!themes.length) { el.innerHTML = usViewsBar() + '<div class="macro-note">No themes loaded.</div>'; return; }
+  const active = themes.find((t) => t.id === usTheme) || themes[0];
+  const set = new Set(active.tickers || []);
+  const rows = all.filter((c) => set.has(c.ticker)).sort((a, b) => (b.marketCap || 0) - (a.marketCap || 0));
+  const chg = (x) => (x == null ? '—' : `${x >= 0 ? '+' : ''}${x.toFixed(1)}%`);
+  el.innerHTML = usViewsBar()
+    + `<div class="jp-presets">${themes.map((t) => `<button type="button" data-ustheme="${t.id}" class="${t.id === active.id ? 'on' : ''}">${t.label}</button>`).join('')}</div>`
+    + `<div class="jp-market-head"><span class="ph-t">${esc(active.label)}</span><span class="dimtext">${rows.length} companies · curated list</span></div>`
+    + `<div class="co-hrow jp-bank-hrow"><span>#</span><span>COMPANY</span><span>CAP</span><span>P/E</span><span>MARGIN</span><span>ROE</span><span>YIELD</span><span>YTD</span></div>`
+    + rows.map((c, i) => `<button class="jp-bank-row" data-cik="${esc(c.cik)}">
+        <span>${i + 1}</span>
+        <span><b>${esc(c.name)}</b><span class="co-tick">${esc(c.ticker)}</span></span>
+        <span>${coMoney(c.marketCap)}</span>
+        <span>${c.pe != null ? c.pe.toFixed(1) : '—'}</span>
+        <span>${coMargin(c) != null ? coMargin(c).toFixed(1) + '%' : '—'}</span>
+        <span class="${(c.roe || 0) >= 0 ? 'pos' : 'neg'}">${c.roe != null ? c.roe.toFixed(1) + '%' : '—'}</span>
+        <span>${c.dividendYield != null ? c.dividendYield.toFixed(2) + '%' : '—'}</span>
+        <span class="${(c.chgYtd || 0) >= 0 ? 'pos' : 'neg'}">${chg(c.chgYtd)}</span>
+      </button>`).join('')
+    + `<div class="macro-note">${esc(active.note || '')} Screens for buybacks, quality and cash sit in the screener's presets.</div>`;
 }
 
 // The seven companies that decide the index's direction.
@@ -4567,6 +4606,13 @@ document.addEventListener('click', (e) => {
   const jrow = e.target.closest('[data-jp]');
   if (jrow) { jpSel = jrow.dataset.jp; renderJapan(); window.scrollTo({ top: 0, behavior: 'smooth' }); return; }
   if (e.target.closest('[data-jpback]')) { jpSel = null; renderJapan(); return; }
+  const ut = e.target.closest('[data-ustheme]');
+  if (ut) {
+    usTheme = ut.dataset.ustheme;
+    try { localStorage.setItem('oilbasis.usTheme', usTheme); } catch {}
+    renderCompanies();
+    return;
+  }
   const uv = e.target.closest('[data-usview]');
   if (uv) {
     usView = uv.dataset.usview;
@@ -4647,7 +4693,7 @@ document.addEventListener('click', (e) => {
     return;
   }
   if (e.target.closest('[data-coreset]')) {
-    coSector = 'all'; coMin = 0; coPe = 'all'; coMinMargin = 0; coGrowth = null; coPriced = false; coVerified = false; coQuery = '';
+    coSector = 'all'; coMin = 0; coPe = 'all'; coMinMargin = 0; coGrowth = null; coPriced = false; coVerified = false; coQuery = ''; coPreset = null;
     const inp = $('co-search'); if (inp) inp.value = '';
     renderCompanies();
     return;
@@ -4664,6 +4710,12 @@ document.addEventListener('click', (e) => {
   const cs = e.target.closest('[data-cosort]');
   if (cs) {
     if (coSort === cs.dataset.cosort) coDir = -coDir; else { coSort = cs.dataset.cosort; coDir = -1; }
+    renderCompanies();
+    return;
+  }
+  const pre = e.target.closest('[data-copreset]');
+  if (pre) {
+    coPreset = coPreset === pre.dataset.copreset ? null : pre.dataset.copreset;
     renderCompanies();
     return;
   }
