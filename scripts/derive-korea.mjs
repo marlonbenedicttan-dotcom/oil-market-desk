@@ -62,9 +62,12 @@ export function deriveKorea({ companies, fx = null }) {
     // Shares from net income ÷ basic EPS where both exist: DART's stock table counts issued shares,
     // which for a company that has cancelled treasury stock is not the count the market capitalises.
     const annual = (c.reports || []).find((r) => r.report === 'annual') || null;
-    const epsShares = annual && annual.netIncome && annual.eps ? annual.netIncome / annual.eps : null;
-    const shares = epsShares || c.shares || null;
-    const cap = price != null && shares != null ? price * shares : null;
+    // Both figures must agree in sign: a loss year paired with a positive per-share figure (or the
+    // reverse) divides to a negative share count, which silently produced a negative market cap.
+    const epsShares = annual && annual.netIncome && annual.eps && Math.sign(annual.netIncome) === Math.sign(annual.eps)
+      ? annual.netIncome / annual.eps : null;
+    const shares = (epsShares > 0 ? epsShares : null) || c.shares || null;
+    const cap = price != null && shares > 0 ? price * shares : null;
 
     const q = buildQuartersKr(c.reports || []);
     const ttm = ttmKr(q);

@@ -259,8 +259,13 @@ const KSIC = [
   [['10','11','12'], 'Food & Beverage'], [['13','14','15'], 'Textiles & Apparel'], [['16'], 'Wood & Paper'],
   [['17','18'], 'Paper & Printing'], [['19'], 'Oil & Gas'], [['20'], 'Chemicals'], [['21'], 'Pharma & Biotech'],
   [['22'], 'Rubber & Plastics'], [['23'], 'Glass & Ceramics'], [['24'], 'Steel & Metals'],
-  [['25'], 'Metal Products'], [['26'], 'Electronics'], [['27'], 'Electrical Equipment'], [['28'], 'Machinery'],
-  [['29'], 'Vehicles & Parts'], [['30'], 'Shipbuilding & Transport Equip'], [['31','33'], 'Furniture & Other Mfg'],
+  [['25'], 'Metal Products'], [['26'], 'Electronics'],
+  // DART reports KSIC 10th-revision codes, and the table used to be shifted one division from 27 on —
+  // which filed Kia and Hyundai Motor under "Shipbuilding", shipbuilders under "Furniture", and every
+  // cable and battery maker under "Machinery". Division 27 is medical/precision/optical, 28 electrical
+  // equipment, 29 other machinery, 30 motor vehicles, 31 other transport, 32-33 furniture and other.
+  [['27'], 'Precision & Medical'], [['28'], 'Electrical Equipment'], [['29'], 'Machinery'],
+  [['30'], 'Vehicles & Parts'], [['31'], 'Shipbuilding & Transport Equip'], [['32','33'], 'Furniture & Other Mfg'],
   [['35'], 'Utilities'], [['36'], 'Water'], [['41'], 'Construction'], [['45','46','47'], 'Trade & Retail'],
   [['49','50','51','52'], 'Transport & Logistics'], [['55'], 'Hotels & Leisure'],
   [['58','59','60','61','62','63'], 'Media & Telecom'], [['64','65','66'], 'Finance & Insurance'],

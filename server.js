@@ -812,6 +812,126 @@ async function getFxAdjusted(base = 'USD') {
 }
 
 // ---------------------------------------------------------------------------
+// Cross-market peers. Same broad industry, nearest size, different market — the comparison a reader
+// actually wants when a Japanese automaker is on screen and GM is the obvious check. The bucket map is
+// deliberately coarse: TSE's 33 sectors and Korea's 29 KSIC divisions are folded into the eleven US
+// buckets, because a false precision ("this is a Toyota peer") is worse than a coarse one.
+// ---------------------------------------------------------------------------
+const PEER_BUCKET = {
+  jp: { 'Electric Appliances': 'tech', 'Information & Communication': 'tech', 'Precision Instruments': 'tech',
+    Banks: 'banks', Insurance: 'insurance', 'Securities & Commodity Futures': 'capital', 'Other Financials': 'capital',
+    Pharmaceutical: 'pharma',
+    Foods: 'consumer', 'Retail Trade': 'retail', 'Wholesale Trade': 'retail', 'Textiles & Apparels': 'consumer',
+    'Other Products': 'consumer', Services: 'consumer',
+    'Transportation Equipment': 'autos',
+    Machinery: 'industrials', Construction: 'industrials', 'Metal Products': 'industrials', 'Rubber Products': 'industrials',
+    'Land Transportation': 'industrials', 'Marine Transportation': 'industrials', 'Air Transportation': 'industrials',
+    'Warehousing & Transport': 'industrials',
+    Chemicals: 'materials', 'Iron & Steel': 'materials', 'Nonferrous Metals': 'materials', 'Glass & Ceramics': 'materials',
+    'Pulp & Paper': 'materials',
+    'Oil & Coal Products': 'energy', Mining: 'energy',
+    'Electric Power & Gas': 'utilities', 'Real Estate': 'realestate' },
+  kr: { Electronics: 'tech', 'Electrical Equipment': 'tech', 'Media & Telecom': 'tech',
+    'Finance & Insurance': 'banks',
+    'Pharma & Biotech': 'pharma',
+    'Food & Beverage': 'consumer', 'Trade & Retail': 'retail', 'Hotels & Leisure': 'consumer',
+    'Arts & Sport': 'consumer', Education: 'consumer', 'Furniture & Other Mfg': 'consumer', 'Textiles & Apparel': 'consumer',
+    'Vehicles & Parts': 'autos',
+    'Business Services': 'industrials', Machinery: 'industrials', Construction: 'industrials',
+    'Shipbuilding & Transport Equip': 'industrials', 'Metal Products': 'industrials', 'Rubber & Plastics': 'industrials',
+    'Transport & Logistics': 'industrials',
+    Chemicals: 'materials', 'Steel & Metals': 'materials', 'Glass & Ceramics': 'materials',
+    'Paper & Printing': 'materials', 'Wood & Paper': 'materials',
+    'Oil & Gas': 'energy', Utilities: 'utilities', 'Real Estate': 'realestate' },
+};
+
+// The US has a four-digit SIC for every filer, so the bucket comes from the code rather than the
+// eleven coarse sectors — "Healthcare" would otherwise put a drugmaker next to a health insurer.
+function usBucket(c) {
+  const sic = Number(c.sic);
+  if (Number.isFinite(sic)) {
+    if (sic >= 2830 && sic <= 2836) return 'pharma';
+    if (sic >= 3841 && sic <= 3851) return 'medtech';
+    if (sic === 3826 || sic === 3827 || sic === 3829) return 'medtech';
+    if (sic >= 3670 && sic <= 3679) return 'semis';
+    if (sic >= 7370 && sic <= 7379) return 'tech';
+    if (sic >= 3570 && sic <= 3579) return 'tech';
+    if (sic >= 6000 && sic <= 6199) return 'banks';
+    if (sic >= 6300 && sic <= 6411) return 'insurance';
+    if ((sic >= 6200 && sic <= 6299) || (sic >= 6700 && sic <= 6799)) return 'capital';
+    if (sic >= 3711 && sic <= 3716) return 'autos';
+    if (sic >= 1300 && sic <= 1389) return 'energy';
+    if (sic >= 2900 && sic <= 2999) return 'energy';
+    if (sic >= 2800 && sic <= 2899) return 'materials';
+    if (sic >= 3300 && sic <= 3399) return 'materials';
+    if (sic >= 1000 && sic <= 1099) return 'materials';
+    if (sic >= 3500 && sic <= 3599) return 'industrials';
+    if (sic >= 4900 && sic <= 4999) return 'utilities';
+    if (sic >= 4813 && sic <= 4899) return 'telecom';
+    if (sic >= 5200 && sic <= 5999) return 'retail';
+    if (sic >= 2000 && sic <= 2199) return 'consumer';
+    if (sic >= 7800 && sic <= 7999) return 'media';
+    if (sic >= 6500 && sic <= 6599) return 'realestate';
+  }
+  return { Technology: 'tech', Financials: 'capital', Healthcare: 'medtech', Consumer: 'consumer',
+    Industrials: 'industrials', Materials: 'materials', Mining: 'materials', Energy: 'energy',
+    'Real estate': 'realestate', Telecom: 'telecom', Utilities: 'utilities' }[c.sector] || null;
+}
+
+let PEER_INDEX = null;
+function peerIndex() {
+  if (PEER_INDEX) return PEER_INDEX;
+  const rows = [];
+  const push = (market, ref, name, sector, capUsd, bucketOverride) => {
+    const bucket = bucketOverride !== undefined ? bucketOverride : (PEER_BUCKET[market] || {})[sector];
+    if (!bucket || !(capUsd > 0)) return;
+    rows.push({ market, ref, name, sector, bucket, cap: capUsd });
+  };
+  for (const c of (COMPANIES.companies || [])) {
+    if (c.shareClass || !c.ticker || !c.marketCap) continue;
+    push('us', `us:${c.ticker}`, c.name, c.sector, c.marketCap, usBucket(c));
+  }
+  // The ref uses the trading ticker, not the internal code: that is what the chart endpoints and the
+  // COMPARE box already understand (jp:7203, kr:005930).
+  for (const c of (readJapan().companies || [])) push('jp', `jp:${c.ticker}`, c.name, c.sector, c.marketCapUsd);
+  for (const c of (readKorea().companies || [])) push('kr', `kr:${c.ticker}`, c.nameEn || c.name, c.sector, c.marketCapUsd);
+  PEER_INDEX = rows;
+  return rows;
+}
+
+function getPeers(ref, n = 6) {
+  const raw = String(ref || '').trim();
+  const [market, code] = raw.includes(':') ? raw.split(':') : ['us', raw];
+  const rows = peerIndex();
+  const me = rows.find((r) => r.market === market && r.ref === `${market}:${code}`);
+  if (!me) return { error: 'unknown company', ref: raw, peers: [] };
+  const others = rows
+    .filter((r) => r.bucket === me.bucket && r.market !== me.market)
+    .map((r) => ({ ...r, dist: Math.abs(Math.log(r.cap / me.cap)) }))
+    .sort((a, b) => a.dist - b.dist);
+  // At least one peer from each other market when the bucket allows it, then fill by size.
+  const picked = [];
+  const taken = new Set();
+  for (const mkt of ['us', 'jp', 'kr']) {
+    if (mkt === me.market) continue;
+    const first = others.find((r) => r.market === mkt);
+    if (first) { picked.push(first); taken.add(first.ref); }
+  }
+  for (const r of others) {
+    if (picked.length >= n) break;
+    if (taken.has(r.ref)) continue;
+    picked.push(r); taken.add(r.ref);
+  }
+  return {
+    ref: me.ref, bucket: me.bucket, market: me.market,
+    peers: picked.slice(0, n).map((r) => ({
+      ref: r.ref, market: r.market, name: r.name, sector: r.sector,
+      cap: r.cap, ratio: +(r.cap / me.cap).toFixed(2),
+    })),
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Currency moves for the company screener. A Tokyo listing returns yen; a dollar investor gets that
 // return *plus* the yen's own move. These are the moves of each currency against the chosen base over
 // the same windows the table shows (1D, 6M, YTD), from ECB reference rates via Frankfurter.
@@ -4088,6 +4208,7 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname === '/api/screen') return sendJSON(res, 200, await getScreen().catch((e) => ({ error: String(e.message), rows: [] })));
     if (url.pathname === '/api/risk') return sendJSON(res, 200, await getRisk().catch((e) => ({ error: String(e.message), metrics: [], matrix: {} })));
     if (url.pathname === '/api/fxadjusted') return sendJSON(res, 200, await getFxAdjusted(url.searchParams.get('base') || 'USD').catch((e) => ({ error: String(e.message), rows: [] })));
+    if (url.pathname === '/api/peers') return sendJSONCached(res, 200, getPeers(url.searchParams.get('ref'), Math.min(12, Number(url.searchParams.get('n')) || 6)));
     if (url.pathname === '/api/fxwindows') return sendJSON(res, 200, await getFxWindows(url.searchParams.get('base') || 'USD').catch((e) => ({ error: String(e.message) })));
     if (url.pathname === '/api/options') return sendJSON(res, 200, await getOptions(url.searchParams.get('id') || 'wti').catch((e) => ({ error: String(e.message) })));
     if (url.pathname === '/api/positioning') {

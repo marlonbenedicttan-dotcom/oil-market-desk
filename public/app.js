@@ -2402,7 +2402,7 @@ function renderCompanyScreen(el) {
   const sectors = [...new Set(all.map((c) => c.sector).filter(Boolean))].sort();
   const q = coScreen.q.trim().toLowerCase();
   let rows = all.filter((c) => (coScreen.sector === 'all' || c.sector === coScreen.sector)
-    && (!q || `${c.name} ${c.ticker} ${c.industry || ''}`.toLowerCase().includes(q)));
+    && (!q || `${c.name} ${c.ticker} ${c.industry || ''} ${(c.brands || []).join(' ')}`.toLowerCase().includes(q)));
   const { sort, dir } = coScreen;
   rows = [...rows].sort((a, b) => {
     const x = sort === 'label' ? (a.name || '') : a[sort];
@@ -4074,6 +4074,7 @@ function renderJapanPageBody(c) {
         ${[['1m', '1M'], ['6m', '6M'], ['ytd', 'YTD'], ['1y', '1Y'], ['5y', '5Y']].map(([k, t]) => `<button class="ma-chip${jpRange === k ? ' on' : ''}" data-jprange="${k}">${t}</button>`).join('')}
       </div>`
     + `<div class="co-chartwrap"><canvas id="jp-chart"></canvas></div>`
+    + '<div id="jp-peers-x"></div>'
     + jpQuartersHtml(c)
     + jpHistoryHtml(c)
     + jpPeersHtml(c)
@@ -4088,6 +4089,7 @@ function renderJapanPageBody(c) {
       </div>`;
   drawJpPrice(c);
   drawJpQuarters(c);
+  fillPeers(`jp:${c.ticker}`, 'jp-peers-x');
 }
 
 // Quarters get their own section under the price chart: a chart plus a table an investor can read
@@ -4285,6 +4287,32 @@ const krName = (c) => c.nameEn || c.name;
 
 // Resolve a compare reference to a price series, whichever market it lives in.
 //   AAPL → the current market · us:AAPL · jp:7203 · kr:005930
+// Cross-market peers for the chart. Same broad sector, nearest size, different market — clicking one
+// puts it on the same indexed-100 chart, which is the comparison that actually answers "is this cheap?".
+const peerCache = new Map();
+async function peersFor(ref) {
+  if (!ref) return null;
+  if (peerCache.has(ref)) return peerCache.get(ref);
+  let d = null;
+  try { d = await jget('/api/peers?ref=' + encodeURIComponent(ref), 3600000); } catch { d = null; }
+  peerCache.set(ref, d);
+  return d;
+}
+function peersHtml(d) {
+  if (!d || !d.peers || !d.peers.length) return '';
+  return `<div class="co-peers"><span class="co-peers-l">PEERS IN OTHER MARKETS</span><span class="co-peers-s dimtext">same broad sector, nearest size</span>`
+    + d.peers.map((p) => `<button class="co-peer" data-peer="${esc(p.ref)}" title="${esc(p.name)} · ${esc(p.sector)} · ${p.ratio}× the size">`
+      + `<b>${esc(p.ref.split(':')[1])}</b> ${esc(String(p.name).slice(0, 22))}<em>${esc(p.market.toUpperCase())}</em></button>`).join('')
+    + '</div>';
+}
+async function fillPeers(ref, slotId) {
+  const slot = document.getElementById(slotId);
+  if (!slot) return;
+  const d = await peersFor(ref);
+  const html = peersHtml(d);
+  if (html) slot.innerHTML = html;
+}
+
 async function seriesFor(ref, range) {
   const raw = String(ref || '').trim();
   if (!raw) return null;
@@ -4489,6 +4517,7 @@ async function renderKoreaPage(stub) {
         ${[['1m', '1M'], ['6m', '6M'], ['ytd', 'YTD'], ['1y', '1Y'], ['5y', '5Y']].map(([k, t]) => `<button class="ma-chip${krRange === k ? ' on' : ''}" data-krrange="${k}">${t}</button>`).join('')}
       </div>`
     + `<div class="co-chartwrap"><canvas id="kr-chart"></canvas></div>`
+    + '<div id="kr-peers-x"></div>'
     + (h.length > 1 ? `<div class="jp-q"><div class="jp-q-head"><span class="ph-t">FIVE-YEAR RECORD</span><span class="dimtext">${h.length} fiscal years · ₩</span></div>
         <table class="jp-q-table"><thead><tr><th>FISCAL YEAR</th><th>REVENUE</th><th>OP PROFIT</th><th>NET PROFIT</th><th>ROE</th></tr></thead><tbody>
         ${[...h].reverse().map((x) => `<tr><td>${esc(x.y)}</td><td>${won(x.s)}</td><td>${won(x.o)}</td><td>${won(x.n)}</td><td>${x.n != null && x.q ? `${((x.n / x.q) * 100).toFixed(1)}%` : '—'}</td></tr>`).join('')}
@@ -4499,6 +4528,7 @@ async function renderKoreaPage(stub) {
         </tbody></table></div>` : '')
     + `<div class="macro-note">KOSPI · statements from DART (Financial Supervisory Service), prices from Naver Finance. Korean companies report cumulatively (Q1, H1, Q3, annual), so quarters here are the differences and the annual report is Q4. No guidance is published, so there is no forward P/E.${c.descSource === 'profile' ? ' Company description from stockanalysis.com.' : ''}</div>`;
   drawKrChart(c);
+  fillPeers(`kr:${c.ticker}`, 'kr-peers-x');
 }
 
 async function drawKrChart(c, range = krRange) {
@@ -4628,7 +4658,7 @@ function renderCompanies() {
     // matched nothing until it was pointed at a number that is actually computed.
     if (coGrowth != null) { if (c.revenueCagr == null || c.revenueCagr < coGrowth) return false; }
     if (q) {
-      const hay = `${c.name} ${c.ticker || ''} ${c.industry || ''} ${c.indexName || ''}`.toLowerCase();
+      const hay = `${c.name} ${c.ticker || ''} ${c.industry || ''} ${c.indexName || ''} ${(c.brands || []).join(' ')}`.toLowerCase();
       const alias = CO_ALIAS[q];
       if (!hay.includes(q) && (!alias || c.ticker !== alias)) return false;
     }
@@ -4976,7 +5006,8 @@ async function renderCompanyPageBody(el, c, all) {
         ${coMono(c)}
         <div><div class="co-name">${esc(c.name)}</div>
         <div class="co-sub">${esc(c.ticker || '')}${c.sector ? ' · ' + esc(c.sector) : ''}${c.industry ? ' · ' + esc(c.industry) : ''}${c.state ? ' · ' + esc(c.state) : ''}</div>
-        ${c.description ? `<div class="co-desc">${esc(coDesc(c.description))}</div>` : ''}</div>
+        ${c.description ? `<div class="co-desc">${esc(coDesc(c.description))}</div>` : ''}
+        ${c.brands && c.brands.length ? `<div class="jp-brands">${c.brands.map((b) => `<span>${esc(b)}</span>`).join('')}</div>` : ''}</div>
         <button class="co-star ${watchlist().includes(c.ticker) ? 'on' : ''}" data-coticker="${esc(c.ticker || '')}" title="${watchlist().includes(c.ticker) ? 'Unpin from watchlist' : 'Pin to watchlist'}">${watchlist().includes(c.ticker) ? '★' : '☆'}</button>
       </div>
       <div class="co-price">
@@ -5040,7 +5071,8 @@ async function renderCompanyPageBody(el, c, all) {
           <datalist id="co-cmp-list">${(companiesData.companies || []).filter((x) => x.ticker).slice(0, 400).map((x) => `<option value="${esc(x.ticker)}">${esc(x.name)}</option>`).join('')}</datalist>
           ${['1m', '6m', 'ytd', '1y', '5y'].map((r) => `<button class="ma-chip${coRange === r ? ' on' : ''}" data-corange="${r}">${r.toUpperCase()}</button>`).join('')}
         </div>
-        <div class="co-canvas"><canvas id="co-chart"></canvas></div></div>` : '')
+        <div class="co-canvas"><canvas id="co-chart"></canvas></div></div>
+        <div id="us-peers"></div>` : '')
     + (() => {
         const lf = c.lastFiling;
         const link = lf?.url
@@ -5088,6 +5120,7 @@ async function renderCompanyPageBody(el, c, all) {
   // Price chart (1Y, daily) — the only place a price is plotted, so it stays cheap.
   coTicker = c.ticker || null;
   if (coTicker) loadCoChart(coTicker, coRange, coCompare);
+  if (coTicker) fillPeers(`us:${coTicker}`, 'us-peers');
 
   try {
     const d = await getJSON('/api/deals');
@@ -5102,6 +5135,26 @@ async function renderCompanyPageBody(el, c, all) {
 }
 
 document.addEventListener('click', (e) => {
+  const peer = e.target.closest('[data-peer]');
+  if (peer) {
+    const ref = peer.dataset.peer;
+    if (coRegion === 'jp') {
+      jpCompare = ref;
+      const inp = $('jp-cmp'); if (inp) inp.value = ref;
+      const cur = (japanData && japanData.companies || []).find((x) => x.code === jpSel);
+      if (cur) drawJpPrice(cur, jpRange);
+    } else if (coRegion === 'kr') {
+      krCompare = ref;
+      const inp = $('kr-cmp'); if (inp) inp.value = ref;
+      const cur = (koreaData && koreaData.companies || []).find((x) => x.code === krSel);
+      if (cur) drawKrChart(cur, krRange);
+    } else {
+      coCompare = ref;
+      const inp = $('co-cmp'); if (inp) inp.value = ref;
+      if (coTicker) loadCoChart(coTicker, coRange, ref);
+    }
+    return;
+  }
   const cr = e.target.closest('[data-corange]');
   if (cr) {
     coRange = cr.dataset.corange;

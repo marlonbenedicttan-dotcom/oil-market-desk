@@ -2624,3 +2624,25 @@ they are filed. Today's run picked up **295 companies** that had filed.
   `tests/filters.test.js` now asserts, for all three markets, that (a) every field a filter reads survives
   projection, (b) it is populated for most of the market, (c) no preset or select matches nothing, and
   (d) no preset matches more than 75% of the market.
+
+## Kia was missing, nine caps were negative, and the sector table was shifted (2026-10-31)
+- **Kia, Hyundai Steel, HMM, Hotel Shilla, Hanmi Pharm were absent** from the Korean list. The build drops
+  any company without a share count, and their `stockTotqySttus` calls had failed during the DART block.
+  `backfill-korea-shares.mjs` refetched the 13 gaps — 9 filled, 4 are funds with no share table. Korea is
+  now **745 companies** (was 737).
+- **Nine market caps were negative**, including LG Energy Solution at −₩6.2T. Shares are derived from
+  net income ÷ basic EPS, and when the two disagree in sign that division yields a negative share count.
+  Both signs must now agree, and a cap is only emitted when the count is positive.
+- **The KSIC table was shifted one division from 27 onward.** DART reports KSIC 10th-revision codes, so
+  Kia and Hyundai Motor were filed under "Shipbuilding", every shipbuilder under "Furniture", and cable and
+  battery makers under "Machinery". Corrected: 27 precision/medical, 28 electrical equipment, 29 machinery,
+  30 vehicles, 31 shipbuilding, 32–33 furniture.
+- **Brand tags for the US**: `data/us-brands.json` holds 246 curated sets, attached by
+  `scripts/attach-us-brands.mjs` (wired into the daily refresh) and shown as chips on the company page and
+  matched by search, the same as Japan and Korea.
+- **Cross-market peers on the chart**: `/api/peers?ref=kr:000270` returns same-bucket, nearest-size
+  companies from the other two markets — Kia comes back with Ford, Paccar, Denso, Honda. Buckets come from
+  the four-digit SIC for the US (so a drugmaker is not compared with a health insurer) and from the sector
+  for Japan and Korea. Clicking a chip puts it on the same indexed-100 chart.
+- **Guards**: tests now fail on a negative cap, on a sector that contradicts the KSIC division, and on any
+  filter that reads a field the list projection does not ship.

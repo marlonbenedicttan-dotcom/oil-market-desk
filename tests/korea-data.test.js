@@ -38,3 +38,33 @@ test('every company has an English name', () => {
   const missing = companies.filter((c) => !c.nameEn);
   assert.ok(missing.length <= 2, `${missing.length} companies have no English name`);
 });
+
+test('no company carries a negative market cap or share count', () => {
+  // net income ÷ EPS divides to a negative share count when the two disagree in sign, which showed up
+  // as LG Energy Solution with a −₩6.2T market cap.
+  const bad = companies.filter((c) => (c.marketCap != null && c.marketCap < 0) || (c.shares != null && c.shares < 0) || (c.price != null && c.price < 0));
+  assert.equal(bad.length, 0, `${bad.length} companies have a negative cap, share count or price: ${bad.slice(0, 5).map((c) => c.ticker).join(' ')}`);
+});
+
+test('every company with a price has a market cap', () => {
+  const missing = companies.filter((c) => c.price != null && c.marketCap == null);
+  assert.ok(missing.length <= 5, `${missing.length} companies have a price but no market cap`);
+});
+
+test('sectors follow the KSIC division of each company\'s industry code', () => {
+  // DART reports KSIC 9th-revision codes. The table was once shifted one division, which filed Kia and
+  // Hyundai Motor under Shipbuilding and every shipbuilder under Furniture.
+  const byTicker = new Map(companies.map((c) => [c.ticker, c]));
+  const expect = {
+    '005930': 'Electronics', '000660': 'Electronics',
+    '000270': 'Vehicles & Parts', '005380': 'Vehicles & Parts',
+    '329180': 'Shipbuilding & Transport Equip',
+    '011200': 'Transport & Logistics',
+    '105560': 'Finance & Insurance',
+  };
+  for (const [ticker, sector] of Object.entries(expect)) {
+    const c = byTicker.get(ticker);
+    if (!c) continue; // a company may leave the index; the rule still holds for the rest
+    assert.equal(c.sector, sector, `${ticker} (${c.nameEn}) is filed under ${c.sector}, expected ${sector}`);
+  }
+});

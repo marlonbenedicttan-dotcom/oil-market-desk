@@ -1,0 +1,1154 @@
+{
+ "note": "Consumer-facing brands per US ticker, curated by hand. Only brands a reader would recognise on a shelf or a screen — no invented sub-brands, no parent names repeated. Coverage is deliberately partial: a blank is better than a guess.",
+ "updated": "2026-10-31",
+ "brands": {
+  "AAPL": [
+   "iPhone",
+   "iPad",
+   "Mac",
+   "Apple Watch",
+   "AirPods",
+   "App Store",
+   "iCloud",
+   "Apple Music"
+  ],
+  "ABBV": [
+   "Humira",
+   "Skyrizi",
+   "Rinvoq",
+   "Botox",
+   "Imbruvica"
+  ],
+  "ABNB": [
+   "Airbnb"
+  ],
+  "ABT": [
+   "Abbott",
+   "Ensure",
+   "Similac",
+   "FreeStyle Libre",
+   "Pedialyte"
+  ],
+  "ADBE": [
+   "Photoshop",
+   "Illustrator",
+   "Premiere Pro",
+   "Acrobat",
+   "Lightroom",
+   "InDesign",
+   "Creative Cloud"
+  ],
+  "ADI": [
+   "Analog Devices"
+  ],
+  "ADP": [
+   "ADP"
+  ],
+  "AFL": [
+   "Aflac"
+  ],
+  "ALGN": [
+   "Invisalign",
+   "iTero"
+  ],
+  "ALL": [
+   "Allstate",
+   "Esurance"
+  ],
+  "AMAT": [
+   "Applied Materials"
+  ],
+  "AMD": [
+   "Ryzen",
+   "Radeon",
+   "EPYC",
+   "Instinct",
+   "Threadripper"
+  ],
+  "AMGN": [
+   "Enbrel",
+   "Prolia",
+   "Repatha",
+   "Otezla"
+  ],
+  "AMZN": [
+   "Amazon",
+   "AWS",
+   "Prime",
+   "Alexa",
+   "Kindle",
+   "Whole Foods",
+   "Twitch",
+   "Audible"
+  ],
+  "AON": [
+   "Aon"
+  ],
+  "APA": [
+   "Apache"
+  ],
+  "AVGO": [
+   "Broadcom",
+   "VMware"
+  ],
+  "AXP": [
+   "American Express",
+   "Amex",
+   "Centurion"
+  ],
+  "BA": [
+   "Boeing",
+   "737",
+   "787",
+   "F-15"
+  ],
+  "BAC": [
+   "Bank of America",
+   "Merrill Lynch"
+  ],
+  "BAX": [
+   "Baxter"
+  ],
+  "BBY": [
+   "Best Buy",
+   "Geek Squad"
+  ],
+  "BDX": [
+   "BD",
+   "Becton Dickinson"
+  ],
+  "BIIB": [
+   "Tecfidera",
+   "Leqembi"
+  ],
+  "BKNG": [
+   "Booking.com",
+   "Priceline",
+   "Kayak",
+   "Agoda",
+   "OpenTable"
+  ],
+  "BKR": [
+   "Baker Hughes"
+  ],
+  "BLK": [
+   "BlackRock",
+   "iShares",
+   "Aladdin"
+  ],
+  "BMY": [
+   "Opdivo",
+   "Eliquis",
+   "Revlimid"
+  ],
+  "BRK-B": [
+   "GEICO",
+   "BNSF",
+   "Berkshire Hathaway Energy",
+   "See's Candies",
+   "Dairy Queen",
+   "Duracell",
+   "Fruit of the Loom"
+  ],
+  "BSX": [
+   "Boston Scientific",
+   "Watchman"
+  ],
+  "C": [
+   "Citibank",
+   "Citi",
+   "ThankYou"
+  ],
+  "CAH": [
+   "Cardinal Health"
+  ],
+  "CAT": [
+   "Caterpillar",
+   "Cat",
+   "Perkins",
+   "Solar Turbines"
+  ],
+  "CB": [
+   "Chubb"
+  ],
+  "CCL": [
+   "Carnival",
+   "Princess",
+   "Holland America",
+   "Cunard"
+  ],
+  "CHTR": [
+   "Spectrum",
+   "Charter"
+  ],
+  "CI": [
+   "Cigna",
+   "Evernorth"
+  ],
+  "CL": [
+   "Colgate",
+   "Palmolive",
+   "Speed Stick",
+   "Softsoap",
+   "Hill's"
+  ],
+  "CMCSA": [
+   "Comcast",
+   "Xfinity",
+   "NBC",
+   "Peacock",
+   "Universal",
+   "Sky"
+  ],
+  "CME": [
+   "CME",
+   "CBOT",
+   "NYMEX",
+   "COMEX"
+  ],
+  "CMG": [
+   "Chipotle"
+  ],
+  "CMI": [
+   "Cummins",
+   "Onan"
+  ],
+  "CNC": [
+   "Centene"
+  ],
+  "COF": [
+   "Capital One",
+   "Venture",
+   "Quicksilver"
+  ],
+  "COIN": [
+   "Coinbase"
+  ],
+  "COP": [
+   "ConocoPhillips"
+  ],
+  "COR": [
+   "Cencora"
+  ],
+  "COST": [
+   "Costco",
+   "Kirkland Signature"
+  ],
+  "CRM": [
+   "Salesforce",
+   "Slack",
+   "Tableau",
+   "MuleSoft",
+   "Heroku"
+  ],
+  "CRWD": [
+   "CrowdStrike",
+   "Falcon"
+  ],
+  "CSCO": [
+   "Cisco",
+   "Webex",
+   "Meraki",
+   "Umbrella"
+  ],
+  "CSX": [
+   "CSX"
+  ],
+  "CTAS": [
+   "Cintas"
+  ],
+  "CVS": [
+   "CVS",
+   "Aetna",
+   "Caremark",
+   "MinuteClinic"
+  ],
+  "CVX": [
+   "Chevron",
+   "Texaco",
+   "Caltex"
+  ],
+  "DAL": [
+   "Delta",
+   "SkyMiles"
+  ],
+  "DASH": [
+   "DoorDash",
+   "Wolt"
+  ],
+  "DD": [
+   "DuPont",
+   "Tyvek",
+   "Kevlar",
+   "Nomex"
+  ],
+  "DE": [
+   "John Deere",
+   "Deere"
+  ],
+  "DECK": [
+   "UGG",
+   "Hoka",
+   "Teva"
+  ],
+  "DELL": [
+   "Dell",
+   "Alienware",
+   "PowerEdge"
+  ],
+  "DG": [
+   "Dollar General"
+  ],
+  "DGX": [
+   "Quest Diagnostics"
+  ],
+  "DHI": [
+   "D.R. Horton"
+  ],
+  "DHR": [
+   "Danaher",
+   "Beckman Coulter",
+   "Leica",
+   "Cytiva"
+  ],
+  "DIS": [
+   "Disney",
+   "Pixar",
+   "Marvel",
+   "Star Wars",
+   "ESPN",
+   "Hulu",
+   "ABC",
+   "Disney+",
+   "National Geographic"
+  ],
+  "DLTR": [
+   "Dollar Tree",
+   "Family Dollar"
+  ],
+  "DPZ": [
+   "Domino's"
+  ],
+  "DRI": [
+   "Olive Garden",
+   "LongHorn Steakhouse"
+  ],
+  "DUK": [
+   "Duke Energy"
+  ],
+  "DVA": [
+   "DaVita"
+  ],
+  "DVN": [
+   "Devon"
+  ],
+  "DXCM": [
+   "Dexcom"
+  ],
+  "ECL": [
+   "Ecolab"
+  ],
+  "EL": [
+   "Estée Lauder",
+   "Clinique",
+   "MAC",
+   "La Mer",
+   "Jo Malone",
+   "Aveda"
+  ],
+  "ELV": [
+   "Elevance Health",
+   "Anthem"
+  ],
+  "EMR": [
+   "Emerson",
+   "Rosemount"
+  ],
+  "EOG": [
+   "EOG"
+  ],
+  "ETN": [
+   "Eaton",
+   "Cutler-Hammer"
+  ],
+  "EW": [
+   "Edwards Lifesciences"
+  ],
+  "EXPE": [
+   "Expedia",
+   "Hotels.com",
+   "Vrbo",
+   "Orbitz",
+   "Travelocity"
+  ],
+  "F": [
+   "Ford",
+   "Lincoln",
+   "F-150",
+   "Mustang",
+   "Bronco"
+  ],
+  "FANG": [
+   "Diamondback"
+  ],
+  "FAST": [
+   "Fastenal"
+  ],
+  "FCX": [
+   "Freeport-McMoRan",
+   "Grasberg"
+  ],
+  "FDX": [
+   "FedEx",
+   "FedEx Express",
+   "FedEx Ground"
+  ],
+  "FISV": [
+   "Fiserv",
+   "Clover"
+  ],
+  "FOXA": [
+   "Fox News",
+   "Fox Sports",
+   "Fox Broadcasting"
+  ],
+  "FSLR": [
+   "First Solar"
+  ],
+  "FTNT": [
+   "Fortinet",
+   "FortiGate"
+  ],
+  "GD": [
+   "General Dynamics",
+   "Gulfstream",
+   "Abrams"
+  ],
+  "GE": [
+   "GE Aerospace",
+   "GE Vernova"
+  ],
+  "GEN": [
+   "Norton",
+   "LifeLock",
+   "Avast"
+  ],
+  "GILD": [
+   "Biktarvy",
+   "Truvada",
+   "Harvoni",
+   "Yescarta"
+  ],
+  "GIS": [
+   "Cheerios",
+   "Betty Crocker",
+   "Pillsbury",
+   "Yoplait",
+   "Nature Valley"
+  ],
+  "GM": [
+   "Chevrolet",
+   "GMC",
+   "Cadillac",
+   "Buick",
+   "OnStar"
+  ],
+  "GOOG": [
+   "Google Search",
+   "YouTube",
+   "Android",
+   "Chrome",
+   "Gmail",
+   "Google Maps",
+   "Google Cloud",
+   "Pixel"
+  ],
+  "GOOGL": [
+   "Google Search",
+   "YouTube",
+   "Android",
+   "Chrome",
+   "Gmail",
+   "Google Maps",
+   "Google Cloud",
+   "Pixel"
+  ],
+  "GPN": [
+   "Global Payments",
+   "TSYS"
+  ],
+  "GS": [
+   "Goldman Sachs",
+   "Marcus"
+  ],
+  "GWW": [
+   "Grainger",
+   "Zoro"
+  ],
+  "HAL": [
+   "Halliburton"
+  ],
+  "HCA": [
+   "HCA Healthcare"
+  ],
+  "HD": [
+   "Home Depot",
+   "Husky",
+   "HDX",
+   "Hampton Bay",
+   "Everbilt"
+  ],
+  "HLT": [
+   "Hilton",
+   "Waldorf Astoria",
+   "DoubleTree",
+   "Hampton"
+  ],
+  "HON": [
+   "Honeywell",
+   "Honeywell Aerospace"
+  ],
+  "HOOD": [
+   "Robinhood"
+  ],
+  "HPQ": [
+   "HP",
+   "Omen",
+   "Instant Ink"
+  ],
+  "HSIC": [
+   "Henry Schein"
+  ],
+  "HSY": [
+   "Hershey's",
+   "Reese's",
+   "Kisses",
+   "Twizzlers",
+   "Jolly Rancher"
+  ],
+  "HUM": [
+   "Humana"
+  ],
+  "IBM": [
+   "IBM",
+   "Watson",
+   "Red Hat",
+   "Cloud Pak"
+  ],
+  "ICE": [
+   "NYSE",
+   "Intercontinental Exchange"
+  ],
+  "ILMN": [
+   "Illumina",
+   "NovaSeq"
+  ],
+  "INTC": [
+   "Core",
+   "Xeon",
+   "Arc",
+   "Pentium",
+   "Celeron"
+  ],
+  "INTU": [
+   "QuickBooks",
+   "TurboTax",
+   "Credit Karma",
+   "Mailchimp"
+  ],
+  "ISRG": [
+   "da Vinci"
+  ],
+  "JNJ": [
+   "Tylenol",
+   "Band-Aid",
+   "Neutrogena",
+   "Listerine",
+   "Aveeno",
+   "Benadryl",
+   "Johnson's"
+  ],
+  "JPM": [
+   "Chase",
+   "J.P. Morgan",
+   "Sapphire"
+  ],
+  "KDP": [
+   "Keurig",
+   "Dr Pepper",
+   "Snapple",
+   "7UP",
+   "Canada Dry",
+   "Mott's"
+  ],
+  "KHC": [
+   "Heinz",
+   "Kraft",
+   "Oscar Mayer",
+   "Philadelphia",
+   "Velveeta",
+   "Jell-O",
+   "Kool-Aid"
+  ],
+  "KLAC": [
+   "KLA"
+  ],
+  "KMB": [
+   "Huggies",
+   "Kleenex",
+   "Scott",
+   "Cottonelle",
+   "Kotex"
+  ],
+  "KMI": [
+   "Kinder Morgan"
+  ],
+  "KO": [
+   "Coca-Cola",
+   "Sprite",
+   "Fanta",
+   "Diet Coke",
+   "Powerade",
+   "Minute Maid",
+   "Costa",
+   "fairlife"
+  ],
+  "LEN": [
+   "Lennar"
+  ],
+  "LH": [
+   "Labcorp"
+  ],
+  "LHX": [
+   "L3Harris"
+  ],
+  "LIN": [
+   "Linde"
+  ],
+  "LLY": [
+   "Zepbound",
+   "Mounjaro",
+   "Trulicity",
+   "Humalog"
+  ],
+  "LMT": [
+   "Lockheed Martin",
+   "F-35",
+   "Sikorsky",
+   "Skunk Works"
+  ],
+  "LOW": [
+   "Lowe's",
+   "Kobalt",
+   "Allen + Roth"
+  ],
+  "LRCX": [
+   "Lam Research"
+  ],
+  "LULU": [
+   "Lululemon"
+  ],
+  "LUV": [
+   "Southwest",
+   "Rapid Rewards"
+  ],
+  "LVS": [
+   "Venetian",
+   "Sands"
+  ],
+  "LYV": [
+   "Ticketmaster",
+   "Live Nation"
+  ],
+  "MA": [
+   "Mastercard",
+   "Maestro",
+   "Cirrus"
+  ],
+  "MAR": [
+   "Marriott",
+   "Sheraton",
+   "Westin",
+   "Ritz-Carlton",
+   "Courtyard",
+   "W Hotels"
+  ],
+  "MCD": [
+   "McDonald's",
+   "McCafé",
+   "Big Mac",
+   "Happy Meal"
+  ],
+  "MCHP": [
+   "Microchip"
+  ],
+  "MCK": [
+   "McKesson"
+  ],
+  "MCO": [
+   "Moody's",
+   "Moody's Analytics"
+  ],
+  "MDLZ": [
+   "Oreo",
+   "Cadbury",
+   "Toblerone",
+   "Ritz",
+   "Trident",
+   "Sour Patch Kids"
+  ],
+  "MDT": [
+   "Medtronic",
+   "MiniMed"
+  ],
+  "MET": [
+   "MetLife"
+  ],
+  "META": [
+   "Facebook",
+   "Instagram",
+   "WhatsApp",
+   "Messenger",
+   "Threads",
+   "Quest"
+  ],
+  "MGM": [
+   "MGM Grand",
+   "Bellagio",
+   "BetMGM"
+  ],
+  "MLM": [
+   "Martin Marietta"
+  ],
+  "MMM": [
+   "3M",
+   "Post-it",
+   "Scotch",
+   "Command",
+   "Nexcare"
+  ],
+  "MNST": [
+   "Monster Energy",
+   "Bang",
+   "Reign"
+  ],
+  "MO": [
+   "Marlboro",
+   "Copenhagen",
+   "Skoal"
+  ],
+  "MPC": [
+   "Marathon Petroleum",
+   "Speedway",
+   "ARCO"
+  ],
+  "MRK": [
+   "Keytruda",
+   "Gardasil",
+   "Januvia",
+   "Bridion"
+  ],
+  "MRNA": [
+   "Spikevax"
+  ],
+  "MRSH": [
+   "Marsh",
+   "Guy Carpenter",
+   "Mercer",
+   "Oliver Wyman"
+  ],
+  "MS": [
+   "Morgan Stanley",
+   "E*TRADE",
+   "Eaton Vance"
+  ],
+  "MSFT": [
+   "Windows",
+   "Office",
+   "Azure",
+   "Xbox",
+   "LinkedIn",
+   "Teams",
+   "Surface",
+   "GitHub"
+  ],
+  "MU": [
+   "Micron",
+   "Crucial"
+  ],
+  "NCLH": [
+   "Norwegian Cruise Line",
+   "Oceania",
+   "Regent"
+  ],
+  "NDAQ": [
+   "Nasdaq"
+  ],
+  "NEE": [
+   "NextEra Energy",
+   "Florida Power & Light"
+  ],
+  "NEM": [
+   "Newmont"
+  ],
+  "NFLX": [
+   "Netflix"
+  ],
+  "NKE": [
+   "Nike",
+   "Jordan",
+   "Converse"
+  ],
+  "NOC": [
+   "Northrop Grumman"
+  ],
+  "NOW": [
+   "ServiceNow"
+  ],
+  "NSC": [
+   "Norfolk Southern"
+  ],
+  "NUE": [
+   "Nucor"
+  ],
+  "NVDA": [
+   "GeForce",
+   "RTX",
+   "CUDA",
+   "DGX",
+   "Omniverse",
+   "Jetson"
+  ],
+  "NVR": [
+   "Ryan Homes",
+   "NVHomes"
+  ],
+  "NXPI": [
+   "NXP"
+  ],
+  "ODFL": [
+   "Old Dominion"
+  ],
+  "OKE": [
+   "ONEOK"
+  ],
+  "ORCL": [
+   "Oracle",
+   "MySQL",
+   "Java",
+   "NetSuite",
+   "PeopleSoft",
+   "Oracle Cloud"
+  ],
+  "OXY": [
+   "Occidental",
+   "OxyChem"
+  ],
+  "PANW": [
+   "Palo Alto Networks",
+   "Prisma",
+   "Cortex"
+  ],
+  "PCAR": [
+   "Kenworth",
+   "Peterbilt",
+   "DAF"
+  ],
+  "PEP": [
+   "Pepsi",
+   "Lay's",
+   "Doritos",
+   "Gatorade",
+   "Mountain Dew",
+   "Quaker",
+   "Tropicana",
+   "Cheetos"
+  ],
+  "PFE": [
+   "Pfizer",
+   "Comirnaty",
+   "Paxlovid",
+   "Prevnar"
+  ],
+  "PG": [
+   "Pampers",
+   "Tide",
+   "Gillette",
+   "Bounty",
+   "Charmin",
+   "Oral-B",
+   "Head & Shoulders",
+   "Pantene",
+   "Olay"
+  ],
+  "PGR": [
+   "Progressive",
+   "Flo"
+  ],
+  "PH": [
+   "Parker Hannifin"
+  ],
+  "PHM": [
+   "PulteGroup"
+  ],
+  "PLTR": [
+   "Palantir",
+   "Foundry",
+   "Gotham"
+  ],
+  "PM": [
+   "IQOS",
+   "Veev"
+  ],
+  "PNC": [
+   "PNC"
+  ],
+  "PODD": [
+   "Insulet",
+   "Omnipod"
+  ],
+  "PPG": [
+   "PPG",
+   "Glidden"
+  ],
+  "PRU": [
+   "Prudential"
+  ],
+  "PSX": [
+   "Phillips 66"
+  ],
+  "PYPL": [
+   "PayPal",
+   "Venmo",
+   "Braintree",
+   "Honey"
+  ],
+  "QCOM": [
+   "Snapdragon",
+   "Adreno",
+   "Hexagon"
+  ],
+  "RCL": [
+   "Royal Caribbean",
+   "Celebrity",
+   "Silversea"
+  ],
+  "RDDT": [
+   "Reddit"
+  ],
+  "REGN": [
+   "Eylea",
+   "Dupixent"
+  ],
+  "RL": [
+   "Ralph Lauren",
+   "Polo"
+  ],
+  "RMD": [
+   "ResMed",
+   "AirSense"
+  ],
+  "ROK": [
+   "Rockwell Automation",
+   "Allen-Bradley"
+  ],
+  "ROST": [
+   "Ross"
+  ],
+  "RSG": [
+   "Republic Services"
+  ],
+  "RTX": [
+   "Pratt & Whitney",
+   "Raytheon",
+   "Collins Aerospace",
+   "Patriot",
+   "Tomahawk"
+  ],
+  "SBUX": [
+   "Starbucks",
+   "Frappuccino",
+   "Starbucks Reserve"
+  ],
+  "SCHW": [
+   "Charles Schwab",
+   "TD Ameritrade"
+  ],
+  "SHW": [
+   "Sherwin-Williams",
+   "Valspar",
+   "Dutch Boy"
+  ],
+  "SLB": [
+   "SLB",
+   "Schlumberger"
+  ],
+  "SO": [
+   "Southern Company",
+   "Georgia Power"
+  ],
+  "SPGI": [
+   "S&P Global",
+   "Platts"
+  ],
+  "STLD": [
+   "Steel Dynamics"
+  ],
+  "STX": [
+   "Seagate"
+  ],
+  "STZ": [
+   "Corona",
+   "Modelo",
+   "Pacifico",
+   "Robert Mondavi"
+  ],
+  "SWKS": [
+   "Skyworks"
+  ],
+  "SYK": [
+   "Stryker"
+  ],
+  "T": [
+   "AT&T",
+   "Cricket",
+   "AT&T Fiber"
+  ],
+  "TER": [
+   "Teradyne"
+  ],
+  "TFC": [
+   "Truist"
+  ],
+  "TGT": [
+   "Target",
+   "Good & Gather",
+   "Cat & Jack",
+   "Up&Up"
+  ],
+  "TJX": [
+   "T.J. Maxx",
+   "Marshalls",
+   "HomeGoods",
+   "Sierra"
+  ],
+  "TMO": [
+   "Thermo Fisher",
+   "Fisher Scientific",
+   "Invitrogen",
+   "Applied Biosystems"
+  ],
+  "TMUS": [
+   "T-Mobile",
+   "Metro by T-Mobile"
+  ],
+  "TRV": [
+   "Travelers"
+  ],
+  "TSCO": [
+   "Tractor Supply"
+  ],
+  "TSLA": [
+   "Model 3",
+   "Model Y",
+   "Cybertruck",
+   "Powerwall",
+   "Supercharger",
+   "Megapack"
+  ],
+  "TTWO": [
+   "Grand Theft Auto",
+   "NBA 2K",
+   "Rockstar",
+   "2K"
+  ],
+  "UAL": [
+   "United",
+   "MileagePlus"
+  ],
+  "UBER": [
+   "Uber",
+   "Uber Eats"
+  ],
+  "UNH": [
+   "UnitedHealthcare",
+   "Optum"
+  ],
+  "UNP": [
+   "Union Pacific"
+  ],
+  "UPS": [
+   "UPS",
+   "The UPS Store"
+  ],
+  "URI": [
+   "United Rentals"
+  ],
+  "USB": [
+   "U.S. Bank",
+   "Elan"
+  ],
+  "V": [
+   "Visa",
+   "Visa Direct",
+   "CyberSource"
+  ],
+  "VLO": [
+   "Valero",
+   "Diamond Shamrock"
+  ],
+  "VMC": [
+   "Vulcan Materials"
+  ],
+  "VRTX": [
+   "Trikafta",
+   "Casgevy"
+  ],
+  "VZ": [
+   "Verizon",
+   "Visible"
+  ],
+  "WDAY": [
+   "Workday"
+  ],
+  "WDC": [
+   "Western Digital",
+   "SanDisk"
+  ],
+  "WFC": [
+   "Wells Fargo"
+  ],
+  "WM": [
+   "Waste Management"
+  ],
+  "WMB": [
+   "Williams"
+  ],
+  "WMT": [
+   "Walmart",
+   "Sam's Club",
+   "Great Value"
+  ],
+  "WYNN": [
+   "Wynn",
+   "Encore"
+  ],
+  "XOM": [
+   "Exxon",
+   "Esso",
+   "Mobil"
+  ],
+  "XYZ": [
+   "Block",
+   "Square",
+   "Cash App",
+   "Afterpay"
+  ],
+  "YUM": [
+   "KFC",
+   "Taco Bell",
+   "Pizza Hut",
+   "Habit Burger"
+  ]
+ }
+}

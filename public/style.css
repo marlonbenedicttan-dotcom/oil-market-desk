@@ -1116,6 +1116,17 @@ button.deal-sec-tile:hover { background: #10151b; }
 .co-tgl:hover { border-color: #33465a; color: #d7e3ef; }
 .co-tgl.on { background: #1b2733; border-color: #2f4356; color: #cfe3f7; }
 .co-sep { width: 1px; height: 18px; background: #1d242c; margin: 0 2px; }
+/* Cross-market peers: chips under the chart that put the other company on the same indexed line. */
+.co-peers { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 8px 12px 4px; }
+.co-peers-l { font-size: 8px; letter-spacing: .9px; color: #5b6773; }
+.co-peers-s { font-size: 10px; }
+.co-peer { display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 9px; cursor: pointer;
+  background: #0e1319; border: 1px solid #1d242c; border-radius: 5px; color: #8fa0b2; font-size: 10px; }
+.co-peer b { color: #cfe3f7; font-weight: 600; }
+.co-peer em { font-style: normal; font-size: 8px; letter-spacing: .6px; color: #5b6773; }
+.co-peer:hover { border-color: #33465a; color: #d7e3ef; }
+@media (max-width: 720px) { .co-peers { padding: 8px 0 4px; } .co-peer { max-width: 100%; } }
+
 /* The session the prices belong to, at the end of every filter bar. */
 .co-asof { font-size: 10px; letter-spacing: .3px; color: #6b7a89; margin-left: auto; white-space: nowrap; }
 @media (max-width: 720px) {

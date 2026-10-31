@@ -9,7 +9,7 @@ export const US_LIST_FIELDS = [
   'cik', 'ticker', 'name', 'sector', 'industry', 'indexName', 'shareClass', 'price', 'chg1d', 'chg6m',
   'chgYtd', 'pe', 'pb', 'evEbitda', 'roe', 'marketCap', 'revenue', 'netIncome', 'netIncomeTTM', 'marginNA',
   'fcfYield', 'fcfNA', 'revenueCagr', 'roic', 'adrNA', 'dividendYield', 'indexWeight', 'sic',
-  'buybacks', 'cash', 'priceAsOf',
+  'buybacks', 'cash', 'priceAsOf', 'brands',
 ];
 
 export const projectUs = (c) => {
@@ -46,7 +46,7 @@ export const projectJp = (c) => ({
 export const FILTER_FIELDS = {
   us: [
     'sector', 'marketCap', 'pe', 'revenue', 'netIncome', 'roic', 'revenueCagr',
-    'dividendYield', 'buybacks', 'verification', 'priceAsOf',
+    'dividendYield', 'buybacks', 'verification', 'priceAsOf', 'brands',
   ],
   jp: ['sector', 'marketCap', 'pe', 'pb', 'roe', 'dividend', 'cash', 'bands', 'chgYtd', 'priceDate', 'brands'],
   kr: ['sector', 'marketCap', 'pe', 'pb', 'roe', 'bands', 'chgYtd', 'priceDate', 'brands'],

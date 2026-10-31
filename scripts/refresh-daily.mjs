@@ -25,6 +25,7 @@ const step = (label, args) => {
 if (!SKIP_PRICES) {
   step('prices', ['scripts/refresh-prices.mjs']);
   step('market caps', ['scripts/fetch-nasdaq.mjs']);
+  step('brands', ['scripts/attach-us-brands.mjs']);
 }
 
 step('new filings', ['scripts/detect-new-filings.mjs']);
