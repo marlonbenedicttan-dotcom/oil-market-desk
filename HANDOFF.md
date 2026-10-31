@@ -2835,3 +2835,17 @@ Audited at 360, 390 and 430 px with screenshots of every view, then fixed what l
 - **"n/d" instead of a dash** where an input is not tagged at all: Debt/Equity and Net Debt/EBITDA say
   `n/d` with "this company does not tag a debt total in its XBRL filings" on hover, rather than looking
   like a failed calculation.
+
+## The company chart no longer depends on Yahoo, and revenue is now TTM (2026-10-31)
+- **Why charts were missing**: `/api/company-chart` called Yahoo at request time. Yahoo rate-limits this
+  host, so one month and six months came back with a single point for **every** company — the graph drew
+  nothing. The five-year range only worked because its Yahoo response was cached.
+- **Fix**: `build-us-charts.mjs` turns the daily closes already cached from Nasdaq into a committed series
+  (`data/us-charts.json`, 6.4 MB, ~500 points per ticker: daily for the last 400 days, weekly before that).
+  The endpoint slices it by range and only falls back to Yahoo for symbols it does not hold. Verified:
+  1m 24 points, 6m 133, 5y 626, for AAPL and BRK-B alike. It runs in both workflows.
+- **Why some companies showed 2026 revenue and others 2025**: `revenue` was the last **fiscal year**, while
+  the net income beside it was **TTM**. Microsoft's year ends in June, so it showed FY2026 next to a TTM
+  profit, while Apple showed FY2025. Revenue is now TTM too (sum of the last four quarters, 487 of 500),
+  labelled TTM with the fiscal-year figure in the tooltip. Where quarters are incomplete it falls back to
+  the fiscal year and says which year it is.

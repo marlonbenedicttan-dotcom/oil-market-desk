@@ -145,6 +145,20 @@ for (const c of data.companies) {
   if (c.opIncEnd && newestTTM && newestTTM - Date.parse(c.opIncEnd) > 730 * 86400000) { c.opInc = null; c.opIncStale = true; }
   const opInc = c.opInc ?? [...(c.series || [])].reverse().find((x) => x.opInc != null)?.opInc ?? null;
   // Prefer the trailing EBITDA where we have it; fall back to the fiscal-year figure.
+  // TTM revenue: the last four quarters. The annual figure is a fiscal year that may have ended eighteen
+  // months ago (Microsoft's FY ends in June), so the page was pairing a FY revenue with a TTM net income.
+  if (c.revenueTTM == null) {
+    const q4 = (c.quarters || []).slice(-4);
+    if (q4.length === 4 && q4.every((q) => q.revenue != null)) {
+      const ttm = q4.reduce((a1, q) => a1 + q.revenue, 0);
+      const latest = Date.parse(q4[3].end);
+      if (Number.isFinite(latest) && Date.now() - latest < 300 * 86400000 && ttm > 0) {
+        c.revenueTTM = ttm;
+        c.revenueTTMEnd = q4[3].end;
+      }
+    }
+  }
+
   // TTM EBITDA: the quarters now carry operating income, so four of them plus annual D&A is the trailing
   // figure even when the TTM pass could not build one.
   if (c.ebitdaTTM == null && c.da != null) {

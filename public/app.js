@@ -5156,7 +5156,13 @@ async function renderCompanyPageBody(el, c, all) {
         add('ev', 'ENTERPRISE VALUE', `${val(c.ev)}${c.evApprox ? ` <em class="co-approx" title="${esc(c.evApprox)}">≈</em>` : ''}`, c.evApprox ? `Market cap ${c.evApprox === 'neither debt nor cash is tagged' ? '— this company tags neither line' : 'adjusted for what is tagged'}.` : 'Market cap + debt − cash');
         add('currentRatio', 'CURRENT RATIO', c.currentRatio != null ? c.currentRatio.toFixed(2) : '—', 'Current assets ÷ current liabilities');
         add('debtEquity', 'DEBT / EQUITY', c.debtEquity != null ? c.debtEquity.toFixed(2) : (c.debtNA ? '<em class="co-approx" title="' + esc(c.debtNA) + '">n/d</em>' : '—'), c.debtNA || 'Debt ÷ shareholders’ equity');
-        add(null, 'REVENUE', `${val(c.revenue)}${dsp('revenue')}`, `us-gaap:${c.revenueTag || 'Revenues'} · ${c.fyRevenue || ''}${c.revenueSource === 'nasdaq' ? ' · exchange total revenue' : ''}`);
+        // Revenue on the same trailing basis as the net income beside it. The fiscal-year figure is kept
+        // for companies whose quarters are incomplete, labelled with the year it belongs to.
+        add(null, `REVENUE · ${c.revenueTTM != null ? 'TTM' : 'FY' + (c.fyRevenue || '')}`,
+          `${val(c.revenueTTM ?? c.revenue)}${dsp('revenue')}`,
+          c.revenueTTM != null
+            ? `Last four quarters to ${c.revenueTTMEnd}. The fiscal-year figure is ${val(c.revenue)} (FY${c.fyRevenue || '—'}).`
+            : `us-gaap:${c.revenueTag || 'Revenues'} · fiscal year ${c.fyRevenue || '—'}${c.revenueSource === 'nasdaq' ? ' · exchange total revenue' : ''}`);
         add(null, `NET INCOME · ${niTag}`, `${val(ni)}${dsp('netIncome')}`, `us-gaap:${c.netIncomeTag || 'NetIncomeLoss'} · ${niTag}${c.netIncomeEnd ? ' · period ' + c.netIncomeEnd : ''}`, ni >= 0 ? 'pos' : 'neg');
         add(null, `NET MARGIN · ${niTag}`, m == null ? (c.marginNA ? 'n/a' : '—') : `${m.toFixed(1)}%`, 'Net income ÷ revenue', m >= 0 ? 'pos' : 'neg');
         add(null, 'RETURN ON EQUITY', roe == null ? '—' : `${roe.toFixed(1)}%`, 'Net income ÷ shareholders’ equity', roe >= 0 ? 'pos' : 'neg');

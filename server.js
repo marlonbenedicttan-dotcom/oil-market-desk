@@ -671,6 +671,11 @@ async function getRegime() {
 // ---------------------------------------------------------------------------
 const COMPANIES_FILE = path.join(__dirname, 'data', 'companies.json');
 const COMPANIES = (() => { try { return JSON.parse(fs.readFileSync(COMPANIES_FILE, 'utf8')); } catch { return { companies: [] }; } })();
+// Committed daily/weekly closes for every US ticker — the company chart reads this, never Yahoo.
+const US_CHARTS = (() => {
+  try { return JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'us-charts.json'), 'utf8')).series || {}; }
+  catch { return {}; }
+})();
 const KOREA_FILE = path.join(__dirname, 'data', 'korea.json');
 let KR_CACHE = { mtime: 0, data: null };
 function readKorea() {
@@ -4145,6 +4150,17 @@ const server = http.createServer(async (req, res) => {
       const interval = String(url.searchParams.get('interval') || (range === '10y' ? '1mo' : range === '5y' ? '1wk' : '1d'));
       // Index symbols (^GSPC, ^VIX) are legitimate charts too, so the caret is allowed.
       if (!/^[A-Za-z0-9.\-^]{1,12}$/.test(ticker)) return sendJSON(res, 400, { error: 'bad ticker' });
+      // Served from the committed series, not from a live Yahoo call: Yahoo rate-limits this host, which
+      // left the one-month and six-month charts with a single point for every company.
+      const local = US_CHARTS[ticker];
+      if (local && local.length > 1) {
+        const last = local[local.length - 1][0];
+        const back = (days) => new Date(Date.parse(last) - days * 86400000).toISOString().slice(0, 10);
+        const from = range === '1m' ? back(31) : range === '6m' ? back(190)
+          : range === 'ytd' ? `${last.slice(0, 4)}-01-01` : range === '1y' ? back(366) : '1900-01-01';
+        const rows = local.filter(([d]) => d >= from);
+        return sendJSONCached(res, 200, { ticker, range, dates: rows.map((r) => r[0]), closes: rows.map((r) => r[1]) });
+      }
       const out = await cached('cochart:' + ticker + ':' + range + ':' + interval, 600e3, async () => {
         const { series } = await yahooSeries(ticker, range, interval);
         const dates = Object.keys(series).sort();
