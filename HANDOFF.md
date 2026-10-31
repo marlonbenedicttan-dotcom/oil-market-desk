@@ -2576,3 +2576,19 @@ they are filed. Today's run picked up **295 companies** that had filed.
   DART block. `refresh-korea-universe.mjs` refetches only those — the universe went 821 → 829.
 - **Regression caught**: that refresh overwrote the OpenFIGI English names with nulls; it now merges the
   previous names instead of replacing them.
+
+## Korea company profiles now survive CI; full English names (2026-10-31)
+- **The real bug**: Korea descriptions were fetched into `data/cache/korea-profiles/`, which is gitignored.
+  The daily workflow rebuilds `korea.json` in CI, found no cache, and replaced all 727 real profiles with
+  the generated "no company profile was available" line. Japan had already solved this by committing its
+  profiles; Korea now does the same via `data/korea-profiles.json` (574 KB), read by
+  `attach-korea-descriptions.mjs` and written by `fetch-korea-descriptions.mjs`.
+- **Verified the fix the hard way**: hid the local cache, rebuilt, and the profiles still attached — 727/737.
+- **The last 10**: 8 REITs get a REIT-specific line (owns property, collects rent, must distribute most
+  taxable income) instead of the generic revenue sentence; DH Autonex and Hanyang Securities get curated
+  lines. Now 729 real profiles, 8 REIT lines, zero placeholder text.
+- **Truncated names**: the symbology source caps English names at 30 characters, so 88 read "SAMSUNG LIFE
+  INSURANCE CO LT". `fix-korea-names.mjs` refetches DART's full `corp_name_eng` for only those; 75 extended,
+  the rest normalised to the house style (CO LTD, no trailing periods).
+- **Guard test**: `tests/korea-data.test.js` fails the build if the committed profile store is missing, if
+  fewer than 95% of companies carry a real profile, or if any placeholder line reappears.

@@ -49,7 +49,7 @@ for (const c of data.companies) {
     c.descSource = 'profile';
     c.descSourceName = 'stockanalysis.com';
     fetched++;
-  } else if (/REIT/i.test(c.nameEn || c.name || '')) {
+  } else if (/(REIT|REAL ESTATE INVEST|\uB9AC\uCE20)/i.test(`${c.nameEn || ''} ${c.name || ''}`)) {
     // A REIT is a different animal: it owns property, collects rent and must distribute most of its
     // taxable income. Saying that is accurate without guessing at a portfolio we cannot see.
     c.description = `${c.nameEn || c.name} is a Korean real estate investment trust listed on KOSPI. It earns rent from a property portfolio and is required to distribute most of its taxable income to shareholders, which is why REITs usually carry a higher yield than the market.`;

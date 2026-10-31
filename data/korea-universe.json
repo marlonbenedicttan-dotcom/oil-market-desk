@@ -1,5 +1,5 @@
 {
- "updated": "2026-10-30",
+ "updated": "2026-10-31",
  "note": "KOSPI universe from DART: corp_cls Y, with share counts. Committed so CI does not rescan 4,000 filers.",
  "companies": [
   {
@@ -78,7 +78,7 @@
    "code": "00133335",
    "ticker": "000180",
    "name": "성창기업지주",
-   "nameEn": "SUNGCHANG ENTERPRISE HOLDING",
+   "nameEn": "SUNGCHANG ENTERPRISE HOLDINGS LIMITED",
    "industry": "71531",
    "shares": 72000000
   },
@@ -206,7 +206,7 @@
    "code": "00103176",
    "ticker": "000540",
    "name": "흥국화재",
-   "nameEn": "HEUNGKUK FIRE & MARINE INSUR",
+   "nameEn": "HEUNGKUK FIRE & MARINE INSURANCE CO LTD",
    "industry": "65121",
    "shares": 72314512
   },
@@ -270,7 +270,7 @@
    "code": "00164478",
    "ticker": "000720",
    "name": "현대건설",
-   "nameEn": "HYUNDAI ENGINEERING & CONST",
+   "nameEn": "HYUNDAI ENGINEERING & CONSTRUCTION CO LTD",
    "industry": "41221",
    "shares": 847518069
   },
@@ -286,7 +286,7 @@
    "code": "00139214",
    "ticker": "000810",
    "name": "삼성화재해상보험",
-   "nameEn": "SAMSUNG FIRE & MARINE INS",
+   "nameEn": "SAMSUNG FIRE & MARINE INSURANCE CO LTD",
    "industry": "65121",
    "shares": 52946837
   },
@@ -414,7 +414,7 @@
    "code": "00131054",
    "ticker": "001200",
    "name": "유진증권",
-   "nameEn": "EUGENE INVESTMENT & SECURITI",
+   "nameEn": "EUGENE INVESTMENT & SECURITIES CO LTD",
    "industry": "66121",
    "shares": 725183185
   },
@@ -446,7 +446,7 @@
    "code": "00107066",
    "ticker": "001260",
    "name": "남광토건",
-   "nameEn": "NAMKWANG ENGINEERING & CONST",
+   "nameEn": "NAMKWANG ENGINEERING & CONSTRUCTION CO LTD",
    "industry": "41221",
    "shares": 145959825
   },
@@ -462,7 +462,7 @@
    "code": "00112059",
    "ticker": "001290",
    "name": "상상인증권",
-   "nameEn": "SANGSANGIN INVESTMENT & SECU",
+   "nameEn": "SANGSANGININVESTMENT&SECURITIES CO LTD",
    "industry": "66121",
    "shares": 387465651
   },
@@ -478,7 +478,7 @@
    "code": "00126414",
    "ticker": "001360",
    "name": "삼성제약",
-   "nameEn": "SAMSUNG PHARMACEUTICAL CO LT",
+   "nameEn": "SAMSUNG PHARMACEUTICAL.CO LTD",
    "industry": "212",
    "shares": 94162079
   },
@@ -518,7 +518,7 @@
    "code": "00113207",
    "ticker": "001440",
    "name": "대한전선",
-   "nameEn": "TAIHAN CABLE & SOLUTION CO L",
+   "nameEn": "TAIHAN CABLE & SOLUTION CO LTD",
    "industry": "28302",
    "shares": 1647064180
   },
@@ -526,7 +526,7 @@
    "code": "00164973",
    "ticker": "001450",
    "name": "현대해상",
-   "nameEn": "HYUNDAI MARINE & FIRE INS CO",
+   "nameEn": "HYUNDAIMARINE&FIREINSURANCECO.LTD",
    "industry": "65121",
    "shares": 97400000
   },
@@ -542,7 +542,7 @@
    "code": "00125974",
    "ticker": "001470",
    "name": "삼부토건",
-   "nameEn": "SAMBU ENGINEERING & CONSTRUC",
+   "nameEn": "SAMBU ENGINEERING & CONSTRUCTION CO LTD",
    "industry": "41221",
    "shares": 1519467237
   },
@@ -1086,7 +1086,7 @@
    "code": "00146214",
    "ticker": "003120",
    "name": "일성아이에스",
-   "nameEn": "ILSUNG IS CO., LTD.",
+   "nameEn": "ILSUNG IS CO LTD",
    "industry": "212",
    "shares": null
   },
@@ -1150,7 +1150,7 @@
    "code": "00160621",
    "ticker": "003350",
    "name": "한국화장품제조",
-   "nameEn": "HANKOOK COSMETICS MANUFACTUR",
+   "nameEn": "HANKOOK COSMETICS MANUFACTURING CO LTD",
    "industry": "20423",
    "shares": 29240000
   },
@@ -1174,7 +1174,7 @@
    "code": "00163673",
    "ticker": "003480",
    "name": "한진중공업홀딩스",
-   "nameEn": "HANJIN HEAVY IND & CONS HLDS",
+   "nameEn": "HANJIN HEAVY IND. & CONST. HOLDINGS CO LTD",
    "industry": "352",
    "shares": 78367136
   },
@@ -1198,7 +1198,7 @@
    "code": "00148610",
    "ticker": "003530",
    "name": "한화투자증권",
-   "nameEn": "HANWHA INVESTMENT & SECURITI",
+   "nameEn": "HANWHA INVESTMENT&SECURITIES CO LTD",
    "industry": "66121",
    "shares": 219347775
   },
@@ -1270,7 +1270,7 @@
    "code": "00161860",
    "ticker": "003680",
    "name": "한성기업",
-   "nameEn": "HANSUNG ENTERPRISE CO.",
+   "nameEn": "HANSUNG ENTERPRISE CO",
    "industry": "10211",
    "shares": 6209515
   },
@@ -1382,7 +1382,7 @@
    "code": "00115287",
    "ticker": "004140",
    "name": "동방",
-   "nameEn": "DONGBANG TRANSPORT LOGISTICS",
+   "nameEn": "DONGBANG TRANSPORT & LOGISTICS CO LTD",
    "industry": "529",
    "shares": 56992793
   },
@@ -1422,7 +1422,7 @@
    "code": "00164706",
    "ticker": "004310",
    "name": "현대약품",
-   "nameEn": "HYUNDAI PHARMACEUTICAL CO LT",
+   "nameEn": "HYUNDAI PHARMACEUTICAL CO LTD",
    "industry": "212",
    "shares": 32000000
   },
@@ -1494,7 +1494,7 @@
    "code": "00113492",
    "ticker": "004540",
    "name": "깨끗한나라",
-   "nameEn": "KLEANNARA CO., LTD.",
+   "nameEn": "KLEANNARA CO LTD",
    "industry": "171",
    "shares": null
   },
@@ -1862,7 +1862,7 @@
    "code": "00120182",
    "ticker": "005940",
    "name": "NH투자증권",
-   "nameEn": "NH INVESTMENT & SECURITIES C",
+   "nameEn": "NH INVESTMENT & SECURITIES CO LTD",
    "industry": "66121",
    "shares": 388770104
   },
@@ -2030,7 +2030,7 @@
    "code": "00111722",
    "ticker": "006800",
    "name": "미래에셋증권",
-   "nameEn": "MIRAE ASSET SECURITIES CO LT",
+   "nameEn": "MIRAE ASSET SECURITIES CO LTD",
    "industry": "66121",
    "shares": 820392158
   },
@@ -2302,7 +2302,7 @@
    "code": "00165680",
    "ticker": "008770",
    "name": "호텔신라",
-   "nameEn": "HOTEL SHILLA CO.,LTD",
+   "nameEn": "HOTEL SHILLA CO LTD",
    "industry": "47859",
    "shares": null
   },
@@ -2326,7 +2326,7 @@
    "code": "00117629",
    "ticker": "008970",
    "name": "KBI동양철관",
-   "nameEn": "KBI DONGYANG STEEL PIPE CO L",
+   "nameEn": "KBI DONG YANG STEEL PIPE CO LTD",
    "industry": "2413",
    "shares": 196074930
   },
@@ -2350,7 +2350,7 @@
    "code": "00126371",
    "ticker": "009150",
    "name": "삼성전기",
-   "nameEn": "SAMSUNG ELECTRO-MECHANICS CO",
+   "nameEn": "SAMSUNG ELECTRO-MECHANICS CO LTD",
    "industry": "2622",
    "shares": 77600680
   },
@@ -2406,7 +2406,7 @@
    "code": "00103592",
    "ticker": "009290",
    "name": "광동제약",
-   "nameEn": "KWANG DONG PHARMACEUTICAL CO",
+   "nameEn": "KWANGDONG PHARMACEUTICAL CO LTD",
    "industry": "21220",
    "shares": 52420851
   },
@@ -2422,7 +2422,7 @@
    "code": "00111689",
    "ticker": "009320",
    "name": "아진전자부품",
-   "nameEn": "AJIN ELECTRONIC COMPONENTS C",
+   "nameEn": "AJIN ELECTRONIC COMPONENTS CO LTD",
    "industry": "303",
    "shares": 645967553
   },
@@ -2430,7 +2430,7 @@
    "code": "00153861",
    "ticker": "009410",
    "name": "태영건설",
-   "nameEn": "TAEYOUNG ENGINEERING & CONST",
+   "nameEn": "TAEYOUNG ENGINEERING & CONSTRUCTION",
    "industry": "41221",
    "shares": 365073497
   },
@@ -2478,7 +2478,7 @@
    "code": "00164830",
    "ticker": "009540",
    "name": "HD한국조선해양",
-   "nameEn": "HD KOREA SHIPBUILDING & OFFS",
+   "nameEn": "HD KOREA SHIPBUILDING & OFFSHORE ENGINEERING CO LTD",
    "industry": "64992",
    "shares": 90107690
   },
@@ -2526,7 +2526,7 @@
    "code": "00173078",
    "ticker": "009900",
    "name": "명신산업",
-   "nameEn": "MYOUNG SHIN INDUSTRIAL CO LT",
+   "nameEn": "MYOUNG SHIN INDUSTRIAL CO LTD",
    "industry": "303",
    "shares": 60046464
   },
@@ -2606,7 +2606,7 @@
    "code": "00160375",
    "ticker": "010640",
    "name": "진양폴리우레탄",
-   "nameEn": "CHINYANG POLY URETHANE CO LT",
+   "nameEn": "CHINYANG POLY URETHANE CO LTD",
    "industry": "22259",
    "shares": 12550000
   },
@@ -2710,7 +2710,7 @@
    "code": "00164645",
    "ticker": "011200",
    "name": "HMM",
-   "nameEn": "HMM CO.,LTD",
+   "nameEn": "HMM CO LTD",
    "industry": "50112",
    "shares": null
   },
@@ -2870,7 +2870,7 @@
    "code": "00102618",
    "ticker": "012200",
    "name": "계양전기",
-   "nameEn": "KEYANG ELECTRIC MACHINERY CO",
+   "nameEn": "KEYANG ELECTRIC MACHINERY CO LTD",
    "industry": "291",
    "shares": 34000000
   },
@@ -2990,7 +2990,7 @@
    "code": "00102432",
    "ticker": "013580",
    "name": "계룡건설산업",
-   "nameEn": "KYERYONG CONST INDUST CO LTD",
+   "nameEn": "KYE-RYONG CONSTRUCTION INDUSTRIAL CO LTD",
    "industry": "412",
    "shares": 8930907
   },
@@ -2998,7 +2998,7 @@
    "code": "00129420",
    "ticker": "013700",
    "name": "까뮤이앤씨",
-   "nameEn": "CAMUS ENGINEERING & CONSTRUC",
+   "nameEn": "CAMUS ENGINEERING & CONSTRUCTION INC",
    "industry": "41121",
    "shares": 59750830
   },
@@ -3422,7 +3422,7 @@
    "code": "00137359",
    "ticker": "019170",
    "name": "신풍제약",
-   "nameEn": "SHIN POONG PHARMACEUTICAL CO",
+   "nameEn": "SHINPOONG PHARMACEUTICAL CO LTD",
    "industry": "212",
    "shares": 55184990
   },
@@ -3518,7 +3518,7 @@
    "code": "02042949",
    "ticker": "0220W0",
    "name": "한화머시너리앤서비스홀딩스",
-   "nameEn": "HANWHA MACHINERY & SERVICE H",
+   "nameEn": "HANWHA MACHINERY & SERVICE HOLDINGS CO LTD",
    "industry": "64992",
    "shares": null
   },
@@ -3550,7 +3550,7 @@
    "code": "00159500",
    "ticker": "023350",
    "name": "한국종합기술",
-   "nameEn": "KOREA ENGINEERING CONSULTANT",
+   "nameEn": "KOREA ENGINEERING CONSULTANTS CORP",
    "industry": "72121",
    "shares": 10950000
   },
@@ -3782,7 +3782,7 @@
    "code": "00178754",
    "ticker": "028100",
    "name": "동아지질",
-   "nameEn": "DONG-AH GEOLOGICAL ENGINEERI",
+   "nameEn": "DONG-AH GEOLOGICAL ENGINEERING COMPANY LTD",
    "industry": "421",
    "shares": 17940646
   },
@@ -3854,7 +3854,7 @@
    "code": "00156859",
    "ticker": "030210",
    "name": "다올투자증권",
-   "nameEn": "DAOL INVESTMENT & SECURITIES",
+   "nameEn": "DAOL INVESTMENT & SECURITIES CO LTD",
    "industry": "661",
    "shares": 80746081
   },
@@ -3902,7 +3902,7 @@
    "code": "00231372",
    "ticker": "032350",
    "name": "롯데관광개발",
-   "nameEn": "LOTTE TOUR DEVELOPMENT CO LT",
+   "nameEn": "LOTTE TOUR DEVELOPMENT CO LTD",
    "industry": "75210",
    "shares": 79539484
   },
@@ -3926,7 +3926,7 @@
    "code": "00126256",
    "ticker": "032830",
    "name": "삼성생명",
-   "nameEn": "SAMSUNG LIFE INSURANCE CO LT",
+   "nameEn": "SAMSUNG LIFE INSURANCE CO LTD",
    "industry": "65110",
    "shares": 200000000
   },
@@ -4078,7 +4078,7 @@
    "code": "00219486",
    "ticker": "035510",
    "name": "신세계I&amp;C",
-   "nameEn": "SHINSEGAE INFORMATION & COMM",
+   "nameEn": "SHINSEGAE INFORMATION & COMMUNICATION INC",
    "industry": "62021",
    "shares": 17200000
   },
@@ -4134,7 +4134,7 @@
    "code": "00249247",
    "ticker": "037270",
    "name": "YG PLUS",
-   "nameEn": "YG PLUS, INC.",
+   "nameEn": "YG PLUS INC",
    "industry": "631",
    "shares": null
   },
@@ -4270,7 +4270,7 @@
    "code": "00159218",
    "ticker": "051600",
    "name": "한전KPS",
-   "nameEn": "KEPCO PLANT SERVICE & ENGINE",
+   "nameEn": "KEPCO PLANT SERVICE & ENGINEERING CO LTD",
    "industry": "42311",
    "shares": 45000000
   },
@@ -4302,7 +4302,7 @@
    "code": "00159209",
    "ticker": "052690",
    "name": "한전기술",
-   "nameEn": "KEPCO ENGINEERING & CONSTRUC",
+   "nameEn": "KEPCO ENGINEERING & CONSTRUCTION COMPANY INC",
    "industry": "72129",
    "shares": 38220000
   },
@@ -4358,7 +4358,7 @@
    "code": "00353878",
    "ticker": "058730",
    "name": "다스코",
-   "nameEn": "DEVELOPMENT ADVANCE SOLUTION",
+   "nameEn": "DEVELOPMENT ADVANCE SOLUTION CO LTD",
    "industry": "25112",
    "shares": 19996941
   },
@@ -4526,7 +4526,7 @@
    "code": "00432102",
    "ticker": "071050",
    "name": "한국금융지주",
-   "nameEn": "KOREA INVESTMENT HOLDINGS CO",
+   "nameEn": "KOREA INVESTMENT HOLDINGS CO LTD",
    "industry": "64992",
    "shares": 61584243
   },
@@ -4614,7 +4614,7 @@
    "code": "00415628",
    "ticker": "075580",
    "name": "세진중공업",
-   "nameEn": "SEJIN HEAVY INDUSTRIES CO LT",
+   "nameEn": "SEJIN HEAVY INDUSTRIES CO LTD",
    "industry": "31114",
    "shares": 57409456
   },
@@ -4686,7 +4686,7 @@
    "code": "00372129",
    "ticker": "079900",
    "name": "전진건설로봇",
-   "nameEn": "JUNJIN CONSTRUCTION AND ROBO",
+   "nameEn": "JUNJIN CONSTRUCTION & ROBOT CO LTD",
    "industry": "292",
    "shares": 20486962
   },
@@ -4838,7 +4838,7 @@
    "code": "00357935",
    "ticker": "089470",
    "name": "HDC현대EP",
-   "nameEn": "HDC HYUNDAI ENGINEERING PLAS",
+   "nameEn": "HDC HYUNDAI ENGINEERING PLASTICS CO LTD",
    "industry": "204",
    "shares": 56045400
   },
@@ -4870,7 +4870,7 @@
    "code": "00583442",
    "ticker": "090350",
    "name": "노루페인트",
-   "nameEn": "NOROO PAINT & COATINGS CO LT",
+   "nameEn": "NOROO PAINT & COATINGS CO LTD",
    "industry": "20411",
    "shares": 20463126
   },
@@ -4990,7 +4990,7 @@
    "code": "00600013",
    "ticker": "094800",
    "name": "맵스리얼티",
-   "nameEn": "MIRAE ASSET MAPS RLT INV COM",
+   "nameEn": "MIRAEASSET MAPS REALTY INVESTMENT COMPANY",
    "industry": "642",
    "shares": null
   },
@@ -5030,7 +5030,7 @@
    "code": "00633835",
    "ticker": "097230",
    "name": "HJ중공업",
-   "nameEn": "HJ SHIPBUILDING & CONSTRUCTI",
+   "nameEn": "HJ SHIPBUILDING & CONSTRUCTION CO LTD",
    "industry": "41221",
    "shares": 181814713
   },
@@ -5094,7 +5094,7 @@
    "code": "00428321",
    "ticker": "101530",
    "name": "해태제과식품",
-   "nameEn": "HAITAI CONFECTIONERY & FOODS",
+   "nameEn": "HAITAI CONFECTIONERY AND FOODS CO LTD",
    "industry": "108",
    "shares": 75136476
   },
@@ -5334,7 +5334,7 @@
    "code": "00828497",
    "ticker": "128940",
    "name": "한미약품",
-   "nameEn": "HANMI PHARM. CO., LTD.",
+   "nameEn": "HANMI PHARM. CO LTD",
    "industry": "21212",
    "shares": null
   },
@@ -5350,7 +5350,7 @@
    "code": "00194947",
    "ticker": "130660",
    "name": "한전산업",
-   "nameEn": "KOREA ELECTRONIC POWER INDUS",
+   "nameEn": "KOREA ELECTRONIC POWER INDUSTRIAL DEVELOPMENT CO LTD",
    "industry": "72129",
    "shares": 32600000
   },
@@ -5494,7 +5494,7 @@
    "code": "00937324",
    "ticker": "161390",
    "name": "한국타이어앤테크놀로지",
-   "nameEn": "HANKOOK TIRE & TECHNOLOGY CO",
+   "nameEn": "HANKOOK TIRE & TECHNOLOGY CO LTD",
    "industry": "221",
    "shares": 123875069
   },
@@ -5566,7 +5566,7 @@
    "code": "00992871",
    "ticker": "185750",
    "name": "종근당",
-   "nameEn": "CHONG KUN DANG PHARMACEUTICA",
+   "nameEn": "CHONG KUN DANG PHARMACEUTICAL CORP",
    "industry": "212",
    "shares": 13802780
   },
@@ -5686,7 +5686,7 @@
    "code": "00101664",
    "ticker": "214390",
    "name": "경보제약",
-   "nameEn": "KYONGBO PHARMACEUTICAL CO LT",
+   "nameEn": "KYONGBO PHARMACEUTICAL CO LTD",
    "industry": "211",
    "shares": 29071828
   },
@@ -5718,7 +5718,7 @@
    "code": "01108099",
    "ticker": "227840",
    "name": "현대코퍼레이션홀딩스",
-   "nameEn": "HYUNDAI CORPORATION HOLDINGS",
+   "nameEn": "HYUNDAI CORPORATION HOLDINGS CO LTD",
    "industry": "463",
    "shares": 9100836
   },
@@ -5782,7 +5782,7 @@
    "code": "01168383",
    "ticker": "249420",
    "name": "일동제약",
-   "nameEn": "IL DONG PHARMACEUTICAL CO LT",
+   "nameEn": "IL DONG PHARMACEUTICAL CO LTD",
    "industry": "212",
    "shares": 31638252
   },
@@ -5830,7 +5830,7 @@
    "code": "01205842",
    "ticker": "267270",
    "name": "HD건설기계",
-   "nameEn": "HD CONSTRUCTION EQUIPMENT CO",
+   "nameEn": "HD CONSTRUCTION EQUIPMENT CO LTD",
    "industry": "29241",
    "shares": 19700793
   },
@@ -5990,7 +5990,7 @@
    "code": "01310269",
    "ticker": "294870",
    "name": "IPARK현대산업개발",
-   "nameEn": "IPARK HYUNDAI DEVELOPMENT CO",
+   "nameEn": "IPARK HYUNDAI DEVELOPMENT COMPANY",
    "industry": "411",
    "shares": 65907330
   },
@@ -6014,7 +6014,7 @@
    "code": "01316245",
    "ticker": "298040",
    "name": "효성중공업",
-   "nameEn": "HYOSUNG HEAVY INDUSTRIES COR",
+   "nameEn": "HYOSUNG HEAVY INDUSTRIES CORPORATION",
    "industry": "281",
    "shares": 9324548
   },
@@ -6022,7 +6022,7 @@
    "code": "01316254",
    "ticker": "298050",
    "name": "HS효성첨단소재",
-   "nameEn": "HS HYOSUNG ADVANCED MATERIAL",
+   "nameEn": "HS HYOSUNG ADVANCED MATERIALS",
    "industry": "205",
    "shares": 4479948
   },
@@ -6230,7 +6230,7 @@
    "code": "01437292",
    "ticker": "357250",
    "name": "미래에셋맵스리츠",
-   "nameEn": "MIRAEASSET MAPS REIT1 CO LTD",
+   "nameEn": "MIRAEASSET MAPS REIT 1 CO LTD",
    "industry": "681",
    "shares": 25295105
   },
@@ -6262,7 +6262,7 @@
    "code": "01437186",
    "ticker": "365550",
    "name": "ESR켄달스퀘어리츠",
-   "nameEn": "ESR KENDALL SQUARE REIT CO L",
+   "nameEn": "ESR KENDALL SQUARE REIT CO LTD",
    "industry": "681",
    "shares": 213089000
   },
@@ -6358,7 +6358,7 @@
    "code": "01576102",
    "ticker": "396690",
    "name": "미래에셋글로벌리츠",
-   "nameEn": "MIRAE ASSET GLOBAL REIT CO L",
+   "nameEn": "MIRAE ASSET GLOBAL REIT CO LTD",
    "industry": "6811",
    "shares": 39905940
   },
@@ -6390,7 +6390,7 @@
    "code": "01436558",
    "ticker": "404990",
    "name": "신한서부티엔디리츠",
-   "nameEn": "SHINHAN SEOBU T&D REIT CO LT",
+   "nameEn": "SHINHAN SEOBU T&D REIT CO LTD",
    "industry": "68112",
    "shares": 56255734
   },
@@ -6398,7 +6398,7 @@
    "code": "01880801",
    "ticker": "415640",
    "name": "KB발해인프라",
-   "nameEn": "KB BALHAE INFRASTRUCTURE FUN",
+   "nameEn": "KB BALHAE INFRASTRUCTURE FUND",
    "industry": "642",
    "shares": null
   },
@@ -6430,7 +6430,7 @@
    "code": "01194689",
    "ticker": "443060",
    "name": "HD현대마린솔루션",
-   "nameEn": "HD HYUNDAI MARINE SOLUTION C",
+   "nameEn": "HD HYUNDAI MARINE SOLUTION CO LTD",
    "industry": "7212",
    "shares": 44831335
   },
@@ -6574,7 +6574,7 @@
    "code": "01714997",
    "ticker": "481850",
    "name": "신한글로벌액티브리츠",
-   "nameEn": "SHINHAN GLOBAL ACTIVE REIT C",
+   "nameEn": "SHINHAN GLOBAL ACTIVE REIT CO LTD",
    "industry": "64201",
    "shares": 43777664
   },

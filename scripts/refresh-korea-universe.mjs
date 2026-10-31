@@ -57,7 +57,12 @@ for (const r of listed) {
 out.sort((a, b) => a.ticker.localeCompare(b.ticker));
 
 // Names the symbology source gets wrong, corrected by hand.
-const FIX = { '007310': 'OTTOGI CORP', '000040': 'KR MOTORS CO LTD' };
+const FIX = {
+  '007310': 'OTTOGI CORP',
+  '000040': 'KR MOTORS CO LTD',
+  '001470': 'SAMBU ENGINEERING & CONSTRUCTION CO LTD',
+  '009900': 'MYOUNG SHIN INDUSTRIAL CO LTD',
+};
 for (const c of out) if (FIX[c.ticker]) c.nameEn = FIX[c.ticker];
 
 writeFileSync(join(ROOT, 'data', 'korea-universe.json'), JSON.stringify({
