@@ -44,6 +44,37 @@ export function buildQuartersKr(rows) {
   return out.sort((a, b) => a.d.localeCompare(b.d));
 }
 
+// Banks and insurers file each interim as a standalone quarter, not a cumulative one: KB Financial's
+// Q3 2025 report shows ₩1.66T against a ₩1.75T half-year, which cannot be a nine-month total. Their
+// statements also carry no revenue line, so the cumulative builder produces nothing. Read the interims
+// directly (Q1, Q2, Q3) and take Q4 as the annual figure less the first three.
+export function buildQuartersKrStandalone(rows) {
+  const byYear = new Map();
+  for (const r of rows) {
+    if (!r.end || !r.report) continue;
+    const fy = String(r.end).slice(0, 4);
+    if (!byYear.has(fy)) byYear.set(fy, {});
+    byYear.get(fy)[r.report] = r;
+  }
+  const out = [];
+  for (const [fy, rec] of byYear) {
+    const q1 = rec.q1?.netIncome, q2 = rec.h1?.netIncome, q3 = rec.q3?.netIncome;
+    const fyNi = rec.annual?.netIncome;
+    const q4 = fyNi != null && q1 != null && q2 != null && q3 != null ? fyNi - (q1 + q2 + q3) : null;
+    const rowsOut = [
+      ['Q1', rec.q1?.end, q1, rec.q1?.revenue ?? null],
+      ['Q2', rec.h1?.end, q2, rec.h1?.revenue ?? null],
+      ['Q3', rec.q3?.end, q3, rec.q3?.revenue ?? null],
+      ['Q4', rec.annual?.end, q4, null],
+    ];
+    for (const [q, d, ni, rev] of rowsOut) {
+      if (!d || ni == null) continue;
+      out.push({ d, fy, q, revenue: rev, operatingProfit: null, netIncome: ni });
+    }
+  }
+  return out.sort((a, b) => a.d.localeCompare(b.d));
+}
+
 // A Korean company's fiscal year is December for almost everyone, so TTM = the four most recent
 // standalone quarters. When a quarter is missing the FY figure is used and labelled as such.
 export function ttmKr(quarters) {
@@ -59,17 +90,32 @@ export function deriveKorea({ companies, fx = null }) {
   const out = [];
   for (const c of companies) {
     const price = c.price ?? null;
-    // Shares from net income ÷ basic EPS where both exist: DART's stock table counts issued shares,
-    // which for a company that has cancelled treasury stock is not the count the market capitalises.
+    // Shares come from DART's stock table: the common line, listed (after retirement and treasury).
+    // That is the count the market capitalises and it reconciles with Naver (Hyundai 203.1M, LG Chem
+    // 70.6M, Samsung 5.83B). Net income ÷ EPS is only a fallback for funds with no stock table — the
+    // EPS feed rounds some filers to ₩1, which produced 13.2B shares for a 72M-share company.
     const annual = (c.reports || []).find((r) => r.report === 'annual') || null;
     // Both figures must agree in sign: a loss year paired with a positive per-share figure (or the
     // reverse) divides to a negative share count, which silently produced a negative market cap.
     const epsShares = annual && annual.netIncome && annual.eps && Math.sign(annual.netIncome) === Math.sign(annual.eps)
       ? annual.netIncome / annual.eps : null;
-    const shares = (epsShares > 0 ? epsShares : null) || c.shares || null;
+    let shares = c.shares || (epsShares > 0 ? epsShares : null) || null;
+    // A handful of filers put capital where a share count belongs (LS에코에너지 filed 30.6 trillion
+    // shares, 조선내화 11.8 billion). If the listed count is impossible beside the company's own revenue,
+    // or an order of magnitude above what its EPS implies, the EPS count is the believable one.
+    if (shares && epsShares > 0 && price != null) {
+      const capGuess = price * shares;
+      const absurd = (annual?.revenue && capGuess > annual.revenue * 10000) || shares > epsShares * 20;
+      if (absurd) shares = epsShares;
+    }
     const cap = price != null && shares > 0 ? price * shares : null;
 
-    const q = buildQuartersKr(c.reports || []);
+    let q = buildQuartersKr(c.reports || []);
+    let quartersBasis = 'cumulative';
+    if (!q.length) {
+      const alt = buildQuartersKrStandalone(c.reports || []);
+      if (alt.length) { q = alt; quartersBasis = 'standalone'; }
+    }
     const ttm = ttmKr(q);
     const fy = (c.reports || []).find((r) => r.report === 'annual') || null;
 
@@ -89,7 +135,7 @@ export function deriveKorea({ companies, fx = null }) {
       marketCapUsd: cap && fx ? Math.round(cap / fx) : null,
       // Publish the count the cap was actually built from, so price × shares reconciles on screen.
       shares: shares || null,
-      sharesIssued: c.shares || null,
+      sharesIssued: c.sharesIssued || null,
       currency: 'KRW',
       pe: round(guard(cap && ni > 0 ? cap / ni : null, 0, 500), 2),
       peBasis: basis,
@@ -102,6 +148,7 @@ export function deriveKorea({ companies, fx = null }) {
       fcf,
       fcfYield: cap && fcf != null ? round((fcf / cap) * 100, 2) : null,
       quarters: q.slice(-8),
+      quartersBasis,
       history: (c.reports || []).filter((r) => r.report === 'annual').slice(-5).map((r) => ({
         y: r.end, s: r.revenue, o: r.operatingProfit, n: r.netIncome, q: r.equity, a: r.assets,
         c: r.operatingCashFlow, i: r.investingCashFlow,

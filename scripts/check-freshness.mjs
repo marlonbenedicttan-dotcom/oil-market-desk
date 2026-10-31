@@ -19,11 +19,11 @@ const check = (label, file) => {
   } catch (e) { return { label, ok: false, msg: `unreadable: ${e.message}` }; }
 };
 
-const rows = [check('US', 'companies.json'), check('Japan', 'japan.json')];
+const rows = [check('US', 'companies.json'), check('Japan', 'japan.json'), check('Korea', 'korea.json')];
 for (const r of rows) console.log(`${r.ok ? 'ok  ' : 'STALE'} ${r.label.padEnd(6)} ${r.msg}`);
 const bad = rows.filter((r) => !r.ok);
 if (bad.length) {
   console.error(`\n${bad.length} dataset(s) older than ${MAX_HOURS}h — the nightly refresh has not landed.`);
   process.exit(1);
 }
-console.log(`\nboth datasets within ${MAX_HOURS}h`);
+console.log(`\nall datasets within ${MAX_HOURS}h`);

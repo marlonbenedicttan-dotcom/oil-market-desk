@@ -61,7 +61,7 @@ if (universeFile && universeFile.companies && universeFile.companies.length) {
   console.log(`universe: ${universeFile.companies.length} KOSPI companies from data/korea-universe.json`);
   const norm = universeFile.companies
     .filter((c) => c.shares)
-    .map((c) => ({ corp: c.code, stock: c.ticker, name: c.name, nameEn: c.nameEn, industry: c.industry, shares: c.shares }));
+    .map((c) => ({ corp: c.code, stock: c.ticker, name: c.name, nameEn: c.nameEn, industry: c.industry, shares: c.shares, sharesIssued: c.sharesIssued || null }));
   const picked = CODES ? norm.filter((c) => CODES.split(',').includes(c.corp)) : norm;
   globalThis.__kospi = LIMIT ? picked.slice(0, LIMIT) : picked;
 }
@@ -98,7 +98,12 @@ const infoOf = async (corp) => {
   return hit || { cls: null, industry: null };
 };
 
-// Shares come from the stock-total table, summed across common and preferred.
+// Shares come from the stock-total table. Two traps:
+//   `now_to_isu_stock_totqy` is everything ever issued, including shares since retired — for Samsung
+//   that is 8.98B against 5.93B listed, and for SK Hynix 5.72B against 0.73B. Use `distb_stock_co`
+//   (listed after retirement and treasury), which is the count the market capitalises.
+//   The table carries common, preferred and a 합계 row; the common quote does not price the preferred
+//   line, so the common row is the count that belongs beside a common-share market cap.
 const sharesOf = async (corp) => {
   const f = join(CACHE, `shares-${corp}.json`);
   const hit = readJson(f);
@@ -110,13 +115,18 @@ const sharesOf = async (corp) => {
       if (res.status === 429) { await sleep(4000); continue; }
       const j = await res.json();
       const rows = j.list || [];
-      // The table carries common, preferred AND a 합계 (total) row — summing all three double counts.
+      const common = rows.find((r) => String(r.se || '').includes('보통주'));
       const total = rows.find((r) => String(r.se || '').includes('합계'));
-      const parts = rows.filter((r) => /보통주|우선주/.test(String(r.se || '')));
-      const shares = total
-        ? num(total.now_to_isu_stock_totqy)
-        : (parts.reduce((a, r) => a + (num(r.now_to_isu_stock_totqy) || 0), 0) || null);
-      const out = { fetched: new Date().toISOString(), shares };
+      const listed = (r) => {
+        const d = num(r?.distb_stock_co);
+        if (d) return d;
+        const i2 = num(r?.istc_totqy);
+        const t = num(r?.tesstk_co);
+        return i2 ? i2 - (t || 0) : null;
+      };
+      const shares = listed(common) || listed(total) || null;
+      const sharesIssued = num(total?.istc_totqy) || num(common?.istc_totqy) || null;
+      const out = { fetched: new Date().toISOString(), shares, sharesIssued };
       writeJson(f, out);
       await sleep(150);
       return out;
@@ -135,7 +145,7 @@ const found = globalThis.__kospi ? [] : await pool(scan, 3, async (c) => {
   if (scanned % 250 === 0) console.log(`  ${scanned}/${scan.length}`);
   if (info.cls !== 'Y') return null;
   const sh = await sharesOf(c.corp);
-  return sh.shares ? { ...c, shares: sh.shares, industry: info.industry, nameEn: c.nameEn || info.nameEn } : null;
+  return sh.shares ? { ...c, shares: sh.shares, sharesIssued: sh.sharesIssued || null, industry: info.industry, nameEn: c.nameEn || info.nameEn } : null;
 });
 const kospi = globalThis.__kospi || found.filter(Boolean);
 console.log(`  ${kospi.length} KOSPI companies`);
@@ -199,10 +209,25 @@ console.log('financials…');
 const thisYear = new Date().getFullYear();
 const years = Array.from({ length: YEARS }, (_, k) => thisYear - 1 - k);
 
+// Which report is due right now, so a new quarter is picked up the day after it is filed instead of
+// waiting for a week-old cache to expire: Q1 in Apr–Jun, H1 in Jul–Sep, Q3 in Oct–Dec, the annual
+// report in Jan–Mar.
+const watchMonth = new Date().getUTCMonth() + 1;
+const watch = watchMonth <= 3 ? { year: thisYear - 1, report: REPORTS.annual }
+  : watchMonth <= 6 ? { year: thisYear, report: REPORTS.q1 }
+    : watchMonth <= 9 ? { year: thisYear, report: REPORTS.h1 }
+      : { year: thisYear, report: REPORTS.q3 };
+
 async function statements(corp, year, report) {
   const f = join(CACHE, `fin-${corp}-${year}-${report}.json`);
   const hit = readJson(f);
-  if (hit && Date.parse(hit.fetched) > Date.now() - 7 * DAY) return hit.rows;
+  // An empty answer is retried daily, not weekly: during reporting season a company that had not filed
+  // this morning has filed by the afternoon, and a week-long empty cache would hide the new quarter.
+  // The report currently due is also checked daily; the rest keep a week.
+  const empty = hit && Array.isArray(hit.rows) && hit.rows.length === 0;
+  const due = year === watch.year && report === watch.report;
+  const ttl = empty ? DAY : due ? DAY : 7 * DAY;
+  if (hit && Date.parse(hit.fetched) > Date.now() - ttl) return hit.rows;
   try {
     const rows = await api.singleAccounts(corp, year, report);
     writeJson(f, { fetched: new Date().toISOString(), rows });
@@ -219,24 +244,28 @@ const collected = await pool(withPrices, 2, async (c) => {
     const end = (rows.find((r) => r.thstrm_dt) || {}).thstrm_dt || `${y}-12-31`;
     reports.push({ report: 'annual', end: end.slice(0, 10).replace(/\./g, '-'), ...m });
   }
-  // The current year's quarters, for a TTM figure that is not a year old.
+  // Two years of interims. The current year alone cannot make a TTM: before Q3 is filed there are only
+  // two quarters, and a P/E fell back to the fiscal year. The prior year's Q1/H1/Q3 give Q3 and Q4 (the
+  // annual report is Q4) and the four most recent standalone quarters close the window.
   // Quarterly filings carry the period NAME but no date field (thstrm_dt is null), so the end date is
   // derived from the report code: Q1 ends 31 March, H1 30 June, Q3 30 September.
   const QUARTER_END = { q1: '03-31', h1: '06-30', q3: '09-30' };
-  for (const [k, code] of [['q1', REPORTS.q1], ['h1', REPORTS.h1], ['q3', REPORTS.q3]]) {
-    const rows = await statements(c.corp, thisYear, code);
-    if (!rows.length) continue;
-    const m = mapAccounts(rows);
-    const raw = (rows.find((r) => r.thstrm_dt) || {}).thstrm_dt;
-    const end = raw ? raw.slice(0, 10).replace(/\./g, '-') : `${thisYear}-${QUARTER_END[k]}`;
-    reports.push({ report: k, end, ...m });
+  for (const y of [thisYear - 1, thisYear]) {
+    for (const [k, code] of [['q1', REPORTS.q1], ['h1', REPORTS.h1], ['q3', REPORTS.q3]]) {
+      const rows = await statements(c.corp, y, code);
+      if (!rows.length) continue;
+      const m = mapAccounts(rows);
+      const raw = (rows.find((r) => r.thstrm_dt) || {}).thstrm_dt;
+      const end = raw ? raw.slice(0, 10).replace(/\./g, '-') : `${y}-${QUARTER_END[k]}`;
+      reports.push({ report: k, end, ...m });
+    }
   }
   if (!reports.length) return null;
   return {
     code: c.corp, ticker: c.ticker, name: c.name, nameEn: c.nameEn || null, industry: c.industry || null,
     price: c.price, priceDate: c.priceDate,
     chg1d: c.chg1d, chg6m: c.chg6m, chgYtd: c.chgYtd,
-    series: c.series, shares: c.shares, reports,
+    series: c.series, shares: c.shares, sharesIssued: c.sharesIssued || null, reports,
   };
 });
 const companies = collected.filter(Boolean);

@@ -15,7 +15,11 @@ const data = JSON.parse(readFileSync(join(ROOT, 'data', 'companies.json'), 'utf8
 const C = data.companies || [];
 const issues = [];
 
-const pct = (n) => `${((n / C.length) * 100).toFixed(1)}%`;
+// A company that has not filed an annual report yet is a known blank, not a coverage gap. Counting it
+// against the field percentages made VYLR (a 2026 listing with a 10-Q only) look like twelve bugs.
+const FILERS = C.filter((c) => !c.noFilings);
+const NOFILING = C.filter((c) => c.noFilings);
+const pct = (n) => `${((n / FILERS.length) * 100).toFixed(1)}%`;
 
 console.log(`DEEP AUDIT · ${C.length} securities · ${new Set(C.filter((c) => c.cik).map((c) => c.cik)).size} companies\n`);
 
@@ -23,9 +27,12 @@ console.log(`DEEP AUDIT · ${C.length} securities · ${new Set(C.filter((c) => c
 const FIELDS = ['price', 'marketCap', 'revenue', 'netIncome', 'netIncomeTTM', 'assets', 'equity', 'debt', 'cash', 'fcf', 'description', 'sector', 'cik'];
 console.log('COVERAGE');
 for (const f of FIELDS) {
-  const n = C.filter((c) => c[f] != null && c[f] !== '').length;
-  const gaps = C.filter((c) => c[f] == null || c[f] === '').map((c) => c.ticker);
-  console.log(`  ${f.padEnd(13)} ${String(n).padStart(3)}/${C.length}  ${pct(n).padStart(6)}${gaps.length && gaps.length <= 6 ? '   missing: ' + gaps.join(' ') : ''}`);
+  const n = FILERS.filter((c) => c[f] != null && c[f] !== '').length;
+  const gaps = FILERS.filter((c) => c[f] == null || c[f] === '').map((c) => c.ticker);
+  console.log(`  ${f.padEnd(13)} ${String(n).padStart(3)}/${FILERS.length}  ${pct(n).padStart(6)}${gaps.length && gaps.length <= 6 ? '   missing: ' + gaps.join(' ') : ''}`);
+}
+if (NOFILING.length) {
+  console.log(`  (${NOFILING.length} with no annual filing yet, excluded: ${NOFILING.map((c) => c.ticker).join(' ')})`);
 }
 
 // --- 2. universe ------------------------------------------------------------

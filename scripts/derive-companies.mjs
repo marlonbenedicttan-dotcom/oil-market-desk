@@ -159,20 +159,39 @@ for (const c of data.companies) {
     }
   }
 
-  // TTM EBITDA: the quarters now carry operating income, so four of them plus annual D&A is the trailing
-  // figure even when the TTM pass could not build one.
-  if (c.ebitdaTTM == null && c.da != null) {
-    const q4 = (c.quarters || []).slice(-4);
-    if (q4.length === 4 && q4.every((q) => q.operatingIncome != null)) {
-      c.ebitdaTTM = q4.reduce((a1, q) => a1 + q.operatingIncome, 0) + c.da;
-      c.ebitdaTTMBasis = 'quarters + D&A';
-    }
+  // TTM EBITDA: the quarters carry operating income, so four of them plus annual D&A is the trailing
+  // figure even when the TTM pass could not build one. The quarters are only used to *build* a missing
+  // figure or to repair one that omitted D&A; an undated figure with a different value is left alone
+  // (some periods carry operating income from a wider concept, which would inflate the ratio 3–5x).
+  const q4 = (c.quarters || []).slice(-4);
+  const quartersOk = q4.length === 4
+    && q4.every((q) => q.operatingIncome != null)
+    && q4.every((q, i) => i === 0 || (Date.parse(q.end) - Date.parse(q4[i - 1].end)) > 75 * 86400000
+      && (Date.parse(q.end) - Date.parse(q4[i - 1].end)) < 105 * 86400000)
+    && (Date.parse(q4[3].end) - Date.parse(q4[0].end)) > 240 * 86400000
+    && Date.now() - Date.parse(q4[3].end) < 400 * 86400000;
+  const q4op = quartersOk ? q4.reduce((a1, q) => a1 + q.operatingIncome, 0) : null;
+  if (c.da != null && q4op != null && c.ebitdaTTM == null) {
+    c.ebitdaTTM = q4op + c.da;
+    c.ebitdaTTMBasis = 'quarters + D&A';
+    c.ebitdaTTMAsOf = q4[3].end;
+  } else if (c.da != null && q4op != null && c.ebitdaTTM != null && !c.ebitdaTTMAsOf
+      && Math.abs(c.ebitdaTTM - q4op) <= Math.abs(q4op) * 0.01) {
+    // The TTM equals the four quarters' operating income exactly — the D&A leg was never added.
+    c.ebitdaTTM = q4op + c.da;
+    c.ebitdaTTMBasis = 'quarters + D&A (D&A was missing)';
+    c.ebitdaTTMAsOf = q4[3].end;
   }
-  // EBITDA from its parts when they exist: Berkshire tagged a total of 66B while its own operating income
-  // was 82B and D&A 13B. The parts win.
+  // Pick the newer of the two. Neither basis is always right: Berkshire's tagged TTM EBITDA stops in
+  // 2013 while its fiscal-year operating income is current, and NVDA's fiscal year is a year behind its
+  // trailing quarters. Whichever period is later wins; the fiscal-year parts are the fallback when the
+  // trailing figure carries no date.
   const fromParts = opInc != null && c.da != null ? opInc + c.da : null;
-  const ebitda = fromParts != null ? fromParts : (c.ebitdaTTM != null ? c.ebitdaTTM : null);
-  if (fromParts != null) c.ebitda = fromParts;
+  const ttmNewer = c.ebitdaTTM != null
+    && (!c.opIncEnd || (c.ebitdaTTMAsOf && Date.parse(c.ebitdaTTMAsOf) > Date.parse(c.opIncEnd)));
+  const ebitda = ttmNewer ? c.ebitdaTTM : (fromParts != null ? fromParts : (c.ebitdaTTM != null ? c.ebitdaTTM : null));
+  if (ebitda != null) c.ebitda = ebitda;
+  c.ebitdaBasis = ebitda == null ? null : ttmNewer ? 'TTM' : fromParts != null ? 'FY' : 'TTM';
   // EBITDA is not a bank metric: deposits are operating liabilities and interest is the business.
   // EBITDA is not a bank metric, but a conglomerate classified as Financials (Berkshire) operates real
   // assets and reports capex — for those the ratio is meaningful.
@@ -280,8 +299,9 @@ for (const c of data.companies) {
   c.roe = c.equity > 0 && roicEarn != null ? +((roicEarn / c.equity) * 100).toFixed(1) : null;
   if (c.roic != null && (c.roic < -100 || c.roic > 200)) c.roic = null;
 
-  const ebitdaQ = c.ebitdaTTM != null ? c.ebitdaTTM : (c.opInc != null ? c.opInc + (c.da || 0) : null);
-  c.netDebtEbitdaBasis = ebitdaQ == null ? null : (c.ebitdaTTM != null ? 'TTM' : 'FY');
+  // Same EBITDA selection as EV/EBITDA above: the two ratios must not be built on different periods.
+  const ebitdaQ = ebitda;
+  c.netDebtEbitdaBasis = ebitdaQ == null ? null : c.ebitdaBasis;
   c.netDebtEbitda = c.debt != null && ebitdaQ > 0 && !bankLike ? +(((c.debt - (c.cash || 0)) / ebitdaQ)).toFixed(1) : null;
   if (c.netDebtEbitda != null && (c.netDebtEbitda < -20 || c.netDebtEbitda > 50)) c.netDebtEbitda = null;
 

@@ -18,6 +18,10 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const FILE = join(ROOT, 'data', 'companies.json');
 const OUT = join(ROOT, 'data', 'reconciliation.json');
 const CACHE = join(ROOT, 'data', 'cache', 'nasdaq-financials');
+// A divergence that has been checked against the filing and explained is a concept difference, not an
+// unexplained bug. The notes live in data so the reason travels with the number.
+const EXPLAIN_FILE = join(ROOT, 'data', 'recon-explanations.json');
+const EXPLAIN = existsSync(EXPLAIN_FILE) ? (JSON.parse(readFileSync(EXPLAIN_FILE, 'utf8')).notes || {}) : {};
 const LIMIT = Number((process.argv.find((x) => x.startsWith('--limit=')) || '--limit=0').split('=')[1]) || Infinity;
 mkdirSync(CACHE, { recursive: true });
 
@@ -145,6 +149,8 @@ for (const c of todo) {
   }
   const worstAbs = Math.max(0, ...Object.values(abs));
 
+  const explained = EXPLAIN[c.ticker];
+  const explainedHere = explained && fields[explained.field] > 0.10;
   out.push({
     ticker: c.ticker,
     sector: c.sector,
@@ -154,12 +160,14 @@ for (const c of todo) {
     nasdaq: { revenue: n.rev, netIncome: n.ni, assets: n.assets, equity: n.equity },
     diff: fields,
     abs,
+    note: explainedHere ? explained.reason : undefined,
     worst: sameYear ? worst : null,
     status: !sameYear ? 'period-mismatch'
-      : worst > 0.10 && worstAbs > 5e8
-        ? (c.sector === 'Financials' && onlyRevenue(fields, abs) ? 'definition' : 'diverge')
-        : worst > 0.10 ? 'diverge-immaterial'
-          : worst > 0.02 ? 'close' : 'match',
+      : explainedHere ? 'definition'
+        : worst > 0.10 && worstAbs > 5e8
+          ? (c.sector === 'Financials' && onlyRevenue(fields, abs) ? 'definition' : 'diverge')
+          : worst > 0.10 ? 'diverge-immaterial'
+            : worst > 0.02 ? 'close' : 'match',
   });
   await sleep(180);
 }
@@ -172,6 +180,7 @@ const diverging = usable.filter((r) => r.status === 'diverge').sort((a, b) => b.
 // Group by cause: a bank's "total revenue" excludes items SEC's Revenues includes, so those are a
 // definition question. Everything else is either a share-class artefact or unexplained.
 const cause = (r) => {
+  if (EXPLAIN[r.ticker]) return 'documented filing/Nasdaq difference';
   if (r.sector === 'Financials') return 'bank/insurer revenue definition';
   // Dual-class companies: price x shares cannot reproduce the cap, so a per-share comparison drifts.
   const { marketCap, price, shares } = r.our;
@@ -190,6 +199,12 @@ console.log(`of ${usable.length} comparable companies, ${((bucket('match') + buc
 
 console.log('\nby cause:');
 for (const [k, v] of Object.entries(causes)) console.log(`  ${k.padEnd(34)} ${v.length}  ${v.slice(0, 8).join(' ')}`);
+
+const documented = out.filter((r) => r.note);
+if (documented.length) {
+  console.log('\ndocumented differences (checked against the filing, not bugs):');
+  for (const r of documented) console.log(`  ${r.ticker.padEnd(6)} ${r.note}`);
+}
 
 console.log('\nlargest divergences (relative difference):');
 for (const r of diverging.slice(0, 15)) {

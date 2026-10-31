@@ -55,7 +55,11 @@ for (const c of C) {
   }
   if (c.evEbitda != null && c.ev) {
     const op = c.opInc ?? [...(c.series || [])].reverse().find((x) => x.opInc != null)?.opInc ?? null;
-    const eb = c.ebitdaTTM != null ? c.ebitdaTTM : (op != null ? op + (c.da || 0) : null);
+    // Same selection as derive-companies: the newer of the trailing figure and the fiscal-year parts.
+    const fromParts = op != null && c.da != null ? op + c.da : null;
+    const ttmNewer = c.ebitdaTTM != null
+      && (!c.opIncEnd || (c.ebitdaTTMAsOf && Date.parse(c.ebitdaTTMAsOf) > Date.parse(c.opIncEnd)));
+    const eb = ttmNewer ? c.ebitdaTTM : (fromParts != null ? fromParts : (c.ebitdaTTM != null ? c.ebitdaTTM : null));
     const want = eb > 0 ? +(c.ev / eb).toFixed(1) : null;
     if (want == null || !near(c.evEbitda, want, 0.15)) issues.evEbitda.push([c.ticker, c.evEbitda, want]);
   }

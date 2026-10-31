@@ -19,6 +19,26 @@ export function num(v) {
 
 const TOLERANCE = 0.05;
 
+// A few filers report only non-consolidated figures (Cybozu files IFRS with Sales blank and NCSales
+// filled), so the consolidated field is preferred but never required.
+const pickFig = (r, cons, nonCons) => (r ? (num(r[cons]) ?? num(r[nonCons])) : null);
+
+// One row per fiscal year. An amended filing repeats the year, which otherwise prints the same fiscal
+// year twice in the five-year table and can leave an older revision as "latest". Keep the newest filing.
+const fiscalYears = (rows) => {
+  const byYear = new Map();
+  for (const r of rows) {
+    if (r.CurPerType !== 'FY') continue;
+    // Some summaries carry profit but no revenue line; the year is still a fiscal year.
+    if (pickFig(r, 'Sales', 'NCSales') == null && pickFig(r, 'NP', 'NCNP') == null) continue;
+    const key = r.CurFYEn || r.CurPerEn;
+    if (!key) continue;
+    const prev = byYear.get(key);
+    if (!prev || String(r.DiscDate || '') > String(prev.DiscDate || '')) byYear.set(key, r);
+  }
+  return [...byYear.values()].sort((a, b) => String(a.CurPerEn).localeCompare(String(b.CurPerEn)));
+};
+
 // Keep every nth point, always the last, so the chart ends on the latest close.
 function thin(points, n) {
   if (points.length <= n) return points.map((p) => ({ d: p.d, c: p.c }));
@@ -41,7 +61,7 @@ export function buildQuarters(rows) {
     byFy.set(r.CurFYEn, rec);
   }
   const out = [];
-  const pick = (r, f) => (r ? num(r[f]) : null);
+  const pick = (r, f) => (r ? pickFig(r, f, `NC${f}`) : null);
   for (const [fyEnd, rec] of byFy) {
     const flow = (f) => {
       const q1 = pick(rec['1Q'], f), q2 = pick(rec['2Q'], f), q3 = pick(rec['3Q'], f), fy = pick(rec.FY, f);
@@ -66,17 +86,16 @@ export function buildQuarters(rows) {
 // What the company said it would earn, against what it actually earned. Guidance is taken from the
 // first forecast published during that fiscal year, so a late-in-the-year revision does not flatter it.
 export function guidanceVsDelivered(rows) {
-  const fys = rows
-    .filter((r) => r.CurPerType === 'FY' && r.CurFYEn && num(r.NP) != null)
-    .sort((a, b) => String(a.CurFYEn).localeCompare(String(b.CurFYEn)));
+  const fys = fiscalYears(rows)
+    .filter((r) => pickFig(r, 'NP', 'NCNP') != null);
   for (let i = fys.length - 1; i >= 0; i--) {
     const fy = fys[i];
     const during = rows
-      .filter((r) => r.CurFYEn === fy.CurFYEn && ['1Q', '2Q', '3Q'].includes(r.CurPerType) && num(r.FNP) != null)
+      .filter((r) => r.CurFYEn === fy.CurFYEn && ['1Q', '2Q', '3Q'].includes(r.CurPerType) && pickFig(r, 'FNP', 'FNCNP') != null)
       .sort((a, b) => String(a.DiscDate).localeCompare(String(b.DiscDate)));
     if (!during.length) continue;
-    const forecast = num(during[0].FNP);
-    const actual = num(fy.NP);
+    const forecast = pickFig(during[0], 'FNP', 'FNCNP');
+    const actual = pickFig(fy, 'NP', 'NCNP');
     if (!forecast || actual == null) continue;
     return {
       fy: fy.CurFYEn,
@@ -94,9 +113,7 @@ export function deriveJapan({ ranked, fins, series, val = new Map(), nextByCode 
   const companies = [];
   for (const c of ranked) {
     const rows = fins.get(c.code) || [];
-    const fy = rows
-      .filter((r) => r.CurPerType === 'FY' && num(r.Sales) != null)
-      .sort((a, b) => String(a.CurPerEn).localeCompare(String(b.CurPerEn)));
+    const fy = fiscalYears(rows);
     const last = fy[fy.length - 1] || null;
     const s = [...(series.get(c.code) || [])].sort((a, b) => a.d.localeCompare(b.d));
     const price = s.length ? s[s.length - 1].c : null;
@@ -105,19 +122,24 @@ export function deriveJapan({ ranked, fins, series, val = new Map(), nextByCode 
     // JPX's cap is the authority: ex-treasury, split-adjusted, and the bars field is being retired.
     const cap = jpx?.MktCap ? jpx.MktCap * 1e6 : (c.cap || null);
 
-    const sales = last ? num(last.Sales) : null;
-    const op = last ? num(last.OP) : null;
-    const odp = last ? num(last.OdP) : null;
-    const np = last ? num(last.NP) : null;
-    const ta = last ? num(last.TA) : null;
+    const sales = last ? pickFig(last, 'Sales', 'NCSales') : null;
+    const op = last ? pickFig(last, 'OP', 'NCOP') : null;
+    const odp = last ? pickFig(last, 'OdP', 'NCOdP') : null;
+    const np = last ? pickFig(last, 'NP', 'NCNP') : null;
+    const ta = last ? pickFig(last, 'TA', 'NCTA') : null;
     // Shareholders' equity attributable to the parent — not total equity including non-controlling
     // interests. Market cap is the parent's value, so P/B must divide by the parent's equity.
     const eqOf = (r) => (r ? (num(r.ShEq) ?? num(r.Eq)) : null);
     const eq = last ? eqOf(last) : null;
     // JPX's BPS uses the most recently disclosed period, which by late in the year is a quarter, not
     // the fiscal year. Comparing our fiscal-year equity against it would look like a 10% dispute.
-    const latestEqRow = rows
-      .filter((r) => eqOf(r) != null && r.CurPerEn)
+    const eqRows = new Map();
+    for (const r of rows) {
+      if (eqOf(r) == null || !r.CurPerEn) continue;
+      const prev = eqRows.get(r.CurPerEn);
+      if (!prev || String(r.DiscDate || '') > String(prev.DiscDate || '')) eqRows.set(r.CurPerEn, r);
+    }
+    const latestEqRow = [...eqRows.values()]
       .sort((a, b) => String(a.CurPerEn).localeCompare(String(b.CurPerEn)))
       .pop() || null;
     const eqLatest = latestEqRow ? eqOf(latestEqRow) : eq;
@@ -175,16 +197,15 @@ export function deriveJapan({ ranked, fins, series, val = new Map(), nextByCode 
 
     const jan1 = `${new Date().getUTCFullYear()}-01-01`;
     // Five years of fiscal-year figures, short keys to keep 1,500 companies inside one payload.
-    const history = rows
-      .filter((r) => r.CurPerType === 'FY' && r.CurFYEn && num(r.Sales) != null)
-      .sort((a, b) => String(a.CurFYEn).localeCompare(String(b.CurFYEn)))
-      .slice(-5)
-      .map((r) => ({
-        y: r.CurFYEn,
-        s: num(r.Sales), o: num(r.OP) ?? num(r.OdP), n: num(r.NP),
-        e: num(r.EPS), b: num(r.BPS), a: num(r.TA), q: eqOf(r),
-        c: num(r.CFO), i: num(r.CFI), d: num(r.DivAnn),
-      }));
+    const history = fy.slice(-5).map((r) => ({
+      y: r.CurFYEn || r.CurPerEn,
+      s: pickFig(r, 'Sales', 'NCSales'),
+      o: pickFig(r, 'OP', 'NCOP') ?? pickFig(r, 'OdP', 'NCOdP'),
+      n: pickFig(r, 'NP', 'NCNP'),
+      e: pickFig(r, 'EPS', 'NCEPS'), b: pickFig(r, 'BPS', 'NCBPS'),
+      a: pickFig(r, 'TA', 'NCTA'), q: eqOf(r),
+      c: num(r.CFO), i: num(r.CFI), d: num(r.DivAnn),
+    }));
 
     // How many times the company moved its own full-year forecast this year, and in which direction.
     let revisions = null;

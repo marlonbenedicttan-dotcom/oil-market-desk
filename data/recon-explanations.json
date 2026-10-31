@@ -1,0 +1,17 @@
+{
+  "updated": "2026-10-31",
+  "notes": {
+    "LYV": {
+      "field": "netIncome",
+      "reason": "FY2025 10-K files two annual concepts: NetIncomeLoss $495.97M and NetIncomeLossAvailableToCommonStockholdersBasic -$54.83M (after preferred/NCI). The dashboard stores the common-shareholder figure; Nasdaq publishes the other one."
+    },
+    "BE": {
+      "field": "netIncome",
+      "reason": "FY2025 10-K tags only ProfitLoss -$87.14M for the year. The -$128.86M Nasdaq publishes does not appear anywhere in the filing."
+    },
+    "TDG": {
+      "field": "netIncome",
+      "reason": "FY2025 10-K reports $2.074B under NetIncomeLoss, ProfitLoss and continuing operations alike. Nasdaq's $1.866B does not appear in the filing."
+    }
+  }
+}

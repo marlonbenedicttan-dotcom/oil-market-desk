@@ -234,7 +234,9 @@ const fins = new Map();
 for (let i = 0; i < ranked.length; i++) {
   const c = ranked[i];
   const cached = readCache(`fins-${c.code}.json`);
-  const stale = !cached || Date.parse(cached.fetched) <= Date.now() - 7 * DAY;
+  // An empty answer is retried daily: during reporting season a filing can appear the next session.
+  const empty = cached && Array.isArray(cached.rows) && cached.rows.length === 0;
+  const stale = !cached || Date.parse(cached.fetched) <= Date.now() - (empty ? DAY : 7 * DAY);
   if (cached && !stale && !justFiled.has(c.code)) { fins.set(c.code, cached.rows); continue; }
   try {
     const rows = await api.finsByCode(c.code);

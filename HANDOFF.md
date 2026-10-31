@@ -2862,3 +2862,107 @@ Audited at 360, 390 and 430 px with screenshots of every view, then fixed what l
   omitted rather than shown as blanks."
 - **US quarterly table reads newest-first**, matching Japan and Korea. It was oldest-first, so 2024 sat
   above 2026.
+
+## EV/EBITDA on the same period as the rest, and the series synced (2026-10-31)
+- **The 350 EV/EBITDA "mismatches" were one policy, not 350 bad numbers.** `derive-companies` preferred the
+  fiscal-year parts (operating income + D&A); `audit-calculations` preferred the trailing figure. All 350
+  were explained by that difference (0 unexplained). The fiscal year is a year stale for a fast grower:
+  NVDA 37.0x vs 24.5x, AAPL 35.0x vs 30.2x.
+- **The newer period wins now.** TTM is used when its as-of date is later than the fiscal year's
+  operating-income end; otherwise the parts. Berkshire keeps 11.9x (its tagged TTM stops in 2013). MSFT
+  keeps 20.5x (same period). Bloom Energy's TTM carried no D&A leg (it equalled the four quarters'
+  operating income exactly) and was repaired: 488x → 97.5x.
+- **The five-year table is synced after arbitration.** `sync-series` ran before the final `arbitrate` pass,
+  so 199 companies had a latest row that contradicted the headline. It is now the last data step in
+  `companies:rebuild`; coherence issues 106 → 0.
+- **VYLR is excluded from coverage, not counted as twelve gaps.** A 10-Q-only listing has no annual
+  figures; it is reported separately instead of dragging every field percentage down.
+- **Three Nasdaq differences are documented, not hidden** (`data/recon-explanations.json`): LYV (the 10-K
+  files two annual net-income concepts), BE and TDG (the Nasdaq number does not appear anywhere in the
+  filing). They are labelled `definition` with the reason — reconciliation is 0 unexplained.
+- **Verified:** `npm run audit:all` exits 0 · 0 reconciliation mismatches · 0 coherence · 0 universe · 0
+  deals · 18 informational flags · 174 tests pass. Honest gaps that remain: SKYD's last 10-K is FY2024 (no
+  FY2025 10-K exists), FDXF does not tag cash, debt coverage 92.4%, FCF 86.9%.
+
+## Korea market caps were built on the wrong share count (2026-10-31, corrected)
+- **The earlier three-market audit said Korea reconciled. It reconciled to itself.** `derive-korea`
+  computed shares as net income ÷ EPS, and the DART EPS feed rounds some filers to ₩1. 드림텍's ₩1 EPS
+  turned a 66M-share company into 13.2B shares and a ₩87T market cap (actual ₩0.43T); 포스코퓨처엠
+  716M vs 89M shares; 한화 489M vs 69M.
+- **The stock table has two look-alike counts.** `now_to_isu_stock_totqy` is everything ever issued —
+  Samsung 8.98B and SK Hynix 5.72B. `distb_stock_co` is listed now (issued − retired − treasury):
+  Samsung 5.83B, SK Hynix 0.70B. The old code used the first.
+- **Fixed**: `shares` is now DART's common line, listed (the common quote does not price the preferred
+  line); EPS is only a fallback for funds with no table. `sharesIssued` keeps the total issued count.
+  `scripts/refresh-korea-shares.mjs` (`npm run build:korea`) re-reads all 829 filers and caches the
+  table. A sanity guard rejects a filed count that implies a market cap above 10,000× revenue or 20×
+  the EPS-implied count — LS에코에너지 filed 30.6 trillion shares.
+- **Result**: 633 of 829 counts moved. Samsung ₩1,285.0T (Naver ₩1,289.1T), Hyundai ₩56.57T (Naver
+  ₩56.67T), LG Chem ₩16.27T (Naver ₩16.27T), SK Hynix ₩976.1T (Naver ₩1,016.1T — Naver's cap lags its
+  own quote). KOSPI total **₩5,255.88T → ₩4,358.22T**; the old figure was inflated by the bad counts.
+- **Verified**: price × shares = cap for 745/745; sector caps = total; 1D/6M/YTD recompute exactly;
+  30/30 prices against Naver; 174 tests pass.
+- **Still open**: Korea P/E stays FY (`peBasis: 'FY'`) because only the 2026 interim filings are cached
+  — Samsung shows 28.4× on FY2025 against Naver's 9.9× TTM. A real TTM needs the 2025 Q1/H1/Q3 filings
+  fetched (≈2,200 DART calls). Labelled, not faked.
+
+## Japan: duplicate fiscal years and IFRS-only filers (2026-10-31)
+- **`/fins/summary` returns the same fiscal year twice when a filing is amended.** SoftBank (9984) has
+  2026-03 filed on 05-13 and 05-15. The five-year table printed the year twice, and "latest fiscal year"
+  could pick the older revision. **316 of 1,546** companies were affected. `derive-japan` now keeps one
+  row per fiscal year, newest disclosure.
+- **Cybozu (7157) files IFRS with `Sales` blank and only `NCSales` filled**, so it had no statement block
+  at all and its period was stuck at 2023. The consolidated field is preferred but the non-consolidated
+  one is now accepted, for every statement field and for the quarterly flows.
+- **Rebuilt from J-Quants (v2)**: 0 duplicate fiscal years · oldest period 2025-09-30 · ¥1,259.35T total
+  · P/E and ROE exactly as JPX publishes them (trailing) · market cap ex-treasury · 1,485 with a P/E.
+- **14 companies show "P/B differs from JPX"**: their Q3 equity (30 Sep) was filed after JPX's valuation
+  snapshot, so the cross-check sees a small timing gap. The published P/B is still JPX's.
+- **3 insurers** (Tokio Marine, MS&AD, Sompo) have no revenue line in the summary — shown as "—",
+  not invented.
+
+## Korea P/E is trailing now, not the last fiscal year (2026-10-31)
+- **A TTM needs four reported quarters.** `build-korea` only fetched the current year's interims, so
+  before Q3 was filed there were two, `ttmKr` returned null, and every P/E fell back to FY2025. Samsung
+  read **28.4×** on FY2025 while the trailing figure was **11.5×**.
+- **Fetched the prior year's Q1/H1/Q3** for all 829 filers (2,109 new filings, 378 with no report) via
+  `scripts/refresh-korea-quarters.mjs`; `npm run build:korea` now runs shares → quarters → build.
+- **Empty statement caches are retried daily, not weekly** — a company that had not filed in the morning
+  is picked up the same session. Same change applied to `build-japan`.
+- **Result**: 665 of 746 companies carry a TTM P/E (was 0). Samsung **11.5×** (trailing through Jun 2026;
+  DART has no Q3 filing yet, so Naver's 9.9× is not reproducible from the filings). One more company
+  gained statements (746 vs 745). KOSPI total unchanged at **₩4,358.30T**.
+- **Verified**: P/E = market cap ÷ four-quarter profit for all 665; P/B and ROE reconcile; price × shares =
+  cap for every row; 174 tests pass.
+
+## Korea P/E: banks and insurers are trailing too (2026-11-01)
+- **686 of 746 companies now carry a TTM P/E** (518 with a positive P/E; the rest are loss-makers).
+  The 60 that remain FY are young listings/REITs with fewer than four reported quarters — 40 of them
+  still have a P/E, 20 are loss-making.
+- **Banks and insurers file interims as standalone quarters, not cumulative.** KB Financial's Q3 2025
+  report shows ₩1.66T against a ₩1.75T half-year, which cannot be a nine-month total; their statements
+  also carry no revenue line, so the cumulative builder produced nothing. A standalone builder (Q1, Q2,
+  Q3, Q4 = FY − first three) runs when the cumulative one returns no quarters.
+- **Cross-check against Naver's TTM PER**: KB 8.77× (Naver 9.23), Shinhan 7.76 (7.98), Hana 7.80 (8.13),
+  Woori 6.84 (7.11), Samsung Life 16.35 (19.16). The residual gap is Naver using a later window.
+- `quartersBasis` on each record says which construction was used (`cumulative` or `standalone`).
+
+## Automated refresh: what updates itself, and what was wired (2026-11-01)
+- **US** — `companies-daily` (01:10 UTC Tue–Sat) runs `refresh-daily`: prices, Nasdaq caps,
+  `detect-new-filings` (10-K/10-Q accession changes), then `ttm-earnings` for only the tickers that
+  filed, followed by derive/reconcile/arbitrate/sync/audit. A new quarter becomes the TTM P/E the same
+  night.
+- **Japan** — the same job runs `build-japan`. P/E and ROE come from JPX's valuation file, fetched on
+  every run, so a new quarter changes the TTM P/E the next session. The statement block refreshes when
+  a company filed in the last 4 sessions, otherwise on the 7-day cache.
+- **Korea** — the same job runs `build-korea`. The report currently due (Q1 Apr–Jun, H1 Jul–Sep, Q3
+  Oct–Dec, annual Jan–Mar) is re-read **daily**, so a new quarter lands the day after it is filed;
+  TTM = the last four reported quarters. The rest of the statements keep a 7-day cache.
+- **Weekly** (Sat 05:20 UTC) now also refreshes Korean share counts and prior-year quarters and commits
+  `data/korea-universe.json` — before this, Korea was only touched by the daily job and share counts
+  never refreshed.
+- **`check-freshness` now watches Korea too** (US/Japan/Korea), and the daily commit includes
+  `data/korea-universe.json`.
+- **Secrets** `DART_API_KEY` and `JQUANTS_API_KEY` are present in the GitHub repo.
+- **Not live yet**: the workflows run `main`, and the fixes on this machine are uncommitted. Push before
+  the next weekday run (Tuesday 01:10 UTC) or CI will refresh data with the old code.

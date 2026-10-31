@@ -1,13 +1,13 @@
 {
- "generated": "2026-10-31T07:21:50.634Z",
+ "generated": "2026-10-31T14:15:40.989Z",
  "summary": {
-  "usable": 497,
-  "match": 472,
+  "usable": 495,
+  "match": 470,
   "close": 21,
-  "diverge": 3,
+  "diverge": 0,
   "diverge-immaterial": 0,
-  "definition": 1,
-  "period-mismatch": 1,
+  "definition": 4,
+  "period-mismatch": 3,
   "no-nasdaq-data": 5
  },
  "companies": [
@@ -300,7 +300,7 @@
     "revenue": 94827000000,
     "netIncome": 3794000000,
     "assets": 137806000000,
-    "equity": 81467000000,
+    "equity": 82137000000,
     "marketCap": 1580352154390,
     "price": 399.81,
     "shares": 3752431984
@@ -315,15 +315,15 @@
     "revenue": 0,
     "netIncome": 0,
     "assets": 0,
-    "equity": 0.008157103376066815
+    "equity": 0
    },
    "abs": {
     "revenue": 94827000000,
     "netIncome": 3794000000,
     "assets": 0,
-    "equity": 670000000
+    "equity": 0
    },
-   "worst": 0.008157103376066815,
+   "worst": 0,
    "status": "match"
   },
   {
@@ -6588,8 +6588,9 @@
     "assets": 0,
     "equity": 0
    },
+   "note": "FY2025 10-K tags only ProfitLoss -$87.14M for the year. The -$128.86M Nasdaq publishes does not appear anywhere in the filing.",
    "worst": 0.32373598230569245,
-   "status": "diverge"
+   "status": "definition"
   },
   {
    "ticker": "TDG",
@@ -6623,8 +6624,9 @@
     "assets": 0,
     "equity": 7000000
    },
+   "note": "FY2025 10-K reports $2.074B under NetIncomeLoss, ProfitLoss and continuing operations alike. Nasdaq's $1.866B does not appear in the filing.",
    "worst": 0.10028929604628736,
-   "status": "diverge"
+   "status": "definition"
   },
   {
    "ticker": "ALL",
@@ -7714,8 +7716,8 @@
   {
    "ticker": "AZO",
    "sector": "Consumer",
-   "period": "8/29/2026",
-   "sameYear": true,
+   "period": "8/30/2025",
+   "sameYear": false,
    "our": {
     "revenue": 20338555000,
     "netIncome": 2572777000,
@@ -7726,25 +7728,25 @@
     "shares": 16567821
    },
    "nasdaq": {
-    "revenue": 20338555000,
-    "netIncome": 2572777000,
-    "assets": 21630510000,
-    "equity": -2502470000
+    "revenue": 18938717000,
+    "netIncome": 2498247000,
+    "assets": 19355324000,
+    "equity": -3414313000
    },
    "diff": {
-    "revenue": 0,
-    "netIncome": 0,
-    "assets": 0,
-    "equity": 0
+    "revenue": 0.06882681685104965,
+    "netIncome": 0.02896869802551873,
+    "assets": 0.10518411262610082,
+    "equity": 0.26706485316372575
    },
    "abs": {
     "revenue": 20338555000,
     "netIncome": 2572777000,
-    "assets": 0,
-    "equity": 0
+    "assets": 2275186000,
+    "equity": 911843000
    },
-   "worst": 0,
-   "status": "match"
+   "worst": null,
+   "status": "period-mismatch"
   },
   {
    "ticker": "HONA",
@@ -10810,8 +10812,8 @@
   {
    "ticker": "JBL",
    "sector": "Technology",
-   "period": "8/31/2026",
-   "sameYear": true,
+   "period": "8/31/2025",
+   "sameYear": false,
    "our": {
     "revenue": 35950000000,
     "netIncome": 1042000000,
@@ -10822,25 +10824,25 @@
     "shares": 105595267
    },
    "nasdaq": {
-    "revenue": 35954000000,
-    "netIncome": 1042000000,
-    "assets": 27435000000,
-    "equity": 1613000000
+    "revenue": 29802000000,
+    "netIncome": 657000000,
+    "assets": 18543000000,
+    "equity": 1513000000
    },
    "diff": {
-    "revenue": 0.00011125326806474941,
-    "netIncome": 0,
-    "assets": 0,
-    "equity": 0.0024798512089274642
+    "revenue": 0.1710152990264256,
+    "netIncome": 0.3694817658349328,
+    "assets": 0.32411153635866596,
+    "equity": 0.05966438781852082
    },
    "abs": {
     "revenue": 35950000000,
     "netIncome": 1042000000,
-    "assets": 0,
-    "equity": 4000000
+    "assets": 8892000000,
+    "equity": 96000000
    },
-   "worst": 0.0024798512089274642,
-   "status": "match"
+   "worst": null,
+   "status": "period-mismatch"
   },
   {
    "ticker": "HAL",
@@ -11364,8 +11366,9 @@
     "assets": 0,
     "equity": 0
    },
+   "note": "FY2025 10-K files two annual concepts: NetIncomeLoss $495.97M and NetIncomeLossAvailableToCommonStockholdersBasic -$54.83M (after preferred/NCI). The dashboard stores the common-shareholder figure; Nasdaq publishes the other one.",
    "worst": 1.1105485793552863,
-   "status": "diverge"
+   "status": "definition"
   },
   {
    "ticker": "CTSH",
@@ -15541,7 +15544,7 @@
     "revenue": 15004989000,
     "netIncome": -14497180000,
     "assets": 43016355000,
-    "equity": 5719570000,
+    "equity": 5765784000,
     "marketCap": 28191687917,
     "price": 96.94,
     "shares": 287589000
@@ -15556,15 +15559,15 @@
     "revenue": 0,
     "netIncome": 0,
     "assets": 0,
-    "equity": 0.008015215276881687
+    "equity": 0
    },
    "abs": {
     "revenue": 15004989000,
     "netIncome": 14497180000,
     "assets": 0,
-    "equity": 46214000
+    "equity": 0
    },
-   "worst": 0.008015215276881687,
+   "worst": 0,
    "status": "match"
   },
   {

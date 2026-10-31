@@ -1,98 +1,86 @@
 {
- "generated": "2026-10-30T07:10:10.285Z",
+ "generated": "2026-10-31T14:14:08.266Z",
  "companies": 503,
- "total": 21,
+ "total": 18,
  "causes": {
   "EV/EBITDA above 100 (check D&A)": [
    {
     "ticker": "TSLA",
-    "detail": "352.2"
+    "detail": "349.1"
    },
    {
     "ticker": "AMD",
-    "detail": "143.8"
+    "detail": "128.1"
    },
    {
     "ticker": "PLTR",
-    "detail": "176.7"
+    "detail": "165.6"
    },
    {
     "ticker": "PANW",
-    "detail": "200.6"
+    "detail": "192.9"
    },
    {
     "ticker": "GEV",
-    "detail": "126.6"
-   },
-   {
-    "ticker": "MRVL",
-    "detail": "103.3"
+    "detail": "108.9"
    },
    {
     "ticker": "LITE",
-    "detail": "154.9"
-   },
-   {
-    "ticker": "BE",
-    "detail": "116.1"
+    "detail": "113.4"
    },
    {
     "ticker": "WAT",
-    "detail": "144.2"
+    "detail": "109.7"
    },
    {
     "ticker": "P",
-    "detail": "118.7"
+    "detail": "109.7"
    },
    {
     "ticker": "AXON",
-    "detail": "271.2"
-   },
-   {
-    "ticker": "DOW",
-    "detail": "118.8"
+    "detail": "265"
    }
   ],
   "P/E above 300 (check earnings)": [
    {
     "ticker": "TSLA",
-    "detail": "420.2"
+    "detail": "416.5"
    },
    {
     "ticker": "PANW",
-    "detail": "1014.6"
+    "detail": "975.4"
    },
    {
     "ticker": "DDOG",
-    "detail": "886"
+    "detail": "784.1"
    },
    {
     "ticker": "CIEN",
-    "detail": "401.7"
+    "detail": "368.7"
    },
    {
     "ticker": "MCHP",
-    "detail": "370.8"
+    "detail": "353.5"
    },
    {
     "ticker": "TWLO",
-    "detail": "1097.7"
+    "detail": "930.6"
    },
    {
     "ticker": "GPC",
-    "detail": "543.5"
-   }
-  ],
-  "P/B above 100 (check equity)": [
-   {
-    "ticker": "LYV",
-    "detail": "154.6"
+    "detail": "536.9"
    }
   ],
   "no annual report yet (new listing)": [
    {
     "ticker": "VYLR",
     "detail": "Form 10 filed, no 10-K"
+   }
+  ],
+  "P/B above 100 (check equity)": [
+   {
+    "ticker": "LYV",
+    "detail": "154.7"
    }
   ]
  }
