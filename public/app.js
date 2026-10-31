@@ -3778,6 +3778,9 @@ function syncCoTools() {
     : coRegion === 'kr' ? (!krSel && krView === 'screener')
     : (coCik ? true : usView === 'screener');
   tools.classList.toggle('hidden', !wanted);
+  // On a phone, a company page should start at the top: the filter bar is for lists.
+  const detail = coRegion === 'jp' ? !!jpSel : coRegion === 'kr' ? !!krSel : !!coCik;
+  tools.dataset.detail = detail ? '1' : '';
 }
 
 const jpViewsBar = () => `<div class="co-views">
@@ -3976,7 +3979,14 @@ function renderJapanScreener(all, d) {
   const rowHtml = (c, i) => `<button class="co-row" data-jp="${esc(c.code)}">
         <span class="co-rank">${i + 1}</span>
         ${jpMono(c)}
-        <span class="co-id"><b>${esc(c.name)}</b><span class="co-tick">${esc(c.ticker)}<span class="jp-sector"> · ${esc(c.sector)}</span> · ${yen(c.price)} <em class="${(c.chg1d || 0) >= 0 ? 'pos' : 'neg'}">${c.chg1d == null ? '' : `${c.chg1d >= 0 ? '+' : ''}${c.chg1d.toFixed(1)}%`}</em> · <em class="${(c.chgYtd || 0) >= 0 ? 'pos' : 'neg'}">${c.chgYtd == null ? '—' : `${c.chgYtd >= 0 ? '+' : ''}${c.chgYtd.toFixed(1)}%`} ${c.chgYtdBasis === 'YTD' ? 'YTD' : 'SINCE ' + String(c.chgYtdBasis || '').slice(6)}</em></span></span>
+        <span class="co-id"><b>${esc(c.name)}</b>
+          <span class="co-meta">
+            <span class="co-tick">${esc(c.ticker)}</span>
+            <span class="jp-sector">${esc(c.sector)}</span>
+            <span class="co-px">${yen(c.price)}</span>
+            <em class="${(c.chg1d || 0) >= 0 ? 'pos' : 'neg'}">${c.chg1d == null ? '—' : `${c.chg1d >= 0 ? '+' : ''}${c.chg1d.toFixed(1)}%`}</em>
+            <em class="${(c.chgYtd || 0) >= 0 ? 'pos' : 'neg'}">${c.chgYtd == null ? '—' : `${c.chgYtd >= 0 ? '+' : ''}${c.chgYtd.toFixed(1)}%`} ${c.chgYtdBasis === 'YTD' ? 'YTD' : 'SINCE ' + String(c.chgYtdBasis || '').slice(6)}</em>
+          </span></span>
         <span class="co-cap">${yen(c.marketCap)}<i class="co-bar"><i style="width:${Math.max(2, ((c.marketCap || 0) / max) * 100)}%"></i></i></span>
         <span class="co-pe" title="${c.peBasis === 'TTM' ? 'trailing twelve months, from JPX' : 'fiscal year'}">${c.pe != null ? c.pe.toFixed(1) : '—'}</span>
         <span class="co-mar ${c.roe == null ? 'dimtext' : c.roe >= 0 ? 'pos' : 'neg'}">${c.roe == null ? '—' : `${c.roe.toFixed(1)}%`}</span>
@@ -4559,7 +4569,13 @@ function renderKoreaScreener(all, d) {
     + sorted.map((c, i) => `<button class="co-row" data-kr="${esc(c.code)}">
         <span class="co-rank">${i + 1}</span>
         ${krMono(c)}
-        <span class="co-id"><b>${esc(krName(c))}</b><span class="co-tick">${esc(c.ticker)} · ${wonPx(c.price)} <em class="${(c.chg1d || 0) >= 0 ? 'pos' : 'neg'}">${c.chg1d == null ? '' : `${c.chg1d >= 0 ? '+' : ''}${c.chg1d.toFixed(1)}%`}</em> · <em class="${(c.chgYtd || 0) >= 0 ? 'pos' : 'neg'}">${c.chgYtd == null ? '—' : `${c.chgYtd >= 0 ? '+' : ''}${c.chgYtd.toFixed(1)}%`} YTD</em></span></span>
+        <span class="co-id"><b>${esc(krName(c))}</b>
+          <span class="co-meta">
+            <span class="co-tick">${esc(c.ticker)}</span>
+            <span class="co-px">${wonPx(c.price)}</span>
+            <em class="${(c.chg1d || 0) >= 0 ? 'pos' : 'neg'}">${c.chg1d == null ? '—' : `${c.chg1d >= 0 ? '+' : ''}${c.chg1d.toFixed(1)}%`}</em>
+            <em class="${(c.chgYtd || 0) >= 0 ? 'pos' : 'neg'}">${c.chgYtd == null ? '—' : `${c.chgYtd >= 0 ? '+' : ''}${c.chgYtd.toFixed(1)}%`} YTD</em>
+          </span></span>
         <span class="co-cap">${won(c.marketCap)}<i class="co-bar"><i style="width:${Math.max(2, ((c.marketCap || 0) / max) * 100)}%"></i></i></span>
         <span class="co-pe">${c.pe != null ? c.pe.toFixed(1) : '—'}</span>
         <span class="co-mar ${c.roe == null ? 'dimtext' : c.roe >= 0 ? 'pos' : 'neg'}">${c.roe == null ? '—' : `${c.roe.toFixed(1)}%`}</span>
@@ -4671,7 +4687,7 @@ async function syncMarketBar() {
     const t = japanData && japanData.topix;
     lvl = t && t.level != null ? t.level.toFixed(2) : '—';
     chg = t ? t.chg1d : null;
-    count = japanData ? `${(japanData.companies || []).length} companies` : '';
+    count = japanData ? `${(japanData.companies || []).filter((c) => !c.shareClass).length} companies` : '';
   } else {
     name = 'KOSPI';
     const i = koreaData && koreaData.index;
@@ -4812,7 +4828,15 @@ function renderCompanies() {
       return `<button class="co-row" data-cik="${esc(c.cik)}">
         <span class="co-rank">${i + 1}</span>
         ${coMono(c)}
-        <span class="co-id"><b>${esc(c.name)}</b><span class="co-tick">${esc(c.ticker || '')}${c.sector ? ' · ' + esc(c.sector) : ''}${c.price != null ? ` · $${c.price.toFixed(2)} <em class="${(c.chg1d || 0) >= 0 ? 'pos' : 'neg'}">${c.chg1d == null ? '' : `${c.chg1d >= 0 ? '+' : ''}${c.chg1d.toFixed(1)}%`}</em>${c.chgYtd != null ? ` · <em class="${c.chgYtd >= 0 ? 'pos' : 'neg'}">${c.chgYtd >= 0 ? '+' : ''}${c.chgYtd.toFixed(1)}% YTD</em>` : ''}` : ''}${c.shareClass ? ` · <em class="co-cl">2ND CLASS</em>` : ''}</span></span>
+        <span class="co-id"><b>${esc(c.name)}</b>
+          <span class="co-meta">
+            <span class="co-tick">${esc(c.ticker || '')}</span>
+            ${c.sector ? `<span class="co-sec">${esc(c.sector)}</span>` : ''}
+            ${c.price != null ? `<span class="co-px">$${c.price.toFixed(2)}</span>` : ''}
+            ${c.chg1d != null ? `<em class="${c.chg1d >= 0 ? 'pos' : 'neg'}">${c.chg1d >= 0 ? '+' : ''}${c.chg1d.toFixed(1)}%</em>` : ''}
+            ${c.chgYtd != null ? `<em class="${c.chgYtd >= 0 ? 'pos' : 'neg'}">${c.chgYtd >= 0 ? '+' : ''}${c.chgYtd.toFixed(1)}% YTD</em>` : ''}
+            ${c.shareClass ? '<em class="co-cl">2ND CLASS</em>' : ''}
+          </span></span>
         <span class="co-cap">${coMoney(c.marketCap)}<i class="co-bar"><i style="width:${Math.max(2, ((c.marketCap || 0) / max) * 100)}%"></i></i></span>
         <span class="co-pe" title="${c.pe != null ? 'trailing P/E: price ÷ latest FY diluted EPS' : 'no positive trailing EPS'}">${c.pe != null ? c.pe.toFixed(1) : '—'}</span>
         <span class="co-mar ${m == null ? 'dimtext' : m >= 0 ? 'pos' : 'neg'}">${m == null ? '—' : `${m.toFixed(1)}%`}</span>
@@ -5223,6 +5247,13 @@ async function renderCompanyPageBody(el, c, all) {
 }
 
 document.addEventListener('click', (e) => {
+  if (e.target && e.target.id === 'co-ftoggle') {
+    const chips = document.getElementById('co-chips');
+    const on = chips ? chips.classList.toggle('open') : false;
+    e.target.classList.toggle('on', on);
+    e.target.setAttribute('aria-expanded', String(on));
+    return;
+  }
   const sug = e.target.closest('[data-sugg]');
   if (sug) { setCompare(sug.dataset.sugg); return; }
   const peer = e.target.closest('[data-peer]');

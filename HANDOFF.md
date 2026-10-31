@@ -2707,3 +2707,21 @@ Every check below was run against the committed data and the live API, not assum
 - **Calendar**: four modes (MACRO / WATCHLIST / TOP 50 / ALL 500) collapsed to two — MACRO and COMPANIES —
   and they are exclusive: one shows economic releases, the other earnings and filings. Old stored modes
   fall back to MACRO.
+
+## Mobile pass on COMPANIES (US, Japan, Korea) — 2026-10-31
+Audited at 360, 390 and 430 px with screenshots of every view, then fixed what looked wrong.
+- **Rows**: the meta line was a run of "·" separators, so a wrap left an orphan dot ("₩220,500 −4.3% ·")
+  and every Korean and Japanese legal name was truncated to one line. The meta is now a wrapping flex
+  row with gaps instead of dots, and names get two lines on a phone. The sector is dropped from the row
+  on mobile — it lives on the company page.
+- **Filter bar**: five selects plus presets ate 400 px, nearly half the screen, before any company. Presets
+  stay visible; the selects fold behind a FILTERS button that shares a row with the search box.
+- **Company page**: the avatar sat beside a full paragraph, squeezing the description into a column. On a
+  phone the head stacks (avatar, name, sub, description full width), stats go to two columns, the watchlist
+  star moves to the corner, and the filter bar is hidden entirely — a company page starts at the top.
+- **Theme tables**: eight columns in a 390 px viewport truncated names ("SAMSUNG ELECTRONICS C…") and
+  wrapped caps ("₩1509.17 / T"). Four columns with a wider cap cell and a two-line name.
+- **Japan count**: the market bar said 1547 companies while the header said 1546 — the bar was not
+  excluding the preferred share class.
+- Verified: no horizontal overflow at 360/390/430 px on any of the nine market views, no JS exceptions,
+  and the desktop layout is unchanged.
