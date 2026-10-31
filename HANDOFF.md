@@ -2791,3 +2791,17 @@ Audited at 360, 390 and 430 px with screenshots of every view, then fixed what l
   432, net margin for 487. The company page now shows REVENUE · OP INCOME · MARGIN · NET INCOME per quarter
   instead of a net-margin-only table. The remaining 12 are recent listings (fewer than eight quarters filed)
   or banks that tag no revenue concept at all.
+
+## US data audit: the flaws that were still there (2026-10-31)
+- **P/E fell back to an old profitable year when the trailing twelve months were a loss.** Gilead showed
+  a trailing P/E of 24.9× while its last four quarters were a −$3.9B loss, because the code quietly used the
+  prior fiscal year. A trailing loss now means no trailing P/E, labelled n/a with the reason.
+- **Financial ratios that do not exist were being printed.** Banks and insurers were given a current ratio,
+  an enterprise value, EV/EBITDA, net debt/EBITDA, ROIC, FCF yield and cash conversion — all meaningless for
+  them. `naRatios` now records which ratios do not exist for a business, and the company page omits those
+  tiles instead of printing "n/a". Banks keep P/TBV, efficiency ratio and NIM; REITs drop the current ratio.
+- **TTM EPS was missing for 23% of companies** because the per-share tag is absent. It is now derived from
+  net income ÷ shares where both exist (110 companies), marked as derived: coverage 77% → 99%.
+- **Known and not fixed**: 165 companies have a market cap that differs from price × shares by 2–6%, because
+  Nasdaq capitalises every share class while the filing's share count is the primary class. The cap is the
+  authoritative figure, so this is documented rather than "corrected". `epsDiluted` is still never populated.

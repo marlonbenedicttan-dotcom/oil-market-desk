@@ -100,10 +100,16 @@ for (const c of data.companies) {
   // impossibility.
   if (c.netIncomeTTM != null && c.revenue
       && (c.netIncomeTTM > c.revenue * 1.2 || c.netIncomeTTM < c.revenue * -3)) c.netIncomeTTM = null;
-  const earn = c.netIncomeTTM > 0 ? c.netIncomeTTM : (c.netIncome > 0 ? c.netIncome : null);
+  // A trailing loss means there is no trailing P/E. Falling back to an older profitable year produced a
+  // "24.9× trailing" for Gilead while its last four quarters were a $3.9B loss.
+  let earn = null, peBasis = null;
+  if (c.netIncomeTTM != null) {
+    if (c.netIncomeTTM > 0) { earn = c.netIncomeTTM; peBasis = 'TTM'; }
+  } else if (c.netIncome > 0) { earn = c.netIncome; peBasis = 'FY'; }
   const pe = c.marketCap && earn ? +(c.marketCap / earn).toFixed(1) : null;
   c.pe = pe != null && pe <= MAX_PE && pe >= 0.5 ? pe : null;
-  c.peBasis = c.pe == null ? null : (c.netIncomeTTM > 0 ? 'TTM' : 'FY');
+  c.peBasis = c.pe == null ? null : peBasis;
+  c.peNA = c.pe == null && c.marketCap && earn == null ? 'no trailing profit' : null;
 
   // A quarterly figure cannot produce an annual P/E (it would understate it four-fold).
   if (c.quarterly) { c.pe = null; c.peBasis = null; }
@@ -204,6 +210,12 @@ for (const c of data.companies) {
   const last = hist[hist.length - 1];
   const span = first && last ? last.fy - first.fy : 0;
   const cagr = (a0, b0) => (a0 > 0 && b0 > 0 && span >= 2 ? +(((b0 / a0) ** (1 / span) - 1) * 100).toFixed(1) : null);
+  // Trailing EPS: the per-share tag is missing for a quarter of the index, but net income ÷ shares is
+  // the same number and both inputs exist. Marked so the page can say it was derived.
+  if (c.epsTTM == null && c.netIncomeTTM != null && c.shares > 0) {
+    c.epsTTM = +(c.netIncomeTTM / c.shares).toFixed(2);
+    c.epsTTMBasis = 'net income ÷ shares';
+  }
   c.revenueCagr = cagr(first?.revenue, last?.revenue);
   c.epsCagr = cagr(first?.eps, last?.eps);
   c.cagrYears = span >= 2 ? span : null;
@@ -225,6 +237,22 @@ for (const c of data.companies) {
   c.netDebtEbitdaBasis = ebitdaQ == null ? null : (c.ebitdaTTM != null ? 'TTM' : 'FY');
   c.netDebtEbitda = c.debt != null && ebitdaQ > 0 && !bankLike ? +(((c.debt - (c.cash || 0)) / ebitdaQ)).toFixed(1) : null;
   if (c.netDebtEbitda != null && (c.netDebtEbitda < -20 || c.netDebtEbitda > 50)) c.netDebtEbitda = null;
+
+  // Ratios that do not exist for some businesses. A bank has no current ratio and no enterprise value;
+  // an insurer has no EBITDA. Showing "n/a" in a tile is worse than not showing the tile, so these are
+  // listed here and the page omits them.
+  const sicNum = Number(c.sic) || 0;
+  const bankOrInsurer = (sicNum >= 6000 && sicNum < 6200) || sicNum === 6199 || (sicNum >= 6300 && sicNum < 6400);
+  if (bankOrInsurer) {
+    c.naRatios = ['evEbitda', 'ev', 'currentRatio', 'netDebtEbitda', 'roic', 'ebitYield', 'assetTurnover', 'fcfYield', 'cashConversion', 'freeCashFlow', 'debtEquity'];
+    c.roic = null; c.evEbitda = null; c.currentRatio = null; c.netDebtEbitda = null;
+    c.ebitYield = null; c.fcfYield = null; c.cashConversion = null; c.ev = null; c.debtEquity = null;
+    c.assetTurnover = null;
+  } else if (c.sector === 'Real estate') {
+    // REITs report no current assets/liabilities split.
+    c.naRatios = ['currentRatio'];
+    c.currentRatio = null;
+  }
 
   c.currentRatio = c.currentAssets != null && c.currentLiabilities > 0 ? +(c.currentAssets / c.currentLiabilities).toFixed(2) : null;
   if (c.currentRatio != null && c.currentRatio > MAX_CR) c.currentRatio = null;

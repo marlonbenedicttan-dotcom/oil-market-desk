@@ -5136,36 +5136,53 @@ async function renderCompanyPageBody(el, c, all) {
         const link = r.url ? ` · <a href="${esc(r.url)}" target="_blank" rel="noopener noreferrer">amendment ↗</a>` : '';
         return `<div class="co-restate">RESTATED · ${esc(r.form)} filed ${dealDateY(r.filed)} · ${esc(parts.join(' · '))}${link}</div>`;
       })() : '')
-    + `<div class="co-stats co-stats-12">
-        <div class="co-stat"><span class="co-k">MARKET CAP</span><span class="co-v">${c.adrNA ? 'ADR' : val(c.marketCap)}</span></div>
-        <div class="co-stat" title="${esc(c.ttmRejected ? 'Quarterly data is inconsistent with the annual filing, so the fiscal year is used.' : c.ttmFromFY ? 'The fiscal year is the latest twelve months.' : 'Market cap ÷ trailing earnings.')}"><span class="co-k">P/E (TRAILING${c.peBasis ? ' · ' + c.peBasis : ''})</span><span class="co-v">${c.pe != null ? c.pe.toFixed(1) : '—'}</span></div>
-        <div class="co-stat"><span class="co-k">EV / EBITDA</span><span class="co-v">${c.evEbitda != null ? c.evEbitda.toFixed(1) : (c.sector === 'Financials' ? 'n/a' : '—')}</span></div>
-        <div class="co-stat"><span class="co-k">P/B</span><span class="co-v">${c.pb != null ? c.pb.toFixed(1) : '—'}${dsp('equity')}</span></div>
-        <div class="co-stat"><span class="co-k">ENTERPRISE VALUE</span><span class="co-v">${val(c.ev)}${c.evApprox && c.ev != null ? ' <em class="co-approx" title="Neither debt nor cash is tagged in the filings, so this equals market cap">≈ cap</em>' : ''}</span></div>
-        <div class="co-stat"><span class="co-k">CURRENT RATIO</span><span class="co-v">${c.currentRatio != null ? c.currentRatio.toFixed(2) : '—'}</span></div>
-        <div class="co-stat"><span class="co-k">DEBT / EQUITY</span><span class="co-v">${c.debtEquity != null ? c.debtEquity.toFixed(2) : '—'}</span></div>
-        <div class="co-stat" title="${esc(`us-gaap:${c.revenueTag || 'Revenues'} · ${c.fyRevenue || ''}${c.revenueSource === 'nasdaq' ? ' · exchange total revenue' : ''}`)}"><span class="co-k">REVENUE</span><span class="co-v">${val(c.revenue)}${dsp('revenue')}</span></div>
-        <div class="co-stat" title="${esc(`us-gaap:${c.netIncomeTag || 'NetIncomeLoss'} · ${niTag}${c.netIncomeEnd ? ' · period ' + c.netIncomeEnd : ''}`)}"><span class="co-k">NET INCOME · ${niTag}</span><span class="co-v ${ni >= 0 ? 'pos' : 'neg'}">${val(ni)}${dsp('netIncome')}</span></div>
-        <div class="co-stat"><span class="co-k">NET MARGIN · ${niTag}</span><span class="co-v ${m >= 0 ? 'pos' : 'neg'}">${m == null ? (c.marginNA ? 'n/a' : '—') : `${m.toFixed(1)}%`}</span></div>
-        <div class="co-stat"><span class="co-k">RETURN ON EQUITY</span><span class="co-v ${roe >= 0 ? 'pos' : 'neg'}">${roe == null ? '—' : `${roe.toFixed(1)}%`}</span></div>
-        <div class="co-stat" title="${esc(`us-gaap:Assets · ${c.assetsEnd || ''}`)}"><span class="co-k">TOTAL ASSETS</span><span class="co-v">${val(c.assets)}${dsp('assets')}</span></div>
-        ${c.sector === 'Financials' ? `
-        <div class="co-stat" title="Market cap ÷ (equity − goodwill − intangibles) — the multiple banks are valued on"><span class="co-k">P / TANGIBLE BOOK</span><span class="co-v">${c.ptbv != null ? c.ptbv.toFixed(2) + '×' : '—'}</span></div>
-        <div class="co-stat" title="Non-interest expense ÷ revenue — cost of running the bank. Below 55% is strong."><span class="co-k">EFFICIENCY RATIO</span><span class="co-v">${c.efficiencyRatio != null ? c.efficiencyRatio.toFixed(0) + '%' : '—'}</span></div>
-        <div class="co-stat" title="Net interest income ÷ assets — the spread the bank earns"><span class="co-k">NET INTEREST MARGIN</span><span class="co-v">${c.nim != null ? c.nim.toFixed(2) + '%' : '—'}</span></div>
-        <div class="co-stat" title="Dividend yield + buybacks ÷ market cap"><span class="co-k">SHAREHOLDER YIELD</span><span class="co-v ${c.shareholderYield >= 0 ? 'pos' : 'neg'}">${c.shareholderYield != null ? c.shareholderYield.toFixed(1) + '%' : '—'}</span></div>` : `
-        <div class="co-stat" title="${esc(`Operating cash flow ${coMoney(c.operatingCashFlow)} − capex ${coMoney(c.capex)}${c.capexOmitted ? ' (not reported)' : ''}`)}"><span class="co-k">FREE CASH FLOW${c.fcfBasis ? ' · ' + c.fcfBasis : ''}</span><span class="co-v ${(c.fcfTTM ?? c.fcf) >= 0 ? 'pos' : 'neg'}">${val(c.fcfTTM ?? c.fcf)}</span></div>
-        <div class="co-stat" title="Free cash flow ÷ market cap"><span class="co-k">FCF YIELD</span><span class="co-v ${c.fcfYield >= 0 ? 'pos' : 'neg'}">${c.fcfYield != null ? c.fcfYield.toFixed(1) + '%' : '—'}</span></div>
-        <div class="co-stat" title="Free cash flow ÷ net income — below 1 means profit is not turning into cash"><span class="co-k">CASH CONVERSION</span><span class="co-v">${c.cashConversion != null ? c.cashConversion.toFixed(2) + '×' : '—'}</span></div>
-        <div class="co-stat" title="Dividend yield + buybacks ÷ market cap"><span class="co-k">SHAREHOLDER YIELD</span><span class="co-v ${c.shareholderYield >= 0 ? 'pos' : 'neg'}">${c.shareholderYield != null ? c.shareholderYield.toFixed(1) + '%' : '—'}</span></div>`}
-        <div class="co-stat" title="${esc(c.cagrNA ? `No growth rate: ${c.cagrNA}.` : `Compound annual growth of revenue over the ${c.cagrYears} fiscal years on file`)}"><span class="co-k">REVENUE CAGR${c.cagrYears ? ' · ' + c.cagrYears + 'Y' : ''}</span><span class="co-v ${c.revenueCagr >= 0 ? 'pos' : 'neg'}">${c.revenueCagr != null ? c.revenueCagr.toFixed(1) + '%' : '—'}</span></div>
-        <div class="co-stat" title="${esc(c.epsCagrNA ? `No EPS growth: ${c.epsCagrNA}.` : `Compound annual growth of earnings per share over ${c.cagrYears} years`)}"><span class="co-k">EPS CAGR${c.cagrYears ? ' · ' + c.cagrYears + 'Y' : ''}</span><span class="co-v ${c.epsCagr >= 0 ? 'pos' : 'neg'}">${c.epsCagr != null ? c.epsCagr.toFixed(1) + '%' : '—'}</span></div>
-        <div class="co-stat" title="Net income ÷ (equity + debt − cash) — approximate return on capital"><span class="co-k">RETURN ON CAPITAL${c.roicBasis ? ' · ' + c.roicBasis : ''}</span><span class="co-v ${c.roic >= 0 ? 'pos' : 'neg'}">${c.roic != null ? c.roic.toFixed(1) + '%' : '—'}</span></div>
-        <div class="co-stat" title="(Debt − cash) ÷ (operating income + D&A) — years of EBITDA to clear net debt"><span class="co-k">NET DEBT / EBITDA${c.netDebtEbitdaBasis ? ' · ' + c.netDebtEbitdaBasis : ''}</span><span class="co-v">${c.netDebtEbitda != null ? c.netDebtEbitda.toFixed(1) + '×' : '—'}</span></div>
-        ${c.sector !== 'Financials' ? `
-        <div class="co-stat" title="Operating income ÷ enterprise value — the cash-flow yield on the whole business"><span class="co-k">EBIT YIELD</span><span class="co-v ${c.ebitYield >= 0 ? 'pos' : 'neg'}">${c.ebitYield != null ? c.ebitYield.toFixed(1) + '%' : '—'}</span></div>
-        <div class="co-stat" title="Revenue ÷ assets — how hard the asset base works"><span class="co-k">ASSET TURNOVER</span><span class="co-v">${c.assetTurnover != null ? c.assetTurnover.toFixed(2) + '×' : '—'}</span></div>` : ''}
-      </div>`
+    + (() => {
+        // A bank has no current ratio, no enterprise value and no EBITDA. Rather than print "n/a" in a
+        // tile, the tile is omitted — the data says which ratios do not exist for this business.
+        const na = new Set(c.naRatios || []);
+        const tiles = [];
+        const add = (key, label, value, title, cls) => {
+          if (key && na.has(key)) return;
+          tiles.push(`<div class="co-stat"${title ? ` title="${esc(title)}"` : ''}><span class="co-k">${label}</span><span class="co-v ${cls || ''}">${value}</span></div>`);
+        };
+        add(null, 'MARKET CAP', c.adrNA ? 'ADR' : val(c.marketCap));
+        add('pe', `P/E (TRAILING${c.peBasis ? ' · ' + c.peBasis : ''})`,
+          c.pe != null ? c.pe.toFixed(1) : (c.peNA ? '<em class="co-approx">n/a</em>' : '—'),
+          c.ttmRejected ? 'Quarterly data is inconsistent with the annual filing, so the fiscal year is used.'
+            : c.peNA ? 'No trailing profit: the last four quarters are a loss, so a trailing P/E does not exist.'
+            : 'Market cap ÷ trailing earnings.');
+        add('evEbitda', 'EV / EBITDA', c.evEbitda != null ? c.evEbitda.toFixed(1) : '—', 'Enterprise value ÷ operating income plus D&A');
+        add(null, 'P/B', `${c.pb != null ? c.pb.toFixed(1) : '—'}${dsp('equity')}`);
+        add('ev', 'ENTERPRISE VALUE', `${val(c.ev)}${c.evApprox && c.ev != null ? ' <em class="co-approx" title="Neither debt nor cash is tagged in the filings, so this equals market cap">≈ cap</em>' : ''}`);
+        add('currentRatio', 'CURRENT RATIO', c.currentRatio != null ? c.currentRatio.toFixed(2) : '—', 'Current assets ÷ current liabilities');
+        add('debtEquity', 'DEBT / EQUITY', c.debtEquity != null ? c.debtEquity.toFixed(2) : '—');
+        add(null, 'REVENUE', `${val(c.revenue)}${dsp('revenue')}`, `us-gaap:${c.revenueTag || 'Revenues'} · ${c.fyRevenue || ''}${c.revenueSource === 'nasdaq' ? ' · exchange total revenue' : ''}`);
+        add(null, `NET INCOME · ${niTag}`, `${val(ni)}${dsp('netIncome')}`, `us-gaap:${c.netIncomeTag || 'NetIncomeLoss'} · ${niTag}${c.netIncomeEnd ? ' · period ' + c.netIncomeEnd : ''}`, ni >= 0 ? 'pos' : 'neg');
+        add(null, `NET MARGIN · ${niTag}`, m == null ? (c.marginNA ? 'n/a' : '—') : `${m.toFixed(1)}%`, 'Net income ÷ revenue', m >= 0 ? 'pos' : 'neg');
+        add(null, 'RETURN ON EQUITY', roe == null ? '—' : `${roe.toFixed(1)}%`, 'Net income ÷ shareholders’ equity', roe >= 0 ? 'pos' : 'neg');
+        add(null, 'TOTAL ASSETS', `${val(c.assets)}${dsp('assets')}`, `us-gaap:Assets · ${c.assetsEnd || ''}`);
+        if (c.sector === 'Financials') {
+          // Only where the figure exists: an insurer has no net interest margin, and a blank tile is noise.
+          if (c.ptbv != null) add(null, 'P / TANGIBLE BOOK', c.ptbv.toFixed(2) + '×', 'Market cap ÷ (equity − goodwill − intangibles) — the multiple banks are valued on');
+          if (c.efficiencyRatio != null) add(null, 'EFFICIENCY RATIO', c.efficiencyRatio.toFixed(0) + '%', 'Non-interest expense ÷ revenue — the cost of running the bank. Below 55% is strong.');
+          if (c.nim != null) add(null, 'NET INTEREST MARGIN', c.nim.toFixed(2) + '%', 'Net interest income ÷ assets — the spread the bank earns');
+          add(null, 'SHAREHOLDER YIELD', c.shareholderYield != null ? c.shareholderYield.toFixed(1) + '%' : '—', 'Dividend yield + buybacks ÷ market cap', c.shareholderYield >= 0 ? 'pos' : 'neg');
+        } else {
+          add('freeCashFlow', `FREE CASH FLOW${c.fcfBasis ? ' · ' + c.fcfBasis : ''}`, val(c.fcfTTM ?? c.fcf), `Operating cash flow ${coMoney(c.operatingCashFlow)} − capex ${coMoney(c.capex)}${c.capexOmitted ? ' (not reported)' : ''}`, (c.fcfTTM ?? c.fcf) >= 0 ? 'pos' : 'neg');
+          add('fcfYield', 'FCF YIELD', c.fcfYield != null ? c.fcfYield.toFixed(1) + '%' : '—', 'Free cash flow ÷ market cap', c.fcfYield >= 0 ? 'pos' : 'neg');
+          add('cashConversion', 'CASH CONVERSION', c.cashConversion != null ? c.cashConversion.toFixed(2) + '×' : '—', 'Free cash flow ÷ net income — below 1 means profit is not turning into cash');
+          add(null, 'SHAREHOLDER YIELD', c.shareholderYield != null ? c.shareholderYield.toFixed(1) + '%' : '—', 'Dividend yield + buybacks ÷ market cap', c.shareholderYield >= 0 ? 'pos' : 'neg');
+        }
+        add(null, `REVENUE CAGR${c.cagrYears ? ' · ' + c.cagrYears + 'Y' : ''}`, c.revenueCagr != null ? c.revenueCagr.toFixed(1) + '%' : '—', c.cagrNA ? `No growth rate: ${c.cagrNA}.` : `Compound annual growth of revenue over the ${c.cagrYears} fiscal years on file`, c.revenueCagr >= 0 ? 'pos' : 'neg');
+        add(null, `EPS CAGR${c.cagrYears ? ' · ' + c.cagrYears + 'Y' : ''}`, c.epsCagr != null ? c.epsCagr.toFixed(1) + '%' : '—', c.epsCagrNA ? `No EPS growth: ${c.epsCagrNA}.` : `Compound annual growth of earnings per share over ${c.cagrYears} years`, c.epsCagr >= 0 ? 'pos' : 'neg');
+        add('roic', `RETURN ON CAPITAL${c.roicBasis ? ' · ' + c.roicBasis : ''}`, c.roic != null ? c.roic.toFixed(1) + '%' : '—', 'Net income ÷ (equity + debt − cash) — approximate return on capital', c.roic >= 0 ? 'pos' : 'neg');
+        add('netDebtEbitda', `NET DEBT / EBITDA${c.netDebtEbitdaBasis ? ' · ' + c.netDebtEbitdaBasis : ''}`, c.netDebtEbitda != null ? c.netDebtEbitda.toFixed(1) + '×' : '—', '(Debt − cash) ÷ (operating income + D&A) — years of EBITDA to clear net debt');
+        if (c.sector !== 'Financials') {
+          add('ebitYield', 'EBIT YIELD', c.ebitYield != null ? c.ebitYield.toFixed(1) + '%' : '—', 'Operating income ÷ enterprise value — the cash-flow yield on the whole business', c.ebitYield >= 0 ? 'pos' : 'neg');
+          add('assetTurnover', 'ASSET TURNOVER', c.assetTurnover != null ? c.assetTurnover.toFixed(2) + '×' : '—', 'Revenue ÷ assets — how hard the asset base works');
+        }
+        return `<div class="co-stats co-stats-12">${tiles.join('')}</div>`;
+      })()
     + (c.peHistory ? (() => {
         const h = c.peHistory;
         const span = Math.max(0.1, h.max - h.min);
