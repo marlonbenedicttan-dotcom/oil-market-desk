@@ -2692,3 +2692,18 @@ Every check below was run against the committed data and the live API, not assum
   pattern as Japan and Korea.
 - **Tests**: search resolves a name to a ref, prefers the biggest namesake, spans all three markets, and the
   Japanese chart answers to both the ticker and the code.
+
+## Korea loads in 0.4s instead of 1.1s; the calendar is two tabs (2026-10-31)
+- **Cold Korea was 1,128 ms.** Measured, not guessed: 548 ms for `/api/korea` plus parse and paint. Three
+  fixes:
+  1. `warmMarkets()` now fires the moment the COMPANIES tab opens (it used to wait until a market had
+     already rendered, so the first switch paid the full fetch). Japan and Korea start together.
+  2. `loadKorea()` / `loadJapan()` keep the in-flight promise, so the prefetch and the click no longer race
+     and issue two identical requests (the second was 312 ms of dead time).
+  3. The list projection now ships only what the list, the screens and the search read. Margins beyond the
+     operating one, free-cash-flow yield, USD cap, share counts and the P/E basis live on the company page,
+     which loads the full record separately. Korea: 77.6 → 57.2 KB gzipped (−26%). Japan: 150.6 → 138.5 KB.
+  Result: **435 ms** to 745 rows on a cold visit, one request.
+- **Calendar**: four modes (MACRO / WATCHLIST / TOP 50 / ALL 500) collapsed to two — MACRO and COMPANIES —
+  and they are exclusive: one shows economic releases, the other earnings and filings. Old stored modes
+  fall back to MACRO.

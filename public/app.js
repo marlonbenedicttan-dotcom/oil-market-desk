@@ -2691,8 +2691,14 @@ let calEvents = null, calMonth = null, calSel = null, calFomc = null;
 let calCompany = [];
 // Which market the companies tab is showing: the S&P 500 or TSE Prime.
 let coRegion = (() => { try { return localStorage.getItem('oilbasis.coRegion') || 'us'; } catch { return 'us'; } })();
-// Which company events to show: the watchlist by default, the index on request.
-let calMode = (() => { try { return localStorage.getItem('oilbasis.calMode') || 'watch'; } catch { return 'watch'; } })();
+// Two views, not four: the macro calendar and company events. Anything else is a filter inside those.
+let calMode = (() => {
+  try {
+    const v = localStorage.getItem('oilbasis.calMode');
+    if (v === 'companies' || v === 'macro') return v;
+    return 'macro';   // the old watch/top/all modes collapse into companies
+  } catch { return 'macro'; }
+})();
 async function loadCalendar() {
   const el = $('calendar'); if (!el) return;
   if (!el.innerHTML) el.innerHTML = stLoading('Loading the calendar…');
@@ -2708,25 +2714,26 @@ async function loadCalendar() {
 function renderCalendar() {
   const el = $('calendar'); if (!el) return;
   const sub = $('cal-sub');
-  if (sub) sub.textContent = 'every macro country · high-impact releases · click a day for its events';
+  if (sub) sub.textContent = calMode === 'companies'
+    ? 'earnings and filings · click a day for its events'
+    : 'every macro country · high-impact releases · click a day for its events';
   if (!calEvents) { el.innerHTML = stError('Couldn\u2019t load the calendar — retrying.'); return; }
   const iso = (d) => d.toISOString().slice(0, 10);
   const today = iso(new Date());
   if (!calMonth) { const d = new Date(today + 'T00:00:00Z'); calMonth = { y: d.getUTCFullYear(), m: d.getUTCMonth() }; }
   const byDate = {};
-  for (const e of calEvents) {
-    if (!e.date || (e.cc && !(e.importance >= 1))) continue;   // structural, or a high-impact release
-    (byDate[e.date] = byDate[e.date] || []).push(e);
+  // The two tabs are exclusive: MACRO shows economic releases, COMPANIES shows earnings and filings.
+  const wantMacro = calMode !== 'companies';
+  const wantCompanies = calMode === 'companies';
+  if (wantMacro) {
+    for (const e of calEvents) {
+      if (!e.date || (e.cc && !(e.importance >= 1))) continue;   // structural, or a high-impact release
+      (byDate[e.date] = byDate[e.date] || []).push(e);
+    }
   }
-  // Company events, filtered to the mode. Five hundred companies would flood the grid, so the default
-  // is the watchlist; the index is one click away.
-  if (calMode !== 'macro' && calCompany.length) {
-    const pinned = new Set(watchlist());
-    const top = calMode === 'top' ? new Set([...calCompany].sort((x, y) => (y.weight || 0) - (x.weight || 0)).slice(0, 50).map((x) => x.ticker)) : null;
+  if (wantCompanies && calCompany.length) {
     for (const e of calCompany) {
       if (!e.date) continue;
-      if (calMode === 'watch' && !(e.market === 'JP' ? pinned.has(`jp:${e.code}`) : pinned.has(e.ticker))) continue;
-      if (calMode === 'top' && !top.has(e.ticker)) continue;
       (byDate[e.date] = byDate[e.date] || []).push({ ...e, company: true });
     }
   }
@@ -2760,12 +2767,12 @@ function renderCalendar() {
   const row = (e) => (e.company
     ? `<div class="cal-row cal-crow" ${e.market === 'JP' ? `data-caljp="${esc(e.code || '')}"` : `data-calco="${esc(e.ticker || '')}"`}><span class="cal-date">${esc(e.basis === 'expected' ? 'EST' : 'FILED')}</span><span class="cal-name">${esc(e.label)}</span><span class="cal-src">${esc(e.kind === 'earnings' ? 'company' : e.kind)}</span><span class="cal-note dimtext">${esc(e.detail || '')}</span></div>`
     : `<div class="cal-row"><span class="cal-date">${esc(e.time || '—')}</span><span class="cal-name">${e.cc ? `<em class="cal-cc">${esc(e.cc)}</em>` : ''}${esc(e.name)}</span><span class="cal-src">${esc(e.source || '')}</span>${e.note ? `<span class="cal-note dimtext">${esc(e.note)}</span>` : ''}</div>`);
-  const modes = [['macro', 'MACRO'], ['watch', 'WATCHLIST'], ['top', 'TOP 50'], ['all', 'ALL 500']];
+  const modes = [['macro', 'MACRO'], ['companies', 'COMPANIES']];
   el.innerHTML = `<div class="cal-modes">${modes.map(([k, t]) => `<button type="button" class="${calMode === k ? 'on' : ''}" data-calmode="${k}">${t}</button>`).join('')}</div>`
     + `<div class="cal-head"><div class="cal-nav"><button id="cal-prev" type="button" aria-label="Previous month">‹</button><span class="cal-title">${MONTH_NAMES[m]} ${y}</span><button id="cal-next" type="button" aria-label="Next month">›</button></div><button id="cal-today" class="ghost small" type="button">TODAY</button></div>`
     + `<div class="cal-grid">${CAL_DOW.map((x) => `<div class="cal-dow">${x}</div>`).join('')}${grid}</div>`
     + `<div class="cal-dayh">${dayLabel}</div>`
-    + (selEv.length ? selEv.map(row).join('') : '<div class="cal-foot dimtext">Nothing high-impact scheduled on this day.</div>')
+    + (selEv.length ? selEv.map(row).join('') : `<div class="cal-foot dimtext">Nothing ${calMode === 'companies' ? 'from a company' : 'high-impact'} scheduled on this day.</div>`)
     + (calFomc === 'fallback' ? '<div class="cal-foot dimtext">FOMC dates from the published schedule — the live Federal Reserve feed was unavailable.</div>' : '');
 }
 const calPick = (k) => { if (k) { calSel = k; renderCalendar(); } };
@@ -3043,7 +3050,12 @@ function showTab(name) {
     if (map) setTimeout(() => map.invalidateSize(), 80);
     if (crackHistChart && currentMarket === 'refined') setTimeout(() => crackHistChart.resize(), 80);
   }
-  if (name === 'deals') loadCompanies();
+  if (name === 'deals') {
+    // Warm all three markets as soon as the tab opens: switching region should not wait on a 70 KB
+    // fetch that could have been in flight since the tab opened.
+    warmMarkets(0);
+    loadCompanies();
+  }
   if (name === 'macro') { loadMacroTickers(); if (!extraSlowDone) setTimeout(() => loadExtraSlow().catch(() => {}), 0); if (macroChart) setTimeout(() => macroChart.resize(), 60); if (policyChart) setTimeout(() => policyChart.resize(), 70); if (cpiChart) setTimeout(() => cpiChart.resize(), 80); if (yieldsChart) setTimeout(() => yieldsChart.resize(), 85); if (usjpChart) setTimeout(() => usjpChart.resize(), 90); }
   if (data) renderTicker(data);
   syncJumpnavs();
@@ -3730,10 +3742,16 @@ function yen(v) {
 // Japanese codes are four digits, so the US ticker monogram would read "83". Use the name instead.
 const jpMono = (c) => coMono({ ticker: String(c.name || '?').replace(/[^A-Za-z]/g, '').slice(0, 2), name: c.name });
 
+let japanPromise = null;
 async function loadJapan() {
   if (japanData) return japanData;
-  try { japanData = await jget('/api/japan', 3600000); } catch { japanData = { companies: [] }; }
-  return japanData;
+  if (japanPromise) return japanPromise;
+  japanPromise = (async () => {
+    try { japanData = await jget('/api/japan', 3600000); } catch { japanData = { companies: [] }; }
+    japanPromise = null;
+    return japanData;
+  })();
+  return japanPromise;
 }
 
 function japanTile(c) {
@@ -4388,10 +4406,17 @@ async function seriesFor(ref, range) {
   } catch { return null; }
 }
 
+// One request in flight, not two: the prefetch and the click used to race and both hit the network.
+let koreaPromise = null;
 async function loadKorea() {
   if (koreaData) return koreaData;
-  try { koreaData = await jget('/api/korea', 3600000); } catch { koreaData = { companies: [] }; }
-  return koreaData;
+  if (koreaPromise) return koreaPromise;
+  koreaPromise = (async () => {
+    try { koreaData = await jget('/api/korea', 3600000); } catch { koreaData = { companies: [] }; }
+    koreaPromise = null;
+    return koreaData;
+  })();
+  return koreaPromise;
 }
 
 const krViewsBar = () => `<div class="co-views">${[['market', 'MARKET'], ['screener', 'SCREENER'], ['themes', 'THEMES']].map(([k, t]) => `<button type="button" data-krview="${k}" class="${krView === k ? 'on' : ''}">${t}</button>`).join('')}</div>`;
@@ -4661,14 +4686,15 @@ async function syncMarketBar() {
 // Prefetch the other two markets after the first one paints. Three payloads is ~370 KB gzipped, and it
 // makes the market switch instant instead of a spinner.
 let warmed = false;
-function warmMarkets() {
+function warmMarkets(delay = 1500) {
   if (warmed) return;
   warmed = true;
   setTimeout(() => {
     if (!companiesData) getJSON('/api/companies').then((d) => { companiesData = d; }).catch(() => {});
+    // Japan and Korea are the slow ones to open cold; start them together rather than in sequence.
     if (!japanData) loadJapan().catch(() => {});
     if (!koreaData) loadKorea().catch(() => {});
-  }, 1500);
+  }, delay);
 }
 
 function renderCompanies() {

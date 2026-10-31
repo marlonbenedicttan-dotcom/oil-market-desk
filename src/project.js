@@ -19,22 +19,24 @@ export const projectUs = (c) => {
   return o;
 };
 
+// Only what the list, the screens and the search actually read. Everything else (margins beyond the
+// operating one, free-cash-flow yield, USD cap, share counts) lives on the company page, which loads the
+// full record from /api/korea/company. Trimming this cut the Korea payload by about a quarter.
 export const projectKr = (c) => ({
   code: c.code, ticker: c.ticker, name: c.name, nameEn: c.nameEn || null, sector: c.sector || null,
   brands: c.brands && c.brands.length ? c.brands : null,
-  price: c.price, priceDate: c.priceDate, marketCap: c.marketCap, marketCapUsd: c.marketCapUsd,
+  price: c.price, priceDate: c.priceDate, marketCap: c.marketCap,
   chg1d: c.chg1d, chg6m: c.chg6m, chgYtd: c.chgYtd,
-  pe: c.pe, peBasis: c.peBasis, pb: c.pb, roe: c.roe, opMargin: c.opMargin, netMargin: c.netMargin,
-  fcfYield: c.fcfYield, shares: c.shares,
+  pe: c.pe, pb: c.pb, roe: c.roe, opMargin: c.opMargin,
   // CHEAP VS ITSELF reads the five-year P/E percentile; without it the preset matches nothing.
   bands: c.bands && c.bands.pe ? { pe: { percentile: c.bands.pe.percentile } } : null,
 });
 
 export const projectJp = (c) => ({
   code: c.code, ticker: c.ticker, name: c.name, nameJa: c.nameJa, sector: c.sector, size: c.size,
-  price: c.price, priceDate: c.priceDate, marketCap: c.marketCap, marketCapUsd: c.marketCapUsd,
+  price: c.price, priceDate: c.priceDate, marketCap: c.marketCap,
   chg1d: c.chg1d, chg6m: c.chg6m, chgYtd: c.chgYtd, chgYtdBasis: c.chgYtdBasis,
-  pe: c.pe, peBasis: c.peBasis, pb: c.pb, roe: c.roe, np: c.np,
+  pe: c.pe, pb: c.pb, roe: c.roe, np: c.np,
   dividend: c.dividend ? { yield: c.dividend.yield } : null,
   cash: c.cash,
   bands: c.bands && c.bands.pe ? { pe: { percentile: c.bands.pe.percentile } } : null,
