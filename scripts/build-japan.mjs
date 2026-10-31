@@ -374,6 +374,8 @@ const median = (xs) => {
 // a cap) but never count it as a company or add it to the market total — the same rule the US list uses.
 for (const c of companies) {
   c.shareClass = /preferred stock|shares of preferred/i.test(c.name || '') ? true : false;
+  // The 4-digit ticker strips the class digit, so a preferred would collide with its common line.
+  if (c.shareClass && c.code) c.ticker = String(c.code);
 }
 const listed = companies.filter((c) => !c.shareClass);
 const sectorStats = new Map();

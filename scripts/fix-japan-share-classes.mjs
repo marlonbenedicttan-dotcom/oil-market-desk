@@ -16,6 +16,7 @@ for (const c of rows) {
   const isClass = /preferred stock|shares of preferred/i.test(c.name || '');
   if (isClass && !c.shareClass) marked++;
   c.shareClass = isClass;
+  if (isClass && c.code) c.ticker = String(c.code);   // keep it unique against the common line
 }
 const listed = rows.filter((c) => !c.shareClass);
 const median = (xs) => {
