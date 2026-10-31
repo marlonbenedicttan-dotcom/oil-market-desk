@@ -2805,3 +2805,16 @@ Audited at 360, 390 and 430 px with screenshots of every view, then fixed what l
 - **Known and not fixed**: 165 companies have a market cap that differs from price × shares by 2–6%, because
   Nasdaq capitalises every share class while the filing's share count is the primary class. The cap is the
   authoritative figure, so this is documented rather than "corrected". `epsDiluted` is still never populated.
+
+## Structural gap closed: annual fundamentals resolved from the full index (2026-10-31)
+- **`resolve-fundamentals.mjs`** reads the broad facts already cached for every company and rebuilds the
+  five-year series by priority tag, then by derivation: operating income = revenue − costs when the
+  operating line is not tagged; EBITDA = operating income + D&A; EPS = net income ÷ shares.
+- **Operating income 362 → 488 of 500 (97.6%)**, EBITDA 0 → 432 (86.4%). The series went from four years to
+  five for most companies, so the CAGR windows are longer and the financials table is complete.
+- **TTM EBITDA** now falls back to the last four quarters' operating income plus annual D&A: 343 → 438.
+- **EPS growth is never a dash.** Where a CAGR does not exist because one end is a loss, the tile shows the
+  change itself — `−$6.04 → $8.14` for GE, `$3.76 → −$0.05` for Intel — with the years and the reason on
+  hover. 58 companies use it.
+- Revenue CAGR 484 → 491; the nine still missing are three recent listings and six with non-positive
+  revenue in a year.

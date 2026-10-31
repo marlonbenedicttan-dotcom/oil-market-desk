@@ -130,6 +130,15 @@ for (const c of data.companies) {
   if (c.opIncEnd && newestTTM && newestTTM - Date.parse(c.opIncEnd) > 730 * 86400000) { c.opInc = null; c.opIncStale = true; }
   const opInc = c.opInc ?? [...(c.series || [])].reverse().find((x) => x.opInc != null)?.opInc ?? null;
   // Prefer the trailing EBITDA where we have it; fall back to the fiscal-year figure.
+  // TTM EBITDA: the quarters now carry operating income, so four of them plus annual D&A is the trailing
+  // figure even when the TTM pass could not build one.
+  if (c.ebitdaTTM == null && c.da != null) {
+    const q4 = (c.quarters || []).slice(-4);
+    if (q4.length === 4 && q4.every((q) => q.operatingIncome != null)) {
+      c.ebitdaTTM = q4.reduce((a1, q) => a1 + q.operatingIncome, 0) + c.da;
+      c.ebitdaTTMBasis = 'quarters + D&A';
+    }
+  }
   const ebitda = c.ebitdaTTM != null ? c.ebitdaTTM : (opInc != null ? opInc + (c.da || 0) : null);
   // EBITDA is not a bank metric: deposits are operating liabilities and interest is the business.
   // EBITDA is not a bank metric, but a conglomerate classified as Financials (Berkshire) operates real
@@ -220,8 +229,13 @@ for (const c of data.companies) {
   c.epsCagr = cagr(first?.eps, last?.eps);
   c.cagrYears = span >= 2 ? span : null;
   // Say why a growth rate is absent rather than leaving a dash: a loss at either end makes it meaningless.
-  c.cagrNA = c.revenueCagr == null ? (span < 2 ? 'history too short' : 'loss at either end') : null;
+  c.cagrNA = c.revenueCagr == null ? (span < 2 ? 'history too short' : 'revenue was not positive in both years') : null;
   c.epsCagrNA = c.epsCagr == null ? (span < 2 ? 'history too short' : 'a loss in the first or last year') : null;
+  // When a CAGR does not exist because one end is a loss, the change itself is still the useful fact:
+  // "−$2.10 → $1.50" tells the reader more than a dash.
+  if (c.epsCagr == null && span >= 2 && first && last && first.eps != null && last.eps != null) {
+    c.epsChange = { from: first.eps, to: last.eps, years: span, fromFy: first.fy, toFy: last.fy };
+  }
   c.marginDelta = first?.revenue && last?.revenue && first.netIncome != null && last.netIncome != null
     ? +(((last.netIncome / last.revenue) - (first.netIncome / first.revenue)) * 100).toFixed(1) : null;
 

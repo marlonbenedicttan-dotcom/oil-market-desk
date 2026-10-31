@@ -5174,7 +5174,16 @@ async function renderCompanyPageBody(el, c, all) {
           add(null, 'SHAREHOLDER YIELD', c.shareholderYield != null ? c.shareholderYield.toFixed(1) + '%' : '—', 'Dividend yield + buybacks ÷ market cap', c.shareholderYield >= 0 ? 'pos' : 'neg');
         }
         add(null, `REVENUE CAGR${c.cagrYears ? ' · ' + c.cagrYears + 'Y' : ''}`, c.revenueCagr != null ? c.revenueCagr.toFixed(1) + '%' : '—', c.cagrNA ? `No growth rate: ${c.cagrNA}.` : `Compound annual growth of revenue over the ${c.cagrYears} fiscal years on file`, c.revenueCagr >= 0 ? 'pos' : 'neg');
-        add(null, `EPS CAGR${c.cagrYears ? ' · ' + c.cagrYears + 'Y' : ''}`, c.epsCagr != null ? c.epsCagr.toFixed(1) + '%' : '—', c.epsCagrNA ? `No EPS growth: ${c.epsCagrNA}.` : `Compound annual growth of earnings per share over ${c.cagrYears} years`, c.epsCagr >= 0 ? 'pos' : 'neg');
+        // A CAGR does not exist when either end is a loss, so show the change itself rather than a dash.
+        const epsTile = c.epsCagr != null
+          ? { v: c.epsCagr.toFixed(1) + '%', cls: c.epsCagr >= 0 ? 'pos' : 'neg', t: `Compound annual growth of earnings per share over ${c.cagrYears} years` }
+          : c.epsChange
+            ? (() => {
+                const money = (v) => `${v < 0 ? '−' : ''}$${Math.abs(v).toFixed(2)}`;
+                return { v: `${money(c.epsChange.from)} → ${money(c.epsChange.to)}`, cls: c.epsChange.to >= 0 ? 'pos' : 'neg', t: `No CAGR: ${c.epsCagrNA}. EPS went from ${money(c.epsChange.from)} in FY${c.epsChange.fromFy} to ${money(c.epsChange.to)} in FY${c.epsChange.toFy}.` };
+              })()
+            : { v: '—', cls: '', t: c.epsCagrNA ? `No EPS growth: ${c.epsCagrNA}.` : 'No EPS growth rate' };
+        add(null, `EPS GROWTH${c.cagrYears ? ' · ' + c.cagrYears + 'Y' : ''}`, epsTile.v, epsTile.t, epsTile.cls);
         add('roic', `RETURN ON CAPITAL${c.roicBasis ? ' · ' + c.roicBasis : ''}`, c.roic != null ? c.roic.toFixed(1) + '%' : '—', 'Net income ÷ (equity + debt − cash) — approximate return on capital', c.roic >= 0 ? 'pos' : 'neg');
         add('netDebtEbitda', `NET DEBT / EBITDA${c.netDebtEbitdaBasis ? ' · ' + c.netDebtEbitdaBasis : ''}`, c.netDebtEbitda != null ? c.netDebtEbitda.toFixed(1) + '×' : '—', '(Debt − cash) ÷ (operating income + D&A) — years of EBITDA to clear net debt');
         if (c.sector !== 'Financials') {
