@@ -30,13 +30,19 @@ const won = (v) => {
 let stored = {};
 try { stored = JSON.parse(readFileSync(STORE, 'utf8')).profiles || {}; } catch { /* none yet */ }
 
+// Hand-written lines for the few companies no profile source covers. Kept short and factual.
+const CURATED = {
+  '000300': 'DH Autonex, formerly Daeyu Plus, is a Korean manufacturer listed on KOSPI. It makes aluminium castings and billets for auto and industrial parts, LPI fuel tanks and hydrogen-bus tank frames, and also sells telecom equipment as part of the DH Group.',
+  '001750': 'Hanyang Securities is a Korean securities firm listed on KOSPI. It earns commissions from brokerage and wealth management for retail and institutional clients, and arranges equity and debt issues through its investment banking arm.',
+};
+
 const data = JSON.parse(readFileSync(FILE, 'utf8'));
 const brands = JSON.parse(readFileSync(BRANDS, 'utf8')).brands || {};
 let fetched = 0, generated = 0;
 for (const c of data.companies) {
   c.brands = brands[c.ticker] || [];
   const f = join(CACHE, `${c.ticker}.json`);
-  let text = stored[c.ticker] || null;
+  let text = CURATED[c.ticker] || stored[c.ticker] || null;
   if (!text && existsSync(f)) { try { text = JSON.parse(readFileSync(f, 'utf8')).text; } catch { /* none */ } }
   if (text) {
     c.description = shorten(text);
