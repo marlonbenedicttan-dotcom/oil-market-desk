@@ -52,7 +52,7 @@ jobs:
           node scripts/align-periods.mjs
           node scripts/attach-provenance.mjs
           node scripts/detect-restatements.mjs
-          node scripts/build-quarters.mjs
+          node scripts/resolve-quarters.mjs
           node scripts/sync-series.mjs
           node scripts/derive-companies.mjs
           node scripts/reconcile-nasdaq.mjs

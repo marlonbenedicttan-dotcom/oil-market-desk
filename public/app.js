@@ -5209,10 +5209,14 @@ async function renderCompanyPageBody(el, c, all) {
         if (!qs.length) return '';
         return `<div class="gtitle">LAST EIGHT QUARTERS</div>
           <div class="co-table co-qtr">
-            <div class="co-tr co-th"><span>PERIOD</span><span>REVENUE</span><span>NET INCOME</span><span>MARGIN</span></div>
+            <div class="co-tr co-th"><span>PERIOD</span><span>REVENUE</span><span>OP INCOME</span><span>MARGIN</span><span>NET INCOME</span></div>
             ${qs.map((q) => {
-              const m = q.revenue && q.netIncome != null ? (q.netIncome / q.revenue) * 100 : null;
-              return `<div class="co-tr"><span>${dealDateY(q.end)}</span><span>${val(q.revenue)}</span><span class="${q.netIncome >= 0 ? 'pos' : 'neg'}">${val(q.netIncome)}</span><span>${m == null ? '—' : m.toFixed(1) + '%'}</span></div>`;
+              // Operating margin where the company reports an operating line; banks do not, so they fall
+              // back to net margin rather than showing a blank column.
+              const opM = q.margin != null ? q.margin : null;
+              const netM = q.netMargin != null ? q.netMargin : (q.revenue && q.netIncome != null ? (q.netIncome / q.revenue) * 100 : null);
+              const shown = opM != null ? opM : netM;
+              return `<div class="co-tr"><span>${dealDateY(q.end)}</span><span>${val(q.revenue)}</span><span class="${q.operatingIncome >= 0 ? 'pos' : 'neg'}">${val(q.operatingIncome)}</span><span title="${opM != null ? 'operating margin' : 'net margin (no operating line reported)'}">${shown == null ? '—' : shown.toFixed(1) + '%'}</span><span class="${q.netIncome >= 0 ? 'pos' : 'neg'}">${val(q.netIncome)}</span></div>`;
             }).join('')}
           </div>`;
       })()

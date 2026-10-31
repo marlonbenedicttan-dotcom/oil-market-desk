@@ -2774,3 +2774,20 @@ Audited at 360, 390 and 430 px with screenshots of every view, then fixed what l
   behind the quarter gaps: the pipeline asks for a fixed list of XBRL tags. Companies that tag the same
   concept differently get a null. The fix is a per-company `companyfacts` resolver with derivation rules
   (opInc = revenue − costs; EBITDA = opInc + D&A; EPS = net income ÷ shares) rather than a longer whitelist.
+
+## Quarters resolved from the full XBRL index (2026-10-31)
+- **The whitelist was the problem.** `build-quarters` asked for six revenue tags and used ONE of them for all
+  eight quarters. Companies that tag revenue under a concept outside the list — or that only tag cumulative
+  year-to-date figures — came back with blank columns. 59 companies had eight blank revenue quarters.
+- **`resolve-quarters.mjs`** reads one `companyfacts` document per company (cached at ~100 KB each), keeps
+  every us-gaap tag, and resolves each period by: the highest-priority tag that has that exact quarter →
+  a quarter differenced from year-to-date figures sharing the same start → for operating income, revenue −
+  costs. Banks get net interest income + non-interest income, because they do not tag a revenue line.
+- **Two bugs found while building it**: the `/tax/` exclusion was throwing away
+  `RevenueFromContractWithCustomerExcludingAssessedTax` (the most common revenue concept in the index), and
+  differencing across two different tags produced a 37.5B "quarter" for Visa. Cumulative rows are now keyed
+  by tag AND start, and a value is dropped if it sits more than 4× from the median quarter.
+- **Result**: eight complete revenue quarters for **488 of 500** companies (was 441), operating margin for
+  432, net margin for 487. The company page now shows REVENUE · OP INCOME · MARGIN · NET INCOME per quarter
+  instead of a net-margin-only table. The remaining 12 are recent listings (fewer than eight quarters filed)
+  or banks that tag no revenue concept at all.

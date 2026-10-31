@@ -1225,8 +1225,9 @@ button.deal-sec-tile:hover { background: #10151b; }
   background: #1b1507; color: #e0b35a; font-size: 9px; letter-spacing: .5px; display: inline-block; }
 .co-restate a { color: #f0c86a; }
 /* Quarterly table: four columns instead of the annual table's seven. */
-.co-qtr .co-tr { grid-template-columns: 1.1fr 1fr 1fr 0.8fr; }
-@media (max-width: 640px) { .co-qtr .co-tr { grid-template-columns: 1fr 1fr 1fr 0.7fr; font-size: 10px; } }
+.co-qtr .co-tr { grid-template-columns: 1fr 1fr 1fr 0.8fr 1fr; }
+@media (max-width: 640px) { .co-qtr .co-tr { grid-template-columns: 0.9fr 1fr 0.9fr 0.7fr; font-size: 10px; }
+  .co-qtr .co-tr > span:nth-child(5), .co-qtr .co-th > span:nth-child(5) { display: none; } }
 /* Four hero cells now: cap, P/E, EV/EBITDA, index P/E. */
 .co-hero { grid-template-columns: repeat(4, 1fr); }
 @media (max-width: 760px) { .co-hero { grid-template-columns: repeat(2, 1fr); } }

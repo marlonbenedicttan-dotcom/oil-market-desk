@@ -216,3 +216,25 @@ test('the index weights sum to about 100', () => {
   const sum = data.companies.reduce((a, c) => a + (c.indexWeight || 0), 0);
   assert.ok(sum > 99 && sum < 101, `weights sum to ${sum}`);
 });
+
+test('the last eight quarters are complete where the company files eight', () => {
+  // The old pass asked for one tag per concept, so 59 companies had eight blank revenue columns.
+  const short = data.companies.filter((c) => {
+    const q = c.quarters || [];
+    if (q.length < 8) return false;
+    return q.filter((x) => x.revenue != null).length < 8;
+  });
+  assert.ok(short.length <= 15, `${short.length} companies have an incomplete quarter series: ${short.slice(0, 8).map((c) => c.ticker).join(' ')}`);
+});
+
+test('a quarterly margin is present wherever revenue and operating income are', () => {
+  const bad = [];
+  for (const c of data.companies) {
+    for (const q of c.quarters || []) {
+      if (q.revenue > 0 && q.operatingIncome != null && q.margin == null) bad.push(`${c.ticker} ${q.end}`);
+      // A tiny-revenue company can post a −460% operating margin; anything past 1000% is a units bug.
+      if (q.margin != null && Math.abs(q.margin) > 1000) bad.push(`${c.ticker} ${q.end} margin ${q.margin}`);
+    }
+  }
+  assert.equal(bad.length, 0, `${bad.length} quarters have an impossible margin: ${bad.slice(0, 5).join(', ')}`);
+});
