@@ -2818,3 +2818,20 @@ Audited at 360, 390 and 430 px with screenshots of every view, then fixed what l
   hover. 58 companies use it.
 - Revenue CAGR 484 → 491; the nine still missing are three recent listings and six with non-positive
   revenue in a year.
+
+## EV and the Berkshire case: a structural fix (2026-10-31)
+- **Enterprise value was null for 87 companies** because it required both a debt and a cash tag. It is now
+  built from whatever is tagged — market cap + debt − cash — and records which part was missing
+  (`evApprox`), so the page shows `$1.14T ≈` with the reason on hover instead of a blank.
+- **Berkshire files a custom taxonomy.** It tags no debt total, no `LongTermDebt`, no `NotesPayable` and no
+  `ShortTermInvestments` (its `CashAndCashEquivalentsAtCarryingValue` stops at 2017), so its balance sheet
+  is largely invisible to us-gaap. Two consequences fixed:
+  - EBITDA was taken from a tagged total of $66.4B while its own operating income was $82.5B and D&A $13.5B.
+    EBITDA is now built from its parts when both exist: **$95.9B**, and EV/EBITDA is 11.9× — a plausible
+    multiple instead of a blank.
+  - Insurers were being treated like banks and losing EV, EV/EBITDA, ROIC, FCF and EBIT yield. Only the
+    current ratio is genuinely absent for them. Berkshire now shows 17 ratios, including return on capital
+    at 12.9%.
+- **"n/d" instead of a dash** where an input is not tagged at all: Debt/Equity and Net Debt/EBITDA say
+  `n/d` with "this company does not tag a debt total in its XBRL filings" on hover, rather than looking
+  like a failed calculation.

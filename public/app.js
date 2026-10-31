@@ -5153,9 +5153,9 @@ async function renderCompanyPageBody(el, c, all) {
             : 'Market cap ÷ trailing earnings.');
         add('evEbitda', 'EV / EBITDA', c.evEbitda != null ? c.evEbitda.toFixed(1) : '—', 'Enterprise value ÷ operating income plus D&A');
         add(null, 'P/B', `${c.pb != null ? c.pb.toFixed(1) : '—'}${dsp('equity')}`);
-        add('ev', 'ENTERPRISE VALUE', `${val(c.ev)}${c.evApprox && c.ev != null ? ' <em class="co-approx" title="Neither debt nor cash is tagged in the filings, so this equals market cap">≈ cap</em>' : ''}`);
+        add('ev', 'ENTERPRISE VALUE', `${val(c.ev)}${c.evApprox ? ` <em class="co-approx" title="${esc(c.evApprox)}">≈</em>` : ''}`, c.evApprox ? `Market cap ${c.evApprox === 'neither debt nor cash is tagged' ? '— this company tags neither line' : 'adjusted for what is tagged'}.` : 'Market cap + debt − cash');
         add('currentRatio', 'CURRENT RATIO', c.currentRatio != null ? c.currentRatio.toFixed(2) : '—', 'Current assets ÷ current liabilities');
-        add('debtEquity', 'DEBT / EQUITY', c.debtEquity != null ? c.debtEquity.toFixed(2) : '—');
+        add('debtEquity', 'DEBT / EQUITY', c.debtEquity != null ? c.debtEquity.toFixed(2) : (c.debtNA ? '<em class="co-approx" title="' + esc(c.debtNA) + '">n/d</em>' : '—'), c.debtNA || 'Debt ÷ shareholders’ equity');
         add(null, 'REVENUE', `${val(c.revenue)}${dsp('revenue')}`, `us-gaap:${c.revenueTag || 'Revenues'} · ${c.fyRevenue || ''}${c.revenueSource === 'nasdaq' ? ' · exchange total revenue' : ''}`);
         add(null, `NET INCOME · ${niTag}`, `${val(ni)}${dsp('netIncome')}`, `us-gaap:${c.netIncomeTag || 'NetIncomeLoss'} · ${niTag}${c.netIncomeEnd ? ' · period ' + c.netIncomeEnd : ''}`, ni >= 0 ? 'pos' : 'neg');
         add(null, `NET MARGIN · ${niTag}`, m == null ? (c.marginNA ? 'n/a' : '—') : `${m.toFixed(1)}%`, 'Net income ÷ revenue', m >= 0 ? 'pos' : 'neg');
@@ -5185,7 +5185,7 @@ async function renderCompanyPageBody(el, c, all) {
             : { v: '—', cls: '', t: c.epsCagrNA ? `No EPS growth: ${c.epsCagrNA}.` : 'No EPS growth rate' };
         add(null, `EPS GROWTH${c.cagrYears ? ' · ' + c.cagrYears + 'Y' : ''}`, epsTile.v, epsTile.t, epsTile.cls);
         add('roic', `RETURN ON CAPITAL${c.roicBasis ? ' · ' + c.roicBasis : ''}`, c.roic != null ? c.roic.toFixed(1) + '%' : '—', 'Net income ÷ (equity + debt − cash) — approximate return on capital', c.roic >= 0 ? 'pos' : 'neg');
-        add('netDebtEbitda', `NET DEBT / EBITDA${c.netDebtEbitdaBasis ? ' · ' + c.netDebtEbitdaBasis : ''}`, c.netDebtEbitda != null ? c.netDebtEbitda.toFixed(1) + '×' : '—', '(Debt − cash) ÷ (operating income + D&A) — years of EBITDA to clear net debt');
+        add('netDebtEbitda', `NET DEBT / EBITDA${c.netDebtEbitdaBasis ? ' · ' + c.netDebtEbitdaBasis : ''}`, c.netDebtEbitda != null ? c.netDebtEbitda.toFixed(1) + '×' : (c.debtNA ? '<em class="co-approx" title="' + esc(c.debtNA) + '">n/d</em>' : '—'), c.debtNA || '(Debt − cash) ÷ (operating income + D&A) — years of EBITDA to clear net debt');
         if (c.sector !== 'Financials') {
           add('ebitYield', 'EBIT YIELD', c.ebitYield != null ? c.ebitYield.toFixed(1) + '%' : '—', 'Operating income ÷ enterprise value — the cash-flow yield on the whole business', c.ebitYield >= 0 ? 'pos' : 'neg');
           add('assetTurnover', 'ASSET TURNOVER', c.assetTurnover != null ? c.assetTurnover.toFixed(2) + '×' : '—', 'Revenue ÷ assets — how hard the asset base works');

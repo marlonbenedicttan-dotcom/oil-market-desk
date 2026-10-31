@@ -124,7 +124,22 @@ for (const c of data.companies) {
   // EV needs net debt. When a company tags neither debt nor cash, EV would silently equal market cap,
   // so mark it rather than present a guess as a measurement.
   c.evApprox = c.debt == null && c.cash == null;
-  c.ev = c.marketCap != null ? c.marketCap + (c.debt || 0) - (c.cash || 0) : null;
+  // Enterprise value. Berkshire and a few others file a custom taxonomy and tag neither a debt total nor
+  // short-term investments, so the parts are used where they exist and the gap is recorded rather than
+  // silently treating a missing debt figure as zero.
+  if (c.marketCap != null) {
+    const debtKnown = c.debt != null;
+    const cashKnown = c.cash != null;
+    c.ev = c.marketCap + (debtKnown ? c.debt : 0) - (cashKnown ? c.cash : 0);
+    c.evParts = { debt: debtKnown, cash: cashKnown };
+  // Some filers (Berkshire is the obvious one) tag no debt total at all. Say so rather than printing a
+  // dash that looks like a computation failure.
+  if (!debtKnown) c.debtNA = 'this company does not tag a debt total in its XBRL filings';
+    c.evApprox = !debtKnown && !cashKnown ? 'neither debt nor cash is tagged'
+      : !debtKnown ? 'debt is not tagged — EV excludes it'
+      : !cashKnown ? 'cash is not tagged — EV excludes it'
+      : null;
+  } else { c.ev = null; }
   // Operating income from a decade ago is not operating income. KLA's tag last filed in 2014, which
   // made EV/EBITDA look like 166x on a 2014 profit.
   if (c.opIncEnd && newestTTM && newestTTM - Date.parse(c.opIncEnd) > 730 * 86400000) { c.opInc = null; c.opIncStale = true; }
@@ -139,7 +154,11 @@ for (const c of data.companies) {
       c.ebitdaTTMBasis = 'quarters + D&A';
     }
   }
-  const ebitda = c.ebitdaTTM != null ? c.ebitdaTTM : (opInc != null ? opInc + (c.da || 0) : null);
+  // EBITDA from its parts when they exist: Berkshire tagged a total of 66B while its own operating income
+  // was 82B and D&A 13B. The parts win.
+  const fromParts = opInc != null && c.da != null ? opInc + c.da : null;
+  const ebitda = fromParts != null ? fromParts : (c.ebitdaTTM != null ? c.ebitdaTTM : null);
+  if (fromParts != null) c.ebitda = fromParts;
   // EBITDA is not a bank metric: deposits are operating liabilities and interest is the business.
   // EBITDA is not a bank metric, but a conglomerate classified as Financials (Berkshire) operates real
   // assets and reports capex — for those the ratio is meaningful.
@@ -256,12 +275,19 @@ for (const c of data.companies) {
   // an insurer has no EBITDA. Showing "n/a" in a tile is worse than not showing the tile, so these are
   // listed here and the page omits them.
   const sicNum = Number(c.sic) || 0;
-  const bankOrInsurer = (sicNum >= 6000 && sicNum < 6200) || sicNum === 6199 || (sicNum >= 6300 && sicNum < 6400);
-  if (bankOrInsurer) {
+  const isBankOnly = (sicNum >= 6000 && sicNum < 6200) || sicNum === 6199;
+  const isInsurerOnly = sicNum >= 6300 && sicNum < 6400;
+  if (isBankOnly) {
+    // A bank has no current ratio, no enterprise value and no EBITDA — those ratios do not exist for it.
     c.naRatios = ['evEbitda', 'ev', 'currentRatio', 'netDebtEbitda', 'roic', 'ebitYield', 'assetTurnover', 'fcfYield', 'cashConversion', 'freeCashFlow', 'debtEquity'];
     c.roic = null; c.evEbitda = null; c.currentRatio = null; c.netDebtEbitda = null;
     c.ebitYield = null; c.fcfYield = null; c.cashConversion = null; c.ev = null; c.debtEquity = null;
     c.assetTurnover = null;
+  } else if (isInsurerOnly) {
+    // An insurer has no current-asset split, but it does have an enterprise value, cash flow and a return
+    // on capital — Berkshire is a conglomerate, not a bank.
+    c.naRatios = ['currentRatio'];
+    c.currentRatio = null;
   } else if (c.sector === 'Real estate') {
     // REITs report no current assets/liabilities split.
     c.naRatios = ['currentRatio'];
