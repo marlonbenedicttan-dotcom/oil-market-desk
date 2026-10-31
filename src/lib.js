@@ -701,3 +701,62 @@ export function frontExpiry(root, refIso) {
   }
   return null;
 }
+
+// ── Trailing-twelve-month reconciliation ──────────────────────────────────────────────────────────
+// The headline TTM profit and the quarterly table are filled from two different caches. When one
+// refreshed and the other did not, the page showed a trailing figure the quarters below it did not add
+// up to — 110 US companies were more than 10% apart, and 140 kept a fiscal year while four newer
+// quarters sat beside it. The quarters win when they are the newer window: they are contiguous and
+// they are what the reader can add up. The fiscal year still wins when the quarter table is the stale
+// side, which is recorded as `ttmQuarterGap` instead of being hidden.
+const TTM_DAY = 86400000;
+
+/** Four consecutive quarters, each ~91 days after the last (52/53-week calendars allowed). */
+export function quartersContiguous(q) {
+  if (!Array.isArray(q) || q.length < 2) return true;
+  return q.every((x, i) => i === 0
+    || (() => { const d = (Date.parse(x.end) - Date.parse(q[i - 1].end)) / TTM_DAY; return d >= 80 && d <= 100; })());
+}
+
+/** Reconcile `netIncomeTTM` with the last four quarters in place. Returns what changed. */
+export function reconcileTtm(rows) {
+  const stat = { adopted: 0, held: 0, gaps: 0, unresolved: 0, changes: [] };
+  for (const c of rows || []) {
+    const q = (c.quarters || []).slice(-4);
+    const complete = q.length === 4 && q.every((x) => x.netIncome != null) && quartersContiguous(q);
+    if (!complete) {
+      c.ttmFromQuarters = false;
+      c.ttmQuarterGap = false;
+      if (c.netIncomeTTM != null && !(c.quarters || []).length) stat.unresolved++;
+      continue;
+    }
+    const sum = q.reduce((a, x) => a + x.netIncome, 0);
+    const lastEnd = q[3].end;
+    const asOf = c.netIncomeTTMAsOf || null;
+    const diff = c.netIncomeTTM == null ? Infinity : Math.abs(sum - c.netIncomeTTM) / Math.abs(c.netIncomeTTM || 1);
+    const quartersNewer = !asOf || lastEnd > asOf;
+    const samePeriod = asOf && lastEnd === asOf;
+
+    if (quartersNewer || (samePeriod && diff > 0.02)) {
+      if (c.netIncomeTTM !== sum || asOf !== lastEnd) {
+        stat.changes.push([c.ticker, c.netIncomeTTM, asOf, sum, lastEnd]);
+        c.netIncomeTTM = sum;
+        c.netIncomeTTMAsOf = lastEnd;
+        stat.adopted++;
+      }
+      c.ttmFromFY = false;
+      c.ttmRejected = null;
+      c.ttmFromQuarters = true;
+      c.ttmQuarterGap = false;
+    } else if (asOf && lastEnd < asOf) {
+      c.ttmFromQuarters = false;
+      c.ttmQuarterGap = true;
+      stat.gaps++;
+    } else {
+      c.ttmFromQuarters = false;
+      c.ttmQuarterGap = false;
+      stat.held++;
+    }
+  }
+  return stat;
+}

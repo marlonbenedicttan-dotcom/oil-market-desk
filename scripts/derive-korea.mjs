@@ -86,6 +86,23 @@ export function ttmKr(quarters) {
   return { revenue: null, operatingProfit: null, netIncome: null, basis: 'FY', n: last.length };
 }
 
+// A filer sometimes files a period in the wrong unit: DY E&C's 2026 half-year revenue is ₩253T against
+// a ₩633B year, a thousand times its own business. The API returns exactly what was filed, so the only
+// defence is to compare each report with the company's own annual scale and drop the impossible ones —
+// a missing quarter is honest, a fabricated one is not.
+export const saneReports = (rows) => {
+  const annuals = rows.filter((r) => r.report === 'annual' && r.revenue > 0).sort((a, b) => String(a.end).localeCompare(String(b.end)));
+  if (annuals.length < 1) return rows;
+  const scale = Math.max(...annuals.slice(-2).map((r) => r.revenue));
+  return rows.filter((r) => {
+    if (r.report === 'annual') return true;
+    if (r.revenue != null && (r.revenue > scale * 20 || r.revenue < scale / 20)) return false;
+    if (r.netIncome != null && Math.abs(r.netIncome) > scale * 20) return false;
+    if (r.revenue > 0 && r.netIncome != null && Math.abs(r.netIncome) > r.revenue * 20) return false;
+    return true;
+  });
+};
+
 export function deriveKorea({ companies, fx = null }) {
   const out = [];
   for (const c of companies) {
@@ -108,12 +125,17 @@ export function deriveKorea({ companies, fx = null }) {
       const absurd = (annual?.revenue && capGuess > annual.revenue * 10000) || shares > epsShares * 20;
       if (absurd) shares = epsShares;
     }
-    const cap = price != null && shares > 0 ? price * shares : null;
+    const sharesDart = shares || null;
+    // The market's own cap counts the shares listed today; DART's table is last year's count. When the
+    // two disagree the market wins, and the share count is derived back from the cap so that
+    // price × shares reproduces it exactly.
+    const cap = c.naverCap ?? (price != null && shares > 0 ? price * shares : null);
+    if (cap && price) shares = cap / price;
 
-    let q = buildQuartersKr(c.reports || []);
+    let q = buildQuartersKr(saneReports(c.reports || []));
     let quartersBasis = 'cumulative';
     if (!q.length) {
-      const alt = buildQuartersKrStandalone(c.reports || []);
+      const alt = buildQuartersKrStandalone(saneReports(c.reports || []));
       if (alt.length) { q = alt; quartersBasis = 'standalone'; }
     }
     const ttm = ttmKr(q);
@@ -128,6 +150,9 @@ export function deriveKorea({ companies, fx = null }) {
     const cfo = fy ? fy.operatingCashFlow : null;
     const cfi = fy ? fy.investingCashFlow : null;
     const fcf = cfo != null && cfi != null ? cfo + cfi : null;
+    // A P/E under 0.01 is not a cheap stock, it is a division by a rounding artefact (a quarterly profit
+    // larger than the whole company). Publish no P/E rather than a zero.
+    const peRaw = cap && ni > 0 ? cap / ni : null;
 
     out.push({
       ...c,
@@ -135,9 +160,11 @@ export function deriveKorea({ companies, fx = null }) {
       marketCapUsd: cap && fx ? Math.round(cap / fx) : null,
       // Publish the count the cap was actually built from, so price × shares reconciles on screen.
       shares: shares || null,
+      sharesDart,
+      sharesBasis: c.naverCap ? 'market' : 'filing',
       sharesIssued: c.sharesIssued || null,
       currency: 'KRW',
-      pe: round(guard(cap && ni > 0 ? cap / ni : null, 0, 500), 2),
+      pe: peRaw != null && peRaw > 0.01 ? round(guard(peRaw, 0, 500), 2) : null,
       peBasis: basis,
       pb: round(guard(cap && equity > 0 ? cap / equity : null, 0, 50), 2),
       // ROE needs positive book equity: dividing by negative equity flips the sign, so a profitable

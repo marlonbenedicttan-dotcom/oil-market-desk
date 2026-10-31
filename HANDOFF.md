@@ -2966,3 +2966,56 @@ Audited at 360, 390 and 430 px with screenshots of every view, then fixed what l
 - **Secrets** `DART_API_KEY` and `JQUANTS_API_KEY` are present in the GitHub repo.
 - **Not live yet**: the workflows run `main`, and the fixes on this machine are uncommitted. Push before
   the next weekday run (Tuesday 01:10 UTC) or CI will refresh data with the old code.
+
+## Three-market audit: the chart file, Korea's caps, and a year-stale TTM (2026-11-01)
+- **The committed chart series was wiped by CI.** `data/us-charts.json` went from 6.7 MB to 36 bytes
+  (`series: {}`) in the 2026-10-31 daily commit, so every US company chart fell back to Yahoo, which
+  rate-limits this host — the exact failure the file was created to fix. Cause: `build-us-charts.mjs`
+  reads `data/cache/charts`, which is gitignored and therefore empty in CI, and it wrote the empty
+  result over the committed file. It now starts from what is committed, keeps any ticker it could not
+  rebuild, and refuses to write at all when the cache is empty (`no chart cache found — keeping the
+  502 committed series`). Reproduced the CI case by hiding the cache: the file is unchanged.
+- **Korea's market caps were stale after 2026 splits and consolidations.** The share count comes from
+  DART's stock table for the **previous fiscal year**, so a 1:5 split left LS ELECTRIC at a fifth of
+  its cap and a 1:10 consolidation left 신성이엔지 ten times too large. Checked against Naver's own
+  market-value feed (25 pages, 2,481 issues): **159 of 746 companies were more than 10% off, 49 by more
+  than 100%**, in both directions. The market's cap is now the authority and the share count is derived
+  back from it, so price × shares still reconciles on screen. `sharesDart` keeps the filing's number and
+  `sharesBasis` says which was used. KOSPI total **₩4,358.22T → ₩4,459.29T**; Samsung ₩1,289.1T and SK
+  Hynix ₩1,016.1T, both matching Naver.
+- **244 of 746 share counts differ from the last annual report by more than 5%** — that is the size of
+  the split/consolidation drift, now reported by the audit instead of silently mis-capitalising.
+- **Dividends paid had mixed signs.** DART tags `DividendsPaid` as an outflow for some filers and a
+  positive amount for others (Samsung's 2023 annual is −₩102.0B, 2024 is +₩10.9T), so **52 companies
+  published a negative payout yield**. `mapAccounts` now keeps the magnitude.
+- **A Korean filing in the wrong unit was published as fact.** DY E&C's 2026 half-year revenue is filed
+  as ₩253T against a ₩633B year — 400× its own business — which produced a ₩14.5T quarter and a
+  **P/E of 0.00**. Reports more than 20× out of line with the company's own annual revenue are dropped
+  (a missing quarter is honest), and a P/E that rounds below 0.01 is now `null`.
+- **The US headline TTM was up to a year behind the quarterly table.** The concept cache and the broad
+  facts cache refresh independently; 173 of 500 companies had a `netIncomeTTM` that did not equal the
+  four quarters shown beside it, and 140 had fallen back to a fiscal year with newer quarters right
+  there. `reconcile-ttm.mjs` makes the contiguous quarter window the trailing figure when it is the
+  newer side: **GOOGL $132.17B (2025-12-31) → $235.69B (2026-09-30)**, NVDA $120.07B → $192.88B, AMZN
+  $77.67B → $134.78B, MRK $18.25B → $3.17B (two loss quarters). 163 companies corrected; where the
+  quarter table is the *older* side it is flagged (`ttmQuarterGap`), not silently overridden.
+- **`ttm-earnings` selected the wrong tag.** `fresh.find((x) => x.ttm)` always matched the highest-priority
+  tag because `trailing()` returns an object even on failure, so a tag whose quarters stopped a year
+  earlier won over one that was current. It now requires a value and picks the latest window. The
+  plausibility band (0.2×–5× the fiscal year) also rejected legitimate near-zero years — APD's −$0.39B
+  year against a −$0.05B trailing year — so below $0.5B the ratio is treated as noise.
+- **The daily refresh never re-read anything for the companies it detected.** `--only` still served the
+  permanent concept cache, so "new filing detected" produced the same old number. `--only` now forces a
+  refetch, and the daily job also runs `resolve-quarters --fetch` and `resolve-fundamentals` for those
+  filers before reconciling the TTM.
+- **New `audit-markets.mjs`**, wired into `audit:all` and `companies:verify`: 28 checks across the three
+  markets that reproduce every published ratio from its own inputs (cap ÷ TTM profit, cap ÷ equity,
+  op ÷ sales), check JPX's PER×EPS and PBR×BPS against the price, check Korea against Naver, and fail
+  when the TTM is not the four quarters shown. **0 failures**; 284 warnings, all labelled: 15 JP P/B
+  filing-date differences, 21 JP ROE-vs-FY-sign (JPX ROE is trailing), 4 US multi-class caps, 244 KR
+  split drifts.
+- **Verified**: `npm run audit:all` exits 0 · 0 reconciliation mismatches · 0 coherence · 0 universe ·
+  180 tests pass. Snapshot baseline refreshed after the deliberate TTM corrections.
+- **Still open**: Japan publishes JPX's trailing ROE beside the fiscal-year profit with no `roeBasis`
+  label; Korea's 41 FY-basis P/Es are young listings/REITs without four quarters; the 13 companies whose
+  quarter table has a hole keep the concept-based TTM and are flagged rather than guessed.

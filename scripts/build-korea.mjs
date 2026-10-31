@@ -204,6 +204,41 @@ const priced = await pool(universe, 4, async (c) => {
 const withPrices = priced.filter(Boolean);
 console.log(`  ${withPrices.length} with prices`);
 
+// --- 3b. the market's own market cap ------------------------------------------------------------
+// DART's share table is the previous fiscal year's count, so a split or a consolidation since then
+// leaves it stale — LS ELECTRIC's 1:5 split made our cap a fifth of the market's, and 159 of 746
+// companies were off by more than 10%. Naver publishes the count the market actually capitalises, so
+// its cap is the authority (the role JPX's MktCap plays for Japan), and the share count is derived
+// back from it so price × shares still reconciles on screen.
+const CAPS_FILE = join(ROOT, 'data', 'cache', 'naver-caps.json');
+let caps = readJson(CAPS_FILE);
+const capsFresh = caps && Date.parse(caps.fetched) > Date.now() - 18 * 3600e3;
+if (!capsFresh) {
+  console.log('market caps…');
+  const got = {};
+  try {
+    for (let page = 1; page <= 40; page++) {
+      const res = await fetch(`https://m.stock.naver.com/api/stocks/marketValue/KOSPI?page=${page}&pageSize=100`, { headers: { 'User-Agent': UA } });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const j = await res.json();
+      const list = j.stocks || [];
+      for (const s of list) {
+        // marketValue is in 억원 (100 million won).
+        const cap = Number(String(s.marketValue ?? '').replace(/[^\d]/g, '')) * 1e8;
+        if (!s.itemCode || !(cap > 0)) continue;
+        got[s.itemCode] = { cap, price: Number(String(s.closePrice ?? '').replace(/[^\d.]/g, '')) || null, at: s.localTradedAt || null };
+      }
+      if (list.length < 100) break;
+      await sleep(120);
+    }
+    if (Object.keys(got).length) { caps = { fetched: new Date().toISOString(), caps: got }; writeJson(CAPS_FILE, caps); }
+  } catch (e) {
+    console.log(`  Naver caps unavailable (${e.message}) — falling back to DART share counts`);
+  }
+}
+const capBy = new Map(Object.entries(caps?.caps || {}));
+if (capBy.size) console.log(`  market caps for ${capBy.size} issues`);
+
 // --- 4. financial statements --------------------------------------------------------------------
 console.log('financials…');
 const thisYear = new Date().getFullYear();
@@ -265,7 +300,9 @@ const collected = await pool(withPrices, 2, async (c) => {
     code: c.corp, ticker: c.ticker, name: c.name, nameEn: c.nameEn || null, industry: c.industry || null,
     price: c.price, priceDate: c.priceDate,
     chg1d: c.chg1d, chg6m: c.chg6m, chgYtd: c.chgYtd,
-    series: c.series, shares: c.shares, sharesIssued: c.sharesIssued || null, reports,
+    series: c.series, shares: c.shares, sharesIssued: c.sharesIssued || null,
+    naverCap: capBy.get(c.ticker)?.cap ?? null,
+    reports,
   };
 });
 const companies = collected.filter(Boolean);

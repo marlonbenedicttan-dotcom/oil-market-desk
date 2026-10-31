@@ -24,12 +24,19 @@ const LIMIT = Number((process.argv.find((x) => x.startsWith('--limit=')) || '--l
 const CACHE = join(ROOT, 'data', 'cache', 'concepts');
 mkdirSync(CACHE, { recursive: true });
 
+const ONLY = (process.argv.find((x) => x.startsWith('--only=')) || '').split('=')[1];
+const onlySet = ONLY ? new Set(ONLY.split(',').map((x) => x.trim().toUpperCase())) : null;
+// --only names the companies whose filings changed, so their cached concepts are by definition stale.
+// Refetching them is the whole point; without this the daily pass re-read the old file and wrote the
+// same year-old TTM back.
+const FORCE = !!onlySet || process.argv.includes('--force');
+
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 let last = 0;
 
 async function concept(cik, tag) {
   const file = join(CACHE, `${cik}_${tag}.json`);
-  if (existsSync(file)) {
+  if (!FORCE && existsSync(file)) {
     try { return JSON.parse(readFileSync(file, 'utf8')); } catch { /* refetch */ }
   }
   for (let i = 0; i < 3; i++) {
@@ -78,7 +85,7 @@ const slimFacts = (j) => {
 
 async function factsDoc(cik) {
   const file = join(FACTS, `${cik}.json`);
-  if (existsSync(file)) {
+  if (!FORCE && existsSync(file)) {
     try { return JSON.parse(readFileSync(file, 'utf8')); } catch { /* refetch */ }
   }
   try {
@@ -171,8 +178,6 @@ function trailing(usd, fy) {
 const TAGS = ['NetIncomeLossAvailableToCommonStockholdersBasic', 'NetIncomeLoss', 'NetIncomeLossAttributableToParent', 'ProfitLoss'];
 
 const data = JSON.parse(readFileSync(FILE, 'utf8'));
-const ONLY = (process.argv.find((x) => x.startsWith('--only=')) || '').split('=')[1];
-const onlySet = ONLY ? new Set(ONLY.split(',').map((x) => x.trim().toUpperCase())) : null;
 const todo = data.companies.filter((c) => c.cik && (!onlySet || onlySet.has(String(c.ticker || '').toUpperCase()))).slice(0, LIMIT);
 console.log(`${todo.length} companies`);
 
@@ -197,7 +202,16 @@ for (const c of todo) {
     // quarterly data, then scope priority. Without the middle rule, a tag with an annual figure but no
     // quarters wins on priority and the company loses its TTM entirely (NVIDIA, Microsoft, AMD).
     const fresh = cands.filter((x) => Date.parse(x.fy.end) >= newestEnd - 30 * 86400000);
-    best = fresh.find((x) => x.ttm) || fresh[0] || cands[0];
+    // `x.ttm` is an object even when it failed (it carries a `reason`), so testing it for truthiness
+    // always matched the highest-priority tag — even one whose quarterly series stopped a year before
+    // another tag's. A usable TTM has a value; among usable ones take the latest window.
+    const usable = fresh.filter((x) => x.ttm && x.ttm.val != null);
+    if (usable.length) {
+      usable.sort((a, b) => Date.parse(b.ttm.asOf) - Date.parse(a.ttm.asOf));
+      best = usable[0];
+    } else {
+      best = fresh[0] || cands[0];
+    }
   }
   done++;
   if (done % 50 === 0) console.log(`  … ${done}`);
@@ -232,7 +246,12 @@ for (const c of todo) {
   const fy = best.fy;
   const hasTTM = t && t.val != null;
   const fresh = hasTTM && (!fy || Date.parse(t.asOf) > Date.parse(fy.end));
-  const sane = !fresh || !fy || fy.val === 0 ? fresh : (Math.abs(t.val / fy.val) >= 0.2 && Math.abs(t.val / fy.val) <= 5);
+  // The band catches a tag that summed the wrong decade (3B against a 23B year). It misfires when the
+  // fiscal year is itself near zero: APD's FY2025 was -$0.39B and its next trailing year -$0.05B, a
+  // legitimate 88% swing that the ratio read as implausible. Below half a billion the ratio is noise.
+  const scale = fy ? Math.max(Math.abs(fy.val), Math.abs(t?.val || 0)) : 0;
+  const sane = !fresh || !fy || fy.val === 0 || scale < 5e8
+    || (Math.abs(t.val / fy.val) >= 0.2 && Math.abs(t.val / fy.val) <= 5);
   if (fresh && sane) {
     c.netIncomeTTM = t.val;
     c.netIncomeTTMAsOf = t.asOf;

@@ -101,19 +101,28 @@ export function mapAccounts(rows) {
   };
   const out = {};
   for (const [field, keys] of Object.entries(ACCOUNTS)) out[field] = pick(keys);
+  // Dividends paid is an outflow for some filers and a positive amount for others (Samsung's 2023
+  // annual is -₩102.0B, 2024 is +₩10.9T). The field means cash returned to shareholders, so the
+  // magnitude is the number — otherwise payout yield goes negative for 220 of 746 companies.
+  if (out.dividendsPaid != null) out.dividendsPaid = Math.abs(out.dividendsPaid);
   return out;
 }
 
 export function makeDartClient(opts = {}) {
   const key = opts.key || process.env.DART_API_KEY;
-  if (!key) {
-    throw new Error(
-      'DART_API_KEY is not set. Register a free key at https://opendart.fss.or.kr, then:\n' +
-      '  export DART_API_KEY=...\n' +
-      'It is never written to the repository.',
-    );
-  }
-  if (String(key).length !== 40) throw new Error(`DART_API_KEY should be 40 characters, got ${String(key).length}`);
+  // The key is checked when a call is actually made, not when the client is created: a rebuild that is
+  // served entirely from the on-disk cache needs no key at all, and it should not demand one.
+  const requireKey = () => {
+    if (!key) {
+      throw new Error(
+        'DART_API_KEY is not set. Register a free key at https://opendart.fss.or.kr, then:\n' +
+        '  export DART_API_KEY=...\n' +
+        'It is never written to the repository.\n' +
+        'Only cached statements can be rebuilt without one.',
+      );
+    }
+    if (String(key).length !== 40) throw new Error(`DART_API_KEY should be 40 characters, got ${String(key).length}`);
+  };
   // DART asks for roughly one request a second. A parallel burst tripped their limiter and got this
   // machine blocked for hours, so the default is deliberately slower than the theoretical maximum.
   const gap = opts.gap ?? 700;
@@ -121,6 +130,7 @@ export function makeDartClient(opts = {}) {
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
   async function call(path, params, raw = false) {
+    requireKey();
     const url = new URL(`${BASE}/${path}`);
     url.searchParams.set('crtfc_key', key);
     for (const [k, v] of Object.entries(params || {})) if (v != null && v !== '') url.searchParams.set(k, v);

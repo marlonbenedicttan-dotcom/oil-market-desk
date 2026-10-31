@@ -1,0 +1,267 @@
+{
+ "checked": "2026-10-31T20:49:31.400Z",
+ "markets": {
+  "us": {
+   "name": "US",
+   "rows": 503,
+   "checks": [
+    {
+     "check": "market cap vs price × shares",
+     "severity": "warn",
+     "count": 4,
+     "detail": "A share class Nasdaq capitalises but the filing does not count"
+    },
+    {
+     "check": "market cap vs price × shares",
+     "severity": "fail",
+     "count": 0,
+     "detail": "Off by more than a share class"
+    },
+    {
+     "check": "P/E = cap ÷ TTM profit",
+     "severity": "fail",
+     "count": 0,
+     "detail": "P/E does not reproduce from its own inputs"
+    },
+    {
+     "check": "P/B = cap ÷ equity",
+     "severity": "fail",
+     "count": 0,
+     "detail": "P/B does not reproduce from its own inputs"
+    },
+    {
+     "check": "ROE = TTM profit ÷ equity",
+     "severity": "fail",
+     "count": 0,
+     "detail": "ROE does not reproduce from its own inputs"
+    },
+    {
+     "check": "ratio present where it cannot exist",
+     "severity": "fail",
+     "count": 0,
+     "detail": "A P/E on a loss, or a P/B on negative equity"
+    },
+    {
+     "check": "TTM profit vs the quarterly table",
+     "severity": "fail",
+     "count": 0,
+     "detail": "The trailing figure is not the four quarters shown"
+    },
+    {
+     "check": "TTM older than the last quarter",
+     "severity": "fail",
+     "count": 0,
+     "detail": "Newer quarters exist than the headline window"
+    },
+    {
+     "check": "non-finite or impossible values",
+     "severity": "fail",
+     "count": 0,
+     "detail": "NaN, negative price or negative market cap"
+    },
+    {
+     "check": "duplicate tickers",
+     "severity": "fail",
+     "count": 0,
+     "detail": "The same company listed twice"
+    }
+   ],
+   "fail": 0,
+   "warn": 4,
+   "examples": {
+    "market cap vs price × shares": [
+     "COIN (-8.1%)",
+     "LH (10.7%)",
+     "FOXA (-8.5%)",
+     "UHS (-8.6%)"
+    ]
+   },
+   "coverage": {
+    "companies": 503,
+    "marketCap": 503,
+    "pe": 477,
+    "pb": 469,
+    "ttm": 502,
+    "quarters8": 499
+   }
+  },
+  "japan": {
+   "name": "Japan",
+   "rows": 1547,
+   "checks": [
+    {
+     "check": "JPX PER × EPS = price",
+     "severity": "fail",
+     "count": 0,
+     "detail": "The exchange ratio and our price are not the same day"
+    },
+    {
+     "check": "JPX PBR × BPS = price",
+     "severity": "fail",
+     "count": 0,
+     "detail": "The exchange ratio and our price are not the same day"
+    },
+    {
+     "check": "P/B vs the filing’s equity",
+     "severity": "warn",
+     "count": 15,
+     "detail": "JPX values equity at a later filing date"
+    },
+    {
+     "check": "P/B vs the filing’s equity",
+     "severity": "fail",
+     "count": 0,
+     "detail": "More than a filing-date difference"
+    },
+    {
+     "check": "operating margin = op ÷ sales",
+     "severity": "fail",
+     "count": 0,
+     "detail": "Margin does not reproduce from its own inputs"
+    },
+    {
+     "check": "duplicate fiscal years",
+     "severity": "fail",
+     "count": 0,
+     "detail": "An amended filing printed the same year twice"
+    },
+    {
+     "check": "latest fiscal year older than 18 months",
+     "severity": "warn",
+     "count": 0,
+     "detail": "Labelled as stale, not a calculation error"
+    },
+    {
+     "check": "non-finite or impossible values",
+     "severity": "fail",
+     "count": 0,
+     "detail": "NaN, negative price or negative market cap"
+    },
+    {
+     "check": "ROE sign disagrees with the fiscal-year profit",
+     "severity": "warn",
+     "count": 21,
+     "detail": "JPX ROE is trailing; NP is the fiscal year"
+    }
+   ],
+   "fail": 0,
+   "warn": 36,
+   "examples": {
+    "P/B vs the filing’s equity": [
+     "285A0 (21.8%)",
+     "77350 (5.0%)",
+     "18780 (8.7%)",
+     "45060 (5.6%)",
+     "79880 (-9.7%)",
+     "21270 (7.3%)",
+     "46170 (6.6%)",
+     "67370 (-16.5%)"
+    ],
+    "ROE sign disagrees with the fiscal-year profit": [
+     "45020 (ROE 0.6% vs NP $-152.39B)",
+     "67230 (ROE 23.6% vs NP $-51.76B)",
+     "95020 (ROE -7.6% vs NP $227.79B)",
+     "95010 (ROE 9.7% vs NP $-454.26B)",
+     "25790 (ROE 5.3% vs NP $-50.76B)",
+     "94680 (ROE -2.5% vs NP $1.28B)",
+     "65880 (ROE 4.8% vs NP $-2.29B)",
+     "96030 (ROE -4% vs NP $4.72B)"
+    ]
+   },
+   "coverage": {
+    "companies": 1547,
+    "marketCap": 1547,
+    "pe": 1485,
+    "pb": 1543,
+    "roe": 1537,
+    "jpxRatio": 1462
+   }
+  },
+  "korea": {
+   "name": "Korea",
+   "rows": 746,
+   "checks": [
+    {
+     "check": "market cap vs price × shares",
+     "severity": "fail",
+     "count": 0,
+     "detail": "The cap must reproduce from the published count"
+    },
+    {
+     "check": "market cap vs Naver",
+     "severity": "warn",
+     "count": 0,
+     "detail": "A split or a stale print since the cap was read"
+    },
+    {
+     "check": "market cap vs Naver",
+     "severity": "fail",
+     "count": 0,
+     "detail": "More than a rounding difference"
+    },
+    {
+     "check": "P/E = cap ÷ TTM profit",
+     "severity": "fail",
+     "count": 0,
+     "detail": "P/E does not reproduce from its own inputs"
+    },
+    {
+     "check": "P/B = cap ÷ equity",
+     "severity": "fail",
+     "count": 0,
+     "detail": "P/B does not reproduce from its own inputs"
+    },
+    {
+     "check": "negative dividend or payout yield",
+     "severity": "fail",
+     "count": 0,
+     "detail": "Dividends paid is a magnitude, never negative"
+    },
+    {
+     "check": "duplicate annual reports",
+     "severity": "fail",
+     "count": 0,
+     "detail": "The same fiscal year filed twice"
+    },
+    {
+     "check": "non-finite or impossible values",
+     "severity": "fail",
+     "count": 0,
+     "detail": "NaN, negative price, zero or negative share count"
+    },
+    {
+     "check": "share count differs from the filing",
+     "severity": "info",
+     "count": 244,
+     "detail": "A split or consolidation since the last annual report"
+    }
+   ],
+   "fail": 0,
+   "warn": 244,
+   "examples": {
+    "share count differs from the filing": [
+     "032830 (filing 179,574,779 → listed 200,000,000)",
+     "068270 (filing 218,613,124 → listed 232,073,081)",
+     "034730 (filing 55,086,352 → listed 72,502,730)",
+     "000810 (filing 39,828,296 → listed 44,647,481)",
+     "010120 (filing 29,738,491 → listed 150,000,000)",
+     "006800 (filing 436,049,860 → listed 543,021,869)",
+     "005830 (filing 60,643,469 → listed 65,500,542)",
+     "267250 (filing 70,668,430 → listed 78,992,811)"
+    ]
+   },
+   "coverage": {
+    "companies": 746,
+    "marketCap": 746,
+    "pe": 558,
+    "peTTM": 517,
+    "peFY": 41,
+    "pb": 735,
+    "roe": 739,
+    "naverMatched": 746
+   }
+  }
+ },
+ "failures": 0,
+ "warnings": 284
+}

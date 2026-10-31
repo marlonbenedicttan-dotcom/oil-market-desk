@@ -1,7 +1,7 @@
 {
- "generated": "2026-10-31T14:14:08.266Z",
+ "generated": "2026-10-31T20:47:56.421Z",
  "companies": 503,
- "total": 18,
+ "total": 17,
  "causes": {
   "EV/EBITDA above 100 (check D&A)": [
    {
@@ -44,7 +44,7 @@
   "P/E above 300 (check earnings)": [
    {
     "ticker": "TSLA",
-    "detail": "416.5"
+    "detail": "491.1"
    },
    {
     "ticker": "PANW",
@@ -52,19 +52,15 @@
    },
    {
     "ticker": "DDOG",
-    "detail": "784.1"
+    "detail": "475.7"
    },
    {
-    "ticker": "CIEN",
-    "detail": "368.7"
+    "ticker": "LYV",
+    "detail": "311.2"
    },
    {
-    "ticker": "MCHP",
-    "detail": "353.5"
-   },
-   {
-    "ticker": "TWLO",
-    "detail": "930.6"
+    "ticker": "DD",
+    "detail": "343.9"
    },
    {
     "ticker": "GPC",

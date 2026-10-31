@@ -22,7 +22,12 @@ const toIso = (mdY) => {
 };
 
 const data = JSON.parse(readFileSync(FILE, 'utf8'));
-const out = {};
+// The chart cache is gitignored, so CI starts with none. A build there used to write `series: {}`
+// over the committed file, which silently broke every company chart in production. Start from what is
+// committed and only replace the tickers this run actually has data for.
+const prev = existsSync(OUT) ? JSON.parse(readFileSync(OUT, 'utf8')) : { series: {} };
+const prevSeries = prev.series || {};
+const out = { ...prevSeries };
 let built = 0, skipped = 0;
 for (const c of data.companies) {
   if (!c.ticker) continue;
@@ -50,7 +55,18 @@ for (const c of data.companies) {
   built++;
 }
 
+// Never trade a good committed series for a thinner one: a partial cache or an API hiccup must not
+// delete history that is already published.
+if (built === 0 && Object.keys(prevSeries).length > 0) {
+  console.log(`no chart cache found — keeping the ${Object.keys(prevSeries).length} committed series`);
+  process.exit(0);
+}
+const prevCount = Object.keys(prevSeries).length;
+if (!prevCount) console.log('no committed chart series yet — building a fresh file');
+if (built > 0) for (const t of Object.keys(out)) if (!data.companies.some((c) => c.ticker === t)) delete out[t];
+const nextCount = Object.keys(out).length;
+
 writeFileSync(OUT + '.tmp', JSON.stringify({ updated: new Date().toISOString().slice(0, 10), series: out }));
 renameSync(OUT + '.tmp', OUT);
 const size = JSON.stringify(out).length;
-console.log(`charts for ${built} companies · ${skipped} without a cache · ${(size / 1024 / 1024).toFixed(1)} MB`);
+console.log(`charts for ${built} companies · ${skipped} without a cache · ${nextCount - built} carried over · ${(size / 1024 / 1024).toFixed(1)} MB`);

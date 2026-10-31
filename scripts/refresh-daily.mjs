@@ -41,6 +41,8 @@ if (changed.length) {
   const only = `--only=${changed.join(',')}`;
   console.log(`\n${changed.length} companies filed something new: ${changed.slice(0, 12).join(' ')}${changed.length > 12 ? ' …' : ''}`);
   step('earnings', ['scripts/ttm-earnings.mjs', only]);
+  step('quarters', ['scripts/resolve-quarters.mjs', only, '--fetch']);
+  step('annual fundamentals', ['scripts/resolve-fundamentals.mjs', only]);
   step('balance sheet', ['scripts/balance-pass.mjs', only]);
   step('period alignment', ['scripts/align-periods.mjs', only]);
   step('net income repair', ['scripts/fix-net-income.mjs', only]);
@@ -50,6 +52,9 @@ if (changed.length) {
   step('revenue definition', ['scripts/align-revenue.mjs']);
 }
 
+// The headline TTM and the quarterly table are filled from different caches; make them agree after
+// either has been refreshed, or the page shows a trailing profit the quarters below do not add up to.
+step('ttm vs quarters', ['scripts/reconcile-ttm.mjs']);
 step('ratios', ['scripts/derive-companies.mjs']);
 step('second source', ['scripts/reconcile-nasdaq.mjs']);
 step('verdicts', ['scripts/arbitrate.mjs']);

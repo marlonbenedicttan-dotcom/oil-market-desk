@@ -54,6 +54,7 @@ jobs:
           node scripts/detect-restatements.mjs
           node scripts/resolve-quarters.mjs
           node scripts/resolve-fundamentals.mjs
+          node scripts/reconcile-ttm.mjs
           node scripts/sync-series.mjs
           node scripts/build-us-charts.mjs
           node scripts/derive-companies.mjs
