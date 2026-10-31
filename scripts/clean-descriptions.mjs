@@ -48,9 +48,17 @@ for (const c of data.companies) {
   if (d) d = d[0].toUpperCase() + d.slice(1);
 
   // name the company if the text never does
-  const words = String(c.name || '').split(/\s+/).filter((w) => !/^(the|a|an|of|and|&)$/i.test(w));
-  const key = (words[0] || '').replace(/[,.]/g, '');
-  if (key && key.length >= 3 && !d.slice(0, 160).toLowerCase().includes(key.toLowerCase())) {
+  // "Lilly is a medicine company" names Eli Lilly; "AMD (NASDAQ: AMD)" names Advanced Micro Devices.
+  // Only prefix when the text identifies the company by none of its distinctive words or its ticker.
+  const flat = (x) => String(x).toLowerCase().replace(/[^a-z0-9]/g, '');
+  const words = String(c.name || '').split(/\s+/)
+    .map((x) => x.replace(/[^A-Za-z]/g, ''))
+    .filter((x) => x.length > 3 && !/^(the|company|holdings|group|corporation|incorporated|limited|companies)$/i.test(x));
+  const head = flat(d.slice(0, 160));
+  const tick = flat(c.ticker || '');
+  const names = words.some((x) => head.includes(flat(x))) || (tick.length > 1 && head.includes(tick));
+  const key = words[0] ? String(words[0]).slice(0, 3) : '';
+  if (!names && key) {
     const short = c.name.replace(/\s+(Inc\.?|Corp\.?|Corporation|Company|Co\.?|plc|Ltd\.?|Holdings?)$/i, '').replace(/[,\s&]+$/, '');
     d = `${short} — ${d}`;
     prefixed++;
