@@ -75,6 +75,10 @@ for (const c of data.companies) {
   c.description = `${c.nameEn || c.name} is a KOSPI-listed company${rev ? ` with ${won(rev)} of revenue` : ''}. No company profile was available, so this line is generated from the filing data.`;
   c.descSource = 'generated';
 }
+// Keep a committed copy: the cache is gitignored and CI would rebuild without it.
+const store = {};
+for (const c of data.companies) if (c.descSource === 'profile' && c.description) store[c.ticker] = c.description;
+writeFileSync(join(ROOT, 'data', 'korea-profiles.json'), JSON.stringify({ updated: new Date().toISOString().slice(0, 10), note: 'Fetched Korean company profiles from stockanalysis.com, keyed by ticker.', profiles: store }));
 data.updated = new Date().toISOString();
 writeFileSync(FILE + '.tmp', JSON.stringify(data));
 renameSync(FILE + '.tmp', FILE);
