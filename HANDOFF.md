@@ -2753,3 +2753,24 @@ Audited at 360, 390 and 430 px with screenshots of every view, then fixed what l
   workflow so a manual dispatch cannot overlap a scheduled run.
 - **Verified**: reproduced the race in a throwaway repo (human commit lands, CI commit tries to push) and
   the new block rebases and pushes, with the CI data winning.
+
+## US data: three real bugs, and the ceiling of the tag-whitelist approach (2026-10-31)
+- **Dividend yield was missing for most payers** (96 of 500). Nasdaq's `yield` field is blank for Coca-Cola,
+  Exxon, JPMorgan, AT&T, Verizon, McDonald's, Procter & Gamble. It is now computed from cash dividends
+  paid ÷ market cap when the exchange figure is absent, and labelled `computed` (404 of 500 now carry one;
+  the rest genuinely pay nothing). The HIGH YIELD screen went from 13 matches to 82.
+- **Net interest margin was computed for non-banks.** Insurers, brokers and asset managers also tag an
+  interest line, so Chubb, Moody's and T. Rowe Price showed a "NIM". NII/NIM/non-interest expense are now
+  only kept for SIC 60xx and 6199 — 10 companies, all banks.
+- **A rebuild reverted amendments.** `detect-restatements` writes the corrected value and keeps the record,
+  but the next rebuild rewrote the field from the original 10-K: TSLA's equity went back to $81.47B against
+  its own recorded 10-K/A value of $82.14B. `apply-restatements.mjs` now re-applies every recorded change
+  and runs inside both rebuild workflows.
+- **Quarterly revenue**: a single tag per company left 59 companies with eight blank quarters (Visa, Abbott,
+  HCA, Ford, JCI). Quarters are now merged across every candidate tag per period, with year-to-date figures
+  differenced when a filer only tags cumulative amounts. 50 companies still have gaps.
+- **What is still wrong, and why it needs a different approach**: operating income is present for only 72%
+  of companies, EBITDA 69%, TTM EPS 77%, and `epsDiluted` is never populated. The cause is the same one
+  behind the quarter gaps: the pipeline asks for a fixed list of XBRL tags. Companies that tag the same
+  concept differently get a null. The fix is a per-company `companyfacts` resolver with derivation rules
+  (opInc = revenue − costs; EBITDA = opInc + D&A; EPS = net income ÷ shares) rather than a longer whitelist.

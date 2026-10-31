@@ -63,6 +63,8 @@ jobs:
           node scripts/verify-filing-index.mjs
           node scripts/audit-calculations.mjs
           node scripts/audit-deep.mjs
+      - name: Re-apply recorded restatements
+        run: node scripts/apply-restatements.mjs
       - name: Commit if changed
         run: |
           git config user.name 'github-actions[bot]'

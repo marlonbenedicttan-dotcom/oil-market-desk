@@ -54,6 +54,8 @@ jobs:
           node scripts/build-korea.mjs --years=5
       - name: Calendar events
         run: node scripts/build-events.mjs
+      - name: Re-apply recorded restatements
+        run: node scripts/apply-restatements.mjs
       - name: Commit if changed
         run: |
           git config user.name 'github-actions[bot]'
