@@ -157,8 +157,24 @@ for (const c of data.companies) {
     ? +((c.noninterestExpense / c.revenue) * 100).toFixed(1) : null;
   if (c.efficiencyRatio != null && (c.efficiencyRatio < 10 || c.efficiencyRatio > 150)) c.efficiencyRatio = null;
 
-  c.nim = c.netInterestIncome != null && c.assets > 0 ? +((c.netInterestIncome / c.assets) * 100).toFixed(2) : null;
+  // Net interest margin is a BANK metric. Insurers, brokers and asset managers also tag an interest line
+  // (Chubb, Moody's, T. Rowe), and dividing it by assets produced a meaningless "margin". Only SIC 60xx
+  // (banks and savings institutions) and 6199 (consumer finance) get one.
+  const isBank = /^(60|6199)/.test(String(c.sic || ''));
+  c.nim = isBank && c.netInterestIncome != null && c.assets > 0
+    ? +((c.netInterestIncome / c.assets) * 100).toFixed(2) : null;
   if (c.nim != null && (c.nim < 0 || c.nim > 15)) c.nim = null;
+  if (!isBank) { c.netInterestIncome = null; c.noninterestExpense = null; c.efficiencyRatio = null; }
+
+  // Dividend yield. Nasdaq's own `yield` field is blank for several large caps — Coca-Cola, Exxon,
+  // JPMorgan, AT&T — so the page showed a dash for companies that have paid dividends for decades.
+  // Where the exchange figure is missing, compute it from cash dividends paid ÷ market cap and say so.
+  if (c.dividendYield == null && c.dividendsPaid > 0 && c.marketCap > 0) {
+    const y = (c.dividendsPaid / c.marketCap) * 100;
+    if (y > 0 && y < 40) { c.dividendYield = +y.toFixed(2); c.dividendYieldBasis = 'computed'; }
+  } else if (c.dividendYield != null) {
+    c.dividendYieldBasis = 'exchange';
+  }
 
   // What the company returns: dividends (from the exchange) plus buybacks (from the filing).
   // Prefer cash actually paid (dividends + buybacks) over the exchange's yield field, which is missing

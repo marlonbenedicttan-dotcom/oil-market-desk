@@ -21,7 +21,9 @@ const dur = (e) => (Date.parse(e.end) - Date.parse(e.start)) / DAY;
 mkdirSync(CACHE, { recursive: true });
 
 const BUYBACK = ['PaymentsForRepurchaseOfCommonStock', 'PaymentsForRepurchaseOfEquity'];
-const DIVIDEND = ['PaymentsOfDividendsCommonStock', 'PaymentsOfDividends'];
+// JNJ, Visa, GE and Intel tag cash dividends as DividendsCommonStockCash rather than the payment tags,
+// which is why their yield showed a dash for years.
+const DIVIDEND = ['PaymentsOfDividendsCommonStock', 'PaymentsOfDividends', 'DividendsCommonStockCash', 'DividendsCommonStock'];
 const GOODWILL = ['Goodwill'];
 const INTANGIBLES = ['IntangibleAssetsNetExcludingGoodwill', 'FiniteLivedIntangibleAssetsNet'];
 const NONINT = ['NoninterestExpense'];
