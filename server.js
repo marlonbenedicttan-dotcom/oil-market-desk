@@ -8,6 +8,7 @@ import { execFile } from 'node:child_process';
 import crypto from 'node:crypto';
 import { sendMail } from './src/smtp.js';
 import { fileURLToPath } from 'node:url';
+import { projectUs, projectKr, projectJp, US_LIST_FIELDS } from './src/project.js';
 import { sgn, businessDaysSince, inBox, haversineNm, horizonDeltas, horizonDeltasAbs, isoWeek, monthly, pctOver, percentile, lastNonNull, escHtml, webhookPayload, realizedVol, computeCracks, computeCrush, computeSteel, backAdjust, pearson, logReturns, frontExpiry, curveTightness, inventoryTightness, weightedScore, seasonalGrade, seasonalAhead, contractMonthsBetween, signedPosition, signedMove, stretchScore, sdLabel, attributeMoves, newsContextOk, METHODOLOGY, positioningFlag, positioningRead, positioningDivergence, maxDrawdown, realizedVolTerm, corrMatrix, fxAdjust, parseOcc, drawdownWord, volWord, volTrend, topPairs, bestDiversifier, riskRead } from './src/lib.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -692,32 +693,6 @@ function readJapan() {
   } catch { return { companies: [] }; }
 }
 
-// The screener needs thirteen fields; the other forty-five are only read when a company is opened.
-const US_LIST_FIELDS = ['cik', 'ticker', 'name', 'sector', 'industry', 'indexName', 'shareClass', 'price', 'chg1d', 'chg6m', 'chgYtd', 'pe', 'pb', 'evEbitda', 'roe', 'marketCap', 'revenue', 'netIncome', 'netIncomeTTM', 'marginNA', 'fcfYield', 'fcfNA', 'revenueCagr', 'roic', 'growth', 'adrNA', 'dividendYield', 'indexWeight', 'sic', 'buybacks', 'cash', 'priceAsOf'];
-const projectUs = (c) => {
-  const o = {};
-  for (const k of US_LIST_FIELDS) if (c[k] !== undefined) o[k] = c[k];
-  if (c.verification && c.verification.status) o.verification = { status: c.verification.status };
-  return o;
-};
-const projectKr = (c) => ({
-  code: c.code, ticker: c.ticker, name: c.name, nameEn: c.nameEn || null, sector: c.sector || null,
-  brands: c.brands && c.brands.length ? c.brands : null,
-  price: c.price, priceDate: c.priceDate, marketCap: c.marketCap, marketCapUsd: c.marketCapUsd,
-  chg1d: c.chg1d, chg6m: c.chg6m, chgYtd: c.chgYtd,
-  pe: c.pe, peBasis: c.peBasis, pb: c.pb, roe: c.roe, opMargin: c.opMargin, netMargin: c.netMargin,
-  fcfYield: c.fcfYield, shares: c.shares,
-});
-const projectJp = (c) => ({
-  code: c.code, ticker: c.ticker, name: c.name, nameJa: c.nameJa, sector: c.sector, size: c.size,
-  price: c.price, priceDate: c.priceDate, marketCap: c.marketCap, marketCapUsd: c.marketCapUsd,
-  chg1d: c.chg1d, chg6m: c.chg6m, chgYtd: c.chgYtd, chgYtdBasis: c.chgYtdBasis,
-  pe: c.pe, peBasis: c.peBasis, pb: c.pb, roe: c.roe, np: c.np,
-  dividend: c.dividend ? { yield: c.dividend.yield } : null,
-  cash: c.cash,
-  bands: c.bands && c.bands.pe ? { pe: { percentile: c.bands.pe.percentile } } : null,
-  brands: c.brands && c.brands.length ? c.brands : null,
-});
 const DEAL_ARCHIVE = (() => { try { return JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'ma.json'), 'utf8')); } catch { return { deals: [], coverage: {} }; } })();
 const DEAL_STORE_FILE = path.join(__dirname, 'data', 'deals-store.json');
 import { DEAL_SECTOR_RULES, dealSector, DEAL_SITES, DEAL_RUMOUR, DEAL_CLOSED, DEAL_ENDED, eventStatus,

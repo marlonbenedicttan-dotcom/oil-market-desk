@@ -2612,3 +2612,15 @@ they are filed. Today's run picked up **295 companies** that had filed.
   Korea now gets its own bar; nothing US-specific leaks into either market.
 - **Sorting**: ROE and YIELD sorted ascending (worst first) in Japan and Korea; both now sort
   best-first, and a blank cell goes last whichever way the column runs.
+
+## Korea's CHEAP VS ITSELF was reading a field the API never sent (2026-10-31)
+- **PAYS CASH removed** from Korea: `payoutYield` exists in the dataset but was never projected into the
+  list endpoint, so the preset matched nothing.
+- **CHEAP VS ITSELF fixed**: same class of bug — it read `bands.pe.percentile`, which `projectKr` did not
+  ship. `projectKr` now carries the percentile, so the screen returns 117 companies instead of 0.
+- **US REV GROWTH fixed**: the filter read `c.growth`, a field that was never computed anywhere. It now
+  filters on the revenue CAGR (484 of 500 companies have one; 152 clear 10%).
+- **Root cause removed**: the projections moved to `src/project.js` so they can be tested, and
+  `tests/filters.test.js` now asserts, for all three markets, that (a) every field a filter reads survives
+  projection, (b) it is populated for most of the market, (c) no preset or select matches nothing, and
+  (d) no preset matches more than 75% of the market.

@@ -4400,7 +4400,6 @@ const KR_PRESETS = [
   { id: 'book', label: 'BELOW BOOK', test: (c) => c.pb != null && c.pb < 1 },
   { id: 'roe', label: 'HIGH ROE', test: (c) => (c.roe || 0) > 12 },
   { id: 'cheap', label: 'CHEAP VS ITSELF', test: (c) => c.bands && c.bands.pe && c.bands.pe.percentile <= 20 },
-  { id: 'payout', label: 'PAYS CASH', test: (c) => (c.payoutYield || 0) > 2 },
 ];
 
 function renderKoreaScreener(all, d) {
@@ -4625,7 +4624,9 @@ function renderCompanies() {
     }
     if (coMinMargin) { const m = coMarginOf(c); if (m == null || m < coMinMargin) return false; }
     if (coPreset) { const pr = CO_PRESETS.find((x) => x.id === coPreset); if (pr && !pr.test(c)) return false; }
-    if (coGrowth != null) { if (c.growth == null || c.growth < coGrowth) return false; }
+    // Growth is the revenue CAGR from the filings — the `growth` field never existed, so this filter
+    // matched nothing until it was pointed at a number that is actually computed.
+    if (coGrowth != null) { if (c.revenueCagr == null || c.revenueCagr < coGrowth) return false; }
     if (q) {
       const hay = `${c.name} ${c.ticker || ''} ${c.industry || ''} ${c.indexName || ''}`.toLowerCase();
       const alias = CO_ALIAS[q];
@@ -4633,7 +4634,7 @@ function renderCompanies() {
     }
     return true;
   });
-  const sortVal = (c) => (coSort === 'cap' ? c.marketCap : coSort === 'pe' ? c.pe : coSort === 'ev' ? c.evEbitda : coSort === 'margin' ? coMargin(c) : c.growth);
+  const sortVal = (c) => (coSort === 'cap' ? c.marketCap : coSort === 'pe' ? c.pe : coSort === 'ev' ? c.evEbitda : coSort === 'margin' ? coMargin(c) : c.revenueCagr);
   rows.sort((a, b) => {
     const av = sortVal(a), bv = sortVal(b);
     if (av == null && bv == null) return 0;
@@ -4660,7 +4661,7 @@ function renderCompanies() {
         { key: 'size', label: 'SIZE', opts: [['0', 'Any'], ['10000000000', '$10B+'], ['100000000000', '$100B+'], ['500000000000', '$500B+']], cur: coMin, attr: 'data-cosel' },
         { key: 'pe', label: 'P/E', opts: [['all', 'Any'], ['lt15', '<15'], ['15to25', '15–25'], ['gt25', '>25']], cur: coPe, attr: 'data-cosel' },
         { key: 'margin', label: 'MARGIN', opts: [['0', 'Any'], ['10', '>10%'], ['20', '>20%']], cur: coMinMargin, attr: 'data-cosel' },
-        { key: 'growth', label: 'GROWTH', opts: [['any', 'Any'], ['0', '>0'], ['10', '>10%']], cur: coGrowth === null ? 'any' : coGrowth, attr: 'data-cosel' },
+        { key: 'growth', label: 'REV GROWTH', opts: [['any', 'Any'], ['0', '>0%'], ['10', '>10%']], cur: coGrowth === null ? 'any' : coGrowth, attr: 'data-cosel' },
       ],
       extra: '<span class="co-sep"></span>'
         + tgl('Priced', coPriced, 'data-copriced="1"')
