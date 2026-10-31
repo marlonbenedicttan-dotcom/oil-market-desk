@@ -12,6 +12,10 @@ on:
       - 'scripts/fetch-macro.mjs'
       - '.github/workflows/macro-snapshot.yml'
 
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
 permissions:
   contents: write
 
@@ -20,6 +24,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0          # a rebase needs history, not just the tip
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
@@ -34,5 +40,11 @@ jobs:
             echo 'No change to data/macro.json'
           else
             git commit -m 'chore: refresh macro snapshot (IMF WEO)'
-            git push
+            # Another push can land while this job runs: rebase and retry rather than fail.
+            pushed=0
+            for i in 1 2 3 4 5; do
+              if git pull --rebase -X theirs origin main && git push; then pushed=1; break; fi
+              echo "push rejected (attempt $i) — rebasing and retrying"; sleep $((i * 5))
+            done
+            [ "$pushed" = "1" ] || { echo 'could not push after 5 attempts'; exit 1; }
           fi

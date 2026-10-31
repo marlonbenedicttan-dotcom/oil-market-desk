@@ -2739,3 +2739,17 @@ Audited at 360, 390 and 430 px with screenshots of every view, then fixed what l
   with four columns — COMPANY · PRICE · 1D · YTD — the ticker and sector on a second line, and the face
   dropped from 12 px to 10.5 px. The commodity table keeps all its columns; the rule is scoped to
   `.sc-cotable` only. The COMPANIES tab list went from 12.5 px to 11.5 px to match.
+
+## The scheduled workflows were failing on a push race (2026-10-31)
+- **Symptom**: the 05:54 UTC `companies-weekly` run failed after 40 minutes. The rebuild itself succeeded;
+  the last step died with `! [rejected] main -> main (fetch first)`.
+- **Cause**: the workflow commits data and runs a bare `git push`. I was pushing commits to the same branch
+  at the same moment, so the push was rejected and the whole job went red. `companies-daily` and
+  `macro-snapshot` had the same unguarded push and would have hit it eventually.
+- **Fix**: all three now rebase onto whatever landed and retry five times before failing:
+  `git pull --rebase -X theirs origin main && git push`. `-X theirs` prefers the CI's fresh data when the
+  same data file changed on both sides — the CI copy is the one that was just fetched.
+- Also: `fetch-depth: 0` on checkout (a shallow clone cannot rebase cleanly) and a `concurrency` group per
+  workflow so a manual dispatch cannot overlap a scheduled run.
+- **Verified**: reproduced the race in a throwaway repo (human commit lands, CI commit tries to push) and
+  the new block rebases and pushes, with the CI data winning.

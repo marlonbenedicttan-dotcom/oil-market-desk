@@ -9,6 +9,10 @@ on:
     - cron: '10 1 * * 2-6'
   workflow_dispatch: {}
 
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
 permissions:
   contents: write
 
@@ -17,6 +21,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0          # a rebase needs history, not just the tip
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
@@ -57,5 +63,12 @@ jobs:
             echo 'no data change'
           else
             git commit -m "chore: daily companies refresh ($(date -u +%Y-%m-%d))"
-            git push
+            # Another push (a human commit, or the other workflow) can land while this job runs. Rebase
+            # onto it and retry instead of failing the whole run on a non-fast-forward.
+            pushed=0
+            for i in 1 2 3 4 5; do
+              if git pull --rebase -X theirs origin main && git push; then pushed=1; break; fi
+              echo "push rejected (attempt $i) — rebasing and retrying"; sleep $((i * 5))
+            done
+            [ "$pushed" = "1" ] || { echo 'could not push after 5 attempts'; exit 1; }
           fi
