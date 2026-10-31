@@ -39,6 +39,8 @@ export const projectJp = (c) => ({
   cash: c.cash,
   bands: c.bands && c.bands.pe ? { pe: { percentile: c.bands.pe.percentile } } : null,
   brands: c.brands && c.brands.length ? c.brands : null,
+  // Without this flag the client cannot tell a preferred line from a company, and the list shows both.
+  shareClass: c.shareClass ? true : undefined,
 });
 
 // Every field the filter bars in public/app.js read, per market. Keep this in step with the UI: the
