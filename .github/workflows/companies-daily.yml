@@ -1,10 +1,12 @@
 name: companies-daily
 
-# Prices and market caps every weekday after the US close, plus a fundamentals refresh for any company
-# that filed a new 10-K or 10-Q. Render auto-deploys on the resulting commit.
+# Prices and market caps after the US close, plus a fundamentals refresh for any company that filed a
+# new 10-K or 10-Q. Render auto-deploys on the resulting commit.
 on:
   schedule:
-    - cron: '40 22 * * 1-5'   # 22:40 UTC, Mon–Fri (after the 16:00 ET close)
+    # 01:10 UTC Tue–Sat: after the 16:00 ET close *and* after Nasdaq settles its end-of-day batch.
+    # A run at 22:40 UTC was still being served the previous session, which shipped a day-old "1D".
+    - cron: '10 1 * * 2-6'
   workflow_dispatch: {}
 
 permissions:

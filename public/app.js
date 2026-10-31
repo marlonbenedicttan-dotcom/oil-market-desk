@@ -2254,6 +2254,7 @@ function renderRegime(d) {
 }
 // Screener — every instrument in one sortable table (assembled server-side at /api/screen).
 let screenRows = null, screenSort = { key: 'absd1', dir: -1 }, fxBase = 'USD', fxRows = null;
+let fxWin = null;  // currency moves for the screener's "returns in" base, so a yen return can be a dollar return
 // The home screener covers two universes: instruments and companies.
 let screenMode = (() => { try { return localStorage.getItem('oilbasis.screenMode') === 'companies' ? 'companies' : 'commodities'; } catch { return 'commodities'; } })();
 let coScreen = { sort: 'marketCap', dir: -1, q: '', sector: 'all', page: 1, per: 50 };
@@ -2348,6 +2349,28 @@ const JP_SCREEN_COLS = [
 ];
 const screenMarketHtml = () => `<div class="sc-modes sc-mkt">${[['us', 'US'], ['jp', 'JAPAN'], ['kr', 'KOREA']].map(([k, t]) => `<button type="button" class="${screenMarket === k ? 'on' : ''}" data-screen-market="${k}">${t}</button>`).join('')}</div>`;
 
+// A company's return in the screener's chosen base currency. A Tokyo listing returns yen; a dollar
+// investor gets that return *plus* the yen's own move, so the two are compounded rather than added.
+// Falls back to the local number only when no FX move is known, and the note under the table says so.
+const CUR_OF_MARKET = { us: 'USD', jp: 'JPY', kr: 'KRW' };
+function fxRet(v, cur, win) {
+  if (v == null) return null;
+  if (!fxWin || !fxWin.windows) return v;
+  if (fxWin.base === cur) return v;
+  const w = fxWin.windows[win] ? fxWin.windows[win][cur] : null;
+  if (w == null) return v;
+  return +(((1 + v / 100) / (1 + w / 100) - 1) * 100).toFixed(1);
+}
+function fxNote(cur) {
+  if (fxBase === cur) return '';
+  if (!fxWin || !fxWin.windows) return 'Returns are in local currency — the FX history for this base is unavailable right now. ';
+  return `Returns converted to <b>${esc(fxBase)}</b>: the local move compounded with the ${esc(cur)} move over the same window, at ECB reference rates. `;
+}
+async function loadFxWin(base) {
+  // Even on a USD base the yen and won moves are needed — that is the whole point.
+  try { fxWin = await jget('/api/fxwindows?base=' + encodeURIComponent(base || 'USD'), 3600000); } catch { fxWin = null; }
+}
+
 const CO_SCREEN_COLS = [
   { k: 'label', t: 'COMPANY' }, { k: 'price', t: 'PRICE' }, { k: 'chg1d', t: '1D' },
   { k: 'chg6m', t: '6M' }, { k: 'chgYtd', t: 'YTD' }, { k: 'pe', t: 'P/E' },
@@ -2355,6 +2378,7 @@ const CO_SCREEN_COLS = [
   { k: 'marketCap', t: 'MKT CAP' },
 ];
 function renderCompanyScreen(el) {
+  if (!fxWin) { loadFxWin(fxBase).then(() => renderScreen(true)).catch(() => {}); }
   if (screenMarket === 'jp') return renderJapanScreen(el);
   if (screenMarket === 'kr') return renderKoreaScreen(el);
   // The companies payload is normally fetched when the COMPANIES tab opens; the home screener can ask
@@ -2390,7 +2414,7 @@ function renderCompanyScreen(el) {
   const body = usShown.map((c) => `<tr data-cocik="${esc(c.cik)}" title="${esc(c.name)}">
       <td class="sc-name">${esc(c.name)}<span class="sc-tick">${esc(c.ticker)}</span></td>
       <td class="num">${c.price != null ? '$' + c.price.toFixed(2) : '—'}</td>
-      ${pct(c.chg1d)}${pct(c.chg6m)}${pct(c.chgYtd)}
+      ${pct(fxRet(c.chg1d, 'USD', 'd1'))}${pct(fxRet(c.chg6m, 'USD', 'm6'))}${pct(fxRet(c.chgYtd, 'USD', 'ytd'))}
       ${cell(c.pe, 1, '×')}${c.fcfYield != null ? cell(c.fcfYield, 1, '%') : '<td class="num">' + (c.fcfNA ? 'n/a' : '—') + '</td>'}
       ${cell(c.revenueCagr, 1, '%')}${cell(c.roic, 1, '%')}
       <td class="num">${coMoney(c.marketCap)}</td></tr>`).join('');
@@ -2400,7 +2424,7 @@ function renderCompanyScreen(el) {
       <span class="sc-count dimtext">${rows.length} of ${all.length} companies</span>
     </div><div class="sc-wrap" id="sc-table"><table class="sc-table"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>
     ${pagerHtml(rows.length, coScreen.page, coScreen.per, 'copage')}
-    <div class="sc-note dimtext">S&amp;P 500 companies · SEC filings, GAAP as filed · prices from Nasdaq. Click a row to open the company.</div>`;
+    <div class="sc-note dimtext">${fxNote('USD')}S&amp;P 500 companies · SEC filings, GAAP as filed · prices from Nasdaq. Click a row to open the company.</div>`;
 }
 
 // The same screener, on the Japanese market. Yen, its own columns, its own filters — never mixed
@@ -2435,7 +2459,7 @@ function renderJapanScreen(el) {
   const body = shown.map((c) => `<tr data-jpcode="${esc(c.code)}" title="${esc(c.name)}">
       <td class="sc-name">${esc(c.name)}<span class="sc-tick">${esc(c.ticker)} · ${esc(c.sector)}</span></td>
       <td class="num">${yen(c.price)}</td>
-      ${pct(c.chg1d)}${pct(c.chg6m)}${pct(c.chgYtd)}
+      ${pct(fxRet(c.chg1d, 'JPY', 'd1'))}${pct(fxRet(c.chg6m, 'JPY', 'm6'))}${pct(fxRet(c.chgYtd, 'JPY', 'ytd'))}
       ${num(c.pe, 1, '×')}${num(c.pb, 2, '×')}${num(c.roe, 1, '%')}
       <td class="num">${yen(c.marketCap)}</td></tr>`).join('');
   el.innerHTML = `<div class="sc-bar">${screenModeHtml()}${screenMarketHtml()}
@@ -2444,7 +2468,7 @@ function renderJapanScreen(el) {
       <span class="sc-count dimtext">${rows.length} of ${all.length} companies</span>
     </div><div class="sc-wrap" id="sc-table"><table class="sc-table"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>
     ${pagerHtml(rows.length, coScreenJp.page, coScreenJp.per, 'jppage')}
-    <div class="sc-note dimtext">TSE Prime companies · J-Quants (JPX) · yen, not dollars · P/E and ROE are trailing twelve months. Click a row to open the company.</div>`;
+    <div class="sc-note dimtext">${fxNote('JPY')}TSE Prime companies · J-Quants (JPX) · prices in yen · P/E and ROE are trailing twelve months. Click a row to open the company.</div>`;
 }
 
 // Korea in the home screener, the same shape as Japan's.
@@ -2483,7 +2507,7 @@ function renderKoreaScreen(el) {
   const body = shown.map((c) => `<tr data-krrow="${esc(c.code)}" title="${esc(c.nameEn || c.name)}">
       <td class="sc-name">${esc(c.nameEn || c.name)}<span class="sc-tick">${esc(c.ticker)}${c.sector ? ' · ' + esc(c.sector) : ''}</span></td>
       <td class="num">${wonPx(c.price)}</td>
-      ${pct(c.chg1d)}${pct(c.chg6m)}${pct(c.chgYtd)}
+      ${pct(fxRet(c.chg1d, 'KRW', 'd1'))}${pct(fxRet(c.chg6m, 'KRW', 'm6'))}${pct(fxRet(c.chgYtd, 'KRW', 'ytd'))}
       ${num(c.pe, 1, '×')}${num(c.pb, 2, '×')}${num(c.roe, 1, '%')}
       <td class="num">${won(c.marketCap)}</td></tr>`).join('');
   el.innerHTML = `<div class="sc-bar">${screenModeHtml()}${screenMarketHtml()}
@@ -2492,14 +2516,14 @@ function renderKoreaScreen(el) {
       <span class="sc-count dimtext">${rows.length} of ${all.length} companies</span>
     </div><div class="sc-wrap" id="sc-table"><table class="sc-table"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>
     ${pagerHtml(rows.length, page, per, 'krpage')}
-    <div class="sc-note dimtext">KOSPI companies · DART statements, Naver prices · won, not dollars · P/E is trailing twelve months.</div>`;
+    <div class="sc-note dimtext">${fxNote('KRW')}KOSPI companies · DART statements, Naver prices · prices in won · P/E is trailing twelve months.</div>`;
 }
 
 function renderScreen(full) {
   const el = $('screen'); if (!el) return;
-  // "returns in USD" belongs to the commodity table; above a yen table it would be a lie.
+  // The currency control applies to the company tables too: their returns are converted, not relabelled.
   const curCtl = document.querySelector('#p-screen .controls');
-  if (curCtl) curCtl.classList.toggle('hidden', screenMarket === 'jp' && screenMode === 'companies');
+  if (curCtl) curCtl.classList.remove('hidden');
   if (screenMode === 'companies') return renderCompanyScreen(el);
   if (!screenRows || !screenRows.length) { el.innerHTML = stError('Couldn’t load the screener — retrying.'); return; }
   if (full || !$('sc-table')) {
@@ -2537,13 +2561,17 @@ function renderScreen(full) {
 $('base-cur')?.addEventListener('change', async (e) => {
   fxBase = e.target.value || 'USD';
   fxRows = null;
-  if (fxBase !== 'USD') {
-    try {
-      const d = await jget('/api/fxadjusted?base=' + encodeURIComponent(fxBase), 3600000);
-      fxRows = Object.fromEntries(((d && d.rows) || []).map((r) => [r.id, r.deltas]));
-    } catch { fxRows = null; }
-  }
-  renderScreen(false);
+  await Promise.all([
+    loadFxWin(fxBase),
+    (async () => {
+      if (fxBase === 'USD') return;
+      try {
+        const d = await jget('/api/fxadjusted?base=' + encodeURIComponent(fxBase), 3600000);
+        fxRows = Object.fromEntries(((d && d.rows) || []).map((r) => [r.id, r.deltas]));
+      } catch { fxRows = null; }
+    })(),
+  ]);
+  renderScreen(true);
 });
 $('screen')?.addEventListener('click', (e) => {
   const mode = e.target.closest('[data-screen-mode]');
@@ -2634,7 +2662,6 @@ $('screen')?.addEventListener('change', (e) => {
   if (e.target.id === 'cos-sector') { coScreen = { ...coScreen, sector: e.target.value, page: 1 }; renderScreen(true); return; }
   if (e.target.id === 'cosj-sector') { coScreenJp.sector = e.target.value; coScreenJp.page = 1; renderScreen(true); return; }
   if (e.target.id === 'cosk-sector') { coScreenKr.sector = e.target.value; coScreenKr.page = 1; renderScreen(true); return; }
-  if (e.target.dataset && e.target.dataset.krsector) { krSector = e.target.value; renderKorea(); return; }
   if (e.target.dataset && e.target.dataset.jppageper) { coScreenJp.per = Number(e.target.value); coScreenJp.page = 1; renderScreen(true); return; }
   if (e.target.dataset && e.target.dataset.krpageper) { coScreenKr.per = Number(e.target.value); coScreenKr.page = 1; renderScreen(true); return; }
   if (e.target.dataset && e.target.dataset.copageper) { coScreen.per = Number(e.target.value); coScreen.page = 1; renderScreen(true); return; }
@@ -3614,6 +3641,19 @@ const CO_PRESETS = [
   { id: 'yield', label: 'HIGH YIELD', test: (c) => (c.dividendYield || 0) > 3 },
 ];
 let coSort = 'cap', coDir = -1;   // screener: which column, and which way
+
+// One filter bar for all three markets. The markets keep their own filters — a Korean bank screen is
+// not a US one — but the shape is identical: preset chips, then labelled selects, then CLEAR. Same
+// markup, same classes, same place in the toolbar, so switching market does not re-teach the user.
+function coFilterBar({ presets = [], preset = null, presetAttr, selects = [], extra = '', clearAttr, clearValue = 'clear', active = 0 }) {
+  const sel = (key, label, opts, cur, attr) => `<label class="co-sel"><span>${label}</span><select ${attr}="${esc(key)}">`
+    + opts.map(([v, t]) => `<option value="${esc(v)}"${String(v) === String(cur) ? ' selected' : ''}>${esc(t)}</option>`).join('')
+    + '</select></label>';
+  return `<div class="jp-presets" style="width:100%;padding:0 0 2px">${presets.map((p) => `<button type="button" class="co-tgl${preset === p.id ? ' on' : ''}" ${presetAttr}="${esc(p.id)}">${esc(p.label)}</button>`).join('')}</div>`
+    + selects.map((x) => sel(x.key, x.label, x.opts, x.cur, x.attr)).join('')
+    + extra
+    + (active ? `<button class="ma-reset" ${clearAttr}="${esc(clearValue)}">CLEAR ${active}</button>` : '');
+}
 let coPe = 'all', coMinMargin = 0, coGrowth = null, coPriced = false, coVerified = false, coView = 'list';
 
 async function loadCompanies() {
@@ -3700,10 +3740,10 @@ function japanTile(c) {
 function syncCoTools() {
   const tools = document.querySelector('.co-tools');
   if (!tools) return;
-  // The US filter chips stay in the DOM when you switch market, so they must be hidden — Japan has its
-  // own filters inside the body and would silently ignore SECTOR / SIZE / P/E.
+  // Every market writes its own filters into the same chips container, so it is never hidden — only
+  // repainted. Uniform place, uniform shape, market-specific choices.
   const chips = document.getElementById('co-chips');
-  if (chips) chips.classList.toggle('hidden', coRegion === 'jp');
+  if (chips) chips.classList.remove('hidden');
   const wanted = coRegion === 'jp'
     ? (!jpSel && jpView === 'screener')
     : coRegion === 'kr' ? (!krSel && krView === 'screener')
@@ -3863,23 +3903,39 @@ function renderJapanScreener(all, d) {
   syncCoTools();
   const sectors = [...new Set(all.map((c) => c.sector))].sort();
   const matched = all.filter(jpMatches);
-  const key = { cap: (c) => c.marketCap || 0, pe: (c) => (c.pe == null ? Infinity : c.pe), pb: (c) => (c.pb == null ? Infinity : c.pb), roe: (c) => (c.roe == null ? -Infinity : c.roe), yield: (c) => (jpYield(c) == null ? -Infinity : jpYield(c)), ytd: (c) => c.chgYtd };
-  const dir = jpSort === 'cap' || jpSort === 'ytd' ? -1 : 1;
-  matched.sort((a, b) => (key[jpSort](a) - key[jpSort](b)) * dir);
+  const key = { cap: (c) => c.marketCap, pe: (c) => c.pe, pb: (c) => c.pb, roe: (c) => c.roe, yield: (c) => jpYield(c), ytd: (c) => c.chgYtd };
+  // Bigger is better for cap, ROE, yield and YTD; smaller is better for P/E and P/B.
+  const dir = jpSort === 'pe' || jpSort === 'pb' ? 1 : -1;
+  const kf = key[jpSort] || key.cap;
+  // A blank is not a low number: it goes last whichever way the column runs.
+  matched.sort((a, b) => {
+    const x = kf(a), y = kf(b);
+    if (x == null && y == null) return 0;
+    if (x == null) return 1;
+    if (y == null) return -1;
+    return (x - y) * dir;
+  });
   const rows = matched;
 
   const max = Math.max(...all.map((c) => c.marketCap || 0), 1);
   const opt = (v, label, cur) => `<option value="${v}" ${String(cur || '') === String(v) ? 'selected' : ''}>${label}</option>`;
+  const jpChips = $('co-chips');
+  if (jpChips) {
+    const nJp = Object.values(jpFilter).filter((v) => v != null && v !== '').length + (jpQuery.trim() ? 1 : 0);
+    const activeJp = nJp || (jpPreset ? 1 : 0);
+    jpChips.innerHTML = coFilterBar({
+      presets: JP_PRESETS, preset: jpPreset, presetAttr: 'data-jppreset',
+      selects: [
+        { key: 'sector', label: 'SECTOR', opts: [['', 'All'], ...sectors.map((x) => [x, x.toUpperCase()])], cur: jpFilter.sector, attr: 'data-jpf' },
+        { key: 'pe', label: 'P/E', opts: [['', 'Any'], ['lt10', '<10'], ['10to15', '10–15'], ['15to25', '15–25'], ['gt25', '>25']], cur: jpFilter.pe, attr: 'data-jpf' },
+        { key: 'roe', label: 'ROE', opts: [['', 'Any'], ['10', '>10%'], ['15', '>15%']], cur: jpFilter.roe, attr: 'data-jpf' },
+        { key: 'yield', label: 'YIELD', opts: [['', 'Any'], ['2', '>2%'], ['3', '>3%'], ['4', '>4%']], cur: jpFilter.yield, attr: 'data-jpf' },
+        { key: 'sort', label: 'SORT', opts: [['cap', 'Market cap'], ['pe', 'P/E low'], ['pb', 'P/B low'], ['roe', 'ROE high'], ['yield', 'Yield high'], ['ytd', 'YTD best']], cur: jpSort, attr: 'data-jpf' },
+      ],
+      clearAttr: 'data-jppreset', clearValue: 'clear', active: activeJp,
+    });
+  }
   el.innerHTML = jpViewsBar()
-    + `<div class="jp-presets">${JP_PRESETS.map((p) => `<button type="button" data-jppreset="${p.id}" class="${jpPreset === p.id ? 'on' : ''}">${p.label}</button>`).join('')}
-        ${jpPreset || Object.keys(jpFilter).length ? '<button type="button" data-jppreset="clear" class="jp-clear">CLEAR</button>' : ''}</div>`
-    + `<div class="jp-filters">
-      <select data-jpf="sort" aria-label="Sort">${opt('cap', 'MARKET CAP', jpSort)}${opt('pe', 'P/E LOW→HIGH', jpSort)}${opt('pb', 'P/B LOW→HIGH', jpSort)}${opt('roe', 'ROE HIGH→LOW', jpSort)}${opt('yield', 'DIVIDEND HIGH→LOW', jpSort)}${opt('ytd', 'YTD BEST→WORST', jpSort)}</select>
-      <select data-jpf="pe" aria-label="P/E">${opt('', 'ANY P/E', jpFilter.pe)}${opt('lt10', 'P/E < 10', jpFilter.pe)}${opt('10to15', 'P/E 10–15', jpFilter.pe)}${opt('15to25', 'P/E 15–25', jpFilter.pe)}${opt('gt25', 'P/E > 25', jpFilter.pe)}</select>
-      <select data-jpf="roe" aria-label="ROE">${opt('', 'ANY ROE', jpFilter.roe)}${opt('10', 'ROE > 10%', jpFilter.roe)}${opt('15', 'ROE > 15%', jpFilter.roe)}</select>
-      <select data-jpf="yield" aria-label="Dividend yield">${opt('', 'ANY YIELD', jpFilter.yield)}${opt('2', 'YIELD > 2%', jpFilter.yield)}${opt('3', 'YIELD > 3%', jpFilter.yield)}${opt('4', 'YIELD > 4%', jpFilter.yield)}</select>
-      <select data-jpf="sector" aria-label="Sector">${opt('', 'ALL SECTORS', jpFilter.sector)}${sectors.map((s) => opt(s, s.toUpperCase(), jpFilter.sector)).join('')}</select>
-    </div>`
     + `<div class="co-hrow"><span>#</span><span></span><span>COMPANY</span><span>MARKET CAP</span><span>P/E</span><span>ROE</span></div>`
     + (rows.length ? '' : `<div class="macro-note">No company matches those filters.</div>`)
     + `<div id="jp-rows"></div>`;
@@ -4199,6 +4255,9 @@ const takeToken = () => ++renderSeq;
 const stale = (t) => t !== renderSeq;
 let krRange = (() => { try { return localStorage.getItem('oilbasis.krRange') || '1y'; } catch { return '1y'; } })();
 let krPreset = null, krSector = 'all', krCompare = '';
+let krSort = (() => { try { return localStorage.getItem('oilbasis.krSort') || 'cap'; } catch { return 'cap'; } })();
+let krFilter = (() => { try { return JSON.parse(localStorage.getItem('oilbasis.krFilter') || '{}'); } catch { return {}; } })();
+const saveKrFilter = () => { try { localStorage.setItem('oilbasis.krFilter', JSON.stringify(krFilter)); } catch {} };
 let krView = (() => { try { return localStorage.getItem('oilbasis.krView') || 'screener'; } catch { return 'screener'; } })();
 let krTheme = (() => { try { return localStorage.getItem('oilbasis.krTheme') || 'semis'; } catch { return 'semis'; } })();
 
@@ -4339,15 +4398,41 @@ function renderKoreaScreener(all, d) {
   const q = krQuery.trim().toLowerCase();
   const sectors = [...new Set(all.map((c) => c.sector).filter(Boolean))].sort();
   const preset = KR_PRESETS.find((p) => p.id === krPreset);
+  const f = krFilter;
   const rows = all.filter((c) => (!q || `${c.name} ${c.nameEn || ''} ${c.ticker} ${(c.brands || []).join(' ')}`.toLowerCase().includes(q))
     && (krSector === 'all' || c.sector === krSector)
+    && (!f.pe || (c.pe != null && (f.pe === 'lt10' ? c.pe < 10 : f.pe === '10to15' ? c.pe >= 10 && c.pe < 15 : f.pe === '15to25' ? c.pe >= 15 && c.pe < 25 : c.pe >= 25)))
+    && (!f.roe || (c.roe != null && c.roe >= Number(f.roe)))
     && (!preset || preset.test(c)));
+  const sortOf = { cap: (c) => c.marketCap, pe: (c) => c.pe, pb: (c) => c.pb, roe: (c) => c.roe, ytd: (c) => c.chgYtd };
+  const dir = krSort === 'pe' || krSort === 'pb' ? 1 : -1;
+  const kf = sortOf[krSort] || sortOf.cap;
+  const sorted = [...rows].sort((a, b) => {
+    const x = kf(a), y = kf(b);
+    if (x == null && y == null) return 0;
+    if (x == null) return 1;
+    if (y == null) return -1;
+    return (x - y) * dir;
+  });
+  const krChips = $('co-chips');
+  if (krChips) {
+    const nKr = Object.values(f).filter((v) => v != null && v !== '').length + (krSector !== 'all' ? 1 : 0) + (q ? 1 : 0);
+    const activeKr = nKr || (krPreset ? 1 : 0);
+    krChips.innerHTML = coFilterBar({
+      presets: KR_PRESETS, preset: krPreset, presetAttr: 'data-krpreset',
+      selects: [
+        { key: 'sector', label: 'SECTOR', opts: [['all', 'All'], ...sectors.map((x) => [x, x.toUpperCase()])], cur: krSector, attr: 'data-krf' },
+        { key: 'pe', label: 'P/E', opts: [['', 'Any'], ['lt10', '<10'], ['10to15', '10–15'], ['15to25', '15–25'], ['gt25', '>25']], cur: f.pe, attr: 'data-krf' },
+        { key: 'roe', label: 'ROE', opts: [['', 'Any'], ['10', '>10%'], ['15', '>15%']], cur: f.roe, attr: 'data-krf' },
+        { key: 'sort', label: 'SORT', opts: [['cap', 'Market cap'], ['pe', 'P/E low'], ['pb', 'P/B low'], ['roe', 'ROE high'], ['ytd', 'YTD best']], cur: krSort, attr: 'data-krf' },
+      ],
+      clearAttr: 'data-krpreset', clearValue: 'clear', active: activeKr,
+    });
+  }
   const max = Math.max(...all.map((c) => c.marketCap || 0), 1);
   el.innerHTML = krViewsBar()
-    + `<div class="jp-presets">${KR_PRESETS.map((p) => `<button type="button" data-krpreset="${p.id}" class="${krPreset === p.id ? 'on' : ''}">${p.label}</button>`).join('')}${krPreset ? '<button type="button" data-krpreset="clear" class="jp-clear">CLEAR</button>' : ''}</div>`
-    + `<div class="jp-filters"><select data-krsector="1" aria-label="Sector"><option value="all">ALL SECTORS</option>${sectors.map((x) => `<option value="${esc(x)}"${krSector === x ? ' selected' : ''}>${esc(x).toUpperCase()}</option>`).join('')}</select></div>`
     + `<div class="co-hrow"><span>#</span><span></span><span>COMPANY</span><span>MARKET CAP</span><span>P/E</span><span>ROE</span></div>`
-    + rows.map((c, i) => `<button class="co-row" data-kr="${esc(c.code)}">
+    + sorted.map((c, i) => `<button class="co-row" data-kr="${esc(c.code)}">
         <span class="co-rank">${i + 1}</span>
         ${krMono(c)}
         <span class="co-id"><b>${esc(krName(c))}</b><span class="co-tick">${esc(c.ticker)} · ${wonPx(c.price)} <em class="${(c.chg1d || 0) >= 0 ? 'pos' : 'neg'}">${c.chg1d == null ? '' : `${c.chg1d >= 0 ? '+' : ''}${c.chg1d.toFixed(1)}%`}</em> · <em class="${(c.chgYtd || 0) >= 0 ? 'pos' : 'neg'}">${c.chgYtd == null ? '—' : `${c.chgYtd >= 0 ? '+' : ''}${c.chgYtd.toFixed(1)}%`} YTD</em></span></span>
@@ -4558,19 +4643,22 @@ function renderCompanies() {
       + opts.map(([v, t]) => `<option value="${v}"${String(v) === String(cur) ? ' selected' : ''}>${t}</option>`).join('')
       + '</select></label>';
     const tgl = (label, on, attr) => `<button class="co-tgl${on ? ' on' : ''}" ${attr}>${label}</button>`;
-    chips.innerHTML =
-      `<div class="jp-presets" style="width:100%;padding:0 0 2px">${CO_PRESETS.map((p) => `<button type="button" class="co-tgl${coPreset === p.id ? ' on' : ''}" data-copreset="${p.id}">${p.label}</button>`).join('')}</div>`
-      + sel('sector', 'SECTOR', [['all', 'All'], ...sectors.map((x) => [x, x])], coSector)
-      + sel('size', 'SIZE', [['0', 'Any'], ['10000000000', '$10B+'], ['100000000000', '$100B+'], ['500000000000', '$500B+']], coMin)
-      + sel('pe', 'P/E', [['all', 'Any'], ['lt15', '<15'], ['15to25', '15–25'], ['gt25', '>25']], coPe)
-      + sel('margin', 'MARGIN', [['0', 'Any'], ['10', '>10%'], ['20', '>20%']], coMinMargin)
-      + sel('growth', 'GROWTH', [['any', 'Any'], ['0', '>0'], ['10', '>10%']], coGrowth === null ? 'any' : coGrowth)
-      + '<span class="co-sep"></span>'
-      + tgl('Priced', coPriced, 'data-copriced="1"')
-      + tgl('Verified', coVerified, 'data-coverified="1"')
-      + tgl('Board', coView === 'sectors', 'data-coview="1"')
-      + '<button class="co-tgl" data-coexport="1">CSV</button>'
-      + (active ? `<button class="ma-reset" data-coreset="1">CLEAR ${active}</button>` : '');
+    chips.innerHTML = coFilterBar({
+      presets: CO_PRESETS, preset: coPreset, presetAttr: 'data-copreset',
+      selects: [
+        { key: 'sector', label: 'SECTOR', opts: [['all', 'All'], ...sectors.map((x) => [x, x])], cur: coSector, attr: 'data-cosel' },
+        { key: 'size', label: 'SIZE', opts: [['0', 'Any'], ['10000000000', '$10B+'], ['100000000000', '$100B+'], ['500000000000', '$500B+']], cur: coMin, attr: 'data-cosel' },
+        { key: 'pe', label: 'P/E', opts: [['all', 'Any'], ['lt15', '<15'], ['15to25', '15–25'], ['gt25', '>25']], cur: coPe, attr: 'data-cosel' },
+        { key: 'margin', label: 'MARGIN', opts: [['0', 'Any'], ['10', '>10%'], ['20', '>20%']], cur: coMinMargin, attr: 'data-cosel' },
+        { key: 'growth', label: 'GROWTH', opts: [['any', 'Any'], ['0', '>0'], ['10', '>10%']], cur: coGrowth === null ? 'any' : coGrowth, attr: 'data-cosel' },
+      ],
+      extra: '<span class="co-sep"></span>'
+        + tgl('Priced', coPriced, 'data-copriced="1"')
+        + tgl('Verified', coVerified, 'data-coverified="1"')
+        + tgl('Board', coView === 'sectors', 'data-coview="1"')
+        + '<button class="co-tgl" data-coexport="1">CSV</button>',
+      clearAttr: 'data-coreset', clearValue: '1', active,
+    });
   }
 
   const priced = rows.filter((c) => c.marketCap);
@@ -5037,7 +5125,11 @@ document.addEventListener('click', (e) => {
   const krp = e.target.closest('[data-krpreset]');
   if (krp) {
     const id = krp.dataset.krpreset;
-    krPreset = (id === 'clear' || id === krPreset) ? null : id;
+    if (id === 'clear') {
+      krPreset = null; krFilter = {}; krSector = 'all'; krQuery = '';
+      const inp = $('co-search'); if (inp) inp.value = '';
+    } else krPreset = id === krPreset ? null : id;
+    saveKrFilter();
     renderKorea();
     return;
   }
@@ -5080,7 +5172,10 @@ document.addEventListener('click', (e) => {
   const jp = e.target.closest('[data-jppreset]');
   if (jp) {
     const id = jp.dataset.jppreset;
-    if (id === 'clear' || id === jpPreset) { jpPreset = null; jpFilter = {}; }
+    if (id === 'clear' || id === jpPreset) {
+      jpPreset = null; jpFilter = {}; jpQuery = '';
+      const inp = $('co-search'); if (inp) inp.value = '';
+    }
     else {
       const preset = JP_PRESETS.find((x) => x.id === id);
       jpPreset = id;
@@ -5183,6 +5278,14 @@ document.addEventListener('change', (e) => {
 
 // Selects fire 'change' on some browsers where they never fire 'input' — handle both.
 document.addEventListener('change', (e) => {
+  if (e.target && e.target.dataset && e.target.dataset.krf) {
+    const k = e.target.dataset.krf;
+    if (k === 'sector') krSector = e.target.value || 'all';
+    else if (k === 'sort') { krSort = e.target.value || 'cap'; try { localStorage.setItem('oilbasis.krSort', krSort); } catch {} }
+    else { krFilter[k] = e.target.value; saveKrFilter(); }
+    renderKorea();
+    return;
+  }
   if (e.target && e.target.id === 'kr-cmp') {
     krCompare = (e.target.value || '').trim().toUpperCase();
     const cur = (koreaData && koreaData.companies || []).find((x) => x.code === krSel);

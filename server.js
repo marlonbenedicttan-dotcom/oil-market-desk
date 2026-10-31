@@ -837,6 +837,48 @@ async function getFxAdjusted(base = 'USD') {
 }
 
 // ---------------------------------------------------------------------------
+// Currency moves for the company screener. A Tokyo listing returns yen; a dollar investor gets that
+// return *plus* the yen's own move. These are the moves of each currency against the chosen base over
+// the same windows the table shows (1D, 6M, YTD), from ECB reference rates via Frankfurter.
+// ---------------------------------------------------------------------------
+const FX_CONV = ['USD', 'JPY', 'KRW', 'EUR', 'GBP', 'CNY', 'CAD', 'AUD', 'CHF'];
+async function getFxWindows(base = 'USD') {
+  const B = String(base || 'USD').toUpperCase();
+  if (!FX_CONV.includes(B)) return { error: 'unsupported base', base: B };
+  return cached('fxwin:' + B, 6 * 3600e3, async () => {
+    const want = FX_CONV.filter((c) => c !== B);
+    const empty = { base: B, windows: { d1: {}, m6: {}, ytd: {} }, asOf: null };
+    if (!want.length) return empty;
+    const day = 86400e3;
+    const now = Date.now();
+    const start = `${new Date(now).getUTCFullYear() - 1}-12-01`;
+    const res = await fetch(`https://api.frankfurter.dev/v1/${start}..?base=${B}&symbols=${want.join(',')}`, { headers: { 'User-Agent': UA } });
+    if (!res.ok) throw new Error('frankfurter ' + res.status);
+    const j = await res.json();
+    const rates = j && j.rates ? j.rates : {};
+    const dates = Object.keys(rates).sort();
+    if (dates.length < 2) return empty;
+    const last = dates[dates.length - 1];
+    const lastT = Date.parse(last);
+    const at = (iso) => { let best = null; for (const d of dates) { if (d > iso) break; best = d; } return best; };
+    const ytdBase = at(`${new Date(lastT).getUTCFullYear()}-01-01`);
+    const sixBase = at(new Date(lastT - 182 * day).toISOString().slice(0, 10));
+    const move = (from, c) => {
+      const a = rates[last] && rates[last][c], b = from && rates[from] && rates[from][c];
+      return a && b ? +(((a / b) - 1) * 100).toFixed(2) : null;
+    };
+    const prev = dates[dates.length - 2];
+    const win = { d1: {}, m6: {}, ytd: {} };
+    for (const c of want) {
+      win.d1[c] = move(prev, c);
+      win.m6[c] = move(sixBase, c);
+      win.ytd[c] = move(ytdBase, c);
+    }
+    return { base: B, asOf: last, windows: win, source: 'ECB reference rates (Frankfurter)' };
+  });
+}
+
+// ---------------------------------------------------------------------------
 // Options signals (Tier 2). Free, keyless CBOE **delayed** quotes for the ETF that tracks each
 // commodity (USO crude, GLD gold, UNG gas, CORN wheat/corn …). We show OI-based and volume-based
 // put/call, the ATM implied vol and a 25-delta skew. Coverage is uneven — no free proxy for some.
@@ -4071,6 +4113,7 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname === '/api/screen') return sendJSON(res, 200, await getScreen().catch((e) => ({ error: String(e.message), rows: [] })));
     if (url.pathname === '/api/risk') return sendJSON(res, 200, await getRisk().catch((e) => ({ error: String(e.message), metrics: [], matrix: {} })));
     if (url.pathname === '/api/fxadjusted') return sendJSON(res, 200, await getFxAdjusted(url.searchParams.get('base') || 'USD').catch((e) => ({ error: String(e.message), rows: [] })));
+    if (url.pathname === '/api/fxwindows') return sendJSON(res, 200, await getFxWindows(url.searchParams.get('base') || 'USD').catch((e) => ({ error: String(e.message) })));
     if (url.pathname === '/api/options') return sendJSON(res, 200, await getOptions(url.searchParams.get('id') || 'wti').catch((e) => ({ error: String(e.message) })));
     if (url.pathname === '/api/positioning') {
       const seg = url.searchParams.get('segment');
