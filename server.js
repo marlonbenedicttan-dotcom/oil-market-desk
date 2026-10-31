@@ -812,6 +812,66 @@ async function getFxAdjusted(base = 'USD') {
 }
 
 // ---------------------------------------------------------------------------
+// One search box for three markets. A reader types "jpmorgan", not "us:JPM" — so the compare box asks
+// this endpoint and gets back refs it can chart, with the market spelled out.
+// ---------------------------------------------------------------------------
+const norm = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+let SEARCH_INDEX = null;
+function searchIndex() {
+  if (SEARCH_INDEX) return SEARCH_INDEX;
+  const rows = [];
+  const add = (market, ticker, name, extra = [], cap = 0) => {
+    if (!ticker || !name) return;
+    rows.push({
+      ref: `${market}:${ticker}`, market, ticker, name, cap,
+      n: norm(name), t: norm(ticker), first: norm(String(name).split(/\s+/)[0]),
+      extra: extra.filter(Boolean).map(norm),
+    });
+  };
+  for (const c of (COMPANIES.companies || [])) {
+    if (c.shareClass || !c.ticker) continue;
+    add('us', c.ticker, c.name, [c.industry, ...(c.brands || [])], c.marketCap || 0);
+  }
+  for (const c of (readJapan().companies || [])) {
+    if (c.shareClass) continue;
+    add('jp', c.ticker, c.name, [c.nameJa, ...(c.brands || [])], c.marketCapUsd || 0);
+  }
+  for (const c of (readKorea().companies || [])) {
+    add('kr', c.ticker, c.nameEn || c.name, [c.name, ...(c.brands || [])], c.marketCapUsd || 0);
+  }
+  SEARCH_INDEX = rows;
+  return rows;
+}
+
+function searchCompanies(q, limit = 8) {
+  const raw = String(q || '').trim();
+  if (raw.length < 2) return { query: raw, results: [] };
+  const nq = norm(raw);
+  if (!nq) return { query: raw, results: [] };
+  const scored = [];
+  for (const r of searchIndex()) {
+    let score = 0;
+    if (r.t === nq) score = 100;
+    else if (r.n === nq) score = 96;
+    else if (r.first === nq) score = 92;
+    else if (r.n.startsWith(nq)) score = 85;
+    else if (r.t.startsWith(nq)) score = 80;
+    else if (r.n.split(/\s+/).some((w) => norm(w).startsWith(nq) && norm(w).length > 1)) score = 70;
+    else if (r.extra.some((x) => x === nq)) score = 65;
+    else if (r.extra.some((x) => x.startsWith(nq))) score = 55;
+    else if (r.n.includes(nq)) score = 45;
+    else if (r.extra.some((x) => x.includes(nq))) score = 35;
+    if (score) scored.push({ ...r, score });
+  }
+  // Ties go to the bigger company: a search for Samsung should open Samsung Electronics, not Samsung Card.
+  scored.sort((a, b) => b.score - a.score || b.cap - a.cap || a.name.length - b.name.length);
+  return {
+    query: raw,
+    results: scored.slice(0, limit).map(({ ref, market, ticker, name }) => ({ ref, market, ticker, name })),
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Cross-market peers. Same broad industry, nearest size, different market — the comparison a reader
 // actually wants when a Japanese automaker is on screen and GM is the obvious check. The bucket map is
 // deliberately coarse: TSE's 33 sectors and Korea's 29 KSIC divisions are folded into the eleven US
@@ -4166,8 +4226,15 @@ const server = http.createServer(async (req, res) => {
       let store = null;
       try { store = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'japan-series.json'), 'utf8')); } catch { store = null; }
       const block = store ? ((range === '1m' || range === '6m') ? store.daily : store.weekly) : null;
-      const arr = block && block.series ? block.series[code] : null;
-      if (!arr) return sendJSON(res, 200, { dates: [], closes: [], range });
+      // Accept either the 5-digit JPX code (72030) or the 4-digit ticker (7203). The compare box and the
+      // cross-market chart use tickers, which silently returned an empty series before this.
+      const series = (block && block.series) || {};
+      let key = code;
+      if (!series[key] && code && !series[`${code}0`]) key = code;
+      if (!series[key] && code && series[`${code}0`]) key = `${code}0`;
+      if (!series[key] && code && series[`${code}`.padStart(5, '0')]) key = String(code).padStart(5, '0');
+      const arr = series[key] || null;
+      if (!arr) return sendJSON(res, 200, { dates: [], closes: [], range, code });
       const now = Date.now();
       const from = range === '1m' ? iso(now - 31 * 864e5)
         : range === '6m' ? iso(now - 190 * 864e5)
@@ -4208,6 +4275,7 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname === '/api/screen') return sendJSON(res, 200, await getScreen().catch((e) => ({ error: String(e.message), rows: [] })));
     if (url.pathname === '/api/risk') return sendJSON(res, 200, await getRisk().catch((e) => ({ error: String(e.message), metrics: [], matrix: {} })));
     if (url.pathname === '/api/fxadjusted') return sendJSON(res, 200, await getFxAdjusted(url.searchParams.get('base') || 'USD').catch((e) => ({ error: String(e.message), rows: [] })));
+    if (url.pathname === '/api/search') return sendJSONCached(res, 200, searchCompanies(url.searchParams.get('q'), Math.min(20, Number(url.searchParams.get('limit')) || 8)));
     if (url.pathname === '/api/peers') return sendJSONCached(res, 200, getPeers(url.searchParams.get('ref'), Math.min(12, Number(url.searchParams.get('n')) || 6)));
     if (url.pathname === '/api/fxwindows') return sendJSON(res, 200, await getFxWindows(url.searchParams.get('base') || 'USD').catch((e) => ({ error: String(e.message) })));
     if (url.pathname === '/api/options') return sendJSON(res, 200, await getOptions(url.searchParams.get('id') || 'wti').catch((e) => ({ error: String(e.message) })));

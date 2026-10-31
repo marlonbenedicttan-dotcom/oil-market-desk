@@ -2675,3 +2675,20 @@ Every check below was run against the committed data and the live API, not assum
 - **Guards added**: `tests/markets-data.test.js` fails on a negative cap, a preferred class counted as a
   company, a total that does not equal its parts, a share count that does not reconcile, an ROE printed
   without positive equity, or prices spanning more than one session.
+
+## The compare box takes a company name; US profiles are real profiles (2026-10-31)
+- **Typing a name in COMPARE did nothing** because the box only understood a ticker, and the datalist
+  filtered on the ticker value. It now asks `/api/search`, which matches across all three markets on name,
+  ticker, Japanese name, brands and industry, and returns chartable refs. Typing "jpmorgan" lists
+  JPMorgan Chase; click it or press Enter and the chart redraws. Ranking prefers an exact first word and
+  then the larger company, so "samsung" opens Samsung Electronics, not Samsung Card.
+- **A real bug behind it**: `/api/japan-chart` only accepted the 5-digit JPX code (72030), while every
+  cross-market path passes the 4-digit ticker (7203). Comparing anything against a Japanese company
+  returned an empty series — including the peer chips shipped earlier today. The endpoint now accepts both.
+- **US descriptions**: the 10-K "Item 1" text is what a lawyer wrote — fragments like "Originally organized
+  as Caterpillar Tractor Co." and mangled prefixes like "JPMORGAN CHASE & — J P Morgan Chase". All 503 now
+  carry a written profile from Nasdaq's own company-profile endpoint, stored in `data/us-profiles.json`
+  (115 KB, committed) and re-attached by `attach-us-descriptions.mjs` inside the daily refresh, the same
+  pattern as Japan and Korea.
+- **Tests**: search resolves a name to a ref, prefers the biggest namesake, spans all three markets, and the
+  Japanese chart answers to both the ticker and the code.

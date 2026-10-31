@@ -51,7 +51,7 @@ for (const c of data.companies) {
   const words = String(c.name || '').split(/\s+/).filter((w) => !/^(the|a|an|of|and|&)$/i.test(w));
   const key = (words[0] || '').replace(/[,.]/g, '');
   if (key && key.length >= 3 && !d.slice(0, 160).toLowerCase().includes(key.toLowerCase())) {
-    const short = c.name.replace(/\s+(Inc\.?|Corp\.?|Corporation|Company|Co\.?|plc|Ltd\.?|Holdings?)$/i, '').replace(/[,\s]+$/, '');
+    const short = c.name.replace(/\s+(Inc\.?|Corp\.?|Corporation|Company|Co\.?|plc|Ltd\.?|Holdings?)$/i, '').replace(/[,\s&]+$/, '');
     d = `${short} — ${d}`;
     prefixed++;
   }

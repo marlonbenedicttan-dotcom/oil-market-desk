@@ -4071,8 +4071,8 @@ function renderJapanPageBody(c) {
         ${cell('FINANCING CASH FLOW', yen(c.cff), 'Dividends, buybacks and borrowings, net')}
       </div>`
     + `<div class="co-ranges">
-        <span class="co-cmp-l">COMPARE</span><input class="co-cmp" id="jp-cmp" list="jp-cmp-list" placeholder="code, TOPIX, us:AAPL…" value="${esc(jpCompare)}" autocomplete="off">
-        <datalist id="jp-cmp-list">${((japanData && japanData.companies) || []).slice(0, 400).map((x) => `<option value="${esc(x.code)}">${esc(x.name)}</option>`).join('')}</datalist>
+        <span class="co-cmp-l">COMPARE</span><input class="co-cmp" id="jp-cmp" placeholder="company name, e.g. toyota" value="${esc(jpCompare)}" autocomplete="off">
+        <div class="co-sugg" id="jp-sugg"></div>
         ${[['1m', '1M'], ['6m', '6M'], ['ytd', 'YTD'], ['1y', '1Y'], ['5y', '5Y']].map(([k, t]) => `<button class="ma-chip${jpRange === k ? ' on' : ''}" data-jprange="${k}">${t}</button>`).join('')}
       </div>`
     + `<div class="co-chartwrap"><canvas id="jp-chart"></canvas></div>`
@@ -4231,12 +4231,16 @@ async function drawJpPrice(c, range = jpRange) {
     if (dates.length > 1) {
       const a0 = ch.closes[ch.dates.indexOf(dates[0])];
       const b0 = bmap.get(dates[0]);
-      const peer = jpCompare.toUpperCase() === 'TOPIX' ? { name: 'TOPIX' } : ((japanData && japanData.companies) || []).find((x) => x.code === jpCompare);
+      // The comparison may come from another market now, so look it up by ref as well as by code.
+      const peer = jpCompare.toUpperCase() === 'TOPIX' ? { name: 'TOPIX' }
+        : ((japanData && japanData.companies) || []).find((x) => x.code === jpCompare || `jp:${x.ticker}` === jpCompare)
+          || ((koreaData && koreaData.companies) || []).find((x) => `kr:${x.ticker}` === jpCompare)
+          || ((companiesData && companiesData.companies) || []).find((x) => `us:${x.ticker}` === jpCompare);
       mountChart('jp-chart', {
         labels: dates,
         datasets: [
           line(`${c.ticker} · ${c.name.slice(0, 14)}`, dates.map((d) => (ch.closes[ch.dates.indexOf(d)] / a0) * 100), CT.c1),
-          line(`${jpCompare} · ${peer ? peer.name.slice(0, 14) : ''}`, dates.map((d) => (bmap.get(d) / b0) * 100), CT.c2),
+          line(peer ? `${jpCompare} · ${peer.name.slice(0, 14)}` : jpCompare, dates.map((d) => (bmap.get(d) / b0) * 100), CT.c2),
         ],
       }, baseOptions({ dp: 0, dateAxis: true, yTitle: 'indexed to 100' }));
       return;
@@ -4291,6 +4295,61 @@ const krName = (c) => c.nameEn || c.name;
 //   AAPL → the current market · us:AAPL · jp:7203 · kr:005930
 // Cross-market peers for the chart. Same broad sector, nearest size, different market — clicking one
 // puts it on the same indexed-100 chart, which is the comparison that actually answers "is this cheap?".
+// The compare box takes a company name, not a ref. Type "jpmorgan", pick the suggestion, the chart
+// redraws. The server does the matching across all three markets so the client needs no index.
+let suggTimer = null;
+async function showSuggestions(input, boxId) {
+  const box = document.getElementById(boxId);
+  if (!box) return;
+  const q = String(input.value || '').trim();
+  if (q.length < 2) { box.innerHTML = ''; box.classList.remove('on'); return; }
+  let d = null;
+  try { d = await jget('/api/search?q=' + encodeURIComponent(q) + '&limit=6', 120000); } catch { d = null; }
+  const results = (d && d.results) || [];
+  if (!results.length) { box.innerHTML = `<div class="co-sugg-empty dimtext">No company matches “${esc(q)}”.</div>`; box.classList.add('on'); return; }
+  box.innerHTML = results.map((r) => `<button type="button" class="co-sugg-row" data-sugg="${esc(r.ref)}">
+      <b>${esc(r.ticker)}</b><span>${esc(r.name)}</span><em>${esc(r.market.toUpperCase())}</em></button>`).join('');
+  box.classList.add('on');
+}
+function hideSuggestions(boxId) {
+  const box = document.getElementById(boxId);
+  if (box) { box.innerHTML = ''; box.classList.remove('on'); }
+}
+// Turn whatever was typed into a ref: a bare ticker, a market:ref, or a company name.
+async function resolveCompare(text) {
+  const raw = String(text || '').trim();
+  if (!raw) return null;
+  const m = /^(us|jp|kr):([A-Za-z0-9.\-]+)$/.exec(raw);
+  if (m) return `${m[1].toLowerCase()}:${m[2]}`;
+  let d = null;
+  try { d = await jget('/api/search?q=' + encodeURIComponent(raw) + '&limit=1', 120000); } catch { d = null; }
+  const hit = d && d.results && d.results[0];
+  return hit ? hit.ref : null;
+}
+
+function setCompare(ref) {
+  const clean = String(ref || '').trim();
+  if (!clean) return;
+  if (coRegion === 'jp') {
+    jpCompare = clean;
+    const inp = $('jp-cmp'); if (inp) inp.value = clean;
+    hideSuggestions('jp-sugg');
+    const cur = (japanData && japanData.companies || []).find((x) => x.code === jpSel);
+    if (cur) drawJpPrice(cur, jpRange);
+  } else if (coRegion === 'kr') {
+    krCompare = clean;
+    const inp = $('kr-cmp'); if (inp) inp.value = clean;
+    hideSuggestions('kr-sugg');
+    const cur = (koreaData && koreaData.companies || []).find((x) => x.code === krSel);
+    if (cur) drawKrChart(cur, krRange);
+  } else {
+    coCompare = clean;
+    const inp = $('co-cmp'); if (inp) inp.value = clean;
+    hideSuggestions('us-sugg');
+    if (coTicker) loadCoChart(coTicker, coRange, clean);
+  }
+}
+
 const peerCache = new Map();
 async function peersFor(ref) {
   if (!ref) return null;
@@ -4515,8 +4574,8 @@ async function renderKoreaPage(stub) {
         ${cell('FCF YIELD', c.fcfYield != null ? `${c.fcfYield.toFixed(1)}%` : '—', 'Operating plus investing cash flow ÷ market cap')}
       </div>`
     + `<div class="co-ranges">
-        <span class="co-cmp-l">COMPARE</span><input class="co-cmp" id="kr-cmp" list="kr-cmp-list" placeholder="code or us:AAPL…" value="${esc(krCompare)}" autocomplete="off">
-        <datalist id="kr-cmp-list">${((koreaData && koreaData.companies) || []).slice(0, 400).map((x) => `<option value="${esc(x.ticker)}">${esc(x.nameEn || x.name)}</option>`).join('')}</datalist>
+        <span class="co-cmp-l">COMPARE</span><input class="co-cmp" id="kr-cmp" placeholder="company name, e.g. samsung" value="${esc(krCompare)}" autocomplete="off">
+        <div class="co-sugg" id="kr-sugg"></div>
         ${[['1m', '1M'], ['6m', '6M'], ['ytd', 'YTD'], ['1y', '1Y'], ['5y', '5Y']].map(([k, t]) => `<button class="ma-chip${krRange === k ? ' on' : ''}" data-krrange="${k}">${t}</button>`).join('')}
       </div>`
     + `<div class="co-chartwrap"><canvas id="kr-chart"></canvas></div>`
@@ -5070,8 +5129,8 @@ async function renderCompanyPageBody(el, c, all) {
     + (!c.peHistory && c.pe == null ? `<div class="co-band"><span class="co-band-k">P/E vs ITS OWN 5 YEARS</span><span class="co-band-n">no band — the company lost money in most of the last five years, so a P/E range does not exist</span></div>` : '')
     + (c.ticker ? `<div class="co-chartwrap">
         <div class="co-ranges">
-          <span class="co-cmp-l">COMPARE</span><input class="co-cmp" id="co-cmp" list="co-cmp-list" placeholder="ticker or jp:7203…" value="${esc(coCompare || '')}" autocomplete="off">
-          <datalist id="co-cmp-list">${(companiesData.companies || []).filter((x) => x.ticker).slice(0, 400).map((x) => `<option value="${esc(x.ticker)}">${esc(x.name)}</option>`).join('')}</datalist>
+          <span class="co-cmp-l">COMPARE</span><input class="co-cmp" id="co-cmp" placeholder="company name, e.g. jpmorgan" value="${esc(coCompare || '')}" autocomplete="off">
+          <div class="co-sugg" id="us-sugg"></div>
           ${['1m', '6m', 'ytd', '1y', '5y'].map((r) => `<button class="ma-chip${coRange === r ? ' on' : ''}" data-corange="${r}">${r.toUpperCase()}</button>`).join('')}
         </div>
         <div class="co-canvas"><canvas id="co-chart"></canvas></div></div>
@@ -5138,26 +5197,10 @@ async function renderCompanyPageBody(el, c, all) {
 }
 
 document.addEventListener('click', (e) => {
+  const sug = e.target.closest('[data-sugg]');
+  if (sug) { setCompare(sug.dataset.sugg); return; }
   const peer = e.target.closest('[data-peer]');
-  if (peer) {
-    const ref = peer.dataset.peer;
-    if (coRegion === 'jp') {
-      jpCompare = ref;
-      const inp = $('jp-cmp'); if (inp) inp.value = ref;
-      const cur = (japanData && japanData.companies || []).find((x) => x.code === jpSel);
-      if (cur) drawJpPrice(cur, jpRange);
-    } else if (coRegion === 'kr') {
-      krCompare = ref;
-      const inp = $('kr-cmp'); if (inp) inp.value = ref;
-      const cur = (koreaData && koreaData.companies || []).find((x) => x.code === krSel);
-      if (cur) drawKrChart(cur, krRange);
-    } else {
-      coCompare = ref;
-      const inp = $('co-cmp'); if (inp) inp.value = ref;
-      if (coTicker) loadCoChart(coTicker, coRange, ref);
-    }
-    return;
-  }
+  if (peer) { setCompare(peer.dataset.peer); return; }
   const cr = e.target.closest('[data-corange]');
   if (cr) {
     coRange = cr.dataset.corange;
@@ -5344,7 +5387,7 @@ document.addEventListener('change', (e) => {
 });
 
 // Selects fire 'change' on some browsers where they never fire 'input' — handle both.
-document.addEventListener('change', (e) => {
+document.addEventListener('change', async (e) => {
   if (e.target && e.target.dataset && e.target.dataset.krf) {
     const k = e.target.dataset.krf;
     if (k === 'sector') krSector = e.target.value || 'all';
@@ -5353,16 +5396,9 @@ document.addEventListener('change', (e) => {
     renderKorea();
     return;
   }
-  if (e.target && e.target.id === 'kr-cmp') {
-    krCompare = (e.target.value || '').trim().toUpperCase();
-    const cur = (koreaData && koreaData.companies || []).find((x) => x.code === krSel);
-    if (cur) drawKrChart(cur);
-    return;
-  }
-  if (e.target && e.target.id === 'jp-cmp') {
-    jpCompare = (e.target.value || '').trim();
-    const cur = ((japanData && japanData.companies) || []).find((x) => x.code === jpSel);
-    if (cur) drawJpPrice(cur);
+  if (e.target && (e.target.id === 'kr-cmp' || e.target.id === 'jp-cmp')) {
+    const ref = await resolveCompare(e.target.value);
+    if (ref) setCompare(ref);
     return;
   }
   if (!(e.target && e.target.dataset && e.target.dataset.jpf)) return;
@@ -5370,6 +5406,18 @@ document.addEventListener('change', (e) => {
   if (k === 'sort') { jpSort = e.target.value; try { localStorage.setItem('oilbasis.jpSort', jpSort); } catch {} }
   else { jpFilter[k] = e.target.value; saveJpFilter(); }
   renderJapan();
+});
+
+document.addEventListener('keydown', async (e) => {
+  if (!(e.target && ['co-cmp', 'jp-cmp', 'kr-cmp'].includes(e.target.id))) return;
+  const box = { 'co-cmp': 'us-sugg', 'jp-cmp': 'jp-sugg', 'kr-cmp': 'kr-sugg' }[e.target.id];
+  if (e.key === 'Escape') { hideSuggestions(box); return; }
+  if (e.key !== 'Enter') return;
+  e.preventDefault();
+  const first = document.querySelector(`#${box} [data-sugg]`);
+  if (first) { setCompare(first.dataset.sugg); return; }
+  const ref = await resolveCompare(e.target.value);
+  if (ref) setCompare(ref);
 });
 
 document.addEventListener('input', (e) => {
@@ -5385,8 +5433,11 @@ document.addEventListener('input', (e) => {
     if (coRegion === 'kr') { krQuery = e.target.value || ''; krSel = null; renderKorea(); return; }
     coQuery = e.target.value || ''; coCik = null; renderCompanies(); return;
   }
-  if (e.target && e.target.id === 'co-cmp') {
-    coCompare = (e.target.value || '').trim().toUpperCase();
-    if (!coCompare || coCompare.length >= 1) loadCoChart(coTicker, coRange, coCompare);
+  if (e.target && (e.target.id === 'co-cmp' || e.target.id === 'jp-cmp' || e.target.id === 'kr-cmp')) {
+    const box = { 'co-cmp': 'us-sugg', 'jp-cmp': 'jp-sugg', 'kr-cmp': 'kr-sugg' }[e.target.id];
+    clearTimeout(suggTimer);
+    const input = e.target;
+    suggTimer = setTimeout(() => showSuggestions(input, box), 180);
+    return;
   }
 });

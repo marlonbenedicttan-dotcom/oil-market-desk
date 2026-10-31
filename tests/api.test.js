@@ -629,3 +629,31 @@ test('text assets are gzipped when the client accepts it (and decode cleanly)', 
   const body = zlib.gunzipSync(Buffer.concat(chunks)).toString();
   assert.match(body, /tickerStart/, 'the gzip stream decodes to the real script');
 });
+
+// --- search and compare -------------------------------------------------------------------------
+// The compare box takes a company name; the server has to turn that into a chartable ref.
+test('search resolves a company name to a market ref', async () => {
+  const r = await fetch(`http://localhost:${PORT}/api/search?q=jpmorgan`);
+  assert.equal(r.status, 200);
+  const d = await r.json();
+  assert.ok(d.results.length, 'no results for a company that definitely exists');
+  assert.equal(d.results[0].ref, 'us:JPM');
+});
+
+test('search prefers the biggest company when several share a name', async () => {
+  const d = await (await fetch(`http://localhost:${PORT}/api/search?q=samsung&limit=3`)).json();
+  assert.equal(d.results[0].ref, 'kr:005930', `got ${d.results[0] && d.results[0].ref}`);
+});
+
+test('search spans all three markets', async () => {
+  const d = await (await fetch(`http://localhost:${PORT}/api/search?q=toyota&limit=3`)).json();
+  assert.ok(d.results.some((x) => x.market === 'jp'), 'Japan missing from the search index');
+  assert.equal(d.results[0].ref, 'jp:7203');
+});
+
+test('a Japanese chart answers to both the ticker and the five-digit code', async () => {
+  const byTicker = await (await fetch(`http://localhost:${PORT}/api/japan-chart?code=7203&range=1y`)).json();
+  const byCode = await (await fetch(`http://localhost:${PORT}/api/japan-chart?code=72030&range=1y`)).json();
+  assert.ok(byTicker.dates.length > 40, `ticker form returned ${byTicker.dates.length} points`);
+  assert.deepEqual(byTicker.dates, byCode.dates);
+});
