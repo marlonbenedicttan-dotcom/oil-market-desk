@@ -370,22 +370,28 @@ const median = (xs) => {
   const m = Math.floor(a.length / 2);
   return a.length % 2 ? a[m] : +((a[m - 1] + a[m]) / 2).toFixed(2);
 };
-const sectorStats = new Map();
+// A preferred share class is a separate security on the same company. Keep the row (it has a price and
+// a cap) but never count it as a company or add it to the market total — the same rule the US list uses.
 for (const c of companies) {
+  c.shareClass = /preferred stock|shares of preferred/i.test(c.name || '') ? true : false;
+}
+const listed = companies.filter((c) => !c.shareClass);
+const sectorStats = new Map();
+for (const c of listed) {
   if (!sectorStats.has(c.sector)) sectorStats.set(c.sector, []);
   sectorStats.get(c.sector).push(c);
 }
 const market = {
-  companies: companies.length,
-  totalCap: companies.reduce((a, c) => a + (c.marketCap || 0), 0),
-  medianPe: median(companies.map((c) => c.pe)),
-  medianPb: median(companies.map((c) => c.pb)),
-  medianRoe: median(companies.map((c) => c.roe)),
-  medianYield: median(companies.map((c) => (c.dividend ? c.dividend.yield : null))),
-  belowBook: companies.filter((c) => c.pb != null && c.pb < 1).length,
-  advancing: companies.filter((c) => c.chg1d != null && c.chg1d > 0).length,
-  declining: companies.filter((c) => c.chg1d != null && c.chg1d < 0).length,
-  upYtd: companies.filter((c) => c.chgYtd != null && c.chgYtd > 0).length,
+  companies: listed.length,
+  totalCap: listed.reduce((a, c) => a + (c.marketCap || 0), 0),
+  medianPe: median(listed.map((c) => c.pe)),
+  medianPb: median(listed.map((c) => c.pb)),
+  medianRoe: median(listed.map((c) => c.roe)),
+  medianYield: median(listed.map((c) => (c.dividend ? c.dividend.yield : null))),
+  belowBook: listed.filter((c) => c.pb != null && c.pb < 1).length,
+  advancing: listed.filter((c) => c.chg1d != null && c.chg1d > 0).length,
+  declining: listed.filter((c) => c.chg1d != null && c.chg1d < 0).length,
+  upYtd: listed.filter((c) => c.chgYtd != null && c.chgYtd > 0).length,
   sectors: [...sectorStats].map(([name, list]) => ({
     name, count: list.length,
     cap: list.reduce((a, c) => a + (c.marketCap || 0), 0),

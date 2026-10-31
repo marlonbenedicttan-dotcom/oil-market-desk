@@ -87,11 +87,16 @@ export function deriveKorea({ companies, fx = null }) {
       ...c,
       marketCap: cap,
       marketCapUsd: cap && fx ? Math.round(cap / fx) : null,
+      // Publish the count the cap was actually built from, so price × shares reconciles on screen.
+      shares: shares || null,
+      sharesIssued: c.shares || null,
       currency: 'KRW',
       pe: round(guard(cap && ni > 0 ? cap / ni : null, 0, 500), 2),
       peBasis: basis,
       pb: round(guard(cap && equity > 0 ? cap / equity : null, 0, 50), 2),
-      roe: equity && ni != null ? round((ni / equity) * 100, 1) : null,
+      // ROE needs positive book equity: dividing by negative equity flips the sign, so a profitable
+      // company with negative equity would print a loss-like ROE.
+      roe: equity > 0 && ni != null ? round((ni / equity) * 100, 1) : null,
       opMargin: rev && op != null ? round((op / rev) * 100, 1) : null,
       netMargin: rev && ni != null ? round((ni / rev) * 100, 1) : null,
       fcf,

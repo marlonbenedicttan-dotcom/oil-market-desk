@@ -62,6 +62,7 @@ const FIX = {
   '000040': 'KR MOTORS CO LTD',
   '001470': 'SAMBU ENGINEERING & CONSTRUCTION CO LTD',
   '009900': 'MYOUNG SHIN INDUSTRIAL CO LTD',
+  '143210': 'HANDS CORPORATION LTD',
 };
 for (const c of out) if (FIX[c.ticker]) c.nameEn = FIX[c.ticker];
 

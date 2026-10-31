@@ -2444,7 +2444,8 @@ function renderJapanScreen(el) {
     loadJapan().then(() => renderScreen(true));
     return;
   }
-  const all = japanData.companies || [];
+  // A preferred share class is not a separate company; the US list has the same rule.
+  const all = (japanData.companies || []).filter((c) => !c.shareClass);
   const sectors = [...new Set(all.map((c) => c.sector).filter(Boolean))].sort();
   const q = coScreenJp.q.trim().toLowerCase();
   const { sort, dir } = coScreenJp;
@@ -3807,7 +3808,8 @@ async function renderJapan() {
   const d = await loadJapan();
   if (stale(token)) return;          // another market was chosen while this one loaded
   syncMarketBar();
-  const all = (d && d.companies) || [];
+  // Preferred share classes carry a price but are not separate companies — same rule as the US.
+  const all = ((d && d.companies) || []).filter((c) => !c.shareClass);
   const sub = $('deals-sub');
   if (sub) sub.textContent = all.length ? `${all.length} companies · TSE Prime · ¥ JPY · J-Quants` : 'TSE Prime · J-Quants (JPX)';
   if (!all.length) {
@@ -4345,7 +4347,8 @@ async function renderKorea() {
   const d = await loadKorea();
   if (stale(token)) return;
   syncMarketBar();
-  const all = (d && d.companies) || [];
+  // Preferred share classes carry a price but are not separate companies — same rule as the US.
+  const all = ((d && d.companies) || []).filter((c) => !c.shareClass);
   const sub = $('deals-sub');
   if (sub) sub.textContent = all.length ? `${all.length} companies · KOSPI · ₩ KRW · DART` : 'KOSPI · DART';
   if (!all.length) {

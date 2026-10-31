@@ -2646,3 +2646,32 @@ they are filed. Today's run picked up **295 companies** that had filed.
   for Japan and Korea. Clicking a chip puts it on the same indexed-100 chart.
 - **Guards**: tests now fail on a negative cap, on a sector that contradicts the KSIC division, and on any
   filter that reads a field the list projection does not ship.
+
+## Full three-market audit (2026-10-31)
+Every check below was run against the committed data and the live API, not assumed.
+- **Prices reconcile with the sources.** US: AAPL $344.63 −1.23%, XOM $187.25 +2.16%, JPM $337.04 −1.90%,
+  all matching Nasdaq exactly and all stamped 2026-10-30. Korea matches Naver (Samsung ₩220,500,
+  Kia ₩94,800). Japan's 400 sampled rows reconcile with the J-Quants series for both price and 1D.
+- **Totals reconcile.** US $69.14T over 500 companies; Japan ¥1,259.35T over 1,546; Korea ₩5,255.88T over
+  745. Sector caps add to the market total in both markets that publish them.
+- **Fixed: a preferred share class counted as a company.** ITO EN's preferred (25935) was in the Japanese
+  list and totals as a separate company. It is now flagged `shareClass`, excluded from the count, the
+  totals and the list — the same rule the US uses.
+- **Fixed: negative market caps.** Korea divided net income by EPS without checking the signs agreed,
+  which produced a negative share count and a negative cap (LG Energy Solution at −₩6.2T). Fixed earlier
+  today; the audit confirms zero remaining.
+- **Fixed: published shares did not reconcile with the cap.** Korea now publishes the count the cap was
+  built from (`shares`) alongside the issued count (`sharesIssued`), so price × shares equals the cap for
+  all 745 companies.
+- **Fixed: ROE with negative equity.** Dividing by negative book equity flips the sign — STX Corporation
+  showed +336.6% ROE with no book equity at all. Korea now requires equity > 0. Japan keeps JPX's own
+  figure, which is attributed to JPX on the page.
+- **Extremes checked, not "fixed".** P/E above 400 (TSLA 416, PANW 975), P/B above 60 (AAPL 68, MA 72) and
+  ROE above 300% (Colgate 3,804% on $54M of equity) are arithmetically correct for buyback-shrunk balance
+  sheets. MRNA's +614% YTD matches its own price series (24.16 → 221.72).
+- **UI audit**: all nine market views render (US 500/11, Japan 1547/33/69, Korea 745/30/8), no horizontal
+  overflow at 390 px, no JS exceptions, every company page draws its chart, six cross-market peers, brand
+  chips and a description.
+- **Guards added**: `tests/markets-data.test.js` fails on a negative cap, a preferred class counted as a
+  company, a total that does not equal its parts, a share count that does not reconcile, an ROE printed
+  without positive equity, or prices spanning more than one session.
