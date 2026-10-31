@@ -505,6 +505,19 @@ footer li { margin-bottom: 2px; }
 .sc-table tbody tr { cursor: pointer; }
 .sc-table tbody tr:hover { background: #10151b; }
 .sc-name { color: var(--text); white-space: nowrap; text-align: left; }
+/* Company tables on a phone: four columns that fit, and a smaller face. Ten columns in 390 px meant
+   the reader saw the name and the price and had to scroll sideways for everything else. */
+@media (max-width: 640px) {
+  .sc-cotable { min-width: 0; width: 100%; font-size: 10.5px; }
+  .sc-cotable th { padding: 6px 4px; font-size: 9px; letter-spacing: .6px; }
+  .sc-cotable td { padding: 7px 4px; }
+  .sc-cotable .sc-name { white-space: normal; line-height: 1.25; }
+  .sc-cotable .sc-tick { display: block; margin: 1px 0 0; font-size: 8.5px; }
+  /* Keep COMPANY · PRICE · 1D · YTD; drop 6M, P/E and everything after it. */
+  .sc-cotable th:nth-child(4), .sc-cotable td:nth-child(4),
+  .sc-cotable th:nth-child(n+6), .sc-cotable td:nth-child(n+6) { display: none; }
+  .sc-cotable th:nth-child(5), .sc-cotable td:nth-child(5) { display: table-cell; }
+}
 .sc-flag { padding: 0 5px; border: 1px solid var(--line2); color: var(--dim); }
 .sc-flag.hot { color: var(--red); border-color: #5a2020; }
 .sc-flag.warm { color: var(--amber); border-color: #5c4a1d; }
@@ -1163,8 +1176,10 @@ button.deal-sec-tile:hover { background: #10151b; }
   #co-chips:not(.open) > .ma-reset,
   #co-chips:not(.open) > .co-asof { display: none; }
   /* A Korean or Japanese legal name needs two lines; one line truncated half of them. */
-  .co-id b { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-  .co-meta { font-size: 9.5px; gap: 2px 7px; }
+  .co-id b { font-size: 11.5px; white-space: normal; display: -webkit-box; -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical; overflow: hidden; line-height: 1.25; }
+  .co-meta { font-size: 9px; gap: 2px 7px; }
+  .co-cap { font-size: 11.5px; }
   /* One line of meta is enough on a phone: the sector lives on the company page. */
   .co-meta .jp-sector, .co-meta .co-sec { display: none; }
   #co-chips:not(.open) > .co-asof { display: inline; }

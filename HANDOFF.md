@@ -2725,3 +2725,17 @@ Audited at 360, 390 and 430 px with screenshots of every view, then fixed what l
   excluding the preferred share class.
 - Verified: no horizontal overflow at 360/390/430 px on any of the nine market views, no JS exceptions,
   and the desktop layout is unchanged.
+
+## Methodology covers Korea; the intro is one line; screener tables fit a phone (2026-10-31)
+- **DATA & METHODOLOGY** now lists Korea: the KOSPI universe (745, and why KOSDAQ names such as YG
+  Entertainment are absent), DART statements with the cumulative-quarter rule, Naver prices and ECB FX,
+  the five-year valuation history, and the KSIC sector fold. The Japan count was corrected to 1,546 and
+  the description counts now match the data. Two Korea limits added: no company guidance means no forward
+  P/E, and ~80 small filers are absent rather than estimated.
+- **The ? intro** is now the single lead line. The two paragraphs under it were stale (they still said
+  "two company markets" and "1,544 Japanese companies").
+- **Home screener on a phone**: the company table carried `min-width: 760px`, so in a 390 px viewport the
+  reader saw COMPANY and PRICE and had to scroll sideways for the rest. Company tables now fit the width
+  with four columns — COMPANY · PRICE · 1D · YTD — the ticker and sector on a second line, and the face
+  dropped from 12 px to 10.5 px. The commodity table keeps all its columns; the rule is scoped to
+  `.sc-cotable` only. The COMPANIES tab list went from 12.5 px to 11.5 px to match.

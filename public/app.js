@@ -2431,7 +2431,7 @@ function renderCompanyScreen(el) {
       <label class="sc-f">SEARCH <input id="cos-q" type="search" placeholder="company or ticker…" value="${esc(coScreen.q)}"></label>
       <label class="sc-f">SECTOR <select id="cos-sector"><option value="all">All sectors</option>${sectors.map((x) => `<option value="${esc(x)}"${coScreen.sector === x ? ' selected' : ''}>${esc(x)}</option>`).join('')}</select></label>
       <span class="sc-count dimtext">${rows.length} of ${all.length} companies</span>
-    </div><div class="sc-wrap" id="sc-table"><table class="sc-table"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>
+    </div><div class="sc-wrap" id="sc-table"><table class="sc-table sc-cotable"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>
     ${pagerHtml(rows.length, coScreen.page, coScreen.per, 'copage')}
     <div class="sc-note dimtext">${fxNote('USD')}S&amp;P 500 companies · SEC filings, GAAP as filed · ${asOfText(all, 'priceAsOf') || 'prices from Nasdaq'}. Click a row to open the company.</div>`;
 }
@@ -2476,7 +2476,7 @@ function renderJapanScreen(el) {
       <label class="sc-f">SEARCH <input id="cosj-q" type="search" placeholder="company or ticker…" value="${esc(coScreenJp.q)}"></label>
       <label class="sc-f">SECTOR <select id="cosj-sector"><option value="all">All sectors</option>${sectors.map((x) => `<option value="${esc(x)}"${coScreenJp.sector === x ? ' selected' : ''}>${esc(x)}</option>`).join('')}</select></label>
       <span class="sc-count dimtext">${rows.length} of ${all.length} companies</span>
-    </div><div class="sc-wrap" id="sc-table"><table class="sc-table"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>
+    </div><div class="sc-wrap" id="sc-table"><table class="sc-table sc-cotable"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>
     ${pagerHtml(rows.length, coScreenJp.page, coScreenJp.per, 'jppage')}
     <div class="sc-note dimtext">${fxNote('JPY')}TSE Prime companies · J-Quants (JPX) · ${asOfText(all, 'priceDate') || 'prices in yen'} · P/E and ROE are trailing twelve months. Click a row to open the company.</div>`;
 }
@@ -2524,7 +2524,7 @@ function renderKoreaScreen(el) {
       <label class="sc-f">SEARCH <input id="cosk-q" type="search" placeholder="company or code…" value="${esc(coScreenKr.q)}"></label>
       <label class="sc-f">SECTOR <select id="cosk-sector"><option value="all">All sectors</option>${sectors.map((x) => `<option value="${esc(x)}"${coScreenKr.sector === x ? ' selected' : ''}>${esc(x)}</option>`).join('')}</select></label>
       <span class="sc-count dimtext">${rows.length} of ${all.length} companies</span>
-    </div><div class="sc-wrap" id="sc-table"><table class="sc-table"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>
+    </div><div class="sc-wrap" id="sc-table"><table class="sc-table sc-cotable"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>
     ${pagerHtml(rows.length, page, per, 'krpage')}
     <div class="sc-note dimtext">${fxNote('KRW')}KOSPI companies · DART statements · ${asOfText(all, 'priceDate') || 'Naver prices'} · P/E is trailing twelve months.</div>`;
 }
