@@ -2849,3 +2849,16 @@ Audited at 360, 390 and 430 px with screenshots of every view, then fixed what l
   profit, while Apple showed FY2025. Revenue is now TTM too (sum of the last four quarters, 487 of 500),
   labelled TTM with the fiscal-year figure in the tooltip. Where quarters are incomplete it falls back to
   the fiscal year and says which year it is.
+
+## Last gaps closed, and the US quarter table now reads newest-first (2026-10-31)
+- **Operating income fallbacks**: revenue − costs was not enough for filers with no operating line, so two
+  more derivations were added — gross profit − operating expenses, and pretax income + interest expense.
+  Operating income is now present for **494 of 500** (was 488); EBITDA for 488.
+- **The remaining six** (PSX, COHR, CASY, HONA, VMRK, VYLR) genuinely file no operating line in any form.
+  VYLR has no SEC filing at all, so a ticker with `noFilings` is no longer listed — a company page where
+  every field is blank is worse than no page.
+- **Bank and insurer pages now say why** the ratios are missing: "No enterprise value, EBITDA, free cash
+  flow, current ratio or return on capital: those ratios do not apply to a bank or an insurer, so they are
+  omitted rather than shown as blanks."
+- **US quarterly table reads newest-first**, matching Japan and Korea. It was oldest-first, so 2024 sat
+  above 2026.

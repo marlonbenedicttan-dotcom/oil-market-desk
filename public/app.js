@@ -2397,7 +2397,8 @@ function renderCompanyScreen(el) {
     getJSON('/api/companies').then((d) => { companiesData = d; renderScreen(true); }).catch(() => {});
     return;
   }
-  const all = (companiesData?.companies || []).filter((c) => !c.shareClass && c.ticker);
+  // A ticker with no SEC filing has nothing to show: no statements, no quarters, no chart of substance.
+  const all = (companiesData?.companies || []).filter((c) => !c.shareClass && c.ticker && !c.noFilings);
   if (!all.length) { el.innerHTML = stError('Couldn’t load companies — retrying.'); return; }
   const sectors = [...new Set(all.map((c) => c.sector).filter(Boolean))].sort();
   const q = coScreen.q.trim().toLowerCase();
@@ -5196,7 +5197,12 @@ async function renderCompanyPageBody(el, c, all) {
           add('ebitYield', 'EBIT YIELD', c.ebitYield != null ? c.ebitYield.toFixed(1) + '%' : '—', 'Operating income ÷ enterprise value — the cash-flow yield on the whole business', c.ebitYield >= 0 ? 'pos' : 'neg');
           add('assetTurnover', 'ASSET TURNOVER', c.assetTurnover != null ? c.assetTurnover.toFixed(2) + '×' : '—', 'Revenue ÷ assets — how hard the asset base works');
         }
-        return `<div class="co-stats co-stats-12">${tiles.join('')}</div>`;
+        const note = na.size
+          ? `<div class="macro-note" style="padding:6px 12px">${esc(c.sector === 'Financials' && /^6[03]/.test(String(c.sic || ''))
+              ? 'No enterprise value, EBITDA, free cash flow, current ratio or return on capital: those ratios do not apply to a bank or an insurer, so they are omitted rather than shown as blanks.'
+              : 'Some ratios are omitted because they do not exist for this business.')}</div>`
+          : '';
+        return `<div class="co-stats co-stats-12">${tiles.join('')}</div>${note}`;
       })()
     + (c.peHistory ? (() => {
         const h = c.peHistory;
@@ -5237,7 +5243,8 @@ async function renderCompanyPageBody(el, c, all) {
         }).join('')}
       </div>` : '')
     + (() => {
-        const qs = (c.quarters || []).filter((q) => q.revenue != null || q.netIncome != null);
+        // Newest first, the same order Japan and Korea use.
+        const qs = (c.quarters || []).filter((q) => q.revenue != null || q.netIncome != null).slice().reverse();
         if (!qs.length) return '';
         return `<div class="gtitle">LAST EIGHT QUARTERS</div>
           <div class="co-table co-qtr">

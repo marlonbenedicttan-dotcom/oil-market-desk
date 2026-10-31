@@ -9,7 +9,7 @@ export const US_LIST_FIELDS = [
   'cik', 'ticker', 'name', 'sector', 'industry', 'indexName', 'shareClass', 'price', 'chg1d', 'chg6m',
   'chgYtd', 'pe', 'pb', 'evEbitda', 'roe', 'marketCap', 'revenue', 'netIncome', 'netIncomeTTM', 'marginNA',
   'fcfYield', 'fcfNA', 'revenueCagr', 'roic', 'adrNA', 'dividendYield', 'indexWeight', 'sic',
-  'buybacks', 'cash', 'priceAsOf', 'brands',
+  'buybacks', 'cash', 'priceAsOf', 'brands', 'noFilings',
 ];
 
 export const projectUs = (c) => {

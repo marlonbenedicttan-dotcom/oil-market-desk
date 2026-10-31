@@ -53,6 +53,11 @@ const DA = ['DepreciationDepletionAndAmortization', 'DepreciationAmortizationAnd
   'DepreciationAndAmortization', 'Depreciation', 'DepreciationAmortizationAndAccretionNet'];
 const NI = ['NetIncomeLoss', 'ProfitLoss', 'NetIncomeLossAvailableToCommonStockholdersBasic'];
 const GROSS = ['GrossProfit'];
+const OPEX = ['OperatingExpenses', 'OperatingCostsAndExpenses'];
+const TAX = ['IncomeTaxExpenseBenefit'];
+const INTEREST = ['InterestExpense', 'InterestExpenseNonoperating', 'InterestExpenseDebt', 'InterestIncomeExpenseNet'];
+const PRETAX = ['IncomeLossFromContinuingOperationsBeforeIncomeTaxesExtraordinaryItemsNoncontrollingInterest',
+  'IncomeLossFromContinuingOperationsBeforeIncomeTaxesMinorityInterestAndIncomeLossFromEquityMethodInvestments'];
 const ASSETS = ['Assets'];
 const EQUITY = ['StockholdersEquity', 'StockholdersEquityIncludingPortionAttributableToNoncontrollingInterest', 'CommonStockholdersEquity'];
 
@@ -93,6 +98,10 @@ for (const c of todo) {
   const da = annualMap(facts, DA);
   const ni = annualMap(facts, NI);
   const gross = annualMap(facts, GROSS);
+  const opex = annualMap(facts, OPEX);
+  const tax = annualMap(facts, TAX);
+  const interest = annualMap(facts, INTEREST);
+  const pretax = annualMap(facts, PRETAX);
   const assets = instantMap(facts, ASSETS);
   const equity = instantMap(facts, EQUITY);
 
@@ -105,7 +114,22 @@ for (const c of todo) {
     const r = rev.get(end), o = opi.get(end), n = ni.get(end), k = costs.get(end), d = da.get(end);
     let opInc = o ? o.val : null;
     let opBasis = o ? 'filed' : null;
+    // Fallback chain for filers that never tag an operating line: revenue − costs, then gross profit −
+    // operating expenses, then net income + tax + interest.
     if (opInc == null && r && k && Math.abs(r.val - k.val) < Math.abs(r.val) * 3) { opInc = r.val - k.val; opBasis = 'derived'; }
+    if (opInc == null && gross.get(end) && opex.get(end)) {
+      const cand = gross.get(end).val - opex.get(end).val;
+      if (Math.abs(cand) < Math.abs(gross.get(end).val) * 3) { opInc = cand; opBasis = 'derived'; }
+    }
+    // Pretax income + interest is operating income for a filer that reports no operating line at all.
+    if (opInc == null && pretax.get(end)) {
+      const cand = pretax.get(end).val + (interest.get(end)?.val || 0);
+      if (Math.abs(cand) < Math.abs(pretax.get(end).val) * 6) { opInc = cand; opBasis = 'derived'; }
+    }
+    if (opInc == null && n) {
+      const cand = n.val + (tax.get(end)?.val || 0) + (interest.get(end)?.val || 0);
+      if (Math.abs(cand) < Math.abs(n.val) * 6) { opInc = cand; opBasis = 'derived'; }
+    }
     const ebitda = opInc != null && d ? opInc + d.val : null;
     const prev = old.get(String(fy)) || {};
     const shares = c.shares || null;
