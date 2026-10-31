@@ -693,7 +693,7 @@ function readJapan() {
 }
 
 // The screener needs thirteen fields; the other forty-five are only read when a company is opened.
-const US_LIST_FIELDS = ['cik', 'ticker', 'name', 'sector', 'industry', 'indexName', 'shareClass', 'price', 'chg1d', 'chg6m', 'chgYtd', 'pe', 'pb', 'evEbitda', 'roe', 'marketCap', 'revenue', 'netIncome', 'netIncomeTTM', 'marginNA', 'fcfYield', 'fcfNA', 'revenueCagr', 'roic', 'growth', 'adrNA', 'dividendYield', 'indexWeight', 'sic', 'buybacks', 'cash'];
+const US_LIST_FIELDS = ['cik', 'ticker', 'name', 'sector', 'industry', 'indexName', 'shareClass', 'price', 'chg1d', 'chg6m', 'chgYtd', 'pe', 'pb', 'evEbitda', 'roe', 'marketCap', 'revenue', 'netIncome', 'netIncomeTTM', 'marginNA', 'fcfYield', 'fcfNA', 'revenueCagr', 'roic', 'growth', 'adrNA', 'dividendYield', 'indexWeight', 'sic', 'buybacks', 'cash', 'priceAsOf'];
 const projectUs = (c) => {
   const o = {};
   for (const k of US_LIST_FIELDS) if (c[k] !== undefined) o[k] = c[k];

@@ -2353,6 +2353,15 @@ const screenMarketHtml = () => `<div class="sc-modes sc-mkt">${[['us', 'US'], ['
 // investor gets that return *plus* the yen's own move, so the two are compounded rather than added.
 // Falls back to the local number only when no FX move is known, and the note under the table says so.
 const CUR_OF_MARKET = { us: 'USD', jp: 'JPY', kr: 'KRW' };
+// The date the prices belong to — the modal session across the table, so a stale feed is visible
+// rather than implied.
+function sessionOf(list, field) {
+  const tally = {};
+  for (const c of list) { const d = c[field]; if (d) tally[d] = (tally[d] || 0) + 1; }
+  const best = Object.entries(tally).sort((a, b) => b[1] - a[1])[0];
+  return best ? best[0] : null;
+}
+const asOfText = (list, field) => { const d = sessionOf(list, field); return d ? `prices as of ${dealDateY(d)}` : ''; };
 function fxRet(v, cur, win) {
   if (v == null) return null;
   if (!fxWin || !fxWin.windows) return v;
@@ -2424,7 +2433,7 @@ function renderCompanyScreen(el) {
       <span class="sc-count dimtext">${rows.length} of ${all.length} companies</span>
     </div><div class="sc-wrap" id="sc-table"><table class="sc-table"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>
     ${pagerHtml(rows.length, coScreen.page, coScreen.per, 'copage')}
-    <div class="sc-note dimtext">${fxNote('USD')}S&amp;P 500 companies · SEC filings, GAAP as filed · prices from Nasdaq. Click a row to open the company.</div>`;
+    <div class="sc-note dimtext">${fxNote('USD')}S&amp;P 500 companies · SEC filings, GAAP as filed · ${asOfText(all, 'priceAsOf') || 'prices from Nasdaq'}. Click a row to open the company.</div>`;
 }
 
 // The same screener, on the Japanese market. Yen, its own columns, its own filters — never mixed
@@ -2468,7 +2477,7 @@ function renderJapanScreen(el) {
       <span class="sc-count dimtext">${rows.length} of ${all.length} companies</span>
     </div><div class="sc-wrap" id="sc-table"><table class="sc-table"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>
     ${pagerHtml(rows.length, coScreenJp.page, coScreenJp.per, 'jppage')}
-    <div class="sc-note dimtext">${fxNote('JPY')}TSE Prime companies · J-Quants (JPX) · prices in yen · P/E and ROE are trailing twelve months. Click a row to open the company.</div>`;
+    <div class="sc-note dimtext">${fxNote('JPY')}TSE Prime companies · J-Quants (JPX) · ${asOfText(all, 'priceDate') || 'prices in yen'} · P/E and ROE are trailing twelve months. Click a row to open the company.</div>`;
 }
 
 // Korea in the home screener, the same shape as Japan's.
@@ -2516,7 +2525,7 @@ function renderKoreaScreen(el) {
       <span class="sc-count dimtext">${rows.length} of ${all.length} companies</span>
     </div><div class="sc-wrap" id="sc-table"><table class="sc-table"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>
     ${pagerHtml(rows.length, page, per, 'krpage')}
-    <div class="sc-note dimtext">${fxNote('KRW')}KOSPI companies · DART statements, Naver prices · prices in won · P/E is trailing twelve months.</div>`;
+    <div class="sc-note dimtext">${fxNote('KRW')}KOSPI companies · DART statements · ${asOfText(all, 'priceDate') || 'Naver prices'} · P/E is trailing twelve months.</div>`;
 }
 
 function renderScreen(full) {
@@ -3645,14 +3654,15 @@ let coSort = 'cap', coDir = -1;   // screener: which column, and which way
 // One filter bar for all three markets. The markets keep their own filters — a Korean bank screen is
 // not a US one — but the shape is identical: preset chips, then labelled selects, then CLEAR. Same
 // markup, same classes, same place in the toolbar, so switching market does not re-teach the user.
-function coFilterBar({ presets = [], preset = null, presetAttr, selects = [], extra = '', clearAttr, clearValue = 'clear', active = 0 }) {
+function coFilterBar({ presets = [], preset = null, presetAttr, selects = [], extra = '', clearAttr, clearValue = 'clear', active = 0, asOf = '' }) {
   const sel = (key, label, opts, cur, attr) => `<label class="co-sel"><span>${label}</span><select ${attr}="${esc(key)}">`
     + opts.map(([v, t]) => `<option value="${esc(v)}"${String(v) === String(cur) ? ' selected' : ''}>${esc(t)}</option>`).join('')
     + '</select></label>';
   return `<div class="jp-presets" style="width:100%;padding:0 0 2px">${presets.map((p) => `<button type="button" class="co-tgl${preset === p.id ? ' on' : ''}" ${presetAttr}="${esc(p.id)}">${esc(p.label)}</button>`).join('')}</div>`
     + selects.map((x) => sel(x.key, x.label, x.opts, x.cur, x.attr)).join('')
     + extra
-    + (active ? `<button class="ma-reset" ${clearAttr}="${esc(clearValue)}">CLEAR ${active}</button>` : '');
+    + (active ? `<button class="ma-reset" ${clearAttr}="${esc(clearValue)}">CLEAR ${active}</button>` : '')
+    + (asOf ? `<span class="co-asof dimtext">${esc(asOf)}</span>` : '');
 }
 let coPe = 'all', coMinMargin = 0, coGrowth = null, coPriced = false, coVerified = false, coView = 'list';
 
@@ -3932,7 +3942,7 @@ function renderJapanScreener(all, d) {
         { key: 'yield', label: 'YIELD', opts: [['', 'Any'], ['2', '>2%'], ['3', '>3%'], ['4', '>4%']], cur: jpFilter.yield, attr: 'data-jpf' },
         { key: 'sort', label: 'SORT', opts: [['cap', 'Market cap'], ['pe', 'P/E low'], ['pb', 'P/B low'], ['roe', 'ROE high'], ['yield', 'Yield high'], ['ytd', 'YTD best']], cur: jpSort, attr: 'data-jpf' },
       ],
-      clearAttr: 'data-jppreset', clearValue: 'clear', active: activeJp,
+      clearAttr: 'data-jppreset', clearValue: 'clear', active: activeJp, asOf: asOfText(all, 'priceDate'),
     });
   }
   el.innerHTML = jpViewsBar()
@@ -4426,7 +4436,7 @@ function renderKoreaScreener(all, d) {
         { key: 'roe', label: 'ROE', opts: [['', 'Any'], ['10', '>10%'], ['15', '>15%']], cur: f.roe, attr: 'data-krf' },
         { key: 'sort', label: 'SORT', opts: [['cap', 'Market cap'], ['pe', 'P/E low'], ['pb', 'P/B low'], ['roe', 'ROE high'], ['ytd', 'YTD best']], cur: krSort, attr: 'data-krf' },
       ],
-      clearAttr: 'data-krpreset', clearValue: 'clear', active: activeKr,
+      clearAttr: 'data-krpreset', clearValue: 'clear', active: activeKr, asOf: asOfText(all, 'priceDate'),
     });
   }
   const max = Math.max(...all.map((c) => c.marketCap || 0), 1);
@@ -4657,7 +4667,7 @@ function renderCompanies() {
         + tgl('Verified', coVerified, 'data-coverified="1"')
         + tgl('Board', coView === 'sectors', 'data-coview="1"')
         + '<button class="co-tgl" data-coexport="1">CSV</button>',
-      clearAttr: 'data-coreset', clearValue: '1', active,
+      clearAttr: 'data-coreset', clearValue: '1', active, asOf: asOfText(all, 'priceAsOf'),
     });
   }
 

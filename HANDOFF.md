@@ -2592,3 +2592,23 @@ they are filed. Today's run picked up **295 companies** that had filed.
   the rest normalised to the house style (CO LTD, no trailing periods).
 - **Guard test**: `tests/korea-data.test.js` fails the build if the committed profile store is missing, if
   fewer than 95% of companies carry a real profile, or if any placeholder line reappears.
+
+## US 1D was a session behind; one filter bar for all three markets (2026-10-31)
+- **Why the US daily move looked stale**: the workflow ran at 22:40 UTC, but Nasdaq's quote endpoint was
+  still serving the *previous* session three hours after the close. Every US company carried the prior
+  day's close and its 1D move. Japan (J-Quants) and Korea (Naver) were current — only the US was behind.
+- **Fix**: the cron moved to 01:10 UTC Tue–Sat, after Nasdaq settles its end-of-day batch, and
+  `refresh-prices.mjs` now checks the session it received against the expected one and goes back for the
+  stragglers (up to six 10-minute retries) instead of shipping a day-old number.
+- **Visibility**: every company table now ends its filter bar with "prices as of <date>" — the modal
+  `priceAsOf` (US) or `priceDate` (Japan, Korea) — so a stale feed is obvious instead of implied.
+- **Uniform filter bar**: the three markets had three different designs — the US in the toolbar, Japan's
+  own row of selects inside the body, Korea a single sector dropdown. All three now render through
+  `coFilterBar()` into the same `#co-chips` container: preset chips on top, labelled selects below, CLEAR
+  and the session date at the end. Each market keeps its own filters (the US has SIZE/MARGIN/GROWTH and
+  BUYBACK/QUALITY, Japan P/E/ROE/YIELD, Korea P/E/ROE), which is the point — same shape, different rules.
+- **Dead US chips on Korea**: `syncCoTools` hid the US chips for Japan only, so Korea showed BUYBACK
+  HEAVY / QUALITY / MARGIN filters that filtered nothing (no buyback data exists for KOSPI or TSE).
+  Korea now gets its own bar; nothing US-specific leaks into either market.
+- **Sorting**: ROE and YIELD sorted ascending (worst first) in Japan and Korea; both now sort
+  best-first, and a blank cell goes last whichever way the column runs.

@@ -1116,6 +1116,8 @@ button.deal-sec-tile:hover { background: #10151b; }
 .co-tgl:hover { border-color: #33465a; color: #d7e3ef; }
 .co-tgl.on { background: #1b2733; border-color: #2f4356; color: #cfe3f7; }
 .co-sep { width: 1px; height: 18px; background: #1d242c; margin: 0 2px; }
+/* The session the prices belong to, at the end of every filter bar. */
+.co-asof { font-size: 10px; letter-spacing: .3px; color: #6b7a89; margin-left: auto; white-space: nowrap; }
 @media (max-width: 720px) {
   #co-search { flex: 1 1 100%; max-width: none; }
   #co-chips { width: 100%; }
