@@ -1,5 +1,5 @@
 {
- "updated": "2026-10-30T07:53:25.196Z",
+ "updated": "2026-10-31T00:18:23.528Z",
  "events": [
   {
    "date": "2026-10-06",
@@ -9,7 +9,7 @@
    "detail": "announced",
    "basis": "confirmed",
    "weight": 0,
-   "days": -24
+   "days": -25
   },
   {
    "date": "2026-10-08",
@@ -19,17 +19,7 @@
    "detail": "announced · $1500m",
    "basis": "confirmed",
    "weight": 0,
-   "days": -22
-  },
-  {
-   "date": "2026-10-13",
-   "kind": "deal",
-   "ticker": null,
-   "label": "AZZ INC → Seattle Galvanizing in Arlington",
-   "detail": "announced",
-   "basis": "confirmed",
-   "weight": 0,
-   "days": -17
+   "days": -23
   },
   {
    "date": "2026-10-13",
@@ -39,7 +29,17 @@
    "detail": "announced · $870m",
    "basis": "confirmed",
    "weight": 0,
-   "days": -17
+   "days": -18
+  },
+  {
+   "date": "2026-10-13",
+   "kind": "deal",
+   "ticker": null,
+   "label": "AZZ INC → Seattle Galvanizing in Arlington",
+   "detail": "announced",
+   "basis": "confirmed",
+   "weight": 0,
+   "days": -18
   },
   {
    "date": "2026-10-15",
@@ -49,7 +49,7 @@
    "detail": "announced · $6300m",
    "basis": "confirmed",
    "weight": 0,
-   "days": -15
+   "days": -16
   },
   {
    "date": "2026-10-16",
@@ -59,17 +59,7 @@
    "detail": "terminated · $18000m",
    "basis": "confirmed",
    "weight": 0,
-   "days": -14
-  },
-  {
-   "date": "2026-10-16",
-   "kind": "deal",
-   "ticker": null,
-   "label": "COPART INC → ACV Auctions Inc",
-   "detail": "announced · $1800m",
-   "basis": "confirmed",
-   "weight": 0,
-   "days": -14
+   "days": -15
   },
   {
    "date": "2026-10-16",
@@ -79,27 +69,27 @@
    "detail": "announced · $625m",
    "basis": "confirmed",
    "weight": 0,
-   "days": -14
+   "days": -15
+  },
+  {
+   "date": "2026-10-16",
+   "kind": "deal",
+   "ticker": null,
+   "label": "COPART INC → ACV Auctions Inc",
+   "detail": "announced · $1800m",
+   "basis": "confirmed",
+   "weight": 0,
+   "days": -15
   },
   {
    "date": "2026-10-19",
    "kind": "deal",
    "ticker": null,
-   "label": "Tradeweb → Trumid",
-   "detail": "announced · $2000m",
+   "label": "M.D.C. HOLDINGS, INC → Rest of Challenger",
+   "detail": "announced · $4400m",
    "basis": "confirmed",
    "weight": 0,
-   "days": -11
-  },
-  {
-   "date": "2026-10-19",
-   "kind": "deal",
-   "ticker": null,
-   "label": "Germany’s Merck → U.K. Biotech Silence Therapeutics",
-   "detail": "announced · $1300m",
-   "basis": "confirmed",
-   "weight": 0,
-   "days": -11
+   "days": -12
   },
   {
    "date": "2026-10-19",
@@ -109,14 +99,34 @@
    "detail": "announced · $3400m",
    "basis": "confirmed",
    "weight": 0,
-   "days": -11
+   "days": -12
   },
   {
    "date": "2026-10-19",
    "kind": "deal",
    "ticker": null,
-   "label": "M.D.C. HOLDINGS, INC → Rest of Challenger",
-   "detail": "announced · $4400m",
+   "label": "Germany’s Merck → U.K. Biotech Silence Therapeutics",
+   "detail": "announced · $1300m",
+   "basis": "confirmed",
+   "weight": 0,
+   "days": -12
+  },
+  {
+   "date": "2026-10-19",
+   "kind": "deal",
+   "ticker": null,
+   "label": "Tradeweb → Trumid",
+   "detail": "announced · $2000m",
+   "basis": "confirmed",
+   "weight": 0,
+   "days": -12
+  },
+  {
+   "date": "2026-10-20",
+   "kind": "deal",
+   "ticker": null,
+   "label": "Salesforce → Customer-Engagement Platform",
+   "detail": "announced · $5700m",
    "basis": "confirmed",
    "weight": 0,
    "days": -11
@@ -129,23 +139,23 @@
    "detail": "announced · $10800m",
    "basis": "confirmed",
    "weight": 0,
-   "days": -10
-  },
-  {
-   "date": "2026-10-20",
-   "kind": "deal",
-   "ticker": null,
-   "label": "Salesforce → Customer-Engagement Platform",
-   "detail": "announced · $5700m",
-   "basis": "confirmed",
-   "weight": 0,
-   "days": -10
+   "days": -11
   },
   {
    "date": "2026-10-20",
    "kind": "deal",
    "ticker": null,
    "label": "Weatherford International plc → NCS Multistage Holdings",
+   "detail": "announced",
+   "basis": "confirmed",
+   "weight": 0,
+   "days": -11
+  },
+  {
+   "date": "2026-10-21",
+   "kind": "deal",
+   "ticker": null,
+   "label": "HEALTHCARE SERVICES GROUP INC → NEXDINE Hospitality",
    "detail": "announced",
    "basis": "confirmed",
    "weight": 0,
@@ -159,17 +169,7 @@
    "detail": "closed · $2400m",
    "basis": "confirmed",
    "weight": 0,
-   "days": -9
-  },
-  {
-   "date": "2026-10-21",
-   "kind": "deal",
-   "ticker": null,
-   "label": "HEALTHCARE SERVICES GROUP INC → NEXDINE Hospitality",
-   "detail": "announced",
-   "basis": "confirmed",
-   "weight": 0,
-   "days": -9
+   "days": -10
   },
   {
    "date": "2026-10-22",
@@ -179,17 +179,7 @@
    "detail": "announced · $3500m",
    "basis": "confirmed",
    "weight": 0,
-   "days": -8
-  },
-  {
-   "date": "2026-10-22",
-   "kind": "deal",
-   "ticker": null,
-   "label": "Gilead → PepStar's inflammation drug program",
-   "detail": "announced · $1280m",
-   "basis": "confirmed",
-   "weight": 0,
-   "days": -8
+   "days": -9
   },
   {
    "date": "2026-10-22",
@@ -199,7 +189,17 @@
    "detail": "announced",
    "basis": "confirmed",
    "weight": 0,
-   "days": -8
+   "days": -9
+  },
+  {
+   "date": "2026-10-22",
+   "kind": "deal",
+   "ticker": null,
+   "label": "Gilead → PepStar's inflammation drug program",
+   "detail": "announced · $1280m",
+   "basis": "confirmed",
+   "weight": 0,
+   "days": -9
   },
   {
    "date": "2026-10-25",
@@ -209,7 +209,7 @@
    "detail": "announced · $6000m",
    "basis": "confirmed",
    "weight": 0,
-   "days": -5
+   "days": -6
   },
   {
    "date": "2026-10-26",
@@ -219,7 +219,7 @@
    "detail": "announced · $17000m",
    "basis": "confirmed",
    "weight": 0,
-   "days": -4
+   "days": -5
   },
   {
    "date": "2026-10-26",
@@ -229,7 +229,7 @@
    "detail": "announced · $589m",
    "basis": "confirmed",
    "weight": 0,
-   "days": -4
+   "days": -5
   },
   {
    "date": "2026-10-27",
@@ -239,7 +239,17 @@
    "detail": "announced · $2600m",
    "basis": "confirmed",
    "weight": 0,
-   "days": -3
+   "days": -4
+  },
+  {
+   "date": "2026-10-27",
+   "kind": "deal",
+   "ticker": null,
+   "label": "Dutch regulator block → Unilever's Unox brand",
+   "detail": "announced",
+   "basis": "confirmed",
+   "weight": 0,
+   "days": -4
   },
   {
    "date": "2026-10-27",
@@ -249,14 +259,14 @@
    "detail": "announced · $11500m",
    "basis": "confirmed",
    "weight": 0,
-   "days": -3
+   "days": -4
   },
   {
-   "date": "2026-10-27",
+   "date": "2026-10-28",
    "kind": "deal",
    "ticker": null,
-   "label": "Dutch regulator block → Unilever's Unox brand",
-   "detail": "announced",
+   "label": "GE Vernova → Trench",
+   "detail": "announced · $9000m",
    "basis": "confirmed",
    "weight": 0,
    "days": -3
@@ -269,17 +279,7 @@
    "detail": "announced · $1400m",
    "basis": "confirmed",
    "weight": 0,
-   "days": -2
-  },
-  {
-   "date": "2026-10-28",
-   "kind": "deal",
-   "ticker": null,
-   "label": "GE Vernova → Trench",
-   "detail": "announced · $9000m",
-   "basis": "confirmed",
-   "weight": 0,
-   "days": -2
+   "days": -3
   },
   {
    "date": "2026-11-02",
@@ -290,7 +290,7 @@
    "detail": "period ends 2026-09-29 · filed 34 days after quarter end, historically",
    "basis": "expected",
    "weight": 1.109835,
-   "days": 3
+   "days": 2
   },
   {
    "date": "2026-11-02",
@@ -301,7 +301,7 @@
    "detail": "period ends 2026-09-29 · filed 34 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.763261,
-   "days": 3
+   "days": 2
   },
   {
    "date": "2026-11-02",
@@ -312,7 +312,7 @@
    "detail": "period ends 2026-09-29 · filed 34 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.392711,
-   "days": 3
+   "days": 2
   },
   {
    "date": "2026-11-02",
@@ -323,7 +323,7 @@
    "detail": "period ends 2026-09-29 · filed 34 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.202018,
-   "days": 3
+   "days": 2
   },
   {
    "date": "2026-11-02",
@@ -334,7 +334,7 @@
    "detail": "period ends 2026-09-29 · filed 34 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.130859,
-   "days": 3
+   "days": 2
   },
   {
    "date": "2026-11-02",
@@ -345,7 +345,7 @@
    "detail": "period ends 2026-09-29 · filed 34 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.128184,
-   "days": 3
+   "days": 2
   },
   {
    "date": "2026-11-02",
@@ -356,7 +356,7 @@
    "detail": "period ends 2026-09-29 · filed 34 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.100703,
-   "days": 3
+   "days": 2
   },
   {
    "date": "2026-11-02",
@@ -367,7 +367,7 @@
    "detail": "period ends 2026-09-29 · filed 34 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.045738,
-   "days": 3
+   "days": 2
   },
   {
    "date": "2026-11-02",
@@ -378,7 +378,7 @@
    "detail": "period ends 2026-10-02 · filed 31 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.043143,
-   "days": 3
+   "days": 2
   },
   {
    "date": "2026-11-02",
@@ -389,7 +389,7 @@
    "detail": "period ends 2026-09-29 · filed 34 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.038663,
-   "days": 3
+   "days": 2
   },
   {
    "date": "2026-11-02",
@@ -400,7 +400,7 @@
    "detail": "period ends 2026-09-29 · filed 34 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.028287,
-   "days": 3
+   "days": 2
   },
   {
    "date": "2026-11-02",
@@ -411,18 +411,7 @@
    "detail": "period ends 2026-09-26 · filed 37 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.024433,
-   "days": 3
-  },
-  {
-   "date": "2026-11-02",
-   "kind": "earnings",
-   "ticker": "EG",
-   "name": "EVEREST GROUP, LTD.",
-   "label": "EG · quarterly report expected",
-   "detail": "period ends 2026-09-29 · filed 34 days after quarter end, historically",
-   "basis": "expected",
-   "weight": 0.022005,
-   "days": 3
+   "days": 2
   },
   {
    "date": "2026-11-02",
@@ -433,7 +422,7 @@
    "detail": "period ends 2026-09-29 · filed 34 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.018606,
-   "days": 3
+   "days": 2
   },
   {
    "date": "2026-11-02",
@@ -444,7 +433,7 @@
    "detail": "period ends 2026-09-29 · filed 34 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.015948,
-   "days": 3
+   "days": 2
   },
   {
    "date": "2026-11-03",
@@ -455,7 +444,7 @@
    "detail": "period ends 2026-09-29 · filed 35 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.683629,
-   "days": 4
+   "days": 3
   },
   {
    "date": "2026-11-03",
@@ -466,7 +455,7 @@
    "detail": "period ends 2026-09-29 · filed 35 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.332672,
-   "days": 4
+   "days": 3
   },
   {
    "date": "2026-11-03",
@@ -477,7 +466,7 @@
    "detail": "period ends 2026-09-27 · filed 37 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.26262,
-   "days": 4
+   "days": 3
   },
   {
    "date": "2026-11-03",
@@ -488,7 +477,7 @@
    "detail": "period ends 2026-09-29 · filed 35 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.205266,
-   "days": 4
+   "days": 3
   },
   {
    "date": "2026-11-03",
@@ -499,7 +488,7 @@
    "detail": "period ends 2026-09-29 · filed 35 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.195499,
-   "days": 4
+   "days": 3
   },
   {
    "date": "2026-11-03",
@@ -510,7 +499,7 @@
    "detail": "period ends 2026-09-29 · filed 35 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.182998,
-   "days": 4
+   "days": 3
   },
   {
    "date": "2026-11-03",
@@ -521,7 +510,7 @@
    "detail": "period ends 2026-09-29 · filed 35 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.148005,
-   "days": 4
+   "days": 3
   },
   {
    "date": "2026-11-03",
@@ -532,7 +521,7 @@
    "detail": "period ends 2026-09-29 · filed 35 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.135584,
-   "days": 4
+   "days": 3
   },
   {
    "date": "2026-11-03",
@@ -543,7 +532,7 @@
    "detail": "period ends 2026-09-29 · filed 35 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.125382,
-   "days": 4
+   "days": 3
   },
   {
    "date": "2026-11-03",
@@ -554,7 +543,7 @@
    "detail": "period ends 2026-09-29 · filed 35 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.10806,
-   "days": 4
+   "days": 3
   },
   {
    "date": "2026-11-03",
@@ -565,7 +554,7 @@
    "detail": "period ends 2026-09-26 · filed 38 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.095308,
-   "days": 4
+   "days": 3
   },
   {
    "date": "2026-11-03",
@@ -576,7 +565,7 @@
    "detail": "period ends 2026-09-29 · filed 35 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.089773,
-   "days": 4
+   "days": 3
   },
   {
    "date": "2026-11-03",
@@ -587,7 +576,7 @@
    "detail": "period ends 2026-09-29 · filed 35 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.089183,
-   "days": 4
+   "days": 3
   },
   {
    "date": "2026-11-03",
@@ -598,7 +587,7 @@
    "detail": "period ends 2026-09-29 · filed 35 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.08307,
-   "days": 4
+   "days": 3
   },
   {
    "date": "2026-11-03",
@@ -609,7 +598,7 @@
    "detail": "period ends 2026-09-29 · filed 35 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.078723,
-   "days": 4
+   "days": 3
   },
   {
    "date": "2026-11-03",
@@ -620,7 +609,7 @@
    "detail": "period ends 2026-09-29 · filed 35 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.073032,
-   "days": 4
+   "days": 3
   },
   {
    "date": "2026-11-03",
@@ -631,7 +620,7 @@
    "detail": "period ends 2026-09-29 · filed 35 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.071552,
-   "days": 4
+   "days": 3
   },
   {
    "date": "2026-11-03",
@@ -642,18 +631,7 @@
    "detail": "period ends 2026-09-29 · filed 35 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.067865,
-   "days": 4
-  },
-  {
-   "date": "2026-11-03",
-   "kind": "earnings",
-   "ticker": "AMP",
-   "name": "AMERIPRISE FINANCIAL INC",
-   "label": "AMP · quarterly report expected",
-   "detail": "period ends 2026-09-29 · filed 35 days after quarter end, historically",
-   "basis": "expected",
-   "weight": 0.066236,
-   "days": 4
+   "days": 3
   },
   {
    "date": "2026-11-03",
@@ -664,7 +642,7 @@
    "detail": "period ends 2026-09-29 · filed 35 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.05839,
-   "days": 4
+   "days": 3
   },
   {
    "date": "2026-11-03",
@@ -675,18 +653,7 @@
    "detail": "period ends 2026-09-29 · filed 35 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.056572,
-   "days": 4
-  },
-  {
-   "date": "2026-11-03",
-   "kind": "earnings",
-   "ticker": "WEC",
-   "name": "WEC ENERGY GROUP, INC.",
-   "label": "WEC · quarterly report expected",
-   "detail": "period ends 2026-09-29 · filed 35 days after quarter end, historically",
-   "basis": "expected",
-   "weight": 0.055431,
-   "days": 4
+   "days": 3
   },
   {
    "date": "2026-11-03",
@@ -697,7 +664,7 @@
    "detail": "period ends 2026-09-29 · filed 35 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.054989,
-   "days": 4
+   "days": 3
   },
   {
    "date": "2026-11-03",
@@ -708,7 +675,7 @@
    "detail": "period ends 2026-09-29 · filed 35 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.052603,
-   "days": 4
+   "days": 3
   },
   {
    "date": "2026-11-03",
@@ -719,7 +686,7 @@
    "detail": "period ends 2026-09-29 · filed 35 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.048508,
-   "days": 4
+   "days": 3
   },
   {
    "date": "2026-11-03",
@@ -730,7 +697,7 @@
    "detail": "period ends 2026-09-29 · filed 35 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.036434,
-   "days": 4
+   "days": 3
   },
   {
    "date": "2026-11-03",
@@ -741,7 +708,7 @@
    "detail": "period ends 2026-09-29 · filed 35 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.034535,
-   "days": 4
+   "days": 3
   },
   {
    "date": "2026-11-03",
@@ -752,7 +719,7 @@
    "detail": "period ends 2026-09-29 · filed 35 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.032117,
-   "days": 4
+   "days": 3
   },
   {
    "date": "2026-11-03",
@@ -763,7 +730,7 @@
    "detail": "period ends 2026-09-29 · filed 35 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.030211,
-   "days": 4
+   "days": 3
   },
   {
    "date": "2026-11-03",
@@ -774,7 +741,7 @@
    "detail": "period ends 2026-09-29 · filed 35 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.030032,
-   "days": 4
+   "days": 3
   },
   {
    "date": "2026-11-03",
@@ -785,7 +752,7 @@
    "detail": "period ends 2026-09-29 · filed 35 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.029114,
-   "days": 4
+   "days": 3
   },
   {
    "date": "2026-11-03",
@@ -796,7 +763,7 @@
    "detail": "period ends 2026-09-29 · filed 35 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.0278,
-   "days": 4
+   "days": 3
   },
   {
    "date": "2026-11-03",
@@ -807,7 +774,7 @@
    "detail": "period ends 2026-10-03 · filed 31 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.027755,
-   "days": 4
+   "days": 3
   },
   {
    "date": "2026-11-03",
@@ -818,7 +785,7 @@
    "detail": "period ends 2026-09-29 · filed 35 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.026582,
-   "days": 4
+   "days": 3
   },
   {
    "date": "2026-11-03",
@@ -829,7 +796,7 @@
    "detail": "period ends 2026-09-25 · filed 39 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.026201,
-   "days": 4
+   "days": 3
   },
   {
    "date": "2026-11-03",
@@ -840,7 +807,7 @@
    "detail": "period ends 2026-10-02 · filed 32 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.02572,
-   "days": 4
+   "days": 3
   },
   {
    "date": "2026-11-03",
@@ -851,7 +818,7 @@
    "detail": "period ends 2026-09-29 · filed 35 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.022162,
-   "days": 4
+   "days": 3
   },
   {
    "date": "2026-11-03",
@@ -862,7 +829,7 @@
    "detail": "period ends 2026-09-29 · filed 35 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.021428,
-   "days": 4
+   "days": 3
   },
   {
    "date": "2026-11-03",
@@ -873,7 +840,7 @@
    "detail": "period ends 2026-09-29 · filed 35 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.019617,
-   "days": 4
+   "days": 3
   },
   {
    "date": "2026-11-03",
@@ -884,7 +851,7 @@
    "detail": "period ends 2026-09-29 · filed 35 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.019405,
-   "days": 4
+   "days": 3
   },
   {
    "date": "2026-11-03",
@@ -895,7 +862,7 @@
    "detail": "period ends 2026-09-29 · filed 35 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.016642,
-   "days": 4
+   "days": 3
   },
   {
    "date": "2026-11-03",
@@ -906,7 +873,7 @@
    "detail": "period ends 2026-09-29 · filed 35 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.0162,
-   "days": 4
+   "days": 3
   },
   {
    "date": "2026-11-03",
@@ -917,7 +884,7 @@
    "detail": "period ends 2026-09-29 · filed 35 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.014076,
-   "days": 4
+   "days": 3
   },
   {
    "date": "2026-11-03",
@@ -928,7 +895,7 @@
    "detail": "period ends 2026-09-26 · filed 38 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.012629,
-   "days": 4
+   "days": 3
   },
   {
    "date": "2026-11-03",
@@ -939,7 +906,7 @@
    "detail": "period ends 2026-09-29 · filed 35 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.006427,
-   "days": 4
+   "days": 3
   },
   {
    "date": "2026-11-04",
@@ -950,7 +917,7 @@
    "detail": "period ends 2026-09-26 · filed 39 days after quarter end, historically",
    "basis": "expected",
    "weight": 1.255604,
-   "days": 5
+   "days": 4
   },
   {
    "date": "2026-11-04",
@@ -961,7 +928,7 @@
    "detail": "period ends 2026-09-29 · filed 36 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.490174,
-   "days": 5
+   "days": 4
   },
   {
    "date": "2026-11-04",
@@ -972,7 +939,7 @@
    "detail": "period ends 2026-09-29 · filed 36 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.365997,
-   "days": 5
+   "days": 4
   },
   {
    "date": "2026-11-04",
@@ -983,7 +950,7 @@
    "detail": "period ends 2026-09-26 · filed 39 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.295982,
-   "days": 5
+   "days": 4
   },
   {
    "date": "2026-11-04",
@@ -994,7 +961,7 @@
    "detail": "period ends 2026-09-29 · filed 36 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.271001,
-   "days": 5
+   "days": 4
   },
   {
    "date": "2026-11-04",
@@ -1005,18 +972,7 @@
    "detail": "period ends 2026-09-29 · filed 36 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.213497,
-   "days": 5
-  },
-  {
-   "date": "2026-11-04",
-   "kind": "earnings",
-   "ticker": "ADP",
-   "name": "AUTOMATIC DATA PROCESSING INC",
-   "label": "ADP · Q1 report expected",
-   "detail": "period ends 2026-09-29 · filed 36 days after quarter end, historically",
-   "basis": "expected",
-   "weight": 0.185138,
-   "days": 5
+   "days": 4
   },
   {
    "date": "2026-11-04",
@@ -1027,7 +983,7 @@
    "detail": "period ends 2026-09-29 · filed 36 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.182864,
-   "days": 5
+   "days": 4
   },
   {
    "date": "2026-11-04",
@@ -1038,7 +994,7 @@
    "detail": "period ends 2026-09-29 · filed 36 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.178928,
-   "days": 5
+   "days": 4
   },
   {
    "date": "2026-11-04",
@@ -1049,7 +1005,7 @@
    "detail": "period ends 2026-09-29 · filed 36 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.171679,
-   "days": 5
+   "days": 4
   },
   {
    "date": "2026-11-04",
@@ -1060,7 +1016,7 @@
    "detail": "period ends 2026-09-29 · filed 36 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.136166,
-   "days": 5
+   "days": 4
   },
   {
    "date": "2026-11-04",
@@ -1071,7 +1027,7 @@
    "detail": "period ends 2026-10-03 · filed 32 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.119477,
-   "days": 5
+   "days": 4
   },
   {
    "date": "2026-11-04",
@@ -1082,7 +1038,7 @@
    "detail": "period ends 2026-09-29 · filed 36 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.115032,
-   "days": 5
+   "days": 4
   },
   {
    "date": "2026-11-04",
@@ -1093,18 +1049,7 @@
    "detail": "period ends 2026-09-29 · filed 36 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.108373,
-   "days": 5
-  },
-  {
-   "date": "2026-11-04",
-   "kind": "earnings",
-   "ticker": "DASH",
-   "name": "DoorDash, Inc.",
-   "label": "DASH · quarterly report expected",
-   "detail": "period ends 2026-09-29 · filed 36 days after quarter end, historically",
-   "basis": "expected",
-   "weight": 0.105876,
-   "days": 5
+   "days": 4
   },
   {
    "date": "2026-11-04",
@@ -1115,7 +1060,7 @@
    "detail": "period ends 2026-09-29 · filed 36 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.105101,
-   "days": 5
+   "days": 4
   },
   {
    "date": "2026-11-04",
@@ -1126,7 +1071,7 @@
    "detail": "period ends 2026-09-29 · filed 36 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.098944,
-   "days": 5
+   "days": 4
   },
   {
    "date": "2026-11-04",
@@ -1137,7 +1082,7 @@
    "detail": "period ends 2026-09-29 · filed 36 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.097738,
-   "days": 5
+   "days": 4
   },
   {
    "date": "2026-11-04",
@@ -1148,7 +1093,7 @@
    "detail": "period ends 2026-09-29 · filed 36 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.087014,
-   "days": 5
+   "days": 4
   },
   {
    "date": "2026-11-04",
@@ -1159,7 +1104,7 @@
    "detail": "period ends 2026-09-29 · filed 36 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.081673,
-   "days": 5
+   "days": 4
   },
   {
    "date": "2026-11-04",
@@ -1170,7 +1115,7 @@
    "detail": "period ends 2026-09-26 · filed 39 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.07838,
-   "days": 5
+   "days": 4
   },
   {
    "date": "2026-11-04",
@@ -1181,7 +1126,7 @@
    "detail": "period ends 2026-09-29 · filed 36 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.068879,
-   "days": 5
+   "days": 4
   },
   {
    "date": "2026-11-04",
@@ -1192,7 +1137,7 @@
    "detail": "period ends 2026-09-29 · filed 36 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.064674,
-   "days": 5
+   "days": 4
   },
   {
    "date": "2026-11-04",
@@ -1203,7 +1148,7 @@
    "detail": "period ends 2026-09-29 · filed 36 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.063787,
-   "days": 5
+   "days": 4
   },
   {
    "date": "2026-11-04",
@@ -1214,7 +1159,7 @@
    "detail": "period ends 2026-09-29 · filed 36 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.0615,
-   "days": 5
+   "days": 4
   },
   {
    "date": "2026-11-04",
@@ -1225,7 +1170,7 @@
    "detail": "period ends 2026-09-29 · filed 36 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.060983,
-   "days": 5
+   "days": 4
   },
   {
    "date": "2026-11-04",
@@ -1236,7 +1181,7 @@
    "detail": "period ends 2026-09-29 · filed 36 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.053631,
-   "days": 5
+   "days": 4
   },
   {
    "date": "2026-11-04",
@@ -1247,7 +1192,7 @@
    "detail": "period ends 2026-09-29 · filed 36 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.050755,
-   "days": 5
+   "days": 4
   },
   {
    "date": "2026-11-04",
@@ -1258,7 +1203,7 @@
    "detail": "period ends 2026-09-29 · filed 36 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.049959,
-   "days": 5
+   "days": 4
   },
   {
    "date": "2026-11-04",
@@ -1269,7 +1214,7 @@
    "detail": "period ends 2026-09-29 · filed 36 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.04448,
-   "days": 5
+   "days": 4
   },
   {
    "date": "2026-11-04",
@@ -1280,18 +1225,7 @@
    "detail": "period ends 2026-09-29 · filed 36 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.041906,
-   "days": 5
-  },
-  {
-   "date": "2026-11-04",
-   "kind": "earnings",
-   "ticker": "LH",
-   "name": "LABCORP HOLDINGS INC.",
-   "label": "LH · quarterly report expected",
-   "detail": "period ends 2026-09-29 · filed 36 days after quarter end, historically",
-   "basis": "expected",
-   "weight": 0.040298,
-   "days": 5
+   "days": 4
   },
   {
    "date": "2026-11-04",
@@ -1302,7 +1236,7 @@
    "detail": "period ends 2026-09-29 · filed 36 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.038928,
-   "days": 5
+   "days": 4
   },
   {
    "date": "2026-11-04",
@@ -1313,7 +1247,7 @@
    "detail": "period ends 2026-09-26 · filed 39 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.032868,
-   "days": 5
+   "days": 4
   },
   {
    "date": "2026-11-04",
@@ -1324,7 +1258,7 @@
    "detail": "period ends 2026-09-29 · filed 36 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.030929,
-   "days": 5
+   "days": 4
   },
   {
    "date": "2026-11-04",
@@ -1335,7 +1269,7 @@
    "detail": "period ends 2026-09-29 · filed 36 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.029607,
-   "days": 5
+   "days": 4
   },
   {
    "date": "2026-11-04",
@@ -1346,7 +1280,7 @@
    "detail": "period ends 2026-09-29 · filed 36 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.028887,
-   "days": 5
+   "days": 4
   },
   {
    "date": "2026-11-04",
@@ -1357,7 +1291,7 @@
    "detail": "period ends 2026-09-29 · filed 36 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.028519,
-   "days": 5
+   "days": 4
   },
   {
    "date": "2026-11-04",
@@ -1368,7 +1302,7 @@
    "detail": "period ends 2026-09-29 · filed 36 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.027004,
-   "days": 5
+   "days": 4
   },
   {
    "date": "2026-11-04",
@@ -1379,7 +1313,7 @@
    "detail": "period ends 2026-09-26 · filed 39 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.02483,
-   "days": 5
+   "days": 4
   },
   {
    "date": "2026-11-04",
@@ -1390,7 +1324,7 @@
    "detail": "period ends 2026-09-29 · filed 36 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.023581,
-   "days": 5
+   "days": 4
   },
   {
    "date": "2026-11-04",
@@ -1401,7 +1335,7 @@
    "detail": "period ends 2026-09-29 · filed 36 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.020312,
-   "days": 5
+   "days": 4
   },
   {
    "date": "2026-11-04",
@@ -1412,7 +1346,7 @@
    "detail": "period ends 2026-09-29 · filed 36 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.019831,
-   "days": 5
+   "days": 4
   },
   {
    "date": "2026-11-04",
@@ -1423,7 +1357,7 @@
    "detail": "period ends 2026-09-29 · filed 36 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.019151,
-   "days": 5
+   "days": 4
   },
   {
    "date": "2026-11-04",
@@ -1434,7 +1368,7 @@
    "detail": "period ends 2026-09-29 · filed 36 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.016539,
-   "days": 5
+   "days": 4
   },
   {
    "date": "2026-11-04",
@@ -1445,7 +1379,7 @@
    "detail": "period ends 2026-09-29 · filed 36 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.015567,
-   "days": 5
+   "days": 4
   },
   {
    "date": "2026-11-04",
@@ -1456,7 +1390,7 @@
    "detail": "period ends 2026-09-29 · filed 36 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.015542,
-   "days": 5
+   "days": 4
   },
   {
    "date": "2026-11-04",
@@ -1467,7 +1401,7 @@
    "detail": "period ends 2026-09-29 · filed 36 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.00839,
-   "days": 5
+   "days": 4
   },
   {
    "date": "2026-11-05",
@@ -1478,7 +1412,7 @@
    "detail": "period ends 2026-09-29 · filed 37 days after quarter end, historically",
    "basis": "expected",
    "weight": 1.354677,
-   "days": 6
+   "days": 5
   },
   {
    "date": "2026-11-05",
@@ -1489,7 +1423,7 @@
    "detail": "period ends 2026-09-29 · filed 37 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.678329,
-   "days": 6
+   "days": 5
   },
   {
    "date": "2026-11-05",
@@ -1500,18 +1434,7 @@
    "detail": "period ends 2026-09-29 · filed 37 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.311337,
-   "days": 6
-  },
-  {
-   "date": "2026-11-05",
-   "kind": "earnings",
-   "ticker": "GILD",
-   "name": "GILEAD SCIENCES, INC.",
-   "label": "GILD · quarterly report expected",
-   "detail": "period ends 2026-09-29 · filed 37 days after quarter end, historically",
-   "basis": "expected",
-   "weight": 0.295324,
-   "days": 6
+   "days": 5
   },
   {
    "date": "2026-11-05",
@@ -1522,7 +1445,7 @@
    "detail": "period ends 2026-09-29 · filed 37 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.264754,
-   "days": 6
+   "days": 5
   },
   {
    "date": "2026-11-05",
@@ -1533,7 +1456,7 @@
    "detail": "period ends 2026-09-29 · filed 37 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.247857,
-   "days": 6
+   "days": 5
   },
   {
    "date": "2026-11-05",
@@ -1544,7 +1467,7 @@
    "detail": "period ends 2026-09-29 · filed 37 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.141517,
-   "days": 6
+   "days": 5
   },
   {
    "date": "2026-11-05",
@@ -1555,7 +1478,7 @@
    "detail": "period ends 2026-09-29 · filed 37 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.140187,
-   "days": 6
+   "days": 5
   },
   {
    "date": "2026-11-05",
@@ -1566,7 +1489,7 @@
    "detail": "period ends 2026-09-29 · filed 37 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.130639,
-   "days": 6
+   "days": 5
   },
   {
    "date": "2026-11-05",
@@ -1577,7 +1500,7 @@
    "detail": "period ends 2026-09-29 · filed 37 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.127257,
-   "days": 6
+   "days": 5
   },
   {
    "date": "2026-11-05",
@@ -1588,7 +1511,7 @@
    "detail": "period ends 2026-09-29 · filed 37 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.111474,
-   "days": 6
+   "days": 5
   },
   {
    "date": "2026-11-05",
@@ -1599,7 +1522,7 @@
    "detail": "period ends 2026-09-29 · filed 37 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.109523,
-   "days": 6
+   "days": 5
   },
   {
    "date": "2026-11-05",
@@ -1610,7 +1533,7 @@
    "detail": "period ends 2026-09-29 · filed 37 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.097666,
-   "days": 6
+   "days": 5
   },
   {
    "date": "2026-11-05",
@@ -1621,7 +1544,7 @@
    "detail": "period ends 2026-09-29 · filed 37 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.093955,
-   "days": 6
+   "days": 5
   },
   {
    "date": "2026-11-05",
@@ -1632,7 +1555,7 @@
    "detail": "period ends 2026-09-29 · filed 37 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.084094,
-   "days": 6
+   "days": 5
   },
   {
    "date": "2026-11-05",
@@ -1643,7 +1566,7 @@
    "detail": "period ends 2026-09-29 · filed 37 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.083461,
-   "days": 6
+   "days": 5
   },
   {
    "date": "2026-11-05",
@@ -1654,7 +1577,7 @@
    "detail": "period ends 2026-09-29 · filed 37 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.0824,
-   "days": 6
+   "days": 5
   },
   {
    "date": "2026-11-05",
@@ -1665,7 +1588,7 @@
    "detail": "period ends 2026-09-29 · filed 37 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.081706,
-   "days": 6
+   "days": 5
   },
   {
    "date": "2026-11-05",
@@ -1676,7 +1599,7 @@
    "detail": "period ends 2026-09-29 · filed 37 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.065037,
-   "days": 6
+   "days": 5
   },
   {
    "date": "2026-11-05",
@@ -1687,18 +1610,7 @@
    "detail": "period ends 2026-09-29 · filed 37 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.061206,
-   "days": 6
-  },
-  {
-   "date": "2026-11-05",
-   "kind": "earnings",
-   "ticker": "KVUE",
-   "name": "Kenvue Inc.",
-   "label": "KVUE · quarterly report expected",
-   "detail": "period ends 2026-09-27 · filed 39 days after quarter end, historically",
-   "basis": "expected",
-   "weight": 0.057923,
-   "days": 6
+   "days": 5
   },
   {
    "date": "2026-11-05",
@@ -1709,7 +1621,7 @@
    "detail": "period ends 2026-09-29 · filed 37 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.056416,
-   "days": 6
+   "days": 5
   },
   {
    "date": "2026-11-05",
@@ -1720,7 +1632,7 @@
    "detail": "period ends 2026-09-29 · filed 37 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.051853,
-   "days": 6
+   "days": 5
   },
   {
    "date": "2026-11-05",
@@ -1731,7 +1643,7 @@
    "detail": "period ends 2026-09-29 · filed 37 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.051279,
-   "days": 6
+   "days": 5
   },
   {
    "date": "2026-11-05",
@@ -1742,7 +1654,7 @@
    "detail": "period ends 2026-09-29 · filed 37 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.050972,
-   "days": 6
+   "days": 5
   },
   {
    "date": "2026-11-05",
@@ -1753,7 +1665,7 @@
    "detail": "period ends 2026-09-29 · filed 37 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.038494,
-   "days": 6
+   "days": 5
   },
   {
    "date": "2026-11-05",
@@ -1764,7 +1676,7 @@
    "detail": "period ends 2026-09-29 · filed 37 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.036776,
-   "days": 6
+   "days": 5
   },
   {
    "date": "2026-11-05",
@@ -1775,7 +1687,7 @@
    "detail": "period ends 2026-09-29 · filed 37 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.032122,
-   "days": 6
+   "days": 5
   },
   {
    "date": "2026-11-05",
@@ -1786,7 +1698,7 @@
    "detail": "period ends 2026-09-29 · filed 37 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.029721,
-   "days": 6
+   "days": 5
   },
   {
    "date": "2026-11-05",
@@ -1797,7 +1709,7 @@
    "detail": "period ends 2026-09-29 · filed 37 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.028703,
-   "days": 6
+   "days": 5
   },
   {
    "date": "2026-11-05",
@@ -1808,7 +1720,7 @@
    "detail": "period ends 2026-09-26 · filed 40 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.027633,
-   "days": 6
+   "days": 5
   },
   {
    "date": "2026-11-05",
@@ -1819,7 +1731,7 @@
    "detail": "period ends 2026-09-29 · filed 37 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.027152,
-   "days": 6
+   "days": 5
   },
   {
    "date": "2026-11-05",
@@ -1830,7 +1742,7 @@
    "detail": "period ends 2026-09-29 · filed 37 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.02651,
-   "days": 6
+   "days": 5
   },
   {
    "date": "2026-11-05",
@@ -1841,7 +1753,7 @@
    "detail": "period ends 2026-09-26 · filed 40 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.021798,
-   "days": 6
+   "days": 5
   },
   {
    "date": "2026-11-05",
@@ -1852,7 +1764,7 @@
    "detail": "period ends 2026-09-29 · filed 37 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.02173,
-   "days": 6
+   "days": 5
   },
   {
    "date": "2026-11-05",
@@ -1863,7 +1775,7 @@
    "detail": "period ends 2026-09-29 · filed 37 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.020669,
-   "days": 6
+   "days": 5
   },
   {
    "date": "2026-11-05",
@@ -1874,7 +1786,7 @@
    "detail": "period ends 2026-09-29 · filed 37 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.014856,
-   "days": 6
+   "days": 5
   },
   {
    "date": "2026-11-05",
@@ -1885,7 +1797,7 @@
    "detail": "period ends 2026-09-29 · filed 37 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.008129,
-   "days": 6
+   "days": 5
   },
   {
    "date": "2026-11-06",
@@ -1896,7 +1808,7 @@
    "detail": "period ends 2026-09-29 · filed 38 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.55022,
-   "days": 7
+   "days": 6
   },
   {
    "date": "2026-11-06",
@@ -1907,7 +1819,7 @@
    "detail": "period ends 2026-09-29 · filed 38 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.270891,
-   "days": 7
+   "days": 6
   },
   {
    "date": "2026-11-06",
@@ -1918,7 +1830,7 @@
    "detail": "period ends 2026-09-29 · filed 38 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.225265,
-   "days": 7
+   "days": 6
   },
   {
    "date": "2026-11-06",
@@ -1929,7 +1841,7 @@
    "detail": "period ends 2026-09-29 · filed 38 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.134893,
-   "days": 7
+   "days": 6
   },
   {
    "date": "2026-11-06",
@@ -1940,7 +1852,7 @@
    "detail": "period ends 2026-09-29 · filed 38 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.11263,
-   "days": 7
+   "days": 6
   },
   {
    "date": "2026-11-06",
@@ -1951,7 +1863,7 @@
    "detail": "period ends 2026-09-29 · filed 38 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.102441,
-   "days": 7
+   "days": 6
   },
   {
    "date": "2026-11-06",
@@ -1962,18 +1874,7 @@
    "detail": "period ends 2026-09-29 · filed 38 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.083237,
-   "days": 7
-  },
-  {
-   "date": "2026-11-06",
-   "kind": "earnings",
-   "ticker": "RSG",
-   "name": "REPUBLIC SERVICES, INC.",
-   "label": "RSG · quarterly report expected",
-   "detail": "period ends 2026-09-29 · filed 38 days after quarter end, historically",
-   "basis": "expected",
-   "weight": 0.071524,
-   "days": 7
+   "days": 6
   },
   {
    "date": "2026-11-06",
@@ -1984,18 +1885,7 @@
    "detail": "period ends 2026-09-29 · filed 38 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.0657,
-   "days": 7
-  },
-  {
-   "date": "2026-11-06",
-   "kind": "earnings",
-   "ticker": "TWLO",
-   "name": "TWILIO INC",
-   "label": "TWLO · quarterly report expected",
-   "detail": "period ends 2026-09-29 · filed 38 days after quarter end, historically",
-   "basis": "expected",
-   "weight": 0.059275,
-   "days": 7
+   "days": 6
   },
   {
    "date": "2026-11-06",
@@ -2006,7 +1896,7 @@
    "detail": "period ends 2026-09-29 · filed 38 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.05528,
-   "days": 7
+   "days": 6
   },
   {
    "date": "2026-11-06",
@@ -2017,7 +1907,7 @@
    "detail": "period ends 2026-09-29 · filed 38 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.041923,
-   "days": 7
+   "days": 6
   },
   {
    "date": "2026-11-06",
@@ -2028,7 +1918,7 @@
    "detail": "period ends 2026-09-29 · filed 38 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.041119,
-   "days": 7
+   "days": 6
   },
   {
    "date": "2026-11-06",
@@ -2039,7 +1929,7 @@
    "detail": "period ends 2026-09-29 · filed 38 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.040358,
-   "days": 7
+   "days": 6
   },
   {
    "date": "2026-11-06",
@@ -2050,7 +1940,7 @@
    "detail": "period ends 2026-09-29 · filed 38 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.034547,
-   "days": 7
+   "days": 6
   },
   {
    "date": "2026-11-06",
@@ -2061,7 +1951,7 @@
    "detail": "period ends 2026-09-29 · filed 38 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.033437,
-   "days": 7
+   "days": 6
   },
   {
    "date": "2026-11-06",
@@ -2072,7 +1962,7 @@
    "detail": "period ends 2026-09-29 · filed 38 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.025785,
-   "days": 7
+   "days": 6
   },
   {
    "date": "2026-11-06",
@@ -2083,7 +1973,7 @@
    "detail": "period ends 2026-09-29 · filed 38 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.020096,
-   "days": 7
+   "days": 6
   },
   {
    "date": "2026-11-06",
@@ -2094,7 +1984,7 @@
    "detail": "period ends 2026-09-29 · filed 38 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.017201,
-   "days": 7
+   "days": 6
   },
   {
    "date": "2026-11-06",
@@ -2105,7 +1995,7 @@
    "detail": "period ends 2026-09-29 · filed 38 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.016356,
-   "days": 7
+   "days": 6
   },
   {
    "date": "2026-11-06",
@@ -2116,7 +2006,7 @@
    "detail": "period ends 2026-09-29 · filed 38 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.014718,
-   "days": 7
+   "days": 6
   },
   {
    "date": "2026-11-09",
@@ -2127,7 +2017,7 @@
    "detail": "period ends 2026-09-29 · filed 41 days after quarter end, historically",
    "basis": "expected",
    "weight": 1.542595,
-   "days": 10
+   "days": 9
   },
   {
    "date": "2026-11-09",
@@ -2138,7 +2028,7 @@
    "detail": "period ends 2026-09-29 · filed 41 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.577788,
-   "days": 10
+   "days": 9
   },
   {
    "date": "2026-11-09",
@@ -2149,7 +2039,7 @@
    "detail": "period ends 2026-09-29 · filed 41 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.103821,
-   "days": 10
+   "days": 9
   },
   {
    "date": "2026-11-09",
@@ -2160,7 +2050,7 @@
    "detail": "period ends 2026-09-29 · filed 41 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.082096,
-   "days": 10
+   "days": 9
   },
   {
    "date": "2026-11-09",
@@ -2171,7 +2061,7 @@
    "detail": "period ends 2026-09-29 · filed 41 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.072654,
-   "days": 10
+   "days": 9
   },
   {
    "date": "2026-11-09",
@@ -2182,7 +2072,7 @@
    "detail": "period ends 2026-09-29 · filed 41 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.067234,
-   "days": 10
+   "days": 9
   },
   {
    "date": "2026-11-09",
@@ -2193,7 +2083,7 @@
    "detail": "period ends 2026-09-29 · filed 41 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.066546,
-   "days": 10
+   "days": 9
   },
   {
    "date": "2026-11-09",
@@ -2204,7 +2094,7 @@
    "detail": "period ends 2026-09-29 · filed 41 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.041171,
-   "days": 10
+   "days": 9
   },
   {
    "date": "2026-11-10",
@@ -2215,7 +2105,7 @@
    "detail": "period ends 2026-09-29 · filed 42 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.089746,
-   "days": 11
+   "days": 10
   },
   {
    "date": "2026-11-10",
@@ -2226,7 +2116,7 @@
    "detail": "period ends 2026-10-03 · filed 38 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.067799,
-   "days": 11
+   "days": 10
   },
   {
    "date": "2026-11-10",
@@ -2237,7 +2127,7 @@
    "detail": "period ends 2026-10-04 · filed 37 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.026628,
-   "days": 11
+   "days": 10
   },
   {
    "date": "2026-11-11",
@@ -2248,7 +2138,7 @@
    "detail": "period ends 2026-10-03 · filed 39 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.08841,
-   "days": 12
+   "days": 11
   },
   {
    "date": "2026-11-11",
@@ -2259,18 +2149,7 @@
    "detail": "period ends 2026-10-02 · filed 40 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.022643,
-   "days": 12
-  },
-  {
-   "date": "2026-11-12",
-   "kind": "earnings",
-   "ticker": "RMD",
-   "name": "RESMED INC",
-   "label": "RMD · Q1 report expected",
-   "detail": "period ends 2026-09-29 · filed 44 days after quarter end, historically",
-   "basis": "expected",
-   "weight": 0.055235,
-   "days": 13
+   "days": 11
   },
   {
    "date": "2026-11-12",
@@ -2281,7 +2160,7 @@
    "detail": "period ends 2026-09-26 · filed 47 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.034183,
-   "days": 13
+   "days": 12
   },
   {
    "date": "2026-11-13",
@@ -2292,7 +2171,7 @@
    "detail": "period ends 2026-09-29 · filed 45 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.061691,
-   "days": 14
+   "days": 13
   },
   {
    "date": "2026-11-13",
@@ -2303,18 +2182,7 @@
    "detail": "period ends 2026-09-29 · filed 45 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.032243,
-   "days": 14
-  },
-  {
-   "date": "2026-11-16",
-   "kind": "earnings",
-   "ticker": "SNDK",
-   "name": "Sandisk Corp",
-   "label": "SNDK · Q1 report expected",
-   "detail": "period ends 2026-10-02 · filed 45 days after quarter end, historically",
-   "basis": "expected",
-   "weight": 0.278551,
-   "days": 17
+   "days": 13
   },
   {
    "date": "2026-11-16",
@@ -2325,7 +2193,7 @@
    "detail": "period ends 2026-09-26 · filed 51 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.100887,
-   "days": 17
+   "days": 16
   },
   {
    "date": "2026-11-18",
@@ -2336,7 +2204,7 @@
    "detail": "period ends 2026-10-31 · filed 18 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.28468,
-   "days": 19
+   "days": 18
   },
   {
    "date": "2026-11-18",
@@ -2347,7 +2215,7 @@
    "detail": "period ends 2026-09-29 · filed 50 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.040298,
-   "days": 19
+   "days": 18
   },
   {
    "date": "2026-11-19",
@@ -2358,7 +2226,7 @@
    "detail": "period ends 2026-10-25 · filed 25 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.451628,
-   "days": 20
+   "days": 19
   },
   {
    "date": "2026-11-19",
@@ -2369,7 +2237,7 @@
    "detail": "period ends 2026-10-30 · filed 20 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.025642,
-   "days": 20
+   "days": 19
   },
   {
    "date": "2026-11-20",
@@ -2380,7 +2248,7 @@
    "detail": "period ends 2026-09-29 · filed 52 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.170576,
-   "days": 21
+   "days": 20
   },
   {
    "date": "2026-11-20",
@@ -2391,7 +2259,7 @@
    "detail": "period ends 2026-09-26 · filed 55 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.060933,
-   "days": 21
+   "days": 20
   },
   {
    "date": "2026-11-23",
@@ -2402,7 +2270,7 @@
    "detail": "period ends 2026-09-29 · filed 55 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.01728,
-   "days": 24
+   "days": 23
   },
   {
    "date": "2026-11-24",
@@ -2413,7 +2281,7 @@
    "detail": "period ends 2026-11-01 · filed 23 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.494661,
-   "days": 25
+   "days": 24
   },
   {
    "date": "2026-11-25",
@@ -2424,7 +2292,7 @@
    "detail": "period ends 2026-10-25 · filed 31 days after quarter end, historically",
    "basis": "expected",
    "weight": 7.776316,
-   "days": 26
+   "days": 25
   },
   {
    "date": "2026-11-25",
@@ -2435,7 +2303,7 @@
    "detail": "period ends 2026-10-30 · filed 26 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.122431,
-   "days": 26
+   "days": 25
   },
   {
    "date": "2026-11-25",
@@ -2446,7 +2314,7 @@
    "detail": "period ends 2026-10-30 · filed 26 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.021592,
-   "days": 26
+   "days": 25
   },
   {
    "date": "2026-11-26",
@@ -2457,7 +2325,7 @@
    "detail": "period ends 2026-10-30 · filed 27 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.367037,
-   "days": 27
+   "days": 26
   },
   {
    "date": "2026-11-26",
@@ -2468,7 +2336,7 @@
    "detail": "period ends 2026-10-30 · filed 27 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.310271,
-   "days": 27
+   "days": 26
   },
   {
    "date": "2026-11-26",
@@ -2479,7 +2347,7 @@
    "detail": "period ends 2026-11-01 · filed 25 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.244821,
-   "days": 27
+   "days": 26
   },
   {
    "date": "2026-11-26",
@@ -2490,7 +2358,7 @@
    "detail": "period ends 2026-10-30 · filed 27 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.173346,
-   "days": 27
+   "days": 26
   },
   {
    "date": "2026-11-26",
@@ -2501,7 +2369,7 @@
    "detail": "period ends 2026-10-30 · filed 27 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.072937,
-   "days": 27
+   "days": 26
   },
   {
    "date": "2026-11-26",
@@ -2512,7 +2380,7 @@
    "detail": "period ends 2026-10-30 · filed 27 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.063668,
-   "days": 27
+   "days": 26
   },
   {
    "date": "2026-11-26",
@@ -2523,7 +2391,7 @@
    "detail": "period ends 2026-10-30 · filed 27 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.046884,
-   "days": 27
+   "days": 26
   },
   {
    "date": "2026-11-26",
@@ -2534,7 +2402,7 @@
    "detail": "period ends 2026-10-30 · filed 27 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.046542,
-   "days": 27
+   "days": 26
   },
   {
    "date": "2026-11-26",
@@ -2545,7 +2413,7 @@
    "detail": "period ends 2026-10-31 · filed 26 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.041094,
-   "days": 27
+   "days": 26
   },
   {
    "date": "2026-11-26",
@@ -2556,7 +2424,7 @@
    "detail": "period ends 2026-10-31 · filed 26 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.038109,
-   "days": 27
+   "days": 26
   },
   {
    "date": "2026-11-26",
@@ -2567,7 +2435,7 @@
    "detail": "period ends 2026-10-25 · filed 32 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.009454,
-   "days": 27
+   "days": 26
   },
   {
    "date": "2026-11-27",
@@ -2578,7 +2446,7 @@
    "detail": "period ends 2026-10-30 · filed 28 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.817493,
-   "days": 28
+   "days": 27
   },
   {
    "date": "2026-11-27",
@@ -2589,7 +2457,7 @@
    "detail": "period ends 2026-10-31 · filed 27 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.296423,
-   "days": 28
+   "days": 27
   },
   {
    "date": "2026-11-27",
@@ -2600,7 +2468,7 @@
    "detail": "period ends 2026-10-31 · filed 27 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.246381,
-   "days": 28
+   "days": 27
   },
   {
    "date": "2026-11-27",
@@ -2611,7 +2479,7 @@
    "detail": "period ends 2026-10-31 · filed 27 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.108777,
-   "days": 28
+   "days": 27
   },
   {
    "date": "2026-11-27",
@@ -2622,7 +2490,7 @@
    "detail": "period ends 2026-10-30 · filed 28 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.081683,
-   "days": 28
+   "days": 27
   },
   {
    "date": "2026-11-27",
@@ -2633,7 +2501,7 @@
    "detail": "period ends 2026-11-01 · filed 26 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.046594,
-   "days": 28
+   "days": 27
   },
   {
    "date": "2026-11-27",
@@ -2644,7 +2512,7 @@
    "detail": "period ends 2026-09-29 · filed 59 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.017442,
-   "days": 28
+   "days": 27
   },
   {
    "date": "2026-11-28",
@@ -2655,7 +2523,7 @@
    "detail": "period ends 2026-09-29 · filed 60 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.028794,
-   "days": 29
+   "days": 28
   },
   {
    "date": "2026-11-29",
@@ -2666,7 +2534,7 @@
    "detail": "period ends 2026-09-30 · filed 60 days after quarter end, historically",
    "basis": "expected",
    "weight": 1.598563,
-   "days": 30
+   "days": 29
   },
   {
    "date": "2026-11-29",
@@ -2677,7 +2545,7 @@
    "detail": "period ends 2026-09-30 · filed 60 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.017974,
-   "days": 30
+   "days": 29
   },
   {
    "date": "2026-12-01",
@@ -2688,7 +2556,7 @@
    "detail": "period ends 2026-10-31 · filed 31 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.114686,
-   "days": 32
+   "days": 31
   },
   {
    "date": "2026-12-01",
@@ -2699,7 +2567,7 @@
    "detail": "period ends 2026-10-30 · filed 32 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.074568,
-   "days": 32
+   "days": 31
   },
   {
    "date": "2026-12-02",
@@ -2710,7 +2578,7 @@
    "detail": "period ends 2026-10-24 · filed 39 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.626133,
-   "days": 33
+   "days": 32
   },
   {
    "date": "2026-12-02",
@@ -2721,7 +2589,7 @@
    "detail": "period ends 2026-10-30 · filed 33 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.080882,
-   "days": 33
+   "days": 32
   },
   {
    "date": "2026-12-02",
@@ -2732,7 +2600,7 @@
    "detail": "period ends 2026-10-30 · filed 33 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.0631,
-   "days": 33
+   "days": 32
   },
   {
    "date": "2026-12-02",
@@ -2743,7 +2611,7 @@
    "detail": "period ends 2026-10-30 · filed 33 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.008089,
-   "days": 33
+   "days": 32
   },
   {
    "date": "2026-12-03",
@@ -2754,7 +2622,7 @@
    "detail": "period ends 2026-10-30 · filed 34 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.179338,
-   "days": 34
+   "days": 33
   },
   {
    "date": "2026-12-03",
@@ -2765,7 +2633,7 @@
    "detail": "period ends 2026-10-30 · filed 34 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.111383,
-   "days": 34
+   "days": 33
   },
   {
    "date": "2026-12-03",
@@ -2776,7 +2644,7 @@
    "detail": "period ends 2026-10-31 · filed 33 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.069078,
-   "days": 34
+   "days": 33
   },
   {
    "date": "2026-12-03",
@@ -2787,7 +2655,7 @@
    "detail": "period ends 2026-11-01 · filed 32 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.016531,
-   "days": 34
+   "days": 33
   },
   {
    "date": "2026-12-04",
@@ -2798,7 +2666,7 @@
    "detail": "period ends 2026-11-01 · filed 33 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.060966,
-   "days": 35
+   "days": 34
   },
   {
    "date": "2026-12-04",
@@ -2809,7 +2677,7 @@
    "detail": "period ends 2026-10-31 · filed 34 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.029801,
-   "days": 35
+   "days": 34
   },
   {
    "date": "2026-12-08",
@@ -2820,7 +2688,7 @@
    "detail": "period ends 2026-10-30 · filed 39 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.207216,
-   "days": 39
+   "days": 38
   },
   {
    "date": "2026-12-08",
@@ -2831,7 +2699,7 @@
    "detail": "period ends 2026-10-30 · filed 39 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.040077,
-   "days": 39
+   "days": 38
   },
   {
    "date": "2026-12-09",
@@ -2842,7 +2710,7 @@
    "detail": "period ends 2026-10-30 · filed 40 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.146688,
-   "days": 40
+   "days": 39
   },
   {
    "date": "2026-12-09",
@@ -2853,7 +2721,7 @@
    "detail": "period ends 2026-10-30 · filed 40 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.01825,
-   "days": 40
+   "days": 39
   },
   {
    "date": "2026-12-10",
@@ -2864,7 +2732,7 @@
    "detail": "period ends 2026-11-01 · filed 39 days after quarter end, historically",
    "basis": "expected",
    "weight": 2.328592,
-   "days": 41
+   "days": 40
   },
   {
    "date": "2026-12-10",
@@ -2875,7 +2743,7 @@
    "detail": "period ends 2026-10-30 · filed 41 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.438174,
-   "days": 41
+   "days": 40
   },
   {
    "date": "2026-12-18",
@@ -2886,7 +2754,7 @@
    "detail": "period ends 2026-11-30 · filed 18 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.328341,
-   "days": 49
+   "days": 48
   },
   {
    "date": "2026-12-18",
@@ -2897,7 +2765,7 @@
    "detail": "period ends 2026-11-14 · filed 34 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.058431,
-   "days": 49
+   "days": 48
   },
   {
    "date": "2026-12-22",
@@ -2908,7 +2776,7 @@
    "detail": "period ends 2026-11-27 · filed 25 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.162545,
-   "days": 53
+   "days": 52
   },
   {
    "date": "2026-12-23",
@@ -2919,7 +2787,7 @@
    "detail": "period ends 2026-11-29 · filed 24 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.028491,
-   "days": 54
+   "days": 53
   },
   {
    "date": "2026-12-24",
@@ -2930,7 +2798,7 @@
    "detail": "period ends 2026-11-30 · filed 24 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.057359,
-   "days": 55
+   "days": 54
   },
   {
    "date": "2026-12-29",
@@ -2941,7 +2809,7 @@
    "detail": "period ends 2026-11-30 · filed 29 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.0522,
-   "days": 60
+   "days": 59
   },
   {
    "date": "2026-12-29",
@@ -2952,7 +2820,7 @@
    "detail": "period ends 2026-10-30 · filed 60 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.036899,
-   "days": 60
+   "days": 59
   },
   {
    "date": "2026-12-31",
@@ -2963,7 +2831,7 @@
    "detail": "period ends 2026-11-30 · filed 31 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.018831,
-   "days": 62
+   "days": 61
   },
   {
    "date": "2027-01-01",
@@ -2974,7 +2842,7 @@
    "detail": "period ends 2026-11-30 · filed 32 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.069758,
-   "days": 63
+   "days": 62
   },
   {
    "date": "2027-01-01",
@@ -2985,7 +2853,7 @@
    "detail": "period ends 2026-11-29 · filed 33 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.037388,
-   "days": 63
+   "days": 62
   },
   {
    "date": "2027-01-01",
@@ -2996,7 +2864,7 @@
    "detail": "period ends 2026-11-30 · filed 32 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.024547,
-   "days": 63
+   "days": 62
   },
   {
    "date": "2027-01-06",
@@ -3007,7 +2875,7 @@
    "detail": "period ends 2026-11-29 · filed 38 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.683903,
-   "days": 68
+   "days": 67
   },
   {
    "date": "2027-01-06",
@@ -3018,7 +2886,7 @@
    "detail": "period ends 2026-11-30 · filed 37 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.116682,
-   "days": 68
+   "days": 67
   },
   {
    "date": "2027-01-06",
@@ -3029,7 +2897,7 @@
    "detail": "period ends 2026-11-30 · filed 37 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.031604,
-   "days": 68
+   "days": 67
   },
   {
    "date": "2027-01-07",
@@ -3040,7 +2908,7 @@
    "detail": "period ends 2026-12-05 · filed 33 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.287119,
-   "days": 69
+   "days": 68
   },
   {
    "date": "2027-01-08",
@@ -3051,7 +2919,7 @@
    "detail": "period ends 2026-12-03 · filed 36 days after quarter end, historically",
    "basis": "expected",
    "weight": 1.464746,
-   "days": 70
+   "days": 69
   },
   {
    "date": "2027-01-12",
@@ -3062,7 +2930,7 @@
    "detail": "period ends 2026-12-06 · filed 37 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.015902,
-   "days": 74
+   "days": 73
   },
   {
    "date": "2027-01-15",
@@ -3073,7 +2941,7 @@
    "detail": "period ends 2026-11-30 · filed 46 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.239992,
-   "days": 77
+   "days": 76
   },
   {
    "date": "2027-01-17",
@@ -3084,7 +2952,7 @@
    "detail": "period ends 2026-12-30 · filed 18 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.143909,
-   "days": 79
+   "days": 78
   },
   {
    "date": "2027-01-17",
@@ -3095,7 +2963,7 @@
    "detail": "period ends 2026-12-30 · filed 18 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.127782,
-   "days": 79
+   "days": 78
   },
   {
    "date": "2027-01-17",
@@ -3106,7 +2974,7 @@
    "detail": "period ends 2026-12-30 · filed 18 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.071199,
-   "days": 79
+   "days": 78
   },
   {
    "date": "2027-01-18",
@@ -3117,7 +2985,7 @@
    "detail": "period ends 2026-11-29 · filed 50 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.101238,
-   "days": 80
+   "days": 79
   },
   {
    "date": "2027-01-18",
@@ -3128,7 +2996,7 @@
    "detail": "period ends 2026-12-30 · filed 19 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.091858,
-   "days": 80
+   "days": 79
   },
   {
    "date": "2027-01-19",
@@ -3139,7 +3007,7 @@
    "detail": "period ends 2026-12-30 · filed 20 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.461326,
-   "days": 81
+   "days": 80
   },
   {
    "date": "2027-01-19",
@@ -3150,7 +3018,7 @@
    "detail": "period ends 2026-12-30 · filed 20 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.397125,
-   "days": 81
+   "days": 80
   },
   {
    "date": "2027-01-19",
@@ -3161,7 +3029,7 @@
    "detail": "period ends 2026-12-30 · filed 20 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.136809,
-   "days": 81
+   "days": 80
   },
   {
    "date": "2027-01-19",
@@ -3172,7 +3040,7 @@
    "detail": "period ends 2026-12-30 · filed 20 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.111889,
-   "days": 81
+   "days": 80
   },
   {
    "date": "2027-01-19",
@@ -3183,7 +3051,7 @@
    "detail": "period ends 2026-12-30 · filed 20 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.102351,
-   "days": 81
+   "days": 80
   },
   {
    "date": "2027-01-19",
@@ -3194,7 +3062,7 @@
    "detail": "period ends 2026-12-30 · filed 20 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.06851,
-   "days": 81
+   "days": 80
   },
   {
    "date": "2027-01-19",
@@ -3205,7 +3073,7 @@
    "detail": "period ends 2026-12-30 · filed 20 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.033273,
-   "days": 81
+   "days": 80
   },
   {
    "date": "2027-01-19",
@@ -3216,7 +3084,7 @@
    "detail": "period ends 2026-12-30 · filed 20 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.02673,
-   "days": 81
+   "days": 80
   },
   {
    "date": "2027-01-19",
@@ -3227,7 +3095,7 @@
    "detail": "period ends 2026-11-30 · filed 50 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.018067,
-   "days": 81
+   "days": 80
   },
   {
    "date": "2027-01-20",
@@ -3238,7 +3106,7 @@
    "detail": "period ends 2026-12-27 · filed 24 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.976661,
-   "days": 82
+   "days": 81
   },
   {
    "date": "2027-01-20",
@@ -3249,7 +3117,7 @@
    "detail": "period ends 2026-12-30 · filed 21 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.422919,
-   "days": 82
+   "days": 81
   },
   {
    "date": "2027-01-20",
@@ -3260,7 +3128,7 @@
    "detail": "period ends 2026-12-29 · filed 22 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.333824,
-   "days": 82
+   "days": 81
   },
   {
    "date": "2027-01-20",
@@ -3271,7 +3139,7 @@
    "detail": "period ends 2026-12-30 · filed 21 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.258832,
-   "days": 82
+   "days": 81
   },
   {
    "date": "2027-01-20",
@@ -3282,7 +3150,7 @@
    "detail": "period ends 2026-12-30 · filed 21 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.237282,
-   "days": 82
+   "days": 81
   },
   {
    "date": "2027-01-20",
@@ -3293,7 +3161,7 @@
    "detail": "period ends 2026-12-30 · filed 21 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.236116,
-   "days": 82
+   "days": 81
   },
   {
    "date": "2027-01-20",
@@ -3304,7 +3172,7 @@
    "detail": "period ends 2026-12-25 · filed 26 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.217536,
-   "days": 82
+   "days": 81
   },
   {
    "date": "2027-01-20",
@@ -3315,7 +3183,7 @@
    "detail": "period ends 2026-12-30 · filed 21 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.145916,
-   "days": 82
+   "days": 81
   },
   {
    "date": "2027-01-20",
@@ -3326,7 +3194,7 @@
    "detail": "period ends 2026-12-30 · filed 21 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.144642,
-   "days": 82
+   "days": 81
   },
   {
    "date": "2027-01-20",
@@ -3337,7 +3205,7 @@
    "detail": "period ends 2026-12-30 · filed 21 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.110672,
-   "days": 82
+   "days": 81
   },
   {
    "date": "2027-01-20",
@@ -3348,7 +3216,7 @@
    "detail": "period ends 2026-12-30 · filed 21 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.10465,
-   "days": 82
+   "days": 81
   },
   {
    "date": "2027-01-20",
@@ -3359,7 +3227,7 @@
    "detail": "period ends 2026-12-30 · filed 21 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.070487,
-   "days": 82
+   "days": 81
   },
   {
    "date": "2027-01-20",
@@ -3370,7 +3238,7 @@
    "detail": "period ends 2026-12-30 · filed 21 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.05024,
-   "days": 82
+   "days": 81
   },
   {
    "date": "2027-01-21",
@@ -3381,7 +3249,7 @@
    "detail": "period ends 2026-12-30 · filed 22 days after quarter end, historically",
    "basis": "expected",
    "weight": 2.166513,
-   "days": 83
+   "days": 82
   },
   {
    "date": "2027-01-21",
@@ -3392,7 +3260,7 @@
    "detail": "period ends 2026-12-30 · filed 22 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.579171,
-   "days": 83
+   "days": 82
   },
   {
    "date": "2027-01-21",
@@ -3403,7 +3271,7 @@
    "detail": "period ends 2026-12-27 · filed 25 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.436179,
-   "days": 83
+   "days": 82
   },
   {
    "date": "2027-01-21",
@@ -3414,7 +3282,7 @@
    "detail": "period ends 2026-12-30 · filed 22 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.359445,
-   "days": 83
+   "days": 82
   },
   {
    "date": "2027-01-21",
@@ -3425,7 +3293,7 @@
    "detail": "period ends 2026-12-30 · filed 22 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.268202,
-   "days": 83
+   "days": 82
   },
   {
    "date": "2027-01-21",
@@ -3436,7 +3304,7 @@
    "detail": "period ends 2026-12-29 · filed 23 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.245636,
-   "days": 83
+   "days": 82
   },
   {
    "date": "2027-01-21",
@@ -3447,7 +3315,7 @@
    "detail": "period ends 2026-12-30 · filed 22 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.181778,
-   "days": 83
+   "days": 82
   },
   {
    "date": "2027-01-21",
@@ -3458,7 +3326,7 @@
    "detail": "period ends 2026-12-27 · filed 25 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.181375,
-   "days": 83
+   "days": 82
   },
   {
    "date": "2027-01-21",
@@ -3469,7 +3337,7 @@
    "detail": "period ends 2026-12-30 · filed 22 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.122137,
-   "days": 83
+   "days": 82
   },
   {
    "date": "2027-01-21",
@@ -3480,7 +3348,7 @@
    "detail": "period ends 2026-12-29 · filed 23 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.115992,
-   "days": 83
+   "days": 82
   },
   {
    "date": "2027-01-21",
@@ -3491,7 +3359,7 @@
    "detail": "period ends 2026-12-30 · filed 22 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.115009,
-   "days": 83
+   "days": 82
   },
   {
    "date": "2027-01-21",
@@ -3502,7 +3370,7 @@
    "detail": "period ends 2026-12-30 · filed 22 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.104963,
-   "days": 83
+   "days": 82
   },
   {
    "date": "2027-01-21",
@@ -3513,7 +3381,7 @@
    "detail": "period ends 2026-12-30 · filed 22 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.097059,
-   "days": 83
+   "days": 82
   },
   {
    "date": "2027-01-21",
@@ -3524,7 +3392,7 @@
    "detail": "period ends 2026-12-30 · filed 22 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.069029,
-   "days": 83
+   "days": 82
   },
   {
    "date": "2027-01-21",
@@ -3535,7 +3403,7 @@
    "detail": "period ends 2026-12-30 · filed 22 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.068179,
-   "days": 83
+   "days": 82
   },
   {
    "date": "2027-01-21",
@@ -3546,7 +3414,7 @@
    "detail": "period ends 2026-12-29 · filed 23 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.056672,
-   "days": 83
+   "days": 82
   },
   {
    "date": "2027-01-21",
@@ -3557,7 +3425,7 @@
    "detail": "period ends 2026-12-30 · filed 22 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.056421,
-   "days": 83
+   "days": 82
   },
   {
    "date": "2027-01-21",
@@ -3568,7 +3436,7 @@
    "detail": "period ends 2026-12-30 · filed 22 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.043377,
-   "days": 83
+   "days": 82
   },
   {
    "date": "2027-01-21",
@@ -3579,7 +3447,7 @@
    "detail": "period ends 2026-12-30 · filed 22 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.039981,
-   "days": 83
+   "days": 82
   },
   {
    "date": "2027-01-21",
@@ -3590,7 +3458,7 @@
    "detail": "period ends 2026-12-30 · filed 22 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.03746,
-   "days": 83
+   "days": 82
   },
   {
    "date": "2027-01-21",
@@ -3601,7 +3469,7 @@
    "detail": "period ends 2026-12-30 · filed 22 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.036778,
-   "days": 83
+   "days": 82
   },
   {
    "date": "2027-01-21",
@@ -3612,7 +3480,7 @@
    "detail": "period ends 2026-12-30 · filed 22 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.03389,
-   "days": 83
+   "days": 82
   },
   {
    "date": "2027-01-21",
@@ -3623,7 +3491,7 @@
    "detail": "period ends 2026-12-30 · filed 22 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.031166,
-   "days": 83
+   "days": 82
   },
   {
    "date": "2027-01-21",
@@ -3634,7 +3502,7 @@
    "detail": "period ends 2027-01-02 · filed 19 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.028021,
-   "days": 83
+   "days": 82
   },
   {
    "date": "2027-01-21",
@@ -3645,7 +3513,7 @@
    "detail": "period ends 2026-12-30 · filed 22 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.02275,
-   "days": 83
+   "days": 82
   },
   {
    "date": "2027-01-21",
@@ -3656,18 +3524,7 @@
    "detail": "period ends 2026-12-30 · filed 22 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.015745,
-   "days": 83
-  },
-  {
-   "date": "2027-01-22",
-   "kind": "earnings",
-   "ticker": "INTC",
-   "name": "INTEL CORP",
-   "label": "INTC · quarterly report expected",
-   "detail": "period ends 2026-12-26 · filed 27 days after quarter end, historically",
-   "basis": "expected",
-   "weight": 0.643316,
-   "days": 84
+   "days": 82
   },
   {
    "date": "2027-01-22",
@@ -3678,7 +3535,7 @@
    "detail": "period ends 2026-12-30 · filed 23 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.476293,
-   "days": 84
+   "days": 83
   },
   {
    "date": "2027-01-22",
@@ -3689,7 +3546,7 @@
    "detail": "period ends 2026-12-30 · filed 23 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.386281,
-   "days": 84
+   "days": 83
   },
   {
    "date": "2027-01-22",
@@ -3700,7 +3557,7 @@
    "detail": "period ends 2026-12-30 · filed 23 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.259197,
-   "days": 84
+   "days": 83
   },
   {
    "date": "2027-01-22",
@@ -3711,7 +3568,7 @@
    "detail": "period ends 2027-01-01 · filed 21 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.193245,
-   "days": 84
+   "days": 83
   },
   {
    "date": "2027-01-22",
@@ -3722,7 +3579,7 @@
    "detail": "period ends 2026-12-30 · filed 23 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.166285,
-   "days": 84
+   "days": 83
   },
   {
    "date": "2027-01-22",
@@ -3733,7 +3590,7 @@
    "detail": "period ends 2026-12-30 · filed 23 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.100184,
-   "days": 84
+   "days": 83
   },
   {
    "date": "2027-01-22",
@@ -3744,7 +3601,7 @@
    "detail": "period ends 2026-12-25 · filed 28 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.091307,
-   "days": 84
+   "days": 83
   },
   {
    "date": "2027-01-22",
@@ -3755,7 +3612,7 @@
    "detail": "period ends 2026-12-30 · filed 23 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.048913,
-   "days": 84
+   "days": 83
   },
   {
    "date": "2027-01-22",
@@ -3766,7 +3623,7 @@
    "detail": "period ends 2026-12-27 · filed 26 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.043634,
-   "days": 84
+   "days": 83
   },
   {
    "date": "2027-01-22",
@@ -3777,7 +3634,7 @@
    "detail": "period ends 2026-11-30 · filed 53 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.042414,
-   "days": 84
+   "days": 83
   },
   {
    "date": "2027-01-22",
@@ -3788,7 +3645,7 @@
    "detail": "period ends 2026-12-30 · filed 23 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.042057,
-   "days": 84
+   "days": 83
   },
   {
    "date": "2027-01-22",
@@ -3799,7 +3656,7 @@
    "detail": "period ends 2026-12-30 · filed 23 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.040864,
-   "days": 84
+   "days": 83
   },
   {
    "date": "2027-01-22",
@@ -3810,7 +3667,7 @@
    "detail": "period ends 2026-12-30 · filed 23 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.034673,
-   "days": 84
+   "days": 83
   },
   {
    "date": "2027-01-22",
@@ -3821,7 +3678,7 @@
    "detail": "period ends 2026-12-30 · filed 23 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.03428,
-   "days": 84
+   "days": 83
   },
   {
    "date": "2027-01-22",
@@ -3832,7 +3689,7 @@
    "detail": "period ends 2026-12-30 · filed 23 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.026054,
-   "days": 84
+   "days": 83
   },
   {
    "date": "2027-01-22",
@@ -3843,7 +3700,7 @@
    "detail": "period ends 2026-12-29 · filed 24 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.018913,
-   "days": 84
+   "days": 83
   },
   {
    "date": "2027-01-22",
@@ -3854,7 +3711,7 @@
    "detail": "period ends 2026-12-30 · filed 23 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.014149,
-   "days": 84
+   "days": 83
   },
   {
    "date": "2027-01-25",
@@ -3865,7 +3722,7 @@
    "detail": "period ends 2026-12-29 · filed 27 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.080739,
-   "days": 87
+   "days": 86
   },
   {
    "date": "2027-01-25",
@@ -3876,7 +3733,7 @@
    "detail": "period ends 2026-11-28 · filed 58 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.080684,
-   "days": 87
+   "days": 86
   },
   {
    "date": "2027-01-25",
@@ -3887,7 +3744,7 @@
    "detail": "period ends 2026-12-30 · filed 26 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.078677,
-   "days": 87
+   "days": 86
   },
   {
    "date": "2027-01-25",
@@ -3898,7 +3755,7 @@
    "detail": "period ends 2026-12-30 · filed 26 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.056965,
-   "days": 87
+   "days": 86
   },
   {
    "date": "2027-01-25",
@@ -3909,7 +3766,7 @@
    "detail": "period ends 2026-12-30 · filed 26 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.041411,
-   "days": 87
+   "days": 86
   },
   {
    "date": "2027-01-25",
@@ -3920,7 +3777,7 @@
    "detail": "period ends 2026-12-30 · filed 26 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.032436,
-   "days": 87
+   "days": 86
   },
   {
    "date": "2027-01-25",
@@ -3931,7 +3788,7 @@
    "detail": "period ends 2026-12-30 · filed 26 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.010276,
-   "days": 87
+   "days": 86
   },
   {
    "date": "2027-01-26",
@@ -3942,7 +3799,7 @@
    "detail": "period ends 2026-12-29 · filed 28 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.380275,
-   "days": 88
+   "days": 87
   },
   {
    "date": "2027-01-26",
@@ -3953,7 +3810,7 @@
    "detail": "period ends 2026-12-29 · filed 28 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.268433,
-   "days": 88
+   "days": 87
   },
   {
    "date": "2027-01-26",
@@ -3964,7 +3821,7 @@
    "detail": "period ends 2026-12-30 · filed 27 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.258942,
-   "days": 88
+   "days": 87
   },
   {
    "date": "2027-01-26",
@@ -3975,7 +3832,7 @@
    "detail": "period ends 2026-12-30 · filed 27 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.224326,
-   "days": 88
+   "days": 87
   },
   {
    "date": "2027-01-26",
@@ -3986,7 +3843,7 @@
    "detail": "period ends 2026-12-29 · filed 28 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.207091,
-   "days": 88
+   "days": 87
   },
   {
    "date": "2027-01-26",
@@ -3997,7 +3854,7 @@
    "detail": "period ends 2026-12-29 · filed 28 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.19369,
-   "days": 88
+   "days": 87
   },
   {
    "date": "2027-01-26",
@@ -4008,7 +3865,7 @@
    "detail": "period ends 2026-12-29 · filed 28 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.189179,
-   "days": 88
+   "days": 87
   },
   {
    "date": "2027-01-26",
@@ -4019,7 +3876,7 @@
    "detail": "period ends 2026-12-30 · filed 27 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.12836,
-   "days": 88
+   "days": 87
   },
   {
    "date": "2027-01-26",
@@ -4030,7 +3887,7 @@
    "detail": "period ends 2026-12-30 · filed 27 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.121726,
-   "days": 88
+   "days": 87
   },
   {
    "date": "2027-01-26",
@@ -4041,7 +3898,7 @@
    "detail": "period ends 2026-12-30 · filed 27 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.11915,
-   "days": 88
+   "days": 87
   },
   {
    "date": "2027-01-26",
@@ -4052,7 +3909,7 @@
    "detail": "period ends 2026-12-30 · filed 27 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.107485,
-   "days": 88
+   "days": 87
   },
   {
    "date": "2027-01-26",
@@ -4063,7 +3920,7 @@
    "detail": "period ends 2026-12-27 · filed 30 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.090747,
-   "days": 88
+   "days": 87
   },
   {
    "date": "2027-01-26",
@@ -4074,7 +3931,7 @@
    "detail": "period ends 2026-12-30 · filed 27 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.074273,
-   "days": 88
+   "days": 87
   },
   {
    "date": "2027-01-26",
@@ -4085,7 +3942,7 @@
    "detail": "period ends 2026-12-30 · filed 27 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.069124,
-   "days": 88
+   "days": 87
   },
   {
    "date": "2027-01-26",
@@ -4096,7 +3953,7 @@
    "detail": "period ends 2026-12-30 · filed 27 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.053258,
-   "days": 88
+   "days": 87
   },
   {
    "date": "2027-01-26",
@@ -4107,7 +3964,7 @@
    "detail": "period ends 2026-12-30 · filed 27 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.048167,
-   "days": 88
+   "days": 87
   },
   {
    "date": "2027-01-26",
@@ -4118,7 +3975,7 @@
    "detail": "period ends 2026-12-29 · filed 28 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.042008,
-   "days": 88
+   "days": 87
   },
   {
    "date": "2027-01-26",
@@ -4129,7 +3986,7 @@
    "detail": "period ends 2026-12-30 · filed 27 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.040892,
-   "days": 88
+   "days": 87
   },
   {
    "date": "2027-01-26",
@@ -4140,7 +3997,7 @@
    "detail": "period ends 2026-12-30 · filed 27 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.038606,
-   "days": 88
+   "days": 87
   },
   {
    "date": "2027-01-26",
@@ -4151,7 +4008,7 @@
    "detail": "period ends 2026-12-30 · filed 27 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.033358,
-   "days": 88
+   "days": 87
   },
   {
    "date": "2027-01-26",
@@ -4162,7 +4019,7 @@
    "detail": "period ends 2026-12-30 · filed 27 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.032366,
-   "days": 88
+   "days": 87
   },
   {
    "date": "2027-01-26",
@@ -4173,7 +4030,7 @@
    "detail": "period ends 2027-01-01 · filed 25 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.028505,
-   "days": 88
+   "days": 87
   },
   {
    "date": "2027-01-26",
@@ -4184,7 +4041,7 @@
    "detail": "period ends 2026-12-29 · filed 28 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.016227,
-   "days": 88
+   "days": 87
   },
   {
    "date": "2027-01-26",
@@ -4195,7 +4052,7 @@
    "detail": "period ends 2026-12-30 · filed 27 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.013523,
-   "days": 88
+   "days": 87
   },
   {
    "date": "2027-01-27",
@@ -4206,7 +4063,7 @@
    "detail": "period ends 2026-12-29 · filed 29 days after quarter end, historically",
    "basis": "expected",
    "weight": 5.858633,
-   "days": 89
+   "days": 88
   },
   {
    "date": "2027-01-27",
@@ -4217,7 +4074,7 @@
    "detail": "period ends 2026-12-29 · filed 29 days after quarter end, historically",
    "basis": "expected",
    "weight": 1.069286,
-   "days": 89
+   "days": 88
   },
   {
    "date": "2027-01-27",
@@ -4228,7 +4085,7 @@
    "detail": "period ends 2027-01-01 · filed 26 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.559197,
-   "days": 89
+   "days": 88
   },
   {
    "date": "2027-01-27",
@@ -4239,7 +4096,7 @@
    "detail": "period ends 2026-12-27 · filed 31 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.279346,
-   "days": 89
+   "days": 88
   },
   {
    "date": "2027-01-27",
@@ -4250,7 +4107,7 @@
    "detail": "period ends 2026-12-29 · filed 29 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.182156,
-   "days": 89
+   "days": 88
   },
   {
    "date": "2027-01-27",
@@ -4261,7 +4118,7 @@
    "detail": "period ends 2026-12-27 · filed 31 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.175894,
-   "days": 89
+   "days": 88
   },
   {
    "date": "2027-01-27",
@@ -4272,18 +4129,7 @@
    "detail": "period ends 2026-12-29 · filed 29 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.142435,
-   "days": 89
-  },
-  {
-   "date": "2027-01-27",
-   "kind": "earnings",
-   "ticker": "GD",
-   "name": "GENERAL DYNAMICS CORP",
-   "label": "GD · quarterly report expected",
-   "detail": "period ends 2027-01-03 · filed 24 days after quarter end, historically",
-   "basis": "expected",
-   "weight": 0.135117,
-   "days": 89
+   "days": 88
   },
   {
    "date": "2027-01-27",
@@ -4294,7 +4140,7 @@
    "detail": "period ends 2026-12-29 · filed 29 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.134508,
-   "days": 89
+   "days": 88
   },
   {
    "date": "2027-01-27",
@@ -4305,7 +4151,7 @@
    "detail": "period ends 2026-12-29 · filed 29 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.131347,
-   "days": 89
+   "days": 88
   },
   {
    "date": "2027-01-27",
@@ -4316,7 +4162,7 @@
    "detail": "period ends 2026-12-29 · filed 29 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.129043,
-   "days": 89
+   "days": 88
   },
   {
    "date": "2027-01-27",
@@ -4327,7 +4173,7 @@
    "detail": "period ends 2026-12-29 · filed 29 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.113956,
-   "days": 89
+   "days": 88
   },
   {
    "date": "2027-01-27",
@@ -4338,7 +4184,7 @@
    "detail": "period ends 2026-12-29 · filed 29 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.111105,
-   "days": 89
+   "days": 88
   },
   {
    "date": "2027-01-27",
@@ -4349,7 +4195,7 @@
    "detail": "period ends 2026-12-29 · filed 29 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.098296,
-   "days": 89
+   "days": 88
   },
   {
    "date": "2027-01-27",
@@ -4360,7 +4206,7 @@
    "detail": "period ends 2026-12-29 · filed 29 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.087518,
-   "days": 89
+   "days": 88
   },
   {
    "date": "2027-01-27",
@@ -4371,7 +4217,7 @@
    "detail": "period ends 2026-12-29 · filed 29 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.07669,
-   "days": 89
+   "days": 88
   },
   {
    "date": "2027-01-27",
@@ -4382,7 +4228,7 @@
    "detail": "period ends 2026-12-26 · filed 32 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.074146,
-   "days": 89
+   "days": 88
   },
   {
    "date": "2027-01-27",
@@ -4393,7 +4239,7 @@
    "detail": "period ends 2026-12-30 · filed 28 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.069599,
-   "days": 89
+   "days": 88
   },
   {
    "date": "2027-01-27",
@@ -4404,7 +4250,7 @@
    "detail": "period ends 2026-12-30 · filed 28 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.067525,
-   "days": 89
+   "days": 88
   },
   {
    "date": "2027-01-27",
@@ -4415,7 +4261,7 @@
    "detail": "period ends 2026-12-30 · filed 28 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.063833,
-   "days": 89
+   "days": 88
   },
   {
    "date": "2027-01-27",
@@ -4426,7 +4272,7 @@
    "detail": "period ends 2026-12-30 · filed 28 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.056955,
-   "days": 89
+   "days": 88
   },
   {
    "date": "2027-01-27",
@@ -4437,7 +4283,7 @@
    "detail": "period ends 2026-12-30 · filed 28 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.05189,
-   "days": 89
+   "days": 88
   },
   {
    "date": "2027-01-27",
@@ -4448,7 +4294,7 @@
    "detail": "period ends 2026-12-30 · filed 28 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.04879,
-   "days": 89
+   "days": 88
   },
   {
    "date": "2027-01-27",
@@ -4459,7 +4305,7 @@
    "detail": "period ends 2026-12-30 · filed 28 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.043076,
-   "days": 89
+   "days": 88
   },
   {
    "date": "2027-01-27",
@@ -4470,7 +4316,7 @@
    "detail": "period ends 2026-12-30 · filed 28 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.041858,
-   "days": 89
+   "days": 88
   },
   {
    "date": "2027-01-27",
@@ -4481,7 +4327,7 @@
    "detail": "period ends 2026-12-29 · filed 29 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.040414,
-   "days": 89
+   "days": 88
   },
   {
    "date": "2027-01-27",
@@ -4492,18 +4338,7 @@
    "detail": "period ends 2026-12-30 · filed 28 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.040024,
-   "days": 89
-  },
-  {
-   "date": "2027-01-27",
-   "kind": "earnings",
-   "ticker": "VLTO",
-   "name": "Veralto Corp",
-   "label": "VLTO · quarterly report expected",
-   "detail": "period ends 2027-01-01 · filed 26 days after quarter end, historically",
-   "basis": "expected",
-   "weight": 0.038702,
-   "days": 89
+   "days": 88
   },
   {
    "date": "2027-01-27",
@@ -4514,7 +4349,7 @@
    "detail": "period ends 2026-12-30 · filed 28 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.038246,
-   "days": 89
+   "days": 88
   },
   {
    "date": "2027-01-27",
@@ -4525,7 +4360,7 @@
    "detail": "period ends 2026-12-30 · filed 28 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.036727,
-   "days": 89
+   "days": 88
   },
   {
    "date": "2027-01-27",
@@ -4536,7 +4371,7 @@
    "detail": "period ends 2026-12-30 · filed 28 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.03577,
-   "days": 89
+   "days": 88
   },
   {
    "date": "2027-01-27",
@@ -4547,7 +4382,7 @@
    "detail": "period ends 2026-12-30 · filed 28 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.031696,
-   "days": 89
+   "days": 88
   },
   {
    "date": "2027-01-27",
@@ -4558,7 +4393,7 @@
    "detail": "period ends 2027-01-01 · filed 26 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.027775,
-   "days": 89
+   "days": 88
   },
   {
    "date": "2027-01-27",
@@ -4569,7 +4404,7 @@
    "detail": "period ends 2026-12-30 · filed 28 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.027533,
-   "days": 89
+   "days": 88
   },
   {
    "date": "2027-01-27",
@@ -4580,7 +4415,7 @@
    "detail": "period ends 2026-12-29 · filed 29 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.026875,
-   "days": 89
+   "days": 88
   },
   {
    "date": "2027-01-27",
@@ -4591,7 +4426,7 @@
    "detail": "period ends 2026-12-30 · filed 28 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.025485,
-   "days": 89
+   "days": 88
   },
   {
    "date": "2027-01-27",
@@ -4602,7 +4437,7 @@
    "detail": "period ends 2026-12-30 · filed 28 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.02307,
-   "days": 89
+   "days": 88
   },
   {
    "date": "2027-01-27",
@@ -4613,7 +4448,7 @@
    "detail": "period ends 2026-12-30 · filed 28 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.022619,
-   "days": 89
+   "days": 88
   },
   {
    "date": "2027-01-27",
@@ -4624,7 +4459,7 @@
    "detail": "period ends 2027-01-02 · filed 25 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.022402,
-   "days": 89
+   "days": 88
   },
   {
    "date": "2027-01-27",
@@ -4635,7 +4470,7 @@
    "detail": "period ends 2026-12-30 · filed 28 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.021964,
-   "days": 89
+   "days": 88
   },
   {
    "date": "2027-01-27",
@@ -4646,7 +4481,7 @@
    "detail": "period ends 2026-12-30 · filed 28 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.018184,
-   "days": 89
+   "days": 88
   },
   {
    "date": "2027-01-27",
@@ -4657,7 +4492,7 @@
    "detail": "period ends 2026-12-30 · filed 28 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.007863,
-   "days": 89
+   "days": 88
   },
   {
    "date": "2027-01-28",
@@ -4668,7 +4503,7 @@
    "detail": "period ends 2026-12-30 · filed 29 days after quarter end, historically",
    "basis": "expected",
    "weight": 2.880753,
-   "days": 90
+   "days": 89
   },
   {
    "date": "2027-01-28",
@@ -4679,7 +4514,7 @@
    "detail": "period ends 2026-12-30 · filed 29 days after quarter end, historically",
    "basis": "expected",
    "weight": 1.5833,
-   "days": 90
+   "days": 89
   },
   {
    "date": "2027-01-28",
@@ -4690,7 +4525,7 @@
    "detail": "period ends 2026-12-30 · filed 29 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.775469,
-   "days": 90
+   "days": 89
   },
   {
    "date": "2027-01-28",
@@ -4701,7 +4536,7 @@
    "detail": "period ends 2026-12-30 · filed 29 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.356433,
-   "days": 90
+   "days": 89
   },
   {
    "date": "2027-01-28",
@@ -4712,7 +4547,7 @@
    "detail": "period ends 2026-12-30 · filed 29 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.292292,
-   "days": 90
+   "days": 89
   },
   {
    "date": "2027-01-28",
@@ -4723,7 +4558,7 @@
    "detail": "period ends 2026-12-30 · filed 29 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.284536,
-   "days": 90
+   "days": 89
   },
   {
    "date": "2027-01-28",
@@ -4734,7 +4569,7 @@
    "detail": "period ends 2027-01-01 · filed 27 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.220245,
-   "days": 90
+   "days": 89
   },
   {
    "date": "2027-01-28",
@@ -4745,7 +4580,7 @@
    "detail": "period ends 2026-12-30 · filed 29 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.194846,
-   "days": 90
+   "days": 89
   },
   {
    "date": "2027-01-28",
@@ -4756,7 +4591,7 @@
    "detail": "period ends 2026-12-30 · filed 29 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.192348,
-   "days": 90
+   "days": 89
   },
   {
    "date": "2027-01-28",
@@ -4767,7 +4602,7 @@
    "detail": "period ends 2026-12-29 · filed 30 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.18573,
-   "days": 90
+   "days": 89
   },
   {
    "date": "2027-01-28",
@@ -4778,18 +4613,7 @@
    "detail": "period ends 2026-12-29 · filed 30 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.163328,
-   "days": 90
-  },
-  {
-   "date": "2027-01-28",
-   "kind": "earnings",
-   "ticker": "FTNT",
-   "name": "Fortinet, Inc.",
-   "label": "FTNT · quarterly report expected",
-   "detail": "period ends 2026-12-29 · filed 30 days after quarter end, historically",
-   "basis": "expected",
-   "weight": 0.161332,
-   "days": 90
+   "days": 89
   },
   {
    "date": "2027-01-28",
@@ -4800,7 +4624,7 @@
    "detail": "period ends 2026-12-30 · filed 29 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.149711,
-   "days": 90
+   "days": 89
   },
   {
    "date": "2027-01-28",
@@ -4811,7 +4635,7 @@
    "detail": "period ends 2026-12-30 · filed 29 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.148696,
-   "days": 90
+   "days": 89
   },
   {
    "date": "2027-01-28",
@@ -4822,7 +4646,7 @@
    "detail": "period ends 2026-12-30 · filed 29 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.139189,
-   "days": 90
+   "days": 89
   },
   {
    "date": "2027-01-28",
@@ -4833,7 +4657,7 @@
    "detail": "period ends 2026-12-29 · filed 30 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.12632,
-   "days": 90
+   "days": 89
   },
   {
    "date": "2027-01-28",
@@ -4844,7 +4668,7 @@
    "detail": "period ends 2026-12-30 · filed 29 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.125923,
-   "days": 90
+   "days": 89
   },
   {
    "date": "2027-01-28",
@@ -4855,18 +4679,7 @@
    "detail": "period ends 2026-12-30 · filed 29 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.12571,
-   "days": 90
-  },
-  {
-   "date": "2027-01-28",
-   "kind": "earnings",
-   "ticker": "REGN",
-   "name": "REGENERON PHARMACEUTICALS, INC.",
-   "label": "REGN · quarterly report expected",
-   "detail": "period ends 2026-12-29 · filed 30 days after quarter end, historically",
-   "basis": "expected",
-   "weight": 0.121344,
-   "days": 90
+   "days": 89
   },
   {
    "date": "2027-01-28",
@@ -4877,7 +4690,7 @@
    "detail": "period ends 2026-12-30 · filed 29 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.116485,
-   "days": 90
+   "days": 89
   },
   {
    "date": "2027-01-28",
@@ -4888,7 +4701,7 @@
    "detail": "period ends 2026-12-29 · filed 30 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.115679,
-   "days": 90
+   "days": 89
   },
   {
    "date": "2027-01-28",
@@ -4899,7 +4712,7 @@
    "detail": "period ends 2026-12-30 · filed 29 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.111398,
-   "days": 90
+   "days": 89
   },
   {
    "date": "2027-01-28",
@@ -4910,7 +4723,7 @@
    "detail": "period ends 2026-12-29 · filed 30 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.107867,
-   "days": 90
+   "days": 89
   },
   {
    "date": "2027-01-28",
@@ -4921,7 +4734,7 @@
    "detail": "period ends 2026-12-29 · filed 30 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.104192,
-   "days": 90
+   "days": 89
   },
   {
    "date": "2027-01-28",
@@ -4932,7 +4745,7 @@
    "detail": "period ends 2026-12-30 · filed 29 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.104108,
-   "days": 90
+   "days": 89
   },
   {
    "date": "2027-01-28",
@@ -4943,7 +4756,7 @@
    "detail": "period ends 2026-12-30 · filed 29 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.086825,
-   "days": 90
+   "days": 89
   },
   {
    "date": "2027-01-28",
@@ -4954,7 +4767,7 @@
    "detail": "period ends 2026-12-30 · filed 29 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.074749,
-   "days": 90
+   "days": 89
   },
   {
    "date": "2027-01-28",
@@ -4965,7 +4778,7 @@
    "detail": "period ends 2026-12-30 · filed 29 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.073965,
-   "days": 90
+   "days": 89
   },
   {
    "date": "2027-01-28",
@@ -4976,7 +4789,7 @@
    "detail": "period ends 2027-01-01 · filed 27 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.071876,
-   "days": 90
+   "days": 89
   },
   {
    "date": "2027-01-28",
@@ -4987,7 +4800,7 @@
    "detail": "period ends 2026-12-30 · filed 29 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.070916,
-   "days": 90
+   "days": 89
   },
   {
    "date": "2027-01-28",
@@ -4998,18 +4811,7 @@
    "detail": "period ends 2026-12-30 · filed 29 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.070456,
-   "days": 90
-  },
-  {
-   "date": "2027-01-28",
-   "kind": "earnings",
-   "ticker": "EXC",
-   "name": "EXELON CORP",
-   "label": "EXC · quarterly report expected",
-   "detail": "period ends 2026-12-29 · filed 30 days after quarter end, historically",
-   "basis": "expected",
-   "weight": 0.070062,
-   "days": 90
+   "days": 89
   },
   {
    "date": "2027-01-28",
@@ -5020,7 +4822,7 @@
    "detail": "period ends 2026-12-29 · filed 30 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.069033,
-   "days": 90
+   "days": 89
   },
   {
    "date": "2027-01-28",
@@ -5031,7 +4833,7 @@
    "detail": "period ends 2026-12-30 · filed 29 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.057077,
-   "days": 90
+   "days": 89
   },
   {
    "date": "2027-01-28",
@@ -5042,7 +4844,7 @@
    "detail": "period ends 2026-12-30 · filed 29 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.053725,
-   "days": 90
+   "days": 89
   },
   {
    "date": "2027-01-28",
@@ -5053,7 +4855,7 @@
    "detail": "period ends 2026-12-30 · filed 29 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.052908,
-   "days": 90
+   "days": 89
   },
   {
    "date": "2027-01-28",
@@ -5064,7 +4866,7 @@
    "detail": "period ends 2026-12-30 · filed 29 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.050249,
-   "days": 90
+   "days": 89
   },
   {
    "date": "2027-01-28",
@@ -5075,7 +4877,7 @@
    "detail": "period ends 2026-12-29 · filed 30 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.047183,
-   "days": 90
+   "days": 89
   },
   {
    "date": "2027-01-28",
@@ -5086,7 +4888,7 @@
    "detail": "period ends 2026-12-30 · filed 29 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.046694,
-   "days": 90
+   "days": 89
   },
   {
    "date": "2027-01-28",
@@ -5097,7 +4899,7 @@
    "detail": "period ends 2026-12-30 · filed 29 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.045914,
-   "days": 90
+   "days": 89
   },
   {
    "date": "2027-01-28",
@@ -5108,7 +4910,7 @@
    "detail": "period ends 2026-12-30 · filed 29 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.044553,
-   "days": 90
+   "days": 89
   },
   {
    "date": "2027-01-28",
@@ -5119,7 +4921,7 @@
    "detail": "period ends 2026-12-30 · filed 29 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.044078,
-   "days": 90
+   "days": 89
   },
   {
    "date": "2027-01-28",
@@ -5130,7 +4932,7 @@
    "detail": "period ends 2026-12-30 · filed 29 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.043551,
-   "days": 90
+   "days": 89
   },
   {
    "date": "2027-01-28",
@@ -5141,7 +4943,7 @@
    "detail": "period ends 2026-12-30 · filed 29 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.042245,
-   "days": 90
+   "days": 89
   },
   {
    "date": "2027-01-28",
@@ -5152,7 +4954,7 @@
    "detail": "period ends 2026-12-29 · filed 30 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.041911,
-   "days": 90
+   "days": 89
   },
   {
    "date": "2027-01-28",
@@ -5163,7 +4965,7 @@
    "detail": "period ends 2026-12-27 · filed 32 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.038694,
-   "days": 90
+   "days": 89
   },
   {
    "date": "2027-01-28",
@@ -5174,7 +4976,7 @@
    "detail": "period ends 2026-12-30 · filed 29 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.033808,
-   "days": 90
+   "days": 89
   },
   {
    "date": "2027-01-28",
@@ -5185,7 +4987,7 @@
    "detail": "period ends 2026-12-30 · filed 29 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.033628,
-   "days": 90
+   "days": 89
   },
   {
    "date": "2027-01-28",
@@ -5196,7 +4998,7 @@
    "detail": "period ends 2026-12-30 · filed 29 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.032469,
-   "days": 90
+   "days": 89
   },
   {
    "date": "2027-01-28",
@@ -5207,7 +5009,7 @@
    "detail": "period ends 2026-12-30 · filed 29 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.030125,
-   "days": 90
+   "days": 89
   },
   {
    "date": "2027-01-28",
@@ -5218,7 +5020,7 @@
    "detail": "period ends 2026-12-30 · filed 29 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.027899,
-   "days": 90
+   "days": 89
   },
   {
    "date": "2027-01-28",
@@ -5229,7 +5031,7 @@
    "detail": "period ends 2026-12-27 · filed 32 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.025027,
-   "days": 90
+   "days": 89
   },
   {
    "date": "2027-01-28",
@@ -5240,7 +5042,7 @@
    "detail": "period ends 2026-12-30 · filed 29 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.024591,
-   "days": 90
+   "days": 89
   },
   {
    "date": "2027-01-28",
@@ -5251,7 +5053,7 @@
    "detail": "period ends 2026-12-30 · filed 29 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.024139,
-   "days": 90
+   "days": 89
   },
   {
    "date": "2027-01-28",
@@ -5262,7 +5064,7 @@
    "detail": "period ends 2026-12-30 · filed 29 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.022392,
-   "days": 90
+   "days": 89
   },
   {
    "date": "2027-01-28",
@@ -5273,7 +5075,7 @@
    "detail": "period ends 2026-12-30 · filed 29 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.021394,
-   "days": 90
+   "days": 89
   },
   {
    "date": "2027-01-28",
@@ -5284,7 +5086,7 @@
    "detail": "period ends 2027-01-02 · filed 26 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.020538,
-   "days": 90
+   "days": 89
   },
   {
    "date": "2027-01-28",
@@ -5295,7 +5097,7 @@
    "detail": "period ends 2027-01-01 · filed 27 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.020292,
-   "days": 90
+   "days": 89
   },
   {
    "date": "2027-01-28",
@@ -5306,7 +5108,7 @@
    "detail": "period ends 2026-12-30 · filed 29 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.020195,
-   "days": 90
+   "days": 89
   },
   {
    "date": "2027-01-28",
@@ -5317,7 +5119,7 @@
    "detail": "period ends 2026-12-30 · filed 29 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.020096,
-   "days": 90
+   "days": 89
   },
   {
    "date": "2027-01-28",
@@ -5328,7 +5130,7 @@
    "detail": "period ends 2026-12-30 · filed 29 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.017371,
-   "days": 90
+   "days": 89
   },
   {
    "date": "2027-01-28",
@@ -5339,7 +5141,7 @@
    "detail": "period ends 2026-12-30 · filed 29 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.016599,
-   "days": 90
+   "days": 89
   },
   {
    "date": "2027-01-28",
@@ -5350,7 +5152,7 @@
    "detail": "period ends 2026-12-30 · filed 29 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.010901,
-   "days": 90
+   "days": 89
   },
   {
    "date": "2027-01-28",
@@ -5361,7 +5163,7 @@
    "detail": "period ends 2026-12-30 · filed 29 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.010606,
-   "days": 90
+   "days": 89
   },
   {
    "date": "2027-01-28",
@@ -5372,7 +5174,7 @@
    "detail": "period ends 2026-12-30 · filed 29 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.009897,
-   "days": 90
+   "days": 89
   },
   {
    "date": "2027-01-28",
@@ -5383,7 +5185,7 @@
    "detail": "period ends 2026-12-30 · filed 29 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.009531,
-   "days": 90
+   "days": 89
   },
   {
    "date": "2027-01-29",
@@ -5394,7 +5196,7 @@
    "detail": "period ends 2026-12-26 · filed 34 days after quarter end, historically",
    "basis": "expected",
    "weight": 7.695329,
-   "days": 91
+   "days": 90
   },
   {
    "date": "2027-01-29",
@@ -5402,10 +5204,21 @@
    "ticker": "AMZN",
    "name": "AMAZON COM INC",
    "label": "AMZN · quarterly report expected",
-   "detail": "period ends 2026-12-29 · filed 31 days after quarter end, historically",
+   "detail": "period ends 2026-12-30 · filed 30 days after quarter end, historically",
    "basis": "expected",
    "weight": 3.721222,
-   "days": 91
+   "days": 90
+  },
+  {
+   "date": "2027-01-29",
+   "kind": "earnings",
+   "ticker": "INTC",
+   "name": "INTEL CORP",
+   "label": "INTC · quarterly report expected",
+   "detail": "period ends 2026-12-26 · filed 34 days after quarter end, historically",
+   "basis": "expected",
+   "weight": 0.643316,
+   "days": 90
   },
   {
    "date": "2027-01-29",
@@ -5413,10 +5226,10 @@
    "ticker": "BAC",
    "name": "BANK OF AMERICA CORP /DE/",
    "label": "BAC · quarterly report expected",
-   "detail": "period ends 2026-12-29 · filed 31 days after quarter end, historically",
+   "detail": "period ends 2026-12-30 · filed 30 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.503147,
-   "days": 91
+   "days": 90
   },
   {
    "date": "2027-01-29",
@@ -5427,7 +5240,29 @@
    "detail": "period ends 2026-12-26 · filed 34 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.378954,
-   "days": 91
+   "days": 90
+  },
+  {
+   "date": "2027-01-29",
+   "kind": "earnings",
+   "ticker": "GILD",
+   "name": "GILEAD SCIENCES, INC.",
+   "label": "GILD · quarterly report expected",
+   "detail": "period ends 2026-12-30 · filed 30 days after quarter end, historically",
+   "basis": "expected",
+   "weight": 0.295324,
+   "days": 90
+  },
+  {
+   "date": "2027-01-29",
+   "kind": "earnings",
+   "ticker": "SNDK",
+   "name": "Sandisk Corp",
+   "label": "SNDK · quarterly report expected",
+   "detail": "period ends 2027-01-01 · filed 28 days after quarter end, historically",
+   "basis": "expected",
+   "weight": 0.278551,
+   "days": 90
   },
   {
    "date": "2027-01-29",
@@ -5435,10 +5270,10 @@
    "ticker": "APH",
    "name": "AMPHENOL CORP /DE/",
    "label": "APH · quarterly report expected",
-   "detail": "period ends 2026-12-29 · filed 31 days after quarter end, historically",
+   "detail": "period ends 2026-12-30 · filed 30 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.272988,
-   "days": 91
+   "days": 90
   },
   {
    "date": "2027-01-29",
@@ -5449,7 +5284,18 @@
    "detail": "period ends 2026-12-29 · filed 31 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.217127,
-   "days": 91
+   "days": 90
+  },
+  {
+   "date": "2027-01-29",
+   "kind": "earnings",
+   "ticker": "ADP",
+   "name": "AUTOMATIC DATA PROCESSING INC",
+   "label": "ADP · quarterly report expected",
+   "detail": "period ends 2026-12-30 · filed 30 days after quarter end, historically",
+   "basis": "expected",
+   "weight": 0.185138,
+   "days": 90
   },
   {
    "date": "2027-01-29",
@@ -5457,10 +5303,21 @@
    "ticker": "SYK",
    "name": "STRYKER CORP",
    "label": "SYK · quarterly report expected",
-   "detail": "period ends 2026-12-29 · filed 31 days after quarter end, historically",
+   "detail": "period ends 2026-12-30 · filed 30 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.162213,
-   "days": 91
+   "days": 90
+  },
+  {
+   "date": "2027-01-29",
+   "kind": "earnings",
+   "ticker": "FTNT",
+   "name": "Fortinet, Inc.",
+   "label": "FTNT · quarterly report expected",
+   "detail": "period ends 2026-12-30 · filed 30 days after quarter end, historically",
+   "basis": "expected",
+   "weight": 0.161332,
+   "days": 90
   },
   {
    "date": "2027-01-29",
@@ -5468,10 +5325,32 @@
    "ticker": "BNY",
    "name": "Bank of New York Mellon Corp",
    "label": "BNY · quarterly report expected",
-   "detail": "period ends 2026-12-29 · filed 31 days after quarter end, historically",
+   "detail": "period ends 2026-12-30 · filed 30 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.149028,
-   "days": 91
+   "days": 90
+  },
+  {
+   "date": "2027-01-29",
+   "kind": "earnings",
+   "ticker": "GD",
+   "name": "GENERAL DYNAMICS CORP",
+   "label": "GD · quarterly report expected",
+   "detail": "period ends 2027-01-03 · filed 26 days after quarter end, historically",
+   "basis": "expected",
+   "weight": 0.135117,
+   "days": 90
+  },
+  {
+   "date": "2027-01-29",
+   "kind": "earnings",
+   "ticker": "REGN",
+   "name": "REGENERON PHARMACEUTICALS, INC.",
+   "label": "REGN · quarterly report expected",
+   "detail": "period ends 2026-12-30 · filed 30 days after quarter end, historically",
+   "basis": "expected",
+   "weight": 0.121344,
+   "days": 90
   },
   {
    "date": "2027-01-29",
@@ -5479,10 +5358,10 @@
    "ticker": "CL",
    "name": "COLGATE PALMOLIVE CO",
    "label": "CL · quarterly report expected",
-   "detail": "period ends 2026-12-29 · filed 31 days after quarter end, historically",
+   "detail": "period ends 2026-12-30 · filed 30 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.11749,
-   "days": 91
+   "days": 90
   },
   {
    "date": "2027-01-29",
@@ -5493,7 +5372,18 @@
    "detail": "period ends 2026-12-29 · filed 31 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.113858,
-   "days": 91
+   "days": 90
+  },
+  {
+   "date": "2027-01-29",
+   "kind": "earnings",
+   "ticker": "DASH",
+   "name": "DoorDash, Inc.",
+   "label": "DASH · quarterly report expected",
+   "detail": "period ends 2026-12-30 · filed 30 days after quarter end, historically",
+   "basis": "expected",
+   "weight": 0.105876,
+   "days": 90
   },
   {
    "date": "2027-01-29",
@@ -5501,10 +5391,10 @@
    "ticker": "DLR",
    "name": "DIGITAL REALTY TRUST, INC.",
    "label": "DLR · quarterly report expected",
-   "detail": "period ends 2026-12-29 · filed 31 days after quarter end, historically",
+   "detail": "period ends 2026-12-30 · filed 30 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.090934,
-   "days": 91
+   "days": 90
   },
   {
    "date": "2027-01-29",
@@ -5515,7 +5405,7 @@
    "detail": "period ends 2026-12-29 · filed 31 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.08932,
-   "days": 91
+   "days": 90
   },
   {
    "date": "2027-01-29",
@@ -5523,10 +5413,10 @@
    "ticker": "D",
    "name": "DOMINION ENERGY, INC",
    "label": "D · quarterly report expected",
-   "detail": "period ends 2026-12-29 · filed 31 days after quarter end, historically",
+   "detail": "period ends 2026-12-30 · filed 30 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.087285,
-   "days": 91
+   "days": 90
   },
   {
    "date": "2027-01-29",
@@ -5537,7 +5427,7 @@
    "detail": "period ends 2026-12-29 · filed 31 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.076402,
-   "days": 91
+   "days": 90
   },
   {
    "date": "2027-01-29",
@@ -5548,7 +5438,40 @@
    "detail": "period ends 2026-12-27 · filed 33 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.073299,
-   "days": 91
+   "days": 90
+  },
+  {
+   "date": "2027-01-29",
+   "kind": "earnings",
+   "ticker": "RSG",
+   "name": "REPUBLIC SERVICES, INC.",
+   "label": "RSG · quarterly report expected",
+   "detail": "period ends 2026-12-30 · filed 30 days after quarter end, historically",
+   "basis": "expected",
+   "weight": 0.071524,
+   "days": 90
+  },
+  {
+   "date": "2027-01-29",
+   "kind": "earnings",
+   "ticker": "EXC",
+   "name": "EXELON CORP",
+   "label": "EXC · quarterly report expected",
+   "detail": "period ends 2026-12-30 · filed 30 days after quarter end, historically",
+   "basis": "expected",
+   "weight": 0.070062,
+   "days": 90
+  },
+  {
+   "date": "2027-01-29",
+   "kind": "earnings",
+   "ticker": "AMP",
+   "name": "AMERIPRISE FINANCIAL INC",
+   "label": "AMP · quarterly report expected",
+   "detail": "period ends 2026-12-30 · filed 30 days after quarter end, historically",
+   "basis": "expected",
+   "weight": 0.066236,
+   "days": 90
   },
   {
    "date": "2027-01-29",
@@ -5559,7 +5482,7 @@
    "detail": "period ends 2026-12-29 · filed 31 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.065284,
-   "days": 91
+   "days": 90
   },
   {
    "date": "2027-01-29",
@@ -5570,7 +5493,51 @@
    "detail": "period ends 2026-12-27 · filed 33 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.061555,
-   "days": 91
+   "days": 90
+  },
+  {
+   "date": "2027-01-29",
+   "kind": "earnings",
+   "ticker": "TWLO",
+   "name": "TWILIO INC",
+   "label": "TWLO · quarterly report expected",
+   "detail": "period ends 2026-12-30 · filed 30 days after quarter end, historically",
+   "basis": "expected",
+   "weight": 0.059275,
+   "days": 90
+  },
+  {
+   "date": "2027-01-29",
+   "kind": "earnings",
+   "ticker": "KVUE",
+   "name": "Kenvue Inc.",
+   "label": "KVUE · quarterly report expected",
+   "detail": "period ends 2026-12-27 · filed 33 days after quarter end, historically",
+   "basis": "expected",
+   "weight": 0.057923,
+   "days": 90
+  },
+  {
+   "date": "2027-01-29",
+   "kind": "earnings",
+   "ticker": "WEC",
+   "name": "WEC ENERGY GROUP, INC.",
+   "label": "WEC · quarterly report expected",
+   "detail": "period ends 2026-12-30 · filed 30 days after quarter end, historically",
+   "basis": "expected",
+   "weight": 0.055431,
+   "days": 90
+  },
+  {
+   "date": "2027-01-29",
+   "kind": "earnings",
+   "ticker": "RMD",
+   "name": "RESMED INC",
+   "label": "RMD · quarterly report expected",
+   "detail": "period ends 2026-12-30 · filed 30 days after quarter end, historically",
+   "basis": "expected",
+   "weight": 0.055235,
+   "days": 90
   },
   {
    "date": "2027-01-29",
@@ -5578,10 +5545,10 @@
    "ticker": "CBOE",
    "name": "Cboe Global Markets, Inc.",
    "label": "CBOE · quarterly report expected",
-   "detail": "period ends 2026-12-29 · filed 31 days after quarter end, historically",
+   "detail": "period ends 2026-12-30 · filed 30 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.052126,
-   "days": 91
+   "days": 90
   },
   {
    "date": "2027-01-29",
@@ -5592,7 +5559,7 @@
    "detail": "period ends 2026-12-29 · filed 31 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.051396,
-   "days": 91
+   "days": 90
   },
   {
    "date": "2027-01-29",
@@ -5600,10 +5567,10 @@
    "ticker": "EXR",
    "name": "Extra Space Storage Inc.",
    "label": "EXR · quarterly report expected",
-   "detail": "period ends 2026-12-29 · filed 31 days after quarter end, historically",
+   "detail": "period ends 2026-12-30 · filed 30 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.0459,
-   "days": 91
+   "days": 90
   },
   {
    "date": "2027-01-29",
@@ -5614,7 +5581,18 @@
    "detail": "period ends 2026-12-25 · filed 35 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.042794,
-   "days": 91
+   "days": 90
+  },
+  {
+   "date": "2027-01-29",
+   "kind": "earnings",
+   "ticker": "LH",
+   "name": "LABCORP HOLDINGS INC.",
+   "label": "LH · quarterly report expected",
+   "detail": "period ends 2026-12-30 · filed 30 days after quarter end, historically",
+   "basis": "expected",
+   "weight": 0.040298,
+   "days": 90
   },
   {
    "date": "2027-01-29",
@@ -5622,10 +5600,21 @@
    "ticker": "CHD",
    "name": "CHURCH & DWIGHT CO INC /DE/",
    "label": "CHD · quarterly report expected",
-   "detail": "period ends 2026-12-29 · filed 31 days after quarter end, historically",
+   "detail": "period ends 2026-12-30 · filed 30 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.039043,
-   "days": 91
+   "days": 90
+  },
+  {
+   "date": "2027-01-29",
+   "kind": "earnings",
+   "ticker": "VLTO",
+   "name": "Veralto Corp",
+   "label": "VLTO · quarterly report expected",
+   "detail": "period ends 2027-01-01 · filed 28 days after quarter end, historically",
+   "basis": "expected",
+   "weight": 0.038702,
+   "days": 90
   },
   {
    "date": "2027-01-29",
@@ -5633,10 +5622,10 @@
    "ticker": "IR",
    "name": "Ingersoll Rand Inc.",
    "label": "IR · quarterly report expected",
-   "detail": "period ends 2026-12-29 · filed 31 days after quarter end, historically",
+   "detail": "period ends 2026-12-30 · filed 30 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.038534,
-   "days": 91
+   "days": 90
   },
   {
    "date": "2027-01-29",
@@ -5647,7 +5636,7 @@
    "detail": "period ends 2026-12-29 · filed 31 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.03379,
-   "days": 91
+   "days": 90
   },
   {
    "date": "2027-01-29",
@@ -5655,10 +5644,10 @@
    "ticker": "RDDT",
    "name": "Reddit, Inc.",
    "label": "RDDT · quarterly report expected",
-   "detail": "period ends 2026-12-29 · filed 31 days after quarter end, historically",
+   "detail": "period ends 2026-12-30 · filed 30 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.033217,
-   "days": 91
+   "days": 90
   },
   {
    "date": "2027-01-29",
@@ -5669,7 +5658,7 @@
    "detail": "period ends 2026-12-29 · filed 31 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.031582,
-   "days": 91
+   "days": 90
   },
   {
    "date": "2027-01-29",
@@ -5677,10 +5666,10 @@
    "ticker": "LNT",
    "name": "ALLIANT ENERGY CORP",
    "label": "LNT · quarterly report expected",
-   "detail": "period ends 2026-12-29 · filed 31 days after quarter end, historically",
+   "detail": "period ends 2026-12-30 · filed 30 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.027402,
-   "days": 91
+   "days": 90
   },
   {
    "date": "2027-01-29",
@@ -5691,7 +5680,7 @@
    "detail": "period ends 2026-12-29 · filed 31 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.025891,
-   "days": 91
+   "days": 90
   },
   {
    "date": "2027-01-29",
@@ -5699,10 +5688,10 @@
    "ticker": "LYB",
    "name": "LyondellBasell Industries N.V.",
    "label": "LYB · quarterly report expected",
-   "detail": "period ends 2026-12-29 · filed 31 days after quarter end, historically",
+   "detail": "period ends 2026-12-30 · filed 30 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.025704,
-   "days": 91
+   "days": 90
   },
   {
    "date": "2027-01-29",
@@ -5710,10 +5699,21 @@
    "ticker": "CHRW",
    "name": "C. H. ROBINSON WORLDWIDE, INC.",
    "label": "CHRW · quarterly report expected",
-   "detail": "period ends 2026-12-29 · filed 31 days after quarter end, historically",
+   "detail": "period ends 2026-12-30 · filed 30 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.025452,
-   "days": 91
+   "days": 90
+  },
+  {
+   "date": "2027-01-29",
+   "kind": "earnings",
+   "ticker": "EG",
+   "name": "EVEREST GROUP, LTD.",
+   "label": "EG · quarterly report expected",
+   "detail": "period ends 2026-12-30 · filed 30 days after quarter end, historically",
+   "basis": "expected",
+   "weight": 0.022005,
+   "days": 90
   },
   {
    "date": "2027-01-29",
@@ -5721,10 +5721,10 @@
    "ticker": "GDDY",
    "name": "GoDaddy Inc.",
    "label": "GDDY · quarterly report expected",
-   "detail": "period ends 2026-12-29 · filed 31 days after quarter end, historically",
+   "detail": "period ends 2026-12-30 · filed 30 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.021987,
-   "days": 91
+   "days": 90
   },
   {
    "date": "2027-01-29",
@@ -5732,10 +5732,10 @@
    "ticker": "WY",
    "name": "WEYERHAEUSER CO",
    "label": "WY · quarterly report expected",
-   "detail": "period ends 2026-12-29 · filed 31 days after quarter end, historically",
+   "detail": "period ends 2026-12-30 · filed 30 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.021525,
-   "days": 91
+   "days": 90
   },
   {
    "date": "2027-01-29",
@@ -5746,7 +5746,7 @@
    "detail": "period ends 2026-12-29 · filed 31 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.015669,
-   "days": 91
+   "days": 90
   },
   {
    "date": "2027-01-29",
@@ -5757,7 +5757,7 @@
    "detail": "period ends 2026-12-29 · filed 31 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.013872,
-   "days": 91
+   "days": 90
   },
   {
    "date": "2027-01-29",
@@ -5765,10 +5765,10 @@
    "ticker": "FRT",
    "name": "FEDERAL REALTY INVESTMENT TRUST",
    "label": "FRT · quarterly report expected",
-   "detail": "period ends 2026-12-29 · filed 31 days after quarter end, historically",
+   "detail": "period ends 2026-12-30 · filed 30 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.013034,
-   "days": 91
+   "days": 90
   }
  ]
 }
