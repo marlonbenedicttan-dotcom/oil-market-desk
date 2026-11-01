@@ -2246,15 +2246,29 @@ function scBarHtml() {
     + `<button type="button" class="ghost" data-sc-act="reset">RESET</button>`
     + `<span class="sc-count dimtext" id="sc-count"></span>`;
 }
-let usView = (() => { try { return localStorage.getItem('oilbasis.usView') || 'screener'; } catch { return 'screener'; } })();
+let usView = (() => {
+  try {
+    const v = localStorage.getItem('oilbasis.usView');
+    // The old fourth tab is a preset inside THEMES now — move anyone who had it open to that.
+    if (v === 'mag7') {
+      localStorage.setItem('oilbasis.usView', 'themes');
+      localStorage.setItem('oilbasis.usTheme', 'mag7');
+      return 'themes';
+    }
+    return v || 'market';
+  } catch { return 'market'; }
+})();
 const MAG7 = ['AAPL', 'MSFT', 'NVDA', 'AMZN', 'GOOGL', 'META', 'TSLA'];
 // The view tabs live in ONE fixed strip under the market tabs, not inside every view's body. Two
 // identical-looking tab rows in different places is what made "press US, then find Screener" a
 // mis-tap into Japan.
+// The SAME three tabs in every region, so the row never shifts when you change market — and no label
+// shares a stem with the row's own "SHOW" heading (OVERVIEW next to VIEW read as the same word).
+// MAG 7 is a curated list, so it is a preset inside THEMES rather than a fourth tab.
 const CO_VIEWS = {
-  us: [['usview', 'market', 'OVERVIEW'], ['usview', 'screener', 'SCREENER'], ['usview', 'themes', 'THEMES'], ['usview', 'mag7', 'MAG 7']],
-  jp: [['jpview', 'market', 'OVERVIEW'], ['jpview', 'screener', 'SCREENER'], ['jpview', 'themes', 'THEMES']],
-  kr: [['krview', 'market', 'OVERVIEW'], ['krview', 'screener', 'SCREENER'], ['krview', 'themes', 'THEMES']],
+  us: [['usview', 'market', 'MARKET'], ['usview', 'screener', 'SCREENER'], ['usview', 'themes', 'THEMES']],
+  jp: [['jpview', 'market', 'MARKET'], ['jpview', 'screener', 'SCREENER'], ['jpview', 'themes', 'THEMES']],
+  kr: [['krview', 'market', 'MARKET'], ['krview', 'screener', 'SCREENER'], ['krview', 'themes', 'THEMES']],
 };
 function paintCoViews() {
   const bar = $('co-views');
@@ -3653,7 +3667,7 @@ const coMargin = coMarginOf;
 // Built from the same components as the US page — ma-crumb, co-head, coMono, co-price, co-stats —
 // so it reads as one product. Different currency and fiscal year, same layout.
 let japanData = null, jpSel = null, jpQuery = '';
-let jpView = (() => { try { return localStorage.getItem('oilbasis.jpView') || 'screener'; } catch { return 'screener'; } })();
+let jpView = (() => { try { return localStorage.getItem('oilbasis.jpView') || 'market'; } catch { return 'market'; } })();
 let jpRange = (() => { try { return localStorage.getItem('oilbasis.jpRange') || '6m'; } catch { return '6m'; } })();
 let jpCompare = '';
 let jpSort = (() => { try { return localStorage.getItem('oilbasis.jpSort') || 'cap'; } catch { return 'cap'; } })();
@@ -3769,7 +3783,10 @@ async function renderJapan() {
   // Preferred share classes carry a price but are not separate companies — same rule as the US.
   const all = ((d && d.companies) || []).filter((c) => !c.shareClass);
   const sub = $('deals-sub');
-  if (sub) sub.textContent = all.length ? `${all.length} companies · TSE Prime · ¥ JPY · J-Quants` : 'TSE Prime · J-Quants (JPX)';
+  if (sub) {
+    const what = jpView === 'screener' ? 'filter and sort' : jpView === 'themes' ? 'curated theme lists' : 'breadth, sectors and TOPIX';
+    sub.textContent = all.length ? `${all.length} companies · TSE Prime · ¥ JPY · ${what}` : 'TSE Prime · J-Quants (JPX)';
+  }
   if (!all.length) {
     el.innerHTML = `<div class="macro-note">Japan is not built yet. With a J-Quants key in the environment, run <code>node scripts/build-japan.mjs</code> — the whole pipeline is ready.</div>`;
     return;
@@ -4243,7 +4260,7 @@ let krPreset = null, krSector = 'all', krCompare = '';
 let krSort = (() => { try { return localStorage.getItem('oilbasis.krSort') || 'cap'; } catch { return 'cap'; } })();
 let krFilter = (() => { try { return JSON.parse(localStorage.getItem('oilbasis.krFilter') || '{}'); } catch { return {}; } })();
 const saveKrFilter = () => { try { localStorage.setItem('oilbasis.krFilter', JSON.stringify(krFilter)); } catch {} };
-let krView = (() => { try { return localStorage.getItem('oilbasis.krView') || 'screener'; } catch { return 'screener'; } })();
+let krView = (() => { try { return localStorage.getItem('oilbasis.krView') || 'market'; } catch { return 'market'; } })();
 let krTheme = (() => { try { return localStorage.getItem('oilbasis.krTheme') || 'semis'; } catch { return 'semis'; } })();
 
 const won = (v) => {
@@ -4384,7 +4401,10 @@ async function renderKorea() {
   // Preferred share classes carry a price but are not separate companies — same rule as the US.
   const all = ((d && d.companies) || []).filter((c) => !c.shareClass);
   const sub = $('deals-sub');
-  if (sub) sub.textContent = all.length ? `${all.length} companies · KOSPI · ₩ KRW · DART` : 'KOSPI · DART';
+  if (sub) {
+    const what = krView === 'screener' ? 'filter and sort' : krView === 'themes' ? 'curated theme lists' : 'breadth, sectors and KOSPI';
+    sub.textContent = all.length ? `${all.length} companies · KOSPI · ₩ KRW · ${what}` : 'KOSPI · DART';
+  }
   if (!all.length) {
     el.innerHTML = `<div class="macro-note">Korea is not built yet. With a DART key in the environment, run <code>node scripts/build-korea.mjs</code>.</div>`;
     return;
@@ -4678,13 +4698,16 @@ function renderCompanies() {
   const sub = $('deals-sub');
   if (sub) {
     const cos = new Set(all.filter((c) => c.cik).map((c) => String(c.cik))).size;
-    sub.textContent = `${all.length} securities · ${cos} companies · S&P 500 · ranked by market cap`;
+    // Say what THIS view is, so "market" and "screener" can never be mistaken for each other.
+    const what = usView === 'screener' ? 'filter and sort'
+      : usView === 'themes' ? 'curated theme lists'
+        : 'breadth, sectors and the index';
+    sub.textContent = `${all.length} securities · ${cos} companies · S&P 500 · ${what}`;
   }
 
   if (coCik) return renderCompanyPage(el, all);
   if (usView === 'market') return renderUsMarket(el, all);
   if (usView === 'themes') return renderUsThemes(el, all);
-  if (usView === 'mag7') return renderUsMag7(el, all);
 
   const q = coQuery.trim().toLowerCase();
   const rows = all.filter((c) => {
@@ -5032,17 +5055,23 @@ async function renderUsMarket(el, all) {
 
 // Curated US themes. The computed screens (buybacks, quality, cash) live in the screener as presets.
 let usTheme = (() => { try { return localStorage.getItem('oilbasis.usTheme') || 'ai'; } catch { return 'ai'; } })();
+// MAG 7 is a curated list like the others, so it is a preset here rather than a fourth tab that only
+// the US had — that keeps the view row to the same three tabs in every region.
+const US_MAG7_THEME = { id: 'mag7', label: 'MAG 7', mag7: true, tickers: MAG7 };
+const usThemesList = () => [US_MAG7_THEME, ...(companiesData.themes || [])];
+const usPresetsHtml = (themes, activeId) => `<div class="jp-presets">${themes.map((t) => `<button type="button" data-ustheme="${t.id}" class="${t.id === activeId ? 'on' : ''}">${t.label}</button>`).join('')}</div>`;
 function renderUsThemes(el, all) {
   const noteUs = $('co-note'); if (noteUs) noteUs.classList.add('hidden');
   syncCoTools();
-  const themes = companiesData.themes || [];
+  const themes = usThemesList();
   if (!themes.length) { el.innerHTML = usViewsBar() + '<div class="macro-note">No themes loaded.</div>'; return; }
   const active = themes.find((t) => t.id === usTheme) || themes[0];
+  if (active.mag7) return renderUsMag7(el, all, themes);   // weight-led table, kept as it was
   const set = new Set(active.tickers || []);
   const rows = all.filter((c) => set.has(c.ticker)).sort((a, b) => (b.marketCap || 0) - (a.marketCap || 0));
   const chg = (x) => (x == null ? '—' : `${x >= 0 ? '+' : ''}${x.toFixed(1)}%`);
   el.innerHTML = usViewsBar()
-    + `<div class="jp-presets">${themes.map((t) => `<button type="button" data-ustheme="${t.id}" class="${t.id === active.id ? 'on' : ''}">${t.label}</button>`).join('')}</div>`
+    + usPresetsHtml(themes, active.id)
     + `<div class="jp-market-head"><span class="ph-t">${esc(active.label)}</span><span class="dimtext">${rows.length} companies · curated list</span></div>`
     + `<div class="co-hrow jp-bank-hrow"><span>#</span><span>COMPANY</span><span>CAP</span><span>P/E</span><span>MARGIN</span><span>ROE</span><span>YIELD</span><span>YTD</span></div>`
     + rows.map((c, i) => `<button class="jp-bank-row" data-cik="${esc(c.cik)}">
@@ -5059,7 +5088,7 @@ function renderUsThemes(el, all) {
 }
 
 // The seven companies that decide the index's direction.
-function renderUsMag7(el, all) {
+function renderUsMag7(el, all, themes = usThemesList()) {
   const noteUs = $('co-note'); if (noteUs) noteUs.classList.add('hidden');
   const rows = MAG7.map((t) => all.find((c) => c.ticker === t)).filter(Boolean).sort((a, b) => (b.indexWeight || 0) - (a.indexWeight || 0));
   const uniq = all.filter((c) => !c.shareClass);
@@ -5068,6 +5097,7 @@ function renderUsMag7(el, all) {
   const cap = rows.reduce((a, c) => a + (c.marketCap || 0), 0);
   const chg = (x) => (x == null ? '—' : `${x >= 0 ? '+' : ''}${x.toFixed(1)}%`);
   el.innerHTML = usViewsBar()
+    + usPresetsHtml(themes, 'mag7')
     + `<div class="jp-market-head"><span class="ph-t">MAG 7</span><span class="jp-market-lvl">${weight.toFixed(1)}%</span><span class="dimtext">of the S&amp;P 500 by weight · ${coMoney(cap)} of ${coMoney(totalCap)}</span></div>`
     + `<div class="co-hrow jp-bank-hrow"><span>#</span><span>COMPANY</span><span>WEIGHT</span><span>CAP</span><span>1D</span><span>YTD</span><span>P/E</span><span>MARGIN</span></div>`
     + rows.map((c, i) => `<button class="jp-bank-row" data-cik="${esc(c.cik)}">
