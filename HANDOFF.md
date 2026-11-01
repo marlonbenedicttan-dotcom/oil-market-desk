@@ -3239,3 +3239,18 @@ Audited at 360, 390 and 430 px with screenshots of every view, then fixed what l
 - **Tests:** 209 pass. New UI regressions: a window change reuses the chart instance and re-slices;
   a window longer than the series falls back honestly; the US market page paints before the quote
   lands. Headless CDP run reported no console exceptions.
+
+## The company compare box stopped following you (2026-11-02)
+- **Symptom:** the COMPARE benchmark on a company page stayed on the previous company when you opened
+  another one, and could not be removed. Changing the chart range then dropped the comparison line
+  while the box still showed it.
+- **Cause:** `coCompare` / `jpCompare` / `krCompare` were page-global. Opening a company never reset
+  them, there was no clear action, the range handler called `loadCoChart(coTicker, coRange)` without
+  the compare, and the self-check compared a ref (`jp:7203`) with a code (`7203`), so a company could
+  be compared with itself. Korea was worse: the selected company is a DART code (`00126380`) while
+  search returns a ticker ref (`kr:005930`).
+- **Fix:** the benchmark is per company — a new company starts clean; the same company keeps it across
+  re-renders. Added a `×` clear button, preserved the compare on range changes, guarded self-compare
+  in all three markets (Korea resolves the DART code to its ticker), and the box/legend show the code
+  (`MSFT`, `7203`, `005930`) instead of the internal `us:MSFT` ref. Focusing the box selects the
+  existing value so typing replaces it. **211 tests**.
