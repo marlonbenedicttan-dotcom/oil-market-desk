@@ -160,12 +160,17 @@ async function getJSON(url) {
 // Memoised GET — a per-session cache so re-visiting a segment is instant (no re-fetch of the
 // read, news, curve, etc.). Short TTL; the server has its own longer cache anyway.
 const jcache = new Map();
+const jfly = new Map();
 async function jget(url, ttl = 180000) {
   const hit = jcache.get(url);
   if (hit && Date.now() - hit.t < ttl) return hit.v;
-  const v = await getJSON(url);
-  jcache.set(url, { t: Date.now(), v });
-  return v;
+  // Two panels asking for the same URL at the same moment share one request instead of racing.
+  if (jfly.has(url)) return jfly.get(url);
+  const p = getJSON(url)
+    .then((v) => { jcache.set(url, { t: Date.now(), v }); return v; })
+    .finally(() => jfly.delete(url));
+  jfly.set(url, p);
+  return p;
 }
 // The current selection identity — every loader captures it and drops its result if the user
 // switched away while it was waiting. This is what stops "I clicked oil but it still shows corn".
@@ -181,7 +186,11 @@ const segKey = () => currentMarket + '|' + (currentComponent || '');
 // Everything the desk renders on first load: prices, the segment picker, the backdrop, the daily brief,
 // and the COMMODITIES pane underneath (read, chart, news). The overlay stays up until all of them have
 // painted, so nothing pops in afterwards. Six seconds is the hard ceiling if an upstream stalls.
-const BOOT_CORE = ['data', 'segments', 'regime', 'brief', 'read', 'chart', 'news'];
+// The loading overlay waits only for what HOME shows above the fold: the price board, the segment
+// picker and the backdrop strip. The daily brief, the commodity read, the chart and the news strip
+// live further down (or in the COMMODITIES pane) and fill themselves in — gating the first paint on
+// them meant a cold upstream could hold the whole page for seconds. The 6s ceiling still applies.
+const BOOT_CORE = ['data', 'segments', 'regime'];
 const bootReady = Object.fromEntries(BOOT_CORE.map((k) => [k, false]));
 let bootCount0 = 0;
 const bootCount = () => BOOT_CORE.filter((k) => bootReady[k]).length;
@@ -196,25 +205,43 @@ const bootPaint = () => {
 };
 const bootStep = (m) => { const el = document.getElementById('boot-status'); if (el) el.textContent = m; bootPaint(); };
 const markReady = (k) => { if (!(k in bootReady) || bootReady[k]) return; bootReady[k] = true; bootPaint(); };
+// Chart windows are asked for from several panels at once (the main chart, the compare chart, the
+// seasonal band). One request per window, not one per caller: on a slow link the duplicates queue
+// behind each other in the browser's six-connection budget.
+const rangeFly = new Map();
+const ltFly = new Map();
+const seasonFly = new Map();
 async function getLongterm(id, years = 10) {
   const k = id + years; const hit = ltCache[k];
   if (hit && Date.now() - hit.t < CHART_TTL) return hit.v;
-  const v = await getJSON(`/api/longterm?id=${encodeURIComponent(id)}&years=${years}`);
-  ltCache[k] = { t: Date.now(), v }; return v;
+  if (ltFly.has(k)) return ltFly.get(k);
+  const p = getJSON(`/api/longterm?id=${encodeURIComponent(id)}&years=${years}`)
+    .then((v) => { ltCache[k] = { t: Date.now(), v }; return v; })
+    .finally(() => ltFly.delete(k));
+  ltFly.set(k, p);
+  return p;
 }
 const rangeCache = {};
 async function getRange(id, range) {
   const k = id + range; const hit = rangeCache[k];
   if (hit && Date.now() - hit.t < CHART_TTL) return hit.v;
-  const v = await getJSON(`/api/range?id=${encodeURIComponent(id)}&range=${range}`);
-  rangeCache[k] = { t: Date.now(), v }; return v;
+  if (rangeFly.has(k)) return rangeFly.get(k);
+  const p = getJSON(`/api/range?id=${encodeURIComponent(id)}&range=${range}`)
+    .then((v) => { rangeCache[k] = { t: Date.now(), v }; return v; })
+    .finally(() => rangeFly.delete(k));
+  rangeFly.set(k, p);
+  return p;
 }
 const seasonCache = {};
 async function getSeasonal(id) {
   const hit = seasonCache[id];
   if (hit && Date.now() - hit.t < CHART_TTL) return hit.v;
-  const v = await getJSON('/api/seasonal?id=' + encodeURIComponent(id));
-  seasonCache[id] = { t: Date.now(), v }; return v;
+  if (seasonFly.has(id)) return seasonFly.get(id);
+  const p = getJSON('/api/seasonal?id=' + encodeURIComponent(id))
+    .then((v) => { seasonCache[id] = { t: Date.now(), v }; return v; })
+    .finally(() => seasonFly.delete(id));
+  seasonFly.set(id, p);
+  return p;
 }
 
 // last two non-null points → day change + %
@@ -1083,8 +1110,8 @@ const termCache = {};
 async function curveForBench(id) {
   const c = termCache[id];
   if (c && Date.now() - c.t < 5 * 60e3) return c.v;
-  let v = null;
-  try { v = await getJSON('/api/termstructure?id=' + encodeURIComponent(id)); } catch { v = null; }
+  // Through jget so the curve panel and the chart overlay share one in-flight request.
+  const v = await jget('/api/termstructure?id=' + encodeURIComponent(id), 180000).catch(() => null);
   termCache[id] = { t: Date.now(), v };
   return v;
 }
@@ -2978,7 +3005,7 @@ function showTab(name) {
   syncRoute(true);            // tab changes are the history steps (Back walks the tabs)
 }
 
-async function loadExtra() { await loadExtraCore(); await loadExtraSlow(); }
+async function loadExtra() { loadBrief(); await loadExtraCore(); await loadExtraSlow(); }
 
 // Above-the-fold feeds — fired immediately, not awaited, so the read/chart/news can start now.
 async function loadExtraCore() {
@@ -2991,7 +3018,6 @@ async function loadExtraCore() {
   loadScreen();
   loadCalendar();
   loadRisk();
-  loadBrief();        // HOME: daily brief
   loadTransmission(); // COMMODITIES: how it transmits
 
   renderAdaptive();
@@ -3211,6 +3237,9 @@ $('macro-links')?.addEventListener('click', (e) => { const el = e.target.closest
   macroCountries = await ctryP;
   bootStep('Loading prices…');
   await liveP;                // prices (sets `data` first)
+  loadRegime();               // the backdrop is part of the first screen — start it with the prices,
+                              // not after history (the overlay waits for data + segments + regime)
+  loadBrief();                // and the brief runs beside history instead of after it
   await histP;
   initCurveHist();            // arm the lazy loader for the (expensive) curve-history chart
   bootStep('reading the market…');
@@ -3283,7 +3312,7 @@ async function loadDeals() {
   const el = $('deal-body');
   if (!el) return;
   if (!dealsData) el.innerHTML = stLoading('Reading the deal book…');
-  try { dealsData = await getJSON('/api/deals'); } catch { dealsData = dealsData || null; }
+  try { dealsData = await jget('/api/deals', 300000); } catch { dealsData = dealsData || null; }
   renderDeals();
 }
 
@@ -4620,16 +4649,14 @@ async function syncMarketBar() {
 let warmed = false;
 function warmMarkets(delay = 1500) {
   if (warmed) return;
-  // Three payloads (~250 KB gzipped) fetched in the background so COMPANIES opens instantly. Not worth
-  // it on a metered or 2G connection, where the reader may never open that tab.
+  // The US screener (~90 KB gzipped) is prefetched so COMPANIES opens instantly. Japan and Korea are
+  // ~900 KB together and are loaded by their own renderers when that region is opened — spending that
+  // on every first visit, for a tab the reader may never open, was competing with the first screen.
   const conn = (typeof navigator !== 'undefined' && navigator.connection) || {};
   if (conn.saveData || /(^|-)2g$/.test(conn.effectiveType || '')) return;
   warmed = true;
   setTimeout(() => {
     if (!companiesData) getJSON('/api/companies').then((d) => { companiesData = d; }).catch(() => {});
-    // Japan and Korea are the slow ones to open cold; start them together rather than in sequence.
-    if (!japanData) loadJapan().catch(() => {});
-    if (!koreaData) loadKorea().catch(() => {});
   }, delay);
 }
 
@@ -4870,6 +4897,10 @@ async function loadCoChart(ticker, range, compare) {
   try {
     // Our labels are 1m/6m/ytd/1y/5y; Yahoo wants 1mo/6mo/ytd/1y/5y.
     const yRange = (r) => (r === '1m' ? '1mo' : r === '6m' ? '6mo' : r);
+    // The return strip needs the long series; the line needs the window. Two different requests, so
+    // start the long one NOW and only wait for it before the strip is painted — the same order as
+    // before, without the second round-trip sitting behind the first.
+    const longP = coLong(ticker).catch(() => null);
     let ch = await getJSON(`/api/company-chart?ticker=${encodeURIComponent(ticker)}&range=${yRange(range)}`);
     // A recent listing has fewer than six points over ten years — that is not "no history", it is a
     // shorter life. Step down the range and move the active button with it.
@@ -4885,15 +4916,17 @@ async function loadCoChart(ticker, range, compare) {
     if (!ch || !ch.dates || ch.dates.length < 2) { fail(); return; }
     const wrap0 = canvas && canvas.parentElement;
     if (wrap0) wrap0.removeAttribute('data-empty');
+    // Same idea for the comparison line: start it here, with the strip, rather than after it.
+    const cmpP = compare ? seriesFor(compare, range).catch(() => null) : null;
     // The strip is computed from the longest series we hold for this ticker, so every window is on the
     // same source as the line. Cached per ticker, so switching ranges is instant.
-    const longSeries = await coLong(ticker).catch(() => null);
+    const longSeries = await longP;
     if (longSeries) paintCoReturns(longSeries, range);
     if (!compare) {
       mountChart('co-chart', { labels: ch.dates, datasets: [line(`${ticker} · ${range.toUpperCase()}`, ch.closes, CT.c1)] }, baseOptions({ dp: 2, dateAxis: true, log: range === '5y' || range === '10y' }));
       return;
     }
-    const c2 = await seriesFor(compare, range);
+    const c2 = await cmpP;
     if (!c2 || !c2.dates || c2.dates.length < 2) {
       mountChart('co-chart', { labels: ch.dates, datasets: [line(`${ticker} · ${range.toUpperCase()}`, ch.closes, CT.c1)] }, baseOptions({ dp: 2, dateAxis: true, log: range === '5y' || range === '10y' }));
       return;
@@ -5255,7 +5288,7 @@ async function renderCompanyPageBody(el, c, all) {
   if (coTicker) fillPeers(`us:${coTicker}`, 'us-peers');
 
   try {
-    const d = await getJSON('/api/deals');
+    const d = await jget('/api/deals', 300000);
     const key = String(c.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
     const mine = (d.deals || []).filter((x) => String(x.acquirer || '').toLowerCase().replace(/[^a-z0-9]/g, '') === key
       || String(x.target || '').toLowerCase().replace(/[^a-z0-9]/g, '') === key);
