@@ -3242,12 +3242,13 @@ async function buildBrief() {
     const [m, h, inv, curves, alerts, pos, cal, dealBook] = await Promise.all([
       getMarket(),
       getHistory().catch(() => null),
-      getInventories().catch(() => null),
-      getCurves().catch(() => null),
+      // One line each: a cold curve or stockpile feed must not hold the whole brief.
+      within(getInventories(), 6000),
+      within(getCurves(), 6000),
       computeServerAlerts().catch(() => []),
-      // Only the four panels the brief is built from are allowed to set its pace. The calendar, the
-      // deal book and CFTC feed one line each and can take 20s+ from a cold cache, so they wait with
-      // a budget: the brief fills in without them, and the value lands in `cached()` for next time.
+      // Only the price board and the history are allowed to set the brief's pace. Everything else
+      // feeds one line of prose and can take 20s+ from a cold cache, so it waits with a budget and
+      // lands in `cached()` for the next reader.
       within(getPositioning('wti'), 3000),
       within(getCalendar(), 5000),
       within(refreshDeals(), 4000),
