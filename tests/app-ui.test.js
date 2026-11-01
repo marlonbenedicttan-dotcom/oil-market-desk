@@ -126,7 +126,7 @@ function makeContext() {
     getComputedStyle: () => ({ getPropertyValue: () => '' }),
     IntersectionObserver: inertObserver,
     ResizeObserver: inertObserver,
-    Chart: class { static register() {} destroy() {} update() {} resize() {} },
+    Chart: class { constructor(cv, cfg) { this.canvas = cv; this.data = (cfg && cfg.data) || {}; } static register() {} destroy() {} update() {} resize() {} },
     Notification: class { static permission = 'denied'; static requestPermission() {} },
     URL, URLSearchParams, TextEncoder, TextDecoder, AbortController,
     console,
@@ -150,6 +150,12 @@ function loadApp() {
     setCurrentMarket: (v) => { currentMarket = v; },
     getCurrentMarket: () => currentMarket,
     setHistory: (v) => { history = v; },
+    setCompanies: (v) => { companiesData = v; },
+    renderUsMarket,
+    drawMarketIndexChart,
+    coWindowsFor,
+    coSlice,
+    charts,
   };`;
   const ctx = makeContext();
   vm.createContext(ctx);
@@ -322,6 +328,50 @@ test('the overlay ceiling is armed before anything that can block', () => {
   assert.ok(ceiling > 0, 'there is a hard ceiling');
   assert.ok(prompt > ceiling, 'the cap is armed before the permission prompt, not after it');
   assert.doesNotMatch(src, /await\s+Notification\.requestPermission/, 'the prompt must never hold the boot');
+});
+
+// --- market index windows (smoothness regression) -----------------------------------------------
+
+test('an index window change re-slices the same series and updates the chart in place', () => {
+  const { ui, document } = loadApp();
+  // ~7 years of daily points, so 5Y is offered and 10Y is not.
+  const dates = [];
+  for (let i = 0; i < 2600; i++) dates.push(new Date(Date.UTC(2017, 0, 1) + i * 864e5).toISOString().slice(0, 10));
+  const full = { dates, closes: dates.map((_, i) => 100 + i) };
+
+  const first = ui.drawMarketIndexChart('jp-mkt', full, '1y', 'jpmkt', 'TOPIX');
+  assert.equal(first, '1y');
+  const chart = ui.charts['jp-mkt-chart'];
+  assert.ok(chart, 'the chart is mounted');
+  const oneYear = chart.data.labels.length;
+
+  ui.drawMarketIndexChart('jp-mkt', full, '5y', 'jpmkt', 'TOPIX');
+  assert.equal(ui.charts['jp-mkt-chart'], chart, 'the instance is updated, not destroyed and remounted');
+  assert.ok(chart.data.labels.length > oneYear, 'the five-year window holds more points');
+  assert.match(chart.data.datasets[0].label, /5Y/);
+  const strip = document.getElementById('jp-mkt-rets');
+  assert.match(strip.innerHTML, /class="co-ret on" data-jpmkt="5y"/, 'the strip moves its active chip');
+  assert.doesNotMatch(strip.innerHTML, /data-jpmkt="1y"[^>]*class="co-ret on"/, 'the old chip is not still active');
+});
+
+test('an out-of-range window falls back to one the series actually covers', () => {
+  const { ui } = loadApp();
+  const dates = [];
+  for (let i = 0; i < 400; i++) dates.push(new Date(Date.UTC(2024, 0, 1) + i * 864e5).toISOString().slice(0, 10));
+  const full = { dates, closes: dates.map((_, i) => 100 + i) };
+  const used = ui.drawMarketIndexChart('kr-mkt', full, '5y', 'krmkt', 'KOSPI');
+  assert.equal(used, '1y', 'a one-year series switches to 1Y rather than faking five');
+});
+
+test('the US market page paints before the index quote arrives', () => {
+  const { ui, document } = loadApp();
+  ui.setCompanies({ valuation: {}, companies: [] });
+  const el = document.getElementById('co-body');
+  ui.renderUsMarket(el, [], 0);
+  // The quote request is still in flight (the stub fetch never settles); the page must already be
+  // the S&P 500 — not whatever market was on screen before the click.
+  assert.match(el.innerHTML, /S&amp;P 500/);
+  assert.match(el.innerHTML, /id="us-mkt-quote"/);
 });
 
 // --- formatting helpers ------------------------------------------------------------------------

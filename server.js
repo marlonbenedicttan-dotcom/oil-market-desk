@@ -8,8 +8,8 @@ import { execFile } from 'node:child_process';
 import crypto from 'node:crypto';
 import { sendMail } from './src/smtp.js';
 import { fileURLToPath } from 'node:url';
-import { projectUs, projectKr, projectJp, US_LIST_FIELDS } from './src/project.js';
-import { sgn, businessDaysSince, horizonDeltas, horizonDeltasAbs, isoWeek, monthly, pctOver, percentile, lastNonNull, escHtml, webhookPayload, realizedVol, computeCracks, computeCrush, computeSteel, backAdjust, pearson, logReturns, frontExpiry, curveTightness, inventoryTightness, weightedScore, seasonalGrade, seasonalAhead, contractMonthsBetween, signedPosition, signedMove, stretchScore, sdLabel, attributeMoves, newsContextOk, METHODOLOGY, positioningFlag, positioningRead, positioningDivergence, maxDrawdown, drawdownNow, realizedVolTerm, volPercentile, volVsOwnWord, corrMatrix, fxAdjust, parseOcc, drawdownWord, volWord, volTrend, corrShift, pairGroups, topPairs, bestDiversifier, riskRead, priorityOf, rankByPriority, clusterEvents, scoreEvents, selectEvents } from './src/lib.js';
+import { projectUs, projectJp, koreaList, US_LIST_FIELDS } from './src/project.js';
+import { sgn, businessDaysSince, horizonDeltas, horizonDeltasAbs, isoWeek, monthly, pctOver, percentile, lastNonNull, escHtml, webhookPayload, realizedVol, computeCracks, computeCrush, computeSteel, backAdjust, pearson, logReturns, frontExpiry, curveTightness, inventoryTightness, weightedScore, seasonalGrade, seasonalAhead, contractMonthsBetween, signedPosition, signedMove, stretchScore, sdLabel, attributeMoves, newsContextOk, METHODOLOGY, positioningFlag, positioningRead, positioningDivergence, maxDrawdown, drawdownNow, realizedVolTerm, volPercentile, volVsOwnWord, corrMatrix, fxAdjust, parseOcc, drawdownWord, volWord, volTrend, corrShift, pairGroups, topPairs, bestDiversifier, riskRead, priorityOf, rankByPriority, clusterEvents, scoreEvents, selectEvents, explainRows } from './src/lib.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC = path.join(__dirname, 'public');
@@ -750,6 +750,47 @@ function readKorea() {
   } catch { return { companies: [] }; }
 }
 
+// The list endpoint needs 241 KB of fields out of a 28 MB file (the rest is five years of daily closes
+// per company). Parsing the full file just to project it cost ~200 ms and ~200 MB of heap, which is
+// what made the KOREA tab slow and heavy. `data/korea-list.json` is the same payload written at build
+// time, so the list is read from a small file. If it is missing or does not match the current
+// korea.json, fall back to the full projection — correctness first, speed when the artifact is current.
+const KOREA_LIST_FILE = path.join(__dirname, 'data', 'korea-list.json');
+let KR_SRC_STAMP = { mtime: 0, updated: null };
+function koreaSourceUpdated() {
+  try {
+    const st = fs.statSync(KOREA_FILE);
+    if (KR_SRC_STAMP.mtime === st.mtimeMs) return KR_SRC_STAMP.updated;
+    // The build stamp is the first field in korea.json, so 256 bytes answer "is the artifact current?"
+    // without parsing 28 MB. File mtimes are deliberately NOT used: a fresh checkout can give the two
+    // files the same or reversed mtimes, which would send every visitor back to the full parse.
+    const fd = fs.openSync(KOREA_FILE, 'r');
+    let updated = null;
+    try {
+      const buf = Buffer.alloc(256);
+      const n = fs.readSync(fd, buf, 0, 256, 0);
+      const m = /"updated"\s*:\s*"([^"]+)"/.exec(buf.toString('utf8', 0, n));
+      updated = m ? m[1] : null;
+    } finally { fs.closeSync(fd); }
+    KR_SRC_STAMP = { mtime: st.mtimeMs, updated };
+    return updated;
+  } catch { return null; }
+}
+let KR_LIST_CACHE = { key: null, data: null };
+function readKoreaList() {
+  try {
+    const srcUpdated = koreaSourceUpdated();
+    const key = `${srcUpdated}:${fs.statSync(KOREA_LIST_FILE).mtimeMs}`;
+    if (KR_LIST_CACHE.data && KR_LIST_CACHE.key === key) return KR_LIST_CACHE.data;
+    const artifact = JSON.parse(fs.readFileSync(KOREA_LIST_FILE, 'utf8'));
+    if (artifact.updated && artifact.updated === srcUpdated) {
+      KR_LIST_CACHE = { key, data: artifact };
+      return artifact;
+    }
+  } catch { /* no artifact yet */ }
+  return koreaList(readKorea());
+}
+
 const JAPAN_FILE = path.join(__dirname, 'data', 'japan.json');
 let JP_CACHE = { mtime: 0, data: null };
 function readJapan() {
@@ -907,8 +948,12 @@ function searchIndex() {
     if (c.shareClass) continue;
     add('jp', c.ticker, c.name, [c.nameJa, ...(c.brands || [])], c.marketCapUsd || 0);
   }
-  for (const c of (readKorea().companies || [])) {
-    add('kr', c.ticker, c.nameEn || c.name, [c.name, ...(c.brands || [])], c.marketCapUsd || 0);
+  // The list artifact carries the fields search needs (name, English name, brands, cap). Reading it
+  // instead of the 28 MB source keeps the first search from parsing every company's price history.
+  const kr = readKoreaList();
+  const krRate = (kr.fx && kr.fx.rate) || 1;
+  for (const c of (kr.companies || [])) {
+    add('kr', c.ticker, c.nameEn || c.name, [c.name, ...(c.brands || [])], Math.round((c.marketCap || 0) / krRate));
   }
   SEARCH_INDEX = rows;
   return rows;
@@ -1025,7 +1070,9 @@ function peerIndex() {
   // The ref uses the trading ticker, not the internal code: that is what the chart endpoints and the
   // COMPARE box already understand (jp:7203, kr:005930).
   for (const c of (readJapan().companies || [])) push('jp', `jp:${c.ticker}`, c.name, c.sector, c.marketCapUsd);
-  for (const c of (readKorea().companies || [])) push('kr', `kr:${c.ticker}`, c.nameEn || c.name, c.sector, c.marketCapUsd);
+  const kr = readKoreaList();
+  const krRate = (kr.fx && kr.fx.rate) || 1;
+  for (const c of (kr.companies || [])) push('kr', `kr:${c.ticker}`, c.nameEn || c.name, c.sector, Math.round((c.marketCap || 0) / krRate));
   PEER_INDEX = rows;
   return rows;
 }
@@ -2232,7 +2279,7 @@ async function getNews(id, componentId) {
     ? (i) => mustScoreFor(NEWS_FOCUS[sel] || [], i.title) > 0 && newsContextOk(i.title)
     : (i) => titleMatches(id, i.title);
   // A rate-limited burst must not occupy the 45-minute slot with an empty answer (the event pool
-  // fans out over every segment), so empty results are served but not stored.
+  // fans out over every segment at boot), so empty results are served but not stored.
   return cachedUnlessEmpty('news:' + id + (sel ? ':' + sel : ''), 45 * 60e3, async () => {
     // Query the chosen instrument directly (Google News returns ~100 per query), then keep only
     // headlines that actually name it and pass the market-context guard.
@@ -3331,6 +3378,31 @@ const EVENT_QUERIES = [
 // A broad discovery query can surface pure politics ("North Korea says sanctions don't work").
 // For those items only, require a tradable subject as well as tier-1 sourcing.
 const EVENT_MARKET = /\b(oil|crude|gas|LNG|diesel|gasoline|fuel|refin\w*|gold|copper|aluminium|aluminum|iron ore|steel|corn|wheat|soybean|sugar|coffee|cocoa|cotton|palm|rice|cattle|hogs|beef|milk|butter|cheese|stocks?|shares?|equit(y|ies)|index|indices|currenc\w*|\bfx\b|bond|yields?|dollar|yuan|yen|rupiah|won|rand|peso|riyal|exports?|imports?|trade|supply|demand|prices?|commodit\w*|markets?)\b/i;
+// What a country's market is actually exposed to, so a shared driver can be named without pretending
+// it is a country-specific cause. The UI labels these GLOBAL / COMMODITY.
+const ROW_EXPOSURE = {
+  us: ['tech'], jp: ['tech'], kr: ['tech'], tw: ['tech'], cn: ['tech'], hk: ['tech'],
+  za: ['metals'], au: ['metals'], cl: ['metals'], pe: ['metals'], id: ['metals'],
+  sa: ['oil'], ae: ['oil'], qa: ['oil'], ng: ['oil'], ve: ['oil'],
+  wti: ['oil'], brent: ['oil'], rbob: ['oil'], ulsd: ['oil'], jet: ['oil'], propane: ['oil'], natgas: ['oil'],
+  gold: ['metals'], silver: ['metals'], copper: ['metals'], aluminium: ['metals'], ironore: ['metals'],
+  steel: ['metals'], platinum: ['metals'], palladium: ['metals'],
+  corn: ['ags'], wheat: ['ags'], soybean: ['ags'], soymeal: ['ags'], soyoil: ['ags'], sugar: ['ags'],
+  coffee: ['ags'], cocoa: ['ags'], cotton: ['ags'], palm: ['ags'], rice: ['ags'], orange: ['ags'],
+  cattle: ['ags'], hogs: ['ags'], feeder: ['ags'], milk: ['ags'], butter: ['ags'], nfdm: ['ags'],
+  cheese: ['ags'], whey: ['ags'],
+};
+const REGION_GROUP = {
+  us: 'americas', mx: 'americas', br: 'americas', ar: 'americas', ve: 'americas', latam: 'americas',
+  eu: 'europe', de: 'europe', fr: 'europe', uk: 'europe', ea: 'europe', europe: 'europe',
+  jp: 'asia', cn: 'asia', kr: 'asia', hk: 'asia', tw: 'asia', sg: 'asia', th: 'asia', my: 'asia',
+  id: 'asia', ph: 'asia', vn: 'asia', in: 'asia', au: 'asia', apac: 'asia', asia: 'asia',
+  sa: 'gulf', ae: 'gulf', qa: 'gulf', me: 'gulf', gulf: 'gulf',
+  za: 'africa', ng: 'africa', ke: 'africa', af: 'africa', africa: 'africa',
+};
+const ROW_GROUP = Object.fromEntries(Object.keys(ALL_COUNTRIES)
+  .map((id) => [id, REGION_GROUP[id] || REGION_GROUP[(ALL_COUNTRIES[id] || {}).region] || null])
+  .filter(([, g]) => g));
 const BENCH_ALIAS = {
   wti: ['WTI', 'crude oil', 'US crude', 'Hormuz', 'Red Sea', 'Suez', 'OPEC'],
   brent: ['Brent', 'Brent crude'],
@@ -3408,8 +3480,20 @@ async function settleLimit(items, limit, fn) {
   for (let i = 0; i < items.length; i += limit) out.push(...await Promise.allSettled(items.slice(i, i + limit).map(fn)));
   return out;
 }
+// The latest date any price series actually prints. A Sunday brief describes Friday's close, so the
+// event freshness window and the labels must follow the session, not the wall clock.
+function sessionDateOf(market) {
+  return (market && market.benchmarks ? market.benchmarks : [])
+    .map((b) => b.paperDate || b.physicalDate)
+    .filter(Boolean)
+    .sort()
+    .pop() || null;
+}
+
 async function buildEventPool() {
   return cachedUnlessEmpty('eventpool', 30 * 60e3, async () => {
+    const m = await getMarket().catch(() => null);
+    const refDate = sessionDateOf(m) || new Date().toISOString().slice(0, 10);
     // The segment and country feeds already carry the on-topic filter; the extra queries cover the
     // categories the tape never asks about (index reviews, sanctions, geopolitics, policy).
     // Deliberately gentle: one group at a time, at most three concurrent Google News calls. Firing
@@ -3419,6 +3503,7 @@ async function buildEventPool() {
     const macroLists = await settleLimit(EVENT_COUNTRIES, 3, (id) => getMacroNews(id).then((r) => r.items || []));
     const headlines = await getHeadlines().then((r) => r.items || []).catch(() => []);
     const extra = await settleLimit(EVENT_QUERIES, 2, (q, i) => cachedUnlessEmpty('evq:' + i, 30 * 60e3, () => fetchGoogleNews(q, 40), (v) => !(v && v.length)));
+    const dealBook = await refreshDeals().catch(() => null);
     const raw = [];
     for (const r of [...segLists, ...macroLists]) if (r.status === 'fulfilled') raw.push(...(r.value || []));
     for (const r of extra) {
@@ -3428,6 +3513,26 @@ async function buildEventPool() {
       }
     }
     raw.push(...headlines);
+    // M&A is an event, not just a tape row. Same gate as the brief: announced or changed today,
+    // $1B+ unless independently verified, and at most two survive selection.
+    const today = refDate;
+    for (const d of (dealBook && dealBook.deals) || []) {
+      if (!d.target && !d.acquirer) continue;
+      const ev = (d.events || []).slice(-1)[0] || null;
+      const announced = d.date && d.date >= today;
+      const changed = ev && ev.status && ev.status !== 'announced' && (ev.date || '') >= today;
+      if (!(announced || changed)) continue;
+      if (d.value == null ? !d.verified : (d.value < 1000 && !d.verified)) continue;
+      raw.push({
+        title: (ev && ev.title) || (d.acquirer && d.target ? `${d.acquirer} to buy ${d.target}` : (d.target || d.acquirer)),
+        source: (ev && ev.source) || d.source || null,
+        url: (ev && ev.url) || d.url || null,
+        date: (ev && ev.date) || d.date || null,
+        category: 'mna', categoryLabel: 'M&A', weight: 6,
+        mechanism: 'Consolidation changes the number of buyers and the asset\'s scarcity value; the sector re-rates around the new scale.',
+        entities: [{ id: 'deal:' + (d.key || d.target || d.acquirer), label: d.target || d.acquirer || 'Deal', kind: 'company' }],
+      });
+    }
     const seen = new Set(), items = [];
     for (const it of raw) {
       if (!it || !it.title) continue;
@@ -3437,7 +3542,7 @@ async function buildEventPool() {
       seen.add(sig);
       items.push(it);
     }
-    return { clusters: clusterEvents(items, { catalog: eventCatalog() }), built: new Date().toISOString(), pool: items.length };
+    return { clusters: clusterEvents(items, { catalog: eventCatalog(), refDate }), built: new Date().toISOString(), pool: items.length, refDate };
   }, (v) => !(v.clusters && v.clusters.length));
 }
 
@@ -3800,31 +3905,38 @@ async function buildBrief() {
       (marketCtx[it.id] ||= []).push({ id: it.id, label, kind: it.kind, d1, route: `#/macro/${co.region}/${it.id}` });
     }
 
+    const sessionDate = sessionDateOf(m) || new Date().toISOString().slice(0, 10);
     return {
       updated: new Date().toISOString(), headline, happened, next, macro: macroTop, hero, rows,
       alerts: alerts.map((a) => ({ level: a.level, text: a.text })),
       movers: movers.slice(0, 3),
+      sessionDate,
       _marketCtx: marketCtx,
     };
   });
   const { _marketCtx, ...out } = base;
-  out.events = await attachEvents(_marketCtx);
+  const attached = await attachEvents(_marketCtx);
+  out.events = attached.events;
+  // Every row gets a reason: its own wire story, a regional peer, a global theme, or a peer row that
+  // already carries one. Shared drivers are labelled, never presented as country-specific causes.
+  out.rows = explainRows(out.rows, attached.clusters, { exposures: ROW_EXPOSURE, groups: ROW_GROUP, directionOf: newsDir, seed: out.hero ? [out.hero] : [] });
   return out;
 }
 
 // The event layer is attached outside the base brief's five-minute cache: an empty event pool on a
 // cold start must not freeze the top of the page for five minutes. It has its own 30-minute cache.
 async function attachEvents(marketCtx) {
-  // Never hold the brief for a cold pool: return the base brief now and let the build finish for the
-  // next reader. A failed/empty pool is retried at most once a minute, not on every request.
+  // The pool builds gently in the background. Never hold the brief for a cold pool: return now and
+  // let the build finish for the next reader. A warm pool attaches immediately. A failed/empty pool
+  // is retried at most once a minute — not on every brief request.
   if (!cache.has('eventpool')) {
     if (Date.now() - evPoolAttempt > 60e3) { evPoolAttempt = Date.now(); buildEventPool().catch(() => {}); }
-    return [];
+    return { events: [], clusters: [] };
   }
   const pool = await within(buildEventPool(), 1500).catch(() => null);
-  if (!pool || !pool.clusters || !pool.clusters.length) return [];
+  if (!pool || !pool.clusters || !pool.clusters.length) return { events: [], clusters: [] };
   try {
-    const today = new Date().toISOString().slice(0, 10);
+    const today = pool.refDate || new Date().toISOString().slice(0, 10);
     const history = state.eventHistory && typeof state.eventHistory === 'object' ? state.eventHistory : {};
     const seen = new Set();
     for (const [d, keys] of Object.entries(history)) {
@@ -3846,8 +3958,8 @@ async function attachEvents(marketCtx) {
       state.eventHistory = Object.fromEntries(Object.keys(history).sort().slice(-30).map((d) => [d, history[d]]));
       saveState();
     }
-    return events;
-  } catch (e) { console.warn('[events]', e.message); return []; }
+    return { events, clusters: pool.clusters };
+  } catch (e) { console.warn('[events]', e.message); return { events: [], clusters: [] }; }
 }
 
 // ---------------------------------------------------------------------------
@@ -4341,13 +4453,9 @@ const server = http.createServer(async (req, res) => {
       });
     }
     if (url.pathname === '/api/korea') {
-      const kr = readKorea();
+      const kr = readKoreaList();
       if (!kr.companies || !kr.companies.length) return sendJSON(res, 200, { companies: [], error: 'Korea has not been built yet' });
-      return sendJSONCached(res, 200, {
-        updated: kr.updated, universe: kr.universe, currency: kr.currency, fx: kr.fx,
-        market: kr.market, index: kr.index, themes: kr.themes || [],
-        companies: kr.companies.map(projectKr),
-      });
+      return sendJSONCached(res, 200, kr);
     }
     if (url.pathname === '/api/korea/chart') {
       const ticker = url.searchParams.get('ticker');

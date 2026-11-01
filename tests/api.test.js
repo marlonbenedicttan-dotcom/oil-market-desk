@@ -698,7 +698,11 @@ test('/api/korea ships the list projection, not the price history, and revalidat
   assert.ok(samsung && samsung.nameEn, 'Samsung Electronics is missing from the list');
   assert.equal(samsung.series, undefined, 'the list must not carry per-company price history');
   assert.ok(JSON.stringify(d).length < 1_000_000, 'the Korea list payload ballooned — check projectKr');
-  const again = await fetch(`http://localhost:${PORT}/api/korea`, { headers: { 'if-none-match': etag } });
-  assert.equal(again.status, 304);
-  assert.equal(await again.text(), '');
+  // A fresh connection, so the assertion never depends on undici reusing a keep-alive socket that a
+  // busy parallel test file could have let the server time out.
+  const again = await new Promise((resolve, reject) => {
+    http.get({ host: 'localhost', port: PORT, path: '/api/korea', headers: { 'if-none-match': etag }, agent: false }, resolve).on('error', reject);
+  });
+  assert.equal(again.statusCode, 304);
+  again.resume();
 });

@@ -3175,3 +3175,67 @@ Audited at 360, 390 and 430 px with screenshots of every view, then fixed what l
   and **no** movewho burst while the card is in view.
 - Tests: `/api/country` must carry `news.items` + `series.dates`; `/api/country-extras` must carry
   `yields` + `catalysts` (and 404 an unknown country). **202 tests pass.**
+
+## The daily brief: priorities first, then events (2026-11-02)
+- **The dairy problem was a scoring inversion.** `score = |move| / own σ` gave a thin market a huge
+  number for a quote refresh (milk/cheese/HRC print unchanged on 40–50% of days), and the "max two per
+  complex" rule did not block it because Dairy is its own group. A 5% cheddar print could outrank Brent.
+- **`PRIORITY` in `src/lib.js` is now editorial, not statistical.** Tier 1 may lead (WTI, Brent, gas,
+  gold, copper, US/China/Japan/euro-area/India), Tier 2 may appear, Tier 3 only with a confirmed event
+  (dairy, livestock, rice, OJ). Any instrument flat on ≥25% of days is auto-demoted to Tier 3.
+  `rankByPriority` fills Tier 1 first, then Tier 2, and never lets a score promote a band. A quiet day
+  produces fewer rows, not cheddar.
+- **`IMPORTANT TODAY` is event-first.** `classifyEvent` assigns category/weight (market access, sanctions,
+  OPEC, geopolitics, sovereign, central bank, data, supply, politics, policy, markets, regulation, M&A);
+  `clusterEvents` folds duplicate wires into one event per category/subject/day and counts corroboration;
+  `scoreEvents` adds source tier, market confirmation, novelty (from `state.eventHistory`) and freshness;
+  `selectEvents` enforces five events, two per category, one per subject, and the Tier-3 proof rule.
+- **The why is extracted, never invented.** `splitCause` takes the headline's own causal clause
+  ("stocks sink **as MSCI flags a review**"); a curated transmission rule is the fallback and the UI
+  labels it `WHY IT MATTERS`, not `WHY`. Market chips are the day's actual move, not a claim that the
+  event caused it.
+- **Freshness:** event items are today/yesterday only; the pool is cached 30 min, warmed before the
+  brief at boot, and attached outside the brief's 5-minute cache so a cold pool cannot freeze the page.
+  `at` carries the best headline timestamp; the browser labels it in the reader's local time.
+- **M&A is a first-class event** (same-day announcement or development, $1B+ unless verified), not just
+  a tape row.
+- **The brief follows the session, not the wall clock.** `sessionDate` is the latest
+  `paperDate`/`physicalDate`. A Sunday brief describing Friday's close uses Friday's news, so the event
+  pool, freshness window and header are about the session the prices actually belong to.
+- **Every row now carries a reason** (`explainRows` in `src/lib.js`): the row's own story, then a peer
+  row that already has one (US tech for Japan/Korea, gold for South Africa), then a global theme, then
+  a regional peer. Shared drivers are labelled `GLOBAL` / `COMMODITY`; a row with no wire reason says
+  `CONTEXT — …`, never a bare number.
+- **API:** `/api/brief` gains `events[]` (`key, category, label, what, why, mechanism, primary, market,
+  sources, source, url, at, novelty, score`) and `sessionDate`. The old `hero`/`rows`/`next` shape is
+  unchanged.
+- **Known limits:** Google News RSS gives titles, not article bodies, so a wire that does not state its
+  cause falls back to the category rule. Event day keys are the session date; the UI shows local time.
+  The pool is ~26 cached queries, so a cold first request can show no events until the next one.
+- **Tests:** 211 pass serially (`node --test --test-concurrency=1`). The default parallel run can
+  occasionally reset one `/api/korea` socket under load; the file alone is 54/54.
+
+## Index ranges are redraws, and a market switch cannot paint the old market (2026-11-02)
+- **A range click on MARKET is now a local re-slice, never a page render or a request.** The S&P 500,
+  TOPIX and KOSPI charts all draw from a series already in memory through `drawMarketIndexChart` —
+  the strip and the line come from the same dates, and `mountChart` updates the existing instance in
+  place. Japan and Korea used to call `renderJapan()`/`renderKorea()` for a window click, rebuilding
+  the whole market view (33-sector table included) and remounting the chart.
+- **The US index used to fetch twice per click.** `drawUsMarketChart` requested both the ten-year daily
+  series and the clicked window, destroying the chart first, so the frame blanked and the network had
+  to answer before anything appeared. Now one `^GSPC` ten-year daily series is fetched once per
+  session; every window (1M–10Y) is sliced from it. Headless check: five rapid 1M/1Y/5Y/1M/10Y clicks
+  made **zero** requests, kept the same canvas and strip, and moved the active chip.
+- **Every market render takes a token, the US included.** `renderCompanies` used to skip `takeToken()`
+  when moving back to the US, so an in-flight Japan render stayed valid: when its fetch finished it
+  painted TOPIX over the S&P 500 page. All three renderers now share the token and bail if a newer
+  market won.
+- **The region switch clears the old screen immediately** with the new market's name
+  (`Loading the S&P 500…`), and the US market view no longer waits for `/api/macro-tickers` before it
+  paints — the quote pill reads the cached tape, or fills in after paint. Headless check on Japan → US:
+  no TOPIX in the DOM at 0 ms, 120 ms or after settle.
+- **A chart that cannot load now says so.** `.co-chartwrap[data-empty]` had no CSS rule (only
+  `.chart-wrap` did), so a failed S&P/KOSPI fetch left a silent empty frame.
+- **Tests:** 209 pass. New UI regressions: a window change reuses the chart instance and re-slices;
+  a window longer than the series falls back honestly; the US market page paints before the quote
+  lands. Headless CDP run reported no console exceptions.

@@ -6,11 +6,20 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { koreaList } from '../src/project.js';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const korea = JSON.parse(readFileSync(join(ROOT, 'data', 'korea.json'), 'utf8'));
 const store = JSON.parse(readFileSync(join(ROOT, 'data', 'korea-profiles.json'), 'utf8'));
 const companies = korea.companies || [];
+
+// The server serves this artifact instead of parsing all 28 MB for the list. If it drifts from
+// korea.json the KOREA tab silently shows old prices, so the build must keep them identical.
+test('the compact list artifact is in step with korea.json', () => {
+  const list = JSON.parse(readFileSync(join(ROOT, 'data', 'korea-list.json'), 'utf8'));
+  assert.deepEqual(list, koreaList(korea));
+  assert.ok(JSON.stringify(list).length < 1_000_000, 'the list artifact should stay small');
+});
 
 test('the profile store is committed and well populated', () => {
   const profiles = store.profiles || {};

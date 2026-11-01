@@ -504,7 +504,7 @@ test('frontExpiry applies each market\'s own expiry rule, not one shared date', 
   assert.equal(frontExpiry('NOPE', '2026-10-01'), null);
 });
 
-import { priorityOf, rankByPriority, splitCause, classifyEvent, matchEntities, clusterEvents, scoreEvents, selectEvents, sourceTier } from '../src/lib.js';
+import { priorityOf, rankByPriority, splitCause, classifyEvent, matchEntities, clusterEvents, scoreEvents, selectEvents, sourceTier, explainRows, textTags } from '../src/lib.js';
 
 test('priorityOf puts the macro core ahead of specialist markets', () => {
   assert.equal(priorityOf('wti'), 1);
@@ -632,6 +632,52 @@ test('clusterEvents drops analysis pieces and stale items', () => {
   const clusters = clusterEvents(items, { catalog, now: Date.parse(`${day}T12:00:00Z`) });
   assert.equal(clusters.length, 1, 'only the current, non-analysis story survives');
   assert.equal(clusters[0].category, 'opec');
+});
+
+test('clusterEvents accepts a deal as a first-class event', () => {
+  const c = clusterEvents([{
+    title: 'Ares Capital to buy Apollo MFIC in $2.6 billion deal', source: 'Reuters', url: 'u',
+    date: '2026-11-02T10:00:00Z', category: 'mna', categoryLabel: 'M&A', weight: 6, mechanism: 'm',
+    entities: [{ id: 'deal:apollo|ares', label: 'Apollo MFIC', kind: 'company' }],
+  }], { catalog: [], now: Date.parse('2026-11-02T12:00:00Z') });
+  assert.equal(c.length, 1);
+  assert.equal(c[0].label, 'M&A');
+  assert.equal(c[0].primary.id, 'deal:apollo|ares');
+});
+
+test('clusterEvents follows the session date, not the wall clock', () => {
+  const catalog = [{ id: 'us', label: 'United States', kind: 'country', patterns: [/\bUS\b/] }];
+  const item = { title: 'US tech stocks tumble', source: 'Financial Times', url: 'u', date: '2026-10-30T12:00:00Z' };
+  assert.equal(clusterEvents([item], { catalog, refDate: '2026-10-30' }).length, 1, 'Friday news explains Friday\'s close');
+  assert.equal(clusterEvents([item], { catalog, refDate: '2026-11-02' }).length, 0, 'it is not today\'s news');
+});
+
+test('explainRows gives global and commodity reasons, clearly labelled', () => {
+  const rows = [
+    { id: 'us', kind: 'index', d1: -1.8, label: 'United States', why: { title: 'US tech stocks tumble', source: 'FT', url: 'u1' } },
+    { id: 'jp', kind: 'index', d1: -2.1, label: 'Japan' },
+    { id: 'kr', kind: 'index', d1: -3.5, label: 'Korea' },
+    { id: 'za', kind: 'index', d1: -3.6, label: 'South Africa' },
+    { id: 'gold', kind: 'bench', group: 'Metals', d1: -3.3, label: 'Gold', why: { title: 'Gold slides', source: 'Reuters', url: 'u2' } },
+    { id: 'sg', kind: 'index', d1: -1.0, label: 'Singapore' },
+  ];
+  const clusters = [{
+    primary: { id: 'us', kind: 'country' }, label: 'Markets', what: 'US tech stocks tumble',
+    why: 'AI spending concerns', titles: ['US tech stocks tumble as AI spending concerns intensify'],
+    source: 'Financial Times', url: 'u1', score: 90,
+  }];
+  const out = explainRows(rows, clusters, {
+    exposures: { jp: ['tech'], kr: ['tech'], za: ['metals'], us: ['tech'] },
+    groups: { jp: 'asia', kr: 'asia', za: 'africa', us: 'americas', sg: 'asia' },
+    directionOf: (t) => (/tumble|slides|falls|down/i.test(t) ? 'down' : /rise|jump|up/i.test(t) ? 'up' : null),
+  });
+  assert.equal(out[1].why.scope, 'global', 'Japan gets the shared tech driver, labelled global');
+  assert.match(out[1].why.title, /tech stocks/);
+  assert.equal(out[2].why.scope, 'global', 'Korea too');
+  assert.equal(out[3].why.scope, 'commodity', 'South Africa gets the gold/metal driver');
+  assert.match(out[3].why.title, /Gold slides/);
+  assert.equal(out[5].why, undefined, 'no invented reason when nothing matches');
+  assert.deepEqual(textTags('Gold and copper slide'), ['metals']);
 });
 
 test('scoreEvents ranks a policy event over a broad market move, and selectEvents keeps it diverse', () => {

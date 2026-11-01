@@ -2139,7 +2139,7 @@ function renderBrief(b) {
     return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
   };
   const impHtml = (b.events || []).length
-    ? `<div class="gtitle">IMPORTANT TODAY</div><div class="imp-list">${b.events.slice(0, 5).map((e) => {
+    ? `<div class="gtitle">IMPORTANT · ${esc(b.sessionDate ? evDate(b.sessionDate) : 'TODAY')}</div><div class="imp-list">${b.events.slice(0, 5).map((e) => {
       const mkt = (e.market || []).map((m) => `<span class="imp-m ${cls(m.d1)}">${esc(m.label)} ${pctf(m.d1)}</span>`).join('');
       const src = e.url ? `<a href="${esc(e.url)}" target="_blank" rel="noopener noreferrer">${esc(e.source || 'Source')}</a>` : '';
       const wires = (e.sources || []).length > 1 ? `<span class="dimtext">${e.sources.length} wires</span>` : '';
@@ -2184,10 +2184,15 @@ function renderBrief(b) {
       const full = `Front month expires ${r.when}. The curve is $${r.spread.toFixed(2)} backwardated (front above next), so about ${Math.abs(r.pct).toFixed(1)}% of this ${pctf(x.d1)} move is the contract rolling, not a selloff.`;
       return `<span class="mvr-why roll" title="${esc(full)}">Roll, not a selloff — ${Math.abs(r.pct).toFixed(1)}% of this move is the expiring contract.</span>`;
     }
-    if (x.why) return `<span class="mvr-why" title="${esc(x.why.title + ' — ' + (x.why.source || ''))}"><a href="${esc(x.why.url)}" target="_blank" rel="noopener noreferrer">${esc(x.why.title)}</a> <span class="dimtext">— ${esc(x.why.source)}</span></span>`;
-    // No wire story that day? Fall back to the computed driver, so the row is never a bare number.
-    if ((x.facts || []).length) return `<span class="mvr-why" title="${esc(x.facts.join(' · '))}">${esc(x.facts.join(' · '))}</span>`;
-    return '';
+    if (x.why) {
+      const tag = x.why.scope === 'regional' ? 'REGIONAL' : x.why.scope === 'global' ? 'GLOBAL'
+        : x.why.scope === 'commodity' ? 'COMMODITY' : '';
+      return `<span class="mvr-why" title="${esc(x.why.title + ' — ' + (x.why.source || '') + (x.why.via ? ' (' + x.why.via + ')' : ''))}">`
+        + `${tag ? `<b class="why-scope">${tag}</b> ` : ''}<a href="${esc(x.why.url)}" target="_blank" rel="noopener noreferrer">${esc(x.why.title)}</a> <span class="dimtext">— ${esc(x.why.source)}</span></span>`;
+    }
+    // No wire story that day. Say it is context, not a cause, so a bare number never reads as a reason.
+    if ((x.facts || []).length) return `<span class="mvr-why context" title="${esc(x.facts.join(' · '))}">CONTEXT — ${esc(x.facts.join(' · '))}</span>`;
+    return '<span class="mvr-why context">No wire reason found.</span>';
   };
   // Everything else, one grammar. The hero's own row is skipped so nothing is said twice.
   // The server ranked these already (one leaderboard for commodities and countries). Do NOT re-sort:
@@ -3775,7 +3780,12 @@ document.addEventListener('click', (e) => {
 // ---------------------------------------------------------------------------
 // COMPANIES — profiles and financials from SEC XBRL (tagged facts, no estimates).
 let companiesData = null, coQuery = '', coSector = 'all', coMin = 0, coCik = null, coTicker = null, coRange = '5y', coCompare = '';
+// The compare box is per company: moving to another name starts clean instead of leaving the old
+// benchmark on the chart. `coOpenCik` is what the current comparison belongs to.
+let coOpenCik = null, jpOpenSel = null, krOpenSel = null;
 let coPreset = null;
+// A compare ref is `us:AAPL` / `jp:7203` / `kr:005930`; the box and the chart legend show the code.
+const cmpCode = (ref) => { const s = String(ref || ''); return s.includes(':') ? s.split(':')[1] : s; };
 // Screens that are a rule, not a list — the US counterpart of Japan's BELOW BOOK / CASH RICH presets.
 const CO_PRESETS = [
   { id: 'buyback', label: 'BUYBACK HEAVY', test: (c) => c.buybacks && c.marketCap && c.buybacks / c.marketCap > 0.03 },
@@ -3937,10 +3947,10 @@ function jpMatches(c) {
   return true;
 }
 
-async function renderJapan() {
+async function renderJapan(token = takeToken()) {
   paintCoViews();
   const el = $('co-body'); if (!el) return;
-  const token = takeToken();
+  if (jpSel !== jpOpenSel) { jpCompare = ''; jpOpenSel = jpSel; }
   syncMarketAccent();
   const noteUs = $('co-note'); if (noteUs) noteUs.classList.add('hidden');
   for (const k of ['jp-chart', 'jp-q-chart']) {
@@ -4008,16 +4018,9 @@ function renderJapanMarket(all, d) {
         <span class="${(s.chgYtd || 0) >= 0 ? 'pos' : 'neg'}">${chg(s.chgYtd)}</span>
       </div>`).join('')
     + `<div class="macro-note">Aggregates are computed from the ${all.length} Prime constituents in this dataset, not from an index file — medians are equal-weighted, so they describe the typical company rather than the largest. TOPIX is the exchange's official index and covers Prime, Standard and Growth.</div>`;
-  if (t.series && t.series.length > 1) {
-    // TOPIX's own history, with the same window strip a company page carries. The series is already in
-    // the page, so changing the window is a redraw rather than a request.
-    const full = { dates: t.series.map((p) => p.d), closes: t.series.map((p) => p.c) };
-    const wins = coWindowsFor(full.dates);
-    if (!wins.includes(jpMktRange)) jpMktRange = '1y';
-    paintReturns('jp-mkt-rets', null, full, jpMktRange, wins, 'jpmkt');
-    const view = coSlice(full, jpMktRange);
-    mountChart('jp-mkt-chart', { labels: view.dates, datasets: [line(`TOPIX · ${jpMktRange.toUpperCase()}`, view.closes, CT.c1)] }, baseOptions({ dp: 0, dateAxis: true }));
-  }
+  // TOPIX's own history, with the same window strip a company page carries. The series is already in
+  // the page, so changing the window is a redraw rather than a request.
+  if (t.series && t.series.length > 1) redrawJapanIndex();
 }
 
 // Themes: two written lists and two rules. The rules are computed here from live data so they never
@@ -4228,7 +4231,8 @@ function renderJapanPageBody(c) {
         ${cell('FINANCING CASH FLOW', yen(c.cff), 'Dividends, buybacks and borrowings, net')}
       </div>`
     + `<div class="co-ranges">
-        <span class="co-cmp-l">COMPARE</span><input class="co-cmp" id="jp-cmp" placeholder="company name, e.g. toyota" value="${esc(jpCompare)}" autocomplete="off">
+        <span class="co-cmp-l">COMPARE</span><input class="co-cmp" id="jp-cmp" placeholder="company name, e.g. toyota" value="${esc(cmpCode(jpCompare))}" autocomplete="off">
+        <button class="co-cmp-clear${jpCompare ? '' : ' hidden'}" id="jp-cmp-clear" data-cmpclear="jp" type="button" title="Clear comparison" aria-label="Clear comparison">×</button>
         <div class="co-sugg" id="jp-sugg"></div>
         ${[['1m', '1M'], ['3m', '3M'], ['6m', '6M'], ['ytd', 'YTD'], ['1y', '1Y'], ['5y', '5Y']].map(([k, t]) => `<button class="ma-chip${jpRange === k ? ' on' : ''}" data-jprange="${k}">${t}</button>`).join('')}
       </div>`
@@ -4376,7 +4380,7 @@ async function drawJpPrice(c, range = jpRange) {
 
   // A second company is indexed to 100 at the first shared date, the way the US chart compares.
   let other = null;
-  if (jpCompare && jpCompare !== c.code) {
+  if (jpCompare && cmpCode(jpCompare).toUpperCase() !== String(c.code).toUpperCase()) {
     if (jpCompare.toUpperCase() === 'TOPIX' && japanData && japanData.topix && japanData.topix.series) {
       const tmap = new Map(japanData.topix.series.map((p) => [p.d, p.c]));
       other = { dates: ch.dates, closes: ch.dates.map((d) => (tmap.has(d) ? tmap.get(d) : null)) };
@@ -4399,7 +4403,7 @@ async function drawJpPrice(c, range = jpRange) {
         labels: dates,
         datasets: [
           line(`${c.ticker} · ${c.name.slice(0, 14)}`, dates.map((d) => (ch.closes[ch.dates.indexOf(d)] / a0) * 100), CT.c1),
-          line(peer ? `${jpCompare} · ${peer.name.slice(0, 14)}` : jpCompare, dates.map((d) => (bmap.get(d) / b0) * 100), CT.c2),
+          line(peer ? `${cmpCode(jpCompare)} · ${peer.name.slice(0, 14)}` : cmpCode(jpCompare), dates.map((d) => (bmap.get(d) / b0) * 100), CT.c2),
         ],
       }, baseOptions({ dp: 0, dateAxis: true, yTitle: 'indexed to 100' }));
       return;
@@ -4487,25 +4491,67 @@ async function resolveCompare(text) {
   return hit ? hit.ref : null;
 }
 
+const krRef = (code) => {
+  const c = (koreaData && koreaData.companies || []).find((x) => x.code === code || x.ticker === code);
+  return c && c.ticker ? `kr:${c.ticker}` : (code ? `kr:${code}` : '');
+};
+const currentCmpRef = () => (coRegion === 'jp'
+  ? (jpSel ? `jp:${jpSel}` : '')
+  : coRegion === 'kr'
+    ? krRef(krSel)
+    : (coTicker ? `us:${coTicker}` : ''));
+
+function syncCmpClear(region) {
+  const on = region === 'jp' ? !!jpCompare : region === 'kr' ? !!krCompare : !!coCompare;
+  const b = $(region + '-cmp-clear');
+  if (b) b.classList.toggle('hidden', !on);
+}
+
+// Remove the comparison without leaving the page. The input keeps its hint; the chart redraws alone.
+function clearCompare(region = coRegion) {
+  if (region === 'jp') {
+    jpCompare = '';
+    const inp = $('jp-cmp'); if (inp) inp.value = '';
+    hideSuggestions('jp-sugg'); syncCmpClear('jp');
+    const cur = (japanData && japanData.companies || []).find((x) => x.code === jpSel);
+    if (cur) drawJpPrice(cur, jpRange);
+  } else if (region === 'kr') {
+    krCompare = '';
+    const inp = $('kr-cmp'); if (inp) inp.value = '';
+    hideSuggestions('kr-sugg'); syncCmpClear('kr');
+    const cur = (koreaData && koreaData.companies || []).find((x) => x.code === krSel);
+    if (cur) drawKrChart(cur, krRange);
+  } else {
+    coCompare = '';
+    const inp = $('co-cmp'); if (inp) inp.value = '';
+    hideSuggestions('us-sugg'); syncCmpClear('us');
+    if (coTicker) loadCoChart(coTicker, coRange);
+  }
+}
+
 function setCompare(ref) {
   const clean = String(ref || '').trim();
   if (!clean) return;
+  // Picking the company you are already looking at is not a comparison — clear instead of drawing
+  // two identical lines.
+  if (clean.toLowerCase() === currentCmpRef().toLowerCase()) return clearCompare();
+  const label = cmpCode(clean);
   if (coRegion === 'jp') {
     jpCompare = clean;
-    const inp = $('jp-cmp'); if (inp) inp.value = clean;
-    hideSuggestions('jp-sugg');
+    const inp = $('jp-cmp'); if (inp) inp.value = label;
+    hideSuggestions('jp-sugg'); syncCmpClear('jp');
     const cur = (japanData && japanData.companies || []).find((x) => x.code === jpSel);
     if (cur) drawJpPrice(cur, jpRange);
   } else if (coRegion === 'kr') {
     krCompare = clean;
-    const inp = $('kr-cmp'); if (inp) inp.value = clean;
-    hideSuggestions('kr-sugg');
+    const inp = $('kr-cmp'); if (inp) inp.value = label;
+    hideSuggestions('kr-sugg'); syncCmpClear('kr');
     const cur = (koreaData && koreaData.companies || []).find((x) => x.code === krSel);
     if (cur) drawKrChart(cur, krRange);
   } else {
     coCompare = clean;
-    const inp = $('co-cmp'); if (inp) inp.value = clean;
-    hideSuggestions('us-sugg');
+    const inp = $('co-cmp'); if (inp) inp.value = label;
+    hideSuggestions('us-sugg'); syncCmpClear('us');
     if (coTicker) loadCoChart(coTicker, coRange, clean);
   }
 }
@@ -4566,10 +4612,10 @@ async function loadKorea() {
 
 const krViewsBar = () => '';
 
-async function renderKorea() {
+async function renderKorea(token = takeToken()) {
   paintCoViews();
   const el = $('co-body'); if (!el) return;
-  const token = takeToken();
+  if (krSel !== krOpenSel) { krCompare = ''; krOpenSel = krSel; }
   syncMarketAccent();
   const noteUs = $('co-note'); if (noteUs) noteUs.classList.add('hidden');
   syncCoTools();
@@ -4628,14 +4674,7 @@ function renderKoreaMarket(all, d) {
         <span class="${(x.chgYtd || 0) >= 0 ? 'pos' : 'neg'}">${chg(x.chgYtd)}</span>
       </div>`).join('')
     + `<div class="macro-note">Aggregates computed from the ${all.length} KOSPI constituents. Sectors from each company's KSIC industry code. KOSPI level and history from Naver Finance.</div>`;
-  if (idx.series && idx.series.length > 1) {
-    const full = { dates: idx.series.map((p) => p.d), closes: idx.series.map((p) => p.c) };
-    const wins = coWindowsFor(full.dates);
-    if (!wins.includes(krMktRange)) krMktRange = '1y';
-    paintReturns('kr-mkt-rets', null, full, krMktRange, wins, 'krmkt');
-    const view = coSlice(full, krMktRange);
-    mountChart('kr-mkt-chart', { labels: view.dates, datasets: [line(`KOSPI · ${krMktRange.toUpperCase()}`, view.closes, CT.c1)] }, baseOptions({ dp: 0, dateAxis: true }));
-  }
+  if (idx.series && idx.series.length > 1) redrawKoreaIndex();
 }
 
 function renderKoreaThemes(all, d) {
@@ -4757,7 +4796,8 @@ async function renderKoreaPage(stub) {
         ${cell('FCF YIELD', c.fcfYield != null ? `${c.fcfYield.toFixed(1)}%` : '—', 'Operating plus investing cash flow ÷ market cap')}
       </div>`
     + `<div class="co-ranges">
-        <span class="co-cmp-l">COMPARE</span><input class="co-cmp" id="kr-cmp" placeholder="company name, e.g. samsung" value="${esc(krCompare)}" autocomplete="off">
+        <span class="co-cmp-l">COMPARE</span><input class="co-cmp" id="kr-cmp" placeholder="company name, e.g. samsung" value="${esc(cmpCode(krCompare))}" autocomplete="off">
+        <button class="co-cmp-clear${krCompare ? '' : ' hidden'}" id="kr-cmp-clear" data-cmpclear="kr" type="button" title="Clear comparison" aria-label="Clear comparison">×</button>
         <div class="co-sugg" id="kr-sugg"></div>
         ${[['1m', '1M'], ['3m', '3M'], ['6m', '6M'], ['ytd', 'YTD'], ['1y', '1Y'], ['5y', '5Y']].map(([k, t]) => `<button class="ma-chip${krRange === k ? ' on' : ''}" data-krrange="${k}">${t}</button>`).join('')}
       </div>`
@@ -4788,7 +4828,7 @@ async function drawKrChart(c, range = krRange) {
     return;
   }
   if (wrap) wrap.removeAttribute('data-empty');
-  const other = krCompare && krCompare !== c.ticker ? await seriesFor(krCompare, range) : null;
+  const other = krCompare && cmpCode(krCompare) !== String(c.ticker) ? await seriesFor(krCompare, range) : null;
   if (other && other.dates && other.dates.length > 1) {
     const bmap = new Map(other.dates.map((d, i) => [d, other.closes[i]]));
     const dates = ch.dates.filter((d, i) => ch.closes[i] != null && bmap.get(d) != null);
@@ -4799,7 +4839,7 @@ async function drawKrChart(c, range = krRange) {
         labels: dates,
         datasets: [
           line(`${c.ticker} · ${(c.nameEn || c.name).slice(0, 14)}`, dates.map((d) => (ch.closes[ch.dates.indexOf(d)] / a0) * 100), CT.c1),
-          line(`${krCompare}`, dates.map((d) => (bmap.get(d) / b0) * 100), CT.c2),
+          line(`${cmpCode(krCompare)}`, dates.map((d) => (bmap.get(d) / b0) * 100), CT.c2),
         ],
       }, baseOptions({ dp: 0, dateAxis: true, yTitle: 'indexed to 100' }));
       return;
@@ -4844,13 +4884,19 @@ function warmMarkets(delay = 1500) {
 }
 
 function renderCompanies() {
+  // A new company starts without the previous company's benchmark. Same-company re-renders (a watch
+  // star, a range change) keep it.
+  if (coCik !== coOpenCik) { coCompare = ''; coOpenCik = coCik; }
   paintCoViews();
   // Keep the market switch in sync with the remembered choice (it also survives a reload).
   document.querySelectorAll('[data-region]').forEach((b) => b.classList.toggle('on', b.dataset.region === coRegion));
-  if (coRegion !== 'us') takeToken();   // leaving the US invalidates any in-flight US render
+  // Every market change takes a token, the US included. Switching away used to leave an in-flight
+  // Japan/Korea render valid, so a slow TOPIX fetch could finish after the US was chosen and paint
+  // the Japanese screen over it. The chosen renderer gets this token and bails if another wins.
+  const token = takeToken();
   syncMarketAccent();
-  if (coRegion === 'jp') return renderJapan();
-  if (coRegion === 'kr') return renderKorea();
+  if (coRegion === 'jp') return renderJapan(token);
+  if (coRegion === 'kr') return renderKorea(token);
   const el = $('co-body');
   if (charts['co-chart']) { try { charts['co-chart'].destroy(); } catch {} delete charts['co-chart']; }
   if (!el) return;
@@ -4869,7 +4915,7 @@ function renderCompanies() {
   }
 
   if (coCik) return renderCompanyPage(el, all);
-  if (usView === 'market') return renderUsMarket(el, all);
+  if (usView === 'market') return renderUsMarket(el, all, token);
   if (usView === 'themes') return renderUsThemes(el, all);
 
   const q = coQuery.trim().toLowerCase();
@@ -5097,8 +5143,43 @@ function paintReturns(stripId, bigId, ch, range, keys, attr) {
 }
 function paintCoReturns(ch, range) { paintReturns('co-rets', 'co-big', ch, range, WINDOWS_ALL, 'corange'); }
 
+// One of the market-view index charts (S&P 500 / TOPIX / KOSPI), drawn from a series already in
+// memory. A window change re-slices those dates and updates the chart instance in place — it is a
+// redraw, not a page render and not a request, which is what made the range strip feel slow.
+function drawMarketIndexChart(prefix, full, range, attr, name) {
+  const wins = coWindowsFor(full.dates);
+  const use = wins.includes(range) ? range : (wins.includes('1y') ? '1y' : wins[wins.length - 1] || '1y');
+  paintReturns(prefix + '-rets', null, full, use, wins, attr);
+  const view = coSlice(full, use);
+  mountChart(prefix + '-chart', { labels: view.dates, datasets: [line(`${name} · ${use.toUpperCase()}`, view.closes, CT.c1)] }, baseOptions({ dp: 0, dateAxis: true }));
+  return use;
+}
+// The three index series, as the { dates, closes } shape the slicers understand.
+function jpIndexSeries() {
+  const s = japanData && japanData.topix && japanData.topix.series;
+  return s && s.length > 1 ? { dates: s.map((p) => p.d), closes: s.map((p) => p.c) } : null;
+}
+function redrawJapanIndex(range = jpMktRange) {
+  const full = jpIndexSeries();
+  if (!full) return false;
+  jpMktRange = drawMarketIndexChart('jp-mkt', full, range, 'jpmkt', 'TOPIX');
+  return true;
+}
+function krIndexSeries() {
+  const s = koreaData && koreaData.index && koreaData.index.series;
+  return s && s.length > 1 ? { dates: s.map((p) => p.d), closes: s.map((p) => p.c) } : null;
+}
+function redrawKoreaIndex(range = krMktRange) {
+  const full = krIndexSeries();
+  if (!full) return false;
+  krMktRange = drawMarketIndexChart('kr-mkt', full, range, 'krmkt', 'KOSPI');
+  return true;
+}
+
 async function loadCoChart(ticker, range, compare) {
   if (!ticker) return;
+  const cmp = String(compare || '').toLowerCase();
+  if (cmp && (cmp === `us:${String(ticker).toLowerCase()}` || cmp === String(ticker).toLowerCase())) compare = '';
   const canvas = $('co-chart');
   const fail = () => {
     const wrap = canvas && canvas.parentElement;
@@ -5150,7 +5231,7 @@ async function loadCoChart(ticker, range, compare) {
     };
     const a = rebase(fill(ch, 'closes'));
     const b = rebase(fill(c2, 'closes'));
-    mountChart('co-chart', { labels: dates, datasets: [line(ticker, a, CT.c1), line(compare, b, CT.c2)] }, baseOptions({ dp: 0, log: true, yTitle: 'indexed to 100', dateAxis: true }));
+    mountChart('co-chart', { labels: dates, datasets: [line(ticker, a, CT.c1), line(cmpCode(compare), b, CT.c2)] }, baseOptions({ dp: 0, log: true, yTitle: 'indexed to 100', dateAxis: true }));
   } catch {}
 }
 
@@ -5165,7 +5246,7 @@ const coDesc = (t) => {
 };
 
 // The US market view: the same shape as Japan's, computed from the 503 constituents.
-async function renderUsMarket(el, all) {
+async function renderUsMarket(el, all, token = renderSeq) {
   const noteUs = $('co-note'); if (noteUs) noteUs.classList.add('hidden');
   const uniq = all.filter((c) => !c.shareClass);
   const median = (xs) => {
@@ -5192,17 +5273,19 @@ async function renderUsMarket(el, all) {
   const breadth = adv + dec ? `<div class="jp-breadth"><span class="pos">${adv} up</span><i><i style="width:${Math.round((adv / Math.max(1, adv + dec)) * 100)}%"></i></i><span class="neg">${dec} down</span></div>` : '';
   // The index level comes from the macro quote feed; the changes are cap-weighted from the
   // constituents, which is stated rather than passed off as the official index return.
-  let spx = null;
-  try {
-    const mt = await jget('/api/macro-tickers', 900000);
-    spx = (mt && mt.items || []).find((x) => x.label === 'S&P 500');
-  } catch { spx = null; }
+  // The quote pill must never hold the page. The tape is cached from boot in most sessions; when it
+  // is missing, the page paints now and the pill fills in — waiting here is what left the previous
+  // market's screen (TOPIX) sitting on screen after a switch to the US.
+  const quoteFrom = (items) => {
+    const spx = (items || []).find((x) => x.label === 'S&P 500');
+    if (!spx || (spx.price == null && spx.last == null)) return '<span class="dimtext">index quote unavailable</span>';
+    const px = Number(spx.price != null ? spx.price : spx.last).toLocaleString('en-US', { maximumFractionDigits: 2 });
+    return `<span class="jp-market-lvl">${px}</span>${spx.pct != null ? `<span class="${spx.pct >= 0 ? 'pos' : 'neg'}">${chg(spx.pct)} today</span>` : ''}`;
+  };
 
   el.innerHTML = usViewsBar()
     + `<div class="jp-market-head"><span class="ph-t">S&amp;P 500</span>
-        ${spx && (spx.price != null || spx.last != null)
-          ? `<span class="jp-market-lvl">${Number(spx.price != null ? spx.price : spx.last).toLocaleString('en-US', { maximumFractionDigits: 2 })}</span>${spx.pct != null ? `<span class="${spx.pct >= 0 ? 'pos' : 'neg'}">${chg(spx.pct)} today</span>` : ''}`
-          : '<span class="dimtext">index quote unavailable</span>'}
+        <span id="us-mkt-quote">${macroTickers ? quoteFrom(macroTickers) : ''}</span>
         <span class="dimtext">${uniq.length} companies · aggregates computed from the constituent set</span></div>`
     + `<div class="co-stats co-stats-12">
         ${cell('TOTAL MARKET CAP', coMoney(totalCap), 'Sum of every constituent, share classes excluded')}
@@ -5228,33 +5311,53 @@ async function renderUsMarket(el, all) {
       </div>`).join('')
     + `<div class="macro-note">Constituent medians are equal-weighted; the index P/E is cap-weighted and comes from the annual filings. ${v.percentile != null ? `The index sits at the ${v.percentile}th percentile of ${v.min}–${v.max} over the last ${(v.years || []).length} years.` : ''}</div>`;
 
+  // Fill the quote pill only if this screen is still the one on the page.
+  if (!macroTickers) {
+    jget('/api/macro-tickers', 900000).then((mt) => {
+      if (stale(token) || !el.isConnected) return;
+      const q = $('us-mkt-quote');
+      if (q && mt && mt.items) q.innerHTML = quoteFrom(mt.items);
+    }).catch(() => {});
+  }
+
   // The index's own price history, with the same window strip a company page carries.
   await drawUsMarketChart();
 }
 
-// The S&P 500 chart on the market view: one long series feeds every window's return, and the strip
-// doubles as the range control (the same shape as a company's price chart).
+// The S&P 500 chart on the market view: one long daily series feeds every window's return and every
+// line, so a range change is a local re-slice and never a request.
 let usMktRange = (() => { try { return localStorage.getItem('oilbasis.usMktRange') || '1y'; } catch { return '1y'; } })();
+let usMktSeries = null;    // { dates, closes } for ^GSPC, ten years daily
+let usMktSeq = 0;          // invalidates a slow fetch if the screen is repainted
+function redrawUsIndex(range = usMktRange) {
+  if (!usMktSeries) return false;
+  usMktRange = drawMarketIndexChart('us-mkt', usMktSeries, range, 'usmkt', 'S&P 500');
+  return true;
+}
 async function drawUsMarketChart() {
   const canvas = $('us-mkt-chart');
   if (!canvas) return;
-  if (charts['us-mkt-chart']) { try { charts['us-mkt-chart'].destroy(); } catch {} delete charts['us-mkt-chart']; }
-  const url = (r) => `/api/company-chart?ticker=%5EGSPC&range=${r}`;
+  // Already fetched once this session: redraw in place, keeping the chart instance (and its
+  // animation) instead of blanking the frame and going back to the network.
+  if (redrawUsIndex()) return;
+  const seq = ++usMktSeq;
+  const wrap = canvas.parentElement;
+  if (wrap) wrap.setAttribute('data-empty', 'Loading the S&P 500…');
   try {
-    // Both windows at once: the strip needs ten years, the line needs the one on screen. The long one
-    // asks for daily bars — the route defaults ten years to MONTHLY, and a month-over-month series
-    // makes the 1M and 6M cells read 0.0% because they land on the same monthly point.
-    const [long, win] = await Promise.all([jget(url('10y') + '&interval=1d', 900000), jget(url(usMktRange), 900000)]);
-    if (!canvas.isConnected) return;
-    if (long && long.dates && long.dates.length > 1) {
-      const wins = coWindowsFor(long.dates);
-      if (!wins.includes(usMktRange)) usMktRange = wins[wins.length - 1] || '1y';
-      paintReturns('us-mkt-rets', null, long, usMktRange, wins, 'usmkt');
+    // Ten years daily. One series covers 1M through 10Y — the route defaults ten years to MONTHLY,
+    // and a month-over-month series makes the 1M and 6M cells read 0.0%, so ask for daily bars.
+    const long = await jget('/api/company-chart?ticker=%5EGSPC&range=10y&interval=1d', 900000);
+    if (seq !== usMktSeq || !canvas.isConnected) return;
+    if (!long || !long.dates || long.dates.length < 2) {
+      if (wrap) wrap.setAttribute('data-empty', 'No S&P 500 history available right now.');
+      return;
     }
-    if (win && win.dates && win.dates.length > 1) {
-      mountChart('us-mkt-chart', { labels: win.dates, datasets: [line(`S&P 500 · ${usMktRange.toUpperCase()}`, win.closes, CT.c1)] }, baseOptions({ dp: 0, dateAxis: true }));
-    }
-  } catch { /* leave the frame empty rather than a broken chart */ }
+    if (wrap) wrap.removeAttribute('data-empty');
+    usMktSeries = { dates: long.dates, closes: long.closes };
+    redrawUsIndex();
+  } catch {
+    if (wrap) wrap.setAttribute('data-empty', 'Couldn’t load the S&P 500 chart — try again.');
+  }
 }
 
 // Curated US themes. The computed screens (buybacks, quality, cash) live in the screener as presets.
@@ -5460,7 +5563,8 @@ async function renderCompanyPageBody(el, c, all) {
     + (!c.peHistory && c.pe == null ? `<div class="co-band"><span class="co-band-k">P/E vs ITS OWN 5 YEARS</span><span class="co-band-n">no band — the company lost money in most of the last five years, so a P/E range does not exist</span></div>` : '')
     + (c.ticker ? `<div class="co-chartwrap">
         <div class="co-ranges">
-          <span class="co-cmp-l">COMPARE</span><input class="co-cmp" id="co-cmp" placeholder="company name, e.g. jpmorgan" value="${esc(coCompare || '')}" autocomplete="off">
+          <span class="co-cmp-l">COMPARE</span><input class="co-cmp" id="co-cmp" placeholder="company name, e.g. jpmorgan" value="${esc(cmpCode(coCompare))}" autocomplete="off">
+          <button class="co-cmp-clear${coCompare ? '' : ' hidden'}" id="us-cmp-clear" data-cmpclear="us" type="button" title="Clear comparison" aria-label="Clear comparison">×</button>
           <div class="co-sugg" id="us-sugg"></div>
           ${['1m', '3m', '6m', 'ytd', '1y', '5y', '10y'].map((r) => `<button class="ma-chip${coRange === r ? ' on' : ''}" data-corange="${r}">${r.toUpperCase()}</button>`).join('')}
         </div>
@@ -5541,6 +5645,8 @@ document.addEventListener('click', (e) => {
     e.target.setAttribute('aria-expanded', String(on));
     return;
   }
+  const cc = e.target.closest('[data-cmpclear]');
+  if (cc) { clearCompare(cc.dataset.cmpclear); return; }
   const sug = e.target.closest('[data-sugg]');
   if (sug) { setCompare(sug.dataset.sugg); return; }
   const peer = e.target.closest('[data-peer]');
@@ -5549,7 +5655,7 @@ document.addEventListener('click', (e) => {
   if (cr) {
     coRange = cr.dataset.corange;
     document.querySelectorAll('[data-corange]').forEach((b) => b.classList.toggle('on', b.dataset.corange === coRange));
-    loadCoChart(coTicker, coRange);
+    loadCoChart(coTicker, coRange, coCompare);
     return;
   }
   // The index strips on the market views work the same way: a window is a redraw, not a page change.
@@ -5557,13 +5663,16 @@ document.addEventListener('click', (e) => {
   if (um) {
     usMktRange = um.dataset.usmkt;
     try { localStorage.setItem('oilbasis.usMktRange', usMktRange); } catch {}
-    drawUsMarketChart();
+    if (!redrawUsIndex()) drawUsMarketChart();   // no cached series yet → first load
     return;
   }
   const jm = e.target.closest('[data-jpmkt]');
   if (jm) {
     jpMktRange = jm.dataset.jpmkt;
     try { localStorage.setItem('oilbasis.jpMktRange', jpMktRange); } catch {}
+    // Slice the TOPIX series already in the page. Re-rendering the whole market view for a window
+    // click rebuilt the sector table and remounted the chart, which read as a stutter.
+    if (coRegion === 'jp' && jpView === 'market' && redrawJapanIndex()) return;
     renderJapan();
     return;
   }
@@ -5571,6 +5680,7 @@ document.addEventListener('click', (e) => {
   if (km) {
     krMktRange = km.dataset.krmkt;
     try { localStorage.setItem('oilbasis.krMktRange', krMktRange); } catch {}
+    if (coRegion === 'kr' && krView === 'market' && redrawKoreaIndex()) return;
     renderKorea();
     return;
   }
@@ -5582,6 +5692,10 @@ document.addEventListener('click', (e) => {
     coCik = null; jpSel = null;
     const inp = $('co-search'); if (inp) inp.value = '';
     const note = $('co-note'); if (note) note.classList.toggle('hidden', coRegion === 'jp');
+    // Drop the old market's screen on the spot. The US render waits for data before it paints, and
+    // until this the previous screen (often Japan's TOPIX view) was still the thing on the page.
+    const body = $('co-body');
+    if (body) body.innerHTML = stLoading(coRegion === 'jp' ? 'Loading Japan…' : coRegion === 'kr' ? 'Loading KOSPI…' : 'Loading the S&P 500…');
     renderCompanies();
     return;
   }
@@ -5784,6 +5898,11 @@ document.addEventListener('keydown', async (e) => {
   if (first) { setCompare(first.dataset.sugg); return; }
   const ref = await resolveCompare(e.target.value);
   if (ref) setCompare(ref);
+});
+
+// A benchmark ref like us:MSFT in the box is replaced by typing, not appended to.
+document.addEventListener('focusin', (e) => {
+  if (e.target && ['co-cmp', 'jp-cmp', 'kr-cmp'].includes(e.target.id)) e.target.select();
 });
 
 document.addEventListener('input', (e) => {

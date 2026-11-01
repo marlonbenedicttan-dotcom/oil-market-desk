@@ -971,19 +971,25 @@ const ANALYSIS_RE = /\b(what would|what if|explainer|analysis|opinion|commentary
  * from distinct sources, and the headline kept is the most informative tier-1 one — preferably a
  * headline that states its own cause.
  */
-export function clusterEvents(items, { catalog = [], now = Date.now() } = {}) {
+export function clusterEvents(items, { catalog = [], now = Date.now(), refDate = null } = {}) {
+  // refDate is the session the brief describes (the latest market close), not necessarily today:
+  // a Sunday brief about Friday's close must still see Friday's news.
+  const refMs = refDate ? Date.parse(`${refDate}T23:59:59Z`) : now;
+  const nextDay = refDate ? new Date(Date.parse(`${refDate}T00:00:00Z`) + 864e5).toISOString().slice(0, 10) : null;
   const clusters = new Map();
   for (const it of items || []) {
     if (!it || !it.title) continue;
     if (ANALYSIS_RE.test(it.title)) continue;                // features and explainers are not the day's news
-    const ageDays = it.date ? Math.max(0, Math.round((now - Date.parse(it.date)) / 864e5)) : 0;
-    if (ageDays > 1) continue;                               // today and yesterday only — not an archive
+    const dayKey = String(it.date || '').slice(0, 10);
+    if (nextDay && dayKey && dayKey > nextDay) continue;      // a later story cannot explain an older session
+    const ageDays = it.date ? Math.max(0, Math.round((refMs - Date.parse(it.date)) / 864e5)) : 0;
+    if (ageDays > 1) continue;                               // the session and the day after — not an archive
     const cls = it.category ? { id: it.category, label: it.categoryLabel || it.category, weight: it.weight || 5, mechanism: it.mechanism || null } : classifyEvent(it.title);
     if (!cls) continue;
     const hits = it.entities || matchEntities(it.title, catalog);
     const primary = primaryEntity(hits, cls);
     if (!primary && cls.weight < 9) continue;                 // only the heaviest global stories stand alone
-    const day = String(it.date || new Date(now).toISOString()).slice(0, 10);
+    const day = dayKey || new Date(refMs).toISOString().slice(0, 10);
     const key = [cls.id, primary ? primary.id : 'global', day].join('|');
     let c = clusters.get(key);
     if (!c) {
@@ -1054,6 +1060,71 @@ export function selectEvents(scored, { max = 5, perCategory = 2 } = {}) {
     out.push(e);
   }
   return out;
+}
+
+const EXPOSURE_TAGS = [
+  ['tech', /\b(tech|technology|AI|chips?|semiconductors?|Nasdaq|software|internet)\b/i],
+  ['metals', /\b(gold|silver|copper|metals?|mining|platinum|aluminium|aluminum|iron ore|steel)\b/i],
+  ['oil', /\b(oil|crude|OPEC|refiners?|diesel|gasoline|LNG|natural gas)\b/i],
+  ['ags', /\b(wheat|corn|soybeans?|sugar|coffee|cocoa|cotton|palm|rice|cattle|cattle|hogs?|milk|butter|cheese)\b/i],
+];
+
+export function textTags(text) {
+  const t = String(text || '');
+  return EXPOSURE_TAGS.filter(([, re]) => re.test(t)).map(([tag]) => tag);
+}
+
+/**
+ * Give every row a reason. The row's own wire story wins; then a regional peer story; then a global
+ * theme that matches the market's exposure (tech, metals, oil, ags); then a peer row that already has
+ * a verified reason. The last step is labelled GLOBAL/COMMODITY in the UI, so a shared driver is never
+ * passed off as a country-specific cause.
+ */
+export function explainRows(rows, clusters, { exposures = {}, groups = {}, directionOf = () => null, seed = [] } = {}) {
+  const tagsOf = (r) => exposures[r.id] || (r.kind === 'bench' ? textTags(r.group || '') : []);
+  // The hero is not in `rows`, but its reason is often the best shared driver (gold for a metals
+  // exporter, the US tech story for Asia). Include it, and prefer the largest verified peer move.
+  const withWhy = [...(rows || []), ...seed]
+    .filter((r) => r && r.why && r.why.title)
+    .sort((a, b) => Math.abs(b.d1 ?? 0) - Math.abs(a.d1 ?? 0));
+  const scoreOf = (c) => c.score ?? (c.weight || 0) * 10;
+  const best = (pred) => (clusters || []).filter(pred).sort((a, b) => scoreOf(b) - scoreOf(a))[0] || null;
+  const textOf = (c) => [c.what, c.why, ...(c.titles || [])].filter(Boolean).join(' ');
+  const MARKET_WORDS = {
+    index: /\b(stocks?|shares?|equit(y|ies)|index|indices|bourse|selloff|sell-off|rout|rally|wall street|market)\b/i,
+    fx: /\b(currenc\w*|forex|\bfx\b|dollar|euro|yen|yuan|won|rand|rupiah|rupee|peso|riyal|exchange rate|central bank|intervention|reserves|rate (cut|hike|hold))\b/i,
+    bench: /\b(price[sd]?|futures?|spot|supply|demand|output|production|inventor(y|ies)|stocks?|export[s]?|import[s]?|sanction[sd]?|tariff[s]?|mine[s]?|refin\w*|harvest|crop[s]?|opec|drought|strike|outage)\b/i,
+  };
+  const relevant = (c, r, want) => {
+    const t = textOf(c);
+    // The story must be about the right market: a Tokyo inflation print is not an equity-market fall,
+    // and an Indian rupee story is not a Korean index driver.
+    if (!(MARKET_WORDS[r.kind === 'bench' ? 'bench' : r.kind === 'fx' ? 'fx' : 'index']).test(t)) return false;
+    const d = directionOf(t);
+    return d == null || d === want;
+  };
+  return (rows || []).map((r) => {
+    if (!r || r.why || r.kind === 'deal' || r.d1 == null) return r;
+    const want = r.d1 >= 0 ? 'up' : 'down';
+    const tags = tagsOf(r);
+    const group = groups[r.id] || null;
+    let c = best((e) => e.primary && e.primary.id === r.id && relevant(e, r, want));
+    let scope = 'direct';
+    // A peer row that already carries a verified reason is the safest shared driver: the US tech story
+    // for Japan/Korea, the gold story for a metals exporter.
+    if (!c && tags.length) {
+      const p = withWhy.find((x) => tagsOf(x).some((t) => tags.includes(t))
+        && (() => { const d = directionOf([x.why.title, x.why.source].join(' ')); return d == null || d === want; })());
+      if (p) return { ...r, why: { ...p.why, scope: tags.includes('metals') ? 'commodity' : 'global', via: p.label } };
+    }
+    if (!c && tags.length) {
+      c = best((e) => relevant(e, r, want) && textTags(textOf(e)).some((t) => tags.includes(t)));
+      scope = 'global';
+    }
+    if (!c && group) { c = best((e) => e.primary && groups[e.primary.id] === group && relevant(e, r, want)); scope = 'regional'; }
+    if (c) return { ...r, why: { title: (c.titles && c.titles[0]) || c.what, source: c.source, url: c.url, scope, via: c.label } };
+    return r;
+  });
 }
 
 export function quartersContiguous(q) {

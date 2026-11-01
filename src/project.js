@@ -32,6 +32,15 @@ export const projectKr = (c) => ({
   bands: c.bands && c.bands.pe ? { pe: { percentile: c.bands.pe.percentile } } : null,
 });
 
+// The whole /api/korea payload. Kept next to projectKr so the compact list artifact that the server
+// serves is built from exactly the same shape the UI expects — a build step and the endpoint can
+// never drift apart.
+export const koreaList = (kr) => ({
+  updated: kr.updated, universe: kr.universe, currency: kr.currency, fx: kr.fx,
+  market: kr.market, index: kr.index, themes: kr.themes || [],
+  companies: (kr.companies || []).map(projectKr),
+});
+
 export const projectJp = (c) => ({
   code: c.code, ticker: c.ticker, name: c.name, nameJa: c.nameJa, sector: c.sector, size: c.size,
   price: c.price, priceDate: c.priceDate, marketCap: c.marketCap,
