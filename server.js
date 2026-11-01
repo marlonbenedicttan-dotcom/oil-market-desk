@@ -239,6 +239,24 @@ async function cached(key, ttlMs, fn) {
 
 // Like cached(), but a result the caller calls empty is served WITHOUT being stored — a rate-limited
 // burst must not occupy the six-hour slot with a blank chart.
+// Stale-while-revalidate: once a value exists, a reader never waits for the refresh. Past its TTL it
+// is served immediately and refreshed in the background; only the very first computation blocks.
+async function cachedSWR(key, ttlMs, fn, staleMs = 6 * 3600e3) {
+  const hit = cache.get(key);
+  if (hit) {
+    const age = Date.now() - hit.t;
+    if (age < ttlMs) return hit.v;
+    if (age < staleMs) {
+      if (!inflight.has(key)) {
+        const p = (async () => { try { const v = await fn(); cache.set(key, { t: Date.now(), v }); return v; } catch { return hit.v; } finally { inflight.delete(key); } })();
+        inflight.set(key, p);
+      }
+      return hit.v;
+    }
+  }
+  return cached(key, ttlMs, fn);
+}
+
 async function cachedUnlessEmpty(key, ttlMs, fn, isEmpty) {
   const hit = cache.get(key);
   if (hit && Date.now() - hit.t < ttlMs) return hit.v;
@@ -297,7 +315,8 @@ async function contractSeries(symbol) {
   try { return await p; } finally { inflight.delete(key); }
 }
 
-async function getMarket() {
+const getMarket = () => cachedSWR('market', 60_000, buildMarket, 10 * 60_000);
+async function buildMarket() {
   const rows = await Promise.all(BENCHMARKS.map(async (b) => {
     const [p, f] = await Promise.all([paperFor(b), physFor(b)]);
     const dates = Object.keys(f).sort();
@@ -373,7 +392,8 @@ function mapDeltas(map) {
   if (dates.length < 2) return null;
   return { asOf: dates[dates.length - 1], ...horizonDeltas(dates, dates.map((d) => map[d])) };
 }
-async function getHistory() {
+const getHistory = () => cachedSWR('history', 120_000, buildHistory, 30 * 60_000);
+async function buildHistory() {
   const list = BENCHMARKS;
   const maps = {};
   await Promise.all(list.map(async (b) => {
@@ -680,7 +700,7 @@ const REGIME_BOARD = [
   { id: 'brent', label: 'Brent crude', sym: 'BZ=F', source: 'Yahoo', unit: '$/bbl', dp: 2 },
 ];
 async function getRegime() {
-  return cached('regime', 120e3, async () => {
+  return cachedSWR('regime', 120e3, async () => {
     const rows = await Promise.all(REGIME_BOARD.map(async (s) => {
       const base = { id: s.id, label: s.label, source: s.source, unit: s.unit, dp: s.dp, rate: !!s.rate };
       try {
@@ -1146,7 +1166,7 @@ const RISK_SERIES = [
   { key: 'vix', label: 'VIX', short: 'VIX', sym: '^VIX' },
 ];
 async function getRisk() {
-  return cached('risk', 3600e3, async () => {
+  return cachedSWR('risk', 3600e3, async () => {
     const maps = {};
     await Promise.all(RISK_SERIES.map(async (s) => {
       try {
@@ -1181,7 +1201,7 @@ async function getRisk() {
 // so the logic is testable; the client only sorts + renders.
 // ---------------------------------------------------------------------------
 async function getScreen() {
-  return cached('screen', 5 * 60e3, async () => {
+  return cachedSWR('screen', 5 * 60e3, async () => {
     const [m, h, a, reads] = await Promise.all([
       getMarket(),
       getHistory().catch(() => null),
@@ -1447,7 +1467,7 @@ async function ratioTrend(symA, symB, range = '6mo', back = 63) {
 }
 
 async function getMacroDash() {
-  return cached('macrodash', 3 * 3600e3, async () => {
+  return cachedSWR('macrodash', 3 * 3600e3, async () => {
     const [dgs2, dgs10, ff, cpi, gdp, unrate, ecb, hicp] = await Promise.all([
       fredSeries('DGS2', 40), fredSeries('DGS10', 40), fredSeries('FEDFUNDS', 400),
       fredSeries('CPIAUCSL', 800), fredSeries('A191RL1Q225SBEA', 1400), fredSeries('UNRATE', 400), fredSeries('ECBDFR', 400),
@@ -1612,7 +1632,7 @@ const tvWorld = (days = 45) => cached('tvworld', 3 * 3600e3, async () => {
 });
 
 async function getCalendar() {
-  return cached('calendar', 6 * 3600e3, async () => {
+  return cachedSWR('calendar', 6 * 3600e3, async () => {
     const now = new Date();
     const iso = (d) => d.toISOString().slice(0, 10);
     const today = iso(now);
@@ -1773,7 +1793,7 @@ async function getCurveFor(id) {
   });
 }
 async function getCurves() {
-  return cached('curves', 120_000, async () => {
+  return cachedSWR('curves', 120_000, async () => {
     const [wti, brent] = await Promise.all([curveFor('wti'), curveFor('brent')]);
     return { wti: { unit: '$/bbl', dp: 2, ...buildCurve(wti) }, brent: { unit: '$/bbl', dp: 2, ...buildCurve(brent) } };
   });
@@ -2531,7 +2551,7 @@ async function getBondYields(id) {
 async function getCountry(id) {
   const c = ALL_COUNTRIES[id];
   if (!c) return { error: 'unknown country' };
-  return cached('country:' + id, 15 * 60e3, async () => {
+  return cachedSWR('country:' + id, 15 * 60e3, async () => {
     const quote = async (sym) => { try { const { price, series } = await cached('q:' + sym, 120e3, () => yahooSeries(sym, '5d', '1d')); const d = Object.keys(series).sort(); const a = series[d[d.length - 1]], b = series[d[d.length - 2]]; return { price: a ?? price ?? null, pct: a != null && b ? ((a - b) / b) * 100 : null }; } catch { return { price: null, pct: null }; } };
     const rk = COUNTRY_MACRO_REGION[id];
     // Everything independent runs CONCURRENTLY — the whole panel in one round trip.
@@ -2847,7 +2867,7 @@ const pctChg = (series, days) => {
 };
 async function dirPct(sym, days) { try { return pctChg((await yc(sym, '3mo')).series, days); } catch { return null; } }
 async function getTransmission() {
-  return cached('transmission', 30 * 60e3, async () => {
+  return cachedSWR('transmission', 30 * 60e3, async () => {
     const [oil1m, oil3m, dxy1m, gold1m, copper1m, corn1m, curves, md, dgs10] = await Promise.all([
       dirPct('CL=F', 21), dirPct('CL=F', 63), dirPct('DX-Y.NYB', 21), dirPct('GC=F', 21), dirPct('HG=F', 21), dirPct('ZC=F', 21),
       getCurves().catch(() => null), getMacroDash().catch(() => null), fredSeries('DGS10', 60).catch(() => ({})),
@@ -3235,7 +3255,7 @@ async function buildDigest() {
 // The raw text digest above stays for email/log; this is what the HOME tab renders.
 // ---------------------------------------------------------------------------
 async function buildBrief() {
-  return cached('brief', 300_000, async () => {
+  return cachedSWR('brief', 300_000, async () => {
     // Everything that only needs the network — no other panel's output — is fetched AT ONCE. The
     // calendar and the deal book used to be awaited at the very end, so a cold brief paid for them
     // one after another and took 2-4s longer than the slowest single feed.
@@ -3855,18 +3875,18 @@ const server = http.createServer(async (req, res) => {
     }
     if (url.pathname === '/api/market') return sendJSONCached(res, 200, await getMarket().catch((e) => { console.error('[market]', e.message); return { updated: new Date().toISOString(), benchmarks: [], spreads: {}, quality: { flags: [], curveAvailable: false }, notes: [] }; }));
     if (url.pathname === '/api/history') return sendJSONCached(res, 200, await getHistory().catch((e) => { console.error('[history]', e.message); return { dates: [], series: {}, basis: {}, spreads: {}, deltas: {} }; }));
-    if (url.pathname === '/api/fx') return sendJSON(res, 200, FX_SYMS.map((f) => ({ id: f.id, label: f.label, dp: f.dp })));
-    if (url.pathname === '/api/rates') return sendJSON(res, 200, RATES.map((r) => ({ id: r.id, label: r.label, dp: r.dp })));
-    if (url.pathname === '/api/markets') return sendJSON(res, 200, getMarkets());
+    if (url.pathname === '/api/fx') return sendJSONCached(res, 200, FX_SYMS.map((f) => ({ id: f.id, label: f.label, dp: f.dp })));
+    if (url.pathname === '/api/rates') return sendJSONCached(res, 200, RATES.map((r) => ({ id: r.id, label: r.label, dp: r.dp })));
+    if (url.pathname === '/api/markets') return sendJSONCached(res, 200, getMarkets());
     if (url.pathname === '/api/marketread') {
       const id = url.searchParams.get('id');
       if (!MARKETS.some((x) => x.id === id)) return sendJSON(res, 404, { error: 'unknown market' });
-      return sendJSON(res, 200, await getMarketRead(id, url.searchParams.get('component')).catch((e) => ({ error: String(e.message) })));
+      return sendJSONCached(res, 200, await getMarketRead(id, url.searchParams.get('component')).catch((e) => ({ error: String(e.message) })));
     }
     if (url.pathname === '/api/marketwhy') {
       const id = url.searchParams.get('id');
       if (!MARKETS.some((x) => x.id === id)) return sendJSON(res, 404, { error: 'unknown market' });
-      return sendJSON(res, 200, await getMarketWhy(id, url.searchParams.get('component')).catch((e) => ({ error: String(e.message) })));
+      return sendJSONCached(res, 200, await getMarketWhy(id, url.searchParams.get('component')).catch((e) => ({ error: String(e.message) })));
     }
     if (url.pathname === '/api/attribution') {
       const id = url.searchParams.get('id');
@@ -3876,25 +3896,25 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname === '/api/news') {
       const id = url.searchParams.get('id');
       if (!NEWS_QUERIES[id]) return sendJSON(res, 404, { error: 'unknown segment' });
-      return sendJSON(res, 200, await getNews(id, url.searchParams.get('component')).catch((e) => ({ error: String(e.message), id, items: [] })));
+      return sendJSONCached(res, 200, await getNews(id, url.searchParams.get('component')).catch((e) => ({ error: String(e.message), id, items: [] })));
     }
-    if (url.pathname === '/api/transmission') return sendJSON(res, 200, await getTransmission().catch((e) => ({ error: String(e.message), ideas: [] })));
+    if (url.pathname === '/api/transmission') return sendJSONCached(res, 200, await getTransmission().catch((e) => ({ error: String(e.message), ideas: [] })));
     if (url.pathname === '/api/headlines') return sendJSONCached(res, 200, await getHeadlines().catch((e) => ({ error: String(e.message), items: [] })));
     if (url.pathname === '/api/macro-news') {
       const id = url.searchParams.get('id');
       if (!NEWS_QUERIES[id]) return sendJSON(res, 404, { error: 'unknown region' });
-      return sendJSON(res, 200, await getMacroNews(id).catch((e) => ({ error: String(e.message), items: [] })));
+      return sendJSONCached(res, 200, await getMacroNews(id).catch((e) => ({ error: String(e.message), items: [] })));
     }
-    if (url.pathname === '/api/countries') return sendJSON(res, 200, MACRO_COUNTRIES);
+    if (url.pathname === '/api/countries') return sendJSONCached(res, 200, MACRO_COUNTRIES);
     if (url.pathname === '/api/catalysts') {
       const c = url.searchParams.get('country') || 'us';
-      return sendJSON(res, 200, await getCatalysts(c).catch((e) => ({ error: String(e.message), events: [] })));
+      return sendJSONCached(res, 200, await getCatalysts(c).catch((e) => ({ error: String(e.message), events: [] })));
     }
     if (url.pathname === '/api/macro-tickers') return sendJSONCached(res, 200, await getMacroTickers().catch((e) => ({ error: String(e.message), items: [] })));
     if (url.pathname === '/api/region-quotes') {
       const id = url.searchParams.get('id');
       if (!MACRO_COUNTRIES[id]) return sendJSON(res, 404, { error: 'unknown region' });
-      return sendJSON(res, 200, await getRegionTickers(id).catch((e) => ({ error: String(e.message), items: [] })));
+      return sendJSONCached(res, 200, await getRegionTickers(id).catch((e) => ({ error: String(e.message), items: [] })));
     }
     if (url.pathname === '/api/yields') {
       const id = url.searchParams.get('id');
@@ -3904,12 +3924,12 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname === '/api/country-series') {
       const id = url.searchParams.get('id');
       if (!ALL_COUNTRIES[id]) return sendJSON(res, 404, { error: 'unknown country' });
-      return sendJSON(res, 200, await getCountrySeries(id, url.searchParams.get('range') || '1y', url.searchParams.get('vs') || null).catch((e) => ({ error: String(e.message) })));
+      return sendJSONCached(res, 200, await getCountrySeries(id, url.searchParams.get('range') || '1y', url.searchParams.get('vs') || null).catch((e) => ({ error: String(e.message) })));
     }
     if (url.pathname === '/api/country') {
       const id = url.searchParams.get('id');
       if (!ALL_COUNTRIES[id]) return sendJSON(res, 404, { error: 'unknown country' });
-      return sendJSON(res, 200, await getCountry(id).catch((e) => ({ error: String(e.message) })));
+      return sendJSONCached(res, 200, await getCountry(id).catch((e) => ({ error: String(e.message) })));
     }
     if (url.pathname === '/api/fundamentals') {
       const id = url.searchParams.get('id');
@@ -4117,16 +4137,16 @@ const server = http.createServer(async (req, res) => {
         return { id: sec.id, count: rows.length, value: rows.reduce((a, b) => a + (b.value || 0), 0) };
       }).filter((sec) => sec.count).sort((a, b) => b.value - a.value || b.count - a.count);
       const since = (store.deals || []).map((d) => d.date).filter(Boolean).sort()[0] || null;
-      return sendJSON(res, 200, {
+      return sendJSONCached(res, 200, {
         updated: new Date().toISOString(),
         coverage: DEAL_ARCHIVE.coverage || {},
         sectors, deals,
         log: { count: (store.deals || []).length, since },
       });
     }
-    if (url.pathname === '/api/regime') return sendJSON(res, 200, await getRegime().catch((e) => ({ error: String(e.message), rows: [] })));
+    if (url.pathname === '/api/regime') return sendJSONCached(res, 200, await getRegime().catch((e) => ({ error: String(e.message), rows: [] })));
     if (url.pathname === '/api/screen') return sendJSONCached(res, 200, await getScreen().catch((e) => ({ error: String(e.message), rows: [] })));
-    if (url.pathname === '/api/risk') return sendJSON(res, 200, await getRisk().catch((e) => ({ error: String(e.message), metrics: [], matrix: {} })));
+    if (url.pathname === '/api/risk') return sendJSONCached(res, 200, await getRisk().catch((e) => ({ error: String(e.message), metrics: [], matrix: {} })));
     if (url.pathname === '/api/fxadjusted') return sendJSON(res, 200, await getFxAdjusted(url.searchParams.get('base') || 'USD').catch((e) => ({ error: String(e.message), rows: [] })));
     if (url.pathname === '/api/search') return sendJSONCached(res, 200, searchCompanies(url.searchParams.get('q'), Math.min(20, Number(url.searchParams.get('limit')) || 8)));
     if (url.pathname === '/api/peers') return sendJSONCached(res, 200, getPeers(url.searchParams.get('ref'), Math.min(12, Number(url.searchParams.get('n')) || 6)));
@@ -4140,8 +4160,8 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname === '/api/equities') return sendJSONCached(res, 200, await getEquities());
     if (url.pathname === '/api/macro') return sendJSON(res, 200, await getMacro());
     if (url.pathname === '/api/macrodash') return sendJSONCached(res, 200, await getMacroDash().catch((e) => ({ error: String(e.message) })));
-    if (url.pathname === '/api/correlations') return sendJSON(res, 200, await getCorrelations().catch((e) => ({ error: String(e.message) })));
-    if (url.pathname === '/api/events') return sendJSON(res, 200, getEvents());
+    if (url.pathname === '/api/correlations') return sendJSONCached(res, 200, await getCorrelations().catch((e) => ({ error: String(e.message) })));
+    if (url.pathname === '/api/events') return sendJSONCached(res, 200, getEvents());
     if (url.pathname === '/api/calendar') {
       const cal = await getCalendar().catch((e) => ({ error: String(e.message), events: [] }));
       try { cal.companies = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'events.json'), 'utf8')).events || []; } catch { cal.companies = []; }
@@ -4160,7 +4180,7 @@ const server = http.createServer(async (req, res) => {
       } catch { /* no japan data yet */ }
       return sendJSONCached(res, 200, cal);
     }
-    if (url.pathname === '/api/curve') return sendJSON(res, 200, await getCurves());
+    if (url.pathname === '/api/curve') return sendJSONCached(res, 200, await getCurves());
     if (url.pathname === '/api/termstructure') {
       const id = url.searchParams.get('id');
       if (!BENCHMARKS.some((x) => x.id === id)) return sendJSON(res, 404, { error: 'unknown benchmark' });
@@ -4172,8 +4192,8 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname === '/api/products') return sendJSON(res, 200, await getProducts().catch((e) => ({ error: String(e.message) })));
     if (url.pathname === '/api/crush') return sendJSON(res, 200, await getCrush().catch((e) => ({ error: String(e.message) })));
     if (url.pathname === '/api/steel') return sendJSON(res, 200, await getSteelMargin().catch((e) => ({ error: String(e.message) })));
-    if (url.pathname === '/api/analogue') return sendJSON(res, 200, await getAnalogue(url.searchParams.get('metric') || 'basis:brent', Math.min(15, Math.max(2, Number(url.searchParams.get('years')) || 10))));
-    if (url.pathname === '/api/alerts') return sendJSON(res, 200, { current: await computeServerAlerts().catch(() => []) });
+    if (url.pathname === '/api/analogue') return sendJSONCached(res, 200, await getAnalogue(url.searchParams.get('metric') || 'basis:brent', Math.min(15, Math.max(2, Number(url.searchParams.get('years')) || 10))));
+    if (url.pathname === '/api/alerts') return sendJSONCached(res, 200, { current: await computeServerAlerts().catch(() => []) });
     if (url.pathname === '/api/digest') { res.writeHead(200, { 'content-type': 'text/plain' }); return res.end(lastDigest || await buildDigest()); }
     if (url.pathname === '/api/rules') {
       // Server-side rules are site-wide (there is no per-user model), so they are only writable — and
@@ -4328,15 +4348,29 @@ server.listen(PORT, async () => {
   // Warm the boot-critical caches early so a visitor right after a deploy still loads fast:
   // base feeds → CFTC positioning (parallel) → boards → the 9 segment reads → the screener.
   const warmCaches = async () => {
-    // The daily brief is in the loading gate, so warm it with the base feeds rather than leaving a
-    // visitor to pay for it from scratch. `cached()` de-dupes: a request in flight just joins this.
+    // The brief is what the reader lands on first, so warm it with the base feeds rather than
+    // leaving a visitor to pay for it from scratch. `cached()` de-dupes: a request in flight joins.
     try { await Promise.all([getMarket(), getHistory(), getAnalytics(), buildBrief()]); } catch {}
     try { await Promise.all(BENCHMARKS.filter((b) => COT_NAMES[b.id]).map((b) => getPositioning(b.id).catch(() => {}))); } catch {}
-    try { await Promise.all([getRegime(), getCalendar(), getMacroTickers()]); } catch {}
+    // The boards a visitor can reach without waiting: the backdrop, the calendar, the macro tab's
+    // default country and the currency strip. Each one was a cold second on first open.
+    try { await Promise.all([getRegime(), getCalendar(), getMacroTickers(), getMacroDash(), getCountry('us')]); } catch {}
     for (const m of MARKETS) { try { await getMarketRead(m.id, null); } catch {} await new Promise((r) => setTimeout(r, 300)); }
     try { await getScreen(); } catch {}
   };
-  setTimeout(() => warmCaches().catch(() => {}), 800);
-  setInterval(() => warmCaches().catch(() => {}), 8 * 60_000);
+  // Keep the caches hot on a timer shorter than the shortest TTL (the quote cache is 3 minutes), so
+  // a visitor almost never lands on an expired feed. Guarded: a slow warm must not stack up.
+  let warming = false;
+  const warm = () => {
+    if (warming) return;
+    warming = true;
+    warmCaches().catch(() => {}).finally(() => { warming = false; });
+  };
+  // WARM=off lets the test suite exercise cold paths without the warmer competing for the same
+  // upstreams (and tripping their rate limits while the tests are still asserting).
+  if (process.env.WARM !== 'off') {
+    setTimeout(warm, 800);
+    setInterval(warm, 2 * 60_000);
+  }
 
 });
