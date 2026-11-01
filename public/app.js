@@ -4493,6 +4493,9 @@ async function syncMarketBar() {
   const bar = document.getElementById('co-marketbar');
   if (!pane || !bar) return;
   pane.dataset.market = coRegion;
+  // Paint the name before the quote is fetched: the strip used to sit blank for a second or two on a
+  // cold load, which reads as a broken header rather than a loading one.
+  bar.innerHTML = `<span class="mb-name">${coRegion === 'us' ? 'S&P 500' : coRegion === 'jp' ? 'TOPIX' : 'KOSPI'}</span><span class="mb-lvl">—</span>`;
   let name = '', lvl = '—', chg = null, count = '';
   if (coRegion === 'us') {
     if (!spxInfo) {

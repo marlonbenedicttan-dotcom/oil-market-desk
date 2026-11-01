@@ -1067,8 +1067,13 @@ button.deal-sec-tile:hover { background: #10151b; }
 .co-pe { font-size: 10.5px; color: var(--dim); text-align: right; font-variant-numeric: tabular-nums; }
 .co-cmp-l { font-size: 8px; letter-spacing: 1px; color: #5b6773; margin-right: 4px; align-self: center; }
 @media (max-width: 640px) {
-  .co-row, .co-hrow { grid-template-columns: 22px 28px 1fr 92px; }
-  .co-pe, .co-mar, .co-hrow span:nth-child(n+5) { display: none; }
+  /* On a phone the P/E matters more than the avatar: drop the monogram and the ROE column so the
+     price-to-earnings sits beside the market cap instead of being hidden altogether. */
+  .co-row, .co-hrow { grid-template-columns: 22px 1fr 84px 52px; gap: 8px; }
+  .co-row { align-items: start; }
+  .co-row .co-rank { padding-top: 2px; }
+  .co-row .ma-mono, .co-hrow span:nth-child(2) { display: none; }
+  .co-mar, .co-hrow span:nth-child(6) { display: none; }
 }
 .co-hero { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: var(--line); border-bottom: 1px solid var(--line); }
 .co-hero-cell { background: #0c0f13; padding: 10px 12px; }
