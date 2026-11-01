@@ -3788,6 +3788,29 @@ async function maybeSendDigest() {
   } catch (e) { console.error('[digest]', e.message); }
 }
 
+// The calendar endpoint adds the company earnings book to the macro calendar. It used to re-read
+// japan.json (5.5 MB) and re-merge the whole board on every request, which cost ~2s per call. The
+// merged board is now built once per half hour, through the mtime-cached readJapan().
+const getCalendarFull = () => cachedSWR('calendar-full', 30 * 60e3, async () => {
+  const cal = { ...(await getCalendar()) };
+  const companies = [];
+  try { companies.push(...(JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'events.json'), 'utf8')).events || [])); } catch {}
+  try {
+    const today = new Date().toISOString().slice(0, 10);
+    for (const c of (readJapan().companies || [])) {
+      if (!c.earnings || !c.earnings.date || c.earnings.date < today) continue;
+      companies.push({
+        date: c.earnings.date, kind: 'earnings', market: 'JP', ticker: c.ticker, code: c.code,
+        name: c.name, label: `${c.ticker} · ${c.name} · results`,
+        detail: `TSE Prime · ${c.sector}`, basis: 'scheduled', weight: 0,
+        days: Math.round((Date.parse(c.earnings.date) - Date.now()) / 864e5),
+      });
+    }
+  } catch { /* no japan data yet */ }
+  cal.companies = companies;
+  return cal;
+});
+
 // ---------------------------------------------------------------------------
 // HTTP server
 // ---------------------------------------------------------------------------
@@ -3803,6 +3826,9 @@ const encodeBuf = (raw, enc) => (enc === 'br'
   ? zlib.brotliCompressSync(raw, { params: { [zlib.constants.BROTLI_PARAM_QUALITY]: 5 } })
   : zlib.gzipSync(raw, { level: 6 }));
 // Same as sendJSON, but revalidates: a returning visitor gets 304 and transfers nothing.
+// Content-addressed cache for the compressed JSON bodies: the calendar is ~165 KB and compressing it
+// again on every request cost ~1s. The key is the etag, so an unchanged payload is encoded once.
+const encBodies = new Map();
 const sendJSONCached = (res, code, obj) => {
   const body = Buffer.from(JSON.stringify(obj));
   const etag = `W/"${crypto.createHash('sha1').update(body).digest('base64').slice(0, 22)}"`;
@@ -3811,7 +3837,17 @@ const sendJSONCached = (res, code, obj) => {
   const hdr = { etag, 'cache-control': 'public, max-age=30, stale-while-revalidate=60' };
   if (res.req && res.req.headers['if-none-match'] === etag) { res.writeHead(304, hdr); return res.end(); }
   const enc = body.length > 1024 ? pickEncoding(res.req && res.req.headers['accept-encoding']) : null;
-  if (enc) { res.writeHead(code, { ...hdr, 'content-type': 'application/json', 'content-encoding': enc, vary: 'Accept-Encoding' }); return res.end(encodeBuf(body, enc)); }
+  if (enc) {
+    const hit = encBodies.get(etag);
+    let buf = hit && hit[enc];
+    if (!buf) {
+      buf = encodeBuf(body, enc);
+      if (encBodies.size > 60) encBodies.clear();
+      encBodies.set(etag, { ...(hit || {}), [enc]: buf });
+    }
+    res.writeHead(code, { ...hdr, 'content-type': 'application/json', 'content-encoding': enc, vary: 'Accept-Encoding' });
+    return res.end(buf);
+  }
   res.writeHead(code, { ...hdr, 'content-type': 'application/json' });
   res.end(body);
 };
@@ -3891,7 +3927,7 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname === '/api/attribution') {
       const id = url.searchParams.get('id');
       if (!MARKETS.some((x) => x.id === id)) return sendJSON(res, 404, { error: 'unknown segment' });
-      return sendJSON(res, 200, await getAttribution(id, url.searchParams.get('component')).catch((e) => ({ error: String(e.message) })));
+      return sendJSONCached(res, 200, await getAttribution(id, url.searchParams.get('component')).catch((e) => ({ error: String(e.message) })));
     }
     if (url.pathname === '/api/news') {
       const id = url.searchParams.get('id');
@@ -3919,7 +3955,7 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname === '/api/yields') {
       const id = url.searchParams.get('id');
       if (!ALL_COUNTRIES[id]) return sendJSON(res, 404, { error: 'unknown country' });
-      return sendJSON(res, 200, await getBondYields(id).catch((e) => ({ error: String(e.message) })));
+      return sendJSONCached(res, 200, await getBondYields(id).catch((e) => ({ error: String(e.message) })));
     }
     if (url.pathname === '/api/country-series') {
       const id = url.searchParams.get('id');
@@ -3934,24 +3970,24 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname === '/api/fundamentals') {
       const id = url.searchParams.get('id');
       if (!SCAN_QUERIES[id]) return sendJSON(res, 404, { error: 'unknown segment' });
-      return sendJSON(res, 200, await getFundamentals(id, url.searchParams.get('component')).catch((e) => ({ error: String(e.message), items: [] })));
+      return sendJSONCached(res, 200, await getFundamentals(id, url.searchParams.get('component')).catch((e) => ({ error: String(e.message), items: [] })));
     }
     if (url.pathname === '/api/movewho') {
       const id = url.searchParams.get('id');
       if (!NEWS_QUERIES[id]) return sendJSON(res, 404, { error: 'unknown segment' });
       const reqs = (url.searchParams.get('dates') || '').split(',').map((s) => { const [date, dir] = s.split(':'); return { date, dir: dir === '1' ? 'up' : 'down' }; }).filter((r) => /^\d{4}-\d{2}(-\d{2})?$/.test(r.date));
-      return sendJSON(res, 200, await getMoveWho(id, reqs, url.searchParams.get('focus')).catch((e) => ({ error: String(e.message), results: [] })));
+      return sendJSONCached(res, 200, await getMoveWho(id, reqs, url.searchParams.get('focus')).catch((e) => ({ error: String(e.message), results: [] })));
     }
     if (url.pathname === '/api/longterm') {
       const id = url.searchParams.get('id');
       const years = Math.min(15, Math.max(1, Number(url.searchParams.get('years')) || 10));
       if (!resolveMetric(id)) return sendJSON(res, 404, { error: 'unknown metric' });
-      return sendJSON(res, 200, await getLongterm(id, years).catch((e) => ({ error: String(e.message) })));
+      return sendJSONCached(res, 200, await getLongterm(id, years).catch((e) => ({ error: String(e.message) })));
     }
     if (url.pathname === '/api/range') {
       const id = url.searchParams.get('id');
       if (!resolveMetric(id)) return sendJSON(res, 404, { error: 'unknown metric' });
-      return sendJSON(res, 200, await getRange(id, url.searchParams.get('range') || 'ytd').catch((e) => ({ error: String(e.message) })));
+      return sendJSONCached(res, 200, await getRange(id, url.searchParams.get('range') || 'ytd').catch((e) => ({ error: String(e.message) })));
     }
     if (url.pathname === '/api/seasonal') {
       const b = BENCHMARKS.find((x) => x.id === url.searchParams.get('id'));
@@ -4147,51 +4183,36 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname === '/api/regime') return sendJSONCached(res, 200, await getRegime().catch((e) => ({ error: String(e.message), rows: [] })));
     if (url.pathname === '/api/screen') return sendJSONCached(res, 200, await getScreen().catch((e) => ({ error: String(e.message), rows: [] })));
     if (url.pathname === '/api/risk') return sendJSONCached(res, 200, await getRisk().catch((e) => ({ error: String(e.message), metrics: [], matrix: {} })));
-    if (url.pathname === '/api/fxadjusted') return sendJSON(res, 200, await getFxAdjusted(url.searchParams.get('base') || 'USD').catch((e) => ({ error: String(e.message), rows: [] })));
+    if (url.pathname === '/api/fxadjusted') return sendJSONCached(res, 200, await getFxAdjusted(url.searchParams.get('base') || 'USD').catch((e) => ({ error: String(e.message), rows: [] })));
     if (url.pathname === '/api/search') return sendJSONCached(res, 200, searchCompanies(url.searchParams.get('q'), Math.min(20, Number(url.searchParams.get('limit')) || 8)));
     if (url.pathname === '/api/peers') return sendJSONCached(res, 200, getPeers(url.searchParams.get('ref'), Math.min(12, Number(url.searchParams.get('n')) || 6)));
-    if (url.pathname === '/api/fxwindows') return sendJSON(res, 200, await getFxWindows(url.searchParams.get('base') || 'USD').catch((e) => ({ error: String(e.message) })));
-    if (url.pathname === '/api/options') return sendJSON(res, 200, await getOptions(url.searchParams.get('id') || 'wti').catch((e) => ({ error: String(e.message) })));
+    if (url.pathname === '/api/fxwindows') return sendJSONCached(res, 200, await getFxWindows(url.searchParams.get('base') || 'USD').catch((e) => ({ error: String(e.message) })));
+    if (url.pathname === '/api/options') return sendJSONCached(res, 200, await getOptions(url.searchParams.get('id') || 'wti').catch((e) => ({ error: String(e.message) })));
     if (url.pathname === '/api/positioning') {
       const seg = url.searchParams.get('segment');
       const p = seg ? getPositioningSegment(seg) : getPositioning(url.searchParams.get('id') || 'wti');
       return sendJSONCached(res, 200, await p.catch((e) => ({ error: String(e.message) })));
     }
     if (url.pathname === '/api/equities') return sendJSONCached(res, 200, await getEquities());
-    if (url.pathname === '/api/macro') return sendJSON(res, 200, await getMacro());
+    if (url.pathname === '/api/macro') return sendJSONCached(res, 200, await getMacro());
     if (url.pathname === '/api/macrodash') return sendJSONCached(res, 200, await getMacroDash().catch((e) => ({ error: String(e.message) })));
     if (url.pathname === '/api/correlations') return sendJSONCached(res, 200, await getCorrelations().catch((e) => ({ error: String(e.message) })));
     if (url.pathname === '/api/events') return sendJSONCached(res, 200, getEvents());
     if (url.pathname === '/api/calendar') {
-      const cal = await getCalendar().catch((e) => ({ error: String(e.message), events: [] }));
-      try { cal.companies = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'events.json'), 'utf8')).events || []; } catch { cal.companies = []; }
-      try {
-        const jp = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'japan.json'), 'utf8'));
-        const today = new Date().toISOString().slice(0, 10);
-        for (const c of (jp.companies || [])) {
-          if (!c.earnings || !c.earnings.date || c.earnings.date < today) continue;
-          cal.companies.push({
-            date: c.earnings.date, kind: 'earnings', market: 'JP', ticker: c.ticker, code: c.code,
-            name: c.name, label: `${c.ticker} · ${c.name} · results`,
-            detail: `TSE Prime · ${c.sector}`, basis: 'scheduled', weight: 0,
-            days: Math.round((Date.parse(c.earnings.date) - Date.now()) / 864e5),
-          });
-        }
-      } catch { /* no japan data yet */ }
-      return sendJSONCached(res, 200, cal);
+      return sendJSONCached(res, 200, await getCalendarFull().catch((e) => ({ error: String(e.message), events: [] })));
     }
     if (url.pathname === '/api/curve') return sendJSONCached(res, 200, await getCurves());
     if (url.pathname === '/api/termstructure') {
       const id = url.searchParams.get('id');
       if (!BENCHMARKS.some((x) => x.id === id)) return sendJSON(res, 404, { error: 'unknown benchmark' });
-      return sendJSON(res, 200, await getCurveFor(id).catch((e) => ({ error: String(e.message) })));
+      return sendJSONCached(res, 200, await getCurveFor(id).catch((e) => ({ error: String(e.message) })));
     }
-    if (url.pathname === '/api/curvehistory') return sendJSON(res, 200, await getCurveHistory(url.searchParams.get('root') || 'CL').catch((e) => ({ error: String(e.message) })));
-    if (url.pathname === '/api/continuous') return sendJSON(res, 200, await getContinuous(url.searchParams.get('root') || 'CL').catch((e) => ({ error: String(e.message) })));
-    if (url.pathname === '/api/tightness') return sendJSON(res, 200, await getTightness().catch((e) => ({ error: String(e.message) })));
-    if (url.pathname === '/api/products') return sendJSON(res, 200, await getProducts().catch((e) => ({ error: String(e.message) })));
-    if (url.pathname === '/api/crush') return sendJSON(res, 200, await getCrush().catch((e) => ({ error: String(e.message) })));
-    if (url.pathname === '/api/steel') return sendJSON(res, 200, await getSteelMargin().catch((e) => ({ error: String(e.message) })));
+    if (url.pathname === '/api/curvehistory') return sendJSONCached(res, 200, await getCurveHistory(url.searchParams.get('root') || 'CL').catch((e) => ({ error: String(e.message) })));
+    if (url.pathname === '/api/continuous') return sendJSONCached(res, 200, await getContinuous(url.searchParams.get('root') || 'CL').catch((e) => ({ error: String(e.message) })));
+    if (url.pathname === '/api/tightness') return sendJSONCached(res, 200, await getTightness().catch((e) => ({ error: String(e.message) })));
+    if (url.pathname === '/api/products') return sendJSONCached(res, 200, await getProducts().catch((e) => ({ error: String(e.message) })));
+    if (url.pathname === '/api/crush') return sendJSONCached(res, 200, await getCrush().catch((e) => ({ error: String(e.message) })));
+    if (url.pathname === '/api/steel') return sendJSONCached(res, 200, await getSteelMargin().catch((e) => ({ error: String(e.message) })));
     if (url.pathname === '/api/analogue') return sendJSONCached(res, 200, await getAnalogue(url.searchParams.get('metric') || 'basis:brent', Math.min(15, Math.max(2, Number(url.searchParams.get('years')) || 10))));
     if (url.pathname === '/api/alerts') return sendJSONCached(res, 200, { current: await computeServerAlerts().catch(() => []) });
     if (url.pathname === '/api/digest') { res.writeHead(200, { 'content-type': 'text/plain' }); return res.end(lastDigest || await buildDigest()); }
