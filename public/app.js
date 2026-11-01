@@ -186,6 +186,12 @@ const bootReady = Object.fromEntries(BOOT_CORE.map((k) => [k, false]));
 let bootCount0 = 0;
 const bootCount = () => BOOT_CORE.filter((k) => bootReady[k]).length;
 const hideBoot = () => { window.__bootDone = true; const b = document.getElementById('boot'); if (b) b.classList.add('done'); };
+// Run a below-the-fold render after the first screen is on the page — a 400-row screener or a
+// 170-event calendar is not allowed to compete with the paint the reader is waiting for.
+const afterBoot = (fn) => {
+  if (window.__bootDone) { setTimeout(fn, 0); return; }
+  const iv = setInterval(() => { if (window.__bootDone) { clearInterval(iv); setTimeout(fn, 0); } }, 100);
+};
 const bootPaint = () => {
   const n = bootCount(); if (n === bootCount0 && n) return; bootCount0 = n;
   const frac = n / BOOT_CORE.length;
@@ -3006,8 +3012,8 @@ async function loadExtraCore() {
   // Loaded eagerly (a gate here is unreliable: these panels define the page height, so their
   // on-screen position is only known once they've rendered). The loading overlay no longer waits on
   // them — they sit below the fold, so BOOT_CORE excludes the screener and calendar.
-  loadScreen();
-  loadCalendar();
+  afterBoot(loadScreen);      // ~400 rows, below the fold
+  afterBoot(loadCalendar);    // 170 events + 548 earnings dates
   loadRisk();
   loadTransmission(); // COMMODITIES: how it transmits
 
