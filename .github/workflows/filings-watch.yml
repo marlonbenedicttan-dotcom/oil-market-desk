@@ -1,0 +1,59 @@
+name: filings-watch
+
+# Same-day filing detection. The 01:10 UTC job does the full refresh, but a 10-Q accepted at 16:30 ET
+# used to wait until the next morning — and one filed on a Friday waited until Tuesday. This runs after
+# EDGAR's filing window closes, every day, and only touches fundamentals (no prices), so it is minutes
+# rather than an hour.
+on:
+  schedule:
+    - cron: '10 21 * * *'   # 17:10 ET — EDGAR accepts until 17:30 ET
+  workflow_dispatch: {}
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  filings:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0          # a rebase needs history, not just the tip
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Cache SEC responses
+        uses: actions/cache@v4
+        with:
+          path: data/cache
+          key: sec-cache-filings-${{ github.run_id }}
+          restore-keys: sec-cache-
+      - name: Detect and apply new filings
+        env:
+          SEC_UA: 'MarlonWatchtower/1.0 (marlonbenedicttan@gmail.com)'
+        run: node scripts/refresh-daily.mjs --skip-prices
+      - name: Audit before publishing
+        run: |
+          node scripts/audit-calculations.mjs
+          node scripts/audit-markets.mjs
+      - name: Commit if changed
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add data/companies.json data/reconciliation.json data/invariants.json data/filings-state.json data/filings-changed.json data/snapshot.json data/audit-markets.json 2>/dev/null || true
+          if git diff --staged --quiet; then
+            echo 'no data change'
+          else
+            git commit -m "chore: apply new filings ($(date -u +%Y-%m-%d))"
+            pushed=0
+            for i in 1 2 3 4 5; do
+              if git pull --rebase -X theirs origin main && git push; then pushed=1; break; fi
+              echo "push rejected (attempt $i) — rebasing and retrying"; sleep $((i * 5))
+            done
+            [ "$pushed" = "1" ] || { echo 'could not push after 5 attempts'; exit 1; }
+          fi

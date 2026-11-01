@@ -1,5 +1,16 @@
 {
- "updated": "2026-11-01T04:45:04.332Z",
- "tickers": [],
- "details": []
+ "updated": "2026-11-01T05:23:46.181Z",
+ "tickers": [
+  "AAPL"
+ ],
+ "details": [
+  {
+   "ticker": "AAPL",
+   "cik": "320193",
+   "acc": "0000320193-26-000020",
+   "form": "10-Q",
+   "date": "2026-07-31",
+   "was": null
+  }
+ ]
 }

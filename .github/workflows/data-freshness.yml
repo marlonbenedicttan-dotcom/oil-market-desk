@@ -32,7 +32,7 @@ jobs:
           else
             gh issue create --repo "${{ github.repository }}" \
               --title "Data refresh is stale" \
-              --body "The datasets are older than 36 hours. The nightly \`companies-daily\` run has not landed — check https://github.com/${{ github.repository }}/actions/workflows/companies-daily.yml. The site is serving prices that look current but are not."
+              --body "One or more datasets are past their cadence (market files 36h, macro and valuation 10 days, live commodity feeds their source lag). Check companies-daily (actions/workflows/companies-daily.yml), filings-watch (actions/workflows/filings-watch.yml) and macro-snapshot (actions/workflows/macro-snapshot.yml). The site may be serving numbers that look current but are not."
           fi
       - name: Close the issue when fresh again
         if: success()
