@@ -1237,13 +1237,20 @@ button.deal-sec-tile:hover { background: #10151b; }
 .cal-crow { cursor: pointer; }
 .cal-crow:hover { background: #10151b; }
 
-/* Companies: market switch — same language as the main tab bar (amber underline, no boxes). */
-.co-region { display: flex; gap: 20px; padding: 0 12px; border-bottom: 1px solid var(--line); margin: 0 0 2px; }
-.co-region button { background: none; border: 0; border-bottom: 2px solid transparent; color: var(--dim);
-  font: inherit; font-size: 9.5px; letter-spacing: 1px; padding: 9px 1px 8px; cursor: pointer; }
+/* Companies: TWO navigation rows in ONE block — which market, then which view. The old build had two
+   identical-looking tab strips in different places, which is what made "press US, then find Screener"
+   a mis-tap into Japan. Market = filled segmented buttons, view = underline tabs. */
+.co-nav { padding: 10px 12px 0; border-bottom: 1px solid var(--line); }
+.co-navrow { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.co-navrow + .co-navrow { margin-top: 8px; padding-bottom: 4px; }
+.co-nav-l { flex: 0 0 48px; font: 600 8.5px/1 var(--sans); letter-spacing: 1.2px; color: var(--faint); }
+.co-region { display: flex; gap: 6px; min-width: 0; overflow-x: auto; scrollbar-width: none; }
+.co-region::-webkit-scrollbar { display: none; }
+.co-region button { background: #0d1219; border: 1px solid var(--line2); border-radius: 999px; color: var(--dim);
+  font: 600 10.5px/1 var(--sans); letter-spacing: .8px; padding: 0 14px; min-height: 34px;
+  white-space: nowrap; cursor: pointer; }
 .co-region button:hover { color: var(--text); }
-.co-region button.on { color: var(--amber); border-bottom-color: var(--amber); }
-@media (max-width: 640px) { .co-region { gap: 14px; } .co-region button { font-size: 9px; letter-spacing: .6px; } }
+.co-region button.on { background: var(--mkt, var(--amber)); border-color: var(--mkt, var(--amber)); color: #080a0e; }
 .co-chart-tabs { display: flex; gap: 16px; padding: 10px 12px 0; }
 .co-chart-tabs button { background: none; border: 0; border-bottom: 2px solid transparent; color: var(--dim);
   font: inherit; font-size: 9px; letter-spacing: 1px; padding: 4px 1px; cursor: pointer; }
@@ -1278,11 +1285,13 @@ button.deal-sec-tile:hover { background: #10151b; }
   .jp-q-table th:nth-child(6), .jp-q-table td:nth-child(6) { display: none; }
 }
 
-/* Japan: market / screener / banks views. */
-.co-views, .jp-views { display: flex; gap: 18px; padding: 0 12px; border-bottom: 1px solid var(--line); }
-.co-views button, .jp-views button { background: none; border: 0; border-bottom: 2px solid transparent; color: var(--dim);
-  font: inherit; font-size: 9.5px; letter-spacing: 1px; padding: 9px 1px 8px; cursor: pointer; }
-.co-views button.on, .jp-views button.on { color: var(--amber); border-bottom-color: var(--amber); }
+.co-views { display: flex; gap: 2px; min-width: 0; overflow-x: auto; scrollbar-width: none; }
+.co-views::-webkit-scrollbar { display: none; }
+.co-views button { background: none; border: 0; border-bottom: 2px solid transparent; color: var(--dim);
+  font: 600 10.5px/1 var(--sans); letter-spacing: .9px; padding: 0 11px; min-height: 34px;
+  white-space: nowrap; cursor: pointer; }
+.co-views button:hover { color: var(--text); }
+.co-views button.on { color: var(--text); border-bottom-color: var(--mkt, var(--amber)); }
 .jp-market-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 14px; padding: 14px 12px 10px; }
 .jp-market-lvl { font-size: 20px; font-weight: 600; font-variant-numeric: tabular-nums; }
 .jp-breadth { display: flex; align-items: center; gap: 10px; padding: 0 12px 12px; font-size: 10px; }
@@ -1331,8 +1340,13 @@ button.deal-sec-tile:hover { background: #10151b; }
 
 /* Japan on a phone: the filter row and the row metadata were both too heavy. */
 @media (max-width: 640px) {
-  .co-views, .jp-views { gap: 14px; padding: 0 10px; }
-  .co-views button, .jp-views button { font-size: 9px; letter-spacing: .6px; padding: 8px 1px 7px; }
+  .co-nav { padding: 8px 10px 0; }
+  .co-navrow { gap: 8px; }
+  .co-navrow + .co-navrow { margin-top: 6px; }
+  .co-nav-l { flex: 0 0 auto; font-size: 8px; letter-spacing: .9px; }
+  .co-region { gap: 5px; }
+  .co-region button { min-height: 44px; font-size: 10px; padding: 0 13px; }
+  .co-views button { min-height: 44px; font-size: 10px; padding: 0 10px; }
   .jp-presets { gap: 4px; padding: 8px 10px 4px; }
   .jp-presets button { font-size: 8px; letter-spacing: .5px; padding: 5px 7px; }
   .jp-filters { gap: 4px; padding: 0 10px 8px; }
@@ -1367,7 +1381,6 @@ button.deal-sec-tile:hover { background: #10151b; }
 #p-deals[data-market="us"] { --mkt: #4f8cff; }
 #p-deals[data-market="jp"] { --mkt: #e05252; }
 #p-deals[data-market="kr"] { --mkt: #2fb5a8; }
-.co-region button.on { color: var(--mkt, var(--amber)); border-bottom-color: var(--mkt, var(--amber)); }
 .co-marketbar { display: flex; align-items: baseline; gap: 12px; padding: 7px 12px; border-bottom: 1px solid var(--line);
   border-left: 2px solid var(--mkt, var(--line)); font-size: 10px; letter-spacing: .4px; }
 .co-marketbar .mb-name { font-weight: 700; color: var(--mkt, var(--text)); letter-spacing: 1px; }

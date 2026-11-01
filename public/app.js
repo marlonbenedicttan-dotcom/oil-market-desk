@@ -2150,7 +2150,23 @@ function scBarHtml() {
 }
 let usView = (() => { try { return localStorage.getItem('oilbasis.usView') || 'screener'; } catch { return 'screener'; } })();
 const MAG7 = ['AAPL', 'MSFT', 'NVDA', 'AMZN', 'GOOGL', 'META', 'TSLA'];
-const usViewsBar = () => `<div class="co-views">${[['market', 'MARKET'], ['screener', 'SCREENER'], ['themes', 'THEMES'], ['mag7', 'MAG 7']].map(([k, t]) => `<button type="button" data-usview="${k}" class="${usView === k ? 'on' : ''}">${t}</button>`).join('')}</div>`;
+// The view tabs live in ONE fixed strip under the market tabs, not inside every view's body. Two
+// identical-looking tab rows in different places is what made "press US, then find Screener" a
+// mis-tap into Japan.
+const CO_VIEWS = {
+  us: [['usview', 'market', 'OVERVIEW'], ['usview', 'screener', 'SCREENER'], ['usview', 'themes', 'THEMES'], ['usview', 'mag7', 'MAG 7']],
+  jp: [['jpview', 'market', 'OVERVIEW'], ['jpview', 'screener', 'SCREENER'], ['jpview', 'themes', 'THEMES']],
+  kr: [['krview', 'market', 'OVERVIEW'], ['krview', 'screener', 'SCREENER'], ['krview', 'themes', 'THEMES']],
+};
+function paintCoViews() {
+  const bar = $('co-views');
+  if (!bar) return;
+  const active = coRegion === 'jp' ? jpView : coRegion === 'kr' ? krView : usView;
+  bar.innerHTML = (CO_VIEWS[coRegion] || CO_VIEWS.us)
+    .map(([attr, key, label]) => `<button type="button" data-${attr}="${key}" class="${active === key ? 'on' : ''}">${label}</button>`)
+    .join('');
+}
+const usViewsBar = () => '';
 
 let screenMarket = (() => { try { return localStorage.getItem('oilbasis.screenMarket') || 'us'; } catch { return 'us'; } })();
 const coScreenJp = { q: '', sector: 'all', sort: 'marketCap', dir: -1, page: 1, per: 50 };
@@ -3589,10 +3605,7 @@ function syncCoTools() {
   tools.dataset.detail = detail ? '1' : '';
 }
 
-const jpViewsBar = () => `<div class="co-views">
-    ${[['market', 'MARKET'], ['screener', 'SCREENER'], ['themes', 'THEMES']].map(([k, t]) =>
-      `<button type="button" data-jpview="${k}" class="${jpView === k ? 'on' : ''}">${t}</button>`).join('')}
-  </div>`;
+const jpViewsBar = () => '';
 
 const jpYield = (c) => (c.dividend && c.dividend.yield != null ? c.dividend.yield : null);
 const jpCashRatio = (c) => (c.cash && c.marketCap ? c.cash / c.marketCap : 0);
@@ -3624,6 +3637,7 @@ function jpMatches(c) {
 }
 
 async function renderJapan() {
+  paintCoViews();
   const el = $('co-body'); if (!el) return;
   const token = takeToken();
   syncMarketBar();
@@ -4235,9 +4249,10 @@ async function loadKorea() {
   return koreaPromise;
 }
 
-const krViewsBar = () => `<div class="co-views">${[['market', 'MARKET'], ['screener', 'SCREENER'], ['themes', 'THEMES']].map(([k, t]) => `<button type="button" data-krview="${k}" class="${krView === k ? 'on' : ''}">${t}</button>`).join('')}</div>`;
+const krViewsBar = () => '';
 
 async function renderKorea() {
+  paintCoViews();
   const el = $('co-body'); if (!el) return;
   const token = takeToken();
   syncMarketBar();
@@ -4520,6 +4535,7 @@ function warmMarkets(delay = 1500) {
 }
 
 function renderCompanies() {
+  paintCoViews();
   // Keep the market switch in sync with the remembered choice (it also survives a reload).
   document.querySelectorAll('[data-region]').forEach((b) => b.classList.toggle('on', b.dataset.region === coRegion));
   if (coRegion !== 'us') takeToken();   // leaving the US invalidates any in-flight US render

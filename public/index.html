@@ -21,7 +21,7 @@
   <link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png" />
   <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
-  <link rel="stylesheet" href="style.css?v=112" />
+  <link rel="stylesheet" href="style.css?v=113" />
   <noscript><style>#boot{display:none!important}</style></noscript>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
 </head>
@@ -305,10 +305,19 @@
     <div class="tabpane hidden" data-pane="deals" id="pane-deals" role="tabpanel" aria-labelledby="tab-deals">
       <section class="panel" id="p-deals">
         <div class="ph"><span class="ph-t">COMPANIES — profiles &amp; financials</span><span class="dimtext" id="deals-sub">SEC XBRL · US filers</span></div>
-        <div class="co-region" id="co-region">
-          <button type="button" data-region="us" class="on">S&P 500</button>
-          <button type="button" data-region="jp">JAPAN · TSE PRIME</button>
-          <button type="button" data-region="kr">KOREA · KOSPI</button>
+        <div class="co-nav">
+          <div class="co-navrow">
+            <span class="co-nav-l">REGION</span>
+            <div class="co-region" id="co-region">
+              <button type="button" data-region="us" class="on" title="S&amp;P 500 · US filers">S&amp;P 500</button>
+              <button type="button" data-region="jp" title="Japan · TSE Prime">JAPAN</button>
+              <button type="button" data-region="kr" title="Korea · KOSPI">KOREA</button>
+            </div>
+          </div>
+          <div class="co-navrow">
+            <span class="co-nav-l">VIEW</span>
+            <div class="co-views" id="co-views"></div>
+          </div>
         </div>
         <div class="co-marketbar" id="co-marketbar"></div>
         <div class="co-tools">
@@ -414,6 +423,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=258"></script>
+  <script src="app.js?v=259"></script>
 </body>
 </html>
