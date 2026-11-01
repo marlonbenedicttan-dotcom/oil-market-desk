@@ -237,6 +237,25 @@ async function cached(key, ttlMs, fn) {
   return p;
 }
 
+// Like cached(), but a result the caller calls empty is served WITHOUT being stored — a rate-limited
+// burst must not occupy the six-hour slot with a blank chart.
+async function cachedUnlessEmpty(key, ttlMs, fn, isEmpty) {
+  const hit = cache.get(key);
+  if (hit && Date.now() - hit.t < ttlMs) return hit.v;
+  const fly = inflight.get(key);
+  if (fly) return fly;
+  const p = (async () => { try { const v = await fn(); if (!isEmpty(v)) cache.set(key, { t: Date.now(), v }); return v; } finally { inflight.delete(key); } })();
+  inflight.set(key, p);
+  return p;
+}
+
+// A nice-to-have feed must never hold a page: give it a budget and let it finish in the background.
+// The value still lands in `cached()`, so the next read has it; this read just doesn't wait.
+const within = (p, ms) => Promise.race([
+  p.catch(() => null),
+  new Promise((r) => setTimeout(() => r(null), ms)),
+]);
+
 const paperFor = (b) => (b.paper ? cached('p:' + b.paper, 180_000, () => yahooSeries(b.paper, '5d', '1d')) : Promise.resolve({ price: null }));
 const physFor = (b) => (b.physical ? cached('f:' + b.physical, 3_600_000, () => spotSeries(b, 14)) : Promise.resolve({}));
 const hPaperFor = (b) => (b.paper ? cached('hp:' + b.paper, 3_600_000, () => yahooSeries(b.paper, '2y', '1d')) : Promise.resolve({ series: {} }));
@@ -255,14 +274,27 @@ async function contractSeries(symbol) {
   const key = 'cur:' + symbol;
   const hit = cache.get(key);
   if (hit && Date.now() - hit.t < 6 * 3600e3) return hit.v;
-  for (let a = 0; a < 3; a++) {
-    try {
-      const r = await yahooSeries(symbol, '2y', '1d');
-      if (r && Object.keys(r.series).length) { cache.set(key, { t: Date.now(), v: r.series }); return r.series; }
-    } catch {}
-    await sleep(600);
-  }
-  return {};
+  // One fetch per contract month even when two panels ask at the same moment: the curve-history and
+  // the continuous series overlap, and duplicate bursts are what get the whole app rate-limited.
+  const fly = inflight.get(key);
+  if (fly) return fly;
+  const p = (async () => {
+    for (let a = 0; a < 3; a++) {
+      try {
+        const r = await yahooSeries(symbol, '2y', '1d');
+        if (r && Object.keys(r.series).length) { cache.set(key, { t: Date.now(), v: r.series }); return r.series; }
+        return {};                                     // listed but not trading yet — a fact, not a failure
+      } catch (e) {
+        const msg = String((e && e.message) || e);
+        if (/-> 404\b/.test(msg)) return {};           // no such month: retrying can never help
+        // 429 means we are the problem: back off further, and don't hammer it with the same cadence.
+        await sleep(/-> 429\b/.test(msg) ? 700 * (a + 1) : 600);
+      }
+    }
+    return {};
+  })();
+  inflight.set(key, p);
+  try { return await p; } finally { inflight.delete(key); }
 }
 
 async function getMarket() {
@@ -424,8 +456,12 @@ async function getLongterm(id, years = 10) {
   }
 
   const b = m.b;
-  const paperMap = b.paper ? (await cached(`ltp:${b.paper}:${years}`, 6 * 3600e3, () => yahooSeries(b.paper, `${years}y`, interval))).series : {};
-  const physRaw = await cached(`ltf:${b.physical}:${years}`, 6 * 3600e3, () => spotSeries(b, years * 366 + 30));
+  // Futures and the real (physical) series are independent feeds — fetch them together.
+  const [paperRes, physRaw] = await Promise.all([
+    b.paper ? cached(`ltp:${b.paper}:${years}`, 6 * 3600e3, () => yahooSeries(b.paper, `${years}y`, interval)) : Promise.resolve(null),
+    cached(`ltf:${b.physical}:${years}`, 6 * 3600e3, () => spotSeries(b, years * 366 + 30)),
+  ]);
+  const paperMap = (paperRes && paperRes.series) || {};
   const p = monthly(paperMap), f = monthly(physRaw);
   const months = [...new Set([...Object.keys(p), ...Object.keys(f)])].sort();
   const at = (o, mm) => (o[mm] != null ? o[mm] : null);
@@ -462,8 +498,12 @@ async function getRange(id, range) {
   }
 
   const b = m.b;
-  const paperMap = b.paper ? (await cached(`rngp:${b.paper}:${range}`, 3600e3, () => yahooSeries(b.paper, yRange, '1d'))).series : {};
-  const physMap = await cached(`rngf:${b.physical}:${range}`, 3600e3, () => spotSeries(b, days + 5));
+  // Futures and the real (physical) series are independent feeds — fetch them together.
+  const [paperRes, physMap] = await Promise.all([
+    b.paper ? cached(`rngp:${b.paper}:${range}`, 3600e3, () => yahooSeries(b.paper, yRange, '1d')) : Promise.resolve(null),
+    cached(`rngf:${b.physical}:${range}`, 3600e3, () => spotSeries(b, days + 5)),
+  ]);
+  const paperMap = (paperRes && paperRes.series) || {};
   const dates = [...new Set([...Object.keys(paperMap), ...Object.keys(physMap)])].sort();
   const at = (o, d) => (o[d] != null ? o[d] : null);
   const paper = dates.map((d) => at(paperMap, d));
@@ -577,7 +617,10 @@ async function getPositioning(id = 'wti') {
   if (!name) return { error: 'no CFTC series for ' + id };
   return cached('positioning:' + id, 6 * 3600e3, async () => {
     const where = `contract_market_name='${name}'`;
-    const url = `https://publicreporting.cftc.gov/resource/6dca-aqww.json?$limit=220&$order=report_date_as_yyyy_mm_dd%20DESC&$where=${encodeURIComponent(where)}`;
+    // Only the four columns this panel reads. Asking Socrata for the full row made it build a ~1MB
+    // document (and take 15-20s); the narrow select is ~35KB and answers in ~2s.
+    const select = 'report_date_as_yyyy_mm_dd,noncomm_positions_long_all,noncomm_positions_short_all,open_interest_all';
+    const url = `https://publicreporting.cftc.gov/resource/6dca-aqww.json?$limit=220&$order=report_date_as_yyyy_mm_dd%20DESC&$select=${encodeURIComponent(select)}&$where=${encodeURIComponent(where)}`;
     const res = await fetch(url, { headers: UA });
     if (!res.ok) throw new Error('cftc ' + res.status);
     const rows = (await res.json()).map((r) => {
@@ -757,8 +800,11 @@ const attachEvent = (ev) => mergeEvent(STORE, ev);
 async function refreshDeals() {
   ensureSeeded();                       // the brief can reach the store before /api/deals ever does
   return cached('dealstore', 600e3, async () => {
-    for (const ch of CHANNELS) {
-      const items = await fetchGoogleNews(`${ch.q} ${DEAL_SITES}`, 60).catch(() => []);
+    // The channels are independent searches — run them together instead of one round-trip after
+    // another (this is on the brief's critical path). The attach order stays the same.
+    const batches = await Promise.all(CHANNELS.map((ch) =>
+      fetchGoogleNews(`${ch.q} ${DEAL_SITES}`, 60).catch(() => []).then((items) => ({ ch, items }))));
+    for (const { ch, items } of batches) {
       for (const it of items) {
         const t = String(it.title || '');
         if (!it.source || !TIER1_RE.test(it.source)) continue;
@@ -1202,7 +1248,7 @@ async function getEquities() {
 
 const CURVE_MONTHS = ['F', 'G', 'H', 'J', 'K', 'M', 'N', 'Q', 'U', 'V', 'X', 'Z'];
 async function getCurveHistory(root) {
-  return cached('curvehist:' + root, 6 * 3600e3, async () => {
+  return cachedUnlessEmpty('curvehist:' + root, 6 * 3600e3, async () => {
     const now = new Date();
     const list = [];
     for (let k = -12; k <= 4; k++) {                  // 16 contract months (was 25) — the biggest cost in a cold page
@@ -1231,12 +1277,12 @@ async function getCurveHistory(root) {
       m1m2.push(+(series[future[0]][d] - series[future[1]][d]).toFixed(3));
     }
     return { root, dates, m1m2 };
-  });
+  }, (v) => !v.dates.length);
 }
 
 // Back-adjusted continuous front-month series (removes roll jumps).
 async function getContinuous(root) {
-  return cached('cont:' + root, 6 * 3600e3, async () => {
+  return cachedUnlessEmpty('cont:' + root, 6 * 3600e3, async () => {
     const now = new Date();
     const list = [];
     for (let k = -24; k <= 2; k++) {
@@ -1274,7 +1320,7 @@ async function getContinuous(root) {
     const out = {};
     dates.forEach((d, i) => { out[d] = adj[i]; });
     return { series: out };
-  });
+  }, (v) => !v.series || !Object.keys(v.series).length);
 }
 
 // ---------------------------------------------------------------------------
@@ -1585,31 +1631,33 @@ async function getCalendar() {
       push(new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + k, 12)), 'USDA WASDE report (approx.)', 'USDA', 'usual mid-month slot');
     }
     events.push({ date: null, name: 'OPEC+ monthly meeting', source: 'OPEC+', note: 'date varies — check the OPEC calendar' });
+    // The three live sources (Fed, FRED, TradingView) are independent feeds. Ask for all of them at
+    // once: a cold calendar used to pay for them one after another, which is most of its load time.
+    const fredEnd = iso(new Date(Date.now() + 75 * 864e5));
+    const fredWant = /(consumer price index|employment situation|gross domestic product|personal income|producer price index|retail sales|industrial production|advance report)/i;
+    const fredReleases = !process.env.FRED_API_KEY ? Promise.resolve([]) : (async () => {
+      const url = `https://api.stlouisfed.org/fred/releases/dates?api_key=${process.env.FRED_API_KEY}&file_type=json&realtime_start=${today}&realtime_end=${fredEnd}&include_release_dates_with_no_data=true&limit=1000`;
+      const j = await (await fetch(url, { headers: UA })).json();
+      return (j.release_dates || []).filter((r) => fredWant.test(r.release_name || ''));
+    })().catch(() => []);
+    const [fedDates, tvEvents, fredDates] = await Promise.all([
+      fomcDates().catch(() => []),
+      tvWorld().catch(() => []),
+      fredReleases,
+    ]);
     // FOMC — the Fed's published dates (live if reachable, else the published fallback).
-    let fomc = [];
-    try { fomc = await fomcDates(); } catch {}
-    const fomcLive = fomc.length > 0;
-    if (!fomcLive) fomc = FOMC_FALLBACK;
+    const fomcLive = fedDates.length > 0;
+    const fomc = fomcLive ? fedDates : FOMC_FALLBACK;
     for (const d of fomc) if (d >= today) events.push({ date: d, name: 'FOMC rate decision', source: 'Federal Reserve', note: 'policy rate decision · 2:00pm New York' });
     // FRED release calendar (optional free key) — adds CPI, payrolls, GDP, PCE, retail sales…
-    if (process.env.FRED_API_KEY) {
-      try {
-        const end = iso(new Date(Date.now() + 75 * 864e5));
-        const url = `https://api.stlouisfed.org/fred/releases/dates?api_key=${process.env.FRED_API_KEY}&file_type=json&realtime_start=${today}&realtime_end=${end}&include_release_dates_with_no_data=true&limit=1000`;
-        const j = await (await fetch(url, { headers: UA })).json();
-        const want = /(consumer price index|employment situation|gross domestic product|personal income|producer price index|retail sales|industrial production|advance report)/i;
-        for (const r of (j.release_dates || [])) if (want.test(r.release_name || '')) events.push({ date: r.date, name: r.release_name, source: 'FRED', note: 'scheduled release' });
-      } catch {}
-    }
+    for (const r of fredDates) events.push({ date: r.date, name: r.release_name, source: 'FRED', note: 'scheduled release' });
     // Upcoming releases from every macro country, high-impact first (see tvWorld).
-    try {
-      for (const e of await tvWorld()) {
-        events.push({ date: e.date, name: e.name, source: e.country ? `TradingView · ${e.country}` : 'TradingView',
-          time: e.time || null,
-          note: [e.forecast != null ? `consensus ${e.forecast}` : '', e.previous != null ? `prior ${e.previous}` : ''].filter(Boolean).join(' · '),
-          cc: e.cc, country: e.country, importance: e.importance });
-      }
-    } catch {}
+    for (const e of tvEvents) {
+      events.push({ date: e.date, name: e.name, source: e.country ? `TradingView · ${e.country}` : 'TradingView',
+        time: e.time || null,
+        note: [e.forecast != null ? `consensus ${e.forecast}` : '', e.previous != null ? `prior ${e.previous}` : ''].filter(Boolean).join(' · '),
+        cc: e.cc, country: e.country, importance: e.importance });
+    }
     const upcoming = events.filter((e) => !e.date || e.date >= today)
       .sort((x, y) => (x.date || '9999-99-99').localeCompare(y.date || '9999-99-99')).slice(0, 220);
     return { updated: new Date().toISOString(), events: upcoming, fomc: fomcLive ? 'live' : 'fallback', fredKey: Boolean(process.env.FRED_API_KEY) };
@@ -2274,11 +2322,16 @@ async function getCountrySeries(id, range = '1y', vs = null) {
   const want = resolveVs(vs) || resolveVs(c.id === 'us' ? 'idx:ea' : 'idx:us');
   return cached(`cs:${id}:${range}:${want ? want.spec : '-'}`, 3600e3, async () => {
     const cfg = { '1m': ['1mo', '1d'], '3m': ['3mo', '1d'], '6m': ['6mo', '1d'], ytd: ['ytd', '1d'], '1y': ['1y', '1d'], '5y': ['5y', '1mo'] }[range] || ['1y', '1d'];
-    let idxMap = {}, fxMap = {};
-    try { fxMap = (await cached(`csr:${cfg[0]}:${c.fx}`, 3600e3, () => yahooSeries(c.fx, cfg[0], cfg[1]))).series; } catch {}
-    if (c.index) { try { idxMap = (await cached(`csr:${cfg[0]}:${c.index}`, 3600e3, () => yahooSeries(c.index, cfg[0], cfg[1]))).series; } catch {} }
-    let vsMap = {};
-    if (want) { try { vsMap = (await cached(`csr:${cfg[0]}:${want.sym}`, 3600e3, () => yahooSeries(want.sym, cfg[0], cfg[1]))).series; } catch {} }
+    // The country's currency, its index and the comparison series are three independent feeds —
+    // fetched together so a country chart costs one round-trip, not three.
+    const [fxRes, idxRes, vsRes] = await Promise.all([
+      cached(`csr:${cfg[0]}:${c.fx}`, 3600e3, () => yahooSeries(c.fx, cfg[0], cfg[1])).catch(() => null),
+      c.index ? cached(`csr:${cfg[0]}:${c.index}`, 3600e3, () => yahooSeries(c.index, cfg[0], cfg[1])).catch(() => null) : null,
+      want ? cached(`csr:${cfg[0]}:${want.sym}`, 3600e3, () => yahooSeries(want.sym, cfg[0], cfg[1])).catch(() => null) : null,
+    ]);
+    const fxMap = (fxRes && fxRes.series) || {};
+    const idxMap = (idxRes && idxRes.series) || {};
+    const vsMap = (vsRes && vsRes.series) || {};
     const dates = [...new Set([...Object.keys(idxMap), ...Object.keys(fxMap), ...Object.keys(vsMap)])].sort();
     const at = (o, d) => (o[d] != null ? o[d] : null);
     // For a pegged currency the FX line is a constant (plus upstream bad ticks), so it is left out of
@@ -3170,13 +3223,20 @@ async function buildDigest() {
 // ---------------------------------------------------------------------------
 async function buildBrief() {
   return cached('brief', 300_000, async () => {
-    const [m, h, inv, curves, alerts, pos] = await Promise.all([
+    // Everything that only needs the network — no other panel's output — is fetched AT ONCE. The
+    // calendar and the deal book used to be awaited at the very end, so a cold brief paid for them
+    // one after another and took 2-4s longer than the slowest single feed.
+    const [m, h, inv, curves, alerts, pos, cal, dealBook] = await Promise.all([
       getMarket(),
       getHistory().catch(() => null),
       getInventories().catch(() => null),
       getCurves().catch(() => null),
       computeServerAlerts().catch(() => []),
-      getPositioning('wti').catch(() => null),
+      // CFTC is the slowest feed of the lot (seconds, sometimes 20+) and only feeds one optional
+      // line, so it waits with a budget instead of setting the pace for the whole page.
+      within(getPositioning('wti'), 3000),
+      getCalendar().catch(() => null),
+      refreshDeals().catch(() => null),
     ]);
     // Biggest 1-day moves across every instrument's headline series.
     const movers = [];
@@ -3421,7 +3481,6 @@ async function buildBrief() {
     const usedWhy = new Set();
     for (const x of mix) { if (!x.why) continue; if (usedWhy.has(x.why.url)) x.why = null; else usedWhy.add(x.why.url); }
 
-    const cal = await getCalendar().catch(() => null);
     const seenNext = new Set();
     const next = ((cal && cal.events) || getEvents())
       .filter((e) => { const k = String(e.name).toLowerCase(); if (seenNext.has(k)) return false; seenNext.add(k); return true; })
@@ -3461,7 +3520,7 @@ async function buildBrief() {
     // week produces no block at all rather than an empty heading.
     let briefDeals = [];
     try {
-      const book = await refreshDeals();
+      const book = dealBook || { deals: [] };
       // "News", not "big": a deal only belongs on the brief on the day something happened to it —
       // announced, closed, terminated. A large deal from three weeks ago is not today's news.
       // Freshness is about the DEAL, not about the last time a wire mentioned it. A deal is news only
@@ -4253,7 +4312,9 @@ server.listen(PORT, async () => {
   // Warm the boot-critical caches early so a visitor right after a deploy still loads fast:
   // base feeds → CFTC positioning (parallel) → boards → the 9 segment reads → the screener.
   const warmCaches = async () => {
-    try { await Promise.all([getMarket(), getHistory(), getAnalytics()]); } catch {}
+    // The daily brief is in the loading gate, so warm it with the base feeds rather than leaving a
+    // visitor to pay for it from scratch. `cached()` de-dupes: a request in flight just joins this.
+    try { await Promise.all([getMarket(), getHistory(), getAnalytics(), buildBrief()]); } catch {}
     try { await Promise.all(BENCHMARKS.filter((b) => COT_NAMES[b.id]).map((b) => getPositioning(b.id).catch(() => {}))); } catch {}
     try { await Promise.all([getRegime(), getCalendar(), getMacroTickers()]); } catch {}
     for (const m of MARKETS) { try { await getMarketRead(m.id, null); } catch {} await new Promise((r) => setTimeout(r, 300)); }
