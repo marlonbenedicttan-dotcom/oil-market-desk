@@ -174,10 +174,11 @@ const segKey = () => currentMarket + '|' + (currentComponent || '');
 // only once they are all in (or at a hard cap, so it never lingers on a slow feed).
 // What the loading overlay waits for. Only things the reader sees without scrolling: the read, the
 // chart, the news strip, headlines and the regime board. The screener and calendar render on scroll.
-// Positioning used to be in this list, but it is a below-the-fold panel loaded by whenNear() — it never
-// reports ready during boot, so the overlay fell through to its 8-second cap on every single visit.
-// The gate only holds things that are actually on the first screen.
-const BOOT_CORE = ['data', 'read', 'chart', 'news', 'headlines', 'regime'];
+// The overlay only waits for PRICES. Everything else on the first screen (the brief, the backdrop strip)
+// paints its own "loading" state and fills in a beat later; the read/chart/news panels are not even
+// visible on HOME — they live in the COMMODITIES pane. Gating the overlay on them meant waiting for a
+// hidden chart and a live Yahoo quote before showing anything at all (7.5s on a phone).
+const BOOT_CORE = ['data'];
 const bootReady = Object.fromEntries(BOOT_CORE.map((k) => [k, false]));
 let bootCount0 = 0;
 const bootCount = () => BOOT_CORE.filter((k) => bootReady[k]).length;
