@@ -3245,11 +3245,12 @@ async function buildBrief() {
       getInventories().catch(() => null),
       getCurves().catch(() => null),
       computeServerAlerts().catch(() => []),
-      // CFTC is the slowest feed of the lot (seconds, sometimes 20+) and only feeds one optional
-      // line, so it waits with a budget instead of setting the pace for the whole page.
+      // Only the four panels the brief is built from are allowed to set its pace. The calendar, the
+      // deal book and CFTC feed one line each and can take 20s+ from a cold cache, so they wait with
+      // a budget: the brief fills in without them, and the value lands in `cached()` for next time.
       within(getPositioning('wti'), 3000),
-      getCalendar().catch(() => null),
-      refreshDeals().catch(() => null),
+      within(getCalendar(), 5000),
+      within(refreshDeals(), 4000),
     ]);
     // Biggest 1-day moves across every instrument's headline series.
     const movers = [];
