@@ -88,7 +88,7 @@ npm start
 Copy `.env.example` to `.env` for the optional keys. Nothing is required to boot — the paid-ish feeds simply stay dark.
 
 ```sh
-npm test          # 178 tests: pure helpers, data invariants, API smoke
+npm test          # 187 tests: pure helpers, data invariants, API smoke, front-end regressions
 npm run audit:all # cross-checks every published ratio against its inputs
 ```
 
@@ -147,7 +147,7 @@ src/lib.js         pure helpers (unit-tested)
 public/            app.js, style.css, index.html, self-hosted Chart.js, icons
 scripts/           one-shot builders and audits (companies, Japan, Korea, …)
 data/              published snapshots the server serves
-tests/             178 tests (node --test)
+tests/             187 tests (node --test)
 workers/keepalive/ Cloudflare Worker cron (optional)
 ```
 
