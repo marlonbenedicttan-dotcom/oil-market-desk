@@ -3803,7 +3803,9 @@ async function loadCompanies() {
   const el = $('co-body');
   if (!el) return;
   if (!companiesData) el.innerHTML = stLoading('Reading the filings…');
-  try { companiesData = await getJSON('/api/companies'); } catch { companiesData = companiesData || null; }
+  // jget de-dupes and caches: this loader and warmMarkets used to fetch the same 62 KB twice when the
+  // tab was opened before the background warm had finished.
+  try { companiesData = await jget('/api/companies', 300000); } catch { companiesData = companiesData || null; }
   renderCompanies();
 }
 
@@ -4825,9 +4827,15 @@ function warmMarkets(delay = 1500) {
   // own renderer: spending it on every first visit was competing with the first screen.
   const conn = (typeof navigator !== 'undefined' && navigator.connection) || {};
   if (conn.saveData || /(^|-)2g$/.test(conn.effectiveType || '')) return;
+  // A cold start means the instance just woke: it is parsing eleven megabytes of committed JSON and
+  // serving its first pages on a tenth of a CPU. Adding Korea's 28 MB parse there is what made the
+  // COMPANIES tab crawl on the first visit after a deploy — so on a cold start the warm-up stands
+  // down and the reader's own requests get the machine.
+  const cold = (() => { try { return window.__coldStart === true; } catch { return false; } })();
+  if (cold) return;
   warmed = true;
   setTimeout(() => {
-    if (!companiesData) getJSON('/api/companies').then((d) => { companiesData = d; }).catch(() => {});
+    if (!companiesData) jget('/api/companies', 300000).then((d) => { companiesData = d; }).catch(() => {});
   }, delay);
   // Staggered behind the US list, and after the boot overlay has lifted, so the one-off 28 MB parse
   // the server does for Korea never competes with the first screen. `loadKorea()` de-dupes with the
