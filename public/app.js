@@ -174,11 +174,11 @@ const segKey = () => currentMarket + '|' + (currentComponent || '');
 // only once they are all in (or at a hard cap, so it never lingers on a slow feed).
 // What the loading overlay waits for. Only things the reader sees without scrolling: the read, the
 // chart, the news strip, headlines and the regime board. The screener and calendar render on scroll.
-// The overlay only waits for PRICES. Everything else on the first screen (the brief, the backdrop strip)
-// paints its own "loading" state and fills in a beat later; the read/chart/news panels are not even
-// visible on HOME — they live in the COMMODITIES pane. Gating the overlay on them meant waiting for a
-// hidden chart and a live Yahoo quote before showing anything at all (7.5s on a phone).
-const BOOT_CORE = ['data'];
+// What the loading screen waits for: the first screen actually being complete — prices, the segment
+// picker filled in, and the backdrop strip. It deliberately does NOT wait for the read/chart/news panels,
+// which live in the COMMODITIES pane and are invisible on HOME. The fallback cap below means a slow feed
+// can hold it for a few seconds at most, never eight.
+const BOOT_CORE = ['data', 'segments', 'regime'];
 const bootReady = Object.fromEntries(BOOT_CORE.map((k) => [k, false]));
 let bootCount0 = 0;
 const bootCount = () => BOOT_CORE.filter((k) => bootReady[k]).length;
@@ -346,6 +346,7 @@ function buildBpOptions() {
   sel.innerHTML = Object.entries(groups).map(([g, list]) => `<optgroup label="${g.toUpperCase()}">${list.map((m) => `<option value="${m.id}">${m.label}</option>`).join('')}</optgroup>`).join('');
   const want = [...sel.options].some((o) => o.value === currentMarket) ? currentMarket : (sel.value || prev);
   if ([...sel.options].some((o) => o.value === want)) sel.value = want;
+  if (sel.options.length) markReady('segments');   // first screen is complete once the picker has options
 }
 function bpVol(arr) {
   const xs = (arr || []).filter((v) => v != null);
@@ -3137,7 +3138,7 @@ $('macro-links')?.addEventListener('click', (e) => { const el = e.target.closest
   if ('Notification' in window && Notification.permission === 'default') { try { await Notification.requestPermission(); } catch {} }
   // The overlay's 8-second cap used to be armed at the END of boot, so a slow feed could keep it up
   // far longer than 8 seconds. Arm it first.
-  setTimeout(hideBoot, 8000);
+  setTimeout(hideBoot, 4000);   // a few seconds at most, then show whatever is ready
   bootStep('Loading history…');
   // Fire the small config feeds in parallel with the (heavy) history load.
   const fxP = getJSON('/api/fx').catch(() => []);
