@@ -1927,42 +1927,55 @@ async function getMarketRead(id, componentId) {
   const sel = m.components.includes(componentId) ? componentId : m.primary;
   return cached('mread:' + id + ':' + sel, 600_000, async () => {
     const primary = BENCHMARKS.find((b) => b.id === sel);
-    let priceMap = {};
-    try { priceMap = primary.paper ? (await yc(primary.paper, '2y')).series : await cached('mrf:' + primary.physical, 3600e3, () => spotSeries(primary, 740)); } catch {}
+    const sym = primary.paper || primary.physical;
+    // Every block below is an independent feed, so they all run TOGETHER. They used to be awaited
+    // one after another (price → long history → curve → correlations → basis → stocks → fundamentals):
+    // seven round-trips for one read, and the screener builds nine of them.
+    const [priceMap, longVals, curve, macro, basis, inventory, fund] = await Promise.all([
+      (async () => {
+        try { return primary.paper ? (await yc(primary.paper, '2y')).series : await cached('mrf:' + primary.physical, 3600e3, () => spotSeries(primary, 740)); } catch { return {}; }
+      })(),
+      (async () => {
+        // Long monthly history for a multi-year range percentile + the 1-yr move's own distribution,
+        // so "stretched" isn't limited to the 2-year window.
+        if (!primary.paper) return [];
+        try { const lmap = (await cached('mrlt:' + primary.paper, 6 * 3600e3, () => yahooSeries(primary.paper, '10y', '1mo'))).series; return Object.keys(lmap).sort().map((d) => lmap[d]); } catch { return []; }
+      })(),
+      (async () => {
+        if (!CURVE_SPEC[sel]) return null;
+        try { const c = await getCurveFor(sel); return c.available ? { shape: c.shape, m1m2: c.m1m2, m1m6: c.m1m6, months: (c.calendar && c.calendar[0] && c.calendar[0].months) || 1 } : null; } catch { return null; }
+      })(),
+      (async () => {
+        const pairs = [['usd', 'DX-Y.NYB'], ['vix', '^VIX'], ['spx', '^GSPC']];
+        const vals = await Promise.all(pairs.map(([, s]) => pairCorr(sym, s).catch(() => null)));
+        return Object.fromEntries(pairs.map(([k], i) => [k, vals[i]]));
+      })(),
+      (async () => {
+        try {
+          const row = (await getMarket()).benchmarks.find((b) => b.id === sel);
+          const an = (await getAnalytics()).benchmarks?.[sel];
+          return row?.basis != null ? { value: row.basis, pctile: an?.basisPct ?? null } : null;
+        } catch { return null; }
+      })(),
+      (async () => {
+        // Stocks vs their seasonal norm — the segment's own inventory series (energy only).
+        if (!m.hasInventories) return null;
+        try {
+          const inv = await getInventories();
+          const pick = [];
+          if (id === 'gas') { if (inv.gas?.surprise != null) pick.push({ key: 'gas', label: 'US gas storage', ...inv.gas }); }
+          else if (id === 'refined') { for (const k of ['gasoline', 'distillate']) { const it = inv.items.find((x) => x.key === k); if (it) pick.push(it); } }
+          else { const it = inv.items.find((x) => x.key === 'crude'); if (it) pick.push(it); }
+          return pick.length ? pick : null;
+        } catch { return null; }
+      })(),
+      getFundamentals(id, sel).catch(() => null),
+    ]);
     const values = Object.keys(priceMap).sort().map((d) => priceMap[d]);
-    // Long monthly history for a multi-year range percentile + the 1-yr move's own
-    // distribution, so "stretched" isn't limited to the 2-year window.
-    let longVals = [];
-    if (primary.paper) { try { const lmap = (await cached('mrlt:' + primary.paper, 6 * 3600e3, () => yahooSeries(primary.paper, '10y', '1mo'))).series; longVals = Object.keys(lmap).sort().map((d) => lmap[d]); } catch {} }
     const last = [...values].reverse().find((v) => v != null) ?? null;
     let prev = null; for (let i = values.length - 2; i >= 0; i--) if (values[i] != null) { prev = values[i]; break; }
     const dayPct = last != null && prev ? ((last - prev) / prev) * 100 : null;
     const vol30 = realizedVol(values, 30);
-    let curve = null;
-    if (CURVE_SPEC[sel]) { try { const c = await getCurveFor(sel); if (c.available) curve = { shape: c.shape, m1m2: c.m1m2, m1m6: c.m1m6, months: (c.calendar && c.calendar[0] && c.calendar[0].months) || 1 }; } catch {} }
-    const sym = primary.paper || primary.physical;
-    const macro = {};
-    await Promise.all(Object.entries({ usd: 'DX-Y.NYB', vix: '^VIX', spx: '^GSPC' }).map(async ([k, s]) => {
-      try { macro[k] = await pairCorr(sym, s); } catch { macro[k] = null; }
-    }));
-    let basis = null;
-    try {
-      const row = (await getMarket()).benchmarks.find((b) => b.id === sel);
-      const an = (await getAnalytics()).benchmarks?.[sel];
-      if (row?.basis != null) basis = { value: row.basis, pctile: an?.basisPct ?? null };
-    } catch {}
-    // Stocks vs their seasonal norm — the segment's own inventory series (energy only).
-    let inventory = null;
-    if (m.hasInventories) {
-      try {
-        const inv = await getInventories();
-        const pick = [];
-        if (id === 'gas') { if (inv.gas?.surprise != null) pick.push({ key: 'gas', label: 'US gas storage', ...inv.gas }); }
-        else if (id === 'refined') { for (const k of ['gasoline', 'distillate']) { const it = inv.items.find((x) => x.key === k); if (it) pick.push(it); } }
-        else { const it = inv.items.find((x) => x.key === 'crude'); if (it) pick.push(it); }
-        inventory = pick.length ? pick : null;
-      } catch {}
-    }
     // USDA PSD supply/demand — the official US balance (stocks-to-use), where we have it.
     // Monthly, from the committed snapshot (scripts/fetch-usda.mjs). Percentile is within its
     // own 30-year history, so it is comparable across crops.
@@ -2004,7 +2017,7 @@ async function getMarketRead(id, componentId) {
     if (read.range.pos != null) takes.push(`It sits at <b>${read.range.pos.toFixed(0)}/100</b> of its 2-year range — ${read.range.pos >= 70 ? 'near the top' : read.range.pos <= 30 ? 'near the bottom' : 'mid-range'}.`);
     if (read.curve) takes.push(`Futures are in <b>${read.curve.shape.toLowerCase()}</b> — ${read.curve.m1m2 >= 0 ? 'near-term supply is tight (price-positive)' : 'near-term supply looks comfortable'}.`);
     if (read.basis) takes.push(`Real barrels trade <b>${read.basis.value >= 0 ? '+' : ''}${read.basis.value.toFixed(read.dp)}</b> vs futures.`);
-    try { const f = await getFundamentals(id, sel); for (const e of (f.items || []).slice(0, 3)) takes.push(`<b>${e.kind}</b> ${e.ageDays <= 14 ? 'recently' : Math.max(1, Math.round(e.ageDays / 30)) + ' months ago'}: ${escHtml(e.title)} — ${e.effect === 'down' ? 'pressure on price' : 'price-positive'}.`); } catch {}
+    try { const f = fund || await getFundamentals(id, sel); for (const e of ((f && f.items) || []).slice(0, 3)) takes.push(`<b>${e.kind}</b> ${e.ageDays <= 14 ? 'recently' : Math.max(1, Math.round(e.ageDays / 30)) + ' months ago'}: ${escHtml(e.title)} — ${e.effect === 'down' ? 'pressure on price' : 'price-positive'}.`); } catch {}
     read.takeaways = takes;
     read.verdict = marketVerdict(read);
     return read;
@@ -4302,7 +4315,8 @@ server.listen(PORT, async () => {
   console.log(`\n  🛢️  Marlon's Watchtower running at  http://localhost:${PORT}`);
   console.log(`     ${BENCHMARKS.length} benchmarks: ${BENCHMARKS.map((b) => b.label).join(', ')}`);
   console.log(`     alerts:  ${[process.env.WEBHOOK_URL && 'webhook', process.env.SMTP_USER && 'email', process.platform === 'darwin' && process.env.NOTIFY !== 'off' && 'desktop'].filter(Boolean).join(', ') || 'desktop'}`);
-  console.log(`     digest:  ${process.env.DIGEST_HOUR ?? 7}:00 daily → ${process.env.DIGEST_TO || process.env.WEBHOOK_URL || 'desktop + digest.log'}\n`);
+  console.log(`     digest:  ${process.env.DIGEST_HOUR ?? 7}:00 daily → ${process.env.DIGEST_TO || process.env.WEBHOOK_URL || 'desktop + digest.log'}`);
+  console.log(`     state:   ${stateDurable ? 'Upstash Redis (survives redeploys)' : '.state.json only — subscribers/rules reset when the host wipes the disk (set UPSTASH_REDIS_REST_URL + _TOKEN to keep them)'}\n`);
   setTimeout(alertLoop, 12_000);
   setInterval(alertLoop, 5 * 60_000);
   setInterval(maybeSendDigest, 60_000);
