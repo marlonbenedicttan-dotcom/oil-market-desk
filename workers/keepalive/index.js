@@ -12,11 +12,16 @@
 const TARGET = 'https://oil-market-desk.onrender.com/health';
 
 async function ping() {
+  const t0 = Date.now();
   try {
     const r = await fetch(TARGET, { cf: { cacheTtl: 0, cacheEverything: false } });
-    return `${TARGET} -> ${r.status}`;
+    const line = `${TARGET} -> ${r.status} in ${Date.now() - t0}ms`;
+    console.log(line);          // visible in `wrangler tail` and the dashboard logs
+    return line;
   } catch (e) {
-    return `${TARGET} -> ${e.message}`;
+    const line = `${TARGET} -> ${e.message}`;
+    console.error(line);
+    return line;
   }
 }
 

@@ -57,6 +57,7 @@ let macroRegion = 'us';        // selected macro region
 let macroCountries = null;     // /api/countries — country lists per region
 let macroCountry = 'us';       // selected country
 let prefCountry = null;        // one-shot: the country to select on the next region render (restore)
+let macroRegionSeq = 0;        // a region change invalidates an in-flight background prefetch
 let transmission = null;       // /api/transmission — cross-asset logic
 let macroTickers = null;       // this region's macro tickers (currencies + indices) for the tape
 let macroChart = null;         // per-country index vs currency chart
@@ -1168,12 +1169,24 @@ async function attachMarkers(chart, newsId, labels, seriesList, chipsSel, mode =
   // bumps $mseq and we drop the stale result (otherwise old headlines linger on the new chart).
   const seq = (chart.$mseq || 0) + 1; chart.$mseq = seq;
   const chips = $(chipsSel); if (chips) chips.innerHTML = '';
-  const ev = await chartMoveMarkers(newsId, labels, seriesList, mode, focusId).catch(() => []);
-  if (chart.$mseq !== seq) return;
-  chart.$events = ev;
-  applyNewsDataset(chart, ev);
-  renderChartEvents(ev, chipsSel);
-  chart.update('none');
+  const run = async () => {
+    if (chart.$mseq !== seq) return;
+    const ev = await chartMoveMarkers(newsId, labels, seriesList, mode, focusId).catch(() => []);
+    if (chart.$mseq !== seq) return;
+    chart.$events = ev;
+    applyNewsDataset(chart, ev);
+    renderChartEvents(ev, chipsSel);
+    chart.update('none');
+  };
+  // Macro charts sit below the country card. Do not spend a news lookup per chart until the reader is
+  // actually near them; flipping through countries at the top then costs the card + extras only.
+  const inMacro = chart.canvas && chart.canvas.closest && chart.canvas.closest('#pane-macro');
+  if (inMacro) {
+    const node = chart.canvas.closest('.chart-wrap') || chart.canvas;
+    whenNear(node, run, '250px');
+    return;
+  }
+  await run();
 }
 // Put the news INSIDE the normal Chart.js tooltip: an invisible dataset with a point at each big
 // move, whose tooltip line is the headline. Chart.js handles the hover + hiding (no floating card).
@@ -1696,12 +1709,17 @@ function renderMacroRegion() {
   // The country lists arrive with a boot-time fetch. If a region is picked before they land (or the
   // fetch is slow), rendering now would fall back to the US — so wait, then render the picked region.
   if (!macroCountries) { ensureCountries().then(renderMacroRegion); return; }
+  const seq = ++macroRegionSeq;   // cancels a prefetch that belonged to the previous region
   const sel = $('macro-country');
   const list = (macroCountries && macroCountries[macroRegion]) || [];
   if (sel) {
     sel.innerHTML = list.map((c) => `<option value="${c.id}">${c.label}</option>`).join('');
-    const want = (prefCountry && list.some((c) => c.id === prefCountry)) ? prefCountry : (list[0] ? list[0].id : 'us');
-    macroCountry = want; prefCountry = null;
+    // Keep the country the reader is already on when the same region re-renders (a background refresh
+    // used to snap the panel back to the region's first country). A real region change has a country
+    // that is not in the new list, so it still falls back to that region's first country.
+    const keep = (prefCountry && list.some((c) => c.id === prefCountry)) ? prefCountry
+      : (list.some((c) => c.id === macroCountry) ? macroCountry : (list[0] ? list[0].id : 'us'));
+    macroCountry = keep; prefCountry = null;
     if ([...sel.options].some((o) => o.value === macroCountry)) sel.value = macroCountry;
   }
   loadMacroTickers();   // feeds the top tape — keep eager
@@ -1712,10 +1730,14 @@ function renderMacroRegion() {
   whenNear('#pane-macro', () => {
     loadRegionCurrencies();
     loadCountry().then(() => {
-      const go = () => prefetchRegion();
+      const go = () => { if (seq === macroRegionSeq) prefetchRegion(seq); };
       // Later and gentler: the burst used to compete with the country the reader had just opened,
-      // which is exactly what made the first country feel slow.
-      if (window.requestIdleCallback) requestIdleCallback(go, { timeout: 8000 }); else setTimeout(go, 6000);
+      // which is exactly what made the first country feel slow. Give the visible panel a couple of
+      // seconds (not just "the next idle moment") before warming the rest of the region.
+      setTimeout(() => {
+        if (seq !== macroRegionSeq) return;
+        if (window.requestIdleCallback) requestIdleCallback(go, { timeout: 8000 }); else go();
+      }, 2500);
     });
   });
 }
@@ -1765,6 +1787,12 @@ async function loadCatalysts() {
   let d = null;
   try { d = await jget('/api/catalysts?country=' + encodeURIComponent(req), 600000); } catch {}
   if (req !== (macroCountry || 'us')) return;   // newest country wins
+  renderCatalysts(d, req);
+}
+// Rendered from the country payload (or the fallback request above).
+function renderCatalysts(d, req = macroCountry || 'us') {
+  const el = $('macro-events');
+  if (!el) return;
   const scope = $('cat-scope'); if (scope) scope.textContent = ((d && d.label) || req).toUpperCase();
   const items = (d && d.events) || [];
   const cnt = $('cat-count'); if (cnt) cnt.textContent = items.length ? `· ${items.length}` : '';
@@ -1781,19 +1809,28 @@ async function fetchCountry(id) {
   catch { return countryCache[id] ? countryCache[id].data : null; }
 }
 // Warm every other country in the region in the background → switching is instant.
-async function prefetchRegion() {
+async function prefetchRegion(seq = macroRegionSeq) {
   const list = (macroCountries && macroCountries[macroRegion]) || [];
   const ids = list.map((c) => c.id).filter((id) => id !== macroCountry);
+  // A metered/slow connection should not spend a region's worth of background payloads.
+  const conn = navigator.connection || {};
+  if (conn.saveData || /(^|-)2g$/.test(conn.effectiveType || '')) return;
   let i = 0;
-  const worker = async () => { while (i < ids.length) { const id = ids[i++]; await fetchCountry(id); } };
+  const worker = async () => {
+    while (i < ids.length) {
+      if (seq !== macroRegionSeq) return;   // the reader moved on — stop warming the old region
+      const id = ids[i++];
+      await fetchCountry(id);
+      if (seq !== macroRegionSeq) return;
+    }
+  };
   await Promise.all([worker(), worker()]);
 }
 async function loadCountry() {
   const el = $('macro-region-panel');
   if (!el) return;
   const req = macroCountry;                       // guard: newest country wins
-  loadCatalysts();                                // country-scoped · independent of the heavier panel below
-  loadRegionCurrencies();                         // also country-scoped, so the two panels agree
+  loadRegionCurrencies();                         // country-scoped, and independent of the card
   const showUsJp = req === 'us' || req === 'jp';
   const up = $('usjp-panel');
   if (up) up.classList.toggle('hidden', !showUsJp);
@@ -1857,11 +1894,25 @@ async function loadCountry() {
   if (c.takeaways && c.takeaways.length) html += '<div class="bb-sec">KEY TAKEAWAYS</div><ul class="ins-list">' + c.takeaways.map((t) => `<li>${t}</li>`).join('') + '</ul>';
   html += '<div class="bb-sec">CROSS-ASSET — HOW THIS REGION IS AFFECTED</div>' + crossAssetBlock((i) => (i.regions || []).includes(macroRegion));
   el.innerHTML = html;
-  loadMacroNews();
-  loadCountryChart();
+  // The card, news and chart series all arrived in this one payload. The two slow, independent feeds
+  // (yields + catalysts) come from /api/country-extras in a single follow-up request, so the card is
+  // never held hostage by them; the separate loaders remain as a fallback for an upstream outage.
+  if (c.news) renderNews(c.news, 'macro-news', 'macro-news-sub'); else loadMacroNews();
+  loadCountryChart(c.series);
+  if (c.yields && c.catalysts) { renderYields(c.yields); renderCatalysts(c.catalysts, req); }
+  else loadCountryExtras(req);
   renderPolicyChart(c.policy, c.policyNote);
   renderCpiChart(c.cpi);
-  loadYields();
+}
+// Yields + catalysts in one request (the card does not wait for them).
+async function loadCountryExtras(req = macroCountry) {
+  let d = null;
+  try { d = await jget('/api/country-extras?id=' + encodeURIComponent(req), 600000); } catch {}
+  if (req !== macroCountry) return;
+  if (d && !d.error) {
+    if (d.yields) renderYields(d.yields); else loadYields();
+    if (d.catalysts) renderCatalysts(d.catalysts, req); else loadCatalysts();
+  } else { loadYields(); loadCatalysts(); }
 }
 // Per-country chart: equity index and currency, both indexed to 100 so they compare.
 // The country chart compares this country against whatever you pick: another country's index (the
@@ -1883,15 +1934,18 @@ function syncMacroVs() {
   if ([...sel.options].some((o) => o.value === want)) sel.value = want;
 }
 const currentVs = () => (($('macro-vs') && $('macro-vs').value) || MACRO_VS_DEFAULT(macroCountry));
-async function loadCountryChart() {
+async function loadCountryChart(pre = null) {
   const cv = $('macro-chart');
   if (!cv) return;
   const req = macroCountry;
   syncMacroVs();
   const vs = currentVs();
-  let d;
-  try { d = await jget('/api/country-series?id=' + encodeURIComponent(req) + '&range=' + ($('macro-range') ? $('macro-range').value : '1y') + '&vs=' + encodeURIComponent(vs), 300000); }
-  catch { return; }
+  const range = $('macro-range') ? $('macro-range').value : '1y';
+  let d = pre && pre.dates && pre.id === req && pre.range === range && pre.vsSpec === vs ? pre : null;
+  if (!d) {
+    try { d = await jget('/api/country-series?id=' + encodeURIComponent(req) + '&range=' + range + '&vs=' + encodeURIComponent(vs), 300000); }
+    catch { return; }
+  }
   if (req !== macroCountry) return;
   if (!d || d.error || !d.dates || !d.dates.length) return;
   const norm = (arr) => { const base = (arr || []).find((v) => v != null); return (arr || []).map((v) => (v == null || !base) ? null : (v / base) * 100); };
@@ -2069,6 +2123,39 @@ function renderBrief(b) {
   const upd = $('brief-updated');
   if (upd) upd.textContent = 'as of ' + new Date(b.updated).toLocaleString('en-GB');
   const h = b.hero;
+  // IMPORTANT TODAY — event-first. The card carries the event, the reason the wire gives, and the
+  // market evidence. It is a separate layer from the ranked tape below, not another row of it.
+  const evDate = (iso) => {
+    if (!iso) return '';
+    const d = new Date(iso);
+    if (isNaN(d)) return String(iso);
+    // The reader's calendar and clock: a story filed two hours ago should read "Today", even when
+    // the server's UTC day has not rolled over yet.
+    const now = new Date();
+    const hasTime = /T\d/.test(String(iso));
+    const time = d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+    if (d.toDateString() === now.toDateString()) return hasTime ? `Today ${time}` : 'Today';
+    if (d.toDateString() === new Date(now.getTime() - 864e5).toDateString()) return hasTime ? `Yesterday ${time}` : 'Yesterday';
+    return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
+  };
+  const impHtml = (b.events || []).length
+    ? `<div class="gtitle">IMPORTANT TODAY</div><div class="imp-list">${b.events.slice(0, 5).map((e) => {
+      const mkt = (e.market || []).map((m) => `<span class="imp-m ${cls(m.d1)}">${esc(m.label)} ${pctf(m.d1)}</span>`).join('');
+      const src = e.url ? `<a href="${esc(e.url)}" target="_blank" rel="noopener noreferrer">${esc(e.source || 'Source')}</a>` : '';
+      const wires = (e.sources || []).length > 1 ? `<span class="dimtext">${e.sources.length} wires</span>` : '';
+      const why = e.why ? esc(e.why) : (e.mechanism ? esc(e.mechanism) : '<span class="dimtext">Reason not established in the wire coverage.</span>');
+      const whyK = e.why ? 'WHY' : (e.mechanism ? 'WHY IT MATTERS' : 'WHY');
+      const mech = e.why && e.mechanism ? ` <span class="dimtext">— ${esc(e.mechanism)}</span>` : '';
+      return `<div class="imp">`
+        + `<div class="imp-top"><span class="imp-tag">${esc(e.label)}</span>`
+        + `${e.novelty === 'new' ? '<span class="imp-badge new">NEW</span>' : '<span class="imp-badge">DEVELOPING</span>'}`
+        + `<span class="imp-date">${esc(evDate(e.at || e.date))}</span></div>`
+        + `<div class="imp-what">${esc(e.what)}</div>`
+        + `<div class="imp-why"><span class="why-k">${whyK}</span>${why}${mech}</div>`
+        + `<div class="imp-mkt">${mkt}${mkt && (src || wires) ? '<span class="dimtext">·</span>' : ''}${src}${src && wires ? '<span class="dimtext">·</span>' : ''}${wires}</div>`
+        + `</div>`;
+    }).join('')}</div>`
+    : '';
   const relDay = (d) => {
     if (!d) return '';
     const today = new Date().toISOString().slice(0, 10);
@@ -2126,7 +2213,7 @@ function renderBrief(b) {
     + `<span class="mvr-v dimtext" style="font-weight:400">${esc(e.time || '')}</span><span class="mvr-sp"></span></div>`).join('')
     || '<div class="mvr"><span class="mvr-tag"></span><span class="mvr-n dimtext">Nothing scheduled.</span><span></span><span></span></div>';
   const ctx = (b.happened || []).filter((x) => x.kind !== 'move').map((x) => x.text).join(' · ');
-  el.innerHTML = heroHtml
+  el.innerHTML = impHtml + heroHtml
     + `<div class="brief-cols"><div class="brief-col"><div class="gtitle">WHAT HAPPENED</div>${rows}</div>`
     + `<div class="brief-col"><div class="gtitle">WHAT'S NEXT</div>${nextRows}</div></div>`
     + (ctx ? `<div class="brief-ctx dimtext">${ctx}</div>` : '');
@@ -2912,7 +2999,9 @@ async function loadMacroNews() {
 function renderMacroDash(md, corr) {
   if (!md || md.error) return;
   macroMd = md;
-  renderMacroRegion();
+  // Populate the region/country picker once. A periodic re-render must not rebuild the panel: it would
+  // reload the country the reader is on (and used to snap back to the region's first country).
+  if (!$('macro-country') || !$('macro-country').options.length) renderMacroRegion();
   if ($('macro-links')) {
     const rows = (md.links || []).map((l) => {
       if (l.corr == null) return macroTile(l.pair, '—', l.commodity + ' · no data', '');
@@ -3142,7 +3231,9 @@ async function loadExtraSlow() {
       getJSON('/api/macrodash').catch(() => null),
       getJSON('/api/correlations').catch(() => null),
     ]);
-    whenNear('#pane-macro', () => { renderMacroDash(md, corr); loadCatalysts(); });
+    // renderMacroDash renders the region/country panel, whose loader now brings the catalysts with it
+    // (or fetches them itself if the bundle is unavailable). Do not fire a duplicate catalysts request.
+    whenNear('#pane-macro', () => { if (md && !md.error) renderMacroDash(md, corr); else renderMacroRegion(); });
     if (md?.fx) { lastFx = md.fx; renderTicker(data); }
     extraSlowDone = true;
   } catch (e) {}
@@ -4461,8 +4552,11 @@ async function loadKorea() {
   if (koreaData) return koreaData;
   if (koreaPromise) return koreaPromise;
   koreaPromise = (async () => {
-    try { koreaData = await jget('/api/korea', 3600000); } catch { koreaData = { companies: [] }; }
-    koreaPromise = null;
+    try { koreaData = await jget('/api/korea', 3600000); }
+    // A failed prefetch must not be remembered as "Korea is not built yet": leave the slot empty so
+    // the next visit retries instead of rendering an empty market until a reload.
+    catch { koreaData = null; }
+    finally { koreaPromise = null; }
     return koreaData;
   })();
   return koreaPromise;
@@ -4720,20 +4814,25 @@ function syncMarketAccent() {
   if (pane) pane.dataset.market = coRegion;
 }
 
-// Prefetch the other two markets after the first one paints. Three payloads is ~370 KB gzipped, and it
-// makes the market switch instant instead of a spinner.
+// Prefetch the markets a reader is likely to switch to after the first one paints, so a region
+// change is instant instead of a spinner.
 let warmed = false;
 function warmMarkets(delay = 1500) {
   if (warmed) return;
-  // The US screener (~90 KB gzipped) is prefetched so COMPANIES opens instantly. Japan and Korea are
-  // ~900 KB together and are loaded by their own renderers when that region is opened — spending that
-  // on every first visit, for a tab the reader may never open, was competing with the first screen.
+  // The US screener (~90 KB gzipped) is prefetched so COMPANIES opens instantly. Korea is only
+  // ~50 KB gzipped — a fraction of that — and its first click otherwise pays a full round trip
+  // behind a "Loading KOSPI…" spinner, so it is warmed too. Japan (~140 KB) still waits for its
+  // own renderer: spending it on every first visit was competing with the first screen.
   const conn = (typeof navigator !== 'undefined' && navigator.connection) || {};
   if (conn.saveData || /(^|-)2g$/.test(conn.effectiveType || '')) return;
   warmed = true;
   setTimeout(() => {
     if (!companiesData) getJSON('/api/companies').then((d) => { companiesData = d; }).catch(() => {});
   }, delay);
+  // Staggered behind the US list, and after the boot overlay has lifted, so the one-off 28 MB parse
+  // the server does for Korea never competes with the first screen. `loadKorea()` de-dupes with the
+  // click, so opening KOREA while this is in flight shares the one request instead of a second.
+  setTimeout(() => { if (!koreaData) loadKorea().catch(() => {}); }, delay + 1500);
 }
 
 function renderCompanies() {

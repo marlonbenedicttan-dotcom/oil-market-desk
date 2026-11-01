@@ -3146,3 +3146,32 @@ Audited at 360, 390 and 430 px with screenshots of every view, then fixed what l
   `riskRead` is risk-only now (correlation has its own section). **200+ tests**.
 - **Also landed:** the `?v=` on `app.js` / `style.css` is now stamped from the file mtime at serve
   time, so a deploy can't leave returning readers on a year-cached old asset. No manual bump needed.
+
+## MACRO across every country/region: one card request, extras off the critical path (2026-11-02)
+- **A country switch used to fan out into five requests** after the card landed: `/api/macro-news`,
+  `/api/country-series`, `/api/yields` and `/api/catalysts`, on top of `/api/country` — then the region
+  prefetch warmed every *other* country in parallel. Flipping through regions multiplied that burst.
+- **The card now carries its news and chart series** (`/api/country` → `news`, `series`). Both were
+  already computed inside `getCountry`, so this adds no server work — it just removes two round trips.
+- **Yields + the release calendar come together from `/api/country-extras?id=`**, one request, fired
+  after the card paints. Neither feed can hold the card. (A bundle with all four was tried first and
+  made the card *slower* — the card is supposed to appear before the slow feeds.)
+- **The World Bank / FRED are only asked for fields the IMF snapshot lacks.** `macro.json` already has
+  GDP / CPI / debt / unemployment for every country, but the code still fetched all four World Bank
+  series (plus FRED debt) on every cold country. Skipped fetch → ~4 fewer upstream calls per country.
+- **1m/3m/6m/YTD/1y chart ranges are sliced from the same 2-year daily series** the card already needs
+  for its 1D/1W/…/1Y moves (`deltaSeries`). One Yahoo fetch per symbol instead of four. 5y keeps its
+  own monthly request.
+- **Macro chart markers load only when the reader scrolls near them** (`whenNear` on the chart wrap),
+  so flipping countries at the top no longer fires 3–4 `/api/movewho` lookups (each up to 6 Google News
+  queries) per switch. They still appear as soon as the chart is on screen.
+- **Region prefetch starts 2.5s after the visible panel settles** (idle on top of that), is cancelled
+  when the reader changes region, and is skipped on `saveData`/2G.
+- **The panel no longer snaps back to the region's first country** on a background macrodash refresh:
+  `renderMacroRegion` keeps the current country when it is already in the region list, and
+  `renderMacroDash` only builds the picker once.
+- Measured locally (cold server, MACRO opened from HOME): the country card paints in ~0.3–0.7s, the
+  extras land in parallel, and the network shows **no** separate news/series/yields/catalysts requests
+  and **no** movewho burst while the card is in view.
+- Tests: `/api/country` must carry `news.items` + `series.dates`; `/api/country-extras` must carry
+  `yields` + `catalysts` (and 404 an unknown country). **202 tests pass.**

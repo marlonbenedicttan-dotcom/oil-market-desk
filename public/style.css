@@ -302,6 +302,23 @@ footer li { margin-bottom: 2px; }
 .mvr-why a:hover { color: var(--amber); }
 .mvr-why.roll { color: var(--amber2); }
 .brief-ctx { padding: 7px 12px; font-size: 10.5px; border-top: 1px solid var(--line); }
+/* IMPORTANT TODAY — event-first cards: what happened, the wire's stated reason, the market evidence. */
+.imp-list { border-bottom: 1px solid var(--line); }
+.imp { padding: 9px 12px 10px; border-bottom: 1px dotted var(--line); }
+.imp:last-child { border-bottom: 0; }
+.imp-top { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; font-size: 9px; letter-spacing: 1.1px; text-transform: uppercase; color: var(--dim); }
+.imp-tag { color: var(--amber); }
+.imp-badge { border: 1px solid var(--line2); padding: 0 4px; font-size: 8px; letter-spacing: .8px; }
+.imp-badge.new { color: var(--green); border-color: #1d5c38; }
+.imp-date { margin-left: auto; letter-spacing: .5px; }
+.imp-what { font-size: 13px; color: var(--text); line-height: 1.4; margin-top: 4px; }
+.imp-why { font-size: 11px; color: #c9d4df; line-height: 1.45; margin-top: 4px; }
+.imp-mkt { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; font-size: 10px; color: var(--dim); margin-top: 4px; }
+.imp-m { font-variant-numeric: tabular-nums; }
+.imp-m.pos { color: var(--green); }
+.imp-m.neg { color: var(--red); }
+.imp-mkt a { color: #a9b6c3; text-decoration: none; }
+.imp-mkt a:hover { color: var(--amber); }
 @media (max-width: 640px) {
   .hero-mid { gap: 12px; }
   .hero-v { font-size: 30px; }

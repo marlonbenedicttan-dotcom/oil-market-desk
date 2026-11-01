@@ -503,3 +503,169 @@ test('frontExpiry applies each market\'s own expiry rule, not one shared date', 
   // Unknown roots are null, never a guess.
   assert.equal(frontExpiry('NOPE', '2026-10-01'), null);
 });
+
+import { priorityOf, rankByPriority, splitCause, classifyEvent, matchEntities, clusterEvents, scoreEvents, selectEvents, sourceTier } from '../src/lib.js';
+
+test('priorityOf puts the macro core ahead of specialist markets', () => {
+  assert.equal(priorityOf('wti'), 1);
+  assert.equal(priorityOf('gold'), 1);
+  assert.equal(priorityOf('us'), 1);
+  assert.equal(priorityOf('corn'), 2);
+  assert.equal(priorityOf('id'), 2);
+  assert.equal(priorityOf('cheese'), 3);
+  assert.equal(priorityOf('hogs'), 3);
+  // Unknown ids may appear, but are never assumed core.
+  assert.equal(priorityOf('something-new'), 2);
+  // Empirical backstop: a stepped series is thin whatever the list says.
+  assert.equal(priorityOf({ id: 'corn', flat: 41 }), 3);
+});
+
+test('rankByPriority never lets a thin market lead on a price move alone', () => {
+  // The exact complaint: cheddar +6% scores 9.9, Brent +2% scores 1.4.
+  const board = [
+    { id: 'cheese', label: 'Cheddar Cheese', kind: 'bench', group: 'Dairy', d1: 6, score: 9.9, flat: 45 },
+    { id: 'milk', label: 'Class III Milk', kind: 'bench', group: 'Dairy', d1: 4, score: 7.2, flat: 40 },
+    { id: 'wti', label: 'WTI (Cushing)', kind: 'bench', group: 'Crude', d1: 2, score: 1.4, flat: 0 },
+    { id: 'gold', label: 'Gold', kind: 'bench', group: 'Metals', d1: 1.5, score: 1.1, flat: 0 },
+    { id: 'us', label: 'United States', kind: 'index', d1: 0.9, score: 0.9, flat: 0 },
+    { id: 'corn', label: 'Corn', kind: 'bench', group: 'Agriculture', d1: 3, score: 2.2, flat: 0 },
+  ];
+  const picked = rankByPriority(board, { max: 6, slots: { 1: 4, 2: 2, 3: 0 } });
+  assert.deepEqual(picked.map((x) => x.id), ['wti', 'gold', 'us', 'corn']);
+  assert.equal(picked[0].id, 'wti', 'a core market leads, not the biggest percentage');
+  assert.ok(!picked.some((x) => priorityOf(x) === 3), 'no thin market on a price move alone');
+});
+
+test('rankByPriority fills core first, keeps diversity, and honours the cap', () => {
+  const board = [
+    { id: 'wti', kind: 'bench', group: 'Crude', d1: 1, score: 5 },
+    { id: 'brent', kind: 'bench', group: 'Crude', d1: 1, score: 4 },
+    { id: 'gold', kind: 'bench', group: 'Metals', d1: 1, score: 3 },
+    { id: 'copper', kind: 'bench', group: 'Metals', d1: 1, score: 2 },
+    { id: 'corn', kind: 'bench', group: 'Agriculture', d1: 1, score: 9 },
+    { id: 'wheat', kind: 'bench', group: 'Agriculture', d1: 1, score: 8 },
+    { id: 'coffee', kind: 'bench', group: 'Agriculture', d1: 1, score: 7 },
+  ];
+  const picked = rankByPriority(board, { max: 5, slots: { 1: 4, 2: 2, 3: 0 } });
+  assert.deepEqual(picked.map((x) => x.id), ['wti', 'brent', 'gold', 'copper', 'corn']);
+  // Two per group: Crude has two, Metals two, and the remaining Agriculture slot is one, not three.
+  assert.equal(picked.filter((x) => x.group === 'Agriculture').length, 1);
+  assert.equal(picked.length, 5);
+});
+
+test('rankByPriority can admit a tier-3 market when a confirmed event allows it', () => {
+  const board = [
+    { id: 'butter', kind: 'bench', group: 'Dairy', d1: 12, score: 8, flat: 45 },
+    { id: 'wti', kind: 'bench', group: 'Crude', d1: 1, score: 1 },
+  ];
+  const picked = rankByPriority(board, { max: 6, slots: { 1: 4, 2: 2, 3: 1 } });
+  assert.deepEqual(picked.map((x) => x.id), ['wti', 'butter']);
+  assert.equal(picked[0].id, 'wti', 'even then, a thin market never leads');
+});
+
+test('splitCause extracts the wire\'s own reason and invents nothing', () => {
+  assert.deepEqual(
+    splitCause('Indonesian stocks sink as MSCI flags possible reclassification'),
+    { what: 'Indonesian stocks sink', why: 'MSCI flags possible reclassification' });
+  assert.deepEqual(
+    splitCause('Oil jumps after OPEC agrees output cut'),
+    { what: 'Oil jumps', why: 'OPEC agrees output cut' });
+  // A headline with no causal clause stays a fact; the caller must not manufacture a reason.
+  assert.deepEqual(splitCause('Gold rises'), { what: 'Gold rises', why: null });
+  // "on Monday" is not a cause, even though "on" can introduce one.
+  assert.deepEqual(splitCause('Ford on Monday reports earnings'), { what: 'Ford on Monday reports earnings', why: null });
+  // "as nuclear weapons state" is a description, not a reason.
+  assert.deepEqual(
+    splitCause('North Korea says sanctions do not work as nuclear weapons state'),
+    { what: 'North Korea says sanctions do not work as nuclear weapons state', why: null });
+});
+
+test('classifyEvent puts index reviews and policy ahead of a generic market move', () => {
+  assert.equal(classifyEvent('MSCI puts Indonesia on review').id, 'market-access');
+  assert.equal(classifyEvent('OPEC agrees output cut').id, 'opec');
+  assert.equal(classifyEvent('Butter jumps after EU export ban').id, 'sanctions');
+  assert.equal(classifyEvent('Fed cuts rates').id, 'central-bank');
+  assert.equal(classifyEvent('US tech stocks tumble').id, 'markets');
+  assert.equal(classifyEvent('China to convene meeting on supporting stock market').id, 'policy');
+  // The subject decides the category: an economy print with war in the background is data, not war.
+  assert.equal(classifyEvent('Saudi economy shrank at a slower pace before the war escalated').id, 'data');
+  assert.equal(classifyEvent('Oil jumps after attack on a tanker').id, 'geopolitics');
+  // A colour piece about election day is not an election result.
+  assert.equal(classifyEvent("When buses stopped running on Brazil election day, 'Lula's Army' grabbed their car keys"), null);
+  assert.equal(classifyEvent('Brazil election result lifts stocks').id, 'politics');
+  // A dairy quote on its own is not an event.
+  assert.equal(classifyEvent('Cheddar cheese prices jump 6%'), null);
+});
+
+test('clusterEvents counts corroboration and ignores a dairy quote', () => {
+  const catalog = [
+    { id: 'id', label: 'Indonesia', kind: 'country', patterns: ['Indonesia', 'Indonesian', 'IDX', 'rupiah'] },
+    { id: 'us', label: 'United States', kind: 'country', patterns: [/United States/, /\bUS\b/, 'S&P 500'] },
+    { id: 'cheese', label: 'Cheddar Cheese', kind: 'bench', patterns: ['cheddar', 'cheese'] },
+  ];
+  const day = '2026-11-02';
+  const items = [
+    { title: 'Indonesian stocks sink as MSCI flags possible reclassification', source: 'Bloomberg', url: 'u1', date: `${day}T01:00:00Z` },
+    { title: 'Indonesia shares fall after MSCI review warning', source: 'Reuters', url: 'u2', date: `${day}T02:00:00Z` },
+    { title: 'US tech stocks tumble as AI spending concerns intensify', source: 'Financial Times', url: 'u3', date: `${day}T03:00:00Z` },
+    { title: 'Cheddar cheese prices jump 6%', source: 'Reuters', url: 'u4', date: `${day}T04:00:00Z` },
+  ];
+  const clusters = clusterEvents(items, { catalog, now: Date.parse(`${day}T12:00:00Z`) });
+  const idc = clusters.find((c) => c.primary && c.primary.id === 'id');
+  assert.ok(idc, 'the Indonesia story is one event');
+  assert.equal(idc.category, 'market-access');
+  assert.equal(idc.corroboration, 2, 'two wires corroborate it');
+  assert.match(idc.why, /MSCI/);
+  assert.ok(idc.at, 'keeps the best headline timestamp for the reader\'s local clock');
+  assert.ok(!clusters.some((c) => c.primary && c.primary.id === 'cheese'), 'a price print is not an event');
+});
+
+test('clusterEvents drops analysis pieces and stale items', () => {
+  const day = '2026-11-02';
+  const catalog = [{ id: 'wti', label: 'WTI', kind: 'bench', patterns: ['WTI', 'OPEC'] }];
+  const items = [
+    { title: 'What would another OPEC conflict look like?', source: 'Financial Times', date: `${day}T00:00:00Z` },
+    { title: "An Asian Stock Trader's Guide Ahead of the US Midterm Elections", source: 'Bloomberg', date: `${day}T00:00:00Z` },
+    { title: 'OPEC agrees output cut', source: 'Reuters', date: '2026-10-30T00:00:00Z' },
+    { title: 'OPEC agrees output cut after talks', source: 'Reuters', date: `${day}T00:00:00Z` },
+  ];
+  const clusters = clusterEvents(items, { catalog, now: Date.parse(`${day}T12:00:00Z`) });
+  assert.equal(clusters.length, 1, 'only the current, non-analysis story survives');
+  assert.equal(clusters[0].category, 'opec');
+});
+
+test('scoreEvents ranks a policy event over a broad market move, and selectEvents keeps it diverse', () => {
+  const mk = (over) => ({ mechanism: 'm', what: 'w', why: 'y', ageDays: 0, corroboration: 1, ...over });
+  const clusters = [
+    mk({ key: 'market-access|id|d', category: 'market-access', label: 'Market access', weight: 8,
+      primary: { id: 'id', label: 'Indonesia', kind: 'country' }, entities: [{ id: 'id', kind: 'country' }], source: 'Bloomberg', corroboration: 2 }),
+    mk({ key: 'markets|us|d', category: 'markets', label: 'Markets', weight: 5,
+      primary: { id: 'us', label: 'United States', kind: 'country' }, entities: [{ id: 'us', kind: 'country' }], source: 'Financial Times' }),
+    mk({ key: 'geopolitics|wti|d', category: 'geopolitics', label: 'Geopolitics', weight: 10,
+      primary: { id: 'wti', label: 'WTI', kind: 'bench' }, entities: [{ id: 'wti', kind: 'bench' }], source: 'Reuters' }),
+  ];
+  const marketCtx = { id: { kind: 'index', label: 'IDX', d1: -2.1 }, wti: { kind: 'bench', label: 'WTI', d1: 3.4 } };
+  const scored = scoreEvents(clusters, { marketCtx, seen: new Set() });
+  assert.equal(scored[0].category, 'geopolitics', 'the heaviest category leads');
+  assert.equal(scored.find((c) => c.category === 'market-access').confirmed, true);
+  assert.equal(scored.find((c) => c.category === 'market-access').novelty, 'new');
+  const picked = selectEvents(scored, { max: 5, perCategory: 2 });
+  assert.equal(picked.length, 3);
+  assert.equal(new Set(picked.map((e) => e.primary.id)).size, picked.length, 'one story per subject');
+});
+
+test('a tier-3 market needs corroboration before it becomes an event', () => {
+  const dairy = {
+    key: 'supply|cheese|d', category: 'supply', label: 'Supply shock', weight: 7, mechanism: 'm',
+    primary: { id: 'cheese', label: 'Cheddar', kind: 'bench' }, entities: [{ id: 'cheese', kind: 'bench' }],
+    source: 'Reuters', corroboration: 1, ageDays: 0, what: 'Cheese jumps', why: null,
+  };
+  assert.equal(selectEvents([dairy]).length, 0, 'one wire and no market proof is not enough');
+  assert.equal(selectEvents([{ ...dairy, corroboration: 2 }]).length, 1, 'two wires is');
+});
+
+test('sourceTier puts Bloomberg and the FT above a single wire', () => {
+  assert.ok(sourceTier('Bloomberg') > sourceTier('Reuters'));
+  assert.ok(sourceTier('Financial Times') > sourceTier('CNBC'));
+  assert.equal(sourceTier('Some Blog'), 0);
+});

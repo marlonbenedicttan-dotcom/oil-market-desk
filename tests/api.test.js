@@ -5,6 +5,7 @@ import http from 'node:http';
 import zlib from 'node:zlib';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { priorityOf } from '../src/lib.js';
 
 const BIN = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'server.js');
 const PORT = 4999;
@@ -107,6 +108,8 @@ test('/api/brief returns the on-screen daily brief (headline + happened + next +
   assert.ok(Array.isArray(j.next) && j.next.length > 0);
   assert.ok(j.next.every((e) => e.name));
   assert.ok(Array.isArray(j.alerts));
+  assert.ok(Array.isArray(j.events), 'the brief carries an event-first layer');
+  assert.ok(j.events.every((e) => e.what && e.label && Array.isArray(e.sources)));
 });
 
 test('/api/brief ranks one leaderboard and explains every row', async () => {
@@ -116,6 +119,7 @@ test('/api/brief ranks one leaderboard and explains every row', async () => {
   if (b.hero) {
     assert.ok(Array.isArray(b.hero.facts) && b.hero.facts.length > 0, 'the hero always carries a computed line');
     assert.ok(['bench', 'index', 'fx'].includes(b.hero.srcKind), 'the hero knows what kind of market it is');
+    assert.ok(priorityOf(b.hero) < 3, `the hero cannot be a thin market (${b.hero.label})`);
   }
   const ids = new Set();
   for (let i = 0; i < rows.length; i++) {
@@ -133,7 +137,25 @@ test('/api/brief ranks one leaderboard and explains every row', async () => {
     assert.ok(explained, `${r.label} must carry an explanation — never a bare number`);
     assert.ok(!ids.has(r.id), 'the same instrument never appears twice');
     ids.add(r.id);
-    if (i) assert.ok((rows[i - 1].score ?? 0) >= (r.score ?? 0), 'rows stay in rank order');
+    if (r.kind !== 'deal') assert.ok(priorityOf(r) < 3, `${r.label} is thin and cannot appear on a price move alone`);
+    if (i) {
+      // Bands come first, the score orders inside a band. A core market with a smaller move still
+      // outranks a thin one with a bigger print; deals trail the move rows.
+      const tierOf = (x) => (x.kind === 'deal' ? 9 : priorityOf(x));
+      const prev = rows[i - 1], cur = r;
+      assert.ok(tierOf(prev) < tierOf(cur)
+        || (tierOf(prev) === tierOf(cur) && (prev.score ?? 0) >= (cur.score ?? 0)),
+        'rows stay in priority then rank order');
+    }
+  }
+  for (const e of b.events || []) {
+    assert.ok(e.key && e.label && e.what, 'an event says what happened');
+    assert.ok(Array.isArray(e.market), 'market evidence is a list');
+    assert.ok(e.why || e.mechanism || /wire coverage/.test(e.what), 'an event carries a reason or says it has none');
+    if (e.primary && e.primary.kind === 'bench') {
+      assert.ok(priorityOf(e.primary.id) < 3 || e.corroboration >= 2 || e.confirmed,
+        `${e.what} is a thin market and needs proof`);
+    }
   }
 });
 
@@ -340,6 +362,15 @@ test('/api/countries, /api/country and /api/region-quotes', async () => {
   for (const id of ['usdsar', 'usdaed', 'usdqar', 'usdngn', 'usdkes', 'usdzar']) {
     assert.ok(fxl.some((f) => f.id === id), `${id} is chartable`);
   }
+  // The card carries its news + chart series so a country switch no longer fires two extra requests.
+  assert.ok(Array.isArray(arg.news && arg.news.items), 'country payload carries its news items');
+  assert.ok(Array.isArray(arg.series && arg.series.dates) && arg.series.dates.length, 'country payload carries the chart series');
+  // The two slow, independent feeds arrive together from one endpoint.
+  const extras = await (await fetch(`http://localhost:${PORT}/api/country-extras?id=us`)).json();
+  assert.equal(extras.id, 'us');
+  assert.ok(extras.yields && extras.yields.long, 'extras carry bond yields');
+  assert.ok(Array.isArray(extras.catalysts && extras.catalysts.events), 'extras carry the release calendar');
+  assert.equal((await fetch(`http://localhost:${PORT}/api/country-extras?id=nope`)).status, 404);
 });
 
 test('/api/headlines + /api/fundamentals respond', async () => {
@@ -650,4 +681,24 @@ test('a Japanese chart answers to both the ticker and the five-digit code', asyn
   const byCode = await (await fetch(`http://localhost:${PORT}/api/japan-chart?code=72030&range=1y`)).json();
   assert.ok(byTicker.dates.length > 40, `ticker form returned ${byTicker.dates.length} points`);
   assert.deepEqual(byTicker.dates, byCode.dates);
+});
+
+// KOSPI's list is the slowest market to open, and the reason is the source file: korea.json carries
+// five years of daily closes per company (~24 MB of its 28 MB). The list endpoint must keep shipping
+// the projection only, and must stay revalidatable, or every KOREA click pays for the whole file.
+test('/api/korea ships the list projection, not the price history, and revalidates', async () => {
+  const r = await fetch(`http://localhost:${PORT}/api/korea`);
+  assert.equal(r.status, 200);
+  const etag = r.headers.get('etag');
+  assert.ok(etag, 'the Korea list must carry an ETag so a returning reader transfers nothing');
+  const d = await r.json();
+  assert.ok(d.companies.length > 500, `got ${d.companies.length} companies`);
+  assert.ok(d.index && d.index.level != null, 'the KOSPI level is missing');
+  const samsung = d.companies.find((x) => x.ticker === '005930');
+  assert.ok(samsung && samsung.nameEn, 'Samsung Electronics is missing from the list');
+  assert.equal(samsung.series, undefined, 'the list must not carry per-company price history');
+  assert.ok(JSON.stringify(d).length < 1_000_000, 'the Korea list payload ballooned — check projectKr');
+  const again = await fetch(`http://localhost:${PORT}/api/korea`, { headers: { 'if-none-match': etag } });
+  assert.equal(again.status, 304);
+  assert.equal(await again.text(), '');
 });

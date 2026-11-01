@@ -9,7 +9,7 @@ import crypto from 'node:crypto';
 import { sendMail } from './src/smtp.js';
 import { fileURLToPath } from 'node:url';
 import { projectUs, projectKr, projectJp, US_LIST_FIELDS } from './src/project.js';
-import { sgn, businessDaysSince, horizonDeltas, horizonDeltasAbs, isoWeek, monthly, pctOver, percentile, lastNonNull, escHtml, webhookPayload, realizedVol, computeCracks, computeCrush, computeSteel, backAdjust, pearson, logReturns, frontExpiry, curveTightness, inventoryTightness, weightedScore, seasonalGrade, seasonalAhead, contractMonthsBetween, signedPosition, signedMove, stretchScore, sdLabel, attributeMoves, newsContextOk, METHODOLOGY, positioningFlag, positioningRead, positioningDivergence, maxDrawdown, drawdownNow, realizedVolTerm, volPercentile, volVsOwnWord, corrMatrix, fxAdjust, parseOcc, drawdownWord, volWord, volTrend, corrShift, pairGroups, topPairs, bestDiversifier, riskRead } from './src/lib.js';
+import { sgn, businessDaysSince, horizonDeltas, horizonDeltasAbs, isoWeek, monthly, pctOver, percentile, lastNonNull, escHtml, webhookPayload, realizedVol, computeCracks, computeCrush, computeSteel, backAdjust, pearson, logReturns, frontExpiry, curveTightness, inventoryTightness, weightedScore, seasonalGrade, seasonalAhead, contractMonthsBetween, signedPosition, signedMove, stretchScore, sdLabel, attributeMoves, newsContextOk, METHODOLOGY, positioningFlag, positioningRead, positioningDivergence, maxDrawdown, drawdownNow, realizedVolTerm, volPercentile, volVsOwnWord, corrMatrix, fxAdjust, parseOcc, drawdownWord, volWord, volTrend, corrShift, pairGroups, topPairs, bestDiversifier, riskRead, priorityOf, rankByPriority, clusterEvents, scoreEvents, selectEvents } from './src/lib.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC = path.join(__dirname, 'public');
@@ -2369,24 +2369,34 @@ function resolveVs(spec) {
   if (kind === 'bench') { const b = BENCHMARKS.find((x) => x.id === id); return b && b.paper ? { spec, sym: b.paper, label: b.label } : null; }
   return null;
 }
+const COUNTRY_RANGE_DAYS = { '1m': 31, '3m': 92, '6m': 183, ytd: null, '1y': 366 };
+function rangeStart(range) {
+  if (range === 'ytd') return `${new Date().getUTCFullYear()}-01-01`;
+  const days = COUNTRY_RANGE_DAYS[range];
+  return days ? new Date(Date.now() - days * 864e5).toISOString().slice(0, 10) : null;
+}
 async function getCountrySeries(id, range = '1y', vs = null) {
   const c = ALL_COUNTRIES[id];
   if (!c) return { error: 'unknown country' };
   // Default: vs the S&P 500 — or, for the US itself, vs the euro area.
   const want = resolveVs(vs) || resolveVs(c.id === 'us' ? 'idx:ea' : 'idx:us');
   return cached(`cs:${id}:${range}:${want ? want.spec : '-'}`, 3600e3, async () => {
-    const cfg = { '1m': ['1mo', '1d'], '3m': ['3mo', '1d'], '6m': ['6mo', '1d'], ytd: ['ytd', '1d'], '1y': ['1y', '1d'], '5y': ['5y', '1mo'] }[range] || ['1y', '1d'];
-    // The country's currency, its index and the comparison series are three independent feeds —
-    // fetched together so a country chart costs one round-trip, not three.
-    const [fxRes, idxRes, vsRes] = await Promise.all([
-      cached(`csr:${cfg[0]}:${c.fx}`, 3600e3, () => yahooSeries(c.fx, cfg[0], cfg[1])).catch(() => null),
-      c.index ? cached(`csr:${cfg[0]}:${c.index}`, 3600e3, () => yahooSeries(c.index, cfg[0], cfg[1])).catch(() => null) : null,
-      want ? cached(`csr:${cfg[0]}:${want.sym}`, 3600e3, () => yahooSeries(want.sym, cfg[0], cfg[1])).catch(() => null) : null,
+    // Ranges up to a year are sliced out of the SAME 2-year daily series the country card already
+    // needs for its multi-horizon moves (deltaSeries). That removes a separate 1y request per symbol
+    // (fx, index and the comparison series), which is what made a cold region feel slow. Only 5y
+    // still needs its own monthly request.
+    const long = range === '5y';
+    const mapFor = (sym) => (long
+      ? cached(`csr:5y:${sym}`, 3600e3, () => yahooSeries(sym, '5y', '1mo')).then((r) => r.series).catch(() => ({}))
+      : deltaSeries(sym).then((r) => r.series).catch(() => ({})));
+    const [fxMap, idxMap, vsMap] = await Promise.all([
+      mapFor(c.fx),
+      c.index ? mapFor(c.index) : Promise.resolve({}),
+      want ? mapFor(want.sym) : Promise.resolve({}),
     ]);
-    const fxMap = (fxRes && fxRes.series) || {};
-    const idxMap = (idxRes && idxRes.series) || {};
-    const vsMap = (vsRes && vsRes.series) || {};
-    const dates = [...new Set([...Object.keys(idxMap), ...Object.keys(fxMap), ...Object.keys(vsMap)])].sort();
+    const allDates = [...new Set([...Object.keys(idxMap), ...Object.keys(fxMap), ...Object.keys(vsMap)])].sort();
+    const start = long ? null : rangeStart(range);
+    const dates = start ? allDates.filter((d) => d >= start) : allDates;
     const at = (o, d) => (o[d] != null ? o[d] : null);
     // For a pegged currency the FX line is a constant (plus upstream bad ticks), so it is left out of
     // the chart entirely — the equity line is where the oil/gas signal actually shows up.
@@ -2575,14 +2585,27 @@ async function getCountry(id) {
   return cachedSWR('country:' + id, 15 * 60e3, async () => {
     const quote = async (sym) => { try { const { price, series } = await cached('q:' + sym, 120e3, () => yahooSeries(sym, '5d', '1d')); const d = Object.keys(series).sort(); const a = series[d[d.length - 1]], b = series[d[d.length - 2]]; return { price: a ?? price ?? null, pct: a != null && b ? ((a - b) / b) * 100 : null }; } catch { return { price: null, pct: null }; } };
     const rk = COUNTRY_MACRO_REGION[id];
-    // Everything independent runs CONCURRENTLY — the whole panel in one round trip.
+    // Annual macro: the IMF snapshot is committed weekly and already covers every country. Only ask
+    // the (slow, rate-limited) World Bank / FRED for a field the snapshot does not have — the old code
+    // fetched all four World Bank series on every country, even when all four were sitting in macro.json.
+    const snap = (MACRO_SNAPSHOT && MACRO_SNAPSHOT.countries && MACRO_SNAPSHOT.countries[id]) || null;
+    const needGdp = !snap?.gdpGrowth?.length;
+    const needCpi = !snap?.cpi?.length;
+    const needDebt = !snap?.debtToGdp;
+    // Unemployment keeps the "newer vintage wins" rule: only skip the World Bank when the snapshot is
+    // already at the latest completed year.
+    const needUnemp = !snap?.unemployment || snap.unemployment.year < (MACRO_SNAPSHOT?.maxYear || 0);
+    // Everything independent runs CONCURRENTLY — the whole panel in one round trip. News and the index
+    // series are already computed here, so they ride WITH the card (no second request). Yields and the
+    // release calendar are genuinely separate feeds and stay on /api/country-extras, so they can never
+    // hold the card itself.
     const [fx, idx, wbGdp, wbDebt, wbCpi, wbUnemp, cs, mn, oilLink, macroMd, policy, links, fxDlMap, idxDlMap, fredDebtToGdp] = await Promise.all([
       quote(c.fx),
       c.index ? quote(c.index) : Promise.resolve({ price: null, pct: null }),
-      wbSeries(c.iso3, 'NY.GDP.MKTP.KD.ZG'),
-      wbLatest(c.iso3, 'GC.DOD.TOTL.GD.ZS'),
-      wbSeries(c.iso3, 'FP.CPI.TOTL.ZG'),
-      wbLatest(c.iso3, 'SL.UEM.TOTL.ZS'),
+      needGdp ? wbSeries(c.iso3, 'NY.GDP.MKTP.KD.ZG') : Promise.resolve([]),
+      needDebt ? wbLatest(c.iso3, 'GC.DOD.TOTL.GD.ZS') : Promise.resolve(null),
+      needCpi ? wbSeries(c.iso3, 'FP.CPI.TOTL.ZG') : Promise.resolve([]),
+      needUnemp ? wbLatest(c.iso3, 'SL.UEM.TOTL.ZS') : Promise.resolve(null),
       getCountrySeries(id, '1y').catch(() => ({})),
       getMacroNews(id).catch(() => ({ items: [] })),
       pairCorr(c.fx, 'CL=F').catch(() => null),
@@ -2591,11 +2614,9 @@ async function getCountry(id) {
       (() => Promise.all((COUNTRY_COMMODITY_LINKS[id] || []).map(async ([commodity, csym]) => ({ commodity, corr: await pairCorr(c.fx, csym).catch(() => null) }))).catch(() => []))(),
       deltaSeries(c.fx).then((r) => r.series).catch(() => ({})),
       c.index ? deltaSeries(c.index).then((r) => r.series).catch(() => ({})) : Promise.resolve({}),
-      fredDebt(c.iso3),
+      needDebt ? fredDebt(c.iso3) : Promise.resolve(null),
     ]);
     const chg = (arr) => { const f = (arr || []).find((v) => v != null); const l = [...(arr || [])].reverse().find((v) => v != null); return f && l ? ((l - f) / f) * 100 : null; };
-    // Annual macro: IMF WEO snapshot (comprehensive, current) -> FRED/OECD debt -> World Bank.
-    const snap = (MACRO_SNAPSHOT && MACRO_SNAPSHOT.countries && MACRO_SNAPSHOT.countries[id]) || null;
     const gdpGrowth = snap?.gdpGrowth?.length ? snap.gdpGrowth : wbGdp.slice(-6);
     const debtToGdp = snap?.debtToGdp || fredDebtToGdp || wbDebt;
     const cpi = snap?.cpi?.length ? snap.cpi : wbCpi.slice(-25);
@@ -2618,7 +2639,7 @@ async function getCountry(id) {
     if (debtToGdp && debtToGdp.year >= 2018) takes.push(`Government debt is <b>${debtToGdp.value}% of GDP</b> (${debtToGdp.year}).`);
     if (c.peg) takes.push(`${c.label}\u2019s currency is <b>pegged to the US dollar at ${c.peg}</b>, so the FX line barely moves \u2014 the oil story shows up in the equity line instead.`);
     else if (oilLink != null) takes.push(`${c.label} is a net oil ${c.oil}; its currency's 3-month correlation vs Brent is <b>${oilLink}</b>.`);
-    try { const mn = await getMacroNews(id); for (const it of (mn.items || []).slice(0, 2)) takes.push(`<b>${it.kind}</b>: ${escHtml(it.title)}.`); } catch {}
+    for (const it of (mn.items || []).slice(0, 2)) takes.push(`<b>${it.kind}</b>: ${escHtml(it.title)}.`);
     return {
       id, label: c.label, region: c.region, iso3: c.iso3, oil: c.oil, peg: c.peg || null,
       // A peg is a constant: the upstream daily series carries bad ticks (USDSAR reads 3.6397 for days
@@ -2627,11 +2648,29 @@ async function getCountry(id) {
       index: { label: c.indexLabel, sym: c.index, ...idx, deltas: idxDeltas, asOf, source: 'Yahoo Finance' },
       macro, oilLink, perf, takeaways: takes, policy, policyNote: POLICY_NOTE[id] || null, links,
       cpi,   // annual CPI inflation % (IMF WEO, World Bank fallback)
+      // News and the chart series are already computed above — send them with the card so the panel
+      // does not fire two more requests after every country switch. Yields and catalysts stay on
+      // /api/country-extras (separate feeds, never allowed to hold the card).
+      news: mn, series: cs,
       fund: { gdpGrowth: gdpGrowth.slice(-6), debtToGdp, inflation, unemployment,
         source: snap
           ? ('IMF WEO (annual snapshot)' + (unempFromWb && wbUnemp ? ' · unemployment: World Bank' : ''))
           : (fredDebtToGdp ? 'Debt/GDP: FRED (OECD) · others World Bank (annual)' : 'World Bank (annual)') },
     };
+  });
+}
+
+// The two feeds that are genuinely slow and independent of the card: the bond-yield series and the
+// release calendar. One request returns both, so a country switch is card (1) + extras (1), not five
+// separate round trips — and neither can delay the card itself.
+async function getCountryExtras(id) {
+  if (!ALL_COUNTRIES[id]) return { error: 'unknown country' };
+  return cachedSWR('country-extras:' + id, 15 * 60e3, async () => {
+    const [yields, catalysts] = await Promise.all([
+      getBondYields(id).catch(() => null),
+      getCatalysts(id).catch(() => null),
+    ]);
+    return { id, yields, catalysts };
   });
 }
 
@@ -3272,11 +3311,134 @@ async function buildDigest() {
 }
 
 // ---------------------------------------------------------------------------
+// IMPORTANT TODAY — the event-first half of the brief.
+// The rest of this file starts from the tape. This starts from the wire: classify, cluster to one
+// event per (category, subject, day), score importance, then attach the day's prices as evidence.
+// The "why" is extracted from the headline's own causal clause, or falls back to a curated
+// transmission rule — never invented. See EVENT_CATEGORIES in src/lib.js.
+// ---------------------------------------------------------------------------
+const EVENT_COUNTRIES = ['us', 'cn', 'jp', 'ea', 'in', 'uk', 'kr', 'id', 'br', 'mx', 'sa', 'za'];
+const EVENT_QUERIES = [
+  `(MSCI OR "FTSE Russell" OR "index review" OR reclassification OR "market access" OR "capital controls" OR "trading halt") (stocks OR equities OR index) ${NEWS_TIER1}`,
+  `(sanctions OR "export ban" OR embargo OR tariffs) (oil OR gas OR metals OR grain OR markets) ${NEWS_TIER1}`,
+  `(OPEC OR "output cut" OR "production cut") (oil OR crude) ${NEWS_TIER1}`,
+  `(war OR conflict OR attack OR Hormuz OR "Red Sea" OR chokepoint) (oil OR shipping OR markets) ${NEWS_TIER1}`,
+  `("central bank" OR "rate decision" OR "sovereign downgrade" OR IMF) (stocks OR currency OR bonds) ${NEWS_TIER1}`,
+];
+// A broad discovery query can surface pure politics ("North Korea says sanctions don't work").
+// For those items only, require a tradable subject as well as tier-1 sourcing.
+const EVENT_MARKET = /\b(oil|crude|gas|LNG|diesel|gasoline|fuel|refin\w*|gold|copper|aluminium|aluminum|iron ore|steel|corn|wheat|soybean|sugar|coffee|cocoa|cotton|palm|rice|cattle|hogs|beef|milk|butter|cheese|stocks?|shares?|equit(y|ies)|index|indices|currenc\w*|\bfx\b|bond|yields?|dollar|yuan|yen|rupiah|won|rand|peso|riyal|exports?|imports?|trade|supply|demand|prices?|commodit\w*|markets?)\b/i;
+const BENCH_ALIAS = {
+  wti: ['WTI', 'crude oil', 'US crude', 'Hormuz', 'Red Sea', 'Suez', 'OPEC'],
+  brent: ['Brent', 'Brent crude'],
+  rbob: ['gasoline', 'petrol'],
+  ulsd: ['diesel', 'heating oil'],
+  jet: ['jet fuel'],
+  propane: ['propane'],
+  natgas: ['natural gas', 'LNG'],
+  gold: ['gold', 'bullion'],
+  copper: ['copper'],
+  aluminium: ['aluminium', 'aluminum'],
+  ironore: ['iron ore'],
+  steel: ['steel', 'hot-rolled coil'],
+  corn: ['corn'],
+  wheat: ['wheat'],
+  soybean: ['soybeans', 'soybean'],
+  soymeal: ['soybean meal', 'soymeal'],
+  soyoil: ['soybean oil', 'soyoil'],
+  sugar: ['sugar'],
+  coffee: ['coffee'],
+  cocoa: ['cocoa'],
+  cotton: ['cotton'],
+  palm: ['palm oil'],
+  rice: ['rice'],
+  orange: ['orange juice'],
+  cattle: ['live cattle', 'cattle'],
+  hogs: ['lean hogs', 'hogs'],
+  feeder: ['feeder cattle'],
+  milk: ['Class III milk', 'milk'],
+  butter: ['butter'],
+  nfdm: ['nonfat dry milk', 'NFDM'],
+  cheese: ['cheddar', 'cheese'],
+  whey: ['dry whey', 'whey'],
+};
+const COUNTRY_ALIAS = {
+  us: [/United States/, /\bU\.S\.\b/, /\bUS\b/, 'Wall Street', 'S&P 500', 'Federal Reserve', /\bFed\b/],
+  cn: ['China', 'Chinese', 'Beijing', 'PBOC', 'Shanghai Composite', 'yuan', 'renminbi'],
+  jp: ['Japan', 'Japanese', 'Tokyo', 'BoJ', 'Bank of Japan', 'Nikkei', 'TOPIX', 'yen'],
+  ea: ['euro area', 'eurozone', 'ECB', 'European Central Bank', 'euro'],
+  in: ['India', 'Indian', 'Mumbai', 'RBI', 'Reserve Bank of India', 'Sensex', 'Nifty', 'rupee'],
+  uk: [/\bUK\b/, 'Britain', 'British', 'BoE', 'Bank of England', 'FTSE', 'sterling'],
+  kr: ['Korea', 'Korean', 'Seoul', 'KOSPI', 'Bank of Korea'],
+  id: ['Indonesia', 'Indonesian', 'Jakarta', 'IDX', 'rupiah', 'Bank Indonesia'],
+  br: ['Brazil', 'Brazilian', 'Bovespa'],
+  mx: ['Mexico', 'Mexican', 'peso', 'Banxico'],
+  sa: ['Saudi', 'Riyadh', 'Tadawul', 'riyal'],
+  za: ['South Africa', 'Johannesburg', 'rand'],
+};
+const COUNTRY_DEMONYM = {
+  ar: 'Argentine', au: 'Australian', br: 'Brazilian', cn: 'Chinese', de: 'German', ea: 'European',
+  fr: 'French', hk: 'Hong Kong', id: 'Indonesian', in: 'Indian', jp: 'Japanese', ke: 'Kenyan',
+  kr: 'Korean', mx: 'Mexican', my: 'Malaysian', ng: 'Nigerian', ph: 'Philippine', qa: 'Qatari',
+  sa: 'Saudi', sg: 'Singapore', th: 'Thai', tw: 'Taiwanese', uk: 'British', us: 'American',
+  ve: 'Venezuelan', vn: 'Vietnamese', za: 'South African',
+};
+let _eventCatalog = null;
+function eventCatalog() {
+  if (_eventCatalog) return _eventCatalog;
+  const countries = Object.values(ALL_COUNTRIES).map((c) => ({
+    id: c.id, label: c.label, kind: 'country',
+    patterns: [...new Set([c.label, c.indexLabel, c.fxLabel, COUNTRY_DEMONYM[c.id], ...(COUNTRY_ALIAS[c.id] || [])].filter(Boolean))],
+  }));
+  const benches = BENCHMARKS.map((b) => ({
+    id: b.id, label: b.label, kind: 'bench',
+    patterns: [...new Set([
+      String(b.label).replace(/\s*\(.*\)/, '').replace(/\s+\d+%.*$/, ''),
+      ...(BENCH_ALIAS[b.id] || []),
+    ].filter(Boolean))],
+  }));
+  return (_eventCatalog = [...countries, ...benches]);
+}
+async function buildEventPool() {
+  return cached('eventpool', 30 * 60e3, async () => {
+    // The segment and country feeds already carry the on-topic filter; the extra queries cover the
+    // categories the tape never asks about (index reviews, sanctions, geopolitics, policy).
+    const [segLists, macroLists, headlines, extra] = await Promise.all([
+      Promise.allSettled(MARKETS.map((m) => getNews(m.id).then((r) => r.items || []))),
+      Promise.allSettled(EVENT_COUNTRIES.map((id) => getMacroNews(id).then((r) => r.items || []))),
+      getHeadlines().then((r) => r.items || []).catch(() => []),
+      Promise.allSettled(EVENT_QUERIES.map((q, i) => cached('evq:' + i, 30 * 60e3, () => fetchGoogleNews(q, 40)))),
+    ]);
+    const raw = [];
+    for (const r of [...segLists, ...macroLists]) if (r.status === 'fulfilled') raw.push(...(r.value || []));
+    for (const r of extra) {
+      if (r.status !== 'fulfilled') continue;
+      for (const it of r.value || []) {
+        if (it && it.title && EVENT_MARKET.test(it.title) && newsContextOk(it.title, { requireMarket: true })) raw.push(it);
+      }
+    }
+    raw.push(...headlines);
+    const seen = new Set(), items = [];
+    for (const it of raw) {
+      if (!it || !it.title) continue;
+      if (it.source && !TIER1_RE.test(it.source)) continue;
+      const sig = String(it.source || '') + '|' + String(it.title).toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+      if (seen.has(sig)) continue;
+      seen.add(sig);
+      items.push(it);
+    }
+    return { clusters: clusterEvents(items, { catalog: eventCatalog() }), built: new Date().toISOString(), pool: items.length };
+  });
+}
+
+// ---------------------------------------------------------------------------
 // On-screen daily brief — a 60-second "what happened / what's on today" as JSON.
 // The raw text digest above stays for email/log; this is what the HOME tab renders.
 // ---------------------------------------------------------------------------
 async function buildBrief() {
-  return cachedSWR('brief', 300_000, async () => {
+  // The base tape is cached for five minutes; the event layer is attached outside that cache so a
+  // cold event pool cannot freeze the top of the page for five minutes.
+  const base = await cachedSWR('brief', 300_000, async () => {
     // Everything that only needs the network — no other panel's output — is fetched AT ONCE. The
     // calendar and the deal book used to be awaited at the very end, so a cold brief paid for them
     // one after another and took 2-4s longer than the slowest single feed.
@@ -3478,19 +3640,12 @@ async function buildBrief() {
     const board = [
       ...movers.map((x) => ({ ...x, kind: 'bench', tag: x.group || 'Commodity', srcKind: 'bench' })),
       ...macro.map((x) => ({ ...x, kind: x.kind, tag: x.kind === 'fx' ? 'FX' : 'Index', srcKind: x.kind })),
-    ].filter((x) => x.score != null || x.d1 != null);
-    board.sort((a, b) => (b.score ?? 0) - (a.score ?? 0) || Math.abs(b.d1) - Math.abs(a.d1));
-    const picked = [], groupCount = {}, seenId = new Set();
-    for (const x of board) {
-      if (seenId.has(x.id)) continue;                       // one row per country / instrument
-      const g = x.kind === 'bench' ? 'g:' + x.group : 'c:' + x.id;
-      if ((groupCount[g] || 0) >= 2) continue;              // e.g. RBOB + ULSD, but not four refined products
-      groupCount[g] = (groupCount[g] || 0) + 1;
-      seenId.add(x.id);
-      picked.push(x);
-      if (picked.length >= 6) break;
-    }
-    const mix = picked;
+    ].filter((x) => x.score != null || x.d1 != null)
+      .map((x) => ({ ...x, tier: priorityOf(x) }));
+    // The band decides who is allowed on the page; the score only orders within it. Thin markets have
+    // a tiny σ, so a quote refresh in milk or cheddar can score 10-20× a normal day. Tier 3 is held
+    // back for confirmed events (the event engine), never admitted on a price move alone.
+    const mix = rankByPriority(board, { max: 6, slots: { 1: 4, 2: 2, 3: 0 } });
     // Computed drivers, so EVERY move has an explanation even on a day with no wire story. This is
     // data, not narrative: what moved with it, what it is priced off, and how well it actually trades.
     const REGION_LABEL = { us: 'Americas', eu: 'European', jp: 'Japanese', apac: 'Asian', me: 'Gulf', af: 'African' };
@@ -3543,7 +3698,8 @@ async function buildBrief() {
       .slice(0, 4)
       .map((e) => ({ name: e.country ? `${e.country} — ${e.name}` : e.name, date: e.date, time: e.time || null, note: e.note }));
     const hi = alerts.find((a) => a.level === 'high');
-    const mv = movers[0];
+    // The headline follows the same band as the page: a thin-market quote refresh is not the day.
+    const mv = movers.find((x) => priorityOf(x) < 3) || movers[0];
     const bigMacro = macroTop[0] && Math.abs(macroTop[0].d1) >= 4 ? macroTop[0] : null;
     const headline = (mv ? `Biggest move: ${mv.label} ${mv.d1 >= 0 ? 'up' : 'down'} ${Math.abs(mv.d1).toFixed(1)}%` : 'Quiet session so far')
       + (bigMacro ? ` · ${bigMacro.label}'s index ${bigMacro.d1 >= 0 ? 'up' : 'down'} ${Math.abs(bigMacro.d1).toFixed(1)}%` : '')
@@ -3621,12 +3777,61 @@ async function buildBrief() {
       sector: d.sector || null, spark: null, why: null, facts: [], route: null,
     }));
     const rows = [...moveRows, ...dealRows].slice(0, 7);
+
+    // The event layer needs the full tape as evidence — every benchmark and every country, not just
+    // the rows that made the page. It is cached with the base brief, then attached outside that cache.
+    const marketCtx = {};
+    for (const mv of movers) (marketCtx[mv.id] ||= []).push({ id: mv.id, label: mv.label, kind: 'bench', d1: mv.d1, route: null });
+    for (const it of regionItems) {
+      const d1 = it.deltas && it.deltas.d1;
+      if (d1 == null) continue;
+      const co = ALL_COUNTRIES[it.id] || {};
+      const label = it.kind === 'fx' ? (co.fxLabel || it.label) : (co.indexLabel || it.label);
+      (marketCtx[it.id] ||= []).push({ id: it.id, label, kind: it.kind, d1, route: `#/macro/${co.region}/${it.id}` });
+    }
+
     return {
       updated: new Date().toISOString(), headline, happened, next, macro: macroTop, hero, rows,
       alerts: alerts.map((a) => ({ level: a.level, text: a.text })),
       movers: movers.slice(0, 3),
+      _marketCtx: marketCtx,
     };
   });
+  const { _marketCtx, ...out } = base;
+  out.events = await attachEvents(_marketCtx);
+  return out;
+}
+
+// The event layer is attached outside the base brief's five-minute cache: an empty event pool on a
+// cold start must not freeze the top of the page for five minutes. It has its own 30-minute cache.
+async function attachEvents(marketCtx) {
+  const pool = await within(buildEventPool(), 7000).catch(() => null);
+  if (!pool || !pool.clusters || !pool.clusters.length) return [];
+  try {
+    const today = new Date().toISOString().slice(0, 10);
+    const history = state.eventHistory && typeof state.eventHistory === 'object' ? state.eventHistory : {};
+    const seen = new Set();
+    for (const [d, keys] of Object.entries(history)) {
+      const age = (Date.parse(today) - Date.parse(d)) / 864e5;
+      if (d < today && age <= 7 && Array.isArray(keys)) for (const k of keys) seen.add(k);
+    }
+    const events = selectEvents(scoreEvents(pool.clusters, { marketCtx, seen }), { max: 5, perCategory: 2 })
+      .map((e) => ({
+        key: e.key, category: e.category, label: e.label,
+        what: e.what, why: e.why, whySource: e.whySource, mechanism: e.mechanism,
+        primary: e.primary, entities: e.entities, market: e.market, sources: e.sources, source: e.source, url: e.url,
+        at: e.at, date: e.date, ageDays: e.ageDays, score: e.score, novelty: e.novelty, confirmed: e.confirmed,
+      }));
+    // Remember every cluster, not just the five shown, so a story that bubbles under the surface is
+    // already "developing" when it makes the page. Bounded: 80 keys a day, 30 days.
+    const keys = [...new Set(pool.clusters.map((c) => c.key))].slice(0, 80).sort();
+    if (JSON.stringify(history[today] || []) !== JSON.stringify(keys)) {
+      history[today] = keys;
+      state.eventHistory = Object.fromEntries(Object.keys(history).sort().slice(-30).map((d) => [d, history[d]]));
+      saveState();
+    }
+    return events;
+  } catch (e) { console.warn('[events]', e.message); return []; }
 }
 
 // ---------------------------------------------------------------------------
@@ -3998,6 +4203,11 @@ const server = http.createServer(async (req, res) => {
       const id = url.searchParams.get('id');
       if (!ALL_COUNTRIES[id]) return sendJSON(res, 404, { error: 'unknown country' });
       return sendJSONCached(res, 200, await getCountry(id).catch((e) => ({ error: String(e.message) })));
+    }
+    if (url.pathname === '/api/country-extras') {
+      const id = url.searchParams.get('id');
+      if (!ALL_COUNTRIES[id]) return sendJSON(res, 404, { error: 'unknown country' });
+      return sendJSONCached(res, 200, await getCountryExtras(id).catch((e) => ({ error: String(e.message) })));
     }
     if (url.pathname === '/api/fundamentals') {
       const id = url.searchParams.get('id');
@@ -4413,15 +4623,21 @@ server.listen(PORT, async () => {
   // Warm the boot-critical caches early so a visitor right after a deploy still loads fast:
   // base feeds → CFTC positioning (parallel) → boards → the 9 segment reads → the screener.
   const warmCaches = async () => {
-    // The brief is what the reader lands on first, so warm it with the base feeds rather than
-    // leaving a visitor to pay for it from scratch. `cached()` de-dupes: a request in flight joins.
-    try { await Promise.all([getMarket(), getHistory(), getAnalytics(), buildBrief()]); } catch {}
+    // The brief is what the reader lands on first. Warm the event pool before it so the first
+    // visitor gets the top block, not an empty shell that fills in on a later request.
+    try { await Promise.all([getMarket(), getHistory(), getAnalytics(), buildEventPool()]); } catch {}
+    try { await buildBrief(); } catch {}
     try { await Promise.all(BENCHMARKS.filter((b) => COT_NAMES[b.id]).map((b) => getPositioning(b.id).catch(() => {}))); } catch {}
     // The boards a visitor can reach without waiting: the backdrop, the calendar, the macro tab's
     // default country and the currency strip. Each one was a cold second on first open.
     try { await Promise.all([getRegime(), getCalendar(), getMacroTickers(), getMacroDash(), getCountry('us')]); } catch {}
     for (const m of MARKETS) { try { await getMarketRead(m.id, null); } catch {} await new Promise((r) => setTimeout(r, 300)); }
     try { await getScreen(); } catch {}
+    // Korea's list is projected from a 28 MB file (five years of daily closes per company). Parsing
+    // it is synchronous, so doing it here keeps that cost off the request path: the KOREA tab opens
+    // from an already-parsed cache. This runs again every two minutes, which re-parses in the
+    // background when the daily build rewrites the file instead of stalling the first visitor.
+    try { readKorea(); } catch {}
   };
   // Keep the caches hot on a timer shorter than the shortest TTL (the quote cache is 3 minutes), so
   // a visitor almost never lands on an expired feed. Guarded: a slow warm must not stack up.

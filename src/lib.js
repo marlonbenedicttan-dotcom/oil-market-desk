@@ -779,7 +779,283 @@ export function frontExpiry(root, refIso) {
 // side, which is recorded as `ttmQuarterGap` instead of being hidden.
 const TTM_DAY = 86400000;
 
+// ── Desk priority ─────────────────────────────────────────────────────────────────────────────────
+// A daily brief is an editorial product, not a volatility ranking. Thin markets have a tiny daily σ,
+// so a quote refresh in milk or cheddar scores 10-20× "a normal day" and outranks a 2% move in Brent.
+// The score still orders the rows; the priority band decides which rows are allowed on the page.
+//   1 = may lead the brief
+//   2 = may appear
+//   3 = only with a confirmed event (the event engine supplies that); never on a price move alone
+// `flat` is the empirical backstop: a series that prints unchanged on a quarter of its days is thin,
+// whatever the hand list says.
+export const PRIORITY = {
+  1: ['wti', 'brent', 'natgas', 'gold', 'copper', 'us', 'cn', 'jp', 'ea', 'in'],
+  2: [
+    'rbob', 'ulsd', 'jet', 'propane',
+    'silver', 'aluminium', 'ironore', 'steel', 'platinum', 'palladium',
+    'corn', 'wheat', 'soybean', 'soymeal', 'soyoil', 'sugar', 'coffee', 'cocoa', 'cotton', 'palm',
+    'ae', 'ar', 'au', 'br', 'de', 'fr', 'hk', 'id', 'ke', 'kr', 'mx', 'my', 'ng', 'ph', 'qa',
+    'sa', 'sg', 'th', 'tw', 'uk', 've', 'vn', 'za',
+  ],
+  3: ['milk', 'butter', 'nfdm', 'cheese', 'whey', 'cattle', 'hogs', 'feeder', 'rice', 'orange'],
+};
+const PRIORITY_SET = { 1: new Set(PRIORITY[1]), 3: new Set(PRIORITY[3]) };
+
+export function priorityOf(item) {
+  const x = typeof item === 'string' ? { id: item } : (item || {});
+  if (x.flat != null && x.flat >= 25) return 3;          // stepped / thinly traded, regardless of list
+  if (PRIORITY_SET[1].has(x.id)) return 1;
+  if (PRIORITY_SET[3].has(x.id)) return 3;
+  return 2;                                              // unknown = may appear, never assumed core
+}
+
+/**
+ * Pick a brief's rows by priority band first, score second.
+ * slots = how many rows each band may contribute; tier 3 defaults to zero because a price move alone
+ * is not a reason. The event engine can pass { 3: 1 } once it can prove a confirmed story.
+ */
+export function rankByPriority(items, { max = 6, slots = { 1: 4, 2: 2, 3: 0 }, perGroup = 2 } = {}) {
+  const byTier = { 1: [], 2: [], 3: [] };
+  for (const x of items || []) {
+    if (!x) continue;
+    const tier = x.tier ?? priorityOf(x);
+    if (!byTier[tier]) continue;
+    byTier[tier].push({ ...x, tier });
+  }
+  const byScore = (a, b) => (b.score ?? 0) - (a.score ?? 0) || Math.abs(b.d1 ?? 0) - Math.abs(a.d1 ?? 0);
+  for (const t of [1, 2, 3]) byTier[t].sort(byScore);
+
+  const out = [], seen = new Set(), per = {};
+  for (const t of [1, 2, 3]) {
+    const cap = Math.min(slots[t] ?? 0, max - out.length);
+    let taken = 0;
+    for (const x of byTier[t]) {
+      if (taken >= cap) break;
+      if (seen.has(x.id)) continue;                       // one row per instrument / country
+      const g = x.groupKey || (x.kind === 'bench' ? 'g:' + (x.group || '') : 'c:' + x.id);
+      if ((per[g] || 0) >= perGroup) continue;            // a single complex cannot fill the page
+      seen.add(x.id);
+      per[g] = (per[g] || 0) + 1;
+      out.push(x);
+      taken++;
+    }
+  }
+  return out;
+}
+
 /** Four consecutive quarters, each ~91 days after the last (52/53-week calendars allowed). */
+// ── Event importance ─────────────────────────────────────────────────────────────────────────────
+// The brief used to start from price moves and then look for a story that agreed with them. That is
+// backwards: an index review, a sanction or an M&A announcement can matter far more than the day's
+// biggest percentage, and a thin market can print a huge number for no reason. These helpers start
+// from the wire, decide importance, and use the tape only as evidence.
+
+export const EVENT_CATEGORIES = [
+  { id: 'market-access', label: 'Market access', weight: 8,
+    re: /\b(msci|ftse russell|reclassif\w*|index (review|inclusion|exclusion)|market access|capital controls?|trading halt|short-selling ban|emerging market status|frontier market)\b/i,
+    mechanism: 'An index review or access change alters which passive funds must hold the market, so flows move at the review date.' },
+  { id: 'sanctions', label: 'Sanctions / export curbs', weight: 9,
+    re: /\b(sanctions?|embargo|export (ban|curb|quota|levy)|import ban|blockade|tariffs?)\b/i,
+    mechanism: 'Sanctions or export curbs remove supply and reroute trade; the affected commodity and its substitutes reprice.' },
+  { id: 'opec', label: 'OPEC+ / supply policy', weight: 9,
+    re: /\b(opec\+?|production (cut|quota|policy)|output (cut|quota)|supply cut)\b/i,
+    mechanism: 'OPEC+ output policy sets the physical supply floor; crude and product cracks follow.' },
+  { id: 'data', label: 'Macro data', weight: 6,
+    re: /\b(inflation|cpi|ppi|gdp|payrolls|jobs report|unemployment|pmi|retail sales|industrial production|econom\w* (shrank|grew|contracted|expanded|slowed))\b/i,
+    mechanism: 'The print shifts rate expectations, which transmit to the currency, bonds and rate-sensitive equities.' },
+  { id: 'geopolitics', label: 'Geopolitics', weight: 10,
+    re: /\b(war|conflict|attack|missile|drone|invasion|escalat\w*|hormuz|red sea|suez|chokepoint|strait)\b/i,
+    mechanism: 'Conflict raises supply and freight risk; energy and gold usually price it first.' },
+  { id: 'sovereign', label: 'Sovereign risk', weight: 8,
+    re: /\b(downgrade|default|imf|bailout|debt (crisis|ceiling)|credit rating|sovereign)\b/i,
+    mechanism: 'A downgrade or default raises the country\'s funding cost and pressures its currency and banks.' },
+  { id: 'central-bank', label: 'Central bank', weight: 8,
+    re: /\b(fed|federal reserve|ecb|boj|pboc|rbi|bank of (england|japan|korea|indonesia)|central bank|rate (cut|hike|hold|decision))\b/i,
+    mechanism: 'Policy rates set the discount rate and the currency; equities, bonds and gold all reprice.' },
+  { id: 'supply', label: 'Supply shock', weight: 7,
+    re: /\b(hurricane|typhoon|drought|frost|freeze|flood|outage|force majeure|strike|fire|explosion|disease|bird flu|swine fever|blight|mine (closure|halt)|refinery (fire|outage))\b/i,
+    mechanism: 'A supply outage or crop loss tightens the physical market; the front of the curve moves first.' },
+  { id: 'politics', label: 'Politics / unrest', weight: 6,
+    re: /\b(election (result|results|win|won|victory|runoff|vote|uncertainty|jitters|fears|risk)|wins? (the )?election|referendum|coup|martial law|crackdown|protest\w* (strike|blockade|violence)|unrest)\b/i,
+    mechanism: 'Elections and unrest change policy risk, which shows up in the currency and sovereign spreads.' },
+  { id: 'policy', label: 'Policy support', weight: 7,
+    re: /\b(stimulus|bailout|intervention|rescue|subsid\w*|support(ing)? (the )?(stock )?market|market support)\b/i,
+    mechanism: 'Policy support changes the earnings and risk outlook; equities and the currency reprice together.' },
+  { id: 'markets', label: 'Markets', weight: 5,
+    re: /\b(stocks?|shares?|equit(y|ies)|index|indices|selloff|sell-off|rout|rally|wall street)\b/i,
+    mechanism: 'A broad move is usually a rates or risk event; check the driver before treating it as sector-specific.' },
+  { id: 'regulation', label: 'Regulation', weight: 5,
+    re: /\b(antitrust|regulator|probe|investigation|fine|capital requirement|short-selling)\b/i,
+    mechanism: 'Rules change who can trade and at what cost, so liquidity and the affected names reprice.' },
+  { id: 'company', label: 'Company', weight: 4,
+    re: /\b(ipo|earnings|profit warning|guidance|ceo|layoffs)\b/i,
+    mechanism: 'A single-name event moves that company, not the whole market.' },
+];
+
+const SOURCE_TIERS = [
+  [/bloomberg|financial times|ft\.com/i, 4],
+  [/reuters|wall street journal|wsj|associated press|ap news/i, 3],
+  [/cnbc/i, 2],
+];
+
+export function sourceTier(source) {
+  const s = String(source || '');
+  for (const [re, n] of SOURCE_TIERS) if (re.test(s)) return n;
+  return 0;
+}
+
+export function escapeRe(s) {
+  return String(s == null ? '' : s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/** First matching category wins, so the most specific rule must sit first in EVENT_CATEGORIES. */
+export function classifyEvent(title) {
+  const t = String(title || '');
+  for (const c of EVENT_CATEGORIES) {
+    const m = c.re.exec(t);
+    if (m) return { id: c.id, label: c.label, weight: c.weight, mechanism: c.mechanism, topic: String(m[1] || m[0]).toLowerCase() };
+  }
+  return null;
+}
+
+const CAUSE_MARKER = /\s+(as|after|amid|because|following|due to|over|on fears?|on concerns?|on hopes?|on reports?|on speculation)\s+/i;
+// A causal clause reads like a cause: it has a verb or a known event noun. "as nuclear weapons state"
+// does not, so it stays part of the fact rather than being presented as a reason.
+const CAUSE_VERB = /\b(flags?|flagged|reviews?|reviewed|warns?|warned|cuts?|cut|raises?|raised|holds?|held|bans?|banned|approves?|approved|rejects?|rejected|extends?|extended|imposes?|imposed|eases?|eased|tightens?|tightened|plans?|planned|agrees?|agreed|signals?|signalled|reports?|reported|says?|said|announces?|announced|launches?|launched|halts?|halted|resumes?|resumed|suspends?|suspended|intensif\w*|grows?|grew|rises?|rose|falls?|fell|drops?|dropped|jumps?|jumped|surges?|surged|plunges?|plunged|slumps?|slumped|accelerat\w*|slows?|slowed|beats?|misses?|unveils?|sets?|keeps?|kept|delays?|ends?|ended|starts?|seeks?|sought|bids?|buys?|bought|sells?|sold|offers?|strikes?|attacks?|seizes?|seized|closes?|closed|reopens?|reopened|reclassif\w*|downgrades?|upgrades?|defaults?|votes?|voted|elects?|protest\w*|invades?|withdraws?|exits?)\b/i;
+const CAUSE_TAIL = /\b(fears?|concerns?|hopes?|news|data|report|review|decision|ban|tariff|sanction|downgrade|upgrade|strike|attack|outage|fire|drought|flood|export|import|policy|vote|election|protest|war|conflict|rate|inflation|gdp|jobs|payrolls|earnings|guidance|forecast|outlook|speculation|profit|bid|offer|deal|merger|acquisition)\b/i;
+
+/**
+ * Split a headline into the event and its stated cause: "Stocks sink as MSCI flags a review" →
+ * { what: 'Stocks sink', why: 'MSCI flags a review' }. This is extraction, not invention — if the
+ * wire does not state a cause, `why` is only the category mechanism, never a made-up link.
+ */
+export function splitCause(title) {
+  const t = String(title || '').trim().replace(/\s+/g, ' ');
+  const m = CAUSE_MARKER.exec(t);
+  if (!m) return { what: t, why: null };
+  const before = t.slice(0, m.index).trim();
+  const after = t.slice(m.index + m[0].length).trim();
+  if (before.length < 8 || after.length < 8) return { what: t, why: null };
+  if (!CAUSE_VERB.test(after) && !CAUSE_TAIL.test(after)) return { what: t, why: null };
+  return { what: before.replace(/[.;,]+$/, ''), why: after.replace(/[.;,]+$/, '') };
+}
+
+/** Match a headline against {id,label,kind,patterns[]} entries. String patterns are word-bounded. */
+export function matchEntities(title, catalog = []) {
+  const t = String(title || '');
+  const out = [];
+  for (const e of catalog || []) {
+    for (const p of e.patterns || []) {
+      const re = p instanceof RegExp ? p : new RegExp(`\\b${escapeRe(p)}\\b`, 'i');
+      const at = t.search(re);
+      if (at >= 0) { out.push({ ...e, at }); break; }
+    }
+  }
+  return out;
+}
+
+function primaryEntity(hits, cls) {
+  if (!hits.length) return null;
+  const sorted = hits.slice().sort((a, b) => (a.at ?? 0) - (b.at ?? 0));
+  const countries = sorted.filter((h) => h.kind === 'country');
+  const benches = sorted.filter((h) => h.kind === 'bench');
+  if (['opec', 'supply'].includes(cls.id) && benches.length) return benches[0];
+  if (['market-access', 'central-bank', 'data', 'politics', 'sovereign', 'markets', 'regulation'].includes(cls.id) && countries.length) return countries[0];
+  return sorted[0];
+}
+
+const ANALYSIS_RE = /\b(what would|what if|explainer|analysis|opinion|commentary|column|podcast|newsletter|briefing|live updates?|markets wrap|stocks to watch|things to know|week ahead|day ahead|long read|interview|windfall|scores? \$|here'?s why|explained|guide|preview|would (shift|reshape|affect|change|impact|drive|push|help|hurt)|fall short of|is likely to|are likely to)\b|^when\b/i;
+
+/**
+ * Turn raw wire items into one event per (category, primary entity, day). Corroboration is counted
+ * from distinct sources, and the headline kept is the most informative tier-1 one — preferably a
+ * headline that states its own cause.
+ */
+export function clusterEvents(items, { catalog = [], now = Date.now() } = {}) {
+  const clusters = new Map();
+  for (const it of items || []) {
+    if (!it || !it.title) continue;
+    if (ANALYSIS_RE.test(it.title)) continue;                // features and explainers are not the day's news
+    const ageDays = it.date ? Math.max(0, Math.round((now - Date.parse(it.date)) / 864e5)) : 0;
+    if (ageDays > 1) continue;                               // today and yesterday only — not an archive
+    const cls = it.category ? { id: it.category, label: it.categoryLabel || it.category, weight: it.weight || 5, mechanism: it.mechanism || null } : classifyEvent(it.title);
+    if (!cls) continue;
+    const hits = it.entities || matchEntities(it.title, catalog);
+    const primary = primaryEntity(hits, cls);
+    if (!primary && cls.weight < 9) continue;                 // only the heaviest global stories stand alone
+    const day = String(it.date || new Date(now).toISOString()).slice(0, 10);
+    const key = [cls.id, primary ? primary.id : 'global', day].join('|');
+    let c = clusters.get(key);
+    if (!c) {
+      c = { key, category: cls.id, label: cls.label, weight: cls.weight, mechanism: cls.mechanism,
+        topic: cls.topic || null,
+        primary: primary ? { id: primary.id, label: primary.label, kind: primary.kind } : null,
+        entities: hits.map((h) => ({ id: h.id, label: h.label, kind: h.kind })),
+        items: [], sources: new Set(), date: day, ageDays };
+      clusters.set(key, c);
+    }
+    c.items.push(it);
+    if (it.source) c.sources.add(it.source);
+  }
+  const out = [];
+  for (const c of clusters.values()) {
+    const rank = (it) => sourceTier(it.source) * 10 + (splitCause(it.title).why ? 3 : 0) + (/\d/.test(it.title) ? 1 : 0);
+    const best = c.items.slice().sort((a, b) => rank(b) - rank(a))[0];
+    const { what, why } = splitCause(best.title);
+    out.push({ ...c, sources: [...c.sources], source: best.source || null, url: best.url || null,
+      at: best.date || null,
+      what, why, whySource: why ? 'wire' : (c.mechanism ? 'rule' : null),
+      corroboration: c.sources.size, titles: c.items.slice(0, 3).map((x) => x.title) });
+    delete out[out.length - 1].items;
+  }
+  return out;
+}
+
+/**
+ * Importance is category first, evidence second. Market confirmation adds points but never gates:
+ * an MSCI consultation announced before the selling starts is exactly what a brief should catch.
+ */
+export function scoreEvents(clusters, { marketCtx = {}, seen = new Set(), watchlist = [] } = {}) {
+  return (clusters || []).map((c) => {
+    const market = (c.entities || [])
+      .flatMap((e) => { const v = marketCtx[e.id]; return Array.isArray(v) ? v : v ? [v] : []; })
+      .filter((m) => m && m.d1 != null)
+      .sort((a, b) => Math.abs(b.d1) - Math.abs(a.d1))
+      .slice(0, 3);
+    const confirmed = market.some((m) => Math.abs(m.d1) >= (m.kind === 'index' ? 1.5 : m.kind === 'fx' ? 0.75 : 1));
+    let score = c.weight * 10;
+    score += sourceTier(c.source);
+    score += Math.min(3, Math.max(0, (c.corroboration || 1) - 1));
+    if (c.why) score += 2;                                    // a stated reason beats a generic rule
+    if (confirmed) score += 4;
+    score += c.primary ? (c.primary.kind === 'country' ? 1 : 0) : 3;
+    const isNew = !seen.has(c.key);
+    score += isNew ? 3 : 1;
+    if (watchlist.includes(c.primary?.id)) score += 2;
+    if (c.ageDays > 2) score -= (c.ageDays - 2) * 2;
+    return { ...c, score: +score.toFixed(2), market, confirmed, novelty: isNew ? 'new' : 'developing' };
+  }).sort((a, b) => b.score - a.score || a.ageDays - b.ageDays);
+}
+
+/** Diversity after ranking: a war cannot fill the page, and one country gets one story. */
+export function selectEvents(scored, { max = 5, perCategory = 2 } = {}) {
+  const out = [], cats = {}, ents = new Set();
+  for (const e of scored || []) {
+    if (out.length >= max) break;
+    if ((cats[e.category] || 0) >= perCategory) continue;
+    const pk = e.primary ? e.primary.id : 'global';
+    if (ents.has(pk)) continue;
+    // The dairy/livestock guard: a specialist market needs a confirmed event or a second wire, not
+    // just a big quote move.
+    if (e.primary && e.primary.kind === 'bench' && priorityOf(e.primary.id) === 3
+      && !(e.corroboration >= 2 || e.confirmed)) continue;
+    cats[e.category] = (cats[e.category] || 0) + 1;
+    ents.add(pk);
+    out.push(e);
+  }
+  return out;
+}
+
 export function quartersContiguous(q) {
   if (!Array.isArray(q) || q.length < 2) return true;
   return q.every((x, i) => i === 0
