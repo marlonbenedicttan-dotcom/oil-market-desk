@@ -4174,7 +4174,9 @@ const server = http.createServer(async (req, res) => {
       }).filter((sec) => sec.count).sort((a, b) => b.value - a.value || b.count - a.count);
       const since = (store.deals || []).map((d) => d.date).filter(Boolean).sort()[0] || null;
       return sendJSONCached(res, 200, {
-        updated: new Date().toISOString(),
+        // The store's own timestamp, not "now": a fresh date on every request gave every response a
+        // new ETag, so the 848 KB book could never be revalidated or re-used.
+        updated: store.updated || new Date().toISOString(),
         coverage: DEAL_ARCHIVE.coverage || {},
         sectors, deals,
         log: { count: (store.deals || []).length, since },
