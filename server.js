@@ -3891,7 +3891,11 @@ const server = http.createServer(async (req, res) => {
     }
     if (url.pathname === '/api/company-chart') {
       const ticker = String(url.searchParams.get('ticker') || '').trim();
-      const range = String(url.searchParams.get('range') || '1y');
+      // The page used to send Yahoo's names (1mo/6mo) while the local slicer only matched 1m/6m, so
+      // those two buttons quietly returned the entire series. Normalise once, here.
+      const ALIAS = { '1mo': '1m', '3mo': '3m', '6mo': '6m', '1yr': '1y', '5yr': '5y', '10yr': '10y' };
+      const range = ALIAS[String(url.searchParams.get('range') || '1y')] || String(url.searchParams.get('range') || '1y');
+      const YAHOO = { '1m': '1mo', '3m': '3mo', '6m': '6mo', '1y': '1y', '5y': '5y', '10y': '10y', ytd: 'ytd' };
       const interval = String(url.searchParams.get('interval') || (range === '10y' ? '1mo' : range === '5y' ? '1wk' : '1d'));
       // Index symbols (^GSPC, ^VIX) are legitimate charts too, so the caret is allowed.
       if (!/^[A-Za-z0-9.\-^]{1,12}$/.test(ticker)) return sendJSON(res, 400, { error: 'bad ticker' });
@@ -3901,13 +3905,19 @@ const server = http.createServer(async (req, res) => {
       if (local && local.length > 1) {
         const last = local[local.length - 1][0];
         const back = (days) => new Date(Date.parse(last) - days * 86400000).toISOString().slice(0, 10);
-        const from = range === '1m' ? back(31) : range === '6m' ? back(190)
-          : range === 'ytd' ? `${last.slice(0, 4)}-01-01` : range === '1y' ? back(366) : '1900-01-01';
+        const from = range === '1m' ? back(31)
+          : range === '3m' ? back(92)
+            : range === '6m' ? back(190)
+              : range === 'ytd' ? `${last.slice(0, 4)}-01-01`
+                : range === '1y' ? back(366)
+                  : range === '5y' ? back(1826)
+                    : range === '10y' ? back(3653)
+                      : '1900-01-01';
         const rows = local.filter(([d]) => d >= from);
         return sendJSONCached(res, 200, { ticker, range, dates: rows.map((r) => r[0]), closes: rows.map((r) => r[1]) });
       }
       const out = await cached('cochart:' + ticker + ':' + range + ':' + interval, 600e3, async () => {
-        const { series } = await yahooSeries(ticker, range, interval);
+        const { series } = await yahooSeries(ticker, YAHOO[range] || range, interval);
         const dates = Object.keys(series).sort();
         return { ticker, range, dates, closes: dates.map((d) => series[d]) };
       }).catch(() => null);
