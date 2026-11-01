@@ -9,7 +9,8 @@ name: keepalive
 # gap well under Render's fifteen-minute threshold.
 on:
   schedule:
-    - cron: '*/5 * * * *'
+    # Offsets from :00/:05 — GitHub delays or drops runs scheduled on the congested round marks.
+    - cron: '3,8,13,18,23,28,33,38,43,48,53,58 * * * *'
   workflow_dispatch: {}
 
 concurrency:
