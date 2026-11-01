@@ -6,6 +6,12 @@ node_modules/
 .DS_Store
 *.log
 
+# Wrangler's local build cache
+**/.wrangler/
+
+# transient editor/agent backups
+.tmp-*.js
+
 # SEC filing cache used by scripts/fetch-ma.mjs
 data/.ma-cache/
 
