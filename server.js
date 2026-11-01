@@ -3825,6 +3825,17 @@ const pickEncoding = (ae) => (/\bbr\b/.test(ae || '') ? 'br' : /\bgzip\b/.test(a
 const encodeBuf = (raw, enc) => (enc === 'br'
   ? zlib.brotliCompressSync(raw, { params: { [zlib.constants.BROTLI_PARAM_QUALITY]: 5 } })
   : zlib.gzipSync(raw, { level: 6 }));
+// The ?v= on an asset is a promise that its bytes never change (those URLs are served immutable for a
+// year), so a deploy that changes app.js without bumping the number leaves every returning reader on
+// the old file. The stamp comes from the file's own mtime now, not from a hand-edited number.
+const VERSIONED_FILES = ['app.js', 'style.css', 'vendor/chart.umd.min.js'];
+const assetStamp = (f) => { try { return Math.floor(fs.statSync(path.join(PUBLIC, f)).mtimeMs).toString(36); } catch { return null; } };
+const stampIndex = (html) => {
+  const stamps = Object.fromEntries(VERSIONED_FILES.map((f) => [f, assetStamp(f)]));
+  return html.replace(/((?:app\.js|style\.css|vendor\/chart\.umd\.min\.js))\?v=[^"'&\s>]*/g,
+    (m, f) => (stamps[f] ? `${f}?v=${stamps[f]}` : m));
+};
+
 // Same as sendJSON, but revalidates: a returning visitor gets 304 and transfers nothing.
 // Content-addressed cache for the compressed JSON bodies: the calendar is ~165 KB and compressing it
 // again on every request cost ~1s. The key is the etag, so an unchanged payload is encoded once.
@@ -4332,7 +4343,11 @@ const server = http.createServer(async (req, res) => {
     // for that version. Let the browser keep it for a year: the JS is 105 KB gzipped and used to be
     // re-downloaded on every single visit because the header was plain `no-cache`.
     const versioned = url.searchParams.has('v');
-    const etag = `W/"${st.size.toString(16)}-${Math.floor(st.mtimeMs).toString(16)}${enc ? '-' + enc : ''}"`;
+    // index.html links the assets, so its content depends on THEIR mtimes — both the ETag and the
+    // compressed-body cache key have to include them or a deploy serves the old version numbers.
+    const isIndex = file === '/index.html';
+    const assetKey = isIndex ? ':' + VERSIONED_FILES.map(assetStamp).join('-') : '';
+    const etag = `W/"${st.size.toString(16)}-${Math.floor(st.mtimeMs).toString(16)}${assetKey}${enc ? '-' + enc : ''}"`;
     const headers = {
       'content-type': MIME[ext] || 'application/octet-stream',
       etag,
@@ -4341,14 +4356,20 @@ const server = http.createServer(async (req, res) => {
     };
     if (!versioned && req.headers['if-none-match'] === etag) { res.writeHead(304, headers); return res.end(); }
     if (enc) {
-      const key = full + ':' + st.mtimeMs + ':' + enc;
+      const key = full + ':' + st.mtimeMs + assetKey + ':' + enc;
       let buf = zcache.get(key);
-      if (!buf) { buf = encodeBuf(fs.readFileSync(full), enc); if (zcache.size > 80) zcache.clear(); zcache.set(key, buf); }
+      if (!buf) {
+        const raw = isIndex ? Buffer.from(stampIndex(fs.readFileSync(full, 'utf8'))) : fs.readFileSync(full);
+        buf = encodeBuf(raw, enc);
+        if (zcache.size > 80) zcache.clear();
+        zcache.set(key, buf);
+      }
       headers['content-encoding'] = enc; headers.vary = 'Accept-Encoding';
       res.writeHead(200, headers);
       return res.end(buf);
     }
     res.writeHead(200, headers);
+    if (isIndex) return res.end(stampIndex(fs.readFileSync(full, 'utf8')));
     fs.createReadStream(full).pipe(res);
   } catch (err) {
     sendJSON(res, 500, { error: String(err.message || err) });
