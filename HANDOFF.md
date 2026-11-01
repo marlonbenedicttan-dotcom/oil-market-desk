@@ -3080,3 +3080,13 @@ Audited at 360, 390 and 430 px with screenshots of every view, then fixed what l
   entirely (162 KB of the total). 178 tests pass.
 - **Not done**: minifying `app.js`. With immutable caching the 105 KB is paid once per version, so a
   minifier would add a build step to a repo that deliberately has none for a one-off saving.
+
+## The boot screen was waiting for a panel that never loads (2026-11-01)
+- **Every visit sat on "reading the market…" for the full 8-second cap.** `BOOT_CORE` gated the overlay on
+  seven panels, including `positioning` — which is a below-the-fold panel loaded by `whenNear()`. It never
+  reports ready during boot, so the gate could never complete and the 8s fallback always fired.
+- Removing it from the gate: **9.0s → 3.5s** to a usable page (measured locally, warm cache). The overlay
+  now hides when the first-screen panels are actually ready.
+- `/api/history` and `/api/headlines` were the last two `no-store` feeds; both are cached for 30s now.
+- Repeat-visit transfer measured with a warm browser profile: **267 KB → 56 KB** (10 requests served from
+  cache), because `app.js`, `style.css` and the self-hosted Chart.js are immutable for a year.

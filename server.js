@@ -3780,7 +3780,7 @@ const server = http.createServer(async (req, res) => {
       return res.end('method not allowed');
     }
     if (url.pathname === '/api/market') return sendJSONCached(res, 200, await getMarket().catch((e) => { console.error('[market]', e.message); return { updated: new Date().toISOString(), benchmarks: [], spreads: {}, quality: { flags: [], curveAvailable: false }, notes: [] }; }));
-    if (url.pathname === '/api/history') return sendJSON(res, 200, await getHistory().catch((e) => { console.error('[history]', e.message); return { dates: [], series: {}, basis: {}, spreads: {}, deltas: {} }; }));
+    if (url.pathname === '/api/history') return sendJSONCached(res, 200, await getHistory().catch((e) => { console.error('[history]', e.message); return { dates: [], series: {}, basis: {}, spreads: {}, deltas: {} }; }));
     if (url.pathname === '/api/fx') return sendJSON(res, 200, FX_SYMS.map((f) => ({ id: f.id, label: f.label, dp: f.dp })));
     if (url.pathname === '/api/rates') return sendJSON(res, 200, RATES.map((r) => ({ id: r.id, label: r.label, dp: r.dp })));
     if (url.pathname === '/api/markets') return sendJSON(res, 200, getMarkets());
@@ -3805,7 +3805,7 @@ const server = http.createServer(async (req, res) => {
       return sendJSON(res, 200, await getNews(id, url.searchParams.get('component')).catch((e) => ({ error: String(e.message), id, items: [] })));
     }
     if (url.pathname === '/api/transmission') return sendJSON(res, 200, await getTransmission().catch((e) => ({ error: String(e.message), ideas: [] })));
-    if (url.pathname === '/api/headlines') return sendJSON(res, 200, await getHeadlines().catch((e) => ({ error: String(e.message), items: [] })));
+    if (url.pathname === '/api/headlines') return sendJSONCached(res, 200, await getHeadlines().catch((e) => ({ error: String(e.message), items: [] })));
     if (url.pathname === '/api/macro-news') {
       const id = url.searchParams.get('id');
       if (!NEWS_QUERIES[id]) return sendJSON(res, 404, { error: 'unknown region' });
