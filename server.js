@@ -3712,7 +3712,9 @@ const encodeBuf = (raw, enc) => (enc === 'br'
 const sendJSONCached = (res, code, obj) => {
   const body = Buffer.from(JSON.stringify(obj));
   const etag = `W/"${crypto.createHash('sha1').update(body).digest('base64').slice(0, 22)}"`;
-  const hdr = { etag, 'cache-control': 'private, max-age=0, must-revalidate' };
+  // 30 seconds is shorter than any refresh interval the page uses, and it removes a revalidation
+  // round-trip from every tab switch. Nothing here is per-user.
+  const hdr = { etag, 'cache-control': 'public, max-age=30, stale-while-revalidate=60' };
   if (res.req && res.req.headers['if-none-match'] === etag) { res.writeHead(304, hdr); return res.end(); }
   const enc = body.length > 1024 ? pickEncoding(res.req && res.req.headers['accept-encoding']) : null;
   if (enc) { res.writeHead(code, { ...hdr, 'content-type': 'application/json', 'content-encoding': enc, vary: 'Accept-Encoding' }); return res.end(encodeBuf(body, enc)); }
@@ -3777,7 +3779,7 @@ const server = http.createServer(async (req, res) => {
       res.writeHead(405, { 'content-type': 'text/plain', allow: 'GET, HEAD' });
       return res.end('method not allowed');
     }
-    if (url.pathname === '/api/market') return sendJSON(res, 200, await getMarket().catch((e) => { console.error('[market]', e.message); return { updated: new Date().toISOString(), benchmarks: [], spreads: {}, quality: { flags: [], curveAvailable: false }, notes: [] }; }));
+    if (url.pathname === '/api/market') return sendJSONCached(res, 200, await getMarket().catch((e) => { console.error('[market]', e.message); return { updated: new Date().toISOString(), benchmarks: [], spreads: {}, quality: { flags: [], curveAvailable: false }, notes: [] }; }));
     if (url.pathname === '/api/history') return sendJSON(res, 200, await getHistory().catch((e) => { console.error('[history]', e.message); return { dates: [], series: {}, basis: {}, spreads: {}, deltas: {} }; }));
     if (url.pathname === '/api/fx') return sendJSON(res, 200, FX_SYMS.map((f) => ({ id: f.id, label: f.label, dp: f.dp })));
     if (url.pathname === '/api/rates') return sendJSON(res, 200, RATES.map((r) => ({ id: r.id, label: r.label, dp: r.dp })));
@@ -3814,7 +3816,7 @@ const server = http.createServer(async (req, res) => {
       const c = url.searchParams.get('country') || 'us';
       return sendJSON(res, 200, await getCatalysts(c).catch((e) => ({ error: String(e.message), events: [] })));
     }
-    if (url.pathname === '/api/macro-tickers') return sendJSON(res, 200, await getMacroTickers().catch((e) => ({ error: String(e.message), items: [] })));
+    if (url.pathname === '/api/macro-tickers') return sendJSONCached(res, 200, await getMacroTickers().catch((e) => ({ error: String(e.message), items: [] })));
     if (url.pathname === '/api/region-quotes') {
       const id = url.searchParams.get('id');
       if (!MACRO_COUNTRIES[id]) return sendJSON(res, 404, { error: 'unknown region' });
@@ -3860,9 +3862,9 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname === '/api/seasonal') {
       const b = BENCHMARKS.find((x) => x.id === url.searchParams.get('id'));
       if (!b) return sendJSON(res, 404, { error: 'unknown benchmark' });
-      return sendJSON(res, 200, await getSeasonal(b).catch((e) => ({ error: String(e.message) })));
+      return sendJSONCached(res, 200, await getSeasonal(b).catch((e) => ({ error: String(e.message) })));
     }
-    if (url.pathname === '/api/inventories') return sendJSON(res, 200, await getInventories());
+    if (url.pathname === '/api/inventories') return sendJSONCached(res, 200, await getInventories());
     if (url.pathname === '/api/deals/lookup') {
       // On-demand backfill: Google News will still find an old deal when you ask for it BY NAME, even
       // though its RSS ignores date ranges. So the search box is also a lookup, not just a filter.
@@ -4049,7 +4051,7 @@ const server = http.createServer(async (req, res) => {
       });
     }
     if (url.pathname === '/api/regime') return sendJSON(res, 200, await getRegime().catch((e) => ({ error: String(e.message), rows: [] })));
-    if (url.pathname === '/api/screen') return sendJSON(res, 200, await getScreen().catch((e) => ({ error: String(e.message), rows: [] })));
+    if (url.pathname === '/api/screen') return sendJSONCached(res, 200, await getScreen().catch((e) => ({ error: String(e.message), rows: [] })));
     if (url.pathname === '/api/risk') return sendJSON(res, 200, await getRisk().catch((e) => ({ error: String(e.message), metrics: [], matrix: {} })));
     if (url.pathname === '/api/fxadjusted') return sendJSON(res, 200, await getFxAdjusted(url.searchParams.get('base') || 'USD').catch((e) => ({ error: String(e.message), rows: [] })));
     if (url.pathname === '/api/search') return sendJSONCached(res, 200, searchCompanies(url.searchParams.get('q'), Math.min(20, Number(url.searchParams.get('limit')) || 8)));
@@ -4059,11 +4061,11 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname === '/api/positioning') {
       const seg = url.searchParams.get('segment');
       const p = seg ? getPositioningSegment(seg) : getPositioning(url.searchParams.get('id') || 'wti');
-      return sendJSON(res, 200, await p.catch((e) => ({ error: String(e.message) })));
+      return sendJSONCached(res, 200, await p.catch((e) => ({ error: String(e.message) })));
     }
-    if (url.pathname === '/api/equities') return sendJSON(res, 200, await getEquities());
+    if (url.pathname === '/api/equities') return sendJSONCached(res, 200, await getEquities());
     if (url.pathname === '/api/macro') return sendJSON(res, 200, await getMacro());
-    if (url.pathname === '/api/macrodash') return sendJSON(res, 200, await getMacroDash().catch((e) => ({ error: String(e.message) })));
+    if (url.pathname === '/api/macrodash') return sendJSONCached(res, 200, await getMacroDash().catch((e) => ({ error: String(e.message) })));
     if (url.pathname === '/api/correlations') return sendJSON(res, 200, await getCorrelations().catch((e) => ({ error: String(e.message) })));
     if (url.pathname === '/api/events') return sendJSON(res, 200, getEvents());
     if (url.pathname === '/api/calendar') {
@@ -4082,7 +4084,7 @@ const server = http.createServer(async (req, res) => {
           });
         }
       } catch { /* no japan data yet */ }
-      return sendJSON(res, 200, cal);
+      return sendJSONCached(res, 200, cal);
     }
     if (url.pathname === '/api/curve') return sendJSON(res, 200, await getCurves());
     if (url.pathname === '/api/termstructure') {
@@ -4184,8 +4186,8 @@ const server = http.createServer(async (req, res) => {
       await deliver('test', "Marlon's Watchtower · test message", body);
       return sendJSON(res, 200, { ok: notifyStatus.lastOk, error: notifyStatus.lastError, channels: { email: mailConfigured(), webhook: Boolean(process.env.WEBHOOK_URL) } });
     }
-    if (url.pathname === '/api/brief') return sendJSON(res, 200, await buildBrief().catch((e) => ({ error: String(e.message) })));
-    if (url.pathname === '/api/analytics') return sendJSON(res, 200, await getAnalytics(Number(url.searchParams.get('freight')) || FREIGHT_DEFAULT).catch((e) => { console.error('[analytics]', e.message); return { benchmarks: {} }; }));
+    if (url.pathname === '/api/brief') return sendJSONCached(res, 200, await buildBrief().catch((e) => ({ error: String(e.message) })));
+    if (url.pathname === '/api/analytics') return sendJSONCached(res, 200, await getAnalytics(Number(url.searchParams.get('freight')) || FREIGHT_DEFAULT).catch((e) => { console.error('[analytics]', e.message); return { benchmarks: {} }; }));
     if (url.pathname === '/api/export.csv') {
       const [m, a] = await Promise.all([getMarket(), getAnalytics()]);
       const rows = [['benchmark', 'unit', 'paper', 'physical', 'physical_date', 'basis', 'basis_pctile_2y', 'vol30_ann_pct']];
@@ -4208,8 +4210,19 @@ const server = http.createServer(async (req, res) => {
       return res.end('not found');
     }
     const ext = path.extname(full);
-    const headers = { 'content-type': MIME[ext] || 'application/octet-stream', 'cache-control': 'no-cache' };
     const enc = st.size > 1024 && COMPRESSIBLE.has(ext) ? pickEncoding(req.headers['accept-encoding']) : null;
+    // Every asset link carries ?v=<cache-buster>, so the URL itself promises the bytes will never change
+    // for that version. Let the browser keep it for a year: the JS is 105 KB gzipped and used to be
+    // re-downloaded on every single visit because the header was plain `no-cache`.
+    const versioned = url.searchParams.has('v');
+    const etag = `W/"${st.size.toString(16)}-${Math.floor(st.mtimeMs).toString(16)}${enc ? '-' + enc : ''}"`;
+    const headers = {
+      'content-type': MIME[ext] || 'application/octet-stream',
+      etag,
+      'last-modified': new Date(st.mtimeMs).toUTCString(),
+      'cache-control': versioned ? 'public, max-age=31536000, immutable' : 'no-cache',
+    };
+    if (!versioned && req.headers['if-none-match'] === etag) { res.writeHead(304, headers); return res.end(); }
     if (enc) {
       const key = full + ':' + st.mtimeMs + ':' + enc;
       let buf = zcache.get(key);
@@ -4242,7 +4255,7 @@ server.listen(PORT, async () => {
   const warmCaches = async () => {
     try { await Promise.all([getMarket(), getHistory(), getAnalytics()]); } catch {}
     try { await Promise.all(BENCHMARKS.filter((b) => COT_NAMES[b.id]).map((b) => getPositioning(b.id).catch(() => {}))); } catch {}
-    try { await Promise.all([getRegime(), getCalendar()]); } catch {}
+    try { await Promise.all([getRegime(), getCalendar(), getMacroTickers()]); } catch {}
     for (const m of MARKETS) { try { await getMarketRead(m.id, null); } catch {} await new Promise((r) => setTimeout(r, 300)); }
     try { await getScreen(); } catch {}
   };

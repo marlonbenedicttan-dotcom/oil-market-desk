@@ -1230,7 +1230,8 @@ async function loadHistory() {
 // Re-pull the daily history and redraw everything that depends on it (the 1D/1W/1M/YTD/1Y
 // strips + sparklines), so they keep up as new daily bars arrive — not just at page load.
 async function reloadHistory() {
-  try { await loadHistory(); } catch { return; }
+  // The boot already fetched history; refetching it here sent the same 24 KB twice on every load.
+  if (!history || !history.series) { try { await loadHistory(); } catch { return; } }
   if (!data) return;
   renderCards(data); renderSnapshot(); renderTicker(data); renderWatchlist();
   if ($('range') && $('range').value === '6m') renderChart();
@@ -3139,14 +3140,17 @@ $('macro-links')?.addEventListener('click', (e) => { const el = e.target.closest
   const mkP = getJSON('/api/markets').catch(() => []);
   const ctryP = getJSON('/api/countries').catch(() => null);
   countriesP = ctryP;   // shared with ensureCountries() so a slow boot can't lose the user's pick
-  await loadHistory().catch(() => {});   // never fatal — degrades to an empty history
+  // History and prices do not depend on each other — run them together rather than back to back.
+  const histP = loadHistory().catch(() => {});   // never fatal — degrades to an empty history
+  const liveP = refreshLive();
   fxList = await fxP; rateList = await rateP;
   renderCmpPresets();
   bootStep('Loading markets…');
   markets = await mkP;
   macroCountries = await ctryP;
   bootStep('Loading prices…');
-  await refreshLive();        // prices (sets `data` first)
+  await liveP;                // prices (sets `data` first)
+  await histP;
   initCurveHist();            // arm the lazy loader for the (expensive) curve-history chart
   bootStep('reading the market…');
   await loadExtraCore();      // the above-the-fold feeds only — below-the-fold comes after first paint
@@ -3166,6 +3170,9 @@ $('macro-links')?.addEventListener('click', (e) => { const el = e.target.closest
   setInterval(loadHeadlines, 600000);   // refresh the live headline board
   setInterval(loadExtra, 600000);                                   // slow feeds every 10 min
   setInterval(() => { nextRefresh -= 5; if (nextRefresh <= 0) { nextRefresh = 60; refreshLive(); } const cd = $('countdown'); if (cd) cd.textContent = `auto ${nextRefresh}s`; }, 5000);
+  // Any request resets the host's idle timer; a tab left open keeps the instance from sleeping, which
+  // is what makes the next visit wait 20-30s on the boot screen.
+  setInterval(() => { fetch('/health', { cache: 'no-store' }).catch(() => {}); }, 5 * 60e3);
 })();
 
 // ---------------------------------------------------------------------------

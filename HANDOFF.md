@@ -3055,3 +3055,28 @@ Audited at 360, 390 and 430 px with screenshots of every view, then fixed what l
   keeps production warm.
 - **Cost**: a public repo gets free Actions minutes, and Render's free tier allows 750 instance hours a
   month — an always-warm single service is ~730, so this stays inside the free plan.
+
+## Loading: immutable assets, cached JSON, ten-second boots (2026-11-01)
+- **The largest asset was re-downloaded on every visit.** `app.js` is 364 KB raw / ~105 KB gzipped and
+  the header was plain `no-cache` with **no ETag and no Last-Modified** — a conditional request still
+  got a full 200. Every `?v=` asset is now `public, max-age=31536000, immutable` (the `?v=` already
+  promises the bytes never change), and unversioned files carry an ETag and answer 304.
+- **JSON revalidated on every tab switch.** Cached endpoints moved from `private, max-age=0,
+  must-revalidate` to `public, max-age=30, stale-while-revalidate=60` — shorter than any refresh the
+  page uses, and none of it is per-user. `/api/market`, `/api/calendar`, `/api/brief`, `/api/seasonal`,
+  `/api/screen`, `/api/inventories`, `/api/analytics`, `/api/positioning`, `/api/equities`,
+  `/api/macrodash` and `/api/macro-tickers` now use it.
+- **`/api/history` was fetched twice on every boot** — once in boot and again from `reloadHistory()`.
+  The reload now reuses what is already loaded: 24 KB saved per visit.
+- **Chart.js is self-hosted** (`public/vendor/chart.umd.min.js`, 205 KB → 66 KB brotli) instead of a
+  jsdelivr CDN request. One less third-party DNS + TLS handshake, and it caches immutably.
+- **Boot runs history and prices in parallel** instead of back to back (~0.3s).
+- **`macro-tickers` is warmed at boot** with the other slow feeds; it is a 2.2s Yahoo call.
+- **Keepalive**: a Cloudflare Worker cron (`workers/keepalive/`) pings `/health` every five minutes —
+  `cd workers/keepalive && npx wrangler deploy` after `npx wrangler login`. The GitHub Actions job
+  stays as a best-effort fallback, and the page pings `/health` itself every five minutes while a tab
+  is open. The cold start is the single largest perceived delay: 20–30 seconds on Render's free plan.
+- **Measured after**: 318 KB → 293 KB first load; repeat visits skip app.js, style.css and Chart.js
+  entirely (162 KB of the total). 178 tests pass.
+- **Not done**: minifying `app.js`. With immutable caching the 105 KB is paid once per version, so a
+  minifier would add a build step to a repo that deliberately has none for a one-off saving.
