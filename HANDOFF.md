@@ -3102,3 +3102,14 @@ Audited at 360, 390 and 430 px with screenshots of every view, then fixed what l
 - **Also true of the earlier change**: hiding the overlay when prices land means panels can be on screen
   before their data arrives. Every panel must therefore *fill in* rather than depend on boot ordering —
   the picker was the one place that did not.
+
+## COMPANIES prefetches itself now (2026-11-01)
+- **The idle prefetch never ran.** `warmMarkets()` — which pulls /api/companies, japan and korea in the
+  background — was only called from the screener render, i.e. *after* opening the tab it was supposed to
+  make fast. It is now scheduled 2.5s after the loading screen lifts.
+- Measured on mobile (390x844, 4x CPU, Fast 3G): COMPANIES opens in **0.2s** (was 0.8s), a company page
+  plus its chart in **0.7s** (was 1.5s).
+- It is skipped when `navigator.connection.saveData` is set or the connection reports 2G — that is ~250 KB
+  of background payload for a tab the reader may never open.
+- The company chart is deliberately NOT part of the loading gate: it belongs to another tab, and gating
+  the first screen on it would cost every visitor two seconds they do not need.

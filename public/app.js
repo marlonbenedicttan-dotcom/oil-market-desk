@@ -3178,6 +3178,9 @@ $('macro-links')?.addEventListener('click', (e) => { const el = e.target.closest
   syncRoute(false);
   routingReady = true;
   setTimeout(() => loadExtraSlow().catch(() => {}), 300);   // the slow, below-the-fold feeds
+  // COMPANIES is a separate tab, so it is not part of the loading gate — but its payloads can load
+  // quietly once the first screen is settled, which makes the tab open instantly.
+  setTimeout(() => { try { warmMarkets(0); } catch {} }, 2500);
   loadAnalogue();
   loadHeadlines();
   setInterval(loadHeadlines, 600000);   // refresh the live headline board
@@ -4569,6 +4572,10 @@ async function syncMarketBar() {
 let warmed = false;
 function warmMarkets(delay = 1500) {
   if (warmed) return;
+  // Three payloads (~250 KB gzipped) fetched in the background so COMPANIES opens instantly. Not worth
+  // it on a metered or 2G connection, where the reader may never open that tab.
+  const conn = (typeof navigator !== 'undefined' && navigator.connection) || {};
+  if (conn.saveData || /(^|-)2g$/.test(conn.effectiveType || '')) return;
   warmed = true;
   setTimeout(() => {
     if (!companiesData) getJSON('/api/companies').then((d) => { companiesData = d; }).catch(() => {});
