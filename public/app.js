@@ -178,7 +178,7 @@ const segKey = () => currentMarket + '|' + (currentComponent || '');
 // picker filled in, and the backdrop strip. It deliberately does NOT wait for the read/chart/news panels,
 // which live in the COMMODITIES pane and are invisible on HOME. The fallback cap below means a slow feed
 // can hold it for a few seconds at most, never eight.
-const BOOT_CORE = ['data', 'segments', 'regime'];
+const BOOT_CORE = ['data', 'segments', 'regime', 'brief'];
 const bootReady = Object.fromEntries(BOOT_CORE.map((k) => [k, false]));
 let bootCount0 = 0;
 const bootCount = () => BOOT_CORE.filter((k) => bootReady[k]).length;
@@ -2060,6 +2060,7 @@ async function loadBrief() {
   const el = $('home-brief');
   if (el && !el.innerHTML) el.innerHTML = stLoading('Reading the day…');
   try { renderBrief(await getJSON('/api/brief')); } catch { renderBrief(null); }
+  markReady('brief');
 }
 // Live important headlines (hero board).
 // Cross-asset regime board — the backdrop that sets the day's tone (dollar, volatility, rates,
