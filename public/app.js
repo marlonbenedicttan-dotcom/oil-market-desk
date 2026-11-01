@@ -3668,6 +3668,7 @@ const coMargin = coMarginOf;
 // so it reads as one product. Different currency and fiscal year, same layout.
 let japanData = null, jpSel = null, jpQuery = '';
 let jpView = (() => { try { return localStorage.getItem('oilbasis.jpView') || 'market'; } catch { return 'market'; } })();
+let jpMktRange = (() => { try { return localStorage.getItem('oilbasis.jpMktRange') || '1y'; } catch { return '1y'; } })();
 let jpRange = (() => { try { return localStorage.getItem('oilbasis.jpRange') || '6m'; } catch { return '6m'; } })();
 let jpCompare = '';
 let jpSort = (() => { try { return localStorage.getItem('oilbasis.jpSort') || 'cap'; } catch { return 'cap'; } })();
@@ -3815,8 +3816,6 @@ function renderJapanMarket(all, d) {
   el.innerHTML = jpViewsBar()
     + `<div class="jp-market-head"><span class="ph-t">TOPIX</span><span class="jp-market-lvl">${t.level != null ? t.level.toFixed(2) : '—'}</span>
         <span class="${(t.chg1d || 0) >= 0 ? 'pos' : 'neg'}">${chg(t.chg1d)} today</span>
-        <span class="${(t.chg6m || 0) >= 0 ? 'pos' : 'neg'}">${chg(t.chg6m)} 6M</span>
-        <span class="${(t.chgYtd || 0) >= 0 ? 'pos' : 'neg'}">${chg(t.chgYtd)} YTD</span>
         <span class="dimtext">official index · whole market</span></div>`
     + `<div class="co-stats co-stats-12">
         ${cell('PRIME MARKET CAP', yen(m.totalCap), 'Sum of every Prime constituent we hold, ex-treasury')}
@@ -3829,7 +3828,7 @@ function renderJapanMarket(all, d) {
         ${cell('UP THIS YEAR', m.upYtd != null ? `${m.upYtd}` : '—', 'Companies with a positive year-to-date return')}
       </div>`
     + breadth
-    + (t.series && t.series.length > 1 ? '<div class="co-chartwrap"><canvas id="jp-mkt-chart"></canvas></div>' : '')
+    + (t.series && t.series.length > 1 ? '<div class="co-rets" id="jp-mkt-rets"></div><div class="co-chartwrap"><canvas id="jp-mkt-chart"></canvas></div>' : '')
     + `<div class="co-hrow jp-mkt-hrow"><span>SECTOR</span><span>N</span><span>CAP</span><span>P/E</span><span>P/B</span><span>ROE</span><span>YIELD</span><span>YTD</span></div>`
     + sectors.map((s) => `<div class="jp-mkt-row">
         <span>${esc(s.name)}</span><span>${s.count}</span><span>${yen(s.cap)}</span>
@@ -3841,7 +3840,14 @@ function renderJapanMarket(all, d) {
       </div>`).join('')
     + `<div class="macro-note">Aggregates are computed from the ${all.length} Prime constituents in this dataset, not from an index file — medians are equal-weighted, so they describe the typical company rather than the largest. TOPIX is the exchange's official index and covers Prime, Standard and Growth.</div>`;
   if (t.series && t.series.length > 1) {
-    mountChart('jp-mkt-chart', { labels: t.series.map((p) => p.d), datasets: [line('TOPIX', t.series.map((p) => p.c), CT.c1)] }, baseOptions({ dp: 0, dateAxis: true }));
+    // TOPIX's own history, with the same window strip a company page carries. The series is already in
+    // the page, so changing the window is a redraw rather than a request.
+    const full = { dates: t.series.map((p) => p.d), closes: t.series.map((p) => p.c) };
+    const wins = coWindowsFor(full.dates);
+    if (!wins.includes(jpMktRange)) jpMktRange = '1y';
+    paintReturns('jp-mkt-rets', null, full, jpMktRange, wins, 'jpmkt');
+    const view = coSlice(full, jpMktRange);
+    mountChart('jp-mkt-chart', { labels: view.dates, datasets: [line(`TOPIX · ${jpMktRange.toUpperCase()}`, view.closes, CT.c1)] }, baseOptions({ dp: 0, dateAxis: true }));
   }
 }
 
@@ -4261,6 +4267,7 @@ let krSort = (() => { try { return localStorage.getItem('oilbasis.krSort') || 'c
 let krFilter = (() => { try { return JSON.parse(localStorage.getItem('oilbasis.krFilter') || '{}'); } catch { return {}; } })();
 const saveKrFilter = () => { try { localStorage.setItem('oilbasis.krFilter', JSON.stringify(krFilter)); } catch {} };
 let krView = (() => { try { return localStorage.getItem('oilbasis.krView') || 'market'; } catch { return 'market'; } })();
+let krMktRange = (() => { try { return localStorage.getItem('oilbasis.krMktRange') || '1y'; } catch { return '1y'; } })();
 let krTheme = (() => { try { return localStorage.getItem('oilbasis.krTheme') || 'semis'; } catch { return 'semis'; } })();
 
 const won = (v) => {
@@ -4427,8 +4434,6 @@ function renderKoreaMarket(all, d) {
     + `<div class="jp-market-head"><span class="ph-t">KOSPI</span>
         ${idx.level != null ? `<span class="jp-market-lvl">${idx.level.toLocaleString('en-US', { maximumFractionDigits: 2 })}</span>` : '<span class="dimtext">index unavailable</span>'}
         <span class="${(idx.chg1d || 0) >= 0 ? 'pos' : 'neg'}">${chg(idx.chg1d)} today</span>
-        <span class="${(idx.chg6m || 0) >= 0 ? 'pos' : 'neg'}">${chg(idx.chg6m)} 6M</span>
-        <span class="${(idx.chgYtd || 0) >= 0 ? 'pos' : 'neg'}">${chg(idx.chgYtd)} YTD</span>
         <span class="dimtext">${all.length} companies · computed from the constituent set</span></div>`
     + `<div class="co-stats co-stats-12">
         ${cell('TOTAL MARKET CAP', won(m.totalCap), 'Sum of every KOSPI constituent we hold')}
@@ -4440,7 +4445,7 @@ function renderKoreaMarket(all, d) {
         ${cell('UP THIS YEAR', String(m.upYtd ?? '—'), 'Companies with a positive year-to-date return')}
       </div>`
     + breadth
-    + (idx.series && idx.series.length > 1 ? `<div class="co-chartwrap"><canvas id="kr-mkt-chart"></canvas></div>` : '')
+    + (idx.series && idx.series.length > 1 ? `<div class="co-rets" id="kr-mkt-rets"></div><div class="co-chartwrap"><canvas id="kr-mkt-chart"></canvas></div>` : '')
     + `<div class="co-hrow jp-mkt-hrow"><span>SECTOR</span><span>N</span><span>CAP</span><span>P/E</span><span>P/B</span><span>ROE</span><span>PAYOUT</span><span>YTD</span></div>`
     + (m.sectors || []).map((x) => `<div class="jp-mkt-row">
         <span>${esc(x.name)}</span><span>${x.count}</span><span>${won(x.cap)}</span>
@@ -4452,7 +4457,12 @@ function renderKoreaMarket(all, d) {
       </div>`).join('')
     + `<div class="macro-note">Aggregates computed from the ${all.length} KOSPI constituents. Sectors from each company's KSIC industry code. KOSPI level and history from Naver Finance.</div>`;
   if (idx.series && idx.series.length > 1) {
-    mountChart('kr-mkt-chart', { labels: idx.series.map((p) => p.d), datasets: [line('KOSPI', idx.series.map((p) => p.c), CT.c1)] }, baseOptions({ dp: 0, dateAxis: true }));
+    const full = { dates: idx.series.map((p) => p.d), closes: idx.series.map((p) => p.c) };
+    const wins = coWindowsFor(full.dates);
+    if (!wins.includes(krMktRange)) krMktRange = '1y';
+    paintReturns('kr-mkt-rets', null, full, krMktRange, wins, 'krmkt');
+    const view = coSlice(full, krMktRange);
+    mountChart('kr-mkt-chart', { labels: view.dates, datasets: [line(`KOSPI · ${krMktRange.toUpperCase()}`, view.closes, CT.c1)] }, baseOptions({ dp: 0, dateAxis: true }));
   }
 }
 
@@ -4856,6 +4866,30 @@ function coWindow(ch, range) {
   if (a == null || b == null || !a) return null;
   return { pct: (b / a - 1) * 100, from: a, to: b };
 }
+// The windows a series actually covers. Korea's index history is one year, so its strip stops at 1Y
+// rather than printing a five-year number built from the first point it happens to hold.
+function coWindowsFor(dates) {
+  if (!dates || dates.length < 2) return ['1m', '3m', '6m', 'ytd', '1y'];
+  const span = (Date.parse(dates[dates.length - 1]) - Date.parse(dates[0])) / 864e5;
+  return WINDOWS_ALL.filter((k) => {
+    if (k === 'ytd') return true;
+    const w = CO_WIN.find((x) => x[0] === k);
+    return w ? span >= w[2] * 0.9 : true;
+  });
+}
+// Slice an in-page series to the window the reader picked (the index series are already loaded, so a
+// window change is a redraw, not a round-trip).
+function coSlice(ch, range) {
+  const w = CO_WIN.find((x) => x[0] === range);
+  const dates = (ch && ch.dates) || [], closes = (ch && ch.closes) || [];
+  if (!w || dates.length < 2) return ch;
+  const last = dates[dates.length - 1];
+  const from = range === 'ytd' ? `${last.slice(0, 4)}-01-01`
+    : new Date(Date.parse(last) - w[2] * 864e5).toISOString().slice(0, 10);
+  let i = dates.findIndex((d) => d >= from);
+  if (i < 0) i = 0;
+  return { dates: dates.slice(i), closes: closes.slice(i) };
+}
 // Shared by all three markets: the US uses data-corange, Japan data-jprange, Korea data-krrange, so the
 // existing delegated handlers keep working.
 const WINDOWS_ALL = ['1m', '3m', '6m', 'ytd', '1y', '5y', '10y'];
@@ -4980,15 +5014,12 @@ async function renderUsMarket(el, all) {
     const mt = await jget('/api/macro-tickers', 900000);
     spx = (mt && mt.items || []).find((x) => x.label === 'S&P 500');
   } catch { spx = null; }
-  const wsum = uniq.reduce((a, c) => a + (c.marketCap || 0), 0) || 1;
-  const wChg = (k) => uniq.reduce((a, c) => a + (c.marketCap || 0) * (c[k] || 0), 0) / wsum;
 
   el.innerHTML = usViewsBar()
     + `<div class="jp-market-head"><span class="ph-t">S&amp;P 500</span>
         ${spx && (spx.price != null || spx.last != null)
           ? `<span class="jp-market-lvl">${Number(spx.price != null ? spx.price : spx.last).toLocaleString('en-US', { maximumFractionDigits: 2 })}</span>${spx.pct != null ? `<span class="${spx.pct >= 0 ? 'pos' : 'neg'}">${chg(spx.pct)} today</span>` : ''}`
           : '<span class="dimtext">index quote unavailable</span>'}
-        <span class="${wChg('chgYtd') >= 0 ? 'pos' : 'neg'}">${chg(wChg('chgYtd'))} YTD cap-weighted</span>
         <span class="dimtext">${uniq.length} companies · aggregates computed from the constituent set</span></div>`
     + `<div class="co-stats co-stats-12">
         ${cell('TOTAL MARKET CAP', coMoney(totalCap), 'Sum of every constituent, share classes excluded')}
@@ -5001,6 +5032,7 @@ async function renderUsMarket(el, all) {
         ${cell('INDEX P/E', v.pe != null ? `${v.pe.toFixed(1)}×` : '—', 'Cap-weighted: Σ market cap ÷ Σ trailing earnings', '')}
       </div>`
     + breadth
+    + `<div class="co-rets" id="us-mkt-rets"></div>`
     + `<div class="co-chartwrap"><canvas id="us-mkt-chart"></canvas></div>`
     + `<div class="co-hrow jp-mkt-hrow"><span>SECTOR</span><span>N</span><span>CAP</span><span>P/E</span><span>P/B</span><span>ROE</span><span>YIELD</span><span>YTD</span></div>`
     + sectors.map((x) => `<div class="jp-mkt-row">
@@ -5013,12 +5045,31 @@ async function renderUsMarket(el, all) {
       </div>`).join('')
     + `<div class="macro-note">Constituent medians are equal-weighted; the index P/E is cap-weighted and comes from the annual filings. ${v.percentile != null ? `The index sits at the ${v.percentile}th percentile of ${v.min}–${v.max} over the last ${(v.years || []).length} years.` : ''}</div>`;
 
-  // The index's own price history, the same way the Japan market view plots TOPIX.
+  // The index's own price history, with the same window strip a company page carries.
+  await drawUsMarketChart();
+}
+
+// The S&P 500 chart on the market view: one long series feeds every window's return, and the strip
+// doubles as the range control (the same shape as a company's price chart).
+let usMktRange = (() => { try { return localStorage.getItem('oilbasis.usMktRange') || '1y'; } catch { return '1y'; } })();
+async function drawUsMarketChart() {
+  const canvas = $('us-mkt-chart');
+  if (!canvas) return;
   if (charts['us-mkt-chart']) { try { charts['us-mkt-chart'].destroy(); } catch {} delete charts['us-mkt-chart']; }
+  const url = (r) => `/api/company-chart?ticker=%5EGSPC&range=${r}`;
   try {
-    const ch = await jget('/api/company-chart?ticker=%5EGSPC&range=1y', 900000);
-    if (ch && ch.dates && ch.dates.length > 1) {
-      mountChart('us-mkt-chart', { labels: ch.dates, datasets: [line('S&P 500 · 1Y', ch.closes, CT.c1)] }, baseOptions({ dp: 0, dateAxis: true }));
+    // Both windows at once: the strip needs ten years, the line needs the one on screen. The long one
+    // asks for daily bars — the route defaults ten years to MONTHLY, and a month-over-month series
+    // makes the 1M and 6M cells read 0.0% because they land on the same monthly point.
+    const [long, win] = await Promise.all([jget(url('10y') + '&interval=1d', 900000), jget(url(usMktRange), 900000)]);
+    if (!canvas.isConnected) return;
+    if (long && long.dates && long.dates.length > 1) {
+      const wins = coWindowsFor(long.dates);
+      if (!wins.includes(usMktRange)) usMktRange = wins[wins.length - 1] || '1y';
+      paintReturns('us-mkt-rets', null, long, usMktRange, wins, 'usmkt');
+    }
+    if (win && win.dates && win.dates.length > 1) {
+      mountChart('us-mkt-chart', { labels: win.dates, datasets: [line(`S&P 500 · ${usMktRange.toUpperCase()}`, win.closes, CT.c1)] }, baseOptions({ dp: 0, dateAxis: true }));
     }
   } catch { /* leave the frame empty rather than a broken chart */ }
 }
@@ -5316,6 +5367,28 @@ document.addEventListener('click', (e) => {
     coRange = cr.dataset.corange;
     document.querySelectorAll('[data-corange]').forEach((b) => b.classList.toggle('on', b.dataset.corange === coRange));
     loadCoChart(coTicker, coRange);
+    return;
+  }
+  // The index strips on the market views work the same way: a window is a redraw, not a page change.
+  const um = e.target.closest('[data-usmkt]');
+  if (um) {
+    usMktRange = um.dataset.usmkt;
+    try { localStorage.setItem('oilbasis.usMktRange', usMktRange); } catch {}
+    drawUsMarketChart();
+    return;
+  }
+  const jm = e.target.closest('[data-jpmkt]');
+  if (jm) {
+    jpMktRange = jm.dataset.jpmkt;
+    try { localStorage.setItem('oilbasis.jpMktRange', jpMktRange); } catch {}
+    renderJapan();
+    return;
+  }
+  const km = e.target.closest('[data-krmkt]');
+  if (km) {
+    krMktRange = km.dataset.krmkt;
+    try { localStorage.setItem('oilbasis.krMktRange', krMktRange); } catch {}
+    renderKorea();
     return;
   }
   const region = e.target.closest('[data-region]');
