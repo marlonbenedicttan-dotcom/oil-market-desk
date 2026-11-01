@@ -3040,3 +3040,18 @@ Audited at 360, 390 and 430 px with screenshots of every view, then fixed what l
   and the README are updated. The Render env var can be deleted.
 - **Verified**: page renders with no `#c-ships`/`#map`/`#satellite` elements, removed endpoints 404,
   `/api/market`, `/api/tightness`, `/api/inventories`, `/api/products` still 200.
+
+## The free instance no longer sleeps between visits (2026-11-01)
+- **Symptom**: the first request after a quiet spell opened on the boot screen for 20–30 seconds. Render's
+  free plan sleeps a web service after ~15 minutes without traffic, and a cold resurrection is slow
+  enough that the site looks broken rather than sleeping.
+- **Fix**: `.github/workflows/keepalive.yml` pings `/health` every five minutes from Actions — not from
+  a laptop, so it works while the Mac is asleep. GitHub's scheduler runs late under load, so the spacing
+  is five minutes rather than ten; the real gap stays well inside Render's fifteen-minute idle timeout.
+- Three attempts per run with a 45s timeout, and the job deliberately **does not fail**: a red run every
+  five minutes trains you to ignore the colour. `data-freshness` remains the job that raises an issue
+  when the site is genuinely down.
+- `scripts/keepalive.sh` still exists for a manual ping or a local cron; the Actions job is the one that
+  keeps production warm.
+- **Cost**: a public repo gets free Actions minutes, and Render's free tier allows 750 instance hours a
+  month — an always-warm single service is ~730, so this stays inside the free plan.

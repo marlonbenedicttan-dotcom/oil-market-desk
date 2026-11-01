@@ -1,0 +1,40 @@
+name: keepalive
+
+# Render's free plan sleeps a web service after ~15 minutes without traffic, and waking it takes
+# 20–30 seconds — long enough that a first visit looks broken. Any request resets the idle timer, so a
+# cheap ping every few minutes keeps the desk warm. This runs in Actions rather than on someone's
+# laptop, so it works when the machine is asleep.
+#
+# GitHub's scheduler is best-effort and can run a few minutes late; five-minute spacing keeps the real
+# gap well under Render's fifteen-minute threshold.
+on:
+  schedule:
+    - cron: '*/5 * * * *'
+  workflow_dispatch: {}
+
+concurrency:
+  group: keepalive
+  cancel-in-progress: false
+
+permissions: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Wake the desk
+        run: |
+          URL="https://oil-market-desk.onrender.com/health"
+          for i in 1 2 3; do
+            CODE=$(curl -s -o /tmp/health -w '%{http_code}' --max-time 45 "$URL" || echo 000)
+            echo "attempt $i -> ${CODE}"
+            if [ "$CODE" = "200" ]; then
+              cat /tmp/health; echo
+              exit 0
+            fi
+            sleep 20
+          done
+          # Do not fail the run: a red job every five minutes trains you to ignore the colour. The
+          # data-freshness job is the one that opens an issue when the site is genuinely down.
+          echo "could not reach $URL — leaving it to data-freshness to raise the alarm"
