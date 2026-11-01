@@ -4,9 +4,9 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>Marlon's Watchtower — commodities &amp; macro, in plain English</title>
-  <meta name="description" content="Energy, metals, agriculture & macro — what it means, with live ships and satellites. Not investment advice." />
+  <meta name="description" content="Energy, metals, agriculture & macro — what it means. Not investment advice." />
   <meta property="og:title" content="Marlon's Watchtower" />
-  <meta property="og:description" content="Energy, metals, agriculture & macro — what it means, with live ships and satellites." />
+  <meta property="og:description" content="Energy, metals, agriculture & macro — what it means." />
   <meta property="og:type" content="website" />
   <meta property="og:image" content="/og.png" />
   <meta property="og:image:width" content="1200" />
@@ -21,12 +21,9 @@
   <link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png" />
   <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
-  <link rel="preconnect" href="https://unpkg.com" crossorigin />
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <link rel="stylesheet" href="style.css?v=111" />
+  <link rel="stylesheet" href="style.css?v=112" />
   <noscript><style>#boot{display:none!important}</style></noscript>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 </head>
 <body>
   <!-- Boot beacon: static markup so it paints on the first byte, then fades when the app is ready
@@ -149,7 +146,6 @@
         <a href="#c-supply">Supply</a>
         <a href="#c-fundamentals">Basics</a>
         <a href="#c-news">News</a>
-        <a href="#c-ships">Ships</a>
         <a href="#c-more">More</a>
       </nav>
 
@@ -281,26 +277,6 @@
         <div class="ph"><span class="ph-t">IN THE NEWS</span><span id="news-sub" class="dimtext"></span></div>
         <div id="news" class="news"></div>
       </section>
-
-      <!-- CRUDE only, folded: ships & satellites -->
-      <details id="c-ships" class="panel fold-panel market-only" data-when="crude">
-        <summary>SHIPS &amp; SATELLITES</summary>
-        <section class="fold-body">
-          <div class="ph"><span class="ph-t">SHIPS</span><span id="ais-status" class="pill">—</span></div>
-          <div id="ais-sub" class="dimtext"></div>
-          <ul id="ships-insights" class="ins-list" style="padding:4px 12px 6px 26px"></ul>
-          <div id="ais-help" class="help hidden"></div>
-          <div id="map"><div id="map-empty" class="map-empty hidden">WAITING FOR SHIP POSITIONS…</div></div>
-          <div id="flows" class="flows"></div>
-          <div class="chokes-h dimtext" style="padding:8px 12px 0">ARE SHIPS AVOIDING CHOKEPOINTS? — around Africa vs the Red Sea, over time</div>
-          <div class="chart-wrap sm"><canvas id="reroute"></canvas></div>
-          <details class="fold"><summary>Ship list</summary><div id="tanker-list" class="tanker-list"></div></details>
-        </section>
-        <section class="fold-body">
-          <div class="ph"><span class="ph-t">SATELLITES</span><span class="dimtext">radar picture + heat from space</span></div>
-          <div id="satellite" class="satellite"></div>
-        </section>
-      </details>
 
       <!-- Folded: secondary detail -->
       <details id="c-more" class="panel fold-panel">
@@ -438,6 +414,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=257"></script>
+  <script src="app.js?v=258"></script>
 </body>
 </html>

@@ -3019,3 +3019,24 @@ Audited at 360, 390 and 430 px with screenshots of every view, then fixed what l
 - **Still open**: Japan publishes JPX's trailing ROE beside the fiscal-year profit with no `roeBasis`
   label; Korea's 41 FY-basis P/Es are young listings/REITs without four quarters; the 13 companies whose
   quarter table has a hole keep the concept-based TTM and are flagged rather than guessed.
+
+## The SHIPS & SATELLITES segment is gone (2026-11-01)
+- **Removed on request.** The crude-only folded panel, the live AIS client, the NASA FIRMS gas-flare
+  count, the Sentinel-1 radar pass and its pixel scan, the chokepoint counters, the Cape-vs-Suez
+  reroute index and the AIS anomaly tracker are all deleted — not hidden behind a flag.
+- **Server**: `/api/tankers`, `/api/flares`, `/api/sar`, `/api/sar/image`, `/api/chokepoints`,
+  `/api/reroute` and `/api/flows` are gone, along with `startAIS`, the WebSocket subscription, the
+  `tankerMMSI` persistence and the flare/reroute state files. `hasShips` is no longer a market field.
+  The digest's source line no longer credits aisstream.io.
+- **Front-end**: the panel, its jump-nav link, the Leaflet map (and both CDN includes, so one fewer
+  third-party dependency), the satellite renderer, the reroute chart and every related loader and
+  interval. `style.css` lost the map/tanker/satellite/flow rules; `?v=` bumped to 112 / 258.
+- **Freshness**: `/api/tankers` and the two satellite endpoints are gone from the API test list.
+  **178 tests pass.**
+- **Deliberately kept**: the `Tankers / shipping` row in the refined-products *stock* watchlist
+  (FRO, DHT, INSW, STNG, TNK) and the trade-idea copy that mentions product tankers. Those are
+  shipping equities, not the AIS segment — say so if they should go too.
+- **Env**: `AISSTREAM_KEY` is no longer read, documented or required; `render.yaml`, `.env.example`
+  and the README are updated. The Render env var can be deleted.
+- **Verified**: page renders with no `#c-ships`/`#map`/`#satellite` elements, removed endpoints 404,
+  `/api/market`, `/api/tightness`, `/api/inventories`, `/api/products` still 200.

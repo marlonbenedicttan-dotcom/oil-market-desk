@@ -1,4 +1,4 @@
-// Marlon's Watchtower — paper vs physical spreads across energy benchmarks + live tankers.
+// Marlon's Watchtower — paper vs physical spreads across energy benchmarks.
 // Zero runtime dependencies: Node's built-in HTTP, fetch and WebSocket.
 import http from 'node:http';
 import fs from 'node:fs';
@@ -9,7 +9,7 @@ import crypto from 'node:crypto';
 import { sendMail } from './src/smtp.js';
 import { fileURLToPath } from 'node:url';
 import { projectUs, projectKr, projectJp, US_LIST_FIELDS } from './src/project.js';
-import { sgn, businessDaysSince, inBox, haversineNm, horizonDeltas, horizonDeltasAbs, isoWeek, monthly, pctOver, percentile, lastNonNull, escHtml, webhookPayload, realizedVol, computeCracks, computeCrush, computeSteel, backAdjust, pearson, logReturns, frontExpiry, curveTightness, inventoryTightness, weightedScore, seasonalGrade, seasonalAhead, contractMonthsBetween, signedPosition, signedMove, stretchScore, sdLabel, attributeMoves, newsContextOk, METHODOLOGY, positioningFlag, positioningRead, positioningDivergence, maxDrawdown, realizedVolTerm, corrMatrix, fxAdjust, parseOcc, drawdownWord, volWord, volTrend, topPairs, bestDiversifier, riskRead } from './src/lib.js';
+import { sgn, businessDaysSince, horizonDeltas, horizonDeltasAbs, isoWeek, monthly, pctOver, percentile, lastNonNull, escHtml, webhookPayload, realizedVol, computeCracks, computeCrush, computeSteel, backAdjust, pearson, logReturns, frontExpiry, curveTightness, inventoryTightness, weightedScore, seasonalGrade, seasonalAhead, contractMonthsBetween, signedPosition, signedMove, stretchScore, sdLabel, attributeMoves, newsContextOk, METHODOLOGY, positioningFlag, positioningRead, positioningDivergence, maxDrawdown, realizedVolTerm, corrMatrix, fxAdjust, parseOcc, drawdownWord, volWord, volTrend, topPairs, bestDiversifier, riskRead } from './src/lib.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC = path.join(__dirname, 'public');
@@ -81,15 +81,15 @@ const BENCHMARKS = [
 //   primary = instrument used for the headline price/number
 // ---------------------------------------------------------------------------
 const MARKETS = [
-  { id: 'crude',      label: 'Crude oil',       group: 'Crude',   primary: 'wti',    components: ['wti', 'brent'],                             hasBasis: true,  hasInventories: true,  hasShips: true },
-  { id: 'refined',    label: 'Refined products', group: 'Refined', primary: 'rbob',   components: ['rbob', 'ulsd', 'jet', 'propane'],           hasBasis: true,  hasInventories: true,  hasShips: true },
-  { id: 'gas',        label: 'Natural gas',      group: 'Gas',     primary: 'natgas', components: ['natgas'],                                   hasBasis: true,  hasInventories: true,  hasShips: false },
-  { id: 'precious',   label: 'Precious metals',   group: 'Metals',      primary: 'gold',   components: ['gold', 'silver', 'platinum', 'palladium'],  hasBasis: false, hasInventories: false, hasShips: false },
-  { id: 'industrial', label: 'Industrial metals', group: 'Metals',      primary: 'copper', components: ['copper', 'aluminium', 'ironore', 'steel'],              hasBasis: false, hasInventories: false, hasShips: false },
-  { id: 'grains',     label: 'Grains & oilseeds',  group: 'Agriculture', primary: 'corn',   components: ['corn', 'wheat', 'soybean', 'soymeal', 'soyoil', 'rice'], hasBasis: false, hasInventories: false, hasShips: false },
-  { id: 'softs',      label: 'Softs',             group: 'Agriculture', primary: 'sugar',  components: ['sugar', 'coffee', 'cocoa', 'cotton', 'palm', 'orange'], hasBasis: false, hasInventories: false, hasShips: false },
-  { id: 'livestock',  label: 'Livestock',         group: 'Livestock',   primary: 'cattle', components: ['cattle', 'hogs', 'feeder'],                hasBasis: false, hasInventories: false, hasShips: false },
-  { id: 'dairy',      label: 'Dairy',             group: 'Dairy',       primary: 'milk',   components: ['milk', 'butter', 'nfdm', 'cheese', 'whey'], hasBasis: false, hasInventories: false, hasShips: false },
+  { id: 'crude',      label: 'Crude oil',       group: 'Crude',   primary: 'wti',    components: ['wti', 'brent'],                             hasBasis: true,  hasInventories: true },
+  { id: 'refined',    label: 'Refined products', group: 'Refined', primary: 'rbob',   components: ['rbob', 'ulsd', 'jet', 'propane'],           hasBasis: true,  hasInventories: true },
+  { id: 'gas',        label: 'Natural gas',      group: 'Gas',     primary: 'natgas', components: ['natgas'],                                   hasBasis: true,  hasInventories: true },
+  { id: 'precious',   label: 'Precious metals',   group: 'Metals',      primary: 'gold',   components: ['gold', 'silver', 'platinum', 'palladium'],  hasBasis: false, hasInventories: false },
+  { id: 'industrial', label: 'Industrial metals', group: 'Metals',      primary: 'copper', components: ['copper', 'aluminium', 'ironore', 'steel'],              hasBasis: false, hasInventories: false },
+  { id: 'grains',     label: 'Grains & oilseeds',  group: 'Agriculture', primary: 'corn',   components: ['corn', 'wheat', 'soybean', 'soymeal', 'soyoil', 'rice'], hasBasis: false, hasInventories: false },
+  { id: 'softs',      label: 'Softs',             group: 'Agriculture', primary: 'sugar',  components: ['sugar', 'coffee', 'cocoa', 'cotton', 'palm', 'orange'], hasBasis: false, hasInventories: false },
+  { id: 'livestock',  label: 'Livestock',         group: 'Livestock',   primary: 'cattle', components: ['cattle', 'hogs', 'feeder'],                hasBasis: false, hasInventories: false },
+  { id: 'dairy',      label: 'Dairy',             group: 'Dairy',       primary: 'milk',   components: ['milk', 'butter', 'nfdm', 'cheese', 'whey'], hasBasis: false, hasInventories: false },
 ];
 function getMarkets() {
   return MARKETS.map((m) => ({
@@ -1617,69 +1617,6 @@ async function getCalendar() {
 }
 
 // ---------------------------------------------------------------------------
-// Chokepoint tanker counts (live, from AIS)
-// ---------------------------------------------------------------------------
-const CHOKEPOINTS = [
-  { name: 'Strait of Hormuz', box: [[24, 54], [28, 58]] },
-  { name: 'Strait of Malacca', box: [[1, 98], [6, 104]] },
-  { name: 'Suez / Red Sea', box: [[12, 32], [30, 44]] },
-  { name: 'Panama Canal', box: [[7, -82], [10, -78]] },
-  { name: 'Danish Straits', box: [[54, 10], [58, 13]] },
-  { name: 'Turkish Straits', box: [[40, 27], [42, 30]] },
-];
-const regionHits = {};
-function recordHit(lat, lon) {
-  if (lat == null || lon == null) return;
-  const now = Date.now();
-  for (const r of REGIONS) if (inBox(lat, lon, r.box)) (regionHits[r.name] ||= []).push(now);
-}
-function regionRates() {
-  const now = Date.now(), win = 5 * 60_000;
-  return REGIONS.map((r) => {
-    const arr = (regionHits[r.name] || []).filter((t) => now - t < win);
-    regionHits[r.name] = arr;
-    return { name: r.name, perMin: +(arr.length / 5).toFixed(1) };
-  });
-}
-
-// Reroute Index: accumulate Cape-vs-Suez activity over time (rerouting builds up).
-const REROUTE_FILE = path.join(__dirname, '.reroute.json');
-let rerouteSeries = [];
-try { rerouteSeries = JSON.parse(fs.readFileSync(REROUTE_FILE, 'utf8')); } catch {}
-function snapshotReroute() {
-  const rates = regionRates();
-  const get = (n) => rates.find((r) => r.name === n)?.perMin ?? 0;
-  rerouteSeries.push({ t: Date.now(), cape: get('Cape of Good Hope'), suez: get('Red Sea / Suez'), malacca: get('Malacca / Singapore'), hormuz: get('Strait of Hormuz') });
-  if (rerouteSeries.length > 500) rerouteSeries = rerouteSeries.slice(-500);
-  try { fs.writeFileSync(REROUTE_FILE, JSON.stringify(rerouteSeries)); } catch {}
-}
-
-// AIS anomaly detection — vessels that "teleport" (spoofing) or vanish for hours (dark transit).
-const ME_BOX = [[-5, 32], [30, 72]];
-const prevPos = new Map();
-const aisAnom = { spoof: 0, darkGap: 0 };
-const inME = (lat, lon) => lat != null && lon != null && inBox(lat, lon, ME_BOX);
-function recordAisAnomaly(meta) {
-  const { MMSI: mmsi, latitude: lat, longitude: lon } = meta;
-  if (lat == null || lon == null) return;
-  const t = Date.now();
-  const prev = prevPos.get(mmsi);
-  if (prev && (inME(lat, lon) || inME(prev.lat, prev.lon))) {
-    const dtH = (t - prev.t) / 3.6e6;
-    const dnm = haversineNm(prev.lat, prev.lon, lat, lon);
-    const kn = dtH > 0 ? dnm / dtH : 1e9;
-    if (dtH < 24 && dnm > 20 && kn > 60) aisAnom.spoof++;      // faster than any ship → spoof/teleport
-    else if (dtH > 0.5 && dnm > 50) aisAnom.darkGap++;         // disappeared for hours while crossing → dark transit
-  }
-  prevPos.set(mmsi, { lat, lon, t });
-  if (prevPos.size > 20000) prevPos.delete(prevPos.keys().next().value);
-}
-function getChokepoints() {
-  const list = [...tankers.values()];
-  return { chokepoints: CHOKEPOINTS.map((c) => ({ name: c.name, count: list.filter((v) => v.lat != null && inBox(v.lat, v.lon, c.box)).length })) };
-}
-
-// ---------------------------------------------------------------------------
 // Analytics: percentile context + realised volatility + freight arb
 // ---------------------------------------------------------------------------
 const FREIGHT_DEFAULT = 2.0; // $/bbl USGC -> NW Europe estimate
@@ -1992,7 +1929,7 @@ async function getMarketRead(id, componentId) {
     const volPctile = rollingVolPctile(values, 30);
     const read = {
       id, label: primary.label, segment: m.label, group: m.group, primary: sel, unit: primary.unit, dp: primary.dp,
-      hasBasis: m.hasBasis, hasInventories: m.hasInventories, hasShips: m.hasShips,
+      hasBasis: m.hasBasis, hasInventories: m.hasInventories,
       price: last, dayPct,
       perf: { m1: pctOver(values, 21), m3: pctOver(values, 63), m6: pctOver(values, 126), y1: pctOver(values, 252) },
       range: { pos: last != null ? percentile(values, last) : null },
@@ -2976,13 +2913,6 @@ async function getTightness() {
     if (by.brent?.basis != null) push('Real Brent costs more than futures', sgn(by.brent.basis), by.brent.basis > 0 ? 'TIGHT' : 'LOOSE', by.brent.basis > 0 ? 'real barrels are scarce' : 'real barrels are easy to get');
     if (cracks.diesel != null) push('Diesel refining profit', sgn(cracks.diesel), cracks.diesel > 15 ? 'TIGHT' : 'NEUTRAL', cracks.diesel > 15 ? 'refiners hungry for crude' : 'normal');
     if (inv?.items) { const cr = inv.items.find((i) => i.key === 'crude'); if (cr?.surprise != null) push('US crude vs normal', sgn(cr.surprise), cr.surprise < 0 ? 'TIGHT' : 'LOOSE', cr.surprise < 0 ? 'bigger drop than usual' : 'built up vs usual'); }
-    const idle = [...tankers.values()].filter((v) => (v.sog ?? 0) < 1).length;
-    if (ais.enabled) push('Oil ships sitting still', String(idle), idle >= 15 ? 'TIGHT' : 'NEUTRAL', idle >= 15 ? 'possible floating storage' : 'normal');
-    const flows = await getFlows().catch(() => null);
-    if (flows) {
-      const gulfDark = flows.dark.some((n) => /Persian|Hormuz|Oman|Arabian|Red Sea/.test(n));
-      push('Gulf ships', gulfDark ? 'GONE QUIET' : 'visible', gulfDark ? 'TIGHT' : 'NEUTRAL', gulfDark ? 'trackers switched off → real flows hidden' : 'visible on trackers');
-    }
     const tight = ev.filter((e) => e.direction === 'TIGHT').length;
     const loose = ev.filter((e) => e.direction === 'LOOSE').length;
     const verdict = tight > loose
@@ -2991,54 +2921,6 @@ async function getTightness() {
         : `MIXED — ${tight} say tight, ${loose} say loose.`;
     return { evidence: ev, tight, loose, verdict };
   });
-}
-
-const REGIONS = [
-  { name: 'Persian Gulf', box: [[24, 48], [30, 57]], me: true },
-  { name: 'Strait of Hormuz', box: [[24, 54], [28, 58]], me: true },
-  { name: 'Gulf of Oman', box: [[22, 56], [26, 62]], me: true },
-  { name: 'Arabian Sea', box: [[8, 55], [22, 72]], me: true },
-  { name: 'Red Sea / Suez', box: [[12, 32], [30, 44]], me: true, route: true },
-  { name: 'Malacca / Singapore', box: [[-5, 95], [10, 110]], route: true },
-  { name: 'Cape of Good Hope', box: [[-40, 10], [-28, 30]], route: true },
-  { name: 'US Gulf', box: [[18, -98], [31, -80]], route: true },
-];
-const FLOW_REGIONS = REGIONS.filter((r) => r.me);
-const ROUTE_REGIONS = REGIONS.filter((r) => r.route);
-async function getFlows() {
-  const list = [...tankers.values()];
-  const regions = FLOW_REGIONS.map((r) => ({ name: r.name, count: list.filter((v) => v.lat != null && inBox(v.lat, v.lon, r.box)).length }));
-  const exitBox = (v) => inBox(v.lat, v.lon, [[22, 56], [26, 62]]) || inBox(v.lat, v.lon, [[8, 55], [22, 72]]);
-  const exit = list.filter((v) => v.lat != null && exitBox(v));
-  let east = 0, west = 0;
-  for (const v of exit) { if (v.cog == null) continue; if (v.cog >= 0 && v.cog < 180) east++; else west++; }
-  const moving = exit.filter((v) => (v.sog ?? 0) >= 1).length;
-  const allRates = regionRates();
-  const rateOf = (name) => allRates.find((x) => x.name === name)?.perMin ?? 0;
-  const rates = allRates.filter((r) => FLOW_REGIONS.some((f) => f.name === r.name));
-  const routes = ROUTE_REGIONS.map((r) => ({ name: r.name, count: list.filter((v) => v.lat != null && inBox(v.lat, v.lon, r.box)).length, perMin: rateOf(r.name) }));
-  const dark = rates.filter((r) => r.perMin === 0).map((r) => r.name);
-  const suez = rateOf('Red Sea / Suez'), cape = rateOf('Cape of Good Hope');
-  let diversion = null;
-  if (suez === 0 && cape > 0) diversion = 'Red Sea/Suez is dark while the Cape is active → tankers appear to be routing AROUND Africa (dodging the Red Sea).';
-  else if (suez > 0 && cape === 0) diversion = 'Red Sea/Suez active, Cape quiet — normal routing.';
-  else if (suez === 0 && cape === 0) diversion = 'Both Suez and Cape dark — too little AIS to infer routing.';
-
-  // Market-implied Gulf stress: ships go dark, but prices price the lost barrels.
-  let marketStress = null;
-  try {
-    const [m, c] = await Promise.all([getMarket(), getCurves()]);
-    const cracks = computeCracks(m);
-    const sig = [
-      { label: 'Oil pricier now than 6 months ahead', value: c?.brent?.m1m6, hot: (c?.brent?.m1m6 ?? 0) > 5 },
-      { label: 'Diesel refining profit', value: cracks.diesel, hot: (cracks.diesel ?? 0) > 20 },
-      { label: 'Brent vs WTI (real)', value: m.spreads?.brent_wti?.physical, hot: (m.spreads?.brent_wti?.physical ?? 0) > 5 },
-    ];
-    const n = sig.filter((s) => s.hot).length;
-    marketStress = { signals: sig, score: n, verdict: n >= 2 ? `Prices are pricing in a serious Gulf supply problem (${n}/3).` : `Prices suggest only mild Gulf stress (${n}/3).` };
-  } catch {}
-
-  return { regions, exit: { total: exit.length, eastbound: east, westbound: west, moving, idle: exit.length - moving }, rates, routes, diversion, dark, anomalies: aisAnom, marketStress, enabled: ais.enabled };
 }
 
 async function getProducts() {
@@ -3130,139 +3012,6 @@ async function getSteelMargin() {
 }
 
 // ---------------------------------------------------------------------------
-// Satellite (AIS-independent): NASA FIRMS gas flares + Sentinel-1 radar passes
-// ---------------------------------------------------------------------------
-const FLARE_FILE = path.join(__dirname, '.flares.json');
-const GULF_FLARE_REGIONS = [
-  { name: 'Saudi Arabia', box: [[24, 48], [28, 52]] },
-  { name: 'Kuwait', box: [[28.5, 46.5], [30, 48.5]] },
-  { name: 'Iraq (Basra)', box: [[29, 46], [31, 49]] },
-  { name: 'UAE', box: [[23, 51], [26, 56]] },
-  { name: 'Qatar', box: [[24.4, 50.6], [26, 51.8]] },
-  { name: 'Iran', box: [[28, 48], [32, 52]] },
-];
-async function getFlares() {
-  return cached('flares', 3 * 3600e3, async () => {
-    const res = await fetch('https://firms.modaps.eosdis.nasa.gov/data/active_fire/suomi-npp-viirs-c2/csv/SUOMI_VIIRS_C2_Global_24h.csv', { headers: UA });
-    if (!res.ok) throw new Error('firms ' + res.status);
-    const lines = (await res.text()).trim().split('\n');
-    const h = lines[0].split(',');
-    const iLat = h.indexOf('latitude'), iLon = h.indexOf('longitude');
-    const byRegion = {};
-    let total = 0;
-    for (let i = 1; i < lines.length; i++) {
-      const c = lines[i].split(',');
-      const lat = +c[iLat], lon = +c[iLon];
-      if (!inBox(lat, lon, [[23, 46], [33, 58]])) continue;
-      total++;
-      for (const r of GULF_FLARE_REGIONS) if (inBox(lat, lon, r.box)) { byRegion[r.name] = (byRegion[r.name] || 0) + 1; break; }
-    }
-    const today = new Date().toISOString().slice(0, 10);
-    let trend = [];
-    try { trend = JSON.parse(fs.readFileSync(FLARE_FILE, 'utf8')); } catch {}
-    const ex = trend.find((t) => t.date === today);
-    if (ex) ex.count = total; else trend.push({ date: today, count: total });
-    trend = trend.slice(-7);
-    try { fs.writeFileSync(FLARE_FILE, JSON.stringify(trend)); } catch {}
-    return { total, byRegion, trend, updated: new Date().toISOString() };
-  });
-}
-
-async function getSAR() {
-  return cached('sar', 3600e3, async () => {
-    const bbox = "POLYGON((54 24,58 24,58 28,54 28,54 24))";
-    const since = new Date(Date.now() - 7 * 864e5).toISOString();
-    const enc = (s) => s.replace(/ /g, '%20');
-    const filter = enc(`Collection/Name eq 'SENTINEL-1' and ContentDate/Start gt ${since} and OData.CSC.Intersects(area=geography'SRID=4326;${bbox}')`);
-    const url = `https://catalogue.dataspace.copernicus.eu/odata/v1/Products?$filter=${filter}&$top=6&$orderby=${enc('ContentDate/Start desc')}&$count=true`;
-    const res = await fetch(url, { headers: UA });
-    if (!res.ok) throw new Error('cdse ' + res.status);
-    const j = await res.json();
-    const items = (j.value || []).map((p) => ({ name: p.Name, time: p.ContentDate?.Start, platform: (p.Name || '').slice(0, 3) }));
-    // Latest radar image (public AWS bucket, keyless)
-    let image = null;
-    try {
-      const es = await fetch('https://earth-search.aws.element84.com/v1/search', {
-        method: 'POST', headers: { ...UA, 'content-type': 'application/json' },
-        body: JSON.stringify({ collections: ['sentinel-1-grd'], bbox: [54, 24, 58, 28], limit: 1 }),
-      });
-      const href = (await es.json()).features?.[0]?.assets?.thumbnail?.href;
-      if (href) image = href.replace('s3://sentinel-s1-l1c/', 'https://sentinel-s1-l1c.s3.amazonaws.com/');
-    } catch {}
-    return { passes: j['@odata.count'] ?? items.length, latest: items[0] || null, recent: items.slice(0, 6), image };
-  });
-}
-
-let sarImageCache = { t: 0, buf: null, type: null };
-async function getSarImage() {
-  if (sarImageCache.buf && Date.now() - sarImageCache.t < 3 * 3600e3) return sarImageCache;
-  const sar = await getSAR();
-  if (!sar.image) return null;
-  const res = await fetch(sar.image, { headers: UA });
-  if (!res.ok) return null;
-  sarImageCache = { t: Date.now(), buf: Buffer.from(await res.arrayBuffer()), type: res.headers.get('content-type') || 'image/png' };
-  return sarImageCache;
-}
-
-// ---------------------------------------------------------------------------
-// Live tanker tracking via aisstream.io (free key required)
-// ---------------------------------------------------------------------------
-const tankers = new Map();
-const tankerMMSI = new Set();
-const ais = { enabled: false, connected: false, messages: 0, startedAt: null, lastMessage: null, error: null };
-const DEFAULT_BOXES = [
-  [[18, -98], [31, -80]],   // US Gulf of Mexico
-  [[48, -8], [62, 4]],      // North Sea / Rotterdam
-  [[-5, 95], [10, 110]],    // Malacca / Singapore
-  [[22, 46], [31, 62]],     // Persian Gulf / Hormuz
-  [[22, 56], [26, 62]],     // Gulf of Oman
-  [[8, 55], [22, 72]],      // Arabian Sea
-  [[12, 32], [30, 44]],     // Red Sea / Suez
-  [[5, -84], [11, -76]],    // Panama Canal
-  [[39, 26], [43, 31]],     // Turkish Straits
-  [[-40, 10], [-28, 30]],   // Cape of Good Hope
-];
-
-function startAIS() {
-  const key = process.env.AISSTREAM_KEY;
-  if (!key) { ais.error = 'No AISSTREAM_KEY set — add one (free) to enable live tankers.'; return; }
-  ais.enabled = true;
-  ais.startedAt ||= new Date().toISOString();
-  for (const m of state.tankerMMSI || []) tankerMMSI.add(m); // remember tankers across restarts
-  const boxes = process.env.AIS_BOXES ? JSON.parse(process.env.AIS_BOXES) : DEFAULT_BOXES;
-
-  const ws = new WebSocket('wss://stream.aisstream.io/v0/stream');
-  ws.addEventListener('open', () => {
-    ais.connected = true; ais.error = null;
-    ws.send(JSON.stringify({ APIKey: key, BoundingBoxes: boxes, FilterMessageTypes: ['PositionReport', 'ShipStaticData'] }));
-    console.log('[ais] connected, subscribed to', boxes.length, 'regions');
-  });
-  ws.addEventListener('message', async (ev) => {
-    let msg;
-    try {
-      let text = ev.data;
-      if (typeof text !== 'string') text = text instanceof Blob ? await text.text() : Buffer.from(text).toString('utf8');
-      msg = JSON.parse(text);
-    } catch { return; }
-    const meta = msg.MetaData || {};
-    ais.messages += 1; ais.lastMessage = new Date().toISOString();
-    if (msg.MessageType === 'ShipStaticData') {
-      const t = msg.Message?.ShipStaticData?.Type;
-      if (typeof t === 'number' && t >= 80 && t <= 89) tankerMMSI.add(meta.MMSI);
-    } else if (msg.MessageType === 'PositionReport') {
-      recordHit(meta.latitude, meta.longitude);
-      recordAisAnomaly(meta);
-      if (!tankerMMSI.has(meta.MMSI)) return;
-      const p = msg.Message?.PositionReport || {};
-      tankers.set(meta.MMSI, { mmsi: meta.MMSI, name: (meta.ShipName || '').trim(), lat: meta.latitude, lon: meta.longitude, sog: p.Sog, cog: p.Cog, ts: meta.time_utc });
-      if (tankers.size > 6000) tankers.delete(tankers.keys().next().value);
-    }
-  });
-  ws.addEventListener('close', () => { ais.connected = false; console.log('[ais] closed, reconnecting in 5s'); setTimeout(startAIS, 5000); });
-  ws.addEventListener('error', (e) => { ais.error = String(e.message || e); });
-}
-
-// ---------------------------------------------------------------------------
 // Server-side alerts + daily digest (notifications, webhook, email)
 // ---------------------------------------------------------------------------
 const DIGEST_LOG = path.join(__dirname, 'digest.log');
@@ -3322,9 +3071,6 @@ async function computeServerAlerts() {
     else if (an.basisPct <= 5) out.push({ key: `basis_lo_${b.id}`, level: 'med', text: `${b.label} basis at the ${an.basisPct.toFixed(0)}th percentile — unusually weak.` });
   }
   for (const f of m.quality?.flags || []) out.push({ key: 'dq_' + f.text.slice(0, 40), level: 'watch', text: f.text });
-  const list = [...tankers.values()];
-  const idlers = list.filter((v) => (v.sog ?? 0) < 1).length;
-  if (ais.enabled && idlers >= 15) out.push({ key: 'idlers_15', level: 'med', text: `${idlers} tankers sitting idle — possible floating-storage build.` });
   return out;
 }
 
@@ -3414,7 +3160,7 @@ async function buildDigest() {
   if (inv?.items) { L.push('', 'US STOCKPILES (million barrels, this week):'); inv.items.forEach((i) => L.push(`  ${i.label.padEnd(16)} ${i.value.toLocaleString().padStart(10)}  (${i.wow >= 0 ? '+' : ''}${i.wow.toLocaleString()})`)); }
   const alerts = await computeServerAlerts();
   if (alerts.length) { L.push('', 'ALERTS:'); alerts.forEach((x) => L.push(`  [${x.level.toUpperCase()}] ${x.text}`)); }
-  L.push('', 'Sources: FRED/EIA, Yahoo, aisstream.io, CFTC. Not investment advice.');
+  L.push('', 'Sources: FRED/EIA, Yahoo, CFTC. Not investment advice.');
   return L.join('\n');
 }
 
@@ -4116,7 +3862,6 @@ const server = http.createServer(async (req, res) => {
       if (!b) return sendJSON(res, 404, { error: 'unknown benchmark' });
       return sendJSON(res, 200, await getSeasonal(b).catch((e) => ({ error: String(e.message) })));
     }
-    if (url.pathname === '/api/reroute') return sendJSON(res, 200, { series: rerouteSeries, current: rerouteSeries[rerouteSeries.length - 1] || null });
     if (url.pathname === '/api/inventories') return sendJSON(res, 200, await getInventories());
     if (url.pathname === '/api/deals/lookup') {
       // On-demand backfill: Google News will still find an old deal when you ask for it BY NAME, even
@@ -4323,7 +4068,6 @@ const server = http.createServer(async (req, res) => {
       } catch { /* no japan data yet */ }
       return sendJSON(res, 200, cal);
     }
-    if (url.pathname === '/api/chokepoints') return sendJSON(res, 200, getChokepoints());
     if (url.pathname === '/api/curve') return sendJSON(res, 200, await getCurves());
     if (url.pathname === '/api/termstructure') {
       const id = url.searchParams.get('id');
@@ -4333,18 +4077,9 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname === '/api/curvehistory') return sendJSON(res, 200, await getCurveHistory(url.searchParams.get('root') || 'CL').catch((e) => ({ error: String(e.message) })));
     if (url.pathname === '/api/continuous') return sendJSON(res, 200, await getContinuous(url.searchParams.get('root') || 'CL').catch((e) => ({ error: String(e.message) })));
     if (url.pathname === '/api/tightness') return sendJSON(res, 200, await getTightness().catch((e) => ({ error: String(e.message) })));
-    if (url.pathname === '/api/flows') return sendJSON(res, 200, await getFlows());
     if (url.pathname === '/api/products') return sendJSON(res, 200, await getProducts().catch((e) => ({ error: String(e.message) })));
     if (url.pathname === '/api/crush') return sendJSON(res, 200, await getCrush().catch((e) => ({ error: String(e.message) })));
     if (url.pathname === '/api/steel') return sendJSON(res, 200, await getSteelMargin().catch((e) => ({ error: String(e.message) })));
-    if (url.pathname === '/api/flares') return sendJSON(res, 200, await getFlares().catch((e) => ({ error: String(e.message) })));
-    if (url.pathname === '/api/sar') return sendJSON(res, 200, await getSAR().catch((e) => ({ error: String(e.message) })));
-    if (url.pathname === '/api/sar/image') {
-      const img = await getSarImage().catch(() => null);
-      if (!img) { res.writeHead(404).end('no image'); return; }
-      res.writeHead(200, { 'content-type': img.type, 'cache-control': 'no-cache' });
-      return res.end(img.buf);
-    }
     if (url.pathname === '/api/analogue') return sendJSON(res, 200, await getAnalogue(url.searchParams.get('metric') || 'basis:brent', Math.min(15, Math.max(2, Number(url.searchParams.get('years')) || 10))));
     if (url.pathname === '/api/alerts') return sendJSON(res, 200, { current: await computeServerAlerts().catch(() => []) });
     if (url.pathname === '/api/digest') { res.writeHead(200, { 'content-type': 'text/plain' }); return res.end(lastDigest || await buildDigest()); }
@@ -4445,10 +4180,6 @@ const server = http.createServer(async (req, res) => {
       res.writeHead(200, { 'content-type': 'text/csv', 'content-disposition': 'attachment; filename="oil-basis.csv"' });
       return res.end(rows.map((r) => r.join(',')).join('\n'));
     }
-    if (url.pathname === '/api/tankers') {
-      const list = [...tankers.values()];
-      return sendJSON(res, 200, { status: ais, count: list.length, tankers: list.slice(0, 2000) });
-    }
     let file = url.pathname === '/' ? '/index.html' : url.pathname;
     file = path.normalize(file).replace(/^(\.\.[/\\])+/, '');
     const full = path.join(PUBLIC, file);
@@ -4482,16 +4213,11 @@ server.listen(PORT, async () => {
   await loadRemoteState();                     // durable state first, so nothing reads stale values
   console.log(`\n  🛢️  Marlon's Watchtower running at  http://localhost:${PORT}`);
   console.log(`     ${BENCHMARKS.length} benchmarks: ${BENCHMARKS.map((b) => b.label).join(', ')}`);
-  console.log(`     tankers: ${process.env.AISSTREAM_KEY ? 'aisstream.io' : 'disabled (set AISSTREAM_KEY)'}`);
   console.log(`     alerts:  ${[process.env.WEBHOOK_URL && 'webhook', process.env.SMTP_USER && 'email', process.platform === 'darwin' && process.env.NOTIFY !== 'off' && 'desktop'].filter(Boolean).join(', ') || 'desktop'}`);
   console.log(`     digest:  ${process.env.DIGEST_HOUR ?? 7}:00 daily → ${process.env.DIGEST_TO || process.env.WEBHOOK_URL || 'desktop + digest.log'}\n`);
-  startAIS();
   setTimeout(alertLoop, 12_000);
   setInterval(alertLoop, 5 * 60_000);
   setInterval(maybeSendDigest, 60_000);
-  setInterval(() => { state.tankerMMSI = [...tankerMMSI]; saveState(); }, 60_000);
-  setTimeout(() => { state.tankerMMSI = [...tankerMMSI]; saveState(); snapshotReroute(); }, 90_000);
-  setInterval(snapshotReroute, 5 * 60_000);
   // Warm every segment's READ + curve in the background so switching segments is instant for the
   // user (a cold read is ~1.5s; warm it is ~1ms). Started after the first paint settles, gently
   // staggered; `cached()` de-dupes so a user request during warm-up just shares the work.
@@ -4506,14 +4232,5 @@ server.listen(PORT, async () => {
   };
   setTimeout(() => warmCaches().catch(() => {}), 800);
   setInterval(() => warmCaches().catch(() => {}), 8 * 60_000);
-  // FIRMS active-fire CSV (~25s) and the SAR image are slow upstreams that are only needed deep in
-  // COMMODITIES. Warm them well after boot so they never compete with the first paint — and so the
-  // first reader to open SHIPS & SATELLITES doesn't wait 25s.
-  const warmSlow = async () => { try { await getFlares(); } catch {} try { await getSAR(); } catch {} };
-  // WARM=off (the test suite) skips the background warmers: they fetch 25s third-party feeds and would
-  // compete with whatever the caller is actually measuring.
-  if (process.env.WARM !== 'off') {
-    setTimeout(() => warmSlow().catch(() => {}), 90_000);
-    setInterval(() => warmSlow().catch(() => {}), 3 * 3600e3);
-  }
+
 });

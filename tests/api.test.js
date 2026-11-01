@@ -77,7 +77,7 @@ test('/api/brief covers macro, not just commodities', async () => {
 });
 
 test('pure endpoints always respond 200', async () => {
-  for (const p of ['/api/chokepoints', '/api/reroute', '/api/flows']) {
+  for (const p of ['/api/markets', '/api/fx', '/api/countries']) {
     const r = await fetch(`http://localhost:${PORT}${p}`);
     assert.equal(r.status, 200, `${p} -> ${r.status}`);
     await r.json(); // must be valid JSON
@@ -85,25 +85,14 @@ test('pure endpoints always respond 200', async () => {
 });
 
 // Data endpoints depend on external APIs — assert the server responds without crashing.
-// `flares` (NASA FIRMS' global 24h CSV, ~25s) and `sar` (Copernicus) are slow THIRD-PARTY feeds: if the
-// upstream stalls we accept the failed fetch rather than blaming our server, because the endpoint is
-// still exercised by the status assertion whenever the feed answers.
 const ENDPOINTS = [
   { p: '/api/market' }, { p: '/api/curve' }, { p: '/api/tightness' }, { p: '/api/products' },
   { p: '/api/analytics' }, { p: '/api/inventories' }, { p: '/api/positioning' }, { p: '/api/equities' },
-  { p: '/api/flares', external: true }, { p: '/api/sar', external: true },
 ];
-for (const { p, external } of ENDPOINTS) {
+for (const { p } of ENDPOINTS) {
   test(`GET ${p} responds`, async () => {
-    // Bound the two third-party feeds: a stalled upstream should be a caught timeout, not a hung run.
-    const opts = external ? { signal: AbortSignal.timeout(20000) } : {};
-    try {
-      const r = await fetch(`http://localhost:${PORT}${p}`, opts);
-      assert.ok([200, 500].includes(r.status), `${p} -> ${r.status}`);
-    } catch (e) {
-      if (!external) throw e;
-      assert.match(String(e.message), /fetch|abort|socket|timeout|other side|terminat/i, `${p} upstream failed unexpectedly: ${e.message}`);
-    }
+    const r = await fetch(`http://localhost:${PORT}${p}`);
+    assert.ok([200, 500].includes(r.status), `${p} -> ${r.status}`);
   });
 }
 

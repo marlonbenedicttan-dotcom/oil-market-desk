@@ -12,7 +12,7 @@ pinned: false
 
 **🔴 Live:** https://oil-market-desk.onrender.com
 
-A free, self-hosted **commodity + global-macro desk** — three tabs (**HOME · COMMODITIES · MACRO**). Every segment gets a plain-English read: **price vs its own history** (premium / discount) and a **supply & demand** read (undersupplied → oversupplied) with an evidence badge, plus the **curve**, seasonality, trade ideas, and the **trusted news behind the biggest moves** marked on the charts. Energy also gets real-vs-futures **basis**, **stockpiles**, **live ships** and satellites. Macro covers **rates, inflation, growth and currencies**, country by country.
+A free, self-hosted **commodity + global-macro desk** — three tabs (**HOME · COMMODITIES · MACRO**). Every segment gets a plain-English read: **price vs its own history** (premium / discount) and a **supply & demand** read (undersupplied → oversupplied) with an evidence badge, plus the **curve**, seasonality, trade ideas, and the **trusted news behind the biggest moves** marked on the charts. Energy also gets real-vs-futures **basis** and **stockpiles**. Macro covers **rates, inflation, growth and currencies**, country by country.
 
 | Benchmark | Paper (futures) | Physical (spot) |
 |---|---|---|
@@ -24,7 +24,7 @@ A free, self-hosted **commodity + global-macro desk** — three tabs (**HOME · 
 | Propane (spot only) | — | Mt Belvieu `EER_EPLLPA_PF4_Y44MB_DPG` (EIA key) |
 | Natural Gas | `NG=F` | Henry Hub `DHHNGSP` |
 
-Plus the **Brent − WTI** spread (paper & physical) and a live tanker map.
+Plus the **Brent − WTI** spread (paper & physical).
 
 Adding a benchmark = one row in the `BENCHMARKS` table in `server.js`.
 
@@ -41,7 +41,6 @@ The UI is **three tabs**: **HOME** · **COMMODITIES** · **MACRO**. HOME is the 
 - **Two honest scores** — **price vs its own history** (*At a big premium … In line with history … At a big discount*) and **supply & demand** (*Undersupplied … Balanced … Oversupplied*), the latter carrying an **evidence badge** (real fundamentals vs *curve only*).
 - **News on the charts** — each annotated chart marks its **biggest moves** and ties each to the **trusted story** behind it (matched by date, direction and instrument; hover for the headline).
 - **Positioning** — CFTC COT is wired per segment but *deliberately not surfaced* in the UI.
-- **Ships & satellites for crude** — a live tanker map (free AIS, filtered to tankers) plus satellite radar passes and gas-flare detection, all oil-only.
 - **Fuels & stocks for refined** — gasoline/diesel/3-2-1 crack spreads and a sector stock watchlist under the Refined segment.
 - **Supply** — US oil stockpiles and gas storage under the energy segments.
 - **Basis** — paper vs physical for energy benchmarks, sign-colored (energy-only — there is no free real-vs-futures basis for metals/ags).
@@ -62,7 +61,6 @@ The UI is **three tabs**: **HOME** · **COMMODITIES** · **MACRO**. HOME is the 
 |---|---|---|
 | Paper (futures) | Yahoo Finance — `CL=F` (WTI), `BZ=F` (Brent) | no key |
 | Physical (spot) | FRED / EIA — `DCOILWTICO`, `DCOILBRENTEU` | no key, ~1 day lag |
-| Tanker traffic | [aisstream.io](https://aisstream.io) | **free API key required** |
 
 ## Run it
 
@@ -72,21 +70,6 @@ npm start
 ```
 
 **No dependencies** — uses Node's built-in HTTP server, `fetch`, and `WebSocket`. Requires Node 22+.
-
-### Enable live tanker tracking
-
-1. Get a free key at <https://aisstream.io>.
-2. Start with the key:
-
-```sh
-AISSTREAM_KEY=your_key_here npm start
-```
-
-Optionally override the watched regions (JSON array of `[[lat,lon],[lat,lon]]` boxes):
-
-```sh
-AIS_BOXES='[[[18,-98],[31,-80]]]' AISSTREAM_KEY=... npm start
-```
 
 ## Alerts & daily digest
 
@@ -118,32 +101,31 @@ View the latest digest any time at `http://localhost:4173/api/digest`.
 
 - The futures series is the front-month **continuous** (not roll-adjusted); the **curve** (M1−M2 / M1−M6) is the roll-free structure signal.
 - Spot assessments publish with a **lag** and are a *different instrument* than the futures — read the on-screen **DATA QUALITY** flags.
-- Tanker positions are a live sample of AIS reports in the watched regions, not a complete global fleet picture.
 - Dubai / WTI Midland / Mars require a paid feed.
-- **No free real-vs-futures basis or inventories for metals/agriculture** — those need LME/USDA feeds, so they're deliberately not shown. **Ships & satellites are oil-only.**
+- **No free real-vs-futures basis or inventories for metals/agriculture** — those need LME/USDA feeds, so they're deliberately not shown.
 - **Palm oil** is free but **front-month only**, so it has no month-by-month curve.
 - **Macro is deliberately US-centric**: free non-US CPI/GDP feeds are stale, so only US data is shown rather than faking it. The currencies board and the commodity↔currency link correlations are live.
 - Not investment advice.
 
 ## Deploy it online
 
-The app is a **long-running Node process** (live WebSocket to the ship feed + scheduled alerts), so it needs a **container host** — Render, Railway, or Fly.io. Serverless platforms (Vercel/Netlify) won't work.
+The app is a **long-running Node process** (background feeds + scheduled alerts), so it needs a **container host** — Render, Railway, or Fly.io. Serverless platforms (Vercel/Netlify) won't work.
 
 **Render (easiest):**
 1. Push this repo to GitHub (command below).
 2. On [render.com](https://render.com) → **New → Blueprint** → pick the repo (it reads `render.yaml`).
-3. Add the secret env vars **`AISSTREAM_KEY`** and **`EIA_API_KEY`** in the dashboard.
+3. Add the secret env var **`EIA_API_KEY`** in the dashboard.
 4. Deploy — you get a public URL.
 
 **Docker (any host):**
 ```sh
 docker build -t oil-market-desk .
-docker run -p 4173:4173 -e AISSTREAM_KEY=... -e EIA_API_KEY=... oil-market-desk
+docker run -p 4173:4173 -e EIA_API_KEY=... oil-market-desk
 ```
 
 Notes for hosting:
 - **Desktop notifications are macOS-only** and turn themselves off on a server — use `WEBHOOK_URL` (Slack/Discord) or email for alerts there.
-- State files (`.state.json`, `.reroute.json`, `.flares.json`) are small and rebuild on restart if the disk is ephemeral.
+- State files (`.state.json`) are small and rebuild on restart if the disk is ephemeral.
 - Secrets come from environment variables — never commit `.env` (it's git-ignored).
 
 ### Push to GitHub

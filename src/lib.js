@@ -379,7 +379,6 @@ export const METHODOLOGY = {
     { name: 'World Bank / IMF', covers: 'GDP, debt, inflation (country fundamentals)', freshness: 'Annual — labelled by year' },
     { name: 'USDA', covers: 'Grain & dairy stocks-to-use balances', freshness: 'Monthly snapshot' },
     { name: 'Google News (tier-1 wire)', covers: 'Headlines and event tagging', freshness: 'Live — keyword + context matched' },
-    { name: 'aisstream.io / NASA', covers: 'Ships, gas flares, radar satellite', freshness: 'Live / daily' },
   ],
   companies: [
     { name: 'Universe — US', basis: 'S&P 500 · 503 securities', note: 'Membership from the SPDR SPY holdings file. Three second share classes are listed but excluded from totals so nothing is double-counted.' },

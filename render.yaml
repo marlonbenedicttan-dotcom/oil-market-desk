@@ -9,8 +9,6 @@ services:
     autoDeploy: true
     healthCheckPath: /
     envVars:
-      - key: AISSTREAM_KEY
-        sync: false        # enter in the Render dashboard
       - key: EIA_API_KEY
         sync: false
       # Hour of the digest in UTC (the container's clock). 23 UTC = 07:00 in Singapore (UTC+8),

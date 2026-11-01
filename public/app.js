@@ -44,7 +44,6 @@ function headSource(b) {
 function freshStrip(b) { const f = headSource(b); return freshBadge(f.source, f.asOf, f.lag); }
 
 let data, history, analytics;
-let tankerInfo = { status: {}, count: 0, tankers: [] };
 let nextRefresh = 60;
 let fxList = [];        // chartable currencies (from /api/fx)
 let rateList = [];      // chartable rates (from /api/rates)
@@ -80,7 +79,6 @@ const GLOSSARY = `
     <dt>USDA stocks-to-use</dt><dd>Official US grain / dairy / livestock stocks vs consumption; low = tight. Monthly.</dd>
     <dt>Big-move markers</dt><dd>The dots on a chart mark its <b>biggest moves</b> — hover one for the trusted news behind it.</dd>
     <dt>% change</dt><dd>The move over the chosen window, not just today.</dd>
-    <dt>Oil-field flames</dt><dd>Satellites see the gas burned off at oil fields; fewer flames = fields shutting down.</dd>
   </dl>`;
 
 
@@ -437,16 +435,12 @@ function regLine(r) {
   if (r.curve) bits.push(r.curve.shape.toLowerCase());
   return `MARKET STATE — ${bits.join(' · ')}.`;
 }
-// Show only the segment-specific blocks (ships for crude, fuels/stocks for refined, …).
+// Show only the segment-specific blocks (fuels/stocks for refined, …).
 function toggleMarketBlocks() {
   document.querySelectorAll('.market-only').forEach((el) => {
     const list = (el.dataset.when || '').split(',').map((s) => s.trim());
     el.classList.toggle('hidden', !(list.includes('*') || list.includes(currentMarket)));
   });
-  if (currentMarket === 'crude') {
-    if (map) setTimeout(() => map.invalidateSize(), 80);
-    if (rerouteChart) setTimeout(() => rerouteChart.resize(), 80);
-  }
   if (currentMarket === 'refined' && crackHistChart) setTimeout(() => crackHistChart.resize(), 80);
   syncJumpnavs();
 }
@@ -510,8 +504,6 @@ function renderAdaptive() {
     : `it is <b>${v.label.toLowerCase()}</b> (${signed(score, 0)}/100)`;
   const sdLine = sd.score == null ? 'no free supply/demand data' : `supply vs demand looks <b>${sd.label.toLowerCase()}</b> (${sd.score}/100)`;
   $('tightness').innerHTML = `<div class="verdict ${vk}">${r.label}: ${priceLine} · ${sdLine}.</div>${psChips}${sdChips}${sdNote}<div class="ev-list">${ev.map((e) => `<div class="ev"><span class="ev-l">${e.label}</span><span class="ev-v">${e.value}</span><span class="tag ${e.dir.toLowerCase()}">${e.dir}</span><span class="ev-n dimtext">${e.note}</span></div>`).join('')}</div>`;
-  const si = $('ships-insights');
-  if (si) si.innerHTML = r.hasShips ? tankerInsights(tankerInfo).map((x) => `<li>${x}</li>`).join('') : '';
   renderAlerts(marketAlerts(r));
   renderMarketContext(r);
   setTitle('xa-seg', mk ? mk.label.toUpperCase() : '');
@@ -609,21 +601,9 @@ function selectMarket(id) {
 // ---------------------------------------------------------------------------
 // Insights & alerts
 // ---------------------------------------------------------------------------
-function tankerInsights(t) {
-  const out = []; const s = t.status || {};
-  if (!s.enabled) { out.push('Live ship tracking is off. Add a free key to switch it on.'); return out; }
-  const list = t.tankers || [];
-  if (!list.length) { out.push(`Connected to ship trackers (${(s.messages || 0).toLocaleString()} signals) — identifying ships…`); return out; }
-  const idlers = list.filter((v) => (v.sog ?? 0) < 1).length;
-  const avg = list.reduce((a, v) => a + (v.sog || 0), 0) / list.length;
-  out.push(`<b>${list.length} oil ships</b> tracked: ${list.length - idlers} under way, ${idlers} sitting still.`);
-  out.push('Ships sitting still can mean floating storage or congestion; lots of fast-moving ships usually means busier trade.');
-  out.push(`Average speed ${avg.toFixed(1)} knots — ${avg > 8 ? 'brisk (busy trade).' : avg < 4 ? 'slow.' : 'moderate.'}`);
-  return out;
-}
-const DEFAULT_THRESH = { brent: 10, wti: 3.5, diesel: 28, idlers: 15 };
+const DEFAULT_THRESH = { brent: 10, wti: 3.5, diesel: 28 };
 function thresholds() { try { return { ...DEFAULT_THRESH, ...(JSON.parse(localStorage.getItem('oilbasis.thresholds')) || {}) }; } catch { return DEFAULT_THRESH; } }
-function computeAlerts(m, t) {
+function computeAlerts(m) {
   const T = thresholds();
   const out = []; const by = Object.fromEntries(m.benchmarks.map((b) => [b.id, b]));
   if (by.brent?.basis != null && Math.abs(by.brent.basis) > T.brent) out.push({ level: 'high', text: `Brent real-vs-futures gap is extreme (${signed(by.brent.basis)}).` });
@@ -633,18 +613,16 @@ function computeAlerts(m, t) {
   const diesel = crackSpreads(m).find((c) => c.label.startsWith('Diesel refining profit'));
   if (diesel && diesel.value > T.diesel) out.push({ level: 'high', text: `Diesel refining profit is very high (${signed(diesel.value)} a barrel).` });
   if (diesel && diesel.value < 6) out.push({ level: 'high', text: `Diesel refining profit is very low (${signed(diesel.value)}) — refiners may cut back.` });
-  const idlers = (t.tankers || []).filter((v) => (v.sog ?? 0) < 1).length;
-  if (t.status?.enabled && idlers >= T.idlers) out.push({ level: 'med', text: `${idlers} oil ships sitting still — watch for floating storage building.` });
   return out;
 }
 function renderThresholds() {
   const T = thresholds();
-  const rows = [['brent', 'Brent gap alerts above', T.brent], ['wti', 'WTI gap alerts above', T.wti], ['diesel', 'Diesel profit alerts above', T.diesel], ['idlers', 'Idle-ships alerts above', T.idlers]];
+  const rows = [['brent', 'Brent gap alerts above', T.brent], ['wti', 'WTI gap alerts above', T.wti], ['diesel', 'Diesel profit alerts above', T.diesel]];
   $('alert-thresholds').innerHTML = rows.map(([k, label, v]) => `<label class="thr"><span>${label}</span><input type="number" step="0.5" data-k="${k}" value="${v}"></label>`).join('');
   $('alert-thresholds').querySelectorAll('input').forEach((inp) => inp.addEventListener('change', () => {
     const t2 = thresholds(); t2[inp.dataset.k] = Number(inp.value);
     localStorage.setItem('oilbasis.thresholds', JSON.stringify(t2));
-    renderAlerts(computeAlerts(data, tankerInfo));
+    renderAlerts(computeAlerts(data));
   }));
 }
 function renderAlerts(alerts) {
@@ -1261,48 +1239,7 @@ async function loadMarket() {
 }
 
 // ---------------------------------------------------------------------------
-// Tankers
-// ---------------------------------------------------------------------------
-let map, layer;
-function initMap() {
-  if (typeof L === 'undefined') {   // the Leaflet CDN failed — degrade to a note, don't throw
-    const e = $('map-empty');
-    if (e) { e.classList.remove('hidden'); e.textContent = 'Map unavailable — the map library didn’t load.'; }
-    return;
-  }
-  map = L.map('map', { worldCopyJump: false, minZoom: 2, maxZoom: 16, maxBounds: [[-85, -180], [85, 180]], maxBoundsViscosity: 1.0 }).setView([25, 40], 2);
-  const esri = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', { attribution: 'Tiles © Esri', maxZoom: 16, noWrap: true });
-  esri.addTo(map);
-  L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', { maxZoom: 16, noWrap: true }).addTo(map);
-  let fellBack = false;
-  esri.on('tileerror', () => { if (fellBack) return; fellBack = true; map.eachLayer((l) => { if (l instanceof L.TileLayer && l !== layer) map.removeLayer(l); }); L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap', maxZoom: 18, noWrap: true }).addTo(map); });
-  layer = L.layerGroup().addTo(map);
-  setTimeout(() => map.invalidateSize(), 200);
-}
-async function loadTankers() {
-  try { tankerInfo = await getJSON('/api/tankers'); } catch (e) { console.error('[tankers]', e.message); return; }   // AIS is flaky; keep the last state
-  const s = tankerInfo.status;
-  const pill = $('ais-status');
-  if (!s.enabled) {
-    pill.textContent = 'off'; pill.className = 'pill warn';
-    $('ais-help').classList.remove('hidden');
-    $('ais-help').innerHTML = `Live tankers are <b>off</b>. Get a free key at <a href="https://aisstream.io" target="_blank">aisstream.io</a>, then start with <code>AISSTREAM_KEY=yourkey npm start</code>.`;
-  } else {
-    pill.textContent = s.connected ? `live · ${tankerInfo.count} tankers` : 'connecting…';
-    pill.className = 'pill ' + (s.connected ? 'ok' : 'warn');
-    $('ais-help').classList.add('hidden');
-    $('ais-sub').textContent = `${(s.messages || 0).toLocaleString()} AIS messages · last ${ago(s.lastMessage)}`;
-  }
-  layer.clearLayers();
-  for (const v of tankerInfo.tankers) { if (v.lat == null || v.lon == null) continue; L.circleMarker([v.lat, v.lon], { radius: 4, color: '#ff9e00', weight: 1, fillColor: '#ff9e00', fillOpacity: 0.8 }).bindPopup(`<b>${v.name || 'MMSI ' + v.mmsi}</b><br>${(v.sog ?? 0).toFixed(1)} kn · MMSI ${v.mmsi}`).addTo(layer); }
-  $('map-empty').classList.toggle('hidden', tankerInfo.count > 0);
-  const rows = tankerInfo.tankers.slice(0, 60).map((v) => `<div class="t"><span>${v.name || '(' + v.mmsi + ')'}</span><span>${(v.sog ?? 0).toFixed(1)} kn</span><span>${v.lat.toFixed(1)}, ${v.lon.toFixed(1)}</span></div>`).join('');
-  $('tanker-list').innerHTML = `<div class="t h"><span>VESSEL (${tankerInfo.count} TRACKED)</span><span>SPEED</span><span>POSITION</span></div>` + rows;
-  if (data) renderAdaptive();   // refresh the ship row of the adaptive Big Picture
-}
-
-// ---------------------------------------------------------------------------
-// New panels: context, inventories, positioning, sectors, chokepoints
+// New panels: context, inventories, positioning, sectors
 // ---------------------------------------------------------------------------
 const pctClass = (p) => (p == null ? '' : p >= 80 ? 'hot' : p <= 20 ? 'cold' : '');
 function ctxRow(k, pct, value) {
@@ -1409,7 +1346,7 @@ function sparkline(vals, w = 240, h = 40) {
   const pts = xs.map((v, i) => `${(i / (xs.length - 1)) * w},${h - ((v - min) / rng) * h}`).join(' ');
   return `<svg width="${w}" height="${h}" class="spark"><polyline points="${pts}" fill="none" stroke="#ff9e00" stroke-width="1.5"/></svg>`;
 }
-function sectorRead(m, a, t) {
+function sectorRead(m, a) {
   const by = Object.fromEntries(m.benchmarks.map((b) => [b.id, b]));
   const cracks = crackSpreads(m);
   const d321 = cracks.find((c) => c.label.startsWith('3-2-1'));
@@ -1424,25 +1361,17 @@ function sectorRead(m, a, t) {
   if (a?.arb) lines.push(a.arb.open
     ? `Export arb OPEN (net ${signed(a.arb.net)}) → USGC barrels pulled to Europe, supportive for <b>crude tanker rates</b> (FRO, DHT, STNG, INSW).`
     : 'Export arb closed → less long-haul crude demand, softer freight.');
-  const idlers = (t.tankers || []).filter((v) => (v.sog ?? 0) < 1).length;
-  if (t.status?.enabled) lines.push(`${idlers} tankers idle → ${idlers > 12 ? 'rising floating storage (watch tanker names).' : 'normal transit.'}`);
   lines.push('High crude + wide cracks squeeze <b>airlines</b> (DAL, UAL, AAL) and <b>petrochemicals</b> (LYB) via input costs.');
   return lines;
 }
-function renderSectors(eq, m, a, t) {
-  $('sector-read').innerHTML = '<ul class="ins-list">' + sectorRead(m, a, t).map((x) => `<li>${x}</li>`).join('') + '</ul>';
+function renderSectors(eq, m, a) {
+  $('sector-read').innerHTML = '<ul class="ins-list">' + sectorRead(m, a).map((x) => `<li>${x}</li>`).join('') + '</ul>';
   if (!eq) { $('sectors').innerHTML = ''; return; }
   $('eq-date').textContent = 'quotes ' + new Date().toLocaleTimeString('en-GB');
   $('sectors').innerHTML = eq.groups.map((g) => {
     const qs = g.quotes.map((q) => `<span class="eq ${cls(q.pct)}"><b>${q.symbol}</b> ${q.price != null ? q.price.toFixed(q.price < 10 ? 3 : 2) : '—'} <em>${q.pct != null ? pctf(q.pct) : ''}</em></span>`).join('');
     return `<div class="eq-group"><div class="eq-name">${g.name} <span class="dimtext">— ${g.why}</span></div><div class="eq-list">${qs}</div></div>`;
   }).join('');
-}
-function renderChokepoints(d) {
-  const el = $('chokepoints');
-  if (!el || !d?.chokepoints) return;
-  el.innerHTML = '<div class="chokes-h dimtext">TANKERS IN CHOKEPOINTS (live)</div>' +
-    d.chokepoints.map((c) => `<span class="choke"><b>${c.count}</b> ${c.name}</span>`).join('');
 }
 const MONTHS = { F: 'Jan', G: 'Feb', H: 'Mar', J: 'Apr', K: 'May', M: 'Jun', N: 'Jul', Q: 'Aug', U: 'Sep', V: 'Oct', X: 'Nov', Z: 'Dec' };
 const mname = (l) => `${MONTHS[l[0]] || l[0]} '${l.slice(1)}`;
@@ -1633,39 +1562,6 @@ async function loadAnalogue() {
   try { renderAnalogue(await getJSON('/api/analogue?metric=' + encodeURIComponent($('an-metric').value))); }
   catch (e) { showError(e.message); }
 }
-function renderFlows(d) {
-  if (!d?.regions) { $('flows').innerHTML = ''; return; }
-  const regions = d.regions.map((r) => `<span class="choke"><b>${r.count}</b> ${r.name}</span>`).join('');
-  const rates = (d.rates || []).map((r) => `<span class="choke ${r.perMin === 0 ? 'cold' : ''}"><b>${r.perMin}</b>/min ${r.name}</span>`).join('');
-  const e = d.exit; const total = (e.eastbound + e.westbound) || 1;
-  const ew = (e.eastbound / total * 100).toFixed(0), ww = (e.westbound / total * 100).toFixed(0);
-  const darkNote = (d.dark && d.dark.length)
-    ? `<div class="qflag watch" style="margin:8px 12px"><b>No ship signals</b> in: ${d.dark.join(', ')} — this area has gone quiet (ships may be switching off trackers, or the feed is limited).</div>`
-    : '';
-  const ms = d.marketStress;
-  const stressHtml = ms ? `<div class="chokes-h dimtext" style="padding:10px 12px 0">WHAT PRICES ARE SAYING (ships go dark, but prices can't)</div>
-    <div style="padding:6px 12px 0"><div class="verdict ${ms.score >= 2 ? 'tight' : 'mixed'}">${ms.verdict}</div>
-    ${ms.signals.map((s) => `<div class="ev"><span class="ev-l">${s.label}</span><span class="ev-v ${s.hot ? 'pos' : ''}">${s.value != null ? (s.value >= 0 ? '+' : '') + Number(s.value).toFixed(2) : '—'}</span><span class="tag ${s.hot ? 'tight' : 'neutral'}">${s.hot ? 'STRESS' : 'ok'}</span><span class="ev-n dimtext">${s.hot ? 'pricing disruption' : 'normal'}</span></div>`).join('')}</div>` : '';
-  const an = d.anomalies || {};
-  const anHtml = (an.spoof || an.darkGap) ? `<div class="chokes-h dimtext" style="padding:0 12px">TRACKER ODDITIES (ships still visible)</div>
-    <div class="chokes"><span class="choke"><b>${an.spoof || 0}</b> fake jumps (spoofing)</span><span class="choke"><b>${an.darkGap || 0}</b> went silent (hidden trips)</span></div>` : '';
-  const routes = (d.routes || []).map((r) => `<span class="choke ${r.perMin === 0 ? 'cold' : ''}"><b>${r.count}</b> ${r.name} <span class="dimtext">${r.perMin}/min</span></span>`).join('');
-  const routesHtml = `<div class="chokes-h dimtext" style="padding:0 12px">ARE SHIPS DODGING CHOKEPOINTS?</div><div class="chokes">${routes}</div>`;
-  const divHtml = d.diversion ? `<div class="qflag watch" style="margin:8px 12px">${d.diversion}</div>` : '';
-  $('flows').innerHTML =
-    `<div class="chokes-h dimtext">MIDDLE-EAST SHIPPING (live)</div>
-     <div class="chokes">${regions}</div>
-     <div class="chokes-h dimtext" style="padding:0 12px">SHIP-TRACKER SIGNALS (per minute · last 5 min)</div>
-     <div class="chokes">${rates}</div>
-     ${darkNote}
-     ${routesHtml}
-     ${divHtml}
-     ${stressHtml}
-     ${anHtml}
-     <div class="flowbar"><div class="dimtext">Where ships leaving the Gulf are heading</div>
-       <div class="fb"><span class="fb-e" style="width:${ew}%">${e.eastbound} heading east → Asia</span><span class="fb-w" style="width:${ww}%">${e.westbound} heading west → Suez</span></div>
-       <div class="dimtext">${e.total} ships in the exit zone · ${e.moving} moving · ${e.idle} idle</div></div>`;
-}
 let crackHistChart;
 function renderCrackHistory(h) {
   const cv = $('crackhist');
@@ -1690,76 +1586,6 @@ function renderProducts(d) {
   $('products').innerHTML = `<div class="cards">${cards}</div>`;
   renderCrackHistory(d.history);
 }
-let rerouteChart;
-function processSar() {
-  const cv = $('sar-canvas');
-  if (!cv) return;
-  cv.setAttribute('role', 'img');
-  cv.setAttribute('aria-label', 'Satellite radar image of the Gulf of Mexico — loading.');
-  const img = new Image();
-  img.onload = () => {
-    const W = img.width, H = img.height;
-    cv.width = W; cv.height = H;
-    const ctx = cv.getContext('2d', { willReadFrequently: true });
-    ctx.drawImage(img, 0, 0);
-    let data;
-    try { data = ctx.getImageData(0, 0, W, H).data; } catch { const s = $('sar-count'); if (s) s.textContent = 'could not analyse image'; return; }
-    const T = 220;
-    const bin = new Uint8Array(W * H);
-    for (let i = 0; i < W * H; i++) bin[i] = (0.299 * data[i * 4] + 0.587 * data[i * 4 + 1] + 0.114 * data[i * 4 + 2]) > T ? 1 : 0;
-    const seen = new Uint8Array(W * H), stack = [], points = [];
-    for (let start = 0; start < W * H; start++) {
-      if (!bin[start] || seen[start]) continue;
-      stack.length = 0; stack.push(start); seen[start] = 1;
-      let area = 0, sx = 0, sy = 0;
-      while (stack.length) {
-        const p = stack.pop(), x = p % W, y = (p / W) | 0;
-        area++; sx += x; sy += y;
-        if (x > 0 && bin[p - 1] && !seen[p - 1]) { seen[p - 1] = 1; stack.push(p - 1); }
-        if (x < W - 1 && bin[p + 1] && !seen[p + 1]) { seen[p + 1] = 1; stack.push(p + 1); }
-        if (y > 0 && bin[p - W] && !seen[p - W]) { seen[p - W] = 1; stack.push(p - W); }
-        if (y < H - 1 && bin[p + W] && !seen[p + W]) { seen[p + W] = 1; stack.push(p + W); }
-      }
-      if (area >= 2 && area <= 40) points.push({ x: sx / area, y: sy / area });
-    }
-    ctx.lineWidth = 1.5; ctx.strokeStyle = '#ff3b30';
-    for (const p of points) { ctx.beginPath(); ctx.arc(p.x, p.y, 7, 0, Math.PI * 2); ctx.stroke(); }
-    $('sar-count').innerHTML = `<b>${points.length}</b> small bright objects circled — likely <b>oil platforms or ships</b>. (At this zoom a single tanker is under 1 pixel, so treat the count as indicative, not exact.)`;
-    cv.setAttribute('aria-label', `Satellite radar image of the Gulf of Mexico — ${points.length} small bright objects (likely oil platforms or ships) circled in red. Bright pixels are solid objects or land; dark pixels are open water.`);
-  };
-  img.onerror = () => { const s = $('sar-count'); if (s) s.textContent = 'image unavailable'; cv.setAttribute('aria-label', 'Satellite radar image of the Gulf of Mexico — the image could not be loaded.'); };
-  img.src = '/api/sar/image';
-}
-
-function renderSatellite(sar, flares) {
-  let html = '';
-  if (sar && !sar.error) {
-    const latest = sar.latest ? new Date(sar.latest.time).toLocaleString() : '—';
-    html += `<div class="read-line"><b>How the Gulf is visible from space.</b> This is <b>radar, not a photo</b> — so it works at night and through cloud. Latest pass: <b>${latest}</b>.</div>
-      <div class="legend"><span class="lg"><i class="sw bright"></i> bright = a solid object (ship, platform) or land</span><span class="lg"><i class="sw dark"></i> dark = open water</span><span class="lg"><i class="sw circle"></i> red circle = a small object detected</span></div>
-      <div class="sarimg"><canvas id="sar-canvas"></canvas><div id="sar-count" class="dimtext">reading the image…</div></div>`;
-  }
-  if (flares && !flares.error) {
-    const regions = Object.entries(flares.byRegion || {}).map(([k, v]) => `<span class="choke"><b>${v}</b> ${k}</span>`).join('');
-    html += `<div class="read-line" style="border-top:1px solid var(--line)"><b>Gas flames = how much oil is being produced.</b> Oil fields burn off gas in flames satellites can see from orbit. More flames ≈ more output; fewer ≈ fields shut down. Right now: <b>${flares.total}</b> flames seen in the last day.</div>
-      <div class="chokes">${regions}</div>`;
-    if (flares.trend?.length > 1) html += `<div class="dimtext" style="padding:4px 12px 10px">flames seen per day: ${flares.trend.map((t) => `${t.date.slice(5)}: ${t.count}`).join(' · ')}</div>`;
-  }
-  $('satellite').innerHTML = html || stEmpty('No satellite picture right now.');
-  if (sar && !sar.error) processSar();
-}
-function renderReroute(d) {
-  const cv = $('reroute');
-  if (!cv || !d?.series?.length) return;
-  const s = d.series;
-  const labels = s.map((x) => new Date(x.t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
-  const data = { labels, datasets: [
-    { label: 'Cape of Good Hope', data: s.map((x) => x.cape), borderColor: CT.c2, backgroundColor: CT.c2 + '22', borderWidth: 2, pointRadius: 0, tension: 0.3, spanGaps: true },
-    { label: 'Red Sea / Suez', data: s.map((x) => x.suez), borderColor: CT.c1, backgroundColor: CT.c1 + '22', borderWidth: 2, pointRadius: 0, tension: 0.3, spanGaps: true },
-  ] };
-  rerouteChart = mountChart('reroute', data, baseOptions({ dp: 0 }));
-}
-async function loadReroute() { try { renderReroute(await getJSON('/api/reroute')); } catch {} }
 function macroTile(label, value, sub, klass, metric, extra) {
   return `<div class="kpi${metric ? ' clickable' : ''}"${metric ? ` data-metric="${metric}" title="Click for the chart"` : ''}><div class="kpi-l">${label}</div><div class="kpi-v ${klass || ''}">${value}</div><div class="kpi-s dimtext">${sub || ''}</div>${extra || ''}</div>`;
 }
@@ -3048,7 +2874,6 @@ function showTab(name) {
     if (chart) setTimeout(() => chart.resize(), 50);
     if (cmpChart) setTimeout(() => cmpChart.resize(), 55);
     if (curveHistChart) setTimeout(() => curveHistChart.resize(), 60);
-    if (map) setTimeout(() => map.invalidateSize(), 80);
     if (crackHistChart && currentMarket === 'refined') setTimeout(() => crackHistChart.resize(), 80);
   }
   if (name === 'deals') {
@@ -3080,7 +2905,7 @@ async function loadExtraCore() {
   loadTransmission(); // COMMODITIES: how it transmits
 
   renderAdaptive();
-  // 40+ sector quotes, inventories, chokepoints… all inside the COMMODITIES pane, which is hidden
+  // 40+ sector quotes, inventories, refiners… all inside the COMMODITIES pane, which is hidden
   // while the reader is on HOME. Defer the whole batch until that pane is actually opened.
   whenNear('#pane-commodities', loadBelowFold);
 }
@@ -3088,40 +2913,27 @@ async function loadExtraCore() {
 // awaited — these used to block the read/chart from starting.
 async function loadBelowFold() {
   try {
-    const [inv, eq, chk, an, fl, pr] = await Promise.all([
+    const [inv, eq, an, pr] = await Promise.all([
       getJSON('/api/inventories').catch(() => null),
       getJSON('/api/equities').catch(() => null),
-      getJSON('/api/chokepoints').catch(() => null),
       getJSON('/api/analytics').catch(() => null),
-      getJSON('/api/flows').catch(() => null),
       getJSON('/api/products').catch(() => null),
     ]);
     analytics = an;
     renderInventories(inv);
-    renderSectors(eq, data, an, tankerInfo);
-    renderChokepoints(chk);
+    renderSectors(eq, data, an);
     renderCurveForSegment();
     loadCurveHistory();
-    renderFlows(fl);
     renderProducts(pr);
     loadCrush();
   } catch { /* below the fold — stay quiet */ }
 }
-// Below-the-fold / MACRO-only feeds — the slowest requests (satellite, macro). Loaded AFTER the
+// Below-the-fold / MACRO-only feeds — the slowest requests. Loaded AFTER the
 // first paint (and again on the periodic refresh) so they never delay the initial screen.
 let extraSlowDone = false;
 async function loadExtraSlow() {
   if (!data) return;
   try {
-    // Satellite: nothing else needs it, so don't even fetch it until the reader reaches SHIPS &
-    // SATELLITES (it downloads + pixel-scans a radar image).
-    whenNear('#c-ships', async () => {
-      const [flr, sar] = await Promise.all([
-        getJSON('/api/flares').catch(() => null),
-        getJSON('/api/sar').catch(() => null),
-      ]);
-      renderSatellite(sar, flr);
-    }, '200px');
     // macrodash is fetched eagerly because `md.fx` feeds the top tape's currency section.
     const [md, corr] = await Promise.all([
       getJSON('/api/macrodash').catch(() => null),
@@ -3139,7 +2951,6 @@ async function loadExtraSlow() {
 async function refreshLive() {
   // Transient upstream hiccups must never pop the error banner (the loaders keep last-good state).
   try { await loadMarket(); } catch (e) { console.error('[market]', e.message); }
-  try { await loadTankers(); } catch (e) { console.error('[tankers]', e.message); }
 }
 $('refresh').addEventListener('click', () => { nextRefresh = 60; refreshLive(); loadExtra(); });
 $('metric').addEventListener('change', () => { localStorage.setItem('oilbasis.metric', $('metric').value); chartAnchor = null; renderChart(); syncRoute(false); });
@@ -3241,11 +3052,8 @@ $('macro-fx')?.addEventListener('click', (e) => { const el = e.target.closest('[
 $('macro-links')?.addEventListener('click', (e) => { const el = e.target.closest('[data-metric]'); if (el) pickMetric(el.dataset.metric, '1y'); });
 
 (async function boot() {
-  try { initMap(); } catch (e) { console.error(e); }
   document.querySelectorAll('details.fold-panel').forEach((d) => d.addEventListener('toggle', () => {
     if (!d.open) return;
-    if (map) setTimeout(() => map.invalidateSize(), 60);
-    if (rerouteChart) setTimeout(() => rerouteChart.resize(), 60);
   }));
   const tick = () => { $('clock').textContent = new Date().toLocaleTimeString('en-GB'); };
   tick(); setInterval(tick, 1000);
@@ -3304,7 +3112,7 @@ $('macro-links')?.addEventListener('click', (e) => { const el = e.target.closest
   markets = await mkP;
   macroCountries = await ctryP;
   bootStep('Loading prices…');
-  await refreshLive();        // prices + ships (sets `data` first)
+  await refreshLive();        // prices (sets `data` first)
   initCurveHist();            // arm the lazy loader for the (expensive) curve-history chart
   bootStep('reading the market…');
   await loadExtraCore();      // the above-the-fold feeds only — below-the-fold comes after first paint
@@ -3321,11 +3129,8 @@ $('macro-links')?.addEventListener('click', (e) => { const el = e.target.closest
   setTimeout(hideBoot, 8000);                     // hard cap — never linger, even on a slow feed
   setTimeout(() => loadExtraSlow().catch(() => {}), 300);   // the slow, below-the-fold feeds
   loadAnalogue();
-  loadReroute();
   loadHeadlines();
   setInterval(loadHeadlines, 600000);   // refresh the live headline board
-  setInterval(loadTankers, 15000);                                  // ships
-  setInterval(loadReroute, 300000);                                 // reroute index
   setInterval(loadExtra, 600000);                                   // slow feeds every 10 min
   setInterval(() => { nextRefresh -= 5; if (nextRefresh <= 0) { nextRefresh = 60; refreshLive(); } const cd = $('countdown'); if (cd) cd.textContent = `auto ${nextRefresh}s`; }, 5000);
 })();
