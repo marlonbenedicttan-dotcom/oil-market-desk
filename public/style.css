@@ -1248,7 +1248,6 @@ button.deal-sec-tile:hover { background: #10151b; }
 .co-nav { padding: 10px 12px 0; border-bottom: 1px solid var(--line); }
 .co-navrow { display: flex; align-items: center; gap: 12px; min-width: 0; }
 .co-navrow + .co-navrow { margin-top: 8px; padding-bottom: 4px; }
-.co-nav-l { flex: 0 0 48px; font: 600 8.5px/1 var(--sans); letter-spacing: 1.2px; color: var(--faint); }
 .co-region { display: flex; gap: 6px; min-width: 0; overflow-x: auto; scrollbar-width: none; }
 .co-region::-webkit-scrollbar { display: none; }
 .co-region button { background: #0d1219; border: 1px solid var(--line2); border-radius: 999px; color: var(--dim);
@@ -1348,7 +1347,6 @@ button.deal-sec-tile:hover { background: #10151b; }
   .co-nav { padding: 8px 10px 0; }
   .co-navrow { gap: 8px; }
   .co-navrow + .co-navrow { margin-top: 6px; }
-  .co-nav-l { flex: 0 0 auto; font-size: 8px; letter-spacing: .9px; }
   .co-region { gap: 5px; }
   .co-region button { min-height: 44px; font-size: 10px; padding: 0 13px; }
   .co-views button { min-height: 44px; font-size: 10px; padding: 0 10px; }
