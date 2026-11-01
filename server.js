@@ -9,7 +9,7 @@ import crypto from 'node:crypto';
 import { sendMail } from './src/smtp.js';
 import { fileURLToPath } from 'node:url';
 import { projectUs, projectKr, projectJp, US_LIST_FIELDS } from './src/project.js';
-import { sgn, businessDaysSince, horizonDeltas, horizonDeltasAbs, isoWeek, monthly, pctOver, percentile, lastNonNull, escHtml, webhookPayload, realizedVol, computeCracks, computeCrush, computeSteel, backAdjust, pearson, logReturns, frontExpiry, curveTightness, inventoryTightness, weightedScore, seasonalGrade, seasonalAhead, contractMonthsBetween, signedPosition, signedMove, stretchScore, sdLabel, attributeMoves, newsContextOk, METHODOLOGY, positioningFlag, positioningRead, positioningDivergence, maxDrawdown, realizedVolTerm, corrMatrix, fxAdjust, parseOcc, drawdownWord, volWord, volTrend, topPairs, bestDiversifier, riskRead } from './src/lib.js';
+import { sgn, businessDaysSince, horizonDeltas, horizonDeltasAbs, isoWeek, monthly, pctOver, percentile, lastNonNull, escHtml, webhookPayload, realizedVol, computeCracks, computeCrush, computeSteel, backAdjust, pearson, logReturns, frontExpiry, curveTightness, inventoryTightness, weightedScore, seasonalGrade, seasonalAhead, contractMonthsBetween, signedPosition, signedMove, stretchScore, sdLabel, attributeMoves, newsContextOk, METHODOLOGY, positioningFlag, positioningRead, positioningDivergence, maxDrawdown, drawdownNow, realizedVolTerm, volPercentile, volVsOwnWord, corrMatrix, fxAdjust, parseOcc, drawdownWord, volWord, volTrend, corrShift, pairGroups, topPairs, bestDiversifier, riskRead } from './src/lib.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC = path.join(__dirname, 'public');
@@ -1153,8 +1153,9 @@ async function getOptions(id = 'wti') {
 }
 
 // ---------------------------------------------------------------------------
-// Risk & cross-asset correlation (Tier 2). Max drawdown + a realised-vol term structure per
-// instrument, and a correlation matrix over ~1y of aligned daily log-returns.
+// Risk & cross-asset correlation (Tier 2). Current distance from the 1-year high, worst fall,
+// a realised-vol term structure normalised against its own history, and 1-year + 3-month
+// correlation matrices over aligned daily log-returns.
 // ---------------------------------------------------------------------------
 const RISK_SERIES = [
   { key: 'wti', label: 'WTI crude', short: 'WTI', sym: 'CL=F' },
@@ -1162,8 +1163,8 @@ const RISK_SERIES = [
   { key: 'copper', label: 'Copper', short: 'Copper', sym: 'HG=F' },
   { key: 'spx', label: 'S&P 500', short: 'S&P', sym: '^GSPC' },
   { key: 'dxy', label: 'Dollar (DXY)', short: 'Dollar', sym: 'DX-Y.NYB' },
-  { key: 'us10y', label: 'US 10y', short: 'US 10y', fred: 'DGS10', altSym: '^TNX', rate: true },
-  { key: 'vix', label: 'VIX', short: 'VIX', sym: '^VIX' },
+  { key: 'us10y', label: 'US 10y', short: 'US 10y', fred: 'DGS10', altSym: '^TNX', rate: true, level: true },
+  { key: 'vix', label: 'VIX', short: 'VIX', sym: '^VIX', level: true },
 ];
 async function getRisk() {
   return cachedSWR('risk', 3600e3, async () => {
@@ -1183,15 +1184,35 @@ async function getRisk() {
     const metrics = RISK_SERIES.map((s) => {
       const dates = Object.keys(maps[s.key]).sort();
       const vals = dates.map((d) => maps[s.key][d]);
-      const dd = maxDrawdown(vals), vol = realizedVolTerm(vals);
-      return { key: s.key, label: s.label, short: s.short, rate: !!s.rate, drawdown: dd, ddWord: drawdownWord(dd), vol, volWord: volWord(vol.w30), volTrend: volTrend(vol) };
+      const dd = maxDrawdown(vals), now = drawdownNow(vals), vol = realizedVolTerm(vals);
+      const vp = volPercentile(vals);
+      return {
+        key: s.key, label: s.label, short: s.short, rate: !!s.rate, level: !!s.level,
+        drawdown: dd, drawdownNow: now, ddWord: drawdownWord(dd),
+        vol, volWord: volWord(vol.w30), volTrend: volTrend(vol),
+        volPct: vp, volVsOwn: volVsOwnWord(vp),
+      };
     });
     const dates = [...new Set(RISK_SERIES.flatMap((s) => Object.keys(maps[s.key])))].sort();
     const keys = RISK_SERIES.map((s) => ({ key: s.key, label: s.label, short: s.short }));
     const matrix = corrMatrix(maps, dates);
+    // ~63 trading days = the "lately" window the heading used to claim without showing.
+    const recent = dates.slice(-Math.min(64, dates.length));
+    const matrix3m = corrMatrix(maps, recent);
     const pairs = topPairs(matrix, keys, 3);
+    const pairs3m = topPairs(matrix3m, keys, 3);
     const div = bestDiversifier(matrix, keys);
-    return { updated: new Date().toISOString(), metrics, keys, matrix, days: dates.length, pairs, div, read: riskRead(metrics, pairs, div) };
+    const div3m = bestDiversifier(matrix3m, keys);
+    const groups3m = pairGroups(matrix3m, keys, 0.4);
+    for (const p of [...groups3m.together, ...groups3m.opposite]) {
+      p.r1 = (matrix[p.a.key] || {})[p.b.key] ?? null;
+      p.shift = corrShift(p.r1, p.r);
+    }
+    return {
+      updated: new Date().toISOString(), metrics, keys, matrix, matrix3m,
+      days: dates.length, days3m: recent.length, pairs, pairs3m, div, div3m, groups3m,
+      read: riskRead(metrics),
+    };
   });
 }
 
@@ -4195,7 +4216,7 @@ const server = http.createServer(async (req, res) => {
     }
     if (url.pathname === '/api/regime') return sendJSONCached(res, 200, await getRegime().catch((e) => ({ error: String(e.message), rows: [] })));
     if (url.pathname === '/api/screen') return sendJSONCached(res, 200, await getScreen().catch((e) => ({ error: String(e.message), rows: [] })));
-    if (url.pathname === '/api/risk') return sendJSONCached(res, 200, await getRisk().catch((e) => ({ error: String(e.message), metrics: [], matrix: {} })));
+    if (url.pathname === '/api/risk') return sendJSONCached(res, 200, await getRisk().catch((e) => ({ error: String(e.message), metrics: [], matrix: {}, matrix3m: {} })));
     if (url.pathname === '/api/fxadjusted') return sendJSONCached(res, 200, await getFxAdjusted(url.searchParams.get('base') || 'USD').catch((e) => ({ error: String(e.message), rows: [] })));
     if (url.pathname === '/api/search') return sendJSONCached(res, 200, searchCompanies(url.searchParams.get('q'), Math.min(20, Number(url.searchParams.get('limit')) || 8)));
     if (url.pathname === '/api/peers') return sendJSONCached(res, 200, getPeers(url.searchParams.get('ref'), Math.min(12, Number(url.searchParams.get('n')) || 6)));

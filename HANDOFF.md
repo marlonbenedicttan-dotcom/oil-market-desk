@@ -3125,3 +3125,24 @@ Audited at 360, 390 and 430 px with screenshots of every view, then fixed what l
   no repaint of the strip.
 - **Speed is unchanged**: `TICKER_MS` is still 120000 (one copy per two minutes) — measured 96.4 px/s
   before and after. `?v=276`.
+
+## The RISK panel now answers a question (2026-11-02)
+- **The old panel told the wrong story first.** Its headline said "Wildest here: VIX, down 54%" —
+  but VIX is a level, not a holding, so a 54% drop is not a loss. "What WTI moves with" then opened
+  with an *opposite* move, the heading said "lately" while the matrix was a full year, and the
+  drawdown bars were scaled to the worst row, so a 4% bar meant nothing on its own.
+- **Risk rows are decision-ordered now:** `off its 1-year high` (with a fixed 0–50% bar), `worst fall`
+  as context, `jumpy now` (annualised 30-day vol), and **`normal for it?`** — today's vol ranked
+  against *that instrument's own* year (`volPercentile`), not a global threshold. US 10y and VIX carry
+  a `LEVEL` tag so their "fall" is never read as P&L.
+- **Correlation is grouped by decision, not dumped as a matrix:** `MOVE TOGETHER` / `MOVE OPPOSITE`
+  for every pair at |r| ≥ 0.40, with the 1-year value beside the 3-month one and a `stronger` /
+  `weaker` / `flipped` tag when the link changed. Loose pairs are counted, and the most independent
+  series is named. The full matrix is still behind a fold, now with a diverging heat scale and a
+  3-month / 1-year toggle.
+- **API additions** (`/api/risk`): `drawdownNow`, `level`, `volPct`, `volVsOwn` per metric;
+  `matrix3m`, `pairs3m`, `groups3m` (with `r1` + `shift` per pair), `days3m`. New pure helpers in
+  `src/lib.js`: `drawdownNow`, `volPercentile`, `volVsOwnWord`, `corrWord`, `corrShift`, `pairGroups`;
+  `riskRead` is risk-only now (correlation has its own section). **200+ tests**.
+- **Also landed:** the `?v=` on `app.js` / `style.css` is now stamped from the file mtime at serve
+  time, so a deploy can't leave returning readers on a year-cached old asset. No manual bump needed.

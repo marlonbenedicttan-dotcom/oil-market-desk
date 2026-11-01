@@ -2762,8 +2762,9 @@ $('calendar')?.addEventListener('keydown', (e) => {
   const cell = e.target.closest('.cal-day[data-date]');
   if (cell) { e.preventDefault(); calPick(cell.dataset.date); }
 });
-// Risk & correlation — a plain read, bars-with-words, and a focus view (full matrix behind a fold).
-let riskData = null, riskFocus = null;
+// Risk & correlation — a plain read, rows with a baseline, and correlation grouped by decision
+// (doubles up / hedges / loose) before the full matrix behind a fold.
+let riskData = null, riskFocus = null, riskWin = '3m', riskFoldOpen = false;
 async function loadRisk() {
   const el = $('risk'); if (!el) return;
   if (!el.innerHTML) el.innerHTML = stLoading('Loading risk metrics…');
@@ -2774,41 +2775,116 @@ async function loadRisk() {
 }
 function renderRisk(d) {
   const el = $('risk'); if (!el) return;
-  const sub = $('risk-sub'); if (sub) sub.textContent = 'worst 1-year fall · how jumpy · what moves together (daily returns)';
+  const sub = $('risk-sub');
+  if (sub) sub.textContent = 'how far off its 1-year high · how jumpy · whether that is normal · what moves together';
   const metrics = (d && d.metrics) || [];
   if (!metrics.length) { el.innerHTML = stError('Couldn’t load risk metrics — retrying.'); return; }
-  const maxDD = Math.max(1, ...metrics.map((m) => Math.abs(m.drawdown || 0)));
-  const ddCls = (w) => (w === 'deep fall' ? 'deep' : w === 'barely moved' || w === 'mild fall' ? 'mild' : '');
+
   const arrow = { rising: '↑', falling: '↓', flat: '→' };
   const rows = metrics.map((m) => {
-    const w = Math.abs(m.drawdown || 0) / maxDD * 100;
-    const vw = m.vol && m.vol.w30;
-    return `<div class="rk-row"><span class="rk-name">${m.label}</span>`
-      + `<span class="rk-dd" title="worst peak-to-trough fall over the last year">${m.drawdown == null ? '—' : m.drawdown.toFixed(0) + '%'}</span>`
-      + `<span class="rk-bar ${ddCls(m.ddWord)}"><i style="width:${w.toFixed(0)}%"></i></span>`
-      + `<span class="rk-word">${m.ddWord}</span>`
-      + `<span class="rk-vol" title="annualised realised volatility over 30 days (and the 30-vs-90 trend)">${vw == null ? '—' : Math.round(vw) + '%'} <em>${m.volWord || ''}</em> ${m.volTrend ? arrow[m.volTrend] : ''}</span></div>`;
+    const now = m.drawdownNow;
+    const nowTxt = now == null ? '—' : now === 0 ? 'at its high' : Math.abs(now).toFixed(0) + '% off';
+    const barW = now == null ? 0 : Math.min(100, Math.abs(now) / 50 * 100);
+    const volTxt = m.vol && m.vol.w30 != null ? Math.round(m.vol.w30) + '%' : '—';
+    const ownCls = m.volPct == null ? '' : m.volPct >= 80 ? 'hot' : m.volPct <= 20 ? 'cool' : '';
+    return `<div class="rk-row">`
+      + `<span class="rk-name">${esc(m.label)}${m.level ? ' <span class="rk-tag" title="A level, not a holding — a fall here is not a loss">LEVEL</span>' : ''}</span>`
+      + `<span class="rk-now"><b>${nowTxt}</b><span class="rk-bar" title="Distance below the 1-year high · the bar runs 0–50%"><i style="width:${barW.toFixed(0)}%"></i></span></span>`
+      + `<span class="rk-worst">${m.drawdown == null ? '—' : 'worst ' + Math.abs(m.drawdown).toFixed(0) + '%'}</span>`
+      + `<span class="rk-vol">${volTxt} <em>${m.volWord || ''}</em> ${arrow[m.volTrend] || ''}</span>`
+      + `<span class="rk-own ${ownCls}" title="Today’s 30-day vol against its own past year${m.volPct == null ? '' : ' (percentile ' + m.volPct + ')'}">${m.volVsOwn || '—'}</span>`
+      + `</div>`;
   }).join('');
+
   const keys = (d && d.keys) || [];
-  const mtx = (d && d.matrix) || {};
+  const m1 = (d && d.matrix) || {};
+  const m3 = (d && d.matrix3m) || m1;
+  const g = (d && d.groups3m) || { together: [], opposite: [], loose: [] };
+  const fmt = (v) => v == null ? '—' : (v > 0 ? '+' : '') + v.toFixed(2);
+  const pairChip = (p) => {
+    const r = p.r, r1 = p.r1;
+    const shift = p.shift && p.shift.word !== 'steady' ? `<span class="pair-shift ${p.shift.tone}">${p.shift.word}</span>` : '';
+    return `<div class="pair" title="${esc(p.a.label)} ${r > 0 ? 'moves with' : 'moves opposite'} ${esc(p.b.label)} · 3m ${fmt(r)}${r1 == null ? '' : ' · 1y ' + fmt(r1)}">`
+      + `<span class="pair-n">${esc(p.a.short || p.a.label)} ↔ ${esc(p.b.short || p.b.label)}</span>`
+      + `<span class="pair-r ${r > 0 ? 'pos' : 'neg'}">${fmt(r)}</span>`
+      + `<span class="pair-1y">1y ${fmt(r1)}</span>${shift}</div>`;
+  };
+  const col = (title, note, cls, list, empty) => `<div class="crf-col">`
+    + `<div class="crf-col-h ${cls}">${title} <em>${note}</em></div>`
+    + (list.length ? list.map(pairChip).join('') : `<div class="crf-empty dimtext">${empty}</div>`)
+    + `</div>`;
+  const loose = (g.loose || []).length;
+  const div = (d && (d.div3m || d.div)) || null;
+  const corrBlock = `<div class="crf">`
+    + `<div class="crf-head">WHAT MOVES TOGETHER <span class="crf-sub">last 3 months · 1-year in grey</span></div>`
+    + `<div class="crf-cols">`
+    + col('MOVE TOGETHER', 'same direction', 'pos', g.together || [], 'Nothing moves clearly together right now.')
+    + col('MOVE OPPOSITE', 'opposite direction', 'neg', g.opposite || [], 'No clear hedge in this window.')
+    + `</div>`
+    + `<div class="crf-loose dimtext">${loose} other pair${loose === 1 ? '' : 's'} ${loose === 1 ? 'is' : 'are'} loose (|r| under 0.40)${div && div.label ? ` · most independent: <b>${esc(div.label)}</b> (average link ${div.avg})` : ''}.</div>`
+    + `<div class="crf-note dimtext"><b>+1</b> = same direction, <b>−1</b> = opposite, <b>0</b> = unrelated. Pairs at <b>0.40+</b> are listed above; <b>0.50+</b> is a dependable link, 0.40–0.50 moderate. Three months is noisier than a year.</div>`
+    + `</div>`;
+
   const focusLabel = ((keys.find((k) => k.key === riskFocus) || {}).label) || '';
-  const picks = keys.map((k) => `<option value="${k.key}"${k.key === riskFocus ? ' selected' : ''}>${k.label}</option>`).join('');
-  const row = (riskFocus && mtx[riskFocus]) || {};
-  const frows = keys.filter((k) => k.key !== riskFocus && row[k.key] != null).map((k) => ({ ...k, r: row[k.key] })).sort((a, b) => Math.abs(b.r) - Math.abs(a.r));
-  const fb = frows.map((k) => `<div class="crf-row"><span class="crf-k">${k.label}</span><span class="crf-bar" title="${focusLabel} ${k.r > 0 ? 'moves WITH' : 'moves OPPOSITE'} ${k.label} (r = ${k.r})"><i class="${k.r >= 0 ? 'pos' : 'neg'}" style="width:${(Math.abs(k.r) * 50).toFixed(0)}%"></i></span><span class="crf-r ${k.r > 0 ? 'pos' : 'neg'}">${k.r > 0 ? '+' : ''}${k.r.toFixed(2)}</span></div>`).join('');
+  const picks = keys.map((k) => `<option value="${k.key}"${k.key === riskFocus ? ' selected' : ''}>${esc(k.label)}</option>`).join('');
+  const rr3 = (riskFocus && m3[riskFocus]) || {};
+  const rr1 = (riskFocus && m1[riskFocus]) || {};
+  const frows = keys.filter((k) => k.key !== riskFocus && (rr3[k.key] != null || rr1[k.key] != null))
+    .map((k) => ({ ...k, r3: rr3[k.key], r1: rr1[k.key] }))
+    .sort((a, b) => Math.abs(b.r3 ?? b.r1 ?? 0) - Math.abs(a.r3 ?? a.r1 ?? 0));
+  const fb = frows.map((k) => {
+    const r = k.r3 ?? k.r1;
+    return `<div class="crf-row">`
+      + `<span class="crf-k">${esc(k.label)}</span>`
+      + `<span class="crf-bar" title="${esc(focusLabel)} vs ${esc(k.label)} · 3m ${fmt(k.r3)} · 1y ${fmt(k.r1)}"><i class="${r >= 0 ? 'pos' : 'neg'}" style="width:${(Math.abs(r) * 50).toFixed(0)}%"></i></span>`
+      + `<span class="crf-r ${r >= 0 ? 'pos' : 'neg'}">${fmt(r)}</span>`
+      + `<span class="crf-1y">1y ${fmt(k.r1)}</span>`
+      + `</div>`;
+  }).join('');
+  const focusBlock = `<div class="crf">`
+    + `<div class="crf-head">HOW <select id="risk-focus" aria-label="Focus instrument">${picks}</select> LINKS TO THE OTHERS <span class="crf-sub">3 months · 1-year beside</span></div>`
+    + (fb || '<div class="dimtext">No overlapping history for this one.</div>')
+    + `</div>`;
+
+  const win = riskWin === '1y' ? '1y' : '3m';
+  const mm = win === '1y' ? m1 : m3;
   const short = (k) => k.short || k.label;
-  const cls = (v) => (v == null ? '' : Math.abs(v) >= 0.6 ? (v > 0 ? 'hi' : 'hineg') : Math.abs(v) >= 0.3 ? 'mid' : 'lo');
-  const heat = '<div class="corr-wrap"><table class="corr-tbl"><thead><tr><th></th>' + keys.map((k) => `<th>${short(k)}</th>`).join('') + '</tr></thead><tbody>'
-    + keys.map((a) => `<tr><th>${short(a)}</th>` + keys.map((b) => { const v = a.key === b.key ? null : (mtx[a.key] ? mtx[a.key][b.key] : null); return `<td class="${cls(v)}">${v == null ? '—' : (v > 0 ? '+' : '') + v.toFixed(2)}</td>`; }).join('') + '</tr>').join('') + '</tbody></table></div>';
+  const cell = (v) => {
+    if (v == null) return '<td class="na">—</td>';
+    const a = Math.min(0.34, Math.abs(v) * 0.36).toFixed(2);
+    return `<td class="${v > 0 ? 'pos' : 'neg'}" style="background:${v > 0 ? 'rgba(255,158,0,' : 'rgba(74,163,255,'}${a})">${fmt(v)}</td>`;
+  };
+  const heat = `<div class="corr-wrap"><table class="corr-tbl"><thead><tr><th></th>${keys.map((k) => `<th>${esc(short(k))}</th>`).join('')}</tr></thead><tbody>`
+    + keys.map((a) => `<tr><th>${esc(short(a))}</th>` + keys.map((b) => (a.key === b.key ? '<td class="na">—</td>' : cell(mm[a.key] ? mm[a.key][b.key] : null))).join('') + '</tr>').join('')
+    + `</tbody></table></div>`;
+  const matrixBlock = `<details class="fold risk-fold"${riskFoldOpen ? ' open' : ''}><summary>▸ FULL CORRELATION MATRIX — ${win === '1y' ? '1 YEAR' : '3 MONTHS'}</summary>`
+    + `<div class="note-body"><div class="crf-winrow">`
+    + `<button class="crf-win ${win === '3m' ? 'on' : ''}" data-win="3m" aria-pressed="${win === '3m'}">3 MONTHS</button>`
+    + `<button class="crf-win ${win === '1y' ? 'on' : ''}" data-win="1y" aria-pressed="${win === '1y'}">1 YEAR</button>`
+    + `</div>${heat}<div class="sc-note dimtext">Every pair, over aligned daily returns. The matrix is symmetric — one row is one instrument’s links to the rest. Colour is only a guide; the number is what counts.</div></div></details>`;
+
   el.innerHTML = (d.read ? `<div class="risk-read">${d.read}</div>` : '')
-    + '<div class="rk-head"><span class="rk-name">INSTRUMENT</span><span class="rk-dd">FALL</span><span class="rk-bar"></span><span class="rk-word">WORST 1Y</span><span class="rk-vol">HOW JUMPY (30d)</span></div>'
+    + '<div class="rk-head"><span class="rk-name">INSTRUMENT</span><span class="rk-now">OFF 1Y HIGH</span><span class="rk-worst">WORST FALL</span><span class="rk-vol">JUMPY NOW (30D)</span><span class="rk-own">NORMAL FOR IT?</span></div>'
     + rows
-    + `<div class="crf"><div class="crf-head">WHAT <select id="risk-focus" aria-label="Focus instrument">${picks}</select> MOVES WITH — lately</div>${fb || '<div class="dimtext">No overlapping history for this one.</div>'}</div>`
-    + `<details class="fold"><summary>▸ SHOW THE FULL CORRELATION MATRIX</summary><div class="note-body">${heat}<div class="sc-note dimtext">Every pair, over ~1 year of daily returns: <b>+1</b> = same direction, <b>−1</b> = opposite, <b>0</b> = unrelated. Colour is only a guide — the number is what counts.</div></div></details>`
-    + '<div class="sc-note dimtext">“Worst fall” = the biggest peak-to-trough drop over the last year (a risk gauge, not a forecast). “How jumpy” = annualised realised volatility; ↑ rising, ↓ falling. Correlation is about DAILY moves and it changes over time. For a yield (US 10y) and VIX, a “fall” is a move in the level, not a P&amp;L.</div>';
+    + corrBlock
+    + focusBlock
+    + matrixBlock
+    + '<div class="sc-note dimtext">“Off 1y high” = today versus its own peak over the year; the bar runs 0–50%. “Worst fall” = the biggest peak-to-trough drop in that year. “Jumpy now” = annualised 30-day realised volatility; ↑ rising, ↓ falling. “Normal for it?” compares that vol with its own year, not a fixed threshold. For US 10y and VIX the figures describe the level, not a P&amp;L.</div>';
 }
 $('risk')?.addEventListener('change', (e) => {
-  if (e.target.id === 'risk-focus') { riskFocus = e.target.value; renderRisk(riskData); }
+  if (e.target.id !== 'risk-focus') return;
+  const det = $('risk')?.querySelector?.('details.risk-fold');
+  if (det) riskFoldOpen = !!det.open;
+  riskFocus = e.target.value;
+  renderRisk(riskData);
+});
+$('risk')?.addEventListener('click', (e) => {
+  const w = e.target.closest('[data-win]');
+  if (!w) return;
+  const det = $('risk')?.querySelector?.('details.risk-fold');
+  if (det) riskFoldOpen = !!det.open;
+  riskWin = w.dataset.win === '1y' ? '1y' : '3m';
+  renderRisk(riskData);
 });
 async function loadHeadlines() {
   const el = $('headlines');

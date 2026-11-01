@@ -455,11 +455,34 @@ export function maxDrawdown(values) {
   }
   return +worst.toFixed(1);
 }
+// How far below its 1-year high the series sits *now* (≤ 0, 0 = at the high). This is the
+// decision-relevant number; maxDrawdown above is the worst it ever got over the same year.
+export function drawdownNow(values) {
+  const xs = (values || []).filter((v) => v != null);
+  if (xs.length < 2) return null;
+  const peak = Math.max(...xs);
+  if (!(peak > 0)) return null;
+  return +(((xs[xs.length - 1] - peak) / peak) * 100).toFixed(1);
+}
 // Annualised realised vol across several look-backs — a term structure (rising = stress building).
 export function realizedVolTerm(values, wins = [30, 60, 90]) {
   const out = {};
   for (const w of wins) out['w' + w] = realizedVol(values, w);
   return out;
+}
+// Where today's 30-day vol sits inside *this instrument's own* year (0-100). A global threshold
+// cannot answer "is this normal for gold?"; this can. null when there is not enough history.
+export function volPercentile(values, win = 30) {
+  const xs = (values || []).filter((v) => v != null);
+  if (xs.length < win + 30) return null;
+  const hist = [];
+  for (let i = win + 1; i <= xs.length; i++) {
+    const v = realizedVol(xs.slice(0, i), win);
+    if (v != null) hist.push(v);
+  }
+  if (hist.length < 20) return null;
+  const latest = hist[hist.length - 1];
+  return Math.round((hist.filter((v) => v <= latest).length / hist.length) * 100);
 }
 // Pearson correlation matrix over aligned log-returns. seriesByKey: { key: { 'YYYY-MM-DD': value } }.
 export function corrMatrix(seriesByKey, dates) {
@@ -485,6 +508,27 @@ export function volTrend(term) {
   const d = term.w30 - term.w90, eps = Math.max(2, term.w90 * 0.12);
   return d > eps ? 'rising' : d < -eps ? 'falling' : 'flat';
 }
+// Turn a percentile-vs-its-own-year into a word. This is the "is it normal for this thing?" answer,
+// which a fixed vol threshold cannot give.
+export function volVsOwnWord(pct) {
+  if (pct == null) return '—';
+  return pct >= 85 ? 'unusually jumpy' : pct >= 60 ? 'jumpier than usual' : pct >= 40 ? 'typical' : pct >= 15 ? 'calmer than usual' : 'unusually calm';
+}
+// Strength and direction of a correlation in words, never a colour alone.
+export function corrWord(r) {
+  if (r == null) return '—';
+  const a = Math.abs(r);
+  return a >= 0.7 ? 'strong' : a >= 0.5 ? 'clear' : a >= 0.3 ? 'moderate' : 'loose';
+}
+// Did a pair get closer or further apart between the 1-year and 3-month windows?
+export function corrShift(r1, r3) {
+  if (r1 == null || r3 == null) return null;
+  if (r1 * r3 < 0 && Math.abs(r1) >= 0.3 && Math.abs(r3) >= 0.3) return { word: 'flipped', tone: 'warn' };
+  const d = Math.abs(r3) - Math.abs(r1);
+  if (d >= 0.2) return { word: 'stronger', tone: 'warn' };
+  if (d <= -0.2) return { word: 'weaker', tone: 'cool' };
+  return { word: 'steady', tone: 'flat' };
+}
 // One key's correlations with the rest, strongest first (for the default "what X moves with" view).
 export function focusRows(matrix, key, keys) {
   const row = (matrix && matrix[key]) || {};
@@ -500,6 +544,16 @@ export function topPairs(matrix, keys, n = 3) {
   }
   return out.sort((x, y) => Math.abs(y.r) - Math.abs(x.r)).slice(0, n);
 }
+// Split every pair into the three decisions the panel asks about: doubles up (same direction),
+// hedges (opposite), and loose (no dependable link). `cut` is the |r| considered dependable.
+export function pairGroups(matrix, keys, cut = 0.5) {
+  const all = topPairs(matrix, keys, Infinity);
+  return {
+    together: all.filter((p) => p.r >= cut).sort((a, b) => b.r - a.r),
+    opposite: all.filter((p) => p.r <= -cut).sort((a, b) => a.r - b.r),
+    loose: all.filter((p) => Math.abs(p.r) < cut).sort((a, b) => Math.abs(b.r) - Math.abs(a.r)),
+  };
+}
 // The most independent series — lowest average |r| against the others.
 export function bestDiversifier(matrix, keys) {
   let best = null, bestAvg = Infinity;
@@ -511,17 +565,32 @@ export function bestDiversifier(matrix, keys) {
   }
   return best ? { key: best.key, label: best.label, avg: +bestAvg.toFixed(2) } : null;
 }
-// One plain-English paragraph summarising the risk board.
-export function riskRead(metrics, pairs, div) {
-  const list = (metrics || []).filter((m) => m.drawdown != null);
+// The two-sentence risk headline. Deliberately risk-only: correlation has its own section, and the
+// old copy called VIX "the wildest fall" — a level move dressed up as a loss.
+export function riskRead(metrics) {
+  const list = (metrics || []).filter((m) => m.drawdownNow != null || m.drawdown != null);
   if (list.length < 2) return '';
-  const wildest = list.slice().sort((a, b) => a.drawdown - b.drawdown)[0];
+  const held = list.filter((m) => !m.level);
+  const deep = (held.length ? held : list).slice().sort((a, b) => (a.drawdownNow ?? a.drawdown ?? 0) - (b.drawdownNow ?? b.drawdown ?? 0))[0];
   const jumpy = (metrics || []).filter((m) => m.vol && m.vol.w30 != null).sort((a, b) => b.vol.w30 - a.vol.w30)[0];
+  const heldJumpy = (metrics || []).filter((m) => !m.level && m.vol && m.vol.w30 != null).sort((a, b) => b.vol.w30 - a.vol.w30)[0];
   const rising = (metrics || []).filter((m) => m.volTrend === 'rising').map((m) => m.label);
-  const s = [`Wildest here: <b>${wildest.label}</b>, down ${Math.abs(wildest.drawdown).toFixed(0)}% peak-to-trough over the year.`];
-  if (jumpy && jumpy.key !== wildest.key) s.push(`Jumpiest: <b>${jumpy.label}</b> (${Math.round(jumpy.vol.w30)}% vol).`);
-  if (div) s.push(`Most independent: <b>${div.label}</b> (average link ${div.avg}).`);
-  if (pairs && pairs.length) s.push(`Strongest link on the board: <b>${pairs[0].a.label} ↔ ${pairs[0].b.label}</b> (${pairs[0].r > 0 ? '+' : ''}${pairs[0].r.toFixed(2)}).`);
+  const deeper = deep && deep.drawdown != null && deep.drawdownNow != null && Math.abs(deep.drawdown) >= Math.abs(deep.drawdownNow) + 3;
+  const s = [];
+  if (deep && deep.drawdownNow != null) {
+    s.push(deep.drawdownNow < 0
+      ? `<b>${deep.label}</b> is ${Math.abs(deep.drawdownNow).toFixed(0)}% below its 1-year high${deeper ? ` (worst fall ${Math.abs(deep.drawdown).toFixed(0)}%)` : ''}.`
+      : `<b>${deep.label}</b> is closest to its 1-year high.`);
+  } else if (deep) {
+    s.push(`<b>${deep.label}</b>'s worst fall this year was ${Math.abs(deep.drawdown).toFixed(0)}%.`);
+  }
+  if (jumpy && heldJumpy && jumpy.level && jumpy.key !== heldJumpy.key) {
+    s.push(`<b>${heldJumpy.label}</b> is the jumpiest to own (${Math.round(heldJumpy.vol.w30)}%); <b>${jumpy.label}</b> is more volatile still (${Math.round(jumpy.vol.w30)}%), but that is a level move, not a loss.`);
+  } else if (jumpy) {
+    s.push(jumpy.level
+      ? `<b>${jumpy.label}</b> is the most volatile series (${Math.round(jumpy.vol.w30)}%), but that is a level move, not a loss.`
+      : `<b>${jumpy.label}</b> is the jumpiest (${Math.round(jumpy.vol.w30)}% annualised).`);
+  }
   if (rising.length) s.push(`Vol is building for ${rising.join(', ')}.`);
   return s.join(' ');
 }

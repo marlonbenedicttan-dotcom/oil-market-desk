@@ -551,8 +551,13 @@ test('/api/risk returns drawdown, a vol term structure and a correlation matrix'
     assert.ok(Array.isArray(j.metrics) && j.metrics.length >= 5, 'a metric per key asset');
     const m = j.metrics.find((x) => x.key === 'wti');
     assert.ok(m && 'drawdown' in m && 'vol' in m && 'w30' in m.vol, 'WTI has drawdown + vol term');
+    assert.ok('drawdownNow' in m && 'volPct' in m && 'volVsOwn' in m && 'level' in m, 'current risk + own-history baseline');
     assert.ok(j.keys.length >= 5 && typeof j.matrix === 'object');
     assert.equal(j.matrix.wti.wti, 1, 'diagonal is 1');
+    assert.ok(typeof j.matrix3m === 'object' && j.matrix3m.wti.wti === 1, 'a 3-month matrix alongside the year');
+    assert.ok(j.groups3m && Array.isArray(j.groups3m.together) && Array.isArray(j.groups3m.opposite) && Array.isArray(j.groups3m.loose), 'pairs grouped by decision');
+    assert.match(j.read, /below its 1-year high|closest to its 1-year high|worst fall this year/);
+    assert.doesNotMatch(j.read, /Wildest here/);
   }
 });
 

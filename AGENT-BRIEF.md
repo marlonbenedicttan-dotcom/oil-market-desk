@@ -17,7 +17,7 @@ doc that matches your task:
 
 **Environment**
 - Node lives at `~/.local/node/bin` — run `export PATH="$HOME/.local/node/bin:$PATH"` first.
-- `npm start` → http://localhost:4173 · `npm test` → must stay green (**87 tests**).
+- `npm start` → http://localhost:4173 · `npm test` → must stay green.
 - Google Chrome is installed: you can verify layout and behaviour **headlessly**
   (Chrome `--headless=new` + the DevTools protocol) at **390×844** and **1440×900**. That is how the
   mobile/desktop checks here were done — use it instead of guessing.
@@ -28,7 +28,7 @@ doc that matches your task:
 - **Never fake a number.** Missing data shows `—` / `n/a` and is labelled; every figure carries a
   **source + as-of date**. Honest over impressive.
 - Keep `server.js` and `public/app.js` thin; put testable logic in `src/lib.js`.
-- After **any** front-end change, bump `?v=` on `style.css` / `app.js` in `public/index.html`.
+- Asset versions are automatic now: the server rewrites `?v=` from each file’s mtime. No manual bump.
 - Deploy = `git push origin main` → Render rebuilds in ~2–3 min. **Then verify on the live URL**
   `https://oil-market-desk.onrender.com` (poll for the new `?v=`, then check the change).
 - `.github/workflows/*` is untracked on purpose — don't add it.

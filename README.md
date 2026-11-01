@@ -22,7 +22,7 @@ The whole thing is one Node process with **no runtime dependencies**: Node's bui
 - **Daily brief** — the day's read in prose, with the news that explains it.
 - **Regime board** — where the market is in its cycle, in one line per segment.
 - **Screener** — every instrument, sortable, with the moves that matter.
-- **Risk** — vol, drawdown and correlation checks.
+- **Risk** — how far each market is from its 1-year high, whether its volatility is normal for it, and what moves together or hedges.
 - **Calendar** — FOMC (live from the Fed), FRED releases (optional key), and TradingView's global economic calendar, high-impact first.
 - **Watchlist + headlines** — your names, the tape, and the wires.
 
@@ -88,7 +88,7 @@ npm start
 Copy `.env.example` to `.env` for the optional keys. Nothing is required to boot — the paid-ish feeds simply stay dark.
 
 ```sh
-npm test          # 187 tests: pure helpers, data invariants, API smoke, front-end regressions
+npm test          # 200+ tests: pure helpers, data invariants, API smoke, front-end regressions
 npm run audit:all # cross-checks every published ratio against its inputs
 ```
 
@@ -147,7 +147,7 @@ src/lib.js         pure helpers (unit-tested)
 public/            app.js, style.css, index.html, self-hosted Chart.js, icons
 scripts/           one-shot builders and audits (companies, Japan, Korea, …)
 data/              published snapshots the server serves
-tests/             187 tests (node --test)
+tests/             200+ tests (node --test)
 workers/keepalive/ Cloudflare Worker cron (optional)
 ```
 

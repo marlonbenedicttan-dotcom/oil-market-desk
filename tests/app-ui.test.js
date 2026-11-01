@@ -143,7 +143,7 @@ function loadApp() {
   const source = fs.readFileSync(APP, 'utf8');
   // `const`/`function` declarations are script-scoped, so hand the ones under test back explicitly.
   const exported = `\n;globalThis.__ui = {
-    esc, pctf, cls, ago, deltaStrip,
+    esc, pctf, cls, ago, deltaStrip, renderRisk,
     buildBpOptions, renderTicker, markReady, hideBoot, BOOT_CORE, bootReady,
     setMarkets: (v) => { markets = v; },
     getMarkets: () => markets,
@@ -251,6 +251,36 @@ test('the ticker rebuilds when the set of cells changes', () => {
     ],
   });
   assert.ok(track._htmlWrites > writes, 'a new instrument has to enter the tape');
+});
+
+// --- the risk panel (readability regression) ---------------------------------------------------
+
+test('the risk panel separates current risk from level moves and groups correlation by decision', () => {
+  const { ui, document } = loadApp();
+  ui.renderRisk({
+    read: '<b>Gold</b> is 25% below its 1-year high.',
+    metrics: [
+      { key: 'wti', label: 'WTI crude', drawdownNow: -10, drawdown: -39, vol: { w30: 39 }, volWord: 'jumpy', volTrend: 'falling', volPct: 72, volVsOwn: 'jumpier than usual' },
+      { key: 'vix', label: 'VIX', level: true, drawdownNow: -54, drawdown: -54, vol: { w30: 103 }, volWord: 'very jumpy', volTrend: 'flat', volPct: 50, volVsOwn: 'typical' },
+    ],
+    keys: [{ key: 'wti', label: 'WTI crude', short: 'WTI' }, { key: 'vix', label: 'VIX', short: 'VIX' }],
+    matrix: { wti: { wti: 1, vix: 0.2 }, vix: { wti: 0.2, vix: 1 } },
+    matrix3m: { wti: { wti: 1, vix: -0.6 }, vix: { wti: -0.6, vix: 1 } },
+    groups3m: {
+      together: [],
+      opposite: [{ a: { key: 'wti', label: 'WTI crude', short: 'WTI' }, b: { key: 'vix', label: 'VIX', short: 'VIX' }, r: -0.6, r1: 0.2, shift: { word: 'flipped', tone: 'warn' } }],
+      loose: [],
+    },
+    div: { label: 'VIX', avg: 0.4 },
+  });
+  const html = document.getElementById('risk').innerHTML;
+  assert.match(html, /OFF 1Y HIGH/);
+  assert.match(html, /LEVEL/, 'a level series is labelled, not reported as a loss');
+  assert.match(html, /MOVE TOGETHER/);
+  assert.match(html, /MOVE OPPOSITE/);
+  assert.match(html, /flipped/, 'a link that changed sign is called out');
+  assert.match(html, /3 MONTHS/);
+  assert.doesNotMatch(html, /Wildest here/);
 });
 
 // --- the boot gate (shipped regression) --------------------------------------------------------
