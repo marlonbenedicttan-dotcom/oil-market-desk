@@ -2231,7 +2231,9 @@ async function getNews(id, componentId) {
   const onTopic = b
     ? (i) => mustScoreFor(NEWS_FOCUS[sel] || [], i.title) > 0 && newsContextOk(i.title)
     : (i) => titleMatches(id, i.title);
-  return cached('news:' + id + (sel ? ':' + sel : ''), 45 * 60e3, async () => {
+  // A rate-limited burst must not occupy the 45-minute slot with an empty answer (the event pool
+  // fans out over every segment), so empty results are served but not stored.
+  return cachedUnlessEmpty('news:' + id + (sel ? ':' + sel : ''), 45 * 60e3, async () => {
     // Query the chosen instrument directly (Google News returns ~100 per query), then keep only
     // headlines that actually name it and pass the market-context guard.
     const q = b ? `${b.label.replace(/\s*\(.*\)/, '')} ${NEWS_TIER1}` : `(${terms}) ${NEWS_TIER1}`;
@@ -2240,7 +2242,7 @@ async function getNews(id, componentId) {
       try { kept = (await fetchGoogleNews(`(${terms}) ${NEWS_TIER1}`, 40)).filter(onTopic); } catch {}
     }
     return { id, label: b ? b.label : newsLabel(id), component: sel || null, items: kept.slice(0, 10) };
-  });
+  }, (v) => !(v.items && v.items.length));
 }
 
 // ---------------------------------------------------------------------------
@@ -2682,7 +2684,8 @@ async function getCountryExtras(id) {
 // ---------------------------------------------------------------------------
 async function fetchGoogleNews(q, limit = 12) {
   const url = `https://news.google.com/rss/search?q=${encodeURIComponent(q)}&hl=en-US&gl=US&ceid=US:en`;
-  const res = await fetch(url, { headers: UA });
+  // A hung upstream must not hold the event pool or a panel: every Google News call settles in 12s.
+  const res = await fetch(url, { headers: UA, signal: AbortSignal.timeout(12000) });
   if (!res.ok) throw new Error('news ' + res.status);
   const xml = await res.text();
   const items = [];
@@ -2856,7 +2859,7 @@ async function getAttribution(id, componentId) {
 const HEADLINE_QUERY = '(oil OR "natural gas" OR gold OR copper OR wheat OR corn OR soybeans OR sugar OR coffee OR cocoa OR "palm oil") (OPEC OR sanctions OR hurricane OR drought OR "export ban" OR strike OR outage OR "record output" OR glut OR tariff OR attack) (site:reuters.com OR site:bloomberg.com OR site:ft.com OR site:apnews.com OR site:cnbc.com)';
 const TIER1_RE = /reuters|bloomberg|financial times|ft\.com|ap news|associated press|cnbc|wsj|wall street journal/i;
 async function getHeadlines() {
-  return cached('headlines', 20 * 60e3, async () => {
+  return cachedUnlessEmpty('headlines', 20 * 60e3, async () => {
     // The hero board is commodity-focused; still drop any sports/entertainment or name collision.
     const items = (await fetchGoogleNews(HEADLINE_QUERY, 30).catch(() => [])).filter((it) => newsContextOk(it.title, { requireMarket: false }));
     const now = Date.now();
@@ -2870,7 +2873,7 @@ async function getHeadlines() {
     }
     items.sort((a, b) => b.score - a.score);
     return { items: items.slice(0, 6), generated: new Date().toISOString() };
-  });
+  }, (v) => !(v.items && v.items.length));
 }
 
 // Macro news — importance-ranked (policy, sovereign risk, politics, geopolitics).
@@ -2888,7 +2891,7 @@ const MACRO_EVENT_RULES = [
 async function getMacroNews(id) {
   const terms = NEWS_QUERIES[id];
   if (!terms) return { id, error: 'unknown region', items: [] };
-  return cached('mnews:' + id, 40 * 60e3, async () => {
+  return cachedUnlessEmpty('mnews:' + id, 40 * 60e3, async () => {
     // Drop anything that is not actually an economy/market story — e.g. a sports or film headline
     // that merely names the country (the MACRO domain guard).
     // Ask for the full feed (100), not 30: the tier-1 wire query returns plenty, but only a fraction
@@ -2909,7 +2912,7 @@ async function getMacroNews(id) {
     }
     items.sort((a, b) => b.score - a.score);
     return { id, label: newsLabel(id), items: items.slice(0, 6) };
-  });
+  }, (v) => !(v.items && v.items.length));
 }
 
 // ---------------------------------------------------------------------------
@@ -3384,6 +3387,7 @@ const COUNTRY_DEMONYM = {
   ve: 'Venezuelan', vn: 'Vietnamese', za: 'South African',
 };
 let _eventCatalog = null;
+let evPoolAttempt = 0;
 function eventCatalog() {
   if (_eventCatalog) return _eventCatalog;
   const countries = Object.values(ALL_COUNTRIES).map((c) => ({
@@ -3399,16 +3403,22 @@ function eventCatalog() {
   }));
   return (_eventCatalog = [...countries, ...benches]);
 }
+async function settleLimit(items, limit, fn) {
+  const out = [];
+  for (let i = 0; i < items.length; i += limit) out.push(...await Promise.allSettled(items.slice(i, i + limit).map(fn)));
+  return out;
+}
 async function buildEventPool() {
-  return cached('eventpool', 30 * 60e3, async () => {
+  return cachedUnlessEmpty('eventpool', 30 * 60e3, async () => {
     // The segment and country feeds already carry the on-topic filter; the extra queries cover the
     // categories the tape never asks about (index reviews, sanctions, geopolitics, policy).
-    const [segLists, macroLists, headlines, extra] = await Promise.all([
-      Promise.allSettled(MARKETS.map((m) => getNews(m.id).then((r) => r.items || []))),
-      Promise.allSettled(EVENT_COUNTRIES.map((id) => getMacroNews(id).then((r) => r.items || []))),
-      getHeadlines().then((r) => r.items || []).catch(() => []),
-      Promise.allSettled(EVENT_QUERIES.map((q, i) => cached('evq:' + i, 30 * 60e3, () => fetchGoogleNews(q, 40)))),
-    ]);
+    // Deliberately gentle: one group at a time, at most three concurrent Google News calls. Firing
+    // all ~27 at once at boot is what made the macro/news caches come back empty (a 429 was then
+    // stored as an empty answer for 40-45 minutes).
+    const segLists = await settleLimit(MARKETS, 3, (m) => getNews(m.id).then((r) => r.items || []));
+    const macroLists = await settleLimit(EVENT_COUNTRIES, 3, (id) => getMacroNews(id).then((r) => r.items || []));
+    const headlines = await getHeadlines().then((r) => r.items || []).catch(() => []);
+    const extra = await settleLimit(EVENT_QUERIES, 2, (q, i) => cachedUnlessEmpty('evq:' + i, 30 * 60e3, () => fetchGoogleNews(q, 40), (v) => !(v && v.length)));
     const raw = [];
     for (const r of [...segLists, ...macroLists]) if (r.status === 'fulfilled') raw.push(...(r.value || []));
     for (const r of extra) {
@@ -3428,7 +3438,7 @@ async function buildEventPool() {
       items.push(it);
     }
     return { clusters: clusterEvents(items, { catalog: eventCatalog() }), built: new Date().toISOString(), pool: items.length };
-  });
+  }, (v) => !(v.clusters && v.clusters.length));
 }
 
 // ---------------------------------------------------------------------------
@@ -3805,7 +3815,13 @@ async function buildBrief() {
 // The event layer is attached outside the base brief's five-minute cache: an empty event pool on a
 // cold start must not freeze the top of the page for five minutes. It has its own 30-minute cache.
 async function attachEvents(marketCtx) {
-  const pool = await within(buildEventPool(), 7000).catch(() => null);
+  // Never hold the brief for a cold pool: return the base brief now and let the build finish for the
+  // next reader. A failed/empty pool is retried at most once a minute, not on every request.
+  if (!cache.has('eventpool')) {
+    if (Date.now() - evPoolAttempt > 60e3) { evPoolAttempt = Date.now(); buildEventPool().catch(() => {}); }
+    return [];
+  }
+  const pool = await within(buildEventPool(), 1500).catch(() => null);
   if (!pool || !pool.clusters || !pool.clusters.length) return [];
   try {
     const today = new Date().toISOString().slice(0, 10);
@@ -4623,9 +4639,10 @@ server.listen(PORT, async () => {
   // Warm the boot-critical caches early so a visitor right after a deploy still loads fast:
   // base feeds → CFTC positioning (parallel) → boards → the 9 segment reads → the screener.
   const warmCaches = async () => {
-    // The brief is what the reader lands on first. Warm the event pool before it so the first
-    // visitor gets the top block, not an empty shell that fills in on a later request.
-    try { await Promise.all([getMarket(), getHistory(), getAnalytics(), buildEventPool()]); } catch {}
+    // The brief is what the reader lands on first. Warm the base feeds first; the event pool is
+    // built gently at the END (it fans out over every news feed) so it cannot compete with the
+    // first visitor or the macro/news caches.
+    try { await Promise.all([getMarket(), getHistory(), getAnalytics()]); } catch {}
     try { await buildBrief(); } catch {}
     try { await Promise.all(BENCHMARKS.filter((b) => COT_NAMES[b.id]).map((b) => getPositioning(b.id).catch(() => {}))); } catch {}
     // The boards a visitor can reach without waiting: the backdrop, the calendar, the macro tab's
@@ -4638,6 +4655,9 @@ server.listen(PORT, async () => {
     // from an already-parsed cache. This runs again every two minutes, which re-parses in the
     // background when the daily build rewrites the file instead of stalling the first visitor.
     try { readKorea(); } catch {}
+    // Last, and deliberately gentle (3 news calls at a time): the event layer is a nice-to-have, not
+    // a reason for the macro/news feeds to come back rate-limited on a cold start.
+    try { await buildEventPool(); } catch {}
   };
   // Keep the caches hot on a timer shorter than the shortest TTL (the quote cache is 3 minutes), so
   // a visitor almost never lands on an expired feed. Guarded: a slow warm must not stack up.
