@@ -3771,7 +3771,7 @@ async function renderJapan() {
   paintCoViews();
   const el = $('co-body'); if (!el) return;
   const token = takeToken();
-  syncMarketBar();
+  syncMarketAccent();
   const noteUs = $('co-note'); if (noteUs) noteUs.classList.add('hidden');
   for (const k of ['jp-chart', 'jp-q-chart']) {
     if (charts[k]) { try { charts[k].destroy(); } catch {} delete charts[k]; }
@@ -3779,7 +3779,7 @@ async function renderJapan() {
   if (!japanData) el.innerHTML = stLoading('Loading Japan…');
   const d = await loadJapan();
   if (stale(token)) return;          // another market was chosen while this one loaded
-  syncMarketBar();
+  syncMarketAccent();
   // Preferred share classes carry a price but are not separate companies — same rule as the US.
   const all = ((d && d.companies) || []).filter((c) => !c.shareClass);
   const sub = $('deals-sub');
@@ -4391,13 +4391,13 @@ async function renderKorea() {
   paintCoViews();
   const el = $('co-body'); if (!el) return;
   const token = takeToken();
-  syncMarketBar();
+  syncMarketAccent();
   const noteUs = $('co-note'); if (noteUs) noteUs.classList.add('hidden');
   syncCoTools();
   if (!koreaData) el.innerHTML = stLoading('Loading KOSPI…');
   const d = await loadKorea();
   if (stale(token)) return;
-  syncMarketBar();
+  syncMarketAccent();
   // Preferred share classes carry a price but are not separate companies — same rule as the US.
   const all = ((d && d.companies) || []).filter((c) => !c.shareClass);
   const sub = $('deals-sub');
@@ -4626,42 +4626,12 @@ async function drawKrChart(c, range = krRange) {
   mountChart('kr-chart', { labels: ch.dates, datasets: [line(`${c.ticker} · KRW · ${range.toUpperCase()}`, ch.closes, CT.c1)] }, baseOptions({ dp: 0, dateAxis: true, log: range === '5y' }));
 }
 
-// Which market am I in? A colour, a name, the index level and the company count — refreshed whenever a
-// market or a view changes. Fetched once for the US index, reused after.
-let spxInfo = null;
-async function syncMarketBar() {
+// The pane carries the market's accent colour (the region pills, the active tab, the tag on a company
+// page). There used to be a quote strip here too — index name, level, day change, company count — but
+// the market view already states all of that, and repeating it above every view was noise.
+function syncMarketAccent() {
   const pane = document.getElementById('p-deals');
-  const bar = document.getElementById('co-marketbar');
-  if (!pane || !bar) return;
-  pane.dataset.market = coRegion;
-  // Paint the name before the quote is fetched: the strip used to sit blank for a second or two on a
-  // cold load, which reads as a broken header rather than a loading one.
-  bar.innerHTML = `<span class="mb-name">${coRegion === 'us' ? 'S&P 500' : coRegion === 'jp' ? 'TOPIX' : 'KOSPI'}</span><span class="mb-lvl">—</span>`;
-  let name = '', lvl = '—', chg = null, count = '';
-  if (coRegion === 'us') {
-    if (!spxInfo) {
-      try { const mt = await jget('/api/macro-tickers', 900000); spxInfo = (mt && mt.items || []).find((x) => x.label === 'S&P 500') || {}; }
-      catch { spxInfo = {}; }
-    }
-    name = 'S&P 500';
-    lvl = spxInfo.price != null ? Number(spxInfo.price).toLocaleString('en-US', { maximumFractionDigits: 2 }) : '—';
-    chg = spxInfo.pct ?? null;
-    count = companiesData ? `${(companiesData.companies || []).filter((c) => !c.shareClass).length} companies` : '';
-  } else if (coRegion === 'jp') {
-    name = 'TOPIX';
-    const t = japanData && japanData.topix;
-    lvl = t && t.level != null ? t.level.toFixed(2) : '—';
-    chg = t ? t.chg1d : null;
-    count = japanData ? `${(japanData.companies || []).filter((c) => !c.shareClass).length} companies` : '';
-  } else {
-    name = 'KOSPI';
-    const i = koreaData && koreaData.index;
-    lvl = i && i.level != null ? i.level.toLocaleString('en-US', { maximumFractionDigits: 2 }) : '—';
-    chg = i ? i.chg1d : null;
-    count = koreaData ? `${(koreaData.companies || []).length} companies` : '';
-  }
-  const chgHtml = chg == null ? '' : `<span class="${chg >= 0 ? 'pos' : 'neg'}">${chg >= 0 ? '+' : ''}${chg.toFixed(2)}% today</span>`;
-  bar.innerHTML = `<span class="mb-name">${name}</span><span class="mb-lvl">${lvl}</span>${chgHtml}<span class="dimtext">${count}</span>`;
+  if (pane) pane.dataset.market = coRegion;
 }
 
 // Prefetch the other two markets after the first one paints. Three payloads is ~370 KB gzipped, and it
@@ -4685,7 +4655,7 @@ function renderCompanies() {
   // Keep the market switch in sync with the remembered choice (it also survives a reload).
   document.querySelectorAll('[data-region]').forEach((b) => b.classList.toggle('on', b.dataset.region === coRegion));
   if (coRegion !== 'us') takeToken();   // leaving the US invalidates any in-flight US render
-  syncMarketBar();
+  syncMarketAccent();
   if (coRegion === 'jp') return renderJapan();
   if (coRegion === 'kr') return renderKorea();
   const el = $('co-body');
