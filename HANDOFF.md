@@ -3113,3 +3113,15 @@ Audited at 360, 390 and 430 px with screenshots of every view, then fixed what l
   of background payload for a tab the reader may never open.
 - The company chart is deliberately NOT part of the loading gate: it belongs to another tab, and gating
   the first screen on it would cost every visitor two seconds they do not need.
+
+## The tape stuttered once a minute (2026-11-01)
+- **Cause**: `renderTicker()` replaced `innerHTML` with ~110 freshly created spans on every data refresh
+  (every 60s). Re-creating the track made the browser repaint the whole strip and re-reset its measured
+  width, right while the rest of the page was also updating — the visible "lag" was that burst.
+- **Second cause, removed while there**: the rAF loop read `track.scrollWidth` on every frame, which can
+  force a layout flush per frame. The width is now measured once and cached, and invalidated only when
+  the cells change or the window is resized.
+- **Fix**: cells are matched by label and their text is updated in place. Same DOM nodes, no rebuild,
+  no repaint of the strip.
+- **Speed is unchanged**: `TICKER_MS` is still 120000 (one copy per two minutes) — measured 96.4 px/s
+  before and after. `?v=276`.

@@ -645,14 +645,15 @@ function renderAlerts(alerts) {
 // ---------------------------------------------------------------------------
 function renderTicker(m) {
   if (!m) return;
-  // One constant tape: every commodity + every currency + every macro index, always
-  // the same regardless of which tab you're on. Deduped so shared names appear once.
+  // One constant tape: every commodity + every currency + every macro index, always the same
+  // regardless of which tab you're on. Deduped so shared names appear once.
   const seen = new Set();
-  const parts = [];
-  const push = (label, html) => { const k = (label || '').replace(/\s*[·(].*/, '').trim(); if (!k || seen.has(k)) return; seen.add(k); parts.push(html); };
+  const cells = [];
+  const push = (label, cell) => { const k = (label || '').replace(/\s*[·(].*/, '').trim(); if (!k || seen.has(k)) return; seen.add(k); cells.push(cell); };
+
   for (const b of m.benchmarks) {
-    const s = history?.series?.[b.id];
-    const arr = b.paper != null ? s?.paper : s?.physical;
+    const s0 = history?.series?.[b.id];
+    const arr = b.paper != null ? s0?.paper : s0?.physical;
     const val = b.paper != null ? b.paper : b.physical;
     const chg = changeOf(arr), pc = pctOf(arr);
     const c = chg == null ? '' : chg >= 0 ? 'pos' : 'neg';
@@ -661,18 +662,61 @@ function renderTicker(m) {
     const d = headDeltas(b);
     const tip = d ? HORIZONS.map(([l, k]) => `${l} ${d[k] == null ? '—' : pctf(d[k])}`).join(' · ') : '';
     const fs = headSource(b);
-    push(short, `<span class="tk" title="${short} · ${tip || 'no history'} — ${fs.source || ''} ${fs.asOf || ''}"><b>${short}</b><span class="tk-px">${val == null ? '—' : Number(val).toFixed(b.dp)}</span><span class="tk-chg ${c}">${chg == null ? '' : `${arrow}${Math.abs(chg).toFixed(b.dp)} ${pctf(pc)}`}</span></span>`);
+    push(short, {
+      label: short,
+      px: val == null ? '—' : Number(val).toFixed(b.dp),
+      chg: chg == null ? '' : `${arrow}${Math.abs(chg).toFixed(b.dp)} ${pctf(pc)}`,
+      cls: c,
+      title: `${short} · ${tip || 'no history'} — ${fs.source || ''} ${fs.asOf || ''}`,
+    });
   }
-  for (const f of (lastFx || [])) push(f.label, `<span class="tk"><b>${f.label.replace(/\s*·.*/, '')}</b><span class="tk-px">${f.price == null ? '—' : Number(f.price).toFixed(f.price < 10 ? 4 : 2)}</span><span class="tk-chg ${cls(f.pct)}">${f.pct == null ? '' : pctf(f.pct)}</span></span>`);
-  for (const t of (macroTickers || [])) push(t.label, `<span class="tk"><b>${t.label}</b><span class="tk-px">${t.price == null ? '—' : Number(t.price).toFixed(t.price < 10 ? 4 : 2)}</span><span class="tk-chg ${cls(t.pct)}">${t.pct == null ? '' : pctf(t.pct)}</span></span>`);
-  const one = parts.join('');
+  for (const f of (lastFx || [])) {
+    push(f.label, {
+      label: f.label.replace(/\s*·.*/, ''),
+      px: f.price == null ? '—' : Number(f.price).toFixed(f.price < 10 ? 4 : 2),
+      chg: f.pct == null ? '' : pctf(f.pct),
+      cls: cls(f.pct),
+      title: '',
+    });
+  }
+  for (const t of (macroTickers || [])) {
+    push(t.label, {
+      label: t.label,
+      px: t.price == null ? '—' : Number(t.price).toFixed(t.price < 10 ? 4 : 2),
+      chg: t.pct == null ? '' : pctf(t.pct),
+      cls: cls(t.pct),
+      title: '',
+    });
+  }
+
   const ticker = $('ticker');
   if (!ticker) return;
-  // Reuse the existing track element so the tape never jumps (only its children are refreshed).
-  // Rebuilding #ticker.innerHTML would reset the scroll position.
+  const html = (c) => `<span class="tk"${c.title ? ` title="${esc(c.title)}"` : ''}><b>${esc(c.label)}</b><span class="tk-px">${esc(c.px)}</span><span class="tk-chg ${c.cls}">${esc(c.chg)}</span></span>`;
   const track = ticker.querySelector('.ticker-track');
-  if (track) track.innerHTML = `${one}${one}`;
-  else ticker.innerHTML = `<div class="ticker-track">${one}${one}</div>`;   // two copies → seamless marquee
+  const sig = cells.map((c) => c.label).join('|');
+
+  // Same cells, new numbers: update the text in place. Re-creating ~70 spans once a minute was the
+  // hitch the eye caught on a phone — the tape restarted its paint while everything else refreshed.
+  const nodes = track ? track.querySelectorAll('.tk') : null;
+  if (track && sig === tickerSig && nodes && nodes.length === cells.length * 2) {
+    const n = cells.length;
+    for (let i = 0; i < n * 2; i++) {
+      const c = cells[i % n], el = nodes[i];
+      const b = el.querySelector('b'), px = el.querySelector('.tk-px'), ch = el.querySelector('.tk-chg');
+      if (b && b.textContent !== c.label) b.textContent = c.label;
+      if (px && px.textContent !== c.px) px.textContent = c.px;
+      if (ch && ch.textContent !== c.chg) ch.textContent = c.chg;
+      if (ch) { const k = `tk-chg ${c.cls}`; if (ch.className !== k) ch.className = k; }
+      if ((el.title || '') !== c.title) el.title = c.title;
+    }
+    tickerHalf = 0;              // a changed number can change the width; re-measure once
+  } else {
+    const one = cells.map(html).join('');
+    tickerSig = sig;
+    if (track) track.innerHTML = `${one}${one}`;
+    else ticker.innerHTML = `<div class="ticker-track">${one}${one}</div>`;   // two copies → seamless marquee
+    tickerHalf = 0;
+  }
   tickerStart();
 }
 
@@ -680,6 +724,9 @@ function renderTicker(m) {
 // touch (and can still report `(hover: hover)`), which freezes a CSS marquee. Owning the motion in
 // JS means it always runs; press-and-hold pauses it. Two identical copies make a seamless loop.
 let tickerX = 0, tickerRAF = null, tickerLast = 0, tickerHeld = false, tickerPaused = false, tickerWired = false;
+// One copy's width, measured only when the content or the viewport changes. Reading scrollWidth inside
+// the frame loop forced a layout flush on every single frame — that is what made the tape stutter.
+let tickerHalf = 0, tickerSig = '';
 const tickerReduce = matchMedia('(prefers-reduced-motion: reduce)');
 const TICKER_MS = 120000;   // one full copy takes 120s — the SAME speed on phone and desktop
 function tickerStart() {
@@ -693,6 +740,7 @@ function tickerStart() {
     ticker.addEventListener('pointercancel', setHeld(false), { passive: true });
     ticker.addEventListener('pointerleave', setHeld(false), { passive: true });
     tickerReduce.addEventListener?.('change', () => { if (!tickerReduce.matches) tickerStart(); });   // OS toggle → resume
+    addEventListener('resize', () => { tickerHalf = 0; }, { passive: true });
     // A visible pause/play control — WCAG 2.2.2: auto-moving content must be stoppable.
     const pauseBtn = $('ticker-pause');
     pauseBtn?.addEventListener('click', () => {
@@ -718,7 +766,7 @@ function tickerStart() {
       tickerRAF = null;
       return;
     }
-    const half = track.scrollWidth / 2;             // one copy's width
+    const half = tickerHalf || (tickerHalf = track.scrollWidth / 2);   // measured once, then cached
     if (!half) { tickerRAF = requestAnimationFrame(step); return; }   // not laid out yet
     const dt = Math.min(64, Math.max(0, now - tickerLast)); tickerLast = now;
     if (!tickerHeld && !tickerPaused) tickerX -= (half / TICKER_MS) * dt;   // one copy per duration (same on all sizes)
