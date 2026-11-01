@@ -19,6 +19,7 @@ permissions:
 jobs:
   refresh:
     runs-on: ubuntu-latest
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
         with:
@@ -58,11 +59,18 @@ jobs:
         run: node scripts/build-events.mjs
       - name: Re-apply recorded restatements
         run: node scripts/apply-restatements.mjs
+      # Hard gate: these only fail when a published ratio cannot be reproduced from its own inputs,
+      # which is a bug, not a market move. check-snapshot is deliberately not here — a new filing
+      # legitimately moves a P/E by more than its tolerance.
+      - name: Audit every market before publishing
+        run: |
+          node scripts/audit-calculations.mjs
+          node scripts/audit-markets.mjs
       - name: Commit if changed
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email 'github-actions[bot]@users.noreply.github.com'
-          git add data/companies.json data/japan.json data/japan-series.json data/korea.json data/korea-universe.json data/valuation.json data/events.json data/reconciliation.json data/invariants.json data/filings-state.json data/filings-changed.json data/snapshot.json data/us-charts.json 2>/dev/null || true
+          git add data/companies.json data/japan.json data/japan-series.json data/korea.json data/korea-universe.json data/valuation.json data/events.json data/reconciliation.json data/invariants.json data/filings-state.json data/filings-changed.json data/snapshot.json data/us-charts.json data/audit-markets.json 2>/dev/null || true
           if git diff --staged --quiet; then
             echo 'no data change'
           else

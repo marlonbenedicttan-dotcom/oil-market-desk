@@ -1,5 +1,5 @@
 {
- "updated": "2026-10-31",
+ "updated": "2026-11-01",
  "note": "KOSPI universe from DART: corp_cls Y, with share counts. Committed so CI does not rescan 4,000 filers.",
  "companies": [
   {
