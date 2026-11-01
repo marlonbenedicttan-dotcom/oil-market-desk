@@ -283,6 +283,17 @@ test('the progress bar never runs backwards and unknown keys are ignored', () =>
   assert.equal(parseFloat(bar.style.width), one, 'an unknown key is not a step');
 });
 
+// --- boot ordering -----------------------------------------------------------------------------
+
+test('the overlay ceiling is armed before anything that can block', () => {
+  const src = fs.readFileSync(APP, 'utf8');
+  const ceiling = src.indexOf('setTimeout(hideBoot');
+  const prompt = src.indexOf('Notification.requestPermission');
+  assert.ok(ceiling > 0, 'there is a hard ceiling');
+  assert.ok(prompt > ceiling, 'the cap is armed before the permission prompt, not after it');
+  assert.doesNotMatch(src, /await\s+Notification\.requestPermission/, 'the prompt must never hold the boot');
+});
+
 // --- formatting helpers ------------------------------------------------------------------------
 
 test('esc escapes external text, including quotes and angle brackets', () => {

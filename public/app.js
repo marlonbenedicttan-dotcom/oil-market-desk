@@ -3204,10 +3204,13 @@ $('macro-links')?.addEventListener('click', (e) => { const el = e.target.closest
   else if (savedScPicks) { try { const a = JSON.parse(savedScPicks); if (Array.isArray(a)) screenPicks = new Set(a); } catch {} }
   if (savedRegion) { macroRegion = savedRegion; if ($('macro-region')) $('macro-region').value = savedRegion; }
   if (savedCountry) prefCountry = savedCountry;
-  if ('Notification' in window && Notification.permission === 'default') { try { await Notification.requestPermission(); } catch {} }
-  // The overlay's 8-second cap used to be armed at the END of boot, so a slow feed could keep it up
-  // far longer than 8 seconds. Arm it first.
+  // Arm the overlay's ceiling BEFORE anything can block. This used to sit below the permission
+  // request, awaited, so a prompt the reader ignored kept the boot screen up for as long as the
+  // prompt lived — the one path where the cap never fired at all.
   setTimeout(hideBoot, 4000);   // hard ceiling: show whatever is ready after four seconds
+  if ('Notification' in window && Notification.permission === 'default') {
+    Notification.requestPermission().catch(() => {});   // never awaited: the page does not wait for a prompt
+  }
   bootStep('Loading history…');
   // Fire the small config feeds in parallel with the (heavy) history load.
   const fxP = getJSON('/api/fx').catch(() => []);
