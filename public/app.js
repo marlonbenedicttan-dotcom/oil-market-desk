@@ -3129,6 +3129,9 @@ $('macro-links')?.addEventListener('click', (e) => { const el = e.target.closest
   if (savedRegion) { macroRegion = savedRegion; if ($('macro-region')) $('macro-region').value = savedRegion; }
   if (savedCountry) prefCountry = savedCountry;
   if ('Notification' in window && Notification.permission === 'default') { try { await Notification.requestPermission(); } catch {} }
+  // The overlay's 8-second cap used to be armed at the END of boot, so a slow feed could keep it up
+  // far longer than 8 seconds. Arm it first.
+  setTimeout(hideBoot, 8000);
   bootStep('Loading history…');
   // Fire the small config feeds in parallel with the (heavy) history load.
   const fxP = getJSON('/api/fx').catch(() => []);
@@ -3157,7 +3160,6 @@ $('macro-links')?.addEventListener('click', (e) => { const el = e.target.closest
   showTab('home');
   syncRoute(false);
   routingReady = true;
-  setTimeout(hideBoot, 8000);                     // hard cap — never linger, even on a slow feed
   setTimeout(() => loadExtraSlow().catch(() => {}), 300);   // the slow, below-the-fold feeds
   loadAnalogue();
   loadHeadlines();
@@ -3936,9 +3938,10 @@ function renderJapanPageBody(c) {
     + `<div class="co-ranges">
         <span class="co-cmp-l">COMPARE</span><input class="co-cmp" id="jp-cmp" placeholder="company name, e.g. toyota" value="${esc(jpCompare)}" autocomplete="off">
         <div class="co-sugg" id="jp-sugg"></div>
-        ${[['1m', '1M'], ['6m', '6M'], ['ytd', 'YTD'], ['1y', '1Y'], ['5y', '5Y']].map(([k, t]) => `<button class="ma-chip${jpRange === k ? ' on' : ''}" data-jprange="${k}">${t}</button>`).join('')}
+        ${[['1m', '1M'], ['3m', '3M'], ['6m', '6M'], ['ytd', 'YTD'], ['1y', '1Y'], ['5y', '5Y']].map(([k, t]) => `<button class="ma-chip${jpRange === k ? ' on' : ''}" data-jprange="${k}">${t}</button>`).join('')}
       </div>`
-    + `<div class="co-chartwrap"><canvas id="jp-chart"></canvas></div>`
+    + `<div class="co-rets" id="jp-rets"></div>`
+              + `<div class="co-chartwrap"><div class="co-big" id="jp-big"></div><canvas id="jp-chart"></canvas></div>`
     + '<div id="jp-peers-x"></div>'
     + jpQuartersHtml(c)
     + jpHistoryHtml(c)
@@ -4067,6 +4070,7 @@ function jpHistoryHtml(c) {
 // The price chart is fetched per company and range, the same way the US chart is.
 async function drawJpPrice(c, range = jpRange) {
   if (charts['jp-chart']) { try { charts['jp-chart'].destroy(); } catch {} delete charts['jp-chart']; }
+  coLong('jp:' + c.code).then((long) => { if (long) paintReturns('jp-rets', 'jp-big', long, range, WINDOWS_5Y, 'jprange'); }).catch(() => {});
   const wrap = $('jp-chart') && $('jp-chart').parentElement;
   const fetchOne = async (code) => {
     try { return await jget(`/api/japan-chart?code=${encodeURIComponent(code)}&range=${encodeURIComponent(range)}`, 600000); } catch { return null; }
@@ -4453,9 +4457,10 @@ async function renderKoreaPage(stub) {
     + `<div class="co-ranges">
         <span class="co-cmp-l">COMPARE</span><input class="co-cmp" id="kr-cmp" placeholder="company name, e.g. samsung" value="${esc(krCompare)}" autocomplete="off">
         <div class="co-sugg" id="kr-sugg"></div>
-        ${[['1m', '1M'], ['6m', '6M'], ['ytd', 'YTD'], ['1y', '1Y'], ['5y', '5Y']].map(([k, t]) => `<button class="ma-chip${krRange === k ? ' on' : ''}" data-krrange="${k}">${t}</button>`).join('')}
+        ${[['1m', '1M'], ['3m', '3M'], ['6m', '6M'], ['ytd', 'YTD'], ['1y', '1Y'], ['5y', '5Y']].map(([k, t]) => `<button class="ma-chip${krRange === k ? ' on' : ''}" data-krrange="${k}">${t}</button>`).join('')}
       </div>`
-    + `<div class="co-chartwrap"><canvas id="kr-chart"></canvas></div>`
+    + `<div class="co-rets" id="kr-rets"></div>`
+              + `<div class="co-chartwrap"><div class="co-big" id="kr-big"></div><canvas id="kr-chart"></canvas></div>`
     + '<div id="kr-peers-x"></div>'
     + (h.length > 1 ? `<div class="jp-q"><div class="jp-q-head"><span class="ph-t">FIVE-YEAR RECORD</span><span class="dimtext">${h.length} fiscal years · ₩</span></div>
         <table class="jp-q-table"><thead><tr><th>FISCAL YEAR</th><th>REVENUE</th><th>OP PROFIT</th><th>NET PROFIT</th><th>ROE</th></tr></thead><tbody>
@@ -4472,6 +4477,7 @@ async function renderKoreaPage(stub) {
 
 async function drawKrChart(c, range = krRange) {
   if (charts['kr-chart']) { try { charts['kr-chart'].destroy(); } catch {} delete charts['kr-chart']; }
+  coLong('kr:' + c.ticker).then((long) => { if (long) paintReturns('kr-rets', 'kr-big', long, range, WINDOWS_5Y, 'krrange'); }).catch(() => {});
   const wrap = $('kr-chart') && $('kr-chart').parentElement;
   let ch = null;
   try { ch = await jget(`/api/korea/chart?ticker=${encodeURIComponent(c.ticker)}&range=${encodeURIComponent(range)}`, 600000); } catch { ch = null; }
@@ -4497,7 +4503,7 @@ async function drawKrChart(c, range = krRange) {
       return;
     }
   }
-  mountChart('kr-chart', { labels: ch.dates, datasets: [line(`${c.ticker} · KRW · ${range.toUpperCase()}`, ch.closes, CT.c1)] }, baseOptions({ dp: 0, dateAxis: true }));
+  mountChart('kr-chart', { labels: ch.dates, datasets: [line(`${c.ticker} · KRW · ${range.toUpperCase()}`, ch.closes, CT.c1)] }, baseOptions({ dp: 0, dateAxis: true, log: range === '5y' }));
 }
 
 // Which market am I in? A colour, a name, the index level and the company count — refreshed whenever a
@@ -4755,16 +4761,21 @@ function coWindow(ch, range) {
   if (a == null || b == null || !a) return null;
   return { pct: (b / a - 1) * 100, from: a, to: b };
 }
-function paintCoReturns(ch, range) {
-  const strip = $('co-rets');
+// Shared by all three markets: the US uses data-corange, Japan data-jprange, Korea data-krrange, so the
+// existing delegated handlers keep working.
+const WINDOWS_ALL = ['1m', '3m', '6m', 'ytd', '1y', '5y', '10y'];
+const WINDOWS_5Y = ['1m', '3m', '6m', 'ytd', '1y', '5y'];   // Japan and Korea hold five years, not ten
+function paintReturns(stripId, bigId, ch, range, keys, attr) {
+  const strip = $(stripId);
   if (strip) {
-    strip.innerHTML = CO_WIN.map(([k, label]) => {
+    strip.innerHTML = keys.map((k) => {
+      const w = CO_WIN.find((x) => x[0] === k);
       const r = coWindow(ch, k);
-      return `<button type="button" class="co-ret${k === range ? ' on' : ''}" data-corange="${k}">`
-        + `<span>${label}</span><b class="${r ? (r.pct >= 0 ? 'pos' : 'neg') : 'dimtext'}">${r ? (r.pct >= 0 ? '+' : '') + r.pct.toFixed(1) + '%' : '—'}</b></button>`;
+      return `<button type="button" class="co-ret${k === range ? ' on' : ''}" data-${attr}="${k}">`
+        + `<span>${w ? w[1] : k.toUpperCase()}</span><b class="${r ? (r.pct >= 0 ? 'pos' : 'neg') : 'dimtext'}">${r ? (r.pct >= 0 ? '+' : '') + r.pct.toFixed(1) + '%' : '—'}</b></button>`;
     }).join('');
   }
-  const big = $('co-big');
+  const big = $(bigId);
   if (big) {
     const r = coWindow(ch, range);
     big.innerHTML = r
@@ -4772,6 +4783,7 @@ function paintCoReturns(ch, range) {
       : '';
   }
 }
+function paintCoReturns(ch, range) { paintReturns('co-rets', 'co-big', ch, range, WINDOWS_ALL, 'corange'); }
 
 async function loadCoChart(ticker, range, compare) {
   if (!ticker) return;

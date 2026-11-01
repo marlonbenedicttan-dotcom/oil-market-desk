@@ -3969,10 +3969,13 @@ const server = http.createServer(async (req, res) => {
       const iso = (t) => new Date(t).toISOString().slice(0, 10);
       const now = Date.now();
       const from = range === '1m' ? iso(now - 31 * 864e5)
-        : range === '6m' ? iso(now - 190 * 864e5)
-        : range === 'ytd' ? `${new Date().getUTCFullYear()}-01-01`
-        : range === '1y' ? iso(now - 366 * 864e5)
-        : '1900-01-01';
+        : range === '3m' ? iso(now - 92 * 864e5)
+          : range === '6m' ? iso(now - 190 * 864e5)
+            : range === 'ytd' ? `${new Date().getUTCFullYear()}-01-01`
+              : range === '1y' ? iso(now - 366 * 864e5)
+                : range === '5y' ? iso(now - 1826 * 864e5)
+                  : range === '10y' ? iso(now - 3653 * 864e5)
+                    : '1900-01-01';
       const rows = series.filter((p) => p.d >= from);
       return sendJSONCached(res, 200, { dates: rows.map((p) => p.d), closes: rows.map((p) => p.c), range });
     }
@@ -3996,7 +3999,7 @@ const server = http.createServer(async (req, res) => {
       const iso = (t) => new Date(t).toISOString().slice(0, 10);
       let store = null;
       try { store = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'japan-series.json'), 'utf8')); } catch { store = null; }
-      const block = store ? ((range === '1m' || range === '6m') ? store.daily : store.weekly) : null;
+      const block = store ? ((range === '1m' || range === '3m' || range === '6m') ? store.daily : store.weekly) : null;
       // Accept either the 5-digit JPX code (72030) or the 4-digit ticker (7203). The compare box and the
       // cross-market chart use tickers, which silently returned an empty series before this.
       const series = (block && block.series) || {};
@@ -4008,10 +4011,13 @@ const server = http.createServer(async (req, res) => {
       if (!arr) return sendJSON(res, 200, { dates: [], closes: [], range, code });
       const now = Date.now();
       const from = range === '1m' ? iso(now - 31 * 864e5)
-        : range === '6m' ? iso(now - 190 * 864e5)
-        : range === 'ytd' ? `${new Date().getUTCFullYear()}-01-01`
-        : range === '1y' ? iso(now - 366 * 864e5)
-        : '1900-01-01';
+        : range === '3m' ? iso(now - 92 * 864e5)
+          : range === '6m' ? iso(now - 190 * 864e5)
+            : range === 'ytd' ? `${new Date().getUTCFullYear()}-01-01`
+              : range === '1y' ? iso(now - 366 * 864e5)
+                : range === '5y' ? iso(now - 1826 * 864e5)
+                  : range === '10y' ? iso(now - 3653 * 864e5)
+                    : '1900-01-01';
       const dates = [], closes = [];
       block.dates.forEach((d, i) => { if (d >= from && arr[i] != null) { dates.push(d); closes.push(arr[i]); } });
       return sendJSON(res, 200, { dates, closes, range });
