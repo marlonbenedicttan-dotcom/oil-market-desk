@@ -578,6 +578,7 @@ function selectMarket(id) {
   currentMarket = id;
   currentComponent = null;   // reset to the segment's headline when the segment changes
   marketRead = null;         // clear so nothing from the previous segment can linger
+  buildBpOptions();          // idempotent; also repairs the picker if it was built before markets arrived
   const pick = $('bp-metric');
   if (pick && [...pick.options].some((o) => o.value === id)) pick.value = id;   // keep the picker in sync
   renderSnapshot();
@@ -3151,6 +3152,9 @@ $('macro-links')?.addEventListener('click', (e) => { const el = e.target.closest
   renderCmpPresets();
   bootStep('Loading markets…');
   markets = await mkP;
+  // Prices and the segment list load in parallel now, so either can land first. The picker is built
+  // from `markets`, and loadMarket() bails out when the list is still empty — build it here too.
+  buildBpOptions();
   macroCountries = await ctryP;
   bootStep('Loading prices…');
   await liveP;                // prices (sets `data` first)

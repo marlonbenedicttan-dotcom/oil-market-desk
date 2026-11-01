@@ -3090,3 +3090,15 @@ Audited at 360, 390 and 430 px with screenshots of every view, then fixed what l
 - `/api/history` and `/api/headlines` were the last two `no-store` feeds; both are cached for 30s now.
 - Repeat-visit transfer measured with a warm browser profile: **267 KB → 56 KB** (10 requests served from
   cache), because `app.js`, `style.css` and the self-hosted Chart.js are immutable for a year.
+
+## Regression: the segment picker went empty (2026-11-01, fixed)
+- **Symptom**: the COMMODITIES tab had no segments — the picker was blank, so nothing could be selected.
+- **Cause**: my own boot parallelisation. `loadMarket()` builds the picker (`buildBpOptions()`) and bails
+  out when `markets` is still empty. Prices and the segment list used to load in sequence, so the list
+  was always ready first; loading them in parallel let `/api/market` win the race, the picker saw an
+  empty list, and `selectMarket()` never rebuilt it.
+- **Fix**: `buildBpOptions()` is idempotent and now runs again after `markets` arrives and on every
+  `selectMarket()`, so either order works.
+- **Also true of the earlier change**: hiding the overlay when prices land means panels can be on screen
+  before their data arrives. Every panel must therefore *fill in* rather than depend on boot ordering —
+  the picker was the one place that did not.
