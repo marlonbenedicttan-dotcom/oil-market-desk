@@ -39,8 +39,13 @@ jobs:
         run: node scripts/refresh-daily.mjs
       - name: Re-attach curated themes
         run: node scripts/attach-us-themes.mjs
-      - name: Price windows (6M, YTD) and the chart series
+      - name: Refresh the chart cache, then the price windows and chart series
         run: |
+          # build-valuation is the only writer of data/cache/charts. It was not in this job, so the
+          # daily chart build read a cache that only the weekly run refreshed — company charts were
+          # updating weekly at best, and on a cold runner not at all.
+          node scripts/build-valuation.mjs
+          node scripts/build-sector-valuation.mjs
           node scripts/build-price-changes.mjs
           node scripts/build-us-charts.mjs
       - name: Japan (J-Quants, optional)

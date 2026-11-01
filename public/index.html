@@ -21,7 +21,7 @@
   <link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png" />
   <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
-  <link rel="stylesheet" href="style.css?v=114" />
+  <link rel="stylesheet" href="style.css?v=117" />
   <noscript><style>#boot{display:none!important}</style></noscript>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
 </head>
@@ -179,7 +179,7 @@
           <span class="ph-t">PRICE HISTORY</span>
           <div class="controls"><select id="metric" aria-label="Instrument"></select><select id="range" aria-label="Chart range"><option value="1m">1M</option><option value="3m">3M</option><option value="6m" selected>6M</option><option value="ytd">YTD</option><option value="1y">1Y</option><option value="5y">5Y</option><option value="10y">10Y</option></select></div>
         </div>
-        <div class="chart-wrap lg"><canvas id="chart"></canvas></div>
+        <div class="chart-wrap lg"><div class="chart-big" id="chart-big"></div><canvas id="chart"></canvas></div>
         <div id="lt-summary" class="dimtext lt-summary"></div>
         <div id="chart-events" class="chart-events"></div>
       </section>
@@ -423,6 +423,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=260"></script>
+  <script src="app.js?v=264"></script>
 </body>
 </html>

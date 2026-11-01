@@ -56,6 +56,8 @@ jobs:
           node scripts/resolve-fundamentals.mjs
           node scripts/reconcile-ttm.mjs
           node scripts/sync-series.mjs
+          node scripts/build-valuation.mjs
+          node scripts/build-sector-valuation.mjs
           node scripts/build-us-charts.mjs
           node scripts/derive-companies.mjs
           node scripts/reconcile-nasdaq.mjs

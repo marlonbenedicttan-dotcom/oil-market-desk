@@ -975,6 +975,21 @@ async function renderChart() {
     if (r.kind === 'basis') bands = basisBands(r.series.paper);
   }
 
+  // State the selected window's return over the plot itself — the number was only in the small
+  // summary line under the chart, which is easy to miss. Taken from the plotted series, so the label
+  // can never disagree with the line above it.
+  const bigEl = $('chart-big');
+  if (bigEl) {
+    const series0 = (datasets[0] && datasets[0].data) || [];
+    const vals = series0.filter((v) => v != null);
+    if (vals.length > 1 && vals[0]) {
+      const pct = (vals[vals.length - 1] / vals[0] - 1) * 100;
+      bigEl.innerHTML = `<b class="${pct >= 0 ? 'pos' : 'neg'}">${pct >= 0 ? '+' : ''}${pct.toFixed(1)}%</b><span>${range.toUpperCase()}</span>`;
+    } else {
+      bigEl.innerHTML = '';
+    }
+  }
+
   const histLabels = labels.slice();
   // Forward-curve overlay — the futures months, priced, extended to the right (dashed). Links
   // the price chart to the "prices for months ahead" panel. Segment benchmarks only.
@@ -996,7 +1011,7 @@ async function renderChart() {
   if (chartKey !== $('metric').value + '|' + $('range').value + '|' + currentMarket) return;   // metric/range changed while loading
   $('lt-summary').textContent = (summary ? summary + '  ·  ' : '') + 'hover any point for its % change · click to drop an anchor (●), hover again to measure between two';
   const chartData = { labels, datasets };
-  chart = mountChart('chart', chartData, baseOptions({ dp: chartDp, anchorable: true }), [anchorLine, bandsPlugin]);
+  chart = mountChart('chart', chartData, baseOptions({ dp: chartDp, anchorable: true, dateAxis: true }), [anchorLine, bandsPlugin]);
   markReady('chart');
   if (chart) chart.$bands = bands;
   // Big-move markers — the chart's own largest swings, each tagged with the trusted news behind it.
@@ -4712,6 +4727,52 @@ function renderSectorBoard(el, all) {
       </button>`).join('');
 }
 
+// Every window's return at once, from one long series. "How much is it up over 1Y and over 5Y?" is a
+// question about several windows at the same time, so one number at a time was the wrong shape.
+const CO_WIN = [['1m', '1M', 31], ['3m', '3M', 92], ['6m', '6M', 190], ['ytd', 'YTD', 0], ['1y', '1Y', 366], ['5y', '5Y', 1826], ['10y', '10Y', 3653]];
+const coLongCache = new Map();
+async function coLong(ref) {
+  const k = String(ref || '').toUpperCase();
+  if (coLongCache.has(k)) return coLongCache.get(k);
+  for (const r of ['10y', '5y']) {
+    try {
+      const ch = await seriesFor(ref, r);
+      if (ch && ch.dates && ch.closes && ch.closes.length >= 2) { coLongCache.set(k, ch); return ch; }
+    } catch { /* try the shorter range */ }
+  }
+  coLongCache.set(k, null);
+  return null;
+}
+function coWindow(ch, range) {
+  if (!ch || !ch.dates || !ch.closes || ch.closes.length < 2) return null;
+  const w = CO_WIN.find((x) => x[0] === range);
+  const last = ch.dates[ch.dates.length - 1];
+  const from = range === 'ytd' ? `${last.slice(0, 4)}-01-01`
+    : new Date(Date.parse(last) - (w ? w[2] : 366) * 864e5).toISOString().slice(0, 10);
+  let i = ch.dates.findIndex((d) => d >= from);
+  if (i < 0) i = 0;
+  const a = ch.closes[i], b = ch.closes[ch.closes.length - 1];
+  if (a == null || b == null || !a) return null;
+  return { pct: (b / a - 1) * 100, from: a, to: b };
+}
+function paintCoReturns(ch, range) {
+  const strip = $('co-rets');
+  if (strip) {
+    strip.innerHTML = CO_WIN.map(([k, label]) => {
+      const r = coWindow(ch, k);
+      return `<button type="button" class="co-ret${k === range ? ' on' : ''}" data-corange="${k}">`
+        + `<span>${label}</span><b class="${r ? (r.pct >= 0 ? 'pos' : 'neg') : 'dimtext'}">${r ? (r.pct >= 0 ? '+' : '') + r.pct.toFixed(1) + '%' : '—'}</b></button>`;
+    }).join('');
+  }
+  const big = $('co-big');
+  if (big) {
+    const r = coWindow(ch, range);
+    big.innerHTML = r
+      ? `<b class="${r.pct >= 0 ? 'pos' : 'neg'}">${r.pct >= 0 ? '+' : ''}${r.pct.toFixed(1)}%</b><span>${range.toUpperCase()}</span><em>${r.from.toFixed(2)} &rarr; ${r.to.toFixed(2)}</em>`
+      : '';
+  }
+}
+
 async function loadCoChart(ticker, range, compare) {
   if (!ticker) return;
   const canvas = $('co-chart');
@@ -4737,13 +4798,17 @@ async function loadCoChart(ticker, range, compare) {
     if (!ch || !ch.dates || ch.dates.length < 2) { fail(); return; }
     const wrap0 = canvas && canvas.parentElement;
     if (wrap0) wrap0.removeAttribute('data-empty');
+    // The strip is computed from the longest series we hold for this ticker, so every window is on the
+    // same source as the line. Cached per ticker, so switching ranges is instant.
+    const longSeries = await coLong(ticker).catch(() => null);
+    if (longSeries) paintCoReturns(longSeries, range);
     if (!compare) {
-      mountChart('co-chart', { labels: ch.dates, datasets: [line(`${ticker} · ${range.toUpperCase()}`, ch.closes, CT.c1)] }, baseOptions({ dp: 2, dateAxis: true }));
+      mountChart('co-chart', { labels: ch.dates, datasets: [line(`${ticker} · ${range.toUpperCase()}`, ch.closes, CT.c1)] }, baseOptions({ dp: 2, dateAxis: true, log: range === '5y' || range === '10y' }));
       return;
     }
     const c2 = await seriesFor(compare, range);
     if (!c2 || !c2.dates || c2.dates.length < 2) {
-      mountChart('co-chart', { labels: ch.dates, datasets: [line(`${ticker} · ${range.toUpperCase()}`, ch.closes, CT.c1)] }, baseOptions({ dp: 2, dateAxis: true }));
+      mountChart('co-chart', { labels: ch.dates, datasets: [line(`${ticker} · ${range.toUpperCase()}`, ch.closes, CT.c1)] }, baseOptions({ dp: 2, dateAxis: true, log: range === '5y' || range === '10y' }));
       return;
     }
     // Align on the union of dates, forward-filling each series, then rebase both to 100.
@@ -5043,9 +5108,10 @@ async function renderCompanyPageBody(el, c, all) {
         <div class="co-ranges">
           <span class="co-cmp-l">COMPARE</span><input class="co-cmp" id="co-cmp" placeholder="company name, e.g. jpmorgan" value="${esc(coCompare || '')}" autocomplete="off">
           <div class="co-sugg" id="us-sugg"></div>
-          ${['1m', '6m', 'ytd', '1y', '5y'].map((r) => `<button class="ma-chip${coRange === r ? ' on' : ''}" data-corange="${r}">${r.toUpperCase()}</button>`).join('')}
+          ${['1m', '3m', '6m', 'ytd', '1y', '5y', '10y'].map((r) => `<button class="ma-chip${coRange === r ? ' on' : ''}" data-corange="${r}">${r.toUpperCase()}</button>`).join('')}
         </div>
-        <div class="co-canvas"><canvas id="co-chart"></canvas></div></div>
+        <div class="co-rets" id="co-rets"></div>
+        <div class="co-canvas"><div class="co-big" id="co-big"></div><canvas id="co-chart"></canvas></div></div>
         <div id="us-peers"></div>` : '')
     + (() => {
         const lf = c.lastFiling;

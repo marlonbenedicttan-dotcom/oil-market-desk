@@ -29,7 +29,8 @@ mkdirSync(CACHE, { recursive: true });
 async function chart(ticker) {
   const f = join(CACHE, `${ticker}.json`);
   // A chart older than a session is not a price. Without this the cache was permanent and every daily
-  // run computed "today" from a file written days earlier.
+  // run computed "today" from a file written days earlier. It now also carries ten years, so the
+  // company chart can offer the same 10Y window the commodity chart does.
   if (existsSync(f)) {
     try {
       if (Date.now() - statSync(f).mtimeMs < 18 * 3600e3) return JSON.parse(readFileSync(f, 'utf8'));
@@ -38,7 +39,7 @@ async function chart(ticker) {
   const sym = String(ticker).replace('-', '.');
   for (let i = 0; i < 3; i++) {
     try {
-      const res = await fetch(`https://api.nasdaq.com/api/quote/${encodeURIComponent(sym)}/chart?assetclass=stocks&fromdate=2019-01-01&todate=${new Date().toISOString().slice(0, 10)}`, {
+      const res = await fetch(`https://api.nasdaq.com/api/quote/${encodeURIComponent(sym)}/chart?assetclass=stocks&fromdate=2015-01-01&todate=${new Date().toISOString().slice(0, 10)}`, {
         headers: { 'User-Agent': UA, Accept: 'application/json, text/plain, */*' },
       });
       if (res.status === 429) { await sleep(2500 * (i + 1)); continue; }
