@@ -178,7 +178,10 @@ const segKey = () => currentMarket + '|' + (currentComponent || '');
 // picker filled in, and the backdrop strip. It deliberately does NOT wait for the read/chart/news panels,
 // which live in the COMMODITIES pane and are invisible on HOME. The fallback cap below means a slow feed
 // can hold it for a few seconds at most, never eight.
-const BOOT_CORE = ['data', 'segments', 'regime', 'brief'];
+// Everything the desk renders on first load: prices, the segment picker, the backdrop, the daily brief,
+// and the COMMODITIES pane underneath (read, chart, news). The overlay stays up until all of them have
+// painted, so nothing pops in afterwards. Six seconds is the hard ceiling if an upstream stalls.
+const BOOT_CORE = ['data', 'segments', 'regime', 'brief', 'read', 'chart', 'news'];
 const bootReady = Object.fromEntries(BOOT_CORE.map((k) => [k, false]));
 let bootCount0 = 0;
 const bootCount = () => BOOT_CORE.filter((k) => bootReady[k]).length;
@@ -3139,7 +3142,7 @@ $('macro-links')?.addEventListener('click', (e) => { const el = e.target.closest
   if ('Notification' in window && Notification.permission === 'default') { try { await Notification.requestPermission(); } catch {} }
   // The overlay's 8-second cap used to be armed at the END of boot, so a slow feed could keep it up
   // far longer than 8 seconds. Arm it first.
-  setTimeout(hideBoot, 4000);   // a few seconds at most, then show whatever is ready
+  setTimeout(hideBoot, 6000);   // hard ceiling: show whatever is ready after six seconds
   bootStep('Loading history…');
   // Fire the small config feeds in parallel with the (heavy) history load.
   const fxP = getJSON('/api/fx').catch(() => []);
