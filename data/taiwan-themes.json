@@ -1,0 +1,39 @@
+{
+  "themes": [
+    {
+      "id": "semis",
+      "label": "SEMICONDUCTORS",
+      "kind": "curated",
+      "note": "The foundry, design, memory and packaging names that make Taiwan the centre of the AI chip supply chain. TSMC alone is roughly two-fifths of the index.",
+      "tickers": ["2330", "2454", "2303", "3711", "2408", "3034", "2379", "6415", "3443", "3661", "2454", "2337", "5347", "3105"]
+    },
+    {
+      "id": "ai-hardware",
+      "label": "AI HARDWARE",
+      "kind": "curated",
+      "note": "Servers, power, cooling, boards and connectors — the pick-and-shovel layer that ships the racks the chip designers sell into.",
+      "tickers": ["2317", "2382", "2356", "3231", "6669", "3017", "2308", "2383", "3037", "2327", "2301", "2357", "2353", "4938"]
+    },
+    {
+      "id": "financials",
+      "label": "FINANCIALS",
+      "kind": "curated",
+      "note": "The holding companies and banks that carry the index's dividend yield and its sensitivity to Taiwan's policy rate and property cycle.",
+      "tickers": ["2881", "2882", "2891", "2886", "2884", "2885", "2801", "5871", "2890", "2880", "2883", "2887", "2888"]
+    },
+    {
+      "id": "shipping",
+      "label": "SHIPPING & AIRLINES",
+      "kind": "curated",
+      "note": "Container lines and carriers — the trade-cycle read on China, the Strait and the Red Sea routing.",
+      "tickers": ["2603", "2609", "2615", "2610", "2618", "2606", "2637"]
+    },
+    {
+      "id": "materials",
+      "label": "PETROCHEMICALS & STEEL",
+      "kind": "curated",
+      "note": "The old-economy half of the market: naphtha crackers, plastics and steel, where the oil and China-demand story shows up in earnings.",
+      "tickers": ["1301", "1303", "1326", "6505", "2002", "1101", "1102", "9933", "1710", "1722"]
+    }
+  ]
+}

@@ -9,13 +9,14 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { projectUs, projectKr, projectJp, FILTER_FIELDS } from '../src/project.js';
+import { projectUs, projectKr, projectJp, projectTw, FILTER_FIELDS } from '../src/project.js';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const read = (f) => JSON.parse(readFileSync(join(ROOT, 'data', f), 'utf8'));
 const us = (read('companies.json').companies || []).filter((c) => !c.shareClass && c.ticker).map(projectUs);
 const jp = (read('japan.json').companies || []).map(projectJp);
 const kr = (read('korea.json').companies || []).map(projectKr);
+const tw = (read('taiwan.json').companies || []).map(projectTw);
 const yld = (c) => (c.dividend && c.dividend.yield != null ? c.dividend.yield : null);
 
 // The presets and selects, exactly as public/app.js defines them.
@@ -36,6 +37,12 @@ const PRESETS = {
     'BELOW BOOK': (c) => c.pb != null && c.pb < 1,
     'HIGH ROE': (c) => (c.roe || 0) > 12,
     'CHEAP VS ITSELF': (c) => c.bands && c.bands.pe && c.bands.pe.percentile <= 20,
+  },
+  tw: {
+    'BELOW BOOK': (c) => c.pb != null && c.pb < 1,
+    'HIGH ROE': (c) => (c.roe || 0) > 12,
+    'CHEAP VS ITSELF': (c) => c.bands && c.bands.pe && c.bands.pe.percentile <= 20,
+    'HIGH YIELD': (c) => (c.dividendYield || 0) >= 4,
   },
 };
 
@@ -59,9 +66,15 @@ const SELECTS = {
     'ROE > 10%': (c) => c.roe != null && c.roe >= 10,
     'SECTOR = Electronics': (c) => c.sector === 'Electronics',
   },
+  tw: {
+    'P/E < 10': (c) => c.pe != null && c.pe < 10,
+    'ROE > 10%': (c) => c.roe != null && c.roe >= 10,
+    'YIELD > 3%': (c) => c.dividendYield != null && c.dividendYield >= 3,
+    'SECTOR = Semiconductors': (c) => c.sector === 'Semiconductors',
+  },
 };
 
-const MARKETS = { us, jp, kr };
+const MARKETS = { us, jp, kr, tw };
 
 test('every field the filter bars read survives the list projection', () => {
   for (const [market, rows] of Object.entries(MARKETS)) {
@@ -73,7 +86,7 @@ test('every field the filter bars read survives the list projection', () => {
 });
 
 test('filter fields are populated, not shipped as permanent nulls', () => {
-  const need = { us: { sector: 0.95, marketCap: 0.9, pe: 0.6 }, jp: { sector: 0.99, pe: 0.7, pb: 0.7, roe: 0.7, cash: 0.8 }, kr: { sector: 0.99, pe: 0.7, pb: 0.7, roe: 0.7 } };
+  const need = { us: { sector: 0.95, marketCap: 0.9, pe: 0.6 }, jp: { sector: 0.99, pe: 0.7, pb: 0.7, roe: 0.7, cash: 0.8 }, kr: { sector: 0.99, pe: 0.7, pb: 0.7, roe: 0.7 }, tw: { sector: 0.99, marketCap: 0.9, pe: 0.6, pb: 0.6, roe: 0.6, dividendYield: 0.5 } };
   for (const [market, reqs] of Object.entries(need)) {
     for (const [f, share] of Object.entries(reqs)) {
       const have = MARKETS[market].filter((c) => c[f] != null).length / MARKETS[market].length;

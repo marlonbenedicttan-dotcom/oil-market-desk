@@ -686,6 +686,45 @@ test('a Japanese chart answers to both the ticker and the five-digit code', asyn
 // KOSPI's list is the slowest market to open, and the reason is the source file: korea.json carries
 // five years of daily closes per company (~24 MB of its 28 MB). The list endpoint must keep shipping
 // the projection only, and must stay revalidatable, or every KOREA click pays for the whole file.
+test('/api/taiwan ships the list projection, not the price history, and revalidates', async () => {
+  const r = await fetch(`http://localhost:${PORT}/api/taiwan`);
+  assert.equal(r.status, 200);
+  const etag = r.headers.get('etag');
+  assert.ok(etag, 'the Taiwan list must carry an ETag');
+  const d = await r.json();
+  assert.ok(d.companies.length > 900, `got ${d.companies.length} companies`);
+  assert.ok(d.index && d.index.level != null, 'the TAIEX level is missing');
+  const tsmc = d.companies.find((x) => x.ticker === '2330');
+  assert.ok(tsmc && tsmc.nameEn, 'TSMC is missing from the list');
+  assert.equal(tsmc.series, undefined, 'the list must not carry per-company price history');
+  assert.ok(JSON.stringify(d).length < 2_000_000, 'the Taiwan list payload ballooned');
+  const again = await new Promise((resolve, reject) => {
+    http.get({ host: 'localhost', port: PORT, path: '/api/taiwan', headers: { 'if-none-match': etag }, agent: false }, resolve).on('error', reject);
+  });
+  assert.equal(again.statusCode, 304);
+  again.resume();
+});
+
+test('/api/taiwan/company carries as-reported periods and five years of history', async () => {
+  const r = await fetch(`http://localhost:${PORT}/api/taiwan/company/2330`);
+  assert.equal(r.status, 200);
+  const c = await r.json();
+  assert.equal(c.sector, 'Semiconductors');
+  assert.ok(c.reports && c.reports.ttm && c.reports.ttm.revenue > 0, 'TTM revenue is missing');
+  assert.ok(c.history.length >= 5, 'five fiscal years are missing');
+  assert.ok(c.quarters.length >= 4, 'the quarterly table is missing');
+  assert.ok(c.marketCap === c.price * c.shares, 'market cap does not reconcile');
+});
+
+test('/api/taiwan/chart serves the range it was asked for', async () => {
+  const r = await fetch(`http://localhost:${PORT}/api/taiwan/chart?code=2330&range=5y`);
+  assert.equal(r.status, 200);
+  const d = await r.json();
+  assert.ok(d.dates.length > 200, `got ${d.dates.length} points`);
+  assert.equal(d.dates.length, d.closes.length);
+  for (let i = 1; i < d.dates.length; i++) assert.ok(d.dates[i] > d.dates[i - 1]);
+});
+
 test('/api/korea ships the list projection, not the price history, and revalidates', async () => {
   const r = await fetch(`http://localhost:${PORT}/api/korea`);
   assert.equal(r.status, 200);

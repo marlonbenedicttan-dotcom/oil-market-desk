@@ -3275,3 +3275,38 @@ Audited at 360, 390 and 430 px with screenshots of every view, then fixed what l
   no horizontal overflow; screenshots unchanged; no long tasks. 211 tests pass.
 - **Honest limit:** a 60 Hz iPhone cannot match a ProMotion MacBook. If it still feels heavy after
   this, the next lever is dropping the second sticky layer (the jump-nav) on phones.
+
+## Taiwan: every TWSE-listed common stock (2026-11-02)
+- **Universe**: 1,089 four-digit TWSE common stocks with issued shares and a price. TDRs (91xx),
+  ETFs, warrants and preferred lines are excluded. The index is TAIEX, the exchange's own
+  cap-weighted benchmark (~1,060 constituents, TSMC ~41%).
+- **Sources**: TWSE OpenAPI for the master, the latest close and the official P/E / P/B / dividend
+  yield; Yahoo (`query2`, via `https.get` — undici's fingerprint is rejected) for five years of daily
+  closes; TWSE's monthly market report (`FMTQIK`) for TAIEX history; `open.er-api.com` for USD/TWD
+  (the ECB does not publish TWD). Statements and English profiles come from stockanalysis.com's TPE
+  pages, the same source the Japan/Korea profile fetchers use.
+- **Why not MOPS for statements**: the per-company MOPS HTML works but is rate-limited and needs ~20k
+  requests for the full market. stockanalysis gives annual (5y + TTM) and quarterly (20q) statements
+  in four pages per company; TWSE's own P/E/P/B are the cross-check (the build prints the number of
+  names more than 15% away).
+- **Build**:
+  `npm run build:taiwan` — build → fetch English names/descriptions for all 1,089 → rebuild from
+  cache to attach them. `--limit=20 --days=400` is the smoke test; `--codes=2330,2454` builds named
+  companies. Caches live in `data/cache/{twse,taiwan-yahoo,taiwan-finmind,taiwan-sa,taiwan-profiles}`
+  and the build is resumable.
+- **Output**: `data/taiwan.json` (records + reports + annual/quarterly history),
+  `data/taiwan-series.json` (daily last ~400 sessions + weekly 5y, keyed by code),
+  `data/taiwan-list.json` (the compact `/api/taiwan` payload), `data/taiwan-profiles.json`.
+- **Server**: `/api/taiwan`, `/api/taiwan/company/{code}`, `/api/taiwan/chart?code=&range=`. The UI
+  adds a fourth region button (`TAIWAN`) with MARKET / SCREENER / THEMES, a company page, the home
+  screener tab, search (`tw:2330`), peers and compare.
+- **Limits**: no free structured guidance, so no forward P/E; TAIEX is official but the market
+  aggregates are computed from the covered constituents. Returns are TWD; the base-currency control
+  does not convert TWD (ECB has no TWD), so it is hidden for Taiwan.
+- **Tests**: `tests/taiwan-derive.test.js` (TTM ratios, loss/negative-equity guards, bands) and
+  `tests/taiwan-data.test.js` (cap = price × shares, ratio bounds, market totals, index ordering,
+  list projection fields).
+- **Built (2026-11-02):** 1,084 companies · 865 P/E · 1,081 with statements · 1,084 English
+  descriptions · TAIEX 45,211.83. Audit against TWSE: 48/865 P/E and 142/1,079 P/B more than 15%
+  away — the exchange's ratios use its own reporting lag, and our P/B is the latest reported quarter
+  (TTM to 2026-09-30). Three new listings have no statement page yet.

@@ -8,7 +8,7 @@ import { execFile } from 'node:child_process';
 import crypto from 'node:crypto';
 import { sendMail } from './src/smtp.js';
 import { fileURLToPath } from 'node:url';
-import { projectUs, projectJp, koreaList, US_LIST_FIELDS } from './src/project.js';
+import { projectUs, projectJp, koreaList, taiwanList, US_LIST_FIELDS } from './src/project.js';
 import { sgn, businessDaysSince, horizonDeltas, horizonDeltasAbs, isoWeek, monthly, pctOver, percentile, lastNonNull, escHtml, webhookPayload, realizedVol, computeCracks, computeCrush, computeSteel, backAdjust, pearson, logReturns, frontExpiry, curveTightness, inventoryTightness, weightedScore, seasonalGrade, seasonalAhead, contractMonthsBetween, signedPosition, signedMove, stretchScore, sdLabel, attributeMoves, newsContextOk, METHODOLOGY, positioningFlag, positioningRead, positioningDivergence, maxDrawdown, drawdownNow, realizedVolTerm, volPercentile, volVsOwnWord, corrMatrix, fxAdjust, parseOcc, drawdownWord, volWord, volTrend, corrShift, pairGroups, topPairs, bestDiversifier, riskRead, priorityOf, rankByPriority, clusterEvents, scoreEvents, selectEvents, explainRows } from './src/lib.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -791,8 +791,52 @@ function readKoreaList() {
   return koreaList(readKorea());
 }
 
-const JAPAN_FILE = path.join(__dirname, 'data', 'japan.json');
-let JP_CACHE = { mtime: 0, data: null };
+const TAIWAN_FILE = path.join(__dirname, 'data', 'taiwan.json');
+let TW_CACHE = { mtime: 0, data: null };
+function readTaiwan() {
+  try {
+    const st = fs.statSync(TAIWAN_FILE);
+    if (TW_CACHE.data && TW_CACHE.mtime === st.mtimeMs) return TW_CACHE.data;
+    TW_CACHE = { mtime: st.mtimeMs, data: JSON.parse(fs.readFileSync(TAIWAN_FILE, 'utf8')) };
+    return TW_CACHE.data;
+  } catch { return { companies: [] }; }
+}
+const TAIWAN_LIST_FILE = path.join(__dirname, 'data', 'taiwan-list.json');
+let TWL_CACHE = { key: null, data: null };
+function taiwanSourceUpdated() {
+  try {
+    const st = fs.statSync(TAIWAN_FILE);
+    const fd = fs.openSync(TAIWAN_FILE, 'r');
+    try {
+      const buf = Buffer.alloc(256);
+      const n = fs.readSync(fd, buf, 0, 256, 0);
+      const m = /"updated"\s*:\s*"([^"]+)"/.exec(buf.toString('utf8', 0, n));
+      return m ? m[1] : null;
+    } finally { fs.closeSync(fd); }
+  } catch { return null; }
+}
+function readTaiwanList() {
+  try {
+    const srcUpdated = taiwanSourceUpdated();
+    const key = `${srcUpdated}:${fs.statSync(TAIWAN_LIST_FILE).mtimeMs}`;
+    if (TWL_CACHE.data && TWL_CACHE.key === key) return TWL_CACHE.data;
+    const artifact = JSON.parse(fs.readFileSync(TAIWAN_LIST_FILE, 'utf8'));
+    if (artifact.updated && artifact.updated === srcUpdated) { TWL_CACHE = { key, data: artifact }; return artifact; }
+  } catch { /* no artifact yet */ }
+  return taiwanList(readTaiwan());
+}
+const TAIWAN_SERIES_FILE = path.join(__dirname, 'data', 'taiwan-series.json');
+let TWS_CACHE = { mtime: 0, data: null };
+function readTaiwanSeries() {
+  try {
+    const st = fs.statSync(TAIWAN_SERIES_FILE);
+    if (TWS_CACHE.data && TWS_CACHE.mtime === st.mtimeMs) return TWS_CACHE.data;
+    TWS_CACHE = { mtime: st.mtimeMs, data: JSON.parse(fs.readFileSync(TAIWAN_SERIES_FILE, 'utf8')) };
+    return TWS_CACHE.data;
+  } catch { return { daily: {}, weekly: {} }; }
+}
+
+const JAPAN_FILE = path.join(__dirname, 'data', 'japan.json');let JP_CACHE = { mtime: 0, data: null };
 function readJapan() {
   try {
     const st = fs.statSync(JAPAN_FILE);
@@ -955,6 +999,11 @@ function searchIndex() {
   for (const c of (kr.companies || [])) {
     add('kr', c.ticker, c.nameEn || c.name, [c.name, ...(c.brands || [])], Math.round((c.marketCap || 0) / krRate));
   }
+  const tw = readTaiwanList();
+  const twRate = (tw.fx && tw.fx.rate) || 1;
+  for (const c of (tw.companies || [])) {
+    add('tw', c.ticker, c.nameEn || c.name, [c.name, ...(c.brands || [])], Math.round((c.marketCap || 0) / twRate));
+  }
   SEARCH_INDEX = rows;
   return rows;
 }
@@ -1019,6 +1068,18 @@ const PEER_BUCKET = {
     Chemicals: 'materials', 'Steel & Metals': 'materials', 'Glass & Ceramics': 'materials',
     'Paper & Printing': 'materials', 'Wood & Paper': 'materials',
     'Oil & Gas': 'energy', Utilities: 'utilities', 'Real Estate': 'realestate' },
+  tw: { Semiconductors: 'tech', 'Computers & Peripherals': 'tech', Optoelectronics: 'tech',
+    Communications: 'tech', 'Electronic Components': 'tech', 'Electronics Distribution': 'tech',
+    'Information Services': 'tech', 'Other Electronics': 'tech', Electronics: 'tech', 'Digital & Cloud': 'tech',
+    Financials: 'banks', 'Biotech & Medical': 'pharma', 'Agricultural Biotech': 'pharma',
+    'Food & Beverage': 'consumer', 'Travel & Leisure': 'consumer', 'Sports & Leisure': 'consumer',
+    'Household Goods': 'consumer', 'Culture & Creative': 'consumer', Textiles: 'consumer',
+    'Trade & Retail': 'retail', Automobiles: 'autos',
+    'Electric Machinery': 'industrials', Construction: 'industrials', 'Shipping & Transport': 'industrials',
+    Conglomerates: 'industrials', Other: 'industrials',
+    Chemicals: 'materials', Plastics: 'materials', 'Steel & Metals': 'materials', Cement: 'materials',
+    'Glass & Ceramics': 'materials', 'Paper & Packaging': 'materials', Rubber: 'materials',
+    'Oil, Gas & Power': 'energy', 'Green Energy': 'utilities' },
 };
 
 // The US has a four-digit SIC for every filer, so the bucket comes from the code rather than the
@@ -1073,6 +1134,9 @@ function peerIndex() {
   const kr = readKoreaList();
   const krRate = (kr.fx && kr.fx.rate) || 1;
   for (const c of (kr.companies || [])) push('kr', `kr:${c.ticker}`, c.nameEn || c.name, c.sector, Math.round((c.marketCap || 0) / krRate));
+  const tw = readTaiwanList();
+  const twRate = (tw.fx && tw.fx.rate) || 1;
+  for (const c of (tw.companies || [])) push('tw', `tw:${c.ticker}`, c.nameEn || c.name, c.sector, Math.round((c.marketCap || 0) / twRate));
   PEER_INDEX = rows;
   return rows;
 }
@@ -1090,7 +1154,7 @@ function getPeers(ref, n = 6) {
   // At least one peer from each other market when the bucket allows it, then fill by size.
   const picked = [];
   const taken = new Set();
-  for (const mkt of ['us', 'jp', 'kr']) {
+  for (const mkt of ['us', 'jp', 'kr', 'tw']) {
     if (mkt === me.market) continue;
     const first = others.find((r) => r.market === mkt);
     if (first) { picked.push(first); taken.add(first.ref); }
@@ -4481,6 +4545,38 @@ const server = http.createServer(async (req, res) => {
       const code = decodeURIComponent(url.pathname.slice('/api/korea/company/'.length));
       const kr = readKorea();
       const c = (kr.companies || []).find((x) => x.code === code || x.ticker === code);
+      if (!c) return sendJSON(res, 404, { error: 'not found' });
+      return sendJSONCached(res, 200, c);
+    }
+    if (url.pathname === '/api/taiwan') {
+      const tw = readTaiwanList();
+      if (!tw.companies || !tw.companies.length) return sendJSON(res, 200, { companies: [], error: 'Taiwan has not been built yet' });
+      return sendJSONCached(res, 200, tw);
+    }
+    if (url.pathname === '/api/taiwan/chart') {
+      const code = url.searchParams.get('code');
+      const range = url.searchParams.get('range') || '1y';
+      const store = readTaiwanSeries();
+      const block = range === '5y' || range === '10y' ? store.weekly : store.daily;
+      const series = (block && block[code]) || (store.weekly && store.weekly[code]) || [];
+      if (!series.length) return sendJSON(res, 200, { dates: [], closes: [], range, code });
+      const iso = (t) => new Date(t).toISOString().slice(0, 10);
+      const now = Date.now();
+      const from = range === '1m' ? iso(now - 31 * 864e5)
+        : range === '3m' ? iso(now - 92 * 864e5)
+          : range === '6m' ? iso(now - 190 * 864e5)
+            : range === 'ytd' ? `${new Date().getUTCFullYear()}-01-01`
+              : range === '1y' ? iso(now - 366 * 864e5)
+                : range === '5y' ? iso(now - 1826 * 864e5)
+                  : range === '10y' ? iso(now - 3653 * 864e5)
+                    : '1900-01-01';
+      const rows = series.filter((p) => p.d >= from);
+      return sendJSONCached(res, 200, { dates: rows.map((p) => p.d), closes: rows.map((p) => p.c), range, code });
+    }
+    if (url.pathname.startsWith('/api/taiwan/company/')) {
+      const code = decodeURIComponent(url.pathname.slice('/api/taiwan/company/'.length));
+      const tw = readTaiwan();
+      const c = (tw.companies || []).find((x) => x.code === code || x.ticker === code);
       if (!c) return sendJSON(res, 404, { error: 'not found' });
       return sendJSONCached(res, 200, c);
     }

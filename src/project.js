@@ -41,8 +41,25 @@ export const koreaList = (kr) => ({
   companies: (kr.companies || []).map(projectKr),
 });
 
-export const projectJp = (c) => ({
-  code: c.code, ticker: c.ticker, name: c.name, nameJa: c.nameJa, sector: c.sector, size: c.size,
+// Taiwan ships the same fields the Korea list does, plus the official exchange dividend yield, which
+// the Taiwan screener's YIELD filter reads.
+export const projectTw = (c) => ({
+  code: c.code, ticker: c.ticker, name: c.name, nameEn: c.nameEn || null, sector: c.sector || null,
+  brands: c.brands && c.brands.length ? c.brands : null,
+  price: c.price, priceDate: c.priceDate, marketCap: c.marketCap,
+  chg1d: c.chg1d, chg6m: c.chg6m, chgYtd: c.chgYtd,
+  pe: c.pe, pb: c.pb, roe: c.roe, opMargin: c.opMargin,
+  dividendYield: c.dividendYield ?? null,
+  bands: c.bands && c.bands.pe ? { pe: { percentile: c.bands.pe.percentile } } : null,
+});
+
+export const taiwanList = (tw) => ({
+  updated: tw.updated, universe: tw.universe, currency: tw.currency, fx: tw.fx,
+  market: tw.market, index: tw.index, themes: tw.themes || [], audit: tw.audit || null,
+  companies: (tw.companies || []).map(projectTw),
+});
+
+export const projectJp = (c) => ({  code: c.code, ticker: c.ticker, name: c.name, nameJa: c.nameJa, sector: c.sector, size: c.size,
   price: c.price, priceDate: c.priceDate, marketCap: c.marketCap,
   chg1d: c.chg1d, chg6m: c.chg6m, chgYtd: c.chgYtd, chgYtdBasis: c.chgYtdBasis,
   pe: c.pe, pb: c.pb, roe: c.roe, np: c.np,
@@ -63,4 +80,5 @@ export const FILTER_FIELDS = {
   ],
   jp: ['sector', 'marketCap', 'pe', 'pb', 'roe', 'dividend', 'cash', 'bands', 'chgYtd', 'priceDate', 'brands'],
   kr: ['sector', 'marketCap', 'pe', 'pb', 'roe', 'bands', 'chgYtd', 'priceDate', 'brands'],
+  tw: ['sector', 'marketCap', 'pe', 'pb', 'roe', 'dividendYield', 'bands', 'chgYtd', 'priceDate', 'brands'],
 };

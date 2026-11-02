@@ -1443,6 +1443,7 @@ button.deal-sec-tile:hover { background: #10151b; }
 #p-deals[data-market="us"] { --mkt: #4f8cff; }
 #p-deals[data-market="jp"] { --mkt: #e05252; }
 #p-deals[data-market="kr"] { --mkt: #2fb5a8; }
+#p-deals[data-market="tw"] { --mkt: #d4a017; }
 .mb-tag { font-size: 8px; letter-spacing: 1px; color: var(--mkt, var(--dim)); border: 1px solid var(--mkt, var(--line));
   padding: 1px 5px; border-radius: 2px; margin-left: 6px; }
 

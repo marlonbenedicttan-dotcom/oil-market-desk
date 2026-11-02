@@ -2386,11 +2386,12 @@ const CO_VIEWS = {
   us: [['usview', 'market', 'MARKET'], ['usview', 'screener', 'SCREENER'], ['usview', 'themes', 'THEMES']],
   jp: [['jpview', 'market', 'MARKET'], ['jpview', 'screener', 'SCREENER'], ['jpview', 'themes', 'THEMES']],
   kr: [['krview', 'market', 'MARKET'], ['krview', 'screener', 'SCREENER'], ['krview', 'themes', 'THEMES']],
+  tw: [['twview', 'market', 'MARKET'], ['twview', 'screener', 'SCREENER'], ['twview', 'themes', 'THEMES']],
 };
 function paintCoViews() {
   const bar = $('co-views');
   if (!bar) return;
-  const active = coRegion === 'jp' ? jpView : coRegion === 'kr' ? krView : usView;
+  const active = coRegion === 'jp' ? jpView : coRegion === 'kr' ? krView : coRegion === 'tw' ? twView : usView;
   bar.innerHTML = (CO_VIEWS[coRegion] || CO_VIEWS.us)
     .map(([attr, key, label]) => `<button type="button" data-${attr}="${key}" class="${active === key ? 'on' : ''}">${label}</button>`)
     .join('');
@@ -2400,6 +2401,7 @@ const usViewsBar = () => '';
 let screenMarket = (() => { try { return localStorage.getItem('oilbasis.screenMarket') || 'us'; } catch { return 'us'; } })();
 const coScreenJp = { q: '', sector: 'all', sort: 'marketCap', dir: -1, page: 1, per: 50 };
 const coScreenKr = { q: '', sector: 'all', sort: 'marketCap', dir: -1, page: 1, per: 50 };
+const coScreenTw = { q: '', sector: 'all', sort: 'marketCap', dir: -1, page: 1, per: 50 };
 // A 1,500-row page is a wall of scroll. Paging keeps one screenful at a time and the whole list one
 // click away — no infinite scroll, nothing hidden.
 const pagerHtml = (total, page, per, attr) => {
@@ -2418,12 +2420,12 @@ const JP_SCREEN_COLS = [
   { k: 'chg6m', t: '6M' }, { k: 'chgYtd', t: 'YTD' }, { k: 'pe', t: 'P/E' },
   { k: 'pb', t: 'P/B' }, { k: 'roe', t: 'ROE' }, { k: 'marketCap', t: 'MKT CAP' },
 ];
-const screenMarketHtml = () => `<div class="sc-modes sc-mkt">${[['us', 'US'], ['jp', 'JAPAN'], ['kr', 'KOREA']].map(([k, t]) => `<button type="button" class="${screenMarket === k ? 'on' : ''}" data-screen-market="${k}">${t}</button>`).join('')}</div>`;
+const screenMarketHtml = () => `<div class="sc-modes sc-mkt">${[['us', 'US'], ['jp', 'JAPAN'], ['kr', 'KOREA'], ['tw', 'TAIWAN']].map(([k, t]) => `<button type="button" class="${screenMarket === k ? 'on' : ''}" data-screen-market="${k}">${t}</button>`).join('')}</div>`;
 
 // A company's return in the screener's chosen base currency. A Tokyo listing returns yen; a dollar
 // investor gets that return *plus* the yen's own move, so the two are compounded rather than added.
 // Falls back to the local number only when no FX move is known, and the note under the table says so.
-const CUR_OF_MARKET = { us: 'USD', jp: 'JPY', kr: 'KRW' };
+const CUR_OF_MARKET = { us: 'USD', jp: 'JPY', kr: 'KRW', tw: 'TWD' };
 // The date the prices belong to — the modal session across the table, so a stale feed is visible
 // rather than implied.
 function sessionOf(list, field) {
@@ -2461,6 +2463,7 @@ function renderCompanyScreen(el) {
   if (!fxWin) { loadFxWin(fxBase).then(() => renderScreen(true)).catch(() => {}); }
   if (screenMarket === 'jp') return renderJapanScreen(el);
   if (screenMarket === 'kr') return renderKoreaScreen(el);
+  if (screenMarket === 'tw') return renderTaiwanScreen(el);
   // The companies payload is normally fetched when the COMPANIES tab opens; the home screener can ask
   // for it first, so load it here and re-render when it lands.
   if (!companiesData) {
@@ -2601,8 +2604,55 @@ function renderKoreaScreen(el) {
     <div class="sc-note dimtext">${fxNote('KRW')}KOSPI companies · DART statements · ${asOfText(all, 'priceDate') || 'Naver prices'} · P/E is trailing twelve months.</div>`;
 }
 
-function renderScreen(full) {
-  const el = $('screen'); if (!el) return;
+// Taiwan in the home screener, the same shape as Korea's.
+const TW_SCREEN_COLS = [
+  { k: 'label', t: 'COMPANY' }, { k: 'price', t: 'PRICE' }, { k: 'chg1d', t: '1D' },
+  { k: 'chg6m', t: '6M' }, { k: 'chgYtd', t: 'YTD' }, { k: 'pe', t: 'P/E' },
+  { k: 'pb', t: 'P/B' }, { k: 'roe', t: 'ROE' }, { k: 'dividendYield', t: 'YIELD' }, { k: 'marketCap', t: 'MKT CAP' },
+];
+function renderTaiwanScreen(el) {
+  if (!taiwanData) {
+    el.innerHTML = stLoading('Reading the TWSE filings…');
+    loadTaiwan().then(() => renderScreen(true));
+    return;
+  }
+  const all = taiwanData.companies || [];
+  const sectors = [...new Set(all.map((c) => c.sector).filter(Boolean))].sort();
+  const q = coScreenTw.q.trim().toLowerCase();
+  const { sort, dir } = coScreenTw;
+  const keyOf = (c) => (sort === 'label' ? (c.nameEn || c.name || '') : c[sort]);
+  let rows = all.filter((c) => (coScreenTw.sector === 'all' || c.sector === coScreenTw.sector)
+    && (!q || `${c.name} ${c.nameEn || ''} ${c.ticker} ${c.sector || ''} ${(c.brands || []).join(' ')}`.toLowerCase().includes(q)));
+  rows = [...rows].sort((a, b) => {
+    const x = keyOf(a), y = keyOf(b);
+    if (x == null && y == null) return 0;
+    if (x == null) return 1;
+    if (y == null) return -1;
+    return sort === 'label' ? x.localeCompare(y) * dir : (x - y) * dir;
+  });
+  const per = coScreenTw.per || 50;
+  const pages = Math.max(1, Math.ceil(rows.length / per));
+  const page = Math.min(coScreenTw.page || 1, pages);
+  const shown = rows.slice((page - 1) * per, page * per);
+  const head = TW_SCREEN_COLS.map((c) => `<th class="${sort === c.k ? 'on' : ''}" data-twkey="${c.k}">${c.t}${sort === c.k ? (dir < 0 ? ' ▼' : ' ▲') : ''}</th>`).join('');
+  const pct = (v) => (v == null ? '<td class="num">—</td>' : `<td class="num ${cls(v)}">${v >= 0 ? '+' : ''}${v.toFixed(1)}%</td>`);
+  const num = (v, dp, suffix = '') => (v == null ? '<td class="num">—</td>' : `<td class="num">${v.toFixed(dp)}${suffix}</td>`);
+  const body = shown.map((c) => `<tr data-twrow="${esc(c.code)}" title="${esc(c.nameEn || c.name)}">
+      <td class="sc-name">${esc(c.nameEn || c.name)}<span class="sc-tick">${esc(c.ticker)}${c.sector ? ' · ' + esc(c.sector) : ''}</span></td>
+      <td class="num">${twPx(c.price)}</td>
+      ${pct(c.chg1d)}${pct(c.chg6m)}${pct(c.chgYtd)}
+      ${num(c.pe, 1, '×')}${num(c.pb, 2, '×')}${num(c.roe, 1, '%')}${num(c.dividendYield, 2, '%')}
+      <td class="num">${twMoney(c.marketCap)}</td></tr>`).join('');
+  el.innerHTML = `<div class="sc-bar">${screenModeHtml()}${screenMarketHtml()}
+      <label class="sc-f">SEARCH <input id="costw-q" type="search" placeholder="company or code…" value="${esc(coScreenTw.q)}"></label>
+      <label class="sc-f">SECTOR <select id="costw-sector"><option value="all">All sectors</option>${sectors.map((x) => `<option value="${esc(x)}"${coScreenTw.sector === x ? ' selected' : ''}>${esc(x)}</option>`).join('')}</select></label>
+      <span class="sc-count dimtext">${rows.length} of ${all.length} companies</span>
+    </div><div class="sc-wrap" id="sc-table"><table class="sc-table sc-cotable"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>
+    ${pagerHtml(rows.length, page, per, 'twpage')}
+    <div class="sc-note dimtext">TWSE companies · prices and valuation from TWSE · statements from stockanalysis.com · ${asOfText(all, 'priceDate') || 'TWSE prices'} · returns in TWD · P/E is trailing twelve months.</div>`;
+}
+
+function renderScreen(full) {  const el = $('screen'); if (!el) return;
   // The currency control applies to the company tables too: their returns are converted, not relabelled.
   const curCtl = document.querySelector('#p-screen .controls');
   if (curCtl) curCtl.classList.remove('hidden');
@@ -2672,12 +2722,23 @@ $('screen')?.addEventListener('click', (e) => {
     screenMarket = mkt.dataset.screenMarket;
     try { localStorage.setItem('oilbasis.screenMarket', screenMarket); } catch {}
     const cur = document.querySelector('#p-screen .controls');
-    if (cur) cur.classList.toggle('hidden', screenMarket === 'jp');
+    if (cur) cur.classList.toggle('hidden', screenMarket === 'jp' || screenMarket === 'tw');
     renderScreen(true);
     return;
   }
   const krp2 = e.target.closest('[data-krpage]');
   if (krp2 && krp2.dataset.krpage !== 'per') { coScreenKr.page = Math.max(1, Number(krp2.dataset.krpage)); renderScreen(true); return; }
+  const twp2 = e.target.closest('[data-twpage]');
+  if (twp2 && twp2.dataset.twpage !== 'per') { coScreenTw.page = Math.max(1, Number(twp2.dataset.twpage)); renderScreen(true); return; }
+  const twkey = e.target.closest('th[data-twkey]');
+  if (twkey) {
+    const k = twkey.dataset.twkey;
+    coScreenTw.dir = coScreenTw.sort === k ? -coScreenTw.dir : (k === 'label' ? 1 : -1);
+    coScreenTw.sort = k;
+    coScreenTw.page = 1;
+    renderScreen(true);
+    return;
+  }
   const krkey = e.target.closest('th[data-krkey]');
   if (krkey) {
     const k = krkey.dataset.krkey;
@@ -2731,6 +2792,15 @@ $('screen')?.addEventListener('click', (e) => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
     return;
   }
+  const twrow2 = e.target.closest('tr[data-twrow]');
+  if (twrow2) {
+    coRegion = 'tw'; try { localStorage.setItem('oilbasis.coRegion', 'tw'); } catch {}
+    twSel = twrow2.dataset.twrow;
+    document.querySelector('[data-tab="deals"]')?.click();
+    renderTaiwan();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    return;
+  }
   const tr = e.target.closest('tr[data-id]');
   if (tr) goToInstrument(tr.dataset.id);
 });
@@ -2739,13 +2809,17 @@ $('screen')?.addEventListener('input', (e) => {
   if (e.target.id === 'cos-q') { coScreen = { ...coScreen, q: e.target.value || '', page: 1 }; renderScreen(true); }
   if (e.target.id === 'cosj-q') { coScreenJp.q = e.target.value || ''; coScreenJp.page = 1; renderScreen(true); }
   if (e.target.id === 'cosk-q') { coScreenKr.q = e.target.value || ''; coScreenKr.page = 1; renderScreen(true); }
+  if (e.target.id === 'costw-q') { coScreenTw.q = e.target.value || ''; coScreenTw.page = 1; renderScreen(true); }
 });
 $('screen')?.addEventListener('change', (e) => {
   if (e.target.id === 'cos-sector') { coScreen = { ...coScreen, sector: e.target.value, page: 1 }; renderScreen(true); return; }
   if (e.target.id === 'cosj-sector') { coScreenJp.sector = e.target.value; coScreenJp.page = 1; renderScreen(true); return; }
   if (e.target.id === 'cosk-sector') { coScreenKr.sector = e.target.value; coScreenKr.page = 1; renderScreen(true); return; }
+  if (e.target.id === 'costw-sector') { coScreenTw.sector = e.target.value; coScreenTw.page = 1; renderScreen(true); return; }
   if (e.target.dataset && e.target.dataset.jppageper) { coScreenJp.per = Number(e.target.value); coScreenJp.page = 1; renderScreen(true); return; }
   if (e.target.dataset && e.target.dataset.krpageper) { coScreenKr.per = Number(e.target.value); coScreenKr.page = 1; renderScreen(true); return; }
+  if (e.target.dataset && e.target.dataset.twpageper) { coScreenTw.per = Number(e.target.value); coScreenTw.page = 1; renderScreen(true); return; }
+  if (e.target.dataset && e.target.dataset.twlistpageper) { twPer = Number(e.target.value) || 50; twPage = 1; renderTaiwan(); return; }
   if (e.target.dataset && e.target.dataset.copageper) { coScreen.per = Number(e.target.value); coScreen.page = 1; renderScreen(true); return; }
   const t = e.target;
   if (t.id === 'sc-seg') { screenSeg = t.value; persistScreenFilter(); renderScreen(false); return; }
@@ -3949,10 +4023,11 @@ function syncCoTools() {
   const wanted = coRegion === 'jp'
     ? (!jpSel && jpView === 'screener')
     : coRegion === 'kr' ? (!krSel && krView === 'screener')
+    : coRegion === 'tw' ? (!twSel && twView === 'screener')
     : (coCik ? true : usView === 'screener');
   tools.classList.toggle('hidden', !wanted);
   // On a phone, a company page should start at the top: the filter bar is for lists.
-  const detail = coRegion === 'jp' ? !!jpSel : coRegion === 'kr' ? !!krSel : !!coCik;
+  const detail = coRegion === 'jp' ? !!jpSel : coRegion === 'kr' ? !!krSel : coRegion === 'tw' ? !!twSel : !!coCik;
   tools.dataset.detail = detail ? '1' : '';
 }
 
@@ -4539,10 +4614,12 @@ const currentCmpRef = () => (coRegion === 'jp'
   ? (jpSel ? `jp:${jpSel}` : '')
   : coRegion === 'kr'
     ? krRef(krSel)
-    : (coTicker ? `us:${coTicker}` : ''));
+    : coRegion === 'tw'
+      ? (twSel ? `tw:${twSel}` : '')
+      : (coTicker ? `us:${coTicker}` : ''));
 
 function syncCmpClear(region) {
-  const on = region === 'jp' ? !!jpCompare : region === 'kr' ? !!krCompare : !!coCompare;
+  const on = region === 'jp' ? !!jpCompare : region === 'kr' ? !!krCompare : region === 'tw' ? !!twCompare : !!coCompare;
   const b = $(region + '-cmp-clear');
   if (b) b.classList.toggle('hidden', !on);
 }
@@ -4561,6 +4638,12 @@ function clearCompare(region = coRegion) {
     hideSuggestions('kr-sugg'); syncCmpClear('kr');
     const cur = (koreaData && koreaData.companies || []).find((x) => x.code === krSel);
     if (cur) drawKrChart(cur, krRange);
+  } else if (region === 'tw') {
+    twCompare = '';
+    const inp = $('tw-cmp'); if (inp) inp.value = '';
+    hideSuggestions('tw-sugg'); syncCmpClear('tw');
+    const cur = (taiwanData && taiwanData.companies || []).find((x) => x.code === twSel);
+    if (cur) drawTwChart(cur, twRange);
   } else {
     coCompare = '';
     const inp = $('co-cmp'); if (inp) inp.value = '';
@@ -4588,6 +4671,12 @@ function setCompare(ref) {
     hideSuggestions('kr-sugg'); syncCmpClear('kr');
     const cur = (koreaData && koreaData.companies || []).find((x) => x.code === krSel);
     if (cur) drawKrChart(cur, krRange);
+  } else if (coRegion === 'tw') {
+    twCompare = clean;
+    const inp = $('tw-cmp'); if (inp) inp.value = label;
+    hideSuggestions('tw-sugg'); syncCmpClear('tw');
+    const cur = (taiwanData && taiwanData.companies || []).find((x) => x.code === twSel);
+    if (cur) drawTwChart(cur, twRange);
   } else {
     coCompare = clean;
     const inp = $('co-cmp'); if (inp) inp.value = label;
@@ -4630,6 +4719,7 @@ async function seriesFor(ref, range) {
   try {
     if (mkt === 'jp') return await jget(`/api/japan-chart?code=${encodeURIComponent(code)}&range=${encodeURIComponent(range)}`, 600000);
     if (mkt === 'kr') return await jget(`/api/korea/chart?ticker=${encodeURIComponent(code)}&range=${encodeURIComponent(range)}`, 600000);
+    if (mkt === 'tw') return await jget(`/api/taiwan/chart?code=${encodeURIComponent(code)}&range=${encodeURIComponent(range)}`, 600000);
     return await jget(`/api/company-chart?ticker=${encodeURIComponent(code)}&range=${encodeURIComponent(yRange)}`, 600000);
   } catch { return null; }
 }
@@ -4888,6 +4978,296 @@ async function drawKrChart(c, range = krRange) {
   mountChart('kr-chart', { labels: ch.dates, datasets: [line(`${c.ticker} · KRW · ${range.toUpperCase()}`, ch.closes, CT.c1)] }, baseOptions({ dp: 0, dateAxis: true, log: range === '5y' }));
 }
 
+// --- Taiwan: TWSE-listed common stocks -------------------------------------------------------
+// Same three views and company page as the other markets. Prices and the official P/E / P/B / yield
+// come from TWSE; statements and English profiles from stockanalysis.com; TAIEX from TWSE's monthly
+// market report. TWD throughout — the ECB does not publish TWD.
+let taiwanData = null, twSel = null, twQuery = '', twCompare = '';
+let twRange = (() => { try { return localStorage.getItem('oilbasis.twRange') || '1y'; } catch { return '1y'; } })();
+let twMktRange = (() => { try { return localStorage.getItem('oilbasis.twMktRange') || '1y'; } catch { return '1y'; } })();
+let twView = (() => { try { return localStorage.getItem('oilbasis.twView') || 'market'; } catch { return 'market'; } })();
+let twTheme = (() => { try { return localStorage.getItem('oilbasis.twTheme') || 'semis'; } catch { return 'semis'; } })();
+let twSector = 'all', twSort = 'cap', twPreset = null, twFilter = {}, twOpenSel = null;
+let twPage = 1, twPer = 50;
+let taiwanPromise = null;
+
+const twName = (c) => (c && (c.nameEn || c.name)) || '';
+const twMoney = (v) => {
+  if (v == null || !Number.isFinite(v)) return '—';
+  const a = Math.abs(v);
+  if (a >= 1e12) return `NT$${(v / 1e12).toFixed(2)}T`;
+  if (a >= 1e9) return `NT$${(v / 1e9).toFixed(1)}B`;
+  if (a >= 1e6) return `NT$${(v / 1e6).toFixed(0)}M`;
+  return `NT$${Math.round(v).toLocaleString('en-US')}`;
+};
+const twPx = (v) => (v == null || !Number.isFinite(v) ? '—' : `NT$${Number(v).toFixed(2)}`);
+const twMono = (c) => coMono({ ticker: String(c.nameEn || c.name || '?').replace(/[^A-Za-z]/g, '').slice(0, 2) || 'TW', name: c.name });
+const twViewsBar = () => '';
+
+async function loadTaiwan() {
+  if (taiwanData) return taiwanData;
+  if (taiwanPromise) return taiwanPromise;
+  taiwanPromise = (async () => {
+    try { taiwanData = await jget('/api/taiwan', 3600000); }
+    catch { taiwanData = null; }
+    finally { taiwanPromise = null; }
+    return taiwanData;
+  })();
+  return taiwanPromise;
+}
+
+async function renderTaiwan(token = takeToken()) {
+  paintCoViews();
+  const el = $('co-body'); if (!el) return;
+  if (twSel !== twOpenSel) { twCompare = ''; twOpenSel = twSel; }
+  syncMarketAccent();
+  const noteUs = $('co-note'); if (noteUs) noteUs.classList.add('hidden');
+  syncCoTools();
+  if (!taiwanData) el.innerHTML = stLoading('Loading TAIEX…');
+  const d = await loadTaiwan();
+  if (stale(token)) return;
+  syncMarketAccent();
+  const all = (d && d.companies) || [];
+  const sub = $('deals-sub');
+  if (sub) {
+    const what = twView === 'screener' ? 'filter and sort' : twView === 'themes' ? 'curated theme lists' : 'breadth, sectors and TAIEX';
+    sub.textContent = all.length ? `${all.length} companies · TWSE · NT$ TWD · ${what}` : 'TWSE · TAIEX';
+  }
+  if (!all.length) {
+    el.innerHTML = `<div class="macro-note">Taiwan is not built yet. Run <code>node scripts/build-taiwan.mjs</code>.</div>`;
+    return;
+  }
+  const sel = all.find((c) => c.code === twSel);
+  if (sel) return renderTaiwanPage(sel);
+  warmMarkets();
+  if (twView === 'market') return renderTaiwanMarket(all, d);
+  if (twView === 'themes') return renderTaiwanThemes(all, d);
+  return renderTaiwanScreener(all, d);
+}
+
+function twIndexSeries() {
+  const s = taiwanData && taiwanData.index && taiwanData.index.series;
+  return s && s.length > 1 ? { dates: s.map((p) => p.d), closes: s.map((p) => p.c) } : null;
+}
+function redrawTaiwanIndex(range = twMktRange) {
+  const full = twIndexSeries();
+  if (!full) return false;
+  twMktRange = drawMarketIndexChart('tw-mkt', full, range, 'twmkt', 'TAIEX');
+  return true;
+}
+
+function renderTaiwanMarket(all, d) {
+  const el = $('co-body'); if (!el) return;
+  const m = d.market || {}; const idx = d.index || {};
+  const cell = (k, v, t, cls = '') => `<div class="co-stat" title="${esc(t)}"><span class="co-k">${k}</span><span class="co-v ${cls}">${v}</span></div>`;
+  const chg = (x) => (x == null ? '—' : `${x >= 0 ? '+' : ''}${x.toFixed(1)}%`);
+  const breadth = m.advancing != null ? `<div class="jp-breadth"><span class="pos">${m.advancing} up</span><i><i style="width:${Math.round((m.advancing / Math.max(1, m.advancing + m.declining)) * 100)}%"></i></i><span class="neg">${m.declining} down</span></div>` : '';
+  el.innerHTML = twViewsBar()
+    + `<div class="jp-market-head"><span class="ph-t">TAIEX</span>
+        ${idx.level != null ? `<span class="jp-market-lvl">${idx.level.toLocaleString('en-US', { maximumFractionDigits: 2 })}</span>` : '<span class="dimtext">index unavailable</span>'}
+        <span class="${(idx.chg1d || 0) >= 0 ? 'pos' : 'neg'}">${chg(idx.chg1d)} today</span>
+        <span class="dimtext">${all.length} companies · computed from the constituent set</span></div>`
+    + `<div class="co-stats co-stats-12">
+        ${cell('TOTAL MARKET CAP', twMoney(m.totalCap), 'Sum of every TWSE constituent we hold')}
+        ${cell('COMPANIES', String(m.companies || all.length), 'Listed common stocks with a price')}
+        ${cell('MEDIAN P/E', m.medianPe != null ? `${m.medianPe.toFixed(1)}×` : '—', 'Median — the typical company, not the index')}
+        ${cell('MEDIAN P/B', m.medianPb != null ? `${m.medianPb.toFixed(2)}×` : '—', 'Median across the market')}
+        ${cell('MEDIAN ROE', m.medianRoe != null ? `${m.medianRoe.toFixed(1)}%` : '—', 'Trailing twelve months, median')}
+        ${cell('MEDIAN YIELD', m.medianYield != null ? `${m.medianYield.toFixed(2)}%` : '—', 'Median dividend yield (TWSE)')}
+        ${cell('BELOW BOOK', String(m.belowBook ?? '—'), 'Companies trading under 1× book')}
+        ${cell('UP THIS YEAR', String(m.upYtd ?? '—'), 'Companies with a positive year-to-date return')}
+      </div>`
+    + breadth
+    + (idx.series && idx.series.length > 1 ? `<div class="co-rets" id="tw-mkt-rets"></div><div class="co-chartwrap"><canvas id="tw-mkt-chart"></canvas></div>` : '')
+    + `<div class="co-hrow jp-mkt-hrow"><span>SECTOR</span><span>N</span><span>CAP</span><span>P/E</span><span>P/B</span><span>ROE</span><span>YIELD</span><span>YTD</span></div>`
+    + (m.sectors || []).map((x) => `<div class="jp-mkt-row">
+        <span>${esc(x.name)}</span><span>${x.count}</span><span>${twMoney(x.cap)}</span>
+        <span>${x.pe != null ? x.pe.toFixed(1) : '—'}</span>
+        <span class="${x.pb != null && x.pb < 1 ? 'pos' : ''}">${x.pb != null ? x.pb.toFixed(2) : '—'}</span>
+        <span class="${(x.roe || 0) >= 0 ? 'pos' : 'neg'}">${x.roe != null ? x.roe.toFixed(1) + '%' : '—'}</span>
+        <span>${x.yield != null ? x.yield.toFixed(2) + '%' : '—'}</span>
+        <span class="${(x.chgYtd || 0) >= 0 ? 'pos' : 'neg'}">${chg(x.chgYtd)}</span>
+      </div>`).join('')
+    + `<div class="macro-note">Aggregates computed from the ${all.length} TWSE-listed constituents. Sectors from each company's TWSE industry code. Prices and valuation from TWSE; statements from stockanalysis.com; TAIEX from TWSE's monthly market report.</div>`;
+  if (idx.series && idx.series.length > 1) redrawTaiwanIndex();
+}
+
+function renderTaiwanThemes(all, d) {
+  const el = $('co-body'); if (!el) return;
+  const themes = (d && d.themes) || [];
+  if (!themes.length) { el.innerHTML = twViewsBar() + '<div class="macro-note">No themes loaded.</div>'; return; }
+  const active = themes.find((t) => t.id === twTheme) || themes[0];
+  const set = new Set(active.tickers || []);
+  const rows = all.filter((c) => set.has(c.ticker)).sort((a, b) => (b.marketCap || 0) - (a.marketCap || 0));
+  const chg = (x) => (x == null ? '—' : `${x >= 0 ? '+' : ''}${x.toFixed(1)}%`);
+  el.innerHTML = twViewsBar()
+    + `<div class="jp-presets">${themes.map((t) => `<button type="button" data-twtheme="${t.id}" class="${t.id === active.id ? 'on' : ''}">${t.label}</button>`).join('')}</div>`
+    + `<div class="jp-market-head"><span class="ph-t">${esc(active.label)}</span><span class="dimtext">${rows.length} companies · curated list</span></div>`
+    + `<div class="co-hrow jp-bank-hrow"><span>#</span><span>COMPANY</span><span>CAP</span><span>P/E</span><span>P/B</span><span>ROE</span><span>YIELD</span><span>YTD</span></div>`
+    + rows.map((c, i) => `<button class="jp-bank-row" data-tw="${esc(c.code)}">
+        <span>${i + 1}</span>
+        <span><b>${esc(twName(c))}</b><span class="co-tick">${esc(c.ticker)}</span></span>
+        <span>${twMoney(c.marketCap)}</span>
+        <span>${c.pe != null ? c.pe.toFixed(1) : '—'}</span>
+        <span class="${c.pb != null && c.pb < 1 ? 'pos' : ''}">${c.pb != null ? c.pb.toFixed(2) : '—'}</span>
+        <span class="${(c.roe || 0) >= 0 ? 'pos' : 'neg'}">${c.roe != null ? c.roe.toFixed(1) + '%' : '—'}</span>
+        <span>${c.dividendYield != null ? c.dividendYield.toFixed(2) + '%' : '—'}</span>
+        <span class="${(c.chgYtd || 0) >= 0 ? 'pos' : 'neg'}">${chg(c.chgYtd)}</span>
+      </button>`).join('')
+    + `<div class="macro-note">${esc(active.note || '')}</div>`;
+}
+
+const TW_PRESETS = [
+  { id: 'book', label: 'BELOW BOOK', test: (c) => c.pb != null && c.pb < 1 },
+  { id: 'roe', label: 'HIGH ROE', test: (c) => (c.roe || 0) > 12 },
+  { id: 'cheap', label: 'CHEAP VS ITSELF', test: (c) => c.bands && c.bands.pe && c.bands.pe.percentile <= 20 },
+  { id: 'yield', label: 'HIGH YIELD', test: (c) => (c.dividendYield || 0) >= 4 },
+];
+
+function renderTaiwanScreener(all, d) {
+  const el = $('co-body'); if (!el) return;
+  const q = twQuery.trim().toLowerCase();
+  const sectors = [...new Set(all.map((c) => c.sector).filter(Boolean))].sort();
+  const preset = TW_PRESETS.find((p) => p.id === twPreset);
+  const f = twFilter;
+  const rows = all.filter((c) => (!q || `${c.name} ${c.nameEn || ''} ${c.ticker} ${(c.brands || []).join(' ')}`.toLowerCase().includes(q))
+    && (twSector === 'all' || c.sector === twSector)
+    && (!f.pe || (c.pe != null && (f.pe === 'lt10' ? c.pe < 10 : f.pe === '10to15' ? c.pe >= 10 && c.pe < 15 : f.pe === '15to25' ? c.pe >= 15 && c.pe < 25 : c.pe >= 25)))
+    && (!f.roe || (c.roe != null && c.roe >= Number(f.roe)))
+    && (!f.yield || (c.dividendYield != null && c.dividendYield >= Number(f.yield)))
+    && (!preset || preset.test(c)));
+  const sortOf = { cap: (c) => c.marketCap, pe: (c) => c.pe, pb: (c) => c.pb, roe: (c) => c.roe, yield: (c) => c.dividendYield, ytd: (c) => c.chgYtd };
+  const dir = twSort === 'pe' || twSort === 'pb' ? 1 : -1;
+  const kf = sortOf[twSort] || sortOf.cap;
+  const sorted = [...rows].sort((a, b) => {
+    const x = kf(a), y = kf(b);
+    if (x == null && y == null) return 0;
+    if (x == null) return 1;
+    if (y == null) return -1;
+    return (x - y) * dir;
+  });
+  const twChips = $('co-chips');
+  if (twChips) {
+    const nTw = Object.values(f).filter((v) => v != null && v !== '').length + (twSector !== 'all' ? 1 : 0) + (q ? 1 : 0);
+    twChips.innerHTML = coFilterBar({
+      presets: TW_PRESETS, preset: twPreset, presetAttr: 'data-twpreset',
+      selects: [
+        { key: 'sector', label: 'SECTOR', opts: [['all', 'All'], ...sectors.map((x) => [x, x.toUpperCase()])], cur: twSector, attr: 'data-twf' },
+        { key: 'pe', label: 'P/E', opts: [['', 'Any'], ['lt10', '<10'], ['10to15', '10–15'], ['15to25', '15–25'], ['gt25', '>25']], cur: f.pe, attr: 'data-twf' },
+        { key: 'roe', label: 'ROE', opts: [['', 'Any'], ['10', '>10%'], ['15', '>15%']], cur: f.roe, attr: 'data-twf' },
+        { key: 'yield', label: 'YIELD', opts: [['', 'Any'], ['3', '>3%'], ['5', '>5%']], cur: f.yield, attr: 'data-twf' },
+        { key: 'sort', label: 'SORT', opts: [['cap', 'Market cap'], ['pe', 'P/E low'], ['pb', 'P/B low'], ['roe', 'ROE high'], ['yield', 'Yield high'], ['ytd', 'YTD best']], cur: twSort, attr: 'data-twf' },
+      ],
+      clearAttr: 'data-twpreset', clearValue: 'clear', active: nTw || (twPreset ? 1 : 0), asOf: asOfText(all, 'priceDate'),
+    });
+  }
+  const max = Math.max(...all.map((c) => c.marketCap || 0), 1);
+  const pages = Math.max(1, Math.ceil(sorted.length / twPer));
+  const page = Math.min(twPage, pages);
+  const shown = sorted.slice((page - 1) * twPer, page * twPer);
+  el.innerHTML = twViewsBar()
+    + `<div class="co-hrow"><span>#</span><span></span><span>COMPANY</span><span>MARKET CAP</span><span>P/E</span><span>ROE</span></div>`
+    + shown.map((c, i) => `<button class="co-row" data-tw="${esc(c.code)}">
+        <span class="co-rank">${(page - 1) * twPer + i + 1}</span>
+        ${twMono(c)}
+        <span class="co-id"><b>${esc(twName(c))}</b>
+          <span class="co-meta">
+            <span class="co-tick">${esc(c.ticker)}</span>
+            <span class="co-px">${twPx(c.price)}</span>
+            <em class="${(c.chg1d || 0) >= 0 ? 'pos' : 'neg'}">${c.chg1d == null ? '—' : `${c.chg1d >= 0 ? '+' : ''}${c.chg1d.toFixed(1)}%`}</em>
+            <em class="${(c.chgYtd || 0) >= 0 ? 'pos' : 'neg'}">${c.chgYtd == null ? '—' : `${c.chgYtd >= 0 ? '+' : ''}${c.chgYtd.toFixed(1)}%`} YTD</em>
+          </span></span>
+        <span class="co-cap">${twMoney(c.marketCap)}<i class="co-bar"><i style="width:${Math.max(2, ((c.marketCap || 0) / max) * 100)}%"></i></i></span>
+        <span class="co-pe">${c.pe != null ? c.pe.toFixed(1) : '—'}</span>
+        <span class="co-mar ${c.roe == null ? 'dimtext' : c.roe >= 0 ? 'pos' : 'neg'}">${c.roe == null ? '—' : `${c.roe.toFixed(1)}%`}</span>
+      </button>`).join('')
+    + pagerHtml(sorted.length, page, twPer, 'twlistpage')
+    + `<div class="macro-note">${rows.length} of ${all.length} · TWSE · statements from stockanalysis.com, prices and valuation from TWSE · P/E is trailing twelve months · FX ${d.fx && d.fx.rate ? d.fx.rate.toFixed(2) : '—'} TWD per USD.</div>`;
+}
+
+async function renderTaiwanPage(stub) {
+  const el = $('co-body'); if (!el) return;
+  let c = null;
+  el.innerHTML = stLoading('Reading the filing…');
+  try { c = await jget(`/api/taiwan/company/${encodeURIComponent(stub.code)}`, 1800000); } catch { c = null; }
+  if (!c) { el.innerHTML = stError('Couldn\u2019t load this company.'); return; }
+  const sub = $('deals-sub'); if (sub) sub.textContent = `${twName(c)} · ${c.ticker} · TWSE`;
+  const cell = (k, v, t, cls = '') => `<div class="co-stat" title="${esc(t)}"><span class="co-k">${k}</span><span class="co-v ${cls}">${v}</span></div>`;
+  const chg = (x) => (x == null ? '' : `${x >= 0 ? '+' : ''}${x.toFixed(1)}%`);
+  const q = c.quarters || [];
+  const h = c.history || [];
+  el.innerHTML = `<div class="ma-crumb"><button class="ma-back" data-twback="1">← COMPANIES</button> <span>${esc(c.ticker)}</span><span class="mb-tag">TAIWAN</span></div>`
+    + `<div class="co-head">${twMono(c)}<div><div class="co-name">${esc(twName(c))}</div>
+        <div class="co-sub">${esc(c.ticker)} · TWSE${c.name && c.name !== twName(c) ? ' · ' + esc(c.name) : ''}</div>
+        ${c.description ? `<div class="co-desc">${esc(c.description)}</div>` : ''}
+        ${c.brands && c.brands.length ? `<div class="jp-brands">${c.brands.map((b) => `<span>${esc(b)}</span>`).join('')}</div>` : ''}</div></div>`
+    + `<div class="co-price"><span class="co-price-v">${twPx(c.price)}</span>
+        <span class="co-price-c ${c.chg1d >= 0 ? 'pos' : 'neg'}">${chg(c.chg1d)} today</span>
+        <span class="co-price-c ${c.chg6m >= 0 ? 'pos' : 'neg'}">${chg(c.chg6m)} 6M</span>
+        <span class="co-price-c ${c.chgYtd >= 0 ? 'pos' : 'neg'}">${chg(c.chgYtd)} YTD</span>
+        <span class="dimtext">${c.priceDate ? `as of ${c.priceDate}` : ''}</span></div>`
+    + `<div class="co-stats co-stats-12">
+        ${cell('MARKET CAP', twMoney(c.marketCap), 'Price × shares outstanding')}
+        ${cell('MARKET CAP · USD', c.marketCapUsd ? `$${(c.marketCapUsd / 1e9).toFixed(1)}B` : '—', 'Converted at the current USD/TWD rate')}
+        ${cell(`P/E · ${c.peBasis || 'TTM'}`, c.pe != null ? `${c.pe.toFixed(2)}×` : '—', c.peBasis === 'TTM' ? `Market cap ÷ the last four quarters of profit${c.reports && c.reports.ttmEnd ? ` (through ${c.reports.ttmEnd})` : ''}` : 'Market cap ÷ fiscal-year profit')}
+        ${cell('P/B', c.pb != null ? `${c.pb.toFixed(2)}×` : '—', `Market cap ÷ shareholders\u2019 equity${c.reports && c.reports.latestEnd ? ` at ${c.reports.latestEnd}` : ''}`)}
+        ${cell('RETURN ON EQUITY', c.roe != null ? `${c.roe.toFixed(1)}%` : '—', 'Profit ÷ equity', c.roe >= 0 ? 'pos' : 'neg')}
+        ${cell('OPERATING MARGIN', c.opMargin != null ? `${c.opMargin.toFixed(1)}%` : '—', 'Operating profit ÷ revenue', c.opMargin >= 0 ? 'pos' : 'neg')}
+        ${cell('NET MARGIN', c.netMargin != null ? `${c.netMargin.toFixed(1)}%` : '—', 'Net profit ÷ revenue', c.netMargin >= 0 ? 'pos' : 'neg')}
+        ${cell('DIVIDEND YIELD', c.dividendYield != null ? `${c.dividendYield.toFixed(2)}%` : '—', 'TWSE official dividend yield')}
+      </div>`
+    + `<div class="co-ranges">
+        <span class="co-cmp-l">COMPARE</span><input class="co-cmp" id="tw-cmp" placeholder="company name, e.g. tsmc" value="${esc(cmpCode(twCompare))}" autocomplete="off">
+        <button class="co-cmp-clear${twCompare ? '' : ' hidden'}" id="tw-cmp-clear" data-cmpclear="tw" type="button" title="Clear comparison" aria-label="Clear comparison">×</button>
+        <div class="co-sugg" id="tw-sugg"></div>
+        ${[['1m', '1M'], ['3m', '3M'], ['6m', '6M'], ['ytd', 'YTD'], ['1y', '1Y'], ['5y', '5Y']].map(([k, t]) => `<button class="ma-chip${twRange === k ? ' on' : ''}" data-twrange="${k}">${t}</button>`).join('')}
+      </div>`
+    + `<div class="co-rets" id="tw-rets"></div>`
+    + `<div class="co-chartwrap"><div class="co-big" id="tw-big"></div><canvas id="tw-chart"></canvas></div>`
+    + '<div id="tw-peers-x"></div>'
+    + (h.length > 1 ? `<div class="jp-q"><div class="jp-q-head"><span class="ph-t">FIVE-YEAR RECORD</span><span class="dimtext">${h.length} fiscal years · NT$</span></div>
+        <table class="jp-q-table"><thead><tr><th>FISCAL YEAR</th><th>REVENUE</th><th>OP PROFIT</th><th>NET PROFIT</th><th>ROE</th></tr></thead><tbody>
+        ${[...h].reverse().map((x) => `<tr><td>${esc(x.y)}</td><td>${twMoney(x.s)}</td><td>${twMoney(x.o)}</td><td>${twMoney(x.n)}</td><td>${x.n != null && x.q ? `${((x.n / x.q) * 100).toFixed(1)}%` : '—'}</td></tr>`).join('')}
+        </tbody></table></div>` : '')
+    + (q.length > 1 ? `<div class="jp-q"><div class="jp-q-head"><span class="ph-t">QUARTERLY RESULTS</span><span class="dimtext">${q.length} quarters · NT$</span></div>
+        <table class="jp-q-table"><thead><tr><th>QUARTER</th><th>REVENUE</th><th>OP PROFIT</th><th>MARGIN</th><th>NET PROFIT</th></tr></thead><tbody>
+        ${[...q].reverse().map((x) => `<tr><td>${esc(x.d)}</td><td>${twMoney(x.revenue)}</td><td>${twMoney(x.operatingProfit)}</td><td>${x.revenue && x.operatingProfit != null ? `${((x.operatingProfit / x.revenue) * 100).toFixed(1)}%` : '—'}</td><td>${twMoney(x.netIncome)}</td></tr>`).join('')}
+        </tbody></table></div>` : '')
+    + `<div class="macro-note">TWSE-listed · statements from stockanalysis.com (millions TWD), prices and dividend yield from TWSE. Taiwanese companies report cumulatively (Q1, H1, Q3, annual); the quarterly figures here are the reported period columns. No free guidance feed, so there is no forward P/E.${c.description ? ' Company description from stockanalysis.com.' : ''}</div>`;
+  drawTwChart(c);
+  fillPeers(`tw:${c.ticker}`, 'tw-peers-x');
+}
+
+async function drawTwChart(c, range = twRange) {
+  coLong('tw:' + c.ticker).then((long) => { if (long) paintReturns('tw-rets', 'tw-big', long, range, WINDOWS_5Y, 'twrange'); }).catch(() => {});
+  const wrap = $('tw-chart') && $('tw-chart').parentElement;
+  let ch = null;
+  try { ch = await jget(`/api/taiwan/chart?code=${encodeURIComponent(c.ticker)}&range=${encodeURIComponent(range)}`, 600000); } catch { ch = null; }
+  if (!ch || !ch.dates || ch.dates.length < 2) {
+    if (wrap) wrap.setAttribute('data-empty', `No price history for ${c.ticker} over ${range.toUpperCase()}.`);
+    return;
+  }
+  if (wrap) wrap.removeAttribute('data-empty');
+  const other = twCompare && cmpCode(twCompare) !== String(c.ticker) ? await seriesFor(twCompare, range) : null;
+  if (other && other.dates && other.dates.length > 1) {
+    const bmap = new Map(other.dates.map((d, i) => [d, other.closes[i]]));
+    const dates = ch.dates.filter((d, i) => ch.closes[i] != null && bmap.get(d) != null);
+    if (dates.length > 1) {
+      const a0 = ch.closes[ch.dates.indexOf(dates[0])];
+      const b0 = bmap.get(dates[0]);
+      mountChart('tw-chart', {
+        labels: dates,
+        datasets: [
+          line(`${c.ticker} · ${(c.nameEn || c.name).slice(0, 14)}`, dates.map((d) => (ch.closes[ch.dates.indexOf(d)] / a0) * 100), CT.c1),
+          line(`${cmpCode(twCompare)}`, dates.map((d) => (bmap.get(d) / b0) * 100), CT.c2),
+        ],
+      }, baseOptions({ dp: 0, dateAxis: true, yTitle: 'indexed to 100' }));
+      return;
+    }
+  }
+  mountChart('tw-chart', { labels: ch.dates, datasets: [line(`${c.ticker} · TWD · ${range.toUpperCase()}`, ch.closes, CT.c1)] }, baseOptions({ dp: 0, dateAxis: true, log: range === '5y' }));
+}
+
 // The pane carries the market's accent colour (the region pills, the active tab, the tag on a company
 // page). There used to be a quote strip here too — index name, level, day change, company count — but
 // the market view already states all of that, and repeating it above every view was noise.
@@ -4921,6 +5301,8 @@ function warmMarkets(delay = 1500) {
   // the server does for Korea never competes with the first screen. `loadKorea()` de-dupes with the
   // click, so opening KOREA while this is in flight shares the one request instead of a second.
   setTimeout(() => { if (!koreaData) loadKorea().catch(() => {}); }, delay + 1500);
+  // Taiwan's list is ~0.5 MB; warm it after Korea so a region switch does not pay the round trip.
+  setTimeout(() => { if (!taiwanData) loadTaiwan().catch(() => {}); }, delay + 3200);
 }
 
 function renderCompanies() {
@@ -4937,6 +5319,7 @@ function renderCompanies() {
   syncMarketAccent();
   if (coRegion === 'jp') return renderJapan(token);
   if (coRegion === 'kr') return renderKorea(token);
+  if (coRegion === 'tw') return renderTaiwan(token);
   const el = $('co-body');
   if (charts['co-chart']) { try { charts['co-chart'].destroy(); } catch {} delete charts['co-chart']; }
   if (!el) return;
@@ -5735,7 +6118,7 @@ document.addEventListener('click', (e) => {
     // Drop the old market's screen on the spot. The US render waits for data before it paints, and
     // until this the previous screen (often Japan's TOPIX view) was still the thing on the page.
     const body = $('co-body');
-    if (body) body.innerHTML = stLoading(coRegion === 'jp' ? 'Loading Japan…' : coRegion === 'kr' ? 'Loading KOSPI…' : 'Loading the S&P 500…');
+    if (body) body.innerHTML = stLoading(coRegion === 'jp' ? 'Loading Japan…' : coRegion === 'kr' ? 'Loading KOSPI…' : coRegion === 'tw' ? 'Loading TAIEX…' : 'Loading the S&P 500…');
     renderCompanies();
     return;
   }
@@ -5766,6 +6149,43 @@ document.addEventListener('click', (e) => {
   const krrow = e.target.closest('[data-kr]');
   if (krrow) { krSel = krrow.dataset.kr; renderKorea(); window.scrollTo({ top: 0, behavior: 'smooth' }); return; }
   if (e.target.closest('[data-krback]')) { krSel = null; renderKorea(); return; }
+  const twv = e.target.closest('[data-twview]');
+  if (twv) { twView = twv.dataset.twview; try { localStorage.setItem('oilbasis.twView', twView); } catch {} twSel = null; twPage = 1; renderTaiwan(); return; }
+  const twt = e.target.closest('[data-twtheme]');
+  if (twt) { twTheme = twt.dataset.twtheme; try { localStorage.setItem('oilbasis.twTheme', twTheme); } catch {} renderTaiwan(); return; }
+  const twr = e.target.closest('[data-twrange]');
+  if (twr) {
+    twRange = twr.dataset.twrange;
+    try { localStorage.setItem('oilbasis.twRange', twRange); } catch {}
+    document.querySelectorAll('[data-twrange]').forEach((b) => b.classList.toggle('on', b.dataset.twrange === twRange));
+    const cur = (taiwanData && taiwanData.companies || []).find((x) => x.code === twSel);
+    if (cur) drawTwChart(cur, twRange);
+    return;
+  }
+  const twp = e.target.closest('[data-twpreset]');
+  if (twp) {
+    const id = twp.dataset.twpreset;
+    if (id === 'clear') {
+      twPreset = null; twFilter = {}; twSector = 'all'; twQuery = '';
+      const inp = $('co-search'); if (inp) inp.value = '';
+    } else twPreset = id === twPreset ? null : id;
+    twPage = 1;
+    renderTaiwan();
+    return;
+  }
+  const twlp = e.target.closest('[data-twlistpage]');
+  if (twlp && twlp.dataset.twlistpage !== 'per') { twPage = Math.max(1, Number(twlp.dataset.twlistpage)); renderTaiwan(); return; }
+  const twm = e.target.closest('[data-twmkt]');
+  if (twm) {
+    twMktRange = twm.dataset.twmkt;
+    try { localStorage.setItem('oilbasis.twMktRange', twMktRange); } catch {}
+    if (coRegion === 'tw' && twView === 'market' && redrawTaiwanIndex()) return;
+    renderTaiwan();
+    return;
+  }
+  const twrow = e.target.closest('[data-tw]');
+  if (twrow) { twSel = twrow.dataset.tw; renderTaiwan(); window.scrollTo({ top: 0, behavior: 'smooth' }); return; }
+  if (e.target.closest('[data-twback]')) { twSel = null; renderTaiwan(); return; }
   const jrow = e.target.closest('[data-jp]');
   if (jrow) { jpSel = jrow.dataset.jp; renderJapan(); window.scrollTo({ top: 0, behavior: 'smooth' }); return; }
   if (e.target.closest('[data-jpback]')) { jpSel = null; renderJapan(); return; }
@@ -5908,6 +6328,15 @@ document.addEventListener('change', (e) => {
 
 // Selects fire 'change' on some browsers where they never fire 'input' — handle both.
 document.addEventListener('change', async (e) => {
+  if (e.target && e.target.dataset && e.target.dataset.twf) {
+    const k = e.target.dataset.twf;
+    if (k === 'sector') twSector = e.target.value || 'all';
+    else if (k === 'sort') { twSort = e.target.value || 'cap'; }
+    else { twFilter[k] = e.target.value; }
+    twPage = 1;
+    renderTaiwan();
+    return;
+  }
   if (e.target && e.target.dataset && e.target.dataset.krf) {
     const k = e.target.dataset.krf;
     if (k === 'sector') krSector = e.target.value || 'all';
@@ -5916,7 +6345,7 @@ document.addEventListener('change', async (e) => {
     renderKorea();
     return;
   }
-  if (e.target && (e.target.id === 'kr-cmp' || e.target.id === 'jp-cmp')) {
+  if (e.target && (e.target.id === 'kr-cmp' || e.target.id === 'jp-cmp' || e.target.id === 'tw-cmp')) {
     const ref = await resolveCompare(e.target.value);
     if (ref) setCompare(ref);
     return;
@@ -5956,6 +6385,7 @@ document.addEventListener('input', (e) => {
   if (e.target && e.target.id === 'co-search') {
     if (coRegion === 'jp') { jpQuery = e.target.value || ''; jpSel = null; renderJapan(); return; }
     if (coRegion === 'kr') { krQuery = e.target.value || ''; krSel = null; renderKorea(); return; }
+    if (coRegion === 'tw') { twQuery = e.target.value || ''; twSel = null; twPage = 1; renderTaiwan(); return; }
     coQuery = e.target.value || ''; coCik = null; renderCompanies(); return;
   }
   if (e.target && (e.target.id === 'co-cmp' || e.target.id === 'jp-cmp' || e.target.id === 'kr-cmp')) {
