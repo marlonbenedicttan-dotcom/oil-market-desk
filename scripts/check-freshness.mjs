@@ -23,6 +23,7 @@ const DATASETS = [
   ['US prices & fundamentals', 'companies.json', 36],
   ['Japan', 'japan.json', 36],
   ['Korea', 'korea.json', 36],
+  ['Taiwan', 'taiwan.json', 36],
   ['US filing tracker', 'filings-state.json', 36],
   ['Calendar events', 'events.json', 48],
   ['Valuation history', 'valuation.json', 24 * 10],
@@ -33,7 +34,7 @@ const rows = [];
 const add = (label, ok, msg, kind = 'data') => rows.push({ label, ok, msg, kind });
 
 for (const [label, file, maxH] of DATASETS) {
-  const limit = Number(process.env.MAX_AGE_HOURS) && /prices|Japan|Korea|filing/.test(label)
+  const limit = Number(process.env.MAX_AGE_HOURS) && /prices|Japan|Korea|Taiwan|filing/.test(label)
     ? Number(process.env.MAX_AGE_HOURS) : maxH;
   try {
     const d = JSON.parse(readFileSync(join(ROOT, 'data', file), 'utf8'));

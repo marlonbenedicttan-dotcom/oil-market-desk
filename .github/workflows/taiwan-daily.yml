@@ -1,0 +1,65 @@
+name: taiwan-daily
+
+# Taiwan's prices and statements are not in companies-daily: this job keeps TWSE in step with the
+# other markets. It runs after the Taipei close (13:30 local = 05:30 UTC) and after TWSE publishes its
+# end-of-day files, so the latest close and official P/E/P/B are available.
+on:
+  schedule:
+    - cron: '10 7 * * 1-5'   # 15:10 Taipei, Mon–Fri
+  workflow_dispatch: {}
+
+concurrency:
+  group: taiwan-refresh
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0          # a rebase needs history, not just the tip
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      # The stockanalysis statement cache is the big one; without it a cold run fetches ~4,300 pages.
+      # Yahoo's price cache is short-lived, but keeping it makes a re-run on the same day cheap.
+      - name: Cache Taiwan statements and exchange files
+        uses: actions/cache@v4
+        with:
+          path: |
+            data/cache/taiwan-sa
+            data/cache/twse
+            data/cache/taiwan-profiles
+            data/cache/taiwan-finmind
+            data/cache/taiwan-yahoo
+          key: tw-cache-${{ github.run_id }}
+          restore-keys: tw-cache-
+      - name: Build prices, statements and profiles
+        run: npm run build:taiwan
+      # A rate-limited run can return one-point series for most codes. Refuse to publish that.
+      - name: Refuse a collapsed build
+        run: node scripts/audit-taiwan-refresh.mjs
+      - name: Audit the dataset
+        run: node scripts/audit-taiwan.mjs
+      - name: Commit if changed
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add data/taiwan.json data/taiwan-list.json data/taiwan-profiles.json data/taiwan-series
+          if git diff --staged --quiet; then
+            echo 'no data change'
+          else
+            git commit -m "chore: daily Taiwan refresh ($(date -u +%Y-%m-%d))"
+            # Another push (a human commit, or the US/Japan/Korea job) can land while this runs.
+            pushed=0
+            for i in 1 2 3 4 5; do
+              if git pull --rebase -X theirs origin main && git push; then pushed=1; break; fi
+              echo "push rejected (attempt $i) — rebasing and retrying"; sleep $((i * 5))
+            done
+            [ "$pushed" = "1" ] || { echo 'could not push after 5 attempts'; exit 1; }
+          fi
