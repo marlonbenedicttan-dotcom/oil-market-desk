@@ -179,6 +179,10 @@ say('TWSE P/E compared / >15% off', `${peCmp} / ${peOff}`);
 say('TWSE P/B compared / >15% off', `${pbCmp} / ${pbOff}`);
 const dyOff = cmp.filter((x) => finite(x.dy) && x.c.dividendYield != null && Math.abs(x.c.dividendYield - x.dy) > 0.2).length;
 say('TWSE yield >0.2pp off', dyOff);
+if (peOff || pbOff) {
+  const ttmEnd = (tw.companies.find((c) => c.reports && c.reports.ttmEnd) || {}).reports?.ttmEnd;
+  warn.push(`TWSE's own P/E/P/B differ for ${peOff}/${peCmp} and ${pbOff}/${pbCmp} — the exchange uses its own reporting lag; our TTM is ${ttmEnd || 'the latest quarter'} and P/B is the latest reported quarter`);
+}
 
 // --- split / source audit -------------------------------------------------------------------------
 // Taiwan has a ±10% daily limit, so a single-day move beyond ±25% is a split, a capital reduction

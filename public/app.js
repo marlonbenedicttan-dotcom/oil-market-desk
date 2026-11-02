@@ -5215,8 +5215,8 @@ async function renderTaiwanPage(stub) {
     + `<div class="co-stats co-stats-12">
         ${cell('MARKET CAP', twMoney(c.marketCap), 'Price × shares outstanding')}
         ${cell('MARKET CAP · USD', c.marketCapUsd ? `$${(c.marketCapUsd / 1e9).toFixed(1)}B` : '—', 'Converted at the current USD/TWD rate')}
-        ${cell(`P/E · ${c.peBasis || 'TTM'}`, c.pe != null ? `${c.pe.toFixed(2)}×` : '—', c.peBasis === 'TTM' ? `Market cap ÷ the last four quarters of profit${c.reports && c.reports.ttmEnd ? ` (through ${c.reports.ttmEnd})` : ''}` : 'Market cap ÷ fiscal-year profit')}
-        ${cell('P/B', c.pb != null ? `${c.pb.toFixed(2)}×` : '—', `Market cap ÷ shareholders\u2019 equity${c.reports && c.reports.latestEnd ? ` at ${c.reports.latestEnd}` : ''}`)}
+        ${cell(`P/E · ${c.peBasis || 'TTM'}`, c.pe != null ? `${c.pe.toFixed(2)}×` : '—', `${c.peBasis === 'TTM' ? `Market cap ÷ the last four quarters of profit${c.reports && c.reports.ttmEnd ? ` (through ${c.reports.ttmEnd})` : ''}` : 'Market cap ÷ fiscal-year profit'}${c.twsePe != null ? ` · TWSE official ${c.twsePe}× (its own reporting lag)` : ''}`)}
+        ${cell('P/B', c.pb != null ? `${c.pb.toFixed(2)}×` : '—', `Market cap ÷ shareholders\u2019 equity${c.reports && c.reports.latestEnd ? ` at ${c.reports.latestEnd}` : ''}${c.twsePb != null ? ` · TWSE official ${c.twsePb}×` : ''}`)}
         ${cell('RETURN ON EQUITY', c.roe != null ? `${c.roe.toFixed(1)}%` : '—', 'Profit ÷ equity', c.roe >= 0 ? 'pos' : 'neg')}
         ${cell('OPERATING MARGIN', c.opMargin != null ? `${c.opMargin.toFixed(1)}%` : '—', 'Operating profit ÷ revenue', c.opMargin >= 0 ? 'pos' : 'neg')}
         ${cell('NET MARGIN', c.netMargin != null ? `${c.netMargin.toFixed(1)}%` : '—', 'Net profit ÷ revenue', c.netMargin >= 0 ? 'pos' : 'neg')}
