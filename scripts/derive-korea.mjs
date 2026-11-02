@@ -1,54 +1,17 @@
 // Korea ratio derivation, separated from fetching so the maths can be tested without an API key.
 //
-// Korean companies report cumulative figures four times a year — Q1 (3 months), H1 (6), Q3 (9) and the
-// annual (12) — exactly like Japan. Standalone quarters are the differences, and the annual report is
-// the fourth quarter. There is no Q4 filing.
+// DART's `thstrm_amount` is the 3-month figure for an interim income statement; the accumulated
+// figure is `thstrm_add_amount`. So the Q1, H1 and Q3 filings already carry standalone quarters and
+// only Q4 has to be derived, as the annual report less the first three quarters. Treating the
+// interims as year-to-date — the old behaviour — turned Q2 into H1−Q1 and produced negative revenue
+// for 507 of 746 filers.
 
 const round = (v, dp) => (v == null ? null : +v.toFixed(dp));
 const guard = (v, lo, hi) => (v != null && v > lo && v < hi ? v : null);
+const FLOW_FIELDS = ['revenue', 'operatingProfit', 'netIncome'];
 
 // rows: [{ report: 'q1'|'h1'|'q3'|'annual', end: 'YYYY-MM-DD', revenue, operatingProfit, netIncome }]
 export function buildQuartersKr(rows) {
-  const byYear = new Map();
-  for (const r of rows) {
-    if (!r.end) continue;
-    const fy = String(r.end).slice(0, 4);
-    if (!byYear.has(fy)) byYear.set(fy, {});
-    byYear.get(fy)[r.report] = r;
-  }
-  const out = [];
-  for (const [fy, rec] of byYear) {
-    const flow = (field) => {
-      const q1 = rec.q1 ? rec.q1[field] : null;
-      const h1 = rec.h1 ? rec.h1[field] : null;
-      const q3 = rec.q3 ? rec.q3[field] : null;
-      const fy12 = rec.annual ? rec.annual[field] : null;
-      return {
-        q1,
-        q2: q1 != null && h1 != null ? h1 - q1 : null,
-        q3: h1 != null && q3 != null ? q3 - h1 : null,
-        q4: q3 != null && fy12 != null ? fy12 - q3 : null,
-      };
-    };
-    const rev = flow('revenue');
-    const op = flow('operatingProfit');
-    const ni = flow('netIncome');
-    const ends = {
-      q1: rec.q1?.end, q2: rec.h1?.end, q3: rec.q3?.end, q4: rec.annual?.end,
-    };
-    for (const k of ['q1', 'q2', 'q3', 'q4']) {
-      if (!ends[k] || rev[k] == null) continue;
-      out.push({ d: ends[k], fy, q: k.toUpperCase(), revenue: rev[k], operatingProfit: op[k], netIncome: ni[k] });
-    }
-  }
-  return out.sort((a, b) => a.d.localeCompare(b.d));
-}
-
-// Banks and insurers file each interim as a standalone quarter, not a cumulative one: KB Financial's
-// Q3 2025 report shows ₩1.66T against a ₩1.75T half-year, which cannot be a nine-month total. Their
-// statements also carry no revenue line, so the cumulative builder produces nothing. Read the interims
-// directly (Q1, Q2, Q3) and take Q4 as the annual figure less the first three.
-export function buildQuartersKrStandalone(rows) {
   const byYear = new Map();
   for (const r of rows) {
     if (!r.end || !r.report) continue;
@@ -58,28 +21,47 @@ export function buildQuartersKrStandalone(rows) {
   }
   const out = [];
   for (const [fy, rec] of byYear) {
-    const q1 = rec.q1?.netIncome, q2 = rec.h1?.netIncome, q3 = rec.q3?.netIncome;
-    const fyNi = rec.annual?.netIncome;
-    const q4 = fyNi != null && q1 != null && q2 != null && q3 != null ? fyNi - (q1 + q2 + q3) : null;
-    const rowsOut = [
-      ['Q1', rec.q1?.end, q1, rec.q1?.revenue ?? null],
-      ['Q2', rec.h1?.end, q2, rec.h1?.revenue ?? null],
-      ['Q3', rec.q3?.end, q3, rec.q3?.revenue ?? null],
-      ['Q4', rec.annual?.end, q4, null],
-    ];
-    for (const [q, d, ni, rev] of rowsOut) {
-      if (!d || ni == null) continue;
-      out.push({ d, fy, q, revenue: rev, operatingProfit: null, netIncome: ni });
+    // A quarter is kept when at least one flow line is reported. Banks and insurers have no revenue
+    // line, so requiring revenue would silently drop them.
+    const add = (q, r) => {
+      if (!r || !r.end || FLOW_FIELDS.every((f) => r[f] == null)) return;
+      out.push({
+        d: r.end, fy, q,
+        revenue: r.revenue ?? null, operatingProfit: r.operatingProfit ?? null, netIncome: r.netIncome ?? null,
+      });
+    };
+    add('Q1', rec.q1);
+    add('Q2', rec.h1);
+    add('Q3', rec.q3);
+    // There is no Q4 filing: the annual report is the full year, so Q4 is the remainder. Only compute
+    // a field when all four statements carry it; a missing input stays missing rather than becoming a
+    // subtraction from null.
+    if (rec.annual?.end && rec.q1 && rec.h1 && rec.q3) {
+      const q4 = {};
+      for (const f of FLOW_FIELDS) {
+        q4[f] = [rec.annual, rec.q1, rec.h1, rec.q3].every((r) => r[f] != null)
+          ? rec.annual[f] - (rec.q1[f] + rec.h1[f] + rec.q3[f])
+          : null;
+      }
+      if (FLOW_FIELDS.some((f) => q4[f] != null)) {
+        out.push({ d: rec.annual.end, fy, q: 'Q4', ...q4 });
+      }
     }
   }
   return out.sort((a, b) => a.d.localeCompare(b.d));
 }
 
 // A Korean company's fiscal year is December for almost everyone, so TTM = the four most recent
-// standalone quarters. When a quarter is missing the FY figure is used and labelled as such.
+// standalone quarters. A missing quarter leaves a hole: summing the four rows on file would then
+// cover more than a year, so the fiscal year is used instead and labelled as such.
 export function ttmKr(quarters) {
   const last = quarters.slice(-4);
-  if (last.length === 4) {
+  const contiguous = last.every((q, i) => {
+    if (i === 0) return true;
+    const days = (Date.parse(q.d) - Date.parse(last[i - 1].d)) / 864e5;
+    return days >= 60 && days <= 130;
+  });
+  if (last.length === 4 && contiguous) {
     const sum = (f) => (last.every((q) => q[f] != null) ? last.reduce((a, q) => a + q[f], 0) : null);
     return { revenue: sum('revenue'), operatingProfit: sum('operatingProfit'), netIncome: sum('netIncome'), basis: 'TTM', n: 4 };
   }
@@ -132,19 +114,16 @@ export function deriveKorea({ companies, fx = null }) {
     const cap = c.naverCap ?? (price != null && shares > 0 ? price * shares : null);
     if (cap && price) shares = cap / price;
 
-    let q = buildQuartersKr(saneReports(c.reports || []));
-    let quartersBasis = 'cumulative';
-    if (!q.length) {
-      const alt = buildQuartersKrStandalone(saneReports(c.reports || []));
-      if (alt.length) { q = alt; quartersBasis = 'standalone'; }
-    }
+    const q = buildQuartersKr(saneReports(c.reports || []));
     const ttm = ttmKr(q);
     const fy = (c.reports || []).find((r) => r.report === 'annual') || null;
 
-    const ni = ttm.netIncome ?? (fy ? fy.netIncome : null);
-    const rev = ttm.revenue ?? (fy ? fy.revenue : null);
-    const op = ttm.operatingProfit ?? (fy ? fy.operatingProfit : null);
+    // Keep every flow line on one basis. Falling back per field mixed a fiscal-year operating profit
+    // with trailing revenue and printed a margin that belonged to neither period.
     const basis = ttm.netIncome != null ? 'TTM' : 'FY';
+    const ni = basis === 'TTM' ? ttm.netIncome : (fy ? fy.netIncome : null);
+    const rev = basis === 'TTM' ? ttm.revenue : (fy ? fy.revenue : null);
+    const op = basis === 'TTM' ? ttm.operatingProfit : (fy ? fy.operatingProfit : null);
 
     const equity = fy ? fy.equity : null;
     const cfo = fy ? fy.operatingCashFlow : null;
@@ -175,7 +154,7 @@ export function deriveKorea({ companies, fx = null }) {
       fcf,
       fcfYield: cap && fcf != null ? round((fcf / cap) * 100, 2) : null,
       quarters: q.slice(-8),
-      quartersBasis,
+      quartersBasis: 'reported',
       history: (c.reports || []).filter((r) => r.report === 'annual').slice(-5).map((r) => ({
         y: r.end, s: r.revenue, o: r.operatingProfit, n: r.netIncome, q: r.equity, a: r.assets,
         c: r.operatingCashFlow, i: r.investingCashFlow,

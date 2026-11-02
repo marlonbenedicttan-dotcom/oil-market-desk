@@ -12,7 +12,8 @@
 const BASE = 'https://opendart.fss.or.kr/api';
 
 // DART report codes: annual, half-year, Q1, Q3. There is no Q4 report — the annual statement is the
-// fourth quarter, exactly like Japan, so the same cumulative-to-standalone arithmetic applies.
+// full year, so Q4 is the annual less the first three quarters. Interim income statements already
+// carry 3-month figures in `thstrm_amount`; the year-to-date number is `thstrm_add_amount`.
 export const REPORTS = { annual: '11011', h1: '11012', q1: '11013', q3: '11014' };
 
 // DART returns Korean account names with XBRL-style ids. Map the ids we need; fall back to the name.

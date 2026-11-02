@@ -2,8 +2,8 @@
 //
 // A TTM needs four reported quarters. `build-korea` only fetched the current year's interims, so the
 // TTM could never be built and every Korean P/E fell back to the last fiscal year. With last year's
-// three cumulative reports in hand, Q3 and Q4 fall out as differences (the annual report is Q4) and
-// the four most recent standalone quarters are available.
+// three interim reports in hand, Q4 falls out as the annual less Q1+Q2+Q3 and the four most recent
+// standalone quarters are available. DART's `thstrm_amount` is already the 3-month figure.
 //
 // Writes the same cache shape `build-korea` reads: data/cache/dart/fin-{corp}-{year}-{report}.json
 //
