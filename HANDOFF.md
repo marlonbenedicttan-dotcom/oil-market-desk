@@ -3295,7 +3295,7 @@ Audited at 360, 390 and 430 px with screenshots of every view, then fixed what l
   companies. Caches live in `data/cache/{twse,taiwan-yahoo,taiwan-finmind,taiwan-sa,taiwan-profiles}`
   and the build is resumable.
 - **Output**: `data/taiwan.json` (records + reports + annual/quarterly history),
-  `data/taiwan-series.json` (daily last ~400 sessions + weekly 5y, keyed by code),
+  `data/taiwan-series/{0..9}.json` (daily last ~400 sessions + weekly 5y, keyed by code; ten buckets so one chart reads ~2–6 MB, not 23 MB),
   `data/taiwan-list.json` (the compact `/api/taiwan` payload), `data/taiwan-profiles.json`.
 - **Server**: `/api/taiwan`, `/api/taiwan/company/{code}`, `/api/taiwan/chart?code=&range=`. The UI
   adds a fourth region button (`TAIWAN`) with MARKET / SCREENER / THEMES, a company page, the home

@@ -11,7 +11,7 @@
 //     and Korea profile fetchers use; values are in millions TWD.
 //   - Yahoo: TAIEX history and USD/TWD (the ECB does not publish TWD).
 //
-// Output: data/taiwan.json (records + reports), data/taiwan-series.json (daily/weekly closes),
+// Output: data/taiwan.json (records + reports), data/taiwan-series/{0..9}.json (daily/weekly closes, bucketed),
 // data/taiwan-list.json (the compact /api/taiwan payload).
 
 import { writeFileSync, renameSync, readFileSync, existsSync, mkdirSync, readdirSync } from 'node:fs';
@@ -24,7 +24,7 @@ import {
 import { deriveTaiwan } from './derive-taiwan.mjs';
 
 const OUT = join(ROOT, 'data', 'taiwan.json');
-const SERIES_OUT = join(ROOT, 'data', 'taiwan-series.json');
+const SERIES_DIR = join(ROOT, 'data', 'taiwan-series');
 const LIST_OUT = join(ROOT, 'data', 'taiwan-list.json');
 const PROFILES = join(ROOT, 'data', 'taiwan-profiles.json');
 const THEMES = join(ROOT, 'data', 'taiwan-themes.json');
@@ -489,8 +489,23 @@ writeJson(`${OUT}.tmp`, {
   companies: cleaned,
 });
 renameSync(`${OUT}.tmp`, OUT);
-writeJson(`${SERIES_OUT}.tmp`, { updated: new Date().toISOString(), daily: series.daily, weekly: series.weekly });
-renameSync(`${SERIES_OUT}.tmp`, SERIES_OUT);
+// Ten small buckets by the first digit of the code, not one 23 MB file: the free instance must not
+// parse every company's history to draw one chart.
+mkdirSync(SERIES_DIR, { recursive: true });
+const bucketBook = {};
+for (const kind of ['daily', 'weekly']) {
+  for (const [code, arr] of Object.entries(series[kind])) {
+    const b = String(code)[0];
+    if (!/^[0-9]$/.test(b)) continue;
+    (bucketBook[b] = bucketBook[b] || { daily: {}, weekly: {} })[kind][code] = arr;
+  }
+}
+const seriesStamp = new Date().toISOString();
+for (const [b, obj] of Object.entries(bucketBook)) {
+  const f = join(SERIES_DIR, `${b}.json`);
+  writeJson(`${f}.tmp`, { updated: seriesStamp, ...obj });
+  renameSync(`${f}.tmp`, f);
+}
 
 // compact list payload
 try {

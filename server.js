@@ -825,18 +825,25 @@ function readTaiwanList() {
   } catch { /* no artifact yet */ }
   return taiwanList(readTaiwan());
 }
-const TAIWAN_SERIES_FILE = path.join(__dirname, 'data', 'taiwan-series.json');
-let TWS_CACHE = { mtime: 0, data: null };
-function readTaiwanSeries() {
+const TAIWAN_SERIES_DIR = path.join(__dirname, 'data', 'taiwan-series');
+const TW_SERIES_CACHE = new Map();   // one 2 MB bucket, not the whole 23 MB market, per chart
+function readTaiwanSeries(code) {
+  const b = String(code || '')[0];
+  if (!/^[0-9]$/.test(b)) return { daily: {}, weekly: {} };
+  const f = path.join(TAIWAN_SERIES_DIR, `${b}.json`);
   try {
-    const st = fs.statSync(TAIWAN_SERIES_FILE);
-    if (TWS_CACHE.data && TWS_CACHE.mtime === st.mtimeMs) return TWS_CACHE.data;
-    TWS_CACHE = { mtime: st.mtimeMs, data: JSON.parse(fs.readFileSync(TAIWAN_SERIES_FILE, 'utf8')) };
-    return TWS_CACHE.data;
+    const st = fs.statSync(f);
+    const hit = TW_SERIES_CACHE.get(b);
+    if (hit && hit.mtime === st.mtimeMs) return hit.data;
+    const data = JSON.parse(fs.readFileSync(f, 'utf8'));
+    if (TW_SERIES_CACHE.size >= 3) TW_SERIES_CACHE.delete(TW_SERIES_CACHE.keys().next().value);
+    TW_SERIES_CACHE.set(b, { mtime: st.mtimeMs, data });
+    return data;
   } catch { return { daily: {}, weekly: {} }; }
 }
 
-const JAPAN_FILE = path.join(__dirname, 'data', 'japan.json');let JP_CACHE = { mtime: 0, data: null };
+const JAPAN_FILE = path.join(__dirname, 'data', 'japan.json');
+let JP_CACHE = { mtime: 0, data: null };
 function readJapan() {
   try {
     const st = fs.statSync(JAPAN_FILE);
@@ -4556,7 +4563,7 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname === '/api/taiwan/chart') {
       const code = url.searchParams.get('code');
       const range = url.searchParams.get('range') || '1y';
-      const store = readTaiwanSeries();
+      const store = readTaiwanSeries(code);
       const block = range === '5y' || range === '10y' ? store.weekly : store.daily;
       const series = (block && block[code]) || (store.weekly && store.weekly[code]) || [];
       if (!series.length) return sendJSON(res, 200, { dates: [], closes: [], range, code });

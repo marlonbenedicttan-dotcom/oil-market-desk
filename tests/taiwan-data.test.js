@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url';
 const here = path.dirname(fileURLToPath(import.meta.url));
 const read = (f) => JSON.parse(fs.readFileSync(path.join(here, '..', 'data', f), 'utf8'));
 const tw = read('taiwan.json');
-const series = read('taiwan-series.json');
+const seriesBucket = (code) => JSON.parse(fs.readFileSync(path.join(here, '..', 'data', 'taiwan-series', `${String(code)[0]}.json`), 'utf8'));
 
 test('every Taiwan company is a priced common stock with a sector', () => {
   assert.ok(tw.companies.length > 0, 'the dataset is built');
@@ -62,6 +62,7 @@ test('the list projection carries the fields the Taiwan filters read', () => {
 
 test('the daily/weekly chart store covers the listed codes', () => {
   const c = tw.companies[0];
+  const series = seriesBucket(c.code);
   assert.ok(Array.isArray(series.daily[c.code]) || Array.isArray(series.weekly[c.code]), `${c.code} has history`);
   const w = series.weekly[c.code] || [];
   for (let i = 1; i < w.length; i++) assert.ok(w[i].d > w[i - 1].d, 'weekly dates ascend');
