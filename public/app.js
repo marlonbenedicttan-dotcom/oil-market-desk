@@ -2820,6 +2820,9 @@ $('screen')?.addEventListener('change', (e) => {
   if (e.target.dataset && e.target.dataset.krpageper) { coScreenKr.per = Number(e.target.value); coScreenKr.page = 1; renderScreen(true); return; }
   if (e.target.dataset && e.target.dataset.twpageper) { coScreenTw.per = Number(e.target.value); coScreenTw.page = 1; renderScreen(true); return; }
   if (e.target.dataset && e.target.dataset.twlistpageper) { twPer = Number(e.target.value) || 50; twPage = 1; renderTaiwan(); return; }
+  if (e.target.dataset && e.target.dataset.jplistpageper) { jpPer = Number(e.target.value) || 50; jpPage = 1; renderJapan(); return; }
+  if (e.target.dataset && e.target.dataset.krlistpageper) { krPer = Number(e.target.value) || 50; krPage = 1; renderKorea(); return; }
+  if (e.target.dataset && e.target.dataset.uslistpageper) { usListPer = Number(e.target.value) || 50; usListPage = 1; renderCompanies(); return; }
   if (e.target.dataset && e.target.dataset.copageper) { coScreen.per = Number(e.target.value); coScreen.page = 1; renderScreen(true); return; }
   const t = e.target;
   if (t.id === 'sc-seg') { screenSeg = t.value; persistScreenFilter(); renderScreen(false); return; }
@@ -3922,6 +3925,7 @@ function coFilterBar({ presets = [], preset = null, presetAttr, selects = [], ex
     + (asOf ? `<span class="co-asof dimtext">${esc(asOf)}</span>` : '');
 }
 let coPe = 'all', coMinMargin = 0, coGrowth = null, coPriced = false, coVerified = false, coView = 'list';
+let usListPage = 1, usListPer = 50;
 
 async function loadCompanies() {
   const el = $('co-body');
@@ -3961,6 +3965,7 @@ const coMargin = coMarginOf;
 // so it reads as one product. Different currency and fiscal year, same layout.
 let japanData = null, jpSel = null, jpQuery = '';
 let jpView = (() => { try { return localStorage.getItem('oilbasis.jpView') || 'market'; } catch { return 'market'; } })();
+let jpPage = 1, jpPer = 50;
 let jpMktRange = (() => { try { return localStorage.getItem('oilbasis.jpMktRange') || '1y'; } catch { return '1y'; } })();
 let jpRange = (() => { try { return localStorage.getItem('oilbasis.jpRange') || '6m'; } catch { return '6m'; } })();
 let jpCompare = '';
@@ -4196,6 +4201,9 @@ function renderJapanScreener(all, d) {
     return (x - y) * dir;
   });
   const rows = matched;
+  const pages = Math.max(1, Math.ceil(rows.length / jpPer));
+  const page = Math.min(jpPage, pages);
+  const shown = rows.slice((page - 1) * jpPer, page * jpPer);
 
   const max = Math.max(...all.map((c) => c.marketCap || 0), 1);
   const opt = (v, label, cur) => `<option value="${v}" ${String(cur || '') === String(v) ? 'selected' : ''}>${label}</option>`;
@@ -4239,15 +4247,8 @@ function renderJapanScreener(all, d) {
         <span class="co-mar ${c.roe == null ? 'dimtext' : c.roe >= 0 ? 'pos' : 'neg'}">${c.roe == null ? '—' : `${c.roe.toFixed(1)}%`}</span>
       </button>`;
   if (!host) return;
-  if (!rows.length) { host.insertAdjacentHTML('afterend', '<div class="macro-note">No company matches those filters.</div>' + noteHtml); return; }
-  let at = 0;
-  const paint = () => {
-    host.insertAdjacentHTML('beforeend', rows.slice(at, at + 250).map((c, j) => rowHtml(c, at + j)).join(''));
-    at += 250;
-    if (at < rows.length) requestAnimationFrame(paint);
-    else host.insertAdjacentHTML('afterend', noteHtml);
-  };
-  paint();
+  host.innerHTML = shown.map((c, i) => rowHtml(c, (page - 1) * jpPer + i)).join('');
+  host.insertAdjacentHTML('afterend', pagerHtml(rows.length, page, jpPer, 'jplistpage') + noteHtml);
 }
 
 function jpBand(label, current, b, unit) {
@@ -4555,6 +4556,7 @@ let krSort = (() => { try { return localStorage.getItem('oilbasis.krSort') || 'c
 let krFilter = (() => { try { return JSON.parse(localStorage.getItem('oilbasis.krFilter') || '{}'); } catch { return {}; } })();
 const saveKrFilter = () => { try { localStorage.setItem('oilbasis.krFilter', JSON.stringify(krFilter)); } catch {} };
 let krView = (() => { try { return localStorage.getItem('oilbasis.krView') || 'market'; } catch { return 'market'; } })();
+let krPage = 1, krPer = 50;
 let krMktRange = (() => { try { return localStorage.getItem('oilbasis.krMktRange') || '1y'; } catch { return '1y'; } })();
 let krTheme = (() => { try { return localStorage.getItem('oilbasis.krTheme') || 'semis'; } catch { return 'semis'; } })();
 
@@ -4859,6 +4861,9 @@ function renderKoreaScreener(all, d) {
     if (y == null) return -1;
     return (x - y) * dir;
   });
+  const pages = Math.max(1, Math.ceil(sorted.length / krPer));
+  const page = Math.min(krPage, pages);
+  const shown = sorted.slice((page - 1) * krPer, page * krPer);
   const krChips = $('co-chips');
   if (krChips) {
     const nKr = Object.values(f).filter((v) => v != null && v !== '').length + (krSector !== 'all' ? 1 : 0) + (q ? 1 : 0);
@@ -4877,8 +4882,8 @@ function renderKoreaScreener(all, d) {
   const max = Math.max(...all.map((c) => c.marketCap || 0), 1);
   el.innerHTML = krViewsBar()
     + `<div class="co-hrow"><span>#</span><span></span><span>COMPANY</span><span>MARKET CAP</span><span>P/E</span><span>ROE</span></div>`
-    + sorted.map((c, i) => `<button class="co-row" data-kr="${esc(c.code)}">
-        <span class="co-rank">${i + 1}</span>
+    + shown.map((c, i) => `<button class="co-row" data-kr="${esc(c.code)}">
+        <span class="co-rank">${(page - 1) * krPer + i + 1}</span>
         ${krMono(c)}
         <span class="co-id"><b>${esc(krName(c))}</b>
           <span class="co-meta">
@@ -4891,6 +4896,7 @@ function renderKoreaScreener(all, d) {
         <span class="co-pe">${c.pe != null ? c.pe.toFixed(1) : '—'}</span>
         <span class="co-mar ${c.roe == null ? 'dimtext' : c.roe >= 0 ? 'pos' : 'neg'}">${c.roe == null ? '—' : `${c.roe.toFixed(1)}%`}</span>
       </button>`).join('')
+    + pagerHtml(sorted.length, page, krPer, 'krlistpage')
     + `<div class="macro-note">${rows.length} of ${all.length} · KOSPI · DART statements, Naver prices · P/E is trailing twelve months · FX ${d.fx && d.fx.rate ? d.fx.rate.toFixed(0) : '—'} KRW per USD.</div>`;
 }
 
@@ -5379,6 +5385,9 @@ function renderCompanies() {
     if (bv == null) return -1;
     return (av - bv) * coDir;
   });
+  const pages = Math.max(1, Math.ceil(rows.length / usListPer));
+  const page = Math.min(usListPage, pages);
+  const shown = rows.slice((page - 1) * usListPer, page * usListPer);
 
   const chips = $('co-chips');
   if (chips) {
@@ -5426,10 +5435,10 @@ function renderCompanies() {
   el.innerHTML = usViewsBar()
     + `<div class="co-hrow"><span>#</span><span></span><span>COMPANY</span><span>MARKET CAP</span><span>P/E</span><span>ROE</span></div>`
     + (rows.length ? '' : `<div class="macro-note">No company matches “${esc(coQuery.trim())}”. Try a ticker (AAPL) or a sector name.</div>`)
-    + rows.map((c, i) => {
+    + shown.map((c, i) => {
       const m = c.roe != null ? c.roe : null;
       return `<button class="co-row" data-cik="${esc(c.cik)}">
-        <span class="co-rank">${i + 1}</span>
+        <span class="co-rank">${(page - 1) * usListPer + i + 1}</span>
         ${coMono(c)}
         <span class="co-id"><b>${esc(c.name)}</b>
           <span class="co-meta">
@@ -5444,7 +5453,8 @@ function renderCompanies() {
         <span class="co-pe" title="${c.pe != null ? 'trailing P/E: price ÷ latest FY diluted EPS' : 'no positive trailing EPS'}">${c.pe != null ? c.pe.toFixed(1) : '—'}</span>
         <span class="co-mar ${m == null ? 'dimtext' : m >= 0 ? 'pos' : 'neg'}">${m == null ? '—' : `${m.toFixed(1)}%`}</span>
       </button>`;
-    }).join('') || '<div class="macro-note">Nothing matches — clear the filters.</div>';
+    }).join('')
+    + (rows.length ? pagerHtml(rows.length, page, usListPer, 'uslistpage') : '');
 }
 
 // Rebase a series to 100 at its first point, so two stocks of different prices are comparable.
@@ -6123,7 +6133,7 @@ document.addEventListener('click', (e) => {
     return;
   }
   const krv = e.target.closest('[data-krview]');
-  if (krv) { krView = krv.dataset.krview; try { localStorage.setItem('oilbasis.krView', krView); } catch {} krSel = null; renderKorea(); return; }
+  if (krv) { krView = krv.dataset.krview; try { localStorage.setItem('oilbasis.krView', krView); } catch {} krSel = null; krPage = 1; renderKorea(); return; }
   const krt = e.target.closest('[data-krtheme]');
   if (krt) { krTheme = krt.dataset.krtheme; try { localStorage.setItem('oilbasis.krTheme', krTheme); } catch {} renderKorea(); return; }
   const krr = e.target.closest('[data-krrange]');
@@ -6142,6 +6152,7 @@ document.addEventListener('click', (e) => {
       krPreset = null; krFilter = {}; krSector = 'all'; krQuery = '';
       const inp = $('co-search'); if (inp) inp.value = '';
     } else krPreset = id === krPreset ? null : id;
+    krPage = 1;
     saveKrFilter();
     renderKorea();
     return;
@@ -6175,6 +6186,12 @@ document.addEventListener('click', (e) => {
   }
   const twlp = e.target.closest('[data-twlistpage]');
   if (twlp && twlp.dataset.twlistpage !== 'per') { twPage = Math.max(1, Number(twlp.dataset.twlistpage)); renderTaiwan(); return; }
+  const jlp = e.target.closest('[data-jplistpage]');
+  if (jlp && jlp.dataset.jplistpage !== 'per') { jpPage = Math.max(1, Number(jlp.dataset.jplistpage)); renderJapan(); return; }
+  const klp = e.target.closest('[data-krlistpage]');
+  if (klp && klp.dataset.krlistpage !== 'per') { krPage = Math.max(1, Number(klp.dataset.krlistpage)); renderKorea(); return; }
+  const ulp = e.target.closest('[data-uslistpage]');
+  if (ulp && ulp.dataset.uslistpage !== 'per') { usListPage = Math.max(1, Number(ulp.dataset.uslistpage)); renderCompanies(); return; }
   const twm = e.target.closest('[data-twmkt]');
   if (twm) {
     twMktRange = twm.dataset.twmkt;
@@ -6216,6 +6233,7 @@ document.addEventListener('click', (e) => {
     jpView = jv.dataset.jpview;
     try { localStorage.setItem('oilbasis.jpView', jpView); } catch {}
     jpSel = null;
+    jpPage = 1;
     renderJapan();
     return;
   }
@@ -6231,6 +6249,7 @@ document.addEventListener('click', (e) => {
       jpPreset = id;
       jpFilter = { ...(preset ? preset.f : {}) };
     }
+    jpPage = 1;
     saveJpFilter();
     renderJapan();
     return;
@@ -6281,28 +6300,31 @@ document.addEventListener('click', (e) => {
   }
   if (e.target.closest('[data-coreset]')) {
     coSector = 'all'; coMin = 0; coPe = 'all'; coMinMargin = 0; coGrowth = null; coPriced = false; coVerified = false; coQuery = ''; coPreset = null;
+    usListPage = 1;
     const inp = $('co-search'); if (inp) inp.value = '';
     renderCompanies();
     return;
   }
   if (e.target.closest('[data-coview]')) { coView = coView === 'sectors' ? 'list' : 'sectors'; renderCompanies(); return; }
   const cp = e.target.closest('[data-cope]');
-  if (cp) { coPe = cp.dataset.cope; renderCompanies(); return; }
+  if (cp) { coPe = cp.dataset.cope; usListPage = 1; renderCompanies(); return; }
   const cm = e.target.closest('[data-comargin]');
-  if (cm) { coMinMargin = Number(cm.dataset.comargin); renderCompanies(); return; }
+  if (cm) { coMinMargin = Number(cm.dataset.comargin); usListPage = 1; renderCompanies(); return; }
   const cg = e.target.closest('[data-cogrowth]');
-  if (cg) { coGrowth = cg.dataset.cogrowth === 'any' ? null : Number(cg.dataset.cogrowth); renderCompanies(); return; }
-  if (e.target.closest('[data-copriced]')) { coPriced = !coPriced; renderCompanies(); return; }
-  if (e.target.closest('[data-coverified]')) { coVerified = !coVerified; renderCompanies(); return; }
+  if (cg) { coGrowth = cg.dataset.cogrowth === 'any' ? null : Number(cg.dataset.cogrowth); usListPage = 1; renderCompanies(); return; }
+  if (e.target.closest('[data-copriced]')) { coPriced = !coPriced; usListPage = 1; renderCompanies(); return; }
+  if (e.target.closest('[data-coverified]')) { coVerified = !coVerified; usListPage = 1; renderCompanies(); return; }
   const cs = e.target.closest('[data-cosort]');
   if (cs) {
     if (coSort === cs.dataset.cosort) coDir = -coDir; else { coSort = cs.dataset.cosort; coDir = -1; }
+    usListPage = 1;
     renderCompanies();
     return;
   }
   const pre = e.target.closest('[data-copreset]');
   if (pre) {
     coPreset = coPreset === pre.dataset.copreset ? null : pre.dataset.copreset;
+    usListPage = 1;
     renderCompanies();
     return;
   }
@@ -6310,6 +6332,7 @@ document.addEventListener('click', (e) => {
   if (chip) {
     if (chip.dataset.cosec != null) coSector = chip.dataset.cosec;
     if (chip.dataset.comin != null) coMin = Number(chip.dataset.comin);
+    usListPage = 1;
     renderCompanies();
   }
 });
@@ -6323,6 +6346,7 @@ document.addEventListener('change', (e) => {
   else if (s.dataset.cosel === 'pe') coPe = v;
   else if (s.dataset.cosel === 'margin') coMinMargin = Number(v);
   else if (s.dataset.cosel === 'growth') coGrowth = v === 'any' ? null : Number(v);
+  usListPage = 1;
   renderCompanies();
 });
 
@@ -6342,6 +6366,7 @@ document.addEventListener('change', async (e) => {
     if (k === 'sector') krSector = e.target.value || 'all';
     else if (k === 'sort') { krSort = e.target.value || 'cap'; try { localStorage.setItem('oilbasis.krSort', krSort); } catch {} }
     else { krFilter[k] = e.target.value; saveKrFilter(); }
+    krPage = 1;
     renderKorea();
     return;
   }
@@ -6354,6 +6379,7 @@ document.addEventListener('change', async (e) => {
   const k = e.target.dataset.jpf;
   if (k === 'sort') { jpSort = e.target.value; try { localStorage.setItem('oilbasis.jpSort', jpSort); } catch {} }
   else { jpFilter[k] = e.target.value; saveJpFilter(); }
+  jpPage = 1;
   renderJapan();
 });
 
@@ -6379,14 +6405,15 @@ document.addEventListener('input', (e) => {
     const k = e.target.dataset.jpf;
     if (k === 'sort') { jpSort = e.target.value; try { localStorage.setItem('oilbasis.jpSort', jpSort); } catch {} }
     else { jpFilter[k] = e.target.value; saveJpFilter(); }
+    jpPage = 1;
     renderJapan();
     return;
   }
   if (e.target && e.target.id === 'co-search') {
-    if (coRegion === 'jp') { jpQuery = e.target.value || ''; jpSel = null; renderJapan(); return; }
-    if (coRegion === 'kr') { krQuery = e.target.value || ''; krSel = null; renderKorea(); return; }
+    if (coRegion === 'jp') { jpQuery = e.target.value || ''; jpSel = null; jpPage = 1; renderJapan(); return; }
+    if (coRegion === 'kr') { krQuery = e.target.value || ''; krSel = null; krPage = 1; renderKorea(); return; }
     if (coRegion === 'tw') { twQuery = e.target.value || ''; twSel = null; twPage = 1; renderTaiwan(); return; }
-    coQuery = e.target.value || ''; coCik = null; renderCompanies(); return;
+    coQuery = e.target.value || ''; coCik = null; usListPage = 1; renderCompanies(); return;
   }
   if (e.target && (e.target.id === 'co-cmp' || e.target.id === 'jp-cmp' || e.target.id === 'kr-cmp')) {
     const box = { 'co-cmp': 'us-sugg', 'jp-cmp': 'jp-sugg', 'kr-cmp': 'kr-sugg' }[e.target.id];

@@ -3310,3 +3310,11 @@ Audited at 360, 390 and 430 px with screenshots of every view, then fixed what l
   descriptions · TAIEX 45,211.83. Audit against TWSE: 48/865 P/E and 142/1,079 P/B more than 15%
   away — the exchange's ratios use its own reporting lag, and our P/B is the latest reported quarter
   (TTM to 2026-09-30). Three new listings have no statement page yet.
+
+## Company screeners: the same 50-row pager in every market (2026-11-02)
+- US, Japan and Korea now paginate their COMPANIES screener exactly like Taiwan: 25 / 50 / 100 / 250
+  per page, PREV / PAGE n OF m / NEXT, and a `1–50 of N` count. The full filtered set is sorted first,
+  then sliced, so the ranking is global, not page-local.
+- Any filter, preset, search or sort resets to page 1; the page size is per market. US 500 → 10 pages,
+  Japan 1,546 → 31, Korea 746 → 15.
+- Japan's old 250-row chunked paint is gone: one 50-row page is a single paint.
