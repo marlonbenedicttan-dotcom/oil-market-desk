@@ -3254,3 +3254,24 @@ Audited at 360, 390 and 430 px with screenshots of every view, then fixed what l
   in all three markets (Korea resolves the DART code to its ticker), and the box/legend show the code
   (`MSFT`, `7203`, `005930`) instead of the internal `us:MSFT` ref. Focusing the box selects the
   existing value so typing replaces it. **211 tests**.
+
+## Mobile scroll: less work per frame in Safari (2026-11-02)
+- **The address-bar resize no longer forces layout.** iOS Safari fires `resize` repeatedly while the
+  URL bar collapses, with the width unchanged. The top-bar height is now re-measured only on a
+  **width** change (`setTopbarH`), and the ticker resets its cached half-width only on a width change
+  too. Both used to do a forced layout read in the middle of the scroll gesture.
+- **The ticker stops when it cannot be seen.** An IntersectionObserver stops the rAF loop when the
+  tape scrolls off screen, and `visibilitychange` stops it in a background tab; it restarts on return
+  with `tickerLast` reset so the tape does not jump. The pause button now stops the loop instead of
+  leaving it running with a no-op transform.
+- **`-webkit-overflow-scrolling: touch` is gone** from the wide-table wrappers (`.sc-wrap`,
+  `.m-tbl-wrap`, `.corr-wrap`, `.tbl/#analogue/.glossary`). It is obsolete on modern iOS and creates
+  nested scroll layers that can pull scrolling onto the main thread.
+- **Mobile-only layer promotion:** `.topbar` and `.jumpnav` get `translateZ(0)` under
+  `@media (max-width: 640px)` so Safari composites the sticky bars instead of repainting them on
+  every scroll frame. Desktop computed styles are unchanged (`transform: none`).
+- **Verified at 390×844:** the tape animates → stops offscreen → resumes; pause/play works; a
+  height-only resize leaves `--topbar-h` at 48px and the tape running; a width change re-measures;
+  no horizontal overflow; screenshots unchanged; no long tasks. 211 tests pass.
+- **Honest limit:** a 60 Hz iPhone cannot match a ProMotion MacBook. If it still feels heavy after
+  this, the next lever is dropping the second sticky layer (the jump-nav) on phones.

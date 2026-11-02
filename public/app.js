@@ -751,21 +751,44 @@ function renderTicker(m) {
 let tickerX = 0, tickerRAF = null, tickerLast = 0, tickerHeld = false, tickerPaused = false, tickerWired = false;
 // One copy's width, measured only when the content or the viewport changes. Reading scrollWidth inside
 // the frame loop forced a layout flush on every single frame — that is what made the tape stutter.
-let tickerHalf = 0, tickerSig = '';
+let tickerHalf = 0, tickerSig = '', tickerVisible = true, tickerLastWidth = 0;
 const tickerReduce = matchMedia('(prefers-reduced-motion: reduce)');
 const TICKER_MS = 120000;   // one full copy takes 120s — the SAME speed on phone and desktop
+function tickerStop() {
+  if (tickerRAF) { cancelAnimationFrame(tickerRAF); tickerRAF = null; }
+}
 function tickerStart() {
   const ticker = $('ticker');
   if (!ticker) return;
   if (!tickerWired) {                               // wire listeners once (re-renders don't re-add)
     tickerWired = true;
+    tickerLastWidth = window.innerWidth || 0;
     const setHeld = (v) => () => { tickerHeld = v; };
     ticker.addEventListener('pointerdown', setHeld(true), { passive: true });
     ticker.addEventListener('pointerup', setHeld(false), { passive: true });
     ticker.addEventListener('pointercancel', setHeld(false), { passive: true });
     ticker.addEventListener('pointerleave', setHeld(false), { passive: true });
     tickerReduce.addEventListener?.('change', () => { if (!tickerReduce.matches) tickerStart(); });   // OS toggle → resume
-    addEventListener('resize', () => { tickerHalf = 0; }, { passive: true });
+    // Mobile Safari fires resize on every address-bar collapse, with the same width. The tape's
+    // width has not changed, so re-measuring (a forced layout read) would only cost a frame.
+    addEventListener('resize', () => {
+      const w = window.innerWidth || 0;
+      if (w === tickerLastWidth) return;
+      tickerLastWidth = w;
+      tickerHalf = 0;
+    }, { passive: true });
+    // Stop the loop when the tape is off screen or the tab is in the background. It is transform-only,
+    // but a permanently animating layer is work the phone should not do while the page scrolls.
+    if ('IntersectionObserver' in window) {
+      const io = new IntersectionObserver((entries) => {
+        tickerVisible = entries.some((e) => e.isIntersecting);
+        if (tickerVisible) tickerStart(); else tickerStop();
+      });
+      io.observe(ticker);
+    }
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) tickerStop(); else tickerStart();
+    });
     // A visible pause/play control — WCAG 2.2.2: auto-moving content must be stoppable.
     const pauseBtn = $('ticker-pause');
     pauseBtn?.addEventListener('click', () => {
@@ -774,7 +797,8 @@ function tickerStart() {
       pauseBtn.textContent = tickerPaused ? '▸' : '❚❚';
       const label = tickerPaused ? 'Play the ticker' : 'Pause the ticker';
       pauseBtn.setAttribute('aria-label', label); pauseBtn.title = label;
-      if (!tickerPaused) { tickerLast = performance.now(); tickerStart(); }
+      if (tickerPaused) tickerStop();
+      else { tickerLast = performance.now(); tickerStart(); }
     });
   }
   if (tickerReduce.matches) {                       // honour Reduce Motion: leave it as a swipe strip
@@ -782,6 +806,7 @@ function tickerStart() {
     if (t) t.style.transform = '';
     return;
   }
+  if (tickerPaused || document.hidden || !tickerVisible) return;   // nothing to animate unseen
   if (tickerRAF) return;                            // one loop, reused across re-renders
   tickerLast = performance.now();
   tickerRAF = requestAnimationFrame(function step(now) {
@@ -3356,9 +3381,24 @@ $('macro-links')?.addEventListener('click', (e) => { const el = e.target.closest
   }));
   const tick = () => { $('clock').textContent = new Date().toLocaleTimeString('en-GB'); };
   tick(); setInterval(tick, 1000);
-  // Keep the sticky jump-nav pinned just under the (variable-height) top bar.
-  const setTopbarH = () => { const tb = document.querySelector('.topbar'); if (tb) document.documentElement.style.setProperty('--topbar-h', tb.offsetHeight + 'px'); };
-  setTopbarH(); addEventListener('resize', setTopbarH);
+  // Keep the sticky jump-nav pinned just under the (variable-height) top bar. Re-measure only when
+  // the WIDTH changes: iOS Safari fires resize on every address-bar collapse, and re-reading
+  // offsetHeight then forces a layout pass in the middle of the scroll gesture for no benefit.
+  let topbarH = 0, topbarLastWidth = window.innerWidth || 0, topbarRAF = 0;
+  const setTopbarH = () => {
+    const tb = document.querySelector('.topbar');
+    if (!tb) return;
+    const h = tb.offsetHeight;
+    if (h && h !== topbarH) { topbarH = h; document.documentElement.style.setProperty('--topbar-h', h + 'px'); }
+  };
+  const onViewportResize = () => {
+    const w = window.innerWidth || 0;
+    if (w === topbarLastWidth) return;              // height-only (URL bar) — nothing to re-measure
+    topbarLastWidth = w;
+    if (topbarRAF) return;
+    topbarRAF = requestAnimationFrame(() => { topbarRAF = 0; setTopbarH(); });
+  };
+  setTopbarH(); addEventListener('resize', onViewportResize, { passive: true });
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});
   const onboardEl = $('onboarding');
   // Give the tower's contact blips a fresh random phase/duration each time the intro opens.

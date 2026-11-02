@@ -429,7 +429,7 @@ footer li { margin-bottom: 2px; }
 #methodology .note-body { padding: 4px 14px 14px; }
 .m-sec { margin-top: 14px; }
 .m-sec h4 { font-size: 10px; letter-spacing: 2px; color: var(--amber); margin: 0 0 7px; }
-.m-tbl-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.m-tbl-wrap { overflow-x: auto; }
 .m-tbl { width: 100%; border-collapse: collapse; font-size: 12px; min-width: 460px; }
 .m-tbl th { text-align: left; color: var(--dim); font-size: 10px; letter-spacing: 1px; border-bottom: 1px solid var(--line2); padding: 4px 8px; }
 .m-tbl td { padding: 5px 8px; border-bottom: 1px solid var(--line); color: #c9d4df; vertical-align: top; }
@@ -501,7 +501,7 @@ footer li { margin-bottom: 2px; }
 .rb-src { display: block; margin-top: 4px; font-size: 9px; color: var(--dim); }
 
 /* Screener (HOME) — every instrument, ranked + sortable */
-.sc-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.sc-wrap { overflow-x: auto; }
 .sc-table { width: 100%; border-collapse: collapse; font-size: 12px; font-variant-numeric: tabular-nums; min-width: 760px; }
 .sc-table th { background: #0c0f13; color: var(--amber); font-size: 10px; letter-spacing: 1px; padding: 7px 8px; border-bottom: 1px solid var(--line2); cursor: pointer; white-space: nowrap; text-align: right; user-select: none; }
 .sc-table th:first-child { text-align: left; }
@@ -651,7 +651,7 @@ footer li { margin-bottom: 2px; }
 .crf-win { background: #0f1318; border: 1px solid var(--line2); color: var(--dim); font-size: 9px; letter-spacing: 1px; padding: 3px 8px; cursor: pointer; }
 .crf-win:hover { color: var(--amber); }
 .crf-win.on { color: var(--amber); border-color: var(--amber); }
-.corr-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.corr-wrap { overflow-x: auto; }
 .corr-tbl { border-collapse: collapse; font-size: 10.5px; font-variant-numeric: tabular-nums; }
 .corr-tbl th { color: var(--dim); font-weight: 400; padding: 4px 7px; text-align: right; white-space: nowrap; font-size: 9.5px; letter-spacing: .5px; }
 .corr-tbl td { padding: 4px 7px; text-align: right; border: 1px solid var(--line); color: var(--text); }
@@ -793,6 +793,10 @@ canvas { display: block; }
   /* Top bar: ONE tidy row — rook · wordmark · clock · ↻ · ?. No 2-line wrap: fewer portrait-only
      overrides = fewer bugs, and it matches the header that already works in landscape. */
   .topbar { padding: 7px max(10px, env(safe-area-inset-left)) 7px max(10px, env(safe-area-inset-right)); flex-wrap: nowrap; gap: 8px; }
+  /* iOS composites a sticky element far better when it owns its own layer. Without this, Safari can
+     keep the top bar and the horizontally-scrollable jump-nav on the main-thread paint path while
+     the page scrolls. `translateZ(0)` is a no-op on desktop and does not change layout. */
+  .topbar, .jumpnav { -webkit-transform: translateZ(0); transform: translateZ(0); }
   .brand { flex: 1 1 auto; gap: 6px; min-width: 0; }
   .brand h1 { font-size: 11px; letter-spacing: .5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .brand .sub { display: none; }
@@ -823,7 +827,7 @@ canvas { display: block; }
   #bp-metric, #macro-region, #macro-country { width: 100%; }
   .controls { gap: 6px; }
   .tk { padding: 4px 12px; font-size: 11px; }
-  .tbl, #analogue, .glossary { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .tbl, #analogue, .glossary { overflow-x: auto; }
   .antable { min-width: 420px; }
 }
 @media (max-width: 480px) {
