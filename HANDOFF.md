@@ -3318,3 +3318,26 @@ Audited at 360, 390 and 430 px with screenshots of every view, then fixed what l
 - Any filter, preset, search or sort resets to page 1; the page size is per market. US 500 → 10 pages,
   Japan 1,546 → 31, Korea 746 → 15.
 - Japan's old 250-row chunked paint is gone: one 50-row page is a single paint.
+
+## Taiwan audit: formulas, prices, and the corporate-action trap (2026-11-02)
+- **Formulas reproduce exactly** for all 1,084 names: market cap = price × shares, P/E = cap ÷ TTM
+  net income, P/B = cap ÷ latest equity, ROE, operating/net margin, FCF = CFO + CFI, and the market
+  medians/breadth/sector caps all reconcile. `npm run audit:taiwan` is the repeatable check.
+- **Prices were the real bug.** The first build left 346 names on FinMind's raw close; Yahoo's raw
+  close is not split-adjusted either. A 20:1 split (6949), a 1:20 reverse split (6467) and capital
+  reductions appeared as −95% / +1,828% "returns" in the five-year strip. The build now:
+  1. prefers Yahoo for every name (FinMind only as a fallback),
+  2. starts each series at the exchange master's **listing date** (no grey-market/pre-listing data),
+  3. sanitises a single-day move beyond Taiwan's ±10% limit: flatten it if it reverses within three
+     sessions (bad print), otherwise back-adjust all earlier closes by the observed ratio (split,
+     reverse split or capital reduction).
+  After the rebuild: **0** single-day >25% anomalies and **0** weekly extremes outside the limit.
+- **Filings cross-check against MOPS** (independent, as-reported): FY2025 revenue and
+  parent-attributable net income match exactly for MediaTek, Delta, Formosa Plastics, China Steel and
+  Wiwynn (and Delta's Q3 2026 revenue/net/equity match to the yuan). TSMC's vendor FY2025 net is
+  1.18% below MOPS (stockanalysis adjustment); that is the one known source variance.
+- **TWSE's own P/E and P/B** differ for 46/865 and 142/1,079 names by >15%: the exchange's ratios use
+  its own reporting lag (our P/B is the latest quarter, TTM to 2026-09-30). Yield matches within
+  0.2pp for every name.
+- **Universe:** 1,084 priced common stocks. Five master names (1470, 1538, 1589, 5906, 6921) have no
+  current trade and are absent rather than estimated; three new listings have no TTM statement yet.

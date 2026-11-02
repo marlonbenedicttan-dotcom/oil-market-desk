@@ -30,6 +30,7 @@ const PROFILES = join(ROOT, 'data', 'taiwan-profiles.json');
 const THEMES = join(ROOT, 'data', 'taiwan-themes.json');
 const DAY = 864e5;
 const iso = (d) => new Date(d).toISOString().slice(0, 10);
+const listedIso = (v) => { const m = /^(\d{4})(\d{2})(\d{2})$/.exec(String(v || '')); return m ? `${m[1]}-${m[2]}-${m[3]}` : null; };
 const ymd = (d) => iso(d).replace(/-/g, '');
 const arg = (k, d = null) => { const x = process.argv.find((a) => a.startsWith(`--${k}=`)); return x ? x.split('=')[1] : d; };
 const flag = (k) => process.argv.includes(`--${k}`);
@@ -173,30 +174,78 @@ async function finmindPrice(code) {
     return text ? parseFinmind(text) : [];
   } catch { return []; }   // 402 = the free hourly quota; the caller falls back to Yahoo
 }
+// Taiwan's daily limit is ±10%, so a single-day move beyond ±25% is a split, a capital reduction or a
+// bad print. Yahoo's raw close does not adjust the first two, which turns a 20:1 split into a −95%
+// "return". If the jump reverses within three sessions it is a bad print: flatten it. If it holds, it
+// is a corporate action: back-adjust every earlier close by the observed ratio, so the 5-year strip is
+// continuous and the latest price stays the real one.
+function sanitizeSeries(series) {
+  const s = series.map((p) => ({ d: p.d, c: p.c }));
+  let adjustments = 0;
+  for (let pass = 0; pass < 8; pass++) {
+    let fixed = false;
+    for (let i = 1; i < s.length; i++) {
+      const r = s[i].c / s[i - 1].c;
+      if (r <= 1.25 && r >= 0.75) continue;
+      if (i < 5) continue;                       // a newly listed stock has no daily limit at first
+      const pre = s[i - 1].c;
+      let reverses = false;
+      for (let j = i + 1; j <= Math.min(i + 3, s.length - 1); j++) {
+        if (Math.abs(s[j].c / pre - 1) < 0.2) { reverses = true; break; }
+      }
+      if (reverses) s[i].c = pre;                // bad print/no-limit spike: no fake move
+      else { const f = s[i].c / pre; for (let k = 0; k < i; k++) s[k].c *= f; }
+      adjustments++;
+      fixed = true;
+      break;                                     // restart: the adjustment can expose another jump
+    }
+    if (!fixed) break;
+  }
+  return { s, adjustments };
+}
 async function priceSeries(code) {
-  const fm = cachedFinmind(code);
-  if (fm && fm.length > 1) return fm;
+  // Yahoo's close is split-adjusted; FinMind's is raw. Prefer Yahoo, and keep FinMind only as a
+  // fallback so a split never enters the five-year return strip as a real move.
   const y = await yahooPrice(code);
-  if (y.length > 1) return y;
-  return fm && fm.length ? fm : (await finmindPrice(code));
+  if (y.length > 1) return { s: y, source: 'yahoo' };
+  const fm = cachedFinmind(code);
+  if (fm && fm.length > 1) return { s: fm, source: 'finmind' };
+  return { s: y.length ? y : (await finmindPrice(code)), source: y.length ? 'yahoo' : 'finmind' };
 }
 if (!SKIP_PRICES) {
-  console.log(`prices… ${universe.length} codes, ${YEARS}y daily (Yahoo, FinMind cache/fallback)`);
+  console.log(`prices… ${universe.length} codes, ${YEARS}y daily (Yahoo, FinMind fallback)`);
   let done = 0;
   await pool(universe, 2, async (c) => {
-    const s = await priceSeries(c.code);
-    if (s.length) c.series = s;
+    const got = await priceSeries(c.code);
+    if (got.s.length) {
+      // Never chart grey-market or pre-listing prices: the exchange master's listing date is the start.
+      const start = listedIso(c.listed);
+      const base = start ? got.s.filter((p) => p.d >= start) : got.s;
+      const clean = sanitizeSeries(base.length > 1 ? base : got.s);
+      c.series = clean.s;
+      c.priceSource = got.source;
+      c.priceAdjusted = clean.adjustments || 0;
+    }
     if (++done % 100 === 0) console.log(`  ${done}/${universe.length} codes`);
     await sleep(180);
   });
 } else {
   for (const c of universe) {
-    const fm = cachedFinmind(c.code);
-    if (fm && fm.length > 1) { c.series = fm; continue; }
     try {
       const f = join(YH_CACHE, `${c.code}.json`);
-      if (existsSync(f)) c.series = JSON.parse(JSON.parse(readFileSync(f, 'utf8')).text);
-    } catch { /* skip */ }
+      if (existsSync(f)) {
+        const s = JSON.parse(JSON.parse(readFileSync(f, 'utf8')).text);
+        if (s && s.length > 1) {
+          const start = listedIso(c.listed);
+          const base = start ? s.filter((p) => p.d >= start) : s;
+          const clean = sanitizeSeries(base.length > 1 ? base : s);
+          c.series = clean.s; c.priceSource = 'yahoo'; c.priceAdjusted = clean.adjustments || 0;
+          continue;
+        }
+      }
+    } catch { /* fall through */ }
+    const fm = cachedFinmind(c.code);
+    if (fm && fm.length > 1) { c.series = fm; c.priceSource = 'finmind'; }
   }
 }
 for (const c of universe) {
