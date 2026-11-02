@@ -4569,6 +4569,64 @@ const won = (v) => {
   return `₩${Math.round(v).toLocaleString('en-US')}`;
 };
 const wonPx = (v) => (v == null || !Number.isFinite(v) ? '—' : `₩${Math.round(v).toLocaleString('en-US')}`);
+// Korea's history is newest-first and Taiwan's oldest-first, so sort a copy by date instead of trusting
+// the stored order. Returns the latest fiscal year, or null when no annual statement is on file.
+function lastFiscalRow(c) {
+  const h = (c.history || []).filter((x) => x && x.y);
+  if (!h.length) return null;
+  return h.slice().sort((a, b) => String(a.y).localeCompare(String(b.y))).pop();
+}
+
+// The income-statement lines sit beside a TTM P/E and TTM margins, so they use the same trailing
+// window as those ratios; the balance sheet is the latest reported point in time. Korea keeps no TTM
+// aggregate, so it is rebuilt from the last four standalone quarters exactly as the build script does.
+// Taiwan's vendor already publishes the TTM column. When a TTM window is incomplete the fiscal year is
+// used instead and the tile says so.
+function statementFigures(c, market) {
+  const fy = lastFiscalRow(c);
+  // Taiwan and Hong Kong both carry a TTM column and a latest balance sheet in reports; Japan and
+  // Korea ship four quarters instead, so their TTM is summed below.
+  const tw = market === 'tw' || market === 'hk';
+  const reports = c.reports || {};
+  let flows, cash, balance;
+  if (tw) {
+    const ttm = reports.ttm || null;
+    const latest = reports.latest || {};
+    const ttmOk = !!(ttm && ttm.netIncome != null);
+    flows = ttmOk
+      ? { basis: 'TTM', end: reports.ttmEnd || null, revenue: ttm.revenue, op: ttm.operatingProfit, net: ttm.netIncome }
+      : { basis: 'FY', end: fy && fy.y, revenue: fy && fy.s, op: fy && fy.o, net: fy && fy.n };
+    cash = ttmOk
+      ? { basis: 'TTM', end: reports.ttmEnd || null, cfo: ttm.operatingCashFlow, cfi: ttm.investingCashFlow }
+      : { basis: 'FY', end: fy && fy.y, cfo: fy && fy.c, cfi: fy && fy.i };
+    balance = {
+      end: reports.latestEnd || (fy && fy.y),
+      assets: latest.assets != null ? latest.assets : (fy && fy.a),
+      liabilities: latest.liabilities != null ? latest.liabilities : (fy && fy.a != null && fy.q != null ? fy.a - fy.q : null),
+      equity: latest.equity != null ? latest.equity : (fy && fy.q),
+    };
+  } else {
+    const q = (c.quarters || []).slice(-4);
+    const ttmOk = c.peBasis === 'TTM' && q.length === 4;
+    const sum = (field) => (ttmOk && q.every((x) => x[field] != null) ? q.reduce((a, x) => a + x[field], 0) : null);
+    flows = ttmOk
+      ? { basis: 'TTM', end: q[3].d, revenue: sum('revenue'), op: sum('operatingProfit'), net: sum('netIncome') }
+      : { basis: 'FY', end: fy && fy.y, revenue: fy && fy.s, op: fy && fy.o, net: fy && fy.n };
+    cash = { basis: 'FY', end: fy && fy.y, cfo: fy && fy.c, cfi: fy && fy.i };
+    balance = {
+      end: fy && fy.y,
+      assets: fy && fy.a,
+      liabilities: fy && fy.a != null && fy && fy.q != null ? fy.a - fy.q : null,
+      equity: fy && fy.q,
+    };
+  }
+  return { flows, cash, balance };
+}
+
+const periodLabel = (basis, end) => (basis === 'TTM'
+  ? `Trailing twelve months to ${end || '—'}`
+  : `Fiscal year ending ${(end && String(end).slice(0, 4)) || '—'}`);
+const tileBasis = (basis, end) => `${basis}${basis === 'FY' && end ? String(end).slice(0, 4) : ''}`;
 const krMono = (c) => coMono({ ticker: String(c.nameEn || c.name || '?').replace(/[^A-Za-z]/g, '').slice(0, 2) || 'KR', name: c.name });
 const krName = (c) => c.nameEn || c.name;
 
@@ -4931,6 +4989,24 @@ async function renderKoreaPage(stub) {
         ${cell('NET MARGIN', c.netMargin != null ? `${c.netMargin.toFixed(1)}%` : '—', 'Net profit ÷ revenue', c.netMargin >= 0 ? 'pos' : 'neg')}
         ${cell('FCF YIELD', c.fcfYield != null ? `${c.fcfYield.toFixed(1)}%` : '—', 'Operating plus investing cash flow ÷ market cap')}
       </div>`
+    + (() => {
+        const fig = statementFigures(c, 'kr');
+        const when = periodLabel(fig.flows.basis, fig.flows.end);
+        const cashWhen = periodLabel(fig.cash.basis, fig.cash.end);
+        const bsWhen = fig.balance.end ? `As of ${fig.balance.end}` : 'Latest reported balance sheet';
+        const cls = (v) => (v == null ? '' : v >= 0 ? 'pos' : 'neg');
+        const fcf = fig.cash.cfo != null && fig.cash.cfi != null ? fig.cash.cfo + fig.cash.cfi : null;
+        return `<div class="co-stats co-stats-12">
+        ${cell(`REVENUE · ${tileBasis(fig.flows.basis, fig.flows.end)}`, won(fig.flows.revenue), `${when}, as reported (DART)`)}
+        ${cell(`OPERATING PROFIT · ${tileBasis(fig.flows.basis, fig.flows.end)}`, won(fig.flows.op), `${when}, as reported (DART)`, cls(fig.flows.op))}
+        ${cell(`NET PROFIT · ${tileBasis(fig.flows.basis, fig.flows.end)}`, won(fig.flows.net), `${when}, attributable to owners of the parent (DART)`, cls(fig.flows.net))}
+        ${cell(`FREE CASH FLOW · ${tileBasis(fig.cash.basis, fig.cash.end)}`, won(fcf), `${cashWhen}: operating cash flow + investing cash flow — capex sits inside investing (DART)`)}
+        ${cell('TOTAL ASSETS', won(fig.balance.assets), `${bsWhen}, as reported (DART)`)}
+        ${cell('LIABILITIES', won(fig.balance.liabilities), `${bsWhen}: total assets less shareholders\u2019 equity (DART)`)}
+        ${cell('SHAREHOLDERS\u2019 EQUITY', won(fig.balance.equity), `${bsWhen}, attributable to owners of the parent (DART)`)}
+        ${cell(`OPERATING CASH FLOW · ${tileBasis(fig.cash.basis, fig.cash.end)}`, won(fig.cash.cfo), `${cashWhen}, as reported (DART)`)}
+      </div>`;
+      })()
     + `<div class="co-ranges">
         <span class="co-cmp-l">COMPARE</span><input class="co-cmp" id="kr-cmp" placeholder="company name, e.g. samsung" value="${esc(cmpCode(krCompare))}" autocomplete="off">
         <button class="co-cmp-clear${krCompare ? '' : ' hidden'}" id="kr-cmp-clear" data-cmpclear="kr" type="button" title="Clear comparison" aria-label="Clear comparison">×</button>
@@ -5222,6 +5298,24 @@ async function renderTaiwanPage(stub) {
         ${cell('NET MARGIN', c.netMargin != null ? `${c.netMargin.toFixed(1)}%` : '—', 'Net profit ÷ revenue', c.netMargin >= 0 ? 'pos' : 'neg')}
         ${cell('DIVIDEND YIELD', c.dividendYield != null ? `${c.dividendYield.toFixed(2)}%` : '—', 'TWSE official dividend yield')}
       </div>`
+    + (() => {
+        const fig = statementFigures(c, 'tw');
+        const when = periodLabel(fig.flows.basis, fig.flows.end);
+        const cashWhen = periodLabel(fig.cash.basis, fig.cash.end);
+        const bsWhen = fig.balance.end ? `As of ${fig.balance.end}` : 'Latest reported balance sheet';
+        const cls = (v) => (v == null ? '' : v >= 0 ? 'pos' : 'neg');
+        const fcf = fig.cash.cfo != null && fig.cash.cfi != null ? fig.cash.cfo + fig.cash.cfi : null;
+        return `<div class="co-stats co-stats-12">
+        ${cell(`REVENUE · ${tileBasis(fig.flows.basis, fig.flows.end)}`, twMoney(fig.flows.revenue), `${when}, as reported (stockanalysis.com)`)}
+        ${cell(`OPERATING PROFIT · ${tileBasis(fig.flows.basis, fig.flows.end)}`, twMoney(fig.flows.op), `${when}, as reported (stockanalysis.com)`, cls(fig.flows.op))}
+        ${cell(`NET PROFIT · ${tileBasis(fig.flows.basis, fig.flows.end)}`, twMoney(fig.flows.net), `${when}, attributable to owners of the parent (stockanalysis.com)`, cls(fig.flows.net))}
+        ${cell(`FREE CASH FLOW · ${tileBasis(fig.cash.basis, fig.cash.end)}`, twMoney(fcf), `${cashWhen}: operating cash flow + investing cash flow — capex sits inside investing (stockanalysis.com)`)}
+        ${cell('TOTAL ASSETS', twMoney(fig.balance.assets), `${bsWhen}, as reported (stockanalysis.com)`)}
+        ${cell('LIABILITIES', twMoney(fig.balance.liabilities), `${bsWhen}: total assets less shareholders\u2019 equity (stockanalysis.com)`)}
+        ${cell('SHAREHOLDERS\u2019 EQUITY', twMoney(fig.balance.equity), `${bsWhen}, attributable to owners of the parent (stockanalysis.com)`)}
+        ${cell(`OPERATING CASH FLOW · ${tileBasis(fig.cash.basis, fig.cash.end)}`, twMoney(fig.cash.cfo), `${cashWhen}, as reported (stockanalysis.com)`)}
+      </div>`;
+      })()
     + `<div class="co-ranges">
         <span class="co-cmp-l">COMPARE</span><input class="co-cmp" id="tw-cmp" placeholder="company name, e.g. tsmc" value="${esc(cmpCode(twCompare))}" autocomplete="off">
         <button class="co-cmp-clear${twCompare ? '' : ' hidden'}" id="tw-cmp-clear" data-cmpclear="tw" type="button" title="Clear comparison" aria-label="Clear comparison">×</button>
