@@ -73,6 +73,7 @@ jobs:
           DART_API_KEY: ${{ secrets.DART_API_KEY }}
         run: |
           if [ -z "$DART_API_KEY" ]; then echo 'no DART key — skipping Korea'; exit 0; fi
+          node scripts/refresh-korea-universe.mjs
           node scripts/refresh-korea-shares.mjs
           node scripts/refresh-korea-quarters.mjs
           node scripts/build-korea.mjs --years=5

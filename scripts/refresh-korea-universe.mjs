@@ -1,8 +1,10 @@
 // Fill gaps in the KOSPI universe: any listed filer whose company.json call failed (the rate-limit
-// window) never got a market class, so it silently dropped out of the index. This refetches only those.
+// window) never got a market class, so it silently dropped out of the index. This refetches only those,
+// and refreshes the DART corp list first so a newly listed filer can enter the universe.
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { makeDartClient } from './dart.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const CACHE = join(ROOT, 'data', 'cache', 'dart');
@@ -10,8 +12,20 @@ const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 C
 const KEY = process.env.DART_API_KEY;
 if (!KEY) throw new Error('DART_API_KEY is not set');
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const DAY = 864e5;
 
-const book = JSON.parse(readFileSync(join(CACHE, 'corp.json'), 'utf8'));
+const readJson = (f) => { try { return JSON.parse(readFileSync(f, 'utf8')); } catch { return null; } };
+let book = readJson(join(CACHE, 'corp.json'));
+if (!book || Date.parse(book.fetched) < Date.now() - 7 * DAY) {
+  try {
+    const rows = await makeDartClient().corpCodes();
+    book = { fetched: new Date().toISOString(), rows };
+    writeFileSync(join(CACHE, 'corp.json'), JSON.stringify(book));
+  } catch (e) {
+    console.log(`corp list unavailable (${e.message}) — using the cached list`);
+  }
+}
+if (!book) throw new Error('no corp.json and the DART corp list could not be fetched');
 // Keep the English names we already resolved (OpenFIGI); the DART info cache predates that field.
 const prev = (() => {
   try { return JSON.parse(readFileSync(join(ROOT, 'data', 'korea-universe.json'), 'utf8')).companies || []; }
@@ -49,10 +63,16 @@ for (const r of listed) {
   let d;
   try { d = JSON.parse(readFileSync(f, 'utf8')); } catch { continue; }
   if (d.cls !== 'Y') continue;
-  let shares = null;
+  let shares = null, sharesIssued = null;
   const sf = join(CACHE, `shares-${r.corp}.json`);
-  if (existsSync(sf)) { try { shares = JSON.parse(readFileSync(sf, 'utf8')).shares; } catch { /* none */ } }
-  out.push({ code: r.corp, ticker: r.stock.trim(), name: r.name, nameEn: d.nameEn || prevName.get(r.stock.trim()) || null, industry: d.industry || null, shares });
+  if (existsSync(sf)) {
+    try {
+      const s = JSON.parse(readFileSync(sf, 'utf8'));
+      shares = s.shares || null;
+      sharesIssued = s.sharesIssued || null;
+    } catch { /* none */ }
+  }
+  out.push({ code: r.corp, ticker: r.stock.trim(), name: r.name, nameEn: prevName.get(r.stock.trim()) || d.nameEn || null, industry: d.industry || null, shares, sharesIssued });
 }
 out.sort((a, b) => a.ticker.localeCompare(b.ticker));
 
