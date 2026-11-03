@@ -1,5 +1,5 @@
 {
- "checked": "2026-11-03T11:33:50.736Z",
+ "checked": "2026-11-03T11:56:37.553Z",
  "markets": {
   "us": {
    "name": "US",
@@ -202,7 +202,7 @@
     {
      "check": "P/E = cap ÷ TTM profit",
      "severity": "fail",
-     "count": 8,
+     "count": 0,
      "detail": "P/E does not reproduce from its own inputs"
     },
     {
@@ -236,19 +236,9 @@
      "detail": "A split or consolidation since the last annual report"
     }
    ],
-   "fail": 8,
+   "fail": 0,
    "warn": 2,
    "examples": {
-    "P/E = cap ÷ TTM profit": [
-     "062040 (17.6%)",
-     "281820 (47.5%)",
-     "439260 (6.8%)",
-     "001500 (57.4%)",
-     "003610 (77.0%)",
-     "021820 (-24.4%)",
-     "023350 (18.1%)",
-     "008870 (69.1%)"
-    ],
     "share count differs from the filing": [
      "950210 (filing 2,253,257 → listed 60,104,167)",
      "021050 (filing 288,822 → listed 47,505,198)"
@@ -266,6 +256,6 @@
    }
   }
  },
- "failures": 8,
+ "failures": 0,
  "warnings": 42
 }

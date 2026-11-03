@@ -200,6 +200,18 @@ say('ETFs/funds/trusts excluded', a.excludedNonCompanies ?? '—');
 say('three-character companies', a.companies ?? '—');
 const cross = au.companies.filter((c) => c.crossListing);
 say('cross-listed statements', cross.length ? cross.map((c) => `${c.code}→${c.crossListing.ticker} (${c.crossListing.ratio}:1)`).join(' · ') : 'none');
+// What the excluded lines actually are, so "missing" is not a mystery. A fund/debt line is not a
+// company; a foreign CDI files under another listing; the rest are operating companies whose ASX
+// financial page the vendor does not publish.
+const missingRows = a.noStatements || [];
+if (missingRows.length) {
+  const debt = /\b(TREASURY|FINANCE|FUNDING|BOND|NOTE|NOTES|SERIES|LOANS|BILLS?)\b/i;
+  const isForeign = (n) => /\b(PLC|INC|CORPORATION|CORP|BERHAD|TBK|PJSC)\b|S\.A\.|S\.A$|LIMITED\.$|BANK\.$|NEW ZEALAND|AUCKLAND|CANADA|CORP\b/i.test(n);
+  const isDebt = (n) => debt.test(n);
+  const cls = { debt: 0, foreign: 0, other: 0 };
+  for (const r of missingRows) (isDebt(r.name) ? cls.debt++ : isForeign(r.name) ? cls.foreign++ : cls.other++);
+  say('excluded without a statement page', `${missingRows.length} · ${cls.debt} debt/treasury · ${cls.foreign} foreign/NZ CDIs · ${cls.other} other`);
+}
 say('without a statement page', a.withoutStatements ?? '—');
 say('without a price', a.withoutPrice ?? '—');
 say('throttled, not fetched this run', a.throttled ?? 0);

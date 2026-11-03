@@ -58,7 +58,7 @@ Six markets, same UI:
 | 🇰🇷 Korea | KOSPI — **746 companies** | DART, KRW |
 | 🇹🇼 Taiwan | TWSE — **1,084 listed companies** | TWSE master + stockanalysis, TWD |
 | 🇭🇰 Hong Kong | HKEX main board — every company with a statement page | HKEX tape + stockanalysis, HKD/CNY/USD |
-| 🇦🇺 Australia | ASX — **1,669 companies** with a share count | ASX CSV + stockanalysis, AUD/USD |
+| 🇦🇺 Australia | ASX — **1,664 companies** with a share count | ASX CSV + stockanalysis, AUD/USD |
 
 - Search, filter, compare, and chart any company.
 - **Valuation vs its own history** — P/E, P/B, EV/EBITDA percentiles over five years, plus sector aggregates.

@@ -85,7 +85,7 @@ export async function asxCsv({ fresh = false, ttlMs = 24 * 3600e3 } = {}) {
 // securitisation trusts behind bank debt. Those are not companies and must not enter the dataset. The
 // statement fetch removes most of them on its own (an ETF has no financials page), but a LIC or a trust
 // does have reports, so the obvious ones are filtered by name first and counted, never silently.
-const NON_COMPANY = /\bETF\b|\bEXCHANGE[- ]TRADED\b|\bINDEX FUND\b|\bINVESTMENT (FUND|COMPANY|TRUST)\b|\bBETASHARES\b|\bISHARES\b|\bVANECK\b|\bSPDR\b|\bGLOBAL X\b|\bABS TRUST\b|\bSERIES \d{2,4}\b|IN RESPECT OF SERIES|\bDEBENTURE\b|\bBONDS?\b/i;
+const NON_COMPANY = /\bETF\b|\bEXCHANGE[- ]TRADED\b|\bINDEX FUND\b|\bINVESTMENT (FUND|COMPANY|TRUST)\b|\bBETASHARES\b|\bISHARES\b|\bVANECK\b|\bSPDR\b|\bGLOBAL X\b|\bABS TRUST\b|\bSERIES \d{2,4}\b|IN RESPECT OF SERIES|\bDEBENTURE\b|\bBONDS?\b|\bFUND\b|\bINVESTMENT TRUST\b|\bINCOME TRUST\b|\bMULTI-STRATEGY\b|\bEQUITY INCOME\b|\bOPPORTUNITIES COMPANY\b|\bINVESTMENT COMPANY\b/i;
 export const isFundLine = (name) => NON_COMPANY.test(String(name || ''));
 
 // "Not Applic" and "Class Pend" are real CSV values, but neither is a sector: the first is the

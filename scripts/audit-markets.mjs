@@ -204,6 +204,13 @@ function market(name, rows) {
 
   const annual = (c) => (c.reports || []).find((r) => r.report === 'annual' && r.end);
   const peCalc = (c) => {
+    // A company without four dated quarters is valued on its last fiscal year (peBasis FY). Compare it
+    // with that annual profit, not with a sum of four undated/interim rows — the old check reported
+    // eight false failures on exactly those names.
+    if (c.peBasis === 'FY') {
+      const a = annual(c);
+      return a && a.netIncome > 0 && c.marketCap > 0 ? c.marketCap / a.netIncome : null;
+    }
     const q = (c.quarters || []).slice(-4);
     if (q.length < 4 || q.some((x) => x.netIncome == null)) return null;
     const ni = q.reduce((a, x) => a + x.netIncome, 0);

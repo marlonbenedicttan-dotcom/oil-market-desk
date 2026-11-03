@@ -3454,11 +3454,13 @@ Audited at 360, 390 and 430 px with screenshots of every view, then fixed what l
   `tests/australia-data.test.js` (cap = price × shares, ratio bounds, totals, sector partition, index,
   FX, list projection, audit counters). Plus the `au` entries in `filters.test.js` and three
   `/api/australia` tests (one asserts BHP is valued in USD).
-- **Built (2026-11-03):** 1,669 companies · 551 P/E · 1,669 descriptions · 26 sectors resolved from
+- **Built (2026-11-03):** 1,664 companies · 549 P/E · 1,664 descriptions · 26 sectors resolved from
   the profile · 116 foreign reporters (USD 92, NZD 6, PGK 4, EUR 4, CAD 3, SGD 3, GBP 3, MYR 1) ·
-  ASX 200 8,886.8 · **0 throttled** · 295 listed companies without a statement page · 3 without a
-  price · 93 ETFs/funds/trusts filtered out. Total cap A$3.28T. `npm run audit:australia` is the
-  repeatable check.
+  ASX 200 8,886.8 · **0 throttled** · 271 listed lines without a statement page (25 debt/treasury,
+  50 foreign/NZ CDIs, 196 other — mostly operating small caps the vendor does not cover, and LICs not
+  caught by the name filter) · 93 ETFs/funds/trusts filtered out by name (125 including the 27
+  additional fund/LIC patterns). Total cap A$3.28T. `npm run audit:australia` is the repeatable check.
+  The excluded lines are listed in `audit.noStatements`, not silently dropped.
 - **Cross-listed lines**: RIO, RMD and AMC have no stockanalysis ASX financials page; they are CDIs or
   the Australian leg of a dual-listed group. The build reads the same company's primary US listing
   (`stocks/rio`, `stocks/rmd`, `stocks/amcr`) and scales the global diluted share count by the CDI
@@ -3503,3 +3505,25 @@ Audited at 360, 390 and 430 px with screenshots of every view, then fixed what l
 - **Tests**: `tests/charts.test.js` covers the pure merge/slice/expand logic and asserts the store
   exists and holds a known code in every market; `npm test` stays at 300.
 
+
+## Free-tier memory: HK/AU company pages (2026-11-03)
+- **Symptom**: browsing many Hong Kong or Australia companies gave 502s on the company chart and
+  peers endpoints, and the page looked broken. The free Render instance has **512 MB**.
+- **Cause**: (1) the warm loop warmed every COT series, all nine segment reads and the event pool,
+  holding steady RSS at ~420 MB; (2) a company page parsed the whole 9 MB HK / 8 MB AU dataset to
+  return one record (+50 MB each, and again on each process). Together they crossed 512 MB.
+- **Fix**: the build writes one small JSON per company (`data/hongkong-companies`,
+  `data/australia-companies`); `/api/{hongkong,australia}/company/{code}` reads that file (~2 ms,
+  ~0 MB). The warm loop defaults to the light set (base feeds, brief, macro board, screener, Korea
+  list); `WARM=full` restores positioning, the nine reads and the event pool. Korea's 28 MB statement
+  file is no longer parsed at boot. Series bucket caches are capped at two per market.
+- **Verified live** (build `3181e7a`): six HK/AU company pages opened in headless Chrome — all charts
+  and 6 peers each, **0 failed requests, 0 console errors**; `/health` uptime did not reset.
+- If more headroom is needed, the next levers are: `WARM=off` (cold feeds, ~200 MB), or moving the
+  per-segment reads out of `cached()` so they can be reclaimed.
+
+## Audit: Korea FY-basis P/E (2026-11-03)
+- `audit:all` reported 8 Korea P/E failures (062040, 281820, 439260, 001500, 003610, …). Those
+  companies have no four dated quarters (`peBasis: 'FY'`), so the headline P/E is cap ÷ last annual
+  profit. The audit was recomputing from four undated/interim rows. It now uses the annual profit when
+  `peBasis === 'FY'`; `audit:all` exits 0 with 0 failures (42 known warnings across US/JP/KR).
