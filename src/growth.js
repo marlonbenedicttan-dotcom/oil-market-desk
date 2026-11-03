@@ -29,9 +29,11 @@ const splitBetween = (prev, next) => {
   return 1;
 };
 
-const cagr = (from, to, years) => (from > 0 && to > 0 && years >= 2
-  ? +(((to / from) ** (1 / years) - 1) * 100).toFixed(1)
-  : null);
+const cagr = (from, to, years) => {
+  if (!(from > 0 && to > 0 && years >= 2)) return null;
+  const v = +(((to / from) ** (1 / years) - 1) * 100).toFixed(1);
+  return Object.is(v, -0) ? 0 : v;
+};
 
 // rows: [{ year, revenue, eps, shares }] — `year` is the fiscal year the figures belong to and
 // `shares` is the average share count that produced that year's EPS.
@@ -65,8 +67,9 @@ export function growthRates(rows) {
   // Without the share counts there is no way to tell a split from a real fall in earnings, so the
   // EPS figure is withheld rather than published unadjusted.
   const epsCagr = sharesKnown ? epsCagrRaw : null;
+  const epsMissing = eps[0] == null || eps[eps.length - 1] == null;
   const epsCagrNA = !sharesKnown ? 'share counts are missing, so splits cannot be adjusted for'
-    : epsCagrRaw == null ? (span < 2 ? 'history too short' : 'a loss in the first or last year')
+    : epsCagrRaw == null ? (span < 2 ? 'history too short' : epsMissing ? 'EPS was not reported in the first or last year' : 'a loss in the first or last year')
       : null;
 
   const out = {
@@ -83,8 +86,9 @@ export function growthRates(rows) {
   // A percentage is the wrong shape when an end is a loss: "−¥12.50 → ¥40.00" is the fact. This is
   // only meaningful when the series is split-verified; otherwise it would repeat the same distortion.
   if (sharesKnown && epsCagrRaw == null && span >= 2 && h.length >= 2 && eps[0] != null && eps[eps.length - 1] != null) {
+    const clean = (v) => (Object.is(v, -0) ? 0 : v);
     out.epsChange = {
-      from: +eps[0].toFixed(2), to: +eps[eps.length - 1].toFixed(2),
+      from: clean(+eps[0].toFixed(2)), to: clean(+eps[eps.length - 1].toFixed(2)),
       years: span, fromFy: Number(first.year), toFy: Number(last.year),
     };
   }
