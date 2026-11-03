@@ -55,6 +55,8 @@ jobs:
       # Keep the fiscal years that scroll off the vendor's five-year table.
       - name: Keep every filed period
         run: node scripts/merge-history.mjs hk
+      - name: Keep every traded session
+        run: node scripts/merge-series.mjs hk
       # A rate-limited run loses companies and chart history; an incomplete HKEX report loses companies.
       # Refuse to publish either.
       - name: Refuse a collapsed build

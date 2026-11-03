@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { sgn, inBox, haversineNm, isoWeek, monthly, pctOver, percentile, lastNonNull, escHtml, webhookPayload, realizedVol, computeCracks, computeCrush, computeSteel, backAdjust, pearson, logReturns, horizonDeltas, horizonDeltasAbs, curveTightness, inventoryTightness, weightedScore, seasonalGrade, seasonalAhead, contractMonthsBetween, signedPosition, signedMove, stretchScore, sdLabel, attributeMoves, newsContextOk, looksLikeProperNoun, NON_MARKET_CTX, METHODOLOGY, positioningFlag, positioningRead, positioningDivergence, maxDrawdown, drawdownNow, realizedVolTerm, volPercentile, corrMatrix, fxAdjust, parseOcc, drawdownWord, volWord, volTrend, volVsOwnWord, corrWord, corrShift, focusRows, topPairs, pairGroups, bestDiversifier, riskRead, mergePeriods } from '../src/lib.js';
+import { sgn, inBox, haversineNm, isoWeek, monthly, pctOver, percentile, lastNonNull, escHtml, webhookPayload, realizedVol, computeCracks, computeCrush, computeSteel, backAdjust, pearson, logReturns, horizonDeltas, horizonDeltasAbs, curveTightness, inventoryTightness, weightedScore, seasonalGrade, seasonalAhead, contractMonthsBetween, signedPosition, signedMove, stretchScore, sdLabel, attributeMoves, newsContextOk, looksLikeProperNoun, NON_MARKET_CTX, METHODOLOGY, positioningFlag, positioningRead, positioningDivergence, maxDrawdown, drawdownNow, realizedVolTerm, volPercentile, corrMatrix, fxAdjust, parseOcc, drawdownWord, volWord, volTrend, volVsOwnWord, corrWord, corrShift, focusRows, topPairs, pairGroups, bestDiversifier, riskRead, mergePeriods, mergeSeriesPoints } from '../src/lib.js';
 
 test('sgn formats with sign', () => {
   assert.equal(sgn(4.39), '+4.39');
@@ -769,4 +769,42 @@ test('mergePeriods never resurrects a junk period inside the vendor window', () 
   ];
   const out = mergePeriods(prev, next, 'end');
   assert.deepEqual(out.map((r) => r.end), ['2021-12-31', '2022-12-31', '2025-12-31']);
+});
+
+test('mergeSeriesPoints keeps the sessions that scrolled off the window', () => {
+  const prev = [{ d: '2020-01-02', c: 10 }, { d: '2021-01-04', c: 11 }, { d: '2022-01-03', c: 12 }];
+  const next = [{ d: '2021-01-04', c: 11 }, { d: '2022-01-03', c: 12 }, { d: '2023-01-03', c: 13 }];
+  const out = mergeSeriesPoints(prev, next);
+  assert.deepEqual(out.map((r) => r.d), ['2020-01-02', '2021-01-04', '2022-01-03', '2023-01-03']);
+});
+
+test('mergeSeriesPoints rescales older prices after a split', () => {
+  // A two-for-one split: every fresh price is half the stored one, so the kept 2020 bar must halve too.
+  const prev = [
+    { d: '2020-01-02', c: 100 },
+    { d: '2021-01-04', c: 200 }, { d: '2021-01-05', c: 202 },
+    { d: '2021-01-06', c: 204 }, { d: '2021-01-07', c: 206 }, { d: '2021-01-08', c: 208 },
+  ];
+  const next = [
+    { d: '2021-01-04', c: 100 }, { d: '2021-01-05', c: 101 },
+    { d: '2021-01-06', c: 102 }, { d: '2021-01-07', c: 103 }, { d: '2021-01-08', c: 104 },
+  ];
+  const out = mergeSeriesPoints(prev, next);
+  assert.equal(out[0].d, '2020-01-02');
+  assert.equal(out[0].c, 50);           // halved, so the chart has no cliff
+  assert.equal(out.at(-1).c, 104);
+});
+
+test('mergeSeriesPoints does not rescale when the overlap agrees', () => {
+  const prev = [{ d: '2020-01-02', c: 10 }, { d: '2021-01-04', c: 11 }];
+  const next = [{ d: '2021-01-04', c: 11.02 }, { d: '2022-01-03', c: 12 }];
+  const out = mergeSeriesPoints(prev, next);
+  assert.equal(out[0].c, 10);           // kept at its own scale
+});
+
+test('mergeSeriesPoints handles a listing with no overlap and empty input', () => {
+  assert.deepEqual(mergeSeriesPoints([], [{ d: '2024-01-02', c: 5 }]), [{ d: '2024-01-02', c: 5 }]);
+  assert.deepEqual(mergeSeriesPoints([{ d: '2020-01-02', c: 5 }], []), [{ d: '2020-01-02', c: 5 }]);
+  const out = mergeSeriesPoints([{ d: '2020-01-02', c: 5 }], [{ d: '2021-01-04', c: 7 }]);
+  assert.deepEqual(out.map((r) => r.d), ['2020-01-02', '2021-01-04']);
 });

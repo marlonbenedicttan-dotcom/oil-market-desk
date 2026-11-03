@@ -72,6 +72,9 @@ jobs:
       # that scrolls off the page stays on the company page — the record grows instead of following.
       - name: Keep every filed period
         run: node scripts/merge-history.mjs jp kr
+      # The source only ever shows the last few years of bars. Keep the sessions that scrolled off.
+      - name: Keep every traded session
+        run: node scripts/merge-series.mjs us jp kr
       - name: Calendar events
         run: node scripts/build-events.mjs
       - name: Re-apply recorded restatements

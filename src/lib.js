@@ -1280,3 +1280,43 @@ export function mergePeriods(prev, next, key) {
     .sort((a, b) => (asc ? a[0].localeCompare(b[0]) : b[0].localeCompare(a[0])))
     .map(([, r]) => r);
 }
+
+// Merge a price series so the stored history keeps growing instead of sliding.
+//
+// Every market build downloads a fixed window (five years, ten for the US) and replaces the stored
+// series, so the chart would still show five years in 2036. Keep the points that are OLDER than the
+// window the source still covers and let the fresh download win everywhere inside it.
+//
+// A split rewrites every past price on the source, so a naive append would leave a cliff at the seam.
+// The overlap is compared first: if the fresh prices are a consistent fraction of the stored ones
+// (a split, or its reverse), the older points are scaled by that factor before they are kept.
+export function mergeSeriesPoints(prev, next) {
+  const p = (prev || []).filter((x) => x && x.d && x.c > 0);
+  const n = (next || []).filter((x) => x && x.d && x.c > 0);
+  if (!n.length) return p;
+  if (!p.length) return n;
+  const oldest = n[0].d;
+  const was = new Map(p.map((x) => [x.d, x.c]));
+  const ratios = [];
+  for (const x of n) {
+    const before = was.get(x.d);
+    if (before > 0) ratios.push(x.c / before);
+  }
+  let factor = 1;
+  if (ratios.length >= 5) {
+    ratios.sort((a, b) => a - b);
+    const median = ratios[Math.floor(ratios.length / 2)];
+    if (Math.abs(median - 1) > 0.02) {
+      // A split is a clean ratio; snap to one when the median is within 2% of it, otherwise trust the
+      // measured factor (a currency redenomination is not a clean split).
+      const clean = [0.01, 0.02, 0.05, 0.1, 1 / 8, 0.2, 0.25, 1 / 3, 0.5, 2, 3, 4, 5, 8, 10, 20, 100];
+      factor = clean.find((c) => Math.abs(median - c) / c < 0.02) || median;
+    }
+  }
+  const out = new Map();
+  for (const x of p) {
+    if (x.d < oldest) out.set(x.d, { d: x.d, c: +(x.c * factor).toFixed(6) });
+  }
+  for (const x of n) out.set(x.d, { d: x.d, c: x.c });
+  return [...out.values()].sort((a, b) => a.d.localeCompare(b.d));
+}
