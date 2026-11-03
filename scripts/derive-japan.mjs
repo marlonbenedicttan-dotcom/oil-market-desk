@@ -8,6 +8,8 @@
 //
 // Where the two disagree on P/B by more than 5%, both values are kept and the page says so.
 
+import { growthRates, fromJapanHistory } from '../src/growth.js';
+
 const guard = (v, lo, hi) => (v != null && v > lo && v < hi ? v : null);
 const round = (v, dp) => (v == null ? null : +v.toFixed(dp));
 
@@ -205,7 +207,13 @@ export function deriveJapan({ ranked, fins, series, val = new Map(), nextByCode 
       e: pickFig(r, 'EPS', 'NCEPS'), b: pickFig(r, 'BPS', 'NCBPS'),
       a: pickFig(r, 'TA', 'NCTA'), q: eqOf(r),
       c: num(r.CFO), i: num(r.CFI), d: num(r.DivAnn),
+      // Average shares produced this year's EPS. A later build uses the year-on-year jump to put the
+      // EPS series on one split-adjusted basis.
+      sh: num(r.AvgSh),
     }));
+    // The same two growth figures the US page publishes, from the same five fiscal years the table
+    // below shows. No extra API call: J-Quants already returned net sales and EPS per year.
+    const growth = growthRates(fromJapanHistory(history));
 
     // How many times the company moved its own full-year forecast this year, and in which direction.
     let revisions = null;
@@ -286,6 +294,7 @@ export function deriveJapan({ ranked, fins, series, val = new Map(), nextByCode 
       verification,
       quarters,
       history,
+      ...growth,
       revisions,
       guidanceVsDelivered: guidedVsActual,
       earnings: nextByCode.get(c.code) || null,

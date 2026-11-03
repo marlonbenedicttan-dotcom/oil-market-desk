@@ -4736,6 +4736,34 @@ function renderJapanPageBody(c) {
         ${cell('CASH', yen(c.cash), 'Cash and equivalents, as reported')}
         ${cell('OPERATING CASH FLOW', yen(c.cfo), 'Fiscal year, as reported')}
         ${cell('FINANCING CASH FLOW', yen(c.cff), 'Dividends, buybacks and borrowings, net')}
+        ${cell(`REVENUE CAGR${c.cagrYears ? ' · ' + c.cagrYears + 'Y' : ''}`,
+          c.revenueCagr != null ? `${c.revenueCagr.toFixed(1)}%` : '—',
+          c.cagrNA ? `No growth rate: ${c.cagrNA}.` : `Compound annual growth of net sales over the ${c.cagrYears} fiscal years in the record below`,
+          c.revenueCagr != null ? (c.revenueCagr >= 0 ? 'pos' : 'neg') : '')}
+        ${(() => {
+          // Same rule as the US page: a CAGR only when both ends are positive; otherwise show the move.
+          const basis = c.epsSplitAdjusted
+            ? 'EPS is split-adjusted across the window using the reported average share count; the table below shows EPS as reported.'
+            : c.epsSplitUnverified
+              ? 'Share counts are missing, so a split cannot be ruled out and no EPS growth rate is published.'
+              : 'No stock split occurred in the window.';
+          const e = c.epsCagr != null
+            ? {
+                v: `${c.epsCagr.toFixed(1)}%`, cls: c.epsCagr >= 0 ? 'pos' : 'neg',
+                t: `Compound annual growth of earnings per share over the ${c.cagrYears} fiscal years on file. ${basis}`,
+              }
+            : c.epsChange
+              ? (() => {
+                  const money = (v) => `${v < 0 ? '\u2212' : ''}\u00a5${Math.abs(v).toFixed(2)}`;
+                  return {
+                    v: `${money(c.epsChange.from)} \u2192 ${money(c.epsChange.to)}`,
+                    cls: c.epsChange.to >= 0 ? 'pos' : 'neg',
+                    t: `No CAGR: ${c.epsCagrNA}. EPS went from ${money(c.epsChange.from)} in FY${c.epsChange.fromFy} to ${money(c.epsChange.to)} in FY${c.epsChange.toFy}. ${basis}`,
+                  };
+                })()
+              : { v: '—', cls: '', t: c.epsCagrNA ? `No EPS growth: ${c.epsCagrNA}.` : 'No EPS growth rate' };
+          return cell(`EPS GROWTH${c.cagrYears ? ' · ' + c.cagrYears + 'Y' : ''}`, e.v, e.t, e.cls);
+        })()}
       </div>`
     + `<div class="co-ranges">
         <span class="co-cmp-l">COMPARE</span><input class="co-cmp" id="jp-cmp" placeholder="company name, e.g. toyota" value="${esc(cmpCode(jpCompare))}" autocomplete="off">
@@ -4866,7 +4894,7 @@ function jpHistoryHtml(c) {
         <thead><tr><th>FISCAL YEAR</th><th>NET SALES</th><th>OP PROFIT</th><th>NET PROFIT</th><th>ROE</th><th>EQUITY RATIO</th><th>DIV / SHARE</th></tr></thead>
         <tbody>${rows}</tbody>
       </table>
-      <div class="macro-note">As reported in each year's summary of financial statements. ROE and the equity ratio are computed from the reported figures, not restated for later share issues.</div>
+      <div class="macro-note">As reported in each year's summary of financial statements. ROE and the equity ratio are computed from the reported figures, not restated for later share issues. EPS growth above is computed from these five fiscal years and adjusted for splits using the reported average share count.</div>
     </div>`;
 }
 

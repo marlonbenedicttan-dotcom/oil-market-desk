@@ -10,6 +10,7 @@ import { sendMail } from './src/smtp.js';
 import { fileURLToPath } from 'node:url';
 import { projectUs, projectJp, japanList, koreaList, taiwanList, hongkongList, australiaList, US_LIST_FIELDS } from './src/project.js';
 import { sliceRange, seriesFromLine } from './src/charts.js';
+import { growthRates, fromJapanHistory } from './src/growth.js';
 import { sgn, businessDaysSince, horizonDeltas, horizonDeltasAbs, isoWeek, monthly, pctOver, percentile, lastNonNull, escHtml, webhookPayload, realizedVol, computeCracks, computeCrush, computeSteel, buildRelValueRow, relValueZone, ordinal, backAdjust, pearson, logReturns, frontExpiry, curveTightness, inventoryTightness, weightedScore, seasonalGrade, seasonalAhead, contractMonthsBetween, signedPosition, signedMove, stretchScore, sdLabel, attributeMoves, newsContextOk, METHODOLOGY, positioningFlag, positioningRead, positioningDivergence, maxDrawdown, drawdownNow, realizedVolTerm, volPercentile, volVsOwnWord, corrMatrix, fxAdjust, parseOcc, drawdownWord, volWord, volTrend, corrShift, pairGroups, topPairs, bestDiversifier, riskRead, priorityOf, rankByPriority, clusterEvents, scoreEvents, selectEvents, explainRows } from './src/lib.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -1167,6 +1168,13 @@ function readDetailCompany(dir, code, sourceUpdated) {
   catch { return null; }
 }
 function readJapanCompany(code) { return readDetailCompany(JAPAN_DETAIL_DIR, code, filePrefixStamp(path.join(__dirname, 'data', 'japan.json'))); }
+// A detail file built before the growth fields existed still serves them: the five fiscal years are
+// already in the record, so the same rules the US page uses can be applied on read. Once the next
+// Japan build bakes them in, this is a no-op.
+function withJapanGrowth(c) {
+  if (!c || Object.prototype.hasOwnProperty.call(c, 'revenueCagr')) return c;
+  return { ...c, ...growthRates(fromJapanHistory(c.history)) };
+}
 function readKoreaCompany(code) { return readDetailCompany(KOREA_DETAIL_DIR, code, koreaSourceUpdated()); }
 function readTaiwanCompany(code) { return readDetailCompany(TAIWAN_DETAIL_DIR, code, taiwanSourceUpdated()); }
 const AUSTRALIA_SERIES_DIR = path.join(__dirname, 'data', 'australia-series');
@@ -5147,10 +5155,10 @@ const server = http.createServer(async (req, res) => {
     }
     if (url.pathname.startsWith('/api/japan/company/')) {
       const code = decodeURIComponent(url.pathname.slice('/api/japan/company/'.length));
-      const c = readJapanCompany(code) || (() => {
+      const c = withJapanGrowth(readJapanCompany(code) || (() => {
         const jp = readJapan();
         return (jp.companies || []).find((x) => x.code === code || x.ticker === code) || null;
-      })();
+      })());
       if (!c) return sendJSON(res, 404, { error: 'not found' });
       return sendJSONCached(res, 200, c);
     }
