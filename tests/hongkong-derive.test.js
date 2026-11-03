@@ -91,3 +91,31 @@ test('missing statements stay blank rather than becoming zero', () => {
   assert.equal(c.netMargin, null);
   assert.equal(c.history.length, 0);
 });
+
+// A bank's "free cash flow" is deposits and the loan book moving, not cash the business generated.
+// The ratios do not exist for a balance-sheet financial, so they are marked and blanked rather than
+// shipped as a huge negative number the company page would print as if it were real.
+test('a bank or insurer gets no operating margin or free cash flow', () => {
+  const bank = {
+    ...base, sector: 'Financials', industry: 'Banks - Diversified',
+    ttm: { ...base.ttm, operatingProfit: null, operatingCashFlow: -2e11, investingCashFlow: -1e11 },
+  };
+  const insurer = { ...base, sector: 'Financials', industry: 'Insurance - Life' };
+  const [b, i] = deriveHongKong({ companies: [bank, insurer], fx });
+  for (const c of [b, i]) {
+    assert.equal(c.opMargin, null);
+    assert.equal(c.fcf, null);
+    assert.equal(c.fcfYield, null);
+    assert.deepEqual(c.naRatios, ['opMargin', 'operatingProfit', 'fcf', 'fcfYield', 'operatingCashFlow']);
+  }
+  assert.equal(b.netMargin, 20, 'net margin still describes a bank');
+  assert.equal(b.pb, 2.5, 'book value still describes a bank');
+});
+
+test('a fee-based financial keeps its operating ratios', () => {
+  const broker = { ...base, sector: 'Financials', industry: 'Capital Markets' };
+  const [c] = deriveHongKong({ companies: [broker], fx });
+  assert.equal(c.opMargin, 40);
+  assert.equal(c.fcf, 1e10);
+  assert.equal(c.naRatios, undefined);
+});

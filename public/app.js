@@ -5747,6 +5747,15 @@ const hkPx = (v) => (v == null || !Number.isFinite(v) ? '—' : `HK$${Number(v).
 const hkMono = (c) => coMono({ ticker: String(c.nameEn || c.name || '?').replace(/[^A-Za-z]/g, '').slice(0, 2) || 'HK', name: c.nameEn || c.name });
 const hkViewsBar = () => '';
 
+// Banks, insurers and other balance-sheet lenders earn a spread and carry the loan book themselves, so
+// an operating margin and a free-cash-flow yield do not describe the business. (The source's "free cash
+// flow" for a bank is mostly deposits and the loan book moving — a 176bn outflow at HSBC is not a
+// company burning cash.) Those tiles are omitted rather than printed as a dash or a misleading number.
+// Fee-based financials — exchanges, brokers, asset managers — keep the ratios: they run an operating
+// business. The regex lives here because the list payload ships the sector but not the industry.
+const HK_BALANCE_SHEET_FINANCIAL = /^(Banks\b|Insurance\s*-|Mortgage Finance|Credit Services|Financial - Credit Services)/;
+const hkBalanceSheetFinancial = (c) => !!c && c.sector === 'Financials' && HK_BALANCE_SHEET_FINANCIAL.test(c.industry || '');
+
 async function loadHongKong() {
   if (hkData) return hkData;
   if (hongkongPromise) return hongkongPromise;
@@ -5977,6 +5986,7 @@ async function renderHongKongPage(stub) {
   const q = c.quarters || [];
   const h = c.history || [];
   const ccy = c.reportCurrency || 'HKD';
+  const fin = hkBalanceSheetFinancial(c);
   // Revenue and profit arrive in the issuer's own currency. HKD reporters read like every other HKD
   // figure; a CNY/USD reporter is suffixed, because "CNY 1.04T" is a readable size and "1,044,971"
   // (millions) is not.
@@ -5997,7 +6007,7 @@ async function renderHongKongPage(stub) {
         ${cell(`P/E · ${c.peBasis || 'TTM'}`, c.pe != null ? `${c.pe.toFixed(2)}×` : '—', `Market cap ÷ the last four quarters of profit, both in ${ccy}${c.reports && c.reports.ttmEnd ? ` (through ${c.reports.ttmEnd})` : ''}`)}
         ${cell('P/B', c.pb != null ? `${c.pb.toFixed(2)}×` : '—', `Market cap ÷ shareholders\u2019 equity in ${ccy}${c.reports && c.reports.latestEnd ? ` at ${c.reports.latestEnd}` : ''}`)}
         ${cell('RETURN ON EQUITY', c.roe != null ? `${c.roe.toFixed(1)}%` : '—', 'Profit ÷ equity, same currency on both sides', c.roe >= 0 ? 'pos' : 'neg')}
-        ${cell('OPERATING MARGIN', c.opMargin != null ? `${c.opMargin.toFixed(1)}%` : '—', 'Operating profit ÷ revenue', c.opMargin >= 0 ? 'pos' : 'neg')}
+        ${fin ? '' : cell('OPERATING MARGIN', c.opMargin != null ? `${c.opMargin.toFixed(1)}%` : '—', 'Operating profit ÷ revenue', c.opMargin >= 0 ? 'pos' : 'neg')}
         ${cell('NET MARGIN', c.netMargin != null ? `${c.netMargin.toFixed(1)}%` : '—', 'Net profit ÷ revenue', c.netMargin >= 0 ? 'pos' : 'neg')}
         ${cell('DIVIDEND YIELD', c.dividendYield != null ? `${c.dividendYield.toFixed(2)}%` : '—', 'Dividend per share from the filing, converted to HKD at the current rate')}
       </div>`
@@ -6018,14 +6028,14 @@ async function renderHongKongPage(stub) {
           : `${when}, as reported (stockanalysis.com)`;
         return `<div class="co-stats co-stats-12">
         ${cell(`REVENUE · ${tileBasis(fig.flows.basis, fig.flows.end)}`, cur(fig.flows.revenue), `${when}, as reported — ${ccy} millions`)}
-        ${cell(`OPERATING PROFIT · ${tileBasis(fig.flows.basis, fig.flows.end)}`, cur(fig.flows.op), opNote, sign(fig.flows.op))}
+        ${fin ? '' : cell(`OPERATING PROFIT · ${tileBasis(fig.flows.basis, fig.flows.end)}`, cur(fig.flows.op), opNote, sign(fig.flows.op))}
         ${cell(`NET PROFIT · ${tileBasis(fig.flows.basis, fig.flows.end)}`, cur(fig.flows.net), `${when}, attributable to owners of the parent — ${ccy} millions`, sign(fig.flows.net))}
         ${cell('EPS · DILUTED', eps != null ? Number(eps).toFixed(2) : '—', `Per share, ${ccy}, the same period as the profit above`)}
-        ${cell(`FREE CASH FLOW · ${tileBasis(fig.cash.basis, fig.cash.end)}`, cur(fcf), `${cashWhen}: operating cash flow + investing cash flow — capex sits inside investing`)}
+        ${fin ? '' : cell(`FREE CASH FLOW · ${tileBasis(fig.cash.basis, fig.cash.end)}`, cur(fcf), `${cashWhen}: operating cash flow + investing cash flow — capex sits inside investing`)}
         ${cell('TOTAL ASSETS', cur(fig.balance.assets), `${bsWhen} — ${ccy} millions`)}
         ${cell('LIABILITIES', cur(fig.balance.liabilities), `${bsWhen}: total assets less shareholders\u2019 equity`)}
         ${cell('SHAREHOLDERS\u2019 EQUITY', cur(fig.balance.equity), `${bsWhen}, attributable to owners of the parent`)}
-        ${cell(`OPERATING CASH FLOW · ${tileBasis(fig.cash.basis, fig.cash.end)}`, cur(fig.cash.cfo), `${cashWhen}, as reported — ${ccy} millions`)}
+        ${fin ? '' : cell(`OPERATING CASH FLOW · ${tileBasis(fig.cash.basis, fig.cash.end)}`, cur(fig.cash.cfo), `${cashWhen}, as reported — ${ccy} millions`)}
       </div>`;
       })()
     + `<div class="co-ranges">
@@ -6037,15 +6047,20 @@ async function renderHongKongPage(stub) {
     + `<div class="co-rets" id="hk-rets"></div>`
     + `<div class="co-chartwrap"><div class="co-big" id="hk-big"></div><canvas id="hk-chart"></canvas></div>`
     + '<div id="hk-peers-x"></div>'
-    + (h.length > 1 ? `<div class="jp-q"><div class="jp-q-head"><span class="ph-t">FIVE-YEAR RECORD</span><span class="dimtext">${h.length} fiscal years · ${ccy}</span></div>
-        <table class="jp-q-table"><thead><tr><th>FISCAL YEAR</th><th>REVENUE</th><th>OP PROFIT</th><th>NET PROFIT</th><th>ROE</th></tr></thead><tbody>
-        ${[...h].reverse().map((x) => `<tr><td>${esc(x.y)}</td><td>${cur(x.s)}</td><td>${cur(x.o)}</td><td>${cur(x.n)}</td><td>${x.n != null && (x.ec ?? x.q) ? `${((x.n / (x.ec ?? x.q)) * 100).toFixed(1)}%` : '—'}</td></tr>`).join('')}
-        </tbody></table></div>` : '')
+    + (h.length > 1 ? (() => {
+        const rows = [...h].reverse();
+        return `<div class="jp-q"><div class="jp-q-head"><span class="ph-t">FIVE-YEAR RECORD</span><span class="dimtext">${h.length} fiscal years · ${ccy}</span></div>
+        <table class="jp-q-table"><thead><tr><th>FISCAL YEAR</th><th>REVENUE</th>${fin ? '' : '<th>OP PROFIT</th>'}<th>NET PROFIT</th><th>ROE</th></tr></thead><tbody>
+        ${rows.map((x) => `<tr><td>${esc(x.y)}</td><td>${cur(x.s)}</td>${fin ? '' : `<td>${cur(x.o)}</td>`}<td>${cur(x.n)}</td><td>${x.n != null && (x.ec ?? x.q) ? `${((x.n / (x.ec ?? x.q)) * 100).toFixed(1)}%` : '—'}</td></tr>`).join('')}
+        </tbody></table></div>`;
+      })() : '')
     + (q.length > 1 ? `<div class="jp-q"><div class="jp-q-head"><span class="ph-t">REPORTED PERIODS</span><span class="dimtext">${q.length} periods · ${ccy}</span></div>
-        <table class="jp-q-table"><thead><tr><th>PERIOD</th><th>REVENUE</th><th>OP PROFIT</th><th>MARGIN</th><th>NET PROFIT</th></tr></thead><tbody>
-        ${[...q].reverse().map((x) => `<tr><td>${esc(x.d)}</td><td>${cur(x.revenue)}</td><td>${cur(x.operatingProfit)}</td><td>${x.revenue && x.operatingProfit != null ? `${((x.operatingProfit / x.revenue) * 100).toFixed(1)}%` : '—'}</td><td>${cur(x.netIncome)}</td></tr>`).join('')}
+        <table class="jp-q-table"><thead><tr><th>PERIOD</th><th>REVENUE</th>${fin ? '<th>NET PROFIT</th><th>NET MARGIN</th>' : '<th>OP PROFIT</th><th>MARGIN</th><th>NET PROFIT</th>'}</tr></thead><tbody>
+        ${[...q].reverse().map((x) => `<tr><td>${esc(x.d)}</td><td>${cur(x.revenue)}</td>${fin
+          ? `<td>${cur(x.netIncome)}</td><td>${x.revenue && x.netIncome != null ? `${((x.netIncome / x.revenue) * 100).toFixed(1)}%` : '—'}</td>`
+          : `<td>${cur(x.operatingProfit)}</td><td>${x.revenue && x.operatingProfit != null ? `${((x.operatingProfit / x.revenue) * 100).toFixed(1)}%` : '—'}</td><td>${cur(x.netIncome)}</td>`}</tr>`).join('')}
         </tbody></table></div>` : '')
-    + `<div class="macro-note">${c.statementsFrom ? `Statements are this same company's own, taken from its ${c.statementsFrom.split(':')[0]} listing (${c.statementsFrom}) because the source serves no Hong Kong statement page for it; the market cap still uses the Hong Kong price × total shares. ` : ''}HKEX main-board listing · statements from stockanalysis.com (millions ${ccy}), prices from Yahoo. Market cap is HKD; ratios are computed in ${ccy}, the currency the issuer reports in, then compared with a market cap converted at the build's USD/HKD and USD/${ccy} rates. Hong Kong companies report half-yearly, so the period table is half-year and annual periods, not four quarters. No free guidance feed, so there is no forward P/E.${c.description ? ' Company description and sector from stockanalysis.com.' : ''}</div>`;
+    + `<div class="macro-note">${c.statementsFrom ? `Statements are this same company's own, taken from its ${c.statementsFrom.split(':')[0]} listing (${c.statementsFrom}) because the source serves no Hong Kong statement page for it; the market cap still uses the Hong Kong price × total shares. ` : ''}HKEX main-board listing · statements from stockanalysis.com (millions ${ccy}), prices from Yahoo. Market cap is HKD; ratios are computed in ${ccy}, the currency the issuer reports in, then compared with a market cap converted at the build's USD/HKD and USD/${ccy} rates. Hong Kong companies report half-yearly, so the period table is half-year and annual periods, not four quarters. No free guidance feed, so there is no forward P/E.${fin ? ' Banks and insurers are valued on book value and return on equity; an operating margin and a free cash flow do not describe a balance-sheet business, so those ratios are not shown. ' : ''}${c.description ? ' Company description and sector from stockanalysis.com.' : ''}</div>`;
   drawHkChart(c);
   fillPeers(`hk:${c.ticker}`, 'hk-peers-x');
 }

@@ -165,6 +165,7 @@ function loadApp() {
     setCompanies: (v) => { companiesData = v; },
     renderUsMarket,
     renderHongKongMarket,
+    hkBalanceSheetFinancial,
     drawMarketIndexChart,
     coWindowsFor,
     coSlice,
@@ -487,6 +488,17 @@ test('the Hong Kong overview counts index members only, not every company we hol
   assert.match(html, /INDEX P\/E/, 'the cap-weighted index P/E is shown');
   assert.match(html, /12\.1×/, 'the weighted P/E is cap over earnings, not a median');
   assert.match(html, /INDEX YIELD/, 'the cap-weighted yield is shown');
+});
+
+test('the Hong Kong company page omits industrial ratios for a balance-sheet financial', () => {
+  const { ui } = loadApp();
+  assert.equal(ui.hkBalanceSheetFinancial({ sector: 'Financials', industry: 'Banks - Diversified' }), true);
+  assert.equal(ui.hkBalanceSheetFinancial({ sector: 'Financials', industry: 'Insurance - Life' }), true);
+  assert.equal(ui.hkBalanceSheetFinancial({ sector: 'Financials', industry: 'Credit Services' }), true);
+  assert.equal(ui.hkBalanceSheetFinancial({ sector: 'Financials', industry: 'Capital Markets' }), false);
+  assert.equal(ui.hkBalanceSheetFinancial({ sector: 'Financials', industry: 'Financial Data & Stock Exchanges' }), false);
+  assert.equal(ui.hkBalanceSheetFinancial({ sector: 'Financials', industry: 'Insurance Brokers' }), false);
+  assert.equal(ui.hkBalanceSheetFinancial({ sector: 'Technology', industry: 'Banks - Diversified' }), false);
 });
 
 test('an out-of-range window falls back to one the series actually covers', () => {
