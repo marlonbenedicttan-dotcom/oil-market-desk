@@ -4790,7 +4790,7 @@ async function drawJpPrice(c, range = jpRange) {
   const wrap = $('jp-chart') && $('jp-chart').parentElement;
   const ch = full ? coSlice(full, range) : null;
   if (!ch || !ch.dates || ch.dates.length < 2) {
-    chartMiss('jp-chart', c.ticker, range, !full);
+    chartMiss('jp-chart', c.ticker, range, coLongFailed('jp:' + c.code));
     return;
   }
   if (wrap) wrap.removeAttribute('data-empty');
@@ -5107,14 +5107,14 @@ async function seriesFor(ref, range) {
   const mkt = String(parts[0]).toLowerCase();
   const code = parts[1];
   const yRange = range === '1m' ? '1mo' : range === '6m' ? '6mo' : range;
-  try {
-    if (mkt === 'jp') return await jget(`/api/japan-chart?code=${encodeURIComponent(code)}&range=${encodeURIComponent(range)}`, 600000);
-    if (mkt === 'kr') return await jget(`/api/korea/chart?ticker=${encodeURIComponent(code)}&range=${encodeURIComponent(range)}`, 600000);
-    if (mkt === 'tw') return await jget(`/api/taiwan/chart?code=${encodeURIComponent(code)}&range=${encodeURIComponent(range)}`, 600000);
-    if (mkt === 'hk') return await jget(`/api/hongkong/chart?code=${encodeURIComponent(code)}&range=${encodeURIComponent(range)}`, 600000);
-    if (mkt === 'au') return await jget(`/api/australia/chart?code=${encodeURIComponent(code)}&range=${encodeURIComponent(range)}`, 600000);
-    return await jget(`/api/company-chart?ticker=${encodeURIComponent(code)}&range=${encodeURIComponent(yRange)}`, 600000);
-  } catch { return null; }
+  // Let a network/server failure reject: `coLong` retries and must not remember a 502 as "this
+  // company has no history". An empty answer is still just an empty series.
+  if (mkt === 'jp') return await jget(`/api/japan-chart?code=${encodeURIComponent(code)}&range=${encodeURIComponent(range)}`, 600000);
+  if (mkt === 'kr') return await jget(`/api/korea/chart?ticker=${encodeURIComponent(code)}&range=${encodeURIComponent(range)}`, 600000);
+  if (mkt === 'tw') return await jget(`/api/taiwan/chart?code=${encodeURIComponent(code)}&range=${encodeURIComponent(range)}`, 600000);
+  if (mkt === 'hk') return await jget(`/api/hongkong/chart?code=${encodeURIComponent(code)}&range=${encodeURIComponent(range)}`, 600000);
+  if (mkt === 'au') return await jget(`/api/australia/chart?code=${encodeURIComponent(code)}&range=${encodeURIComponent(range)}`, 600000);
+  return await jget(`/api/company-chart?ticker=${encodeURIComponent(code)}&range=${encodeURIComponent(yRange)}`, 600000);
 }
 
 // One request in flight, not two: the prefetch and the click used to race and both hit the network.
@@ -5372,7 +5372,7 @@ async function drawKrChart(c, range = krRange) {
   const wrap = $('kr-chart') && $('kr-chart').parentElement;
   const ch = full ? coSlice(full, range) : null;
   if (!ch || !ch.dates || ch.dates.length < 2) {
-    chartMiss('kr-chart', c.ticker, range, !full);
+    chartMiss('kr-chart', c.ticker, range, coLongFailed('kr:' + c.ticker));
     return;
   }
   if (wrap) wrap.removeAttribute('data-empty');
@@ -5689,7 +5689,7 @@ async function drawTwChart(c, range = twRange) {
   const wrap = $('tw-chart') && $('tw-chart').parentElement;
   const ch = full ? coSlice(full, range) : null;
   if (!ch || !ch.dates || ch.dates.length < 2) {
-    chartMiss('tw-chart', c.ticker, range, !full);
+    chartMiss('tw-chart', c.ticker, range, coLongFailed('tw:' + c.ticker));
     return;
   }
   if (wrap) wrap.removeAttribute('data-empty');
@@ -6060,7 +6060,7 @@ async function drawHkChart(c, range = hkRange) {
   const wrap = $('hk-chart') && $('hk-chart').parentElement;
   const ch = full ? coSlice(full, range) : null;
   if (!ch || !ch.dates || ch.dates.length < 2) {
-    chartMiss('hk-chart', c.ticker, range, !full);
+    chartMiss('hk-chart', c.ticker, range, coLongFailed('hk:' + c.ticker));
     return;
   }
   if (wrap) wrap.removeAttribute('data-empty');
@@ -6364,7 +6364,7 @@ async function drawAuChart(c, range = auRange) {
   const wrap = $('au-chart') && $('au-chart').parentElement;
   const ch = full ? coSlice(full, range) : null;
   if (!ch || !ch.dates || ch.dates.length < 2) {
-    chartMiss('au-chart', c.ticker, range, !full);
+    chartMiss('au-chart', c.ticker, range, coLongFailed('au:' + c.ticker));
     return;
   }
   if (wrap) wrap.removeAttribute('data-empty');
@@ -6631,6 +6631,8 @@ function renderSectorBoard(el, all) {
 const CO_WIN = [['1m', '1M', 31], ['3m', '3M', 92], ['6m', '6M', 190], ['ytd', 'YTD', 0], ['1y', '1Y', 366], ['5y', '5Y', 1826], ['10y', '10Y', 3653]];
 const coLongCache = new Map();
 const coLongPending = new Map();
+// Why a ref has no long series: a network/server failure is retryable, an empty answer is not.
+const coLongError = new Map();
 async function coLong(ref) {
   const k = String(ref || '').toUpperCase();
   if (coLongCache.has(k)) return coLongCache.get(k);
@@ -6638,18 +6640,25 @@ async function coLong(ref) {
   const p = (async () => {
     // One request drives every window on the page. The server returns whatever history it has; a
     // recent listing simply gets a shorter series and the range strip adapts to it.
+    let errored = false;
     for (const r of ['10y', '5y', '1y']) {
       try {
         const ch = await seriesFor(ref, r);
-        if (ch && ch.dates && ch.closes && ch.closes.length >= 2) { coLongCache.set(k, ch); return ch; }
-      } catch { /* try the shorter range */ }
+        if (ch && ch.dates && ch.closes && ch.closes.length >= 2) { coLongError.delete(k); coLongCache.set(k, ch); return ch; }
+      } catch { errored = true; /* try the shorter range */ }
     }
+    // Do NOT remember a failed fetch as "this company has no history". The free instance can answer
+    // 502 while it is waking; caching that null made a second 5Y click do nothing at all. A genuinely
+    // short series (the API answered with <2 points) is still cached.
+    if (errored) { coLongError.set(k, true); return null; }
+    coLongError.delete(k);
     coLongCache.set(k, null);
     return null;
   })();
   coLongPending.set(k, p);
   try { return await p; } finally { coLongPending.delete(k); }
 }
+function coLongFailed(ref) { return coLongError.get(String(ref || '').toUpperCase()) === true; }
 function coWindow(ch, range) {
   if (!ch || !ch.dates || !ch.closes || ch.closes.length < 2) return null;
   const w = CO_WIN.find((x) => x[0] === range);
