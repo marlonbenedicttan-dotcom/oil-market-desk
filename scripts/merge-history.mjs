@@ -22,6 +22,7 @@ import { execFileSync } from 'node:child_process';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { mergePeriods } from '../src/lib.js';
+import { growthRates, fromJapanHistory } from '../src/growth.js';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const DRY = process.argv.includes('--dry-run');
@@ -109,6 +110,12 @@ for (const id of ids) {
     }
     if (added) {
       gained.push(`${codeOf(c)} +${added}`);
+      // Japan's growth tiles must be computed from the merged record. derive-japan only sees the
+      // vendor's rolling five years, so without this the table could hold ten years while the CAGR
+      // stayed a four-year number forever. Recompute only when a company actually gained old periods.
+      if (id === 'jp' && Array.isArray(c.history)) {
+        Object.assign(c, growthRates(fromJapanHistory(c.history)));
+      }
       if (!DRY) {
         const detail = join(ROOT, 'data', spec.detail, `${codeOf(c)}.json`);
         if (existsSync(detail)) writeFileSync(detail, JSON.stringify(c));

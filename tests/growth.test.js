@@ -37,6 +37,16 @@ test('a loss at either end has no CAGR, and the change is shown instead', () => 
   assert.deepEqual(g.epsChange, { from: -2, to: 3, years: 4, fromFy: 2022, toFy: 2026 });
 });
 
+test('an EPS that was not reported at an end is named, not called a loss', () => {
+  const g = growthRates([
+    { year: 2022, revenue: 100, eps: null, shares: 1000 },
+    { year: 2026, revenue: 200, eps: 20, shares: 1000 },
+  ]);
+  assert.equal(g.epsCagr, null);
+  assert.equal(g.epsCagrNA, 'EPS was not reported in the first or last year');
+  assert.equal(g.epsChange, undefined);
+});
+
 test('fewer than two years of span is "history too short", never a number', () => {
   const g = growthRates([sh(2025, 100, 10), sh(2026, 120, 12)]);
   assert.equal(g.revenueCagr, null);
@@ -66,6 +76,22 @@ test('Japan history maps y/s/e/sh and keeps a missing year out of the window', (
   assert.equal(g.cagrYears, 4);
   assert.equal(g.revenueCagr, 8.8);
   assert.equal(g.epsChange.to, 9);
+});
+
+test('the CAGR follows a longer merged record, not a fixed five years', () => {
+  // merge-history adds back the fiscal years that scrolled off the vendor's page; the span must grow
+  // with them instead of the rate staying a four-year number forever.
+  const g = growthRates([
+    sh(2021, 90, 9),
+    sh(2022, 100, 10),
+    sh(2023, 110, 10.5),
+    sh(2024, 115, 11),
+    sh(2025, 120, 11.5),
+    sh(2026, 121.550625, 12.1550625),
+  ]);
+  assert.equal(g.cagrYears, 5);
+  assert.equal(g.revenueCagr, 6.2);
+  assert.equal(g.epsCagr, 6.2);
 });
 
 test('a later split is adjusted out of the EPS series using average shares', () => {
