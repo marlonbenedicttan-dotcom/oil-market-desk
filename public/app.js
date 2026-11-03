@@ -4213,6 +4213,17 @@ const coMoney = (v) => (v == null ? '—'
   : Math.abs(v) >= 1e9 ? `$${(v / 1e9).toFixed(1)}B`
   : Math.abs(v) >= 1e6 ? `$${(v / 1e6).toFixed(0)}M`
   : `$${Math.round(v)}`);
+// A statement figure can be in a different currency from the listing. Compact it the same way, with
+// the currency code in front, so a USD reporter reads "USD 58.8B" rather than 58,760,000,000.
+function compactMoney(v, ccy) {
+  if (v == null || !Number.isFinite(v)) return '—';
+  const a = Math.abs(v);
+  const s = a >= 1e12 ? `${(v / 1e12).toFixed(2)}T`
+    : a >= 1e9 ? `${(v / 1e9).toFixed(1)}B`
+      : a >= 1e6 ? `${(v / 1e6).toFixed(0)}M`
+        : Math.round(v).toLocaleString('en-US');
+  return `${ccy} ${s}`;
+}
 // Common names people type that are not the legal name on the filing.
 const CO_ALIAS = {
   google: 'GOOGL', alphabet: 'GOOGL', youtube: 'GOOGL', facebook: 'META', instagram: 'META', whatsapp: 'META',
@@ -5926,16 +5937,7 @@ async function renderHongKongPage(stub) {
   // Revenue and profit arrive in the issuer's own currency. HKD reporters read like every other HKD
   // figure; a CNY/USD reporter is suffixed, because "CNY 1.04T" is a readable size and "1,044,971"
   // (millions) is not.
-  const cur = (v) => {
-    if (v == null || !Number.isFinite(v)) return '—';
-    if (ccy === 'HKD') return hkMoney(v);
-    const a = Math.abs(v);
-    const s = a >= 1e12 ? `${(v / 1e12).toFixed(2)}T`
-      : a >= 1e9 ? `${(v / 1e9).toFixed(1)}B`
-        : a >= 1e6 ? `${(v / 1e6).toFixed(0)}M`
-          : Math.round(v).toLocaleString('en-US');
-    return `${ccy} ${s}`;
-  };
+  const cur = (v) => (ccy === 'HKD' ? hkMoney(v) : compactMoney(v, ccy));
   el.innerHTML = `<div class="ma-crumb"><button class="ma-back" data-hkback="1">← COMPANIES</button> <span>${esc(c.ticker)}</span><span class="mb-tag">HONG KONG</span></div>`
     + `<div class="co-head">${hkMono(c)}<div><div class="co-name">${esc(hkName(c))}</div>
         <div class="co-sub">${esc(c.ticker)} · HKEX main board${c.name && c.name !== hkName(c) ? ' · ' + esc(c.name) : ''}${c.industry ? ' · ' + esc(c.industry) : ''}</div>
@@ -6257,7 +6259,7 @@ async function renderAustraliaPage(stub) {
   const q = c.quarters || [];
   const h = c.history || [];
   const ccy = c.reportCurrency || 'AUD';
-  const cur = (v) => (v == null ? '—' : ccy === 'AUD' ? auMoney(v) : `${ccy} ${Math.round(v).toLocaleString('en-US')}`);
+  const cur = (v) => (ccy === 'AUD' ? auMoney(v) : compactMoney(v, ccy));
   el.innerHTML = `<div class="ma-crumb"><button class="ma-back" data-auback="1">← COMPANIES</button> <span>${esc(c.ticker)}</span><span class="mb-tag">AUSTRALIA</span></div>`
     + `<div class="co-head">${auMono(c)}<div><div class="co-name">${esc(auName(c))}</div>
         <div class="co-sub">${esc(c.ticker)} · ASX-listed${c.crossListing ? ' · NYSE statements' : ''}${c.name && c.name !== auName(c) ? ' · ' + esc(c.name) : ''}${c.industry ? ' · ' + esc(c.industry) : ''}</div>
