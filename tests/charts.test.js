@@ -64,6 +64,7 @@ test('the chart store covers every market', () => {
     const idx = JSON.parse(readFileSync(idxFile, 'utf8'));
     assert.ok(Object.keys(idx.keys).length > 100, `${market}: chart store looks collapsed`);
     assert.ok(idx.dates.length > 20, `${market}: no shared date table`);
+    assert.ok(idx.source, `${market}: no source stamp — the server cannot detect a stale store`);
     const span = idx.keys[code];
     assert.ok(span, `${market}: ${code} is not in the chart store`);
     const fd = openSync(join(ROOT, 'data', 'charts', `${market}.ndjson`), 'r');

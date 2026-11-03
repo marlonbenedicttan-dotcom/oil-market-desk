@@ -12,7 +12,7 @@
 // The build scripts call this after they rewrite their series; if it is missing or a code is absent,
 // the server falls back to the old (slower) reader rather than showing no chart.
 
-import { readFileSync, writeFileSync, renameSync, existsSync, mkdirSync, readdirSync } from 'node:fs';
+import { readFileSync, writeFileSync, renameSync, existsSync, mkdirSync, readdirSync, openSync, readSync, closeSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { combineSeries, pointsFromColumns } from '../src/charts.js';
@@ -22,6 +22,37 @@ const OUT_DIR = join(ROOT, 'data', 'charts');
 const DATA = (f) => join(ROOT, 'data', f);
 
 const readJSON = (f) => JSON.parse(readFileSync(f, 'utf8'));
+
+// A source's own build stamp, read from its first 256 bytes. The server compares it with the stamp
+// in the chart index: if a data build rewrote the series but not the store, the server falls back to
+// the old reader instead of publishing a stale chart.
+function fileStamp(f) {
+  let fd;
+  try {
+    fd = openSync(f, 'r');
+    const buf = Buffer.alloc(256);
+    const n = readSync(fd, buf, 0, 256, 0);
+    const m = /"updated"\s*:\s*"([^"]+)"/.exec(buf.toString('utf8', 0, n));
+    return m ? m[1] : null;
+  } catch { return null; }
+  finally { if (fd !== undefined) { try { closeSync(fd); } catch {} } }
+}
+
+function firstBucket(dirName) {
+  try {
+    const f = readdirSync(DATA(dirName)).filter((x) => x.endsWith('.json')).sort()[0];
+    return f ? join(DATA(dirName), f) : null;
+  } catch { return null; }
+}
+
+function sourceStamp(id) {
+  if (id === 'kr') return fileStamp(DATA('korea.json'));
+  if (id === 'jp') return fileStamp(DATA('japan-series.json'));
+  if (id === 'us') return fileStamp(DATA('us-charts.json'));
+  const dir = { tw: 'taiwan-series', hk: 'hongkong-series', au: 'australia-series' }[id];
+  const first = dir ? firstBucket(dir) : null;
+  return first ? fileStamp(first) : null;
+}
 
 // Every market reduces to the same intermediate shape: a primary key, its points (oldest first), and
 // any aliases that must resolve to the same line (a Tokyo 4-digit ticker vs its 5-digit code, a
@@ -138,6 +169,7 @@ function build(id) {
     v: 1,
     market: id,
     built: new Date().toISOString(),
+    source: sourceStamp(id),
     through,
     dates,
     keys,

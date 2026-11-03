@@ -761,11 +761,52 @@ const CHART_INDEX_CACHE = new Map();   // market -> index (or null)
 const CHART_LINE_CACHE = new Map();    // "market:KEY" -> { dates, closes }
 const CHART_CACHE_MAX = 160;
 
+// The source's own build stamp, read from a small prefix. A data build that rewrote the series but
+// not the store leaves these two out of step; serving the store then would publish an old chart, so
+// the request falls back to the (slower) live reader instead. Same first file the builder stamps.
+function filePrefixStamp(file) {
+  let fd;
+  try {
+    fd = fs.openSync(file, 'r');
+    const buf = Buffer.alloc(256);
+    const n = fs.readSync(fd, buf, 0, 256, 0);
+    const m = /"updated"\s*:\s*"([^"]+)"/.exec(buf.toString('utf8', 0, n));
+    return m ? m[1] : null;
+  } catch { return null; }
+  finally { if (fd !== undefined) { try { fs.closeSync(fd); } catch {} } }
+}
+const CHART_SOURCES = {
+  us: () => path.join(__dirname, 'data', 'us-charts.json'),
+  jp: () => path.join(__dirname, 'data', 'japan-series.json'),
+  kr: () => path.join(__dirname, 'data', 'korea.json'),
+  tw: () => {
+    const dir = path.join(__dirname, 'data', 'taiwan-series');
+    try { const f = fs.readdirSync(dir).filter((x) => x.endsWith('.json')).sort()[0]; return f ? path.join(dir, f) : null; } catch { return null; }
+  },
+  hk: () => {
+    const dir = path.join(__dirname, 'data', 'hongkong-series');
+    try { const f = fs.readdirSync(dir).filter((x) => x.endsWith('.json')).sort()[0]; return f ? path.join(dir, f) : null; } catch { return null; }
+  },
+  au: () => {
+    const dir = path.join(__dirname, 'data', 'australia-series');
+    try { const f = fs.readdirSync(dir).filter((x) => x.endsWith('.json')).sort()[0]; return f ? path.join(dir, f) : null; } catch { return null; }
+  },
+};
+function chartSourceStamp(market) {
+  const file = CHART_SOURCES[market] ? CHART_SOURCES[market]() : null;
+  return file ? filePrefixStamp(file) : null;
+}
+
 function chartIndex(market) {
   if (CHART_INDEX_CACHE.has(market)) return CHART_INDEX_CACHE.get(market);
   try {
     const idx = JSON.parse(fs.readFileSync(path.join(CHART_DIR, `${market}.idx.json`), 'utf8'));
     if (!idx || !idx.keys || !Array.isArray(idx.dates)) throw new Error('bad index');
+    // Older indexes predate the stamp; accept them rather than losing the fast path on upgrade.
+    if (idx.source) {
+      const src = chartSourceStamp(market);
+      if (src && src !== idx.source) throw new Error('chart store is behind its source');
+    }
     CHART_INDEX_CACHE.set(market, idx);
     return idx;
   } catch {
