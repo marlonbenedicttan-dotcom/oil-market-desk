@@ -89,6 +89,13 @@ export const projectAu = (c) => ({
   price: c.price, priceDate: c.priceDate, marketCap: c.marketCap,
   chg1d: c.chg1d, chg6m: c.chg6m, chgYtd: c.chgYtd,
   pe: c.pe, pb: c.pb, roe: c.roe, opMargin: c.opMargin,
+  // The trailing profit the P/E is built on. It rides in the list so a screen or a search result can
+  // read it without opening the company; `ttmFromFY` says when it is the fiscal year, not four quarters.
+  netIncomeTTM: c.netIncomeTTM ?? null,
+  netIncomeTTMAsOf: c.netIncomeTTMAsOf || null,
+  ttmFromFY: c.ttmFromFY || undefined,
+  // The company page's cash-flow ratios; the screener's FCF YLD column reads this one.
+  fcfYield: c.fcfYield ?? null,
   dividendYield: c.dividendYield ?? null,
   reportCurrency: c.reportCurrency || null,
   bands: c.bands && c.bands.pe ? { pe: { percentile: c.bands.pe.percentile } } : null,

@@ -33,9 +33,11 @@ test('market cap is price × shares, in AUD', () => {
 
 test('ratios are either absent or physically possible', () => {
   for (const c of au.companies) {
-    if (c.pe != null) assert.ok(c.pe > 0.01 && c.pe < 500, `${c.code} P/E ${c.pe}`);
+    if (c.pe != null) assert.ok(c.pe >= 0.5 && c.pe < 500, `${c.code} P/E ${c.pe}`);
     if (c.pb != null) assert.ok(c.pb > 0 && c.pb < 50, `${c.code} P/B ${c.pb}`);
     if (c.roe != null) assert.ok(c.roe > -1000 && c.roe < 1000, `${c.code} ROE ${c.roe}`);
+    if (c.opMargin != null) assert.ok(Math.abs(c.opMargin) <= 500, `${c.code} operating margin ${c.opMargin}`);
+    if (c.netMargin != null) assert.ok(Math.abs(c.netMargin) <= 500, `${c.code} net margin ${c.netMargin}`);
     if (c.dividendYield != null) assert.ok(c.dividendYield >= 0 && c.dividendYield < 30, `${c.code} yield ${c.dividendYield}`);
   }
 });
@@ -61,13 +63,81 @@ test('the FX snapshot carries the AUD cross the ratios need', () => {
   assert.ok(au.fx.rates && au.fx.rates.AUD > 1 && au.fx.rates.USD === 1);
 });
 
+test('the exchange short name is clean and summaries are complete sentences', () => {
+  const profiles = read('australia-profiles.json').entries || {};
+  for (const c of au.companies) {
+    assert.doesNotMatch(c.name || '', /\.$/, `${c.code} exchange name ${c.name}`);
+  }
+  for (const [code, p] of Object.entries(profiles)) {
+    if (!p.desc) continue;
+    assert.match(p.desc, /[.!?]["')\]]?$|\u2026$/, `${code} summary ends cleanly`);
+    assert.doesNotMatch(p.desc, /;$/, `${code} summary is not a cut-off list`);
+  }
+});
+
 test('the list projection carries the fields the Australian filters read', () => {
   const list = read('australia-list.json');
   assert.equal(list.companies.length, au.companies.length);
   for (const c of list.companies) {
     assert.ok('pe' in c && 'pb' in c && 'roe' in c && 'dividendYield' in c && 'marketCap' in c && 'reportCurrency' in c);
+    assert.ok('netIncomeTTM' in c && 'netIncomeTTMAsOf' in c, 'the trailing profit survives projection');
+    assert.ok('fcfYield' in c, 'the screener FCF YLD column reads the list');
     assert.equal(c.series, undefined, 'the list never ships price history');
   }
+});
+
+test('every company carries the trailing profit its P/E is built on', () => {
+  let ttm = 0, fromFy = 0;
+  for (const c of au.companies) {
+    if (c.netIncomeTTM != null) {
+      assert.ok(Number.isFinite(c.netIncomeTTM), `${c.code}: net profit TTM is a number`);
+      assert.match(c.netIncomeTTMAsOf || '', /^\d{4}-\d{2}-\d{2}$/, `${c.code}: the period is dated`);
+    }
+    if (c.peBasis === 'TTM') {
+      ttm++;
+      assert.ok(c.netIncomeTTM != null, `${c.code}: a TTM P/E needs a TTM profit`);
+      assert.notEqual(c.ttmFromFY, true, `${c.code}: TTM basis is not a fiscal-year fallback`);
+    }
+    if (c.ttmFromFY) fromFy++;
+  }
+  assert.ok(ttm > au.companies.length / 2, `most of the market is on a trailing basis (${ttm})`);
+  assert.ok(fromFy > 0, 'the fiscal-year fallback is exercised, not dead');
+});
+
+test('financials keep the ratios that apply and drop the ones that do not', () => {
+  const fins = au.companies.filter((c) => c.financial);
+  assert.ok(fins.length >= 100, `the financial-sector rule finds the ASX financials (${fins.length})`);
+  for (const c of fins) {
+    // A bank's cash flow is loans and deposits; an insurer's is its investment portfolio. Neither is
+    // free cash flow, so the FCF family is withheld for the whole financial sector — as the US and
+    // Japan pages do — while margins, returns and the balance sheet stay.
+    for (const key of ['fcf', 'fcfYield', 'fcfMargin', 'cashConversion']) {
+      assert.equal(c[key], null, `${c.code}: ${key} is not a ratio for a financial`);
+    }
+    for (const key of ['fcf', 'fcfYield', 'fcfMargin', 'cashConversion', 'operatingCashFlow']) {
+      assert.ok((c.naRatios || []).includes(key), `${c.code}: naRatios records ${key}`);
+    }
+    assert.ok(Number.isFinite(c.netIncomeTTM), `${c.code}: the profit is still shown`);
+  }
+  const withBook = fins.filter((c) => c.pb != null || c.roe != null).length;
+  assert.ok(withBook > fins.length * 0.8, `the financials keep the ratios that apply (${withBook}/${fins.length})`);
+  // A bank has no operating-profit line either; an insurer reports one and keeps its margin.
+  for (const c of au.companies.filter((x) => x.bankLike)) {
+    assert.equal(c.opMargin, null, `${c.code}: no operating margin for a bank`);
+    assert.ok((c.naRatios || []).includes('opMargin'), `${c.code}: naRatios records opMargin`);
+  }
+  const sun = au.companies.find((c) => c.code === 'SUN');
+  assert.ok(sun && sun.opMargin != null, 'SUN reports an operating margin');
+  assert.ok(!(sun.naRatios || []).includes('opMargin'), 'and it is not suppressed');
+  assert.equal(sun.fcf, null, 'but an insurer has no free cash flow');
+});
+
+test('a non-financial keeps its cash-flow ratios', () => {
+  const bhp = au.companies.find((c) => c.code === 'BHP');
+  assert.ok(bhp && bhp.fcf != null, 'BHP has a free cash flow');
+  assert.ok(Number.isFinite(bhp.fcfMargin) && Math.abs(bhp.fcfMargin) <= 100, 'and a printable FCF margin');
+  assert.ok(bhp.cashConversion == null || Math.abs(bhp.cashConversion) <= 5);
+  assert.equal(bhp.fcfBasis === 'TTM' || bhp.fcfBasis === 'FY', true);
 });
 
 test('the daily/weekly chart store covers the listed codes', () => {

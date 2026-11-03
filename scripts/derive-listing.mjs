@@ -51,6 +51,11 @@ export function deriveListing({ companies, fx = null, baseCurrency = 'HKD' }) {
     const rev = ttm.revenue ?? (fy ? fy.revenue : null);
     const op = ttm.operatingProfit ?? (fy ? fy.operatingProfit : null);
     const basis = ttm.netIncome != null ? 'TTM' : 'FY';
+    // The same trailing profit the P/E uses, published as its own field so the company page and the
+    // list can show it without re-deriving. A company whose vendor page has no trailing column still
+    // gets its fiscal-year profit, flagged: a four-quarter figure and a year-end figure are not the
+    // same thing, and the label must not pretend they are.
+    const niAsOf = ttm.netIncome != null ? (c.ttmEnd || null) : (fy ? fy.end : null);
 
     // P/B and ROE belong to the ordinary shareholders, so both sides use common equity (excluding
     // non-controlling interests). Dividing a parent-only market cap by total equity (which includes
@@ -60,9 +65,24 @@ export function deriveListing({ companies, fx = null, baseCurrency = 'HKD' }) {
     const cfo = ttm.operatingCashFlow ?? (fy ? fy.operatingCashFlow : null);
     const cfi = ttm.investingCashFlow ?? (fy ? fy.investingCashFlow : null);
     const fcf = cfo != null && cfi != null ? cfo + cfi : (ttm.freeCashFlow ?? null);
+    // Which period the cash figures belong to. Income and cash can have different vendor pages, so the
+    // label follows the cash line, not the P/E basis.
+    const cashTrailing = ttm.operatingCashFlow != null || ttm.investingCashFlow != null;
+    const fcfBasis = fcf == null ? null : (cashTrailing ? 'TTM' : 'FY');
+    const fcfMargin = fcf != null && rev > 0 && Math.abs((fcf / rev) * 100) <= 100
+      ? round((fcf / rev) * 100, 1) : null;
+    // Profit that never becomes cash is not profit — but a loss makes the ratio unreadable, so it is
+    // computed against positive earnings only, exactly as the US page does.
+    const cashConversion = fcf != null && ni > 0 && Math.abs(fcf / ni) <= 5 ? round(fcf / ni, 2) : null;
 
-    // A P/E under 0.01 is a division by a rounding artefact, not a cheap stock.
+    // A P/E under 0.5 is a division by a one-off gain or a rounding artefact, not a cheap stock: a
+    // Guangzhou developer emerging from restructuring can print a 0.02× "P/E" on a debt write-back.
+    // Withhold it rather than let a reader think the equity is free. A margin beyond ±500% means
+    // revenue is too small to be a denominator (a pre-revenue explorer, or a holding company whose
+    // income is associates), so it is withheld too instead of printed as 58,000,000%.
     const peRaw = capRep && ni > 0 ? capRep / ni : null;
+    const peOk = peRaw != null && peRaw >= 0.5;
+    const marginOf = (v) => (rev > 0 && v != null && Math.abs(v / rev) <= 5 ? round((v / rev) * 100, 1) : null);
 
     // Five-year P/E band: the year-end price against that year's diluted EPS. For a foreign-currency
     // reporter both sides are converted at the current rate — an approximation, and the honest one
@@ -76,7 +96,7 @@ export function deriveListing({ companies, fx = null, baseCurrency = 'HKD' }) {
       const px = r.px ?? yearEnd[y];
       if (px && r.eps > 0 && conv) pes.push((px * conv) / r.eps);
     }
-    if (peRaw != null && peRaw > 0.01) pes.push(peRaw);
+    if (peOk) pes.push(peRaw);
     const a = pes.filter((x) => x > 0 && x < 500).sort((x, y) => x - y);
     let bands = null;
     if (a.length >= 3) {
@@ -102,16 +122,22 @@ export function deriveListing({ companies, fx = null, baseCurrency = 'HKD' }) {
       sharesBasis: 'filing',
       currency: base,
       reportCurrency: ccy,
-      pe: peRaw != null && peRaw > 0.01 ? round(guard(peRaw, 0, 500), 2) : null,
+      pe: peOk ? round(guard(peRaw, 0, 500), 2) : null,
       peBasis: basis,
+      netIncomeTTM: ni,
+      netIncomeTTMAsOf: niAsOf,
+      ...(ttm.netIncome == null && ni != null ? { ttmFromFY: true } : {}),
       pb: round(guard(capRep && equity > 0 ? capRep / equity : null, 0, 50), 2),
       // Near-zero book equity turns a small loss into a four-digit "ROE" that says nothing about the
       // business. Publish no ROE instead of a number that reads as a collapse.
       roe: equity > 0 && ni != null && Math.abs(ni / equity) <= 10 ? round((ni / equity) * 100, 1) : null,
-      opMargin: rev && op != null ? round((op / rev) * 100, 1) : null,
-      netMargin: rev && ni != null ? round((ni / rev) * 100, 1) : null,
+      opMargin: marginOf(op),
+      netMargin: marginOf(ni),
       fcf,
+      fcfBasis,
       fcfYield: capRep && fcf != null ? round((fcf / capRep) * 100, 2) : null,
+      fcfMargin,
+      cashConversion,
       dividendYield: round(guard(yieldRaw, 0, 30), 2),
       history: annual.slice(-5).map((r) => ({
         y: r.end, s: r.revenue, o: r.operatingProfit, n: r.netIncome,

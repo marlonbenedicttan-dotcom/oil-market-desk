@@ -12,6 +12,7 @@ const base = {
   code: 'BHP', ticker: 'BHP', name: 'BHP GROUP LIMITED', nameEn: 'BHP Group', sector: 'Materials',
   price: 10, shares: 1e8, marketCap: 1e9, reportCurrency: 'AUD',
   ttm: { revenue: 5e8, operatingProfit: 2e8, netIncome: 1e8, operatingCashFlow: 1.5e8, investingCashFlow: -5e7, dividendPerShare: 0.5 },
+  ttmEnd: '2026-06-30',
   latest: { equity: 4e8, assets: 1e9, liabilities: 6e8 },
   annual: [
     { end: '2021-06-30', revenue: 2e8, operatingProfit: 6e7, netIncome: 3e7, equity: 2.5e8, assets: 6e8, eps: 0.3 },
@@ -34,13 +35,32 @@ test('an AUD reporter divides the AUD cap by AUD earnings', () => {
   assert.equal(c.opMargin, 40);
   assert.equal(c.netMargin, 20);
   assert.equal(c.fcf, 1e8);
+  assert.equal(c.fcfBasis, 'TTM');
   assert.equal(c.fcfYield, 10);
+  assert.equal(c.fcfMargin, 20);       // 1e8 / 5e8
+  assert.equal(c.cashConversion, 1);   // 1e8 / 1e8
   assert.equal(c.dividendYield, 5);    // A$0.50 on an A$10 price
   assert.equal(c.peBasis, 'TTM');
+  assert.equal(c.netIncomeTTM, 1e8, 'the trailing profit the P/E is built on');
+  assert.equal(c.netIncomeTTMAsOf, '2026-06-30');
+  assert.equal(c.ttmFromFY, undefined, 'a real trailing figure is not labelled as a fiscal year');
   assert.equal(c.currency, 'AUD');
   assert.equal(c.marketCapUsd, Math.round(1e9 / 1.5));
   assert.equal(c.history.length, 5);
   assert.equal(c.quarters.length, 1);
+});
+
+test('a fiscal-year cash flow is labelled FY, not TTM', () => {
+  const annual = base.annual.map((r) => ({ ...r, operatingCashFlow: 1.5e8, investingCashFlow: -5e7 }));
+  const c = derive({ ...base, ttm: { revenue: 5e8, netIncome: 1e8, dividendPerShare: 0.5 }, annual });
+  assert.equal(c.fcf, 1e8);
+  assert.equal(c.fcfBasis, 'FY');
+  assert.equal(c.fcfMargin, 20);
+});
+
+test('a loss has no cash conversion, because the ratio would read as a multiple of nothing', () => {
+  const c = derive({ ...base, ttm: { ...base.ttm, netIncome: -1e8 } });
+  assert.equal(c.cashConversion, null);
 });
 
 test('a USD reporter is valued in USD, not in AUD', () => {
@@ -68,8 +88,15 @@ test('without an FX table a foreign reporter gets blanks, not a wrong ratio', ()
   assert.equal(c.roe, 25, 'the currency-free ratios still work');
 });
 
-test('a loss is no P/E, and negative equity is no ROE or P/B', () => {
-  const c = derive({ ...base, ttm: { ...base.ttm, netIncome: -1e8 }, latest: { equity: -5e8 } });
+test('a fiscal-year fallback is labelled, not passed off as trailing', () => {
+  const c = derive({ ...base, ttm: {}, ttmEnd: null });
+  assert.equal(c.peBasis, 'FY');
+  assert.equal(c.netIncomeTTM, 9e7, 'the latest annual profit');
+  assert.equal(c.netIncomeTTMAsOf, '2025-06-30');
+  assert.equal(c.ttmFromFY, true, 'a reader can tell four quarters from a year');
+});
+
+test('a loss is no P/E, and negative equity is no ROE or P/B', () => {  const c = derive({ ...base, ttm: { ...base.ttm, netIncome: -1e8 }, latest: { equity: -5e8 } });
   assert.equal(c.pe, null);
   assert.equal(c.roe, null);
   assert.equal(c.pb, null);

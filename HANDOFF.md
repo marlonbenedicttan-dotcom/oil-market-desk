@@ -3527,3 +3527,43 @@ Audited at 360, 390 and 430 px with screenshots of every view, then fixed what l
   companies have no four dated quarters (`peBasis: 'FY'`), so the headline P/E is cap ÷ last annual
   profit. The audit was recomputing from four undated/interim rows. It now uses the annual profit when
   `peBasis === 'FY'`; `audit:all` exits 0 with 0 failures (42 known warnings across US/JP/KR).
+
+## Australia: trailing net profit, cash-flow ratios, and what a financial actually has (2026-11-03)
+- **`netIncomeTTM` on every ASX company.** The shared `derive-listing.mjs` publishes the exact profit
+  the P/E uses as `netIncomeTTM` + `netIncomeTTMAsOf`; when the vendor has no trailing page the latest
+  fiscal year is used and `ttmFromFY: true` says so (only AMC today — a CDI whose statements come from
+  the NYSE listing). It rides in `australia-list.json`, so a screen can read it without opening the
+  company. Hong Kong gets the same fields at its next rebuild.
+- **The page has the same statement block as Hong Kong and Japan**, not just a ratio strip:
+  `REVENUE`, `OPERATING PROFIT`, `EPS`, `FREE CASH FLOW`, `TOTAL ASSETS`, `LIABILITIES`,
+  `SHAREHOLDERS' EQUITY` and `OPERATING CASH FLOW`, all on the same period as the numbers above.
+  The `NET PROFIT · TTM` tile (the US page's `NET INCOME · TTM`) sits beside net margin, in the
+  statement currency (`A$10.9B` for CBA, `USD 9.8B` for BHP).
+- **Cash-flow ratios, labelled by their own period.** `fcfMargin` (FCF ÷ revenue, capped at ±100%),
+  `cashConversion` (FCF ÷ positive profit, capped at ±5×) and `fcfBasis` join the existing `fcf` and
+  `fcfYield`. Income and cash can come from different vendor pages, so the FCF tiles say `FY2026` when
+  the cash line is annual even though the profit is trailing (BHP). The screener gains an `FCF YLD`
+  column, matching the US table.
+- **Financials publish only the ratios that exist — the US/Japan rule.** All 129 financial-sector
+  companies have `fcf`, `fcfYield`, `fcfMargin`, `cashConversion` withheld (a bank's cash flow is loans
+  and deposits; an insurer's investing flow is the investment portfolio) and `naRatios` records it.
+  Bank-like companies (`isBankLike()` in `scripts/asx.mjs`: `Banks`, `Financial Conglomerates`,
+  `Consumer Finance`, `Mortgage Finance`, or a `Capital Markets`/`Credit Services` line with no
+  operating-profit line) also lose `opMargin`. CBA's −A$88B "free cash flow" is no longer computed as a
+  signal. **Insurers keep their operating margin** (QBE/SUN report one) but not free cash flow.
+  The page omits those tiles, drops the OP PROFIT column from a bank's five-year/period tables (net
+  profit and net margin replace it), and prints the reason.
+- **Rebuild**: `node scripts/build-australia.mjs --skip-prices --skip-fin` re-derives from the committed
+  statements (seconds). 1,664/1,664 companies carry `netIncomeTTM` (1,663 trailing, 1 flagged FY);
+  129 financial-sector, 18 bank-like. `npm run audit:australia` passes: 0 formula mismatches, 0
+  financials carrying an FCF ratio, 0 banks carrying an operating margin.
+- **Verified headless**: CBA (bank) shows revenue/profit/EPS/assets but no op-profit or FCF line; BHP
+  (USD reporter) shows all 12 ratio tiles and the full statement block with `FREE CASH FLOW · FY2026`;
+  SUN (insurer) keeps the operating margin and loses FCF; the screener renders `FCF YLD`; **0 console
+  errors**.
+- **Tests**: `tests/asx.test.js` (bank vs insurer vs fee-based financial), `australia-derive.test.js`
+  (`netIncomeTTM`, `fcfBasis`, `fcfMargin`, `cashConversion`, FY fallback), `australia-data.test.js`
+  (every company's TTM profit is dated; financials carry no FCF ratio; banks carry no operating margin;
+  a non-financial keeps its FCF ratios). Australia's own tests pass. The concurrent Hong Kong work in
+  the same working tree still has two HK data assertions red (a stale 509% margin and an HSBC display
+  name); this change does not touch those files.

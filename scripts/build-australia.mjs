@@ -26,6 +26,7 @@ import https from 'node:https';
 import { join } from 'node:path';
 import {
   ROOT, AU_CACHE, AU_SA, asxCsv, sectorOf, isNotApplic, isUnclassified, isFundLine, pad, saPage, saUsPage, US_CROSS, yaSymbol,
+  isBankLike, isFinancialSector,
 } from './asx.mjs';
 import {
   sleep, readJson, writeJson, getCached, parseSaTable, rowOf, periodFromTitle, statementCurrency,
@@ -42,6 +43,10 @@ const DAY = 864e5;
 const iso = (d) => new Date(d).toISOString().slice(0, 10);
 const arg = (k, d = null) => { const x = process.argv.find((a) => a.startsWith(`--${k}=`)); return x ? x.split('=')[1] : d; };
 const flag = (k) => process.argv.includes(`--${k}`);
+// The ASX CSV's short name is an exchange label, not a sentence: 82 of them carry a trailing period
+// ("COMMONWEALTH BANK OF AUSTRALIA.") and one has two ("ZIP CO LIMITED.."). The company page prints
+// it beside the ticker, so strip the punctuation rather than ship it.
+const cleanExchangeName = (s) => String(s || '').replace(/\.{2,}/g, '.').replace(/\s+/g, ' ').replace(/[.\s]+$/, '').trim();
 
 const LIMIT = Number(arg('limit', 0)) || 0;
 const CODES = (arg('codes', '') || '').split(',').map((s) => pad(s)).filter(Boolean);
@@ -505,6 +510,7 @@ const profiles = readJson(PROFILES) || { entries: {} };
 let withDesc = 0;
 for (const c of out) {
   const p = profiles.entries && profiles.entries[c.code];
+  c.name = cleanExchangeName(c.name);
   c.nameEn = (p && p.name) || c.name;
   c.nameFull = (p && p.legal) || null;
   c.description = (p && p.desc) || null;
@@ -514,6 +520,34 @@ for (const c of out) {
   c.sectorSource = !isUnclassified(c.gicsIndustryGroup) ? 'asx-gics-group' : (p && p.sector ? 'profile-gics-sector' : 'other');
   c.industry = (p && p.industry) || null;
   if (c.description) withDesc++;
+}
+
+// --- 7b. ratios that do not exist for a bank ------------------------------------------------------
+// A bank's revenue is net interest income, it reports no operating-profit line, and its cash flow is
+// loans and deposits — so an operating margin and a free-cash-flow yield are not missing, they do not
+// exist. Shipping them anyway (CBA's FCF was −A$88B) puts a number on the page that reads as a signal
+// and is not one. The US page suppresses exactly these for bank-like filers; Japan swaps in ordinary
+// profit. Insurers keep their margins — but not free cash flow, because their investing flow is the
+// investment portfolio, which is why both the US and Japan withhold FCF for the whole financial sector.
+let bankLike = 0;
+const FCF_KEYS = ['fcf', 'fcfYield', 'fcfMargin', 'cashConversion', 'operatingCashFlow'];
+for (const c of out) {
+  c.financial = isFinancialSector(c.sector);
+  c.bankLike = isBankLike(c);
+  const na = [];
+  if (c.financial) {
+    na.push(...FCF_KEYS);
+    c.fcf = null; c.fcfYield = null; c.fcfMargin = null; c.cashConversion = null;
+  }
+  if (c.bankLike) {
+    bankLike++;
+    na.push('opMargin', 'operatingProfit', 'evEbitda', 'currentRatio', 'debtEquity', 'roic', 'assetTurnover');
+    c.opMargin = null;
+  } else if (c.financial && c.opMargin == null) {
+    // A fee-based financial that did not report an operating line gets no blank tile either.
+    na.push('opMargin');
+  }
+  if (na.length) c.naRatios = [...new Set(na)];
 }
 
 // --- 8. market aggregates + themes ----------------------------------------------------------------
@@ -585,6 +619,9 @@ const audit = {
   resolvedFromProfile: cleaned.filter((c) => c.sectorSource === 'profile-gics-sector').length,
   pe: cleaned.filter((c) => c.pe != null).length,
   pb: cleaned.filter((c) => c.pb != null).length,
+  netProfitTTM: cleaned.filter((c) => c.netIncomeTTM != null).length,
+  financials: cleaned.filter((c) => c.financial).length,
+  bankLike: cleaned.filter((c) => c.bankLike).length,
   foreignReporters: cleaned.filter((c) => c.reportCurrency !== 'AUD').length,
   noFx: fx.rate == null,
 };
@@ -594,7 +631,10 @@ writeJson(`${OUT}.tmp`, {
   universe: `ASX listed companies · ${cleaned.length} companies`,
   currency: 'AUD',
   fx,
-  session: csv.banner || null,
+  session: (() => {
+    const t = Date.parse(csv.banner || '');
+    return Number.isFinite(t) ? iso(t) : (csv.banner || null);
+  })(),
   market, index: idx, themes, audit,
   companies: cleaned,
 });

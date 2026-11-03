@@ -107,6 +107,24 @@ export const sectorOf = (csvGroup, profileSector) => {
 // upper case. pad() exists so the shared build shape reads the same as the other markets.
 export const pad = (code) => String(code || '').trim().toUpperCase();
 
+// Banks and insurers are not one business. GICS files banks under "Banks"; the diversified financials
+// (Macquarie, AMP) sit in "Financial Services" with a "Financial Conglomerates" industry, and a few
+// investment banks / lenders land in "Capital Markets" or "Credit Services" but, like a bank, report
+// no operating-profit line. That blank line is the tell: the vendor prints net interest income as
+// revenue, so an operating margin does not exist and the cash-flow statement is loans and deposits,
+// not free cash flow. Insurers keep both, exactly as the US page keeps margins for insurers and only
+// suppresses the ratios that do not exist for banks.
+export const FINANCIAL_SECTORS = new Set(['Banks', 'Insurance', 'Financial Services', 'Financials']);
+export const isFinancialSector = (sector) => FINANCIAL_SECTORS.has(String(sector || '').trim());
+export const isBankLike = (c = {}) => {
+  const sector = String(c.sector || '').trim();
+  const industry = String(c.industry || '').trim();
+  if (sector === 'Banks') return true;
+  if (/^(Financial Conglomerates?|Consumer Finance|Mortgage Finance)$/i.test(industry)) return true;
+  const ttm = c.ttm || (c.reports && c.reports.ttm) || {};
+  return /^(Capital Markets|Credit Services)$/i.test(industry) && ttm.operatingProfit == null;
+};
+
 export const saPage = (code, page = '', trailing = false) =>
   `https://stockanalysis.com/quote/asx/${pad(code)}/financials/${page}/${trailing ? '?p=trailing' : ''}`;
 export const saProfile = (code) => `https://stockanalysis.com/quote/asx/${pad(code)}/company/`;

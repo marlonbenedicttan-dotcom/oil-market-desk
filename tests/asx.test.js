@@ -1,7 +1,7 @@
 // ASX helpers — the CSV parser, the "Not Applic" sector rule and the URL builders.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { parseAsxCsv, sectorOf, isNotApplic, isUnclassified, isFundLine, pad, saPage, saProfile, yaSymbol } from '../scripts/asx.mjs';
+import { parseAsxCsv, sectorOf, isNotApplic, isUnclassified, isFundLine, pad, saPage, saProfile, yaSymbol, isFinancialSector, isBankLike } from '../scripts/asx.mjs';
 
 const CSV = `\uFEFFASX listed companies as at Mon Nov 02 19:41:36 AEDT 2026
 
@@ -52,6 +52,19 @@ test('ASX codes are already three characters — pad only normalises case', () =
   assert.equal(pad('bhp'), 'BHP');
   assert.equal(pad('14d'), '14D');
   assert.equal(pad(' A2M '), 'A2M');
+});
+
+test('banks are separated from insurers and asset managers', () => {
+  assert.equal(isFinancialSector('Banks'), true);
+  assert.equal(isFinancialSector('Insurance'), true);
+  assert.equal(isFinancialSector('Materials'), false);
+  assert.equal(isBankLike({ sector: 'Banks', industry: 'Banks - Diversified' }), true);
+  assert.equal(isBankLike({ sector: 'Financial Services', industry: 'Financial Conglomerates' }), true);
+  // A broker/lender that reports no operating-profit line is bank-like; one that reports it is not.
+  assert.equal(isBankLike({ sector: 'Financial Services', industry: 'Capital Markets', ttm: {} }), true);
+  assert.equal(isBankLike({ sector: 'Financial Services', industry: 'Capital Markets', ttm: { operatingProfit: 1e8 } }), false);
+  // An insurer keeps its operating margin and cash flow — it is not a bank.
+  assert.equal(isBankLike({ sector: 'Insurance', industry: 'Insurance - Property & Casualty', ttm: { operatingProfit: 1e8 } }), false);
 });
 
 test('the page and symbol builders match the ASX paths', () => {

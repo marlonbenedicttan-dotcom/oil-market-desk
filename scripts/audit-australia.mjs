@@ -59,9 +59,32 @@ const noDesc = au.companies.filter((c) => !c.description).length;
 say('descriptions', `${au.companies.length - noDesc}/${au.companies.length}`);
 if (noDesc) warn.push(`${noDesc} companies have no description`);
 
+// The exchange short name is printed beside the ticker on the company page; a trailing period is a
+// formatting regression. Summaries must stop on a sentence, not in the middle of a segment list.
+const dotted = au.companies.filter((c) => /\.$/.test(c.name || ''));
+say('exchange names with a trailing period', dotted.length);
+if (dotted.length) fails.push(`${dotted.length} exchange names end with a period: ${dotted.slice(0, 8).map((c) => `${c.code} ${c.name}`).join(', ')}`);
+const profiles = (read('australia-profiles.json').entries || {});
+const cutDesc = Object.entries(profiles).filter(([, p]) => p.desc && /;$/.test(p.desc));
+say('summaries cut mid-list', cutDesc.length);
+if (cutDesc.length) fails.push(`${cutDesc.length} summaries end on a semicolon: ${cutDesc.slice(0, 8).map(([k]) => k).join(', ')}`);
+
 const noStmt = au.companies.filter((c) => !c.reports || !c.reports.ttm || c.reports.ttm.revenue == null).length;
 say('with a TTM statement row', au.companies.length - noStmt);
 if (noStmt) warn.push(`${noStmt} companies have no TTM statement row`);
+
+const noTtmProfit = au.companies.filter((c) => c.netIncomeTTM == null).length;
+say('with a trailing net profit', `${au.companies.length - noTtmProfit}/${au.companies.length}`);
+if (noTtmProfit) warn.push(`${noTtmProfit} companies have no net profit figure`);
+
+const finRows = au.companies.filter((c) => c.financial);
+say('financial-sector / bank-like', `${finRows.length} / ${au.companies.filter((c) => c.bankLike).length}`);
+const finBad = finRows.filter((c) => c.fcf != null || c.fcfYield != null || c.fcfMargin != null || c.cashConversion != null);
+say('financials carrying an FCF ratio', finBad.length);
+if (finBad.length) fails.push(`${finBad.length} financial companies still carry a free-cash-flow ratio`);
+const bankBad = au.companies.filter((c) => c.bankLike && c.opMargin != null);
+say('banks carrying an operating margin', bankBad.length);
+if (bankBad.length) fails.push(`${bankBad.length} bank-like companies still carry an operating margin`);
 
 const ccy = {};
 for (const c of au.companies) ccy[c.reportCurrency] = (ccy[c.reportCurrency] || 0) + 1;
@@ -113,7 +136,7 @@ say('chg1d not reproduced from series', moveBad);
 if (moveBad) fails.push('chg1d differs from the series');
 
 // --- ratio formulas ------------------------------------------------------------------------------
-let peBad = 0, pbBad = 0, roeBad = 0, fcfBad = 0, marginBad = 0, yldBad = 0, fxSkipped = 0;
+let peBad = 0, pbBad = 0, roeBad = 0, fcfBad = 0, marginBad = 0, yldBad = 0, fxSkipped = 0, niBad = 0;
 for (const c of au.companies) {
   const r = c.reports || {};
   const ttm = r.ttm || {}, latest = r.latest || {};
@@ -125,6 +148,7 @@ for (const c of au.companies) {
   const dpsRate = audPerCcy(c.reportCurrency || 'AUD');
   const capRep = conv != null ? c.marketCap * conv : null;
   if (conv == null) { fxSkipped++; continue; }
+  if (c.netIncomeTTM != null && (ni == null || Math.abs(ni - c.netIncomeTTM) > 2)) niBad++;
   if (c.pe != null) {
     const want = +(capRep / ni).toFixed(2);
     if (!(ni > 0) || Math.abs(want - c.pe) > 0.011) peBad++;
@@ -151,11 +175,12 @@ for (const c of au.companies) {
 say('P/E formula mismatches', peBad);
 say('P/B formula mismatches', pbBad);
 say('ROE formula mismatches', roeBad);
+say('net-profit TTM mismatches', niBad);
 say('FCF formula mismatches', fcfBad);
 say('operating-margin mismatches', marginBad);
 say('dividend-yield mismatches', yldBad);
 if (fxSkipped) say('skipped for a missing FX rate', fxSkipped);
-if (peBad || pbBad || roeBad || fcfBad || marginBad || yldBad) fails.push('a formula does not reproduce');
+if (peBad || pbBad || roeBad || niBad || fcfBad || marginBad || yldBad) fails.push('a formula does not reproduce');
 
 // The ten largest names must carry P/B and ROE, and a P/E whenever the company actually earned money
 // over the trailing year. A loss-maker with a blank P/E is correct data, not a failed fetch.

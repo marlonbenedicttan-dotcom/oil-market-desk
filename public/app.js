@@ -2821,7 +2821,8 @@ function renderHongKongScreen(el) {
 const AU_SCREEN_COLS = [
   { k: 'label', t: 'COMPANY' }, { k: 'price', t: 'PRICE' }, { k: 'chg1d', t: '1D' },
   { k: 'chg6m', t: '6M' }, { k: 'chgYtd', t: 'YTD' }, { k: 'pe', t: 'P/E' },
-  { k: 'pb', t: 'P/B' }, { k: 'roe', t: 'ROE' }, { k: 'dividendYield', t: 'YIELD' }, { k: 'marketCap', t: 'MKT CAP' },
+  { k: 'pb', t: 'P/B' }, { k: 'roe', t: 'ROE' }, { k: 'fcfYield', t: 'FCF YLD' },
+  { k: 'dividendYield', t: 'YIELD' }, { k: 'marketCap', t: 'MKT CAP' },
 ];
 function renderAustraliaScreen(el) {
   if (!auData) {
@@ -2854,7 +2855,7 @@ function renderAustraliaScreen(el) {
       <td class="sc-name">${esc(c.nameEn || c.name)}<span class="sc-tick">${esc(c.ticker)}${c.sector ? ' · ' + esc(c.sector) : ''}</span></td>
       <td class="num">${auPx(c.price)}</td>
       ${pct(c.chg1d)}${pct(c.chg6m)}${pct(c.chgYtd)}
-      ${num(c.pe, 1, '×')}${num(c.pb, 2, '×')}${num(c.roe, 1, '%')}${num(c.dividendYield, 2, '%')}
+      ${num(c.pe, 1, '×')}${num(c.pb, 2, '×')}${num(c.roe, 1, '%')}${num(c.fcfYield, 1, '%')}${num(c.dividendYield, 2, '%')}
       <td class="num">${auMoney(c.marketCap)}</td></tr>`).join('');
   el.innerHTML = `<div class="sc-bar">${screenModeHtml()}${screenMarketHtml()}
       <label class="sc-f">SEARCH <input id="cosau-q" type="search" placeholder="company or code…" value="${esc(coScreenAu.q)}"></label>
@@ -4883,13 +4884,13 @@ function lastFiscalRow(c) {
 // The income-statement lines sit beside a TTM P/E and TTM margins, so they use the same trailing
 // window as those ratios; the balance sheet is the latest reported point in time. Korea keeps no TTM
 // aggregate, so it is rebuilt from the last four standalone quarters exactly as the build script does.
-// Taiwan's vendor already publishes the TTM column. When a TTM window is incomplete the fiscal year is
-// used instead and the tile says so.
+// Taiwan, Hong Kong and Australia carry the vendor's TTM column in `reports`. When a TTM window is
+// incomplete the fiscal year is used instead and the tile says so.
 function statementFigures(c, market) {
   const fy = lastFiscalRow(c);
   // Taiwan and Hong Kong both carry a TTM column and a latest balance sheet in reports; Japan and
   // Korea ship four quarters instead, so their TTM is summed below.
-  const tw = market === 'tw' || market === 'hk';
+  const tw = market === 'tw' || market === 'hk' || market === 'au';
   const reports = c.reports || {};
   let flows, cash, balance;
   if (tw) {
@@ -4899,7 +4900,7 @@ function statementFigures(c, market) {
     flows = ttmOk
       ? { basis: 'TTM', end: reports.ttmEnd || null, revenue: ttm.revenue, op: ttm.operatingProfit, net: ttm.netIncome }
       : { basis: 'FY', end: fy && fy.y, revenue: fy && fy.s, op: fy && fy.o, net: fy && fy.n };
-    cash = ttmOk
+    cash = ttmOk && (ttm.operatingCashFlow != null || ttm.investingCashFlow != null)
       ? { basis: 'TTM', end: reports.ttmEnd || null, cfo: ttm.operatingCashFlow, cfi: ttm.investingCashFlow }
       : { basis: 'FY', end: fy && fy.y, cfo: fy && fy.c, cfi: fy && fy.i };
     balance = {
@@ -6167,7 +6168,7 @@ async function renderAustralia(token = takeToken()) {
   const sub = $('deals-sub');
   if (sub) {
     const what = auView === 'screener' ? 'filter and sort' : auView === 'themes' ? 'curated theme lists' : 'breadth, sectors and the ASX 200';
-    sub.textContent = all.length ? `${all.length} companies · ASX · A$ AUD · ${what}` : 'ASX · S&P/ASX 200';
+    sub.textContent = all.length ? `${all.length} companies · ASX · prices in AUD · ${what}` : 'ASX · S&P/ASX 200';
   }
   if (!all.length) {
     el.innerHTML = `<div class="macro-note">Australia is not built yet. Run <code>node scripts/build-australia.mjs</code>.</div>`;
@@ -6198,18 +6199,18 @@ function renderAustraliaMarket(all, d) {
   const cell = (k, v, t, cls = '') => `<div class="co-stat" title="${esc(t)}"><span class="co-k">${k}</span><span class="co-v ${cls}">${v}</span></div>`;
   const chg = (x) => (x == null ? '—' : `${x >= 0 ? '+' : ''}${x.toFixed(1)}%`);
   const breadth = m.advancing != null ? `<div class="jp-breadth"><span class="pos">${m.advancing} up</span><i><i style="width:${Math.round((m.advancing / Math.max(1, m.advancing + m.declining)) * 100)}%"></i></i><span class="neg">${m.declining} down</span></div>` : '';
-  const foreign = m.foreignReporters != null ? `${m.foreignReporters} report in another currency` : 'AUD reporters';
+  const foreign = m.foreignReporters != null ? `${m.foreignReporters} report outside AUD` : 'AUD reporters';
   el.innerHTML = auViewsBar()
     + `<div class="jp-market-head"><span class="ph-t">S&amp;P/ASX 200</span>
         ${idx.level != null ? `<span class="jp-market-lvl">${idx.level.toLocaleString('en-US', { maximumFractionDigits: 2 })}</span>` : '<span class="dimtext">index unavailable</span>'}
         <span class="${(idx.chg1d || 0) >= 0 ? 'pos' : 'neg'}">${chg(idx.chg1d)} today</span>
-        <span class="dimtext">${all.length} companies · ASX</span></div>`
+        <span class="dimtext">${all.length} companies · ASX · ${asOfText(all, 'priceDate')}${idx.date ? ` · index as of ${idx.date}` : ''}</span></div>`
     + `<div class="co-stats co-stats-12">
         ${cell('TOTAL MARKET CAP', auMoney(m.totalCap), 'Sum of every covered ASX constituent')}
         ${cell('COMPANIES', String(m.companies || all.length), 'Listed companies with a statement page and a share count')}
         ${cell('MEDIAN P/E', m.medianPe != null ? `${m.medianPe.toFixed(1)}×` : '—', `Median — the typical company, not the index. ${foreign}`)}
         ${cell('MEDIAN P/B', m.medianPb != null ? `${m.medianPb.toFixed(2)}×` : '—', 'Median across the market')}
-        ${cell('MEDIAN ROE', m.medianRoe != null ? `${m.medianRoe.toFixed(1)}%` : '—', 'Trailing twelve months, median')}
+        ${cell('MEDIAN ROE', m.medianRoe != null ? `${m.medianRoe.toFixed(1)}%` : '—', 'Median member, trailing twelve months where available (otherwise the last fiscal year)')}
         ${cell('MEDIAN YIELD', m.medianYield != null ? `${m.medianYield.toFixed(2)}%` : '—', 'From the filing dividend per share')}
         ${cell('BELOW BOOK', String(m.belowBook ?? '—'), 'Companies trading under 1× book')}
         ${cell('UP THIS YEAR', String(m.upYtd ?? '—'), 'Companies with a positive year-to-date return')}
@@ -6319,7 +6320,7 @@ function renderAustraliaScreener(all, d) {
         <span class="co-mar ${c.roe == null ? 'dimtext' : c.roe >= 0 ? 'pos' : 'neg'}">${c.roe == null ? '—' : `${c.roe.toFixed(1)}%`}</span>
       </button>`).join('')
     + pagerHtml(sorted.length, page, auPer, 'aulistpage')
-    + `<div class="macro-note">${rows.length} of ${all.length} · ASX · statements from stockanalysis.com, prices from Yahoo · P/E is trailing twelve months, computed in the issuer's report currency (BHP and RIO report in USD) · FX ${d.fx && d.fx.rate ? d.fx.rate.toFixed(2) : '—'} AUD per USD.</div>`;
+    + `<div class="macro-note">${rows.length} of ${all.length} · ASX · statements from stockanalysis.com, prices from Yahoo · P/E is trailing twelve months where the vendor serves a trailing view, otherwise the last fiscal year (the company page labels which) · computed in the issuer's report currency (BHP and RIO report in USD) · FX ${d.fx && d.fx.rate ? d.fx.rate.toFixed(2) : '—'} AUD per USD.</div>`;
 }
 
 async function renderAustraliaPage(stub) {
@@ -6334,10 +6335,21 @@ async function renderAustraliaPage(stub) {
   const q = c.quarters || [];
   const h = c.history || [];
   const ccy = c.reportCurrency || 'AUD';
+  // `bank` means no operating-profit line (the columns go); `fin` means a financial business, whose
+  // investing cash flow is a loan book or an investment portfolio, not free cash flow (the FCF lines go).
+  const bank = !!c.bankLike;
+  const fin = !!c.financial || bank;
   const cur = (v) => (ccy === 'AUD' ? auMoney(v) : compactMoney(v, ccy));
+  // The same figures the P/E and the margins are built on, computed once and used by both blocks.
+  const fig = statementFigures(c, 'au');
+  const when = periodLabel(fig.flows.basis, fig.flows.end);
+  const basis = tileBasis(fig.flows.basis, fig.flows.end);
+  const na = new Set(c.naRatios || []);
+  const stat = (key, label, value, title, cls = '') => (key && na.has(key) ? '' : cell(label, value, title, cls));
+  const sign = (v) => (v == null ? '' : v >= 0 ? 'pos' : 'neg');
   el.innerHTML = `<div class="ma-crumb"><button class="ma-back" data-auback="1">← COMPANIES</button> <span>${esc(c.ticker)}</span><span class="mb-tag">AUSTRALIA</span></div>`
     + `<div class="co-head">${auMono(c)}<div><div class="co-name">${esc(auName(c))}</div>
-        <div class="co-sub">${esc(c.ticker)} · ASX-listed${c.crossListing ? ' · NYSE statements' : ''}${c.name && c.name !== auName(c) ? ' · ' + esc(c.name) : ''}${c.industry ? ' · ' + esc(c.industry) : ''}</div>
+        <div class="co-sub">${esc(c.ticker)} · ASX-listed${c.crossListing ? ' · US statements' : ''}${c.name && c.name !== auName(c) ? ' · ' + esc(c.name) : ''}${c.industry ? ' · ' + esc(c.industry) : ''}</div>
         ${c.description ? `<div class="co-desc">${esc(c.description)}</div>` : ''}
         ${c.brands && c.brands.length ? `<div class="jp-brands">${c.brands.map((b) => `<span>${esc(b)}</span>`).join('')}</div>` : ''}</div></div>`
     + `<div class="co-price"><span class="co-price-v">${auPx(c.price)}</span>
@@ -6348,13 +6360,39 @@ async function renderAustraliaPage(stub) {
     + `<div class="co-stats co-stats-12">
         ${cell('MARKET CAP', auMoney(c.marketCap), 'Price × shares from the latest filing')}
         ${cell('MARKET CAP · USD', c.marketCapUsd ? `$${(c.marketCapUsd / 1e9).toFixed(1)}B` : '—', 'Converted at the current USD/AUD rate')}
-        ${cell(`P/E · ${c.peBasis || 'TTM'}`, c.pe != null ? `${c.pe.toFixed(2)}×` : '—', `Market cap ÷ the rolling twelve months of profit, both in ${ccy}${c.reports && c.reports.ttmEnd ? ` (through ${c.reports.ttmEnd})` : ''}`)}
+        ${cell(`P/E · ${c.peBasis || 'TTM'}`, c.pe != null ? `${c.pe.toFixed(2)}×` : '—', `Market cap ÷ ${c.peBasis === 'FY' ? 'the last fiscal year\u2019s profit' : 'the rolling twelve months of profit'}, both in ${ccy}${c.reports && c.reports.ttmEnd ? ` (through ${c.reports.ttmEnd})` : ''}`)}
         ${cell('P/B', c.pb != null ? `${c.pb.toFixed(2)}×` : '—', `Market cap ÷ shareholders\u2019 equity in ${ccy}${c.reports && c.reports.latestEnd ? ` at ${c.reports.latestEnd}` : ''}`)}
-        ${cell('RETURN ON EQUITY', c.roe != null ? `${c.roe.toFixed(1)}%` : '—', 'Profit ÷ equity, same currency on both sides', c.roe >= 0 ? 'pos' : 'neg')}
-        ${cell('OPERATING MARGIN', c.opMargin != null ? `${c.opMargin.toFixed(1)}%` : '—', 'Operating profit ÷ revenue', c.opMargin >= 0 ? 'pos' : 'neg')}
-        ${cell('NET MARGIN', c.netMargin != null ? `${c.netMargin.toFixed(1)}%` : '—', 'Net profit ÷ revenue', c.netMargin >= 0 ? 'pos' : 'neg')}
+        ${cell('RETURN ON EQUITY', c.roe != null ? `${c.roe.toFixed(1)}%` : '—', 'Profit ÷ equity, same currency on both sides', sign(c.roe))}
+        ${cell(`NET PROFIT · ${basis}`, cur(fig.flows.net), `${when}, attributable to owners of the parent — ${ccy} millions${c.ttmFromFY ? ' · fiscal year, because the source has no trailing page for this issuer' : ''}`, sign(fig.flows.net))}
+        ${cell('NET MARGIN', c.netMargin != null ? `${c.netMargin.toFixed(1)}%` : '—', 'Net profit ÷ revenue', sign(c.netMargin))}
+        ${stat('opMargin', 'OPERATING MARGIN', c.opMargin != null ? `${c.opMargin.toFixed(1)}%` : '—', 'Operating profit ÷ revenue', sign(c.opMargin))}
         ${cell('DIVIDEND YIELD', c.dividendYield != null ? `${c.dividendYield.toFixed(2)}%` : '—', 'Dividend per share from the filing, converted to AUD at the current rate')}
+        ${stat('fcfYield', 'FCF YIELD', c.fcfYield != null ? `${c.fcfYield.toFixed(2)}%` : '—', 'Free cash flow ÷ market cap', sign(c.fcfYield))}
+        ${stat('fcfMargin', 'FCF MARGIN', c.fcfMargin != null ? `${c.fcfMargin.toFixed(1)}%` : '—', 'Free cash flow ÷ revenue', sign(c.fcfMargin))}
+        ${stat('cashConversion', 'CASH CONVERSION', c.cashConversion != null ? `${c.cashConversion.toFixed(2)}×` : '—', 'Free cash flow ÷ net profit — below 1 means profit is not turning into cash')}
       </div>`
+    + (() => {
+        const cashWhen = periodLabel(fig.cash.basis, fig.cash.end);
+        const cashBasis = tileBasis(fig.cash.basis, fig.cash.end);
+        const bsWhen = fig.balance.end ? `As of ${fig.balance.end}` : 'Latest reported balance sheet';
+        const fcf = fig.cash.cfo != null && fig.cash.cfi != null ? fig.cash.cfo + fig.cash.cfi : null;
+        const eps = (c.reports && c.reports.ttm && c.reports.ttm.eps != null)
+          ? c.reports.ttm.eps
+          : (h.length && h[h.length - 1].eps != null ? h[h.length - 1].eps : null);
+        return `<div class="co-stats co-stats-12">
+        ${cell(`REVENUE · ${basis}`, cur(fig.flows.revenue), `${when}, as reported — ${ccy} millions`)}
+        ${stat('operatingProfit', `OPERATING PROFIT · ${basis}`, cur(fig.flows.op), fig.flows.op == null ? 'This issuer does not report an operating-profit line (common for banks)' : `${when}, as reported`, sign(fig.flows.op))}
+        ${cell('EPS · DILUTED', eps != null ? Number(eps).toFixed(2) : '—', `Per share, ${ccy}, the same period as the net profit above${c.perShareBasis ? ` (${c.perShareBasis})` : ''}`)}
+        ${stat('fcf', `FREE CASH FLOW · ${cashBasis}`, cur(fcf), `${cashWhen}: operating cash flow + investing cash flow — capex sits inside investing`)}
+        ${cell('TOTAL ASSETS', cur(fig.balance.assets), `${bsWhen} — ${ccy} millions`)}
+        ${cell('LIABILITIES', cur(fig.balance.liabilities), `${bsWhen}: total assets less shareholders\u2019 equity`)}
+        ${cell('SHAREHOLDERS\u2019 EQUITY', cur(fig.balance.equity), `${bsWhen}, attributable to owners of the parent`)}
+        ${stat('operatingCashFlow', `OPERATING CASH FLOW · ${cashBasis}`, cur(fig.cash.cfo), `${cashWhen}, as reported — ${ccy} millions`)}
+      </div>`;
+      })()
+    + (fin ? `<div class="macro-note" style="padding:6px 12px">${bank
+        ? 'A bank reports net interest income, not an operating-profit line, and its operating cash flow is loans and deposits — not free cash flow.'
+        : 'A financial company\u2019s investing cash flow is its loan book or its investment portfolio, not free cash flow.'} Margins, returns and the balance sheet still apply; the FCF ratios and the operating-cash-flow line are omitted rather than shown as a number that is not one.</div>` : '')
     + `<div class="co-ranges">
         <span class="co-cmp-l">COMPARE</span><input class="co-cmp" id="au-cmp" placeholder="company name, e.g. bhp" value="${esc(cmpCode(auCompare))}" autocomplete="off">
         <button class="co-cmp-clear${auCompare ? '' : ' hidden'}" id="au-cmp-clear" data-cmpclear="au" type="button" title="Clear comparison" aria-label="Clear comparison">×</button>
@@ -6365,12 +6403,14 @@ async function renderAustraliaPage(stub) {
     + `<div class="co-chartwrap"><div class="co-big" id="au-big"></div><canvas id="au-chart"></canvas></div>`
     + '<div id="au-peers-x"></div>'
     + (h.length > 1 ? `<div class="jp-q"><div class="jp-q-head"><span class="ph-t">FIVE-YEAR RECORD</span><span class="dimtext">${h.length} fiscal years · ${ccy}</span></div>
-        <table class="jp-q-table"><thead><tr><th>FISCAL YEAR</th><th>REVENUE</th><th>OP PROFIT</th><th>NET PROFIT</th><th>ROE</th></tr></thead><tbody>
-        ${[...h].reverse().map((x) => `<tr><td>${esc(x.y)}</td><td>${cur(x.s)}</td><td>${cur(x.o)}</td><td>${cur(x.n)}</td><td>${x.n != null && (x.ec ?? x.q) ? `${((x.n / (x.ec ?? x.q)) * 100).toFixed(1)}%` : '—'}</td></tr>`).join('')}
+        <table class="jp-q-table"><thead><tr><th>FISCAL YEAR</th><th>REVENUE</th>${bank ? '' : '<th>OP PROFIT</th>'}<th>NET PROFIT</th><th>ROE</th></tr></thead><tbody>
+        ${[...h].reverse().map((x) => `<tr><td>${esc(x.y)}</td><td>${cur(x.s)}</td>${bank ? '' : `<td>${cur(x.o)}</td>`}<td>${cur(x.n)}</td><td>${x.n != null && (x.ec ?? x.q) ? `${((x.n / (x.ec ?? x.q)) * 100).toFixed(1)}%` : '—'}</td></tr>`).join('')}
         </tbody></table></div>` : '')
-    + (q.length > 1 ? `<div class="jp-q"><div class="jp-q-head"><span class="ph-t">${c.periodBasis === 'quarter' ? 'REPORTED PERIODS' : 'TRAILING 12 MONTHS'}</span><span class="dimtext">${q.length} ${c.periodBasis === 'quarter' ? 'quarters' : 'period ends'} · ${ccy} millions</span></div>
-        <table class="jp-q-table"><thead><tr><th>PERIOD</th><th>REVENUE</th><th>OP PROFIT</th><th>MARGIN</th><th>NET PROFIT</th></tr></thead><tbody>
-        ${[...q].reverse().map((x) => `<tr><td>${esc(x.d)}</td><td>${cur(x.revenue)}</td><td>${cur(x.operatingProfit)}</td><td>${x.revenue && x.operatingProfit != null ? `${((x.operatingProfit / x.revenue) * 100).toFixed(1)}%` : '—'}</td><td>${cur(x.netIncome)}</td></tr>`).join('')}
+    + (q.length > 1 ? `<div class="jp-q"><div class="jp-q-head"><span class="ph-t">${c.periodBasis === 'quarter' ? 'REPORTED PERIODS' : 'TRAILING 12 MONTHS'}</span><span class="dimtext">${q.length} ${c.periodBasis === 'quarter' ? 'periods' : 'period ends'} · ${ccy} millions</span></div>
+        <table class="jp-q-table"><thead><tr><th>PERIOD</th><th>REVENUE</th>${bank ? '<th>NET PROFIT</th><th>NET MARGIN</th>' : '<th>OP PROFIT</th><th>MARGIN</th><th>NET PROFIT</th>'}</tr></thead><tbody>
+        ${[...q].reverse().map((x) => `<tr><td>${esc(x.d)}</td><td>${cur(x.revenue)}</td>${bank
+          ? `<td>${cur(x.netIncome)}</td><td>${x.revenue && x.netIncome != null ? `${((x.netIncome / x.revenue) * 100).toFixed(1)}%` : '—'}</td>`
+          : `<td>${cur(x.operatingProfit)}</td><td>${x.revenue && x.operatingProfit != null ? `${((x.operatingProfit / x.revenue) * 100).toFixed(1)}%` : '—'}</td><td>${cur(x.netIncome)}</td>`}</tr>`).join('')}
         </tbody></table></div>` : '')
     + `<div class="macro-note">ASX-listed · statements from stockanalysis.com (millions ${ccy}), prices from Yahoo. Market cap is AUD; ratios are computed in ${ccy}, the currency the issuer reports in, then compared with a market cap converted at the build's USD/AUD rate${ccy === 'AUD' || ccy === 'USD' ? '' : ` and USD/${ccy} cross`}. ${c.crossListing ? `This line is a CDI/dual listing: statements come from the ${esc(c.crossListing.ticker)} listing, and the market cap uses the ASX price × the filing share count × the ${c.crossListing.ratio}:1 CDI ratio.${c.perShareBasis ? ` Per-share figures are ${esc(c.perShareBasis)}.` : ''}` : `Profit, revenue and margins are the rolling twelve months (the vendor's ASX "trailing" view); the five-year record is the fiscal year.`} Australian companies report half-yearly. No free guidance feed, so there is no forward P/E.${c.description ? ' Company description and sector from stockanalysis.com.' : ''}</div>`;
   drawAuChart(c);
