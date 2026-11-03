@@ -4571,6 +4571,7 @@ function jpBand(label, current, b, unit) {
 const jpDetailCache = new Map();
 async function renderJapanPage(stub) {
   const el = $('co-body'); if (!el) return;
+  prefetchCoLong('jp:' + stub.code);
   let c = jpDetailCache.get(stub.code);
   if (!c) {
     el.innerHTML = stLoading('Reading the filing…');
@@ -5294,6 +5295,7 @@ function renderKoreaScreener(all, d) {
 
 async function renderKoreaPage(stub) {
   const el = $('co-body'); if (!el) return;
+  prefetchCoLong('kr:' + (stub.ticker || stub.code));
   let c = null;
   el.innerHTML = stLoading('Reading the filing…');
   try { c = await jget(`/api/korea/company/${encodeURIComponent(stub.code)}`, 1800000); } catch { c = null; }
@@ -5611,6 +5613,7 @@ function renderTaiwanScreener(all, d) {
 
 async function renderTaiwanPage(stub) {
   const el = $('co-body'); if (!el) return;
+  prefetchCoLong('tw:' + (stub.ticker || stub.code));
   let c = null;
   el.innerHTML = stLoading('Reading the filing…');
   try { c = await jget(`/api/taiwan/company/${encodeURIComponent(stub.code)}`, 1800000); } catch { c = null; }
@@ -6325,6 +6328,7 @@ function renderAustraliaScreener(all, d) {
 
 async function renderAustraliaPage(stub) {
   const el = $('co-body'); if (!el) return;
+  prefetchCoLong('au:' + (stub.ticker || stub.code));
   let c = null;
   el.innerHTML = stLoading('Reading the filing…');
   try { c = await jget(`/api/australia/company/${encodeURIComponent(stub.code)}`, 1800000); } catch { c = null; }
@@ -6722,6 +6726,10 @@ async function coLong(ref) {
   try { return await p; } finally { coLongPending.delete(k); }
 }
 function coLongFailed(ref) { return coLongError.get(String(ref || '').toUpperCase()) === true; }
+// Start the company's long price series while the filing record is still loading. The chart used to
+// wait for that round trip before it even asked for prices, so every company page paid two sequential
+// requests; this overlaps them, and coLong/jget de-dupe the in-flight call.
+function prefetchCoLong(ref) { coLong(ref).catch(() => {}); }
 function coWindow(ch, range) {
   if (!ch || !ch.dates || !ch.closes || ch.closes.length < 2) return null;
   const w = CO_WIN.find((x) => x[0] === range);
@@ -6883,6 +6891,7 @@ const coDesc = (t) => {
 // The US market view: the same shape as Japan's, computed from the 503 constituents.
 async function renderUsMarket(el, all, token = renderSeq) {
   const noteUs = $('co-note'); if (noteUs) noteUs.classList.add('hidden');
+  prefetchUsMarketChart();   // overlap the index request with the market render, not follow it
   const uniq = all.filter((c) => !c.shareClass);
   const median = (xs) => {
     const a = xs.filter((x) => x != null && Number.isFinite(x)).sort((x, y) => x - y);
@@ -6962,8 +6971,24 @@ async function renderUsMarket(el, all, token = renderSeq) {
 // The S&P 500 chart on the market view: one long daily series feeds every window's return and every
 // line, so a range change is a local re-slice and never a request.
 let usMktRange = (() => { try { return localStorage.getItem('oilbasis.usMktRange') || '1y'; } catch { return '1y'; } })();
-let usMktSeries = null;    // { dates, closes } for ^GSPC, ten years daily
+let usMktSeries = null;    // { dates, closes } for ^GSPC, ten years daily/weekly
 let usMktSeq = 0;          // invalidates a slow fetch if the screen is repainted
+let usMktFetch = null;     // the in-flight request, shared by the prefetch and the painter
+// Start the index fetch before the market body is built, not after it. The chart sits below the
+// header and the sector table, so waiting until the DOM was ready left the request starting late on
+// a cold instance; this overlaps it with the render, and jget de-dupes the second caller.
+function prefetchUsMarketChart() {
+  if (usMktSeries) return Promise.resolve(usMktSeries);
+  if (usMktFetch) return usMktFetch;
+  usMktFetch = jget('/api/company-chart?ticker=%5EGSPC&range=10y&interval=1d', 900000)
+    .then((long) => {
+      if (long && long.dates && long.dates.length > 1) usMktSeries = { dates: long.dates, closes: long.closes };
+      return usMktSeries;
+    })
+    .catch(() => null)
+    .finally(() => { usMktFetch = null; });
+  return usMktFetch;
+}
 function redrawUsIndex(range = usMktRange) {
   if (!usMktSeries) return false;
   usMktRange = drawMarketIndexChart('us-mkt', usMktSeries, range, 'usmkt', 'S&P 500');
@@ -6977,22 +7002,15 @@ async function drawUsMarketChart() {
   if (redrawUsIndex()) return;
   const seq = ++usMktSeq;
   const wrap = canvas.parentElement;
-  if (wrap) wrap.setAttribute('data-empty', 'Loading the S&P 500…');
-  try {
-    // Ten years daily. One series covers 1M through 10Y — the route defaults ten years to MONTHLY,
-    // and a month-over-month series makes the 1M and 6M cells read 0.0%, so ask for daily bars.
-    const long = await jget('/api/company-chart?ticker=%5EGSPC&range=10y&interval=1d', 900000);
-    if (seq !== usMktSeq || !canvas.isConnected) return;
-    if (!long || !long.dates || long.dates.length < 2) {
-      if (wrap) wrap.setAttribute('data-empty', 'No S&P 500 history available right now.');
-      return;
-    }
-    if (wrap) wrap.removeAttribute('data-empty');
-    usMktSeries = { dates: long.dates, closes: long.closes };
-    redrawUsIndex();
-  } catch {
-    if (wrap) wrap.setAttribute('data-empty', 'Couldn’t load the S&P 500 chart — try again.');
+  if (!usMktSeries && wrap) wrap.setAttribute('data-empty', 'Loading the S&P 500…');
+  const long = await prefetchUsMarketChart();
+  if (seq !== usMktSeq || !canvas.isConnected) return;
+  if (!long || !long.dates || long.dates.length < 2) {
+    if (wrap) wrap.setAttribute('data-empty', 'No S&P 500 history available right now.');
+    return;
   }
+  if (wrap) wrap.removeAttribute('data-empty');
+  redrawUsIndex();
 }
 
 // Curated US themes. The computed screens (buybacks, quality, cash) live in the screener as presets.
@@ -7061,6 +7079,7 @@ const coDetailCache = new Map();
 async function renderCompanyPage(el, all) {
   const stub = all.find((x) => String(x.cik) === String(coCik));
   if (!stub) { coCik = null; return renderCompanies(); }
+  prefetchCoLong(stub.ticker);
   const key = String(stub.cik);
   let full = coDetailCache.get(key);
   if (!full) {

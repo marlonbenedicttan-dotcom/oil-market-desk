@@ -3567,3 +3567,23 @@ Audited at 360, 390 and 430 px with screenshots of every view, then fixed what l
   a non-financial keeps its FCF ratios). Australia's own tests pass. The concurrent Hong Kong work in
   the same working tree still has two HK data assertions red (a stale 509% margin and an HSBC display
   name); this change does not touch those files.
+
+## Charts: the S&P 500 from disk, and every company chart starts sooner (2026-11-03)
+- **The S&P 500 chart was the only one still fetched live.** `/api/company-chart?ticker=^GSPC` missed
+  the chart store (no key) and fell through to Yahoo on every 600 s cache expiry and every cold start —
+  seconds on the free instance, and the single slowest chart on the site. `build-us-charts.mjs` now
+  writes `^GSPC` (10y daily, compacted to daily ~400 sessions + weekly older) into the same committed
+  `us-charts.json`, so the store serves it like a company. Measured locally: **357 ms → 3–6 ms**,
+  21.6 KB instead of 73.7 KB, no upstream call. The daily CI refreshes it; a failed fetch keeps the
+  committed series (`INDEX_SYMBOLS` is exempt from the company-pruning guard).
+- **Company charts start while the filing loads.** Every company page awaited its detail record before
+  it asked for prices — two sequential round trips. The page now calls `prefetchCoLong(ref)` at entry
+  for US/JP/KR/TW/HK/AU; `coLong`/`jget` de-dupe the later in-flight call, so it is one request that
+  overlaps the detail fetch. The US market render also prefetches the S&P 500 before it builds the
+  sector table, rather than after the DOM is ready.
+- **Chart responses are cacheable for ten minutes.** `sendChartJSON` sends
+  `max-age=600, stale-while-revalidate=600` with the same ETag; the series only change on a build.
+  Returning to a company no longer revalidates after 30 s. Applied to all six chart endpoints.
+- **Verified headless**: S&P 500 one request, 3 ms, 5 KB transferred; AAPL 4 ms; BHP (Australia) 3 ms;
+  all charts render, **0 console errors**.
+- **Tests**: `tests/charts.test.js` asserts `^GSPC` is in the US store with > 100 points.

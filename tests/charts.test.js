@@ -56,6 +56,19 @@ test('seriesFromLine expands date indices and skips an unknown index', () => {
 // The chart store is a build artifact, like korea-list.json. If a build forgets to refresh it the
 // chart still works (the server falls back), but the page pays the old parse cost again — so the
 // artifact being present and populated is part of the fix.
+test('the US store carries the S&P 500, so the market chart is not a live Yahoo call', () => {
+  const idx = JSON.parse(readFileSync(join(ROOT, 'data', 'charts', 'us.idx.json'), 'utf8'));
+  const span = idx.keys['^GSPC'];
+  assert.ok(span, '^GSPC is missing from the US chart store');
+  const fd = openSync(join(ROOT, 'data', 'charts', 'us.ndjson'), 'r');
+  const buf = Buffer.alloc(span[1]);
+  const n = readSync(fd, buf, 0, span[1], span[0]);
+  closeSync(fd);
+  const series = seriesFromLine(JSON.parse(buf.toString('utf8', 0, n)), idx.dates);
+  assert.ok(series.dates.length > 100, `the S&P 500 has only ${series.dates.length} points`);
+  assert.equal(series.dates.length, series.closes.length);
+});
+
 test('the chart store covers every market', () => {
   const markets = { us: 'NVDA', jp: '72030', kr: '005930', tw: '2330', hk: '0700', au: 'BHP' };
   for (const [market, code] of Object.entries(markets)) {

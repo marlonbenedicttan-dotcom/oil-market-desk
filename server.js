@@ -4546,12 +4546,12 @@ const stampIndex = (html) => {
 // Content-addressed cache for the compressed JSON bodies: the calendar is ~165 KB and compressing it
 // again on every request cost ~1s. The key is the etag, so an unchanged payload is encoded once.
 const encBodies = new Map();
-const sendJSONCached = (res, code, obj) => {
+const sendJSONCached = (res, code, obj, cacheControl = 'public, max-age=30, stale-while-revalidate=60') => {
   const body = Buffer.from(JSON.stringify(obj));
   const etag = `W/"${crypto.createHash('sha1').update(body).digest('base64').slice(0, 22)}"`;
   // 30 seconds is shorter than any refresh interval the page uses, and it removes a revalidation
   // round-trip from every tab switch. Nothing here is per-user.
-  const hdr = { etag, 'cache-control': 'public, max-age=30, stale-while-revalidate=60' };
+  const hdr = { etag, 'cache-control': cacheControl };
   if (res.req && res.req.headers['if-none-match'] === etag) { res.writeHead(304, hdr); return res.end(); }
   const enc = body.length > 1024 ? pickEncoding(res.req && res.req.headers['accept-encoding']) : null;
   if (enc) {
@@ -4577,6 +4577,11 @@ const sendJSON = (res, code, obj) => {
   res.writeHead(code, headers);
   res.end(body);
 };
+
+// Charts are committed series that change only on a build, so a browser may keep them for ten minutes
+// instead of revalidating on every return to a company. The ETag still changes on the next deploy.
+const CHART_CACHE = 'public, max-age=600, stale-while-revalidate=600';
+const sendChartJSON = (res, code, obj) => sendJSONCached(res, code, obj, CHART_CACHE);
 
 // Security headers on every response. The CSP is report-only, so it can never break the app —
 // it just watches for drift (a new inline script, CDN, or tile host).
@@ -4754,7 +4759,7 @@ const server = http.createServer(async (req, res) => {
       // Index symbols (^GSPC, ^VIX) are legitimate charts too, so the caret is allowed.
       if (!/^[A-Za-z0-9.\-^]{1,12}$/.test(ticker)) return sendJSON(res, 400, { error: 'bad ticker' });
       const stored = storeChart('us', ticker, range);
-      if (stored) return sendJSONCached(res, 200, { ticker, range, dates: stored.dates, closes: stored.closes });
+      if (stored) return sendChartJSON(res, 200, { ticker, range, dates: stored.dates, closes: stored.closes });
       // Served from the committed series, not from a live Yahoo call: Yahoo rate-limits this host, which
       // left the one-month and six-month charts with a single point for every company.
       const local = usCharts()[ticker];
@@ -4770,7 +4775,7 @@ const server = http.createServer(async (req, res) => {
                     : range === '10y' ? back(3653)
                       : '1900-01-01';
         const rows = local.filter(([d]) => d >= from);
-        return sendJSONCached(res, 200, { ticker, range, dates: rows.map((r) => r[0]), closes: rows.map((r) => r[1]) });
+        return sendChartJSON(res, 200, { ticker, range, dates: rows.map((r) => r[0]), closes: rows.map((r) => r[1]) });
       }
       const out = await cached('cochart:' + ticker + ':' + range + ':' + interval, 600e3, async () => {
         const { series } = await yahooSeries(ticker, YAHOO[range] || range, interval);
@@ -4778,7 +4783,7 @@ const server = http.createServer(async (req, res) => {
         return { ticker, range, dates, closes: dates.map((d) => series[d]) };
       }).catch(() => null);
       if (!out) return sendJSON(res, 200, { error: 'no chart', dates: [], closes: [] });
-      return sendJSON(res, 200, out);
+      return sendChartJSON(res, 200, out);
     }
     if (url.pathname === '/api/companies') {
       let valuation = null;
@@ -4815,7 +4820,7 @@ const server = http.createServer(async (req, res) => {
       const ticker = url.searchParams.get('ticker');
       const range = url.searchParams.get('range') || '1y';
       const stored = storeChart('kr', ticker, range);
-      if (stored) return sendJSONCached(res, 200, { dates: stored.dates, closes: stored.closes, range });
+      if (stored) return sendChartJSON(res, 200, { dates: stored.dates, closes: stored.closes, range });
       const kr = readKorea();
       const c = (kr.companies || []).find((x) => x.ticker === ticker);
       const series = (c && c.series) || [];
@@ -4831,7 +4836,7 @@ const server = http.createServer(async (req, res) => {
                   : range === '10y' ? iso(now - 3653 * 864e5)
                     : '1900-01-01';
       const rows = series.filter((p) => p.d >= from);
-      return sendJSONCached(res, 200, { dates: rows.map((p) => p.d), closes: rows.map((p) => p.c), range });
+      return sendChartJSON(res, 200, { dates: rows.map((p) => p.d), closes: rows.map((p) => p.c), range });
     }
     if (url.pathname.startsWith('/api/korea/company/')) {
       const code = decodeURIComponent(url.pathname.slice('/api/korea/company/'.length));
@@ -4849,7 +4854,7 @@ const server = http.createServer(async (req, res) => {
       const code = url.searchParams.get('code');
       const range = url.searchParams.get('range') || '1y';
       const stored = storeChart('tw', code, range);
-      if (stored) return sendJSONCached(res, 200, { dates: stored.dates, closes: stored.closes, range, code });
+      if (stored) return sendChartJSON(res, 200, { dates: stored.dates, closes: stored.closes, range, code });
       const store = readTaiwanSeries(code);
       const block = range === '5y' || range === '10y' ? store.weekly : store.daily;
       const series = (block && block[code]) || (store.weekly && store.weekly[code]) || [];
@@ -4865,7 +4870,7 @@ const server = http.createServer(async (req, res) => {
                   : range === '10y' ? iso(now - 3653 * 864e5)
                     : '1900-01-01';
       const rows = series.filter((p) => p.d >= from);
-      return sendJSONCached(res, 200, { dates: rows.map((p) => p.d), closes: rows.map((p) => p.c), range, code });
+      return sendChartJSON(res, 200, { dates: rows.map((p) => p.d), closes: rows.map((p) => p.c), range, code });
     }
     if (url.pathname.startsWith('/api/taiwan/company/')) {
       const code = decodeURIComponent(url.pathname.slice('/api/taiwan/company/'.length));
@@ -4884,7 +4889,7 @@ const server = http.createServer(async (req, res) => {
       const code = url.searchParams.get('code');
       const range = url.searchParams.get('range') || '1y';
       const stored = storeChart('hk', code, range);
-      if (stored) return sendJSONCached(res, 200, { dates: stored.dates, closes: stored.closes, range, code });
+      if (stored) return sendChartJSON(res, 200, { dates: stored.dates, closes: stored.closes, range, code });
       const store = readHongKongSeries(code);
       const block = range === '5y' || range === '10y' ? store.weekly : store.daily;
       const series = (block && block[code]) || (store.weekly && store.weekly[code]) || [];
@@ -4900,7 +4905,7 @@ const server = http.createServer(async (req, res) => {
                   : range === '10y' ? iso(now - 3653 * 864e5)
                     : '1900-01-01';
       const rows = series.filter((p) => p.d >= from);
-      return sendJSONCached(res, 200, { dates: rows.map((p) => p.d), closes: rows.map((p) => p.c), range, code });
+      return sendChartJSON(res, 200, { dates: rows.map((p) => p.d), closes: rows.map((p) => p.c), range, code });
     }
     if (url.pathname === '/api/hongkong') {
       const hk = readHongKongList();
@@ -4917,7 +4922,7 @@ const server = http.createServer(async (req, res) => {
       const code = String(url.searchParams.get('code') || '').toUpperCase();
       const range = url.searchParams.get('range') || '1y';
       const stored = storeChart('au', code, range);
-      if (stored) return sendJSONCached(res, 200, { dates: stored.dates, closes: stored.closes, range, code });
+      if (stored) return sendChartJSON(res, 200, { dates: stored.dates, closes: stored.closes, range, code });
       const store = readAustraliaSeries(code);
       const block = range === '5y' || range === '10y' ? store.weekly : store.daily;
       const series = (block && block[code]) || (store.weekly && store.weekly[code]) || [];
@@ -4933,7 +4938,7 @@ const server = http.createServer(async (req, res) => {
                   : range === '10y' ? iso(now - 3653 * 864e5)
                     : '1900-01-01';
       const rows = series.filter((p) => p.d >= from);
-      return sendJSONCached(res, 200, { dates: rows.map((p) => p.d), closes: rows.map((p) => p.c), range, code });
+      return sendChartJSON(res, 200, { dates: rows.map((p) => p.d), closes: rows.map((p) => p.c), range, code });
     }
     if (url.pathname === '/api/australia') {
       const au = readAustraliaList();
@@ -4951,7 +4956,7 @@ const server = http.createServer(async (req, res) => {
       const code = url.searchParams.get('code');
       const range = url.searchParams.get('range') || '6m';
       const stored = storeChart('jp', code, range);
-      if (stored) return sendJSONCached(res, 200, { dates: stored.dates, closes: stored.closes, range, code });
+      if (stored) return sendChartJSON(res, 200, { dates: stored.dates, closes: stored.closes, range, code });
       const iso = (t) => new Date(t).toISOString().slice(0, 10);
       let store = null;
       try { store = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'japan-series.json'), 'utf8')); } catch { store = null; }

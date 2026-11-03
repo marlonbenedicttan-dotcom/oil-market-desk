@@ -6,8 +6,9 @@
 // committed: ~500 points per ticker (daily for the last year, weekly before that), about 2 MB in total.
 //
 //   node scripts/build-us-charts.mjs
-import { readFileSync, writeFileSync, renameSync, existsSync } from 'node:fs';
+import { readFileSync, writeFileSync, renameSync, existsSync, mkdirSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
+import https from 'node:https';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -16,6 +17,65 @@ const FILE = join(ROOT, 'data', 'companies.json');
 const CHARTS = join(ROOT, 'data', 'cache', 'charts');
 const OUT = join(ROOT, 'data', 'us-charts.json');
 const DAY = 86400000;
+
+// Daily for the last ~400 sessions, weekly before that: enough for every window the page offers and
+// small enough that a browser draws it instantly. Used for the companies and for the index below, so
+// the two cannot drift into different resolutions.
+function compactRows(rows) {
+  const cutoff = new Date(Date.now() - 400 * DAY).toISOString().slice(0, 10);
+  const kept = [];
+  let lastWeekly = null;
+  for (const [d, v] of rows) {
+    if (d >= cutoff) { kept.push([d, v]); lastWeekly = null; continue; }
+    if (!lastWeekly || Date.parse(d) - Date.parse(lastWeekly) >= 6.5 * DAY) { kept.push([d, v]); lastWeekly = d; }
+    else kept[kept.length - 1] = [d, v];   // keep the last close of the week
+  }
+  return kept;
+}
+
+// Yahoo is reached over https with an explicit IPv4 preference: Node's fetch/undici fingerprints are
+// rejected for these symbols, and a dual-stack host can hang on IPv6 from this machine. curl works,
+// and so does this.
+function httpsGet(url, timeout = 30000) {
+  return new Promise((resolve) => {
+    const req = https.get(url, { family: 4, headers: { 'User-Agent': 'Mozilla/5.0 (oil-basis)', Accept: 'application/json' } }, (res) => {
+      if (res.statusCode !== 200) { res.resume(); return resolve({ status: res.statusCode, text: '' }); }
+      let body = '';
+      res.setEncoding('utf8');
+      res.on('data', (d) => { body += d; });
+      res.on('end', () => resolve({ status: 200, text: body }));
+    });
+    req.setTimeout(timeout, () => req.destroy(new Error('timeout')));
+    req.on('error', () => resolve({ status: 0, text: '' }));
+  });
+}
+
+// The index's own history. It is part of the same committed file and chart store as the companies, so
+// the US market chart is a byte read rather than a live Yahoo call on every cold cache. The fetch is
+// cached for six hours; a failed fetch keeps whatever is already committed.
+async function fetchIndex(symbol) {
+  const dir = join(ROOT, 'data', 'cache', 'index');
+  mkdirSync(dir, { recursive: true });
+  const f = join(dir, `${symbol.replace(/[^\w.-]/g, '_')}.json`);
+  try {
+    const j = JSON.parse(readFileSync(f, 'utf8'));
+    if (j.fetched && Date.now() - Date.parse(j.fetched) < 6 * 3600e3 && Array.isArray(j.rows) && j.rows.length) return j.rows;
+  } catch { /* fetch */ }
+  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?range=10y&interval=1d`;
+  const r = await httpsGet(url);
+  if (r.status !== 200) throw new Error(`HTTP ${r.status}`);
+  const res = JSON.parse(r.text)?.chart?.result?.[0];
+  const ts = res?.timestamp || [];
+  const closes = res?.indicators?.quote?.[0]?.close || [];
+  const rows = [];
+  for (let i = 0; i < ts.length; i++) {
+    const c = closes[i];
+    if (c != null && Number.isFinite(+c)) rows.push([new Date(ts[i] * 1000).toISOString().slice(0, 10), +c]);
+  }
+  if (rows.length < 100) throw new Error('thin index series');
+  writeFileSync(f, JSON.stringify({ fetched: new Date().toISOString(), rows }));
+  return rows;
+}
 
 const toIso = (mdY) => {
   const [m, d, y] = String(mdY).split('/').map(Number);
@@ -43,28 +103,32 @@ for (const c of data.companies) {
     .map((r) => [toIso(r[0]), +r[1]])
     .sort((a, b) => a[0].localeCompare(b[0]));
 
-  // Daily for the last 400 days, weekly before that — enough for every range the page offers.
-  const cutoff = new Date(Date.now() - 400 * DAY).toISOString().slice(0, 10);
-  const kept = [];
-  let lastWeekly = null;
-  for (const [d, v] of dated) {
-    if (d >= cutoff) { kept.push([d, v]); lastWeekly = null; continue; }
-    if (!lastWeekly || Date.parse(d) - Date.parse(lastWeekly) >= 6.5 * DAY) { kept.push([d, v]); lastWeekly = d; }
-    else kept[kept.length - 1] = [d, v];   // keep the last close of the week
-  }
-  out[c.ticker] = kept;
+  out[c.ticker] = compactRows(dated);
   built++;
+}
+
+// The US market view's S&P 500 chart is a chart endpoint too. Keep its series in this same file so
+// the chart store serves it from disk; without it the endpoint re-fetched Yahoo after every 10-minute
+// cache expiry and on every cold start, which is the slowest chart on the site.
+const INDEX_SYMBOLS = ['^GSPC'];
+let indexBuilt = 0;
+for (const sym of INDEX_SYMBOLS) {
+  let kept = [];
+  try { kept = compactRows(await fetchIndex(sym)); } catch (e) { kept = []; console.log(`  ${sym}: ${e.message}`); }
+  if (kept.length > 100) { out[sym] = kept; indexBuilt++; }
+  else if (prevSeries[sym]) out[sym] = prevSeries[sym];
+  else console.log(`  ${sym}: no index history (Yahoo unavailable and nothing committed)`);
 }
 
 // Never trade a good committed series for a thinner one: a partial cache or an API hiccup must not
 // delete history that is already published.
-if (built === 0 && Object.keys(prevSeries).length > 0) {
+if (built === 0 && indexBuilt === 0 && Object.keys(prevSeries).length > 0) {
   console.log(`no chart cache found — keeping the ${Object.keys(prevSeries).length} committed series`);
   process.exit(0);
 }
 const prevCount = Object.keys(prevSeries).length;
 if (!prevCount) console.log('no committed chart series yet — building a fresh file');
-if (built > 0) for (const t of Object.keys(out)) if (!data.companies.some((c) => c.ticker === t)) delete out[t];
+if (built > 0) for (const t of Object.keys(out)) if (!INDEX_SYMBOLS.includes(t) && !data.companies.some((c) => c.ticker === t)) delete out[t];
 const nextCount = Object.keys(out).length;
 
 writeFileSync(OUT + '.tmp', JSON.stringify({ updated: new Date().toISOString().slice(0, 10), series: out }));
