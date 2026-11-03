@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { sgn, inBox, haversineNm, isoWeek, monthly, pctOver, percentile, lastNonNull, escHtml, webhookPayload, realizedVol, computeCracks, computeCrush, computeSteel, backAdjust, pearson, logReturns, horizonDeltas, horizonDeltasAbs, curveTightness, inventoryTightness, weightedScore, seasonalGrade, seasonalAhead, contractMonthsBetween, signedPosition, signedMove, stretchScore, sdLabel, attributeMoves, newsContextOk, looksLikeProperNoun, NON_MARKET_CTX, METHODOLOGY, positioningFlag, positioningRead, positioningDivergence, maxDrawdown, drawdownNow, realizedVolTerm, volPercentile, corrMatrix, fxAdjust, parseOcc, drawdownWord, volWord, volTrend, volVsOwnWord, corrWord, corrShift, focusRows, topPairs, pairGroups, bestDiversifier, riskRead } from '../src/lib.js';
+import { sgn, inBox, haversineNm, isoWeek, monthly, pctOver, percentile, lastNonNull, escHtml, webhookPayload, realizedVol, computeCracks, computeCrush, computeSteel, backAdjust, pearson, logReturns, horizonDeltas, horizonDeltasAbs, curveTightness, inventoryTightness, weightedScore, seasonalGrade, seasonalAhead, contractMonthsBetween, signedPosition, signedMove, stretchScore, sdLabel, attributeMoves, newsContextOk, looksLikeProperNoun, NON_MARKET_CTX, METHODOLOGY, positioningFlag, positioningRead, positioningDivergence, maxDrawdown, drawdownNow, realizedVolTerm, volPercentile, corrMatrix, fxAdjust, parseOcc, drawdownWord, volWord, volTrend, volVsOwnWord, corrWord, corrShift, focusRows, topPairs, pairGroups, bestDiversifier, riskRead, mergePeriods } from '../src/lib.js';
 
 test('sgn formats with sign', () => {
   assert.equal(sgn(4.39), '+4.39');
@@ -714,4 +714,59 @@ test('sourceTier puts Bloomberg and the FT above a single wire', () => {
   assert.ok(sourceTier('Bloomberg') > sourceTier('Reuters'));
   assert.ok(sourceTier('Financial Times') > sourceTier('CNBC'));
   assert.equal(sourceTier('Some Blog'), 0);
+});
+
+test('mergePeriods keeps years that scrolled off the vendor page', () => {
+  // The vendor shows a rolling five-year window; the platform keeps what it has.
+  const prev = [
+    { end: '2021-12-31', revenue: 10 },
+    { end: '2022-12-31', revenue: 11 },
+    { end: '2023-12-31', revenue: 12 },
+  ];
+  const next = [
+    { end: '2022-12-31', revenue: 11 },
+    { end: '2023-12-31', revenue: 12 },
+    { end: '2024-12-31', revenue: 13 },
+  ];
+  const out = mergePeriods(prev, next, 'end');
+  assert.deepEqual(out.map((r) => r.end), ['2021-12-31', '2022-12-31', '2023-12-31', '2024-12-31']);
+});
+
+test('mergePeriods lets a restatement replace the old figure', () => {
+  const prev = [{ end: '2023-12-31', revenue: 12 }, { end: '2024-12-31', revenue: 13 }];
+  const next = [{ end: '2024-12-31', revenue: 14 }];
+  const out = mergePeriods(prev, next, 'end');
+  assert.equal(out.find((r) => r.end === '2024-12-31').revenue, 14);
+  assert.equal(out.length, 2);
+});
+
+test('mergePeriods keeps a descending table descending', () => {
+  const prev = [{ end: '2023-12-31' }, { end: '2022-12-31' }];
+  const next = [{ end: '2024-12-31' }, { end: '2023-12-31' }];
+  const out = mergePeriods(prev, next, 'end');
+  assert.deepEqual(out.map((r) => r.end), ['2024-12-31', '2023-12-31', '2022-12-31']);
+});
+
+test('mergePeriods survives a missing table and an odd record', () => {
+  assert.deepEqual(mergePeriods(null, undefined, 'end'), []);
+  assert.deepEqual(mergePeriods([{ end: '2023-12-31' }], null, 'end'), [{ end: '2023-12-31' }]);
+  const out = mergePeriods([{ end: '2023-12-31' }], [{ end: '2024-12-31' }, { noEnd: 1 }], 'end');
+  assert.deepEqual(out.map((r) => r.end), ['2023-12-31', '2024-12-31']);
+});
+
+test('mergePeriods never resurrects a junk period inside the vendor window', () => {
+  // China Eastern's old parse wrote 2022-01-01 / 2023-01-01; the corrected build has 2021-12-31 ..
+  // 2025-12-31. Restoring the junk dates would show two extra, wrong fiscal years.
+  const prev = [
+    { end: '2022-01-01', revenue: 1 },
+    { end: '2023-01-01', revenue: 2 },
+    { end: '2025-12-31', revenue: 3 },
+  ];
+  const next = [
+    { end: '2021-12-31', revenue: 10 },
+    { end: '2022-12-31', revenue: 11 },
+    { end: '2025-12-31', revenue: 13 },
+  ];
+  const out = mergePeriods(prev, next, 'end');
+  assert.deepEqual(out.map((r) => r.end), ['2021-12-31', '2022-12-31', '2025-12-31']);
 });

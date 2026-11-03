@@ -41,6 +41,9 @@ jobs:
           restore-keys: tw-cache-
       - name: Build prices, statements and profiles
         run: npm run build:taiwan
+      # Keep the fiscal years that scroll off the vendor's five-year table.
+      - name: Keep every filed period
+        run: node scripts/merge-history.mjs tw
       # A rate-limited run can return one-point series for most codes. Refuse to publish that.
       - name: Refuse a collapsed build
         run: node scripts/audit-taiwan-refresh.mjs

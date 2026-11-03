@@ -43,6 +43,9 @@ jobs:
           restore-keys: au-cache-
       - name: Build prices, statements and profiles
         run: npm run refresh:australia
+      # Keep the fiscal years that scroll off the vendor's five-year table.
+      - name: Keep every filed period
+        run: node scripts/merge-history.mjs au
       # A rate-limited run loses companies and chart history. Refuse to publish that.
       - name: Refuse a collapsed build
         run: node scripts/audit-market-refresh.mjs au

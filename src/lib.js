@@ -336,6 +336,75 @@ export function computeSteel(m) {
 }
 
 // ---------------------------------------------------------------------------
+// Relative value — one curated spread's own 1-year history. The spread spec
+// (which legs, what unit, why it matters) lives with the segment registry in
+// server.js; the maths is here so it can be unit-tested. `legs` is
+// { id: { 'YYYY-MM-DD': price } } for the futures legs.
+// ---------------------------------------------------------------------------
+export function relValueAt(spec, vals) {
+  let v = null;
+  if (spec.kind === 'diff') {
+    v = vals[spec.a] * (spec.af ?? 1) - vals[spec.b] * (spec.bf ?? 1);
+  } else if (spec.kind === 'ratio') {
+    const den = vals[spec.b] * (spec.bf ?? 1);
+    v = den ? (vals[spec.a] * (spec.af ?? 1)) / den : null;
+  } else if (spec.kind === 'margin') {
+    // Build the same shape computeCracks/computeCrush/computeSteel already take, so the strip and
+    // the dedicated panels cannot drift apart.
+    const m = { benchmarks: Object.entries(vals).map(([id, paper]) => ({ id, paper })) };
+    if (spec.calc === 'c321') v = computeCracks(m).c321 ?? null;
+    else if (spec.calc === 'crush') v = computeCrush(m).crush ?? null;
+    else if (spec.calc === 'steel') v = computeSteel(m).margin ?? null;
+  }
+  if (v == null || !Number.isFinite(v)) return null;
+  return spec.scale ? v * spec.scale : v;
+}
+
+export function buildRelValueRow(spec, legs = {}) {
+  const ids = spec.legs || [spec.a, spec.b].filter(Boolean);
+  const dates = [...new Set(ids.flatMap((id) => Object.keys(legs[id] || {})))].sort();
+  const history = [], outDates = [];
+  for (const d of dates) {
+    const vals = {};
+    let ok = true;
+    for (const id of ids) {
+      const v = legs[id] && legs[id][d];
+      if (v == null) { ok = false; break; }
+      vals[id] = v;
+    }
+    if (!ok) continue;
+    const v = relValueAt(spec, vals);
+    if (v == null) continue;
+    history.push(v);
+    outDates.push(d);
+  }
+  const last = history.length ? history[history.length - 1] : null;
+  const pct = history.length >= (spec.minObs ?? 60) && last != null ? percentile(history, last) : null;
+  return {
+    id: spec.id, label: spec.label, unit: spec.unit || '', dp: spec.dp ?? 2,
+    signed: spec.kind !== 'ratio', why: spec.why || '',
+    last, pct, obs: history.length, asOf: outDates[outDates.length - 1] || null, history,
+  };
+}
+
+export function relValueZone(pct) {
+  if (pct == null) return null;
+  if (pct >= 90) return 'near the top of its 1-year range';
+  if (pct >= 65) return 'above its 1-year median';
+  if (pct > 35) return 'around its 1-year median';
+  if (pct > 10) return 'below its 1-year median';
+  return 'near the bottom of its 1-year range';
+}
+
+export function ordinal(n) {
+  if (n == null) return '—';
+  const i = Math.round(n);
+  const mod100 = i % 100;
+  const suffix = mod100 >= 11 && mod100 <= 13 ? 'th' : ({ 1: 'st', 2: 'nd', 3: 'rd' }[i % 10] || 'th');
+  return i + suffix;
+}
+
+// ---------------------------------------------------------------------------
 // Physical-tightness scoring (roadmap item 2). Each maps one physical signal to
 // 0-100 where 50 = neutral and >50 = tight; null when the input is missing, so a
 // caller can simply skip that component. Never invents a number.
@@ -1179,4 +1248,35 @@ export function reconcileTtm(rows) {
     }
   }
   return stat;
+}
+
+// Keep every filing period the platform has ever published.
+//
+// A market build rebuilds its period table from the vendor page, and that page is a rolling window —
+// five fiscal years today, still five next year. A year that scrolls off the page would vanish from the
+// company page, so the record could never grow past five years. The fix is to restore only the periods
+// that are OLDER than the window the vendor still covers. Anything inside the window is the new build's
+// answer: a corrected parse (China Eastern's dates were "2022-01-01" before the cross-list fix) must win,
+// and a restatement replaces the old figure.
+export function mergePeriods(prev, next, key) {
+  const list = Array.isArray(next) ? next : [];
+  const before = Array.isArray(prev) ? prev : [];
+  const dateOf = (r) => (r && typeof r[key] === 'string' ? r[key] : null);
+  const fresh = list.filter((r) => dateOf(r));
+  if (!fresh.length) return before;
+  const oldest = fresh.reduce((m, r) => (dateOf(r) < m ? dateOf(r) : m), dateOf(fresh[0]));
+  const by = new Map();
+  for (const r of before) {
+    const d = dateOf(r);
+    if (d && d < oldest) by.set(d, r);
+  }
+  for (const r of fresh) by.set(dateOf(r), r);
+  // The fresh table sets the direction; the build always writes ascending, but a descending table must
+  // not be flipped by the merge.
+  const first = dateOf(fresh[0]);
+  const last = dateOf(fresh[fresh.length - 1]);
+  const asc = first <= last;
+  return [...by.entries()]
+    .sort((a, b) => (asc ? a[0].localeCompare(b[0]) : b[0].localeCompare(a[0])))
+    .map(([, r]) => r);
 }

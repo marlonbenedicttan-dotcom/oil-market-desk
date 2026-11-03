@@ -68,6 +68,10 @@ jobs:
           # Same for a new KOSPI listing: describe it tonight, capped, never fatal.
           node scripts/fetch-korea-descriptions.mjs --only-missing --limit=25 || echo 'new-listing descriptions: source unavailable, retry tomorrow'
           node scripts/build-korea-list.mjs
+      # The vendor shows a rolling five-year table. Merge what is already committed so a fiscal year
+      # that scrolls off the page stays on the company page — the record grows instead of following.
+      - name: Keep every filed period
+        run: node scripts/merge-history.mjs jp kr
       - name: Calendar events
         run: node scripts/build-events.mjs
       - name: Re-apply recorded restatements

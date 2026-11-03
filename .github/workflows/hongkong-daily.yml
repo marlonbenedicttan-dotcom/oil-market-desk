@@ -52,6 +52,9 @@ jobs:
         run: rm -f "data/cache/hkex/daily-$(date -u +%F).json"
       - name: Build prices, statements and profiles
         run: npm run refresh:hongkong
+      # Keep the fiscal years that scroll off the vendor's five-year table.
+      - name: Keep every filed period
+        run: node scripts/merge-history.mjs hk
       # A rate-limited run loses companies and chart history; an incomplete HKEX report loses companies.
       # Refuse to publish either.
       - name: Refuse a collapsed build
