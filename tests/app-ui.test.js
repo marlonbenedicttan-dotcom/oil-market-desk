@@ -166,6 +166,7 @@ function loadApp() {
     renderUsMarket,
     renderHongKongMarket,
     hkBalanceSheetFinancial,
+    hkStatFill,
     drawMarketIndexChart,
     coWindowsFor,
     coSlice,
@@ -499,6 +500,16 @@ test('the Hong Kong company page omits industrial ratios for a balance-sheet fin
   assert.equal(ui.hkBalanceSheetFinancial({ sector: 'Financials', industry: 'Financial Data & Stock Exchanges' }), false);
   assert.equal(ui.hkBalanceSheetFinancial({ sector: 'Financials', industry: 'Insurance Brokers' }), false);
   assert.equal(ui.hkBalanceSheetFinancial({ sector: 'Technology', industry: 'Banks - Diversified' }), false);
+});
+
+test('the Hong Kong stat strip is padded to a full grid row', () => {
+  const { ui } = loadApp();
+  const voids = (n) => (ui.hkStatFill(n).match(/co-stat-void/g) || []).length;
+  assert.equal(voids(8), 0, 'a full desktop row needs no filler');
+  assert.equal(voids(7), 1, 'the bank top strip fills its last cell');
+  assert.equal(voids(9), 3, 'the nine-tile strip fills its last row');
+  assert.equal(voids(6), 2, 'the bank flow strip fills its last row');
+  assert.equal(voids(4), 0);
 });
 
 test('an out-of-range window falls back to one the series actually covers', () => {
