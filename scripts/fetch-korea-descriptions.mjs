@@ -1,5 +1,12 @@
 // Fetch a written description for every KOSPI company, the way the Japan descriptions were fetched.
 // Curated brand chips are attached separately from data/korea-brands.json.
+//
+//   node scripts/fetch-korea-descriptions.mjs                     every listed company (rebuild pass)
+//   node scripts/fetch-korea-descriptions.mjs --only-missing      only companies with no fetched profile
+//   node scripts/fetch-korea-descriptions.mjs --only-missing --limit=25 --dry-run
+//
+// The scheduled job uses `--only-missing --limit=25`: a newly listed company gets its description the
+// night it appears, a normal day fetches nothing, and a throttled source can never hold up the market.
 import { readFileSync, writeFileSync, renameSync, existsSync, mkdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -8,6 +15,9 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const FILE = join(ROOT, 'data', 'korea.json');
 const BRANDS = join(ROOT, 'data', 'korea-brands.json');
 const CACHE = join(ROOT, 'data', 'cache', 'korea-profiles');
+const ONLY_MISSING = process.argv.includes('--only-missing');
+const LIMIT = Number((process.argv.find((x) => x.startsWith('--limit=')) || '').split('=')[1] || 0) || 0;
+const DRY = process.argv.includes('--dry-run');
 const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126 Safari/537.36';
 mkdirSync(CACHE, { recursive: true });
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -48,10 +58,24 @@ async function one(c) {
   return null;
 }
 
+// `--only-missing` means "no fetched profile yet": the attach pass gives a new listing a generated
+// line, so checking for a blank description would never fire. The ten companies with no profile page
+// are retried each run — ten requests, and it is how they get picked up if the page appears.
+const queue = ONLY_MISSING ? data.companies.filter((c) => c.descSource !== 'profile') : data.companies;
+const list = LIMIT ? queue.slice(0, LIMIT) : queue;
+console.log(`${list.length} of ${data.companies.length} companies to describe`);
+if (DRY) {
+  for (const c of list.slice(0, 20)) console.log(`  ${c.ticker} ${c.nameEn || c.name || ''}`);
+  if (list.length > 20) console.log(`  … ${list.length - 20} more`);
+  process.exit(0);
+}
+// A no-op run must not rewrite the data files, or every workflow run produces a diff.
+if (!list.length) { console.log('nothing new — no file written'); process.exit(0); }
+
 let ok = 0, fail = 0, at = 0;
 const pool = Array.from({ length: 4 }, async () => {
-  while (at < data.companies.length) {
-    const c = data.companies[at++];
+  while (at < list.length) {
+    const c = list[at++];
     const text = await one(c);
     if (text) { c.description = shorten(text); c.descSource = 'profile'; c.descSourceName = 'stockanalysis.com'; ok++; }
     else fail++;
