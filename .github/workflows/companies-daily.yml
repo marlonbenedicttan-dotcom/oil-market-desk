@@ -59,6 +59,9 @@ jobs:
           # no-op: the fetcher skips every company that already has a profile.
           node scripts/fetch-japan-profiles.mjs --limit=25 || echo 'new-listing profiles: source unavailable, retry tomorrow'
           node scripts/attach-japan-descriptions.mjs
+          # The description pass runs after build-japan wrote the per-company detail files. Rebuild
+          # them (only changed companies are rewritten) so a new listing's page is not one day behind.
+          node scripts/build-company-details.mjs jp
       - name: Korea (DART, optional)
         env:
           DART_API_KEY: ${{ secrets.DART_API_KEY }}
@@ -90,7 +93,7 @@ jobs:
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email 'github-actions[bot]@users.noreply.github.com'
-          git add data/companies.json data/japan.json data/japan-series.json data/japan-companies data/japan-profiles.json data/korea.json data/korea-list.json data/korea-universe.json data/korea-companies data/korea-profiles.json data/valuation.json data/events.json data/reconciliation.json data/invariants.json data/filings-state.json data/filings-changed.json data/snapshot.json data/us-charts.json data/audit-markets.json data/charts 2>/dev/null || true
+          git add data/companies.json data/japan.json data/japan-list.json data/japan-series.json data/japan-companies data/japan-profiles.json data/korea.json data/korea-list.json data/korea-universe.json data/korea-companies data/korea-profiles.json data/valuation.json data/events.json data/reconciliation.json data/invariants.json data/filings-state.json data/filings-changed.json data/snapshot.json data/us-charts.json data/audit-markets.json data/charts 2>/dev/null || true
           if git diff --staged --quiet; then
             echo 'no data change'
           else
