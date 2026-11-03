@@ -3613,6 +3613,7 @@ Audited at 360, 390 and 430 px with screenshots of every view, then fixed what l
   which those pages need anyway; cold start on the free instance is still infrastructure.
 - **The peer index is warmed at boot.** The first company page would otherwise build it inside a
   request — about 0.5 s on the free instance, either in front of the chart or in front of the filing.
-  The warm pass now builds the peer index first (local artifacts only) when RSS is under 300 MB;
-  search stays lazy (14 ms once, from lists already resident). Steady RSS moves from ~250 MB to
-  ~325 MB, and the company page no longer parses a market file.
+  The warm pass now builds the peer index first (local artifacts only) when RSS is under 300 MB, and
+  the search index in the same pass. `/health` reports `rssMB` so the free-instance headroom is
+  visible. Steady RSS moves from ~250 MB to ~348 MB, and the company page no longer parses a market
+  file.

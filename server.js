@@ -4647,7 +4647,7 @@ const server = http.createServer(async (req, res) => {
   for (const k in SECURITY_HEADERS) res.setHeader(k, SECURITY_HEADERS[k]);
   const url = new URL(req.url, `http://${req.headers.host}`);
   // Health check (no auth) for uptime monitors.
-  if (url.pathname === '/health') { res.writeHead(200, { 'content-type': 'application/json' }); return res.end(JSON.stringify({ ok: true, uptime: Math.round(process.uptime()), version: BUILD })); }
+  if (url.pathname === '/health') { res.writeHead(200, { 'content-type': 'application/json' }); return res.end(JSON.stringify({ ok: true, uptime: Math.round(process.uptime()), version: BUILD, rssMB: Math.round(process.memoryUsage().rss / 1048576) })); }
   // Optional basic auth — set AUTH_USER + AUTH_PASS to protect a public deployment.
   // The subscription surface stays PUBLIC by design: visitors have no login, and the confirm /
   // unsubscribe links are clicked from a mail client. Those routes protect themselves with a
@@ -5254,7 +5254,7 @@ server.listen(PORT, async () => {
     // free instance) in front of the chart. They read local artifacts only, so build them at the
     // start of the warm pass (the memoised indexes then stay for the life of the process).
     if (process.memoryUsage().rss < 300 * 1024 * 1024) {
-      try { peerIndex(); } catch {}
+      try { searchIndex(); peerIndex(); } catch {}
     }
     // The brief is what the reader lands on first. Warm the base feeds first; the event pool is
     // built gently at the END (it fans out over every news feed) so it cannot compete with the
