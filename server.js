@@ -1768,6 +1768,49 @@ async function getRisk() {
 // the two scores, the basis percentile, vol and (where CFTC covers it) positioning. Server-side
 // so the logic is testable; the client only sorts + renders.
 // ---------------------------------------------------------------------------
+// Per-instrument scorecard for one segment. Each component gets its OWN read (not the segment's
+// headline read), so WTI and Brent can differ, and a missing feed leaves that chip blank.
+async function getSegmentScore(segment) {
+  const mk = MARKETS.find((m) => m.id === segment);
+  if (!mk) return { segment, label: segment, asOf: null, rows: [] };
+  return cachedSWR('segscore:' + segment, 5 * 60e3, async () => {
+    const [m, h, pos, reads] = await Promise.all([
+      getMarket(),
+      getHistory().catch(() => null),
+      getPositioningSegment(segment).catch(() => null),
+      Promise.all(mk.components.map((id) => getMarketRead(segment, id).catch(() => null))),
+    ]);
+    const posById = Object.fromEntries(((pos && pos.items) || []).map((p) => [p.id, p]));
+    const rows = mk.components.map((id, i) => {
+      const b = (m.benchmarks || []).find((x) => x.id === id) || {};
+      const rd = reads[i] || {};
+      const vd = rd.verdict || {};
+      const dd = h && h.deltas ? h.deltas[id] : null;
+      const d = dd ? (b.paper != null ? dd.paper : dd.physical) : null;
+      const p = posById[id] || null;
+      return {
+        id, label: b.label || id, unit: b.unit || '', dp: b.dp ?? 2,
+        price: b.paper != null ? b.paper : b.physical,
+        source: b.paperSource || b.physicalSource || null,
+        asOf: b.paperDate || b.physicalDate || null,
+        deltas: d || {},
+        stretch: vd.priceStretch && vd.priceStretch.score != null ? vd.priceStretch.score : null,
+        stretchLabel: vd.priceStretch ? vd.priceStretch.label : null,
+        tight: vd.supplyDemand && vd.supplyDemand.score != null ? vd.supplyDemand.score : null,
+        tightLabel: vd.supplyDemand ? vd.supplyDemand.label : null,
+        // Precious-metal curves are rates/financing, not supply, so no CURVE chip there (the same
+        // reason their supply & demand read is deliberately blank).
+        curve: segment !== 'precious' && rd.curve && rd.curve.shape ? rd.curve.shape : null,
+        basisPct: rd.basis && rd.basis.pctile != null ? Math.round(rd.basis.pctile) : null,
+        posPct: p && p.pct3y != null ? Math.round(p.pct3y) : null,
+        posFlag: p && p.flag ? p.flag.label : null,
+      };
+    });
+    const asOf = rows.map((r) => r.asOf).filter(Boolean).sort().at(-1) || null;
+    return { segment, label: mk.label, asOf, rows };
+  });
+}
+
 async function getScreen() {
   return cachedSWR('screen', 5 * 60e3, async () => {
     const [m, h, a, reads] = await Promise.all([
@@ -5172,6 +5215,7 @@ const server = http.createServer(async (req, res) => {
     }
     if (url.pathname === '/api/regime') return sendJSONCached(res, 200, await getRegime().catch((e) => ({ error: String(e.message), rows: [] })));
     if (url.pathname === '/api/screen') return sendJSONCached(res, 200, await getScreen().catch((e) => ({ error: String(e.message), rows: [] })));
+    if (url.pathname === '/api/segmentscore') return sendJSONCached(res, 200, await getSegmentScore(url.searchParams.get('segment') || 'crude').catch((e) => { console.error('[segmentscore]', e.message); return { segment: url.searchParams.get('segment') || 'crude', asOf: null, rows: [] }; }), 'public, max-age=300, stale-while-revalidate=300');
     if (url.pathname === '/api/risk') return sendJSONCached(res, 200, await getRisk().catch((e) => ({ error: String(e.message), metrics: [], matrix: {}, matrix3m: {} })));
     if (url.pathname === '/api/fxadjusted') return sendJSONCached(res, 200, await getFxAdjusted(url.searchParams.get('base') || 'USD').catch((e) => ({ error: String(e.message), rows: [] })));
     if (url.pathname === '/api/search') return sendListJSON(res, 200, searchCompanies(url.searchParams.get('q'), Math.min(20, Number(url.searchParams.get('limit')) || 8)));

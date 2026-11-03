@@ -306,17 +306,52 @@ function tileSpark(arr, forceUp = null, fill = false) {
   const area = fill ? `<path d="${d}" fill="${col}" fill-opacity="0.09" stroke="none"/>` : '';
   return `<svg class="spark" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" aria-hidden="true">${area}<path d="${d}" fill="none" stroke="${col}" stroke-width="1.4" vector-effect="non-scaling-stroke"/></svg>`;
 }
-function tileHtml(b) {
+let segScore;   // the current segment's per-instrument scorecard: undefined = loading, null = failed
+function curveShort(shape) {
+  if (!shape) return null;
+  const v = String(shape);
+  if (/back/i.test(v)) return 'BACK';
+  if (/cont/i.test(v)) return 'CONTANGO';
+  if (/flat/i.test(v)) return 'FLAT';
+  return v.toUpperCase();
+}
+// The per-instrument signals are a second read of the same tile: price score, supply & demand,
+// curve, CFTC percentile and spot-vs-futures percentile. A missing feed simply omits its chip.
+function tileSignals(s) {
+  if (!s) return '';
+  const out = [];
+  const add = (k, v, title, tone = '') => {
+    if (v == null || v === '') return;
+    out.push(`<span class="t-chip ${tone}" title="${esc(title)}">${k} ${esc(String(v))}</span>`);
+  };
+  add('P', s.stretch == null ? null : signed(s.stretch, 0), `Price vs its own history${s.stretchLabel ? ': ' + s.stretchLabel : ''} (negative = cheap, positive = rich)`);
+  add('S&D', s.tight, `Supply & demand${s.tightLabel ? ': ' + s.tightLabel : ''} (0 oversupplied, 100 undersupplied)`, s.tight == null ? '' : s.tight >= 70 ? 'hot' : s.tight <= 30 ? 'cool' : '');
+  add('CURVE', curveShort(s.curve), `Futures curve: ${s.curve || 'not available'}`);
+  const cotTone = s.posFlag === 'CROWDED LONG' || s.posFlag === 'CROWDED SHORT' ? 'hot' : s.posFlag === 'STRETCHED LONG' || s.posFlag === 'STRETCHED SHORT' ? 'warm' : s.posFlag === 'WASHED-OUT' ? 'cool' : '';
+  add('COT', s.posPct, `CFTC managed-money 3-year percentile${s.posFlag ? ': ' + s.posFlag : ''}`, cotTone);
+  add('BASIS', s.basisPct, 'Spot vs futures percentile (higher = tighter physical)', s.basisPct == null ? '' : s.basisPct >= 80 ? 'hot' : s.basisPct <= 20 ? 'cool' : '');
+  return out.join('');
+}
+function tileHtml(b, withSignals = false) {
   const s = history?.series?.[b.id];
   const arr = b.paper != null ? s?.paper : s?.physical;
   const val = b.paper != null ? b.paper : b.physical;
   const starred = watchlist().includes(b.id);
   const fs = headSource(b);
+  let sig = '';
+  if (withSignals) {
+    if (segScore === undefined) sig = '<span class="t-sig"><span class="t-chip dimtext">signals…</span></span>';
+    else if (segScore && segScore.segment === currentMarket) {
+      const row = (segScore.rows || []).find((r) => r.id === b.id);
+      if (row) sig = `<span class="t-sig">${tileSignals(row)}</span>`;
+    }
+  }
   return `<div class="tile" data-id="${b.id}" title="${b.label} — click for the chart">
     <span class="t-name">${b.label}</span>
     <span class="star ${starred ? 'on' : ''}" data-star="${b.id}" title="Pin to watchlist">${starred ? '★' : '☆'}</span>
     <span class="t-px">${val == null ? '—' : Number(val).toFixed(b.dp)}</span>
     ${tileSpark(arr)}
+    ${sig}
     <span class="t-foot">${deltaStrip(headDeltas(b))}${freshBadge(fs.source, fs.asOf, fs.lag)}</span>
   </div>`;
 }
@@ -328,14 +363,25 @@ function renderCards(m) {
   const w = watchlist();
   const watch = inSeg.filter((b) => w.includes(b.id));
   let html = '';
-  if (watch.length) html += `<div class="group"><div class="gtitle">WATCHLIST</div><div class="tiles">${watch.map(tileHtml).join('')}</div></div>`;
-  html += `<div class="tiles">${inSeg.map(tileHtml).join('')}</div>`;
+  if (watch.length) html += `<div class="group"><div class="gtitle">WATCHLIST</div><div class="tiles">${watch.map((b) => tileHtml(b, true)).join('')}</div></div>`;
+  html += `<div class="tiles">${inSeg.map((b) => tileHtml(b, true)).join('')}</div>`;
   $('cards').innerHTML = html;
 }
 function setCardsTitle() {
   const mk = markets.find((x) => x.id === currentMarket);
   const el = $('cards-title');
   if (el) el.textContent = 'INSTRUMENTS — ' + (mk ? mk.label.toUpperCase() : 'ALL');
+}
+async function loadSegmentScore() {
+  const el = $('cards'); if (!el) return;
+  const seg = currentMarket;
+  if (segScore && segScore.segment === seg) return;
+  if (segScore === undefined) renderCards(data);   // paint the loading chip before the request
+  let d = null;
+  try { d = await jget('/api/segmentscore?segment=' + encodeURIComponent(seg), 5 * 60e3); } catch { d = null; }
+  if (seg !== currentMarket) return;                // the segment changed while this was in flight
+  segScore = d && Array.isArray(d.rows) ? d : null;
+  renderCards(data);
 }
 
 // A pinned company: same tile grammar as an instrument, but it opens the company page.
@@ -653,14 +699,17 @@ function selectMarket(id) {
   currentMarket = id;
   currentComponent = null;   // reset to the segment's headline when the segment changes
   marketRead = null;         // clear so nothing from the previous segment can linger
+  segScore = undefined;      // and so the old segment's signal chips cannot stay on the tiles
   buildBpOptions();          // idempotent; also repairs the picker if it was built before markets arrived
   const pick = $('bp-metric');
   if (pick && [...pick.options].some((o) => o.value === id)) pick.value = id;   // keep the picker in sync
+  const commoditiesActive = document.querySelector('.tab.active')?.dataset.tab === 'commodities';
   renderSnapshot();
-  if (document.querySelector('.tab.active')?.dataset.tab === 'commodities') loadRelValue();
+  if (commoditiesActive) loadRelValue();
 
   toggleMarketBlocks();
   if (data) { renderCards(data); buildMetricOptions(data); }
+  if (commoditiesActive) loadSegmentScore();
   setCardsTitle();
   syncRoute(false);          // replace: the URL always reflects the current view
   renderCurveForSegment();   // the curve follows the segment
@@ -3570,6 +3619,7 @@ function showTab(name) {
   document.querySelectorAll('.tabpane').forEach((p) => p.classList.toggle('hidden', p.dataset.pane !== name));
   if (name === 'commodities') {
     loadRelValue();
+    loadSegmentScore();
     loadCurveHistory();
     if (chart) setTimeout(() => chart.resize(), 50);
     if (cmpChart) setTimeout(() => cmpChart.resize(), 55);

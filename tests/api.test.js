@@ -60,6 +60,22 @@ test('/api/relvalue returns a curated spread with its own percentile, and nothin
   assert.deepEqual(none.rows, []);
 });
 
+test('/api/segmentscore gives every component its own scores and deltas', async () => {
+  const d = await (await fetch(`http://localhost:${PORT}/api/segmentscore?segment=crude`)).json();
+  assert.equal(d.segment, 'crude');
+  assert.equal(d.label, 'Crude oil');
+  assert.deepEqual(d.rows.map((r) => r.id), ['wti', 'brent'], 'the segment keeps its component order');
+  for (const r of d.rows) {
+    assert.ok(r.label && r.unit, 'a row carries its label and unit');
+    assert.equal(typeof r.deltas, 'object');
+    if (r.stretch != null) assert.ok(r.stretch >= -100 && r.stretch <= 100, `stretch in range (got ${r.stretch})`);
+    if (r.tight != null) assert.ok(r.tight >= 0 && r.tight <= 100, `tight in range (got ${r.tight})`);
+    if (r.posPct != null) assert.ok(r.posPct >= 0 && r.posPct <= 100, `COT percentile in range (got ${r.posPct})`);
+  }
+  const none = await (await fetch(`http://localhost:${PORT}/api/segmentscore?segment=not-a-segment`)).json();
+  assert.deepEqual(none.rows, []);
+});
+
 test('/api/calendar spans every macro country, with consensus where published', async () => {
   const c = await (await fetch(`http://localhost:${PORT}/api/calendar`)).json();
   const ev = c.events || [];

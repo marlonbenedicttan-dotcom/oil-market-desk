@@ -143,7 +143,7 @@ function loadApp() {
   const source = fs.readFileSync(APP, 'utf8');
   // `const`/`function` declarations are script-scoped, so hand the ones under test back explicitly.
   const exported = `\n;globalThis.__ui = {
-    esc, pctf, cls, ago, deltaStrip, renderRisk, renderRelValue,
+    esc, pctf, cls, ago, deltaStrip, renderRisk, renderRelValue, tileSignals, curveShort,
     buildBpOptions, renderTicker, markReady, hideBoot, BOOT_CORE, bootReady,
     setMarkets: (v) => { markets = v; },
     getMarkets: () => markets,
@@ -263,6 +263,23 @@ test('relative value paints a percentile marker and never invents one', () => {
   assert.match(el.innerHTML, /rv-mark hot/);
   assert.match(el.innerHTML, /not enough history/);
   assert.doesNotMatch(el.innerHTML, /NaN/);
+});
+
+test('the segment tile chips show only the signals that exist', () => {
+  const { ui } = loadApp();
+  const full = ui.tileSignals({ stretch: 79, stretchLabel: 'AT A PREMIUM', tight: 72, tightLabel: 'UNDERSUPPLIED', curve: 'Backwardation', posPct: 10, posFlag: 'WASHED-OUT', basisPct: 89 });
+  assert.match(full, /P \+79/);
+  assert.match(full, /S&D 72/);
+  assert.match(full, /CURVE BACK/);
+  assert.match(full, /COT 10/);
+  assert.match(full, /BASIS 89/);
+  assert.match(full, /t-chip cool/);          // washed-out COT
+  const bare = ui.tileSignals({ stretch: null, tight: null, curve: null, posPct: null, basisPct: null });
+  assert.equal(bare, '');
+  assert.equal(ui.curveShort('Backwardation'), 'BACK');
+  assert.equal(ui.curveShort('Contango'), 'CONTANGO');
+  assert.equal(ui.curveShort('Flat'), 'FLAT');
+  assert.equal(ui.curveShort(null), null);
 });
 
 test('the compare pickers fill in even when prices land before history and FX', () => {
