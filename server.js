@@ -4647,7 +4647,7 @@ const server = http.createServer(async (req, res) => {
   for (const k in SECURITY_HEADERS) res.setHeader(k, SECURITY_HEADERS[k]);
   const url = new URL(req.url, `http://${req.headers.host}`);
   // Health check (no auth) for uptime monitors.
-  if (url.pathname === '/health') { res.writeHead(200, { 'content-type': 'application/json' }); return res.end(JSON.stringify({ ok: true, uptime: Math.round(process.uptime()), version: BUILD, rssMB: Math.round(process.memoryUsage().rss / 1048576) })); }
+  if (url.pathname === '/health') { res.writeHead(200, { 'content-type': 'application/json' }); return res.end(JSON.stringify({ ok: true, uptime: Math.round(process.uptime()), version: BUILD, rssMB: Math.round(process.memoryUsage().rss / 1048576), warm: process.env.WARM || 'on', idx: [!!SEARCH_INDEX, !!PEER_INDEX] })); }
   // Optional basic auth — set AUTH_USER + AUTH_PASS to protect a public deployment.
   // The subscription surface stays PUBLIC by design: visitors have no login, and the confirm /
   // unsubscribe links are clicked from a mail client. Those routes protect themselves with a
@@ -5249,13 +5249,6 @@ server.listen(PORT, async () => {
     // The light set keeps the landing feeds, brief, macro board and screener warm at ~250 MB; the
     // below-the-fold segment reads and positioning pay a ~1 s cold cost on first open.
     const fullWarm = process.env.WARM === 'full';
-    // The first company page needs the peer strip and the search box; building those indexes inside
-    // the request put a synchronous parse of the Japan/Korea/Taiwan/HK/AU lists (about 0.5 s on the
-    // free instance) in front of the chart. They read local artifacts only, so build them at the
-    // start of the warm pass (the memoised indexes then stay for the life of the process).
-    if (process.memoryUsage().rss < 300 * 1024 * 1024) {
-      try { searchIndex(); peerIndex(); } catch {}
-    }
     // The brief is what the reader lands on first. Warm the base feeds first; the event pool is
     // built gently at the END (it fans out over every news feed) so it cannot compete with the
     // first visitor or the macro/news caches.
@@ -5301,5 +5294,13 @@ server.listen(PORT, async () => {
     setTimeout(warm, 800);
     setInterval(warm, 2 * 60_000);
   }
+  // Build the search and peer indexes once, off the request path. They read committed list artifacts
+  // (no network), so this runs even when the upstream warmer is off (WARM=off): the alternative is
+  // paying a synchronous ~0.5 s parse inside the first company page or search, in front of the chart.
+  setTimeout(() => {
+    if (process.memoryUsage().rss < 300 * 1024 * 1024) {
+      try { searchIndex(); peerIndex(); } catch (e) { console.log('[indexes]', e.message); }
+    }
+  }, 1200);
 
 });

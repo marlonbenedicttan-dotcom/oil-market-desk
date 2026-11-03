@@ -3611,9 +3611,10 @@ Audited at 360, 390 and 430 px with screenshots of every view, then fixed what l
 - **Verified headless**: AAPL page chart 5 ms, peers 27 ms, 6 peers rendered, 0 console errors.
   `npm test` 322/322. Cold RSS after a US-only peer lookup +44 MB (the HK/AU lists and the index),
   which those pages need anyway; cold start on the free instance is still infrastructure.
-- **The peer index is warmed at boot.** The first company page would otherwise build it inside a
-  request — about 0.5 s on the free instance, either in front of the chart or in front of the filing.
-  The warm pass now builds the peer index first (local artifacts only) when RSS is under 300 MB, and
-  the search index in the same pass. `/health` reports `rssMB` so the free-instance headroom is
-  visible. Steady RSS moves from ~250 MB to ~348 MB, and the company page no longer parses a market
-  file.
+- **The search and peer indexes are built at boot, off the request path.** The first company page or
+  search would otherwise build them inside a request — about 0.5 s on the free instance — either in
+  front of the chart or in front of the filing. A one-off timer (1.2 s after listen) builds both from
+  the committed list artifacts when RSS is under 300 MB; it does **not** depend on `WARM`, because
+  the deployed instance runs with the feed warmer off. `/health` now reports `rssMB`, `warm` and
+  `idx`. Cost measured with `WARM=off`: +~20 MB (RSS 118 MB), peers 3 ms, search 9 ms; with the full
+  light warm the steady figure is ~348 MB. The company page no longer parses a market file.
