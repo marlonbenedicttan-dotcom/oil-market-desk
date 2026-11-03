@@ -3618,3 +3618,8 @@ Audited at 360, 390 and 430 px with screenshots of every view, then fixed what l
   the deployed instance runs with the feed warmer off. `/health` now reports `rssMB`, `warm` and
   `idx`. Cost measured with `WARM=off`: +~20 MB (RSS 118 MB), peers 3 ms, search 9 ms; with the full
   light warm the steady figure is ~348 MB. The company page no longer parses a market file.
+- **The search scan no longer allocates per row.** `r.n`/`r.t`/`r.extra` are already normalised, so
+  the old `r.n.split(/\s+/)` branch could never match, and a `hay` array was built for all ~10k rows
+  before the cheap exact/prefix checks. It is built only for a multi-word query now, and the dead
+  branch is gone; the free instance was spending ~0.5 s on that scan alone. Results unchanged
+  (toyota → 7203, tencent → 0700, "shk properties" → 0016, bhp → AU:BHP, samsung → 005930).
