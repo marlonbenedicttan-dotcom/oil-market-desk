@@ -3341,3 +3341,121 @@ Audited at 360, 390 and 430 px with screenshots of every view, then fixed what l
   0.2pp for every name.
 - **Universe:** 1,084 priced common stocks. Five master names (1470, 1538, 1589, 5906, 6921) have no
   current trade and are absent rather than estimated; three new listings have no TTM statement yet.
+
+## Hong Kong: every HKEX main-board company (2026-11-02)
+- **Universe**: the HKEX **daily quotation report** (`d{YYMMDD}e.htm`, one plain-text page per session,
+  keyless). 7,002 quoted lines, of which **~2,030 are main-board company lines** after dropping
+  structured products (5-digit codes, `#`/`@` names), GEM (8000–8999), RMB counters, ETFs, REITs,
+  bonds and suspended lines. The report carries no security-type column, so ETFs whose names do not say
+  ETF (ISHARES A50 and friends) are removed by the statement fetch: an ETF has no company financials
+  page, so it has no share count and never enters the dataset. Companies dropped this way are counted
+  and named in `audit.dropped`, never silently ignored.
+- **Why not the exchange's Excel list**: `ListOfSecurities.xlsx` is a 17 MB Power-Query *template* with
+  zero data rows; the real list is fetched by Excel at open time. The daily report is the only complete
+  keyless file the exchange publishes.
+- **Sources**: HKEX report for the universe and the session tape; **Yahoo** (`query5` via `https.get` —
+  undici's fingerprint is rejected) for five years of daily closes and the **Hang Seng Index**;
+  **stockanalysis.com (HKG)** for statements, the diluted share count, the dividend per share, the
+  English name/description and the GICS sector/industry; **open.er-api.com** for USD/HKD and USD/CNY.
+- **Two currencies**: the listing is HKD, but a mainland or international issuer reports in **CNY or
+  USD** (Alibaba CNY, HSBC USD). Every ratio is computed in the statement currency — the HKD market cap
+  is converted at the build's rate — because a HKD cap over a CNY profit is not a P/E. The company page
+  says which currency it used; `reportCurrency` rides in the list payload. With no FX snapshot a foreign
+  reporter gets blanks, not a wrong number.
+- **Shares**: `Shares Outstanding (Diluted)` (falling back to basic) from the income statement, which is
+  already fetched — one request serves revenue, profit, EPS, dividend and the share count. The share
+  count is a filing number; market cap is `price × diluted shares`, labelled as such.
+- **Dividend yield**: dividend per share from the filing, converted into HKD, over the HKD price. There
+  is no exchange-published per-stock yield table (TWSE has one), so this is the only honest source.
+- **Build**: `npm run build:hongkong` — build → fetch English names/descriptions/sectors for every
+  company → rebuild from cache. `--limit=30` is the smoke test; `--codes=0700,9988` builds named
+  companies; `--skip-prices` / `--skip-fin` reuse the disk caches. Caches live in
+  `data/cache/{hkex,hongkong-sa,hongkong-profiles}` and the build is resumable.
+- **Output**: `data/hongkong.json` (records + reports + annual/period history),
+  `data/hongkong-series/{00..79}.json` (daily last ~400 sessions + weekly 5y, keyed by code, bucketed
+  by the **first two** digits — 2,000 companies over ten buckets would make one chart parse tens of
+  megabytes), `data/hongkong-list.json` (the compact `/api/hongkong` payload),
+  `data/hongkong-profiles.json`, `data/hongkong-themes.json`.
+- **Server**: `/api/hongkong`, `/api/hongkong/company/{code}`, `/api/hongkong/chart?code=&range=`. The UI
+  adds a fifth region button (`HONG KONG`) with MARKET / SCREENER / THEMES, a company page, the home
+  screener tab, search (`hk:0700`), peers and compare. Hong Kong is in the cross-market peer index and
+  in the currency list (`HKD`), because the ECB does publish a HKD reference rate.
+- **Cross-listings**: stockanalysis serves no HKG statements for ~95 companies — the mainland H-shares
+  (Ping An, CM Bank, CATL, Midea, WuXi AppTec, CMOC, CITIC Bank…) and HSBC. Their statements live on
+  another listing of the same company: `scripts/resolve-hongkong-crosslist.mjs` searches by company
+  name, keeps only a strong name match, and **fetches the candidate page to prove it carries
+  statements** before writing `data/hongkong-crosslist.json` (HSBC → LON:HSBA; most H-shares → their
+  SHA/SHE A-share, with the US OTC ADR as the fallback when the mainland pages are rate-limited). The
+  build then fetches that listing's pages, records `statementsFrom`, and keeps the market cap at
+  **HK price × total shares** — the exchange's own convention. A wrong match cannot leak numbers: every
+  page is validated before it is parsed.
+- **Limits**: no exchange P/E/P/B feed, so the market medians are computed from the covered set and the
+  audit reports **coverage**, not a cross-check (an optional `--sample=N` compares a sample against
+  stockanalysis's own overview). HKEX reports half-yearly for most issuers, so the period table is
+  half-year/annual, not four quarters. Prices are HKD; a 5-year P/E band for a CNY reporter converts at
+  the current rate (documented approximation). No free guidance feed, so no forward P/E.
+- **Tests**: `tests/hongkong-derive.test.js` (HKD vs CNY ratios, missing FX, loss/negative-equity
+  guards, bands) and `tests/hongkong-data.test.js` (cap = price × shares, ratio bounds, market totals,
+  sector partition, index ordering, FX snapshot, list projection).
+
+## Australia: every ASX-listed company (2026-11-02)
+- **Universe**: the ASX **listed-companies CSV** (`asx.com.au/asx/research/ASXListedCompanies.csv`,
+  keyless, UTF-8 with a BOM, two preamble lines). It carries the exchange short name, the
+  three-character code and a GICS **industry group** (27 values). 93 rows are ETFs, listed investment
+  companies or securitisation trusts and are filtered out by name and counted; the rest are companies.
+- **Why Yahoo for prices**: ASX publishes no free all-stock daily close file. `{CODE}.AX` over
+  `https.get` (undici is rejected) gives five years of split-adjusted daily closes; `^AXJO` is the
+  S&P/ASX 200.
+- **Sources**: ASX CSV for the universe/sector; **Yahoo** for prices and the index;
+  **stockanalysis.com (ASX)** for annual statements, the rolling TTM view (`?p=trailing`), the diluted
+  share count, the dividend per share, and the English name/description/GICS sector;
+  **open.er-api.com** for one USD table (the AUD cross and every report-currency cross).
+- **Two currencies, again**: the listing is AUD, but **BHP and RIO report in USD** (a few in EUR/GBP).
+  Every ratio is computed in the statement currency with the AUD cap converted at the build's rate.
+  The shared engine is **`scripts/derive-listing.mjs`** (`{ companies, fx, baseCurrency }`);
+  `derive-hongkong.mjs` is now a thin wrapper, so there is one ratio engine, not two.
+  A company with no FX rate for its report currency gets blanks, never a wrong number.
+- **FX direction (fixed for both markets)**: `fx.rates` is the er-api USD table (units of X per USD).
+  The **cap** needs *report currency per listing currency* = `rates[report] / rates[listing]`; the
+  **dividend per share** needs the inverse. The first Hong Kong cut multiplied the cap by the inverse
+  (HKD × HKD/CNY), which overstated a CNY reporter's P/E by ~20%. Both the derivation and the audit
+  now use the two crosses explicitly (`perBase` / `perReport` in `derive-listing.mjs`), and the Hong
+  Kong tests/audit were corrected with it.
+- **TTM, not last FY**: the ASX statement tables have **no TTM column**. The vendor serves the rolling
+  twelve months on the `?p=trailing` view (newest column first), so the build fetches the annual pages
+  for the five-year record and the trailing income/balance pages for the current TTM and current equity.
+  The company page's period table is therefore **TRAILING 12 MONTHS** (honest), not "reported periods":
+  the vendor has no half-year actual table for this market. `peBasis` says `FY` when a company has no
+  trailing page.
+- **Sector rule**: the CSV's GICS industry group wins. `Not Applic` (300 rows) and `Class Pend` (20)
+  are not sectors: the profile's GICS sector resolves them, then `Other`. `audit.notApplicSectors`,
+  `audit.classPending` and `audit.resolvedFromProfile` count what happened; the raw group stays on the
+  record as `gicsIndustryGroup`.
+- **Build**: `npm run build:australia` — build → fetch English names/descriptions/profiles → rebuild
+  from cache. `--limit=30` is the smoke test; `--codes=BHP,CBA,PLS` builds named companies;
+  `--skip-prices` / `--skip-fin` reuse the disk caches; `--prices-only` warms Yahoo without touching
+  the statement source (useful when stockanalysis is throttled). Caches:
+  `data/cache/{asx,asx/yahoo,asx/profiles,australia-sa}`.
+- **Output**: `data/australia.json`, `data/australia-series/{A..Z,0..9}.json` (one-character buckets,
+  daily last ~400 sessions + weekly 5y), `data/australia-list.json`, `data/australia-profiles.json`,
+  `data/australia-themes.json` (curated; the build filters tickers that do not exist).
+- **Server**: `/api/australia`, `/api/australia/company/{code}`, `/api/australia/chart?code=&range=`.
+  The UI adds a sixth region button (`AUSTRALIA`) with MARKET / SCREENER / THEMES, a company page,
+  the home screener tab, search (`au:BHP`), peers and compare. `AUD` was already in `FX_CONV`.
+- **Limits**: no exchange per-stock P/E/P/B (so the audit reports coverage, not a cross-check); no free
+  guidance feed (no forward P/E); the market aggregates are computed from the covered set. Returns are
+  AUD; a foreign reporter's five-year P/E band converts at the current rate (documented approximation).
+- **Tests**: `tests/asx.test.js` (CSV/preamble/quoting, three-character codes, "Not Applic"/"Class
+  Pend" fallback, fund-line filter, URL builders), `tests/australia-derive.test.js` (AUD vs USD vs EUR
+  reporter, missing FX, loss/negative equity, bands, share of the HK engine) and
+  `tests/australia-data.test.js` (cap = price × shares, ratio bounds, totals, sector partition, index,
+  FX, list projection, audit counters). Plus the `au` entries in `filters.test.js` and three
+  `/api/australia` tests (one asserts BHP is valued in USD).
+- **Built (2026-11-03):** 1,666 companies · 548 P/E · 1,666 descriptions · 26 sectors resolved from
+  the profile · 113 foreign reporters (USD 89, NZD 6, PGK 4, EUR 4, CAD 3, SGD 3, GBP 3, MYR 1) ·
+  ASX 200 8,886.8 · **0 throttled** · 301 listed companies without a statement page · 93 ETFs/funds/
+  trusts filtered out. Total cap A$2.96T. `npm run audit:australia` is the repeatable check.
+- **Coverage note**: 33% of the market has a P/E. That is the market, not a bug: ASX has hundreds of
+  pre-revenue explorers and loss-making small caps, and a loss-maker correctly has no P/E. 382
+  companies have no vendor trailing table, so their ratios use the last fiscal year and `peBasis`
+  says `FY`; the rest are TTM. P/B and ROE are populated for 92% of the covered set.

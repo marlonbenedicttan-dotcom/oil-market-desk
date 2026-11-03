@@ -49,17 +49,20 @@ Nine segments: **crude · refined products · natural gas · precious metals · 
 - **Copper/gold** growth proxy and US–Japan spread panels.
 
 ### COMPANIES — profiles & financials
-Three markets, same UI:
+Six markets, same UI:
 
 | Market | Universe | Financials |
 |---|---|---|
 | 🇺🇸 United States | S&P 500 — **503 securities / 500 companies** (SPY holdings) | SEC XBRL, latest annual 10-K |
 | 🇯🇵 Japan | TSE Prime — **1,547 companies** with a market cap | JPX / J-Quants, JPY |
 | 🇰🇷 Korea | KOSPI — **746 companies** | DART, KRW |
+| 🇹🇼 Taiwan | TWSE — **1,084 listed companies** | TWSE master + stockanalysis, TWD |
+| 🇭🇰 Hong Kong | HKEX main board — every company with a statement page | HKEX tape + stockanalysis, HKD/CNY/USD |
+| 🇦🇺 Australia | ASX — **1,666 companies** with a share count | ASX CSV + stockanalysis, AUD/USD |
 
 - Search, filter, compare, and chart any company.
 - **Valuation vs its own history** — P/E, P/B, EV/EBITDA percentiles over five years, plus sector aggregates.
-- **Themes** — the names behind a story, across all three markets.
+- **Themes** — the names behind a story, across all markets.
 - Financials are **filed values, not estimates**. Market cap comes from the exchange/Nasdaq quote so buybacks and share classes are handled at the source; every ratio is recomputed from its own inputs and cross-checked against the exchange's table. Where the two disagree by more than 5% the cell is marked and both values are shown.
 
 ## Data sources (all free)
@@ -74,6 +77,9 @@ Three markets, same UI:
 | US company financials | SEC XBRL | SEC asks for a contact UA |
 | Japan | JPX / J-Quants | `JQUANTS_API_KEY` (free) |
 | Korea | DART / Naver | `DART_API_KEY` (free) |
+| Taiwan | TWSE OpenAPI + stockanalysis.com | no key |
+| Hong Kong | HKEX daily quotation report + stockanalysis.com | no key |
+| Australia | ASX listed-companies CSV + stockanalysis.com + Yahoo | no key |
 | News | tier-1 wires via Google News RSS | headlines + links only |
 
 **Benchmarks** — WTI (Cushing), Brent, RBOB, ULSD/heating oil, jet fuel (spot only), propane (spot only), natural gas (Henry Hub), plus the Brent − WTI spread (paper & physical). Adding a benchmark is one row in the `BENCHMARKS` table in `server.js`.

@@ -8,7 +8,7 @@ import { execFile } from 'node:child_process';
 import crypto from 'node:crypto';
 import { sendMail } from './src/smtp.js';
 import { fileURLToPath } from 'node:url';
-import { projectUs, projectJp, koreaList, taiwanList, US_LIST_FIELDS } from './src/project.js';
+import { projectUs, projectJp, koreaList, taiwanList, hongkongList, australiaList, US_LIST_FIELDS } from './src/project.js';
 import { sgn, businessDaysSince, horizonDeltas, horizonDeltasAbs, isoWeek, monthly, pctOver, percentile, lastNonNull, escHtml, webhookPayload, realizedVol, computeCracks, computeCrush, computeSteel, backAdjust, pearson, logReturns, frontExpiry, curveTightness, inventoryTightness, weightedScore, seasonalGrade, seasonalAhead, contractMonthsBetween, signedPosition, signedMove, stretchScore, sdLabel, attributeMoves, newsContextOk, METHODOLOGY, positioningFlag, positioningRead, positioningDivergence, maxDrawdown, drawdownNow, realizedVolTerm, volPercentile, volVsOwnWord, corrMatrix, fxAdjust, parseOcc, drawdownWord, volWord, volTrend, corrShift, pairGroups, topPairs, bestDiversifier, riskRead, priorityOf, rankByPriority, clusterEvents, scoreEvents, selectEvents, explainRows } from './src/lib.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -842,6 +842,106 @@ function readTaiwanSeries(code) {
   } catch { return { daily: {}, weekly: {} }; }
 }
 
+const HONGKONG_FILE = path.join(__dirname, 'data', 'hongkong.json');
+let HKG_CACHE = { mtime: 0, data: null };
+function readHongKong() {
+  try {
+    const st = fs.statSync(HONGKONG_FILE);
+    if (HKG_CACHE.data && HKG_CACHE.mtime === st.mtimeMs) return HKG_CACHE.data;
+    HKG_CACHE = { mtime: st.mtimeMs, data: JSON.parse(fs.readFileSync(HONGKONG_FILE, 'utf8')) };
+    return HKG_CACHE.data;
+  } catch { return { companies: [] }; }
+}
+const HONGKONG_LIST_FILE = path.join(__dirname, 'data', 'hongkong-list.json');
+let HKGL_CACHE = { key: null, data: null };
+function hongkongSourceUpdated() {
+  try {
+    const fd = fs.openSync(HONGKONG_FILE, 'r');
+    try {
+      const buf = Buffer.alloc(256);
+      const n = fs.readSync(fd, buf, 0, 256, 0);
+      const m = /"updated"\s*:\s*"([^"]+)"/.exec(buf.toString('utf8', 0, n));
+      return m ? m[1] : null;
+    } finally { fs.closeSync(fd); }
+  } catch { return null; }
+}
+function readHongKongList() {
+  try {
+    const srcUpdated = hongkongSourceUpdated();
+    const key = `${srcUpdated}:${fs.statSync(HONGKONG_LIST_FILE).mtimeMs}`;
+    if (HKGL_CACHE.data && HKGL_CACHE.key === key) return HKGL_CACHE.data;
+    const artifact = JSON.parse(fs.readFileSync(HONGKONG_LIST_FILE, 'utf8'));
+    if (artifact.updated && artifact.updated === srcUpdated) { HKGL_CACHE = { key, data: artifact }; return artifact; }
+  } catch { /* no artifact yet */ }
+  return hongkongList(readHongKong());
+}
+const HONGKONG_SERIES_DIR = path.join(__dirname, 'data', 'hongkong-series');
+const HKG_SERIES_CACHE = new Map();   // one bucket per chart, not the whole market
+function readHongKongSeries(code) {
+  const b = String(code || '').slice(0, 2);
+  if (!/^\d{2}$/.test(b)) return { daily: {}, weekly: {} };
+  const f = path.join(HONGKONG_SERIES_DIR, `${b}.json`);
+  try {
+    const st = fs.statSync(f);
+    const hit = HKG_SERIES_CACHE.get(b);
+    if (hit && hit.mtime === st.mtimeMs) return hit.data;
+    const data = JSON.parse(fs.readFileSync(f, 'utf8'));
+    if (HKG_SERIES_CACHE.size >= 3) HKG_SERIES_CACHE.delete(HKG_SERIES_CACHE.keys().next().value);
+    HKG_SERIES_CACHE.set(b, { mtime: st.mtimeMs, data });
+    return data;
+  } catch { return { daily: {}, weekly: {} }; }
+}
+
+const AUSTRALIA_FILE = path.join(__dirname, 'data', 'australia.json');
+let AU_CACHE = { mtime: 0, data: null };
+function readAustralia() {
+  try {
+    const st = fs.statSync(AUSTRALIA_FILE);
+    if (AU_CACHE.data && AU_CACHE.mtime === st.mtimeMs) return AU_CACHE.data;
+    AU_CACHE = { mtime: st.mtimeMs, data: JSON.parse(fs.readFileSync(AUSTRALIA_FILE, 'utf8')) };
+    return AU_CACHE.data;
+  } catch { return { companies: [] }; }
+}
+const AUSTRALIA_LIST_FILE = path.join(__dirname, 'data', 'australia-list.json');
+let AUL_CACHE = { key: null, data: null };
+function australiaSourceUpdated() {
+  try {
+    const fd = fs.openSync(AUSTRALIA_FILE, 'r');
+    try {
+      const buf = Buffer.alloc(256);
+      const n = fs.readSync(fd, buf, 0, 256, 0);
+      const m = /"updated"\s*:\s*"([^"]+)"/.exec(buf.toString('utf8', 0, n));
+      return m ? m[1] : null;
+    } finally { fs.closeSync(fd); }
+  } catch { return null; }
+}
+function readAustraliaList() {
+  try {
+    const srcUpdated = australiaSourceUpdated();
+    const key = `${srcUpdated}:${fs.statSync(AUSTRALIA_LIST_FILE).mtimeMs}`;
+    if (AUL_CACHE.data && AUL_CACHE.key === key) return AUL_CACHE.data;
+    const artifact = JSON.parse(fs.readFileSync(AUSTRALIA_LIST_FILE, 'utf8'));
+    if (artifact.updated && artifact.updated === srcUpdated) { AUL_CACHE = { key, data: artifact }; return artifact; }
+  } catch { /* no artifact yet */ }
+  return australiaList(readAustralia());
+}
+const AUSTRALIA_SERIES_DIR = path.join(__dirname, 'data', 'australia-series');
+const AUS_SERIES_CACHE = new Map();   // one letter bucket per chart, not the whole market
+function readAustraliaSeries(code) {
+  const b = String(code || '').slice(0, 1).toUpperCase();
+  if (!/^[A-Z0-9]$/.test(b)) return { daily: {}, weekly: {} };
+  const f = path.join(AUSTRALIA_SERIES_DIR, `${b}.json`);
+  try {
+    const st = fs.statSync(f);
+    const hit = AUS_SERIES_CACHE.get(b);
+    if (hit && hit.mtime === st.mtimeMs) return hit.data;
+    const data = JSON.parse(fs.readFileSync(f, 'utf8'));
+    if (AUS_SERIES_CACHE.size >= 5) AUS_SERIES_CACHE.delete(AUS_SERIES_CACHE.keys().next().value);
+    AUS_SERIES_CACHE.set(b, { mtime: st.mtimeMs, data });
+    return data;
+  } catch { return { daily: {}, weekly: {} }; }
+}
+
 const JAPAN_FILE = path.join(__dirname, 'data', 'japan.json');
 let JP_CACHE = { mtime: 0, data: null };
 function readJapan() {
@@ -1011,6 +1111,22 @@ function searchIndex() {
   for (const c of (tw.companies || [])) {
     add('tw', c.ticker, c.nameEn || c.name, [c.name, ...(c.brands || [])], Math.round((c.marketCap || 0) / twRate));
   }
+  // Hong Kong's names are English on the exchange tape, so the search covers the exchange short name
+  // ("TENCENT") and the profile name ("Tencent Holdings") both.
+  const hk = readHongKongList();
+  const hkRate = (hk.fx && hk.fx.rate) || 1;
+  for (const c of (hk.companies || [])) {
+    // HKEX prints codes unpadded ("700"), the market data uses four digits ("0700"); accepting both is
+    // the difference between "700" finding Tencent and finding nothing.
+    add('hk', c.ticker, c.nameEn || c.name, [c.name, String(Number(c.ticker)), c.sector, ...(c.brands || [])], Math.round((c.marketCap || 0) / hkRate));
+  }
+  // Australia's list is English like Hong Kong's. The CSV name ("BHP GROUP LIMITED") and the profile
+  // name ("BHP Group") both have to find it, so both are indexed.
+  const au = readAustraliaList();
+  const auRate = (au.fx && au.fx.rate) || 1;
+  for (const c of (au.companies || [])) {
+    add('au', c.ticker, c.nameEn || c.name, [c.name, c.sector, ...(c.brands || [])], Math.round((c.marketCap || 0) / auRate));
+  }
   SEARCH_INDEX = rows;
   return rows;
 }
@@ -1075,6 +1191,15 @@ const PEER_BUCKET = {
     Chemicals: 'materials', 'Steel & Metals': 'materials', 'Glass & Ceramics': 'materials',
     'Paper & Printing': 'materials', 'Wood & Paper': 'materials',
     'Oil & Gas': 'energy', Utilities: 'utilities', 'Real Estate': 'realestate' },
+  // Hong Kong's sectors are stockanalysis's GICS names, not an exchange code, so the map is one step
+  // shorter — and deliberately coarse: every financial is a "bank" for peer purposes.
+  // These are the sector labels stockanalysis actually serves for HKG: Financials, Consumer
+  // Discretionary, Consumer Staples — not the GICS names this map first guessed at, which silently
+  // produced zero cross-market peers for every Hong Kong company.
+  hk: { Technology: 'tech', 'Communication Services': 'telecom', Financials: 'banks',
+    Healthcare: 'pharma', 'Consumer Discretionary': 'consumer', 'Consumer Staples': 'consumer',
+    Industrials: 'industrials', Materials: 'materials', Energy: 'energy',
+    Utilities: 'utilities', 'Real Estate': 'realestate', Other: 'industrials' },
   tw: { Semiconductors: 'tech', 'Computers & Peripherals': 'tech', Optoelectronics: 'tech',
     Communications: 'tech', 'Electronic Components': 'tech', 'Electronics Distribution': 'tech',
     'Information Services': 'tech', 'Other Electronics': 'tech', Electronics: 'tech', 'Digital & Cloud': 'tech',
@@ -1087,6 +1212,30 @@ const PEER_BUCKET = {
     Chemicals: 'materials', Plastics: 'materials', 'Steel & Metals': 'materials', Cement: 'materials',
     'Glass & Ceramics': 'materials', 'Paper & Packaging': 'materials', Rubber: 'materials',
     'Oil, Gas & Power': 'energy', 'Green Energy': 'utilities' },
+  // Australia's sectors are the ASX's GICS industry groups (27 of them), one step finer than the
+  // eleven GICS sectors Hong Kong uses. The map folds them into the same coarse peer buckets.
+  au: { Materials: 'materials', Energy: 'energy', Banks: 'banks', Insurance: 'insurance',
+    'Diversified Financials': 'capital', 'Financial Services': 'capital',
+    'Capital Goods': 'industrials', 'Commercial & Professional Services': 'industrials',
+    Transportation: 'industrials',
+    'Consumer Durables & Apparel': 'consumer', 'Consumer Services': 'consumer',
+    'Consumer Staples Distribution & Retail': 'retail',
+    'Consumer Discretionary Distribution & Retail': 'retail', 'Food, Beverage & Tobacco': 'consumer',
+    'Household & Personal Products': 'consumer', Retailing: 'retail',
+    'Health Care Equipment & Services': 'pharma',
+    'Pharmaceuticals, Biotechnology & Life Sciences': 'pharma',
+    'Media & Entertainment': 'media', 'Telecommunication Services': 'telecom',
+    'Software & Services': 'tech', 'Technology Hardware & Equipment': 'tech',
+    'Semiconductors & Semiconductor Equipment': 'semis',
+    'Real Estate Management & Development': 'realestate',
+    'Equity Real Estate Investment Trusts (REITs)': 'realestate',
+    Utilities: 'utilities', 'Automobiles & Components': 'autos', Other: 'industrials',
+    // The ~230 rows the CSV leaves unclassified take their sector from the profile, which is a GICS
+    // sector (11 names) rather than an industry group. Map those too, or those companies get no peers.
+    Financials: 'banks', 'Financial Services': 'banks',
+    'Information Technology': 'tech', 'Communication Services': 'telecom',
+    'Consumer Discretionary': 'consumer', 'Consumer Staples': 'consumer', 'Health Care': 'pharma',
+    Industrials: 'industrials', 'Real Estate': 'realestate' },
 };
 
 // The US has a four-digit SIC for every filer, so the bucket comes from the code rather than the
@@ -1144,6 +1293,12 @@ function peerIndex() {
   const tw = readTaiwanList();
   const twRate = (tw.fx && tw.fx.rate) || 1;
   for (const c of (tw.companies || [])) push('tw', `tw:${c.ticker}`, c.nameEn || c.name, c.sector, Math.round((c.marketCap || 0) / twRate));
+  const hk = readHongKongList();
+  const hkRate = (hk.fx && hk.fx.rate) || 1;
+  for (const c of (hk.companies || [])) push('hk', `hk:${c.ticker}`, c.nameEn || c.name, c.sector, Math.round((c.marketCap || 0) / hkRate));
+  const au = readAustraliaList();
+  const auRate = (au.fx && au.fx.rate) || 1;
+  for (const c of (au.companies || [])) push('au', `au:${c.ticker}`, c.nameEn || c.name, c.sector, Math.round((c.marketCap || 0) / auRate));
   PEER_INDEX = rows;
   return rows;
 }
@@ -1161,7 +1316,7 @@ function getPeers(ref, n = 6) {
   // At least one peer from each other market when the bucket allows it, then fill by size.
   const picked = [];
   const taken = new Set();
-  for (const mkt of ['us', 'jp', 'kr', 'tw']) {
+  for (const mkt of ['us', 'jp', 'kr', 'tw', 'hk', 'au']) {
     if (mkt === me.market) continue;
     const first = others.find((r) => r.market === mkt);
     if (first) { picked.push(first); taken.add(first.ref); }
@@ -1185,7 +1340,7 @@ function getPeers(ref, n = 6) {
 // return *plus* the yen's own move. These are the moves of each currency against the chosen base over
 // the same windows the table shows (1D, 6M, YTD), from ECB reference rates via Frankfurter.
 // ---------------------------------------------------------------------------
-const FX_CONV = ['USD', 'JPY', 'KRW', 'EUR', 'GBP', 'CNY', 'CAD', 'AUD', 'CHF'];
+const FX_CONV = ['USD', 'JPY', 'KRW', 'EUR', 'GBP', 'CNY', 'CAD', 'AUD', 'CHF', 'HKD'];
 async function getFxWindows(base = 'USD') {
   const B = String(base || 'USD').toUpperCase();
   if (!FX_CONV.includes(B)) return { error: 'unsupported base', base: B };
@@ -4586,6 +4741,70 @@ const server = http.createServer(async (req, res) => {
       const c = (tw.companies || []).find((x) => x.code === code || x.ticker === code);
       if (!c) return sendJSON(res, 404, { error: 'not found' });
       return sendJSONCached(res, 200, c);
+    }
+    if (url.pathname.startsWith('/api/hongkong/company/')) {
+      const code = decodeURIComponent(url.pathname.slice('/api/hongkong/company/'.length));
+      const hk = readHongKong();
+      const c = (hk.companies || []).find((x) => x.code === code || x.ticker === code);
+      if (!c) return sendJSON(res, 404, { error: 'not found' });
+      return sendJSONCached(res, 200, c);
+    }
+    if (url.pathname === '/api/hongkong/chart') {
+      const code = url.searchParams.get('code');
+      const range = url.searchParams.get('range') || '1y';
+      const store = readHongKongSeries(code);
+      const block = range === '5y' || range === '10y' ? store.weekly : store.daily;
+      const series = (block && block[code]) || (store.weekly && store.weekly[code]) || [];
+      if (!series.length) return sendJSON(res, 200, { dates: [], closes: [], range, code });
+      const iso = (t) => new Date(t).toISOString().slice(0, 10);
+      const now = Date.now();
+      const from = range === '1m' ? iso(now - 31 * 864e5)
+        : range === '3m' ? iso(now - 92 * 864e5)
+          : range === '6m' ? iso(now - 190 * 864e5)
+            : range === 'ytd' ? `${new Date().getUTCFullYear()}-01-01`
+              : range === '1y' ? iso(now - 366 * 864e5)
+                : range === '5y' ? iso(now - 1826 * 864e5)
+                  : range === '10y' ? iso(now - 3653 * 864e5)
+                    : '1900-01-01';
+      const rows = series.filter((p) => p.d >= from);
+      return sendJSONCached(res, 200, { dates: rows.map((p) => p.d), closes: rows.map((p) => p.c), range, code });
+    }
+    if (url.pathname === '/api/hongkong') {
+      const hk = readHongKongList();
+      if (!hk.companies || !hk.companies.length) return sendJSON(res, 200, { companies: [], error: 'Hong Kong has not been built yet' });
+      return sendJSONCached(res, 200, hk);
+    }
+    if (url.pathname.startsWith('/api/australia/company/')) {
+      const code = decodeURIComponent(url.pathname.slice('/api/australia/company/'.length)).toUpperCase();
+      const au = readAustralia();
+      const c = (au.companies || []).find((x) => x.code === code || x.ticker === code);
+      if (!c) return sendJSON(res, 404, { error: 'not found' });
+      return sendJSONCached(res, 200, c);
+    }
+    if (url.pathname === '/api/australia/chart') {
+      const code = String(url.searchParams.get('code') || '').toUpperCase();
+      const range = url.searchParams.get('range') || '1y';
+      const store = readAustraliaSeries(code);
+      const block = range === '5y' || range === '10y' ? store.weekly : store.daily;
+      const series = (block && block[code]) || (store.weekly && store.weekly[code]) || [];
+      if (!series.length) return sendJSON(res, 200, { dates: [], closes: [], range, code });
+      const iso = (t) => new Date(t).toISOString().slice(0, 10);
+      const now = Date.now();
+      const from = range === '1m' ? iso(now - 31 * 864e5)
+        : range === '3m' ? iso(now - 92 * 864e5)
+          : range === '6m' ? iso(now - 190 * 864e5)
+            : range === 'ytd' ? `${new Date().getUTCFullYear()}-01-01`
+              : range === '1y' ? iso(now - 366 * 864e5)
+                : range === '5y' ? iso(now - 1826 * 864e5)
+                  : range === '10y' ? iso(now - 3653 * 864e5)
+                    : '1900-01-01';
+      const rows = series.filter((p) => p.d >= from);
+      return sendJSONCached(res, 200, { dates: rows.map((p) => p.d), closes: rows.map((p) => p.c), range, code });
+    }
+    if (url.pathname === '/api/australia') {
+      const au = readAustraliaList();
+      if (!au.companies || !au.companies.length) return sendJSON(res, 200, { companies: [], error: 'Australia has not been built yet' });
+      return sendJSONCached(res, 200, au);
     }
     if (url.pathname.startsWith('/api/japan/company/')) {
       const code = decodeURIComponent(url.pathname.slice('/api/japan/company/'.length));

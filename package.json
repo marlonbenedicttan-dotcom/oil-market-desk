@@ -32,7 +32,12 @@
     "companies:ttm": "node scripts/reconcile-ttm.mjs",
     "companies:cashflow": "node scripts/build-cashflow.mjs",
     "companies:valuation": "node scripts/build-valuation.mjs",
-    "companies:descriptions": "node scripts/finalize-descriptions.mjs"
+    "companies:descriptions": "node scripts/finalize-descriptions.mjs",
+    "build:hongkong": "node scripts/build-hsi-constituents.mjs && node scripts/build-hongkong.mjs && node scripts/fetch-hongkong-profiles.mjs && node scripts/build-hongkong.mjs --skip-prices --skip-fin",
+    "audit:hongkong": "node scripts/audit-hongkong.mjs",
+    "build:australia": "node scripts/build-australia.mjs && node scripts/fetch-australia-profiles.mjs && node scripts/build-australia.mjs --skip-prices --skip-fin",
+    "audit:australia": "node scripts/audit-australia.mjs",
+    "build:hsi": "node scripts/build-hsi-constituents.mjs"
   },
   "engines": {
     "node": ">=22"

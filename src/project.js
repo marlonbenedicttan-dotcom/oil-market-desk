@@ -59,6 +59,48 @@ export const taiwanList = (tw) => ({
   companies: (tw.companies || []).map(projectTw),
 });
 
+// Hong Kong ships the Taiwan field set. The dividend yield is computed from the filing's dividend per
+// share (HKEX publishes no per-stock yield table), and the statement currency rides along so a company
+// page can say why its ratios were computed in CNY while its price is in HKD.
+export const projectHk = (c) => ({
+  code: c.code, ticker: c.ticker, name: c.name, nameEn: c.nameEn || null, sector: c.sector || null,
+  brands: c.brands && c.brands.length ? c.brands : null,
+  price: c.price, priceDate: c.priceDate, marketCap: c.marketCap,
+  chg1d: c.chg1d, chg6m: c.chg6m, chgYtd: c.chgYtd,
+  pe: c.pe, pb: c.pb, roe: c.roe, opMargin: c.opMargin,
+  dividendYield: c.dividendYield ?? null,
+  reportCurrency: c.reportCurrency || null,
+  bands: c.bands && c.bands.pe ? { pe: { percentile: c.bands.pe.percentile } } : null,
+});
+
+export const hongkongList = (hk) => ({
+  updated: hk.updated, universe: hk.universe, currency: hk.currency, fx: hk.fx,
+  market: hk.market, index: hk.index, themes: hk.themes || [], audit: hk.audit || null,
+  session: hk.session || null, hsi: hk.hsi || null,
+  companies: (hk.companies || []).map(projectHk),
+});
+
+// Australia ships the same shape as Hong Kong: the statement currency matters because BHP and RIO
+// report in USD while the listing trades in AUD, so the screener and the company page can say which
+// currency the ratios were computed in.
+export const projectAu = (c) => ({
+  code: c.code, ticker: c.ticker, name: c.name, nameEn: c.nameEn || null, sector: c.sector || null,
+  brands: c.brands && c.brands.length ? c.brands : null,
+  price: c.price, priceDate: c.priceDate, marketCap: c.marketCap,
+  chg1d: c.chg1d, chg6m: c.chg6m, chgYtd: c.chgYtd,
+  pe: c.pe, pb: c.pb, roe: c.roe, opMargin: c.opMargin,
+  dividendYield: c.dividendYield ?? null,
+  reportCurrency: c.reportCurrency || null,
+  bands: c.bands && c.bands.pe ? { pe: { percentile: c.bands.pe.percentile } } : null,
+});
+
+export const australiaList = (au) => ({
+  updated: au.updated, universe: au.universe, currency: au.currency, fx: au.fx,
+  market: au.market, index: au.index, themes: au.themes || [], audit: au.audit || null,
+  session: au.session || null,
+  companies: (au.companies || []).map(projectAu),
+});
+
 export const projectJp = (c) => ({  code: c.code, ticker: c.ticker, name: c.name, nameJa: c.nameJa, sector: c.sector, size: c.size,
   price: c.price, priceDate: c.priceDate, marketCap: c.marketCap,
   chg1d: c.chg1d, chg6m: c.chg6m, chgYtd: c.chgYtd, chgYtdBasis: c.chgYtdBasis,
@@ -81,4 +123,6 @@ export const FILTER_FIELDS = {
   jp: ['sector', 'marketCap', 'pe', 'pb', 'roe', 'dividend', 'cash', 'bands', 'chgYtd', 'priceDate', 'brands'],
   kr: ['sector', 'marketCap', 'pe', 'pb', 'roe', 'bands', 'chgYtd', 'priceDate', 'brands'],
   tw: ['sector', 'marketCap', 'pe', 'pb', 'roe', 'dividendYield', 'bands', 'chgYtd', 'priceDate', 'brands'],
+  hk: ['sector', 'marketCap', 'pe', 'pb', 'roe', 'dividendYield', 'bands', 'chgYtd', 'priceDate', 'brands'],
+  au: ['sector', 'marketCap', 'pe', 'pb', 'roe', 'dividendYield', 'bands', 'chgYtd', 'priceDate', 'brands'],
 };

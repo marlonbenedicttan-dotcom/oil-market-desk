@@ -1,0 +1,74 @@
+{
+  "themes": [
+    {
+      "id": "platforms",
+      "label": "CHINA PLATFORMS",
+      "kind": "sector",
+      "note": "Hong Kong is where the mainland's internet platforms list. These are the consumer-facing names whose revenue is advertising, commissions, gaming and cloud — the group most sensitive to Chinese consumption and to regulation.",
+      "tickers": ["0700", "9988", "3690", "9618", "1024", "9888", "9999", "9626", "0020", "6618"]
+    },
+    {
+      "id": "semis",
+      "label": "SEMICONDUCTORS & HARDWARE",
+      "kind": "sector",
+      "note": "The hardware chain: foundry, components, optics and devices. It is the Hong Kong leg of the same supply chain the Taiwan market covers, and the part of it that sits under export controls.",
+      "tickers": ["0981", "1347", "0522", "2382", "2018", "1810", "0992", "0763", "0285"]
+    },
+    {
+      "id": "ev",
+      "label": "EV & AUTO",
+      "kind": "sector",
+      "note": "Chinese carmakers and their suppliers, priced in Hong Kong. Volume growth, price wars and export tariffs all land in these lines — the demand side of the copper and aluminium in the COMMODITIES tab.",
+      "tickers": ["1211", "0175", "2333", "9868", "9866", "2015", "2238", "0425", "0489"]
+    },
+    {
+      "id": "banks",
+      "label": "BANKS & INSURERS",
+      "kind": "sector",
+      "note": "The financial plumbing: the HKMA-regulated banks, the mainland's big-four lenders listed here, and the insurers. Dividends and property exposure are the two things that move them.",
+      "tickers": ["0005", "0011", "2388", "0939", "1398", "3988", "3968", "2318", "2628", "1299", "6060"]
+    },
+    {
+      "id": "energy",
+      "label": "ENERGY & UTILITIES",
+      "kind": "sector",
+      "note": "Oil and gas producers, coal, and the power utilities. The upstream names track Brent and Henry Hub; the utilities track the fuel they burn and the tariff they are allowed to charge.",
+      "tickers": ["0386", "0857", "0883", "1088", "0002", "0003", "0006", "0836", "0902", "1038"]
+    },
+    {
+      "id": "property",
+      "label": "PROPERTY",
+      "kind": "sector",
+      "note": "Hong Kong landlords and the mainland developers listed beside them. Two very different businesses: the first collects rent in HKD, the second is still working through a credit cycle.",
+      "tickers": ["0016", "0012", "0017", "1113", "0688", "1109", "0960", "6098", "0083", "0101"]
+    },
+    {
+      "id": "consumer",
+      "label": "CONSUMER",
+      "kind": "sector",
+      "note": "Food, drink, sportswear and retail. The read is the same as the mainland's macro data, but company by company — and several of these names are the ones foreign investors can actually buy.",
+      "tickers": ["9633", "0291", "2020", "2331", "0322", "0151", "1876", "0288", "1929", "2313"]
+    },
+    {
+      "id": "healthcare",
+      "label": "HEALTHCARE",
+      "kind": "sector",
+      "note": "Generic drugmakers, distributors, biotech and the contract research organisations. Policy pricing on the mainland is the swing factor, and the CXO names carry global pharma demand as well.",
+      "tickers": ["1093", "1177", "1099", "1801", "2269", "2359", "6160", "0241", "0867"]
+    },
+    {
+      "id": "materials",
+      "label": "METALS & MATERIALS",
+      "kind": "sector",
+      "note": "Gold miners, copper, aluminium, steel and cement. This is the Hong Kong market's direct link to the industrial-metals and precious-metals segments — the same story priced in HKD.",
+      "tickers": ["2899", "1818", "3993", "2600", "0358", "0914", "0347", "3323", "1898"]
+    },
+    {
+      "id": "hongkong",
+      "label": "HONG KONG LOCAL",
+      "kind": "sector",
+      "note": "The locally listed conglomerates, utilities and landlords whose earnings are Hong Kong itself: rents, electricity, gas, tolls and the port. The HKMA's rate and the property cycle are the drivers.",
+      "tickers": ["0001", "0002", "0003", "0004", "0006", "0016", "0019", "0066", "0083", "0388"]
+    }
+  ]
+}

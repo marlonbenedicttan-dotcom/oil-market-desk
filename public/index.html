@@ -20,7 +20,7 @@
   <link rel="icon" href="/icon.svg" type="image/svg+xml" />
   <link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png" />
   <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
-  <link rel="stylesheet" href="style.css?v=119" />
+  <link rel="stylesheet" href="style.css?v=121" />
   <noscript><style>#boot{display:none!important}</style></noscript>
   <script src="/vendor/chart.umd.min.js?v=4.4.1"></script>
 </head>
@@ -186,6 +186,7 @@
       <section class="panel" id="compare-panel">
         <div class="ph">
           <span class="ph-t">COMPARE / SPREAD</span>
+          <span class="dimtext">each commodity opens on its own spread · edit it and it is remembered</span>
           <div class="controls">
             <select id="cmp-a" aria-label="Compare series A"></select><span class="dimtext">vs</span><select id="cmp-b" aria-label="Compare series B"></select>
             <select id="cmp-range" aria-label="Compare range"><option value="1m">1M</option><option value="3m">3M</option><option value="6m" selected>6M</option><option value="ytd">YTD</option><option value="1y">1Y</option></select>
@@ -311,6 +312,8 @@
               <button type="button" data-region="jp" title="Japan · TSE Prime">JAPAN</button>
               <button type="button" data-region="kr" title="Korea · KOSPI">KOREA</button>
               <button type="button" data-region="tw" title="Taiwan · TWSE listed">TAIWAN</button>
+              <button type="button" data-region="hk" title="Hong Kong · HKEX main board">HONG KONG</button>
+              <button type="button" data-region="au" title="Australia · ASX listed">AUSTRALIA</button>
             </div>
           </div>
           <div class="co-navrow">
@@ -420,6 +423,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=281"></script>
+  <script src="app.js?v=284"></script>
 </body>
 </html>

@@ -6,57 +6,22 @@
 //
 // No runtime dependency: plain fetch, a disk cache and two small parsers.
 
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
+import { mkdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { UA, sleep, readJson, writeJson, getCached, ENT, num, parseSaTable, rowOf, periodFromTitle } from './stockanalysis.mjs';
+
+// The stockanalysis helpers are shared with the Hong Kong build; re-exported so the Taiwan scripts
+// that already import them from here keep working.
+export { UA, sleep, readJson, writeJson, getCached, ENT, num, parseSaTable, rowOf, periodFromTitle };
 
 export const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
-export const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126 Safari/537.36';
-export const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 const CACHE = join(ROOT, 'data', 'cache');
 export const SA_CACHE = join(CACHE, 'taiwan-sa');
 export const TW_CACHE = join(CACHE, 'twse');
 mkdirSync(SA_CACHE, { recursive: true });
 mkdirSync(TW_CACHE, { recursive: true });
-
-export const readJson = (f) => { try { return JSON.parse(readFileSync(f, 'utf8')); } catch { return null; } };
-export const writeJson = (f, v) => writeFileSync(f, JSON.stringify(v));
-
-// A disk-cached GET. `fresh` skips the cache; `ttlMs` keeps a recently fetched page. A 429 backs off
-// and retries, because both stockanalysis and TWSE throttle bursts.
-export async function getCached(url, file, { ttlMs = 0, fresh = false, timeout = 30000, retries = 3 } = {}) {
-  if (!fresh && ttlMs > 0 && existsSync(file)) {
-    try {
-      const hit = JSON.parse(readFileSync(file, 'utf8'));
-      if (hit && hit.fetched && Date.now() - Date.parse(hit.fetched) < ttlMs) return hit.text;
-    } catch { /* refetch */ }
-  }
-  for (let attempt = 0; attempt < retries; attempt++) {
-    try {
-      const res = await fetch(url, {
-        headers: { 'User-Agent': UA, 'Accept-Language': 'en-US,en;q=0.9' },
-        signal: AbortSignal.timeout(timeout),
-      });
-      if (res.status === 429) { await sleep(4000 * (attempt + 1)); continue; }
-      if (!res.ok) throw new Error(`${url} -> HTTP ${res.status}`);
-      const text = await res.text();
-      writeFileSync(file, JSON.stringify({ fetched: new Date().toISOString(), text }));
-      return text;
-    } catch (e) {
-      if (attempt === retries - 1) {
-        // A transient DNS/feed failure must not discard a warm build: fall back to the last bytes.
-        try {
-          const hit = JSON.parse(readFileSync(file, 'utf8'));
-          if (hit && hit.text) return hit.text;
-        } catch { /* no cache */ }
-        throw e;
-      }
-      await sleep(800 * (attempt + 1));
-    }
-  }
-  return null;
-}
 
 // --- TWSE ---------------------------------------------------------------------------------------
 export const TWSE = {
@@ -87,67 +52,6 @@ export function parseDayCsv(text) {
     if (date && /^\d{4}$/.test(code || '') && Number.isFinite(close) && close > 0) rows.push({ d: date, code, c: close });
   }
   return rows;
-}
-
-// --- stockanalysis financial tables -------------------------------------------------------------
-const ENT = (s) => String(s || '')
-  .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
-  .replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&nbsp;/g, ' ');
-
-export function num(v) {
-  let s = String(v == null ? '' : v).replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').trim();
-  if (!s || s === '—' || s === '-' || s === 'N/A') return null;
-  let neg = false;
-  if (/^\(.*\)$/.test(s)) { neg = true; s = s.slice(1, -1); }
-  s = s.replace(/[$,%\s]/g, '');
-  if (!s || !/^-?\d/.test(s)) return null;
-  const n = Number(s);
-  return Number.isFinite(n) ? (neg ? -n : n) : null;
-}
-
-// One financial page → { cols: [{ id, label }], rows: [{ label, values: { colId: number } }] }.
-// The header ids are the period ends ("2025-12-31") or "TTM"; quarterly pages use the same ids.
-export function parseSaTable(html) {
-  const h = String(html || '');
-  const cols = [];
-  const thead = (/<thead[\s\S]*?<\/thead>/.exec(h) || [])[0] || '';
-  for (const m of thead.matchAll(/<th\b([^>]*)>([\s\S]*?)<\/th>/g)) {
-    const attrs = m[1];
-    const id = (/id="([^"]+)"/.exec(attrs) || [])[1];
-    const title = (/title="([^"]*)"/.exec(attrs) || [])[1] || '';
-    const label = ENT(m[2].replace(/<[^>]+>/g, ' ')).replace(/\s+/g, ' ').trim();
-    if (id && id !== 'header-title' && !cols.some((c) => c.id === id)) cols.push({ id, label, title });
-  }
-  const rows = [];
-  for (const tr of h.matchAll(/<tr[^>]*>([\s\S]*?)<\/tr>/g)) {
-    const tds = [...tr[1].matchAll(/<td[^>]*>([\s\S]*?)<\/td>/g)].map((m) => m[1]);
-    if (tds.length < 2) continue;
-    const label = ENT(tds[0].replace(/<[^>]+>/g, ' ')).replace(/\s+/g, ' ').trim();
-    if (!label) continue;
-    const values = {};
-    // The first <td> is the label; the rest line up with the header columns. Growth rows have one
-    // fewer cell in some layouts, so stop at the header count rather than shifting.
-    for (let i = 0; i < cols.length; i++) values[cols[i].id] = num(tds[i + 1]);
-    rows.push({ label, values });
-  }
-  return { cols, rows };
-}
-
-export const rowOf = (table, labels) => {
-  const want = Array.isArray(labels) ? labels : [labels];
-  for (const label of want) {
-    const hit = table.rows.find((r) => r.label === label);
-    if (hit) return hit;
-  }
-  return null;
-};
-
-// "Trailing twelve month period ending Sep 30, 2026" / "Sep 30, 2026" → "2026-09-30".
-export function periodFromTitle(title) {
-  const m = /([A-Z][a-z]{2}) (\d{1,2}), (\d{4})/.exec(String(title || ''));
-  if (!m) return null;
-  const MON = { Jan: '01', Feb: '02', Mar: '03', Apr: '04', May: '05', Jun: '06', Jul: '07', Aug: '08', Sep: '09', Oct: '10', Nov: '11', Dec: '12' };
-  return `${m[3]}-${MON[m[1]] || '01'}-${String(m[2]).padStart(2, '0')}`;
 }
 
 // --- sectors ------------------------------------------------------------------------------------

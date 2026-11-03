@@ -348,8 +348,9 @@ function quartersOf(html) {
 }
 async function page(code, p, q = false) {
   const f = join(SA_CACHE, `${code}-${p}${q ? '-q' : ''}.json`);
-  const html = await getCached(sa(code, p, q), f, { ttlMs: q ? TTL_Q : TTL_FIN, timeout: 30000, retries: 3 });
-  return html;
+  try {
+    return await getCached(sa(code, p, q), f, { ttlMs: q ? TTL_Q : TTL_FIN, timeout: 30000, retries: 5 });
+  } catch { return null; }   // throttled: this company is retried on the next build
 }
 
 if (!SKIP_FIN) {

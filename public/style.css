@@ -159,6 +159,9 @@ select {
 @keyframes bootping { 0% { transform: scale(.4); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .scope-sweep, .scope-core { animation: none; } }
 .cmp-presets { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 12px 0; }
+/* The "each commodity opens on its own spread" hint is a nice-to-have: on a phone the three
+   pickers need the whole row, so drop it rather than crowd them. */
+@media (max-width: 900px) { #compare-panel .ph .dimtext { display: none; } }
 .card.clickable { cursor: pointer; transition: border-color .12s; }
 .card.clickable:hover { border-color: var(--amber); }
 .card.clickable:hover h3 { color: var(--amber2); }
@@ -1444,6 +1447,8 @@ button.deal-sec-tile:hover { background: #10151b; }
 #p-deals[data-market="jp"] { --mkt: #e05252; }
 #p-deals[data-market="kr"] { --mkt: #2fb5a8; }
 #p-deals[data-market="tw"] { --mkt: #d4a017; }
+#p-deals[data-market="hk"] { --mkt: #c8574f; }
+#p-deals[data-market="au"] { --mkt: #6f8f3f; }
 .mb-tag { font-size: 8px; letter-spacing: 1px; color: var(--mkt, var(--dim)); border: 1px solid var(--mkt, var(--line));
   padding: 1px 5px; border-radius: 2px; margin-left: 6px; }
 

@@ -150,8 +150,21 @@ function loadApp() {
     setCurrentMarket: (v) => { currentMarket = v; },
     getCurrentMarket: () => currentMarket,
     setHistory: (v) => { history = v; },
+    setData: (v) => { data = v; },
+    setFx: (v) => { fxList = v; },
+    setRates: (v) => { rateList = v; },
+    setComponent: (v) => { currentComponent = v; },
+    buildCompareOptions,
+    syncCompareToSelection,
+    renderCmpPresets,
+    compareFor,
+    cmpSubject,
+    ensureCmpLegs,
+    saveCompare,
+    CMP_SPREADS,
     setCompanies: (v) => { companiesData = v; },
     renderUsMarket,
+    renderHongKongMarket,
     drawMarketIndexChart,
     coWindowsFor,
     coSlice,
@@ -212,6 +225,100 @@ test('the picker only marks the first screen ready once it has options', () => {
   ui.setMarkets(SEGMENTS);
   ui.buildBpOptions();
   assert.equal(ui.bootReady.segments, true);
+});
+
+// --- compare / spread (shipped regression) -----------------------------------------------------
+// The two pickers were built once, on the first /api/market response. That response usually beats
+// /api/history and the FX/rate feeds, so the one-shot build left them with currencies only (and
+// sometimes nothing at all) and the panel could never draw. Each commodity also has to open on its
+// own spread rather than re-picking Brent vs WTI every time.
+
+const CMP_DATA = {
+  benchmarks: [
+    { id: 'wti', label: 'WTI (Cushing)', unit: '$/bbl', dp: 2, paper: 70 },
+    { id: 'brent', label: 'Brent', unit: '$/bbl', dp: 2, paper: 74 },
+    { id: 'gold', label: 'Gold', unit: '$/oz', dp: 2, paper: 2000 },
+    { id: 'silver', label: 'Silver', unit: '$/oz', dp: 3, paper: 25 },
+    { id: 'copper', label: 'Copper', unit: '$/lb', dp: 4, paper: 4 },
+  ],
+};
+const CMP_MARKETS = [
+  { id: 'crude', label: 'Crude oil', primary: 'wti', components: [{ id: 'wti' }, { id: 'brent' }] },
+  { id: 'precious', label: 'Precious metals', primary: 'gold', components: [{ id: 'gold' }, { id: 'silver' }] },
+  { id: 'industrial', label: 'Industrial metals', primary: 'copper', components: [{ id: 'copper' }] },
+];
+
+test('the compare pickers fill in even when prices land before history and FX', () => {
+  const { ui, document } = loadApp();
+  const a = document.getElementById('cmp-a'), b = document.getElementById('cmp-b');
+
+  ui.setData(CMP_DATA);
+  ui.setMarkets(CMP_MARKETS);
+  ui.setHistory(undefined);             // /api/history has not answered yet — this used to empty the list
+  ui.setFx([]); ui.setRates([]);
+  ui.buildCompareOptions();
+
+  assert.ok(a.options.some((o) => o.value === 'wti'), 'commodities are offered, not just currencies');
+  assert.equal(a.options.length, b.options.length);
+  assert.equal(ui.cmpSubject(), 'wti');
+});
+
+test('each commodity opens on its own spread, in a view its units allow', () => {
+  const { ui, document } = loadApp();
+  ui.setData(CMP_DATA);
+  ui.setMarkets(CMP_MARKETS);
+  ui.buildCompareOptions();
+  const view = () => document.getElementById('cmp-view').value;
+
+  for (const [id, leg, v] of [['wti', 'brent', 'diff'], ['brent', 'wti', 'diff'], ['gold', 'silver', 'diff'], ['copper', 'gold', 'index']]) {
+    ui.syncCompareToSelection(id);
+    assert.equal(document.getElementById('cmp-a').value, id, `${id} is leg A`);
+    assert.equal(document.getElementById('cmp-b').value, leg, `${id} opens against ${leg}`);
+    assert.equal(view(), v, `${id} picks the view its units allow`);
+  }
+});
+
+test('a rebuild of the pickers never throws away the reader’s choice', () => {
+  const { ui, document } = loadApp();
+  const a = document.getElementById('cmp-a'), b = document.getElementById('cmp-b');
+  ui.setData(CMP_DATA);
+  ui.setMarkets(CMP_MARKETS);
+  ui.buildCompareOptions();
+
+  a.value = 'gold'; b.value = 'silver'; document.getElementById('cmp-view').value = 'diff';
+  ui.saveCompare();
+  ui.buildCompareOptions();
+  assert.equal(a.value, 'gold', 'the pair survives an identical rebuild');
+
+  // A later feed adds an instrument: the list has to grow, and the choice still has to stand.
+  ui.setData({ benchmarks: [...CMP_DATA.benchmarks, { id: 'natgas', label: 'Natural Gas', unit: '$/MMBtu', dp: 2, paper: 3 }] });
+  ui.buildCompareOptions();
+  assert.ok(a.options.some((o) => o.value === 'natgas'), 'the new instrument is offered');
+  assert.equal(a.value, 'gold');
+  assert.equal(b.value, 'silver');
+});
+
+test('a manual pair never collapses to one series', () => {
+  const { ui, document } = loadApp();
+  ui.setData(CMP_DATA);
+  ui.setMarkets(CMP_MARKETS);
+  ui.buildCompareOptions();
+  // Picking the same instrument on both sides used to leave the panel saying "pick two series".
+  document.getElementById('cmp-a').value = 'gold';
+  document.getElementById('cmp-b').value = 'gold';
+  ui.ensureCmpLegs();
+  assert.equal(document.getElementById('cmp-b').value, 'silver', 'gold falls back to its own partner');
+});
+
+test('the preset strip leads with the commodity being read', () => {
+  const { ui, document } = loadApp();
+  ui.setData(CMP_DATA);
+  ui.setMarkets(CMP_MARKETS);
+  ui.setCurrentMarket('precious');
+  ui.setComponent('silver');
+  ui.buildCompareOptions();
+  const html = document.getElementById('cmp-presets').innerHTML;
+  assert.match(html, /data-a="silver" data-b="gold"/, 'silver opens against gold, not Brent vs WTI');
 });
 
 // --- the ticker (shipped regression) -----------------------------------------------------------
@@ -352,6 +459,34 @@ test('an index window change re-slices the same series and updates the chart in 
   const strip = document.getElementById('jp-mkt-rets');
   assert.match(strip.innerHTML, /class="co-ret on" data-jpmkt="5y"/, 'the strip moves its active chip');
   assert.doesNotMatch(strip.innerHTML, /data-jpmkt="1y"[^>]*class="co-ret on"/, 'the old chip is not still active');
+});
+
+// The Hong Kong overview is anchored on the Hang Seng, not on our coverage. A company outside the
+// index must not move a single figure on that panel — that was the whole point of the change, and it
+// is the kind of thing that silently regresses when someone edits the reducer.
+test('the Hong Kong overview counts index members only, not every company we hold', () => {
+  const { ui, document } = loadApp();
+  const mk = (code, cap, pe, yld, sector, ccy) => ({
+    code, ticker: code, name: code, nameEn: code, marketCap: cap, pe, pb: 1.5, roe: 10,
+    dividendYield: yld, chg1d: 1, chgYtd: 2, sector, reportCurrency: ccy, price: 10,
+  });
+  const all = [
+    mk('0700', 3.6e12, 13, 1, 'Technology', 'CNY'),
+    mk('0005', 2.3e12, 11, 5, 'Financials', 'USD'),
+    mk('9999', 9e12, 5, 0, 'Other', 'HKD'),          // not a constituent — must be ignored
+  ];
+  ui.renderHongKongMarket(all, {
+    hsi: { codes: ['0700', '0005'], count: 2, updated: '2026-11-03' },
+    index: { level: 23000, chg1d: 0.5 },
+    session: '2026-10-30',
+  });
+  const html = document.getElementById('co-body').innerHTML;
+  assert.match(html, /2 of 2/, 'the panel reports members held, not coverage');
+  assert.match(html, /HK\$5\.90T/, 'members\u2019 cap excludes the 9T non-member');
+  assert.doesNotMatch(html, /HK\$14\.90T/, 'the non-member leaked into the total');
+  assert.match(html, /INDEX P\/E/, 'the cap-weighted index P/E is shown');
+  assert.match(html, /12\.1×/, 'the weighted P/E is cap over earnings, not a median');
+  assert.match(html, /INDEX YIELD/, 'the cap-weighted yield is shown');
 });
 
 test('an out-of-range window falls back to one the series actually covers', () => {

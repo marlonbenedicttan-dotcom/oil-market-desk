@@ -725,6 +725,99 @@ test('/api/taiwan/chart serves the range it was asked for', async () => {
   for (let i = 1; i < d.dates.length; i++) assert.ok(d.dates[i] > d.dates[i - 1]);
 });
 
+test('/api/hongkong ships the list projection, not the price history, and revalidates', async () => {
+  const r = await fetch(`http://localhost:${PORT}/api/hongkong`);
+  assert.equal(r.status, 200);
+  const etag = r.headers.get('etag');
+  assert.ok(etag, 'the Hong Kong list must carry an ETag');
+  const d = await r.json();
+  assert.ok(d.companies.length > 1000, `got ${d.companies.length} companies`);
+  assert.ok(d.index && d.index.level != null, 'the Hang Seng level is missing');
+  assert.ok(d.fx && d.fx.rate > 7, 'the USD/HKD rate is missing — the ratios need it');
+  const tencent = d.companies.find((x) => x.ticker === '0700');
+  assert.ok(tencent && tencent.nameEn, 'Tencent is missing from the list');
+  assert.equal(tencent.reportCurrency, 'CNY', 'Tencent reports in CNY, and the list must say so');
+  assert.equal(tencent.series, undefined, 'the list must not carry per-company price history');
+  assert.ok(JSON.stringify(d).length < 3_000_000, 'the Hong Kong list payload ballooned');
+  const again = await new Promise((resolve, reject) => {
+    http.get({ host: 'localhost', port: PORT, path: '/api/hongkong', headers: { 'if-none-match': etag }, agent: false }, resolve).on('error', reject);
+  });
+  assert.equal(again.statusCode, 304);
+  again.resume();
+});
+
+test('/api/hongkong/company values a foreign-currency reporter in its own currency', async () => {
+  const r = await fetch(`http://localhost:${PORT}/api/hongkong/company/0700`);
+  assert.equal(r.status, 200);
+  const c = await r.json();
+  assert.ok(c.sector, 'the sector is missing');
+  assert.equal(c.reportCurrency, 'CNY');
+  assert.ok(c.reports && c.reports.ttm && c.reports.ttm.revenue > 0, 'TTM revenue is missing');
+  assert.ok(c.history.length >= 3, 'the fiscal-year record is missing');
+  assert.ok(c.marketCap === c.price * c.shares, 'market cap does not reconcile');
+  if (c.pe != null) {
+    const conv = 6.6 / 7.8;   // CNY per HKD: the cap is HKD, the profit is CNY
+    const want = +(c.marketCap * conv / c.reports.ttm.netIncome).toFixed(2);
+    assert.ok(Math.abs(want - c.pe) < 0.2, `P/E ${c.pe} is not cap-in-CNY ÷ profit`);
+  }
+});
+
+test('/api/hongkong/chart serves the range it was asked for', async () => {
+  const r = await fetch(`http://localhost:${PORT}/api/hongkong/chart?code=0700&range=5y`);
+  assert.equal(r.status, 200);
+  const d = await r.json();
+  assert.ok(d.dates.length > 200, `got ${d.dates.length} points`);
+  assert.equal(d.dates.length, d.closes.length);
+  for (let i = 1; i < d.dates.length; i++) assert.ok(d.dates[i] > d.dates[i - 1]);
+});
+
+test('/api/australia ships the list projection, not the price history, and revalidates', async () => {
+  const r = await fetch(`http://localhost:${PORT}/api/australia`);
+  assert.equal(r.status, 200);
+  const etag = r.headers.get('etag');
+  assert.ok(etag, 'the Australia list must carry an ETag');
+  const d = await r.json();
+  assert.ok(d.companies.length > 1000, `got ${d.companies.length} companies`);
+  assert.ok(d.index && d.index.level != null, 'the ASX 200 level is missing');
+  assert.ok(d.fx && d.fx.rate > 1, 'the USD/AUD rate is missing — the ratios need it');
+  const bhp = d.companies.find((x) => x.ticker === 'BHP');
+  assert.ok(bhp && bhp.nameEn, 'BHP is missing from the list');
+  assert.equal(bhp.reportCurrency, 'USD', 'BHP reports in USD, and the list must say so');
+  assert.equal(bhp.series, undefined, 'the list must not carry per-company price history');
+  assert.ok(JSON.stringify(d).length < 3_000_000, 'the Australia list payload ballooned');
+  const again = await new Promise((resolve, reject) => {
+    http.get({ host: 'localhost', port: PORT, path: '/api/australia', headers: { 'if-none-match': etag }, agent: false }, resolve).on('error', reject);
+  });
+  assert.equal(again.statusCode, 304);
+  again.resume();
+});
+
+test('/api/australia/company values a USD reporter in USD', async () => {
+  const list = await (await fetch(`http://localhost:${PORT}/api/australia`)).json();
+  const r = await fetch(`http://localhost:${PORT}/api/australia/company/BHP`);
+  assert.equal(r.status, 200);
+  const c = await r.json();
+  assert.ok(c.sector, 'the sector is missing');
+  assert.equal(c.reportCurrency, 'USD');
+  assert.ok(c.reports && c.reports.ttm && c.reports.ttm.revenue > 0, 'TTM revenue is missing');
+  assert.ok(c.history.length >= 3, 'the fiscal-year record is missing');
+  assert.ok(c.marketCap === c.price * c.shares, 'market cap does not reconcile');
+  if (c.pe != null) {
+    const usdPerAud = 1 / list.fx.rate;   // the cap is AUD; the profit is USD
+    const want = +(c.marketCap * usdPerAud / c.reports.ttm.netIncome).toFixed(2);
+    assert.ok(Math.abs(want - c.pe) < 0.2, `P/E ${c.pe} is not cap-in-USD ÷ profit`);
+  }
+});
+
+test('/api/australia/chart serves the range it was asked for', async () => {
+  const r = await fetch(`http://localhost:${PORT}/api/australia/chart?code=BHP&range=5y`);
+  assert.equal(r.status, 200);
+  const d = await r.json();
+  assert.ok(d.dates.length > 200, `got ${d.dates.length} points`);
+  assert.equal(d.dates.length, d.closes.length);
+  for (let i = 1; i < d.dates.length; i++) assert.ok(d.dates[i] > d.dates[i - 1]);
+});
+
 test('/api/korea ships the list projection, not the price history, and revalidates', async () => {
   const r = await fetch(`http://localhost:${PORT}/api/korea`);
   assert.equal(r.status, 200);

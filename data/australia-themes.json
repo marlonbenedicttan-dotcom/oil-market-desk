@@ -1,0 +1,67 @@
+{
+  "themes": [
+    {
+      "id": "materials",
+      "label": "IRON ORE, COPPER & DIVERSIFIED MINERS",
+      "kind": "sector",
+      "note": "The producers' exchange. BHP, Rio Tinto, Fortescue and South32 are the iron-ore and copper complex in one place; Mineral Resources, Pilbara Minerals, IGO and Allkem cover lithium and the battery chain. These are the equity side of the industrial-metals segment in the COMMODITIES tab.",
+      "tickers": ["BHP", "RIO", "FMG", "S32", "MIN", "PLS", "ALD", "IGO"]
+    },
+    {
+      "id": "gold",
+      "label": "GOLD",
+      "kind": "sector",
+      "note": "Australian gold miners: the ASX is one of the few exchanges where the gold price is a pure operating lever rather than a small part of a diversified book. Watch the AUD gold price, not just the USD one — a weaker Australian dollar lifts these margins.",
+      "tickers": ["NST", "EVN", "GMD", "RMS", "WGX", "SBM"]
+    },
+    {
+      "id": "energy",
+      "label": "ENERGY & LNG",
+      "kind": "sector",
+      "note": "Woodside and Santos are the LNG exporters; Karoon and Origin carry the domestic gas and transition story. Revenue is contracted in USD and priced off oil and Asian LNG, so the AUD/USD rate moves the earnings as much as the commodity does.",
+      "tickers": ["WDS", "STO", "KAR", "ORG"]
+    },
+    {
+      "id": "banks",
+      "label": "BANKS & FINANCIALS",
+      "kind": "sector",
+      "note": "The four pillars plus Macquarie and Suncorp. Australian banks are a leveraged bet on the housing cycle and the cash rate; the net interest margin is the line that moves when the RBA does.",
+      "tickers": ["CBA", "WBC", "NAB", "ANZ", "MQG", "SUN"]
+    },
+    {
+      "id": "healthcare",
+      "label": "HEALTHCARE",
+      "kind": "sector",
+      "note": "CSL is the blood-plasma franchise and the market's largest non-bank; ResMed sells sleep apnoea devices in USD; Cochlear and Sonic round out the defensive growth block. Earnings are largely USD and EUR, so this is an offshore-earnings hedge in an AUD portfolio.",
+      "tickers": ["CSL", "RMD", "COH", "SHL"]
+    },
+    {
+      "id": "consumer",
+      "label": "CONSUMER",
+      "kind": "sector",
+      "note": "Woolworths, Coles and Wesfarmers are the domestic spending read; JB Hi-Fi and Allkinds add discretionary electronics and accessories. Margins track wage costs, electricity and the consumer's savings buffer.",
+      "tickers": ["WES", "WOW", "COL", "JBH", "ALL", "ALK"]
+    },
+    {
+      "id": "industrials",
+      "label": "INDUSTRIALS & TRANSPORT",
+      "kind": "sector",
+      "note": "Telstra and TPG are the telecom infrastructure; Amcor is global packaging; Qantas is the travel cycle; Brambles is pallets and supply chains. A mixed group, but the domestic-demand leg of the market.",
+      "tickers": ["TLS", "TCL", "AMC", "QAN", "BXB"]
+    },
+    {
+      "id": "realestate",
+      "label": "REAL ESTATE",
+      "kind": "sector",
+      "note": "Goodman, Scentre, GPT and Vicinity are the listed property trusts. They are a bond proxy: the cap rate moves inversely with the 10-year yield, and gearing makes the move bigger than the asset value suggests.",
+      "tickers": ["GMG", "SCG", "GPT", "VCX"]
+    },
+    {
+      "id": "tech",
+      "label": "TECHNOLOGY",
+      "kind": "sector",
+      "note": "Xero and WiseTech are the global software exporters; REA is the property-portal monopoly; Computershare is registry and share services; Altium is electronic design software. Small by index weight, but the ASX's growth end.",
+      "tickers": ["XRO", "WTC", "REA", "CPU", "ALU", "NXT", "MP1"]
+    }
+  ]
+}

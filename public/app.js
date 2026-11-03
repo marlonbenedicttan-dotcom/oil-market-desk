@@ -273,13 +273,23 @@ function toggleWatch(id) { const w = watchlist(); const i = w.indexOf(id); if (i
 // Remember the user's view across visits (tab, segment, range, compare, macro) — feels like the
 // app "knows" you, with zero new UI.
 const saveStr = (k, v) => { try { localStorage.setItem('oilbasis.' + k, v); } catch {} };
-function saveCompare() { try { localStorage.setItem('oilbasis.cmp', JSON.stringify({ a: $('cmp-a')?.value, b: $('cmp-b')?.value, range: $('cmp-range')?.value, view: $('cmp-view')?.value })); } catch {} }
+// An explicit edit is a preference: keep it for THIS commodity (so the next visit opens on it) and
+// keep the last-used pair as the global fallback.
+function saveCompare() {
+  const a = $('cmp-a')?.value, b = $('cmp-b')?.value, view = $('cmp-view')?.value;
+  try { localStorage.setItem('oilbasis.cmp', JSON.stringify({ a, b, range: $('cmp-range')?.value, view })); } catch {}
+  saveCmpPair(a, b, view);
+}
 function restoreCompare() {
   try {
     const c = JSON.parse(localStorage.getItem('oilbasis.cmp') || 'null');
     if (!c) return;
     const set = (id, v) => { const el = $(id); if (v && el && [...el.options].some((o) => o.value === v)) el.value = v; };
-    set('cmp-a', c.a); set('cmp-b', c.b); set('cmp-range', c.range); set('cmp-view', c.view);
+    set('cmp-range', c.range);
+    // The pair already follows the commodity on show (compareFor). Only re-apply the last-used
+    // pair when it belongs to this instrument, so a stale one from another commodity can't win.
+    if (c.a && c.a === $('cmp-a')?.value) { set('cmp-b', c.b); set('cmp-view', c.view); }
+    renderCmpPresets();
     renderCompare();
   } catch {}
 }
@@ -1245,7 +1255,28 @@ function applyNewsDataset(chart, ev) {
 
 // ---------------------------------------------------------------------------
 // Compare / spread — overlay any two chartable series (commodities, currencies, rates).
+//
+// Every commodity carries its own natural spread, so opening it lands on the comparison that
+// actually matters instead of re-picking Brent-vs-WTI each time. The pair is remembered per
+// commodity (localStorage), so a reader's own choice survives navigation and reloads.
 // ---------------------------------------------------------------------------
+const CMP_SPREADS = {
+  // Energy: the crude pair, the gasoline/diesel crack legs, and the gas- vs oil-linked ratios.
+  wti: 'brent', brent: 'wti',
+  rbob: 'ulsd', ulsd: 'rbob', jet: 'ulsd', propane: 'wti', natgas: 'wti',
+  // Metals: the gold/silver and platinum/palladium pairs, plus the steel margin (ore -> HRC).
+  gold: 'silver', silver: 'gold', platinum: 'palladium', palladium: 'platinum',
+  copper: 'gold', aluminium: 'copper', ironore: 'steel', steel: 'ironore',
+  // Grains: the corn/wheat/soy complex, the crush (meal vs oil), and oil vs its palm substitute.
+  corn: 'wheat', wheat: 'corn', soybean: 'corn', rice: 'wheat',
+  soymeal: 'soyoil', soyoil: 'palm',
+  // Softs: the BRL link for coffee, crude (ethanol/polyester) for sugar and cotton.
+  sugar: 'wti', coffee: 'fx:usdbrl', cocoa: 'sugar', cotton: 'wti', palm: 'soyoil', orange: 'sugar',
+  // Livestock: cattle/hogs and the feeder margin.
+  cattle: 'hogs', hogs: 'cattle', feeder: 'cattle',
+  // Dairy: Class III is priced off cheese; butter/NFDM are the protein pair.
+  milk: 'cheese', cheese: 'milk', butter: 'nfdm', nfdm: 'butter', whey: 'nfdm',
+};
 const CMP_PRESETS = [
   ['Brent − WTI', 'brent', 'wti', 'diff'],
   ['Oil vs dollar', 'wti', 'fx:dxy', 'index'],
@@ -1253,43 +1284,100 @@ const CMP_PRESETS = [
   ['Gold vs real yield', 'gold', 'rate:real10y', 'index'],
   ['Copper vs oil', 'copper', 'wti', 'index'],
 ];
+const cmpBench = (id) => ((data && data.benchmarks) || []).find((b) => b.id === id) || null;
+function cmpUnit(id) {
+  if (!id || id.startsWith('fx:') || id.startsWith('rate:')) return '';
+  const b = cmpBench(id);
+  return b ? b.unit : '';
+}
+function cmpName(id) {
+  if (!id) return '';
+  if (id.startsWith('fx:')) return (fxList.find((f) => 'fx:' + f.id === id) || {}).label || id;
+  if (id.startsWith('rate:')) return (rateList.find((r) => 'rate:' + r.id === id) || {}).label || id;
+  return (cmpBench(id) || {}).label || id;
+}
+function cmpPairs() { try { return JSON.parse(localStorage.getItem('oilbasis.cmpPairs') || '{}') || {}; } catch { return {}; } }
+function saveCmpPair(a, b, view) {
+  if (!a || !b || a === b) return;
+  try { const all = cmpPairs(); all[a] = { b, view }; localStorage.setItem('oilbasis.cmpPairs', JSON.stringify(all)); } catch {}
+}
+// The commodity whose spread the panel should show: the instrument being read, else the
+// segment's headline. Everything below keys off it.
+function cmpSubject() {
+  const mk = (markets || []).find((x) => x.id === currentMarket);
+  return currentComponent || (mk && mk.primary) || 'brent';
+}
+// The pair a commodity opens with: its remembered choice, else its natural spread. The view is
+// a difference only when both legs quote in the same unit (barrels vs barrels, oz vs oz).
+function compareFor(id) {
+  const seg = (markets || []).find((m) => (m.components || []).some((c) => c.id === id));
+  const alt = (seg ? seg.components.map((c) => c.id) : []).find((x) => x !== id);
+  const b = CMP_SPREADS[id] || alt || (id === 'fx:dxy' ? 'wti' : 'fx:dxy');
+  const fallback = { a: id, b, view: cmpUnit(id) && cmpUnit(id) === cmpUnit(b) ? 'diff' : 'index' };
+  const saved = cmpPairs()[id];
+  if (!saved || !saved.b || saved.b === id) return fallback;
+  // A remembered view only makes sense for the units on show: never subtract $/oz from $/bbl.
+  const sameUnit = !!(cmpUnit(id) && cmpUnit(id) === cmpUnit(saved.b));
+  return { a: id, b: saved.b, view: sameUnit ? (saved.view || fallback.view) : 'index' };
+}
 function cmpOptionsHtml() {
   const opts = [];
-  for (const b of data.benchmarks) if (history && (b.id in history.series)) opts.push(`<option value="${b.id}">${b.label}</option>`);
-  if (fxList.length) opts.push(`<optgroup label="CURRENCIES">${fxList.map((f) => `<option value="fx:${f.id}">${f.label}</option>`).join('')}</optgroup>`);
-  if (rateList.length) opts.push(`<optgroup label="RATES">${rateList.map((r) => `<option value="rate:${r.id}">${r.label}</option>`).join('')}</optgroup>`);
+  const bench = ((data && data.benchmarks) || []).map((b) => `<option value="${esc(b.id)}">${esc(b.label)}</option>`);
+  if (bench.length) opts.push(`<optgroup label="COMMODITIES">${bench.join('')}</optgroup>`);
+  if (fxList.length) opts.push(`<optgroup label="CURRENCIES">${fxList.map((f) => `<option value="fx:${esc(f.id)}">${esc(f.label)}</option>`).join('')}</optgroup>`);
+  if (rateList.length) opts.push(`<optgroup label="RATES">${rateList.map((r) => `<option value="rate:${esc(r.id)}">${esc(r.label)}</option>`).join('')}</optgroup>`);
   return opts.join('');
 }
-let cmpBuilt = false;
+// Build (and rebuild) the pickers whenever the instrument lists change — /api/market can land
+// before /api/history and the FX/rate feeds, so a one-shot build used to leave the two selects
+// with nothing but currencies in them. Rebuilding preserves whatever the reader had chosen.
+let cmpHtml = '';
 function buildCompareOptions() {
   const a = $('cmp-a'), b = $('cmp-b');
-  if (!a || !b || !data || cmpBuilt) return;
+  if (!a || !b || !data) return;
   const html = cmpOptionsHtml();
-  a.innerHTML = html; b.innerHTML = html;
-  a.value = 'brent'; b.value = 'wti';            // a sensible default pair
-  if ($('cmp-view')) $('cmp-view').value = 'diff';
-  cmpBuilt = true;
+  if (!html) return;
+  if (html !== cmpHtml) {
+    const prevA = a.value, prevB = b.value;
+    a.innerHTML = html; b.innerHTML = html;
+    cmpHtml = html;
+    const has = (el, v) => v && [...el.options].some((o) => o.value === v);
+    const seed = cmpSubject();
+    a.value = has(a, prevA) ? prevA : (has(a, seed) ? seed : (has(a, 'brent') ? 'brent' : (a.options[0] || {}).value || ''));
+    const def = compareFor(a.value).b;
+    b.value = has(b, prevB) && prevB !== a.value ? prevB
+      : (has(b, def) && def !== a.value ? def : (a.value === 'brent' ? 'wti' : 'brent'));
+  }
+  renderCmpPresets();
 }
 function renderCmpPresets() {
   const el = $('cmp-presets');
-  if (el) el.innerHTML = CMP_PRESETS.map(([lab, a, b, v]) => `<button class="ghost small cmp-preset" data-a="${a}" data-b="${b}" data-v="${v}">${lab}</button>`).join('');
+  if (!el) return;
+  const cur = cmpSubject();
+  const out = [];
+  const own = compareFor(cur);
+  if (CMP_SPREADS[cur] || own.b) out.push([`${cmpName(cur)} − ${cmpName(own.b)}`, cur, own.b, own.view]);
+  for (const p of CMP_PRESETS) if (!out.some((q) => q[1] === p[1] && q[2] === p[2])) out.push(p);
+  el.innerHTML = out.map(([lab, a, b, v]) => `<button class="ghost small cmp-preset" data-a="${a}" data-b="${b}" data-v="${v}">${lab}</button>`).join('');
 }
-function cmpUnit(id) {
-  if (!id || id.startsWith('fx:') || id.startsWith('rate:')) return '';
-  const b = data.benchmarks.find((x) => x.id === id);
-  return b ? b.unit : '';
-}
-// Point COMPARE at the chosen instrument: A = it, B = another component of the segment
-// (else the dollar), view = difference only when the units match.
-function syncCompareToSelection() {
+// Point COMPARE at the instrument being read: A = it, B = its own default (or remembered) leg,
+// view = difference only when the units match. Called on every segment/component/instrument
+// change — never on the 60-second price refresh, which must not undo a manual choice.
+function syncCompareToSelection(subject) {
   const a = $('cmp-a'), b = $('cmp-b');
   if (!a || !b || !data || !a.options.length) return;
-  const mk = markets.find((x) => x.id === currentMarket);
-  const sel = currentComponent || (mk && mk.primary) || a.value;
-  if ([...a.options].some((o) => o.value === sel)) a.value = sel;
-  const partner = (mk ? mk.components.map((c) => c.id) : []).find((id) => id !== a.value && [...b.options].some((o) => o.value === id));
-  b.value = partner || (a.value === 'fx:dxy' ? 'wti' : 'fx:dxy');
-  if ($('cmp-view')) $('cmp-view').value = cmpUnit(a.value) && cmpUnit(a.value) === cmpUnit(b.value) ? 'diff' : 'index';
+  const sel = subject || cmpSubject();
+  const has = (el, v) => [...el.options].some((o) => o.value === v);
+  if (has(a, sel)) a.value = sel;
+  const pair = compareFor(a.value);
+  let leg = pair.b;
+  if (!has(b, leg) || leg === a.value) leg = (a.value === 'fx:dxy' ? 'wti' : 'fx:dxy');
+  if (!has(b, leg) || leg === a.value) leg = ([...b.options].find((o) => o.value !== a.value) || {}).value || '';
+  b.value = leg;
+  const sameUnit = !!(cmpUnit(a.value) && cmpUnit(a.value) === cmpUnit(b.value));
+  if ($('cmp-view')) $('cmp-view').value = sameUnit ? (pair.view || 'diff') : 'index';
+  // Remember nothing here: only an explicit edit is a preference (saveCompare does that).
+  renderCmpPresets();
   renderCompare();
 }
 async function cmpSeries(metric, range) {
@@ -1334,7 +1422,7 @@ async function renderCompare() {
     summary = `${A.label} ${pctf(pct(a2))} vs ${B.label} ${pctf(pct(b2))} over ${label} · both start at 100${rateNote}`;
   }
   if (sum) sum.textContent = summary;
-  cmpChart = mountChart('cmp-chart', { labels: axis, datasets }, baseOptions({ dp: chartDp }));
+  cmpChart = mountChart('cmp-chart', { labels: axis, datasets }, baseOptions({ dp: chartDp, dateAxis: true }));
 }
 
 async function loadHistory() {
@@ -1365,7 +1453,7 @@ async function loadMarket() {
   renderSnapshot(); setCardsTitle(); renderTicker(data);
   renderWatchlist();
   await renderChart();   // ← render AFTER data exists
-  buildCompareOptions(); syncCompareToSelection();
+  buildCompareOptions();   // rebuild only if the instrument list changed — never resets the pair
   loadSeasonal();
   loadMarketRead();      // populate the adaptive Big Picture (hero line + panels)
   loadNews();
@@ -2387,11 +2475,13 @@ const CO_VIEWS = {
   jp: [['jpview', 'market', 'MARKET'], ['jpview', 'screener', 'SCREENER'], ['jpview', 'themes', 'THEMES']],
   kr: [['krview', 'market', 'MARKET'], ['krview', 'screener', 'SCREENER'], ['krview', 'themes', 'THEMES']],
   tw: [['twview', 'market', 'MARKET'], ['twview', 'screener', 'SCREENER'], ['twview', 'themes', 'THEMES']],
+  hk: [['hkview', 'market', 'MARKET'], ['hkview', 'screener', 'SCREENER'], ['hkview', 'themes', 'THEMES']],
+  au: [['auview', 'market', 'MARKET'], ['auview', 'screener', 'SCREENER'], ['auview', 'themes', 'THEMES']],
 };
 function paintCoViews() {
   const bar = $('co-views');
   if (!bar) return;
-  const active = coRegion === 'jp' ? jpView : coRegion === 'kr' ? krView : coRegion === 'tw' ? twView : usView;
+  const active = coRegion === 'jp' ? jpView : coRegion === 'kr' ? krView : coRegion === 'tw' ? twView : coRegion === 'hk' ? hkView : coRegion === 'au' ? auView : usView;
   bar.innerHTML = (CO_VIEWS[coRegion] || CO_VIEWS.us)
     .map(([attr, key, label]) => `<button type="button" data-${attr}="${key}" class="${active === key ? 'on' : ''}">${label}</button>`)
     .join('');
@@ -2402,6 +2492,8 @@ let screenMarket = (() => { try { return localStorage.getItem('oilbasis.screenMa
 const coScreenJp = { q: '', sector: 'all', sort: 'marketCap', dir: -1, page: 1, per: 50 };
 const coScreenKr = { q: '', sector: 'all', sort: 'marketCap', dir: -1, page: 1, per: 50 };
 const coScreenTw = { q: '', sector: 'all', sort: 'marketCap', dir: -1, page: 1, per: 50 };
+const coScreenHk = { q: '', sector: 'all', sort: 'marketCap', dir: -1, page: 1, per: 50 };
+const coScreenAu = { q: '', sector: 'all', sort: 'marketCap', dir: -1, page: 1, per: 50 };
 // A 1,500-row page is a wall of scroll. Paging keeps one screenful at a time and the whole list one
 // click away — no infinite scroll, nothing hidden.
 const pagerHtml = (total, page, per, attr) => {
@@ -2420,12 +2512,12 @@ const JP_SCREEN_COLS = [
   { k: 'chg6m', t: '6M' }, { k: 'chgYtd', t: 'YTD' }, { k: 'pe', t: 'P/E' },
   { k: 'pb', t: 'P/B' }, { k: 'roe', t: 'ROE' }, { k: 'marketCap', t: 'MKT CAP' },
 ];
-const screenMarketHtml = () => `<div class="sc-modes sc-mkt">${[['us', 'US'], ['jp', 'JAPAN'], ['kr', 'KOREA'], ['tw', 'TAIWAN']].map(([k, t]) => `<button type="button" class="${screenMarket === k ? 'on' : ''}" data-screen-market="${k}">${t}</button>`).join('')}</div>`;
+const screenMarketHtml = () => `<div class="sc-modes sc-mkt">${[['us', 'US'], ['jp', 'JAPAN'], ['kr', 'KOREA'], ['tw', 'TAIWAN'], ['hk', 'HONG KONG'], ['au', 'AUSTRALIA']].map(([k, t]) => `<button type="button" class="${screenMarket === k ? 'on' : ''}" data-screen-market="${k}">${t}</button>`).join('')}</div>`;
 
 // A company's return in the screener's chosen base currency. A Tokyo listing returns yen; a dollar
 // investor gets that return *plus* the yen's own move, so the two are compounded rather than added.
 // Falls back to the local number only when no FX move is known, and the note under the table says so.
-const CUR_OF_MARKET = { us: 'USD', jp: 'JPY', kr: 'KRW', tw: 'TWD' };
+const CUR_OF_MARKET = { us: 'USD', jp: 'JPY', kr: 'KRW', tw: 'TWD', hk: 'HKD', au: 'AUD' };
 // The date the prices belong to — the modal session across the table, so a stale feed is visible
 // rather than implied.
 function sessionOf(list, field) {
@@ -2464,6 +2556,8 @@ function renderCompanyScreen(el) {
   if (screenMarket === 'jp') return renderJapanScreen(el);
   if (screenMarket === 'kr') return renderKoreaScreen(el);
   if (screenMarket === 'tw') return renderTaiwanScreen(el);
+  if (screenMarket === 'hk') return renderHongKongScreen(el);
+  if (screenMarket === 'au') return renderAustraliaScreen(el);
   // The companies payload is normally fetched when the COMPANIES tab opens; the home screener can ask
   // for it first, so load it here and re-render when it lands.
   if (!companiesData) {
@@ -2652,6 +2746,102 @@ function renderTaiwanScreen(el) {
     <div class="sc-note dimtext">TWSE companies · prices and valuation from TWSE · statements from stockanalysis.com · ${asOfText(all, 'priceDate') || 'TWSE prices'} · returns in TWD · P/E is trailing twelve months.</div>`;
 }
 
+// Hong Kong in the home screener, the same shape as Taiwan's.
+const HK_SCREEN_COLS = [
+  { k: 'label', t: 'COMPANY' }, { k: 'price', t: 'PRICE' }, { k: 'chg1d', t: '1D' },
+  { k: 'chg6m', t: '6M' }, { k: 'chgYtd', t: 'YTD' }, { k: 'pe', t: 'P/E' },
+  { k: 'pb', t: 'P/B' }, { k: 'roe', t: 'ROE' }, { k: 'dividendYield', t: 'YIELD' }, { k: 'marketCap', t: 'MKT CAP' },
+];
+function renderHongKongScreen(el) {
+  if (!hkData) {
+    el.innerHTML = stLoading('Reading the HKEX filings…');
+    loadHongKong().then(() => renderScreen(true));
+    return;
+  }
+  const all = hkData.companies || [];
+  const sectors = [...new Set(all.map((c) => c.sector).filter(Boolean))].sort();
+  const q = coScreenHk.q.trim().toLowerCase();
+  const { sort, dir } = coScreenHk;
+  const keyOf = (c) => (sort === 'label' ? (c.nameEn || c.name || '') : c[sort]);
+  let rows = all.filter((c) => (coScreenHk.sector === 'all' || c.sector === coScreenHk.sector)
+    && (!q || `${c.name} ${c.nameEn || ''} ${c.ticker} ${c.sector || ''} ${(c.brands || []).join(' ')}`.toLowerCase().includes(q)));
+  rows = [...rows].sort((a, b) => {
+    const x = keyOf(a), y = keyOf(b);
+    if (x == null && y == null) return 0;
+    if (x == null) return 1;
+    if (y == null) return -1;
+    return sort === 'label' ? x.localeCompare(y) * dir : (x - y) * dir;
+  });
+  const per = coScreenHk.per || 50;
+  const pages = Math.max(1, Math.ceil(rows.length / per));
+  const page = Math.min(coScreenHk.page || 1, pages);
+  const shown = rows.slice((page - 1) * per, page * per);
+  const head = HK_SCREEN_COLS.map((c) => `<th class="${sort === c.k ? 'on' : ''}" data-hkkey="${c.k}">${c.t}${sort === c.k ? (dir < 0 ? ' ▼' : ' ▲') : ''}</th>`).join('');
+  const pct = (v) => (v == null ? '<td class="num">—</td>' : `<td class="num ${cls(v)}">${v >= 0 ? '+' : ''}${v.toFixed(1)}%</td>`);
+  const num = (v, dp, suffix = '') => (v == null ? '<td class="num">—</td>' : `<td class="num">${v.toFixed(dp)}${suffix}</td>`);
+  const body = shown.map((c) => `<tr data-hkrow="${esc(c.code)}" title="${esc(c.nameEn || c.name)}">
+      <td class="sc-name">${esc(c.nameEn || c.name)}<span class="sc-tick">${esc(c.ticker)}${c.sector ? ' · ' + esc(c.sector) : ''}</span></td>
+      <td class="num">${hkPx(c.price)}</td>
+      ${pct(c.chg1d)}${pct(c.chg6m)}${pct(c.chgYtd)}
+      ${num(c.pe, 1, '×')}${num(c.pb, 2, '×')}${num(c.roe, 1, '%')}${num(c.dividendYield, 2, '%')}
+      <td class="num">${hkMoney(c.marketCap)}</td></tr>`).join('');
+  el.innerHTML = `<div class="sc-bar">${screenModeHtml()}${screenMarketHtml()}
+      <label class="sc-f">SEARCH <input id="coshk-q" type="search" placeholder="company or code…" value="${esc(coScreenHk.q)}"></label>
+      <label class="sc-f">SECTOR <select id="coshk-sector"><option value="all">All sectors</option>${sectors.map((x) => `<option value="${esc(x)}"${coScreenHk.sector === x ? ' selected' : ''}>${esc(x)}</option>`).join('')}</select></label>
+      <span class="sc-count dimtext">${rows.length} of ${all.length} companies</span>
+    </div><div class="sc-wrap" id="sc-table"><table class="sc-table sc-cotable"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>
+    ${pagerHtml(rows.length, page, per, 'hkpage')}
+    <div class="sc-note dimtext">HKEX main-board companies · statements from stockanalysis.com · ${asOfText(all, 'priceDate') || 'Yahoo prices'} · returns in HKD · P/E is trailing twelve months, in the issuer's report currency.</div>`;
+}
+
+// Australia in the home screener, the same shape as Hong Kong's.
+const AU_SCREEN_COLS = [
+  { k: 'label', t: 'COMPANY' }, { k: 'price', t: 'PRICE' }, { k: 'chg1d', t: '1D' },
+  { k: 'chg6m', t: '6M' }, { k: 'chgYtd', t: 'YTD' }, { k: 'pe', t: 'P/E' },
+  { k: 'pb', t: 'P/B' }, { k: 'roe', t: 'ROE' }, { k: 'dividendYield', t: 'YIELD' }, { k: 'marketCap', t: 'MKT CAP' },
+];
+function renderAustraliaScreen(el) {
+  if (!auData) {
+    el.innerHTML = stLoading('Reading the ASX filings…');
+    loadAustralia().then(() => renderScreen(true));
+    return;
+  }
+  const all = auData.companies || [];
+  const sectors = [...new Set(all.map((c) => c.sector).filter(Boolean))].sort();
+  const q = coScreenAu.q.trim().toLowerCase();
+  const { sort, dir } = coScreenAu;
+  const keyOf = (c) => (sort === 'label' ? (c.nameEn || c.name || '') : c[sort]);
+  let rows = all.filter((c) => (coScreenAu.sector === 'all' || c.sector === coScreenAu.sector)
+    && (!q || `${c.name} ${c.nameEn || ''} ${c.ticker} ${c.sector || ''} ${(c.brands || []).join(' ')}`.toLowerCase().includes(q)));
+  rows = [...rows].sort((a, b) => {
+    const x = keyOf(a), y = keyOf(b);
+    if (x == null && y == null) return 0;
+    if (x == null) return 1;
+    if (y == null) return -1;
+    return sort === 'label' ? x.localeCompare(y) * dir : (x - y) * dir;
+  });
+  const per = coScreenAu.per || 50;
+  const pages = Math.max(1, Math.ceil(rows.length / per));
+  const page = Math.min(coScreenAu.page || 1, pages);
+  const shown = rows.slice((page - 1) * per, page * per);
+  const head = AU_SCREEN_COLS.map((c) => `<th class="${sort === c.k ? 'on' : ''}" data-aukey="${c.k}">${c.t}${sort === c.k ? (dir < 0 ? ' ▼' : ' ▲') : ''}</th>`).join('');
+  const pct = (v) => (v == null ? '<td class="num">—</td>' : `<td class="num ${cls(v)}">${v >= 0 ? '+' : ''}${v.toFixed(1)}%</td>`);
+  const num = (v, dp, suffix = '') => (v == null ? '<td class="num">—</td>' : `<td class="num">${v.toFixed(dp)}${suffix}</td>`);
+  const body = shown.map((c) => `<tr data-aurow="${esc(c.code)}" title="${esc(c.nameEn || c.name)}">
+      <td class="sc-name">${esc(c.nameEn || c.name)}<span class="sc-tick">${esc(c.ticker)}${c.sector ? ' · ' + esc(c.sector) : ''}</span></td>
+      <td class="num">${auPx(c.price)}</td>
+      ${pct(c.chg1d)}${pct(c.chg6m)}${pct(c.chgYtd)}
+      ${num(c.pe, 1, '×')}${num(c.pb, 2, '×')}${num(c.roe, 1, '%')}${num(c.dividendYield, 2, '%')}
+      <td class="num">${auMoney(c.marketCap)}</td></tr>`).join('');
+  el.innerHTML = `<div class="sc-bar">${screenModeHtml()}${screenMarketHtml()}
+      <label class="sc-f">SEARCH <input id="cosau-q" type="search" placeholder="company or code…" value="${esc(coScreenAu.q)}"></label>
+      <label class="sc-f">SECTOR <select id="cosau-sector"><option value="all">All sectors</option>${sectors.map((x) => `<option value="${esc(x)}"${coScreenAu.sector === x ? ' selected' : ''}>${esc(x)}</option>`).join('')}</select></label>
+      <span class="sc-count dimtext">${rows.length} of ${all.length} companies</span>
+    </div><div class="sc-wrap" id="sc-table"><table class="sc-table sc-cotable"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>
+    ${pagerHtml(rows.length, page, per, 'aupage')}
+    <div class="sc-note dimtext">ASX-listed companies · statements from stockanalysis.com · ${asOfText(all, 'priceDate') || 'Yahoo prices'} · returns in AUD · P/E is trailing twelve months, in the issuer's report currency (BHP and RIO report in USD).</div>`;
+}
+
 function renderScreen(full) {  const el = $('screen'); if (!el) return;
   // The currency control applies to the company tables too: their returns are converted, not relabelled.
   const curCtl = document.querySelector('#p-screen .controls');
@@ -2722,7 +2912,7 @@ $('screen')?.addEventListener('click', (e) => {
     screenMarket = mkt.dataset.screenMarket;
     try { localStorage.setItem('oilbasis.screenMarket', screenMarket); } catch {}
     const cur = document.querySelector('#p-screen .controls');
-    if (cur) cur.classList.toggle('hidden', screenMarket === 'jp' || screenMarket === 'tw');
+    if (cur) cur.classList.toggle('hidden', screenMarket === 'jp' || screenMarket === 'tw' || screenMarket === 'hk' || screenMarket === 'au');
     renderScreen(true);
     return;
   }
@@ -2730,6 +2920,28 @@ $('screen')?.addEventListener('click', (e) => {
   if (krp2 && krp2.dataset.krpage !== 'per') { coScreenKr.page = Math.max(1, Number(krp2.dataset.krpage)); renderScreen(true); return; }
   const twp2 = e.target.closest('[data-twpage]');
   if (twp2 && twp2.dataset.twpage !== 'per') { coScreenTw.page = Math.max(1, Number(twp2.dataset.twpage)); renderScreen(true); return; }
+  const hkp = e.target.closest('[data-hkpage]');
+  if (hkp && hkp.dataset.hkpage !== 'per') { coScreenHk.page = Math.max(1, Number(hkp.dataset.hkpage)); renderScreen(true); return; }
+  const aup = e.target.closest('[data-aupage]');
+  if (aup && aup.dataset.aupage !== 'per') { coScreenAu.page = Math.max(1, Number(aup.dataset.aupage)); renderScreen(true); return; }
+  const aukey = e.target.closest('th[data-aukey]');
+  if (aukey) {
+    const k = aukey.dataset.aukey;
+    coScreenAu.dir = coScreenAu.sort === k ? -coScreenAu.dir : (k === 'label' ? 1 : -1);
+    coScreenAu.sort = k;
+    coScreenAu.page = 1;
+    renderScreen(true);
+    return;
+  }
+  const hkkey = e.target.closest('th[data-hkkey]');
+  if (hkkey) {
+    const k = hkkey.dataset.hkkey;
+    coScreenHk.dir = coScreenHk.sort === k ? -coScreenHk.dir : (k === 'label' ? 1 : -1);
+    coScreenHk.sort = k;
+    coScreenHk.page = 1;
+    renderScreen(true);
+    return;
+  }
   const twkey = e.target.closest('th[data-twkey]');
   if (twkey) {
     const k = twkey.dataset.twkey;
@@ -2801,6 +3013,24 @@ $('screen')?.addEventListener('click', (e) => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
     return;
   }
+  const hkrow2 = e.target.closest('tr[data-hkrow]');
+  if (hkrow2) {
+    coRegion = 'hk'; try { localStorage.setItem('oilbasis.coRegion', 'hk'); } catch {}
+    hkSel = hkrow2.dataset.hkrow;
+    document.querySelector('[data-tab="deals"]')?.click();
+    renderHongKong();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    return;
+  }
+  const aurow2 = e.target.closest('tr[data-aurow]');
+  if (aurow2) {
+    coRegion = 'au'; try { localStorage.setItem('oilbasis.coRegion', 'au'); } catch {}
+    auSel = aurow2.dataset.aurow;
+    document.querySelector('[data-tab="deals"]')?.click();
+    renderAustralia();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    return;
+  }
   const tr = e.target.closest('tr[data-id]');
   if (tr) goToInstrument(tr.dataset.id);
 });
@@ -2810,16 +3040,24 @@ $('screen')?.addEventListener('input', (e) => {
   if (e.target.id === 'cosj-q') { coScreenJp.q = e.target.value || ''; coScreenJp.page = 1; renderScreen(true); }
   if (e.target.id === 'cosk-q') { coScreenKr.q = e.target.value || ''; coScreenKr.page = 1; renderScreen(true); }
   if (e.target.id === 'costw-q') { coScreenTw.q = e.target.value || ''; coScreenTw.page = 1; renderScreen(true); }
+  if (e.target.id === 'coshk-q') { coScreenHk.q = e.target.value || ''; coScreenHk.page = 1; renderScreen(true); }
+  if (e.target.id === 'cosau-q') { coScreenAu.q = e.target.value || ''; coScreenAu.page = 1; renderScreen(true); }
 });
 $('screen')?.addEventListener('change', (e) => {
   if (e.target.id === 'cos-sector') { coScreen = { ...coScreen, sector: e.target.value, page: 1 }; renderScreen(true); return; }
   if (e.target.id === 'cosj-sector') { coScreenJp.sector = e.target.value; coScreenJp.page = 1; renderScreen(true); return; }
   if (e.target.id === 'cosk-sector') { coScreenKr.sector = e.target.value; coScreenKr.page = 1; renderScreen(true); return; }
   if (e.target.id === 'costw-sector') { coScreenTw.sector = e.target.value; coScreenTw.page = 1; renderScreen(true); return; }
+  if (e.target.id === 'coshk-sector') { coScreenHk.sector = e.target.value; coScreenHk.page = 1; renderScreen(true); return; }
+  if (e.target.id === 'cosau-sector') { coScreenAu.sector = e.target.value; coScreenAu.page = 1; renderScreen(true); return; }
   if (e.target.dataset && e.target.dataset.jppageper) { coScreenJp.per = Number(e.target.value); coScreenJp.page = 1; renderScreen(true); return; }
   if (e.target.dataset && e.target.dataset.krpageper) { coScreenKr.per = Number(e.target.value); coScreenKr.page = 1; renderScreen(true); return; }
   if (e.target.dataset && e.target.dataset.twpageper) { coScreenTw.per = Number(e.target.value); coScreenTw.page = 1; renderScreen(true); return; }
+  if (e.target.dataset && e.target.dataset.hkpageper) { coScreenHk.per = Number(e.target.value); coScreenHk.page = 1; renderScreen(true); return; }
+  if (e.target.dataset && e.target.dataset.aupageper) { coScreenAu.per = Number(e.target.value); coScreenAu.page = 1; renderScreen(true); return; }
   if (e.target.dataset && e.target.dataset.twlistpageper) { twPer = Number(e.target.value) || 50; twPage = 1; renderTaiwan(); return; }
+  if (e.target.dataset && e.target.dataset.hklistpageper) { hkPer = Number(e.target.value) || 50; hkPage = 1; renderHongKong(); return; }
+  if (e.target.dataset && e.target.dataset.aulistpageper) { auPer = Number(e.target.value) || 50; auPage = 1; renderAustralia(); return; }
   if (e.target.dataset && e.target.dataset.jplistpageper) { jpPer = Number(e.target.value) || 50; jpPage = 1; renderJapan(); return; }
   if (e.target.dataset && e.target.dataset.krlistpageper) { krPer = Number(e.target.value) || 50; krPage = 1; renderKorea(); return; }
   if (e.target.dataset && e.target.dataset.uslistpageper) { usListPer = Number(e.target.value) || 50; usListPage = 1; renderCompanies(); return; }
@@ -3354,10 +3592,33 @@ async function refreshLive() {
   try { await loadMarket(); } catch (e) { console.error('[market]', e.message); }
 }
 $('refresh').addEventListener('click', () => { nextRefresh = 60; refreshLive(); loadExtra(); });
-$('metric').addEventListener('change', () => { localStorage.setItem('oilbasis.metric', $('metric').value); chartAnchor = null; renderChart(); syncRoute(false); });
+$('metric').addEventListener('change', () => {
+  const v = $('metric').value;
+  localStorage.setItem('oilbasis.metric', v); chartAnchor = null; renderChart(); syncRoute(false);
+  // Charting a commodity also re-points COMPARE at it (its own default spread) — but a spread:*/
+  // basis:* overlay is a chart mode, not an instrument, so it leaves the pair alone.
+  if (v && !v.includes(':')) syncCompareToSelection(v);
+});
 $('range').addEventListener('change', () => { saveStr('range', $('range').value); chartAnchor = null; renderChart(); });
-['cmp-a', 'cmp-b', 'cmp-range', 'cmp-view'].forEach((id) => $(id)?.addEventListener('change', () => { saveCompare(); renderCompare(); }));
-$('cmp-presets')?.addEventListener('click', (e) => { const btn = e.target.closest('.cmp-preset'); if (!btn) return; $('cmp-a').value = btn.dataset.a; $('cmp-b').value = btn.dataset.b; $('cmp-view').value = btn.dataset.v; saveCompare(); renderCompare(); });
+['cmp-range', 'cmp-view'].forEach((id) => $(id)?.addEventListener('change', () => { saveCompare(); renderCmpPresets(); renderCompare(); }));
+// Changing a leg forms a new spread: subtract when both quote in the same unit, index when they
+// do not (there is no meaningful "$/bbl minus ¢/lb"). A leg that collides with the other one falls
+// back to that commodity's own partner rather than leaving the panel with nothing to plot.
+function ensureCmpLegs() {
+  const a = $('cmp-a'), b = $('cmp-b');
+  if (!a || !b || !a.value || a.value !== b.value) return;
+  const pair = compareFor(a.value);
+  const has = (v) => v && [...b.options].some((o) => o.value === v);
+  const alt = has(pair.b) && pair.b !== a.value ? pair.b : ([...b.options].find((o) => o.value !== a.value) || {}).value;
+  if (alt) b.value = alt;
+}
+['cmp-a', 'cmp-b'].forEach((id) => $(id)?.addEventListener('change', () => {
+  ensureCmpLegs();
+  const sameUnit = !!(cmpUnit($('cmp-a').value) && cmpUnit($('cmp-a').value) === cmpUnit($('cmp-b').value));
+  if ($('cmp-view')) $('cmp-view').value = sameUnit ? 'diff' : 'index';
+  saveCompare(); renderCmpPresets(); renderCompare();
+}));
+$('cmp-presets')?.addEventListener('click', (e) => { const btn = e.target.closest('.cmp-preset'); if (!btn) return; $('cmp-a').value = btn.dataset.a; $('cmp-b').value = btn.dataset.b; $('cmp-view').value = btn.dataset.v; saveCompare(); renderCmpPresets(); renderCompare(); });
 $('bp-metric')?.addEventListener('change', () => selectMarket($('bp-metric').value));
 $('bp-snapshot')?.addEventListener('click', (e) => {
   const c = e.target.closest('.bp-comp[data-component]');
@@ -3401,6 +3662,9 @@ function pickMetric(id, range = '6m', land = 'chart') {
   showTab('commodities');
   renderChart();
   syncRoute(false);
+  // Opening one instrument's page also opens its own spread in COMPARE (spread:*/basis:* modes
+  // from the macro panels are not instruments, so they leave the pair where it is).
+  if (id && !id.includes(':')) syncCompareToSelection(id);
   if (land === 'top') {
     // scroll-behavior is unset in CSS, so 'auto' is instant — and it overrides the smooth scroll that
     // used to drag the view down to the chart panel, leaving you part-way down a page you just opened.
@@ -4029,10 +4293,12 @@ function syncCoTools() {
     ? (!jpSel && jpView === 'screener')
     : coRegion === 'kr' ? (!krSel && krView === 'screener')
     : coRegion === 'tw' ? (!twSel && twView === 'screener')
+    : coRegion === 'hk' ? (!hkSel && hkView === 'screener')
+    : coRegion === 'au' ? (!auSel && auView === 'screener')
     : (coCik ? true : usView === 'screener');
   tools.classList.toggle('hidden', !wanted);
   // On a phone, a company page should start at the top: the filter bar is for lists.
-  const detail = coRegion === 'jp' ? !!jpSel : coRegion === 'kr' ? !!krSel : coRegion === 'tw' ? !!twSel : !!coCik;
+  const detail = coRegion === 'jp' ? !!jpSel : coRegion === 'kr' ? !!krSel : coRegion === 'tw' ? !!twSel : coRegion === 'hk' ? !!hkSel : coRegion === 'au' ? !!auSel : !!coCik;
   tools.dataset.detail = detail ? '1' : '';
 }
 
@@ -4658,7 +4924,7 @@ function hideSuggestions(boxId) {
 async function resolveCompare(text) {
   const raw = String(text || '').trim();
   if (!raw) return null;
-  const m = /^(us|jp|kr):([A-Za-z0-9.\-]+)$/.exec(raw);
+  const m = /^(us|jp|kr|tw|hk|au):([A-Za-z0-9.\-]+)$/.exec(raw);
   if (m) return `${m[1].toLowerCase()}:${m[2]}`;
   let d = null;
   try { d = await jget('/api/search?q=' + encodeURIComponent(raw) + '&limit=1', 120000); } catch { d = null; }
@@ -4676,10 +4942,14 @@ const currentCmpRef = () => (coRegion === 'jp'
     ? krRef(krSel)
     : coRegion === 'tw'
       ? (twSel ? `tw:${twSel}` : '')
-      : (coTicker ? `us:${coTicker}` : ''));
+      : coRegion === 'hk'
+        ? (hkSel ? `hk:${hkSel}` : '')
+        : coRegion === 'au'
+          ? (auSel ? `au:${auSel}` : '')
+          : (coTicker ? `us:${coTicker}` : ''));
 
 function syncCmpClear(region) {
-  const on = region === 'jp' ? !!jpCompare : region === 'kr' ? !!krCompare : region === 'tw' ? !!twCompare : !!coCompare;
+  const on = region === 'jp' ? !!jpCompare : region === 'kr' ? !!krCompare : region === 'tw' ? !!twCompare : region === 'hk' ? !!hkCompare : region === 'au' ? !!auCompare : !!coCompare;
   const b = $(region + '-cmp-clear');
   if (b) b.classList.toggle('hidden', !on);
 }
@@ -4704,6 +4974,18 @@ function clearCompare(region = coRegion) {
     hideSuggestions('tw-sugg'); syncCmpClear('tw');
     const cur = (taiwanData && taiwanData.companies || []).find((x) => x.code === twSel);
     if (cur) drawTwChart(cur, twRange);
+  } else if (region === 'hk') {
+    hkCompare = '';
+    const inp = $('hk-cmp'); if (inp) inp.value = '';
+    hideSuggestions('hk-sugg'); syncCmpClear('hk');
+    const cur = (hkData && hkData.companies || []).find((x) => x.code === hkSel);
+    if (cur) drawHkChart(cur, hkRange);
+  } else if (region === 'au') {
+    auCompare = '';
+    const inp = $('au-cmp'); if (inp) inp.value = '';
+    hideSuggestions('au-sugg'); syncCmpClear('au');
+    const cur = (auData && auData.companies || []).find((x) => x.code === auSel);
+    if (cur) drawAuChart(cur, auRange);
   } else {
     coCompare = '';
     const inp = $('co-cmp'); if (inp) inp.value = '';
@@ -4737,6 +5019,18 @@ function setCompare(ref) {
     hideSuggestions('tw-sugg'); syncCmpClear('tw');
     const cur = (taiwanData && taiwanData.companies || []).find((x) => x.code === twSel);
     if (cur) drawTwChart(cur, twRange);
+  } else if (coRegion === 'hk') {
+    hkCompare = clean;
+    const inp = $('hk-cmp'); if (inp) inp.value = label;
+    hideSuggestions('hk-sugg'); syncCmpClear('hk');
+    const cur = (hkData && hkData.companies || []).find((x) => x.code === hkSel);
+    if (cur) drawHkChart(cur, hkRange);
+  } else if (coRegion === 'au') {
+    auCompare = clean;
+    const inp = $('au-cmp'); if (inp) inp.value = label;
+    hideSuggestions('au-sugg'); syncCmpClear('au');
+    const cur = (auData && auData.companies || []).find((x) => x.code === auSel);
+    if (cur) drawAuChart(cur, auRange);
   } else {
     coCompare = clean;
     const inp = $('co-cmp'); if (inp) inp.value = label;
@@ -4780,6 +5074,8 @@ async function seriesFor(ref, range) {
     if (mkt === 'jp') return await jget(`/api/japan-chart?code=${encodeURIComponent(code)}&range=${encodeURIComponent(range)}`, 600000);
     if (mkt === 'kr') return await jget(`/api/korea/chart?ticker=${encodeURIComponent(code)}&range=${encodeURIComponent(range)}`, 600000);
     if (mkt === 'tw') return await jget(`/api/taiwan/chart?code=${encodeURIComponent(code)}&range=${encodeURIComponent(range)}`, 600000);
+    if (mkt === 'hk') return await jget(`/api/hongkong/chart?code=${encodeURIComponent(code)}&range=${encodeURIComponent(range)}`, 600000);
+    if (mkt === 'au') return await jget(`/api/australia/chart?code=${encodeURIComponent(code)}&range=${encodeURIComponent(range)}`, 600000);
     return await jget(`/api/company-chart?ticker=${encodeURIComponent(code)}&range=${encodeURIComponent(yRange)}`, 600000);
   } catch { return null; }
 }
@@ -5368,6 +5664,673 @@ async function drawTwChart(c, range = twRange) {
   mountChart('tw-chart', { labels: ch.dates, datasets: [line(`${c.ticker} · TWD · ${range.toUpperCase()}`, ch.closes, CT.c1)] }, baseOptions({ dp: 0, dateAxis: true, log: range === '5y' }));
 }
 
+
+// --- Hong Kong: HKEX main-board companies -----------------------------------------------------
+// Same three views and company page as the other markets. The universe and the day's tape come from
+// HKEX's daily quotation report; statements, English names and sectors from stockanalysis.com's HKG
+// pages; the Hang Seng Index and five years of closes from Yahoo. Prices are HKD, and a mainland or
+// international issuer reports in CNY or USD — its ratios are computed in the statement currency, so
+// the page says which one.
+let hkData = null, hkSel = null, hkQuery = '', hkCompare = '';
+let hkRange = (() => { try { return localStorage.getItem('oilbasis.hkRange') || '1y'; } catch { return '1y'; } })();
+let hkMktRange = (() => { try { return localStorage.getItem('oilbasis.hkMktRange') || '1y'; } catch { return '1y'; } })();
+let hkView = (() => { try { return localStorage.getItem('oilbasis.hkView') || 'market'; } catch { return 'market'; } })();
+let hkTheme = (() => { try { return localStorage.getItem('oilbasis.hkTheme') || 'platforms'; } catch { return 'platforms'; } })();
+let hkSector = 'all', hkSort = 'cap', hkPreset = null, hkFilter = {}, hkOpenSel = null;
+let hkPage = 1, hkPer = 50;
+let hongkongPromise = null;
+
+const hkName = (c) => (c && (c.nameEn || c.name)) || '';
+const hkMoney = (v) => {
+  if (v == null || !Number.isFinite(v)) return '—';
+  const a = Math.abs(v);
+  if (a >= 1e12) return `HK$${(v / 1e12).toFixed(2)}T`;
+  if (a >= 1e9) return `HK$${(v / 1e9).toFixed(1)}B`;
+  if (a >= 1e6) return `HK$${(v / 1e6).toFixed(0)}M`;
+  return `HK$${Math.round(v).toLocaleString('en-US')}`;
+};
+const hkPx = (v) => (v == null || !Number.isFinite(v) ? '—' : `HK$${Number(v).toFixed(3).replace(/0+$/, '').replace(/\.$/, '.00')}`);
+const hkMono = (c) => coMono({ ticker: String(c.nameEn || c.name || '?').replace(/[^A-Za-z]/g, '').slice(0, 2) || 'HK', name: c.nameEn || c.name });
+const hkViewsBar = () => '';
+
+async function loadHongKong() {
+  if (hkData) return hkData;
+  if (hongkongPromise) return hongkongPromise;
+  hongkongPromise = (async () => {
+    try { hkData = await jget('/api/hongkong', 3600000); }
+    catch { hkData = null; }
+    finally { hongkongPromise = null; }
+    return hkData;
+  })();
+  return hongkongPromise;
+}
+
+async function renderHongKong(token = takeToken()) {
+  paintCoViews();
+  const el = $('co-body'); if (!el) return;
+  if (hkSel !== hkOpenSel) { hkCompare = ''; hkOpenSel = hkSel; }
+  syncMarketAccent();
+  const noteUs = $('co-note'); if (noteUs) noteUs.classList.add('hidden');
+  syncCoTools();
+  if (!hkData) el.innerHTML = stLoading('Loading the Hang Seng…');
+  const d = await loadHongKong();
+  if (stale(token)) return;
+  syncMarketAccent();
+  const all = (d && d.companies) || [];
+  const sub = $('deals-sub');
+  if (sub) {
+    const what = hkView === 'screener' ? 'filter and sort' : hkView === 'themes' ? 'curated theme lists' : 'breadth, sectors and the Hang Seng';
+    sub.textContent = all.length ? `${all.length} companies · HKEX main board · HK$ HKD · ${what}` : 'HKEX · Hang Seng Index';
+  }
+  if (!all.length) {
+    el.innerHTML = `<div class="macro-note">Hong Kong is not built yet. Run <code>node scripts/build-hongkong.mjs</code>.</div>`;
+    return;
+  }
+  const sel = all.find((c) => c.code === hkSel);
+  if (sel) return renderHongKongPage(sel);
+  warmMarkets();
+  if (hkView === 'market') return renderHongKongMarket(all, d);
+  if (hkView === 'themes') return renderHongKongThemes(all, d);
+  return renderHongKongScreener(all, d);
+}
+
+function hkIndexSeries() {
+  const s = hkData && hkData.index && hkData.index.series;
+  return s && s.length > 1 ? { dates: s.map((p) => p.d), closes: s.map((p) => p.c) } : null;
+}
+function redrawHongKongIndex(range = hkMktRange) {
+  const full = hkIndexSeries();
+  if (!full) return false;
+  hkMktRange = drawMarketIndexChart('hk-mkt', full, range, 'hkmkt', 'HANG SENG');
+  return true;
+}
+
+function renderHongKongMarket(all, d) {
+  const el = $('co-body'); if (!el) return;
+  const idx = d.index || {};
+  const hsi = d.hsi || null;
+  const codes = new Set((hsi && hsi.codes) || []);
+  // The overview is anchored on the index, not on our coverage: a median P/E over 1,604 of 2,060 lines
+  // is a different number from the one a reader sees on a terminal, and quietly says "market" when it
+  // means "everything we could fetch". Members we hold drive every figure below.
+  const members = codes.size ? all.filter((c) => codes.has(c.code)) : all;
+  const held = members.length;
+  const inIndex = codes.size || held;
+  const median = (xs) => {
+    const a = xs.filter((x) => x != null && Number.isFinite(x)).sort((x, y) => x - y);
+    if (!a.length) return null;
+    const m = Math.floor(a.length / 2);
+    return a.length % 2 ? a[m] : +((a[m - 1] + a[m]) / 2).toFixed(2);
+  };
+  const totalCap = members.reduce((a, c) => a + (c.marketCap || 0), 0);
+  // Cap-weighted index ratios, the way a terminal quotes them: the index's P/E is total cap over total
+  // earnings, not the median member's P/E. A member's HKD earnings are cap ÷ P/E, so the aggregate is
+  // recoverable without another currency conversion.
+  const earnings = members.filter((c) => c.pe > 0).reduce((a, c) => a + (c.marketCap || 0) / c.pe, 0);
+  const dividends = members.filter((c) => c.dividendYield > 0).reduce((a, c) => a + (c.marketCap || 0) * (c.dividendYield / 100), 0);
+  const indexPe = earnings > 0 ? totalCap / earnings : null;
+  const indexYield = totalCap > 0 ? (dividends / totalCap) * 100 : null;
+  const advancing = members.filter((c) => (c.chg1d || 0) > 0).length;
+  const declining = members.filter((c) => (c.chg1d || 0) < 0).length;
+  const belowBook = members.filter((c) => c.pb != null && c.pb < 1).length;
+  const upYtd = members.filter((c) => (c.chgYtd || 0) > 0).length;
+  const sectors = [...members.reduce((map, c) => map.set(c.sector || 'Other', [...(map.get(c.sector || 'Other') || []), c]), new Map())]
+    .map(([name, list]) => ({
+      name, count: list.length,
+      cap: list.reduce((a, c) => a + (c.marketCap || 0), 0),
+      pe: median(list.map((c) => c.pe)), pb: median(list.map((c) => c.pb)),
+      roe: median(list.map((c) => c.roe)), yield: median(list.map((c) => c.dividendYield)),
+      chgYtd: median(list.map((c) => c.chgYtd)),
+    })).sort((a, b) => b.cap - a.cap);
+  const foreign = members.filter((c) => c.reportCurrency && c.reportCurrency !== 'HKD').length;
+  const cell = (k, v, t, cls = '') => `<div class="co-stat" title="${esc(t)}"><span class="co-k">${k}</span><span class="co-v ${cls}">${v}</span></div>`;
+  const chg = (x) => (x == null ? '—' : `${x >= 0 ? '+' : ''}${x.toFixed(1)}%`);
+  const breadth = `<div class="jp-breadth"><span class="pos">${advancing} up</span><i><i style="width:${Math.round((advancing / Math.max(1, advancing + declining)) * 100)}%"></i></i><span class="neg">${declining} down</span></div>`;
+  el.innerHTML = hkViewsBar()
+    + `<div class="jp-market-head"><span class="ph-t">HANG SENG</span>
+        ${idx.level != null ? `<span class="jp-market-lvl">${idx.level.toLocaleString('en-US', { maximumFractionDigits: 2 })}</span>` : '<span class="dimtext">index unavailable</span>'}
+        <span class="${(idx.chg1d || 0) >= 0 ? 'pos' : 'neg'}">${chg(idx.chg1d)} today</span>
+        <span class="dimtext">${held} of ${inIndex} constituents held · ${d.session ? `session ${d.session}` : 'exchange tape'}</span></div>`
+    + `<div class="co-stats co-stats-12">
+        ${cell('INDEX MEMBERS', `${held} / ${inIndex}`, `Hang Seng Index constituents${hsi ? ` (list as of ${hsi.updated})` : ''}; every figure on this panel is computed over the members we hold`)}
+        ${cell('MEMBERS\u2019 MARKET CAP', hkMoney(totalCap), 'Sum of the index members we hold — not the whole main board')}
+        ${cell('INDEX P/E', indexPe != null ? `${indexPe.toFixed(1)}×` : '—', `Cap-weighted: total member market cap ÷ total member earnings — the way an index P/E is quoted. ${foreign} members report in CNY/USD, converted into HKD for the aggregate`)}
+        ${cell('INDEX YIELD', indexYield != null ? `${indexYield.toFixed(2)}%` : '—', 'Cap-weighted dividend yield across the members')}
+        ${cell('MEDIAN P/E', median(members.map((c) => c.pe)) != null ? `${median(members.map((c) => c.pe)).toFixed(1)}×` : '—', 'Median member — the typical company, not the index')}
+        ${cell('MEDIAN P/B', median(members.map((c) => c.pb)) != null ? `${median(members.map((c) => c.pb)).toFixed(2)}×` : '—', 'Median of the index members')}
+        ${cell('MEDIAN ROE', median(members.map((c) => c.roe)) != null ? `${median(members.map((c) => c.roe)).toFixed(1)}%` : '—', 'Trailing twelve months, median')}
+        ${cell('MEDIAN YIELD', median(members.map((c) => c.dividendYield)) != null ? `${median(members.map((c) => c.dividendYield)).toFixed(2)}%` : '—', 'From the filing dividend per share')}
+        ${cell('BELOW BOOK', String(belowBook), 'Index members trading under 1× book')}
+        ${cell('UP THIS YEAR', String(upYtd), 'Index members with a positive year-to-date return')}
+      </div>`
+    + breadth
+    + (idx.series && idx.series.length > 1 ? `<div class="co-rets" id="hk-mkt-rets"></div><div class="co-chartwrap"><canvas id="hk-mkt-chart"></canvas></div>` : '')
+    + `<div class="co-hrow jp-mkt-hrow"><span>SECTOR</span><span>N</span><span>CAP</span><span>P/E</span><span>P/B</span><span>ROE</span><span>YIELD</span><span>YTD</span></div>`
+    + sectors.map((x) => `<div class="jp-mkt-row">
+        <span>${esc(x.name)}</span><span>${x.count}</span><span>${hkMoney(x.cap)}</span>
+        <span>${x.pe != null ? x.pe.toFixed(1) : '—'}</span>
+        <span class="${x.pb != null && x.pb < 1 ? 'pos' : ''}">${x.pb != null ? x.pb.toFixed(2) : '—'}</span>
+        <span class="${(x.roe || 0) >= 0 ? 'pos' : 'neg'}">${x.roe != null ? x.roe.toFixed(1) + '%' : '—'}</span>
+        <span>${x.yield != null ? x.yield.toFixed(2) + '%' : '—'}</span>
+        <span class="${(x.chgYtd || 0) >= 0 ? 'pos' : 'neg'}">${chg(x.chgYtd)}</span>
+      </div>`).join('')
+    + `<div class="macro-note">Every figure above is computed over the <b>${held} Hang Seng Index constituents we hold</b>${hsi ? ` (index list as of ${hsi.updated}, ${inIndex} members)` : ''} — not over our whole coverage, which is ${all.length} main-board companies in the SCREENER.${inIndex > held ? ` The ${inIndex - held} members not held here have no statement page we can reach (or are listed trusts, which the universe excludes by design).` : ''} Sectors from stockanalysis.com's field; prices are HKD and statements are in the issuer's report currency (${foreign} members report in CNY/USD), so ratios are computed in that currency. The exchange publishes no per-stock P/E, so the Hong Kong audit checks that every ratio reproduces from its own inputs rather than against an official table.</div>`;
+  if (idx.series && idx.series.length > 1) redrawHongKongIndex();
+}
+
+function renderHongKongThemes(all, d) {
+  const el = $('co-body'); if (!el) return;
+  const themes = (d && d.themes) || [];
+  if (!themes.length) { el.innerHTML = hkViewsBar() + '<div class="macro-note">No themes loaded.</div>'; return; }
+  const active = themes.find((t) => t.id === hkTheme) || themes[0];
+  const set = new Set(active.tickers || []);
+  const rows = all.filter((c) => set.has(c.ticker)).sort((a, b) => (b.marketCap || 0) - (a.marketCap || 0));
+  const chg = (x) => (x == null ? '—' : `${x >= 0 ? '+' : ''}${x.toFixed(1)}%`);
+  el.innerHTML = hkViewsBar()
+    + `<div class="jp-presets">${themes.map((t) => `<button type="button" data-hktheme="${t.id}" class="${t.id === active.id ? 'on' : ''}">${t.label}</button>`).join('')}</div>`
+    + `<div class="jp-market-head"><span class="ph-t">${esc(active.label)}</span><span class="dimtext">${rows.length} companies · curated list</span></div>`
+    + `<div class="co-hrow jp-bank-hrow"><span>#</span><span>COMPANY</span><span>CAP</span><span>P/E</span><span>P/B</span><span>ROE</span><span>YIELD</span><span>YTD</span></div>`
+    + rows.map((c, i) => `<button class="jp-bank-row" data-hk="${esc(c.code)}">
+        <span>${i + 1}</span>
+        <span><b>${esc(hkName(c))}</b><span class="co-tick">${esc(c.ticker)}</span></span>
+        <span>${hkMoney(c.marketCap)}</span>
+        <span>${c.pe != null ? c.pe.toFixed(1) : '—'}</span>
+        <span class="${c.pb != null && c.pb < 1 ? 'pos' : ''}">${c.pb != null ? c.pb.toFixed(2) : '—'}</span>
+        <span class="${(c.roe || 0) >= 0 ? 'pos' : 'neg'}">${c.roe != null ? c.roe.toFixed(1) + '%' : '—'}</span>
+        <span>${c.dividendYield != null ? c.dividendYield.toFixed(2) + '%' : '—'}</span>
+        <span class="${(c.chgYtd || 0) >= 0 ? 'pos' : 'neg'}">${chg(c.chgYtd)}</span>
+      </button>`).join('')
+    + `<div class="macro-note">${esc(active.note || '')}</div>`;
+}
+
+const HK_PRESETS = [
+  { id: 'book', label: 'BELOW BOOK', test: (c) => c.pb != null && c.pb < 1 },
+  { id: 'roe', label: 'HIGH ROE', test: (c) => (c.roe || 0) > 12 },
+  { id: 'cheap', label: 'CHEAP VS ITSELF', test: (c) => c.bands && c.bands.pe && c.bands.pe.percentile <= 20 },
+  { id: 'yield', label: 'HIGH YIELD', test: (c) => (c.dividendYield || 0) >= 4 },
+];
+
+function renderHongKongScreener(all, d) {
+  const el = $('co-body'); if (!el) return;
+  const q = hkQuery.trim().toLowerCase();
+  const sectors = [...new Set(all.map((c) => c.sector).filter(Boolean))].sort();
+  const preset = HK_PRESETS.find((p) => p.id === hkPreset);
+  const f = hkFilter;
+  const rows = all.filter((c) => (!q || `${c.name} ${c.nameEn || ''} ${c.ticker} ${(c.brands || []).join(' ')}`.toLowerCase().includes(q))
+    && (hkSector === 'all' || c.sector === hkSector)
+    && (!f.pe || (c.pe != null && (f.pe === 'lt10' ? c.pe < 10 : f.pe === '10to15' ? c.pe >= 10 && c.pe < 15 : f.pe === '15to25' ? c.pe >= 15 && c.pe < 25 : c.pe >= 25)))
+    && (!f.roe || (c.roe != null && c.roe >= Number(f.roe)))
+    && (!f.yield || (c.dividendYield != null && c.dividendYield >= Number(f.yield)))
+    && (!preset || preset.test(c)));
+  const sortOf = { cap: (c) => c.marketCap, pe: (c) => c.pe, pb: (c) => c.pb, roe: (c) => c.roe, yield: (c) => c.dividendYield, ytd: (c) => c.chgYtd };
+  const dir = hkSort === 'pe' || hkSort === 'pb' ? 1 : -1;
+  const kf = sortOf[hkSort] || sortOf.cap;
+  const sorted = [...rows].sort((a, b) => {
+    const x = kf(a), y = kf(b);
+    if (x == null && y == null) return 0;
+    if (x == null) return 1;
+    if (y == null) return -1;
+    return (x - y) * dir;
+  });
+  const hkChips = $('co-chips');
+  if (hkChips) {
+    const nHk = Object.values(f).filter((v) => v != null && v !== '').length + (hkSector !== 'all' ? 1 : 0) + (q ? 1 : 0);
+    hkChips.innerHTML = coFilterBar({
+      presets: HK_PRESETS, preset: hkPreset, presetAttr: 'data-hkpreset',
+      selects: [
+        { key: 'sector', label: 'SECTOR', opts: [['all', 'All'], ...sectors.map((x) => [x, x.toUpperCase()])], cur: hkSector, attr: 'data-hkf' },
+        { key: 'pe', label: 'P/E', opts: [['', 'Any'], ['lt10', '<10'], ['10to15', '10–15'], ['15to25', '15–25'], ['gt25', '>25']], cur: f.pe, attr: 'data-hkf' },
+        { key: 'roe', label: 'ROE', opts: [['', 'Any'], ['10', '>10%'], ['15', '>15%']], cur: f.roe, attr: 'data-hkf' },
+        { key: 'yield', label: 'YIELD', opts: [['', 'Any'], ['3', '>3%'], ['5', '>5%']], cur: f.yield, attr: 'data-hkf' },
+        { key: 'sort', label: 'SORT', opts: [['cap', 'Market cap'], ['pe', 'P/E low'], ['pb', 'P/B low'], ['roe', 'ROE high'], ['yield', 'Yield high'], ['ytd', 'YTD best']], cur: hkSort, attr: 'data-hkf' },
+      ],
+      clearAttr: 'data-hkpreset', clearValue: 'clear', active: nHk || (hkPreset ? 1 : 0), asOf: asOfText(all, 'priceDate'),
+    });
+  }
+  const max = Math.max(...all.map((c) => c.marketCap || 0), 1);
+  const pages = Math.max(1, Math.ceil(sorted.length / hkPer));
+  const page = Math.min(hkPage, pages);
+  const shown = sorted.slice((page - 1) * hkPer, page * hkPer);
+  el.innerHTML = hkViewsBar()
+    + `<div class="co-hrow"><span>#</span><span></span><span>COMPANY</span><span>MARKET CAP</span><span>P/E</span><span>ROE</span></div>`
+    + shown.map((c, i) => `<button class="co-row" data-hk="${esc(c.code)}">
+        <span class="co-rank">${(page - 1) * hkPer + i + 1}</span>
+        ${hkMono(c)}
+        <span class="co-id"><b>${esc(hkName(c))}</b>
+          <span class="co-meta">
+            <span class="co-tick">${esc(c.ticker)}</span>
+            <span class="co-px">${hkPx(c.price)}</span>
+            <em class="${(c.chg1d || 0) >= 0 ? 'pos' : 'neg'}">${c.chg1d == null ? '—' : `${c.chg1d >= 0 ? '+' : ''}${c.chg1d.toFixed(1)}%`}</em>
+            <em class="${(c.chgYtd || 0) >= 0 ? 'pos' : 'neg'}">${c.chgYtd == null ? '—' : `${c.chgYtd >= 0 ? '+' : ''}${c.chgYtd.toFixed(1)}%`} YTD</em>
+          </span></span>
+        <span class="co-cap">${hkMoney(c.marketCap)}<i class="co-bar"><i style="width:${Math.max(2, ((c.marketCap || 0) / max) * 100)}%"></i></i></span>
+        <span class="co-pe">${c.pe != null ? c.pe.toFixed(1) : '—'}</span>
+        <span class="co-mar ${c.roe == null ? 'dimtext' : c.roe >= 0 ? 'pos' : 'neg'}">${c.roe == null ? '—' : `${c.roe.toFixed(1)}%`}</span>
+      </button>`).join('')
+    + pagerHtml(sorted.length, page, hkPer, 'hklistpage')
+    + `<div class="macro-note">${rows.length} of ${all.length} · HKEX main board · statements from stockanalysis.com, prices from Yahoo (HKEX close on a cold build) · P/E is trailing twelve months, computed in the issuer's report currency · FX ${d.fx && d.fx.rate ? d.fx.rate.toFixed(2) : '—'} HKD per USD.</div>`;
+}
+
+async function renderHongKongPage(stub) {
+  const el = $('co-body'); if (!el) return;
+  let c = null;
+  el.innerHTML = stLoading('Reading the filing…');
+  try { c = await jget(`/api/hongkong/company/${encodeURIComponent(stub.code)}`, 1800000); } catch { c = null; }
+  if (!c) { el.innerHTML = stError('Couldn\u2019t load this company.'); return; }
+  const sub = $('deals-sub'); if (sub) sub.textContent = `${hkName(c)} · ${c.ticker} · HKEX`;
+  const cell = (k, v, t, cls = '') => `<div class="co-stat" title="${esc(t)}"><span class="co-k">${k}</span><span class="co-v ${cls}">${v}</span></div>`;
+  const chg = (x) => (x == null ? '' : `${x >= 0 ? '+' : ''}${x.toFixed(1)}%`);
+  const q = c.quarters || [];
+  const h = c.history || [];
+  const ccy = c.reportCurrency || 'HKD';
+  // Revenue and profit arrive in the issuer's own currency. HKD reporters read like every other HKD
+  // figure; a CNY/USD reporter is suffixed, because "CNY 1.04T" is a readable size and "1,044,971"
+  // (millions) is not.
+  const cur = (v) => {
+    if (v == null || !Number.isFinite(v)) return '—';
+    if (ccy === 'HKD') return hkMoney(v);
+    const a = Math.abs(v);
+    const s = a >= 1e12 ? `${(v / 1e12).toFixed(2)}T`
+      : a >= 1e9 ? `${(v / 1e9).toFixed(1)}B`
+        : a >= 1e6 ? `${(v / 1e6).toFixed(0)}M`
+          : Math.round(v).toLocaleString('en-US');
+    return `${ccy} ${s}`;
+  };
+  el.innerHTML = `<div class="ma-crumb"><button class="ma-back" data-hkback="1">← COMPANIES</button> <span>${esc(c.ticker)}</span><span class="mb-tag">HONG KONG</span></div>`
+    + `<div class="co-head">${hkMono(c)}<div><div class="co-name">${esc(hkName(c))}</div>
+        <div class="co-sub">${esc(c.ticker)} · HKEX main board${c.name && c.name !== hkName(c) ? ' · ' + esc(c.name) : ''}${c.industry ? ' · ' + esc(c.industry) : ''}</div>
+        ${c.description ? `<div class="co-desc">${esc(c.description)}</div>` : ''}
+        ${c.brands && c.brands.length ? `<div class="jp-brands">${c.brands.map((b) => `<span>${esc(b)}</span>`).join('')}</div>` : ''}</div></div>`
+    + `<div class="co-price"><span class="co-price-v">${hkPx(c.price)}</span>
+        <span class="co-price-c ${c.chg1d >= 0 ? 'pos' : 'neg'}">${chg(c.chg1d)} today</span>
+        <span class="co-price-c ${c.chg6m >= 0 ? 'pos' : 'neg'}">${chg(c.chg6m)} 6M</span>
+        <span class="co-price-c ${c.chgYtd >= 0 ? 'pos' : 'neg'}">${chg(c.chgYtd)} YTD</span>
+        <span class="dimtext">${c.priceDate ? `as of ${c.priceDate}` : ''}</span></div>`
+    + `<div class="co-stats co-stats-12">
+        ${cell('MARKET CAP', hkMoney(c.marketCap), 'Price × shares from the latest filing')}
+        ${cell('MARKET CAP · USD', c.marketCapUsd ? `$${(c.marketCapUsd / 1e9).toFixed(1)}B` : '—', 'Converted at the current USD/HKD rate')}
+        ${cell(`P/E · ${c.peBasis || 'TTM'}`, c.pe != null ? `${c.pe.toFixed(2)}×` : '—', `Market cap ÷ the last four quarters of profit, both in ${ccy}${c.reports && c.reports.ttmEnd ? ` (through ${c.reports.ttmEnd})` : ''}`)}
+        ${cell('P/B', c.pb != null ? `${c.pb.toFixed(2)}×` : '—', `Market cap ÷ shareholders\u2019 equity in ${ccy}${c.reports && c.reports.latestEnd ? ` at ${c.reports.latestEnd}` : ''}`)}
+        ${cell('RETURN ON EQUITY', c.roe != null ? `${c.roe.toFixed(1)}%` : '—', 'Profit ÷ equity, same currency on both sides', c.roe >= 0 ? 'pos' : 'neg')}
+        ${cell('OPERATING MARGIN', c.opMargin != null ? `${c.opMargin.toFixed(1)}%` : '—', 'Operating profit ÷ revenue', c.opMargin >= 0 ? 'pos' : 'neg')}
+        ${cell('NET MARGIN', c.netMargin != null ? `${c.netMargin.toFixed(1)}%` : '—', 'Net profit ÷ revenue', c.netMargin >= 0 ? 'pos' : 'neg')}
+        ${cell('DIVIDEND YIELD', c.dividendYield != null ? `${c.dividendYield.toFixed(2)}%` : '—', 'Dividend per share from the filing, converted to HKD at the current rate')}
+      </div>`
+    + (() => {
+        const fig = statementFigures(c, 'hk');
+        const when = periodLabel(fig.flows.basis, fig.flows.end);
+        const cashWhen = periodLabel(fig.cash.basis, fig.cash.end);
+        const bsWhen = fig.balance.end ? `As of ${fig.balance.end}` : 'Latest reported balance sheet';
+        const sign = (v) => (v == null ? '' : v >= 0 ? 'pos' : 'neg');
+        const fcf = fig.cash.cfo != null && fig.cash.cfi != null ? fig.cash.cfo + fig.cash.cfi : null;
+        const eps = (c.reports && c.reports.ttm && c.reports.ttm.eps != null)
+          ? c.reports.ttm.eps
+          : (h.length && h[h.length - 1].eps != null ? h[h.length - 1].eps : null);
+        // Banks, insurers and some conglomerates do not split out operating profit. A dash with the
+        // reason is honest; a made-up number is not.
+        const opNote = fig.flows.op == null
+          ? `This issuer does not report an operating profit line (common for banks, insurers and trusts)`
+          : `${when}, as reported (stockanalysis.com)`;
+        return `<div class="co-stats co-stats-12">
+        ${cell(`REVENUE · ${tileBasis(fig.flows.basis, fig.flows.end)}`, cur(fig.flows.revenue), `${when}, as reported — ${ccy} millions`)}
+        ${cell(`OPERATING PROFIT · ${tileBasis(fig.flows.basis, fig.flows.end)}`, cur(fig.flows.op), opNote, sign(fig.flows.op))}
+        ${cell(`NET PROFIT · ${tileBasis(fig.flows.basis, fig.flows.end)}`, cur(fig.flows.net), `${when}, attributable to owners of the parent — ${ccy} millions`, sign(fig.flows.net))}
+        ${cell('EPS · DILUTED', eps != null ? Number(eps).toFixed(2) : '—', `Per share, ${ccy}, the same period as the profit above`)}
+        ${cell(`FREE CASH FLOW · ${tileBasis(fig.cash.basis, fig.cash.end)}`, cur(fcf), `${cashWhen}: operating cash flow + investing cash flow — capex sits inside investing`)}
+        ${cell('TOTAL ASSETS', cur(fig.balance.assets), `${bsWhen} — ${ccy} millions`)}
+        ${cell('LIABILITIES', cur(fig.balance.liabilities), `${bsWhen}: total assets less shareholders\u2019 equity`)}
+        ${cell('SHAREHOLDERS\u2019 EQUITY', cur(fig.balance.equity), `${bsWhen}, attributable to owners of the parent`)}
+        ${cell(`OPERATING CASH FLOW · ${tileBasis(fig.cash.basis, fig.cash.end)}`, cur(fig.cash.cfo), `${cashWhen}, as reported — ${ccy} millions`)}
+      </div>`;
+      })()
+    + `<div class="co-ranges">
+        <span class="co-cmp-l">COMPARE</span><input class="co-cmp" id="hk-cmp" placeholder="company name, e.g. tencent" value="${esc(cmpCode(hkCompare))}" autocomplete="off">
+        <button class="co-cmp-clear${hkCompare ? '' : ' hidden'}" id="hk-cmp-clear" data-cmpclear="hk" type="button" title="Clear comparison" aria-label="Clear comparison">×</button>
+        <div class="co-sugg" id="hk-sugg"></div>
+        ${[['1m', '1M'], ['3m', '3M'], ['6m', '6M'], ['ytd', 'YTD'], ['1y', '1Y'], ['5y', '5Y']].map(([k, t]) => `<button class="ma-chip${hkRange === k ? ' on' : ''}" data-hkrange="${k}">${t}</button>`).join('')}
+      </div>`
+    + `<div class="co-rets" id="hk-rets"></div>`
+    + `<div class="co-chartwrap"><div class="co-big" id="hk-big"></div><canvas id="hk-chart"></canvas></div>`
+    + '<div id="hk-peers-x"></div>'
+    + (h.length > 1 ? `<div class="jp-q"><div class="jp-q-head"><span class="ph-t">FIVE-YEAR RECORD</span><span class="dimtext">${h.length} fiscal years · ${ccy}</span></div>
+        <table class="jp-q-table"><thead><tr><th>FISCAL YEAR</th><th>REVENUE</th><th>OP PROFIT</th><th>NET PROFIT</th><th>ROE</th></tr></thead><tbody>
+        ${[...h].reverse().map((x) => `<tr><td>${esc(x.y)}</td><td>${cur(x.s)}</td><td>${cur(x.o)}</td><td>${cur(x.n)}</td><td>${x.n != null && x.q ? `${((x.n / x.q) * 100).toFixed(1)}%` : '—'}</td></tr>`).join('')}
+        </tbody></table></div>` : '')
+    + (q.length > 1 ? `<div class="jp-q"><div class="jp-q-head"><span class="ph-t">REPORTED PERIODS</span><span class="dimtext">${q.length} periods · ${ccy}</span></div>
+        <table class="jp-q-table"><thead><tr><th>PERIOD</th><th>REVENUE</th><th>OP PROFIT</th><th>MARGIN</th><th>NET PROFIT</th></tr></thead><tbody>
+        ${[...q].reverse().map((x) => `<tr><td>${esc(x.d)}</td><td>${cur(x.revenue)}</td><td>${cur(x.operatingProfit)}</td><td>${x.revenue && x.operatingProfit != null ? `${((x.operatingProfit / x.revenue) * 100).toFixed(1)}%` : '—'}</td><td>${cur(x.netIncome)}</td></tr>`).join('')}
+        </tbody></table></div>` : '')
+    + `<div class="macro-note">${c.statementsFrom ? `Statements are this same company's own, taken from its ${c.statementsFrom.split(':')[0]} listing (${c.statementsFrom}) because the source serves no Hong Kong statement page for it; the market cap still uses the Hong Kong price × total shares. ` : ''}HKEX main-board listing · statements from stockanalysis.com (millions ${ccy}), prices from Yahoo. Market cap is HKD; ratios are computed in ${ccy}, the currency the issuer reports in, then compared with a market cap converted at the build's USD/HKD and USD/${ccy} rates. Hong Kong companies report half-yearly, so the period table is half-year and annual periods, not four quarters. No free guidance feed, so there is no forward P/E.${c.description ? ' Company description and sector from stockanalysis.com.' : ''}</div>`;
+  drawHkChart(c);
+  fillPeers(`hk:${c.ticker}`, 'hk-peers-x');
+}
+
+async function drawHkChart(c, range = hkRange) {
+  coLong('hk:' + c.ticker).then((long) => { if (long) paintReturns('hk-rets', 'hk-big', long, range, WINDOWS_5Y, 'hkrange'); }).catch(() => {});
+  const wrap = $('hk-chart') && $('hk-chart').parentElement;
+  let ch = null;
+  try { ch = await jget(`/api/hongkong/chart?code=${encodeURIComponent(c.ticker)}&range=${encodeURIComponent(range)}`, 600000); } catch { ch = null; }
+  if (!ch || !ch.dates || ch.dates.length < 2) {
+    if (wrap) wrap.setAttribute('data-empty', `No price history for ${c.ticker} over ${range.toUpperCase()}.`);
+    return;
+  }
+  if (wrap) wrap.removeAttribute('data-empty');
+  const other = hkCompare && cmpCode(hkCompare) !== String(c.ticker) ? await seriesFor(hkCompare, range) : null;
+  if (other && other.dates && other.dates.length > 1) {
+    const bmap = new Map(other.dates.map((d, i) => [d, other.closes[i]]));
+    const dates = ch.dates.filter((d, i) => ch.closes[i] != null && bmap.get(d) != null);
+    if (dates.length > 1) {
+      const a0 = ch.closes[ch.dates.indexOf(dates[0])];
+      const b0 = bmap.get(dates[0]);
+      mountChart('hk-chart', {
+        labels: dates,
+        datasets: [
+          line(`${c.ticker} · ${(c.nameEn || c.name).slice(0, 14)}`, dates.map((d) => (ch.closes[ch.dates.indexOf(d)] / a0) * 100), CT.c1),
+          line(`${cmpCode(hkCompare)}`, dates.map((d) => (bmap.get(d) / b0) * 100), CT.c2),
+        ],
+      }, baseOptions({ dp: 0, dateAxis: true, yTitle: 'indexed to 100' }));
+      return;
+    }
+  }
+  mountChart('hk-chart', { labels: ch.dates, datasets: [line(`${c.ticker} · HKD · ${range.toUpperCase()}`, ch.closes, CT.c1)] }, baseOptions({ dp: 0, dateAxis: true, log: range === '5y' }));
+}
+
+// --- Australia: ASX-listed companies -------------------------------------------------------------
+// Same three views and company page as the other markets. The universe and the GICS industry group
+// come from the ASX listed-companies CSV; statements, English names and profiles from
+// stockanalysis.com's ASX pages; the S&P/ASX 200 and five years of closes from Yahoo. Prices are AUD,
+// but BHP and RIO report in USD — their ratios are computed in the statement currency, so the page
+// says which one.
+let auData = null, auSel = null, auQuery = '', auCompare = '';
+let auRange = (() => { try { return localStorage.getItem('oilbasis.auRange') || '1y'; } catch { return '1y'; } })();
+let auMktRange = (() => { try { return localStorage.getItem('oilbasis.auMktRange') || '1y'; } catch { return '1y'; } })();
+let auView = (() => { try { return localStorage.getItem('oilbasis.auView') || 'market'; } catch { return 'market'; } })();
+let auTheme = (() => { try { return localStorage.getItem('oilbasis.auTheme') || 'materials'; } catch { return 'materials'; } })();
+let auSector = 'all', auSort = 'cap', auPreset = null, auFilter = {}, auOpenSel = null;
+let auPage = 1, auPer = 50;
+let australiaPromise = null;
+
+const auName = (c) => (c && (c.nameEn || c.name)) || '';
+const auMoney = (v) => {
+  if (v == null || !Number.isFinite(v)) return '—';
+  const a = Math.abs(v);
+  if (a >= 1e12) return `A$${(v / 1e12).toFixed(2)}T`;
+  if (a >= 1e9) return `A$${(v / 1e9).toFixed(1)}B`;
+  if (a >= 1e6) return `A$${(v / 1e6).toFixed(0)}M`;
+  return `A$${Math.round(v).toLocaleString('en-US')}`;
+};
+const auPx = (v) => (v == null || !Number.isFinite(v) ? '—' : `A$${Number(v).toFixed(3).replace(/0+$/, '').replace(/\.$/, '.00')}`);
+const auMono = (c) => coMono({ ticker: String(c.nameEn || c.name || '?').replace(/[^A-Za-z]/g, '').slice(0, 2) || 'AU', name: c.nameEn || c.name });
+const auViewsBar = () => '';
+
+async function loadAustralia() {
+  if (auData) return auData;
+  if (australiaPromise) return australiaPromise;
+  australiaPromise = (async () => {
+    try { auData = await jget('/api/australia', 3600000); }
+    catch { auData = null; }
+    finally { australiaPromise = null; }
+    return auData;
+  })();
+  return australiaPromise;
+}
+
+async function renderAustralia(token = takeToken()) {
+  paintCoViews();
+  const el = $('co-body'); if (!el) return;
+  if (auSel !== auOpenSel) { auCompare = ''; auOpenSel = auSel; }
+  syncMarketAccent();
+  const noteUs = $('co-note'); if (noteUs) noteUs.classList.add('hidden');
+  syncCoTools();
+  if (!auData) el.innerHTML = stLoading('Loading the ASX 200…');
+  const d = await loadAustralia();
+  if (stale(token)) return;
+  syncMarketAccent();
+  const all = (d && d.companies) || [];
+  const sub = $('deals-sub');
+  if (sub) {
+    const what = auView === 'screener' ? 'filter and sort' : auView === 'themes' ? 'curated theme lists' : 'breadth, sectors and the ASX 200';
+    sub.textContent = all.length ? `${all.length} companies · ASX · A$ AUD · ${what}` : 'ASX · S&P/ASX 200';
+  }
+  if (!all.length) {
+    el.innerHTML = `<div class="macro-note">Australia is not built yet. Run <code>node scripts/build-australia.mjs</code>.</div>`;
+    return;
+  }
+  const sel = all.find((c) => c.code === auSel);
+  if (sel) return renderAustraliaPage(sel);
+  warmMarkets();
+  if (auView === 'market') return renderAustraliaMarket(all, d);
+  if (auView === 'themes') return renderAustraliaThemes(all, d);
+  return renderAustraliaScreener(all, d);
+}
+
+function auIndexSeries() {
+  const s = auData && auData.index && auData.index.series;
+  return s && s.length > 1 ? { dates: s.map((p) => p.d), closes: s.map((p) => p.c) } : null;
+}
+function redrawAustraliaIndex(range = auMktRange) {
+  const full = auIndexSeries();
+  if (!full) return false;
+  auMktRange = drawMarketIndexChart('au-mkt', full, range, 'aumkt', 'S&P/ASX 200');
+  return true;
+}
+
+function renderAustraliaMarket(all, d) {
+  const el = $('co-body'); if (!el) return;
+  const m = d.market || {}; const idx = d.index || {};
+  const cell = (k, v, t, cls = '') => `<div class="co-stat" title="${esc(t)}"><span class="co-k">${k}</span><span class="co-v ${cls}">${v}</span></div>`;
+  const chg = (x) => (x == null ? '—' : `${x >= 0 ? '+' : ''}${x.toFixed(1)}%`);
+  const breadth = m.advancing != null ? `<div class="jp-breadth"><span class="pos">${m.advancing} up</span><i><i style="width:${Math.round((m.advancing / Math.max(1, m.advancing + m.declining)) * 100)}%"></i></i><span class="neg">${m.declining} down</span></div>` : '';
+  const foreign = m.foreignReporters != null ? `${m.foreignReporters} report in another currency` : 'AUD reporters';
+  el.innerHTML = auViewsBar()
+    + `<div class="jp-market-head"><span class="ph-t">S&amp;P/ASX 200</span>
+        ${idx.level != null ? `<span class="jp-market-lvl">${idx.level.toLocaleString('en-US', { maximumFractionDigits: 2 })}</span>` : '<span class="dimtext">index unavailable</span>'}
+        <span class="${(idx.chg1d || 0) >= 0 ? 'pos' : 'neg'}">${chg(idx.chg1d)} today</span>
+        <span class="dimtext">${all.length} companies · ASX</span></div>`
+    + `<div class="co-stats co-stats-12">
+        ${cell('TOTAL MARKET CAP', auMoney(m.totalCap), 'Sum of every covered ASX constituent')}
+        ${cell('COMPANIES', String(m.companies || all.length), 'Listed companies with a statement page and a share count')}
+        ${cell('MEDIAN P/E', m.medianPe != null ? `${m.medianPe.toFixed(1)}×` : '—', `Median — the typical company, not the index. ${foreign}`)}
+        ${cell('MEDIAN P/B', m.medianPb != null ? `${m.medianPb.toFixed(2)}×` : '—', 'Median across the market')}
+        ${cell('MEDIAN ROE', m.medianRoe != null ? `${m.medianRoe.toFixed(1)}%` : '—', 'Trailing twelve months, median')}
+        ${cell('MEDIAN YIELD', m.medianYield != null ? `${m.medianYield.toFixed(2)}%` : '—', 'From the filing dividend per share')}
+        ${cell('BELOW BOOK', String(m.belowBook ?? '—'), 'Companies trading under 1× book')}
+        ${cell('UP THIS YEAR', String(m.upYtd ?? '—'), 'Companies with a positive year-to-date return')}
+      </div>`
+    + breadth
+    + (idx.series && idx.series.length > 1 ? `<div class="co-rets" id="au-mkt-rets"></div><div class="co-chartwrap"><canvas id="au-mkt-chart"></canvas></div>` : '')
+    + `<div class="co-hrow jp-mkt-hrow"><span>SECTOR</span><span>N</span><span>CAP</span><span>P/E</span><span>P/B</span><span>ROE</span><span>YIELD</span><span>YTD</span></div>`
+    + (m.sectors || []).map((x) => `<div class="jp-mkt-row">
+        <span>${esc(x.name)}</span><span>${x.count}</span><span>${auMoney(x.cap)}</span>
+        <span>${x.pe != null ? x.pe.toFixed(1) : '—'}</span>
+        <span class="${x.pb != null && x.pb < 1 ? 'pos' : ''}">${x.pb != null ? x.pb.toFixed(2) : '—'}</span>
+        <span class="${(x.roe || 0) >= 0 ? 'pos' : 'neg'}">${x.roe != null ? x.roe.toFixed(1) + '%' : '—'}</span>
+        <span>${x.yield != null ? x.yield.toFixed(2) + '%' : '—'}</span>
+        <span class="${(x.chgYtd || 0) >= 0 ? 'pos' : 'neg'}">${chg(x.chgYtd)}</span>
+      </div>`).join('')
+    + `<div class="macro-note">Aggregates computed from the ${all.length} covered ASX-listed constituents. Sectors are the ASX's GICS industry groups (27), resolved from the profile where the CSV says "Not Applic". Prices are AUD; statements are in the issuer's report currency (${foreign}) and ratios are computed in that currency. The ASX publishes no per-stock P/E, so there is no official cross-check here — the Australia audit reports coverage instead.</div>`;
+  if (idx.series && idx.series.length > 1) redrawAustraliaIndex();
+}
+
+function renderAustraliaThemes(all, d) {
+  const el = $('co-body'); if (!el) return;
+  const themes = (d && d.themes) || [];
+  if (!themes.length) { el.innerHTML = auViewsBar() + '<div class="macro-note">No themes loaded.</div>'; return; }
+  const active = themes.find((t) => t.id === auTheme) || themes[0];
+  const set = new Set(active.tickers || []);
+  const rows = all.filter((c) => set.has(c.ticker)).sort((a, b) => (b.marketCap || 0) - (a.marketCap || 0));
+  const chg = (x) => (x == null ? '—' : `${x >= 0 ? '+' : ''}${x.toFixed(1)}%`);
+  el.innerHTML = auViewsBar()
+    + `<div class="jp-presets">${themes.map((t) => `<button type="button" data-autheme="${t.id}" class="${t.id === active.id ? 'on' : ''}">${t.label}</button>`).join('')}</div>`
+    + `<div class="jp-market-head"><span class="ph-t">${esc(active.label)}</span><span class="dimtext">${rows.length} companies · curated list</span></div>`
+    + `<div class="co-hrow jp-bank-hrow"><span>#</span><span>COMPANY</span><span>CAP</span><span>P/E</span><span>P/B</span><span>ROE</span><span>YIELD</span><span>YTD</span></div>`
+    + rows.map((c, i) => `<button class="jp-bank-row" data-au="${esc(c.code)}">
+        <span>${i + 1}</span>
+        <span><b>${esc(auName(c))}</b><span class="co-tick">${esc(c.ticker)}</span></span>
+        <span>${auMoney(c.marketCap)}</span>
+        <span>${c.pe != null ? c.pe.toFixed(1) : '—'}</span>
+        <span class="${c.pb != null && c.pb < 1 ? 'pos' : ''}">${c.pb != null ? c.pb.toFixed(2) : '—'}</span>
+        <span class="${(c.roe || 0) >= 0 ? 'pos' : 'neg'}">${c.roe != null ? c.roe.toFixed(1) + '%' : '—'}</span>
+        <span>${c.dividendYield != null ? c.dividendYield.toFixed(2) + '%' : '—'}</span>
+        <span class="${(c.chgYtd || 0) >= 0 ? 'pos' : 'neg'}">${chg(c.chgYtd)}</span>
+      </button>`).join('')
+    + `<div class="macro-note">${esc(active.note || '')}</div>`;
+}
+
+const AU_PRESETS = [
+  { id: 'book', label: 'BELOW BOOK', test: (c) => c.pb != null && c.pb < 1 },
+  { id: 'roe', label: 'HIGH ROE', test: (c) => (c.roe || 0) > 12 },
+  { id: 'cheap', label: 'CHEAP VS ITSELF', test: (c) => c.bands && c.bands.pe && c.bands.pe.percentile <= 20 },
+  { id: 'yield', label: 'HIGH YIELD', test: (c) => (c.dividendYield || 0) >= 4 },
+];
+
+function renderAustraliaScreener(all, d) {
+  const el = $('co-body'); if (!el) return;
+  const q = auQuery.trim().toLowerCase();
+  const sectors = [...new Set(all.map((c) => c.sector).filter(Boolean))].sort();
+  const preset = AU_PRESETS.find((p) => p.id === auPreset);
+  const f = auFilter;
+  const rows = all.filter((c) => (!q || `${c.name} ${c.nameEn || ''} ${c.ticker} ${(c.brands || []).join(' ')}`.toLowerCase().includes(q))
+    && (auSector === 'all' || c.sector === auSector)
+    && (!f.pe || (c.pe != null && (f.pe === 'lt10' ? c.pe < 10 : f.pe === '10to15' ? c.pe >= 10 && c.pe < 15 : f.pe === '15to25' ? c.pe >= 15 && c.pe < 25 : c.pe >= 25)))
+    && (!f.roe || (c.roe != null && c.roe >= Number(f.roe)))
+    && (!f.yield || (c.dividendYield != null && c.dividendYield >= Number(f.yield)))
+    && (!preset || preset.test(c)));
+  const sortOf = { cap: (c) => c.marketCap, pe: (c) => c.pe, pb: (c) => c.pb, roe: (c) => c.roe, yield: (c) => c.dividendYield, ytd: (c) => c.chgYtd };
+  const dir = auSort === 'pe' || auSort === 'pb' ? 1 : -1;
+  const kf = sortOf[auSort] || sortOf.cap;
+  const sorted = [...rows].sort((a, b) => {
+    const x = kf(a), y = kf(b);
+    if (x == null && y == null) return 0;
+    if (x == null) return 1;
+    if (y == null) return -1;
+    return (x - y) * dir;
+  });
+  const auChips = $('co-chips');
+  if (auChips) {
+    const nAu = Object.values(f).filter((v) => v != null && v !== '').length + (auSector !== 'all' ? 1 : 0) + (q ? 1 : 0);
+    auChips.innerHTML = coFilterBar({
+      presets: AU_PRESETS, preset: auPreset, presetAttr: 'data-aupreset',
+      selects: [
+        { key: 'sector', label: 'SECTOR', opts: [['all', 'All'], ...sectors.map((x) => [x, x.toUpperCase()])], cur: auSector, attr: 'data-auf' },
+        { key: 'pe', label: 'P/E', opts: [['', 'Any'], ['lt10', '<10'], ['10to15', '10–15'], ['15to25', '15–25'], ['gt25', '>25']], cur: f.pe, attr: 'data-auf' },
+        { key: 'roe', label: 'ROE', opts: [['', 'Any'], ['10', '>10%'], ['15', '>15%']], cur: f.roe, attr: 'data-auf' },
+        { key: 'yield', label: 'YIELD', opts: [['', 'Any'], ['3', '>3%'], ['5', '>5%']], cur: f.yield, attr: 'data-auf' },
+        { key: 'sort', label: 'SORT', opts: [['cap', 'Market cap'], ['pe', 'P/E low'], ['pb', 'P/B low'], ['roe', 'ROE high'], ['yield', 'Yield high'], ['ytd', 'YTD best']], cur: auSort, attr: 'data-auf' },
+      ],
+      clearAttr: 'data-aupreset', clearValue: 'clear', active: nAu || (auPreset ? 1 : 0), asOf: asOfText(all, 'priceDate'),
+    });
+  }
+  const max = Math.max(...all.map((c) => c.marketCap || 0), 1);
+  const pages = Math.max(1, Math.ceil(sorted.length / auPer));
+  const page = Math.min(auPage, pages);
+  const shown = sorted.slice((page - 1) * auPer, page * auPer);
+  el.innerHTML = auViewsBar()
+    + `<div class="co-hrow"><span>#</span><span></span><span>COMPANY</span><span>MARKET CAP</span><span>P/E</span><span>ROE</span></div>`
+    + shown.map((c, i) => `<button class="co-row" data-au="${esc(c.code)}">
+        <span class="co-rank">${(page - 1) * auPer + i + 1}</span>
+        ${auMono(c)}
+        <span class="co-id"><b>${esc(auName(c))}</b>
+          <span class="co-meta">
+            <span class="co-tick">${esc(c.ticker)}</span>
+            <span class="co-px">${auPx(c.price)}</span>
+            <em class="${(c.chg1d || 0) >= 0 ? 'pos' : 'neg'}">${c.chg1d == null ? '—' : `${c.chg1d >= 0 ? '+' : ''}${c.chg1d.toFixed(1)}%`}</em>
+            <em class="${(c.chgYtd || 0) >= 0 ? 'pos' : 'neg'}">${c.chgYtd == null ? '—' : `${c.chgYtd >= 0 ? '+' : ''}${c.chgYtd.toFixed(1)}%`} YTD</em>
+          </span></span>
+        <span class="co-cap">${auMoney(c.marketCap)}<i class="co-bar"><i style="width:${Math.max(2, ((c.marketCap || 0) / max) * 100)}%"></i></i></span>
+        <span class="co-pe">${c.pe != null ? c.pe.toFixed(1) : '—'}</span>
+        <span class="co-mar ${c.roe == null ? 'dimtext' : c.roe >= 0 ? 'pos' : 'neg'}">${c.roe == null ? '—' : `${c.roe.toFixed(1)}%`}</span>
+      </button>`).join('')
+    + pagerHtml(sorted.length, page, auPer, 'aulistpage')
+    + `<div class="macro-note">${rows.length} of ${all.length} · ASX · statements from stockanalysis.com, prices from Yahoo · P/E is trailing twelve months, computed in the issuer's report currency (BHP and RIO report in USD) · FX ${d.fx && d.fx.rate ? d.fx.rate.toFixed(2) : '—'} AUD per USD.</div>`;
+}
+
+async function renderAustraliaPage(stub) {
+  const el = $('co-body'); if (!el) return;
+  let c = null;
+  el.innerHTML = stLoading('Reading the filing…');
+  try { c = await jget(`/api/australia/company/${encodeURIComponent(stub.code)}`, 1800000); } catch { c = null; }
+  if (!c) { el.innerHTML = stError('Couldn\u2019t load this company.'); return; }
+  const sub = $('deals-sub'); if (sub) sub.textContent = `${auName(c)} · ${c.ticker} · ASX`;
+  const cell = (k, v, t, cls = '') => `<div class="co-stat" title="${esc(t)}"><span class="co-k">${k}</span><span class="co-v ${cls}">${v}</span></div>`;
+  const chg = (x) => (x == null ? '' : `${x >= 0 ? '+' : ''}${x.toFixed(1)}%`);
+  const q = c.quarters || [];
+  const h = c.history || [];
+  const ccy = c.reportCurrency || 'AUD';
+  const cur = (v) => (v == null ? '—' : ccy === 'AUD' ? auMoney(v) : `${ccy} ${Math.round(v).toLocaleString('en-US')}`);
+  el.innerHTML = `<div class="ma-crumb"><button class="ma-back" data-auback="1">← COMPANIES</button> <span>${esc(c.ticker)}</span><span class="mb-tag">AUSTRALIA</span></div>`
+    + `<div class="co-head">${auMono(c)}<div><div class="co-name">${esc(auName(c))}</div>
+        <div class="co-sub">${esc(c.ticker)} · ASX-listed${c.name && c.name !== auName(c) ? ' · ' + esc(c.name) : ''}${c.industry ? ' · ' + esc(c.industry) : ''}</div>
+        ${c.description ? `<div class="co-desc">${esc(c.description)}</div>` : ''}
+        ${c.brands && c.brands.length ? `<div class="jp-brands">${c.brands.map((b) => `<span>${esc(b)}</span>`).join('')}</div>` : ''}</div></div>`
+    + `<div class="co-price"><span class="co-price-v">${auPx(c.price)}</span>
+        <span class="co-price-c ${c.chg1d >= 0 ? 'pos' : 'neg'}">${chg(c.chg1d)} today</span>
+        <span class="co-price-c ${c.chg6m >= 0 ? 'pos' : 'neg'}">${chg(c.chg6m)} 6M</span>
+        <span class="co-price-c ${c.chgYtd >= 0 ? 'pos' : 'neg'}">${chg(c.chgYtd)} YTD</span>
+        <span class="dimtext">${c.priceDate ? `as of ${c.priceDate}` : ''}</span></div>`
+    + `<div class="co-stats co-stats-12">
+        ${cell('MARKET CAP', auMoney(c.marketCap), 'Price × shares from the latest filing')}
+        ${cell('MARKET CAP · USD', c.marketCapUsd ? `$${(c.marketCapUsd / 1e9).toFixed(1)}B` : '—', 'Converted at the current USD/AUD rate')}
+        ${cell(`P/E · ${c.peBasis || 'TTM'}`, c.pe != null ? `${c.pe.toFixed(2)}×` : '—', `Market cap ÷ the rolling twelve months of profit, both in ${ccy}${c.reports && c.reports.ttmEnd ? ` (through ${c.reports.ttmEnd})` : ''}`)}
+        ${cell('P/B', c.pb != null ? `${c.pb.toFixed(2)}×` : '—', `Market cap ÷ shareholders\u2019 equity in ${ccy}${c.reports && c.reports.latestEnd ? ` at ${c.reports.latestEnd}` : ''}`)}
+        ${cell('RETURN ON EQUITY', c.roe != null ? `${c.roe.toFixed(1)}%` : '—', 'Profit ÷ equity, same currency on both sides', c.roe >= 0 ? 'pos' : 'neg')}
+        ${cell('OPERATING MARGIN', c.opMargin != null ? `${c.opMargin.toFixed(1)}%` : '—', 'Operating profit ÷ revenue', c.opMargin >= 0 ? 'pos' : 'neg')}
+        ${cell('NET MARGIN', c.netMargin != null ? `${c.netMargin.toFixed(1)}%` : '—', 'Net profit ÷ revenue', c.netMargin >= 0 ? 'pos' : 'neg')}
+        ${cell('DIVIDEND YIELD', c.dividendYield != null ? `${c.dividendYield.toFixed(2)}%` : '—', 'Dividend per share from the filing, converted to AUD at the current rate')}
+      </div>`
+    + `<div class="co-ranges">
+        <span class="co-cmp-l">COMPARE</span><input class="co-cmp" id="au-cmp" placeholder="company name, e.g. bhp" value="${esc(cmpCode(auCompare))}" autocomplete="off">
+        <button class="co-cmp-clear${auCompare ? '' : ' hidden'}" id="au-cmp-clear" data-cmpclear="au" type="button" title="Clear comparison" aria-label="Clear comparison">×</button>
+        <div class="co-sugg" id="au-sugg"></div>
+        ${[['1m', '1M'], ['3m', '3M'], ['6m', '6M'], ['ytd', 'YTD'], ['1y', '1Y'], ['5y', '5Y']].map(([k, t]) => `<button class="ma-chip${auRange === k ? ' on' : ''}" data-aurange="${k}">${t}</button>`).join('')}
+      </div>`
+    + `<div class="co-rets" id="au-rets"></div>`
+    + `<div class="co-chartwrap"><div class="co-big" id="au-big"></div><canvas id="au-chart"></canvas></div>`
+    + '<div id="au-peers-x"></div>'
+    + (h.length > 1 ? `<div class="jp-q"><div class="jp-q-head"><span class="ph-t">FIVE-YEAR RECORD</span><span class="dimtext">${h.length} fiscal years · ${ccy}</span></div>
+        <table class="jp-q-table"><thead><tr><th>FISCAL YEAR</th><th>REVENUE</th><th>OP PROFIT</th><th>NET PROFIT</th><th>ROE</th></tr></thead><tbody>
+        ${[...h].reverse().map((x) => `<tr><td>${esc(x.y)}</td><td>${cur(x.s)}</td><td>${cur(x.o)}</td><td>${cur(x.n)}</td><td>${x.n != null && x.q ? `${((x.n / x.q) * 100).toFixed(1)}%` : '—'}</td></tr>`).join('')}
+        </tbody></table></div>` : '')
+    + (q.length > 1 ? `<div class="jp-q"><div class="jp-q-head"><span class="ph-t">TRAILING 12 MONTHS</span><span class="dimtext">${q.length} period ends · ${ccy} millions</span></div>
+        <table class="jp-q-table"><thead><tr><th>PERIOD</th><th>REVENUE</th><th>OP PROFIT</th><th>MARGIN</th><th>NET PROFIT</th></tr></thead><tbody>
+        ${[...q].reverse().map((x) => `<tr><td>${esc(x.d)}</td><td>${cur(x.revenue)}</td><td>${cur(x.operatingProfit)}</td><td>${x.revenue && x.operatingProfit != null ? `${((x.operatingProfit / x.revenue) * 100).toFixed(1)}%` : '—'}</td><td>${cur(x.netIncome)}</td></tr>`).join('')}
+        </tbody></table></div>` : '')
+    + `<div class="macro-note">ASX-listed · statements from stockanalysis.com (millions ${ccy}), prices from Yahoo. Market cap is AUD; ratios are computed in ${ccy}, the currency the issuer reports in, then compared with a market cap converted at the build's USD/AUD and USD/${ccy} rates. Profit, revenue and margins are the rolling twelve months (the vendor's ASX "trailing" view); the five-year record is the fiscal year. Australian companies report half-yearly, so there is no four-quarter table. No free guidance feed, so there is no forward P/E.${c.description ? ' Company description and sector from stockanalysis.com.' : ''}</div>`;
+  drawAuChart(c);
+  fillPeers(`au:${c.ticker}`, 'au-peers-x');
+}
+
+async function drawAuChart(c, range = auRange) {
+  coLong('au:' + c.ticker).then((long) => { if (long) paintReturns('au-rets', 'au-big', long, range, WINDOWS_5Y, 'aurange'); }).catch(() => {});
+  const wrap = $('au-chart') && $('au-chart').parentElement;
+  let ch = null;
+  try { ch = await jget(`/api/australia/chart?code=${encodeURIComponent(c.ticker)}&range=${encodeURIComponent(range)}`, 600000); } catch { ch = null; }
+  if (!ch || !ch.dates || ch.dates.length < 2) {
+    if (wrap) wrap.setAttribute('data-empty', `No price history for ${c.ticker} over ${range.toUpperCase()}.`);
+    return;
+  }
+  if (wrap) wrap.removeAttribute('data-empty');
+  const other = auCompare && cmpCode(auCompare) !== String(c.ticker) ? await seriesFor(auCompare, range) : null;
+  if (other && other.dates && other.dates.length > 1) {
+    const bmap = new Map(other.dates.map((d, i) => [d, other.closes[i]]));
+    const dates = ch.dates.filter((d, i) => ch.closes[i] != null && bmap.get(d) != null);
+    if (dates.length > 1) {
+      const a0 = ch.closes[ch.dates.indexOf(dates[0])];
+      const b0 = bmap.get(dates[0]);
+      mountChart('au-chart', {
+        labels: dates,
+        datasets: [
+          line(`${c.ticker} · ${(c.nameEn || c.name).slice(0, 14)}`, dates.map((d) => (ch.closes[ch.dates.indexOf(d)] / a0) * 100), CT.c1),
+          line(`${cmpCode(auCompare)}`, dates.map((d) => (bmap.get(d) / b0) * 100), CT.c2),
+        ],
+      }, baseOptions({ dp: 0, dateAxis: true, yTitle: 'indexed to 100' }));
+      return;
+    }
+  }
+  mountChart('au-chart', { labels: ch.dates, datasets: [line(`${c.ticker} · AUD · ${range.toUpperCase()}`, ch.closes, CT.c1)] }, baseOptions({ dp: 0, dateAxis: true, log: range === '5y' }));
+}
+
+
 // The pane carries the market's accent colour (the region pills, the active tab, the tag on a company
 // page). There used to be a quote strip here too — index name, level, day change, company count — but
 // the market view already states all of that, and repeating it above every view was noise.
@@ -5403,6 +6366,10 @@ function warmMarkets(delay = 1500) {
   setTimeout(() => { if (!koreaData) loadKorea().catch(() => {}); }, delay + 1500);
   // Taiwan's list is ~0.5 MB; warm it after Korea so a region switch does not pay the round trip.
   setTimeout(() => { if (!taiwanData) loadTaiwan().catch(() => {}); }, delay + 3200);
+  // Hong Kong's list is the biggest of the five (~2,000 companies), so it warms last.
+  setTimeout(() => { if (!hkData) loadHongKong().catch(() => {}); }, delay + 4600);
+  // Australia is the sixth and similar in size; warming it after Hong Kong keeps a region switch free.
+  setTimeout(() => { if (!auData) loadAustralia().catch(() => {}); }, delay + 6000);
 }
 
 function renderCompanies() {
@@ -5420,6 +6387,8 @@ function renderCompanies() {
   if (coRegion === 'jp') return renderJapan(token);
   if (coRegion === 'kr') return renderKorea(token);
   if (coRegion === 'tw') return renderTaiwan(token);
+  if (coRegion === 'hk') return renderHongKong(token);
+  if (coRegion === 'au') return renderAustralia(token);
   const el = $('co-body');
   if (charts['co-chart']) { try { charts['co-chart'].destroy(); } catch {} delete charts['co-chart']; }
   if (!el) return;
@@ -6218,11 +7187,11 @@ document.addEventListener('click', (e) => {
     document.querySelectorAll('[data-region]').forEach((b) => b.classList.toggle('on', b.dataset.region === coRegion));
     coCik = null; jpSel = null;
     const inp = $('co-search'); if (inp) inp.value = '';
-    const note = $('co-note'); if (note) note.classList.toggle('hidden', coRegion === 'jp');
+    const note = $('co-note'); if (note) note.classList.toggle('hidden', coRegion === 'jp' || coRegion === 'kr' || coRegion === 'tw' || coRegion === 'hk' || coRegion === 'au');
     // Drop the old market's screen on the spot. The US render waits for data before it paints, and
     // until this the previous screen (often Japan's TOPIX view) was still the thing on the page.
     const body = $('co-body');
-    if (body) body.innerHTML = stLoading(coRegion === 'jp' ? 'Loading Japan…' : coRegion === 'kr' ? 'Loading KOSPI…' : coRegion === 'tw' ? 'Loading TAIEX…' : 'Loading the S&P 500…');
+    if (body) body.innerHTML = stLoading(coRegion === 'jp' ? 'Loading Japan…' : coRegion === 'kr' ? 'Loading KOSPI…' : coRegion === 'tw' ? 'Loading TAIEX…' : coRegion === 'hk' ? 'Loading the Hang Seng…' : coRegion === 'au' ? 'Loading the ASX 200…' : 'Loading the S&P 500…');
     renderCompanies();
     return;
   }
@@ -6254,6 +7223,80 @@ document.addEventListener('click', (e) => {
   const krrow = e.target.closest('[data-kr]');
   if (krrow) { krSel = krrow.dataset.kr; renderKorea(); window.scrollTo({ top: 0, behavior: 'smooth' }); return; }
   if (e.target.closest('[data-krback]')) { krSel = null; renderKorea(); return; }
+  const hkv = e.target.closest('[data-hkview]');
+  if (hkv) { hkView = hkv.dataset.hkview; try { localStorage.setItem('oilbasis.hkView', hkView); } catch {} hkSel = null; hkPage = 1; renderHongKong(); return; }
+  const hkt = e.target.closest('[data-hktheme]');
+  if (hkt) { hkTheme = hkt.dataset.hktheme; try { localStorage.setItem('oilbasis.hkTheme', hkTheme); } catch {} renderHongKong(); return; }
+  const hkr = e.target.closest('[data-hkrange]');
+  if (hkr) {
+    hkRange = hkr.dataset.hkrange;
+    try { localStorage.setItem('oilbasis.hkRange', hkRange); } catch {}
+    document.querySelectorAll('[data-hkrange]').forEach((b) => b.classList.toggle('on', b.dataset.hkrange === hkRange));
+    const cur = (hkData && hkData.companies || []).find((x) => x.code === hkSel);
+    if (cur) drawHkChart(cur, hkRange);
+    return;
+  }
+  const hkps = e.target.closest('[data-hkpreset]');
+  if (hkps) {
+    const id = hkps.dataset.hkpreset;
+    if (id === 'clear') {
+      hkPreset = null; hkFilter = {}; hkSector = 'all'; hkQuery = '';
+      const inp = $('co-search'); if (inp) inp.value = '';
+    } else hkPreset = id === hkPreset ? null : id;
+    hkPage = 1;
+    renderHongKong();
+    return;
+  }
+  const hklp = e.target.closest('[data-hklistpage]');
+  if (hklp && hklp.dataset.hklistpage !== 'per') { hkPage = Math.max(1, Number(hklp.dataset.hklistpage)); renderHongKong(); return; }
+  const hkm = e.target.closest('[data-hkmkt]');
+  if (hkm) {
+    hkMktRange = hkm.dataset.hkmkt;
+    try { localStorage.setItem('oilbasis.hkMktRange', hkMktRange); } catch {}
+    if (coRegion === 'hk' && hkView === 'market' && redrawHongKongIndex()) return;
+    renderHongKong();
+    return;
+  }
+  const hkrow = e.target.closest('[data-hk]');
+  if (hkrow) { hkSel = hkrow.dataset.hk; renderHongKong(); window.scrollTo({ top: 0, behavior: 'smooth' }); return; }
+  if (e.target.closest('[data-hkback]')) { hkSel = null; renderHongKong(); return; }
+  const auv = e.target.closest('[data-auview]');
+  if (auv) { auView = auv.dataset.auview; try { localStorage.setItem('oilbasis.auView', auView); } catch {} auSel = null; auPage = 1; renderAustralia(); return; }
+  const aut = e.target.closest('[data-autheme]');
+  if (aut) { auTheme = aut.dataset.autheme; try { localStorage.setItem('oilbasis.auTheme', auTheme); } catch {} renderAustralia(); return; }
+  const aur = e.target.closest('[data-aurange]');
+  if (aur) {
+    auRange = aur.dataset.aurange;
+    try { localStorage.setItem('oilbasis.auRange', auRange); } catch {}
+    document.querySelectorAll('[data-aurange]').forEach((b) => b.classList.toggle('on', b.dataset.aurange === auRange));
+    const cur = (auData && auData.companies || []).find((x) => x.code === auSel);
+    if (cur) drawAuChart(cur, auRange);
+    return;
+  }
+  const aups = e.target.closest('[data-aupreset]');
+  if (aups) {
+    const id = aups.dataset.aupreset;
+    if (id === 'clear') {
+      auPreset = null; auFilter = {}; auSector = 'all'; auQuery = '';
+      const inp = $('co-search'); if (inp) inp.value = '';
+    } else auPreset = id === auPreset ? null : id;
+    auPage = 1;
+    renderAustralia();
+    return;
+  }
+  const aulp = e.target.closest('[data-aulistpage]');
+  if (aulp && aulp.dataset.aulistpage !== 'per') { auPage = Math.max(1, Number(aulp.dataset.aulistpage)); renderAustralia(); return; }
+  const aum = e.target.closest('[data-aumkt]');
+  if (aum) {
+    auMktRange = aum.dataset.aumkt;
+    try { localStorage.setItem('oilbasis.auMktRange', auMktRange); } catch {}
+    if (coRegion === 'au' && auView === 'market' && redrawAustraliaIndex()) return;
+    renderAustralia();
+    return;
+  }
+  const aurow = e.target.closest('[data-au]');
+  if (aurow) { auSel = aurow.dataset.au; renderAustralia(); window.scrollTo({ top: 0, behavior: 'smooth' }); return; }
+  if (e.target.closest('[data-auback]')) { auSel = null; renderAustralia(); return; }
   const twv = e.target.closest('[data-twview]');
   if (twv) { twView = twv.dataset.twview; try { localStorage.setItem('oilbasis.twView', twView); } catch {} twSel = null; twPage = 1; renderTaiwan(); return; }
   const twt = e.target.closest('[data-twtheme]');
@@ -6446,6 +7489,24 @@ document.addEventListener('change', (e) => {
 
 // Selects fire 'change' on some browsers where they never fire 'input' — handle both.
 document.addEventListener('change', async (e) => {
+  if (e.target && e.target.dataset && e.target.dataset.hkf) {
+    const k = e.target.dataset.hkf;
+    if (k === 'sector') hkSector = e.target.value || 'all';
+    else if (k === 'sort') { hkSort = e.target.value || 'cap'; }
+    else { hkFilter[k] = e.target.value; }
+    hkPage = 1;
+    renderHongKong();
+    return;
+  }
+  if (e.target && e.target.dataset && e.target.dataset.auf) {
+    const k = e.target.dataset.auf;
+    if (k === 'sector') auSector = e.target.value || 'all';
+    else if (k === 'sort') { auSort = e.target.value || 'cap'; }
+    else { auFilter[k] = e.target.value; }
+    auPage = 1;
+    renderAustralia();
+    return;
+  }
   if (e.target && e.target.dataset && e.target.dataset.twf) {
     const k = e.target.dataset.twf;
     if (k === 'sector') twSector = e.target.value || 'all';
@@ -6464,7 +7525,7 @@ document.addEventListener('change', async (e) => {
     renderKorea();
     return;
   }
-  if (e.target && (e.target.id === 'kr-cmp' || e.target.id === 'jp-cmp' || e.target.id === 'tw-cmp')) {
+  if (e.target && (e.target.id === 'kr-cmp' || e.target.id === 'jp-cmp' || e.target.id === 'tw-cmp' || e.target.id === 'hk-cmp' || e.target.id === 'au-cmp')) {
     const ref = await resolveCompare(e.target.value);
     if (ref) setCompare(ref);
     return;
@@ -6478,8 +7539,8 @@ document.addEventListener('change', async (e) => {
 });
 
 document.addEventListener('keydown', async (e) => {
-  if (!(e.target && ['co-cmp', 'jp-cmp', 'kr-cmp'].includes(e.target.id))) return;
-  const box = { 'co-cmp': 'us-sugg', 'jp-cmp': 'jp-sugg', 'kr-cmp': 'kr-sugg' }[e.target.id];
+  if (!(e.target && ['co-cmp', 'jp-cmp', 'kr-cmp', 'tw-cmp', 'hk-cmp', 'au-cmp'].includes(e.target.id))) return;
+  const box = { 'co-cmp': 'us-sugg', 'jp-cmp': 'jp-sugg', 'kr-cmp': 'kr-sugg', 'tw-cmp': 'tw-sugg', 'hk-cmp': 'hk-sugg', 'au-cmp': 'au-sugg' }[e.target.id];
   if (e.key === 'Escape') { hideSuggestions(box); return; }
   if (e.key !== 'Enter') return;
   e.preventDefault();
@@ -6491,7 +7552,7 @@ document.addEventListener('keydown', async (e) => {
 
 // A benchmark ref like us:MSFT in the box is replaced by typing, not appended to.
 document.addEventListener('focusin', (e) => {
-  if (e.target && ['co-cmp', 'jp-cmp', 'kr-cmp'].includes(e.target.id)) e.target.select();
+  if (e.target && ['co-cmp', 'jp-cmp', 'kr-cmp', 'tw-cmp', 'hk-cmp', 'au-cmp'].includes(e.target.id)) e.target.select();
 });
 
 document.addEventListener('input', (e) => {
@@ -6507,10 +7568,12 @@ document.addEventListener('input', (e) => {
     if (coRegion === 'jp') { jpQuery = e.target.value || ''; jpSel = null; jpPage = 1; renderJapan(); return; }
     if (coRegion === 'kr') { krQuery = e.target.value || ''; krSel = null; krPage = 1; renderKorea(); return; }
     if (coRegion === 'tw') { twQuery = e.target.value || ''; twSel = null; twPage = 1; renderTaiwan(); return; }
+    if (coRegion === 'hk') { hkQuery = e.target.value || ''; hkSel = null; hkPage = 1; renderHongKong(); return; }
+    if (coRegion === 'au') { auQuery = e.target.value || ''; auSel = null; auPage = 1; renderAustralia(); return; }
     coQuery = e.target.value || ''; coCik = null; usListPage = 1; renderCompanies(); return;
   }
-  if (e.target && (e.target.id === 'co-cmp' || e.target.id === 'jp-cmp' || e.target.id === 'kr-cmp')) {
-    const box = { 'co-cmp': 'us-sugg', 'jp-cmp': 'jp-sugg', 'kr-cmp': 'kr-sugg' }[e.target.id];
+  if (e.target && ['co-cmp', 'jp-cmp', 'kr-cmp', 'tw-cmp', 'hk-cmp', 'au-cmp'].includes(e.target.id)) {
+    const box = { 'co-cmp': 'us-sugg', 'jp-cmp': 'jp-sugg', 'kr-cmp': 'kr-sugg', 'tw-cmp': 'tw-sugg', 'hk-cmp': 'hk-sugg', 'au-cmp': 'au-sugg' }[e.target.id];
     clearTimeout(suggTimer);
     const input = e.target;
     suggTimer = setTimeout(() => showSuggestions(input, box), 180);
