@@ -1,9 +1,9 @@
 {
- "generated": "2026-11-03T11:56:37.046Z",
+ "generated": "2026-11-03T22:04:13.701Z",
  "summary": {
   "usable": 495,
-  "match": 470,
-  "close": 21,
+  "match": 469,
+  "close": 22,
   "diverge": 0,
   "diverge-immaterial": 0,
   "definition": 4,
@@ -928,7 +928,7 @@
    "sameYear": true,
    "our": {
     "revenue": 447567000000,
-    "netIncome": 12056000000,
+    "netIncome": 12807000000,
     "assets": 309581000000,
     "equity": 94110000000,
     "marketCap": 365294174884,
@@ -943,18 +943,18 @@
    },
    "diff": {
     "revenue": 0,
-    "netIncome": 0,
+    "netIncome": 0.05863980635589912,
     "assets": 0,
     "equity": 0
    },
    "abs": {
     "revenue": 447567000000,
-    "netIncome": 12056000000,
+    "netIncome": 12807000000,
     "assets": 0,
     "equity": 0
    },
-   "worst": 0,
-   "status": "match"
+   "worst": 0.05863980635589912,
+   "status": "close"
   },
   {
    "ticker": "MRK",
@@ -7017,12 +7017,12 @@
    "ticker": "MPWR",
    "sector": "Technology",
    "period": "12/31/2025",
-   "sameYear": true,
+   "sameYear": false,
    "our": {
     "revenue": 2790459000,
     "netIncome": 621483000,
-    "assets": 4194199000,
-    "equity": 3531497000,
+    "assets": 273867000,
+    "equity": 242877000,
     "marketCap": 59543133090,
     "price": 1211.63,
     "shares": 48309000
@@ -7036,17 +7036,17 @@
    "diff": {
     "revenue": 0,
     "netIncome": 0,
-    "assets": 0,
-    "equity": 0
+    "assets": 0.9347033843649288,
+    "equity": 0.9312254831308082
    },
    "abs": {
     "revenue": 2790459000,
     "netIncome": 621483000,
-    "assets": 0,
-    "equity": 0
+    "assets": 3920332000,
+    "equity": 3288620000
    },
-   "worst": 0,
-   "status": "match"
+   "worst": null,
+   "status": "period-mismatch"
   },
   {
    "ticker": "CAH",
@@ -7716,10 +7716,10 @@
   {
    "ticker": "AZO",
    "sector": "Consumer",
-   "period": "8/30/2025",
-   "sameYear": false,
+   "period": "8/29/2026",
+   "sameYear": true,
    "our": {
-    "revenue": 18938717000,
+    "revenue": 20338555000,
     "netIncome": 2572777000,
     "assets": 21630510000,
     "equity": -2502470000,
@@ -7728,25 +7728,25 @@
     "shares": 16567821
    },
    "nasdaq": {
-    "revenue": 18938717000,
-    "netIncome": 2498247000,
-    "assets": 19355324000,
-    "equity": -3414313000
+    "revenue": 20338555000,
+    "netIncome": 2572777000,
+    "assets": 21630510000,
+    "equity": -2502470000
    },
    "diff": {
     "revenue": 0,
-    "netIncome": 0.02896869802551873,
-    "assets": 0.10518411262610082,
-    "equity": 0.26706485316372575
+    "netIncome": 0,
+    "assets": 0,
+    "equity": 0
    },
    "abs": {
-    "revenue": 18938717000,
+    "revenue": 20338555000,
     "netIncome": 2572777000,
-    "assets": 2275186000,
-    "equity": 911843000
+    "assets": 0,
+    "equity": 0
    },
-   "worst": null,
-   "status": "period-mismatch"
+   "worst": 0,
+   "status": "match"
   },
   {
    "ticker": "HONA",
@@ -10812,8 +10812,8 @@
   {
    "ticker": "JBL",
    "sector": "Technology",
-   "period": "8/31/2025",
-   "sameYear": false,
+   "period": "8/31/2026",
+   "sameYear": true,
    "our": {
     "revenue": 35950000000,
     "netIncome": 1042000000,
@@ -10824,25 +10824,25 @@
     "shares": 105595267
    },
    "nasdaq": {
-    "revenue": 29802000000,
-    "netIncome": 657000000,
-    "assets": 18543000000,
-    "equity": 1513000000
+    "revenue": 35954000000,
+    "netIncome": 1042000000,
+    "assets": 27435000000,
+    "equity": 1613000000
    },
    "diff": {
-    "revenue": 0.1710152990264256,
-    "netIncome": 0.3694817658349328,
-    "assets": 0.32411153635866596,
-    "equity": 0.05966438781852082
+    "revenue": 0.00011125326806474941,
+    "netIncome": 0,
+    "assets": 0,
+    "equity": 0.0024798512089274642
    },
    "abs": {
     "revenue": 35950000000,
     "netIncome": 1042000000,
-    "assets": 8892000000,
-    "equity": 96000000
+    "assets": 0,
+    "equity": 4000000
    },
-   "worst": null,
-   "status": "period-mismatch"
+   "worst": 0.0024798512089274642,
+   "status": "match"
   },
   {
    "ticker": "HAL",
@@ -13334,12 +13334,12 @@
    "ticker": "BR",
    "sector": "Consumer",
    "period": "6/30/2026",
-   "sameYear": true,
+   "sameYear": false,
    "our": {
     "revenue": 7476800000,
     "netIncome": 1124300000,
-    "assets": 8945300000,
-    "equity": 2840500000,
+    "assets": 3880700000,
+    "equity": 1127500000,
     "marketCap": 20188783722,
     "price": 178.82,
     "shares": 116748715
@@ -13353,17 +13353,17 @@
    "diff": {
     "revenue": 0,
     "netIncome": 0,
-    "assets": 0,
-    "equity": 0
+    "assets": 0.5661744156149039,
+    "equity": 0.6030628410491111
    },
    "abs": {
     "revenue": 7476800000,
     "netIncome": 1124300000,
-    "assets": 0,
-    "equity": 0
+    "assets": 5064600000,
+    "equity": 1713000000
    },
-   "worst": 0,
-   "status": "match"
+   "worst": null,
+   "status": "period-mismatch"
   },
   {
    "ticker": "FTV",

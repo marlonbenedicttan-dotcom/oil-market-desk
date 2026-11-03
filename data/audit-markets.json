@@ -1,5 +1,5 @@
 {
- "checked": "2026-11-03T11:56:37.553Z",
+ "checked": "2026-11-03T22:04:16.285Z",
  "markets": {
   "us": {
    "name": "US",
@@ -80,7 +80,7 @@
     "companies": 503,
     "marketCap": 503,
     "pe": 477,
-    "pb": 469,
+    "pb": 468,
     "ttm": 502,
     "quarters8": 499
    }
