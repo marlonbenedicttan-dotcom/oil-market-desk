@@ -18,23 +18,30 @@ const DAY = 864e5;
 const now = Date.now();
 
 // Hours a dataset may lag before it counts as stale. Each is two refreshes of its own cadence:
-// the market files rebuild daily, the valuation history and the IMF snapshot weekly.
+// the market files rebuild daily, the valuation history and the upstream snapshots weekly. Hong Kong
+// and Australia get 84h because their jobs skip the weekend: a Friday build read on Monday afternoon is
+// 72h old, and a holiday Monday makes it later still.
 const DATASETS = [
   ['US prices & fundamentals', 'companies.json', 36],
   ['Japan', 'japan.json', 36],
   ['Korea', 'korea.json', 36],
   ['Taiwan', 'taiwan.json', 36],
+  ['Hong Kong', 'hongkong.json', 84],
+  ['Australia', 'australia.json', 84],
   ['US filing tracker', 'filings-state.json', 36],
   ['Calendar events', 'events.json', 48],
   ['Valuation history', 'valuation.json', 24 * 10],
   ['Macro snapshot (IMF)', 'macro.json', 24 * 10],
+  // USDA feeds the crop tightness score at 0.5 weight. It had no check at all while it was refreshed
+  // by a LaunchAgent on a laptop, so a stopped job looked exactly like a quiet one.
+  ['USDA stocks-to-use', 'usda.json', 24 * 10],
 ];
 
 const rows = [];
 const add = (label, ok, msg, kind = 'data') => rows.push({ label, ok, msg, kind });
 
 for (const [label, file, maxH] of DATASETS) {
-  const limit = Number(process.env.MAX_AGE_HOURS) && /prices|Japan|Korea|Taiwan|filing/.test(label)
+  const limit = Number(process.env.MAX_AGE_HOURS) && /prices|Japan|Korea|Taiwan|Hong Kong|Australia|filing/.test(label)
     ? Number(process.env.MAX_AGE_HOURS) : maxH;
   try {
     const d = JSON.parse(readFileSync(join(ROOT, 'data', file), 'utf8'));

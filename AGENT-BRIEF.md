@@ -31,7 +31,9 @@ doc that matches your task:
 - Asset versions are automatic now: the server rewrites `?v=` from each file’s mtime. No manual bump.
 - Deploy = `git push origin main` → Render rebuilds in ~2–3 min. **Then verify on the live URL**
   `https://oil-market-desk.onrender.com` (poll for the new `?v=`, then check the change).
-- `.github/workflows/*` is untracked on purpose — don't add it.
+- `.github/workflows/*` **is tracked and is the scheduler** — a change there only reaches CI after a
+  push. There is one daily workflow per market (US/JP/KR, Taiwan, Hong Kong, Australia) plus a weekly
+  rebuild and a freshness check; see "Automated refresh" in `HANDOFF.md` before editing one.
 - Server caches linger (news 45 min, marketread 10 min, `movewho:` 6 h **per id+date**) — use fresh
   dates or restart the server when testing.
 

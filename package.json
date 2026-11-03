@@ -35,8 +35,11 @@
     "companies:descriptions": "node scripts/finalize-descriptions.mjs",
     "build:hongkong": "node scripts/build-hsi-constituents.mjs && node scripts/build-hongkong.mjs && node scripts/fetch-hongkong-profiles.mjs && node scripts/build-hongkong.mjs --skip-prices --skip-fin",
     "audit:hongkong": "node scripts/audit-hongkong.mjs",
+    "refresh:hongkong": "node scripts/build-hongkong.mjs --fresh-report && node scripts/fetch-hongkong-profiles.mjs && node scripts/build-hongkong.mjs --skip-prices --skip-fin",
     "build:australia": "node scripts/build-australia.mjs && node scripts/fetch-australia-profiles.mjs && node scripts/build-australia.mjs --skip-prices --skip-fin",
     "audit:australia": "node scripts/audit-australia.mjs",
+    "refresh:australia": "node scripts/build-australia.mjs --fresh && node scripts/fetch-australia-profiles.mjs && node scripts/build-australia.mjs --skip-prices --skip-fin",
+    "audit:refresh": "node scripts/audit-market-refresh.mjs",
     "brands:markets": "node scripts/attach-market-brands.mjs",
     "build:hsi": "node scripts/build-hsi-constituents.mjs"
   },

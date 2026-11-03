@@ -1,0 +1,77 @@
+name: hongkong-daily
+
+# Hong Kong's prices and statements are not in companies-daily: this job keeps the HKEX main board in
+# step with the other markets. The HKEX closes at 16:00 HKT (08:00 UTC) and posts its daily quotation
+# report in the evening, so 12:10 UTC (20:10 HKT) is after the report and after Yahoo settles.
+#
+# The build re-reads every statement page whose cache has expired (annual 7 days, quarterly 1 day), so a
+# new filing flows through to the ratios on its own — there is no HKEX announcement watcher behind this
+# yet, and the run is resumable: a throttled company is counted in audit.throttled and filled next run.
+
+on:
+  schedule:
+    - cron: '10 12 * * 1-5'   # 20:10 HKT, Mon–Fri
+  workflow_dispatch: {}
+
+concurrency:
+  group: hongkong-refresh
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0          # a rebase needs history, not just the tip
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      # The stockanalysis statement cache is the big one; without it a cold run fetches ~9,500 pages.
+      - name: Cache HK statements, exchange reports and Yahoo prices
+        uses: actions/cache@v4
+        with:
+          path: |
+            data/cache/hkex
+            data/cache/hongkong-sa
+            data/cache/hongkong-profiles
+          key: hk-cache-${{ github.run_id }}
+          restore-keys: hk-cache-
+      # The index list comes from a public wiki table, not the exchange. A hiccup there must not block a
+      # price refresh — the committed snapshot stays valid until it loads again.
+      - name: Hang Seng constituents (non-fatal)
+        run: node scripts/build-hsi-constituents.mjs || echo 'HSI list unavailable — keeping the committed snapshot'
+      # A cached report is normally trusted, but the exchange sometimes posts one incomplete and
+      # replaces it later. Dropping today's file makes `latestDaily` re-read the newest session; if it
+      # is not posted yet it 404s and falls back to yesterday's cached copy.
+      - name: Re-read the newest HKEX session
+        run: rm -f "data/cache/hkex/daily-$(date -u +%F).json"
+      - name: Build prices, statements and profiles
+        run: npm run refresh:hongkong
+      # A rate-limited run loses companies and chart history; an incomplete HKEX report loses companies.
+      # Refuse to publish either.
+      - name: Refuse a collapsed build
+        run: node scripts/audit-market-refresh.mjs hk
+      - name: Audit the dataset
+        run: npm run audit:hongkong
+      - name: Commit if changed
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add data/hongkong.json data/hongkong-list.json data/hongkong-series data/hongkong-companies data/hongkong-profiles.json data/hongkong-brands.json data/hongkong-hsi.json data/charts
+          if git diff --staged --quiet; then
+            echo 'no data change'
+          else
+            git commit -m "chore: daily Hong Kong refresh ($(date -u +%Y-%m-%d))"
+            # Another push (a human commit, or the US/Taiwan job) can land while this runs.
+            pushed=0
+            for i in 1 2 3 4 5; do
+              if git pull --rebase -X theirs origin main && git push; then pushed=1; break; fi
+              echo "push rejected (attempt $i) — rebasing and retrying"; sleep $((i * 5))
+            done
+            [ "$pushed" = "1" ] || { echo 'could not push after 5 attempts'; exit 1; }
+          fi
