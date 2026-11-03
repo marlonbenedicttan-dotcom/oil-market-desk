@@ -5249,6 +5249,13 @@ server.listen(PORT, async () => {
     // The light set keeps the landing feeds, brief, macro board and screener warm at ~250 MB; the
     // below-the-fold segment reads and positioning pay a ~1 s cold cost on first open.
     const fullWarm = process.env.WARM === 'full';
+    // The first company page needs the peer strip and the search box; building those indexes inside
+    // the request put a synchronous parse of the Japan/Korea/Taiwan/HK/AU lists (about 0.5 s on the
+    // free instance) in front of the chart. They read local artifacts only, so build them at the
+    // start of the warm pass (the memoised indexes then stay for the life of the process).
+    if (process.memoryUsage().rss < 300 * 1024 * 1024) {
+      try { peerIndex(); } catch {}
+    }
     // The brief is what the reader lands on first. Warm the base feeds first; the event pool is
     // built gently at the END (it fans out over every news feed) so it cannot compete with the
     // first visitor or the macro/news caches.
