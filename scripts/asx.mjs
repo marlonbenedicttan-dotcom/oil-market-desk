@@ -111,5 +111,21 @@ export const saPage = (code, page = '', trailing = false) =>
   `https://stockanalysis.com/quote/asx/${pad(code)}/financials/${page}/${trailing ? '?p=trailing' : ''}`;
 export const saProfile = (code) => `https://stockanalysis.com/quote/asx/${pad(code)}/company/`;
 
+// A handful of ASX lines are CDIs or the Australian leg of a dual-listed group; stockanalysis has no
+// ASX financials page for them, but the same company files under its primary US listing. The ratio is
+// ASX CDIs per global ordinary share, so market cap = ASX price × (global diluted shares × ratio).
+//   RMD  — ResMed Inc., NYSE: RMD; Yahoo names the ASX line "RESMED CDI 10:1".
+//   AMC  — Amcor plc, NYSE: AMCR; "AMCOR PLC CDI 1:1".
+//   RIO  — Rio Tinto Group, NYSE: RIO; the ASX FPO line is 1:1 with the group's ordinary shares.
+// A company not in this map and without an ASX page is excluded and counted, never guessed.
+export const US_CROSS = {
+  RMD: { ticker: 'rmd', ratio: 10, note: 'ResMed Inc. · NYSE: RMD · ASX CDIs 10:1' },
+  AMC: { ticker: 'amcr', ratio: 1, note: 'Amcor plc · NYSE: AMCR · ASX CDIs 1:1' },
+  RIO: { ticker: 'rio', ratio: 1, note: 'Rio Tinto Group · NYSE: RIO · ASX FPO 1:1' },
+};
+export const saUsPage = (ticker, page = '', quarterly = false) =>
+  `https://stockanalysis.com/stocks/${String(ticker).toLowerCase()}/financials/${page}/${quarterly ? '?p=quarterly' : ''}`;
+export const saUsProfile = (ticker) => `https://stockanalysis.com/stocks/${String(ticker).toLowerCase()}/company/`;
+
 // Yahoo's ASX suffix. Prices are five years of split-adjusted daily closes.
 export const yaSymbol = (code) => `${pad(code)}.AX`;

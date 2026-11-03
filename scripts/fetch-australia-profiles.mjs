@@ -12,7 +12,7 @@
 
 import { readFileSync, writeFileSync, renameSync, existsSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
-import { ROOT, AU_CACHE, saProfile } from './asx.mjs';
+import { ROOT, AU_CACHE, saProfile, saUsProfile, US_CROSS } from './asx.mjs';
 import { getCached } from './stockanalysis.mjs';
 
 const FILE = join(ROOT, 'data', 'australia.json');
@@ -38,6 +38,7 @@ export function extractProfile(html) {
   const title = (/<title>([^<]*)<\/title>/.exec(html) || [])[1] || '';
   const name = text(title)
     .replace(/\s*\([A-Z]{2,6}:[^)]*\).*$/i, '')
+    .replace(/\s*\([A-Z.]{1,6}\).*$/i, '')
     .replace(/\s*Company Profile.*$/i, '')
     .replace(/\s*Stock Price.*$/i, '')
     .trim();
@@ -77,10 +78,11 @@ console.log(`${list.length} companies to fetch (${Object.keys(book.entries).leng
 let ok = 0, miss = 0, fail = 0;
 for (let i = 0; i < list.length; i++) {
   const c = list[i];
-  const f = join(CACHE, `${c.code}.json`);
+  const cross = US_CROSS[c.code];
+  const f = join(CACHE, `${cross ? `us-${cross.ticker}` : c.code}.json`);
   let got = null;
   try {
-    const html = await getCached(saProfile(c.code), f, { ttlMs: FORCE ? 0 : TTL, fresh: FORCE, timeout: 25000, retries: 3 });
+    const html = await getCached(cross ? saUsProfile(cross.ticker) : saProfile(c.code), f, { ttlMs: FORCE ? 0 : TTL, fresh: FORCE, timeout: 25000, retries: 3 });
     if (html) got = extractProfile(html);
   } catch (e) {
     // Throttling is not a missing page. Go quiet for a minute so the next company has a chance,

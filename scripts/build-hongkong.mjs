@@ -275,11 +275,19 @@ function balanceOf(html) {
   const get = (row, id) => (row ? row.values[id] : null);
   const a = rowOf(t, ['Total Assets']);
   const l = rowOf(t, ['Total Liabilities']);
-  const e = rowOf(t, ['Total Equity', 'Total Stockholders Equity', "Shareholders' Equity", 'Total Common Equity']);
+  // Total equity includes non-controlling interests; common equity does not. P/B and ROE use common.
+  const et = rowOf(t, ['Total Equity', "Shareholders' Equity", 'Total Stockholders Equity']);
+  const ec = rowOf(t, ['Total Common Equity', 'Total Stockholders Equity', 'Stockholders Equity', 'Common Equity', 'Total Equity', "Shareholders' Equity"]);
   return {
     ttmEnd,
-    latest: ttmId ? { assets: scale(get(a, ttmId)), liabilities: scale(get(l, ttmId)), equity: scale(get(e, ttmId)) } : null,
-    annual: ann.map((c) => ({ end: c.id, assets: scale(get(a, c.id)), liabilities: scale(get(l, c.id)), equity: scale(get(e, c.id)) })),
+    latest: ttmId ? {
+      assets: scale(get(a, ttmId)), liabilities: scale(get(l, ttmId)),
+      equity: scale(get(et || ec, ttmId)), equityCommon: scale(get(ec || et, ttmId)),
+    } : null,
+    annual: ann.map((c) => ({
+      end: c.id, assets: scale(get(a, c.id)), liabilities: scale(get(l, c.id)),
+      equity: scale(get(et || ec, c.id)), equityCommon: scale(get(ec || et, c.id)),
+    })),
   };
 }
 function cashOf(html) {
@@ -449,6 +457,13 @@ const idx = hsi.length > 1 ? (() => {
 })() : null;
 
 // --- 6. derive ------------------------------------------------------------------------------------
+// The P/E band pairs each fiscal year's EPS with the price at that year end.
+for (const c of covered) {
+  for (const r of c.annual || []) {
+    const p = pointOnOrBefore(c.series || [], r.end);
+    if (p) r.px = p.c;
+  }
+}
 let out = deriveHongKong({ companies: covered, fx });
 
 // --- 7. English names, descriptions and sectors ---------------------------------------------------

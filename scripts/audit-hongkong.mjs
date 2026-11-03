@@ -5,7 +5,7 @@
 //
 // Read-only. Prints findings; exits non-zero if a hard invariant fails.
 
-import { readFileSync, existsSync } from 'node:fs';
+import { readFileSync, existsSync, mkdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { getCached } from './stockanalysis.mjs';
@@ -116,7 +116,7 @@ for (const c of hk.companies) {
   // the audit must compare against the same figure or it reports its own blind spot as a failure.
   const annual = (r.annual || []).filter((x) => x && x.end).sort((a, b) => String(a.end).localeCompare(String(b.end)));
   const fy = annual[annual.length - 1] || null;
-  const eq = latest.equity != null ? latest.equity : (fy ? fy.equity : null);
+  const eq = latest.equityCommon ?? latest.equity ?? (fy ? (fy.equityCommon ?? fy.equity) : null);
   const ni = ttm.netIncome != null ? ttm.netIncome : (fy ? fy.netIncome : null);
   const conv = ccyPerHkd(c.reportCurrency || 'HKD');
   const dpsRate = hkdPerCcy(c.reportCurrency || 'HKD');
@@ -191,6 +191,7 @@ if (a.throttled) warn.push(`${a.throttled} companies were rate-limited and are N
 // --- optional same-source cross-check -------------------------------------------------------------
 if (SAMPLE) {
   const sample = hk.companies.slice(0, SAMPLE);
+  mkdirSync(join(ROOT, 'data', 'cache', 'hongkong-audit'), { recursive: true });
   let cmp = 0, peOff = 0, dyOff = 0;
   for (const c of sample) {
     const f = join(ROOT, 'data', 'cache', 'hongkong-audit', `${c.code}.json`);

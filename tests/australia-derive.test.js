@@ -88,6 +88,30 @@ test('the five-year P/E band converts the price into the statement currency', ()
   assert.ok(c.bands.pe.percentile >= 0 && c.bands.pe.percentile <= 100);
 });
 
+test('P/B and ROE use common equity, not total equity with minorities', () => {
+  const c = derive({ ...base, latest: { equity: 5e8, equityCommon: 4e8 } });
+  assert.equal(c.pb, 2.5, 'market cap ÷ common equity');   // 1e9 / 4e8
+  assert.equal(c.roe, 25, 'profit ÷ common equity');       // 1e8 / 4e8
+  assert.equal(c.history.at(-1).q, 4e8, 'the record carries that year’s total equity');
+});
+
+test('the five-year band uses the fiscal-year-end price when the build provides it', () => {
+  const annual = base.annual.map((r) => ({ ...r, px: 10 }));
+  const c = derive({ ...base, annual, yearEnd: { 2021: 45, 2022: 60, 2023: 72, 2024: 88, 2025: 99 } });
+  assert.ok(c.bands && c.bands.pe);
+  assert.equal(c.bands.pe.min, 10);       // the current 10× is the cheapest point in the set
+  assert.equal(c.bands.pe.n, 6);          // five fiscal years + the current P/E
+});
+
+test('the five-year record carries each year’s own equity, not the latest', () => {
+  const out = derive({ ...base, annual: base.annual.map((r, i) => ({ ...r, equity: 1e8 * (i + 1), equityCommon: 0.8e8 * (i + 1) })) });
+  assert.equal(out.history.length, 5);
+  assert.equal(out.history[0].q, 1e8);
+  assert.equal(out.history.at(-1).q, 5e8);
+  assert.equal(out.history[0].ec, 0.8e8);
+  assert.equal(out.history.at(-1).ec, 4e8);
+});
+
 test('missing statements stay blank rather than becoming zero', () => {
   const c = derive({ ...base, ttm: {}, latest: {}, annual: [], quarters: [] });
   assert.equal(c.pe, null);

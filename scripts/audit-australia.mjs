@@ -1,15 +1,14 @@
 // Audit the Australia dataset: universe, prices, formulas, currency handling and aggregates.
 //
 //   node scripts/audit-australia.mjs
-//   node scripts/audit-australia.mjs --sample=40   also compare P/E and yield against stockanalysis
+//   node scripts/audit-australia.mjs --sample=40   also compare P/E against the vendor's statistics
 //
 // Read-only. Prints findings; exits non-zero if a hard invariant fails.
 
-import { readFileSync, existsSync } from 'node:fs';
+import { readFileSync, existsSync, mkdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { getCached, parseSaTable, rowOf } from './stockanalysis.mjs';
-import { saPage } from './asx.mjs';
+import { getCached } from './stockanalysis.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const read = (f) => JSON.parse(readFileSync(join(ROOT, 'data', f), 'utf8'));
@@ -118,8 +117,10 @@ let peBad = 0, pbBad = 0, roeBad = 0, fcfBad = 0, marginBad = 0, yldBad = 0, fxS
 for (const c of au.companies) {
   const r = c.reports || {};
   const ttm = r.ttm || {}, latest = r.latest || {};
-  const eq = latest.equity;
-  const ni = ttm.netIncome;
+  const annual = (r.annual || []).filter((x) => x && x.end).sort((a, b) => String(a.end).localeCompare(String(b.end)));
+  const fy = annual[annual.length - 1] || null;
+  const eq = latest.equityCommon ?? latest.equity ?? (fy ? (fy.equityCommon ?? fy.equity) : null);
+  const ni = ttm.netIncome != null ? ttm.netIncome : (fy ? fy.netIncome : null);
   const conv = ccyPerAud(c.reportCurrency || 'AUD');
   const dpsRate = audPerCcy(c.reportCurrency || 'AUD');
   const capRep = conv != null ? c.marketCap * conv : null;
@@ -197,6 +198,8 @@ const a = au.audit || {};
 say('CSV listed companies', a.quoted ?? '—');
 say('ETFs/funds/trusts excluded', a.excludedNonCompanies ?? '—');
 say('three-character companies', a.companies ?? '—');
+const cross = au.companies.filter((c) => c.crossListing);
+say('cross-listed statements', cross.length ? cross.map((c) => `${c.code}→${c.crossListing.ticker} (${c.crossListing.ratio}:1)`).join(' · ') : 'none');
 say('without a statement page', a.withoutStatements ?? '—');
 say('without a price', a.withoutPrice ?? '—');
 say('throttled, not fetched this run', a.throttled ?? 0);
@@ -207,28 +210,40 @@ if (a.withoutPrice) warn.push(`${a.withoutPrice} companies have no Yahoo price �
 if (a.throttled) warn.push(`${a.throttled} companies were rate-limited and are NOT in this dataset — rerun build:australia to fill them (nothing was cached as missing)`);
 
 // --- optional same-source cross-check -------------------------------------------------------------
+// The vendor's statistics page carries its own trailing P/E, P/B and ROE. P/E is the clean comparison
+// (both use the same filing); P/B and ROE use total equity there and common equity here, so a difference
+// is a definition, not an error — reported but not treated as a failure.
 if (SAMPLE) {
   const sample = au.companies.slice(0, SAMPLE);
-  let cmp = 0, peOff = 0, dyOff = 0;
+  mkdirSync(join(ROOT, 'data', 'cache', 'australia-audit'), { recursive: true });
+  let cmp = 0, peOff = 0, pbDiff = 0, roeDiff = 0;
+  const peOut = [];
   for (const c of sample) {
-    const f = join(ROOT, 'data', 'cache', 'australia-audit', `${c.code}.json`);
+    // A DLC/CDI line has two prices; the vendor's US statistics page values it at the US price, while
+    // this app values the ASX line at the ASX price. Comparing those P/Es is comparing two listings,
+    // not checking a formula — skip it and say so.
+    if (c.crossListing) continue;
+    const url = `https://stockanalysis.com/quote/asx/${c.code}/statistics/`;
+    const f = join(ROOT, 'data', 'cache', 'australia-audit', `stats-${c.code}.json`);
     let html = null;
-    try { html = await getCached(saPage(c.code, ''), f, { ttlMs: 7 * 864e5, retries: 2 }); } catch { html = null; }
+    try { html = await getCached(url, f, { ttlMs: 7 * 864e5, retries: 2 }); } catch { html = null; }
     if (!html) continue;
-    const t = parseSaTable(html);
-    const peRow = rowOf(t, ['PE Ratio']);
-    const dyRow = rowOf(t, ['Dividend Yield']);
-    const col = t.cols.find((x) => x.id === 'TTM') || t.cols[0];
-    if (!col) continue;
-    const pe = peRow && peRow.values[col.id];
-    const dy = dyRow && dyRow.values[col.id];
-    if (pe != null && c.pe != null) { cmp++; if (Math.abs(c.pe - pe) / pe > 0.15) peOff++; }
-    if (dy != null && c.dividendYield != null && Math.abs(c.dividendYield - dy) > 0.3) dyOff++;
+    const stat = (id) => {
+      const m = new RegExp(`\\{id:"${id}",[^}]*value:"([^"]+)"`).exec(html);
+      return m ? Number(String(m[1]).replace('%', '').replace(/,/g, '')) : null;
+    };
+    const pe = stat('pe'), pb = stat('pb'), roe = stat('roe');
+    if (pe != null && c.pe != null) { cmp++; if (Math.abs(c.pe - pe) / pe > 0.15) { peOff++; peOut.push(`${c.code} ${c.pe} vs ${pe}`); } }
+    if (pb != null && c.pb != null && Math.abs(c.pb - pb) / pb > 0.15) pbDiff++;
+    if (roe != null && c.roe != null && Math.abs(c.roe - roe) > 3) roeDiff++;
     await new Promise((r) => setTimeout(r, 250));
   }
   say('sample P/E compared / >15% off', `${cmp} / ${peOff}`);
-  say('sample yield >0.3pp off', dyOff);
-  if (peOff) warn.push(`${peOff}/${cmp} sample P/E differ from stockanalysis's own overview by >15% — the same source computing a different trailing window`);
+  say('cross-listed skipped (two prices)', sample.filter((c) => c.crossListing).map((c) => c.code).join(', ') || 'none');
+  say('sample P/B >15% from vendor (total equity)', pbDiff);
+  say('sample ROE >3pp from vendor (total equity)', roeDiff);
+  if (peOff) warn.push(`${peOff}/${cmp} sample P/E differ from the vendor's own statistics by >15% — check the price date or the trailing window (${peOut.join(', ')})`);
+  if (pbDiff || roeDiff) warn.push(`${pbDiff} P/B and ${roeDiff} ROE values differ from the vendor because the vendor divides by total equity (including minorities); this build divides by common equity`);
 }
 
 // --- list projection ------------------------------------------------------------------------------

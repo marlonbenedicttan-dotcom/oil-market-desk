@@ -52,7 +52,11 @@ export function deriveListing({ companies, fx = null, baseCurrency = 'HKD' }) {
     const op = ttm.operatingProfit ?? (fy ? fy.operatingProfit : null);
     const basis = ttm.netIncome != null ? 'TTM' : 'FY';
 
-    const equity = latest.equity ?? (fy ? fy.equity : null);
+    // P/B and ROE belong to the ordinary shareholders, so both sides use common equity (excluding
+    // non-controlling interests). Dividing a parent-only market cap by total equity (which includes
+    // minorities) understates both: BHP's minority is ~10% of book but a quarter of earnings, which
+    // turned a 19% ROE into 17.5% on the old total-equity denominator.
+    const equity = latest.equityCommon ?? latest.equity ?? (fy ? (fy.equityCommon ?? fy.equity) : null);
     const cfo = ttm.operatingCashFlow ?? (fy ? fy.operatingCashFlow : null);
     const cfi = ttm.investingCashFlow ?? (fy ? fy.investingCashFlow : null);
     const fcf = cfo != null && cfi != null ? cfo + cfi : (ttm.freeCashFlow ?? null);
@@ -67,7 +71,9 @@ export function deriveListing({ companies, fx = null, baseCurrency = 'HKD' }) {
     const pes = [];
     for (const r of annual) {
       const y = String(r.end).slice(0, 4);
-      const px = yearEnd[y];
+      // The price at the fiscal year end, when the build had the series; the calendar year-end is only
+      // a fallback (a June-year company would otherwise pair a December price with a June EPS).
+      const px = r.px ?? yearEnd[y];
       if (px && r.eps > 0 && conv) pes.push((px * conv) / r.eps);
     }
     if (peRaw != null && peRaw > 0.01) pes.push(peRaw);
@@ -108,8 +114,9 @@ export function deriveListing({ companies, fx = null, baseCurrency = 'HKD' }) {
       fcfYield: capRep && fcf != null ? round((fcf / capRep) * 100, 2) : null,
       dividendYield: round(guard(yieldRaw, 0, 30), 2),
       history: annual.slice(-5).map((r) => ({
-        y: r.end, s: r.revenue, o: r.operatingProfit, n: r.netIncome, q: r.equity, a: r.assets,
-        c: r.operatingCashFlow, i: r.investingCashFlow,
+        y: r.end, s: r.revenue, o: r.operatingProfit, n: r.netIncome,
+        q: r.equity ?? r.equityCommon, ec: r.equityCommon ?? r.equity,
+        a: r.assets, c: r.operatingCashFlow, i: r.investingCashFlow,
       })),
       quarters: (c.quarters || []).slice(-8),
       bands,

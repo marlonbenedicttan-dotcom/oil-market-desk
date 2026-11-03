@@ -24,7 +24,7 @@ import { writeFileSync, renameSync, readFileSync, existsSync, mkdirSync } from '
 import https from 'node:https';
 import { join } from 'node:path';
 import {
-  ROOT, AU_CACHE, AU_SA, asxCsv, sectorOf, isNotApplic, isUnclassified, isFundLine, pad, saPage, yaSymbol,
+  ROOT, AU_CACHE, AU_SA, asxCsv, sectorOf, isNotApplic, isUnclassified, isFundLine, pad, saPage, saUsPage, US_CROSS, yaSymbol,
 } from './asx.mjs';
 import {
   sleep, readJson, writeJson, getCached, parseSaTable, rowOf, periodFromTitle, statementCurrency,
@@ -248,11 +248,20 @@ function balanceOf(html) {
   const get = (row, id) => (row ? row.values[id] : null);
   const a = rowOf(t, ['Total Assets']);
   const l = rowOf(t, ['Total Liabilities']);
-  const e = rowOf(t, ['Total Equity', 'Total Stockholders Equity', "Shareholders' Equity", 'Total Common Equity']);
+  // Total equity includes non-controlling interests; common equity does not. P/B and ROE are about the
+  // ordinary shareholder, so the common figure is the one the ratios use (total is kept for display).
+  const et = rowOf(t, ['Total Equity', "Shareholders' Equity", 'Total Stockholders Equity']);
+  const ec = rowOf(t, ['Total Common Equity', 'Total Stockholders Equity', 'Stockholders Equity', 'Common Equity', 'Total Equity', "Shareholders' Equity"]);
   return {
     ttmEnd,
-    latest: ttmId ? { assets: scale(get(a, ttmId)), liabilities: scale(get(l, ttmId)), equity: scale(get(e, ttmId)) } : null,
-    annual: ann.map((c) => ({ end: c.id, assets: scale(get(a, c.id)), liabilities: scale(get(l, c.id)), equity: scale(get(e, c.id)) })),
+    latest: ttmId ? {
+      assets: scale(get(a, ttmId)), liabilities: scale(get(l, ttmId)),
+      equity: scale(get(et || ec, ttmId)), equityCommon: scale(get(ec || et, ttmId)),
+    } : null,
+    annual: ann.map((c) => ({
+      end: c.id, assets: scale(get(a, c.id)), liabilities: scale(get(l, c.id)),
+      equity: scale(get(et || ec, c.id)), equityCommon: scale(get(ec || et, c.id)),
+    })),
   };
 }
 function cashOf(html) {
@@ -321,14 +330,25 @@ function trailingBalanceOf(html) {
   const { t, id, get } = L;
   const a = rowOf(t, ['Total Assets']);
   const l = rowOf(t, ['Total Liabilities']);
-  const e = rowOf(t, ['Total Equity', 'Total Stockholders Equity', "Shareholders' Equity", 'Total Common Equity']);
-  return { end: id, latest: { assets: scale(get(a)), liabilities: scale(get(l)), equity: scale(get(e)) } };
+  const et = rowOf(t, ['Total Equity', "Shareholders' Equity", 'Total Stockholders Equity']);
+  const ec = rowOf(t, ['Total Common Equity', 'Total Stockholders Equity', 'Stockholders Equity', 'Common Equity', 'Total Equity', "Shareholders' Equity"]);
+  return {
+    end: id,
+    latest: {
+      assets: scale(get(a)), liabilities: scale(get(l)),
+      equity: scale(get(et || ec)), equityCommon: scale(get(ec || et)),
+    },
+  };
 }
 async function page(code, p, q = false) {
   const f = join(AU_SA, `${code}-${p}${q ? '-t' : ''}.json`);
   // A 404 returns null (the page genuinely does not exist); throttling throws, and the caller marks the
   // company so the audit can say "not fetched this run" instead of "no statements".
   return getCached(saPage(code, p, q), f, { ttlMs: q ? TTL_Q : TTL_FIN, timeout: 30000, retries: 6 });
+}
+async function usPage(ticker, p, q = false) {
+  const f = join(AU_SA, `us-${ticker}-${p}${q ? '-q' : ''}.json`);
+  return getCached(saUsPage(ticker, p, q), f, { ttlMs: q ? TTL_Q : TTL_FIN, timeout: 30000, retries: 6 });
 }
 
 if (!SKIP_FIN) {
@@ -338,13 +358,24 @@ if (!SKIP_FIN) {
     try {
       // Sequential, not Promise.all: five simultaneous requests per worker is a burst the source
       // reads as a scraper. One page at a time with the global pace stays under the limit.
-      const inc = await page(c.code, 'income-statement');
-      const bal = await page(c.code, 'balance-sheet');
-      const csh = await page(c.code, 'cash-flow-statement');
-      const tinc = await page(c.code, 'income-statement', true);
-      const tbal = await page(c.code, 'balance-sheet', true);
+      let inc = await page(c.code, 'income-statement');
+      let bal = await page(c.code, 'balance-sheet');
+      let csh = await page(c.code, 'cash-flow-statement');
+      let tinc = await page(c.code, 'income-statement', true);
+      let tbal = await page(c.code, 'balance-sheet', true);
+      let cross = null;
+      // A CDI / dual-listed line with no ASX statement page: read the same company's primary US
+      // listing, and scale the share count by the CDI ratio so the ASX price still gives the cap.
+      if (!inc && US_CROSS[c.code]) {
+        cross = US_CROSS[c.code];
+        inc = await usPage(cross.ticker, 'income-statement');
+        bal = await usPage(cross.ticker, 'balance-sheet');
+        csh = await usPage(cross.ticker, 'cash-flow-statement');
+        tinc = await usPage(cross.ticker, 'income-statement', true);
+        tbal = null;
+      }
       const I = incomeOf(inc), B = balanceOf(bal), C = cashOf(csh);
-      const TI = trailingIncomeOf(tinc), TB = trailingBalanceOf(tbal);
+      const TI = cross ? null : trailingIncomeOf(tinc), TB = cross ? null : trailingBalanceOf(tbal);
       const annual = new Map();
       const add = (end, obj) => { if (!annual.has(end)) annual.set(end, { end }); Object.assign(annual.get(end), obj); };
       for (const r of I.annual) add(r.end, r);
@@ -352,15 +383,36 @@ if (!SKIP_FIN) {
       for (const r of C.annual) add(r.end, r);
       // The trailing view is the TTM window. Fall back to the latest annual row on a company whose
       // vendor page has no trailing table (then peBasis says FY, never "TTM" for an annual number).
-      c.ttm = { ...((TI && TI.ttm) || I.ttm || {}), ...(C.ttm || {}) };
-      c.ttmEnd = (TI && TI.end) || I.ttmEnd || C.ttmEnd || null;
-      c.latest = (TB && TB.latest) || B.latest || {};
-      c.latestEnd = (TB && TB.end) || B.ttmEnd || null;
+      c.ttm = { ...((cross ? I.ttm : (TI && TI.ttm) || I.ttm) || {}), ...(C.ttm || {}) };
+      c.ttmEnd = cross ? I.ttmEnd : ((TI && TI.end) || I.ttmEnd || C.ttmEnd || null);
+      c.latest = cross ? (B.latest || {}) : ((TB && TB.latest) || B.latest || {});
+      c.latestEnd = cross ? B.ttmEnd : ((TB && TB.end) || B.ttmEnd || null);
       c.annual = [...annual.values()].filter((r) => r.revenue != null || r.equity != null).sort((a, b) => a.end.localeCompare(b.end));
-      c.quarters = (TI && TI.periods) || quartersOf(tinc);
-      c.reportCurrency = I.currency || statementCurrency(tinc) || 'AUD';
+      c.quarters = cross ? quartersOf(tinc) : ((TI && TI.periods) || quartersOf(tinc));
+      c.reportCurrency = I.currency || (cross ? 'USD' : 'AUD');
       // Shares come from the filing, not from a divisor: diluted shares are the count the EPS row uses.
-      c.shares = (TI && TI.ttm.shares) || (I.ttm && I.ttm.shares) || (c.annual.length ? c.annual[c.annual.length - 1].shares : null) || null;
+      const rawShares = (cross ? (I.ttm && I.ttm.shares) : (TI && TI.ttm.shares)) || (I.ttm && I.ttm.shares) || (c.annual.length ? c.annual[c.annual.length - 1].shares : null) || null;
+      c.shares = rawShares != null && cross ? rawShares * cross.ratio : rawShares;
+      if (cross) {
+        c.crossListing = { market: 'us', ticker: cross.ticker.toUpperCase(), ratio: cross.ratio, note: cross.note };
+        c.sharesBasis = cross.ratio === 1 ? 'filing (same ordinary shares)' : `filing × ${cross.ratio} (CDI ratio)`;
+        c.periodBasis = 'quarter';
+        // The ASX price is per CDI. One global share is `ratio` CDIs, so per-share figures (EPS, DPS)
+        // must be divided by the ratio before they are compared with that price; otherwise the P/E
+        // band and the dividend yield are off by the CDI ratio (RMD's yield read 10.5%, not 1.05%).
+        if (cross.ratio !== 1) {
+          const d = cross.ratio;
+          if (c.ttm) {
+            if (c.ttm.eps != null) c.ttm.eps /= d;
+            if (c.ttm.dividendPerShare != null) c.ttm.dividendPerShare /= d;
+          }
+          for (const r of c.annual) {
+            if (r.eps != null) r.eps /= d;
+            if (r.dividendPerShare != null) r.dividendPerShare /= d;
+          }
+          c.perShareBasis = `per CDI (1/${d} share)`;
+        }
+      }
     } catch (e) {
       if (e && e.throttled) {
         c.throttled = true;
@@ -388,6 +440,11 @@ if (!SKIP_FIN) {
     c.latestEnd = (p.reports && p.reports.latestEnd) || null;
     c.reportCurrency = p.reportCurrency || 'AUD';
     c.shares = p.shares || null;
+    // A cross-listed line's provenance must survive the cache rebuild, or the company page stops
+    // saying that the statements are the NYSE listing's and the audit reports "none".
+    c.crossListing = p.crossListing || null;
+    c.periodBasis = p.periodBasis || null;
+    c.sharesBasis = p.sharesBasis || null;
   }
 }
 
@@ -431,6 +488,14 @@ const idx = axjo.length > 1 ? (() => {
 })() : null;
 
 // --- 6. derive ------------------------------------------------------------------------------------
+// The P/E band pairs each fiscal year's EPS with the price at that year end, not the calendar year end:
+// a June-year company would otherwise compare a December price with a June EPS.
+for (const c of covered) {
+  for (const r of c.annual || []) {
+    const p = pointOnOrBefore(c.series || [], r.end);
+    if (p) r.px = p.c;
+  }
+}
 let out = deriveListing({ companies: covered, fx, baseCurrency: 'AUD' });
 
 // --- 7. English names, descriptions and sectors ---------------------------------------------------

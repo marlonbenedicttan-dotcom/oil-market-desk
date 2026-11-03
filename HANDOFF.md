@@ -3397,6 +3397,9 @@ Audited at 360, 390 and 430 px with screenshots of every view, then fixed what l
 - **Tests**: `tests/hongkong-derive.test.js` (HKD vs CNY ratios, missing FX, loss/negative-equity
   guards, bands) and `tests/hongkong-data.test.js` (cap = price × shares, ratio bounds, market totals,
   sector partition, index ordering, FX snapshot, list projection).
+- **Built (2026-11-03, after the cross-list pass):** 1,805 companies · 1,802 descriptions · 0
+  throttled · 255 listed lines without a statement page. HSI 23,525.97. P/B and ROE now use common
+  equity (the shared engine change above), so Tencent's P/B is 2.69 rather than 2.89.
 
 ## Australia: every ASX-listed company (2026-11-02)
 - **Universe**: the ASX **listed-companies CSV** (`asx.com.au/asx/research/ASXListedCompanies.csv`,
@@ -3451,11 +3454,29 @@ Audited at 360, 390 and 430 px with screenshots of every view, then fixed what l
   `tests/australia-data.test.js` (cap = price × shares, ratio bounds, totals, sector partition, index,
   FX, list projection, audit counters). Plus the `au` entries in `filters.test.js` and three
   `/api/australia` tests (one asserts BHP is valued in USD).
-- **Built (2026-11-03):** 1,666 companies · 548 P/E · 1,666 descriptions · 26 sectors resolved from
-  the profile · 113 foreign reporters (USD 89, NZD 6, PGK 4, EUR 4, CAD 3, SGD 3, GBP 3, MYR 1) ·
-  ASX 200 8,886.8 · **0 throttled** · 301 listed companies without a statement page · 93 ETFs/funds/
-  trusts filtered out. Total cap A$2.96T. `npm run audit:australia` is the repeatable check.
+- **Built (2026-11-03):** 1,669 companies · 551 P/E · 1,669 descriptions · 26 sectors resolved from
+  the profile · 116 foreign reporters (USD 92, NZD 6, PGK 4, EUR 4, CAD 3, SGD 3, GBP 3, MYR 1) ·
+  ASX 200 8,886.8 · **0 throttled** · 295 listed companies without a statement page · 3 without a
+  price · 93 ETFs/funds/trusts filtered out. Total cap A$3.28T. `npm run audit:australia` is the
+  repeatable check.
+- **Cross-listed lines**: RIO, RMD and AMC have no stockanalysis ASX financials page; they are CDIs or
+  the Australian leg of a dual-listed group. The build reads the same company's primary US listing
+  (`stocks/rio`, `stocks/rmd`, `stocks/amcr`) and scales the global diluted share count by the CDI
+  ratio — RMD 10:1, AMC 1:1, RIO 1:1 — so market cap = ASX price × (filing shares × ratio). The
+  company page says "NYSE statements" and the audit lists the mapping. The ratios reproduce and the
+  P/E matches the vendor's own ASX page (RIO 13.8 vs 13.65, RMD 21.24 vs 21.20, AMC 20.27 vs 20.16).
+- **Common equity, not total equity**: P/B and ROE divide by `Total Common Equity` (excluding
+  non-controlling interests), because the market cap is the ordinary shareholders' claim. BHP's
+  minority is ~10% of book but ~25% of earnings, so total equity understated its ROE (17.5% → 19.3%).
+  The five-year record keeps total equity in `q` and adds common equity in `ec`; the page's ROE
+  column uses `ec`. Hong Kong uses the same shared engine and was rebuilt the same way.
+- **Fiscal-year P/E bands**: each historical P/E pairs the EPS with the price at that fiscal year end
+  (`r.px` from the daily series), not the calendar year end. A June-year company no longer compares a
+  December price with a June EPS.
 - **Coverage note**: 33% of the market has a P/E. That is the market, not a bug: ASX has hundreds of
-  pre-revenue explorers and loss-making small caps, and a loss-maker correctly has no P/E. 382
+  pre-revenue explorers and loss-making small caps, and a loss-maker correctly has no P/E. 383
   companies have no vendor trailing table, so their ratios use the last fiscal year and `peBasis`
-  says `FY`; the rest are TTM. P/B and ROE are populated for 92% of the covered set.
+  says `FY`; the rest are TTM. P/B and ROE are populated for 92% of the covered set. The optional
+  `--sample=N` audit now compares P/E against the vendor's own statistics page: 26/26 of the top 30
+  (cross-listed lines skipped — they have two prices) are within 15%, and P/B/ROE differences are
+  exactly the total-vs-common equity definition.

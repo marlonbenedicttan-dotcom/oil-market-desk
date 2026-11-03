@@ -61,7 +61,7 @@
       "label": "TECHNOLOGY",
       "kind": "sector",
       "note": "Xero and WiseTech are the global software exporters; REA is the property-portal monopoly; Computershare is registry and share services; Altium is electronic design software. Small by index weight, but the ASX's growth end.",
-      "tickers": ["XRO", "WTC", "REA", "CPU", "ALU", "NXT", "MP1"]
+      "tickers": ["XRO", "WTC", "REA", "CPU", "NXT", "MP1"]
     }
   ]
 }
