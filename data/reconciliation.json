@@ -1,13 +1,13 @@
 {
- "generated": "2026-11-01T21:42:12.771Z",
+ "generated": "2026-11-03T11:33:50.230Z",
  "summary": {
-  "usable": 497,
-  "match": 471,
-  "close": 22,
+  "usable": 495,
+  "match": 470,
+  "close": 21,
   "diverge": 0,
   "diverge-immaterial": 0,
   "definition": 4,
-  "period-mismatch": 1,
+  "period-mismatch": 3,
   "no-nasdaq-data": 5
  },
  "companies": [
@@ -7716,8 +7716,8 @@
   {
    "ticker": "AZO",
    "sector": "Consumer",
-   "period": "8/29/2026",
-   "sameYear": true,
+   "period": "8/30/2025",
+   "sameYear": false,
    "our": {
     "revenue": 18938717000,
     "netIncome": 2572777000,
@@ -7728,25 +7728,25 @@
     "shares": 16567821
    },
    "nasdaq": {
-    "revenue": 20338555000,
-    "netIncome": 2572777000,
-    "assets": 21630510000,
-    "equity": -2502470000
+    "revenue": 18938717000,
+    "netIncome": 2498247000,
+    "assets": 19355324000,
+    "equity": -3414313000
    },
    "diff": {
-    "revenue": 0.06882681685104965,
-    "netIncome": 0,
-    "assets": 0,
-    "equity": 0
+    "revenue": 0,
+    "netIncome": 0.02896869802551873,
+    "assets": 0.10518411262610082,
+    "equity": 0.26706485316372575
    },
    "abs": {
     "revenue": 18938717000,
     "netIncome": 2572777000,
-    "assets": 0,
-    "equity": 0
+    "assets": 2275186000,
+    "equity": 911843000
    },
-   "worst": 0.06882681685104965,
-   "status": "close"
+   "worst": null,
+   "status": "period-mismatch"
   },
   {
    "ticker": "HONA",
@@ -10812,8 +10812,8 @@
   {
    "ticker": "JBL",
    "sector": "Technology",
-   "period": "8/31/2026",
-   "sameYear": true,
+   "period": "8/31/2025",
+   "sameYear": false,
    "our": {
     "revenue": 35950000000,
     "netIncome": 1042000000,
@@ -10824,25 +10824,25 @@
     "shares": 105595267
    },
    "nasdaq": {
-    "revenue": 35954000000,
-    "netIncome": 1042000000,
-    "assets": 27435000000,
-    "equity": 1613000000
+    "revenue": 29802000000,
+    "netIncome": 657000000,
+    "assets": 18543000000,
+    "equity": 1513000000
    },
    "diff": {
-    "revenue": 0.00011125326806474941,
-    "netIncome": 0,
-    "assets": 0,
-    "equity": 0.0024798512089274642
+    "revenue": 0.1710152990264256,
+    "netIncome": 0.3694817658349328,
+    "assets": 0.32411153635866596,
+    "equity": 0.05966438781852082
    },
    "abs": {
     "revenue": 35950000000,
     "netIncome": 1042000000,
-    "assets": 0,
-    "equity": 4000000
+    "assets": 8892000000,
+    "equity": 96000000
    },
-   "worst": 0.0024798512089274642,
-   "status": "match"
+   "worst": null,
+   "status": "period-mismatch"
   },
   {
    "ticker": "HAL",

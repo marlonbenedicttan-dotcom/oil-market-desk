@@ -20,7 +20,8 @@
 // closes, bucketed by the first character of the code), data/australia-list.json (the compact
 // /api/australia payload).
 
-import { writeFileSync, renameSync, readFileSync, existsSync, mkdirSync } from 'node:fs';
+import { writeFileSync, renameSync, readFileSync, existsSync, mkdirSync, rmSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import https from 'node:https';
 import { join } from 'node:path';
 import {
@@ -34,6 +35,7 @@ import { deriveListing } from './derive-listing.mjs';
 const OUT = join(ROOT, 'data', 'australia.json');
 const SERIES_DIR = join(ROOT, 'data', 'australia-series');
 const LIST_OUT = join(ROOT, 'data', 'australia-list.json');
+const DETAIL_DIR = join(ROOT, 'data', 'australia-companies');
 const PROFILES = join(ROOT, 'data', 'australia-profiles.json');
 const THEMES = join(ROOT, 'data', 'australia-themes.json');
 const DAY = 864e5;
@@ -619,6 +621,17 @@ try {
   const list = australiaList({ ...JSON.parse(readFileSync(OUT, 'utf8')) });
   writeFileSync(`${LIST_OUT}.tmp`, JSON.stringify(list)); renameSync(`${LIST_OUT}.tmp`, LIST_OUT);
 } catch (e) { console.log(`  list artifact: ${e.message}`); }
+
+// One small file per company for the company page. Parsing the 8 MB dataset for one record costs the
+// free Render instance ~50 MB; on a 512 MB box that (plus the chart buckets) was enough to OOM and
+// turn company pages into 502s. The detail endpoint reads only this file.
+rmSync(DETAIL_DIR, { recursive: true, force: true });
+mkdirSync(DETAIL_DIR, { recursive: true });
+for (const c of cleaned) writeFileSync(join(DETAIL_DIR, `${c.code}.json`), JSON.stringify(c));
+
+// Re-index the per-company chart store so a chart never has to parse a whole bucket again.
+try { execFileSync(process.execPath, [join(ROOT, 'scripts', 'build-chart-store.mjs'), 'au'], { stdio: 'inherit' }); }
+catch (e) { console.log(`  chart store: ${e.message}`); }
 
 console.log(`${cleaned.length} companies · ${audit.pe} P/E · ${withDesc} descriptions · ASX 200 ${idx ? idx.level : '—'} · USD/AUD ${fx.rate}`);
 console.log(`${dropped.length} without statements · ${noPrice.length} without a price · ${audit.foreignReporters} report in a currency other than AUD · ${audit.notApplicSectors} "Not Applic" sectors resolved`);

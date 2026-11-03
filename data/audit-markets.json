@@ -1,5 +1,5 @@
 {
- "checked": "2026-11-01T21:42:14.946Z",
+ "checked": "2026-11-03T11:33:50.736Z",
  "markets": {
   "us": {
    "name": "US",
@@ -202,7 +202,7 @@
     {
      "check": "P/E = cap ÷ TTM profit",
      "severity": "fail",
-     "count": 0,
+     "count": 8,
      "detail": "P/E does not reproduce from its own inputs"
     },
     {
@@ -232,36 +232,40 @@
     {
      "check": "share count differs from the filing",
      "severity": "info",
-     "count": 244,
+     "count": 2,
      "detail": "A split or consolidation since the last annual report"
     }
    ],
-   "fail": 0,
-   "warn": 244,
+   "fail": 8,
+   "warn": 2,
    "examples": {
+    "P/E = cap ÷ TTM profit": [
+     "062040 (17.6%)",
+     "281820 (47.5%)",
+     "439260 (6.8%)",
+     "001500 (57.4%)",
+     "003610 (77.0%)",
+     "021820 (-24.4%)",
+     "023350 (18.1%)",
+     "008870 (69.1%)"
+    ],
     "share count differs from the filing": [
-     "032830 (filing 179,574,779 → listed 200,000,000)",
-     "068270 (filing 218,613,124 → listed 232,073,081)",
-     "034730 (filing 55,086,352 → listed 72,502,730)",
-     "000810 (filing 39,828,296 → listed 44,647,481)",
-     "010120 (filing 29,738,491 → listed 150,000,000)",
-     "006800 (filing 436,049,860 → listed 543,021,869)",
-     "005830 (filing 60,643,469 → listed 65,500,542)",
-     "267250 (filing 70,668,430 → listed 78,992,811)"
+     "950210 (filing 2,253,257 → listed 60,104,167)",
+     "021050 (filing 288,822 → listed 47,505,198)"
     ]
    },
    "coverage": {
     "companies": 746,
     "marketCap": 746,
-    "pe": 558,
-    "peTTM": 517,
-    "peFY": 41,
+    "pe": 561,
+    "peTTM": 518,
+    "peFY": 43,
     "pb": 735,
     "roe": 739,
     "naverMatched": 746
    }
   }
  },
- "failures": 0,
- "warnings": 284
+ "failures": 8,
+ "warnings": 42
 }

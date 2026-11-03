@@ -9,6 +9,7 @@ import crypto from 'node:crypto';
 import { sendMail } from './src/smtp.js';
 import { fileURLToPath } from 'node:url';
 import { projectUs, projectJp, koreaList, taiwanList, hongkongList, australiaList, US_LIST_FIELDS } from './src/project.js';
+import { sliceRange, seriesFromLine } from './src/charts.js';
 import { sgn, businessDaysSince, horizonDeltas, horizonDeltasAbs, isoWeek, monthly, pctOver, percentile, lastNonNull, escHtml, webhookPayload, realizedVol, computeCracks, computeCrush, computeSteel, backAdjust, pearson, logReturns, frontExpiry, curveTightness, inventoryTightness, weightedScore, seasonalGrade, seasonalAhead, contractMonthsBetween, signedPosition, signedMove, stretchScore, sdLabel, attributeMoves, newsContextOk, METHODOLOGY, positioningFlag, positioningRead, positioningDivergence, maxDrawdown, drawdownNow, realizedVolTerm, volPercentile, volVsOwnWord, corrMatrix, fxAdjust, parseOcc, drawdownWord, volWord, volTrend, corrShift, pairGroups, topPairs, bestDiversifier, riskRead, priorityOf, rankByPriority, clusterEvents, scoreEvents, selectEvents, explainRows } from './src/lib.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -739,6 +740,69 @@ const US_CHARTS = (() => {
   try { return JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'us-charts.json'), 'utf8')).series || {}; }
   catch { return {}; }
 })();
+
+// ---------------------------------------------------------------------------
+// Chart store — one byte-range read per chart, instead of parsing a whole market.
+//
+// A single company chart used to parse the market's entire history: 28 MB for Korea, up to 7 MB for
+// a Taiwan/Australia bucket. On the free instance the first chart of a market could take seconds,
+// and every deploy started cold. `scripts/build-chart-store.mjs` writes one line per company plus a
+// byte-offset index; a request now reads only that line (a few KB). If the store is absent or a code
+// is not in it, the old readers below still answer the request.
+// ---------------------------------------------------------------------------
+const CHART_DIR = path.join(__dirname, 'data', 'charts');
+const CHART_INDEX_CACHE = new Map();   // market -> index (or null)
+const CHART_LINE_CACHE = new Map();    // "market:KEY" -> { dates, closes }
+const CHART_CACHE_MAX = 160;
+
+function chartIndex(market) {
+  if (CHART_INDEX_CACHE.has(market)) return CHART_INDEX_CACHE.get(market);
+  try {
+    const idx = JSON.parse(fs.readFileSync(path.join(CHART_DIR, `${market}.idx.json`), 'utf8'));
+    if (!idx || !idx.keys || !Array.isArray(idx.dates)) throw new Error('bad index');
+    CHART_INDEX_CACHE.set(market, idx);
+    return idx;
+  } catch {
+    CHART_INDEX_CACHE.set(market, null);
+    return null;
+  }
+}
+
+function readStoredSeries(market, code) {
+  const idx = chartIndex(market);
+  if (!idx) return null;
+  const key = String(code || '').trim().toUpperCase();
+  const span = idx.keys[key];
+  if (!span) return null;
+  const cacheKey = `${market}:${key}`;
+  const hit = CHART_LINE_CACHE.get(cacheKey);
+  if (hit) return hit;
+  let fd;
+  try {
+    fd = fs.openSync(path.join(CHART_DIR, `${market}.ndjson`), 'r');
+    const buf = Buffer.alloc(span[1]);
+    const n = fs.readSync(fd, buf, 0, span[1], span[0]);
+    const line = JSON.parse(buf.toString('utf8', 0, n));
+    const series = seriesFromLine(line, idx.dates);
+    if (series.dates.length < 2) return null;
+    if (CHART_LINE_CACHE.size >= CHART_CACHE_MAX) CHART_LINE_CACHE.delete(CHART_LINE_CACHE.keys().next().value);
+    CHART_LINE_CACHE.set(cacheKey, series);
+    return series;
+  } catch {
+    return null;
+  } finally {
+    if (fd !== undefined) { try { fs.closeSync(fd); } catch {} }
+  }
+}
+
+// The stored series sliced to the requested window, or null when the store cannot answer.
+function storeChart(market, code, range) {
+  const series = readStoredSeries(market, code);
+  if (!series) return null;
+  const sliced = sliceRange(series.dates, series.closes, range);
+  return sliced.dates.length > 1 ? sliced : null;
+}
+
 const KOREA_FILE = path.join(__dirname, 'data', 'korea.json');
 let KR_CACHE = { mtime: 0, data: null };
 function readKorea() {
@@ -836,7 +900,7 @@ function readTaiwanSeries(code) {
     const hit = TW_SERIES_CACHE.get(b);
     if (hit && hit.mtime === st.mtimeMs) return hit.data;
     const data = JSON.parse(fs.readFileSync(f, 'utf8'));
-    if (TW_SERIES_CACHE.size >= 3) TW_SERIES_CACHE.delete(TW_SERIES_CACHE.keys().next().value);
+    if (TW_SERIES_CACHE.size >= 2) TW_SERIES_CACHE.delete(TW_SERIES_CACHE.keys().next().value);
     TW_SERIES_CACHE.set(b, { mtime: st.mtimeMs, data });
     return data;
   } catch { return { daily: {}, weekly: {} }; }
@@ -875,8 +939,7 @@ function readHongKongList() {
   } catch { /* no artifact yet */ }
   return hongkongList(readHongKong());
 }
-const HONGKONG_SERIES_DIR = path.join(__dirname, 'data', 'hongkong-series');
-const HKG_SERIES_CACHE = new Map();   // one bucket per chart, not the whole market
+const HONGKONG_SERIES_DIR = path.join(__dirname, 'data', 'hongkong-series');const HKG_SERIES_CACHE = new Map();   // one bucket per chart, not the whole market
 function readHongKongSeries(code) {
   const b = String(code || '').slice(0, 2);
   if (!/^\d{2}$/.test(b)) return { daily: {}, weekly: {} };
@@ -886,7 +949,7 @@ function readHongKongSeries(code) {
     const hit = HKG_SERIES_CACHE.get(b);
     if (hit && hit.mtime === st.mtimeMs) return hit.data;
     const data = JSON.parse(fs.readFileSync(f, 'utf8'));
-    if (HKG_SERIES_CACHE.size >= 3) HKG_SERIES_CACHE.delete(HKG_SERIES_CACHE.keys().next().value);
+    if (HKG_SERIES_CACHE.size >= 2) HKG_SERIES_CACHE.delete(HKG_SERIES_CACHE.keys().next().value);
     HKG_SERIES_CACHE.set(b, { mtime: st.mtimeMs, data });
     return data;
   } catch { return { daily: {}, weekly: {} }; }
@@ -925,6 +988,22 @@ function readAustraliaList() {
   } catch { /* no artifact yet */ }
   return australiaList(readAustralia());
 }
+// The company page reads one small file. Parsing the whole 8 MB dataset for one record held ~50 MB of
+// JS objects on the free instance, which (with the chart buckets and the warm caches) caused OOM 502s.
+const AUSTRALIA_DETAIL_DIR = path.join(__dirname, 'data', 'australia-companies');
+function readAustraliaCompany(code) {
+  const c = String(code || '').trim().toUpperCase();
+  if (!/^[A-Z0-9]{3}$/.test(c)) return null;
+  try { return JSON.parse(fs.readFileSync(path.join(AUSTRALIA_DETAIL_DIR, `${c}.json`), 'utf8')); }
+  catch { return null; }
+}
+const HONGKONG_DETAIL_DIR = path.join(__dirname, 'data', 'hongkong-companies');
+function readHongKongCompany(code) {
+  const c = String(code || '').trim();
+  if (!/^\d{4}$/.test(c)) return null;
+  try { return JSON.parse(fs.readFileSync(path.join(HONGKONG_DETAIL_DIR, `${c}.json`), 'utf8')); }
+  catch { return null; }
+}
 const AUSTRALIA_SERIES_DIR = path.join(__dirname, 'data', 'australia-series');
 const AUS_SERIES_CACHE = new Map();   // one letter bucket per chart, not the whole market
 function readAustraliaSeries(code) {
@@ -936,7 +1015,7 @@ function readAustraliaSeries(code) {
     const hit = AUS_SERIES_CACHE.get(b);
     if (hit && hit.mtime === st.mtimeMs) return hit.data;
     const data = JSON.parse(fs.readFileSync(f, 'utf8'));
-    if (AUS_SERIES_CACHE.size >= 5) AUS_SERIES_CACHE.delete(AUS_SERIES_CACHE.keys().next().value);
+    if (AUS_SERIES_CACHE.size >= 2) AUS_SERIES_CACHE.delete(AUS_SERIES_CACHE.keys().next().value);
     AUS_SERIES_CACHE.set(b, { mtime: st.mtimeMs, data });
     return data;
   } catch { return { daily: {}, weekly: {} }; }
@@ -4627,6 +4706,8 @@ const server = http.createServer(async (req, res) => {
       const interval = String(url.searchParams.get('interval') || (range === '10y' ? '1mo' : range === '5y' ? '1wk' : '1d'));
       // Index symbols (^GSPC, ^VIX) are legitimate charts too, so the caret is allowed.
       if (!/^[A-Za-z0-9.\-^]{1,12}$/.test(ticker)) return sendJSON(res, 400, { error: 'bad ticker' });
+      const stored = storeChart('us', ticker, range);
+      if (stored) return sendJSONCached(res, 200, { ticker, range, dates: stored.dates, closes: stored.closes });
       // Served from the committed series, not from a live Yahoo call: Yahoo rate-limits this host, which
       // left the one-month and six-month charts with a single point for every company.
       const local = US_CHARTS[ticker];
@@ -4686,6 +4767,8 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname === '/api/korea/chart') {
       const ticker = url.searchParams.get('ticker');
       const range = url.searchParams.get('range') || '1y';
+      const stored = storeChart('kr', ticker, range);
+      if (stored) return sendJSONCached(res, 200, { dates: stored.dates, closes: stored.closes, range });
       const kr = readKorea();
       const c = (kr.companies || []).find((x) => x.ticker === ticker);
       const series = (c && c.series) || [];
@@ -4718,6 +4801,8 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname === '/api/taiwan/chart') {
       const code = url.searchParams.get('code');
       const range = url.searchParams.get('range') || '1y';
+      const stored = storeChart('tw', code, range);
+      if (stored) return sendJSONCached(res, 200, { dates: stored.dates, closes: stored.closes, range, code });
       const store = readTaiwanSeries(code);
       const block = range === '5y' || range === '10y' ? store.weekly : store.daily;
       const series = (block && block[code]) || (store.weekly && store.weekly[code]) || [];
@@ -4744,14 +4829,15 @@ const server = http.createServer(async (req, res) => {
     }
     if (url.pathname.startsWith('/api/hongkong/company/')) {
       const code = decodeURIComponent(url.pathname.slice('/api/hongkong/company/'.length));
-      const hk = readHongKong();
-      const c = (hk.companies || []).find((x) => x.code === code || x.ticker === code);
+      const c = readHongKongCompany(code);
       if (!c) return sendJSON(res, 404, { error: 'not found' });
       return sendJSONCached(res, 200, c);
     }
     if (url.pathname === '/api/hongkong/chart') {
       const code = url.searchParams.get('code');
       const range = url.searchParams.get('range') || '1y';
+      const stored = storeChart('hk', code, range);
+      if (stored) return sendJSONCached(res, 200, { dates: stored.dates, closes: stored.closes, range, code });
       const store = readHongKongSeries(code);
       const block = range === '5y' || range === '10y' ? store.weekly : store.daily;
       const series = (block && block[code]) || (store.weekly && store.weekly[code]) || [];
@@ -4775,15 +4861,16 @@ const server = http.createServer(async (req, res) => {
       return sendJSONCached(res, 200, hk);
     }
     if (url.pathname.startsWith('/api/australia/company/')) {
-      const code = decodeURIComponent(url.pathname.slice('/api/australia/company/'.length)).toUpperCase();
-      const au = readAustralia();
-      const c = (au.companies || []).find((x) => x.code === code || x.ticker === code);
+      const code = decodeURIComponent(url.pathname.slice('/api/australia/company/'.length));
+      const c = readAustraliaCompany(code);
       if (!c) return sendJSON(res, 404, { error: 'not found' });
       return sendJSONCached(res, 200, c);
     }
     if (url.pathname === '/api/australia/chart') {
       const code = String(url.searchParams.get('code') || '').toUpperCase();
       const range = url.searchParams.get('range') || '1y';
+      const stored = storeChart('au', code, range);
+      if (stored) return sendJSONCached(res, 200, { dates: stored.dates, closes: stored.closes, range, code });
       const store = readAustraliaSeries(code);
       const block = range === '5y' || range === '10y' ? store.weekly : store.daily;
       const series = (block && block[code]) || (store.weekly && store.weekly[code]) || [];
@@ -4816,6 +4903,8 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname === '/api/japan-chart') {
       const code = url.searchParams.get('code');
       const range = url.searchParams.get('range') || '6m';
+      const stored = storeChart('jp', code, range);
+      if (stored) return sendJSONCached(res, 200, { dates: stored.dates, closes: stored.closes, range, code });
       const iso = (t) => new Date(t).toISOString().slice(0, 10);
       let store = null;
       try { store = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'japan-series.json'), 'utf8')); } catch { store = null; }
@@ -5069,25 +5158,42 @@ server.listen(PORT, async () => {
   // Warm the boot-critical caches early so a visitor right after a deploy still loads fast:
   // base feeds → CFTC positioning (parallel) → boards → the 9 segment reads → the screener.
   const warmCaches = async () => {
+    // Full warm is opt-in. The default is the light set: on the 512 MB free instance, warming every
+    // COT series, all nine segment reads and the event pool pushed steady RSS to ~420 MB, and a
+    // company page plus a chart bucket then hit the ceiling (the 502s on HK/AU charts and peers).
+    // The light set keeps the landing feeds, brief, macro board and screener warm at ~250 MB; the
+    // below-the-fold segment reads and positioning pay a ~1 s cold cost on first open.
+    const fullWarm = process.env.WARM === 'full';
     // The brief is what the reader lands on first. Warm the base feeds first; the event pool is
     // built gently at the END (it fans out over every news feed) so it cannot compete with the
     // first visitor or the macro/news caches.
     try { await Promise.all([getMarket(), getHistory(), getAnalytics()]); } catch {}
     try { await buildBrief(); } catch {}
-    try { await Promise.all(BENCHMARKS.filter((b) => COT_NAMES[b.id]).map((b) => getPositioning(b.id).catch(() => {}))); } catch {}
     // The boards a visitor can reach without waiting: the backdrop, the calendar, the macro tab's
     // default country and the currency strip. Each one was a cold second on first open.
     try { await Promise.all([getRegime(), getCalendar(), getMacroTickers(), getMacroDash(), getCountry('us')]); } catch {}
-    for (const m of MARKETS) { try { await getMarketRead(m.id, null); } catch {} await new Promise((r) => setTimeout(r, 300)); }
+    if (fullWarm) {
+      // Positioning is the single heaviest warm step (~150 MB peak when all COT series are fetched at
+      // once). Warm it one instrument at a time and stop before the ceiling.
+      try {
+        for (const b of BENCHMARKS.filter((x) => COT_NAMES[x.id])) {
+          if (process.memoryUsage().rss > 360 * 1024 * 1024) break;
+          await getPositioning(b.id).catch(() => {});
+          await new Promise((r) => setTimeout(r, 150));
+        }
+      } catch {}
+      for (const m of MARKETS) { try { await getMarketRead(m.id, null); } catch {} await new Promise((r) => setTimeout(r, 300)); }
+    }
     try { await getScreen(); } catch {}
-    // Korea's list is projected from a 28 MB file (five years of daily closes per company). Parsing
-    // it is synchronous, so doing it here keeps that cost off the request path: the KOREA tab opens
-    // from an already-parsed cache. This runs again every two minutes, which re-parses in the
-    // background when the daily build rewrites the file instead of stalling the first visitor.
-    try { readKorea(); } catch {}
+    // Korea's list is the cheap projection (242 KB). Its 28 MB statement file is deliberately NOT
+    // parsed here: on the free 512 MB instance that persistent cache, plus the Hong Kong and Australia
+    // datasets, pushed the process into OOM — the symptom was 502s on the company chart and peers
+    // endpoints. The first Korea company page pays the ~1 s parse instead.
+    try { readKoreaList(); } catch {}
     // Last, and deliberately gentle (3 news calls at a time): the event layer is a nice-to-have, not
-    // a reason for the macro/news feeds to come back rate-limited on a cold start.
-    try { await buildEventPool(); } catch {}
+    // a reason for the macro/news feeds to come back rate-limited on a cold start. Skip it entirely
+    // when the process is already close to the free-tier ceiling.
+    if (fullWarm && process.memoryUsage().rss < 400 * 1024 * 1024) { try { await buildEventPool(); } catch {} }
   };
   // Keep the caches hot on a timer shorter than the shortest TTL (the quote cache is 3 minutes), so
   // a visitor almost never lands on an expired feed. Guarded: a slow warm must not stack up.

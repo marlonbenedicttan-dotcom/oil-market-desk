@@ -953,6 +953,29 @@ function mountChart(id, data, options, plugins) {
   return charts[id];
 }
 function chartEmpty(id, msg) { const cv = $(id); if (cv && cv.parentElement) cv.parentElement.setAttribute('data-empty', msg || 'no data for this range'); }
+// A range click is async, and ranges do not all cost the same (5Y reads the weekly bucket). A slow
+// request landing after a quick one used to be able to paint the previous window under the new chip.
+// Every company chart keeps a sequence number, so only the newest request may draw.
+const chartSeq = new Map();
+function chartToken(id) { const n = (chartSeq.get(id) || 0) + 1; chartSeq.set(id, n); return n; }
+function chartFresh(id, token) { return chartSeq.get(id) === token; }
+// Remove both the Chart.js instance and the pixels it drew. An empty/failed range must not leave the
+// previous window's line on screen — the chip said 5Y while the canvas still showed 1Y.
+function clearChart(id) {
+  if (charts[id]) { try { charts[id].destroy(); } catch {} delete charts[id]; }
+  const cv = $(id);
+  if (!cv) return;
+  try { const ctx = cv.getContext('2d'); if (ctx) ctx.clearRect(0, 0, cv.width, cv.height); } catch {}
+}
+// One honest empty state for every company chart. A network/502 failure is not "this company has no
+// history" — say which one happened, and clear the stale line either way.
+function chartMiss(id, ticker, range, failed) {
+  clearChart(id);
+  const wrap = $(id) && $(id).parentElement;
+  if (wrap) wrap.setAttribute('data-empty', failed
+    ? `Couldn’t load the ${range.toUpperCase()} chart for ${ticker} — the server didn’t answer. Try again.`
+    : `No price history for ${ticker} over ${range.toUpperCase()}.`);
+}
 
 const bandsPlugin = {
   id: 'bands',
@@ -4758,15 +4781,16 @@ function jpHistoryHtml(c) {
 
 // The price chart is fetched per company and range, the same way the US chart is.
 async function drawJpPrice(c, range = jpRange) {
-  if (charts['jp-chart']) { try { charts['jp-chart'].destroy(); } catch {} delete charts['jp-chart']; }
-  coLong('jp:' + c.code).then((long) => { if (long) paintReturns('jp-rets', 'jp-big', long, range, WINDOWS_5Y, 'jprange'); }).catch(() => {});
+  const token = chartToken('jp-chart');
+  const full = await coLong('jp:' + c.code);
+  const use = full ? coFitRange(full, range) : range;
+  if (use !== range) { range = use; coMarkRange('jprange', range); }
+  if (!chartFresh('jp-chart', token)) return;
+  if (full) paintReturns('jp-rets', 'jp-big', full, range, WINDOWS_5Y, 'jprange');
   const wrap = $('jp-chart') && $('jp-chart').parentElement;
-  const fetchOne = async (code) => {
-    try { return await jget(`/api/japan-chart?code=${encodeURIComponent(code)}&range=${encodeURIComponent(range)}`, 600000); } catch { return null; }
-  };
-  const ch = await fetchOne(c.code);
+  const ch = full ? coSlice(full, range) : null;
   if (!ch || !ch.dates || ch.dates.length < 2) {
-    if (wrap) wrap.setAttribute('data-empty', `No price history for ${c.ticker} over ${range.toUpperCase()}.`);
+    chartMiss('jp-chart', c.ticker, range, !full);
     return;
   }
   if (wrap) wrap.removeAttribute('data-empty');
@@ -4776,11 +4800,13 @@ async function drawJpPrice(c, range = jpRange) {
   if (jpCompare && cmpCode(jpCompare).toUpperCase() !== String(c.code).toUpperCase()) {
     if (jpCompare.toUpperCase() === 'TOPIX' && japanData && japanData.topix && japanData.topix.series) {
       const tmap = new Map(japanData.topix.series.map((p) => [p.d, p.c]));
-      other = { dates: ch.dates, closes: ch.dates.map((d) => (tmap.has(d) ? tmap.get(d) : null)) };
+      other = coSlice({ dates: ch.dates, closes: ch.dates.map((d) => (tmap.has(d) ? tmap.get(d) : null)) }, range);
     } else {
-      other = await seriesFor(jpCompare, range);
+      const cl = await coLong(jpCompare);
+      other = cl ? coSlice(cl, range) : null;
     }
   }
+  if (!chartFresh('jp-chart', token)) return;
   if (other && other.dates && other.dates.length > 1) {
     const bmap = new Map(other.dates.map((d, i) => [d, other.closes[i]]));
     const dates = ch.dates.filter((d, i) => ch.closes[i] != null && bmap.get(d) != null);
@@ -5337,17 +5363,25 @@ async function renderKoreaPage(stub) {
 }
 
 async function drawKrChart(c, range = krRange) {
-  if (charts['kr-chart']) { try { charts['kr-chart'].destroy(); } catch {} delete charts['kr-chart']; }
-  coLong('kr:' + c.ticker).then((long) => { if (long) paintReturns('kr-rets', 'kr-big', long, range, WINDOWS_5Y, 'krrange'); }).catch(() => {});
+  const token = chartToken('kr-chart');
+  const full = await coLong('kr:' + c.ticker);
+  const use = full ? coFitRange(full, range) : range;
+  if (use !== range) { range = use; coMarkRange('krrange', range); }
+  if (!chartFresh('kr-chart', token)) return;
+  if (full) paintReturns('kr-rets', 'kr-big', full, range, WINDOWS_5Y, 'krrange');
   const wrap = $('kr-chart') && $('kr-chart').parentElement;
-  let ch = null;
-  try { ch = await jget(`/api/korea/chart?ticker=${encodeURIComponent(c.ticker)}&range=${encodeURIComponent(range)}`, 600000); } catch { ch = null; }
+  const ch = full ? coSlice(full, range) : null;
   if (!ch || !ch.dates || ch.dates.length < 2) {
-    if (wrap) wrap.setAttribute('data-empty', `No price history for ${c.ticker} over ${range.toUpperCase()}.`);
+    chartMiss('kr-chart', c.ticker, range, !full);
     return;
   }
   if (wrap) wrap.removeAttribute('data-empty');
-  const other = krCompare && cmpCode(krCompare) !== String(c.ticker) ? await seriesFor(krCompare, range) : null;
+  let other = null;
+  if (krCompare && cmpCode(krCompare) !== String(c.ticker)) {
+    const cl = await coLong(krCompare);
+    other = cl ? coSlice(cl, range) : null;
+  }
+  if (!chartFresh('kr-chart', token)) return;
   if (other && other.dates && other.dates.length > 1) {
     const bmap = new Map(other.dates.map((d, i) => [d, other.closes[i]]));
     const dates = ch.dates.filter((d, i) => ch.closes[i] != null && bmap.get(d) != null);
@@ -5646,16 +5680,25 @@ async function renderTaiwanPage(stub) {
 }
 
 async function drawTwChart(c, range = twRange) {
-  coLong('tw:' + c.ticker).then((long) => { if (long) paintReturns('tw-rets', 'tw-big', long, range, WINDOWS_5Y, 'twrange'); }).catch(() => {});
+  const token = chartToken('tw-chart');
+  const full = await coLong('tw:' + c.ticker);
+  const use = full ? coFitRange(full, range) : range;
+  if (use !== range) { range = use; coMarkRange('twrange', range); }
+  if (!chartFresh('tw-chart', token)) return;
+  if (full) paintReturns('tw-rets', 'tw-big', full, range, WINDOWS_5Y, 'twrange');
   const wrap = $('tw-chart') && $('tw-chart').parentElement;
-  let ch = null;
-  try { ch = await jget(`/api/taiwan/chart?code=${encodeURIComponent(c.ticker)}&range=${encodeURIComponent(range)}`, 600000); } catch { ch = null; }
+  const ch = full ? coSlice(full, range) : null;
   if (!ch || !ch.dates || ch.dates.length < 2) {
-    if (wrap) wrap.setAttribute('data-empty', `No price history for ${c.ticker} over ${range.toUpperCase()}.`);
+    chartMiss('tw-chart', c.ticker, range, !full);
     return;
   }
   if (wrap) wrap.removeAttribute('data-empty');
-  const other = twCompare && cmpCode(twCompare) !== String(c.ticker) ? await seriesFor(twCompare, range) : null;
+  let other = null;
+  if (twCompare && cmpCode(twCompare) !== String(c.ticker)) {
+    const cl = await coLong(twCompare);
+    other = cl ? coSlice(cl, range) : null;
+  }
+  if (!chartFresh('tw-chart', token)) return;
   if (other && other.dates && other.dates.length > 1) {
     const bmap = new Map(other.dates.map((d, i) => [d, other.closes[i]]));
     const dates = ch.dates.filter((d, i) => ch.closes[i] != null && bmap.get(d) != null);
@@ -6008,16 +6051,25 @@ async function renderHongKongPage(stub) {
 }
 
 async function drawHkChart(c, range = hkRange) {
-  coLong('hk:' + c.ticker).then((long) => { if (long) paintReturns('hk-rets', 'hk-big', long, range, WINDOWS_5Y, 'hkrange'); }).catch(() => {});
+  const token = chartToken('hk-chart');
+  const full = await coLong('hk:' + c.ticker);
+  const use = full ? coFitRange(full, range) : range;
+  if (use !== range) { range = use; coMarkRange('hkrange', range); }
+  if (!chartFresh('hk-chart', token)) return;
+  if (full) paintReturns('hk-rets', 'hk-big', full, range, WINDOWS_5Y, 'hkrange');
   const wrap = $('hk-chart') && $('hk-chart').parentElement;
-  let ch = null;
-  try { ch = await jget(`/api/hongkong/chart?code=${encodeURIComponent(c.ticker)}&range=${encodeURIComponent(range)}`, 600000); } catch { ch = null; }
+  const ch = full ? coSlice(full, range) : null;
   if (!ch || !ch.dates || ch.dates.length < 2) {
-    if (wrap) wrap.setAttribute('data-empty', `No price history for ${c.ticker} over ${range.toUpperCase()}.`);
+    chartMiss('hk-chart', c.ticker, range, !full);
     return;
   }
   if (wrap) wrap.removeAttribute('data-empty');
-  const other = hkCompare && cmpCode(hkCompare) !== String(c.ticker) ? await seriesFor(hkCompare, range) : null;
+  let other = null;
+  if (hkCompare && cmpCode(hkCompare) !== String(c.ticker)) {
+    const cl = await coLong(hkCompare);
+    other = cl ? coSlice(cl, range) : null;
+  }
+  if (!chartFresh('hk-chart', token)) return;
   if (other && other.dates && other.dates.length > 1) {
     const bmap = new Map(other.dates.map((d, i) => [d, other.closes[i]]));
     const dates = ch.dates.filter((d, i) => ch.closes[i] != null && bmap.get(d) != null);
@@ -6303,16 +6355,25 @@ async function renderAustraliaPage(stub) {
 }
 
 async function drawAuChart(c, range = auRange) {
-  coLong('au:' + c.ticker).then((long) => { if (long) paintReturns('au-rets', 'au-big', long, range, WINDOWS_5Y, 'aurange'); }).catch(() => {});
+  const token = chartToken('au-chart');
+  const full = await coLong('au:' + c.ticker);
+  const use = full ? coFitRange(full, range) : range;
+  if (use !== range) { range = use; coMarkRange('aurange', range); }
+  if (!chartFresh('au-chart', token)) return;
+  if (full) paintReturns('au-rets', 'au-big', full, range, WINDOWS_5Y, 'aurange');
   const wrap = $('au-chart') && $('au-chart').parentElement;
-  let ch = null;
-  try { ch = await jget(`/api/australia/chart?code=${encodeURIComponent(c.ticker)}&range=${encodeURIComponent(range)}`, 600000); } catch { ch = null; }
+  const ch = full ? coSlice(full, range) : null;
   if (!ch || !ch.dates || ch.dates.length < 2) {
-    if (wrap) wrap.setAttribute('data-empty', `No price history for ${c.ticker} over ${range.toUpperCase()}.`);
+    chartMiss('au-chart', c.ticker, range, !full);
     return;
   }
   if (wrap) wrap.removeAttribute('data-empty');
-  const other = auCompare && cmpCode(auCompare) !== String(c.ticker) ? await seriesFor(auCompare, range) : null;
+  let other = null;
+  if (auCompare && cmpCode(auCompare) !== String(c.ticker)) {
+    const cl = await coLong(auCompare);
+    other = cl ? coSlice(cl, range) : null;
+  }
+  if (!chartFresh('au-chart', token)) return;
   if (other && other.dates && other.dates.length > 1) {
     const bmap = new Map(other.dates.map((d, i) => [d, other.closes[i]]));
     const dates = ch.dates.filter((d, i) => ch.closes[i] != null && bmap.get(d) != null);
@@ -6569,17 +6630,25 @@ function renderSectorBoard(el, all) {
 // question about several windows at the same time, so one number at a time was the wrong shape.
 const CO_WIN = [['1m', '1M', 31], ['3m', '3M', 92], ['6m', '6M', 190], ['ytd', 'YTD', 0], ['1y', '1Y', 366], ['5y', '5Y', 1826], ['10y', '10Y', 3653]];
 const coLongCache = new Map();
+const coLongPending = new Map();
 async function coLong(ref) {
   const k = String(ref || '').toUpperCase();
   if (coLongCache.has(k)) return coLongCache.get(k);
-  for (const r of ['10y', '5y']) {
-    try {
-      const ch = await seriesFor(ref, r);
-      if (ch && ch.dates && ch.closes && ch.closes.length >= 2) { coLongCache.set(k, ch); return ch; }
-    } catch { /* try the shorter range */ }
-  }
-  coLongCache.set(k, null);
-  return null;
+  if (coLongPending.has(k)) return coLongPending.get(k);
+  const p = (async () => {
+    // One request drives every window on the page. The server returns whatever history it has; a
+    // recent listing simply gets a shorter series and the range strip adapts to it.
+    for (const r of ['10y', '5y', '1y']) {
+      try {
+        const ch = await seriesFor(ref, r);
+        if (ch && ch.dates && ch.closes && ch.closes.length >= 2) { coLongCache.set(k, ch); return ch; }
+      } catch { /* try the shorter range */ }
+    }
+    coLongCache.set(k, null);
+    return null;
+  })();
+  coLongPending.set(k, p);
+  try { return await p; } finally { coLongPending.delete(k); }
 }
 function coWindow(ch, range) {
   if (!ch || !ch.dates || !ch.closes || ch.closes.length < 2) return null;
@@ -6603,6 +6672,16 @@ function coWindowsFor(dates) {
     const w = CO_WIN.find((x) => x[0] === k);
     return w ? span >= w[2] * 0.9 : true;
   });
+}
+// A recent listing has no ten-year window. Fall back to the longest window the series does cover,
+// so the chart draws instead of saying "no history" when the history simply starts later.
+function coFitRange(ch, range) {
+  const wins = coWindowsFor((ch && ch.dates) || []);
+  if (wins.includes(range)) return range;
+  return wins.includes('1y') ? '1y' : wins[wins.length - 1] || '1y';
+}
+function coMarkRange(attr, range) {
+  document.querySelectorAll(`[data-${attr}]`).forEach((b) => b.classList.toggle('on', b.dataset[attr] === range));
 }
 // Slice an in-page series to the window the reader picked (the index series are already loaded, so a
 // window change is a redraw, not a round-trip).
@@ -6684,38 +6763,24 @@ async function loadCoChart(ticker, range, compare) {
     if (wrap) wrap.setAttribute('data-empty', `No price history for ${ticker} — the ticker may be delisted or not covered by Yahoo.`);
   };
   try {
-    // Our labels are 1m/6m/ytd/1y/5y; Yahoo wants 1mo/6mo/ytd/1y/5y.
-    const yRange = (r) => (r === '1m' ? '1mo' : r === '6m' ? '6mo' : r);
-    // The return strip needs the long series; the line needs the window. Two different requests, so
-    // start the long one NOW and only wait for it before the strip is painted — the same order as
-    // before, without the second round-trip sitting behind the first.
-    const longP = coLong(ticker).catch(() => null);
-    let ch = await getJSON(`/api/company-chart?ticker=${encodeURIComponent(ticker)}&range=${yRange(range)}`);
-    // A recent listing has fewer than six points over ten years — that is not "no history", it is a
-    // shorter life. Step down the range and move the active button with it.
-    for (const shorter of ['5y', '1y']) {
-      if (ch && ch.dates && ch.dates.length > 5) break;
-      if (range === '1y') break;
-      if (range === '10y' || (range === '5y' && shorter === '1y')) {
-        range = shorter;
-        ch = await getJSON(`/api/company-chart?ticker=${encodeURIComponent(ticker)}&range=${yRange(range)}`);
-        document.querySelectorAll('[data-corange]').forEach((b) => b.classList.toggle('on', b.dataset.corange === range));
-      }
-    }
+    // One long series drives the line, the return strip and every window switch. It used to ask for
+    // the window AND the ten-year history separately — two requests, every time the page opened.
+    const full = await coLong(ticker).catch(() => null);
+    if (!full) { fail(); return; }
+    const use = coFitRange(full, range);
+    if (use !== range) { range = use; coMarkRange('corange', range); }
+    const ch = coSlice(full, range);
     if (!ch || !ch.dates || ch.dates.length < 2) { fail(); return; }
     const wrap0 = canvas && canvas.parentElement;
     if (wrap0) wrap0.removeAttribute('data-empty');
-    // Same idea for the comparison line: start it here, with the strip, rather than after it.
-    const cmpP = compare ? seriesFor(compare, range).catch(() => null) : null;
-    // The strip is computed from the longest series we hold for this ticker, so every window is on the
-    // same source as the line. Cached per ticker, so switching ranges is instant.
-    const longSeries = await longP;
-    if (longSeries) paintCoReturns(longSeries, range);
+    paintCoReturns(full, range);
     if (!compare) {
       mountChart('co-chart', { labels: ch.dates, datasets: [line(`${ticker} · ${range.toUpperCase()}`, ch.closes, CT.c1)] }, baseOptions({ dp: 2, dateAxis: true, log: range === '5y' || range === '10y' }));
       return;
     }
-    const c2 = await cmpP;
+    // The comparison comes from the same cached long series, so changing the window costs no request.
+    const c2long = await coLong(compare).catch(() => null);
+    const c2 = c2long ? coSlice(c2long, range) : null;
     if (!c2 || !c2.dates || c2.dates.length < 2) {
       mountChart('co-chart', { labels: ch.dates, datasets: [line(`${ticker} · ${range.toUpperCase()}`, ch.closes, CT.c1)] }, baseOptions({ dp: 2, dateAxis: true, log: range === '5y' || range === '10y' }));
       return;

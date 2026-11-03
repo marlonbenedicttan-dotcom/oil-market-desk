@@ -456,6 +456,9 @@ catch (e) { console.log(`  descriptions: ${e.message}`); }
 // The list endpoint must read a 241 KB artifact, not parse all 28 MB of price history on every visit.
 try { execFileSync(process.execPath, [join(ROOT, 'scripts', 'build-korea-list.mjs')], { stdio: 'inherit' }); }
 catch (e) { console.log(`  list artifact: ${e.message}`); }
+// The chart store reads one company's line instead of parsing all 28 MB for one chart.
+try { execFileSync(process.execPath, [join(ROOT, 'scripts', 'build-chart-store.mjs'), 'kr'], { stdio: 'inherit' }); }
+catch (e) { console.log(`  chart store: ${e.message}`); }
 
 console.log(`${out.length} companies · ${out.filter((c) => c.pe != null).length} with P/E · FX ${fx}`);
 console.log(out.slice(0, 5).map((c) => `  ${c.ticker} ${c.name} · ₩${Math.round(c.price)} · P/E ${c.pe ?? '—'} · P/B ${c.pb ?? '—'}`).join('\n'));

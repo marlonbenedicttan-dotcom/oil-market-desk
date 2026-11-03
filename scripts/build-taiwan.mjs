@@ -15,6 +15,7 @@
 // data/taiwan-list.json (the compact /api/taiwan payload).
 
 import { writeFileSync, renameSync, readFileSync, existsSync, mkdirSync, readdirSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import https from 'node:https';
 import { join } from 'node:path';
 import {
@@ -563,6 +564,10 @@ try {
   const list = taiwanList({ ...JSON.parse(readFileSync(OUT, 'utf8')) });
   writeFileSync(`${LIST_OUT}.tmp`, JSON.stringify(list)); renameSync(`${LIST_OUT}.tmp`, LIST_OUT);
 } catch (e) { console.log(`  list artifact: ${e.message}`); }
+
+// Re-index the per-company chart store so a chart never has to parse a whole bucket again.
+try { execFileSync(process.execPath, [join(ROOT, 'scripts', 'build-chart-store.mjs'), 'tw'], { stdio: 'inherit' }); }
+catch (e) { console.log(`  chart store: ${e.message}`); }
 
 console.log(`${cleaned.length} companies · ${cleaned.filter((c) => c.pe != null).length} P/E · ${withDesc} descriptions · TAIEX ${idx ? idx.level : '—'} · FX ${fxRate}`);
 console.log(`audit: P/E ${peDiff}/${chk.length} off >15% · P/B ${pbDiff}/${chkPb.length} off >15%`);

@@ -7,6 +7,7 @@
 //
 //   node scripts/build-us-charts.mjs
 import { readFileSync, writeFileSync, renameSync, existsSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -68,5 +69,8 @@ const nextCount = Object.keys(out).length;
 
 writeFileSync(OUT + '.tmp', JSON.stringify({ updated: new Date().toISOString().slice(0, 10), series: out }));
 renameSync(OUT + '.tmp', OUT);
+// Re-index the per-company chart store so a chart reads its own line, not the whole file.
+try { execFileSync(process.execPath, [join(ROOT, 'scripts', 'build-chart-store.mjs'), 'us'], { stdio: 'inherit' }); }
+catch (e) { console.log(`  chart store: ${e.message}`); }
 const size = JSON.stringify(out).length;
 console.log(`charts for ${built} companies · ${skipped} without a cache · ${nextCount - built} carried over · ${(size / 1024 / 1024).toFixed(1)} MB`);

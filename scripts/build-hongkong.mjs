@@ -20,7 +20,8 @@
 // closes, bucketed by the first two code digits), data/hongkong-list.json (the compact /api/hongkong
 // payload).
 
-import { writeFileSync, renameSync, readFileSync, existsSync, mkdirSync, unlinkSync } from 'node:fs';
+import { writeFileSync, renameSync, readFileSync, existsSync, mkdirSync, unlinkSync, rmSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import https from 'node:https';
 import { join } from 'node:path';
 import {
@@ -35,6 +36,7 @@ import { deriveHongKong } from './derive-hongkong.mjs';
 const OUT = join(ROOT, 'data', 'hongkong.json');
 const SERIES_DIR = join(ROOT, 'data', 'hongkong-series');
 const LIST_OUT = join(ROOT, 'data', 'hongkong-list.json');
+const DETAIL_DIR = join(ROOT, 'data', 'hongkong-companies');
 const PROFILES = join(ROOT, 'data', 'hongkong-profiles.json');
 const CROSSLIST = join(ROOT, 'data', 'hongkong-crosslist.json');
 // A Hong Kong code whose HKG statement page does not exist is served from the company's other listing
@@ -581,6 +583,17 @@ try {
   const list = hongkongList({ ...JSON.parse(readFileSync(OUT, 'utf8')) });
   writeFileSync(`${LIST_OUT}.tmp`, JSON.stringify(list)); renameSync(`${LIST_OUT}.tmp`, LIST_OUT);
 } catch (e) { console.log(`  list artifact: ${e.message}`); }
+
+// One small file per company for the company page: parsing the 9 MB dataset for one record costs the
+// free Render instance ~50 MB, which is what pushed it into OOM once Australia was added. See the
+// Australia build for the same artifact.
+rmSync(DETAIL_DIR, { recursive: true, force: true });
+mkdirSync(DETAIL_DIR, { recursive: true });
+for (const c of cleaned) writeFileSync(join(DETAIL_DIR, `${c.code}.json`), JSON.stringify(c));
+
+// Re-index the per-company chart store so a chart never has to parse a whole bucket again.
+try { execFileSync(process.execPath, [join(ROOT, 'scripts', 'build-chart-store.mjs'), 'hk'], { stdio: 'inherit' }); }
+catch (e) { console.log(`  chart store: ${e.message}`); }
 
 console.log(`${cleaned.length} companies · ${audit.pe} P/E · ${withDesc} descriptions · HSI ${idx ? idx.level : '—'} · USD/HKD ${fx.rate}`);
 console.log(`session ${sessionDate} · ${dropped.length} lines without statements · ${audit.foreignReporters} report in CNY/USD`);
