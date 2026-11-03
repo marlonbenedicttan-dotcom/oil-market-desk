@@ -3480,3 +3480,26 @@ Audited at 360, 390 and 430 px with screenshots of every view, then fixed what l
   `--sample=N` audit now compares P/E against the vendor's own statistics page: 26/26 of the top 30
   (cross-listed lines skipped — they have two prices) are within 15%, and P/B/ROE differences are
   exactly the total-vs-common equity definition.
+
+## Charts: one byte-range read per company, every market (2026-11-03)
+- **The cost**: a single company chart parsed the market's whole history — 28 MB for Korea, up to
+  7 MB for a Taiwan/Australia bucket, and (for Japan) the same 3 MB file again on every request.
+  On the free instance the first chart of a market took seconds, and every deploy started cold.
+- **The store**: `scripts/build-chart-store.mjs` writes `data/charts/<market>.ndjson` (one company
+  per line, `{ k, p: [[dateIndex, close], ...] }`) plus `.idx.json` (`dates` once per market and a
+  `code → [byteOffset, byteLength]` table). The server opens the file, reads only that line and
+  parses a few KB. Aliases share one line: Tokyo `7203`/`72030`, Korea `005930`/`00126380`.
+  Markets: `us jp kr tw hk au`; the six stores are committed like `korea-list.json`.
+- **Fallback**: a missing store, or a code not in it (a new listing before the next build), falls
+  back to the old reader. A stalled artifact degrades speed, never the chart.
+- **Build**: each market build calls the store builder at the end, and the daily/weekly/Taiwan CI
+  jobs `git add data/charts`, so a refresh cannot leave the store behind.
+- **Frontend**: `coLong(ref)` now fetches ONE long series per company (deduplicated in flight) and
+  `coSlice` cuts every window from it. A range click is a redraw, not a request; it was two requests
+  per page open and one per range click. `coFitRange` steps down for a recent listing instead of
+  drawing an empty frame.
+- **Measured (local, cold process)**: every market chart 2–7 ms; USA/Japan/Korea/Taiwan/Hong
+  Kong/Australia all serve one request on open and zero on a range click (headless Chrome check).
+- **Tests**: `tests/charts.test.js` covers the pure merge/slice/expand logic and asserts the store
+  exists and holds a known code in every market; `npm test` stays at 300.
+

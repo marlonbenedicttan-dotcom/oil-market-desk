@@ -736,10 +736,16 @@ async function getRegime() {
 const COMPANIES_FILE = path.join(__dirname, 'data', 'companies.json');
 const COMPANIES = (() => { try { return JSON.parse(fs.readFileSync(COMPANIES_FILE, 'utf8')); } catch { return { companies: [] }; } })();
 // Committed daily/weekly closes for every US ticker — the company chart reads this, never Yahoo.
-const US_CHARTS = (() => {
-  try { return JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'us-charts.json'), 'utf8')).series || {}; }
-  catch { return {}; }
-})();
+// Committed daily/weekly closes for every US ticker — the fallback when the chart store is absent.
+// Loaded on the first request that actually needs it, not at boot: the store answers every normal
+// chart, and parsing 8.7 MB on startup was pure memory on the free instance.
+let US_CHARTS = null;
+function usCharts() {
+  if (US_CHARTS) return US_CHARTS;
+  try { US_CHARTS = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'us-charts.json'), 'utf8')).series || {}; }
+  catch { US_CHARTS = {}; }
+  return US_CHARTS;
+}
 
 // ---------------------------------------------------------------------------
 // Chart store — one byte-range read per chart, instead of parsing a whole market.
@@ -4710,7 +4716,7 @@ const server = http.createServer(async (req, res) => {
       if (stored) return sendJSONCached(res, 200, { ticker, range, dates: stored.dates, closes: stored.closes });
       // Served from the committed series, not from a live Yahoo call: Yahoo rate-limits this host, which
       // left the one-month and six-month charts with a single point for every company.
-      const local = US_CHARTS[ticker];
+      const local = usCharts()[ticker];
       if (local && local.length > 1) {
         const last = local[local.length - 1][0];
         const back = (days) => new Date(Date.parse(last) - days * 86400000).toISOString().slice(0, 10);
