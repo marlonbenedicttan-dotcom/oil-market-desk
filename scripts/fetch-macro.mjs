@@ -58,7 +58,51 @@ for (const [id, code] of COUNTRIES) {
   if (Object.keys(entry).length) countries[id] = entry;
 }
 
-const out = { updated: new Date().toISOString(), source: 'IMF World Economic Outlook (DataMapper)', maxYear: MAX_YEAR, countries };
-fs.mkdirSync('data', { recursive: true });
-fs.writeFileSync('data/macro.json', JSON.stringify(out, null, 1) + '\n');
-console.log(`wrote data/macro.json — ${Object.keys(countries).length} countries, maxYear ${MAX_YEAR}`);
+// Which countries lag the latest completed year, per field. `latest()` walks back to the newest year the
+// IMF has, so a country whose series stopped in 2018 would otherwise ship as if it were current. The app
+// backfills some of these from the World Bank at request time, but the gap should be visible in the file
+// (and in the freshness check) rather than living in someone's head.
+const seriesYear = (s) => (s && s.length ? s[s.length - 1].year : null);
+const gaps = {};
+for (const [id, e] of Object.entries(countries)) {
+  const lag = {};
+  if (e.debtToGdp && e.debtToGdp.year < MAX_YEAR) lag.debtToGdp = e.debtToGdp.year;
+  if (e.inflation && e.inflation.year < MAX_YEAR) lag.inflation = e.inflation.year;
+  if (seriesYear(e.cpi) != null && seriesYear(e.cpi) < MAX_YEAR) lag.cpi = seriesYear(e.cpi);
+  if (e.unemployment && e.unemployment.year < MAX_YEAR) lag.unemployment = e.unemployment.year;
+  if (Object.keys(lag).length) gaps[id] = lag;
+}
+
+const payload = {
+  source: 'IMF World Economic Outlook (DataMapper)',
+  maxYear: MAX_YEAR,
+  countries,
+  gaps,
+};
+
+// Write only when the numbers move. The IMF publishes a WEO vintage about twice a year, so nearly every
+// run re-reads identical data. Rewriting the file anyway makes the timestamp the only diff — and each of
+// those commits is a Render deploy for a field nobody reads. Compare the data and leave the file alone.
+const unchanged = (() => {
+  try {
+    const prev = JSON.parse(fs.readFileSync('data/macro.json', 'utf8'));
+    return JSON.stringify({
+      source: prev.source, maxYear: prev.maxYear, countries: prev.countries, gaps: prev.gaps ?? {},
+    }) === JSON.stringify(payload);
+  } catch { return false; }
+})();
+
+const n = Object.keys(countries).length;
+if (unchanged) {
+  console.log(`data/macro.json unchanged — ${n} countries, maxYear ${MAX_YEAR} (left as is)`);
+} else {
+  const out = { updated: new Date().toISOString(), ...payload };
+  fs.mkdirSync('data', { recursive: true });
+  fs.writeFileSync('data/macro.json', JSON.stringify(out, null, 1) + '\n');
+  console.log(`wrote data/macro.json — ${n} countries, maxYear ${MAX_YEAR}`);
+  if (Object.keys(gaps).length) {
+    console.log(`  lagging ${MAX_YEAR}: ${Object.entries(gaps)
+      .map(([id, fields]) => `${id}(${Object.entries(fields).map(([f, y]) => `${f}=${y}`).join(' ')})`)
+      .join(', ')}`);
+  }
+}

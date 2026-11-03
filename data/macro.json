@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-03T17:35:46.263Z",
+ "updated": "2026-11-03T17:46:54.924Z",
  "source": "IMF World Economic Outlook (DataMapper)",
  "maxYear": 2025,
  "countries": {
@@ -3950,6 +3950,14 @@
     "year": 2025,
     "value": 7.4
    }
+  }
+ },
+ "gaps": {
+  "ng": {
+   "unemployment": 2018
+  },
+  "ve": {
+   "unemployment": 2018
   }
  }
 }

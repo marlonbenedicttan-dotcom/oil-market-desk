@@ -17,10 +17,10 @@ const MARKET = process.env.MARKET_URL || 'https://oil-market-desk.onrender.com';
 const DAY = 864e5;
 const now = Date.now();
 
-// Hours a dataset may lag before it counts as stale. Each is two refreshes of its own cadence:
-// the market files rebuild daily, the valuation history and the upstream snapshots weekly. Hong Kong
-// and Australia get 84h because their jobs skip the weekend: a Friday build read on Monday afternoon is
-// 72h old, and a holiday Monday makes it later still.
+// Hours a dataset may lag before it counts as stale. Each is two refreshes of its own cadence: the
+// market files rebuild daily and the valuation history weekly. Hong Kong and Australia get 84h because
+// their jobs skip the weekend: a Friday build read on Monday afternoon is 72h old, and a holiday Monday
+// makes it later still. The two upstream snapshots are checked below on content, not on age.
 const DATASETS = [
   ['US prices & fundamentals', 'companies.json', 36],
   ['Japan', 'japan.json', 36],
@@ -31,10 +31,6 @@ const DATASETS = [
   ['US filing tracker', 'filings-state.json', 36],
   ['Calendar events', 'events.json', 48],
   ['Valuation history', 'valuation.json', 24 * 10],
-  ['Macro snapshot (IMF)', 'macro.json', 24 * 10],
-  // USDA feeds the crop tightness score at 0.5 weight. It had no check at all while it was refreshed
-  // by a LaunchAgent on a laptop, so a stopped job looked exactly like a quiet one.
-  ['USDA stocks-to-use', 'usda.json', 24 * 10],
 ];
 
 const rows = [];
@@ -51,6 +47,38 @@ for (const [label, file, maxH] of DATASETS) {
     add(label, h <= limit, `${new Date(t).toISOString().slice(0, 16).replace('T', ' ')}Z · ${h.toFixed(1)}h old · limit ${limit}h`);
   } catch (e) { add(label, false, `unreadable: ${e.message}`); }
 }
+
+// The two upstream snapshots are not on a clock, so age is the wrong question. The IMF publishes a WEO
+// vintage about twice a year and the PSD balance once a month, and both fetchers now leave the file
+// untouched when nothing moved — so `updated` is the last real change, not the last run. An age limit
+// would cry wolf between vintages and stay quiet the one time a vintage was wrong. Ask about content:
+// is the snapshot on the year it should be, and does the coverage still hold?
+const expectYear = new Date(now).getUTCFullYear() - 1;
+try {
+  const m = JSON.parse(readFileSync(join(ROOT, 'data', 'macro.json'), 'utf8'));
+  const ids = Object.keys(m.countries || {});
+  // One year of slack: in early January the previous year's balance has not always been revised in yet.
+  add('Macro vintage (IMF)', m.maxYear >= expectYear - 1,
+    `maxYear ${m.maxYear} (expect ${expectYear}) · ${ids.length} countries · updated ${String(m.updated).slice(0, 10)}`);
+  // A country whose newest figure predates maxYear is serving an older year. The app backfills some of
+  // these from the World Bank at request time; this row is here so the gap is never invisible.
+  const lag = Object.keys(m.gaps || {});
+  add('Macro coverage gaps', true,
+    lag.length ? `${lag.length} countries lag maxYear: ${lag.slice(0, 6).join(', ')}${lag.length > 6 ? '…' : ''} (backfilled live)` : 'every country reaches maxYear',
+    'skip');
+} catch (e) { add('Macro vintage (IMF)', false, `unreadable: ${e.message}`); }
+
+// USDA feeds the crop tightness score at 0.5 weight. It had no check at all while a LaunchAgent on a
+// laptop owned it, so a stopped job looked exactly like a quiet one.
+try {
+  const u = JSON.parse(readFileSync(join(ROOT, 'data', 'usda.json'), 'utf8'));
+  const cs = Object.entries(u.commodities || {});
+  const newest = cs.map(([, c]) => c.marketYear).filter(Boolean).sort().pop();
+  // The fetcher maps 10 commodities; fewer means a download or parse silently lost one.
+  add('USDA vintage (PSD)', cs.length >= 10,
+    `${cs.length} commodities · newest market year ${newest ?? 'none'} · updated ${String(u.updated).slice(0, 10)}`);
+} catch (e) { add('USDA vintage (PSD)', false, `unreadable: ${e.message}`); }
+
 
 // The newest filing any company has filed, against the newest one we have recorded. A 10-Q filed today
 // must appear in the tracker by tomorrow; if it does not, the detection pass has stopped.

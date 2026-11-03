@@ -110,12 +110,28 @@ async function main() {
   }
   fs.rmSync(tmp, { recursive: true, force: true });
 
-  const out = {
-    updated: new Date().toISOString(),
+  const payload = {
     source: 'USDA PSD (FAS) — US balance',
     metric: 'stocks-to-use = ending stocks / (domestic consumption + exports), by market year',
     commodities,
   };
+
+  // Same rule as fetch-macro: write only when the numbers move. PSD updates its balance sheets about once
+  // a month, so a daily poll finds the same data most days; rewriting the timestamp every run would add a
+  // commit and a Render deploy for nothing.
+  const unchanged = (() => {
+    try {
+      const p = JSON.parse(fs.readFileSync(OUT, 'utf8'));
+      return JSON.stringify({ source: p.source, metric: p.metric, commodities: p.commodities }) === JSON.stringify(payload);
+    } catch { return false; }
+  })();
+
+  if (unchanged) {
+    console.log(`${OUT} unchanged — ${Object.keys(commodities).length} commodities (left as is)`);
+    return;
+  }
+
+  const out = { updated: new Date().toISOString(), ...payload };
   fs.mkdirSync(path.dirname(OUT), { recursive: true });
   fs.writeFileSync(OUT, JSON.stringify(out, null, 1));
   console.log(`wrote ${OUT}: ${Object.keys(commodities).length} commodities`);

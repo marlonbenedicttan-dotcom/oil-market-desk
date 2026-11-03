@@ -3,7 +3,13 @@ name: macro-snapshot
 # Refresh the two upstream snapshots the app cannot fetch for itself:
 #   data/macro.json — IMF World Economic Outlook (the deploy host gets a 403 WAF)
 #   data/usda.json  — USDA PSD supply/demand bulk CSVs (~4 MB of zips; too heavy to fetch per request)
-# The app serves both files. Runs weekly, on demand, and whenever a fetcher changes.
+# The app serves both files, so the loop is: poll -> commit only on a real change -> Render redeploys on
+# that commit -> the numbers are live. Neither source has a change feed or webhook, so polling is the only
+# way to hear about a vintage; daily is frequent enough that a release lands within a day, and cheap
+# enough not to bother the IMF or USDA.
+#
+# Daily polling is only viable because both fetchers compare the data and leave the file untouched when
+# nothing moved. Otherwise every run would commit a one-line `updated` timestamp and redeploy the site.
 #
 # USDA lived on a LaunchAgent on the developer's Mac until Nov 2026. That job was the only thing
 # refreshing usda.json, it silently failed (an IMF connect timeout aborted the run before USDA was
@@ -11,7 +17,7 @@ name: macro-snapshot
 # for staleness. Both fetchers are keyless, so this workflow is the whole story now.
 on:
   schedule:
-    - cron: '17 4 * * 1' # Mondays 04:17 UTC
+    - cron: '17 4 * * *' # daily 04:17 UTC — off the hours the market jobs use
   workflow_dispatch: {}
   push:
     paths:
