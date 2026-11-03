@@ -574,6 +574,11 @@ catch (e) { console.log(`  chart store: ${e.message}`); }
 try { execFileSync(process.execPath, [join(ROOT, 'scripts', 'attach-market-brands.mjs'), 'tw'], { stdio: 'inherit' }); }
 catch (e) { console.log(`  brands: ${e.message}`); }
 
+// One small file per company, so opening a company does not parse the 5 MB market on the server.
+// Last, so the detail records carry the descriptions and brands attached above.
+try { execFileSync(process.execPath, [join(ROOT, 'scripts', 'build-company-details.mjs'), 'tw'], { stdio: 'inherit' }); }
+catch (e) { console.log(`  company details: ${e.message}`); }
+
 console.log(`${cleaned.length} companies · ${cleaned.filter((c) => c.pe != null).length} P/E · ${withDesc} descriptions · TAIEX ${idx ? idx.level : '—'} · FX ${fxRate}`);
 console.log(`audit: P/E ${peDiff}/${chk.length} off >15% · P/B ${pbDiff}/${chkPb.length} off >15%`);
 console.log(cleaned.slice(0, 5).map((c) => `  ${c.code} ${c.nameEn || c.name} · NT$${c.price} · P/E ${c.pe ?? '—'} · P/B ${c.pb ?? '—'}`).join('\n'));

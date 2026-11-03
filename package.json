@@ -41,7 +41,8 @@
     "refresh:australia": "node scripts/build-australia.mjs --fresh && node scripts/fetch-australia-profiles.mjs && node scripts/build-australia.mjs --skip-prices --skip-fin",
     "audit:refresh": "node scripts/audit-market-refresh.mjs",
     "brands:markets": "node scripts/attach-market-brands.mjs",
-    "build:hsi": "node scripts/build-hsi-constituents.mjs"
+    "build:hsi": "node scripts/build-hsi-constituents.mjs",
+    "companies:details": "node scripts/build-company-details.mjs"
   },
   "engines": {
     "node": ">=22"

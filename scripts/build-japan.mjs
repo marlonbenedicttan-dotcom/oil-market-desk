@@ -443,5 +443,8 @@ const withFcf = companies.filter((c) => c.fcf != null).length;
 // The chart store reads one company's line instead of parsing the 3 MB series file per chart.
 try { execFileSync(process.execPath, [join(ROOT, 'scripts', 'build-chart-store.mjs'), 'jp'], { stdio: 'inherit' }); }
 catch (e) { console.log(`  chart store: ${e.message}`); }
+// One small file per company, so opening a company does not parse the 5 MB market on the server.
+try { execFileSync(process.execPath, [join(ROOT, 'scripts', 'build-company-details.mjs'), 'jp'], { stdio: 'inherit' }); }
+catch (e) { console.log(`  company details: ${e.message}`); }
 console.log(`${companies.length} companies · ${withPe} with P/E · ${withFcf} with cash flow · FX ${fx}`);
 console.log(companies.slice(0, 5).map((c) => `  ${c.ticker} ${c.name} · ¥${c.price} · P/E ${c.pe ?? '—'} · P/B ${c.pb ?? '—'}`).join('\n'));

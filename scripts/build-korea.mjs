@@ -459,6 +459,9 @@ catch (e) { console.log(`  list artifact: ${e.message}`); }
 // The chart store reads one company's line instead of parsing all 28 MB for one chart.
 try { execFileSync(process.execPath, [join(ROOT, 'scripts', 'build-chart-store.mjs'), 'kr'], { stdio: 'inherit' }); }
 catch (e) { console.log(`  chart store: ${e.message}`); }
+// One small file per company, so opening a company does not parse all 28 MB on the server.
+try { execFileSync(process.execPath, [join(ROOT, 'scripts', 'build-company-details.mjs'), 'kr'], { stdio: 'inherit' }); }
+catch (e) { console.log(`  company details: ${e.message}`); }
 
 console.log(`${out.length} companies · ${out.filter((c) => c.pe != null).length} with P/E · FX ${fx}`);
 console.log(out.slice(0, 5).map((c) => `  ${c.ticker} ${c.name} · ₩${Math.round(c.price)} · P/E ${c.pe ?? '—'} · P/B ${c.pb ?? '—'}`).join('\n'));

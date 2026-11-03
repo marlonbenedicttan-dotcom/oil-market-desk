@@ -1051,6 +1051,40 @@ function readHongKongCompany(code) {
   try { return JSON.parse(fs.readFileSync(path.join(HONGKONG_DETAIL_DIR, `${c}.json`), 'utf8')); }
   catch { return null; }
 }
+
+// Japan, Korea and Taiwan keep their companies in one big file, and the company page only needs one
+// record. Parsing japan.json (5 MB), korea.json (28 MB — 24 MB of it is daily closes the detail page
+// never draws) or taiwan.json (5 MB) on every open is what put "Reading the filing…" in front of the
+// page on the free instance. scripts/build-company-details.mjs writes one small file per company; the
+// `_stamp.json` beside them carries the source's own `updated` field, so a market rebuild that did not
+// regenerate these files falls back to the old reader instead of serving stale numbers.
+const JAPAN_DETAIL_DIR = path.join(__dirname, 'data', 'japan-companies');
+const KOREA_DETAIL_DIR = path.join(__dirname, 'data', 'korea-companies');
+const TAIWAN_DETAIL_DIR = path.join(__dirname, 'data', 'taiwan-companies');
+const DETAIL_STAMP_CACHE = new Map();   // dir -> { key, ok }
+function detailDirCurrent(dir, sourceUpdated) {
+  if (!sourceUpdated) return false;
+  try {
+    const st = fs.statSync(path.join(dir, '_stamp.json'));
+    const key = `${st.mtimeMs}:${sourceUpdated}`;
+    const hit = DETAIL_STAMP_CACHE.get(dir);
+    if (hit && hit.key === key) return hit.ok;
+    const meta = JSON.parse(fs.readFileSync(path.join(dir, '_stamp.json'), 'utf8'));
+    const ok = !!meta && meta.updated === sourceUpdated;
+    DETAIL_STAMP_CACHE.set(dir, { key, ok });
+    return ok;
+  } catch { return false; }
+}
+function readDetailCompany(dir, code, sourceUpdated) {
+  if (!detailDirCurrent(dir, sourceUpdated)) return null;
+  const k = String(code || '').trim();
+  if (!/^[A-Za-z0-9._-]{1,16}$/.test(k)) return null;
+  try { return JSON.parse(fs.readFileSync(path.join(dir, `${k}.json`), 'utf8')); }
+  catch { return null; }
+}
+function readJapanCompany(code) { return readDetailCompany(JAPAN_DETAIL_DIR, code, filePrefixStamp(path.join(__dirname, 'data', 'japan.json'))); }
+function readKoreaCompany(code) { return readDetailCompany(KOREA_DETAIL_DIR, code, koreaSourceUpdated()); }
+function readTaiwanCompany(code) { return readDetailCompany(TAIWAN_DETAIL_DIR, code, taiwanSourceUpdated()); }
 const AUSTRALIA_SERIES_DIR = path.join(__dirname, 'data', 'australia-series');
 const AUS_SERIES_CACHE = new Map();   // one letter bucket per chart, not the whole market
 function readAustraliaSeries(code) {
@@ -4875,8 +4909,10 @@ const server = http.createServer(async (req, res) => {
     }
     if (url.pathname.startsWith('/api/korea/company/')) {
       const code = decodeURIComponent(url.pathname.slice('/api/korea/company/'.length));
-      const kr = readKorea();
-      const c = (kr.companies || []).find((x) => x.code === code || x.ticker === code);
+      const c = readKoreaCompany(code) || (() => {
+        const kr = readKorea();
+        return (kr.companies || []).find((x) => x.code === code || x.ticker === code) || null;
+      })();
       if (!c) return sendJSON(res, 404, { error: 'not found' });
       return sendJSONCached(res, 200, c);
     }
@@ -4909,8 +4945,10 @@ const server = http.createServer(async (req, res) => {
     }
     if (url.pathname.startsWith('/api/taiwan/company/')) {
       const code = decodeURIComponent(url.pathname.slice('/api/taiwan/company/'.length));
-      const tw = readTaiwan();
-      const c = (tw.companies || []).find((x) => x.code === code || x.ticker === code);
+      const c = readTaiwanCompany(code) || (() => {
+        const tw = readTaiwan();
+        return (tw.companies || []).find((x) => x.code === code || x.ticker === code) || null;
+      })();
       if (!c) return sendJSON(res, 404, { error: 'not found' });
       return sendJSONCached(res, 200, c);
     }
@@ -4982,8 +5020,10 @@ const server = http.createServer(async (req, res) => {
     }
     if (url.pathname.startsWith('/api/japan/company/')) {
       const code = decodeURIComponent(url.pathname.slice('/api/japan/company/'.length));
-      const jp = readJapan();
-      const c = (jp.companies || []).find((x) => x.code === code || x.ticker === code);
+      const c = readJapanCompany(code) || (() => {
+        const jp = readJapan();
+        return (jp.companies || []).find((x) => x.code === code || x.ticker === code) || null;
+      })();
       if (!c) return sendJSON(res, 404, { error: 'not found' });
       return sendJSONCached(res, 200, c);
     }
@@ -5275,7 +5315,7 @@ server.listen(PORT, async () => {
     // Korea's list is the cheap projection (242 KB). Its 28 MB statement file is deliberately NOT
     // parsed here: on the free 512 MB instance that persistent cache, plus the Hong Kong and Australia
     // datasets, pushed the process into OOM — the symptom was 502s on the company chart and peers
-    // endpoints. The first Korea company page pays the ~1 s parse instead.
+    // endpoints. Company pages read their own small file from data/korea-companies instead.
     try { readKoreaList(); } catch {}
     // Last, and deliberately gentle (3 news calls at a time): the event layer is a nice-to-have, not
     // a reason for the macro/news feeds to come back rate-limited on a cold start. Skip it entirely

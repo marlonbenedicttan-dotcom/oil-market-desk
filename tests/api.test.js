@@ -670,6 +670,12 @@ test('search prefers the biggest company when several share a name', async () =>
   assert.equal(d.results[0].ref, 'kr:005930', `got ${d.results[0] && d.results[0].ref}`);
 });
 
+test('search matches several words across the name and the exchange short name', async () => {
+  const d = await (await fetch(`http://localhost:${PORT}/api/search?q=shk%20properties&limit=3`)).json();
+  assert.ok(d.results.length, 'SHK Properties has no result');
+  assert.equal(d.results[0].ref, 'hk:0016', `got ${d.results[0] && d.results[0].ref}`);
+});
+
 test('search spans all three markets', async () => {
   const d = await (await fetch(`http://localhost:${PORT}/api/search?q=toyota&limit=3`)).json();
   assert.ok(d.results.some((x) => x.market === 'jp'), 'Japan missing from the search index');
@@ -816,6 +822,23 @@ test('/api/australia/chart serves the range it was asked for', async () => {
   assert.ok(d.dates.length > 200, `got ${d.dates.length} points`);
   assert.equal(d.dates.length, d.closes.length);
   for (let i = 1; i < d.dates.length; i++) assert.ok(d.dates[i] > d.dates[i - 1]);
+});
+
+// One company is one small file now (data/korea-companies), not a parse of the 28 MB market. The
+// detail page reads quarters/history; the chart comes from data/charts, so the record carries no series.
+test('/api/korea/company answers by code or ticker from the per-company file', async () => {
+  const r = await fetch(`http://localhost:${PORT}/api/korea/company/005930`);
+  assert.equal(r.status, 200);
+  const c = await r.json();
+  assert.equal(c.ticker, '005930');
+  assert.ok(c.history && c.history.length >= 4, 'the five-year record is missing');
+  assert.ok(c.quarters && c.quarters.length >= 4, 'the quarterly table is missing');
+  const annual = (c.reports || []).find((x) => x.report === 'annual');
+  assert.ok(annual && annual.revenue > 0, 'the annual statements are missing');
+  assert.equal(c.series, undefined, 'the detail page must not carry the price history');
+  assert.ok(JSON.stringify(c).length < 50_000, 'the company payload ballooned');
+  const byCode = await (await fetch(`http://localhost:${PORT}/api/korea/company/00126380`)).json();
+  assert.equal(byCode.ticker, c.ticker, 'the DART code must resolve to the same company');
 });
 
 test('/api/korea ships the list projection, not the price history, and revalidates', async () => {

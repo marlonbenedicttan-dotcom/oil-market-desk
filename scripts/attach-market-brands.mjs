@@ -18,6 +18,7 @@ const MARKETS = {
     source: join(ROOT, 'data', 'taiwan.json'),
     list: join(ROOT, 'data', 'taiwan-list.json'),
     brands: join(ROOT, 'data', 'taiwan-brands.json'),
+    detail: join(ROOT, 'data', 'taiwan-companies'),
   },
   hk: {
     label: 'Hong Kong',
