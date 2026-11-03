@@ -1,8 +1,14 @@
 name: macro-snapshot
 
-# Refresh data/macro.json from the IMF World Economic Outlook (which the deploy host can't
-# reach) and commit it. The app serves that file. Runs weekly, on demand, and whenever the
-# fetcher itself changes.
+# Refresh the two upstream snapshots the app cannot fetch for itself:
+#   data/macro.json — IMF World Economic Outlook (the deploy host gets a 403 WAF)
+#   data/usda.json  — USDA PSD supply/demand bulk CSVs (~4 MB of zips; too heavy to fetch per request)
+# The app serves both files. Runs weekly, on demand, and whenever a fetcher changes.
+#
+# USDA lived on a LaunchAgent on the developer's Mac until Nov 2026. That job was the only thing
+# refreshing usda.json, it silently failed (an IMF connect timeout aborted the run before USDA was
+# reached, and a bare `git push` lost the race against the daily jobs), and nothing watched usda.json
+# for staleness. Both fetchers are keyless, so this workflow is the whole story now.
 on:
   schedule:
     - cron: '17 4 * * 1' # Mondays 04:17 UTC
@@ -10,6 +16,7 @@ on:
   push:
     paths:
       - 'scripts/fetch-macro.mjs'
+      - 'scripts/fetch-usda.mjs'
       - '.github/workflows/macro-snapshot.yml'
 
 concurrency:
@@ -22,6 +29,7 @@ permissions:
 jobs:
   refresh:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
         with:
@@ -29,17 +37,23 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      # USDA first: it is the snapshot with no other path to production, so it must not be blocked by
+      # an IMF outage. The IMF step is allowed to fail on its own, and only re-fails the job at the end.
+      - name: Fetch USDA PSD balance
+        run: node scripts/fetch-usda.mjs
       - name: Fetch IMF WEO snapshot
+        id: imf
+        continue-on-error: true
         run: node scripts/fetch-macro.mjs
       - name: Commit if changed
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email 'github-actions[bot]@users.noreply.github.com'
-          git add data/macro.json
+          git add data/macro.json data/usda.json
           if git diff --staged --quiet; then
-            echo 'No change to data/macro.json'
+            echo 'No change to data/macro.json or data/usda.json'
           else
-            git commit -m 'chore: refresh macro snapshot (IMF WEO)'
+            git commit -m 'chore: refresh macro + USDA snapshots'
             # Another push can land while this job runs: rebase and retry rather than fail.
             pushed=0
             for i in 1 2 3 4 5; do
@@ -48,3 +62,8 @@ jobs:
             done
             [ "$pushed" = "1" ] || { echo 'could not push after 5 attempts'; exit 1; }
           fi
+      - name: Fail if the IMF fetch failed
+        if: steps.imf.outcome == 'failure'
+        run: |
+          echo '::error::fetch-macro.mjs failed — data/macro.json was not refreshed (USDA still committed)'
+          exit 1
