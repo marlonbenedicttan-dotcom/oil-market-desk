@@ -143,7 +143,7 @@ function loadApp() {
   const source = fs.readFileSync(APP, 'utf8');
   // `const`/`function` declarations are script-scoped, so hand the ones under test back explicitly.
   const exported = `\n;globalThis.__ui = {
-    esc, pctf, cls, ago, deltaStrip, renderRisk,
+    esc, pctf, cls, ago, deltaStrip, renderRisk, renderRelValue,
     buildBpOptions, renderTicker, markReady, hideBoot, BOOT_CORE, bootReady,
     setMarkets: (v) => { markets = v; },
     getMarkets: () => markets,
@@ -249,6 +249,21 @@ const CMP_MARKETS = [
   { id: 'precious', label: 'Precious metals', primary: 'gold', components: [{ id: 'gold' }, { id: 'silver' }] },
   { id: 'industrial', label: 'Industrial metals', primary: 'copper', components: [{ id: 'copper' }] },
 ];
+
+test('relative value paints a percentile marker and never invents one', () => {
+  const { ui, document } = loadApp();
+  const el = document.getElementById('relval');
+  ui.renderRelValue({ segment: 'crude', asOf: '2026-11-03', rows: [
+    { id: 'brent_wti', label: 'Brent − WTI', unit: '$/bbl', dp: 2, signed: true, last: 7.56, pct: 91.2, pctLabel: '91st pctile', zone: 'near the top of its 1-year range', why: 'Wide = tight non-US crude.', extreme: true, obs: 250, asOf: '2026-11-03', spark: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10] },
+    { id: 'short', label: 'Short history', unit: '$/t', dp: 0, signed: true, last: null, pct: null, pctLabel: null, zone: null, why: '', extreme: false, obs: 12, asOf: '2026-10-31', spark: [] },
+  ] });
+  assert.match(el.innerHTML, /Brent − WTI/);
+  assert.match(el.innerHTML, /91st pctile/);
+  assert.match(el.innerHTML, /MOST EXTREME/);
+  assert.match(el.innerHTML, /rv-mark hot/);
+  assert.match(el.innerHTML, /not enough history/);
+  assert.doesNotMatch(el.innerHTML, /NaN/);
+});
 
 test('the compare pickers fill in even when prices land before history and FX', () => {
   const { ui, document } = loadApp();

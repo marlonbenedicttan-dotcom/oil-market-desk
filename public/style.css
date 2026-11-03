@@ -686,6 +686,23 @@ footer li { margin-bottom: 2px; }
 .opt-v.neg { color: var(--red); }
 .opt-s { font-size: 10px; }
 
+/* Relative value — curated spreads, each with its own 1-year percentile marker. */
+.relval { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1px; background: var(--line); }
+.rv-row { background: #0c0f13; padding: 10px 12px; min-width: 0; }
+.rv-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+.rv-l { font-size: 11px; letter-spacing: .4px; color: var(--text); }
+.rv-v { font-size: 19px; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.rv-u { font-size: 10px; font-weight: 400; color: var(--dim); }
+.rv-track { position: relative; height: 4px; background: #1a2028; margin: 9px 0 5px; border-radius: 2px; }
+.rv-mark { position: absolute; top: -4px; width: 2px; height: 12px; margin-left: -1px; background: var(--amber); }
+.rv-mark.hot { box-shadow: 0 0 7px #ff9e0099; }
+.rv-meta { display: flex; justify-content: space-between; gap: 8px; font-size: 10.5px; color: var(--dim); }
+.rv-note { font-size: 11px; color: var(--dim); margin-top: 6px; line-height: 1.35; }
+.rv-badge { font-size: 9px; letter-spacing: 1px; color: var(--amber); border: 1px solid #5c4a1d; padding: 1px 5px; margin-left: 4px; white-space: nowrap; }
+.rv-spark { margin-top: 6px; }
+.rv-spark svg { width: 100%; height: 24px; display: block; opacity: .9; }
+@media (max-width: 640px) { .relval { grid-template-columns: 1fr; } }
+
 /* Onboarding */
 .onboard { position: fixed; inset: 0; z-index: 5000; background: rgba(0,0,0,.72); display: flex; align-items: center; justify-content: center; padding: 20px; }
 .onboard-box { background: var(--panel); border: 1px solid var(--line2); max-width: 520px; padding: 22px 24px; border-radius: 12px; }

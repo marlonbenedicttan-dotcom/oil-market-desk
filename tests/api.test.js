@@ -32,6 +32,7 @@ test('serves the dashboard', async () => {
   assert.match(html, /id="headlines"/);     // live headlines board now lives in HOME
   assert.match(html, /id="regime-board"/);  // cross-asset backdrop (INVESTOR #2)
   assert.match(html, /id="screen"/);        // screener (INVESTOR #3)
+  assert.match(html, /id="relval"/);        // curated spreads (COMMODITIES)
   assert.doesNotMatch(html, /class="hero"/); // ...not pinned to the top of every page
   // Retired from the UI (kept only as endpoints): the HOME alerts panel, its subscribe form,
   // and the header's EXPORT CSV / DAILY BRIEF buttons.
@@ -40,6 +41,23 @@ test('serves the dashboard', async () => {
   assert.doesNotMatch(html, /id="subscribe"/);
   assert.doesNotMatch(html, /api\/export\.csv">EXPORT CSV/);
   assert.doesNotMatch(html, /href="\/api\/digest"/);
+});
+
+test('/api/relvalue returns a curated spread with its own percentile, and nothing for an unknown segment', async () => {
+  const d = await (await fetch(`http://localhost:${PORT}/api/relvalue?segment=crude`)).json();
+  assert.equal(d.segment, 'crude');
+  assert.equal(d.label, 'Crude oil');
+  assert.ok(Array.isArray(d.rows), 'rows is an array');
+  assert.ok(d.rows.length >= 1, 'crude has its Brent-WTI spread');
+  const row = d.rows[0];
+  assert.equal(row.id, 'brent_wti');
+  assert.ok(row.label && row.unit, 'a spread carries its label and unit');
+  assert.equal(typeof row.obs, 'number');
+  if (row.last != null) assert.ok(Number.isFinite(row.last));
+  if (row.pct != null) assert.ok(row.pct >= 0 && row.pct <= 100, `percentile in range (got ${row.pct})`);
+  assert.ok(!('history' in row), 'the full history is stripped from the response');
+  const none = await (await fetch(`http://localhost:${PORT}/api/relvalue?segment=not-a-segment`)).json();
+  assert.deepEqual(none.rows, []);
 });
 
 test('/api/calendar spans every macro country, with consensus where published', async () => {

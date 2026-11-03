@@ -444,6 +444,42 @@ function renderSnapshot() {
 }
 
 // ---------------------------------------------------------------------------
+// Relative value — the curated spreads for the selected segment. The server
+// assembles and ranks them (each against its own 1-year history); this only paints.
+// ---------------------------------------------------------------------------
+async function loadRelValue() {
+  const el = $('relval'); if (!el) return;
+  const seg = currentMarket;
+  el.innerHTML = stLoading('Loading spreads…');
+  let d = null;
+  try { d = await jget('/api/relvalue?segment=' + encodeURIComponent(seg), 10 * 60e3); } catch { d = null; }
+  if (seg !== currentMarket) return;   // the segment changed while this was in flight
+  renderRelValue(d);
+}
+function renderRelValue(d) {
+  const el = $('relval'); if (!el) return;
+  const sub = $('rv-sub');
+  const rows = (d && d.rows) || [];
+  if (sub) sub.textContent = rows.length ? `curated spreads · 1-year percentile · as of ${(d && d.asOf) || '—'}` : '';
+  if (!rows.length) { el.innerHTML = stEmpty('No clean spread is available for this segment right now.'); return; }
+  el.innerHTML = rows.map((r) => {
+    const pct = r.pct == null ? null : Math.max(0, Math.min(100, r.pct));
+    const hot = pct != null && (pct >= 90 || pct <= 10);
+    const val = r.last == null ? '—' : `${r.signed && r.last >= 0 ? '+' : ''}${Number(r.last).toLocaleString(undefined, { minimumFractionDigits: r.dp, maximumFractionDigits: r.dp })}`;
+    const pctTxt = pct == null ? `${r.obs || 0} observations — not enough history` : (r.pctLabel || `${Math.round(pct)} pctile`);
+    const asOf = r.asOf && d.asOf && r.asOf !== d.asOf ? ` · as of ${r.asOf}` : '';
+    return `<div class="rv-row" title="${esc(r.label)}${asOf}">`
+      + `<div class="rv-head"><span class="rv-l">${esc(r.label)}${r.extreme ? ' <span class="rv-badge">MOST EXTREME</span>' : ''}</span>`
+      + `<span class="rv-v">${val} <span class="rv-u">${esc(r.unit || '')}</span></span></div>`
+      + `<div class="rv-track">${pct == null ? '' : `<span class="rv-mark${hot ? ' hot' : ''}" style="left:${pct}%"></span>`}</div>`
+      + `<div class="rv-meta"><span>${esc(pctTxt)}</span><span>${esc(r.zone || '')}${esc(asOf)}</span></div>`
+      + (r.why ? `<div class="rv-note">${esc(r.why)}</div>` : '')
+      + `<div class="rv-spark">${tileSpark(r.spark)}</div>`
+      + '</div>';
+  }).join('');
+}
+
+// ---------------------------------------------------------------------------
 // Adaptive Big Picture — the panels follow the selected market
 // ---------------------------------------------------------------------------
 function setTitle(id, text) { const e = $(id); if (e) e.textContent = text; }
@@ -621,6 +657,7 @@ function selectMarket(id) {
   const pick = $('bp-metric');
   if (pick && [...pick.options].some((o) => o.value === id)) pick.value = id;   // keep the picker in sync
   renderSnapshot();
+  if (document.querySelector('.tab.active')?.dataset.tab === 'commodities') loadRelValue();
 
   toggleMarketBlocks();
   if (data) { renderCards(data); buildMetricOptions(data); }
@@ -3532,6 +3569,7 @@ function showTab(name) {
   document.querySelectorAll('.tab').forEach((t) => { const on = t.dataset.tab === name; t.classList.toggle('active', on); t.setAttribute('aria-selected', String(on)); });
   document.querySelectorAll('.tabpane').forEach((p) => p.classList.toggle('hidden', p.dataset.pane !== name));
   if (name === 'commodities') {
+    loadRelValue();
     loadCurveHistory();
     if (chart) setTimeout(() => chart.resize(), 50);
     if (cmpChart) setTimeout(() => cmpChart.resize(), 55);

@@ -133,6 +133,7 @@
     <!-- COMMODITIES -->
     <div class="tabpane hidden" data-pane="commodities" id="pane-commodities" role="tabpanel" aria-labelledby="tab-commodities">
       <nav class="jumpnav" aria-label="Jump to a section">
+        <a href="#c-relval">Spreads</a>
         <a href="#c-read">Read</a>
         <a href="#chart-panel">Chart</a>
         <a href="#compare-panel">Compare</a>
@@ -156,7 +157,13 @@
         <div id="bp-snapshot" class="bp-snapshot"></div>
       </section>
 
-      <!-- 2. THE SO-WHAT (read first) — one read: what happened, key points, what's next, trade ideas -->
+      <!-- 2. WHERE INSIDE THE SEGMENT (the curated spreads worth watching) -->
+      <section id="c-relval" class="panel">
+        <div class="ph"><span class="ph-t">RELATIVE VALUE — where this segment is stretched</span><span id="rv-sub" class="dimtext"></span></div>
+        <div id="relval" class="relval"></div>
+      </section>
+
+      <!-- 3. THE SO-WHAT (read first) — one read: what happened, key points, what's next, trade ideas -->
       <section id="c-read" class="panel">
         <div class="ph"><span class="ph-t">THE READ — what happened · key points · what's next · trade ideas</span><span class="dimtext">NOT INVESTMENT ADVICE</span></div>
         <div id="bottomline" class="bottomline"></div>

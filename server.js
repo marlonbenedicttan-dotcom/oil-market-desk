@@ -10,7 +10,7 @@ import { sendMail } from './src/smtp.js';
 import { fileURLToPath } from 'node:url';
 import { projectUs, projectJp, japanList, koreaList, taiwanList, hongkongList, australiaList, US_LIST_FIELDS } from './src/project.js';
 import { sliceRange, seriesFromLine } from './src/charts.js';
-import { sgn, businessDaysSince, horizonDeltas, horizonDeltasAbs, isoWeek, monthly, pctOver, percentile, lastNonNull, escHtml, webhookPayload, realizedVol, computeCracks, computeCrush, computeSteel, backAdjust, pearson, logReturns, frontExpiry, curveTightness, inventoryTightness, weightedScore, seasonalGrade, seasonalAhead, contractMonthsBetween, signedPosition, signedMove, stretchScore, sdLabel, attributeMoves, newsContextOk, METHODOLOGY, positioningFlag, positioningRead, positioningDivergence, maxDrawdown, drawdownNow, realizedVolTerm, volPercentile, volVsOwnWord, corrMatrix, fxAdjust, parseOcc, drawdownWord, volWord, volTrend, corrShift, pairGroups, topPairs, bestDiversifier, riskRead, priorityOf, rankByPriority, clusterEvents, scoreEvents, selectEvents, explainRows } from './src/lib.js';
+import { sgn, businessDaysSince, horizonDeltas, horizonDeltasAbs, isoWeek, monthly, pctOver, percentile, lastNonNull, escHtml, webhookPayload, realizedVol, computeCracks, computeCrush, computeSteel, buildRelValueRow, relValueZone, ordinal, backAdjust, pearson, logReturns, frontExpiry, curveTightness, inventoryTightness, weightedScore, seasonalGrade, seasonalAhead, contractMonthsBetween, signedPosition, signedMove, stretchScore, sdLabel, attributeMoves, newsContextOk, METHODOLOGY, positioningFlag, positioningRead, positioningDivergence, maxDrawdown, drawdownNow, realizedVolTerm, volPercentile, volVsOwnWord, corrMatrix, fxAdjust, parseOcc, drawdownWord, volWord, volTrend, corrShift, pairGroups, topPairs, bestDiversifier, riskRead, priorityOf, rankByPriority, clusterEvents, scoreEvents, selectEvents, explainRows } from './src/lib.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC = path.join(__dirname, 'public');
@@ -92,6 +92,48 @@ const MARKETS = [
   { id: 'livestock',  label: 'Livestock',         group: 'Livestock',   primary: 'cattle', components: ['cattle', 'hogs', 'feeder'],                hasBasis: false, hasInventories: false },
   { id: 'dairy',      label: 'Dairy',             group: 'Dairy',       primary: 'milk',   components: ['milk', 'butter', 'nfdm', 'cheese', 'whey'], hasBasis: false, hasInventories: false },
 ];
+// ---------------------------------------------------------------------------
+// Relative value — the 1-3 spreads per segment that have a real economic link
+// (a processing margin, a substitution pair, a feed/currency cost, or a
+// growth-vs-safety ratio). Each is ranked against its own 1-year history, never
+// against another segment. The maths is in src/lib.js; this table is curation.
+// ---------------------------------------------------------------------------
+const REL_VALUE = {
+  crude: [
+    { id: 'brent_wti', label: 'Brent − WTI', kind: 'diff', a: 'brent', b: 'wti', legs: ['brent', 'wti'], unit: '$/bbl', dp: 2, why: 'A wide gap usually means tight non-US crude or heavy US supply; it pays for export logistics.' },
+  ],
+  refined: [
+    { id: 'c321', label: '3-2-1 crack', kind: 'margin', calc: 'c321', legs: ['rbob', 'ulsd', 'wti'], unit: '$/bbl', dp: 2, why: 'The refining margin: wide means products are tight or crude is cheap.' },
+    { id: 'diesel_gas', label: 'Diesel − gasoline', kind: 'diff', a: 'ulsd', b: 'rbob', scale: 42, legs: ['ulsd', 'rbob'], unit: '$/bbl', dp: 2, why: 'Winter heating and freight demand widen it; summer gasoline narrows it.' },
+  ],
+  gas: [
+    { id: 'gas_oil', label: 'Gas ÷ oil (energy-equivalent)', kind: 'ratio', a: 'natgas', b: 'wti', af: 5.8, legs: ['natgas', 'wti'], unit: '×', dp: 2, why: 'Gas priced against oil on an energy basis; low means gas is cheap for power and industry.' },
+  ],
+  precious: [
+    { id: 'gold_silver', label: 'Gold ÷ silver', kind: 'ratio', a: 'gold', b: 'silver', legs: ['gold', 'silver'], unit: '×', dp: 1, why: 'A high ratio means silver is cheap versus gold; extremes often mark risk-off.' },
+    { id: 'plat_gold', label: 'Platinum ÷ gold', kind: 'ratio', a: 'platinum', b: 'gold', legs: ['platinum', 'gold'], unit: '×', dp: 2, why: 'Platinum below gold is unusual; it usually reflects weak auto demand or gold’s monetary premium.' },
+  ],
+  industrial: [
+    { id: 'copper_gold', label: 'Copper ÷ gold (×1,000)', kind: 'ratio', a: 'copper', b: 'gold', legs: ['copper', 'gold'], unit: '×', dp: 2, scale: 1000, why: 'Copper measures growth, gold measures safety; a falling ratio is a risk-off tell.' },
+    { id: 'steel_margin', label: 'Steel margin', kind: 'margin', calc: 'steel', legs: ['steel', 'ironore'], unit: '$/t', dp: 0, why: 'Hot-rolled coil minus the ore needed: a gross mill margin before coking coal and energy.' },
+  ],
+  grains: [
+    { id: 'crush', label: 'Soybean crush', kind: 'margin', calc: 'crush', legs: ['soymeal', 'soyoil', 'soybean'], unit: '$/bu', dp: 2, why: 'The processor margin; high means strong meal/oil demand or cheap beans.' },
+    { id: 'soy_corn', label: 'Soybean ÷ corn', kind: 'ratio', a: 'soybean', b: 'corn', legs: ['soybean', 'corn'], unit: '×', dp: 2, why: 'The acreage fight: a high ratio pulls acres toward soybeans next season.' },
+  ],
+  softs: [
+    { id: 'palm_soyoil', label: 'Palm − soyoil', kind: 'diff', a: 'palm', b: 'soyoil', bf: 22.0462, legs: ['palm', 'soyoil'], unit: '$/t', dp: 0, why: 'Vegetable-oil substitution; palm at a discount pulls demand its way.' },
+  ],
+  livestock: [
+    { id: 'cattle_feeder', label: 'Live − feeder', kind: 'diff', a: 'cattle', b: 'feeder', legs: ['cattle', 'feeder'], unit: '¢/lb', dp: 2, why: 'The price gap between finished cattle and feeders; a wider gap (less negative) favours feedlots.' },
+    { id: 'cattle_hogs', label: 'Cattle ÷ hogs', kind: 'ratio', a: 'cattle', b: 'hogs', legs: ['cattle', 'hogs'], unit: '×', dp: 2, why: 'Protein substitution: extremes shift retail and food-service demand between beef and pork.' },
+  ],
+  dairy: [
+    { id: 'milk_cheese', label: 'Class III ÷ cheese', kind: 'ratio', a: 'milk', b: 'cheese', legs: ['milk', 'cheese'], unit: '×', dp: 1, why: 'The Class III pricing relationship; a move away from its usual multiple is the signal.' },
+    { id: 'butter_nfdm', label: 'Butter − NFDM', kind: 'diff', a: 'butter', b: 'nfdm', legs: ['butter', 'nfdm'], unit: '¢/lb', dp: 1, why: 'Cream and product mix: a wide gap favours butter production over powder.' },
+  ],
+};
+
 function getMarkets() {
   return MARKETS.map((m) => ({
     ...m,
@@ -534,6 +576,48 @@ async function getRange(id, range) {
     return { id, label: `${b.label} gap`, unit: b.unit, dp: b.dp, kind: 'basis', range, dates, series: { paper: gap, physical: dates.map(() => null) }, summary: { paper: rowPct(gap), physical: null } };
   }
   return { id, label: b.label, unit: b.unit, dp: b.dp, kind: 'bench', range, dates, series: { paper, physical }, summary: { paper: rowPct(paper), physical: rowPct(physical) } };
+}
+
+// ---------------------------------------------------------------------------
+// Relative value — assemble the curated spreads for one segment from the same
+// 1-year futures series the charts use. Every row is ranked against its own
+// history; a missing leg leaves the row blank rather than inventing a number.
+// ---------------------------------------------------------------------------
+const relDownsample = (arr, n = 60) => (arr.length <= n ? arr
+  : Array.from({ length: n }, (_, i) => arr[Math.round((i * (arr.length - 1)) / (n - 1))]));
+
+async function getRelValue(segment) {
+  const spec = REL_VALUE[segment];
+  const mk = MARKETS.find((m) => m.id === segment);
+  const base = { segment, label: mk?.label || segment, asOf: null, rows: [] };
+  if (!spec) return base;
+  return cachedSWR('relvalue:' + segment, 10 * 60e3, async () => {
+    const ids = [...new Set(spec.flatMap((r) => r.legs || [r.a, r.b].filter(Boolean)))];
+    const legs = {};
+    await Promise.all(ids.map(async (id) => {
+      try {
+        const r = await getRange(id, '1y');
+        const map = {};
+        (r.dates || []).forEach((d, i) => { const v = r.series?.paper?.[i]; if (v != null) map[d] = v; });
+        legs[id] = map;
+      } catch { legs[id] = {}; }
+    }));
+    const rows = spec.map((r) => buildRelValueRow(r, legs)).filter((r) => r.obs > 0);
+    // "Most extreme" is the row furthest from the median of its own range. It is a label, not a
+    // recommendation; the registry order stays fixed so the panel does not jump around day to day.
+    const max = rows.reduce((m, r) => (r.pct != null && (m == null || Math.abs(r.pct - 50) > Math.abs(m.pct - 50)) ? r : m), null);
+    for (const r of rows) {
+      r.zone = relValueZone(r.pct);
+      r.extreme = rows.length > 1 && r === max && r.pct != null;
+      r.pctLabel = r.pct == null ? null : (r.pct < 1 ? '<1st pctile' : `${ordinal(r.pct)} pctile`);
+      r.pct = r.pct == null ? null : +r.pct.toFixed(1);
+      r.last = r.last == null ? null : +r.last.toFixed(r.dp);
+      r.spark = relDownsample(r.history).map((v) => +v.toFixed(4));
+      delete r.history;
+    }
+    const asOf = rows.map((r) => r.asOf).filter(Boolean).sort().at(-1) || null;
+    return { ...base, asOf, rows };
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -5209,6 +5293,7 @@ const server = http.createServer(async (req, res) => {
     }
     if (url.pathname === '/api/brief') return sendJSONCached(res, 200, await buildBrief().catch((e) => ({ error: String(e.message) })));
     if (url.pathname === '/api/analytics') return sendJSONCached(res, 200, await getAnalytics(Number(url.searchParams.get('freight')) || FREIGHT_DEFAULT).catch((e) => { console.error('[analytics]', e.message); return { benchmarks: {} }; }));
+    if (url.pathname === '/api/relvalue') return sendJSONCached(res, 200, await getRelValue(url.searchParams.get('segment') || 'crude').catch((e) => { console.error('[relvalue]', e.message); return { segment: url.searchParams.get('segment') || 'crude', asOf: null, rows: [] }; }), 'public, max-age=300, stale-while-revalidate=300');
     if (url.pathname === '/api/export.csv') {
       const [m, a] = await Promise.all([getMarket(), getAnalytics()]);
       const rows = [['benchmark', 'unit', 'paper', 'physical', 'physical_date', 'basis', 'basis_pctile_2y', 'vol30_ann_pct']];
