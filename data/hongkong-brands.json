@@ -1,0 +1,711 @@
+{
+  "updated": "2026-11-03",
+  "note": "Consumer-facing brands and product lines per Hong Kong ticker, curated by hand. Hong Kong listings include mainland companies, so a brand a reader knows from the shelf or the phone is mapped to the listed parent. Coverage is deliberately partial: a blank is better than a guess.",
+  "brands": {
+    "1024": [
+      "Kuaishou",
+      "Snack Video"
+    ],
+    "1044": [
+      "Hengan",
+      "Anle",
+      "Qichang"
+    ],
+    "1055": [
+      "China Southern",
+      "Sky Pearl Club"
+    ],
+    "1070": [
+      "TCL"
+    ],
+    "1088": [
+      "Shenhua"
+    ],
+    "1093": [
+      "CSPC"
+    ],
+    "1109": [
+      "China Resources Land",
+      "CR Land"
+    ],
+    "1112": [
+      "Biostime",
+      "Swisse",
+      "Dodie",
+      "Aurelia"
+    ],
+    "1113": [
+      "CK Asset"
+    ],
+    "1128": [
+      "Wynn",
+      "Encore"
+    ],
+    "1138": [
+      "COSCO Shipping Energy"
+    ],
+    "1171": [
+      "Yankuang"
+    ],
+    "1177": [
+      "Sino Biopharm"
+    ],
+    "1179": [
+      "Hanting",
+      "JI Hotel",
+      "Ibis",
+      "H World"
+    ],
+    "1199": [
+      "COSCO Ports"
+    ],
+    "1208": [
+      "MMG"
+    ],
+    "1211": [
+      "BYD",
+      "Denza",
+      "Yangwang",
+      "Fang Cheng Bao",
+      "Seal",
+      "Han",
+      "Atto 3"
+    ],
+    "1276": [
+      "Hengrui"
+    ],
+    "1288": [
+      "Agricultural Bank of China",
+      "ABC"
+    ],
+    "1299": [
+      "AIA"
+    ],
+    "1308": [
+      "SITC"
+    ],
+    "1339": [
+      "PICC"
+    ],
+    "1347": [
+      "Hua Hong"
+    ],
+    "1378": [
+      "China Hongqiao"
+    ],
+    "1398": [
+      "ICBC"
+    ],
+    "1658": [
+      "Postal Savings Bank of China",
+      "PSBC"
+    ],
+    "1698": [
+      "QQ Music",
+      "Kugou",
+      "Kuwo",
+      "WeSing"
+    ],
+    "1766": [
+      "CRRC"
+    ],
+    "1776": [
+      "GF Securities"
+    ],
+    "1788": [
+      "Guotai Junan",
+      "GTJA"
+    ],
+    "1801": [
+      "Innovent",
+      "Tyvyt"
+    ],
+    "1810": [
+      "Xiaomi",
+      "Redmi",
+      "POCO",
+      "Mi",
+      "HyperOS",
+      "Mi Home"
+    ],
+    "1816": [
+      "CGN"
+    ],
+    "1833": [
+      "Ping An Good Doctor",
+      "PA GoodDoctor"
+    ],
+    "1876": [
+      "Budweiser",
+      "Stella Artois",
+      "Corona",
+      "Hoegaarden",
+      "Beck's"
+    ],
+    "1898": [
+      "China Coal"
+    ],
+    "1910": [
+      "Samsonite",
+      "Tumi",
+      "American Tourister",
+      "Lipault"
+    ],
+    "1913": [
+      "Prada",
+      "Miu Miu",
+      "Church's",
+      "Car Shoe"
+    ],
+    "1919": [
+      "COSCO",
+      "COSCO Shipping"
+    ],
+    "1928": [
+      "Sands",
+      "Venetian",
+      "Parisian",
+      "Londoner"
+    ],
+    "1972": [
+      "Swire Properties",
+      "Taikoo Place",
+      "Pacific Place"
+    ],
+    "1988": [
+      "Minsheng Bank"
+    ],
+    "1997": [
+      "Harbour City",
+      "Times Square",
+      "Wharf REIC"
+    ],
+    "2007": [
+      "Country Garden"
+    ],
+    "2015": [
+      "Li Auto",
+      "Li L9",
+      "Li MEGA"
+    ],
+    "2018": [
+      "AAC Technologies"
+    ],
+    "2020": [
+      "ANTA",
+      "FILA",
+      "Descente",
+      "Kolon Sport"
+    ],
+    "2057": [
+      "ZTO",
+      "ZTO Express"
+    ],
+    "2150": [
+      "Nayuki",
+      "Naixue"
+    ],
+    "2196": [
+      "Fosun Pharma"
+    ],
+    "2208": [
+      "Goldwind"
+    ],
+    "2238": [
+      "GAC",
+      "Trumpchi",
+      "Aion"
+    ],
+    "2259": [
+      "Zijin Gold"
+    ],
+    "2269": [
+      "WuXi Biologics"
+    ],
+    "2282": [
+      "MGM",
+      "MGM Cotai"
+    ],
+    "2318": [
+      "Ping An",
+      "Ping An Bank"
+    ],
+    "2319": [
+      "Mengniu",
+      "Yoyi C",
+      "Telunsu",
+      "Milk Deluxe"
+    ],
+    "2328": [
+      "PICC P&C"
+    ],
+    "2331": [
+      "Li-Ning",
+      "Li Ning"
+    ],
+    "2333": [
+      "Great Wall Motor",
+      "Haval",
+      "ORA",
+      "Wey",
+      "Tank"
+    ],
+    "2359": [
+      "WuXi AppTec"
+    ],
+    "2367": [
+      "Giant Biogene"
+    ],
+    "2380": [
+      "China Power"
+    ],
+    "2382": [
+      "Sunny Optical"
+    ],
+    "2388": [
+      "BOCHK",
+      "BOC Hong Kong"
+    ],
+    "2400": [
+      "XD",
+      "Ragnarok M"
+    ],
+    "2600": [
+      "Chalco",
+      "Aluminum Corporation of China"
+    ],
+    "2601": [
+      "CPIC",
+      "China Pacific Insurance"
+    ],
+    "2628": [
+      "China Life"
+    ],
+    "3288": [
+      "Haitian",
+      "Haday"
+    ],
+    "3328": [
+      "Bank of Communications",
+      "BoCom"
+    ],
+    "3347": [
+      "Tigermed"
+    ],
+    "3606": [
+      "Fuyao"
+    ],
+    "3690": [
+      "Meituan",
+      "Dianping",
+      "KeeTa",
+      "Meituan Waimai"
+    ],
+    "3692": [
+      "Hansoh"
+    ],
+    "3750": [
+      "CATL",
+      "Shenxing",
+      "Qilin"
+    ],
+    "3759": [
+      "Pharmaron"
+    ],
+    "3868": [
+      "Xinyi Glass"
+    ],
+    "3888": [
+      "Kingsoft",
+      "WPS Office",
+      "Seasun"
+    ],
+    "3896": [
+      "Kingsoft Cloud"
+    ],
+    "3900": [
+      "Greentown"
+    ],
+    "3908": [
+      "CICC"
+    ],
+    "3968": [
+      "China Merchants Bank",
+      "CMB"
+    ],
+    "3988": [
+      "Bank of China",
+      "BOC"
+    ],
+    "3993": [
+      "CMOC"
+    ],
+    "6030": [
+      "CITIC Securities"
+    ],
+    "6060": [
+      "ZhongAn",
+      "ZA Bank",
+      "ZA Tech"
+    ],
+    "6066": [
+      "China Securities",
+      "CSC"
+    ],
+    "6098": [
+      "Country Garden Services"
+    ],
+    "6160": [
+      "BeOne",
+      "Brukinsa"
+    ],
+    "6181": [
+      "Laopu Gold",
+      "Laopu"
+    ],
+    "6186": [
+      "Feihe",
+      "Astrobaby"
+    ],
+    "6618": [
+      "JD Health"
+    ],
+    "6690": [
+      "Haier",
+      "Casarte",
+      "Leader"
+    ],
+    "6811": [
+      "Tai Hing"
+    ],
+    "6855": [
+      "Ascentage"
+    ],
+    "6862": [
+      "Haidilao"
+    ],
+    "6865": [
+      "Flat Glass"
+    ],
+    "6936": [
+      "SF Express",
+      "SF Holding",
+      "SF"
+    ],
+    "9618": [
+      "JD.com",
+      "JD",
+      "Jingdong"
+    ],
+    "9633": [
+      "Nongfu Spring",
+      "Nongfu",
+      "Oriental Leaf"
+    ],
+    "9866": [
+      "NIO",
+      "Onvo",
+      "Firefly"
+    ],
+    "9868": [
+      "XPeng",
+      "MONA",
+      "X9"
+    ],
+    "9869": [
+      "Helens",
+      "Helen's"
+    ],
+    "9888": [
+      "Baidu",
+      "Baidu Search",
+      "Ernie",
+      "Apollo Go",
+      "Baidu Maps"
+    ],
+    "9896": [
+      "MINISO",
+      "Top Toy"
+    ],
+    "9899": [
+      "NetEase Cloud Music",
+      "Cloud Music"
+    ],
+    "9961": [
+      "Trip.com",
+      "Ctrip",
+      "Skyscanner",
+      "Qunar"
+    ],
+    "9988": [
+      "Taobao",
+      "Tmall",
+      "AliExpress",
+      "Alibaba Cloud",
+      "DingTalk",
+      "Freshippo",
+      "1688"
+    ],
+    "9992": [
+      "Pop Mart",
+      "Molly",
+      "Labubu",
+      "Skullpanda",
+      "Dimoo",
+      "Crybaby"
+    ],
+    "9999": [
+      "NetEase",
+      "Youdao",
+      "Fantasy Westward Journey",
+      "Egg Party",
+      "NetEase Games"
+    ],
+    "0700": [
+      "WeChat",
+      "Weixin",
+      "QQ",
+      "Tencent Video",
+      "Tenpay",
+      "WeGame"
+    ],
+    "0992": [
+      "Lenovo",
+      "ThinkPad",
+      "IdeaPad",
+      "Legion",
+      "Motorola"
+    ],
+    "0669": [
+      "Milwaukee",
+      "Ryobi",
+      "Hoover",
+      "Vax",
+      "AEG"
+    ],
+    "0625": [
+      "SHEIN"
+    ],
+    "0116": [
+      "Chow Sang Sang"
+    ],
+    "0291": [
+      "Snow Beer",
+      "Snow",
+      "Heineken"
+    ],
+    "0168": [
+      "Tsingtao",
+      "Tsingtao Beer"
+    ],
+    "0322": [
+      "Master Kong",
+      "Kangshifu",
+      "Tingyi"
+    ],
+    "0220": [
+      "Uni-President",
+      "Tongyi",
+      "A-Ha"
+    ],
+    "0341": [
+      "Cafe de Coral",
+      "Super Sandwiches",
+      "Oliver's"
+    ],
+    "0538": [
+      "Ajisen",
+      "Ajisen Ramen"
+    ],
+    "0520": [
+      "Xiabuxiabu",
+      "Cou Cou"
+    ],
+    "0941": [
+      "China Mobile",
+      "Migu"
+    ],
+    "0762": [
+      "China Unicom",
+      "Unicom"
+    ],
+    "0728": [
+      "China Telecom",
+      "Tianyi Cloud"
+    ],
+    "0005": [
+      "HSBC",
+      "PayMe"
+    ],
+    "0939": [
+      "China Construction Bank",
+      "CCB"
+    ],
+    "0998": [
+      "CITIC Bank"
+    ],
+    "0023": [
+      "Bank of East Asia",
+      "BEA"
+    ],
+    "0966": [
+      "China Taiping"
+    ],
+    "0388": [
+      "HKEX"
+    ],
+    "0002": [
+      "CLP",
+      "China Light & Power"
+    ],
+    "0003": [
+      "Towngas",
+      "Hong Kong and China Gas"
+    ],
+    "0006": [
+      "Power Assets",
+      "Hongkong Electric"
+    ],
+    "0836": [
+      "China Resources Power",
+      "CR Power"
+    ],
+    "0902": [
+      "Huaneng"
+    ],
+    "0916": [
+      "Longyuan"
+    ],
+    "0968": [
+      "Xinyi Solar"
+    ],
+    "0066": [
+      "MTR"
+    ],
+    "0001": [
+      "CK Hutchison",
+      "Watsons",
+      "Fortress",
+      "Three"
+    ],
+    "0019": [
+      "Swire"
+    ],
+    "0293": [
+      "Cathay Pacific",
+      "Cathay",
+      "Asia Miles"
+    ],
+    "0753": [
+      "Air China",
+      "Phoenix Miles"
+    ],
+    "0670": [
+      "China Eastern",
+      "Eastern Miles"
+    ],
+    "0027": [
+      "Galaxy Macau",
+      "Galaxy Entertainment"
+    ],
+    "0880": [
+      "SJM",
+      "Grand Lisboa"
+    ],
+    "0020": [
+      "SenseTime",
+      "SenseCore"
+    ],
+    "0981": [
+      "SMIC"
+    ],
+    "0763": [
+      "ZTE",
+      "Nubia"
+    ],
+    "0788": [
+      "China Tower"
+    ],
+    "0772": [
+      "China Literature",
+      "Yuewen"
+    ],
+    "0777": [
+      "NetDragon",
+      "Eudemons"
+    ],
+    "0268": [
+      "Kingdee",
+      "K3 Cloud"
+    ],
+    "0175": [
+      "Geely",
+      "Zeekr",
+      "Lynk & Co"
+    ],
+    "0300": [
+      "Midea",
+      "Little Swan",
+      "Colmo"
+    ],
+    "0921": [
+      "Hisense"
+    ],
+    "0285": [
+      "BYD Electronic"
+    ],
+    "0696": [
+      "TravelSky"
+    ],
+    "0517": [
+      "COSCO Shipping International"
+    ],
+    "0316": [
+      "OOCL"
+    ],
+    "0288": [
+      "Smithfield",
+      "Shuanghui"
+    ],
+    "0688": [
+      "China Overseas",
+      "COLI"
+    ],
+    "0960": [
+      "Longfor",
+      "Paradise Walk"
+    ],
+    "0012": [
+      "Henderson Land"
+    ],
+    "0004": [
+      "Wharf"
+    ],
+    "0101": [
+      "Hang Lung",
+      "Plaza 66"
+    ],
+    "0386": [
+      "Sinopec"
+    ],
+    "0857": [
+      "PetroChina"
+    ],
+    "0883": [
+      "CNOOC"
+    ],
+    "0914": [
+      "Conch",
+      "Anhui Conch"
+    ],
+    "0658": [
+      "China High Speed"
+    ],
+    "0347": [
+      "Angang"
+    ],
+    "0267": [
+      "CITIC"
+    ]
+  }
+}

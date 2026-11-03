@@ -595,6 +595,11 @@ for (const c of cleaned) writeFileSync(join(DETAIL_DIR, `${c.code}.json`), JSON.
 try { execFileSync(process.execPath, [join(ROOT, 'scripts', 'build-chart-store.mjs'), 'hk'], { stdio: 'inherit' }); }
 catch (e) { console.log(`  chart store: ${e.message}`); }
 
+// Curated brands are not in the exchange feed; attach them after the rebuild so search keeps
+// resolving "WeChat" or "Watsons" to the listed company instead of losing the tags.
+try { execFileSync(process.execPath, [join(ROOT, 'scripts', 'attach-market-brands.mjs'), 'hk'], { stdio: 'inherit' }); }
+catch (e) { console.log(`  brands: ${e.message}`); }
+
 console.log(`${cleaned.length} companies · ${audit.pe} P/E · ${withDesc} descriptions · HSI ${idx ? idx.level : '—'} · USD/HKD ${fx.rate}`);
 console.log(`session ${sessionDate} · ${dropped.length} lines without statements · ${audit.foreignReporters} report in CNY/USD`);
 console.log(cleaned.slice(0, 5).map((c) => `  ${c.code} ${c.nameEn || c.name} · HK$${c.price} · P/E ${c.pe ?? '—'} · P/B ${c.pb ?? '—'} · ${c.reportCurrency}`).join('\n'));

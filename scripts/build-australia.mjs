@@ -635,6 +635,11 @@ for (const c of cleaned) writeFileSync(join(DETAIL_DIR, `${c.code}.json`), JSON.
 try { execFileSync(process.execPath, [join(ROOT, 'scripts', 'build-chart-store.mjs'), 'au'], { stdio: 'inherit' }); }
 catch (e) { console.log(`  chart store: ${e.message}`); }
 
+// Curated brands are not in the exchange feed; attach them after the rebuild so search keeps
+// resolving "Bunnings" or "Penfolds" to the listed company instead of losing the tags.
+try { execFileSync(process.execPath, [join(ROOT, 'scripts', 'attach-market-brands.mjs'), 'au'], { stdio: 'inherit' }); }
+catch (e) { console.log(`  brands: ${e.message}`); }
+
 console.log(`${cleaned.length} companies · ${audit.pe} P/E · ${withDesc} descriptions · ASX 200 ${idx ? idx.level : '—'} · USD/AUD ${fx.rate}`);
 console.log(`${dropped.length} without statements · ${noPrice.length} without a price · ${audit.foreignReporters} report in a currency other than AUD · ${audit.notApplicSectors} "Not Applic" sectors resolved`);
 console.log(cleaned.slice(0, 5).map((c) => `  ${c.code} ${c.nameEn || c.name} · A$${c.price} · P/E ${c.pe ?? '—'} · P/B ${c.pb ?? '—'} · ${c.reportCurrency}`).join('\n'));

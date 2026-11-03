@@ -569,6 +569,11 @@ try {
 try { execFileSync(process.execPath, [join(ROOT, 'scripts', 'build-chart-store.mjs'), 'tw'], { stdio: 'inherit' }); }
 catch (e) { console.log(`  chart store: ${e.message}`); }
 
+// Curated brands are not in the exchange feed; attach them after every rebuild so search keeps
+// resolving "TSMC" or "Giant" to the listed company instead of losing the tags.
+try { execFileSync(process.execPath, [join(ROOT, 'scripts', 'attach-market-brands.mjs'), 'tw'], { stdio: 'inherit' }); }
+catch (e) { console.log(`  brands: ${e.message}`); }
+
 console.log(`${cleaned.length} companies · ${cleaned.filter((c) => c.pe != null).length} P/E · ${withDesc} descriptions · TAIEX ${idx ? idx.level : '—'} · FX ${fxRate}`);
 console.log(`audit: P/E ${peDiff}/${chk.length} off >15% · P/B ${pbDiff}/${chkPb.length} off >15%`);
 console.log(cleaned.slice(0, 5).map((c) => `  ${c.code} ${c.nameEn || c.name} · NT$${c.price} · P/E ${c.pe ?? '—'} · P/B ${c.pb ?? '—'}`).join('\n'));

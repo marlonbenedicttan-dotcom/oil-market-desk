@@ -37,6 +37,7 @@
     "audit:hongkong": "node scripts/audit-hongkong.mjs",
     "build:australia": "node scripts/build-australia.mjs && node scripts/fetch-australia-profiles.mjs && node scripts/build-australia.mjs --skip-prices --skip-fin",
     "audit:australia": "node scripts/audit-australia.mjs",
+    "brands:markets": "node scripts/attach-market-brands.mjs",
     "build:hsi": "node scripts/build-hsi-constituents.mjs"
   },
   "engines": {
