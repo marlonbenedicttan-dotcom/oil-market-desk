@@ -3587,3 +3587,27 @@ Audited at 360, 390 and 430 px with screenshots of every view, then fixed what l
 - **Verified headless**: S&P 500 one request, 3 ms, 5 KB transferred; AAPL 4 ms; BHP (Australia) 3 ms;
   all charts render, **0 console errors**.
 - **Tests**: `tests/charts.test.js` asserts `^GSPC` is in the US store with > 100 points.
+
+## Load: the first search no longer parses Japan, lists cache, peers overlap the chart (2026-11-04)
+- **The first search or peer lookup parsed `japan.json` (5.5 MB).** `searchIndex()` and `peerIndex()`
+  read the source to get names, sectors and caps — even on a US company page — and that synchronous
+  build (~48 ms and ~50 MB of objects locally, several times that on the free instance) ran on the
+  event loop in front of the company chart request. `data/japan-list.json` (682 KB, the same
+  `projectJp` payload `/api/japan` returns, written by `build-japan.mjs` **after** descriptions and
+  themes attach) is now the source for `/api/japan`, search and peers; a missing or stale artifact
+  falls back to the old projection. First peer lookup **48 → 26 ms**; `/api/japan` **43 → 19 ms**
+  cold, 7 ms warm. US caps for the peer buckets now convert JPY by `fx.rate` instead of carrying a
+  second `marketCapUsd` field.
+- **Market lists cache for five minutes.** `sendListJSON` (`max-age=300, stale-while-revalidate=300`,
+  same ETag) serves `/api/companies`, `/api/japan`, `/api/korea`, `/api/taiwan`, `/api/hongkong`,
+  `/api/australia`, `/api/search` and `/api/peers`. They revalidated after 30 s, which on a phone is a
+  round trip for a 700 KB payload that changes once a day.
+- **The compressed-body cache no longer flushes wholesale.** Browsing company charts used to push it
+  past 60 entries and `clear()` it, throwing away the pre-encoded Hong Kong/Australia lists; it now
+  evicts the oldest quarter at 240.
+- **The peer strip starts with the chart.** Each company page prefetches `/api/peers` at entry, right
+  after the chart series, so filing detail / prices / peers overlap instead of running in sequence
+  (the peer index used to build while the chart waited).
+- **Verified headless**: AAPL page chart 5 ms, peers 27 ms, 6 peers rendered, 0 console errors.
+  `npm test` 322/322. Cold RSS after a US-only peer lookup +44 MB (the HK/AU lists and the index),
+  which those pages need anyway; cold start on the free instance is still infrastructure.

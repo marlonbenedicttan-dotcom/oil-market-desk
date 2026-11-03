@@ -4572,6 +4572,7 @@ const jpDetailCache = new Map();
 async function renderJapanPage(stub) {
   const el = $('co-body'); if (!el) return;
   prefetchCoLong('jp:' + stub.code);
+  prefetchPeers('jp:' + (stub.ticker || stub.code));
   let c = jpDetailCache.get(stub.code);
   if (!c) {
     el.innerHTML = stLoading('Reading the filing…');
@@ -5296,6 +5297,7 @@ function renderKoreaScreener(all, d) {
 async function renderKoreaPage(stub) {
   const el = $('co-body'); if (!el) return;
   prefetchCoLong('kr:' + (stub.ticker || stub.code));
+  prefetchPeers('kr:' + (stub.ticker || stub.code));
   let c = null;
   el.innerHTML = stLoading('Reading the filing…');
   try { c = await jget(`/api/korea/company/${encodeURIComponent(stub.code)}`, 1800000); } catch { c = null; }
@@ -5614,6 +5616,7 @@ function renderTaiwanScreener(all, d) {
 async function renderTaiwanPage(stub) {
   const el = $('co-body'); if (!el) return;
   prefetchCoLong('tw:' + (stub.ticker || stub.code));
+  prefetchPeers('tw:' + (stub.ticker || stub.code));
   let c = null;
   el.innerHTML = stLoading('Reading the filing…');
   try { c = await jget(`/api/taiwan/company/${encodeURIComponent(stub.code)}`, 1800000); } catch { c = null; }
@@ -5986,6 +5989,8 @@ function renderHongKongScreener(all, d) {
 
 async function renderHongKongPage(stub) {
   const el = $('co-body'); if (!el) return;
+  prefetchCoLong('hk:' + (stub.ticker || stub.code));
+  prefetchPeers('hk:' + (stub.ticker || stub.code));
   let c = null;
   el.innerHTML = stLoading('Reading the filing…');
   try { c = await jget(`/api/hongkong/company/${encodeURIComponent(stub.code)}`, 1800000); } catch { c = null; }
@@ -6329,6 +6334,7 @@ function renderAustraliaScreener(all, d) {
 async function renderAustraliaPage(stub) {
   const el = $('co-body'); if (!el) return;
   prefetchCoLong('au:' + (stub.ticker || stub.code));
+  prefetchPeers('au:' + (stub.ticker || stub.code));
   let c = null;
   el.innerHTML = stLoading('Reading the filing…');
   try { c = await jget(`/api/australia/company/${encodeURIComponent(stub.code)}`, 1800000); } catch { c = null; }
@@ -6730,6 +6736,9 @@ function coLongFailed(ref) { return coLongError.get(String(ref || '').toUpperCas
 // wait for that round trip before it even asked for prices, so every company page paid two sequential
 // requests; this overlaps them, and coLong/jget de-dupe the in-flight call.
 function prefetchCoLong(ref) { coLong(ref).catch(() => {}); }
+// The peer strip is fetched after the filing renders; start it at the same time as the chart so the
+// detail request, the chart and the peer index all overlap instead of running one after another.
+function prefetchPeers(ref) { peersFor(ref).catch(() => {}); }
 function coWindow(ch, range) {
   if (!ch || !ch.dates || !ch.closes || ch.closes.length < 2) return null;
   const w = CO_WIN.find((x) => x[0] === range);
@@ -7080,6 +7089,7 @@ async function renderCompanyPage(el, all) {
   const stub = all.find((x) => String(x.cik) === String(coCik));
   if (!stub) { coCik = null; return renderCompanies(); }
   prefetchCoLong(stub.ticker);
+  prefetchPeers('us:' + stub.ticker);
   const key = String(stub.cik);
   let full = coDetailCache.get(key);
   if (!full) {

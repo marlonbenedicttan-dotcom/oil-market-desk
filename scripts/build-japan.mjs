@@ -426,6 +426,18 @@ for (const step of ['attach-japan-descriptions.mjs', 'attach-japan-themes.mjs'])
   catch (e) { console.log(`  ${step} failed: ${e.message}`); }
 }
 
+// The projected list artifact. /api/japan and the search/peer indexes read this 600 KB file instead
+// of parsing the 5.5 MB source; the first search or peer lookup no longer pays that parse (it used to
+// block the company chart behind it on the free instance). Read the file back so the attached themes
+// and brands are in the projection.
+try {
+  const { japanList } = await import('../src/project.js');
+  const final = JSON.parse(readFileSync(OUT, 'utf8'));
+  const LIST = join(ROOT, 'data', 'japan-list.json');
+  writeFileSync(`${LIST}.tmp`, JSON.stringify(japanList(final)));
+  renameSync(`${LIST}.tmp`, LIST);
+} catch (e) { console.log(`  japan list: ${e.message}`); }
+
 const withPe = companies.filter((c) => c.pe != null).length;
 const withFcf = companies.filter((c) => c.fcf != null).length;
 // The chart store reads one company's line instead of parsing the 3 MB series file per chart.

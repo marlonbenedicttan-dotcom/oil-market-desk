@@ -120,6 +120,15 @@ export const projectJp = (c) => ({  code: c.code, ticker: c.ticker, name: c.name
   shareClass: c.shareClass ? true : undefined,
 });
 
+// The whole /api/japan payload, built once at build time. Parsing the 5.5 MB source to project the
+// list cost ~40 ms and ~50 MB of JS objects on the free instance — and the first search or peer lookup
+// paid it even on a US page, blocking the chart behind it.
+export const japanList = (jp) => ({
+  updated: jp.updated, universe: jp.universe, currency: jp.currency, fx: jp.fx, market: jp.market,
+  topix: jp.topix || null, themes: jp.themes || [],
+  companies: (jp.companies || []).map(projectJp),
+});
+
 // Every field the filter bars in public/app.js read, per market. Keep this in step with the UI: the
 // test fails when a filter reads something the projection does not ship.
 export const FILTER_FIELDS = {

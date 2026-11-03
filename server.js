@@ -8,7 +8,7 @@ import { execFile } from 'node:child_process';
 import crypto from 'node:crypto';
 import { sendMail } from './src/smtp.js';
 import { fileURLToPath } from 'node:url';
-import { projectUs, projectJp, koreaList, taiwanList, hongkongList, australiaList, US_LIST_FIELDS } from './src/project.js';
+import { projectUs, projectJp, japanList, koreaList, taiwanList, hongkongList, australiaList, US_LIST_FIELDS } from './src/project.js';
 import { sliceRange, seriesFromLine } from './src/charts.js';
 import { sgn, businessDaysSince, horizonDeltas, horizonDeltasAbs, isoWeek, monthly, pctOver, percentile, lastNonNull, escHtml, webhookPayload, realizedVol, computeCracks, computeCrush, computeSteel, backAdjust, pearson, logReturns, frontExpiry, curveTightness, inventoryTightness, weightedScore, seasonalGrade, seasonalAhead, contractMonthsBetween, signedPosition, signedMove, stretchScore, sdLabel, attributeMoves, newsContextOk, METHODOLOGY, positioningFlag, positioningRead, positioningDivergence, maxDrawdown, drawdownNow, realizedVolTerm, volPercentile, volVsOwnWord, corrMatrix, fxAdjust, parseOcc, drawdownWord, volWord, volTrend, corrShift, pairGroups, topPairs, bestDiversifier, riskRead, priorityOf, rankByPriority, clusterEvents, scoreEvents, selectEvents, explainRows } from './src/lib.js';
 
@@ -1079,6 +1079,23 @@ function readJapan() {
   } catch { return { companies: [] }; }
 }
 
+// The projected list artifact. /api/japan, the search index and the peer index all need only the list
+// fields; parsing the 5.5 MB source for them cost ~40 ms and ~50 MB of objects, and the first search
+// or peer lookup paid it even on a US page — which put that work on the event loop in front of the
+// company chart. If the artifact is missing or older than its source, fall back to the projection.
+const JAPAN_LIST_FILE = path.join(__dirname, 'data', 'japan-list.json');
+let JAPAN_LIST_CACHE = { key: null, data: null };
+function readJapanList() {
+  try {
+    const srcUpdated = filePrefixStamp(JAPAN_FILE);
+    const key = `${srcUpdated}:${fs.statSync(JAPAN_LIST_FILE).mtimeMs}`;
+    if (JAPAN_LIST_CACHE.data && JAPAN_LIST_CACHE.key === key) return JAPAN_LIST_CACHE.data;
+    const artifact = JSON.parse(fs.readFileSync(JAPAN_LIST_FILE, 'utf8'));
+    if (artifact.updated && artifact.updated === srcUpdated) { JAPAN_LIST_CACHE = { key, data: artifact }; return artifact; }
+  } catch { /* no artifact yet */ }
+  return japanList(readJapan());
+}
+
 const DEAL_ARCHIVE = (() => { try { return JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'ma.json'), 'utf8')); } catch { return { deals: [], coverage: {} }; } })();
 const DEAL_STORE_FILE = path.join(__dirname, 'data', 'deals-store.json');
 import { DEAL_SECTOR_RULES, dealSector, DEAL_SITES, DEAL_RUMOUR, DEAL_CLOSED, DEAL_ENDED, eventStatus,
@@ -1221,9 +1238,11 @@ function searchIndex() {
     if (c.shareClass || !c.ticker) continue;
     add('us', c.ticker, c.name, [c.industry, ...(c.brands || [])], c.marketCap || 0);
   }
-  for (const c of (readJapan().companies || [])) {
+  const jp = readJapanList();
+  const jpRate = (jp.fx && jp.fx.rate) || 1;
+  for (const c of (jp.companies || [])) {
     if (c.shareClass) continue;
-    add('jp', c.ticker, c.name, [c.nameJa, ...(c.brands || [])], c.marketCapUsd || 0);
+    add('jp', c.ticker, c.name, [c.nameJa, ...(c.brands || [])], Math.round((c.marketCap || 0) / jpRate));
   }
   // The list artifact carries the fields search needs (name, English name, brands, cap). Reading it
   // instead of the 28 MB source keeps the first search from parsing every company's price history.
@@ -1262,14 +1281,21 @@ function searchCompanies(q, limit = 8) {
   if (raw.length < 2) return { query: raw, results: [] };
   const nq = norm(raw);
   if (!nq) return { query: raw, results: [] };
+  // A reader types words, not one blob: "shk properties" must find Sun Hung Kai Properties, whose
+  // index row is the profile name plus the exchange's short name ("SHK PPT"). Requiring every word
+  // to appear somewhere in the row (name, ticker or alias) is what makes that work without making
+  // "a" match the whole market.
+  const words = raw.toLowerCase().split(/[^a-z0-9]+/).map(norm).filter((w) => w.length > 1);
   const scored = [];
   for (const r of searchIndex()) {
     let score = 0;
+    const hay = [r.n, r.t, ...r.extra];
     if (r.t === nq) score = 100;
     else if (r.n === nq) score = 96;
     else if (r.first === nq) score = 92;
     else if (r.n.startsWith(nq)) score = 85;
     else if (r.t.startsWith(nq)) score = 80;
+    else if (words.length > 1 && words.every((w) => hay.some((x) => x.includes(w)))) score = 74;
     else if (r.n.split(/\s+/).some((w) => norm(w).startsWith(nq) && norm(w).length > 1)) score = 70;
     else if (r.extra.some((x) => x === nq)) score = 65;
     else if (r.extra.some((x) => x.startsWith(nq))) score = 55;
@@ -1412,7 +1438,9 @@ function peerIndex() {
   }
   // The ref uses the trading ticker, not the internal code: that is what the chart endpoints and the
   // COMPARE box already understand (jp:7203, kr:005930).
-  for (const c of (readJapan().companies || [])) push('jp', `jp:${c.ticker}`, c.name, c.sector, c.marketCapUsd);
+  const jp = readJapanList();
+  const jpRate = (jp.fx && jp.fx.rate) || 1;
+  for (const c of (jp.companies || [])) push('jp', `jp:${c.ticker}`, c.name, c.sector, Math.round((c.marketCap || 0) / jpRate));
   const kr = readKoreaList();
   const krRate = (kr.fx && kr.fx.rate) || 1;
   for (const c of (kr.companies || [])) push('kr', `kr:${c.ticker}`, c.nameEn || c.name, c.sector, Math.round((c.marketCap || 0) / krRate));
@@ -4559,7 +4587,11 @@ const sendJSONCached = (res, code, obj, cacheControl = 'public, max-age=30, stal
     let buf = hit && hit[enc];
     if (!buf) {
       buf = encodeBuf(body, enc);
-      if (encBodies.size > 60) encBodies.clear();
+      if (encBodies.size > 240) {
+        // Evict the oldest quarter, not the whole map: browsing charts used to flush the pre-encoded
+        // 700 KB market lists, which then had to be compressed again on the next visit.
+        for (const k of [...encBodies.keys()].slice(0, 60)) encBodies.delete(k);
+      }
       encBodies.set(etag, { ...(hit || {}), [enc]: buf });
     }
     res.writeHead(code, { ...hdr, 'content-type': 'application/json', 'content-encoding': enc, vary: 'Accept-Encoding' });
@@ -4582,6 +4614,10 @@ const sendJSON = (res, code, obj) => {
 // instead of revalidating on every return to a company. The ETag still changes on the next deploy.
 const CHART_CACHE = 'public, max-age=600, stale-while-revalidate=600';
 const sendChartJSON = (res, code, obj) => sendJSONCached(res, code, obj, CHART_CACHE);
+// Market lists are rebuilt once a day. Five minutes stops a tab switch or a back-navigation from
+// revalidating a 700 KB payload; the ETag still changes on the next deploy.
+const LIST_CACHE = 'public, max-age=300, stale-while-revalidate=300';
+const sendListJSON = (res, code, obj) => sendJSONCached(res, code, obj, LIST_CACHE);
 
 // Security headers on every response. The CSP is report-only, so it can never break the app —
 // it just watches for drift (a new inline script, CDN, or tile host).
@@ -4789,7 +4825,7 @@ const server = http.createServer(async (req, res) => {
       let valuation = null;
       try { valuation = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'valuation.json'), 'utf8')); } catch { /* none yet */ }
       const list = (COMPANIES.companies || []).map(projectUs);
-      return sendJSONCached(res, 200, {
+      return sendListJSON(res, 200, {
         updated: COMPANIES.updated || null,
         count: list.length,
         companies: list,
@@ -4804,17 +4840,14 @@ const server = http.createServer(async (req, res) => {
       return sendJSONCached(res, 200, c);
     }
     if (url.pathname === '/api/japan') {
-      const jp = readJapan();
+      const jp = readJapanList();
       if (!jp.companies || !jp.companies.length) return sendJSON(res, 200, { companies: [], error: 'Japan has not been built yet' });
-      return sendJSONCached(res, 200, {
-        updated: jp.updated, universe: jp.universe, currency: jp.currency, fx: jp.fx, market: jp.market, topix: jp.topix, themes: jp.themes || [],
-        companies: jp.companies.map(projectJp),
-      });
+      return sendListJSON(res, 200, jp);
     }
     if (url.pathname === '/api/korea') {
       const kr = readKoreaList();
       if (!kr.companies || !kr.companies.length) return sendJSON(res, 200, { companies: [], error: 'Korea has not been built yet' });
-      return sendJSONCached(res, 200, kr);
+      return sendListJSON(res, 200, kr);
     }
     if (url.pathname === '/api/korea/chart') {
       const ticker = url.searchParams.get('ticker');
@@ -4848,7 +4881,7 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname === '/api/taiwan') {
       const tw = readTaiwanList();
       if (!tw.companies || !tw.companies.length) return sendJSON(res, 200, { companies: [], error: 'Taiwan has not been built yet' });
-      return sendJSONCached(res, 200, tw);
+      return sendListJSON(res, 200, tw);
     }
     if (url.pathname === '/api/taiwan/chart') {
       const code = url.searchParams.get('code');
@@ -4910,7 +4943,7 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname === '/api/hongkong') {
       const hk = readHongKongList();
       if (!hk.companies || !hk.companies.length) return sendJSON(res, 200, { companies: [], error: 'Hong Kong has not been built yet' });
-      return sendJSONCached(res, 200, hk);
+      return sendListJSON(res, 200, hk);
     }
     if (url.pathname.startsWith('/api/australia/company/')) {
       const code = decodeURIComponent(url.pathname.slice('/api/australia/company/'.length));
@@ -4943,7 +4976,7 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname === '/api/australia') {
       const au = readAustraliaList();
       if (!au.companies || !au.companies.length) return sendJSON(res, 200, { companies: [], error: 'Australia has not been built yet' });
-      return sendJSONCached(res, 200, au);
+      return sendListJSON(res, 200, au);
     }
     if (url.pathname.startsWith('/api/japan/company/')) {
       const code = decodeURIComponent(url.pathname.slice('/api/japan/company/'.length));
@@ -5015,8 +5048,8 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname === '/api/screen') return sendJSONCached(res, 200, await getScreen().catch((e) => ({ error: String(e.message), rows: [] })));
     if (url.pathname === '/api/risk') return sendJSONCached(res, 200, await getRisk().catch((e) => ({ error: String(e.message), metrics: [], matrix: {}, matrix3m: {} })));
     if (url.pathname === '/api/fxadjusted') return sendJSONCached(res, 200, await getFxAdjusted(url.searchParams.get('base') || 'USD').catch((e) => ({ error: String(e.message), rows: [] })));
-    if (url.pathname === '/api/search') return sendJSONCached(res, 200, searchCompanies(url.searchParams.get('q'), Math.min(20, Number(url.searchParams.get('limit')) || 8)));
-    if (url.pathname === '/api/peers') return sendJSONCached(res, 200, getPeers(url.searchParams.get('ref'), Math.min(12, Number(url.searchParams.get('n')) || 6)));
+    if (url.pathname === '/api/search') return sendListJSON(res, 200, searchCompanies(url.searchParams.get('q'), Math.min(20, Number(url.searchParams.get('limit')) || 8)));
+    if (url.pathname === '/api/peers') return sendListJSON(res, 200, getPeers(url.searchParams.get('ref'), Math.min(12, Number(url.searchParams.get('n')) || 6)));
     if (url.pathname === '/api/fxwindows') return sendJSONCached(res, 200, await getFxWindows(url.searchParams.get('base') || 'USD').catch((e) => ({ error: String(e.message) })));
     if (url.pathname === '/api/options') return sendJSONCached(res, 200, await getOptions(url.searchParams.get('id') || 'wti').catch((e) => ({ error: String(e.message) })));
     if (url.pathname === '/api/positioning') {
