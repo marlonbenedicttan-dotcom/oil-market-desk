@@ -1512,9 +1512,9 @@ button.deal-sec-tile:hover { background: #10151b; }
   font-size: 9px; padding: 5px 6px; border-radius: 2px; }
 @media (max-width: 640px) { .sc-pager { gap: 6px; font-size: 9px; } .sc-pager .co-tgl { min-width: 0; padding: 5px 7px; } }
 
-/* Back to top — a page of companies is two or three screens tall, and NEXT leaves you at the bottom
-   of it. Same amber chip as the drill-down back button, parked in the corner where the thumb already
-   is; visibility:hidden keeps it out of the tab order until the list header is off screen. */
+/* Back to top — every tab is two or three screens tall, and paging or reading leaves you at the
+   bottom of it. Same amber chip as the drill-down back button, parked in the corner where the thumb
+   already is; visibility:hidden keeps it out of the tab order until you are far enough down the page. */
 .totop {
   position: fixed; z-index: 900;
   right: max(14px, env(safe-area-inset-right));

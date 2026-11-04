@@ -3767,7 +3767,7 @@ function showTab(name) {
   if (name === 'macro') { loadMacroTickers(); if (!extraSlowDone) setTimeout(() => loadExtraSlow().catch(() => {}), 0); if (macroChart) setTimeout(() => macroChart.resize(), 60); if (policyChart) setTimeout(() => policyChart.resize(), 70); if (cpiChart) setTimeout(() => cpiChart.resize(), 80); if (yieldsChart) setTimeout(() => yieldsChart.resize(), 85); if (usjpChart) setTimeout(() => usjpChart.resize(), 90); }
   if (data) renderTicker(data);
   syncJumpnavs();
-  if (typeof syncToTop === 'function') syncToTop();   // the corner button belongs to COMPANIES only
+  if (typeof syncToTop === 'function') syncToTop();   // tab switches change the page height, so re-test
   syncRoute(true);            // tab changes are the history steps (Back walks the tabs)
 }
 
@@ -8463,20 +8463,19 @@ document.addEventListener('input', (e) => {
     return;
   }
 });
-// ---- Back to top (COMPANIES) ---------------------------------------------------------------
-// The list is paged: PAGE 1 is 50 rows, so pressing NEXT leaves the reader at the bottom with the
-// new page above them. The button rides in the corner (the pager stays under the thumb) and only
-// appears once the list header has scrolled away — it never covers the rows it would take you to.
+// ---- Back to top ----------------------------------------------------------------------------
+// Every tab is a long single-column scroll: 50 rows of companies, a commodities desk of tiles and
+// charts, a macro page of region / policy / yields / catalysts. The button rides in the corner and
+// only appears once the reader is 320px down — never over the header it would take them back to.
 const toTopBtn = $('totop');
 let toTopRaf = 0;
 
 function syncToTop() {
   if (!toTopBtn) return;
-  const pane = $('pane-deals');
   const y = window.scrollY || document.documentElement.scrollTop || 0;
   // 320px ≈ the panel header is gone on any viewport, and short pages that never reach it keep the
   // corner clean. (A page-height test was wrong: a sector board only scrolls ~600px in total.)
-  toTopBtn.classList.toggle('on', !!pane && !pane.classList.contains('hidden') && y > 320);
+  toTopBtn.classList.toggle('on', y > 320);
 }
 
 addEventListener('scroll', () => {
