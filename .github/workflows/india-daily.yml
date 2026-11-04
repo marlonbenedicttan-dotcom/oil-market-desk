@@ -1,0 +1,72 @@
+name: india-daily
+
+# India's prices and statements are not in companies-daily: this job keeps the NIFTY 500 in step with
+# the other markets. The NSE closes at 15:30 IST (10:00 UTC), so 10:40 UTC is after the close and after
+# Yahoo has the day's bar.
+#
+# The build re-reads every statement page whose cache has expired (annual 7 days, quarterly 1 day), so a
+# new filing flows through to the ratios on its own — there is no NSE announcement watcher behind this
+# yet, and the run is resumable: a throttled company is counted in audit.throttled and filled next run.
+
+on:
+  schedule:
+    - cron: '40 10 * * 1-5'   # 16:10 IST, Mon–Fri
+  workflow_dispatch: {}
+
+concurrency:
+  group: india-refresh
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0          # a rebase needs history, not just the tip
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      # The stockanalysis statement cache is the big one; without it a cold run fetches ~2,500 pages.
+      - name: Cache NSE statements and Yahoo prices
+        uses: actions/cache@v4
+        with:
+          path: |
+            data/cache/nse
+            data/cache/india-sa
+          key: in-cache-${{ github.run_id }}
+          restore-keys: in-cache-
+      - name: Build prices, statements and profiles
+        run: npm run refresh:india
+      # Keep the fiscal years that scroll off the vendor's five-year table.
+      - name: Keep every filed period
+        run: node scripts/merge-history.mjs in
+      # Keep the sessions that scroll off the source's five-year window.
+      - name: Keep every traded session
+        run: node scripts/merge-series.mjs in
+      # A rate-limited run loses companies and chart history. Refuse to publish that.
+      - name: Refuse a collapsed build
+        run: node scripts/audit-market-refresh.mjs in
+      - name: Audit the dataset
+        run: npm run audit:india
+      - name: Commit if changed
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add data/india.json data/india-list.json data/india-series data/india-companies data/india-profiles.json data/india-brands.json data/charts
+          if git diff --staged --quiet; then
+            echo 'no data change'
+          else
+            git commit -m "chore: daily India refresh ($(date -u +%Y-%m-%d))"
+            # Another push (a human commit, or the US/Taiwan job) can land while this runs.
+            pushed=0
+            for i in 1 2 3 4 5; do
+              if git pull --rebase -X theirs origin main && git push; then pushed=1; break; fi
+              echo "push rejected (attempt $i) — rebasing and retrying"; sleep $((i * 5))
+            done
+            [ "$pushed" = "1" ] || { echo 'could not push after 5 attempts'; exit 1; }
+          fi

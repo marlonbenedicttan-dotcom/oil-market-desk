@@ -120,6 +120,7 @@ const MARKETS = {
   tw: { label: 'Taiwan', write: (add) => eachBucketed('taiwan-series', add) },
   hk: { label: 'Hong Kong', write: (add) => eachBucketed('hongkong-series', add) },
   au: { label: 'Australia', write: (add) => eachBucketed('australia-series', add) },
+  in: { label: 'India', write: (add) => eachBucketed('india-series', add) },
 };
 
 function build(id) {

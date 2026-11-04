@@ -47,7 +47,10 @@
     "audit:refresh": "node scripts/audit-market-refresh.mjs",
     "brands:markets": "node scripts/attach-market-brands.mjs",
     "build:hsi": "node scripts/build-hsi-constituents.mjs",
-    "companies:details": "node scripts/build-company-details.mjs"
+    "companies:details": "node scripts/build-company-details.mjs",
+    "build:india": "node scripts/build-india.mjs && node scripts/fetch-india-profiles.mjs && node scripts/build-india.mjs --skip-prices --skip-fin",
+    "audit:india": "node scripts/audit-india.mjs",
+    "refresh:india": "node scripts/build-india.mjs --fresh && node scripts/fetch-india-profiles.mjs && node scripts/build-india.mjs --skip-prices --skip-fin"
   },
   "engines": {
     "node": ">=22"

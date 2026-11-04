@@ -27,6 +27,12 @@ const MARKETS = {
     // The HKEX report carries ~1,900 main-board companies and the incomplete 2026-11-03 page lost 7.7%.
     minCompanies: 0.98,
   },
+  in: {
+    label: 'India',
+    file: 'data/india.json',
+    // The NIFTY 500 is reconstituted twice a year; a handful of names change, not fifty.
+    minCompanies: 0.95,
+  },
 };
 
 const requested = (process.argv[2] || '').toLowerCase();

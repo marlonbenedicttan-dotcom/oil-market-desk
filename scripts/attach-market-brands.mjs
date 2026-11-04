@@ -50,6 +50,15 @@ const MARKETS = {
     cache: join(ROOT, 'data', 'cache', 'asx', 'profiles'),
     detail: join(ROOT, 'data', 'australia-companies'),
   },
+  in: {
+    label: 'India',
+    source: join(ROOT, 'data', 'india.json'),
+    list: join(ROOT, 'data', 'india-list.json'),
+    brands: join(ROOT, 'data', 'india-brands.json'),
+    profiles: join(ROOT, 'data', 'india-profiles.json'),
+    cache: join(ROOT, 'data', 'cache', 'nse', 'profiles'),
+    detail: join(ROOT, 'data', 'india-companies'),
+  },
 };
 
 const writeJson = (file, value) => {

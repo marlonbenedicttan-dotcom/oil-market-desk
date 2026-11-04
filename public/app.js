@@ -2598,7 +2598,7 @@ const CO_VIEWS = {
 function paintCoViews() {
   const bar = $('co-views');
   if (!bar) return;
-  const active = coRegion === 'jp' ? jpView : coRegion === 'kr' ? krView : coRegion === 'tw' ? twView : coRegion === 'hk' ? hkView : coRegion === 'au' ? auView : usView;
+  const active = coRegion === 'jp' ? jpView : coRegion === 'kr' ? krView : coRegion === 'tw' ? twView : coRegion === 'hk' ? hkView : coRegion === 'au' ? auView : coRegion === 'in' ? inView : usView;
   bar.innerHTML = (CO_VIEWS[coRegion] || CO_VIEWS.us)
     .map(([attr, key, label]) => `<button type="button" data-${attr}="${key}" class="${active === key ? 'on' : ''}">${label}</button>`)
     .join('');
@@ -2611,6 +2611,7 @@ const coScreenKr = { q: '', sector: 'all', sort: 'marketCap', dir: -1, page: 1, 
 const coScreenTw = { q: '', sector: 'all', sort: 'marketCap', dir: -1, page: 1, per: 50 };
 const coScreenHk = { q: '', sector: 'all', sort: 'marketCap', dir: -1, page: 1, per: 50 };
 const coScreenAu = { q: '', sector: 'all', sort: 'marketCap', dir: -1, page: 1, per: 50 };
+const coScreenIn = { q: '', sector: 'all', sort: 'marketCap', dir: -1, page: 1, per: 50 };
 // A 1,500-row page is a wall of scroll. Paging keeps one screenful at a time and the whole list one
 // click away — no infinite scroll, nothing hidden.
 const pagerHtml = (total, page, per, attr) => {
@@ -2632,12 +2633,12 @@ const STOCK_SCREEN_COLS = [
   { k: 'pb', t: 'P/B' }, { k: 'roe', t: 'ROE' }, { k: 'marketCap', t: 'MKT CAP' },
 ];
 const JP_SCREEN_COLS = STOCK_SCREEN_COLS;
-const screenMarketHtml = () => `<div class="sc-modes sc-mkt">${[['us', 'US'], ['jp', 'JAPAN'], ['kr', 'KOREA'], ['tw', 'TAIWAN'], ['hk', 'HONG KONG'], ['au', 'AUSTRALIA']].map(([k, t]) => `<button type="button" class="${screenMarket === k ? 'on' : ''}" data-screen-market="${k}">${t}</button>`).join('')}</div>`;
+const screenMarketHtml = () => `<div class="sc-modes sc-mkt">${[['us', 'US'], ['jp', 'JAPAN'], ['kr', 'KOREA'], ['tw', 'TAIWAN'], ['hk', 'HONG KONG'], ['au', 'AUSTRALIA'], ['in', 'INDIA']].map(([k, t]) => `<button type="button" class="${screenMarket === k ? 'on' : ''}" data-screen-market="${k}">${t}</button>`).join('')}</div>`;
 
 // A company's return in the screener's chosen base currency. A Tokyo listing returns yen; a dollar
 // investor gets that return *plus* the yen's own move, so the two are compounded rather than added.
 // Falls back to the local number only when no FX move is known, and the note under the table says so.
-const CUR_OF_MARKET = { us: 'USD', jp: 'JPY', kr: 'KRW', tw: 'TWD', hk: 'HKD', au: 'AUD' };
+const CUR_OF_MARKET = { us: 'USD', jp: 'JPY', kr: 'KRW', tw: 'TWD', hk: 'HKD', au: 'AUD', in: 'INR' };
 // The date the prices belong to — the modal session across the table, so a stale feed is visible
 // rather than implied.
 function sessionOf(list, field) {
@@ -2673,6 +2674,7 @@ function renderCompanyScreen(el) {
   if (screenMarket === 'tw') return renderTaiwanScreen(el);
   if (screenMarket === 'hk') return renderHongKongScreen(el);
   if (screenMarket === 'au') return renderAustraliaScreen(el);
+  if (screenMarket === 'in') return renderIndiaScreen(el);
   // The companies payload is normally fetched when the COMPANIES tab opens; the home screener can ask
   // for it first, so load it here and re-render when it lands.
   if (!companiesData) {
@@ -2940,6 +2942,50 @@ function renderAustraliaScreen(el) {
     <div class="sc-note dimtext">ASX-listed companies · statements from stockanalysis.com · ${asOfText(all, 'priceDate') || 'Yahoo prices'} · returns in AUD · P/E is trailing twelve months, in the issuer's report currency (BHP and RIO report in USD).</div>`;
 }
 
+// India in the home screener, the same shape as Hong Kong's.
+const IN_SCREEN_COLS = STOCK_SCREEN_COLS;
+function renderIndiaScreen(el) {
+  if (!inData) {
+    el.innerHTML = stLoading('Reading the NSE filings…');
+    loadIndia().then(() => renderScreen(true));
+    return;
+  }
+  const all = inData.companies || [];
+  const sectors = [...new Set(all.map((c) => c.sector).filter(Boolean))].sort();
+  const q = coScreenIn.q.trim().toLowerCase();
+  const { sort, dir } = coScreenIn;
+  const keyOf = (c) => (sort === 'label' ? (c.nameEn || c.name || '') : c[sort]);
+  let rows = all.filter((c) => (coScreenIn.sector === 'all' || c.sector === coScreenIn.sector)
+    && (!q || `${c.name} ${c.nameEn || ''} ${c.ticker} ${c.sector || ''} ${(c.brands || []).join(' ')}`.toLowerCase().includes(q)));
+  rows = [...rows].sort((a, b) => {
+    const x = keyOf(a), y = keyOf(b);
+    if (x == null && y == null) return 0;
+    if (x == null) return 1;
+    if (y == null) return -1;
+    return sort === 'label' ? x.localeCompare(y) * dir : (x - y) * dir;
+  });
+  const per = coScreenIn.per || 50;
+  const pages = Math.max(1, Math.ceil(rows.length / per));
+  const page = Math.min(coScreenIn.page || 1, pages);
+  const shown = rows.slice((page - 1) * per, page * per);
+  const head = IN_SCREEN_COLS.map((c) => `<th class="${sort === c.k ? 'on' : ''}" data-inkey="${c.k}">${c.t}${sort === c.k ? (dir < 0 ? ' ▼' : ' ▲') : ''}</th>`).join('');
+  const pct = (v) => (v == null ? '<td class="num">—</td>' : `<td class="num ${cls(v)}">${v >= 0 ? '+' : ''}${v.toFixed(1)}%</td>`);
+  const num = (v, dp, suffix = '') => (v == null ? '<td class="num">—</td>' : `<td class="num">${v.toFixed(dp)}${suffix}</td>`);
+  const body = shown.map((c) => `<tr data-inrow="${esc(c.code)}" title="${esc(c.nameEn || c.name)}">
+      <td class="sc-name">${esc(c.nameEn || c.name)}<span class="sc-tick">${esc(c.ticker)}${c.sector ? ' · ' + esc(c.sector) : ''}</span></td>
+      <td class="num">${inPx(c.price)}</td>
+      ${pct(c.chg1d)}${pct(c.chg6m)}${pct(c.chgYtd)}
+      ${num(c.pe, 1, '×')}${num(c.pb, 2, '×')}${num(c.roe, 1, '%')}
+      <td class="num">${inMoney(c.marketCap)}</td></tr>`).join('');
+  el.innerHTML = `<div class="sc-bar">${screenModeHtml()}${screenMarketHtml()}
+      <label class="sc-f">SEARCH <input id="cosin-q" type="search" placeholder="company or code…" value="${esc(coScreenIn.q)}"></label>
+      <label class="sc-f">SECTOR <select id="cosin-sector"><option value="all">All sectors</option>${sectors.map((x) => `<option value="${esc(x)}"${coScreenIn.sector === x ? ' selected' : ''}>${esc(x)}</option>`).join('')}</select></label>
+      <span class="sc-count dimtext">${rows.length} of ${all.length} companies</span>
+    </div><div class="sc-wrap" id="sc-table"><table class="sc-table sc-cotable"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>
+    ${pagerHtml(rows.length, page, per, 'inpage')}
+    <div class="sc-note dimtext">NSE-listed companies · statements from stockanalysis.com · ${asOfText(all, 'priceDate') || 'Yahoo prices'} · returns in INR · P/E is trailing twelve months, in the issuer's report currency (BHP and RIO report in USD).</div>`;
+}
+
 function renderScreen(full) {  const el = $('screen'); if (!el) return;
   // The currency control applies to the company tables too: their returns are converted, not relabelled.
   const curCtl = document.querySelector('#p-screen .controls');
@@ -3010,7 +3056,7 @@ $('screen')?.addEventListener('click', (e) => {
     screenMarket = mkt.dataset.screenMarket;
     try { localStorage.setItem('oilbasis.screenMarket', screenMarket); } catch {}
     const cur = document.querySelector('#p-screen .controls');
-    if (cur) cur.classList.toggle('hidden', screenMarket === 'jp' || screenMarket === 'tw' || screenMarket === 'hk' || screenMarket === 'au');
+    if (cur) cur.classList.toggle('hidden', screenMarket === 'jp' || screenMarket === 'tw' || screenMarket === 'hk' || screenMarket === 'au' || screenMarket === 'in');
     renderScreen(true);
     return;
   }
@@ -3022,12 +3068,23 @@ $('screen')?.addEventListener('click', (e) => {
   if (hkp && hkp.dataset.hkpage !== 'per') { coScreenHk.page = Math.max(1, Number(hkp.dataset.hkpage)); renderScreen(true); return; }
   const aup = e.target.closest('[data-aupage]');
   if (aup && aup.dataset.aupage !== 'per') { coScreenAu.page = Math.max(1, Number(aup.dataset.aupage)); renderScreen(true); return; }
+  const inp = e.target.closest('[data-inpage]');
+  if (inp && inp.dataset.inpage !== 'per') { coScreenIn.page = Math.max(1, Number(inp.dataset.inpage)); renderScreen(true); return; }
   const aukey = e.target.closest('th[data-aukey]');
   if (aukey) {
     const k = aukey.dataset.aukey;
     coScreenAu.dir = coScreenAu.sort === k ? -coScreenAu.dir : (k === 'label' ? 1 : -1);
     coScreenAu.sort = k;
     coScreenAu.page = 1;
+    renderScreen(true);
+    return;
+  }
+  const inkey = e.target.closest('th[data-inkey]');
+  if (inkey) {
+    const k = inkey.dataset.inkey;
+    coScreenIn.dir = coScreenIn.sort === k ? -coScreenIn.dir : (k === 'label' ? 1 : -1);
+    coScreenIn.sort = k;
+    coScreenIn.page = 1;
     renderScreen(true);
     return;
   }
@@ -3140,6 +3197,7 @@ $('screen')?.addEventListener('input', (e) => {
   if (e.target.id === 'costw-q') { coScreenTw.q = e.target.value || ''; coScreenTw.page = 1; renderScreen(true); }
   if (e.target.id === 'coshk-q') { coScreenHk.q = e.target.value || ''; coScreenHk.page = 1; renderScreen(true); }
   if (e.target.id === 'cosau-q') { coScreenAu.q = e.target.value || ''; coScreenAu.page = 1; renderScreen(true); }
+  if (e.target.id === 'cosin-q') { coScreenIn.q = e.target.value || ''; coScreenIn.page = 1; renderScreen(true); }
 });
 $('screen')?.addEventListener('change', (e) => {
   if (e.target.id === 'cos-sector') { coScreen = { ...coScreen, sector: e.target.value, page: 1 }; renderScreen(true); return; }
@@ -3148,11 +3206,13 @@ $('screen')?.addEventListener('change', (e) => {
   if (e.target.id === 'costw-sector') { coScreenTw.sector = e.target.value; coScreenTw.page = 1; renderScreen(true); return; }
   if (e.target.id === 'coshk-sector') { coScreenHk.sector = e.target.value; coScreenHk.page = 1; renderScreen(true); return; }
   if (e.target.id === 'cosau-sector') { coScreenAu.sector = e.target.value; coScreenAu.page = 1; renderScreen(true); return; }
+  if (e.target.id === 'cosin-sector') { coScreenIn.sector = e.target.value; coScreenIn.page = 1; renderScreen(true); return; }
   if (e.target.dataset && e.target.dataset.jppageper) { coScreenJp.per = Number(e.target.value); coScreenJp.page = 1; renderScreen(true); return; }
   if (e.target.dataset && e.target.dataset.krpageper) { coScreenKr.per = Number(e.target.value); coScreenKr.page = 1; renderScreen(true); return; }
   if (e.target.dataset && e.target.dataset.twpageper) { coScreenTw.per = Number(e.target.value); coScreenTw.page = 1; renderScreen(true); return; }
   if (e.target.dataset && e.target.dataset.hkpageper) { coScreenHk.per = Number(e.target.value); coScreenHk.page = 1; renderScreen(true); return; }
   if (e.target.dataset && e.target.dataset.aupageper) { coScreenAu.per = Number(e.target.value); coScreenAu.page = 1; renderScreen(true); return; }
+  if (e.target.dataset && e.target.dataset.inpageper) { coScreenIn.per = Number(e.target.value); coScreenIn.page = 1; renderScreen(true); return; }
   if (e.target.dataset && e.target.dataset.twlistpageper) { twPer = Number(e.target.value) || 50; twPage = 1; renderTaiwan(); return; }
   if (e.target.dataset && e.target.dataset.hklistpageper) { hkPer = Number(e.target.value) || 50; hkPage = 1; renderHongKong(); return; }
   if (e.target.dataset && e.target.dataset.aulistpageper) { auPer = Number(e.target.value) || 50; auPage = 1; renderAustralia(); return; }
@@ -4406,10 +4466,11 @@ function syncCoTools() {
     : coRegion === 'tw' ? (!twSel && twView === 'screener')
     : coRegion === 'hk' ? (!hkSel && hkView === 'screener')
     : coRegion === 'au' ? (!auSel && auView === 'screener')
+    : coRegion === 'in' ? (!inSel && inView === 'screener')
     : (coCik ? true : usView === 'screener');
   tools.classList.toggle('hidden', !wanted);
   // On a phone, a company page should start at the top: the filter bar is for lists.
-  const detail = coRegion === 'jp' ? !!jpSel : coRegion === 'kr' ? !!krSel : coRegion === 'tw' ? !!twSel : coRegion === 'hk' ? !!hkSel : coRegion === 'au' ? !!auSel : !!coCik;
+  const detail = coRegion === 'jp' ? !!jpSel : coRegion === 'kr' ? !!krSel : coRegion === 'tw' ? !!twSel : coRegion === 'hk' ? !!hkSel : coRegion === 'au' ? !!auSel : coRegion === 'in' ? !!inSel : !!coCik;
   tools.dataset.detail = detail ? '1' : '';
 }
 
@@ -5092,10 +5153,12 @@ const currentCmpRef = () => (coRegion === 'jp'
         ? (hkSel ? `hk:${hkSel}` : '')
         : coRegion === 'au'
           ? (auSel ? `au:${auSel}` : '')
-          : (coTicker ? `us:${coTicker}` : ''));
+          : coRegion === 'in'
+            ? (inSel ? `in:${inSel}` : '')
+            : (coTicker ? `us:${coTicker}` : ''));
 
 function syncCmpClear(region) {
-  const on = region === 'jp' ? !!jpCompare : region === 'kr' ? !!krCompare : region === 'tw' ? !!twCompare : region === 'hk' ? !!hkCompare : region === 'au' ? !!auCompare : !!coCompare;
+  const on = region === 'jp' ? !!jpCompare : region === 'kr' ? !!krCompare : region === 'tw' ? !!twCompare : region === 'hk' ? !!hkCompare : region === 'au' ? !!auCompare : region === 'in' ? !!inCompare : !!coCompare;
   const b = $(region + '-cmp-clear');
   if (b) b.classList.toggle('hidden', !on);
 }
@@ -5132,6 +5195,12 @@ function clearCompare(region = coRegion) {
     hideSuggestions('au-sugg'); syncCmpClear('au');
     const cur = (auData && auData.companies || []).find((x) => x.code === auSel);
     if (cur) drawAuChart(cur, auRange);
+  } else if (region === 'in') {
+    inCompare = '';
+    const inp = $('in-cmp'); if (inp) inp.value = '';
+    hideSuggestions('in-sugg'); syncCmpClear('in');
+    const cur = (inData && inData.companies || []).find((x) => x.code === inSel);
+    if (cur) drawInChart(cur, inRange);
   } else {
     coCompare = '';
     const inp = $('co-cmp'); if (inp) inp.value = '';
@@ -5177,6 +5246,12 @@ function setCompare(ref) {
     hideSuggestions('au-sugg'); syncCmpClear('au');
     const cur = (auData && auData.companies || []).find((x) => x.code === auSel);
     if (cur) drawAuChart(cur, auRange);
+  } else if (coRegion === 'in') {
+    inCompare = clean;
+    const inp = $('in-cmp'); if (inp) inp.value = label;
+    hideSuggestions('in-sugg'); syncCmpClear('in');
+    const cur = (inData && inData.companies || []).find((x) => x.code === inSel);
+    if (cur) drawInChart(cur, inRange);
   } else {
     coCompare = clean;
     const inp = $('co-cmp'); if (inp) inp.value = label;
@@ -5223,6 +5298,7 @@ async function seriesFor(ref, range) {
   if (mkt === 'tw') return await jget(`/api/taiwan/chart?code=${encodeURIComponent(code)}&range=${encodeURIComponent(range)}`, 600000);
   if (mkt === 'hk') return await jget(`/api/hongkong/chart?code=${encodeURIComponent(code)}&range=${encodeURIComponent(range)}`, 600000);
   if (mkt === 'au') return await jget(`/api/australia/chart?code=${encodeURIComponent(code)}&range=${encodeURIComponent(range)}`, 600000);
+  if (mkt === 'in') return await jget(`/api/india/chart?code=${encodeURIComponent(code)}&range=${encodeURIComponent(range)}`, 600000);
   return await jget(`/api/company-chart?ticker=${encodeURIComponent(code)}&range=${encodeURIComponent(yRange)}`, 600000);
 }
 
@@ -6612,6 +6688,364 @@ async function drawAuChart(c, range = auRange) {
 }
 
 
+// --- India: NSE-listed companies -------------------------------------------------------------
+// Same three views and company page as the other markets. The universe and the GICS industry group
+// come from the NSE listed-companies CSV; statements, English names and profiles from
+// stockanalysis.com's NSE pages; the S&P/NIFTY 50 and five years of closes from Yahoo. Prices are INR,
+// but BHP and RIO report in USD — their ratios are computed in the statement currency, so the page
+// says which one.
+let inData = null, inSel = null, inQuery = '', inCompare = '';
+let inRange = (() => { try { return localStorage.getItem('oilbasis.inRange') || '1y'; } catch { return '1y'; } })();
+let inMktRange = (() => { try { return localStorage.getItem('oilbasis.inMktRange') || '1y'; } catch { return '1y'; } })();
+let inView = (() => { try { return localStorage.getItem('oilbasis.inView') || 'market'; } catch { return 'market'; } })();
+let inTheme = (() => { try { return localStorage.getItem('oilbasis.inTheme') || 'materials'; } catch { return 'materials'; } })();
+let inSector = 'all', inSort = 'cap', inPreset = null, inFilter = {}, inOpenSel = null;
+let inPage = 1, inPer = 50;
+let indiaPromise = null;
+
+const inName = (c) => (c && (c.nameEn || c.name)) || '';
+const inMoney = (v) => {
+  if (v == null || !Number.isFinite(v)) return '—';
+  const a = Math.abs(v);
+  if (a >= 1e12) return `₹${(v / 1e12).toFixed(2)}T`;
+  if (a >= 1e9) return `₹${(v / 1e9).toFixed(1)}B`;
+  if (a >= 1e6) return `₹${(v / 1e6).toFixed(0)}M`;
+  return `₹${Math.round(v).toLocaleString('en-US')}`;
+};
+const inPx = (v) => (v == null || !Number.isFinite(v) ? '—' : `₹${Number(v).toFixed(3).replace(/0+$/, '').replace(/\.$/, '.00')}`);
+const inMono = (c) => coMono({ ticker: String(c.nameEn || c.name || '?').replace(/[^A-Za-z]/g, '').slice(0, 2) || 'AU', name: c.nameEn || c.name });
+const inViewsBar = () => '';
+
+async function loadIndia() {
+  if (inData) return inData;
+  if (indiaPromise) return indiaPromise;
+  indiaPromise = (async () => {
+    try { inData = await jget('/api/india', 3600000); }
+    catch { inData = null; }
+    finally { indiaPromise = null; }
+    return inData;
+  })();
+  return indiaPromise;
+}
+
+async function renderIndia(token = takeToken()) {
+  paintCoViews();
+  const el = $('co-body'); if (!el) return;
+  if (inSel !== inOpenSel) { inCompare = ''; inOpenSel = inSel; }
+  syncMarketAccent();
+  const noteUs = $('co-note'); if (noteUs) noteUs.classList.add('hidden');
+  syncCoTools();
+  if (!inData) el.innerHTML = stLoading('Loading the NIFTY 50…');
+  const d = await loadIndia();
+  if (stale(token)) return;
+  syncMarketAccent();
+  const all = (d && d.companies) || [];
+  const sub = $('deals-sub');
+  if (sub) {
+    const what = inView === 'screener' ? 'filter and sort' : inView === 'themes' ? 'curated theme lists' : 'breadth, sectors and the NIFTY 50';
+    sub.textContent = all.length ? `${all.length} companies · NSE · prices in INR · ${what}` : 'NSE · S&P/NIFTY 50';
+  }
+  if (!all.length) {
+    el.innerHTML = `<div class="macro-note">India is not built yet. Run <code>node scripts/build-india.mjs</code>.</div>`;
+    return;
+  }
+  const sel = all.find((c) => c.code === inSel);
+  if (sel) return renderIndiaPage(sel);
+  warmMarkets();
+  if (inView === 'market') return renderIndiaMarket(all, d);
+  if (inView === 'themes') return renderIndiaThemes(all, d);
+  return renderIndiaScreener(all, d);
+}
+
+function inIndexSeries() {
+  const s = inData && inData.index && inData.index.series;
+  return s && s.length > 1 ? { dates: s.map((p) => p.d), closes: s.map((p) => p.c) } : null;
+}
+function redrawIndiaIndex(range = inMktRange) {
+  const full = inIndexSeries();
+  if (!full) return false;
+  inMktRange = drawMarketIndexChart('au-mkt', full, range, 'aumkt', 'S&P/NIFTY 50');
+  return true;
+}
+
+function renderIndiaMarket(all, d) {
+  const el = $('co-body'); if (!el) return;
+  const m = d.market || {}; const idx = d.index || {};
+  const cell = (k, v, t, cls = '') => `<div class="co-stat" title="${esc(t)}"><span class="co-k">${k}</span><span class="co-v ${cls}">${v}</span></div>`;
+  const chg = (x) => (x == null ? '—' : `${x >= 0 ? '+' : ''}${x.toFixed(1)}%`);
+  const breadth = m.advancing != null ? `<div class="jp-breadth"><span class="pos">${m.advancing} up</span><i><i style="width:${Math.round((m.advancing / Math.max(1, m.advancing + m.declining)) * 100)}%"></i></i><span class="neg">${m.declining} down</span></div>` : '';
+  const foreign = m.foreignReporters != null ? `${m.foreignReporters} report outside INR` : 'INR reporters';
+  el.innerHTML = inViewsBar()
+    + `<div class="jp-market-head"><span class="ph-t">S&amp;P/NIFTY 50</span>
+        ${idx.level != null ? `<span class="jp-market-lvl">${idx.level.toLocaleString('en-US', { maximumFractionDigits: 2 })}</span>` : '<span class="dimtext">index unavailable</span>'}
+        <span class="${(idx.chg1d || 0) >= 0 ? 'pos' : 'neg'}">${chg(idx.chg1d)} today</span>
+        <span class="dimtext">${all.length} companies · NSE · prices as of ${sessionOf(all, 'priceDate') || d.session}${idx.date ? ` · index as of ${idx.date}` : ''}</span></div>`
+    + `<div class="co-stats co-stats-12">
+        ${cell('TOTAL MARKET CAP', inMoney(m.totalCap), 'Sum of every covered NSE constituent')}
+        ${cell('COMPANIES', String(m.companies || all.length), 'Listed companies with a statement page and a share count')}
+        ${cell('MEDIAN P/E', m.medianPe != null ? `${m.medianPe.toFixed(1)}×` : '—', `Median — the typical company, not the index. ${foreign}`)}
+        ${cell('MEDIAN P/B', m.medianPb != null ? `${m.medianPb.toFixed(2)}×` : '—', 'Median across the market — market cap ÷ common equity (excludes minorities)')}
+        ${cell('MEDIAN ROE', m.medianRoe != null ? `${m.medianRoe.toFixed(1)}%` : '—', 'Median member — trailing profit ÷ common equity (excludes minorities), TTM where available')}
+        ${cell('MEDIAN YIELD', m.medianYield != null ? `${m.medianYield.toFixed(2)}%` : '—', 'Median member — latest annual DPS ÷ price')}
+        ${cell('BELOW BOOK', String(m.belowBook ?? '—'), 'Companies trading under 1× book')}
+        ${cell('UP THIS YEAR', String(m.upYtd ?? '—'), 'Companies with a positive year-to-date return')}
+      </div>`
+    + breadth
+    + (idx.series && idx.series.length > 1 ? `<div class="co-rets" id="au-mkt-rets"></div><div class="co-chartwrap"><canvas id="au-mkt-chart"></canvas></div>` : '')
+    + `<div class="co-hrow jp-mkt-hrow"><span>SECTOR</span><span>N</span><span>CAP</span><span>P/E</span><span>P/B</span><span>ROE</span><span>YIELD</span><span>YTD</span></div>`
+    + (m.sectors || []).map((x) => `<div class="jp-mkt-row">
+        <span>${esc(x.name)}</span><span>${x.count}</span><span>${inMoney(x.cap)}</span>
+        <span>${x.pe != null ? x.pe.toFixed(1) : '—'}</span>
+        <span class="${x.pb != null && x.pb < 1 ? 'pos' : ''}">${x.pb != null ? x.pb.toFixed(2) : '—'}</span>
+        <span class="${(x.roe || 0) >= 0 ? 'pos' : 'neg'}">${x.roe != null ? x.roe.toFixed(1) + '%' : '—'}</span>
+        <span>${x.yield != null ? x.yield.toFixed(2) + '%' : '—'}</span>
+        <span class="${(x.chgYtd || 0) >= 0 ? 'pos' : 'neg'}">${chg(x.chgYtd)}</span>
+      </div>`).join('')
+    + `<div class="macro-note">Aggregates computed from the ${all.length} covered NSE-listed constituents. Sectors are the NSE's GICS industry groups (27), resolved from the profile where the CSV says "Not Applic". Prices are INR; statements are in the issuer's report currency (${foreign}) and ratios are computed in that currency. Market cap uses the current share count from the vendor statistics page (the US listing for CDIs); the diluted filing count is still shown on the company page. Companies whose latest statement is older than 450 days are excluded and listed in the audit. The NSE publishes no per-stock P/E, so the India audit reports coverage plus a same-source sample.</div>`;
+  if (idx.series && idx.series.length > 1) redrawIndiaIndex();
+}
+
+function renderIndiaThemes(all, d) {
+  const el = $('co-body'); if (!el) return;
+  const themes = (d && d.themes) || [];
+  if (!themes.length) { el.innerHTML = inViewsBar() + '<div class="macro-note">No themes loaded.</div>'; return; }
+  const active = themes.find((t) => t.id === inTheme) || themes[0];
+  const set = new Set(active.tickers || []);
+  const rows = all.filter((c) => set.has(c.ticker)).sort((a, b) => (b.marketCap || 0) - (a.marketCap || 0));
+  const chg = (x) => (x == null ? '—' : `${x >= 0 ? '+' : ''}${x.toFixed(1)}%`);
+  el.innerHTML = inViewsBar()
+    + `<div class="jp-presets">${themes.map((t) => `<button type="button" data-intheme="${t.id}" class="${t.id === active.id ? 'on' : ''}">${t.label}</button>`).join('')}</div>`
+    + `<div class="jp-market-head"><span class="ph-t">${esc(active.label)}</span><span class="dimtext">${rows.length} companies · curated list</span></div>`
+    + `<div class="co-hrow jp-bank-hrow"><span>#</span><span>COMPANY</span><span>CAP</span><span>P/E</span><span>P/B</span><span>ROE</span><span>YIELD</span><span>YTD</span></div>`
+    + rows.map((c, i) => `<button class="jp-bank-row" data-in="${esc(c.code)}">
+        <span>${i + 1}</span>
+        <span><b>${esc(inName(c))}</b><span class="co-tick">${esc(c.ticker)}</span></span>
+        <span>${inMoney(c.marketCap)}</span>
+        <span>${c.pe != null ? c.pe.toFixed(1) : '—'}</span>
+        <span class="${c.pb != null && c.pb < 1 ? 'pos' : ''}">${c.pb != null ? c.pb.toFixed(2) : '—'}</span>
+        <span class="${(c.roe || 0) >= 0 ? 'pos' : 'neg'}">${c.roe != null ? c.roe.toFixed(1) + '%' : '—'}</span>
+        <span>${c.dividendYield != null ? c.dividendYield.toFixed(2) + '%' : '—'}</span>
+        <span class="${(c.chgYtd || 0) >= 0 ? 'pos' : 'neg'}">${chg(c.chgYtd)}</span>
+      </button>`).join('')
+    + `<div class="macro-note">${esc(active.note || '')}</div>`;
+}
+
+const IN_PRESETS = [
+  { id: 'book', label: 'BELOW BOOK', test: (c) => c.pb != null && c.pb < 1 },
+  { id: 'roe', label: 'HIGH ROE', test: (c) => (c.roe || 0) > 12 },
+  { id: 'cheap', label: 'CHEAP VS ITSELF', test: (c) => c.bands && c.bands.pe && c.bands.pe.percentile <= 20 },
+  { id: 'yield', label: 'HIGH YIELD', test: (c) => (c.dividendYield || 0) >= 4 },
+];
+
+function renderIndiaScreener(all, d) {
+  const el = $('co-body'); if (!el) return;
+  const q = inQuery.trim().toLowerCase();
+  const sectors = [...new Set(all.map((c) => c.sector).filter(Boolean))].sort();
+  const preset = IN_PRESETS.find((p) => p.id === inPreset);
+  const f = inFilter;
+  const rows = all.filter((c) => (!q || `${c.name} ${c.nameEn || ''} ${c.ticker} ${(c.brands || []).join(' ')}`.toLowerCase().includes(q))
+    && (inSector === 'all' || c.sector === inSector)
+    && (!f.pe || (c.pe != null && (f.pe === 'lt10' ? c.pe < 10 : f.pe === '10to15' ? c.pe >= 10 && c.pe < 15 : f.pe === '15to25' ? c.pe >= 15 && c.pe < 25 : c.pe >= 25)))
+    && (!f.roe || (c.roe != null && c.roe >= Number(f.roe)))
+    && (!f.yield || (c.dividendYield != null && c.dividendYield >= Number(f.yield)))
+    && (!preset || preset.test(c)));
+  const sortOf = { cap: (c) => c.marketCap, pe: (c) => c.pe, pb: (c) => c.pb, roe: (c) => c.roe, yield: (c) => c.dividendYield, ytd: (c) => c.chgYtd };
+  const dir = inSort === 'pe' || inSort === 'pb' ? 1 : -1;
+  const kf = sortOf[inSort] || sortOf.cap;
+  const sorted = [...rows].sort((a, b) => {
+    const x = kf(a), y = kf(b);
+    if (x == null && y == null) return 0;
+    if (x == null) return 1;
+    if (y == null) return -1;
+    return (x - y) * dir;
+  });
+  const inChips = $('co-chips');
+  if (inChips) {
+    const nAu = Object.values(f).filter((v) => v != null && v !== '').length + (inSector !== 'all' ? 1 : 0) + (q ? 1 : 0);
+    inChips.innerHTML = coFilterBar({
+      presets: IN_PRESETS, preset: inPreset, presetAttr: 'data-inpreset',
+      selects: [
+        { key: 'sector', label: 'SECTOR', opts: [['all', 'All'], ...sectors.map((x) => [x, x.toUpperCase()])], cur: inSector, attr: 'data-inf' },
+        { key: 'pe', label: 'P/E', opts: [['', 'Any'], ['lt10', '<10'], ['10to15', '10–15'], ['15to25', '15–25'], ['gt25', '>25']], cur: f.pe, attr: 'data-inf' },
+        { key: 'roe', label: 'ROE', opts: [['', 'Any'], ['10', '>10%'], ['15', '>15%']], cur: f.roe, attr: 'data-inf' },
+        { key: 'yield', label: 'YIELD', opts: [['', 'Any'], ['3', '>3%'], ['5', '>5%']], cur: f.yield, attr: 'data-inf' },
+        { key: 'sort', label: 'SORT', opts: [['cap', 'Market cap'], ['pe', 'P/E low'], ['pb', 'P/B low'], ['roe', 'ROE high'], ['yield', 'Yield high'], ['ytd', 'YTD best']], cur: inSort, attr: 'data-inf' },
+      ],
+      clearAttr: 'data-inpreset', clearValue: 'clear', active: nAu || (inPreset ? 1 : 0), asOf: asOfText(all, 'priceDate'),
+    });
+  }
+  const max = Math.max(...all.map((c) => c.marketCap || 0), 1);
+  const pages = Math.max(1, Math.ceil(sorted.length / inPer));
+  const page = Math.min(inPage, pages);
+  const shown = sorted.slice((page - 1) * inPer, page * inPer);
+  el.innerHTML = inViewsBar()
+    + `<div class="co-hrow"><span>#</span><span></span><span>COMPANY</span><span>MARKET CAP</span><span>P/E</span><span>ROE</span></div>`
+    + shown.map((c, i) => `<button class="co-row" data-in="${esc(c.code)}">
+        <span class="co-rank">${(page - 1) * inPer + i + 1}</span>
+        ${inMono(c)}
+        <span class="co-id"><b>${esc(inName(c))}</b>
+          <span class="co-meta">
+            <span class="co-tick">${esc(c.ticker)}</span>
+            <span class="co-px">${inPx(c.price)}</span>
+            <em class="${(c.chg1d || 0) >= 0 ? 'pos' : 'neg'}">${c.chg1d == null ? '—' : `${c.chg1d >= 0 ? '+' : ''}${c.chg1d.toFixed(1)}%`}</em>
+            <em class="${(c.chgYtd || 0) >= 0 ? 'pos' : 'neg'}">${c.chgYtd == null ? '—' : `${c.chgYtd >= 0 ? '+' : ''}${c.chgYtd.toFixed(1)}%`} YTD</em>
+          </span></span>
+        <span class="co-cap">${inMoney(c.marketCap)}<i class="co-bar"><i style="width:${Math.max(2, ((c.marketCap || 0) / max) * 100)}%"></i></i></span>
+        <span class="co-pe">${c.pe != null ? c.pe.toFixed(1) : '—'}</span>
+        <span class="co-mar ${c.roe == null ? 'dimtext' : c.roe >= 0 ? 'pos' : 'neg'}">${c.roe == null ? '—' : `${c.roe.toFixed(1)}%`}</span>
+      </button>`).join('')
+    + pagerHtml(sorted.length, page, inPer, 'aulistpage')
+    + `<div class="macro-note">${rows.length} of ${all.length} · NSE · statements from stockanalysis.com, prices from Yahoo · P/E is trailing twelve months where the vendor serves a trailing view, otherwise the last fiscal year (the company page labels which) · computed in the issuer's report currency (BHP and RIO report in USD) · FX ${d.fx && d.fx.rate ? d.fx.rate.toFixed(2) : '—'} INR per USD.</div>`;
+}
+
+async function renderIndiaPage(stub) {
+  const el = $('co-body'); if (!el) return;
+  prefetchCoLong('in:' + (stub.ticker || stub.code));
+  prefetchPeers('in:' + (stub.ticker || stub.code));
+  let c = null;
+  el.innerHTML = stLoading('Reading the filing…');
+  try { c = await jget(`/api/india/company/${encodeURIComponent(stub.code)}`, 1800000); } catch { c = null; }
+  if (!c) { el.innerHTML = stError('Couldn\u2019t load this company.'); return; }
+  const sub = $('deals-sub'); if (sub) sub.textContent = `${inName(c)} · ${c.ticker} · NSE`;
+  const cell = (k, v, t, cls = '') => `<div class="co-stat" title="${esc(t)}"><span class="co-k">${k}</span><span class="co-v ${cls}">${v}</span></div>`;
+  const chg = (x) => (x == null ? '' : `${x >= 0 ? '+' : ''}${x.toFixed(1)}%`);
+  const q = c.quarters || [];
+  const h = c.history || [];
+  const ccy = c.reportCurrency || 'INR';
+  // `bank` means no operating-profit line (the columns go); `fin` means a financial business, whose
+  // investing cash flow is a loan book or an investment portfolio, not free cash flow (the FCF lines go).
+  const bank = !!c.bankLike;
+  const fin = !!c.financial || bank;
+  const cur = (v) => (ccy === 'INR' ? inMoney(v) : compactMoney(v, ccy));
+  // The same figures the P/E and the margins are built on, computed once and used by both blocks.
+  const fig = statementFigures(c, 'au');
+  const when = periodLabel(fig.flows.basis, fig.flows.end);
+  const basis = tileBasis(fig.flows.basis, fig.flows.end);
+  const na = new Set(c.naRatios || []);
+  const stat = (key, label, value, title, cls = '') => (key && na.has(key) ? '' : cell(label, value, title, cls));
+  const sign = (v) => (v == null ? '' : v >= 0 ? 'pos' : 'neg');
+  el.innerHTML = `<div class="ma-crumb"><button class="ma-back" data-inback="1">← COMPANIES</button> <span>${esc(c.ticker)}</span><span class="mb-tag">INDIA</span></div>`
+    + `<div class="co-head">${inMono(c)}<div><div class="co-name">${esc(inName(c))}</div>
+        <div class="co-sub">${esc(c.ticker)} · NSE-listed${c.crossListing ? ' · US statements' : ''}${c.name && c.name !== inName(c) ? ' · ' + esc(c.name) : ''}${c.industry ? ' · ' + esc(c.industry) : ''}</div>
+        ${c.description ? `<div class="co-desc">${esc(c.description)}</div>` : ''}
+        ${c.brands && c.brands.length ? `<div class="jp-brands">${c.brands.map((b) => `<span>${esc(b)}</span>`).join('')}</div>` : ''}</div></div>`
+    + `<div class="co-price"><span class="co-price-v">${inPx(c.price)}</span>
+        <span class="co-price-c ${c.chg1d >= 0 ? 'pos' : 'neg'}">${chg(c.chg1d)} today</span>
+        <span class="co-price-c ${c.chg6m >= 0 ? 'pos' : 'neg'}">${chg(c.chg6m)} 6M</span>
+        <span class="co-price-c ${c.chgYtd >= 0 ? 'pos' : 'neg'}">${chg(c.chgYtd)} YTD</span>
+        <span class="dimtext">${c.priceDate ? `as of ${c.priceDate}` : ''}</span></div>`
+    + `<div class="co-stats co-stats-12">
+        ${cell('MARKET CAP', inMoney(c.marketCap), `Price × shares (${c.sharesBasis || 'filing'})`)}
+        ${cell('MARKET CAP · USD', c.marketCapUsd ? `$${(c.marketCapUsd / 1e9).toFixed(1)}B` : '—', 'Converted at the current USD/INR rate')}
+        ${cell(`P/E · ${c.peBasis || 'TTM'}`, c.pe != null ? `${c.pe.toFixed(2)}×` : '—', `Market cap ÷ ${c.peBasis === 'FY' ? 'the last fiscal year\u2019s profit' : 'the rolling twelve months of profit'}, both in ${ccy}${c.reports && c.reports.ttmEnd ? ` (through ${c.reports.ttmEnd})` : ''}`)}
+        ${cell('P/B', c.pb != null ? `${c.pb.toFixed(2)}×` : '—', `Market cap ÷ common shareholders\u2019 equity in ${ccy} (excludes minorities)${c.reports && c.reports.latestEnd ? ` at ${c.reports.latestEnd}` : ''}`)}
+        ${cell('RETURN ON EQUITY', c.roe != null ? `${c.roe.toFixed(1)}%` : '—', 'Profit ÷ common equity (excludes minorities), same currency on both sides', sign(c.roe))}
+        ${cell(`NET PROFIT · ${basis}`, cur(fig.flows.net), `${when}, attributable to owners of the parent — ${ccy} millions${c.ttmFromFY ? ' · fiscal year, because the source has no trailing page for this issuer' : ''}`, sign(fig.flows.net))}
+        ${cell('NET MARGIN', c.netMargin != null ? `${c.netMargin.toFixed(1)}%` : '—', 'Net profit ÷ revenue', sign(c.netMargin))}
+        ${stat('opMargin', 'OPERATING MARGIN', c.opMargin != null ? `${c.opMargin.toFixed(1)}%` : '—', 'Operating profit ÷ revenue', sign(c.opMargin))}
+        ${cell('DIVIDEND YIELD', c.dividendYield != null ? `${c.dividendYield.toFixed(2)}%` : '—', c.dividendYieldBasis === 'vendor' ? 'Vendor dividend yield (converted at the payment-date FX)' : `Latest annual dividend per share, converted to INR at the current rate${c.dividendYieldBasis ? ` (${c.dividendYieldBasis})` : ''}`)}
+        ${stat('fcfYield', 'FCF YIELD', c.fcfYield != null ? `${c.fcfYield.toFixed(2)}%` : '—', 'Free cash flow ÷ market cap', sign(c.fcfYield))}
+        ${stat('fcfMargin', 'FCF MARGIN', c.fcfMargin != null ? `${c.fcfMargin.toFixed(1)}%` : '—', 'Free cash flow ÷ revenue', sign(c.fcfMargin))}
+        ${stat('cashConversion', 'CASH CONVERSION', c.cashConversion != null ? `${c.cashConversion.toFixed(2)}×` : '—', 'Free cash flow ÷ net profit — below 1 means profit is not turning into cash')}
+      </div>`
+    + `<div class="co-stats co-stats-12">
+        ${cell(`REVENUE CAGR${c.cagrYears ? ' · ' + c.cagrYears + 'Y' : ''}`, c.revenueCagr != null ? `${c.revenueCagr.toFixed(1)}%` : '—', c.cagrNA ? `No growth rate: ${c.cagrNA}.` : `Compound annual revenue growth over ${c.cagrYears} fiscal years`, sign(c.revenueCagr))}
+        ${(() => {
+          const e = c.epsCagr != null
+            ? { v: `${c.epsCagr.toFixed(1)}%`, cls: sign(c.epsCagr), t: `Compound annual EPS growth over ${c.cagrYears} fiscal years${c.epsSplitAdjusted ? ' (split-adjusted)' : ''}.${epsGrowthNote(c)}` }
+            : c.epsChange
+              ? { v: `${c.epsChange.from} → ${c.epsChange.to}`, cls: sign(c.epsChange.to), t: `No CAGR: ${c.epsCagrNA}. EPS went from ${c.epsChange.from} in FY${c.epsChange.fromFy} to ${c.epsChange.to} in FY${c.epsChange.toFy}.${epsGrowthNote(c)}` }
+              : { v: '—', cls: '', t: (c.epsCagrNA ? `No EPS growth: ${c.epsCagrNA}.` : 'No EPS growth rate') + epsGrowthNote(c) };
+          return cell(epsGrowthLabel(c), e.v, e.t, e.cls);
+        })()}
+        ${cell('NET MARGIN CHANGE', c.marginDelta != null ? `${c.marginDelta >= 0 ? '+' : ''}${c.marginDelta.toFixed(1)}pp` : '—', 'Change in net margin between the first and last fiscal year on file', sign(c.marginDelta))}
+      </div>`
+    + (() => {
+        const cashWhen = periodLabel(fig.cash.basis, fig.cash.end);
+        const cashBasis = tileBasis(fig.cash.basis, fig.cash.end);
+        const bsWhen = fig.balance.end ? `As of ${fig.balance.end}` : 'Latest reported balance sheet';
+        const fcf = c.fcf;
+        const eps = (c.reports && c.reports.ttm && c.reports.ttm.eps != null)
+          ? c.reports.ttm.eps
+          : (h.length && h[h.length - 1].eps != null ? h[h.length - 1].eps : null);
+        return `<div class="co-stats co-stats-12">
+        ${cell(`REVENUE · ${basis}`, cur(fig.flows.revenue), `${when}, as reported — ${ccy} millions`)}
+        ${stat('operatingProfit', `OPERATING PROFIT · ${basis}`, cur(fig.flows.op), fig.flows.op == null ? 'This issuer does not report an operating-profit line (common for banks)' : `${when}, as reported`, sign(fig.flows.op))}
+        ${cell('EPS · DILUTED', eps != null ? Number(eps).toFixed(2) : '—', `Per share, ${ccy}, the same period as the net profit above${c.perShareBasis ? ` (${c.perShareBasis})` : ''}`)}
+        ${stat('fcf', `FREE CASH FLOW · ${cashBasis}`, cur(fcf), `${cashWhen}: operating cash flow − capital expenditure`)}
+        ${cell('TOTAL ASSETS', cur(fig.balance.assets), `${bsWhen} — ${ccy} millions`)}
+        ${cell('LIABILITIES', cur(fig.balance.liabilities), `${bsWhen}: total assets less shareholders\u2019 equity`)}
+        ${cell('SHAREHOLDERS\u2019 EQUITY', cur(fig.balance.equity), `${bsWhen}, attributable to owners of the parent`)}
+        ${stat('operatingCashFlow', `OPERATING CASH FLOW · ${cashBasis}`, cur(fig.cash.cfo), `${cashWhen}, as reported — ${ccy} millions`)}
+      </div>`;
+      })()
+    + (fin ? `<div class="macro-note" style="padding:6px 12px">${bank
+        ? 'A bank reports net interest income, not an operating-profit line, and its operating cash flow is loans and deposits — not free cash flow.'
+        : 'A financial company\u2019s investing cash flow is its loan book or its investment portfolio, not free cash flow.'} Margins, returns and the balance sheet still apply; the FCF ratios and the operating-cash-flow line are omitted rather than shown as a number that is not one.</div>` : '')
+    + `<div class="co-ranges">
+        <span class="co-cmp-l">COMPARE</span><input class="co-cmp" id="in-cmp" placeholder="company name, e.g. bhp" value="${esc(cmpCode(inCompare))}" autocomplete="off">
+        <button class="co-cmp-clear${inCompare ? '' : ' hidden'}" id="in-cmp-clear" data-cmpclear="au" type="button" title="Clear comparison" aria-label="Clear comparison">×</button>
+        <div class="co-sugg" id="in-sugg"></div>
+        ${[['1m', '1M'], ['3m', '3M'], ['6m', '6M'], ['ytd', 'YTD'], ['1y', '1Y'], ['5y', '5Y'], ['10y', '10Y']].map(([k, t]) => `<button class="ma-chip${inRange === k ? ' on' : ''}" data-inrange="${k}" title="${k === '10y' ? 'Ten years — fills in as the archive grows' : ''}">${t}</button>`).join('')}
+      </div>`
+    + `<div class="co-rets" id="au-rets"></div>`
+    + `<div class="co-chartwrap"><div class="co-big" id="au-big"></div><canvas id="au-chart"></canvas></div>`
+    + '<div id="au-peers-x"></div>'
+    + (h.length > 1 ? `<div class="jp-q"><div class="jp-q-head"><span class="ph-t">FISCAL-YEAR RECORD</span><span class="dimtext">${h.length} fiscal years · ${ccy}</span></div>
+        <table class="jp-q-table"><thead><tr><th>FISCAL YEAR</th><th>REVENUE</th>${bank ? '' : '<th>OP PROFIT</th>'}<th>NET PROFIT</th><th>ROE</th></tr></thead><tbody>
+        ${[...h].reverse().map((x) => `<tr><td>${esc(x.y)}</td><td>${cur(x.s)}</td>${bank ? '' : `<td>${cur(x.o)}</td>`}<td>${cur(x.n)}</td><td>${x.n != null && (x.ec ?? x.q) ? `${((x.n / (x.ec ?? x.q)) * 100).toFixed(1)}%` : '—'}</td></tr>`).join('')}
+        </tbody></table></div>` : '')
+    + (q.length > 1 ? `<div class="jp-q"><div class="jp-q-head"><span class="ph-t">${c.periodBasis === 'quarter' ? 'REPORTED PERIODS' : 'TRAILING 12 MONTHS'}</span><span class="dimtext">${q.length} ${c.periodBasis === 'quarter' ? 'periods' : 'period ends'} · ${ccy} millions</span></div>
+        <div class="jp-q-scroll"><table class="jp-q-table"><thead><tr><th>PERIOD</th><th>REVENUE</th>${bank ? '<th>NET PROFIT</th><th>NET MARGIN</th>' : '<th>OP PROFIT</th><th>MARGIN</th><th>NET PROFIT</th>'}</tr></thead><tbody>
+        ${[...q].reverse().map((x) => `<tr><td>${esc(x.d)}</td><td>${cur(x.revenue)}</td>${bank
+          ? `<td>${cur(x.netIncome)}</td><td>${x.revenue && x.netIncome != null ? `${((x.netIncome / x.revenue) * 100).toFixed(1)}%` : '—'}</td>`
+          : `<td>${cur(x.operatingProfit)}</td><td>${x.revenue && x.operatingProfit != null ? `${((x.operatingProfit / x.revenue) * 100).toFixed(1)}%` : '—'}</td><td>${cur(x.netIncome)}</td>`}</tr>`).join('')}
+        </tbody></table></div></div>` : '')
+    + `<div class="macro-note">NSE-listed · statements from stockanalysis.com (millions ${ccy}), prices from Yahoo. Market cap is INR; ratios are computed in ${ccy}, the currency the issuer reports in, then compared with a market cap converted at the build's USD/INR rate${ccy === 'INR' || ccy === 'USD' ? '' : ` and USD/${ccy} cross`}. ${c.crossListing ? `This line is a CDI/dual listing: statements come from the ${esc(c.crossListing.ticker)} listing, and the market cap uses the NSE price × the filing share count × the ${c.crossListing.ratio}:1 CDI ratio.${c.perShareBasis ? ` Per-share figures are ${esc(c.perShareBasis)}.` : ''}` : `Profit, revenue and margins are the rolling twelve months (the vendor's NSE "trailing" view); the five-year record is the fiscal year.`} Indian companies report half-yearly. No free guidance feed, so there is no forward P/E.${c.description ? ' Company description and sector from stockanalysis.com.' : ''}</div>`;
+  drawInChart(c);
+  fillPeers(`in:${c.ticker}`, 'au-peers-x');
+}
+
+async function drawInChart(c, range = inRange) {
+  const token = chartToken('au-chart');
+  const full = await coLong('in:' + c.ticker);
+  const use = full ? coFitRange(full, range) : range;
+  if (use !== range) { range = use; coMarkRange('inrange', range); }
+  if (!chartFresh('au-chart', token)) return;
+  if (full) paintReturns('au-rets', 'au-big', full, range, WINDOWS_5Y, 'inrange');
+  const wrap = $('au-chart') && $('au-chart').parentElement;
+  const ch = full ? coSlice(full, range) : null;
+  if (!ch || !ch.dates || ch.dates.length < 2) {
+    chartMiss('au-chart', c.ticker, range, coLongFailed('in:' + c.ticker));
+    return;
+  }
+  if (wrap) wrap.removeAttribute('data-empty');
+  let other = null;
+  if (inCompare && cmpCode(inCompare) !== String(c.ticker)) {
+    const cl = await coLong(inCompare);
+    other = cl ? coSlice(cl, range) : null;
+  }
+  if (!chartFresh('au-chart', token)) return;
+  if (other && other.dates && other.dates.length > 1) {
+    const bmap = new Map(other.dates.map((d, i) => [d, other.closes[i]]));
+    const dates = ch.dates.filter((d, i) => ch.closes[i] != null && bmap.get(d) != null);
+    if (dates.length > 1) {
+      const a0 = ch.closes[ch.dates.indexOf(dates[0])];
+      const b0 = bmap.get(dates[0]);
+      mountChart('au-chart', {
+        labels: dates,
+        datasets: [
+          line(`${c.ticker} · ${(c.nameEn || c.name).slice(0, 14)}`, dates.map((d) => (ch.closes[ch.dates.indexOf(d)] / a0) * 100), CT.c1),
+          line(`${cmpCode(inCompare)}`, dates.map((d) => (bmap.get(d) / b0) * 100), CT.c2),
+        ],
+      }, baseOptions({ dp: 0, dateAxis: true, yTitle: 'indexed to 100' }));
+      return;
+    }
+  }
+  mountChart('au-chart', { labels: ch.dates, datasets: [line(`${c.ticker} · INR · ${range.toUpperCase()}`, ch.closes, CT.c1)] }, baseOptions({ dp: 0, dateAxis: true, log: range === '5y' }));
+}
+
+
 // The pane carries the market's accent colour (the region pills, the active tab, the tag on a company
 // page). There used to be a quote strip here too — index name, level, day change, company count — but
 // the market view already states all of that, and repeating it above every view was noise.
@@ -6651,6 +7085,7 @@ function warmMarkets(delay = 1500) {
   setTimeout(() => { if (!hkData) loadHongKong().catch(() => {}); }, delay + 4600);
   // Australia is the sixth and similar in size; warming it after Hong Kong keeps a region switch free.
   setTimeout(() => { if (!auData) loadAustralia().catch(() => {}); }, delay + 6000);
+  setTimeout(() => { if (!inData) loadIndia().catch(() => {}); }, delay + 7400);
 }
 
 function renderCompanies() {
@@ -6670,6 +7105,7 @@ function renderCompanies() {
   if (coRegion === 'tw') return renderTaiwan(token);
   if (coRegion === 'hk') return renderHongKong(token);
   if (coRegion === 'au') return renderAustralia(token);
+  if (coRegion === 'in') return renderIndia(token);
   const el = $('co-body');
   if (charts['co-chart']) { try { charts['co-chart'].destroy(); } catch {} delete charts['co-chart']; }
   if (!el) return;

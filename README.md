@@ -49,7 +49,7 @@ Nine segments: **crude · refined products · natural gas · precious metals · 
 - **Copper/gold** growth proxy and US–Japan spread panels.
 
 ### COMPANIES — profiles & financials
-Six markets, same UI:
+Seven markets, same UI:
 
 | Market | Universe | Financials |
 |---|---|---|
@@ -59,6 +59,7 @@ Six markets, same UI:
 | 🇹🇼 Taiwan | TWSE — **1,084 listed companies** | TWSE master + stockanalysis, TWD |
 | 🇭🇰 Hong Kong | HKEX main board — **1,930 companies** with a statement page | HKEX tape + stockanalysis, HKD/CNY/USD |
 | 🇦🇺 Australia | ASX — **1,650 companies** with a current share count | ASX CSV + stockanalysis, AUD/USD |
+| 🇮🇳 India | NIFTY 500 — **498 companies** | niftyindices CSV + stockanalysis (NSE), INR |
 
 - Search, filter, compare, and chart any company.
 - **Valuation vs its own history** — P/E, P/B, EV/EBITDA percentiles over five years, plus sector aggregates.
@@ -82,6 +83,7 @@ Six markets, same UI:
 | Taiwan | TWSE OpenAPI + stockanalysis.com | no key |
 | Hong Kong | HKEX daily quotation report + stockanalysis.com | no key |
 | Australia | ASX listed-companies CSV + stockanalysis.com + Yahoo | no key |
+| India | niftyindices NIFTY 500 CSV + stockanalysis.com (NSE) + Yahoo | no key |
 | News | tier-1 wires via Google News RSS | headlines + links only |
 
 **Benchmarks** — WTI (Cushing), Brent, RBOB, ULSD/heating oil, jet fuel (spot only), propane (spot only), natural gas (Henry Hub), plus the Brent − WTI spread (paper & physical). Adding a benchmark is one row in the `BENCHMARKS` table in `server.js`.

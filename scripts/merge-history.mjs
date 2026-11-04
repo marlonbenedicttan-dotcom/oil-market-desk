@@ -67,6 +67,15 @@ const MARKETS = {
       ['quarters', c.quarters, 'd'],
     ],
   },
+  in: {
+    file: 'india.json',
+    detail: 'india-companies',
+    tables: (c) => [
+      ['reports.annual', c.reports && c.reports.annual, 'end'],
+      ['reports.quarters', c.reports && c.reports.quarters, 'd'],
+      ['quarters', c.quarters, 'd'],
+    ],
+  },
 };
 
 const requested = process.argv.slice(2).filter((a) => !a.startsWith('-'));

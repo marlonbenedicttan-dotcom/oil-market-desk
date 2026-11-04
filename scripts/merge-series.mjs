@@ -144,6 +144,7 @@ const TASKS = {
   tw: (dry) => bucket('tw', 'taiwan-series', dry),
   hk: (dry) => bucket('hk', 'hongkong-series', dry),
   au: (dry) => bucket('au', 'australia-series', dry),
+  in: (dry) => bucket('in', 'india-series', dry),
 };
 
 const requested = process.argv.slice(2).filter((a) => !a.startsWith('-'));

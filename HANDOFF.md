@@ -3808,3 +3808,52 @@ Audited at 360, 390 and 430 px with screenshots of every view, then fixed what l
 - **Verified**: `npm test` **382/382**; `audit-calculations` 0 mismatches; `audit-markets` **0
   failures** (Korea P/B now compares to the latest equity; Naver caps refreshed); `audit-deep` has one
   residual PG equity-vs-series note (2%, a restatement-period difference, not a formula failure).
+
+## India: the NIFTY 500 (2026-11-05)
+- **Universe**: the NIFTY 500 constituent CSV from niftyindices.com — company name, NSE industry, symbol,
+  trading series, ISIN. 501 rows, 3 of them REIT/InvIT units (series `RR`) and excluded by the same
+  ordinary-line rule that keeps an ETF out of the ASX set; **498 companies**. No sector free-text to
+  resolve, unlike Australia: the NSE industry (20 macro sectors) is the sector.
+- **Sources**: niftyindices CSV for the universe; **Yahoo** (`{SYMBOL}.NS`, `^NSEI` for the NIFTY 50) for
+  five years of split-adjusted closes; **stockanalysis.com (NSE)** for statements with a TTM column, the
+  diluted share count, the dividend per share and the profile; **open.er-api.com** for USD/INR.
+- **Two symbol traps.** NSE symbols carry `&` and `-` (`M&M`, `BAJAJ-AUTO`, `J&KBANK`). stockanalysis
+  spells both as `_` in the slug (`M_M`), Yahoo wants the raw symbol percent-encoded (`M%26M.NS`). A naive
+  `encodeURIComponent` on the slug is a 404 on exactly the names an analyst types.
+- **A field-name collision worth remembering.** The CSV's trading series is called `Series`; assigning it
+  to `c.series` made every company look like it had a two-point price history ("498 symbols with a
+  history · 12 priced") and crashed the returns loop on `"EQ"`. It is stored as `seriesCode`.
+- **Two USD reporters.** Infosys and HCL Tech serve **USD** statements on their NSE page (the ADR/IFRS
+  filing), so their ratios are computed in USD with the rupee cap converted — the same rule as BHP/RIO.
+  The audit and the data test convert the cap before checking a ratio, or a correct P/E of 14.7 reads as
+  1,390 (USD/INR ≈ 94.8).
+- **Bank rule, by GICS industry.** The NSE macro sector "Financial Services" holds banks, NBFCs, housing
+  finance, insurers, AMCs, brokers and the exchanges. `isBankLike` reads the profile's GICS industry:
+  26 regional banks + 24 credit services + 9 mortgage finance + 2 conglomerates are bank-like (no
+  operating margin, no free cash flow); 11 insurers and the AMCs keep their margin and lose FCF, exactly
+  as the US/Japan/HK/AU pages do. **59 bank-like / 96 financials.**
+- **A trailing column that is not trailing.** Three names (Bajaj Holdings, MMTC, Vedanta Oil & Gas) report
+  a TTM profit or operating profit more than 3× revenue — the vendor spliced two periods for a fresh
+  demerger / a holdco / a trader. Every ratio on that column is fiction (VOGL's P/B was 0.00), so they are
+  excluded and named in `audit.brokenCodes`, never published.
+- **Build**: `npm run build:india` — build → fetch profiles → rebuild from cache. `--limit=30` is the smoke
+  test; `--codes=RELIANCE,TCS` builds named companies; `--skip-prices` / `--skip-fin` reuse the caches;
+  `--prices-only` warms Yahoo. Caches: `data/cache/nse/{yahoo,profiles}` and `data/cache/india-sa`.
+- **Output**: `data/india.json`, `data/india-series/{A..Z,0..9}.json` (one-character buckets), `data/india-
+  list.json`, `data/india-companies/`, `data/india-profiles.json`, `data/india-brands.json`,
+  `data/india-themes.json` (8 curated lists).
+- **Server**: `/api/india`, `/api/india/company/{code}`, `/api/india/chart?code=&range=`. The UI adds a
+  seventh region button (`INDIA`) with MARKET / SCREENER / THEMES, the home screener row, a company page,
+  search (`in:M&M`), peers and compare. `INR` is in the FX table.
+- **Built (2026-11-05):** **492 companies** · 471 P/E · 487 P/B · 489 ROE · 492 descriptions · 20 sectors ·
+  59 bank-like / 96 financials · 2 USD reporters · 0 throttled · 3 excluded for an inconsistent trailing
+  column · total cap ₹412.8T · median P/E 33.1 · P/B 4.33 · ROE 13.9% · NIFTY 50 23,961.
+  `npm run audit:india` passes all hard invariants (cap = price × shares, every ratio reproduces from its
+  own inputs, no bank with an operating margin, no financial with FCF, totals tie, sector partition covers
+  the market).
+- **Tests**: `tests/nse.test.js` (BOM/quotes, ordinary-line filter, `&`/`-` slugs, Yahoo encoding, bank vs
+  insurer) and `tests/india-data.test.js` (cap, ratio reproduction with the USD cross, bank rules, totals,
+  index, list projection). `npm test` at 415.
+- **Schedule**: `.github/workflows/india-daily.yml`, 10:40 UTC Mon–Fri (16:10 IST), with the statement
+  cache, `merge-history in`, `merge-series in`, the collapse guard and `audit:india` before the commit.
+  `check-freshness` watches `india.json` at 84h.

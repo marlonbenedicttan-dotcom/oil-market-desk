@@ -129,6 +129,32 @@ export const australiaList = (au) => ({
   companies: (au.companies || []).map(projectAu),
 });
 
+// India ships the same shape as Australia. The statement currency is carried because the NIFTY 500
+// includes a handful of issuers that report outside INR (a dual-listed ADR, an USD-reporting subsidiary),
+// and a rupee cap over a dollar profit is not a P/E.
+export const projectIn = (c) => ({
+  code: c.code, ticker: c.ticker, name: c.name, nameEn: c.nameEn || null, sector: c.sector || null,
+  brands: c.brands && c.brands.length ? c.brands : null,
+  price: c.price, priceDate: c.priceDate, marketCap: c.marketCap,
+  chg1d: c.chg1d, chg6m: c.chg6m, chgYtd: c.chgYtd,
+  pe: c.pe, pb: c.pb, roe: c.roe, opMargin: c.opMargin,
+  netIncomeTTM: c.netIncomeTTM ?? null,
+  netIncomeTTMAsOf: c.netIncomeTTMAsOf || null,
+  ttmFromFY: c.ttmFromFY || undefined,
+  fcfYield: c.fcfYield ?? null,
+  dividendYield: c.dividendYield ?? null,
+  reportCurrency: c.reportCurrency || null,
+  ...growthFields(c),
+  bands: c.bands && c.bands.pe ? { pe: { percentile: c.bands.pe.percentile } } : null,
+});
+
+export const indiaList = (ind) => ({
+  updated: ind.updated, universe: ind.universe, currency: ind.currency, fx: ind.fx,
+  market: ind.market, index: ind.index, themes: ind.themes || [], audit: ind.audit || null,
+  session: ind.session || null, indexName: ind.indexName || 'NIFTY 50',
+  companies: (ind.companies || []).map(projectIn),
+});
+
 export const projectJp = (c) => ({  code: c.code, ticker: c.ticker, name: c.name, nameJa: c.nameJa, sector: c.sector, size: c.size,
   price: c.price, priceDate: c.priceDate, marketCap: c.marketCap,
   chg1d: c.chg1d, chg6m: c.chg6m, chgYtd: c.chgYtd, chgYtdBasis: c.chgYtdBasis,
@@ -162,4 +188,5 @@ export const FILTER_FIELDS = {
   tw: ['sector', 'marketCap', 'pe', 'pb', 'roe', 'dividendYield', 'bands', 'chgYtd', 'priceDate', 'brands'],
   hk: ['sector', 'marketCap', 'pe', 'pb', 'roe', 'dividendYield', 'bands', 'chgYtd', 'priceDate', 'brands'],
   au: ['sector', 'marketCap', 'pe', 'pb', 'roe', 'dividendYield', 'bands', 'chgYtd', 'priceDate', 'brands'],
+  in: ['sector', 'marketCap', 'pe', 'pb', 'roe', 'dividendYield', 'bands', 'chgYtd', 'priceDate', 'brands'],
 };

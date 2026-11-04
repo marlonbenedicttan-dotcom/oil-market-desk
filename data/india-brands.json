@@ -1,0 +1,26 @@
+{
+  "updated": "2026-11-05",
+  "note": "Consumer-facing brands per NSE ticker, curated by hand. A reader types 'Maggi' or 'Tanishq', not 'NESTLEIND' or 'TITAN'. Coverage is deliberately partial: a blank is better than a guess.",
+  "brands": {
+    "HINDUNILVR": ["Surf Excel", "Dove", "Lux", "Lifebuoy", "Rin", "Pepsodent", "Knorr", "Bru"],
+    "ITC": ["Aashirvaad", "Sunfeast", "Bingo", "Fiama", "Classmate", "Dark Fantasy"],
+    "NESTLEIND": ["Maggi", "Nescafé", "KitKat", "Munch", "Everyday"],
+    "BRITANNIA": ["Good Day", "Marie Gold", "Tiger", "NutriChoice"],
+    "DABUR": ["Dabur", "Vatika", "Real", "Hajmola", "Meswak"],
+    "MARICO": ["Parachute", "Saffola", "Livon", "Set Wet"],
+    "TATACONSUM": ["Tata Tea", "Tata Salt", "Tetley", "Eight O'Clock"],
+    "TITAN": ["Titan", "Tanishq", "Fastrack", "CaratLane", "Taneira"],
+    "MARUTI": ["Maruti Suzuki", "Swift", "Baleno", "Brezza", "Ertiga"],
+    "M&M": ["Mahindra", "Scorpio", "Thar", "XUV700", "Bolero"],
+    "BAJAJ-AUTO": ["Bajaj", "Pulsar", "Chetak", "Dominar"],
+    "HEROMOTOCO": ["Hero", "Splendor", "Xpulse"],
+    "TVSMOTOR": ["TVS", "Apache", "Jupiter", "iQube"],
+    "RELIANCE": ["Jio", "Reliance Digital", "JioMart", "Ajio", "Tira"],
+    "ASIANPAINT": ["Asian Paints", "Royale", "Apex"],
+    "DMART": ["DMart"],
+    "TRENT": ["Westside", "Zudio", "Star Bazaar"],
+    "PAGEIND": ["Jockey", "Speedo"],
+    "JUBLFOOD": ["Domino's"],
+    "TATAMOTORS": ["Tata Motors", "Nexon", "Punch", "Harrier", "Jaguar", "Land Rover"]
+  }
+}
