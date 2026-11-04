@@ -166,7 +166,6 @@ function loadApp() {
     renderUsMarket,
     renderHongKongMarket,
     hkBalanceSheetFinancial,
-    hkStatFill,
     drawMarketIndexChart,
     coWindowsFor,
     coSlice,
@@ -534,14 +533,17 @@ test('the Hong Kong company page omits industrial ratios for a balance-sheet fin
   assert.equal(ui.hkBalanceSheetFinancial({ sector: 'Technology', industry: 'Banks - Diversified' }), false);
 });
 
-test('the Hong Kong stat strip is padded to a full grid row', () => {
-  const { ui } = loadApp();
-  const voids = (n) => (ui.hkStatFill(n).match(/co-stat-void/g) || []).length;
-  assert.equal(voids(8), 0, 'a full desktop row needs no filler');
-  assert.equal(voids(7), 1, 'the bank top strip fills its last cell');
-  assert.equal(voids(9), 3, 'the nine-tile strip fills its last row');
-  assert.equal(voids(6), 2, 'the bank flow strip fills its last row');
-  assert.equal(voids(4), 0);
+test('a short stat strip leaves no blank box behind', () => {
+  // The strip used to paint its empty cells: the container's grey showed through the gaps, and Hong
+  // Kong padded the row with invisible filler tiles. Both read as empty boxes under the last real
+  // tile. Each tile now draws its own hairlines, so a short last row just ends.
+  const css = fs.readFileSync(path.join(here, '..', 'public', 'style.css'), 'utf8');
+  const app = fs.readFileSync(APP, 'utf8');
+  const stats = css.match(/\.co-stats \{[^}]*\}/);
+  assert.ok(stats, 'the stat strip has a rule');
+  assert.doesNotMatch(stats[0], /background/, 'the strip does not paint its own empty cells');
+  assert.match(css, /\.co-stat \{[^}]*box-shadow: inset -1px -1px 0 0 var\(--line\)/, 'each tile draws the grid line');
+  assert.doesNotMatch(app, /co-stat-void/, 'no filler tiles are rendered');
 });
 
 test('an out-of-range window falls back to one the series actually covers', () => {

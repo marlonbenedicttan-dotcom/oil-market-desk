@@ -5789,7 +5789,6 @@ async function renderTaiwanPage(stub) {
           return cell(`EPS GROWTH${c.cagrYears ? ' · ' + c.cagrYears + 'Y' : ''}`, e.v, e.t, e.cls);
         })()}
         ${cell('NET MARGIN CHANGE', c.marginDelta != null ? `${c.marginDelta >= 0 ? '+' : ''}${c.marginDelta.toFixed(1)}pp` : '—', 'Change in net margin between the first and last fiscal year on file', c.marginDelta != null ? (c.marginDelta >= 0 ? 'pos' : 'neg') : '')}
-        <div class="co-stat co-stat-void" aria-hidden="true"></div>
       </div>`
     + (() => {
         const fig = statementFigures(c, 'tw');
@@ -5907,12 +5906,6 @@ const hkViewsBar = () => '';
 // business. The regex lives here because the list payload ships the sector but not the industry.
 const HK_BALANCE_SHEET_FINANCIAL = /^(Banks\b|Insurance\s*-|Mortgage Finance|Credit Services|Financial - Credit Services)/;
 const hkBalanceSheetFinancial = (c) => !!c && c.sector === 'Financials' && HK_BALANCE_SHEET_FINANCIAL.test(c.industry || '');
-
-// The stat strip is four columns (two on phones) and its hairlines are the container's grey showing
-// through the 1px gaps. A row that is not full leaves that grey exposed — the blank box on ICBC once
-// the bank's operating/FCF tiles were dropped. Pad every grid to a full row. Four is also even, so the
-// two-column phone layout stays full.
-const hkStatFill = (n) => '<div class="co-stat co-stat-void" aria-hidden="true"></div>'.repeat((4 - (n % 4)) % 4);
 
 async function loadHongKong() {
   if (hkData) return hkData;
@@ -6180,7 +6173,6 @@ async function renderHongKongPage(stub) {
           return cell(`EPS GROWTH${c.cagrYears ? ' · ' + c.cagrYears + 'Y' : ''}`, e.v, e.t, e.cls);
         })()}
         ${cell('NET MARGIN CHANGE', c.marginDelta != null ? `${c.marginDelta >= 0 ? '+' : ''}${c.marginDelta.toFixed(1)}pp` : '—', 'Change in net margin between the first and last fiscal year on file', c.marginDelta >= 0 ? 'pos' : 'neg')}
-        ${hkStatFill(fin ? 10 : 11)}
       </div>`
     + (() => {
         const fig = statementFigures(c, 'hk');
@@ -6207,7 +6199,6 @@ async function renderHongKongPage(stub) {
         ${cell('LIABILITIES', cur(fig.balance.liabilities), `${bsWhen}: total assets less shareholders\u2019 equity`)}
         ${cell('SHAREHOLDERS\u2019 EQUITY', cur(fig.balance.equity), `${bsWhen}, attributable to owners of the parent`)}
         ${fin ? '' : cell(`OPERATING CASH FLOW · ${tileBasis(fig.cash.basis, fig.cash.end)}`, cur(fig.cash.cfo), `${cashWhen}, as reported — ${ccy} millions`)}
-        ${hkStatFill(fin ? 6 : 9)}
       </div>`;
       })()
     + `<div class="co-ranges">

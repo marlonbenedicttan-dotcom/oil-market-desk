@@ -1106,8 +1106,11 @@ button.deal-sec-tile:hover { background: #10151b; }
 .co-head { display: flex; align-items: center; gap: 12px; padding: 13px 12px 10px; }
 .co-name { font-size: 17px; color: var(--text); font-weight: 700; }
 .co-sub { font-size: 10px; color: var(--dim); letter-spacing: .5px; text-transform: uppercase; margin-top: 2px; }
-.co-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; background: var(--line); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
-.co-stat { background: #0c0f13; padding: 10px 12px; }
+/* The lines are drawn by each tile, not by a gap over a filled container: a strip whose last row is
+   short leaves bare page there instead of painting an empty box in the line colour. */
+.co-stats { display: grid; grid-template-columns: repeat(4, 1fr); border-top: 1px solid var(--line); }
+.co-stat { background: #0c0f13; padding: 10px 12px; box-shadow: inset -1px -1px 0 0 var(--line); }
+.co-stat:nth-child(4n) { box-shadow: inset 0 -1px 0 0 var(--line); }
 .co-k { display: block; font-size: 8.5px; letter-spacing: 1px; color: var(--dim); text-transform: uppercase; }
 .co-v { display: block; font-size: 18px; font-weight: 800; margin-top: 3px; font-variant-numeric: tabular-nums; }
 .co-v.pos { color: var(--green); } .co-v.neg { color: var(--red); }
@@ -1117,6 +1120,8 @@ button.deal-sec-tile:hover { background: #10151b; }
   .co-row { grid-template-columns: 30px 1fr 86px; }
   .co-mar { display: none; }
   .co-stats { grid-template-columns: repeat(2, 1fr); }
+  .co-stat:nth-child(4n) { box-shadow: inset -1px -1px 0 0 var(--line); }
+  .co-stat:nth-child(2n) { box-shadow: inset 0 -1px 0 0 var(--line); }
 }
 
 /* Company page: price chart + five-year table. */
@@ -1263,6 +1268,8 @@ button.deal-sec-tile:hover { background: #10151b; }
   .co-head .ma-mono { margin-bottom: 2px; }
   .co-name { font-size: 19px; }
   .co-stats { grid-template-columns: repeat(2, 1fr); }
+  .co-stat:nth-child(4n) { box-shadow: inset -1px -1px 0 0 var(--line); }
+  .co-stat:nth-child(2n) { box-shadow: inset 0 -1px 0 0 var(--line); }
   /* Theme tables: a cap needs its width, a legal name needs two lines. */
   .jp-bank-hrow, .jp-bank-row { grid-template-columns: 18px 1fr 92px 46px; gap: 6px; }
   .jp-bank-row span:nth-child(2) b { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
