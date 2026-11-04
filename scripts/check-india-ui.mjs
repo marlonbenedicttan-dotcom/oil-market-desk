@@ -128,6 +128,11 @@ console.log(`${pageOk ? 'ok  ' : 'FAIL'} company page rendered · ${body.length}
 if (!pageOk) bad++;
 await want('returned to the market list control exists', `!!document.querySelector('[data-inback]')`);
 
+// The chart canvas must actually exist on the company page (the clone once kept Australia's id).
+const chartOk = await evaluate(`(() => { const c = document.querySelector('#in-chart'); return !!c && c.clientWidth > 100 && c.clientHeight > 100; })()`);
+console.log(`${chartOk ? 'ok  ' : 'FAIL'} company chart canvas · ${chartOk ? 'drawn' : 'missing or zero-size'}`);
+if (!chartOk) bad++;
+
 // Themes view: the curated lists render and at least one has members.
 await evaluate(`document.querySelector('[data-inback]')?.click()`);
 await sleep(1200);
