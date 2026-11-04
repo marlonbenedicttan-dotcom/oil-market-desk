@@ -1,5 +1,5 @@
 {
- "checked": "2026-11-03T22:04:16.285Z",
+ "checked": "2026-11-04T02:34:53.786Z",
  "markets": {
   "us": {
    "name": "US",
@@ -8,7 +8,7 @@
     {
      "check": "market cap vs price × shares",
      "severity": "warn",
-     "count": 4,
+     "count": 5,
      "detail": "A share class Nasdaq capitalises but the filing does not count"
     },
     {
@@ -67,11 +67,12 @@
     }
    ],
    "fail": 0,
-   "warn": 4,
+   "warn": 5,
    "examples": {
     "market cap vs price × shares": [
-     "COIN (-8.1%)",
-     "LH (10.7%)",
+     "DLR (10.1%)",
+     "XEL (9.0%)",
+     "LH (10.8%)",
      "FOXA (-8.5%)",
      "UHS (-8.6%)"
     ]
@@ -104,7 +105,7 @@
     {
      "check": "P/B vs the filing’s equity",
      "severity": "warn",
-     "count": 15,
+     "count": 3,
      "detail": "JPX values equity at a later filing date"
     },
     {
@@ -140,29 +141,24 @@
     {
      "check": "ROE sign disagrees with the fiscal-year profit",
      "severity": "warn",
-     "count": 21,
+     "count": 22,
      "detail": "JPX ROE is trailing; NP is the fiscal year"
     }
    ],
    "fail": 0,
-   "warn": 36,
+   "warn": 25,
    "examples": {
     "P/B vs the filing’s equity": [
-     "285A0 (21.8%)",
-     "77350 (5.0%)",
-     "18780 (8.7%)",
-     "45060 (5.6%)",
-     "79880 (-9.7%)",
-     "21270 (7.3%)",
-     "46170 (6.6%)",
-     "67370 (-16.5%)"
+     "40050 (5.9%)",
+     "65920 (-5.3%)",
+     "62000 (-5.2%)"
     ],
     "ROE sign disagrees with the fiscal-year profit": [
      "45020 (ROE 0.6% vs NP $-152.39B)",
      "67230 (ROE 23.6% vs NP $-51.76B)",
      "95020 (ROE -7.6% vs NP $227.79B)",
      "95010 (ROE 9.7% vs NP $-454.26B)",
-     "25790 (ROE 5.3% vs NP $-50.76B)",
+     "25790 (ROE 4.7% vs NP $-50.76B)",
      "94680 (ROE -2.5% vs NP $1.28B)",
      "65880 (ROE 4.8% vs NP $-2.29B)",
      "96030 (ROE -4% vs NP $4.72B)"
@@ -174,7 +170,7 @@
     "pe": 1485,
     "pb": 1543,
     "roe": 1537,
-    "jpxRatio": 1462
+    "jpxRatio": 1460
    }
   },
   "korea": {
@@ -232,16 +228,22 @@
     {
      "check": "share count differs from the filing",
      "severity": "info",
-     "count": 2,
+     "count": 241,
      "detail": "A split or consolidation since the last annual report"
     }
    ],
    "fail": 0,
-   "warn": 2,
+   "warn": 241,
    "examples": {
     "share count differs from the filing": [
-     "950210 (filing 2,253,257 → listed 60,104,167)",
-     "021050 (filing 288,822 → listed 47,505,198)"
+     "032830 (filing 179,574,779 → listed 200,581,959)",
+     "068270 (filing 218,613,124 → listed 232,073,120)",
+     "034730 (filing 55,086,352 → listed 72,502,783)",
+     "000810 (filing 39,828,296 → listed 44,716,333)",
+     "010120 (filing 29,738,491 → listed 150,202,020)",
+     "006800 (filing 436,049,860 → listed 544,159,329)",
+     "005830 (filing 60,643,469 → listed 65,463,026)",
+     "267250 (filing 70,668,430 → listed 78,993,343)"
     ]
    },
    "coverage": {
@@ -252,10 +254,10 @@
     "peFY": 43,
     "pb": 735,
     "roe": 739,
-    "naverMatched": 746
+    "naverMatched": 744
    }
   }
  },
  "failures": 0,
- "warnings": 42
+ "warnings": 271
 }
