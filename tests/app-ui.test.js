@@ -143,7 +143,7 @@ function loadApp() {
   const source = fs.readFileSync(APP, 'utf8');
   // `const`/`function` declarations are script-scoped, so hand the ones under test back explicitly.
   const exported = `\n;globalThis.__ui = {
-    esc, pctf, cls, ago, deltaStrip, renderRisk, renderRelValue, tileSignals, curveShort,
+    esc, pctf, cls, ago, deltaStrip, renderRisk, renderRelValue, tileSignals, curveShort, renderInventories,
     isPropertyCompany, epsGrowthLabel, epsGrowthNote,
     buildBpOptions, renderTicker, markReady, hideBoot, BOOT_CORE, bootReady,
     setMarkets: (v) => { markets = v; },
@@ -280,6 +280,28 @@ test('the segment tile chips show only the signals that exist', () => {
   assert.equal(ui.curveShort('Contango'), 'CONTANGO');
   assert.equal(ui.curveShort('Flat'), 'FLAT');
   assert.equal(ui.curveShort(null), null);
+});
+
+test('the supply table labels EIA stocks in million barrels, not thousand', () => {
+  const { ui, document } = loadApp();
+  ui.renderInventories({
+    items: [{
+      key: 'crude', label: 'Crude (ex-SPR)', period: '2026-10-23', value: 410625, wow: -1892,
+      seasonal: -351, seasonalMin: -6858, seasonalMax: 4320, surprise: -1541, unit: 'kbbl',
+      history: [
+        { period: '2026-10-16', value: 409000, min: 380000, avg: 400000, max: 420000, n: 5 },
+        { period: '2026-10-23', value: 410625, min: 381000, avg: 401000, max: 421000, n: 5 },
+      ],
+    }],
+    gas: { period: '2026-10-23', value: 3500, wow: -20, surprise: -10, unit: 'BCF', history: [] },
+  });
+  const html = document.getElementById('inventories').innerHTML;
+  assert.match(html, /410\.6/);
+  assert.doesNotMatch(html, /410,625/);
+  assert.match(html, /-1\.9/);
+  assert.match(html, /drew 1\.5 more than usual/);
+  assert.match(html, /3,500 BCF/);
+  assert.match(document.getElementById('inv-chart-title').textContent, /CRUDE \(EX-SPR\)/);
 });
 
 test('the compare pickers fill in even when prices land before history and FX', () => {

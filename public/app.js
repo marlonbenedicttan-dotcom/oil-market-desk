@@ -708,6 +708,7 @@ function selectMarket(id) {
   currentComponent = null;   // reset to the segment's headline when the segment changes
   marketRead = null;         // clear so nothing from the previous segment can linger
   segScore = undefined;      // and so the old segment's signal chips cannot stay on the tiles
+  invKey = null;             // the supply chart follows the new segment's default series
   buildBpOptions();          // idempotent; also repairs the picker if it was built before markets arrived
   const pick = $('bp-metric');
   if (pick && [...pick.options].some((o) => o.value === id)) pick.value = id;   // keep the picker in sync
@@ -716,6 +717,7 @@ function selectMarket(id) {
   if (commoditiesActive) loadRelValue();
 
   toggleMarketBlocks();
+  if (invData) renderInventories(invData);
   if (data) { renderCards(data); buildMetricOptions(data); }
   if (commoditiesActive) loadSegmentScore();
   setCardsTitle();
@@ -1585,28 +1587,81 @@ const pctClass = (p) => (p == null ? '' : p >= 80 ? 'hot' : p <= 20 ? 'cold' : '
 function ctxRow(k, pct, value) {
   return `<div class="ctx-row"><span class="ctx-k">${k}</span><span class="ctx-bar"><i style="width:${pct == null ? 0 : pct}%"></i></span><span class="ctx-p ${pctClass(pct)}">${pct == null ? '—' : pct.toFixed(0) + '/100'}</span><span class="ctx-v">${value}</span></div>`;
 }
+let invChart = null, invData = null, invKey = null;
 function renderInventories(d) {
-  if (!d || !d.items?.length) { $('inventories').innerHTML = stEmpty('EIA key needed, or no inventory data.'); return; }
+  if (!d || !d.items?.length) { $('inventories').innerHTML = stEmpty('EIA key needed, or no inventory data.'); invData = null; return; }
+  invData = d;
   const LBL = { crude: 'Crude oil', cushing: 'Cushing (delivery hub)', gasoline: 'Gasoline', distillate: 'Diesel & heating oil', spr: 'Strategic reserve' };
   $('inv-date').textContent = 'weekly US stockpiles · week of ' + d.items[0].period;
-  const fmtN = (v) => (v == null ? '—' : (v >= 0 ? '+' : '') + v.toLocaleString(undefined, { maximumFractionDigits: 0 }));
+  // EIA petroleum stocks are thousand barrels; the panel's header is million barrels.
+  const mb = (v) => (v == null ? null : v / 1000);
+  const fmtLvl = (v) => (v == null ? '—' : mb(v).toLocaleString(undefined, { maximumFractionDigits: 1 }));
+  const fmtChg = (v) => (v == null ? '—' : (v >= 0 ? '+' : '') + mb(v).toLocaleString(undefined, { maximumFractionDigits: 1 }));
+  const available = d.items.map((i) => i.key).concat(d.gas ? ['gas'] : []);
+  const def = currentMarket === 'gas' ? 'gas' : currentMarket === 'refined' ? 'gasoline' : 'crude';
+  if (!invKey || !available.includes(invKey)) invKey = available.includes(def) ? def : available[0];
   const crude = d.items.find((i) => i.key === 'crude');
   const read = crude?.surprise != null
     ? (crude.surprise < 0 ? 'Crude stocks <b>fell more than usual</b> this week → bullish for oil.' : 'Crude stocks <b>built more than usual</b> → bearish for oil.')
     : '';
   const rows = d.items.map((i) => {
     const sur = i.surprise;
-    const range = i.seasonalMin != null ? ` <span class="dimtext">(usual ${i.seasonalMin.toLocaleString()} to ${i.seasonalMax.toLocaleString()})</span>` : '';
+    const range = i.seasonalMin != null ? ` <span class="dimtext">(usual ${fmtChg(i.seasonalMin)} to ${fmtChg(i.seasonalMax)})</span>` : '';
     const tag = sur == null ? '<span class="dimtext">—</span>'
-      : sur < 0 ? `<span class="pos">drew ${Math.abs(sur).toLocaleString()} more than usual</span>${range}`
-        : `<span class="neg">built ${sur.toLocaleString()} vs usual</span>${range}`;
-    return `<div class="t inv"><span class="inv-l">${LBL[i.key] || i.label}</span><span class="num">${i.value.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span><span class="num ${cls(i.wow)}">${fmtN(i.wow)}</span><span class="num">${tag}</span></div>`;
+      : sur < 0 ? `<span class="pos">drew ${fmtChg(Math.abs(sur)).replace('+', '')} more than usual</span>${range}`
+        : `<span class="neg">built ${fmtChg(sur).replace('+', '')} vs usual</span>${range}`;
+    return `<div class="t inv${i.key === invKey ? ' active' : ''}" data-inv="${i.key}" title="Show ${LBL[i.key] || i.label} versus its 5-year seasonal range"><span class="inv-l">${LBL[i.key] || i.label}</span><span class="num">${fmtLvl(i.value)}</span><span class="num ${cls(i.wow)}">${fmtChg(i.wow)}</span><span class="num">${tag}</span></div>`;
   }).join('');
+  const gasLine = d.gas ? `<div class="read-line inv-gas${invKey === 'gas' ? ' active' : ''}" data-inv="gas" style="border-top:1px solid var(--line);cursor:pointer" title="Show natural gas storage versus its 5-year seasonal range">Natural gas storage: <b>${d.gas.value.toLocaleString()} BCF</b> (${d.gas.wow >= 0 ? '+' : ''}${d.gas.wow} this week${d.gas.surprise != null ? `, vs a normal ${d.gas.surprise >= 0 ? '+' : ''}${d.gas.surprise}` : ''}) — ${d.gas.wow < 0 ? 'a draw is bullish for gas' : 'a build is bearish for gas'}. <span class="dimtext">· click to chart</span></div>` : '';
   $('inventories').innerHTML =
     (read ? `<div class="read-line">${read}</div>` : '') +
-    `<div class="t inv h"><span class="inv-l">SERIES (million barrels)</span><span class="num">LEVEL</span><span class="num">THIS WEEK</span><span class="num">vs NORMAL</span></div>` + rows +
-    (d.gas ? `<div class="read-line" style="border-top:1px solid var(--line)">Natural gas storage: <b>${d.gas.value.toLocaleString()} BCF</b> (${d.gas.wow >= 0 ? '+' : ''}${d.gas.wow} this week${d.gas.surprise != null ? `, vs a normal ${d.gas.surprise >= 0 ? '+' : ''}${d.gas.surprise}` : ''}) — ${d.gas.wow < 0 ? 'a draw is bullish for gas' : 'a build is bearish for gas'}.</div>` : '');
+    `<div class="t inv h"><span class="inv-l">SERIES (million barrels)</span><span class="num">LEVEL</span><span class="num">THIS WEEK</span><span class="num">vs NORMAL</span></div>` + rows + gasLine +
+    `<div class="chokes-h dimtext" id="inv-chart-title" style="padding:9px 12px 0"></div>` +
+    `<div class="chart-wrap sm"><canvas id="inv-chart" role="img" aria-label="Weekly inventory versus its five-year seasonal range."></canvas></div>` +
+    `<div class="dimtext" id="inv-chart-note" style="padding:0 12px 9px"></div>`;
+  renderInvChart(d, invKey);
 }
+function renderInvChart(d, key) {
+  const item = key === 'gas' ? d.gas : (d.items || []).find((i) => i.key === key);
+  const titleEl = $('inv-chart-title'), noteEl = $('inv-chart-note');
+  if (!item || !Array.isArray(item.history) || item.history.length < 2) {
+    if (titleEl) titleEl.textContent = '';
+    if (noteEl) noteEl.textContent = 'Not enough weekly history for this series.';
+    clearChart('inv-chart');
+    invChart = null;
+    return;
+  }
+  invKey = key;
+  document.querySelectorAll('#inventories [data-inv]').forEach((el) => el.classList.toggle('active', el.dataset.inv === key));
+  const petrol = key !== 'gas';
+  const div = petrol ? 1000 : 1;
+  const unit = petrol ? 'million barrels' : 'BCF';
+  const label = petrol ? ((d.items.find((i) => i.key === key) || {}).label || key) : 'Natural gas storage';
+  const hist = item.history;
+  const data = {
+    labels: hist.map((r) => r.period),
+    datasets: [
+      { label: '5-yr max', data: hist.map((r) => (r.max == null ? null : r.max / div)), borderColor: 'rgba(124,138,153,.55)', borderDash: [3, 3], borderWidth: 1, pointRadius: 0, tension: 0 },
+      { label: '5-yr min', data: hist.map((r) => (r.min == null ? null : r.min / div)), borderColor: 'rgba(124,138,153,.55)', backgroundColor: 'rgba(74,163,255,.10)', borderDash: [3, 3], borderWidth: 1, pointRadius: 0, tension: 0, fill: '-1' },
+      { label: '5-yr avg', data: hist.map((r) => (r.avg == null ? null : r.avg / div)), borderColor: 'rgba(74,163,255,.8)', borderDash: [5, 3], borderWidth: 1, pointRadius: 0, tension: 0 },
+      { label: 'Stocks', data: hist.map((r) => r.value / div), borderColor: CT.accent, backgroundColor: CT.accent + '18', borderWidth: 2, pointRadius: 0, tension: 0.2 },
+    ],
+  };
+  const opts = baseOptions({ dp: 0, yTitle: unit, dateAxis: true });
+  opts.scales.y.ticks.callback = (v) => Number(v).toLocaleString(undefined, { maximumFractionDigits: 0 });
+  opts.plugins.tooltip.callbacks.label = (ctx) => {
+    const v = ctx.parsed.y;
+    return v == null ? `${ctx.dataset.label}: —` : `${ctx.dataset.label}: ${Number(v).toLocaleString(undefined, { maximumFractionDigits: 1 })} ${unit}`;
+  };
+  invChart = mountChart('inv-chart', data, opts);
+  if (titleEl) titleEl.textContent = `${label.toUpperCase()} — vs the 5-year same-week range`;
+  if (noteEl) noteEl.textContent = `Weekly EIA stocks · ${hist.length >= 100 ? 'last 3 years' : `last ${hist.length} weeks`} · as of ${item.period} · band = prior 5 years' same week (min–max, average)`;
+}
+$('inventories')?.addEventListener('click', (e) => {
+  const el = e.target.closest('[data-inv]');
+  if (!el || !invData) return;
+  renderInvChart(invData, el.dataset.inv);
+});
 // ---------------------------------------------------------------------------
 // Positioning (CFTC, weekly) — who is crowded. Fetched per segment; the server supplies the
 // plain read (positioningFlag / positioningRead in src/lib.js).
@@ -3700,6 +3755,7 @@ function showTab(name) {
     if (cmpChart) setTimeout(() => cmpChart.resize(), 55);
     if (curveHistChart) setTimeout(() => curveHistChart.resize(), 60);
     if (posChart) setTimeout(() => posChart.resize(), 70);
+    if (invChart) setTimeout(() => invChart.resize(), 75);
     if (crackHistChart && currentMarket === 'refined') setTimeout(() => crackHistChart.resize(), 80);
   }
   if (name === 'deals') {

@@ -217,6 +217,10 @@ footer li { margin-bottom: 2px; }
 .t.inv.h { color: var(--amber); font-size: 10px; letter-spacing: 1px; border-bottom: 1px solid var(--line2); }
 .t.inv .num { text-align: right; }
 .inv-l { color: #c9d4df; }
+.t.inv:not(.h) { cursor: pointer; }
+.t.inv:not(.h):hover, .inv-gas:hover { background: #10151b; }
+.t.inv.active, .inv-gas.active { background: #121820; }
+.inv-gas { cursor: pointer; }
 
 /* Sectors */
 .sector-read { padding: 2px 8px; }
