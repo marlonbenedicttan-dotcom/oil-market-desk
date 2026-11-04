@@ -1,23 +1,23 @@
 {
- "updated": "2026-11-04T11:09:23.219Z",
+ "updated": "2026-11-04T16:20:34.604Z",
  "index": {
-  "pe": 24.3,
+  "pe": 24.5,
   "years": [
    {
     "fy": 2021,
-    "pe": 19.8
+    "pe": 19.9
    },
    {
     "fy": 2022,
-    "pe": 18.3
+    "pe": 18.4
    },
    {
     "fy": 2023,
-    "pe": 22
+    "pe": 22.1
    },
    {
     "fy": 2024,
-    "pe": 25.2
+    "pe": 25.3
    },
    {
     "fy": 2025,
@@ -28,8 +28,8 @@
     "pe": 29.3
    }
   ],
-  "min": 18.3,
-  "median": 25.2,
+  "min": 18.4,
+  "median": 25.3,
   "max": 29.3,
   "percentile": 50,
   "basis": "Σ market cap ÷ Σ trailing net income, current shares applied to past prices"
@@ -48,7 +48,7 @@
     },
     {
      "fy": 2023,
-     "pe": 28.5
+     "pe": 28.6
     },
     {
      "fy": 2024,
@@ -70,23 +70,23 @@
    "companies": 69
   },
   "Consumer": {
-   "pe": 24.6,
+   "pe": 25.4,
    "years": [
     {
      "fy": 2021,
-     "pe": 31.5
+     "pe": 31.7
     },
     {
      "fy": 2022,
-     "pe": 22.7
+     "pe": 22.8
     },
     {
      "fy": 2023,
-     "pe": 26.1
+     "pe": 26.2
     },
     {
      "fy": 2024,
-     "pe": 27
+     "pe": 27.1
     },
     {
      "fy": 2025,
@@ -97,14 +97,14 @@
      "pe": 27.5
     }
    ],
-   "min": 22.7,
+   "min": 22.8,
    "median": 27.5,
-   "max": 31.5,
+   "max": 31.7,
    "percentile": 17,
    "companies": 111
   },
   "Industrials": {
-   "pe": 34.5,
+   "pe": 34.1,
    "years": [
     {
      "fy": 2021,
@@ -138,7 +138,7 @@
    "companies": 77
   },
   "Healthcare": {
-   "pe": 32,
+   "pe": 32.4,
    "years": [
     {
      "fy": 2021,
@@ -172,7 +172,7 @@
    "companies": 50
   },
   "Financials": {
-   "pe": 14.3,
+   "pe": 14.6,
    "years": [
     {
      "fy": 2021,
@@ -202,7 +202,7 @@
    "companies": 67
   },
   "Energy": {
-   "pe": 16.6,
+   "pe": 16.1,
    "years": [
     {
      "fy": 2021,
@@ -266,7 +266,7 @@
    "companies": 8
   },
   "Materials": {
-   "pe": 33.7,
+   "pe": 34.4,
    "years": [
     {
      "fy": 2021,
@@ -296,37 +296,37 @@
    "companies": 1
   },
   "Utilities": {
-   "pe": 21.5,
+   "pe": 22.3,
    "years": [
     {
      "fy": 2021,
-     "pe": 25.4
+     "pe": 26.1
     },
     {
      "fy": 2022,
-     "pe": 25.3
+     "pe": 26.1
     },
     {
      "fy": 2023,
-     "pe": 18.7
+     "pe": 19.4
     },
     {
      "fy": 2024,
-     "pe": 22
+     "pe": 23
     },
     {
      "fy": 2025,
-     "pe": 22.5
+     "pe": 23.6
     }
    ],
-   "min": 18.7,
-   "median": 22.5,
-   "max": 25.4,
+   "min": 19.4,
+   "median": 23.6,
+   "max": 26.1,
    "percentile": 20,
    "companies": 37
   },
   "Real estate": {
-   "pe": 34.6,
+   "pe": 35.2,
    "years": [
     {
      "fy": 2021,
@@ -338,7 +338,7 @@
     },
     {
      "fy": 2023,
-     "pe": 40.5
+     "pe": 40.4
     },
     {
      "fy": 2024,
@@ -350,13 +350,13 @@
     }
    ],
    "min": 33.7,
-   "median": 40.5,
+   "median": 40.4,
    "max": 50.2,
    "percentile": 20,
    "companies": 26
   },
   "Mining": {
-   "pe": 15.7,
+   "pe": 15.4,
    "years": [
     {
      "fy": 2021,
@@ -372,14 +372,14 @@
     },
     {
      "fy": 2024,
-     "pe": 12.1
+     "pe": 12
     },
     {
      "fy": 2025,
      "pe": 19
     }
    ],
-   "min": 12.1,
+   "min": 12,
    "median": 16.3,
    "max": 19,
    "percentile": 40,
