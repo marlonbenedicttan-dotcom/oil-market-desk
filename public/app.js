@@ -6792,7 +6792,7 @@ function inIndexSeries() {
 function redrawIndiaIndex(range = inMktRange) {
   const full = inIndexSeries();
   if (!full) return false;
-  inMktRange = drawMarketIndexChart('au-mkt', full, range, 'aumkt', 'S&P/NIFTY 50');
+  inMktRange = drawMarketIndexChart('in-mkt', full, range, 'inmkt', 'S&P/NIFTY 50');
   return true;
 }
 
@@ -6819,7 +6819,7 @@ function renderIndiaMarket(all, d) {
         ${cell('UP THIS YEAR', String(m.upYtd ?? '—'), 'Companies with a positive year-to-date return')}
       </div>`
     + breadth
-    + (idx.series && idx.series.length > 1 ? `<div class="co-rets" id="au-mkt-rets"></div><div class="co-chartwrap"><canvas id="au-mkt-chart"></canvas></div>` : '')
+    + (idx.series && idx.series.length > 1 ? `<div class="co-rets" id="in-mkt-rets"></div><div class="co-chartwrap"><canvas id="in-mkt-chart"></canvas></div>` : '')
     + `<div class="co-hrow jp-mkt-hrow"><span>SECTOR</span><span>N</span><span>CAP</span><span>P/E</span><span>P/B</span><span>ROE</span><span>YIELD</span><span>YTD</span></div>`
     + (m.sectors || []).map((x) => `<div class="jp-mkt-row">
         <span>${esc(x.name)}</span><span>${x.count}</span><span>${inMoney(x.cap)}</span>
@@ -7011,14 +7011,14 @@ async function renderIndiaPage(stub) {
         ? 'A bank reports net interest income, not an operating-profit line, and its operating cash flow is loans and deposits — not free cash flow.'
         : 'A financial company\u2019s investing cash flow is its loan book or its investment portfolio, not free cash flow.'} Margins, returns and the balance sheet still apply; the FCF ratios and the operating-cash-flow line are omitted rather than shown as a number that is not one.</div>` : '')
     + `<div class="co-ranges">
-        <span class="co-cmp-l">COMPARE</span><input class="co-cmp" id="in-cmp" placeholder="company name, e.g. bhp" value="${esc(cmpCode(inCompare))}" autocomplete="off">
-        <button class="co-cmp-clear${inCompare ? '' : ' hidden'}" id="in-cmp-clear" data-cmpclear="au" type="button" title="Clear comparison" aria-label="Clear comparison">×</button>
+        <span class="co-cmp-l">COMPARE</span><input class="co-cmp" id="in-cmp" placeholder="company name, e.g. reliance" value="${esc(cmpCode(inCompare))}" autocomplete="off">
+        <button class="co-cmp-clear${inCompare ? '' : ' hidden'}" id="in-cmp-clear" data-cmpclear="in" type="button" title="Clear comparison" aria-label="Clear comparison">×</button>
         <div class="co-sugg" id="in-sugg"></div>
         ${[['1m', '1M'], ['3m', '3M'], ['6m', '6M'], ['ytd', 'YTD'], ['1y', '1Y'], ['5y', '5Y'], ['10y', '10Y']].map(([k, t]) => `<button class="ma-chip${inRange === k ? ' on' : ''}" data-inrange="${k}" title="${k === '10y' ? 'Ten years — fills in as the archive grows' : ''}">${t}</button>`).join('')}
       </div>`
-    + `<div class="co-rets" id="au-rets"></div>`
-    + `<div class="co-chartwrap"><div class="co-big" id="au-big"></div><canvas id="au-chart"></canvas></div>`
-    + '<div id="au-peers-x"></div>'
+    + `<div class="co-rets" id="in-rets"></div>`
+    + `<div class="co-chartwrap"><div class="co-big" id="in-big"></div><canvas id="in-chart"></canvas></div>`
+    + '<div id="in-peers-x"></div>'
     + (h.length > 1 ? `<div class="jp-q"><div class="jp-q-head"><span class="ph-t">FISCAL-YEAR RECORD</span><span class="dimtext">${h.length} fiscal years · ${ccy}</span></div>
         <table class="jp-q-table"><thead><tr><th>FISCAL YEAR</th><th>REVENUE</th>${bank ? '' : '<th>OP PROFIT</th>'}<th>NET PROFIT</th><th>ROE</th></tr></thead><tbody>
         ${[...h].reverse().map((x) => `<tr><td>${esc(x.y)}</td><td>${cur(x.s)}</td>${bank ? '' : `<td>${cur(x.o)}</td>`}<td>${cur(x.n)}</td><td>${x.n != null && (x.ec ?? x.q) ? `${((x.n / (x.ec ?? x.q)) * 100).toFixed(1)}%` : '—'}</td></tr>`).join('')}
@@ -7031,20 +7031,20 @@ async function renderIndiaPage(stub) {
         </tbody></table></div></div>` : '')
     + `<div class="macro-note">NSE-listed · statements from stockanalysis.com (millions ${ccy}), prices from Yahoo. Market cap is INR; ratios are computed in ${ccy}, the currency the issuer reports in, then compared with a market cap converted at the build's USD/INR rate${ccy === 'INR' || ccy === 'USD' ? '' : ` and USD/${ccy} cross`}. ${c.crossListing ? `This line is a CDI/dual listing: statements come from the ${esc(c.crossListing.ticker)} listing, and the market cap uses the NSE price × the filing share count × the ${c.crossListing.ratio}:1 CDI ratio.${c.perShareBasis ? ` Per-share figures are ${esc(c.perShareBasis)}.` : ''}` : `Profit, revenue and margins are the rolling twelve months (the vendor's NSE "trailing" view); the five-year record is the fiscal year.`} Indian companies report half-yearly. No free guidance feed, so there is no forward P/E.${c.description ? ' Company description and sector from stockanalysis.com.' : ''}</div>`;
   drawInChart(c);
-  fillPeers(`in:${c.ticker}`, 'au-peers-x');
+  fillPeers(`in:${c.ticker}`, 'in-peers-x');
 }
 
 async function drawInChart(c, range = inRange) {
-  const token = chartToken('au-chart');
+  const token = chartToken('in-chart');
   const full = await coLong('in:' + c.ticker);
   const use = full ? coFitRange(full, range) : range;
   if (use !== range) { range = use; coMarkRange('inrange', range); }
-  if (!chartFresh('au-chart', token)) return;
-  if (full) paintReturns('au-rets', 'au-big', full, range, WINDOWS_5Y, 'inrange');
-  const wrap = $('au-chart') && $('au-chart').parentElement;
+  if (!chartFresh('in-chart', token)) return;
+  if (full) paintReturns('in-rets', 'in-big', full, range, WINDOWS_5Y, 'inrange');
+  const wrap = $('in-chart') && $('in-chart').parentElement;
   const ch = full ? coSlice(full, range) : null;
   if (!ch || !ch.dates || ch.dates.length < 2) {
-    chartMiss('au-chart', c.ticker, range, coLongFailed('in:' + c.ticker));
+    chartMiss('in-chart', c.ticker, range, coLongFailed('in:' + c.ticker));
     return;
   }
   if (wrap) wrap.removeAttribute('data-empty');
@@ -7053,14 +7053,14 @@ async function drawInChart(c, range = inRange) {
     const cl = await coLong(inCompare);
     other = cl ? coSlice(cl, range) : null;
   }
-  if (!chartFresh('au-chart', token)) return;
+  if (!chartFresh('in-chart', token)) return;
   if (other && other.dates && other.dates.length > 1) {
     const bmap = new Map(other.dates.map((d, i) => [d, other.closes[i]]));
     const dates = ch.dates.filter((d, i) => ch.closes[i] != null && bmap.get(d) != null);
     if (dates.length > 1) {
       const a0 = ch.closes[ch.dates.indexOf(dates[0])];
       const b0 = bmap.get(dates[0]);
-      mountChart('au-chart', {
+      mountChart('in-chart', {
         labels: dates,
         datasets: [
           line(`${c.ticker} · ${(c.nameEn || c.name).slice(0, 14)}`, dates.map((d) => (ch.closes[ch.dates.indexOf(d)] / a0) * 100), CT.c1),
@@ -7070,7 +7070,7 @@ async function drawInChart(c, range = inRange) {
       return;
     }
   }
-  mountChart('au-chart', { labels: ch.dates, datasets: [line(`${c.ticker} · INR · ${range.toUpperCase()}`, ch.closes, CT.c1)] }, baseOptions({ dp: 0, dateAxis: true, log: range === '5y' }));
+  mountChart('in-chart', { labels: ch.dates, datasets: [line(`${c.ticker} · INR · ${range.toUpperCase()}`, ch.closes, CT.c1)] }, baseOptions({ dp: 0, dateAxis: true, log: range === '5y' || range === '10y' }));
 }
 
 
