@@ -213,7 +213,7 @@ footer li { margin-bottom: 2px; }
 
 /* Tables (inventories) */
 .tbl { padding: 10px 12px; font-size: 12px; }
-.t.inv { display: grid; grid-template-columns: 1fr 100px 90px 90px; gap: 8px; padding: 4px 0; border-bottom: 1px solid var(--line); font-variant-numeric: tabular-nums; }
+.t.inv { display: grid; grid-template-columns: 1fr 100px 90px minmax(150px, 230px); gap: 8px; padding: 4px 0; border-bottom: 1px solid var(--line); font-variant-numeric: tabular-nums; }
 .t.inv.h { color: var(--amber); font-size: 10px; letter-spacing: 1px; border-bottom: 1px solid var(--line2); }
 .t.inv .num { text-align: right; }
 .inv-l { color: #c9d4df; }
@@ -221,6 +221,12 @@ footer li { margin-bottom: 2px; }
 .t.inv:not(.h):hover, .inv-gas:hover { background: #10151b; }
 .t.inv.active, .inv-gas.active { background: #121820; }
 .inv-gas { cursor: pointer; }
+/* On a phone the four-column stock table clipped its "vs normal" column; drop THIS WEEK and let
+   the seasonal comparison use the freed space. */
+@media (max-width: 640px) {
+  .t.inv { grid-template-columns: 1fr 64px minmax(0, 1.6fr); }
+  .t.inv > .num:nth-child(3) { display: none; }
+}
 
 /* Sectors */
 .sector-read { padding: 2px 8px; }
