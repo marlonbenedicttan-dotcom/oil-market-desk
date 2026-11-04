@@ -2,17 +2,136 @@
   "updated": "2026-10-30",
   "note": "Curated KOSPI themes. Each is a deliberate subset with a stated rule, not a sector renamed.",
   "themes": [
-    { "id": "semis", "label": "SEMICONDUCTORS", "kind": "curated",
+    {
+      "id": "semis",
+      "label": "SEMICONDUCTORS",
+      "kind": "curated",
       "note": "Memory, foundry and the equipment and materials behind them — the sector that drives the index.",
-      "tickers": ["005930","000660","042700","000990","108320","402340","009150","011070"] },
-    { "id": "battery", "label": "BATTERIES & EV", "kind": "curated",
+      "tickers": [
+        "005930",
+        "000660",
+        "042700",
+        "000990",
+        "108320",
+        "402340",
+        "009150",
+        "011070"
+      ]
+    },
+    {
+      "id": "battery",
+      "label": "BATTERIES & EV",
+      "kind": "curated",
       "note": "Cell makers, cathode and materials producers, and the chemicals behind the Korean battery chain.",
-      "tickers": ["373220","006400","096770","003670","066970","011790","051910","005490"] },
-    { "id": "defence", "label": "DEFENCE", "kind": "curated",
+      "tickers": [
+        "373220",
+        "006400",
+        "096770",
+        "003670",
+        "066970",
+        "011790",
+        "051910",
+        "005490"
+      ]
+    },
+    {
+      "id": "defence",
+      "label": "DEFENCE",
+      "kind": "curated",
       "note": "Aerospace, land systems, missiles and the electronics suppliers behind Korea's export defence push.",
-      "tickers": ["012450","047810","079550","064350","272210","103140","047040","000880"] },
-    { "id": "banks", "label": "BANKS", "kind": "curated",
+      "tickers": [
+        "012450",
+        "047810",
+        "079550",
+        "064350",
+        "272210",
+        "103140",
+        "047040",
+        "000880"
+      ]
+    },
+    {
+      "id": "banks",
+      "label": "BANKS",
+      "kind": "curated",
       "note": "The four big financial holding companies plus the regional banks — the Korea discount in one table.",
-      "tickers": ["105560","055550","086790","316140","024110","138930","139130"] }
+      "tickers": [
+        "105560",
+        "055550",
+        "086790",
+        "316140",
+        "024110",
+        "138930",
+        "139130"
+      ]
+    },
+    {
+      "id": "autos-kr",
+      "label": "AUTOS & PARTS",
+      "kind": "sector",
+      "note": "Hyundai, Kia and the parts chain. Cheap on book value, exposed to the US tariff regime and to the won.",
+      "tickers": [
+        "005380",
+        "000270",
+        "012330",
+        "005850",
+        "204320",
+        "011210",
+        "003570",
+        "064960"
+      ]
+    },
+    {
+      "id": "internet-kr",
+      "label": "INTERNET, MEDIA & TELECOM",
+      "kind": "sector",
+      "note": "Search, gaming, content and the carriers. The platforms trade on engagement, the carriers on the dividend.",
+      "tickers": [
+        "035420",
+        "017670",
+        "018260",
+        "035720",
+        "030200",
+        "259960",
+        "307950",
+        "064400"
+      ]
+    },
+    {
+      "id": "consumer-kr",
+      "label": "CONSUMER & RETAIL",
+      "kind": "sector",
+      "note": "Food, cosmetics and the retail chains — the domestic demand proxy, with cosmetics carrying the export angle.",
+      "tickers": [
+        "028260",
+        "033780",
+        "047050",
+        "003230",
+        "271560",
+        "111770",
+        "026960",
+        "097950",
+        "282330",
+        "023530"
+      ]
+    },
+    {
+      "id": "materials-kr",
+      "label": "STEEL, CHEMICALS & MATERIALS",
+      "kind": "sector",
+      "note": "Steel, petrochemicals and battery materials. Chinese overcapacity sets the spread, which is why these trade at a discount to the index.",
+      "tickers": [
+        "005490",
+        "010130",
+        "051910",
+        "278470",
+        "090430",
+        "009830",
+        "000880",
+        "004020",
+        "011790",
+        "002380"
+      ]
+    }
   ]
 }

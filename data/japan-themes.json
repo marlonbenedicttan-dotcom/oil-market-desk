@@ -1,92 +1,190 @@
 {
- "updated": "2026-10-30",
- "note": "Curated themes: each list is a deliberate subset, not a sector renamed. The rule-based themes are computed on the client from the live data so they never go stale.",
- "themes": [
-  {
-   "id": "ai",
-   "label": "AI & SEMICONDUCTORS",
-   "kind": "curated",
-   "note": "Companies whose revenue depends on chipmaking or AI infrastructure — equipment, materials (including Ajinomoto’s build-up film for CPU substrates), memory, components and the platforms selling the compute.",
-   "codes": [
-    "80350",
-    "68570",
-    "69200",
-    "61460",
-    "77350",
-    "65250",
-    "63610",
-    "77290",
-    "63230",
-    "68710",
-    "69250",
-    "67280",
-    "40630",
-    "34360",
-    "41860",
-    "40040",
-    "285A0",
-    "67230",
-    "65260",
-    "69630",
-    "69810",
-    "67620",
-    "69760",
-    "58030",
-    "58010",
-    "58020",
-    "65010",
-    "67020",
-    "46890",
-    "43070",
-    "65320",
-    "36970",
-    "28020",
-    "69880",
-    "79660",
-    "40620",
-    "79110",
-    "79120",
-    "53340",
-    "50160",
-    "57060",
-    "40210",
-    "42030",
-    "31320",
-    "40420",
-    "77310",
-    "429A0",
-    "41820",
-    "53840",
-    "77510"
-   ],
-   "anchors": [
-    "80350",
-    "68570",
-    "285A0",
-    "28020"
-   ]
-  },
-  {
-   "id": "defence",
-   "label": "DEFENCE",
-   "kind": "curated",
-   "note": "Prime-listed suppliers to Japan's defence budget expansion — platforms, engines, electronics and specialised components.",
-   "codes": [
-    "70110",
-    "70120",
-    "70130",
-    "67010",
-    "65030",
-    "56310",
-    "72240",
-    "77210"
-   ],
-   "anchors": [
-    "70110",
-    "70120",
-    "70130",
-    "67010"
-   ]
-  }
- ]
+  "updated": "2026-10-30",
+  "note": "Curated themes: each list is a deliberate subset, not a sector renamed. The rule-based themes are computed on the client from the live data so they never go stale.",
+  "themes": [
+    {
+      "id": "ai",
+      "label": "AI & SEMICONDUCTORS",
+      "kind": "curated",
+      "note": "Companies whose revenue depends on chipmaking or AI infrastructure — equipment, materials (including Ajinomoto’s build-up film for CPU substrates), memory, components and the platforms selling the compute.",
+      "codes": [
+        "80350",
+        "68570",
+        "69200",
+        "61460",
+        "77350",
+        "65250",
+        "63610",
+        "77290",
+        "63230",
+        "68710",
+        "69250",
+        "67280",
+        "40630",
+        "34360",
+        "41860",
+        "40040",
+        "285A0",
+        "67230",
+        "65260",
+        "69630",
+        "69810",
+        "67620",
+        "69760",
+        "58030",
+        "58010",
+        "58020",
+        "65010",
+        "67020",
+        "46890",
+        "43070",
+        "65320",
+        "36970",
+        "28020",
+        "69880",
+        "79660",
+        "40620",
+        "79110",
+        "79120",
+        "53340",
+        "50160",
+        "57060",
+        "40210",
+        "42030",
+        "31320",
+        "40420",
+        "77310",
+        "429A0",
+        "41820",
+        "53840",
+        "77510"
+      ],
+      "anchors": [
+        "80350",
+        "68570",
+        "285A0",
+        "28020"
+      ]
+    },
+    {
+      "id": "defence",
+      "label": "DEFENCE",
+      "kind": "curated",
+      "note": "Prime-listed suppliers to Japan's defence budget expansion — platforms, engines, electronics and specialised components.",
+      "codes": [
+        "70110",
+        "70120",
+        "70130",
+        "67010",
+        "65030",
+        "56310",
+        "72240",
+        "77210"
+      ],
+      "anchors": [
+        "70110",
+        "70120",
+        "70130",
+        "67010"
+      ]
+    },
+    {
+      "id": "trading-houses",
+      "label": "TRADING HOUSES",
+      "kind": "sector",
+      "note": "The sogo shosha: conglomerates that own stakes across energy, metals, food and machinery. They trade at a discount to book, return cash through dividends and buybacks, and are the market’s read on the reform story.",
+      "codes": [
+        "80580",
+        "80010",
+        "80310",
+        "80530",
+        "80020",
+        "80150",
+        "81360",
+        "27680"
+      ]
+    },
+    {
+      "id": "autos",
+      "label": "AUTOS & TRANSPORT EQUIPMENT",
+      "kind": "sector",
+      "note": "The world’s largest carmakers and the suppliers behind them. The yen sets the export margin, and the electric transition sets the multiple.",
+      "codes": [
+        "72030",
+        "72670",
+        "69020",
+        "72690",
+        "72700",
+        "70120",
+        "73090",
+        "72720"
+      ]
+    },
+    {
+      "id": "banks-jp",
+      "label": "BANKS & FINANCIALS",
+      "kind": "sector",
+      "note": "Megabanks, regional banks and brokers. A rising policy rate widens the lending spread for the first time in two decades, which is the whole investment case.",
+      "codes": [
+        "83060",
+        "83160",
+        "84110",
+        "71820",
+        "83080",
+        "83090",
+        "71860",
+        "83310"
+      ]
+    },
+    {
+      "id": "pharma-jp",
+      "label": "PHARMACEUTICALS",
+      "kind": "sector",
+      "note": "Domestic drugmakers with ageing-portfolio exposure and a wave of patent expiries. Licensing deals and the US pipeline are what re-rate them.",
+      "codes": [
+        "45190",
+        "45020",
+        "45780",
+        "45680",
+        "45030",
+        "45070",
+        "45230",
+        "41510"
+      ]
+    },
+    {
+      "id": "consumer-jp",
+      "label": "CONSUMER & RETAIL",
+      "kind": "sector",
+      "note": "Food, beverages and the retail chains. Pricing power after years of deflation is the theme: the names that raised prices without losing volume are the ones that worked.",
+      "codes": [
+        "99830",
+        "29140",
+        "33820",
+        "28020",
+        "82670",
+        "74530",
+        "25020",
+        "25030",
+        "75320",
+        "75500"
+      ]
+    },
+    {
+      "id": "machinery-jp",
+      "label": "MACHINERY & AUTOMATION",
+      "kind": "sector",
+      "note": "Factory automation, robotics and heavy machinery. Orders from China and the US data-centre build-out are the two swing factors.",
+      "codes": [
+        "70110",
+        "63670",
+        "63010",
+        "61460",
+        "62730",
+        "63260",
+        "70130",
+        "63830"
+      ]
+    }
+  ]
 }

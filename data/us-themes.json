@@ -1,113 +1,199 @@
 {
- "updated": "2026-10-30",
- "note": "Theme = (industry rule ∪ curated additions) − exclusions. Anchors are tested: if a theme loses one, the build fails.",
- "themes": [
-  {
-   "id": "ai",
-   "label": "AI & SEMICONDUCTORS",
-   "industries": [
-    "Semiconductors"
-   ],
-   "tickers": [
-    "LRCX",
-    "KLAC",
-    "TER",
-    "SNDK",
-    "WDC",
-    "STX",
-    "NTAP",
-    "COHR",
-    "TEL",
-    "VRT",
-    "SMCI",
-    "ANET",
-    "DELL",
-    "IBM",
-    "MSFT",
-    "GOOGL",
-    "AMZN",
-    "META",
-    "ORCL",
-    "PLTR",
-    "CRWD",
-    "NOW",
-    "CDNS",
-    "SNPS"
-   ],
-   "exclude": [],
-   "anchors": [
-    "NVDA",
-    "AMD",
-    "MU",
-    "SNDK",
-    "AVGO",
-    "LRCX",
-    "KLAC"
-   ],
-   "note": "Chip designers and equipment, the memory and storage behind them, and the platforms and infrastructure selling the compute."
-  },
-  {
-   "id": "defence",
-   "label": "DEFENCE",
-   "industries": [
-    "Aerospace"
-   ],
-   "tickers": [
-    "LMT",
-    "NOC",
-    "GD",
-    "LHX",
-    "HII",
-    "TDG",
-    "LDOS",
-    "AXON",
-    "HWM",
-    "TDY",
-    "PLTR"
-   ],
-   "exclude": [
-    "HON"
-   ],
-   "anchors": [
-    "LMT",
-    "RTX",
-    "NOC",
-    "GD",
-    "LHX",
-    "PLTR"
-   ],
-   "note": "Prime contractors, missile and radar makers, the electronics and structures suppliers behind them, and the software the intelligence and defence agencies run on."
-  },
-  {
-   "id": "power",
-   "label": "NUCLEAR & POWER",
-   "industries": [],
-   "tickers": [
-    "CEG",
-    "VST",
-    "NRG",
-    "GEV",
-    "ETN",
-    "PWR",
-    "NEE",
-    "SO",
-    "D",
-    "EXC",
-    "AEP",
-    "XEL",
-    "ETR",
-    "PEG",
-    "SRE",
-    "ED"
-   ],
-   "exclude": [],
-   "anchors": [
-    "CEG",
-    "VST",
-    "GEV",
-    "ETN"
-   ],
-   "note": "Utilities with nuclear fleets, independent power producers, and the equipment and engineering firms building the grid for data centres."
-  }
- ]
+  "updated": "2026-10-30",
+  "note": "Theme = (industry rule ∪ curated additions) − exclusions. Anchors are tested: if a theme loses one, the build fails.",
+  "themes": [
+    {
+      "id": "ai",
+      "label": "AI & SEMICONDUCTORS",
+      "industries": [
+        "Semiconductors"
+      ],
+      "tickers": [
+        "LRCX",
+        "KLAC",
+        "TER",
+        "SNDK",
+        "WDC",
+        "STX",
+        "NTAP",
+        "COHR",
+        "TEL",
+        "VRT",
+        "SMCI",
+        "ANET",
+        "DELL",
+        "IBM",
+        "MSFT",
+        "GOOGL",
+        "AMZN",
+        "META",
+        "ORCL",
+        "PLTR",
+        "CRWD",
+        "NOW",
+        "CDNS",
+        "SNPS"
+      ],
+      "exclude": [],
+      "anchors": [
+        "NVDA",
+        "AMD",
+        "MU",
+        "SNDK",
+        "AVGO",
+        "LRCX",
+        "KLAC"
+      ],
+      "note": "Chip designers and equipment, the memory and storage behind them, and the platforms and infrastructure selling the compute."
+    },
+    {
+      "id": "defence",
+      "label": "DEFENCE",
+      "industries": [
+        "Aerospace"
+      ],
+      "tickers": [
+        "LMT",
+        "NOC",
+        "GD",
+        "LHX",
+        "HII",
+        "TDG",
+        "LDOS",
+        "AXON",
+        "HWM",
+        "TDY",
+        "PLTR"
+      ],
+      "exclude": [
+        "HON"
+      ],
+      "anchors": [
+        "LMT",
+        "RTX",
+        "NOC",
+        "GD",
+        "LHX",
+        "PLTR"
+      ],
+      "note": "Prime contractors, missile and radar makers, the electronics and structures suppliers behind them, and the software the intelligence and defence agencies run on."
+    },
+    {
+      "id": "power",
+      "label": "NUCLEAR & POWER",
+      "industries": [],
+      "tickers": [
+        "CEG",
+        "VST",
+        "NRG",
+        "GEV",
+        "ETN",
+        "PWR",
+        "NEE",
+        "SO",
+        "D",
+        "EXC",
+        "AEP",
+        "XEL",
+        "ETR",
+        "PEG",
+        "SRE",
+        "ED"
+      ],
+      "exclude": [],
+      "anchors": [
+        "CEG",
+        "VST",
+        "GEV",
+        "ETN"
+      ],
+      "note": "Utilities with nuclear fleets, independent power producers, and the equipment and engineering firms building the grid for data centres."
+    },
+    {
+      "id": "software",
+      "label": "MEGA-CAP SOFTWARE & PLATFORMS",
+      "kind": "sector",
+      "note": "The platforms that sell software, cloud and advertising at global scale. Margins are set by the mix of subscription and advertising revenue, and the group trades on forward growth rather than book value.",
+      "tickers": [
+        "AAPL",
+        "NVDA",
+        "MSFT",
+        "GOOGL",
+        "GOOG",
+        "META",
+        "AVGO",
+        "MU",
+        "AMD",
+        "PLTR"
+      ]
+    },
+    {
+      "id": "healthcare",
+      "label": "HEALTHCARE",
+      "kind": "sector",
+      "note": "Pharmaceuticals, devices and managed care. Drug pricing and patent cliffs drive the first group, utilisation and reimbursement the second — which is why they rarely move together.",
+      "tickers": [
+        "LLY",
+        "JNJ",
+        "ABBV",
+        "MRK",
+        "UNH",
+        "PM",
+        "AMGN",
+        "GILD",
+        "ABT",
+        "PFE"
+      ]
+    },
+    {
+      "id": "financials",
+      "label": "BANKS, BROKERS & INSURERS",
+      "kind": "sector",
+      "note": "The rate-sensitive block. Net interest margin and credit costs drive the banks, capital-markets activity the brokers, and the insurers live on underwriting and the investment portfolio.",
+      "tickers": [
+        "BRK-B",
+        "JPM",
+        "BAC",
+        "MS",
+        "GS",
+        "WFC",
+        "AXP",
+        "C",
+        "BLK",
+        "SCHW"
+      ]
+    },
+    {
+      "id": "energy-us",
+      "label": "OIL, GAS & REFINING",
+      "kind": "sector",
+      "note": "Integrated majors, shale producers and refiners. The refiners price off the crack spread rather than the crude price, which is why they belong beside the producers rather than in them.",
+      "tickers": [
+        "XOM",
+        "CVX",
+        "COP",
+        "MPC",
+        "PSX",
+        "VLO",
+        "EOG",
+        "SLB"
+      ]
+    },
+    {
+      "id": "reits",
+      "label": "REAL ESTATE & REITs",
+      "kind": "sector",
+      "note": "Data centres, towers, warehouses and offices. The tenants and the lease structure matter more than the property cycle, and the yield is the number that competes with the bond market.",
+      "tickers": [
+        "WELL",
+        "PLD",
+        "EQIX",
+        "AMT",
+        "SPG",
+        "DLR",
+        "PSA",
+        "O"
+      ]
+    }
+  ]
 }
