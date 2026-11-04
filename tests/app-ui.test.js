@@ -537,13 +537,18 @@ test('the Hong Kong company page omits industrial ratios for a balance-sheet fin
 test('a short stat strip leaves no blank box behind', () => {
   // The strip used to paint its empty cells: the container's grey showed through the gaps, and Hong
   // Kong padded the row with invisible filler tiles. Both read as empty boxes under the last real
-  // tile. Each tile now draws its own hairlines, so a short last row just ends.
+  // tile. Each tile now draws its own hairlines over the tile colour, so a short last row just ends.
   const css = fs.readFileSync(path.join(here, '..', 'public', 'style.css'), 'utf8');
   const app = fs.readFileSync(APP, 'utf8');
-  const stats = css.match(/\.co-stats \{[^}]*\}/);
+  const rule = (sel) => {
+    const m = css.match(new RegExp(`${sel.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')} \\{[^}]*\\}`));
+    return m ? m[0] : '';
+  };
+  const stats = rule('.co-stats');
   assert.ok(stats, 'the stat strip has a rule');
-  assert.doesNotMatch(stats[0], /background/, 'the strip does not paint its own empty cells');
-  assert.match(css, /\.co-stat \{[^}]*box-shadow: inset -1px -1px 0 0 var\(--line\)/, 'each tile draws the grid line');
+  assert.doesNotMatch(stats, /background:\s*var\(--line\)/, 'the strip does not paint its empty cells in the line colour');
+  assert.match(stats, /background:\s*#0c0f13/, 'an unfilled cell matches the tile colour');
+  assert.match(rule('.co-stat'), /box-shadow: inset -1px -1px 0 0 var\(--line\)/, 'each tile draws the grid line');
   assert.doesNotMatch(app, /co-stat-void/, 'no filler tiles are rendered');
 });
 
