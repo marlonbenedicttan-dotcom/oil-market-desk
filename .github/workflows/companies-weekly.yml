@@ -43,6 +43,7 @@ jobs:
           node scripts/fill-gaps.mjs
           node scripts/ttm-earnings.mjs
           node scripts/balance-pass.mjs
+          node scripts/refresh-us-equity.mjs
           node scripts/repair-revenue.mjs
           node scripts/repair-revenue.mjs --recon
           node scripts/fix-net-income.mjs

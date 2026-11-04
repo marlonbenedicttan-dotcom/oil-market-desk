@@ -55,6 +55,7 @@ if (changed.length) {
 // The headline TTM and the quarterly table are filled from different caches; make them agree after
 // either has been refreshed, or the page shows a trailing profit the quarters below do not add up to.
 step('ttm vs quarters', ['scripts/reconcile-ttm.mjs']);
+step('equity instants', ['scripts/refresh-us-equity.mjs']);
 step('ratios', ['scripts/derive-companies.mjs']);
 step('second source', ['scripts/reconcile-nasdaq.mjs']);
 step('verdicts', ['scripts/arbitrate.mjs']);

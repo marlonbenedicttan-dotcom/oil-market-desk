@@ -67,7 +67,7 @@ jobs:
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email 'github-actions[bot]@users.noreply.github.com'
-          git add data/hongkong.json data/hongkong-list.json data/hongkong-series data/hongkong-companies data/hongkong-profiles.json data/hongkong-brands.json data/hongkong-hsi.json data/charts
+          git add data/hongkong.json data/hongkong-list.json data/hongkong-series data/hongkong-companies data/hongkong-profiles.json data/hongkong-brands.json data/hongkong-hsi.json data/hongkong-shares.json data/hongkong-sec-shares.json data/charts
           if git diff --staged --quiet; then
             echo 'no data change'
           else

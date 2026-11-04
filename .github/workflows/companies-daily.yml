@@ -67,6 +67,10 @@ jobs:
           DART_API_KEY: ${{ secrets.DART_API_KEY }}
         run: |
           if [ -z "$DART_API_KEY" ]; then echo 'no DART key — skipping Korea'; exit 0; fi
+          # The daily build fetches the statements; the universe/share table and the quarter windows
+          # are separate DART calls. Refresh them first so a new listing or a split is current.
+          node scripts/refresh-korea-shares.mjs
+          node scripts/refresh-korea-quarters.mjs
           node scripts/build-korea.mjs --years=5
           # Same for a new KOSPI listing: describe it tonight, capped, never fatal.
           node scripts/fetch-korea-descriptions.mjs --only-missing --limit=25 || echo 'new-listing descriptions: source unavailable, retry tomorrow'
