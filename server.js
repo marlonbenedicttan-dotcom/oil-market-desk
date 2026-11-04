@@ -705,14 +705,16 @@ async function getInventories() {
 // ---------------------------------------------------------------------------
 // CFTC Commitments-of-Traders contract names per benchmark (free, no key).
 const COT_NAMES = {
-  wti: 'CRUDE OIL, LIGHT SWEET-WTI', brent: 'CRUDE OIL, BRENT',
-  rbob: 'GASOLINE RBOB', ulsd: 'NY HARBOR ULSD', natgas: 'NATURAL GAS',
-  gold: 'GOLD', silver: 'SILVER', copper: 'COPPER', platinum: 'PLATINUM', palladium: 'PALLADIUM',
+  wti: 'CRUDE OIL, LIGHT SWEET-WTI', brent: 'BRENT LAST DAY',
+  // "NATURAL GAS" is the legacy 1995-99 name; the current NYMEX series is HENRY HUB.
+  rbob: 'GASOLINE RBOB', ulsd: 'NY HARBOR ULSD', natgas: 'HENRY HUB',
+  gold: 'GOLD', silver: 'SILVER', copper: 'COPPER- #1', platinum: 'PLATINUM', palladium: 'PALLADIUM',
   steel: 'STEEL-HRC',   // iron ore is not a CFTC contract
   corn: 'CORN', wheat: 'WHEAT-SRW', soybean: 'SOYBEANS', soymeal: 'SOYBEAN MEAL', soyoil: 'SOYBEAN OIL',
   sugar: 'SUGAR NO. 11', coffee: 'COFFEE C', cocoa: 'COCOA', cotton: 'COTTON NO. 2',
   orange: 'FRZN CONCENTRATED ORANGE JUICE', rice: 'ROUGH RICE',
-  palm: 'MALAYSIAN PALM OIL CALENDAR SW',
+  // Palm is not mapped: its only CFTC series stopped in 2019, so the panel shows no positioning
+  // rather than a seven-year-old "crowded" flag.
   milk: 'MILK, Class III', butter: 'BUTTER (CASH SETTLED)', cheese: 'CHEESE (CASH-SETTLED)', nfdm: 'NON FAT DRY MILK', whey: 'DRY WHEY',
   // The livestock segment had no COT mapping at all, so its positioning panel always read "no series".
   cattle: 'LIVE CATTLE', hogs: 'LEAN HOGS', feeder: 'FEEDER CATTLE',
@@ -721,7 +723,9 @@ async function getPositioning(id = 'wti') {
   const name = COT_NAMES[id];
   const b = BENCHMARKS.find((x) => x.id === id);
   if (!name) return { error: 'no CFTC series for ' + id };
-  return cached('positioning:' + id, 6 * 3600e3, async () => {
+  // A result whose price series failed must not occupy the six-hour slot with a net-only chart; let
+  // the next call retry the price fetch.
+  return cachedUnlessEmpty('positioning:' + id, 6 * 3600e3, async () => {
     const where = `contract_market_name='${name}'`;
     // Only the four columns this panel reads. Asking Socrata for the full row made it build a ~1MB
     // document (and take 15-20s); the narrow select is ~35KB and answers in ~2s.
@@ -740,14 +744,33 @@ async function getPositioning(id = 'wti') {
     const nets = rows.map((r) => r.net);
     const pctOf = (arr) => (arr.length ? (arr.filter((n) => n <= latest.net).length / arr.length) * 100 : null);
     const pct3y = pctOf(nets.slice(-156));                  // the last 3 years of weekly reports
-    // One 3-year futures series serves both the divergence read and the chart. It used to be fetched
-    // only for the divergence and then thrown away.
+    // One 2-year futures series serves both the divergence read and the chart. It used to be fetched
+    // only for the divergence and then thrown away. Do not cache an empty map: a transient Yahoo miss
+    // would otherwise hide the price line for six hours.
     let px = {};
     if (b && b.paper) {
-      try { px = await cached('a3p:' + b.paper, 6 * 3600e3, () => yahooSeries(b.paper, '3y', '1d')).then((r) => r.series).catch(() => ({})); } catch {}
+      try {
+        px = await cachedUnlessEmpty('a2p:' + b.paper, 6 * 3600e3,
+          () => yahooSeries(b.paper, '2y', '1d').then((r) => r.series).catch(() => ({})),
+          (v) => !v || !Object.keys(v).length);
+      } catch {}
+    }
+    // Yahoo can rate-limit a cold 2-year request (natgas did). The 6-month series behind the price
+    // chart is already cached, so use it rather than publish a net-only chart with no price line.
+    if (!Object.keys(px).length) {
+      try {
+        const hist = await getHistory();
+        const s = hist?.series?.[id];
+        const vals = s && (s.paper || s.physical);
+        if (vals) {
+          const map = {};
+          (hist.dates || []).forEach((d, i) => { if (vals[i] != null) map[d] = vals[i]; });
+          px = map;
+        }
+      } catch {}
     }
     const divergence = b && b.paper && Object.keys(px).length ? positioningDivergence(px, rows) : null;
-    const history = alignPriceToRows(px, rows).slice(-156);
+    const history = alignPriceToRows(px, rows).slice(-104);
     return {
       id, label: `${b?.label || id} spec net (non-comm)`, unit: 'contracts',
       latest, wow: prev ? latest.net - prev.net : null,
@@ -759,7 +782,7 @@ async function getPositioning(id = 'wti') {
       priceLabel: b?.label || id, priceUnit: b?.unit || '', priceDp: b?.dp ?? 2,
       history,
     };
-  });
+  }, (v) => !v || !!v.error || (Array.isArray(v.history) && v.history.length > 0 && !v.history.some((r) => r.price != null)));
 }
 // Positioning for every COT-covered component of a segment (one call; each series cached server-side).
 async function getPositioningSegment(seg) {

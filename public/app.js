@@ -1643,8 +1643,8 @@ function renderPositioning(d) {
   const hist = primary.history || [];
   const hasPrice = hist.some((r) => r.price != null);
   if (hist.length > 2) {
-    html += `<div class="chart-wrap sm"><canvas id="pos-chart" role="img" aria-label="Managed-money net position versus price, last three years."></canvas></div>`
-      + `<div class="dimtext" style="padding:0 12px 8px">Managed-money net (left) vs ${esc(primary.priceLabel || 'price')} (right) · weekly CFTC reports · last 3 years${hasPrice ? '' : ' · no free price series'} · as of ${esc((primary.latest && primary.latest.date) || '—')}</div>`;
+    html += `<div class="chart-wrap sm"><canvas id="pos-chart" role="img" aria-label="Managed-money net position versus price, last two years."></canvas></div>`
+      + `<div class="dimtext" style="padding:0 12px 8px">Managed-money net (left) vs ${esc(primary.priceLabel || 'price')} (right) · weekly CFTC reports · last 2 years${hasPrice ? '' : ' · no free price series'} · as of ${esc((primary.latest && primary.latest.date) || '—')}</div>`;
   }
   if (primary.read) html += `<div class="pos-note dimtext">${primary.read}</div>`;
   const dv = primary.divergence;

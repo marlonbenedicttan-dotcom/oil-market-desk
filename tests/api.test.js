@@ -677,6 +677,14 @@ test('/api/positioning serves a single series and a per-segment bundle', async (
   assert.equal((await fetch(`http://localhost:${PORT}/api/positioning?segment=nope`)).status, 200); // error shape, not a 500
 });
 
+test('/api/positioning uses current CFTC contract names, not legacy series', async (t) => {
+  for (const id of ['natgas', 'brent', 'copper']) {
+    const j = await (await fetch(`http://localhost:${PORT}/api/positioning?id=${id}`)).json();
+    if (j.error) return t.skip(`${id}: CFTC unavailable`);
+    assert.ok(j.latest && j.latest.date >= '2025-01-01', `${id} latest report is ${j.latest && j.latest.date}`);
+  }
+});
+
 test('/health reports a build version', async () => {
   const j = await (await fetch(`http://localhost:${PORT}/health`)).json();
   assert.equal(j.ok, true);
