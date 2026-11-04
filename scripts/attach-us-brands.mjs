@@ -5,22 +5,37 @@
 import { readFileSync, writeFileSync, renameSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { extractBrands, mergeBrands } from '../src/brand-extract.js';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const FILE = join(ROOT, 'data', 'companies.json');
 const BRANDS = join(ROOT, 'data', 'us-brands.json');
+const PROFILES = join(ROOT, 'data', 'us-profiles.json');
+const GROUPS = (() => {
+  try { return JSON.parse(readFileSync(join(ROOT, 'data', 'brand-groups.json'), 'utf8')).groups || {}; }
+  catch { return {}; }
+})();
 
 const data = JSON.parse(readFileSync(FILE, 'utf8'));
 const brands = JSON.parse(readFileSync(BRANDS, 'utf8')).brands || {};
+const profiles = JSON.parse(readFileSync(PROFILES, 'utf8')).profiles || {};
+const auto = {};
+for (const [ticker, text] of Object.entries(profiles)) {
+  const found = extractBrands(text).brands;
+  if (found.length) auto[ticker] = found;
+}
 
 let attached = 0, unknown = [];
 const seen = new Set();
 for (const c of data.companies) {
   if (!c.ticker) continue;
-  const b = brands[c.ticker];
-  if (!b) continue;
+  const merged = mergeBrands([brands[c.ticker], auto[c.ticker]], GROUPS);
+  if (!merged.length) {
+    if (c.brands !== undefined) delete c.brands;
+    continue;
+  }
   seen.add(c.ticker);
-  c.brands = b;
+  c.brands = merged;
   attached++;
 }
 // A ticker in the brand file that no company carries is a typo or a delisting — say so rather than

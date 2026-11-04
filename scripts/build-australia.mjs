@@ -722,12 +722,6 @@ for (const [b, obj] of Object.entries(bucketBook)) {
   renameSync(`${f}.tmp`, f);
 }
 
-try {
-  const { australiaList } = await import('../src/project.js');
-  const list = australiaList({ ...JSON.parse(readFileSync(OUT, 'utf8')) });
-  writeFileSync(`${LIST_OUT}.tmp`, JSON.stringify(list)); renameSync(`${LIST_OUT}.tmp`, LIST_OUT);
-} catch (e) { console.log(`  list artifact: ${e.message}`); }
-
 // One small file per company for the company page. Parsing the 8 MB dataset for one record costs the
 // free Render instance ~50 MB; on a 512 MB box that (plus the chart buckets) was enough to OOM and
 // turn company pages into 502s. The detail endpoint reads only this file.
@@ -743,6 +737,14 @@ catch (e) { console.log(`  chart store: ${e.message}`); }
 // resolving "Bunnings" or "Penfolds" to the listed company instead of losing the tags.
 try { execFileSync(process.execPath, [join(ROOT, 'scripts', 'attach-market-brands.mjs'), 'au'], { stdio: 'inherit' }); }
 catch (e) { console.log(`  brands: ${e.message}`); }
+
+// The compact list is a projection of the source, so it has to be built after the brand pass;
+// otherwise search finds the tags in the detail file but not in the list index.
+try {
+  const { australiaList } = await import('../src/project.js');
+  const list = australiaList({ ...JSON.parse(readFileSync(OUT, 'utf8')) });
+  writeFileSync(`${LIST_OUT}.tmp`, JSON.stringify(list)); renameSync(`${LIST_OUT}.tmp`, LIST_OUT);
+} catch (e) { console.log(`  list artifact: ${e.message}`); }
 
 console.log(`${cleaned.length} companies · ${audit.pe} P/E · ${withDesc} descriptions · ASX 200 ${idx ? idx.level : '—'} · USD/AUD ${fx.rate}`);
 console.log(`${dropped.length} without statements · ${noPrice.length} without a price · ${audit.foreignReporters} report in a currency other than AUD · ${audit.notApplicSectors} "Not Applic" sectors resolved`);

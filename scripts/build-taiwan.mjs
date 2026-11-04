@@ -558,13 +558,6 @@ for (const [b, obj] of Object.entries(bucketBook)) {
   renameSync(`${f}.tmp`, f);
 }
 
-// compact list payload
-try {
-  const { taiwanList } = await import('../src/project.js');
-  const list = taiwanList({ ...JSON.parse(readFileSync(OUT, 'utf8')) });
-  writeFileSync(`${LIST_OUT}.tmp`, JSON.stringify(list)); renameSync(`${LIST_OUT}.tmp`, LIST_OUT);
-} catch (e) { console.log(`  list artifact: ${e.message}`); }
-
 // Re-index the per-company chart store so a chart never has to parse a whole bucket again.
 try { execFileSync(process.execPath, [join(ROOT, 'scripts', 'build-chart-store.mjs'), 'tw'], { stdio: 'inherit' }); }
 catch (e) { console.log(`  chart store: ${e.message}`); }
@@ -573,6 +566,14 @@ catch (e) { console.log(`  chart store: ${e.message}`); }
 // resolving "TSMC" or "Giant" to the listed company instead of losing the tags.
 try { execFileSync(process.execPath, [join(ROOT, 'scripts', 'attach-market-brands.mjs'), 'tw'], { stdio: 'inherit' }); }
 catch (e) { console.log(`  brands: ${e.message}`); }
+
+// The compact list is a projection of the source, so it has to be built after the brand pass;
+// otherwise search finds the tags in the detail file but not in the list index.
+try {
+  const { taiwanList } = await import('../src/project.js');
+  const list = taiwanList({ ...JSON.parse(readFileSync(OUT, 'utf8')) });
+  writeFileSync(`${LIST_OUT}.tmp`, JSON.stringify(list)); renameSync(`${LIST_OUT}.tmp`, LIST_OUT);
+} catch (e) { console.log(`  list artifact: ${e.message}`); }
 
 // One small file per company, so opening a company does not parse the 5 MB market on the server.
 // Last, so the detail records carry the descriptions and brands attached above.

@@ -5,12 +5,17 @@
 import { readFileSync, writeFileSync, renameSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { extractBrands, mergeBrands } from '../src/brand-extract.js';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const FILE = join(ROOT, 'data', 'korea.json');
 const BRANDS = join(ROOT, 'data', 'korea-brands.json');
 const CACHE = join(ROOT, 'data', 'cache', 'korea-profiles');
 const STORE = join(ROOT, 'data', 'korea-profiles.json');
+const GROUPS = (() => {
+  try { return JSON.parse(readFileSync(join(ROOT, 'data', 'brand-groups.json'), 'utf8')).groups || {}; }
+  catch { return {}; }
+})();
 
 const shorten = (t, max = 300) => {
   if (t.length <= max) return t;
@@ -40,10 +45,15 @@ const data = JSON.parse(readFileSync(FILE, 'utf8'));
 const brands = JSON.parse(readFileSync(BRANDS, 'utf8')).brands || {};
 let fetched = 0, generated = 0;
 for (const c of data.companies) {
-  c.brands = brands[c.ticker] || [];
   const f = join(CACHE, `${c.ticker}.json`);
+  let fullText = null;
+  if (existsSync(f)) {
+    try { fullText = JSON.parse(readFileSync(f, 'utf8')).text; } catch { /* none */ }
+  }
   let text = CURATED[c.ticker] || stored[c.ticker] || null;
-  if (!text && existsSync(f)) { try { text = JSON.parse(readFileSync(f, 'utf8')).text; } catch { /* none */ } }
+  if (!text && fullText) text = fullText;
+  const merged = mergeBrands([brands[c.ticker], extractBrands(fullText || text || '').brands], GROUPS);
+  if (merged.length) c.brands = merged; else delete c.brands;
   if (text) {
     c.description = shorten(text);
     c.descSource = 'profile';
@@ -64,4 +74,4 @@ for (const c of data.companies) {
 }
 writeFileSync(FILE + '.tmp', JSON.stringify(data));
 renameSync(FILE + '.tmp', FILE);
-console.log(`${fetched} fetched · ${generated} generated · ${Object.keys(brands).length} brand sets`);
+console.log(`${fetched} fetched · ${generated} generated · ${data.companies.filter((c) => c.brands && c.brands.length).length} brand sets`);

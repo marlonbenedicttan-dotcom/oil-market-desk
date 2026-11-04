@@ -67,6 +67,7 @@ jobs:
           node scripts/reconcile-nasdaq.mjs
           node scripts/arbitrate.mjs
           node scripts/verify-filing-index.mjs
+          node scripts/attach-us-brands.mjs
           node scripts/audit-calculations.mjs
           node scripts/audit-deep.mjs
       - name: Korea (DART, optional)

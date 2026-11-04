@@ -9,7 +9,7 @@
 import { readFileSync, writeFileSync, renameSync, existsSync, readdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { mergeBrands } from '../src/brand-extract.js';
+import { mergeBrands, extractBrands, profileDescription } from '../src/brand-extract.js';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const GROUPS = (() => {
@@ -25,6 +25,14 @@ const MARKETS = {
     brands: join(ROOT, 'data', 'taiwan-brands.json'),
     detail: join(ROOT, 'data', 'taiwan-companies'),
   },
+  tw: {
+    label: 'Taiwan',
+    source: join(ROOT, 'data', 'taiwan.json'),
+    list: join(ROOT, 'data', 'taiwan-list.json'),
+    brands: join(ROOT, 'data', 'taiwan-brands.json'),
+    profiles: join(ROOT, 'data', 'taiwan-profiles.json'),
+    detail: join(ROOT, 'data', 'taiwan-companies'),
+  },
   hk: {
     label: 'Hong Kong',
     source: join(ROOT, 'data', 'hongkong.json'),
@@ -38,6 +46,8 @@ const MARKETS = {
     source: join(ROOT, 'data', 'australia.json'),
     list: join(ROOT, 'data', 'australia-list.json'),
     brands: join(ROOT, 'data', 'australia-brands.json'),
+    profiles: join(ROOT, 'data', 'australia-profiles.json'),
+    cache: join(ROOT, 'data', 'cache', 'asx', 'profiles'),
     detail: join(ROOT, 'data', 'australia-companies'),
   },
 };
@@ -87,8 +97,23 @@ for (const id of ids) {
   const auto = {};
   if (m.profiles && existsSync(m.profiles)) {
     const profiles = JSON.parse(readFileSync(m.profiles, 'utf8'));
-    for (const [code, entry] of Object.entries(profiles.entries || {})) {
-      if (entry && Array.isArray(entry.brands) && entry.brands.length) auto[code] = entry.brands;
+    for (const [code, entry] of Object.entries(profiles.entries || profiles.profiles || {})) {
+      let text = entry && typeof entry.desc === 'string' ? entry.desc : '';
+      if (m.cache && existsSync(m.cache)) {
+        const f = join(m.cache, `${code}.json`);
+        if (existsSync(f)) {
+          try {
+            const cached = JSON.parse(readFileSync(f, 'utf8'));
+            const html = cached && cached.text;
+            if (html && /<html/i.test(html)) text = profileDescription(html) || text;
+            else if (html) text = html;
+          } catch { /* fall back to the committed description */ }
+        }
+      }
+      const list = Array.isArray(entry && entry.brands) && entry.brands.length
+        ? entry.brands
+        : extractBrands(text).brands;
+      if (list.length) auto[code] = list;
     }
   }
   const brands = {};

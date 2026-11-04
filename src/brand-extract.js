@@ -45,7 +45,8 @@ export function profileDescription(html) {
 
 const cleanBrand = (s) => {
   let v = String(s || '')
-    .replace(/^[\s"'“”‘’(]+|[\s"'“”‘’)]+$/g, '')
+    .replace(/[®™]/g, '')
+    .replace(/^[\s"'“”‘’]+|[\s"'“”‘’]+$/g, '')
     .replace(/^(?:of|its|their|and|&)\s+/i, '')
     .replace(/^the\s+(?=[A-Z])/, '')
     .replace(/\s+(?:manufactured|made|produced|sold|marketed|offered|distributed)\b.*$/i, '')
@@ -101,15 +102,17 @@ const patterns = [
   // "under three brands – Niccolo, Marco Polo and Maqo"
   { re: /\bunder\s+(?:the\s+|its\s+|their\s+)?(?:two|three|four|five|six|seven|eight|nine|ten|\d+)?\s*brands?\s*[—–-]\s*([^.;]{1,300})/gi, list: true },
   // "under the brand name of Yunnan Baiyao"
-  { re: /\bunder\s+(?:the\s+|its\s+|their\s+)?brand\s+name\s+(?:of\s+)?([^.;]{1,100})/gi, list: false },
+  { re: /\bunder\s+(?:the\s+|its\s+|their\s+)?brand\s+name\s+(?:of\s+)?([A-Z0-9][^.;]{0,80}?)(?=\s+(?:and|under)\b|[.;]|$)/gi, list: false },
   // "under the brand names SHEIN, MOTF and ROMWE" / "under the brand names of TONGSHIFU, …"
   { re: /\bunder\s+(?:the\s+|its\s+|their\s+)?brand\s+names?\s+(?:of\s+)?([A-Z0-9][\s\S]{1,300}?)(?=\s*(?:\.\s+(?:The|It|In|This|Its|These)\b|;|$))/gi, list: true },
   // "under its proprietary brands, including Royal Medic, … and Health Proof"
   { re: /\b(?:under|with)\s+(?:the\s+|its\s+|their\s+)?(?:proprietary|self-developed|owned|licensed)?\s*brands?,?\s+(?:including|include)\s+([\s\S]{1,300}?)(?=\s*(?:,?\s+as well as\b|\.\s+(?:The|It|In|This|Its|These)\b|;|$))/gi, list: true },
-  // "the brand portfolio includes agnès b., JILLSTUART and Fila brands"
+  // "brand portfolio includes agnès b., JILLSTUART and Fila brands"
   { re: /\bbrand\s+portfolio\s+(?:includes?|comprises?|consists?\s+of)\s+([\s\S]{1,500}?)\s+brands?\b/gi, list: true },
-  // "brands include X, Y and Z"
-  { re: /\bbrands?\s+(?:include|includes|such\s+as)\s+([^.;]{1,300})/gi, list: true },
+  // "brands include X, Y and Z brands"
+  { re: /\bbrands?\s+(?:include|includes)\s+([\s\S]{1,500}?)\s+brands?\b/gi, list: true },
+  // "brand names such as ARM & HAMMER, TROJAN and OXICLEAN"
+  { re: /\b(?:brand\s+names?|brands?)\s+such\s+as\s+([\s\S]{1,300}?)(?=\.\s+(?:The|It|In|This|Its|These)\b|;|$)/gi, list: true },
   // "under the FILA, FILA KIDS and ANTA KIDS brands" / "under the X brand name"
   { re: /\bunder\s+(?:the\s+|its\s+|their\s+)?([^;]{1,1000}?)\s+brands?\b/gi, list: true },
 ];

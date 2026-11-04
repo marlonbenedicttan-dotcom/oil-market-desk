@@ -6,14 +6,20 @@
 //
 //   node scripts/attach-japan-descriptions.mjs
 
-import { readFileSync, writeFileSync, renameSync } from 'node:fs';
+import { readFileSync, writeFileSync, renameSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { extractBrands, mergeBrands } from '../src/brand-extract.js';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const FILE = join(ROOT, 'data', 'japan.json');
 const DESC = join(ROOT, 'data', 'japan-descriptions.json');
 const PROFILES = join(ROOT, 'data', 'japan-profiles.json');
+const CACHE = join(ROOT, 'data', 'cache', 'profiles');
+const GROUPS = (() => {
+  try { return JSON.parse(readFileSync(join(ROOT, 'data', 'brand-groups.json'), 'utf8')).groups || {}; }
+  catch { return {}; }
+})();
 
 const yen = (v) => {
   if (v == null || !Number.isFinite(v)) return null;
@@ -105,31 +111,58 @@ const entries = book.entries || {};
 const counts = new Map();
 for (const c of jp.companies) counts.set(c.sector, (counts.get(c.sector) || 0) + 1);
 
+const brandCache = new Map();
+function autoBrands(code) {
+  const key = String(code).slice(0, 4);
+  if (brandCache.has(key)) return brandCache.get(key);
+  let text = profiles[key] || '';
+  const f = join(CACHE, `${key}.json`);
+  if (existsSync(f)) {
+    try {
+      const cached = JSON.parse(readFileSync(f, 'utf8'));
+      if (cached.text) text = cached.text;
+    } catch { /* fall back to the shortened committed profile */ }
+  }
+  const brands = extractBrands(text).brands;
+  brandCache.set(key, brands);
+  return brands;
+}
+
 let curated = 0;
 for (const c of jp.companies) {
   const e = entries[c.code];
   if (e && e.d) {
     c.description = e.d;
-    c.brands = e.b || [];
+    const b = mergeBrands([e.b, autoBrands(c.code)], GROUPS);
+    if (b.length) c.brands = b; else delete c.brands;
     c.descSource = 'curated';
     c.descReviewed = book.updated;
     curated++;
   } else if (profiles[String(c.code).slice(0, 4)]) {
     // A fetched profile beats a generated line, and survives a rebuild.
     c.description = shorten(profiles[String(c.code).slice(0, 4)]);
-    c.brands = [];
+    const b = mergeBrands([autoBrands(c.code)], GROUPS);
+    if (b.length) c.brands = b; else delete c.brands;
     c.descSource = 'profile';
     c.descSourceName = 'stockanalysis.com';
     c.descReviewed = book.updated;
   } else {
     c.description = generated(c, counts.get(c.sector) || 0);
-    c.brands = [];
+    delete c.brands;
     c.descSource = 'generated';
   }
 }
 
 writeFileSync(FILE + '.tmp', JSON.stringify(jp));
 renameSync(FILE + '.tmp', FILE);
-console.log(`${curated} curated · ${jp.companies.length - curated} generated · ${jp.companies.length} total`);
+
+// The list/search index is a projection of japan.json. Rebuild it here so the brand chips added
+// above are searchable; build-japan wrote the list before descriptions/brands were attached.
+try {
+  const { japanList } = await import('../src/project.js');
+  writeFileSync(join(ROOT, 'data', 'japan-list.json') + '.tmp', JSON.stringify(japanList(jp)));
+  renameSync(join(ROOT, 'data', 'japan-list.json') + '.tmp', join(ROOT, 'data', 'japan-list.json'));
+} catch (e) { console.log(`  japan list: ${e.message}`); }
+console.log(`${curated} curated · ${jp.companies.length - curated} generated · ${jp.companies.filter((c) => c.brands && c.brands.length).length} with brands · ${jp.companies.length} total`);
 const missing = jp.companies.filter((c) => !c.description).length;
 console.log(`without any description: ${missing}`);
