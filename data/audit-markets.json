@@ -1,5 +1,5 @@
 {
- "checked": "2026-11-04T10:59:54.100Z",
+ "checked": "2026-11-04T11:19:47.706Z",
  "markets": {
   "us": {
    "name": "US",
@@ -105,7 +105,7 @@
     {
      "check": "P/B vs the filing’s equity",
      "severity": "warn",
-     "count": 3,
+     "count": 0,
      "detail": "JPX values equity at a later filing date"
     },
     {
@@ -146,13 +146,8 @@
     }
    ],
    "fail": 0,
-   "warn": 25,
+   "warn": 22,
    "examples": {
-    "P/B vs the filing’s equity": [
-     "40050 (5.9%)",
-     "65920 (-5.3%)",
-     "62000 (-5.2%)"
-    ],
     "ROE sign disagrees with the fiscal-year profit": [
      "45020 (ROE 0.6% vs NP $-152.39B)",
      "67230 (ROE 23.6% vs NP $-51.76B)",
@@ -228,22 +223,22 @@
     {
      "check": "share count differs from the filing",
      "severity": "info",
-     "count": 134,
+     "count": 230,
      "detail": "A split or consolidation since the last annual report"
     }
    ],
    "fail": 0,
-   "warn": 134,
+   "warn": 230,
    "examples": {
     "share count differs from the filing": [
-     "009150 (filing 74,693,687 → listed 79,682,342)",
-     "373220 (filing 234,000,000 → listed 254,976,816)",
-     "006400 (filing 80,585,537 → listed 89,077,066)",
-     "012450 (filing 51,563,462 → listed 48,305,220)",
-     "034020 (filing 640,561,024 → listed 675,868,110)",
-     "096770 (filing 169,053,075 → listed 182,582,982)",
-     "015760 (filing 640,373,245 → listed 599,025,599)",
-     "298040 (filing 9,324,548 → listed 8,439,859)"
+     "032830 (filing 179,574,779 → listed 200,581,959)",
+     "068270 (filing 218,613,124 → listed 232,073,120)",
+     "034730 (filing 55,086,352 → listed 72,502,783)",
+     "000810 (filing 39,828,296 → listed 44,716,333)",
+     "010120 (filing 29,738,491 → listed 150,202,020)",
+     "006800 (filing 436,049,860 → listed 544,159,329)",
+     "005830 (filing 60,643,469 → listed 65,463,026)",
+     "267250 (filing 70,668,430 → listed 78,993,343)"
     ]
    },
    "coverage": {
@@ -254,10 +249,10 @@
     "peFY": 88,
     "pb": 721,
     "roe": 721,
-    "naverMatched": 725
+    "naverMatched": 723
    }
   }
  },
  "failures": 0,
- "warnings": 164
+ "warnings": 257
 }

@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-04T02:34:53.188Z",
+ "updated": "2026-11-04T11:19:47.142Z",
  "events": [
   {
    "date": "2026-10-06",
@@ -2842,17 +2842,6 @@
    "days": 83
   },
   {
-   "date": "2027-01-26",
-   "kind": "earnings",
-   "ticker": "UDR",
-   "name": "UDR, Inc.",
-   "label": "UDR · quarterly report expected",
-   "detail": "period ends 2026-12-29 · filed 28 days after quarter end, historically",
-   "basis": "expected",
-   "weight": 0.015769,
-   "days": 83
-  },
-  {
    "date": "2027-01-27",
    "kind": "earnings",
    "ticker": "MSFT",
@@ -5319,6 +5308,17 @@
   {
    "date": "2027-02-02",
    "kind": "earnings",
+   "ticker": "UDR",
+   "name": "UDR, Inc.",
+   "label": "UDR · quarterly report expected",
+   "detail": "period ends 2026-12-30 · filed 34 days after quarter end, historically",
+   "basis": "expected",
+   "weight": 0.015769,
+   "days": 90
+  },
+  {
+   "date": "2027-02-02",
+   "kind": "earnings",
    "ticker": "APTV",
    "name": "Aptiv PLC",
    "label": "APTV · quarterly report expected",
@@ -5377,7 +5377,7 @@
    "ticker": "AMGN",
    "name": "AMGEN INC",
    "label": "AMGN · quarterly report expected",
-   "detail": "period ends 2026-12-29 · filed 36 days after quarter end, historically",
+   "detail": "period ends 2026-12-30 · filed 35 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.374196,
    "days": 91
@@ -5388,7 +5388,7 @@
    "ticker": "ANET",
    "name": "Arista Networks, Inc.",
    "label": "ANET · quarterly report expected",
-   "detail": "period ends 2026-12-29 · filed 36 days after quarter end, historically",
+   "detail": "period ends 2026-12-30 · filed 35 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.289663,
    "days": 91

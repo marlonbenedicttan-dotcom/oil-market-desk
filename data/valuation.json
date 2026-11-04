@@ -1,7 +1,7 @@
 {
- "updated": "2026-11-04T02:16:12.788Z",
+ "updated": "2026-11-04T11:09:23.219Z",
  "index": {
-  "pe": 24.1,
+  "pe": 24.3,
   "years": [
    {
     "fy": 2021,
@@ -36,7 +36,7 @@
  },
  "sectors": {
   "Technology": {
-   "pe": 25.5,
+   "pe": 25.8,
    "years": [
     {
      "fy": 2021,
@@ -48,7 +48,7 @@
     },
     {
      "fy": 2023,
-     "pe": 28.6
+     "pe": 28.5
     },
     {
      "fy": 2024,
@@ -70,7 +70,7 @@
    "companies": 69
   },
   "Consumer": {
-   "pe": 24.3,
+   "pe": 24.6,
    "years": [
     {
      "fy": 2021,
@@ -104,7 +104,7 @@
    "companies": 111
   },
   "Industrials": {
-   "pe": 34.9,
+   "pe": 34.5,
    "years": [
     {
      "fy": 2021,
@@ -138,7 +138,7 @@
    "companies": 77
   },
   "Healthcare": {
-   "pe": 31.8,
+   "pe": 32,
    "years": [
     {
      "fy": 2021,
@@ -172,7 +172,7 @@
    "companies": 50
   },
   "Financials": {
-   "pe": 14.2,
+   "pe": 14.3,
    "years": [
     {
      "fy": 2021,
@@ -202,11 +202,11 @@
    "companies": 67
   },
   "Energy": {
-   "pe": 16.8,
+   "pe": 16.6,
    "years": [
     {
      "fy": 2021,
-     "pe": 11.6
+     "pe": 11.5
     },
     {
      "fy": 2022,
@@ -226,13 +226,13 @@
     }
    ],
    "min": 7.6,
-   "median": 11.6,
+   "median": 11.5,
    "max": 17.2,
    "percentile": 80,
    "companies": 16
   },
   "Telecom": {
-   "pe": 16.4,
+   "pe": 16.7,
    "years": [
     {
      "fy": 2021,
@@ -266,7 +266,7 @@
    "companies": 8
   },
   "Materials": {
-   "pe": 33.5,
+   "pe": 33.7,
    "years": [
     {
      "fy": 2021,
@@ -296,7 +296,7 @@
    "companies": 1
   },
   "Utilities": {
-   "pe": 21.4,
+   "pe": 21.5,
    "years": [
     {
      "fy": 2021,
@@ -326,7 +326,7 @@
    "companies": 37
   },
   "Real estate": {
-   "pe": 34.8,
+   "pe": 34.6,
    "years": [
     {
      "fy": 2021,
@@ -356,7 +356,7 @@
    "companies": 26
   },
   "Mining": {
-   "pe": 14.9,
+   "pe": 15.7,
    "years": [
     {
      "fy": 2021,
