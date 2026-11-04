@@ -422,6 +422,30 @@ export function inventoryTightness(surprise, seasonalMin, seasonalMax) {
   const halfRange = Math.max(Math.abs(seasonalMin ?? 0), Math.abs(seasonalMax ?? 0), 1);
   return Math.round(50 - 50 * Math.tanh((surprise / halfRange) / 1.5));
 }
+
+// Weekly inventory levels with the same-week band from the PRIOR `years` years: for each row, the
+// min / average / max of the same ISO week one to five years earlier. These are LEVELS (stocks), not
+// week-on-week changes, so the chart can show "where is the tank versus its usual seasonal range?".
+// Fewer than three prior observations leaves the band null rather than inventing a range.
+export function inventoryBands(rows, weeks = 156, years = 5) {
+  const xs = (rows || []).filter((r) => r && r.period && r.value != null && Number.isFinite(r.value));
+  const out = xs.map((r) => {
+    const y = Number(r.period.slice(0, 4));
+    const wk = isoWeek(r.period);
+    const prior = xs.filter((q) => {
+      const qy = Number(q.period.slice(0, 4));
+      return qy < y && qy >= y - years && isoWeek(q.period) === wk;
+    }).map((q) => q.value);
+    const n = prior.length;
+    return {
+      period: r.period, value: r.value, n,
+      min: n >= 3 ? Math.min(...prior) : null,
+      avg: n >= 3 ? prior.reduce((a, b) => a + b, 0) / n : null,
+      max: n >= 3 ? Math.max(...prior) : null,
+    };
+  });
+  return out.slice(-weeks);
+}
 // Weighted average of components ({ key, label, weight, score }); re-normalises over
 // whatever is present, and returns score null when nothing is available.
 export function weightedScore(parts) {
