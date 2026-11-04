@@ -81,7 +81,8 @@ await evaluate(`document.querySelector('[data-region="in"]')?.click()`);
 // Poll: the free instance can take a few seconds to wake and ship the 348 KB list.
 for (let i = 0; i < 40; i++) {
   const txt = await evaluate(`document.querySelector('#co-body')?.innerText || ''`);
-  if (/NIFTY 50/.test(txt)) break;
+  // "Loading the NIFTY 500…" also matches /NIFTY 50/, so wait for the rendered count as well.
+  if (/NIFTY 50/.test(txt) && /companies/i.test(txt)) break;
   await sleep(750);
 }
 
@@ -114,6 +115,18 @@ const pageOk = /INR|₹/.test(body) && body.length > 200;
 console.log(`${pageOk ? 'ok  ' : 'FAIL'} company page rendered · ${body.length} chars${pageOk ? '' : ' · ' + body.replace(/\s+/g, ' ').slice(0, 200)}`);
 if (!pageOk) bad++;
 await want('returned to the market list control exists', `!!document.querySelector('[data-inback]')`);
+
+// Themes view: the curated lists render and at least one has members.
+await evaluate(`document.querySelector('[data-inback]')?.click()`);
+await sleep(1200);
+await evaluate(`document.querySelector('[data-inview="themes"]')?.click()`);
+await sleep(3000);
+const themes = await evaluate(`document.querySelectorAll('[data-intheme]').length`);
+const themeBody = await evaluate(`document.querySelector('#co-body')?.innerText || ''`);
+console.log(`${themes >= 5 ? 'ok  ' : 'FAIL'} theme presets · ${themes}`);
+if (!(themes >= 5)) bad++;
+console.log(`${themeBody.length > 400 ? 'ok  ' : 'FAIL'} theme panel rendered · ${themeBody.length} chars`);
+if (!(themeBody.length > 400)) bad++;
 
 // Phone layout: no horizontal overflow of the document.
 await send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 3, mobile: true });

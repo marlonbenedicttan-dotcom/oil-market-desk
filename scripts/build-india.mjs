@@ -519,10 +519,13 @@ market.sectors = (() => {
 
 const themeBook = readJson(THEMES) || { themes: [] };
 const known = new Set(out.map((c) => c.code));
+// The curated file lists `tickers`; a name that is not in the NIFTY 500 is dropped and the theme is
+// dropped with it if nothing is left. (Filtering a `members` field that does not exist emptied every
+// list, which the browser check caught and the data tests did not.)
 const themes = (themeBook.themes || []).map((t) => ({
   ...t,
-  members: (t.members || []).filter((x) => known.has(pad(x))).map(pad),
-})).filter((t) => t.members.length);
+  tickers: (t.tickers || []).filter((x) => known.has(pad(x))).map(pad),
+})).filter((t) => t.tickers.length);
 
 // --- 9. write -------------------------------------------------------------------------------------
 out.sort((a, b) => (b.marketCap || 0) - (a.marketCap || 0));

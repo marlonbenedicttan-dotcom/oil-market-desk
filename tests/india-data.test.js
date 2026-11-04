@@ -91,3 +91,11 @@ test('every company has a sector and a report currency', () => {
     assert.ok(c.reportCurrency, `${c.code} has no report currency`);
   }
 });
+
+test('the curated themes survive the universe filter', () => {
+  assert.ok((ind.themes || []).length >= 5, `only ${(ind.themes || []).length} themes`);
+  for (const t of ind.themes) {
+    assert.ok(t.tickers && t.tickers.length >= 3, `${t.id} has ${t.tickers ? t.tickers.length : 0} members`);
+    for (const code of t.tickers) assert.ok(ind.companies.some((c) => c.code === code), `${t.id}: ${code} is not in the market`);
+  }
+});
