@@ -1,6 +1,6 @@
 {
   "updated": "2026-11-03",
-  "note": "Consumer-facing brands and product lines per Hong Kong ticker, curated by hand. Hong Kong listings include mainland companies, so a brand a reader knows from the shelf or the phone is mapped to the listed parent. Coverage is deliberately partial: a blank is better than a guess.",
+  "note": "Consumer-facing brands and product lines per Hong Kong ticker. This file is the hand-curated seed; attach-market-brands also merges brands extracted from each company's profile description (and data/brand-groups.json expands parent portfolios such as AMER). Curated spelling and ordering win; a blank is still better than a guess.",
   "brands": {
     "1024": [
       "Kuaishou",
@@ -354,10 +354,6 @@
     ],
     "6098": [
       "Country Garden Services"
-    ],
-    "6160": [
-      "BeOne",
-      "Brukinsa"
     ],
     "6181": [
       "Laopu Gold",

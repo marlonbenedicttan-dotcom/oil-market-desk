@@ -1,0 +1,14 @@
+{
+  "updated": "2026-11-04",
+  "note": "Portfolio brands that stand for several consumer brands. A company description often names only the parent (ANTA's says 'AMER'), so expanding the group here lets the chips and search show the names a reader actually knows from the shelf. Keys are matched case-insensitively.",
+  "groups": {
+    "AMER": [
+      "Amer Sports",
+      "Arc'teryx",
+      "Salomon",
+      "Wilson",
+      "Atomic",
+      "Peak Performance"
+    ]
+  }
+}

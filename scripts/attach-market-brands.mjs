@@ -9,8 +9,13 @@
 import { readFileSync, writeFileSync, renameSync, existsSync, readdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { mergeBrands } from '../src/brand-extract.js';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
+const GROUPS = (() => {
+  try { return JSON.parse(readFileSync(join(ROOT, 'data', 'brand-groups.json'), 'utf8')).groups || {}; }
+  catch { return {}; }
+})();
 
 const MARKETS = {
   tw: {
@@ -25,6 +30,7 @@ const MARKETS = {
     source: join(ROOT, 'data', 'hongkong.json'),
     list: join(ROOT, 'data', 'hongkong-list.json'),
     brands: join(ROOT, 'data', 'hongkong-brands.json'),
+    profiles: join(ROOT, 'data', 'hongkong-profiles.json'),
     detail: join(ROOT, 'data', 'hongkong-companies'),
   },
   au: {
@@ -75,7 +81,21 @@ for (const id of ids) {
     console.log(`${m.label}: source missing — skipped`);
     continue;
   }
-  const brands = JSON.parse(readFileSync(m.brands, 'utf8')).brands || {};
+  const curated = JSON.parse(readFileSync(m.brands, 'utf8')).brands || {};
+  // The profile fetcher writes the brands it read from the business description. Merge them after the
+  // curated seed: a human spelling wins, and the description adds the brands the seed missed.
+  const auto = {};
+  if (m.profiles && existsSync(m.profiles)) {
+    const profiles = JSON.parse(readFileSync(m.profiles, 'utf8'));
+    for (const [code, entry] of Object.entries(profiles.entries || {})) {
+      if (entry && Array.isArray(entry.brands) && entry.brands.length) auto[code] = entry.brands;
+    }
+  }
+  const brands = {};
+  for (const t of new Set([...Object.keys(curated), ...Object.keys(auto)])) {
+    const merged = mergeBrands([curated[t], auto[t]], GROUPS);
+    if (merged.length) brands[t] = merged;
+  }
   const data = JSON.parse(readFileSync(m.source, 'utf8'));
 
   const { attached, seen, changed } = merge(data.companies || [], brands);
@@ -109,7 +129,8 @@ for (const id of ids) {
     }
   }
 
-  const unknown = Object.keys(brands).filter((t) => !seen.has(t));
+  const unknown = Object.keys(curated).filter((t) => !seen.has(t));
   console.log(`${m.label}: ${attached} brand sets${details ? ` · ${details} detail files` : ''}`
+    + `${Object.keys(auto).length ? ` · ${Object.keys(auto).length} profile brand sets` : ''}`
     + ` · ${unknown.length} unmatched: ${unknown.join(' ') || 'none'}`);
 }

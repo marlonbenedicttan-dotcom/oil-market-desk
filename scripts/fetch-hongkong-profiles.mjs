@@ -9,11 +9,13 @@
 //   node scripts/fetch-hongkong-profiles.mjs            all companies without an entry
 //   node scripts/fetch-hongkong-profiles.mjs --limit=50 smoke test
 //   node scripts/fetch-hongkong-profiles.mjs --force    refetch everything
+//   node scripts/fetch-hongkong-profiles.mjs --brands-only  re-extract brands from the cached pages, no network
 
 import { readFileSync, writeFileSync, renameSync, existsSync, mkdirSync, unlinkSync } from 'node:fs';
 import { join } from 'node:path';
 import { ROOT, saProfile } from './hkex.mjs';
 import { getCached, readJson } from './stockanalysis.mjs';
+import { extractBrands, profileDescription } from '../src/brand-extract.js';
 
 const FILE = join(ROOT, 'data', 'hongkong.json');
 const CROSS = (readJson(join(ROOT, 'data', 'hongkong-crosslist.json')) || { entries: {} }).entries || {};
@@ -22,6 +24,12 @@ const OUT = join(ROOT, 'data', 'hongkong-profiles.json');
 const CACHE = join(ROOT, 'data', 'cache', 'hongkong-profiles');
 const LIMIT = Number((process.argv.find((x) => x.startsWith('--limit=')) || '').split('=')[1] || 0);
 const FORCE = process.argv.includes('--force');
+const BRANDS_ONLY = process.argv.includes('--brands-only');
+// A profile that never expires also never notices a new brand in the description. Refresh each one
+// slowly (about 20 companies/day for the HK universe) instead of refetching all 2,000 in one run.
+const PROFILE_TTL = 90 * 864e5;
+const stale = (entry) => !entry || !entry.desc || !entry.fetched
+  || !Number.isFinite(Date.parse(entry.fetched)) || Date.now() - Date.parse(entry.fetched) > PROFILE_TTL;
 const WORKERS = Number((process.argv.find((x) => x.startsWith('--workers=')) || '').split('=')[1] || 1) || 1;
 const GAP = Number((process.argv.find((x) => x.startsWith('--gap=')) || '').split('=')[1] || 180) || 0;
 mkdirSync(CACHE, { recursive: true });
@@ -48,12 +56,15 @@ function extract(html) {
   const desc = paras.join(' ');
   if (!name || desc.length < 60) return null;
   const first = (desc.match(/^.*?[.。](?=\s|$)/) || [desc])[0];
+  const brandInfo = extractBrands(desc);
   return {
     name,
     legal: first.length > 140 ? first.slice(0, 137) + '…' : first,
     desc: shorten(desc),
     sector: field(html, 'Sector'),
     industry: field(html, 'Industry'),
+    brands: brandInfo.brands,
+    brandQuote: brandInfo.quote,
   };
 }
 function shorten(t, max = 300) {
@@ -66,7 +77,7 @@ function shorten(t, max = 300) {
 const hk = JSON.parse(readFileSync(FILE, 'utf8'));
 const book = existsSync(OUT) ? JSON.parse(readFileSync(OUT, 'utf8')) : { entries: {} };
 book.entries = book.entries || {};
-const todo = hk.companies.filter((c) => FORCE || !(book.entries[c.code] && book.entries[c.code].desc));
+const todo = BRANDS_ONLY ? [] : hk.companies.filter((c) => FORCE || stale(book.entries[c.code]));
 const list = LIMIT ? todo.slice(0, LIMIT) : todo;
 console.log(`${list.length} companies to fetch (${Object.keys(book.entries).length} already have an entry)`);
 
@@ -104,6 +115,31 @@ const workers = Array.from({ length: Math.min(WORKERS, list.length) }, async () 
   while (cursor < list.length) { const c = list[cursor++]; await one(c); }
 });
 await Promise.all(workers);
+
+// Re-read every cached page so an existing profile gets the brand chips too. This is local-only (no
+// network), and it also refreshes the chips when the parser improves. The description itself stays
+// shortened in the JSON; `brandQuote` preserves the sentence the chips came from for audit.
+let brandEntries = 0, brandTags = 0;
+for (const [code, entry] of Object.entries(book.entries)) {
+  const f = join(CACHE, `${code}.json`);
+  if (!existsSync(f)) continue;
+  try {
+    const cached = JSON.parse(readFileSync(f, 'utf8'));
+    const full = profileDescription(cached.text);
+    if (!full) continue;
+    const info = extractBrands(full);
+    if (info.brands.length) {
+      entry.brands = info.brands;
+      entry.brandQuote = info.quote;
+      brandEntries++;
+      brandTags += info.brands.length;
+    } else {
+      delete entry.brands;
+      delete entry.brandQuote;
+    }
+  } catch { /* a damaged cache entry is retried on the next fetch */ }
+}
+console.log(`${brandEntries} profiles carry ${brandTags} extracted brands`);
 
 book.updated = new Date().toISOString();
 writeFileSync(`${OUT}.tmp`, JSON.stringify(book, null, 0));
