@@ -960,10 +960,10 @@ const chgText = (v, absolute) => {
 };
 const moveText = (e) => chgText(e.move, e.mode === 'abs');
 const MONTHS_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-// "2021-10-25" is 80px of label; "Oct 21" is 40px and fits four to a phone screen.
+// "2021-10-25" is 80px of label; "Oct '21" is 40px and fits four to a phone screen.
 const shortDate = (v) => {
   const [y, m] = String(v).split('-');
-  return m && MONTHS_SHORT[+m - 1] ? `${MONTHS_SHORT[+m - 1]} ${y.slice(2)}` : String(v);
+  return m && MONTHS_SHORT[+m - 1] ? `${MONTHS_SHORT[+m - 1]} '${y.slice(2)}` : String(v);
 };
 function baseOptions({ dp = 2, unit = '', percentAxis = false, yTitle = '', y1Title = '', legend = true, log = false, anchorable = false, dateAxis = false } = {}) {
   const tick = (v) => (percentAxis ? v + '%' : fmtNum(v, dp) + unit);
@@ -1621,6 +1621,7 @@ async function loadPositioning() {
   markReady('positioning');
   renderPositioning(d);
 }
+let posChart = null;
 function renderPositioning(d) {
   const el = $('positioning'); if (!el) return;
   const sub = $('pos-sub');
@@ -1629,7 +1630,7 @@ function renderPositioning(d) {
   const mk = markets.find((m) => m.id === currentMarket);
   const primary = items.find((it) => it.id === (mk && mk.primary)) || items[0];
   const f = primary.flag || { label: '—', tone: 'mid' };
-  const num = (n) => (n == null ? '—' : (n < 0 ? '−' : '+') + Math.abs(n).toLocaleString());
+  const num = (n) => (n == null ? '—' : n === 0 ? '0' : (n < 0 ? '−' : '+') + Math.abs(n).toLocaleString());
   const pct = primary.pct3y;
   if (sub) sub.textContent = `CFTC · managed money · weekly · as of ${(primary.latest && primary.latest.date) || '—'}`;
   let html = `<div class="pos-hero"><span class="pos-net ${primary.latest && primary.latest.net >= 0 ? 'pos' : 'neg'}">${primary.latest ? num(primary.latest.net) : '—'}</span>`
@@ -1639,8 +1640,12 @@ function renderPositioning(d) {
     + (primary.latest && primary.latest.long != null ? `<span>long <b>${primary.latest.long.toLocaleString()}</b></span><span>short <b>${primary.latest.short.toLocaleString()}</b></span>` : '')
     + (primary.oi ? `<span>open interest <b>${primary.oi.toLocaleString()}</b>${primary.oiChange != null ? ` (${num(primary.oiChange)})` : ''}</span>` : '')
     + '</div>';
-  const spark = sparkline((primary.history || []).map((r) => r.net));
-  if (spark) html += `<div class="pos-spark" aria-hidden="true">${spark}</div>`;
+  const hist = primary.history || [];
+  const hasPrice = hist.some((r) => r.price != null);
+  if (hist.length > 2) {
+    html += `<div class="chart-wrap sm"><canvas id="pos-chart" role="img" aria-label="Managed-money net position versus price, last three years."></canvas></div>`
+      + `<div class="dimtext" style="padding:0 12px 8px">Managed-money net (left) vs ${esc(primary.priceLabel || 'price')} (right) · weekly CFTC reports · last 3 years${hasPrice ? '' : ' · no free price series'} · as of ${esc((primary.latest && primary.latest.date) || '—')}</div>`;
+  }
   if (primary.read) html += `<div class="pos-note dimtext">${primary.read}</div>`;
   const dv = primary.divergence;
   if (dv && dv.read && dv.tone !== 'flat') {
@@ -1651,6 +1656,23 @@ function renderPositioning(d) {
   if (others.length) html += `<div class="pos-chips"><span class="dimtext" style="align-self:center">also covered:</span>`
     + others.map((it) => `<span class="pos-chip" title="${it.label} — ${it.read || ''}">${String(it.label).replace(/\s*\(.*\)/, '')} <em>${it.latest ? num(it.latest.net) : '—'}</em> <span class="pos-flag ${(it.flag || {}).tone || 'mid'}">${(it.flag || {}).label || ''}</span></span>`).join('') + '</div>';
   el.innerHTML = html;
+  if (hist.length > 2) {
+    const opts = baseOptions({ dp: 0, yTitle: 'contracts', y1Title: hasPrice ? (primary.priceUnit || 'price') : '', dateAxis: true });
+    opts.scales.y.ticks.callback = (v) => fmtNum(v, 0);
+    if (hasPrice && opts.scales.y1) opts.scales.y1.ticks.callback = (v) => Number(v).toLocaleString(undefined, { maximumFractionDigits: primary.priceDp ?? 2 });
+    opts.plugins.tooltip.callbacks.label = (ctx) => {
+      const v = ctx.parsed.y;
+      if (v == null || Number.isNaN(v)) return `${ctx.dataset.label}: —`;
+      if (ctx.dataset.yAxisID === 'y1') return `${ctx.dataset.label}: ${Number(v).toLocaleString(undefined, { minimumFractionDigits: primary.priceDp ?? 2, maximumFractionDigits: primary.priceDp ?? 2 })} ${primary.priceUnit || ''}`.trim();
+      const first = (ctx.dataset.data || []).find((x) => x != null);
+      return `${ctx.dataset.label}: ${num(v)} contracts${first != null ? `   Δ ${num(v - first)}` : ''}`;
+    };
+    const datasets = [
+      { label: 'Managed-money net', data: hist.map((r) => r.net), borderColor: CT.c2, backgroundColor: CT.c2 + '18', borderWidth: 2, pointRadius: 0, tension: 0.2, yAxisID: 'y' },
+    ];
+    if (hasPrice) datasets.push({ label: primary.priceLabel || 'Price', data: hist.map((r) => r.price), borderColor: CT.c1, backgroundColor: 'transparent', borderWidth: 1.5, pointRadius: 0, tension: 0.2, yAxisID: 'y1' });
+    posChart = mountChart('pos-chart', { labels: hist.map((r) => r.date), datasets }, opts);
+  }
 }
 // Options (CBOE delayed, via the commodity's ETF proxy) — vol, put/call and 25-delta skew.
 async function loadOptions() {
@@ -1679,12 +1701,6 @@ function renderOptions(d) {
     + cell('25Δ SKEW · put − call IV', sk == null ? '—' : (sk > 0 ? '+' : '') + sk.toFixed(1), skCls, sk == null ? '' : sk >= 1 ? 'puts bid — hedging' : sk <= -1 ? 'calls bid — chasing upside' : 'flat')
     + '</div>'
     + `<div class="pos-note dimtext">From the <b>${d.proxy}</b> ETF's options (a liquid proxy, not the futures options themselves) · CBOE delayed. Total open interest ${Number(d.totalOi || 0).toLocaleString()}. IV rank needs a stored history, so it is not shown.</div>`;
-}
-function sparkline(vals, w = 240, h = 40) {
-  const xs = vals.filter((v) => v != null);
-  const min = Math.min(...xs), max = Math.max(...xs), rng = max - min || 1;
-  const pts = xs.map((v, i) => `${(i / (xs.length - 1)) * w},${h - ((v - min) / rng) * h}`).join(' ');
-  return `<svg width="${w}" height="${h}" class="spark"><polyline points="${pts}" fill="none" stroke="#ff9e00" stroke-width="1.5"/></svg>`;
 }
 function sectorRead(m, a) {
   const by = Object.fromEntries(m.benchmarks.map((b) => [b.id, b]));
@@ -3683,6 +3699,7 @@ function showTab(name) {
     if (chart) setTimeout(() => chart.resize(), 50);
     if (cmpChart) setTimeout(() => cmpChart.resize(), 55);
     if (curveHistChart) setTimeout(() => curveHistChart.resize(), 60);
+    if (posChart) setTimeout(() => posChart.resize(), 70);
     if (crackHistChart && currentMarket === 'refined') setTimeout(() => crackHistChart.resize(), 80);
   }
   if (name === 'deals') {

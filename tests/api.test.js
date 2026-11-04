@@ -664,7 +664,13 @@ test('/api/regime returns the cross-asset board', async () => {
 test('/api/positioning serves a single series and a per-segment bundle', async () => {
   const one = await (await fetch(`http://localhost:${PORT}/api/positioning?id=wti`)).json();
   assert.equal(one.id, 'wti');
-  if (!one.error) { assert.ok(Number.isFinite(one.pct) || one.pct == null); assert.ok('pct3y' in one && 'flag' in one); }
+  if (!one.error) {
+    assert.ok(Number.isFinite(one.pct) || one.pct == null);
+    assert.ok('pct3y' in one && 'flag' in one);
+    assert.ok(Array.isArray(one.history) && one.history.length > 10, 'weekly history for the chart');
+    assert.ok(one.history.filter((r) => r.price != null).length > 5, 'price aligned to the weekly reports');
+    assert.ok(one.priceLabel && one.priceUnit, 'the price axis is labelled');
+  }
   const seg = await (await fetch(`http://localhost:${PORT}/api/positioning?segment=crude`)).json();
   assert.equal(seg.segment, 'crude');
   if (!seg.error) assert.ok(Array.isArray(seg.items));

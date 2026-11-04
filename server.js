@@ -11,7 +11,7 @@ import { fileURLToPath } from 'node:url';
 import { projectUs, projectJp, japanList, koreaList, taiwanList, hongkongList, australiaList, indiaList, US_LIST_FIELDS } from './src/project.js';
 import { sliceRange, seriesFromLine } from './src/charts.js';
 import { growthRates, fromJapanHistory } from './src/growth.js';
-import { sgn, businessDaysSince, horizonDeltas, horizonDeltasAbs, isoWeek, monthly, pctOver, percentile, lastNonNull, escHtml, webhookPayload, realizedVol, computeCracks, computeCrush, computeSteel, buildRelValueRow, relValueZone, ordinal, backAdjust, pearson, logReturns, frontExpiry, curveTightness, inventoryTightness, weightedScore, seasonalGrade, seasonalAhead, contractMonthsBetween, signedPosition, signedMove, stretchScore, sdLabel, attributeMoves, newsContextOk, METHODOLOGY, positioningFlag, positioningRead, positioningDivergence, maxDrawdown, drawdownNow, realizedVolTerm, volPercentile, volVsOwnWord, corrMatrix, fxAdjust, parseOcc, drawdownWord, volWord, volTrend, corrShift, pairGroups, topPairs, bestDiversifier, riskRead, priorityOf, rankByPriority, clusterEvents, scoreEvents, selectEvents, explainRows } from './src/lib.js';
+import { sgn, businessDaysSince, horizonDeltas, horizonDeltasAbs, isoWeek, monthly, pctOver, percentile, lastNonNull, escHtml, webhookPayload, realizedVol, computeCracks, computeCrush, computeSteel, buildRelValueRow, relValueZone, ordinal, alignPriceToRows, backAdjust, pearson, logReturns, frontExpiry, curveTightness, inventoryTightness, weightedScore, seasonalGrade, seasonalAhead, contractMonthsBetween, signedPosition, signedMove, stretchScore, sdLabel, attributeMoves, newsContextOk, METHODOLOGY, positioningFlag, positioningRead, positioningDivergence, maxDrawdown, drawdownNow, realizedVolTerm, volPercentile, volVsOwnWord, corrMatrix, fxAdjust, parseOcc, drawdownWord, volWord, volTrend, corrShift, pairGroups, topPairs, bestDiversifier, riskRead, priorityOf, rankByPriority, clusterEvents, scoreEvents, selectEvents, explainRows } from './src/lib.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC = path.join(__dirname, 'public');
@@ -740,23 +740,24 @@ async function getPositioning(id = 'wti') {
     const nets = rows.map((r) => r.net);
     const pctOf = (arr) => (arr.length ? (arr.filter((n) => n <= latest.net).length / arr.length) * 100 : null);
     const pct3y = pctOf(nets.slice(-156));                  // the last 3 years of weekly reports
+    // One 3-year futures series serves both the divergence read and the chart. It used to be fetched
+    // only for the divergence and then thrown away.
+    let px = {};
+    if (b && b.paper) {
+      try { px = await cached('a3p:' + b.paper, 6 * 3600e3, () => yahooSeries(b.paper, '3y', '1d')).then((r) => r.series).catch(() => ({})); } catch {}
+    }
+    const divergence = b && b.paper && Object.keys(px).length ? positioningDivergence(px, rows) : null;
+    const history = alignPriceToRows(px, rows).slice(-156);
     return {
       id, label: `${b?.label || id} spec net (non-comm)`, unit: 'contracts',
       latest, wow: prev ? latest.net - prev.net : null,
       pct: pctOf(nets),                                     // full window (kept for the digest)
       pct3y, weeks: rows.length,
       flag: positioningFlag(pct3y), read: positioningRead(pct3y),
-      // Price vs positioning: are specs leaning with the move or against it? (needs the futures series,
-      // which is the same 2y cache the crush and steel margin use)
-      divergence: await (async () => {
-        try {
-          if (!b || !b.paper) return null;
-          const px = await cached('a2p:' + b.paper, 6 * 3600e3, () => yahooSeries(b.paper, '2y', '1d')).then((r) => r.series).catch(() => ({}));
-          return positioningDivergence(px, rows);
-        } catch { return null; }
-      })(),
+      divergence,
       oi: latest.oi, oiChange: prev ? latest.oi - prev.oi : null,
-      history: rows.slice(-156),
+      priceLabel: b?.label || id, priceUnit: b?.unit || '', priceDp: b?.dp ?? 2,
+      history,
     };
   });
 }

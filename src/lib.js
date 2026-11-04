@@ -678,6 +678,17 @@ export function positioningFlag(pct) {
   if (pct <= 30) return { label: 'WASHED-OUT', tone: 'cool' };
   return { label: 'NEUTRAL', tone: 'mid' };
 }
+// Align a daily price map (date -> close) to weekly COT rows: each report gets the last close on or
+// before its report date. Null before the price history starts — never filled forward from the future.
+export function alignPriceToRows(priceByDate, rows) {
+  const dates = Object.keys(priceByDate || {}).sort();
+  let i = 0, last = null;
+  return (rows || []).map((r) => {
+    while (i < dates.length && dates[i] <= r.date) { last = priceByDate[dates[i]]; i++; }
+    return { ...r, price: last };
+  });
+}
+
 // Positioning-vs-price divergence: the classic tell is price rising while speculators are cutting
 // (fading the move), or price falling while they are adding (buying the dip). Net positioning is
 // measured as a share of open interest so contracts of different size are comparable, and both legs
