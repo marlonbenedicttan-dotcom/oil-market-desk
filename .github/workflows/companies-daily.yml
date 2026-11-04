@@ -88,7 +88,9 @@ jobs:
       - name: Calendar events
         run: node scripts/build-events.mjs
       - name: Re-apply recorded restatements
-        run: node scripts/apply-restatements.mjs
+        run: |
+          node scripts/apply-restatements.mjs
+          node scripts/derive-companies.mjs
       # Hard gate: these only fail when a published ratio cannot be reproduced from its own inputs,
       # which is a bug, not a market move. check-snapshot is deliberately not here — a new filing
       # legitimately moves a P/E by more than its tolerance.

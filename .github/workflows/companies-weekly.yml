@@ -79,7 +79,9 @@ jobs:
           node scripts/refresh-korea-quarters.mjs
           node scripts/build-korea.mjs --years=5
       - name: Re-apply recorded restatements
-        run: node scripts/apply-restatements.mjs
+        run: |
+          node scripts/apply-restatements.mjs
+          node scripts/derive-companies.mjs
       - name: Commit if changed
         run: |
           git config user.name 'github-actions[bot]'

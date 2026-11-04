@@ -17,6 +17,10 @@ for (const c of data.companies) {
   if (!changes) continue;
   applied++;
   for (const [field, v] of Object.entries(changes)) {
+    // A later 10-Q/10-K supersedes the amended annual figure. Applying the restatement on top of it
+    // would undo the newer book value and leave P/B/ROE computed from a different equity.
+    const endKey = field + 'End';
+    if (c[endKey] && c.restatement.period && c[endKey] > c.restatement.period) continue;
     if (v && v.now != null && c[field] !== v.now) { c[field] = v.now; changed++; }
   }
 }
