@@ -39,6 +39,7 @@ jobs:
           path: |
             data/cache/asx
             data/cache/australia-sa
+            data/cache/australia-shares
           key: au-cache-${{ github.run_id }}
           restore-keys: au-cache-
       - name: Build prices, statements and profiles

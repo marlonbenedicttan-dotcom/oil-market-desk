@@ -39,6 +39,8 @@ jobs:
             data/cache/hkex
             data/cache/hongkong-sa
             data/cache/hongkong-profiles
+            data/cache/hongkong-shares
+            data/cache/sec
           key: hk-cache-${{ github.run_id }}
           restore-keys: hk-cache-
       # The index list comes from a public wiki table, not the exchange. A hiccup there must not block a
