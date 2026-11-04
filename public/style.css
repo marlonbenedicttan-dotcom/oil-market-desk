@@ -1374,6 +1374,9 @@ button.deal-sec-tile:hover { background: #10151b; }
 .jp-q-table td { padding: 6px 8px; text-align: right; border-bottom: 1px solid #141a21; }
 .jp-q-table td em { font-style: normal; color: #6f7b88; font-size: 9px; margin-left: 4px; }
 .jp-q-table tbody tr:hover { background: #10151b; }
+/* The quarterly table now keeps every period ever filed, so bound its height and let it scroll
+   instead of pushing the rest of the page below a decade of rows. */
+.jp-q-scroll { max-height: 420px; overflow-y: auto; }
 @media (max-width: 640px) {
   .jp-band { grid-template-columns: 34px 54px 1fr; }
   .jp-band-r { grid-column: 1 / -1; white-space: normal; }

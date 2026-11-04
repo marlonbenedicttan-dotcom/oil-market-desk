@@ -29,15 +29,24 @@ const DRY = process.argv.includes('--dry-run');
 
 // Each market keeps its periods in a different shape, and the date field is not the same everywhere:
 // Japan calls it `y`, a Hong Kong half-year calls it `d`, the rest call it `end`.
+// Annual figures and the quarterly table both grow: a quarter that scrolls off the vendor's page is
+// kept here, so a site that runs for twenty years shows twenty years of quarters, not the last eight.
 const MARKETS = {
-  jp: { file: 'japan.json', detail: 'japan-companies', tables: (c) => [['history', c.history, 'y']] },
-  kr: { file: 'korea.json', detail: 'korea-companies', tables: (c) => [['reports', c.reports, 'end']] },
+  jp: {
+    file: 'japan.json', detail: 'japan-companies',
+    tables: (c) => [['history', c.history, 'y'], ['quarters', c.quarters, 'd']],
+  },
+  kr: {
+    file: 'korea.json', detail: 'korea-companies',
+    tables: (c) => [['reports', c.reports, 'end'], ['quarters', c.quarters, 'd']],
+  },
   tw: {
     file: 'taiwan.json',
     detail: 'taiwan-companies',
     tables: (c) => [
       ['reports.annual', c.reports && c.reports.annual, 'end'],
       ['reports.quarters', c.reports && c.reports.quarters, 'd'],
+      ['quarters', c.quarters, 'd'],
     ],
   },
   hk: {
@@ -46,6 +55,7 @@ const MARKETS = {
     tables: (c) => [
       ['reports.annual', c.reports && c.reports.annual, 'end'],
       ['reports.quarters', c.reports && c.reports.quarters, 'd'],
+      ['quarters', c.quarters, 'd'],
     ],
   },
   au: {
@@ -54,6 +64,7 @@ const MARKETS = {
     tables: (c) => [
       ['reports.annual', c.reports && c.reports.annual, 'end'],
       ['reports.quarters', c.reports && c.reports.quarters, 'd'],
+      ['quarters', c.quarters, 'd'],
     ],
   },
 };

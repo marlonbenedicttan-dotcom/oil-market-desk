@@ -80,7 +80,7 @@ export function deriveTaiwan({ companies, fx = null }) {
         y: r.end, s: r.revenue, o: r.operatingProfit, n: r.netIncome, q: r.equity, a: r.assets,
         c: r.operatingCashFlow, i: r.investingCashFlow,
       })),
-      quarters: (c.quarters || []).slice(-8),
+      quarters: (c.quarters || []),
       bands,
       ...growth,
       marginDelta,

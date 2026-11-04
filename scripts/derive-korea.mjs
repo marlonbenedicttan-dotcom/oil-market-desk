@@ -204,7 +204,7 @@ export function deriveKorea({ companies, fx = null }) {
       fcfYield: cap && fcf != null ? round((fcf / cap) * 100, 2) : null,
       ...growth,
       marginDelta,
-      quarters: q.slice(-8),
+      quarters: q,
       quartersBasis: 'reported',
       ...(ttmSuspicious ? { ttmSuspicious: true, ttmFromFY: true } : {}),
       history: (c.reports || []).filter((r) => r.report === 'annual').slice(-5).map((r) => ({

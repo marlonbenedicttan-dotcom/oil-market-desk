@@ -211,7 +211,7 @@ export function deriveListing({ companies, fx = null, baseCurrency = 'HKD' }) {
         q: r.equity ?? r.equityCommon, ec: r.equityCommon ?? r.equity,
         a: r.assets, c: r.operatingCashFlow, i: r.investingCashFlow, x: r.capitalExpenditure,
       })),
-      quarters: (c.quarters || []).slice(-8),
+      quarters: (c.quarters || []),
       bands,
     });
   }

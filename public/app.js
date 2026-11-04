@@ -4817,10 +4817,12 @@ function jpQuartersHtml(c) {
   return `<div class="jp-q">
       <div class="jp-q-head"><span class="ph-t">QUARTERLY RESULTS</span><span class="dimtext">${q.length} quarters · ¥ yen</span></div>
       <div class="co-chartwrap"><canvas id="jp-q-chart"></canvas></div>
+      <div class="jp-q-scroll">
       <table class="jp-q-table">
         <thead><tr><th>QUARTER</th><th>NET SALES</th><th>YOY</th><th>OPERATING PROFIT</th><th>MARGIN</th><th>NET PROFIT</th></tr></thead>
         <tbody>${rows}</tbody>
       </table>
+      </div>
       <div class="macro-note">Standalone quarters, derived from the cumulative year-to-date figures companies publish (Q2 = 2Q − 1Q, Q4 = FY − 3Q). Year-on-year compares the same quarter a year earlier.</div>
     </div>`;
 }
@@ -5486,9 +5488,9 @@ async function renderKoreaPage(stub) {
         ${[...h].reverse().map((x) => `<tr><td>${esc(x.y)}</td><td>${won(x.s)}</td><td>${won(x.o)}</td><td>${won(x.n)}</td><td>${x.n != null && x.q ? `${((x.n / x.q) * 100).toFixed(1)}%` : '—'}</td></tr>`).join('')}
         </tbody></table></div>` : '')
     + (q.length > 1 ? `<div class="jp-q"><div class="jp-q-head"><span class="ph-t">QUARTERLY RESULTS</span><span class="dimtext">${q.length} quarters · ₩</span></div>
-        <table class="jp-q-table"><thead><tr><th>QUARTER</th><th>REVENUE</th><th>OP PROFIT</th><th>MARGIN</th><th>NET PROFIT</th></tr></thead><tbody>
+        <div class="jp-q-scroll"><table class="jp-q-table"><thead><tr><th>QUARTER</th><th>REVENUE</th><th>OP PROFIT</th><th>MARGIN</th><th>NET PROFIT</th></tr></thead><tbody>
         ${[...q].reverse().map((x) => `<tr><td>${esc(x.d)} <em>${esc(x.q)}</em></td><td>${won(x.revenue)}</td><td>${won(x.operatingProfit)}</td><td>${x.revenue && x.operatingProfit != null ? `${((x.operatingProfit / x.revenue) * 100).toFixed(1)}%` : '—'}</td><td>${won(x.netIncome)}</td></tr>`).join('')}
-        </tbody></table></div>` : '')
+        </tbody></table></div></div>` : '')
     + `<div class="macro-note">KOSPI · statements from DART (Financial Supervisory Service), prices from Naver Finance. Korean companies report cumulatively (Q1, H1, Q3, annual), so quarters here are the differences and the annual report is Q4. No guidance is published, so there is no forward P/E.${c.descSource === 'profile' ? ' Company description from stockanalysis.com.' : ''}</div>`;
   drawKrChart(c);
   fillPeers(`kr:${c.ticker}`, 'kr-peers-x');
@@ -5821,9 +5823,9 @@ async function renderTaiwanPage(stub) {
         ${[...h].reverse().map((x) => `<tr><td>${esc(x.y)}</td><td>${twMoney(x.s)}</td><td>${twMoney(x.o)}</td><td>${twMoney(x.n)}</td><td>${x.n != null && x.q ? `${((x.n / x.q) * 100).toFixed(1)}%` : '—'}</td></tr>`).join('')}
         </tbody></table></div>` : '')
     + (q.length > 1 ? `<div class="jp-q"><div class="jp-q-head"><span class="ph-t">QUARTERLY RESULTS</span><span class="dimtext">${q.length} quarters · NT$</span></div>
-        <table class="jp-q-table"><thead><tr><th>QUARTER</th><th>REVENUE</th><th>OP PROFIT</th><th>MARGIN</th><th>NET PROFIT</th></tr></thead><tbody>
+        <div class="jp-q-scroll"><table class="jp-q-table"><thead><tr><th>QUARTER</th><th>REVENUE</th><th>OP PROFIT</th><th>MARGIN</th><th>NET PROFIT</th></tr></thead><tbody>
         ${[...q].reverse().map((x) => `<tr><td>${esc(x.d)}</td><td>${twMoney(x.revenue)}</td><td>${twMoney(x.operatingProfit)}</td><td>${x.revenue && x.operatingProfit != null ? `${((x.operatingProfit / x.revenue) * 100).toFixed(1)}%` : '—'}</td><td>${twMoney(x.netIncome)}</td></tr>`).join('')}
-        </tbody></table></div>` : '')
+        </tbody></table></div></div>` : '')
     + `<div class="macro-note">TWSE-listed · statements from stockanalysis.com (millions TWD), prices and dividend yield from TWSE. Taiwanese companies report cumulatively (Q1, H1, Q3, annual); the quarterly figures here are the reported period columns. No free guidance feed, so there is no forward P/E.${c.description ? ' Company description from stockanalysis.com.' : ''}</div>`;
   drawTwChart(c);
   fillPeers(`tw:${c.ticker}`, 'tw-peers-x');
@@ -6225,11 +6227,11 @@ async function renderHongKongPage(stub) {
         </tbody></table></div>`;
       })() : '')
     + (q.length > 1 ? `<div class="jp-q"><div class="jp-q-head"><span class="ph-t">REPORTED PERIODS</span><span class="dimtext">${q.length} periods · ${ccy}</span></div>
-        <table class="jp-q-table"><thead><tr><th>PERIOD</th><th>REVENUE</th>${fin ? '<th>NET PROFIT</th><th>NET MARGIN</th>' : '<th>OP PROFIT</th><th>MARGIN</th><th>NET PROFIT</th>'}</tr></thead><tbody>
+        <div class="jp-q-scroll"><table class="jp-q-table"><thead><tr><th>PERIOD</th><th>REVENUE</th>${fin ? '<th>NET PROFIT</th><th>NET MARGIN</th>' : '<th>OP PROFIT</th><th>MARGIN</th><th>NET PROFIT</th>'}</tr></thead><tbody>
         ${[...q].reverse().map((x) => `<tr><td>${esc(x.d)}</td><td>${cur(x.revenue)}</td>${fin
           ? `<td>${cur(x.netIncome)}</td><td>${x.revenue && x.netIncome != null ? `${((x.netIncome / x.revenue) * 100).toFixed(1)}%` : '—'}</td>`
           : `<td>${cur(x.operatingProfit)}</td><td>${x.revenue && x.operatingProfit != null ? `${((x.operatingProfit / x.revenue) * 100).toFixed(1)}%` : '—'}</td><td>${cur(x.netIncome)}</td>`}</tr>`).join('')}
-        </tbody></table></div>` : '')
+        </tbody></table></div></div>` : '')
     + `<div class="macro-note">${c.statementsFrom ? `Statements are this same company's own, taken from its ${c.statementsFrom.split(':')[0]} listing (${c.statementsFrom}) because the source serves no Hong Kong statement page for it; the market cap still uses the Hong Kong price × total shares. ` : ''}HKEX main-board listing · statements from stockanalysis.com (millions ${ccy}), prices from Yahoo. Market cap is HKD; ratios are computed in ${ccy}, the currency the issuer reports in, then compared with a market cap converted at the build's USD/HKD and USD/${ccy} rates. Hong Kong companies report half-yearly, so the period table is half-year and annual periods, not four quarters. No free guidance feed, so there is no forward P/E.${fin ? ' Banks and insurers are valued on book value and return on equity; an operating margin and a free cash flow do not describe a balance-sheet business, so those ratios are not shown. ' : ''}${c.description ? ' Company description and sector from stockanalysis.com.' : ''}</div>`;
   drawHkChart(c);
   fillPeers(`hk:${c.ticker}`, 'hk-peers-x');
@@ -6582,11 +6584,11 @@ async function renderAustraliaPage(stub) {
         ${[...h].reverse().map((x) => `<tr><td>${esc(x.y)}</td><td>${cur(x.s)}</td>${bank ? '' : `<td>${cur(x.o)}</td>`}<td>${cur(x.n)}</td><td>${x.n != null && (x.ec ?? x.q) ? `${((x.n / (x.ec ?? x.q)) * 100).toFixed(1)}%` : '—'}</td></tr>`).join('')}
         </tbody></table></div>` : '')
     + (q.length > 1 ? `<div class="jp-q"><div class="jp-q-head"><span class="ph-t">${c.periodBasis === 'quarter' ? 'REPORTED PERIODS' : 'TRAILING 12 MONTHS'}</span><span class="dimtext">${q.length} ${c.periodBasis === 'quarter' ? 'periods' : 'period ends'} · ${ccy} millions</span></div>
-        <table class="jp-q-table"><thead><tr><th>PERIOD</th><th>REVENUE</th>${bank ? '<th>NET PROFIT</th><th>NET MARGIN</th>' : '<th>OP PROFIT</th><th>MARGIN</th><th>NET PROFIT</th>'}</tr></thead><tbody>
+        <div class="jp-q-scroll"><table class="jp-q-table"><thead><tr><th>PERIOD</th><th>REVENUE</th>${bank ? '<th>NET PROFIT</th><th>NET MARGIN</th>' : '<th>OP PROFIT</th><th>MARGIN</th><th>NET PROFIT</th>'}</tr></thead><tbody>
         ${[...q].reverse().map((x) => `<tr><td>${esc(x.d)}</td><td>${cur(x.revenue)}</td>${bank
           ? `<td>${cur(x.netIncome)}</td><td>${x.revenue && x.netIncome != null ? `${((x.netIncome / x.revenue) * 100).toFixed(1)}%` : '—'}</td>`
           : `<td>${cur(x.operatingProfit)}</td><td>${x.revenue && x.operatingProfit != null ? `${((x.operatingProfit / x.revenue) * 100).toFixed(1)}%` : '—'}</td><td>${cur(x.netIncome)}</td>`}</tr>`).join('')}
-        </tbody></table></div>` : '')
+        </tbody></table></div></div>` : '')
     + `<div class="macro-note">ASX-listed · statements from stockanalysis.com (millions ${ccy}), prices from Yahoo. Market cap is AUD; ratios are computed in ${ccy}, the currency the issuer reports in, then compared with a market cap converted at the build's USD/AUD rate${ccy === 'AUD' || ccy === 'USD' ? '' : ` and USD/${ccy} cross`}. ${c.crossListing ? `This line is a CDI/dual listing: statements come from the ${esc(c.crossListing.ticker)} listing, and the market cap uses the ASX price × the filing share count × the ${c.crossListing.ratio}:1 CDI ratio.${c.perShareBasis ? ` Per-share figures are ${esc(c.perShareBasis)}.` : ''}` : `Profit, revenue and margins are the rolling twelve months (the vendor's ASX "trailing" view); the five-year record is the fiscal year.`} Australian companies report half-yearly. No free guidance feed, so there is no forward P/E.${c.description ? ' Company description and sector from stockanalysis.com.' : ''}</div>`;
   drawAuChart(c);
   fillPeers(`au:${c.ticker}`, 'au-peers-x');

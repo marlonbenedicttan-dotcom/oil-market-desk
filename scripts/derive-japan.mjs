@@ -241,7 +241,9 @@ export function deriveJapan({ ranked, fins, series, val = new Map(), nextByCode 
       }
     }
 
-    const quarters = buildQuarters(rows).slice(-8);
+    // Keep every quarter the filing window holds. merge-history then retains the ones that scroll off,
+    // so the table can grow to decades instead of being pinned to the last two years.
+    const quarters = buildQuarters(rows);
     const guidedVsActual = guidanceVsDelivered(rows);
 
     const ytdBase = s.find((p) => p.d >= jan1);
