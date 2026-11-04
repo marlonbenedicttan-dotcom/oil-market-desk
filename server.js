@@ -750,7 +750,9 @@ async function getPositioning(id = 'wti') {
     let px = {};
     if (b && b.paper) {
       try {
-        px = await cachedUnlessEmpty('a2p:' + b.paper, 6 * 3600e3,
+        // A private key: `a2p:` is also used elsewhere in this file to cache the whole
+        // {price, series} object, and reading that as a date map left natgas/Brent with no price.
+        px = await cachedUnlessEmpty('pospx:' + b.paper, 6 * 3600e3,
           () => yahooSeries(b.paper, '2y', '1d').then((r) => r.series).catch(() => ({})),
           (v) => !v || !Object.keys(v).length);
       } catch {}
