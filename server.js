@@ -11,7 +11,7 @@ import { fileURLToPath } from 'node:url';
 import { projectUs, projectJp, japanList, koreaList, taiwanList, hongkongList, australiaList, indiaList, US_LIST_FIELDS } from './src/project.js';
 import { sliceRange, seriesFromLine } from './src/charts.js';
 import { growthRates, fromJapanHistory } from './src/growth.js';
-import { sgn, businessDaysSince, horizonDeltas, horizonDeltasAbs, isoWeek, monthly, pctOver, percentile, lastNonNull, escHtml, webhookPayload, realizedVol, computeCracks, computeCrush, computeSteel, buildRelValueRow, relValueZone, ordinal, alignPriceToRows, backAdjust, pearson, logReturns, frontExpiry, curveTightness, inventoryTightness, weightedScore, seasonalGrade, seasonalAhead, contractMonthsBetween, signedPosition, signedMove, stretchScore, sdLabel, attributeMoves, newsContextOk, METHODOLOGY, positioningFlag, positioningRead, positioningDivergence, maxDrawdown, drawdownNow, realizedVolTerm, volPercentile, volVsOwnWord, corrMatrix, fxAdjust, parseOcc, drawdownWord, volWord, volTrend, corrShift, pairGroups, topPairs, bestDiversifier, riskRead, priorityOf, rankByPriority, clusterEvents, scoreEvents, selectEvents, explainRows } from './src/lib.js';
+import { sgn, businessDaysSince, horizonDeltas, horizonDeltasAbs, isoWeek, monthly, pctOver, percentile, lastNonNull, escHtml, webhookPayload, realizedVol, computeCracks, computeCrush, computeSteel, buildRelValueRow, relValueZone, ordinal, alignPriceToRows, inventoryBands, backAdjust, pearson, logReturns, frontExpiry, curveTightness, inventoryTightness, weightedScore, seasonalGrade, seasonalAhead, contractMonthsBetween, signedPosition, signedMove, stretchScore, sdLabel, attributeMoves, newsContextOk, METHODOLOGY, positioningFlag, positioningRead, positioningDivergence, maxDrawdown, drawdownNow, realizedVolTerm, volPercentile, volVsOwnWord, corrMatrix, fxAdjust, parseOcc, drawdownWord, volWord, volTrend, corrShift, pairGroups, topPairs, bestDiversifier, riskRead, priorityOf, rankByPriority, clusterEvents, scoreEvents, selectEvents, explainRows } from './src/lib.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC = path.join(__dirname, 'public');
@@ -681,6 +681,8 @@ async function getInventories() {
         seasonalMax: sMax != null ? Math.round(sMax) : null,
         surprise: seasonal != null && wow != null ? Math.round(wow - seasonal) : null,
         years: sameWeek.length,
+        unit: 'kbbl',
+        history: inventoryBands(arr, 156, 5),
       });
     }
     let gas = null;
@@ -693,7 +695,7 @@ async function getInventories() {
         const sameWeek = wows.filter((w) => isoWeek(w.period) === targetWk && w.period !== last.period);
         const seasonal = sameWeek.length >= 3 ? sameWeek.reduce((a, b) => a + b.wow, 0) / sameWeek.length : null;
         const wow = prev ? last.value - prev.value : null;
-        gas = { period: last.period, value: last.value, wow, seasonal: seasonal != null ? Math.round(seasonal) : null, surprise: seasonal != null && wow != null ? Math.round(wow - seasonal) : null, seasonalMin: sameWeek.length >= 3 ? Math.round(Math.min(...sameWeek.map((w) => w.wow))) : null, seasonalMax: sameWeek.length >= 3 ? Math.round(Math.max(...sameWeek.map((w) => w.wow))) : null };
+        gas = { period: last.period, value: last.value, wow, seasonal: seasonal != null ? Math.round(seasonal) : null, surprise: seasonal != null && wow != null ? Math.round(wow - seasonal) : null, seasonalMin: sameWeek.length >= 3 ? Math.round(Math.min(...sameWeek.map((w) => w.wow))) : null, seasonalMax: sameWeek.length >= 3 ? Math.round(Math.max(...sameWeek.map((w) => w.wow))) : null, unit: 'BCF', history: inventoryBands(garr, 156, 5) };
       }
     } catch {}
     return { items, gas, fetched: new Date().toISOString() };
@@ -4117,6 +4119,18 @@ const COUNTRY_DEMONYM = {
 };
 let _eventCatalog = null;
 let evPoolAttempt = 0;
+// The last selection the brief actually showed. The pool is rebuilt every 30 minutes in the
+// background; without this, every rebuild window (and every request that lost the 1.5 s race)
+// blanked the top of the brief until the next reload. Kept in memory, and the same five stories go
+// into the state file so a restart can still show them.
+const EVENT_SNAPSHOT_MAX_AGE = 2 * 3600e3;
+let eventSnapshot = (state.briefEvents && Array.isArray(state.briefEvents.events) && state.briefEvents.at)
+  ? { at: Date.parse(state.briefEvents.at) || 0, events: state.briefEvents.events, clusters: [] }
+  : null;
+function snapshotEvents() {
+  if (!eventSnapshot || !(Date.now() - eventSnapshot.at <= EVENT_SNAPSHOT_MAX_AGE)) return { events: [], clusters: [] };
+  return { events: eventSnapshot.events, clusters: eventSnapshot.clusters || [] };
+}
 function eventCatalog() {
   if (_eventCatalog) return _eventCatalog;
   const countries = Object.values(ALL_COUNTRIES).map((c) => ({
@@ -4583,15 +4597,18 @@ async function buildBrief() {
 // The event layer is attached outside the base brief's five-minute cache: an empty event pool on a
 // cold start must not freeze the top of the page for five minutes. It has its own 30-minute cache.
 async function attachEvents(marketCtx) {
-  // The pool builds gently in the background. Never hold the brief for a cold pool: return now and
-  // let the build finish for the next reader. A warm pool attaches immediately. A failed/empty pool
-  // is retried at most once a minute — not on every brief request.
+  // Build in the background — but a cold pool now gets a short, bounded moment to land. The top of
+  // the brief used to be missing on every first load after a wake, because the answer was "empty"
+  // while the pool built; two and a half seconds is the most a cold start may cost.
   if (!cache.has('eventpool')) {
-    if (Date.now() - evPoolAttempt > 60e3) { evPoolAttempt = Date.now(); buildEventPool().catch(() => {}); }
-    return { events: [], clusters: [] };
+    if (Date.now() - evPoolAttempt > 15e3) {
+      evPoolAttempt = Date.now();
+      await within(buildEventPool(), 2500).catch(() => null);
+    }
+    if (!cache.has('eventpool')) return snapshotEvents();
   }
   const pool = await within(buildEventPool(), 1500).catch(() => null);
-  if (!pool || !pool.clusters || !pool.clusters.length) return { events: [], clusters: [] };
+  if (!pool || !pool.clusters || !pool.clusters.length) return snapshotEvents();
   try {
     const today = pool.refDate || new Date().toISOString().slice(0, 10);
     const history = state.eventHistory && typeof state.eventHistory === 'object' ? state.eventHistory : {};
@@ -4607,6 +4624,15 @@ async function attachEvents(marketCtx) {
         primary: e.primary, entities: e.entities, market: e.market, sources: e.sources, source: e.source, url: e.url,
         at: e.at, date: e.date, ageDays: e.ageDays, score: e.score, novelty: e.novelty, confirmed: e.confirmed,
       }));
+    // Keep the five the reader just saw, so the next rebuild window serves them instead of nothing.
+    if (events.length) {
+      eventSnapshot = { at: Date.now(), events, clusters: pool.clusters };
+      const prev = state.briefEvents;
+      if (!prev || prev.day !== today || JSON.stringify(prev.events) !== JSON.stringify(events)) {
+        state.briefEvents = { day: today, at: new Date(eventSnapshot.at).toISOString(), events };
+        saveState();
+      }
+    }
     // Remember every cluster, not just the five shown, so a story that bubbles under the surface is
     // already "developing" when it makes the page. Bounded: 80 keys a day, 30 days.
     const keys = [...new Set(pool.clusters.map((c) => c.key))].slice(0, 80).sort();
@@ -5596,7 +5622,9 @@ server.listen(PORT, async () => {
     // Last, and deliberately gentle (3 news calls at a time): the event layer is a nice-to-have, not
     // a reason for the macro/news feeds to come back rate-limited on a cold start. Skip it entirely
     // when the process is already close to the free-tier ceiling.
-    if (fullWarm && process.memoryUsage().rss < 400 * 1024 * 1024) { try { await buildEventPool(); } catch {} }
+    // The event layer is the top of the brief, so every boot warms it — last, gently, and skipped
+    // when the process is already close to the free-tier ceiling.
+    if (process.memoryUsage().rss < 400 * 1024 * 1024) { try { await buildEventPool(); } catch {} }
   };
   // Keep the caches hot on a timer shorter than the shortest TTL (the quote cache is 3 minutes), so
   // a visitor almost never lands on an expired feed. Guarded: a slow warm must not stack up.
