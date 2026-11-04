@@ -74,6 +74,7 @@ jobs:
           node scripts/build-korea.mjs --years=5
           # Same for a new KOSPI listing: describe it tonight, capped, never fatal.
           node scripts/fetch-korea-descriptions.mjs --only-missing --limit=25 || echo 'new-listing descriptions: source unavailable, retry tomorrow'
+          node scripts/attach-korea-descriptions.mjs
           node scripts/build-korea-list.mjs
           # The description pass above runs after build-korea wrote the per-company detail files.
           # Rebuild them (only changed companies are rewritten) so a new listing is not a day behind.
