@@ -68,12 +68,22 @@ await send('Log.enable');
 await send('Page.enable');
 await send('Page.navigate', { url: URL });
 await sleep(3500);
+// Chrome can attach to an already-running headless instance and reuse its profile, which would carry
+// the previous run's remembered view. Start from a known state.
+await evaluate(`try { localStorage.clear(); } catch {}`);
+await send('Page.reload', {});
+await sleep(3500);
 
-// The app remembers the region, but a fresh profile starts on the S&P. Open COMPANIES then INDIA.
+// The app remembers the region, but a cleared profile starts on the S&P. Open COMPANIES then INDIA.
 await evaluate(`document.querySelector('[data-tab="deals"]')?.click()`);
 await sleep(2500);
 await evaluate(`document.querySelector('[data-region="in"]')?.click()`);
-await sleep(5000);
+// Poll: the free instance can take a few seconds to wake and ship the 348 KB list.
+for (let i = 0; i < 40; i++) {
+  const txt = await evaluate(`document.querySelector('#co-body')?.innerText || ''`);
+  if (/NIFTY 50/.test(txt)) break;
+  await sleep(750);
+}
 
 const check = async (label, expr) => {
   const v = await evaluate(expr);
