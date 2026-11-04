@@ -375,13 +375,18 @@ if (!SKIP_FIN) {
   }
 }
 
-// A trailing column that reports more profit than revenue is not a trailing twelve months: it is two
-// different periods spliced together (Vedanta Oil and Gas, a fresh demerger, had a TTM profit five
-// times its revenue on the vendor page). Every ratio built on it is fiction, so the company is
-// excluded and named rather than published with a P/B of 0.00.
+// A trailing column that reports an OPERATING profit above its own revenue is not a trailing twelve
+// months: it is two periods spliced together (Vedanta Oil and Gas, a fresh demerger, showed an
+// operating profit 2.4× revenue). Every ratio built on it is fiction, so the company is excluded and
+// named rather than published with a P/B of 0.00.
+//
+// Net income above revenue is NOT a test: a holding company earns dividends from its stakes below the
+// revenue line (Bajaj Holdings: net 9.5× revenue, operating margin a normal 80%), and a one-off gain
+// does the same. Excluding on net income dropped a real NIFTY constituent, which is a worse error than
+// keeping a company whose numbers then fail the ratio guards.
 const broken = universe.filter((c) => {
   const t = c.ttm || {};
-  return t.revenue > 0 && (t.netIncome > t.revenue * 3 || t.operatingProfit > t.revenue * 3);
+  return t.revenue > 0 && t.operatingProfit > t.revenue * 1.05;
 });
 for (const c of broken) c.broken = true;
 if (broken.length) console.log(`  ${broken.length} companies with an inconsistent trailing column — excluded`);

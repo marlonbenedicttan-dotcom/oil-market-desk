@@ -107,6 +107,18 @@ const rows = await evaluate(`document.querySelectorAll('[data-in]').length`);
 console.log(`${rows > 20 ? 'ok  ' : 'FAIL'} screener rows · ${rows}`);
 if (!(rows > 20)) bad++;
 
+// Pagination: the next-page control must stay inside India. This was wired to the Australia pager,
+// so one click rendered the ASX screen while the region still said India.
+await evaluate(`document.querySelector('[data-inlistpage="2"]')?.click()`);
+await sleep(2500);
+const afterPage = await evaluate(`document.querySelector('#co-body')?.innerText || ''`);
+const pageState = await evaluate(`JSON.stringify({ region: coRegion, view: inView, page: inPage })`);
+const rows2 = await evaluate(`document.querySelectorAll('[data-in]').length`);
+const pageOk2 = rows2 > 20 && /"region":"in"/.test(pageState) && /"page":2/.test(pageState) && !/ASX/.test(afterPage);
+console.log(`  page 2 · ${rows2} rows`);
+console.log(`${pageOk2 ? 'ok  ' : 'FAIL'} next page stays on India · ${pageState}`);
+if (!pageOk2) bad++;
+
 // Open one company (a bank, so the suppressed ratios are exercised)
 await evaluate(`document.querySelector('[data-in]')?.click()`);
 await sleep(4500);

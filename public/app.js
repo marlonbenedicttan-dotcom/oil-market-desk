@@ -6905,7 +6905,7 @@ function renderIndiaScreener(all, d) {
         <span class="co-pe">${c.pe != null ? c.pe.toFixed(1) : '—'}</span>
         <span class="co-mar ${c.roe == null ? 'dimtext' : c.roe >= 0 ? 'pos' : 'neg'}">${c.roe == null ? '—' : `${c.roe.toFixed(1)}%`}</span>
       </button>`).join('')
-    + pagerHtml(sorted.length, page, inPer, 'aulistpage')
+    + pagerHtml(sorted.length, page, inPer, 'inlistpage')
     + `<div class="macro-note">${rows.length} of ${all.length} · NSE · statements from stockanalysis.com, prices from Yahoo · P/E is trailing twelve months where the vendor serves a trailing view, otherwise the last fiscal year (the company page labels which) · computed in the issuer's report currency (BHP and RIO report in USD) · FX ${d.fx && d.fx.rate ? d.fx.rate.toFixed(2) : '—'} INR per USD.</div>`;
 }
 
