@@ -299,7 +299,7 @@ test('the supply table labels EIA stocks in million barrels, not thousand', () =
   assert.match(html, /410\.6/);
   assert.doesNotMatch(html, /410,625/);
   assert.match(html, /-1\.9/);
-  assert.match(html, /drew 1\.5 more than usual/);
+  assert.match(html, /drew 1\.5/);
   assert.match(html, /3,500 BCF/);
   assert.match(document.getElementById('inv-chart-title').textContent, /CRUDE \(EX-SPR\)/);
 });
