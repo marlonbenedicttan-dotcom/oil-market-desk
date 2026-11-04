@@ -22,11 +22,13 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const MARKETS = {
   australia: { data: 'australia.json', quote: 'asx', out: 'australia-shares.json', cache: 'australia-shares' },
   hongkong: { data: 'hongkong.json', quote: 'hkg', out: 'hongkong-shares.json', cache: 'hongkong-shares' },
+  // NSE symbols carry '&' and '-', which stockanalysis spells '_' in the slug (M_M, BAJAJ_AUTO).
+  india: { data: 'india.json', quote: 'nse', out: 'india-shares.json', cache: 'india-shares', slug: (c) => String(c).replace(/[&-]/g, '_') },
 };
 const market = (process.argv[2] || '').toLowerCase();
 const M = MARKETS[market];
 if (!M) {
-  console.error('usage: node scripts/fetch-listing-shares.mjs australia|hongkong [--limit=N] [--codes=A,B] [--fresh]');
+  console.error('usage: node scripts/fetch-listing-shares.mjs australia|hongkong|india [--limit=N] [--codes=A,B] [--fresh]');
   process.exit(2);
 }
 const arg = (k, d = null) => { const x = process.argv.find((a) => a.startsWith(`--${k}=`)); return x ? x.split('=')[1] : d; };
@@ -113,8 +115,9 @@ console.log(`${market}: ${list.length} codes`);
 
 let done = 0, got = 0, miss = 0;
 await pool(list, 2, async (code) => {
-  const f = join(cacheDir, `${code}.json`);
-  const url = `https://stockanalysis.com/quote/${M.quote}/${code}/statistics/`;
+  const slug = M.slug ? M.slug(code) : code;
+  const f = join(cacheDir, `${slug}.json`);
+  const url = `https://stockanalysis.com/quote/${M.quote}/${slug}/statistics/`;
   let html = null;
   try { html = await getCached(url, f, { ttlMs: TTL, fresh: flag('fresh'), retries: 2, timeout: 30000 }); } catch { html = null; }
   let shares = parseShares(html);
@@ -144,7 +147,9 @@ await pool(list, 2, async (code) => {
   } else {
     miss++;
     // Keep any older good value; do not overwrite it with a miss.
-    if (!entries[code] || !(entries[code].shares > 0)) entries[code] = { shares: null, yield: parseYield(html), fetched: new Date().toISOString() };
+    // Keep the vendor's market cap even when the share count is "n/a": the build derives a current
+    // count from it (cap ÷ price), which is the number their own headline is built on.
+    if (!entries[code] || !(entries[code].shares > 0)) entries[code] = { shares: null, marketCap: parseMarketCap(html), yield: parseYield(html), fetched: new Date().toISOString() };
   }
   if (++done % 100 === 0) {
     // Write as we go: a long throttled run still leaves a usable partial side file for the build.

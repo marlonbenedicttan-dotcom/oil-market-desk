@@ -7,56 +7,211 @@
       "label": "IT SERVICES & SOFTWARE",
       "kind": "sector",
       "note": "The export engine: the Indian firms that run the back offices of the world's banks, insurers and retailers. Revenue is billed in dollars and euros, so a weaker rupee helps the margin, and a US slowdown reaches these names before it reaches the index.",
-      "tickers": ["TCS", "INFY", "HCLTECH", "WIPRO", "TECHM", "LTIM", "PERSISTENT", "COFORGE", "MPHASIS", "OFSS"]
+      "tickers": [
+        "TCS",
+        "INFY",
+        "HCLTECH",
+        "WIPRO",
+        "TECHM",
+        "LTIM",
+        "PERSISTENT",
+        "COFORGE",
+        "MPHASIS",
+        "OFSS"
+      ]
     },
     {
       "id": "banks",
       "label": "BANKS & LENDERS",
       "kind": "sector",
       "note": "State banks, private banks and the new small-finance lenders. Net interest margin and the provisioning cycle drive the earnings, which is why these names carry a P/E and a P/B but no free cash flow — a bank's cash flow statement is loans and deposits, not a business.",
-      "tickers": ["HDFCBANK", "ICICIBANK", "SBIN", "KOTAKBANK", "AXISBANK", "INDUSINDBK", "BANDHANBNK", "AUBANK", "FEDERALBNK", "IDFCFIRSTB"]
+      "tickers": [
+        "HDFCBANK",
+        "ICICIBANK",
+        "SBIN",
+        "KOTAKBANK",
+        "AXISBANK",
+        "INDUSINDBK",
+        "BANDHANBNK",
+        "AUBANK",
+        "FEDERALBNK",
+        "IDFCFIRSTB"
+      ]
     },
     {
       "id": "energy",
       "label": "OIL, GAS & REFINING",
       "kind": "sector",
       "note": "Reliance is the private refining and petrochemicals complex plus a telecom and retail arm; the state refiners price off the government's marketing margins. Together they are the crude-to-pump chain for the world's third-largest oil importer.",
-      "tickers": ["RELIANCE", "ONGC", "IOC", "BPCL", "HPCL", "GAIL", "PETRONET", "OIL"]
+      "tickers": [
+        "RELIANCE",
+        "ONGC",
+        "IOC",
+        "BPCL",
+        "HPCL",
+        "GAIL",
+        "PETRONET",
+        "OIL"
+      ]
     },
     {
       "id": "consumer",
       "label": "CONSUMER BRANDS",
       "kind": "sector",
       "note": "The household names: soaps, tea, biscuits, paints and the two-wheeler in the driveway. Volume growth follows the monsoon and the rural wage cycle, which is why these are the market's read on the Indian consumer rather than on the index.",
-      "tickers": ["HINDUNILVR", "ITC", "NESTLEIND", "BRITANNIA", "DABUR", "MARICO", "TATACONSUM", "ASIANPAINT", "TITAN", "DMART", "TRENT"]
+      "tickers": [
+        "HINDUNILVR",
+        "ITC",
+        "NESTLEIND",
+        "BRITANNIA",
+        "DABUR",
+        "MARICO",
+        "TATACONSUM",
+        "ASIANPAINT",
+        "TITAN",
+        "DMART",
+        "TRENT"
+      ]
     },
     {
       "id": "autos",
       "label": "AUTOS & MOBILITY",
       "kind": "sector",
       "note": "Passenger cars, two-wheelers and the electric transition. India is the largest two-wheeler market in the world, and the scooter makers are where electrification is actually showing up in the numbers.",
-      "tickers": ["MARUTI", "M&M", "TATAMOTORS", "BAJAJ-AUTO", "EICHERMOT", "HEROMOTOCO", "TVSMOTOR", "ASHOKLEY"]
+      "tickers": [
+        "MARUTI",
+        "M&M",
+        "TATAMOTORS",
+        "BAJAJ-AUTO",
+        "EICHERMOT",
+        "HEROMOTOCO",
+        "TVSMOTOR",
+        "ASHOKLEY"
+      ]
     },
     {
       "id": "pharma",
       "label": "PHARMACEUTICALS",
       "kind": "sector",
       "note": "Generic manufacturers, the API suppliers behind them and the domestic branded-formulations businesses. The US FDA inspection record matters more here than the rupee.",
-      "tickers": ["SUNPHARMA", "DRREDDY", "CIPLA", "DIVISLAB", "LUPIN", "AUROPHARMA", "TORNTPHARM", "ALKEM"]
+      "tickers": [
+        "SUNPHARMA",
+        "DRREDDY",
+        "CIPLA",
+        "DIVISLAB",
+        "LUPIN",
+        "AUROPHARMA",
+        "TORNTPHARM",
+        "ALKEM"
+      ]
     },
     {
       "id": "capex",
       "label": "INDUSTRIALS & CAPEX",
       "kind": "sector",
       "note": "The order-book economy: engineering, electrical equipment, railways and defence. This is the group the market buys when the government's capital-spending cycle is running.",
-      "tickers": ["LT", "SIEMENS", "ABB", "BHEL", "CUMMINSIND", "THERMAX", "BEL", "HAL"]
+      "tickers": [
+        "LT",
+        "SIEMENS",
+        "ABB",
+        "BHEL",
+        "CUMMINSIND",
+        "THERMAX",
+        "BEL",
+        "HAL"
+      ]
     },
     {
       "id": "metals",
       "label": "METALS & MINING",
       "kind": "sector",
       "note": "Steel, aluminium and the iron-ore miners. Global prices set the realisation and domestic demand sets the volume, so these names trade on the marginal Chinese mill as much as on anything in India.",
-      "tickers": ["TATASTEEL", "JSWSTEEL", "HINDALCO", "VEDL", "COALINDIA", "NMDC", "SAIL", "JINDALSTEL"]
+      "tickers": [
+        "TATASTEEL",
+        "JSWSTEEL",
+        "HINDALCO",
+        "VEDL",
+        "COALINDIA",
+        "NMDC",
+        "SAIL",
+        "JINDALSTEL"
+      ]
+    },
+    {
+      "id": "chemicals",
+      "label": "CHEMICALS & SPECIALTY MATERIALS",
+      "kind": "sector",
+      "note": "Agrochemicals, specialty chemicals and the dyes/pigments complex. India's chemical exporters compete with China on cost and with Europe on quality, so a Chinese price war or a European demand slowdown shows up here before it reaches the index.",
+      "tickers": [
+        "PIIND",
+        "SRF",
+        "UPL",
+        "PIDILITIND",
+        "AARTIIND",
+        "DEEPAKNTR",
+        "ATUL",
+        "NAVINFLUOR",
+        "VINATIORGA",
+        "TATACHEM",
+        "ASTRAL",
+        "SUPREMEIND"
+      ]
+    },
+    {
+      "id": "telecom-digital",
+      "label": "TELECOM & DIGITAL",
+      "kind": "sector",
+      "note": "The three-private-carrier market after consolidation, the tower and fibre owners behind it, and the internet businesses that ride the data pipe. ARPU is the number that moves the first group; engagement and take rate move the second.",
+      "tickers": [
+        "BHARTIARTL",
+        "IDEA",
+        "TATACOMM",
+        "INDUSTOWERS",
+        "HFCL",
+        "NAUKRI",
+        "ROUTE",
+        "TANLA",
+        "AFFLE",
+        "JUSTDIAL"
+      ]
+    },
+    {
+      "id": "realty",
+      "label": "REAL ESTATE",
+      "kind": "sector",
+      "note": "Listed developers and the office/retail landlords. Pre-sales and collections drive the developers; occupancy and re-leasing spreads drive the REITs' competitors. India is unusual in that most of this market is still unlisted, so the listed set is a proxy, not the market.",
+      "tickers": [
+        "DLF",
+        "GODREJPROP",
+        "OBEROIRLTY",
+        "PRESTIGE",
+        "LODHA",
+        "PHOENIXLTD",
+        "BRIGADE",
+        "SOBHA",
+        "MAHLIFE",
+        "SUNTECK"
+      ]
+    },
+    {
+      "id": "psu-capex",
+      "label": "PSU, DEFENCE & RAILWAYS",
+      "kind": "sector",
+      "note": "The state-owned order books: defence electronics and shipyards, railway wagons and electrification, ports and containers. These are the names the market buys when the government's capital-spending cycle runs, and they trade on order inflow more than on trailing earnings.",
+      "tickers": [
+        "HAL",
+        "BEL",
+        "BDL",
+        "BEML",
+        "MAZDOCK",
+        "COCHINSHIP",
+        "GRSE",
+        "RVNL",
+        "IRCON",
+        "CONCOR",
+        "IRFC",
+        "NBCC"
+      ]
     }
   ]
 }

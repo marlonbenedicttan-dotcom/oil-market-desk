@@ -371,7 +371,6 @@ if (!SKIP_FIN) {
     c.reportCurrency = p.reportCurrency || 'INR';
     c.shares = p.shares || null;
     c.periodBasis = p.periodBasis || null;
-    c.sharesBasis = p.sharesBasis || null;
   }
 }
 
@@ -400,6 +399,42 @@ const noPrice = universe.filter((c) => c.shares > 0 && !(c.price > 0)).map((c) =
 if (dropped.length) console.log(`  ${dropped.length} listed companies without a statement page (no shares, no cap)`);
 if (noPrice.length) console.log(`  ${noPrice.length} companies without a price (no cap; excluded rather than estimated)`);
 if (throttled.length) console.log(`  ${throttled.length} companies throttled this run — rerun the build to fill them (nothing was cached as missing)`);
+
+// --- current shares (vendor statistics page) -------------------------------------------------------
+// The filing's diluted count is a period weighted average; a split, bonus or placement after the period
+// end leaves the cap (and P/E, P/B, ROE) stale — Lodha's cap was 49% too high and GMR Airports' 36%.
+// data/india-shares.json is written by fetch-listing-shares.mjs. Where the vendor prints "n/a" (142 of
+// the 494) the filing count is kept, which is the honest fallback, not an estimate.
+const SHARES = (readJson(join(ROOT, 'data', 'india-shares.json')) || {}).entries || {};
+let currentShares = 0, impliedShares = 0;
+for (const c of covered) {
+  const s = SHARES[c.code];
+  c.sharesBasis = 'filing (diluted weighted average)';
+  if (s && s.shares > 0) {
+    c.sharesCurrent = s.shares;
+    c.sharesBasis = 'current (stockanalysis.com)';
+    currentShares++;
+    continue;
+  }
+  // The vendor prints "n/a" for about 140 of the 494, but it still publishes a market cap on that same
+  // page. Cap ÷ price is then the count their headline is built on, which keeps ours consistent with
+  // theirs (and the invariant cap = price × shares holds). Only used when it lands within 0.5–2× of the
+  // filing count, so a stale or glitched cap cannot corrupt the share count.
+  //
+  // Shriram Finance is the one name where the vendor's page contradicts itself after a 5:1 split: its
+  // cap implies ~2.3B shares while its P/E implies ~3.8B. We follow the cap; the audit's cross-check
+  // against their P/E is labelled as that known difference rather than hidden.
+  if (s && s.marketCap > 0 && c.price > 0 && c.shares > 0) {
+    const implied = s.marketCap / c.price;
+    const ratio = implied / c.shares;
+    if (ratio > 0.5 && ratio < 2) {
+      c.sharesCurrent = implied;
+      c.sharesBasis = 'current (vendor market cap ÷ price)';
+      impliedShares++;
+    }
+  }
+}
+if (currentShares || impliedShares) console.log(`  ${currentShares} on a current share count · ${impliedShares} from the vendor cap ÷ price · ${covered.length - currentShares - impliedShares} on the filing count`);
 
 // --- 4. FX ----------------------------------------------------------------------------------------
 // One USD table gives the INR cross and every report-currency cross. A missing table leaves the ratios
@@ -568,6 +603,7 @@ const audit = {
   pe: cleaned.filter((c) => c.pe != null).length,
   pb: cleaned.filter((c) => c.pb != null).length,
   roe: cleaned.filter((c) => c.roe != null).length,
+  currentShares: cleaned.filter((c) => c.sharesCurrent > 0).length,
   netProfitTTM: cleaned.filter((c) => c.netIncomeTTM != null).length,
   financials: cleaned.filter((c) => c.financial).length,
   bankLike: cleaned.filter((c) => c.bankLike).length,

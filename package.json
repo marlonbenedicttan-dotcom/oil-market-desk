@@ -50,7 +50,8 @@
     "companies:details": "node scripts/build-company-details.mjs",
     "build:india": "node scripts/build-india.mjs && node scripts/fetch-india-profiles.mjs && node scripts/build-india.mjs --skip-prices --skip-fin",
     "audit:india": "node scripts/audit-india.mjs",
-    "refresh:india": "node scripts/build-india.mjs --fresh && node scripts/fetch-india-profiles.mjs && node scripts/build-india.mjs --skip-prices --skip-fin"
+    "refresh:india": "node scripts/build-india.mjs --fresh && node scripts/fetch-india-profiles.mjs && node scripts/fetch-listing-shares.mjs india && node scripts/build-india.mjs --skip-prices --skip-fin",
+    "shares:india": "node scripts/fetch-listing-shares.mjs india"
   },
   "engines": {
     "node": ">=22"

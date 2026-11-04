@@ -3841,11 +3841,11 @@ Audited at 360, 390 and 430 px with screenshots of every view, then fixed what l
   `--prices-only` warms Yahoo. Caches: `data/cache/nse/{yahoo,profiles}` and `data/cache/india-sa`.
 - **Output**: `data/india.json`, `data/india-series/{A..Z,0..9}.json` (one-character buckets), `data/india-
   list.json`, `data/india-companies/`, `data/india-profiles.json`, `data/india-brands.json`,
-  `data/india-themes.json` (8 curated lists).
+  `data/india-themes.json` (12 curated lists).
 - **Server**: `/api/india`, `/api/india/company/{code}`, `/api/india/chart?code=&range=`. The UI adds a
   seventh region button (`INDIA`) with MARKET / SCREENER / THEMES, the home screener row, a company page,
   search (`in:M&M`), peers and compare. `INR` is in the FX table.
-- **Built (2026-11-05):** **492 companies** · 471 P/E · 487 P/B · 489 ROE · 492 descriptions · 20 sectors ·
+- **Built (2026-11-05):** **494 companies** · 473 P/E · 489 P/B · 491 ROE · 494 descriptions · 20 sectors ·
   59 bank-like / 96 financials · 2 USD reporters · 0 throttled · 3 excluded for an inconsistent trailing
   column · total cap ₹412.8T · median P/E 33.1 · P/B 4.33 · ROE 13.9% · NIFTY 50 23,961.
   `npm run audit:india` passes all hard invariants (cap = price × shares, every ratio reproduces from its
@@ -3854,6 +3854,13 @@ Audited at 360, 390 and 430 px with screenshots of every view, then fixed what l
 - **Tests**: `tests/nse.test.js` (BOM/quotes, ordinary-line filter, `&`/`-` slugs, Yahoo encoding, bank vs
   insurer) and `tests/india-data.test.js` (cap, ratio reproduction with the USD cross, bank rules, totals,
   index, list projection). `npm test` at 415.
+- **Current share counts.** The filing's diluted count is a period weighted average; a split or a
+  placement leaves the cap stale (Lodha's was 49% too high, GMR Airports' 36%). `fetch-listing-shares.mjs
+  india` writes `data/india-shares.json`: 352 companies get the vendor's current count, 142 (the vendor
+  prints "n/a") get `vendor market cap ÷ price`, and every cap now matches the vendor's headline within
+  10%. Shriram Finance is the one name where the vendor's page contradicts itself after a 5:1 split —
+  its cap implies ~2.3B shares, its P/E implies ~3.8B; we follow the cap and the audit reports the P/E
+  difference rather than hiding it.
 - **Schedule**: `.github/workflows/india-daily.yml`, 10:40 UTC Mon–Fri (16:10 IST), with the statement
   cache, `merge-history in`, `merge-series in`, the collapse guard and `audit:india` before the commit.
   `check-freshness` watches `india.json` at 84h.
