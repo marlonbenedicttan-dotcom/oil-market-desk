@@ -74,7 +74,7 @@ const coveredCount = () => universe.filter((c) => c.shares > 0).length;
 const SKIP_FIN = flag('skip-fin');
 const FRESH = flag('fresh');
 const TTL_DAY = 6 * 3600e3;
-const TTL_FIN = 7 * DAY;
+const TTL_FIN = 1 * DAY;   // daily: a new filing's annual/cash pages must not wait a week
 const TTL_Q = 1 * DAY;
 
 async function pool(items, limit, fn) {
