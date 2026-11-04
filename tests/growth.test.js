@@ -1,7 +1,7 @@
 // Growth rates are shared by the US and Japan pages, so the rules are tested once here.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { growthRates, fromJapanHistory, growthFromAnnuals, marginDeltaFromAnnuals } from '../src/growth.js';
+import { growthRates, fromJapanHistory, growthFromAnnuals, marginDeltaFromAnnuals, growthFromUsSeries } from '../src/growth.js';
 
 // A flat share count means no split: buybacks and small issuance are not adjustments.
 const sh = (year, revenue, eps) => ({ year, revenue, eps, shares: 1000 });
@@ -141,6 +141,36 @@ test('net margin change uses the same annual window as the CAGR', () => {
     { end: '2026-12-31', revenue: 200, netIncome: 30 },
   ]), 5);
   assert.equal(marginDeltaFromAnnuals([{ end: '2026-12-31', revenue: 100, netIncome: 10 }]), null);
+});
+
+test('US annual growth follows the merged series with as-filed EPS', () => {
+  const series = [
+    { fy: 2021, revenue: 100, netIncome: 10, eps: 1 },
+    { fy: 2022, revenue: 110, netIncome: 11, eps: 1.1 },
+    { fy: 2023, revenue: 121, netIncome: 12.1, eps: 1.21 },
+    { fy: 2024, revenue: 133.1, netIncome: 13.31, eps: 1.331 },
+    { fy: 2025, revenue: 146.41, netIncome: 14.641, eps: 1.4641 },
+    { fy: 2026, revenue: 161.051, netIncome: 16.1051, eps: 1.61051 },
+  ];
+  const g = growthFromUsSeries(series, 10);
+  assert.equal(g.cagrYears, 5);
+  assert.equal(g.revenueCagr, 10);
+  assert.equal(g.epsCagr, 10);
+  assert.equal(g.marginDelta, 0);
+});
+
+test('US series fills a missing EPS from net income and reports a loss move', () => {
+  const g = growthFromUsSeries([
+    { fy: 2022, revenue: 100, netIncome: -10, eps: null },
+    { fy: 2023, revenue: 110, netIncome: 5, eps: null },
+    { fy: 2024, revenue: 121, netIncome: 15, eps: null },
+    { fy: 2025, revenue: 133.1, netIncome: 20, eps: null },
+    { fy: 2026, revenue: 146.41, netIncome: 25, eps: null },
+  ], 1000);
+  assert.equal(g.epsCagr, null);
+  assert.equal(g.epsCagrNA, 'a loss in the first or last year');
+  assert.equal(g.epsChange.from, -0.01);
+  assert.equal(g.epsChange.to, 0.03);
 });
 
 test('without share counts the split check is flagged and the EPS figure withheld', () => {

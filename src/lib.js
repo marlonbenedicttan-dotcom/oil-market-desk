@@ -1296,7 +1296,13 @@ export function reconcileTtm(rows) {
 export function mergePeriods(prev, next, key) {
   const list = Array.isArray(next) ? next : [];
   const before = Array.isArray(prev) ? prev : [];
-  const dateOf = (r) => (r && typeof r[key] === 'string' ? r[key] : null);
+  const dateOf = (r) => {
+    const v = r && r[key];
+    if (typeof v === 'string') return v;
+    // The US fiscal-year table keys on a numeric `fy` (2025), not a date string.
+    if (typeof v === 'number' && Number.isFinite(v)) return String(v);
+    return null;
+  };
   const fresh = list.filter((r) => dateOf(r));
   if (!fresh.length) return before;
   const oldest = fresh.reduce((m, r) => (dateOf(r) < m ? dateOf(r) : m), dateOf(fresh[0]));

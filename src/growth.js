@@ -97,6 +97,64 @@ export function growthRates(rows) {
 
 // Japan's history uses short keys (y/s/e) and a fiscal-year end date. Normalise it once here so the
 // build and the server cannot disagree about what "year" means.
+// The US annual table (`series`) uses a numeric fiscal year and carries as-filed EPS. It is not
+// split-verified like J-Quants, so a missing EPS is filled from net income ÷ the current share count.
+// The per-year share count is implied by net income ÷ EPS, which lets the shared split check work; two
+// guards then withhold a rate built on two different share bases (NVDA's spin-off, JNJ/Kenvue).
+export function growthFromUsSeries(series, shares = null) {
+  const hist = (series || [])
+    .filter((r) => r && r.fy != null && Number.isFinite(Number(r.fy)))
+    .slice()
+    .sort((a, b) => Number(a.fy) - Number(b.fy))
+    .map((r) => ({ ...r }));
+  const count = Number(shares);
+  if (count > 0) {
+    for (const s of hist) {
+      if (!(s.eps > 0) && s.netIncome != null) s.eps = +(s.netIncome / count).toFixed(2);
+    }
+  }
+  const first = hist[0];
+  const last = hist[hist.length - 1];
+  const span = first && last ? Number(last.fy) - Number(first.fy) : 0;
+  const growthRows = hist.map((s) => ({
+    year: Number(s.fy),
+    revenue: s.revenue,
+    eps: s.eps,
+    shares: s.netIncome != null && s.eps !== 0 && s.eps != null && Math.sign(s.netIncome) === Math.sign(s.eps)
+      ? s.netIncome / s.eps
+      : null,
+  }));
+  const growth = growthRates(growthRows);
+  const implied = [growthRows[0]?.shares, growthRows[growthRows.length - 1]?.shares];
+  const inconsistent = !growth.epsSplitAdjusted && count > 0
+    && implied.some((x) => x > 0 && (x / count > 1.6 || x / count < 0.67));
+
+  const out = {
+    revenueCagr: growth.revenueCagr,
+    epsCagr: inconsistent ? null : growth.epsCagr,
+    cagrYears: growth.cagrYears,
+    cagrNA: growth.cagrNA,
+    epsCagrNA: inconsistent ? 'EPS/share-count series is inconsistent' : growth.epsCagrNA,
+    epsSplitAdjusted: growth.epsSplitAdjusted,
+    epsSplitUnverified: growth.epsSplitUnverified,
+    ...(!inconsistent && growth.epsChange ? { epsChange: growth.epsChange } : {}),
+  };
+  // A split adjustment can still be a false positive (JNJ/Kenvue, NFLX's mixed EPS tags). If the EPS
+  // rate is wildly different from the net-income rate, withhold it rather than publish a fake number.
+  const niCagr = first && last && span >= 2 && first.netIncome > 0 && last.netIncome > 0
+    ? +(((last.netIncome / first.netIncome) ** (1 / span) - 1) * 100).toFixed(1) : null;
+  if (out.epsCagr != null && niCagr != null && Math.abs(out.epsCagr - niCagr) > 30) {
+    out.epsCagr = null;
+    out.epsCagrNA = 'EPS growth does not reconcile to net-income growth';
+    delete out.epsChange;
+  }
+  out.marginDelta = first && last && first.revenue > 0 && last.revenue > 0
+    && first.netIncome != null && last.netIncome != null
+    ? +(((last.netIncome / last.revenue) - (first.netIncome / first.revenue)) * 100).toFixed(1)
+    : null;
+  return out;
+}
+
 export const fromJapanHistory = (history) => (history || []).map((r) => ({
   year: r && r.y ? new Date(r.y).getUTCFullYear() : null,
   revenue: r ? r.s : null,

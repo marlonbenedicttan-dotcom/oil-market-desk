@@ -9,7 +9,7 @@
 //   - A share count of 1 is a broken cover-page fact, not a company.
 
 import { readFileSync, writeFileSync, renameSync } from 'node:fs';
-import { growthRates } from '../src/growth.js';
+import { growthFromUsSeries } from '../src/growth.js';
 
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -260,61 +260,18 @@ for (const c of data.companies) {
   c.assetTurnover = c.revenue && c.assets > 0 ? +(c.revenue / c.assets).toFixed(2) : null;
 
   // --- growth and quality ---------------------------------------------------
-  const hist = (c.series || []).slice().sort((x, y) => x.fy - y.fy);
   // Some filers never tag EPS (Berkshire, Visa, Monster). Net income ÷ shares is the same number and
   // lets the growth series exist at all.
-  if (c.shares) {
-    for (const s of hist) {
-      if (!(s.eps > 0) && s.netIncome != null) s.eps = +(s.netIncome / c.shares).toFixed(2);
-    }
-    if (!(c.eps > 0) && c.netIncome != null) c.eps = +(c.netIncome / c.shares).toFixed(2);
-  }
-  const first = hist[0];
-  const last = hist[hist.length - 1];
-  const span = first && last ? last.fy - first.fy : 0;
-  // Use the shared split-aware helper. The per-year share count is implied by net income ÷ EPS, so a
-  // split shows up as a jump in that count and is restated before the CAGR is taken.
-  const growthRows = hist.map((s) => ({
-    year: s.fy,
-    revenue: s.revenue,
-    eps: s.eps,
-    shares: s.netIncome != null && s.eps !== 0 && s.eps != null && Math.sign(s.netIncome) === Math.sign(s.eps)
-      ? s.netIncome / s.eps
-      : null,
-  }));
-  const growth = growthRates(growthRows);
-  // A spin-off or a bad EPS tag can move the implied share count without being a common split. If the
-  // first/last row cannot be reconciled to today's count, withhold the EPS CAGR rather than publish a
-  // number built on two different share bases (NVDA 2022 implied 57B vs 24.5B today).
-  const implied = [growthRows[0]?.shares, growthRows.at(-1)?.shares];
-  const inconsistent = !growth.epsSplitAdjusted && c.shares > 0
-    && implied.some((x) => x > 0 && (x / c.shares > 1.6 || x / c.shares < 0.67));
+  if (c.shares && !(c.eps > 0) && c.netIncome != null) c.eps = +(c.netIncome / c.shares).toFixed(2);
+  // Shared with merge-history: when the annual `series` grows beyond the vendor's window, the same
+  // rules (implied share count, split restatement, inconsistency guards) recompute the growth fields.
+  Object.assign(c, growthFromUsSeries(c.series, c.shares));
   // Trailing EPS: the per-share tag is missing for a quarter of the index, but net income ÷ shares is
   // the same number and both inputs exist. Marked so the page can say it was derived.
   if (c.epsTTM == null && c.netIncomeTTM != null && c.shares > 0) {
     c.epsTTM = +(c.netIncomeTTM / c.shares).toFixed(2);
     c.epsTTMBasis = 'net income ÷ shares';
   }
-  c.revenueCagr = growth.revenueCagr;
-  c.epsCagr = inconsistent ? null : growth.epsCagr;
-  c.cagrYears = growth.cagrYears;
-  c.cagrNA = growth.cagrNA;
-  c.epsCagrNA = inconsistent ? 'EPS/share-count series is inconsistent' : growth.epsCagrNA;
-  c.epsSplitAdjusted = growth.epsSplitAdjusted;
-  c.epsSplitUnverified = growth.epsSplitUnverified;
-  if (!inconsistent && growth.epsChange) c.epsChange = growth.epsChange;
-  // A split adjustment can still be a false positive (JNJ/Kenvue, NFLX's mixed EPS tags). If the
-  // resulting EPS rate is wildly different from the net-income rate, the EPS series is not on one
-  // consistent share basis; withhold it rather than publish a 48% "growth" for a 9% profit grower.
-  const niCagr = first && last && span >= 2 && first.netIncome > 0 && last.netIncome > 0
-    ? +(((last.netIncome / first.netIncome) ** (1 / span) - 1) * 100).toFixed(1) : null;
-  if (c.epsCagr != null && niCagr != null && Math.abs(c.epsCagr - niCagr) > 30) {
-    c.epsCagr = null;
-    c.epsCagrNA = 'EPS growth does not reconcile to net-income growth';
-    delete c.epsChange;
-  }
-  c.marginDelta = first?.revenue && last?.revenue && first.netIncome != null && last.netIncome != null
-    ? +(((last.netIncome / last.revenue) - (first.netIncome / first.revenue)) * 100).toFixed(1) : null;
 
   // Return on capital: net income ÷ (equity + debt − cash). Approximate, and only where the inputs exist.
   const invested = c.equity != null ? c.equity + (c.debt || 0) - (c.cash || 0) : null;

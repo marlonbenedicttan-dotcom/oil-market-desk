@@ -24,7 +24,7 @@ import { execFileSync } from 'node:child_process';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { mergePeriods } from '../src/lib.js';
-import { growthRates, fromJapanHistory, growthFromAnnuals, marginDeltaFromAnnuals } from '../src/growth.js';
+import { growthRates, fromJapanHistory, growthFromAnnuals, marginDeltaFromAnnuals, growthFromUsSeries } from '../src/growth.js';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const DRY = process.argv.includes('--dry-run');
@@ -78,10 +78,11 @@ const MARKETS = {
       ['quarters', c.quarters, 'd'],
     ],
   },
-  // The US has no per-company detail directory: the whole record lives in companies.json.
+  // The US has no per-company detail directory: the whole record lives in companies.json. Its
+  // annual table is `series` (numeric fiscal year), so growth follows the merged record too.
   us: {
     file: 'companies.json', detail: null,
-    tables: (c) => [['quarters', c.quarters, 'end']],
+    tables: (c) => [['series', c.series, 'fy'], ['quarters', c.quarters, 'end']],
   },
 };
 
@@ -147,7 +148,9 @@ for (const id of ids) {
       // Growth must follow the merged record for every market that publishes it. The build only sees
       // the vendor's rolling five years, so without this the table could hold ten years while the
       // CAGR stayed a four-year number forever. Recompute only when a company actually gained periods.
-      if (id === 'jp' && Array.isArray(c.history)) {
+      if (id === 'us' && Array.isArray(c.series)) {
+        Object.assign(c, growthFromUsSeries(c.series, c.shares));
+      } else if (id === 'jp' && Array.isArray(c.history)) {
         Object.assign(c, growthRates(fromJapanHistory(c.history)));
       } else {
         const annuals = annualsFor(id, c);

@@ -7859,14 +7859,14 @@ async function renderCompanyPageBody(el, c, all) {
           : '';
         return `<div class="macro-note">GAAP, as filed — no estimates, no adjusted figures. Market cap is Nasdaq's quote data; P/E, P/B and EV/EBITDA are computed from it and the filing's own earnings, equity, debt and cash. ${lf ? 'Latest filing' : 'Latest annual report'}${stamp} · ${link}</div>`;
       })()
-    + (series.length ? `<div class="gtitle">FIVE-YEAR FINANCIALS</div>
-      <div class="co-table">
+    + (series.length ? `<div class="gtitle">FISCAL-YEAR RECORD · ${series.length}</div>
+      <div class="jp-q-scroll"><div class="co-table">
         <div class="co-tr co-th"><span>FY</span><span>REVENUE</span><span>NET INCOME</span><span>MARGIN</span><span>ASSETS</span><span>EQUITY</span><span>EPS</span></div>
         ${series.map((s) => {
           const mg = s.revenue && s.netIncome != null ? (s.netIncome / s.revenue) * 100 : null;
           return `<div class="co-tr"><span>${s.fy}</span><span>${val(s.revenue)}</span><span class="${s.netIncome >= 0 ? 'pos' : 'neg'}">${val(s.netIncome)}</span><span>${mg == null ? '—' : mg.toFixed(1) + '%'}</span><span>${val(s.assets)}</span><span>${val(s.equity)}</span><span>${s.eps != null ? '$' + s.eps.toFixed(2) : '—'}</span></div>`;
         }).join('')}
-      </div>` : '')
+      </div></div>` : '')
     + (() => {
         // Newest first, the same order Japan and Korea use.
         const qs = (c.quarters || []).filter((q) => q.revenue != null || q.netIncome != null).slice().reverse();

@@ -716,6 +716,15 @@ test('sourceTier puts Bloomberg and the FT above a single wire', () => {
   assert.equal(sourceTier('Some Blog'), 0);
 });
 
+test('mergePeriods accepts a numeric fiscal-year key', () => {
+  const merged = mergePeriods(
+    [{ fy: 2021, revenue: 10 }, { fy: 2022, revenue: 11 }],
+    [{ fy: 2022, revenue: 11 }, { fy: 2023, revenue: 12 }],
+    'fy',
+  );
+  assert.deepEqual(merged.map((r) => r.fy), [2021, 2022, 2023]);
+});
+
 test('mergePeriods keeps years that scrolled off the vendor page', () => {
   // The vendor shows a rolling five-year window; the platform keeps what it has.
   const prev = [
