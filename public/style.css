@@ -1502,6 +1502,35 @@ button.deal-sec-tile:hover { background: #10151b; }
   font-size: 9px; padding: 5px 6px; border-radius: 2px; }
 @media (max-width: 640px) { .sc-pager { gap: 6px; font-size: 9px; } .sc-pager .co-tgl { min-width: 0; padding: 5px 7px; } }
 
+/* Back to top — a page of companies is two or three screens tall, and NEXT leaves you at the bottom
+   of it. Same amber chip as the drill-down back button, parked in the corner where the thumb already
+   is; visibility:hidden keeps it out of the tab order until the list header is off screen. */
+.totop {
+  position: fixed; z-index: 900;
+  right: max(14px, env(safe-area-inset-right));
+  bottom: calc(14px + env(safe-area-inset-bottom));
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 8px 12px 8px 10px;
+  background: rgba(255, 158, 0, .10);
+  border: 1px solid rgba(255, 158, 0, .55);
+  color: var(--amber);
+  font: 700 10px/1 var(--mono); letter-spacing: 1.2px; text-transform: uppercase;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, .55);
+  cursor: pointer;
+  opacity: 0; visibility: hidden; transform: translateY(8px);
+  transition: opacity .18s ease, transform .18s ease, visibility .18s, background .15s ease, border-color .15s ease;
+}
+.totop.on { opacity: 1; visibility: visible; transform: none; }
+.totop:hover { background: rgba(255, 158, 0, .18); border-color: var(--amber); color: var(--amber2); }
+.totop:active { background: rgba(255, 158, 0, .26); }
+.totop:focus-visible { outline: 2px solid var(--amber2); outline-offset: 2px; }
+.totop-i { font-size: 14px; line-height: 1; margin-top: -1px; }
+@media (max-width: 640px) {
+  .totop { min-height: 44px; padding: 0 14px 0 12px; font-size: 11px; bottom: calc(12px + env(safe-area-inset-bottom)); }
+  .totop-i { font-size: 17px; }
+}
+@media (prefers-reduced-motion: reduce) { .totop { transition: none; } }
+
 /* Companies: one market at a time. A colour per market and a badge that follows you into a company
    page, so you always know which market you are looking at. */
 #p-deals[data-market="us"] { --mkt: #4f8cff; }
