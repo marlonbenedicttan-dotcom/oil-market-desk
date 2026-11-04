@@ -10,6 +10,15 @@ const read = (f) => JSON.parse(readFileSync(join(ROOT, 'data', f), 'utf8'));
 const ind = read('india.json');
 const list = read('india-list.json');
 
+test('growth is computed from the annual record and survives the list', () => {
+  const c = ind.companies.find((x) => x.ticker === 'RELIANCE');
+  assert.ok(c, 'Reliance is present');
+  assert.ok(c.revenueCagr != null, 'revenue CAGR is computed');
+  assert.ok(c.epsCagr != null || c.epsChange, 'EPS growth is computed');
+  const listed = list.companies.find((x) => x.ticker === 'RELIANCE');
+  assert.ok(listed && 'revenueCagr' in listed, 'growth survives the list projection');
+});
+
 test('the NIFTY 500 build has a real universe', () => {
   assert.ok(ind.companies.length > 300, `only ${ind.companies.length} companies`);
   assert.equal(ind.currency, 'INR');

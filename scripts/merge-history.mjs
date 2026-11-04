@@ -91,7 +91,7 @@ const codeOf = (c) => c.code || c.ticker;
 // The annual table each market's growth fields are rebuilt from after older periods are merged.
 const annualsFor = (id, c) => {
   if (id === 'kr') return (c.reports || []).filter((r) => r && r.report === 'annual' && r.end);
-  if (id === 'tw' || id === 'hk' || id === 'au') return (c.reports && c.reports.annual) || [];
+  if (id === 'tw' || id === 'hk' || id === 'au' || id === 'in') return (c.reports && c.reports.annual) || [];
   return null;
 };
 const getPath = (obj, path) => path.split('.').reduce((o, k) => (o == null ? o : o[k]), obj);
