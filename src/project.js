@@ -68,6 +68,7 @@ export const projectTw = (c) => ({
   chg1d: c.chg1d, chg6m: c.chg6m, chgYtd: c.chgYtd,
   pe: c.pe, pb: c.pb, roe: c.roe, opMargin: c.opMargin,
   dividendYield: c.dividendYield ?? null,
+  ...growthFields(c),
   bands: c.bands && c.bands.pe ? { pe: { percentile: c.bands.pe.percentile } } : null,
 });
 

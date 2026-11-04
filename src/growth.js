@@ -103,3 +103,40 @@ export const fromJapanHistory = (history) => (history || []).map((r) => ({
   eps: r ? r.e : null,
   shares: r ? r.sh : null,
 }));
+
+// Build growth rows from a market's annual statement table (Hong Kong, Australia, Korea, Taiwan).
+// The per-year share count is the EPS denominator when the vendor supplies it; otherwise net income
+// ÷ EPS is the count that produced that year's EPS, which is what makes the split check work where a
+// row carries no share count (Taiwan's stock dividends, DART's inconsistent ShOutFY).
+export function growthFromAnnuals(annuals, fallbackShares = null) {
+  const rows = (annuals || [])
+    .filter((r) => r && r.end)
+    .slice()
+    .sort((a, b) => String(a.end).localeCompare(String(b.end)))
+    .map((r) => {
+      const shares = r.shares > 0 ? r.shares
+        : r.sharesOutstanding > 0 ? r.sharesOutstanding
+          : (r.netIncome != null && r.eps && Math.sign(r.netIncome) === Math.sign(r.eps)
+            ? r.netIncome / r.eps
+            : fallbackShares);
+      const eps = r.eps != null
+        ? r.eps
+        : (r.netIncome != null && fallbackShares > 0 ? r.netIncome / fallbackShares : null);
+      return { year: Number(String(r.end).slice(0, 4)), revenue: r.revenue, eps, shares };
+    });
+  return growthRates(rows);
+}
+
+// Net margin change between the first and last annual period on file — the same window as the CAGR.
+export function marginDeltaFromAnnuals(annuals) {
+  const a = (annuals || [])
+    .filter((r) => r && r.end)
+    .slice()
+    .sort((x, y) => String(x.end).localeCompare(String(y.end)));
+  if (a.length < 2) return null;
+  const first = a[0];
+  const last = a[a.length - 1];
+  if (!(first.revenue > 0) || !(last.revenue > 0)) return null;
+  if (first.netIncome == null || last.netIncome == null) return null;
+  return +(((last.netIncome / last.revenue) - (first.netIncome / first.revenue)) * 100).toFixed(1);
+}

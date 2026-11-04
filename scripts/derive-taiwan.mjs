@@ -4,6 +4,8 @@
 // a TTM column, so the build carries TTM income/cash figures and the four most recent quarterly rows.
 // Everything here is a guard around the same ratios the other three markets use.
 
+import { growthFromAnnuals, marginDeltaFromAnnuals } from '../src/growth.js';
+
 const round = (v, dp) => (v == null ? null : +v.toFixed(dp));
 const guard = (v, lo, hi) => (v != null && v > lo && v < hi ? v : null);
 
@@ -52,6 +54,11 @@ export function deriveTaiwan({ companies, fx = null }) {
       };
     }
 
+    // Growth from the same annual record, with the split check shared by every market. Taiwan's
+    // annual rows carry no share count, so the helper derives it from net income ÷ EPS.
+    const growth = growthFromAnnuals(annual, shares);
+    const marginDelta = marginDeltaFromAnnuals(annual);
+
     out.push({
       ...c,
       marketCap: cap,
@@ -75,6 +82,8 @@ export function deriveTaiwan({ companies, fx = null }) {
       })),
       quarters: (c.quarters || []).slice(-8),
       bands,
+      ...growth,
+      marginDelta,
     });
   }
   return out;

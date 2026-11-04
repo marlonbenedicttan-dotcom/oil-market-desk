@@ -4890,7 +4890,7 @@ function jpHistoryHtml(c) {
       </tr>`;
   }).join('');
   return `<div class="jp-q">
-      <div class="jp-q-head"><span class="ph-t">FIVE-YEAR RECORD</span><span class="dimtext">${h.length} fiscal years · ¥ yen</span></div>
+      <div class="jp-q-head"><span class="ph-t">FISCAL-YEAR RECORD</span><span class="dimtext">${h.length} fiscal years · ¥ yen</span></div>
       <table class="jp-q-table">
         <thead><tr><th>FISCAL YEAR</th><th>NET SALES</th><th>OP PROFIT</th><th>NET PROFIT</th><th>ROE</th><th>EQUITY RATIO</th><th>DIV / SHARE</th></tr></thead>
         <tbody>${rows}</tbody>
@@ -5481,7 +5481,7 @@ async function renderKoreaPage(stub) {
     + `<div class="co-rets" id="kr-rets"></div>`
               + `<div class="co-chartwrap"><div class="co-big" id="kr-big"></div><canvas id="kr-chart"></canvas></div>`
     + '<div id="kr-peers-x"></div>'
-    + (h.length > 1 ? `<div class="jp-q"><div class="jp-q-head"><span class="ph-t">FIVE-YEAR RECORD</span><span class="dimtext">${h.length} fiscal years · ₩</span></div>
+    + (h.length > 1 ? `<div class="jp-q"><div class="jp-q-head"><span class="ph-t">FISCAL-YEAR RECORD</span><span class="dimtext">${h.length} fiscal years · ₩</span></div>
         <table class="jp-q-table"><thead><tr><th>FISCAL YEAR</th><th>REVENUE</th><th>OP PROFIT</th><th>NET PROFIT</th><th>ROE</th></tr></thead><tbody>
         ${[...h].reverse().map((x) => `<tr><td>${esc(x.y)}</td><td>${won(x.s)}</td><td>${won(x.o)}</td><td>${won(x.n)}</td><td>${x.n != null && x.q ? `${((x.n / x.q) * 100).toFixed(1)}%` : '—'}</td></tr>`).join('')}
         </tbody></table></div>` : '')
@@ -5773,6 +5773,22 @@ async function renderTaiwanPage(stub) {
         ${cell('NET MARGIN', c.netMargin != null ? `${c.netMargin.toFixed(1)}%` : '—', 'Net profit ÷ revenue', c.netMargin >= 0 ? 'pos' : 'neg')}
         ${cell('DIVIDEND YIELD', c.dividendYield != null ? `${c.dividendYield.toFixed(2)}%` : '—', 'TWSE official dividend yield')}
       </div>`
+    + `<div class="co-stats co-stats-12">
+        ${cell(`REVENUE CAGR${c.cagrYears ? ' · ' + c.cagrYears + 'Y' : ''}`, c.revenueCagr != null ? `${c.revenueCagr.toFixed(1)}%` : '—', c.cagrNA ? `No growth rate: ${c.cagrNA}.` : `Compound annual revenue growth over ${c.cagrYears} fiscal years`, c.revenueCagr != null ? (c.revenueCagr >= 0 ? 'pos' : 'neg') : '')}
+        ${(() => {
+          const e = c.epsCagr != null
+            ? { v: `${c.epsCagr.toFixed(1)}%`, cls: c.epsCagr >= 0 ? 'pos' : 'neg', t: `Compound annual EPS growth over ${c.cagrYears} fiscal years${c.epsSplitAdjusted ? ' (split-adjusted)' : ''}` }
+            : c.epsChange
+              ? (() => {
+                  const money = (v) => `${v < 0 ? '\u2212' : ''}NT$${Math.abs(v).toFixed(2)}`;
+                  return { v: `${money(c.epsChange.from)} \u2192 ${money(c.epsChange.to)}`, cls: c.epsChange.to >= 0 ? 'pos' : 'neg', t: `No CAGR: ${c.epsCagrNA}. EPS went from ${money(c.epsChange.from)} in FY${c.epsChange.fromFy} to ${money(c.epsChange.to)} in FY${c.epsChange.toFy}.` };
+                })()
+              : { v: '—', cls: '', t: c.epsCagrNA ? `No EPS growth: ${c.epsCagrNA}.` : 'No EPS growth rate' };
+          return cell(`EPS GROWTH${c.cagrYears ? ' · ' + c.cagrYears + 'Y' : ''}`, e.v, e.t, e.cls);
+        })()}
+        ${cell('NET MARGIN CHANGE', c.marginDelta != null ? `${c.marginDelta >= 0 ? '+' : ''}${c.marginDelta.toFixed(1)}pp` : '—', 'Change in net margin between the first and last fiscal year on file', c.marginDelta != null ? (c.marginDelta >= 0 ? 'pos' : 'neg') : '')}
+        <div class="co-stat co-stat-void" aria-hidden="true"></div>
+      </div>`
     + (() => {
         const fig = statementFigures(c, 'tw');
         const when = periodLabel(fig.flows.basis, fig.flows.end);
@@ -5800,7 +5816,7 @@ async function renderTaiwanPage(stub) {
     + `<div class="co-rets" id="tw-rets"></div>`
     + `<div class="co-chartwrap"><div class="co-big" id="tw-big"></div><canvas id="tw-chart"></canvas></div>`
     + '<div id="tw-peers-x"></div>'
-    + (h.length > 1 ? `<div class="jp-q"><div class="jp-q-head"><span class="ph-t">FIVE-YEAR RECORD</span><span class="dimtext">${h.length} fiscal years · NT$</span></div>
+    + (h.length > 1 ? `<div class="jp-q"><div class="jp-q-head"><span class="ph-t">FISCAL-YEAR RECORD</span><span class="dimtext">${h.length} fiscal years · NT$</span></div>
         <table class="jp-q-table"><thead><tr><th>FISCAL YEAR</th><th>REVENUE</th><th>OP PROFIT</th><th>NET PROFIT</th><th>ROE</th></tr></thead><tbody>
         ${[...h].reverse().map((x) => `<tr><td>${esc(x.y)}</td><td>${twMoney(x.s)}</td><td>${twMoney(x.o)}</td><td>${twMoney(x.n)}</td><td>${x.n != null && x.q ? `${((x.n / x.q) * 100).toFixed(1)}%` : '—'}</td></tr>`).join('')}
         </tbody></table></div>` : '')
@@ -6203,7 +6219,7 @@ async function renderHongKongPage(stub) {
     + '<div id="hk-peers-x"></div>'
     + (h.length > 1 ? (() => {
         const rows = [...h].reverse();
-        return `<div class="jp-q"><div class="jp-q-head"><span class="ph-t">FIVE-YEAR RECORD</span><span class="dimtext">${h.length} fiscal years · ${ccy}</span></div>
+        return `<div class="jp-q"><div class="jp-q-head"><span class="ph-t">FISCAL-YEAR RECORD</span><span class="dimtext">${h.length} fiscal years · ${ccy}</span></div>
         <table class="jp-q-table"><thead><tr><th>FISCAL YEAR</th><th>REVENUE</th>${fin ? '' : '<th>OP PROFIT</th>'}<th>NET PROFIT</th><th>ROE</th></tr></thead><tbody>
         ${rows.map((x) => `<tr><td>${esc(x.y)}</td><td>${cur(x.s)}</td>${fin ? '' : `<td>${cur(x.o)}</td>`}<td>${cur(x.n)}</td><td>${x.n != null && (x.ec ?? x.q) ? `${((x.n / (x.ec ?? x.q)) * 100).toFixed(1)}%` : '—'}</td></tr>`).join('')}
         </tbody></table></div>`;
@@ -6561,7 +6577,7 @@ async function renderAustraliaPage(stub) {
     + `<div class="co-rets" id="au-rets"></div>`
     + `<div class="co-chartwrap"><div class="co-big" id="au-big"></div><canvas id="au-chart"></canvas></div>`
     + '<div id="au-peers-x"></div>'
-    + (h.length > 1 ? `<div class="jp-q"><div class="jp-q-head"><span class="ph-t">FIVE-YEAR RECORD</span><span class="dimtext">${h.length} fiscal years · ${ccy}</span></div>
+    + (h.length > 1 ? `<div class="jp-q"><div class="jp-q-head"><span class="ph-t">FISCAL-YEAR RECORD</span><span class="dimtext">${h.length} fiscal years · ${ccy}</span></div>
         <table class="jp-q-table"><thead><tr><th>FISCAL YEAR</th><th>REVENUE</th>${bank ? '' : '<th>OP PROFIT</th>'}<th>NET PROFIT</th><th>ROE</th></tr></thead><tbody>
         ${[...h].reverse().map((x) => `<tr><td>${esc(x.y)}</td><td>${cur(x.s)}</td>${bank ? '' : `<td>${cur(x.o)}</td>`}<td>${cur(x.n)}</td><td>${x.n != null && (x.ec ?? x.q) ? `${((x.n / (x.ec ?? x.q)) * 100).toFixed(1)}%` : '—'}</td></tr>`).join('')}
         </tbody></table></div>` : '')

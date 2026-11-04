@@ -1,7 +1,7 @@
 // Growth rates are shared by the US and Japan pages, so the rules are tested once here.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { growthRates, fromJapanHistory } from '../src/growth.js';
+import { growthRates, fromJapanHistory, growthFromAnnuals, marginDeltaFromAnnuals } from '../src/growth.js';
 
 // A flat share count means no split: buybacks and small issuance are not adjustments.
 const sh = (year, revenue, eps) => ({ year, revenue, eps, shares: 1000 });
@@ -108,6 +108,39 @@ test('a later split is adjusted out of the EPS series using average shares', () 
   assert.equal(g.epsSplitUnverified, false);
   assert.equal(g.epsCagr, 18.7);
   assert.ok(g.epsCagr > 0, 'the split must not be published as a profit collapse');
+});
+
+test('annual statements use the per-year share count to adjust for a split', () => {
+  const g = growthFromAnnuals([
+    { end: '2022-12-31', revenue: 100, eps: 10, shares: 1000 },
+    { end: '2023-12-31', revenue: 110, eps: 5.5, shares: 2000 }, // 2-for-1 split
+    { end: '2024-12-31', revenue: 121, eps: 6.05, shares: 2000 },
+    { end: '2025-12-31', revenue: 133.1, eps: 6.655, shares: 2000 },
+    { end: '2026-12-31', revenue: 146.41, eps: 7.3205, shares: 2000 },
+  ]);
+  assert.equal(g.cagrYears, 4);
+  assert.equal(g.revenueCagr, 10);
+  assert.equal(g.epsCagr, 10);
+  assert.equal(g.epsSplitAdjusted, true);
+});
+
+test('annual statements without a share column derive it from net income ÷ EPS', () => {
+  const g = growthFromAnnuals([
+    { end: '2022-12-31', revenue: 100, netIncome: 10, eps: 10 },
+    { end: '2023-12-31', revenue: 110, netIncome: 11.5, eps: 5.75 }, // 2-for-1 split
+    { end: '2024-12-31', revenue: 121, netIncome: 12.65, eps: 6.325 },
+  ]);
+  assert.equal(g.cagrYears, 2);
+  assert.equal(g.epsCagr, 12.5);
+  assert.equal(g.epsSplitAdjusted, true);
+});
+
+test('net margin change uses the same annual window as the CAGR', () => {
+  assert.equal(marginDeltaFromAnnuals([
+    { end: '2022-12-31', revenue: 100, netIncome: 10 },
+    { end: '2026-12-31', revenue: 200, netIncome: 30 },
+  ]), 5);
+  assert.equal(marginDeltaFromAnnuals([{ end: '2026-12-31', revenue: 100, netIncome: 10 }]), null);
 });
 
 test('without share counts the split check is flagged and the EPS figure withheld', () => {

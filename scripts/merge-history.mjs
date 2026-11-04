@@ -22,7 +22,7 @@ import { execFileSync } from 'node:child_process';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { mergePeriods } from '../src/lib.js';
-import { growthRates, fromJapanHistory } from '../src/growth.js';
+import { growthRates, fromJapanHistory, growthFromAnnuals, marginDeltaFromAnnuals } from '../src/growth.js';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const DRY = process.argv.includes('--dry-run');
@@ -67,6 +67,13 @@ if (unknown.length) {
 }
 
 const codeOf = (c) => c.code || c.ticker;
+
+// The annual table each market's growth fields are rebuilt from after older periods are merged.
+const annualsFor = (id, c) => {
+  if (id === 'kr') return (c.reports || []).filter((r) => r && r.report === 'annual' && r.end);
+  if (id === 'tw' || id === 'hk' || id === 'au') return (c.reports && c.reports.annual) || [];
+  return null;
+};
 const getPath = (obj, path) => path.split('.').reduce((o, k) => (o == null ? o : o[k]), obj);
 const setPath = (obj, path, value) => {
   const parts = path.split('.');
@@ -110,11 +117,16 @@ for (const id of ids) {
     }
     if (added) {
       gained.push(`${codeOf(c)} +${added}`);
-      // Japan's growth tiles must be computed from the merged record. derive-japan only sees the
-      // vendor's rolling five years, so without this the table could hold ten years while the CAGR
-      // stayed a four-year number forever. Recompute only when a company actually gained old periods.
+      // Growth must follow the merged record for every market that publishes it. The build only sees
+      // the vendor's rolling five years, so without this the table could hold ten years while the
+      // CAGR stayed a four-year number forever. Recompute only when a company actually gained periods.
       if (id === 'jp' && Array.isArray(c.history)) {
         Object.assign(c, growthRates(fromJapanHistory(c.history)));
+      } else {
+        const annuals = annualsFor(id, c);
+        if (Array.isArray(annuals) && annuals.length) {
+          Object.assign(c, growthFromAnnuals(annuals, c.shares), { marginDelta: marginDeltaFromAnnuals(annuals) });
+        }
       }
       if (!DRY) {
         const detail = join(ROOT, 'data', spec.detail, `${codeOf(c)}.json`);

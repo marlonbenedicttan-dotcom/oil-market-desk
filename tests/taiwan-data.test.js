@@ -51,6 +51,16 @@ test('the TAIEX series is dated, ordered and positive', () => {
   for (const p of s) assert.ok(p.c > 0);
 });
 
+test('growth is published from the annual record and survives the list projection', () => {
+  const tsmc = tw.companies.find((c) => c.code === '2330');
+  assert.ok(tsmc.revenueCagr > 0, 'TSMC revenue CAGR is computed');
+  assert.ok(tsmc.epsCagr != null || tsmc.epsChange, 'TSMC EPS growth is computed');
+  const list = read('taiwan-list.json');
+  assert.equal(list.updated, tw.updated, 'the list artifact is current');
+  const listed = list.companies.find((c) => c.code === '2330');
+  assert.ok('revenueCagr' in listed && 'epsCagr' in listed, 'growth survives the list projection');
+});
+
 test('the list projection carries the fields the Taiwan filters read', () => {
   const list = read('taiwan-list.json');
   assert.equal(list.companies.length, tw.companies.length);
