@@ -1438,7 +1438,7 @@ button.deal-sec-tile:hover { background: #10151b; }
   font-size: 11px; padding: 6px 9px; min-height: 30px; min-width: 0; flex: 1 1 auto; outline: none; border-radius: 2px; }
 /* The search box gives up width before the count is pushed onto a second line: every market then
    keeps the same one-row filter bar, however long its sector names or company total are. */
-.sc-f:has(input) { flex: 0 1 230px; min-width: 175px; }
+.sc-f:has(input) { flex: 1 1 120px; min-width: 130px; max-width: 240px; }
 .sc-f input:focus { border-color: var(--amber); }
 .sc-f input::placeholder { color: #5b6773; }
 .sc-mkt { margin-left: 6px; }
