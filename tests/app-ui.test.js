@@ -144,6 +144,7 @@ function loadApp() {
   // `const`/`function` declarations are script-scoped, so hand the ones under test back explicitly.
   const exported = `\n;globalThis.__ui = {
     esc, pctf, cls, ago, deltaStrip, renderRisk, renderRelValue, tileSignals, curveShort,
+    isPropertyCompany, epsGrowthLabel, epsGrowthNote,
     buildBpOptions, renderTicker, markReady, hideBoot, BOOT_CORE, bootReady,
     setMarkets: (v) => { markets = v; },
     getMarkets: () => markets,
@@ -582,4 +583,19 @@ test('pctf and cls keep the sign and the empty state', () => {
   assert.equal(ui.cls(0.1), 'pos');
   assert.equal(ui.cls(-0.1), 'neg');
   assert.equal(ui.cls(null), '');
+});
+
+test('property and REIT EPS growth is labelled statutory', () => {
+  const { ui } = loadApp();
+  const swire = { sector: 'Real Estate', industry: 'Real Estate Services', cagrYears: 4 };
+  assert.equal(ui.epsGrowthLabel(swire), 'EPS GROWTH · 4Y · STATUTORY');
+  assert.match(ui.epsGrowthNote(swire), /investment-property fair-value changes/);
+  assert.match(ui.epsGrowthNote(swire), /underlying profit can differ materially/);
+
+  const reit = { sector: 'Equity Real Estate Investment Trusts (REITs)', industry: 'REIT - Diversified' };
+  assert.equal(ui.epsGrowthLabel(reit), 'EPS GROWTH · STATUTORY');
+
+  const bank = { sector: 'Financials', industry: 'Banks', cagrYears: 4 };
+  assert.equal(ui.epsGrowthLabel(bank), 'EPS GROWTH · 4Y', 'non-property names are not labelled');
+  assert.equal(ui.epsGrowthNote(bank), '');
 });

@@ -2,6 +2,14 @@ const $ = (id) => document.getElementById(String(id).replace(/^#/, ''));
 const signed = (n, dp = 2) => (n == null ? '—' : (n >= 0 ? '+' : '') + Number(n).toFixed(dp));
 const pctf = (x) => (x == null ? '—' : (x >= 0 ? '+' : '') + Number(x).toFixed(1) + '%');
 const cls = (n) => (n == null ? '' : n >= 0 ? 'pos' : 'neg');
+// Statutory EPS includes investment-property revaluations and other one-offs. For property and REIT
+// names those can dominate the series, so the tile says STATUTORY and explains it rather than letting
+// a statutory loss read as an operating collapse.
+const isPropertyCompany = (c) => /real estate|reit/i.test(`${c.sector || ''} ${c.industry || ''}`);
+const epsGrowthLabel = (c) => `EPS GROWTH${c.cagrYears ? ' · ' + c.cagrYears + 'Y' : ''}${isPropertyCompany(c) ? ' · STATUTORY' : ''}`;
+const epsGrowthNote = (c) => isPropertyCompany(c)
+  ? ' Statutory EPS includes investment-property fair-value changes and other one-off gains or losses; underlying profit can differ materially. The P/E may use a different, trailing period.'
+  : '';
 // Escape text that comes from outside the app — wire headlines, URLs, TradingView event titles,
 // user-typed rule notes — before interpolating it into innerHTML. Server-side prose deliberately
 // contains <b> tags, so only genuinely external strings are escaped, never the prose fields.
@@ -4751,7 +4759,7 @@ function renderJapanPageBody(c) {
           const e = c.epsCagr != null
             ? {
                 v: `${c.epsCagr.toFixed(1)}%`, cls: c.epsCagr >= 0 ? 'pos' : 'neg',
-                t: `Compound annual growth of earnings per share over the ${c.cagrYears} fiscal years on file. ${basis}`,
+                t: `Compound annual growth of earnings per share over the ${c.cagrYears} fiscal years on file. ${basis}${epsGrowthNote(c)}`,
               }
             : c.epsChange
               ? (() => {
@@ -4759,11 +4767,11 @@ function renderJapanPageBody(c) {
                   return {
                     v: `${money(c.epsChange.from)} \u2192 ${money(c.epsChange.to)}`,
                     cls: c.epsChange.to >= 0 ? 'pos' : 'neg',
-                    t: `No CAGR: ${c.epsCagrNA}. EPS went from ${money(c.epsChange.from)} in FY${c.epsChange.fromFy} to ${money(c.epsChange.to)} in FY${c.epsChange.toFy}. ${basis}`,
+                    t: `No CAGR: ${c.epsCagrNA}. EPS went from ${money(c.epsChange.from)} in FY${c.epsChange.fromFy} to ${money(c.epsChange.to)} in FY${c.epsChange.toFy}. ${basis}${epsGrowthNote(c)}`,
                   };
                 })()
-              : { v: '—', cls: '', t: c.epsCagrNA ? `No EPS growth: ${c.epsCagrNA}.` : 'No EPS growth rate' };
-          return cell(`EPS GROWTH${c.cagrYears ? ' · ' + c.cagrYears + 'Y' : ''}`, e.v, e.t, e.cls);
+              : { v: '—', cls: '', t: (c.epsCagrNA ? `No EPS growth: ${c.epsCagrNA}.` : 'No EPS growth rate') + epsGrowthNote(c) };
+          return cell(epsGrowthLabel(c), e.v, e.t, e.cls);
         })()}
       </div>`
     + `<div class="co-ranges">
@@ -5448,11 +5456,11 @@ async function renderKoreaPage(stub) {
         ${cell(`REVENUE CAGR${c.cagrYears ? ' · ' + c.cagrYears + 'Y' : ''}`, c.revenueCagr != null ? `${c.revenueCagr.toFixed(1)}%` : '—', c.cagrNA ? `No growth rate: ${c.cagrNA}.` : `Compound annual revenue growth over ${c.cagrYears} fiscal years`, c.revenueCagr >= 0 ? 'pos' : 'neg')}
         ${(() => {
           const e = c.epsCagr != null
-            ? { v: `${c.epsCagr.toFixed(1)}%`, cls: c.epsCagr >= 0 ? 'pos' : 'neg', t: `Compound annual EPS growth over ${c.cagrYears} fiscal years${c.epsSplitAdjusted ? ' (split-adjusted)' : ''}` }
+            ? { v: `${c.epsCagr.toFixed(1)}%`, cls: c.epsCagr >= 0 ? 'pos' : 'neg', t: `Compound annual EPS growth over ${c.cagrYears} fiscal years${c.epsSplitAdjusted ? ' (split-adjusted)' : ''}.${epsGrowthNote(c)}` }
             : c.epsChange
-              ? { v: `${c.epsChange.from} → ${c.epsChange.to}`, cls: c.epsChange.to >= 0 ? 'pos' : 'neg', t: `No CAGR: ${c.epsCagrNA}. EPS went from ${c.epsChange.from} in FY${c.epsChange.fromFy} to ${c.epsChange.to} in FY${c.epsChange.toFy}.` }
-              : { v: '—', cls: '', t: c.epsCagrNA ? `No EPS growth: ${c.epsCagrNA}.` : 'No EPS growth rate' };
-          return cell(`EPS GROWTH${c.cagrYears ? ' · ' + c.cagrYears + 'Y' : ''}`, e.v, e.t, e.cls);
+              ? { v: `${c.epsChange.from} → ${c.epsChange.to}`, cls: c.epsChange.to >= 0 ? 'pos' : 'neg', t: `No CAGR: ${c.epsCagrNA}. EPS went from ${c.epsChange.from} in FY${c.epsChange.fromFy} to ${c.epsChange.to} in FY${c.epsChange.toFy}.${epsGrowthNote(c)}` }
+              : { v: '—', cls: '', t: (c.epsCagrNA ? `No EPS growth: ${c.epsCagrNA}.` : 'No EPS growth rate') + epsGrowthNote(c) };
+          return cell(epsGrowthLabel(c), e.v, e.t, e.cls);
         })()}
         ${cell('NET MARGIN CHANGE', c.marginDelta != null ? `${c.marginDelta >= 0 ? '+' : ''}${c.marginDelta.toFixed(1)}pp` : '—', 'Change in net margin between the first and last fiscal year on file', c.marginDelta >= 0 ? 'pos' : 'neg')}
       </div>`
@@ -5779,14 +5787,14 @@ async function renderTaiwanPage(stub) {
         ${cell(`REVENUE CAGR${c.cagrYears ? ' · ' + c.cagrYears + 'Y' : ''}`, c.revenueCagr != null ? `${c.revenueCagr.toFixed(1)}%` : '—', c.cagrNA ? `No growth rate: ${c.cagrNA}.` : `Compound annual revenue growth over ${c.cagrYears} fiscal years`, c.revenueCagr != null ? (c.revenueCagr >= 0 ? 'pos' : 'neg') : '')}
         ${(() => {
           const e = c.epsCagr != null
-            ? { v: `${c.epsCagr.toFixed(1)}%`, cls: c.epsCagr >= 0 ? 'pos' : 'neg', t: `Compound annual EPS growth over ${c.cagrYears} fiscal years${c.epsSplitAdjusted ? ' (split-adjusted)' : ''}` }
+            ? { v: `${c.epsCagr.toFixed(1)}%`, cls: c.epsCagr >= 0 ? 'pos' : 'neg', t: `Compound annual EPS growth over ${c.cagrYears} fiscal years${c.epsSplitAdjusted ? ' (split-adjusted)' : ''}.${epsGrowthNote(c)}` }
             : c.epsChange
               ? (() => {
                   const money = (v) => `${v < 0 ? '\u2212' : ''}NT$${Math.abs(v).toFixed(2)}`;
-                  return { v: `${money(c.epsChange.from)} \u2192 ${money(c.epsChange.to)}`, cls: c.epsChange.to >= 0 ? 'pos' : 'neg', t: `No CAGR: ${c.epsCagrNA}. EPS went from ${money(c.epsChange.from)} in FY${c.epsChange.fromFy} to ${money(c.epsChange.to)} in FY${c.epsChange.toFy}.` };
+                  return { v: `${money(c.epsChange.from)} \u2192 ${money(c.epsChange.to)}`, cls: c.epsChange.to >= 0 ? 'pos' : 'neg', t: `No CAGR: ${c.epsCagrNA}. EPS went from ${money(c.epsChange.from)} in FY${c.epsChange.fromFy} to ${money(c.epsChange.to)} in FY${c.epsChange.toFy}.${epsGrowthNote(c)}` };
                 })()
-              : { v: '—', cls: '', t: c.epsCagrNA ? `No EPS growth: ${c.epsCagrNA}.` : 'No EPS growth rate' };
-          return cell(`EPS GROWTH${c.cagrYears ? ' · ' + c.cagrYears + 'Y' : ''}`, e.v, e.t, e.cls);
+              : { v: '—', cls: '', t: (c.epsCagrNA ? `No EPS growth: ${c.epsCagrNA}.` : 'No EPS growth rate') + epsGrowthNote(c) };
+          return cell(epsGrowthLabel(c), e.v, e.t, e.cls);
         })()}
         ${cell('NET MARGIN CHANGE', c.marginDelta != null ? `${c.marginDelta >= 0 ? '+' : ''}${c.marginDelta.toFixed(1)}pp` : '—', 'Change in net margin between the first and last fiscal year on file', c.marginDelta != null ? (c.marginDelta >= 0 ? 'pos' : 'neg') : '')}
       </div>`
@@ -6166,11 +6174,11 @@ async function renderHongKongPage(stub) {
         ${cell(`REVENUE CAGR${c.cagrYears ? ' · ' + c.cagrYears + 'Y' : ''}`, c.revenueCagr != null ? `${c.revenueCagr.toFixed(1)}%` : '—', c.cagrNA ? `No growth rate: ${c.cagrNA}.` : `Compound annual revenue growth over ${c.cagrYears} fiscal years`, c.revenueCagr >= 0 ? 'pos' : 'neg')}
         ${(() => {
           const e = c.epsCagr != null
-            ? { v: `${c.epsCagr.toFixed(1)}%`, cls: c.epsCagr >= 0 ? 'pos' : 'neg', t: `Compound annual EPS growth over ${c.cagrYears} fiscal years${c.epsSplitAdjusted ? ' (split-adjusted)' : ''}` }
+            ? { v: `${c.epsCagr.toFixed(1)}%`, cls: c.epsCagr >= 0 ? 'pos' : 'neg', t: `Compound annual EPS growth over ${c.cagrYears} fiscal years${c.epsSplitAdjusted ? ' (split-adjusted)' : ''}.${epsGrowthNote(c)}` }
             : c.epsChange
-              ? { v: `${c.epsChange.from} → ${c.epsChange.to}`, cls: c.epsChange.to >= 0 ? 'pos' : 'neg', t: `No CAGR: ${c.epsCagrNA}. EPS went from ${c.epsChange.from} in FY${c.epsChange.fromFy} to ${c.epsChange.to} in FY${c.epsChange.toFy}.` }
-              : { v: '—', cls: '', t: c.epsCagrNA ? `No EPS growth: ${c.epsCagrNA}.` : 'No EPS growth rate' };
-          return cell(`EPS GROWTH${c.cagrYears ? ' · ' + c.cagrYears + 'Y' : ''}`, e.v, e.t, e.cls);
+              ? { v: `${c.epsChange.from} → ${c.epsChange.to}`, cls: c.epsChange.to >= 0 ? 'pos' : 'neg', t: `No CAGR: ${c.epsCagrNA}. EPS went from ${c.epsChange.from} in FY${c.epsChange.fromFy} to ${c.epsChange.to} in FY${c.epsChange.toFy}.${epsGrowthNote(c)}` }
+              : { v: '—', cls: '', t: (c.epsCagrNA ? `No EPS growth: ${c.epsCagrNA}.` : 'No EPS growth rate') + epsGrowthNote(c) };
+          return cell(epsGrowthLabel(c), e.v, e.t, e.cls);
         })()}
         ${cell('NET MARGIN CHANGE', c.marginDelta != null ? `${c.marginDelta >= 0 ? '+' : ''}${c.marginDelta.toFixed(1)}pp` : '—', 'Change in net margin between the first and last fiscal year on file', c.marginDelta >= 0 ? 'pos' : 'neg')}
       </div>`
@@ -6531,11 +6539,11 @@ async function renderAustraliaPage(stub) {
         ${cell(`REVENUE CAGR${c.cagrYears ? ' · ' + c.cagrYears + 'Y' : ''}`, c.revenueCagr != null ? `${c.revenueCagr.toFixed(1)}%` : '—', c.cagrNA ? `No growth rate: ${c.cagrNA}.` : `Compound annual revenue growth over ${c.cagrYears} fiscal years`, sign(c.revenueCagr))}
         ${(() => {
           const e = c.epsCagr != null
-            ? { v: `${c.epsCagr.toFixed(1)}%`, cls: sign(c.epsCagr), t: `Compound annual EPS growth over ${c.cagrYears} fiscal years${c.epsSplitAdjusted ? ' (split-adjusted)' : ''}` }
+            ? { v: `${c.epsCagr.toFixed(1)}%`, cls: sign(c.epsCagr), t: `Compound annual EPS growth over ${c.cagrYears} fiscal years${c.epsSplitAdjusted ? ' (split-adjusted)' : ''}.${epsGrowthNote(c)}` }
             : c.epsChange
-              ? { v: `${c.epsChange.from} → ${c.epsChange.to}`, cls: sign(c.epsChange.to), t: `No CAGR: ${c.epsCagrNA}. EPS went from ${c.epsChange.from} in FY${c.epsChange.fromFy} to ${c.epsChange.to} in FY${c.epsChange.toFy}.` }
-              : { v: '—', cls: '', t: c.epsCagrNA ? `No EPS growth: ${c.epsCagrNA}.` : 'No EPS growth rate' };
-          return cell(`EPS GROWTH${c.cagrYears ? ' · ' + c.cagrYears + 'Y' : ''}`, e.v, e.t, e.cls);
+              ? { v: `${c.epsChange.from} → ${c.epsChange.to}`, cls: sign(c.epsChange.to), t: `No CAGR: ${c.epsCagrNA}. EPS went from ${c.epsChange.from} in FY${c.epsChange.fromFy} to ${c.epsChange.to} in FY${c.epsChange.toFy}.${epsGrowthNote(c)}` }
+              : { v: '—', cls: '', t: (c.epsCagrNA ? `No EPS growth: ${c.epsCagrNA}.` : 'No EPS growth rate') + epsGrowthNote(c) };
+          return cell(epsGrowthLabel(c), e.v, e.t, e.cls);
         })()}
         ${cell('NET MARGIN CHANGE', c.marginDelta != null ? `${c.marginDelta >= 0 ? '+' : ''}${c.marginDelta.toFixed(1)}pp` : '—', 'Change in net margin between the first and last fiscal year on file', sign(c.marginDelta))}
       </div>`
@@ -7353,14 +7361,15 @@ async function renderCompanyPageBody(el, c, all) {
         add(null, `REVENUE CAGR${c.cagrYears ? ' · ' + c.cagrYears + 'Y' : ''}`, c.revenueCagr != null ? c.revenueCagr.toFixed(1) + '%' : '—', c.cagrNA ? `No growth rate: ${c.cagrNA}.` : `Compound annual growth of revenue over the ${c.cagrYears} fiscal years on file`, c.revenueCagr >= 0 ? 'pos' : 'neg');
         // A CAGR does not exist when either end is a loss, so show the change itself rather than a dash.
         const epsTile = c.epsCagr != null
-          ? { v: c.epsCagr.toFixed(1) + '%', cls: c.epsCagr >= 0 ? 'pos' : 'neg', t: `Compound annual growth of earnings per share over ${c.cagrYears} years` }
+          ? { v: c.epsCagr.toFixed(1) + '%', cls: c.epsCagr >= 0 ? 'pos' : 'neg', t: `Compound annual growth of earnings per share over ${c.cagrYears} years.` }
           : c.epsChange
             ? (() => {
                 const money = (v) => `${v < 0 ? '−' : ''}$${Math.abs(v).toFixed(2)}`;
                 return { v: `${money(c.epsChange.from)} → ${money(c.epsChange.to)}`, cls: c.epsChange.to >= 0 ? 'pos' : 'neg', t: `No CAGR: ${c.epsCagrNA}. EPS went from ${money(c.epsChange.from)} in FY${c.epsChange.fromFy} to ${money(c.epsChange.to)} in FY${c.epsChange.toFy}.` };
               })()
             : { v: '—', cls: '', t: c.epsCagrNA ? `No EPS growth: ${c.epsCagrNA}.` : 'No EPS growth rate' };
-        add(null, `EPS GROWTH${c.cagrYears ? ' · ' + c.cagrYears + 'Y' : ''}`, epsTile.v, epsTile.t, epsTile.cls);
+        epsTile.t += epsGrowthNote(c);
+        add(null, epsGrowthLabel(c), epsTile.v, epsTile.t, epsTile.cls);
         add('roic', `RETURN ON CAPITAL${c.roicBasis ? ' · ' + c.roicBasis : ''}`, c.roic != null ? c.roic.toFixed(1) + '%' : '—', 'Net income ÷ (equity + debt − cash) — approximate return on capital', c.roic >= 0 ? 'pos' : 'neg');
         add('netDebtEbitda', `NET DEBT / EBITDA${c.netDebtEbitdaBasis ? ' · ' + c.netDebtEbitdaBasis : ''}`, c.netDebtEbitda != null ? c.netDebtEbitda.toFixed(1) + '×' : (c.debtNA ? '<em class="co-approx" title="' + esc(c.debtNA) + '">n/d</em>' : '—'), c.debtNA || '(Debt − cash) ÷ (operating income + D&A) — years of EBITDA to clear net debt');
         if (c.sector !== 'Financials') {
