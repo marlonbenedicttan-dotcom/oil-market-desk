@@ -4770,7 +4770,7 @@ function renderJapanPageBody(c) {
         <span class="co-cmp-l">COMPARE</span><input class="co-cmp" id="jp-cmp" placeholder="company name, e.g. toyota" value="${esc(cmpCode(jpCompare))}" autocomplete="off">
         <button class="co-cmp-clear${jpCompare ? '' : ' hidden'}" id="jp-cmp-clear" data-cmpclear="jp" type="button" title="Clear comparison" aria-label="Clear comparison">×</button>
         <div class="co-sugg" id="jp-sugg"></div>
-        ${[['1m', '1M'], ['3m', '3M'], ['6m', '6M'], ['ytd', 'YTD'], ['1y', '1Y'], ['5y', '5Y']].map(([k, t]) => `<button class="ma-chip${jpRange === k ? ' on' : ''}" data-jprange="${k}">${t}</button>`).join('')}
+        ${[['1m', '1M'], ['3m', '3M'], ['6m', '6M'], ['ytd', 'YTD'], ['1y', '1Y'], ['5y', '5Y'], ['10y', '10Y']].map(([k, t]) => `<button class="ma-chip${jpRange === k ? ' on' : ''}" data-jprange="${k}" title="${k === '10y' ? 'Ten years — fills in as the archive grows' : ''}">${t}</button>`).join('')}
       </div>`
     + `<div class="co-rets" id="jp-rets"></div>`
               + `<div class="co-chartwrap"><div class="co-big" id="jp-big"></div><canvas id="jp-chart"></canvas></div>`
@@ -5438,11 +5438,11 @@ async function renderKoreaPage(stub) {
         ${cell('MARKET CAP', won(c.marketCap), 'Price × shares outstanding')}
         ${cell('MARKET CAP · USD', c.marketCapUsd ? `$${(c.marketCapUsd / 1e9).toFixed(1)}B` : '—', 'Converted at the current USD/KRW rate')}
         ${cell(`P/E · ${c.peBasis || 'FY'}`, c.pe != null ? `${c.pe.toFixed(2)}×` : '—', c.peBasis === 'TTM' ? 'Market cap ÷ the last four quarters of profit' : `Market cap ÷ fiscal-year profit${c.ttmSuspicious ? ' — the four-quarter window looked cumulative, so the fiscal year is used' : ''}`)}
-        ${cell('P/B', c.pb != null ? `${c.pb.toFixed(2)}×` : '—', 'Market cap ÷ shareholders\u2019 equity')}
-        ${cell('RETURN ON EQUITY', c.roe != null ? `${c.roe.toFixed(1)}%` : '—', 'Profit ÷ equity', c.roe >= 0 ? 'pos' : 'neg')}
+        ${cell('P/B', c.pb != null ? `${c.pb.toFixed(2)}×` : '—', `Market cap ÷ shareholders\u2019 equity${c.equityAsOf ? ` at ${c.equityAsOf}` : ''}`)}
+        ${cell('RETURN ON EQUITY', c.roe != null ? `${c.roe.toFixed(1)}%` : '—', `Profit ÷ equity${c.equityAsOf ? ` at ${c.equityAsOf}` : ''}`, c.roe >= 0 ? 'pos' : 'neg')}
         ${cell('OPERATING MARGIN', c.opMargin != null ? `${c.opMargin.toFixed(1)}%` : '—', 'Operating profit ÷ revenue', c.opMargin >= 0 ? 'pos' : 'neg')}
         ${cell('NET MARGIN', c.netMargin != null ? `${c.netMargin.toFixed(1)}%` : '—', 'Net profit ÷ revenue', c.netMargin >= 0 ? 'pos' : 'neg')}
-        ${cell('FCF YIELD', c.fcfYield != null ? `${c.fcfYield.toFixed(1)}%` : '—', 'Operating plus investing cash flow ÷ market cap')}
+        ${cell('CASH YIELD', c.fcfYield != null ? `${c.fcfYield.toFixed(1)}%` : '—', 'Operating cash flow + investing cash flow (CFO+CFI) ÷ market cap — capex is not broken out by DART')}
         ${cell(`REVENUE CAGR${c.cagrYears ? ' · ' + c.cagrYears + 'Y' : ''}`, c.revenueCagr != null ? `${c.revenueCagr.toFixed(1)}%` : '—', c.cagrNA ? `No growth rate: ${c.cagrNA}.` : `Compound annual revenue growth over ${c.cagrYears} fiscal years`, c.revenueCagr >= 0 ? 'pos' : 'neg')}
         ${(() => {
           const e = c.epsCagr != null
@@ -5465,7 +5465,7 @@ async function renderKoreaPage(stub) {
         ${cell(`REVENUE · ${tileBasis(fig.flows.basis, fig.flows.end)}`, won(fig.flows.revenue), `${when}, as reported (DART)`)}
         ${cell(`OPERATING PROFIT · ${tileBasis(fig.flows.basis, fig.flows.end)}`, won(fig.flows.op), `${when}, as reported (DART)`, cls(fig.flows.op))}
         ${cell(`NET PROFIT · ${tileBasis(fig.flows.basis, fig.flows.end)}`, won(fig.flows.net), `${when}, attributable to owners of the parent (DART)`, cls(fig.flows.net))}
-        ${cell(`FREE CASH FLOW · ${tileBasis(fig.cash.basis, fig.cash.end)}`, won(fcf), `${cashWhen}: operating cash flow + investing cash flow — capex sits inside investing (DART)`)}
+        ${cell(`CASH AFTER INVESTING · ${tileBasis(fig.cash.basis, fig.cash.end)}`, won(fcf), `${cashWhen}: operating cash flow + investing cash flow (CFO+CFI) — capex is not broken out by DART`)}
         ${cell('TOTAL ASSETS', won(fig.balance.assets), `${bsWhen}, as reported (DART)`)}
         ${cell('LIABILITIES', won(fig.balance.liabilities), `${bsWhen}: total assets less shareholders\u2019 equity (DART)`)}
         ${cell('SHAREHOLDERS\u2019 EQUITY', won(fig.balance.equity), `${bsWhen}, attributable to owners of the parent (DART)`)}
@@ -5476,7 +5476,7 @@ async function renderKoreaPage(stub) {
         <span class="co-cmp-l">COMPARE</span><input class="co-cmp" id="kr-cmp" placeholder="company name, e.g. samsung" value="${esc(cmpCode(krCompare))}" autocomplete="off">
         <button class="co-cmp-clear${krCompare ? '' : ' hidden'}" id="kr-cmp-clear" data-cmpclear="kr" type="button" title="Clear comparison" aria-label="Clear comparison">×</button>
         <div class="co-sugg" id="kr-sugg"></div>
-        ${[['1m', '1M'], ['3m', '3M'], ['6m', '6M'], ['ytd', 'YTD'], ['1y', '1Y'], ['5y', '5Y']].map(([k, t]) => `<button class="ma-chip${krRange === k ? ' on' : ''}" data-krrange="${k}">${t}</button>`).join('')}
+        ${[['1m', '1M'], ['3m', '3M'], ['6m', '6M'], ['ytd', 'YTD'], ['1y', '1Y'], ['5y', '5Y'], ['10y', '10Y']].map(([k, t]) => `<button class="ma-chip${krRange === k ? ' on' : ''}" data-krrange="${k}" title="${k === '10y' ? 'Ten years — fills in as the archive grows' : ''}">${t}</button>`).join('')}
       </div>`
     + `<div class="co-rets" id="kr-rets"></div>`
               + `<div class="co-chartwrap"><div class="co-big" id="kr-big"></div><canvas id="kr-chart"></canvas></div>`
@@ -5795,7 +5795,7 @@ async function renderTaiwanPage(stub) {
         <span class="co-cmp-l">COMPARE</span><input class="co-cmp" id="tw-cmp" placeholder="company name, e.g. tsmc" value="${esc(cmpCode(twCompare))}" autocomplete="off">
         <button class="co-cmp-clear${twCompare ? '' : ' hidden'}" id="tw-cmp-clear" data-cmpclear="tw" type="button" title="Clear comparison" aria-label="Clear comparison">×</button>
         <div class="co-sugg" id="tw-sugg"></div>
-        ${[['1m', '1M'], ['3m', '3M'], ['6m', '6M'], ['ytd', 'YTD'], ['1y', '1Y'], ['5y', '5Y']].map(([k, t]) => `<button class="ma-chip${twRange === k ? ' on' : ''}" data-twrange="${k}">${t}</button>`).join('')}
+        ${[['1m', '1M'], ['3m', '3M'], ['6m', '6M'], ['ytd', 'YTD'], ['1y', '1Y'], ['5y', '5Y'], ['10y', '10Y']].map(([k, t]) => `<button class="ma-chip${twRange === k ? ' on' : ''}" data-twrange="${k}" title="${k === '10y' ? 'Ten years — fills in as the archive grows' : ''}">${t}</button>`).join('')}
       </div>`
     + `<div class="co-rets" id="tw-rets"></div>`
     + `<div class="co-chartwrap"><div class="co-big" id="tw-big"></div><canvas id="tw-chart"></canvas></div>`
@@ -6196,7 +6196,7 @@ async function renderHongKongPage(stub) {
         <span class="co-cmp-l">COMPARE</span><input class="co-cmp" id="hk-cmp" placeholder="company name, e.g. tencent" value="${esc(cmpCode(hkCompare))}" autocomplete="off">
         <button class="co-cmp-clear${hkCompare ? '' : ' hidden'}" id="hk-cmp-clear" data-cmpclear="hk" type="button" title="Clear comparison" aria-label="Clear comparison">×</button>
         <div class="co-sugg" id="hk-sugg"></div>
-        ${[['1m', '1M'], ['3m', '3M'], ['6m', '6M'], ['ytd', 'YTD'], ['1y', '1Y'], ['5y', '5Y']].map(([k, t]) => `<button class="ma-chip${hkRange === k ? ' on' : ''}" data-hkrange="${k}">${t}</button>`).join('')}
+        ${[['1m', '1M'], ['3m', '3M'], ['6m', '6M'], ['ytd', 'YTD'], ['1y', '1Y'], ['5y', '5Y'], ['10y', '10Y']].map(([k, t]) => `<button class="ma-chip${hkRange === k ? ' on' : ''}" data-hkrange="${k}" title="${k === '10y' ? 'Ten years — fills in as the archive grows' : ''}">${t}</button>`).join('')}
       </div>`
     + `<div class="co-rets" id="hk-rets"></div>`
     + `<div class="co-chartwrap"><div class="co-big" id="hk-big"></div><canvas id="hk-chart"></canvas></div>`
@@ -6556,7 +6556,7 @@ async function renderAustraliaPage(stub) {
         <span class="co-cmp-l">COMPARE</span><input class="co-cmp" id="au-cmp" placeholder="company name, e.g. bhp" value="${esc(cmpCode(auCompare))}" autocomplete="off">
         <button class="co-cmp-clear${auCompare ? '' : ' hidden'}" id="au-cmp-clear" data-cmpclear="au" type="button" title="Clear comparison" aria-label="Clear comparison">×</button>
         <div class="co-sugg" id="au-sugg"></div>
-        ${[['1m', '1M'], ['3m', '3M'], ['6m', '6M'], ['ytd', 'YTD'], ['1y', '1Y'], ['5y', '5Y']].map(([k, t]) => `<button class="ma-chip${auRange === k ? ' on' : ''}" data-aurange="${k}">${t}</button>`).join('')}
+        ${[['1m', '1M'], ['3m', '3M'], ['6m', '6M'], ['ytd', 'YTD'], ['1y', '1Y'], ['5y', '5Y'], ['10y', '10Y']].map(([k, t]) => `<button class="ma-chip${auRange === k ? ' on' : ''}" data-aurange="${k}" title="${k === '10y' ? 'Ten years — fills in as the archive grows' : ''}">${t}</button>`).join('')}
       </div>`
     + `<div class="co-rets" id="au-rets"></div>`
     + `<div class="co-chartwrap"><div class="co-big" id="au-big"></div><canvas id="au-chart"></canvas></div>`
@@ -6916,7 +6916,9 @@ function coWindowsFor(dates) {
 function coFitRange(ch, range) {
   const wins = coWindowsFor((ch && ch.dates) || []);
   if (wins.includes(range)) return range;
-  return wins.includes('1y') ? '1y' : wins[wins.length - 1] || '1y';
+  // The longest window the series does cover, not 1Y: asking for 10Y with five years of data should
+  // draw five years, not jump the reader back to a single year.
+  return wins[wins.length - 1] || '1y';
 }
 function coMarkRange(attr, range) {
   document.querySelectorAll(`[data-${attr}]`).forEach((b) => b.classList.toggle('on', b.dataset[attr] === range));
