@@ -60,6 +60,30 @@ const noDesc = hk.companies.filter((c) => !c.description).length;
 say('descriptions', `${hk.companies.length - noDesc}/${hk.companies.length}`);
 if (noDesc) warn.push(`${noDesc} companies have no description`);
 
+// A display name must not carry the other listing's code, and a 340-character summary must not stop
+// in the middle of a segment list. Both are extractor regressions, not data gaps.
+const tagged = hk.companies.filter((c) => /\s*\([A-Z]{2,6}:[A-Z0-9.]+\)\s*$/.test(c.nameEn || ''));
+say('display names with a listing tag', tagged.length);
+if (tagged.length) fails.push(`${tagged.length} display names carry a listing tag: ${tagged.slice(0, 8).map((c) => `${c.code} ${c.nameEn}`).join(', ')}`);
+const profiles = (read('hongkong-profiles.json').entries || {});
+const cutDesc = Object.entries(profiles).filter(([, p]) => p.desc && /;$/.test(p.desc));
+say('summaries cut mid-list', cutDesc.length);
+if (cutDesc.length) fails.push(`${cutDesc.length} summaries end on a semicolon: ${cutDesc.slice(0, 8).map(([k]) => k).join(', ')}`);
+
+// A cross-list match is the one place a wrong company can enter quietly: the resolver matched
+// "CHINA RAIL CONS" to China Construction Bank's ADR on 2026-11-02, and the same weakness hit China
+// Southern/Eastern Air. The source name must agree with the exchange's own short name on the strong
+// industry words, not just "China".
+const cross = read('hongkong-crosslist.json').entries || {};
+const conflicts = [];
+for (const [code, e] of Object.entries(cross)) {
+  const h = e.hkgName || '', src = e.sourceName || '';
+  if (/\bAIR\b/.test(h) && !/\bAIR/i.test(src)) conflicts.push(`${code} ${h} → ${src}`);
+  if (/\bBANK\b/.test(h) && !/\b(BANK|INSUR)/i.test(src)) conflicts.push(`${code} ${h} → ${src}`);
+}
+say('cross-list industry conflicts', conflicts.length);
+if (conflicts.length) fails.push(`cross-list industry conflicts: ${conflicts.slice(0, 8).join('; ')}`);
+
 const noStmt = hk.companies.filter((c) => !c.reports || !c.reports.ttm || c.reports.ttm.revenue == null).length;
 say('with a TTM statement row', hk.companies.length - noStmt);
 if (noStmt) warn.push(`${noStmt} companies have no TTM statement row`);
@@ -79,7 +103,7 @@ const hkdPerCcy = (c) => (c === 'HKD' ? 1 : rates && rates.HKD && rates[c] ? rat
 let capBad = 0, priceBad = 0, seriesBad = 0, staleBad = 0;
 const today = new Date().toISOString().slice(0, 10);
 for (const c of hk.companies) {
-  if (Math.abs(c.price * c.shares - c.marketCap) / c.marketCap > 1e-9) capBad++;
+  if (Math.abs(c.price * (c.sharesCurrent ?? c.shares) - c.marketCap) / c.marketCap > 1e-9) capBad++;
   const s = seriesOf(c.code);
   const arr = s.daily.length ? s.daily : s.weekly;
   if (!arr.length) { seriesBad++; continue; }
@@ -89,7 +113,7 @@ for (const c of hk.companies) {
   for (let i = 1; i < arr.length; i++) if (!(arr[i].d > arr[i - 1].d)) { seriesBad++; break; }
   if (Date.parse(c.priceDate) < Date.parse(today) - 10 * 864e5) staleBad++;
 }
-say('market cap != price × shares', capBad);
+say('market cap != price × current shares', capBad);
 say('price/date != last close', priceBad);
 say('series missing/unsorted', seriesBad);
 say('prices older than 10 days', staleBad);
@@ -134,14 +158,20 @@ for (const c of hk.companies) {
     const want = (ni / eq) * 100;
     if (!(eq > 0) || Math.abs(want - c.roe) > 0.06) roeBad++;
   }
-  if (c.fcf != null && ttm.operatingCashFlow != null && ttm.investingCashFlow != null) {
-    if (Math.abs(ttm.operatingCashFlow + ttm.investingCashFlow - c.fcf) > 2) fcfBad++;
+  if (c.fcf != null) {
+    const cashT = c.fcfBasis === 'TTM';
+    const fcfWant = cashT ? ttm.freeCashFlow : (fy ? fy.freeCashFlow : null);
+    const cfo = cashT ? ttm.operatingCashFlow : (fy ? fy.operatingCashFlow : null);
+    const capex = cashT ? ttm.capitalExpenditure : (fy ? fy.capitalExpenditure : null);
+    const fallback = cfo != null && capex != null ? cfo - Math.abs(capex) : null;
+    if (fcfWant != null ? Math.abs(fcfWant - c.fcf) > 2 : (fallback != null && Math.abs(fallback - c.fcf) > 2)) fcfBad++;
   }
   if (c.opMargin != null && ttm.revenue && ttm.operatingProfit != null) {
     if (Math.abs((ttm.operatingProfit / ttm.revenue) * 100 - c.opMargin) > 0.06) marginBad++;
   }
-  if (c.dividendYield != null && ttm.dividendPerShare != null) {
-    const want = +(((ttm.dividendPerShare * dpsRate) / c.price) * 100).toFixed(2);
+  const dps = fy && fy.dividendPerShare != null ? fy.dividendPerShare : ttm.dividendPerShare;
+  if (c.dividendYield != null && dps != null && c.dividendYieldBasis !== 'vendor') {
+    const want = +(((dps * dpsRate) / c.price) * 100).toFixed(2);
     if (Math.abs(want - c.dividendYield) > 0.06) yldBad++;
   }
 }
@@ -184,39 +214,87 @@ const a = hk.audit || {};
 say('HKEX lines quoted', a.quoted ?? '—');
 say('main-board company lines', a.commonStocks ?? '—');
 say('without a statement page', a.withoutStatements ?? '—');
+say('small without a profile', a.incompleteSmall ?? 0);
 say('throttled, not fetched this run', a.throttled ?? 0);
+say('statements older than 450 days (excluded)', a.stale ?? 0);
+say('current share counts (vendor or SEC)', `${a.currentShares ?? 0}/${hk.companies.length}`);
+say('SEC cover counts', a.secShares ?? 0);
+say('removed: no defensible current shares', a.unsourced ?? 0);
+if (a.unsourced) warn.push(`${a.unsourced} companies have no vendor or SEC share count and are excluded (${(a.unsourcedCodes || []).map((x) => x.code).join(', ')})`);
+if (a.stale) warn.push(`${a.stale} companies have statements older than 450 days and are excluded (${(a.staleCodes || []).map((x) => `${x.code} ${x.end}`).join(', ')})`);
+if ((a.currentShares ?? 0) < hk.companies.length) warn.push(`${hk.companies.length - (a.currentShares ?? 0)} companies have no vendor or SEC share count; their cap uses the filing's total share count`);
 if (a.withoutStatements) warn.push(`${a.withoutStatements} listed lines have no statement page (no share count, so no cap) — excluded rather than estimated`);
+if (a.incompleteSmall) warn.push(`${a.incompleteSmall} small shells without a profile page are excluded (no description, sector or industry to show)`);
 if (a.throttled) warn.push(`${a.throttled} companies were rate-limited and are NOT in this dataset — rerun build:hongkong to fill them (nothing was cached as missing)`);
 
 // --- optional same-source cross-check -------------------------------------------------------------
+// The statistics page is a different page from the statement tables the build parses, so it is an
+// independent check of the ratios (and it carries the current share count).
+const parseStat = (html, id) => {
+  const m = new RegExp(`\\{id:"${id}",[^}]*?value:"([^"]+)"`).exec(html || '');
+  if (!m) return null;
+  const n = Number(String(m[1]).replace(/[%,$\s]/g, ''));
+  return Number.isFinite(n) ? n : null;
+};
+const parseShares = (html) => {
+  const m = /has ([\d.,]+)\s*(thousand|million|billion|trillion) shares outstanding/i.exec(html || '');
+  if (!m) return null;
+  const mult = { thousand: 1e3, million: 1e6, billion: 1e9, trillion: 1e12 }[m[2].toLowerCase()];
+  const n = Number(m[1].replace(/,/g, ''));
+  return Number.isFinite(n) && mult ? n * mult : null;
+};
 if (SAMPLE) {
   const sample = hk.companies.slice(0, SAMPLE);
   mkdirSync(join(ROOT, 'data', 'cache', 'hongkong-audit'), { recursive: true });
-  let cmp = 0, peOff = 0, dyOff = 0;
+  let cmp = 0, peOff = 0, dyOff = 0, pbDiff = 0, pbPriceBasis = 0, roeDiff = 0, shCmp = 0, shOff = 0;
   for (const c of sample) {
-    const f = join(ROOT, 'data', 'cache', 'hongkong-audit', `${c.code}.json`);
+    const f = join(ROOT, 'data', 'cache', 'hongkong-audit', `stats-${c.code}.json`);
     let html = null;
-    const overview = `https://stockanalysis.com/quote/hkg/${c.code}/financials/`;
-    try { html = await getCached(overview, f, { ttlMs: 7 * 864e5, retries: 2 }); } catch { html = null; }
+    const url = `https://stockanalysis.com/quote/hkg/${c.code}/statistics/`;
+    try { html = await getCached(url, f, { ttlMs: 7 * 864e5, retries: 2 }); } catch { html = null; }
     if (!html) continue;
-    // The overview page is a <dl>-style layout, not the <thead id="TTM"> table the statement pages use,
-    // so its ratios are read straight out of the label/value cell pair.
-    const ratio = (label) => {
-      const m = new RegExp(`>${label}</td>\\s*<td[^>]*>([^<]*)<`, 'i').exec(html || '');
-      if (!m) return null;
-      const v = Number(String(m[1]).replace(/[%,$\s]/g, ''));
-      return Number.isFinite(v) ? v : null;
-    };
-    const pe = ratio('PE Ratio');
-    const dy = ratio('Dividend Yield');
+    const pe = parseStat(html, 'pe');
+    const pb = parseStat(html, 'pb');
+    const roe = parseStat(html, 'roe');
+    const dy = parseStat(html, 'dividendYield');
+    const sh = parseShares(html);
+    const capM = /\{id:"marketcap",title:"Market Cap",value:"[^"]+",hover:"([\d,]+)"/.exec(html);
+    const vcap = capM ? Number(capM[1].replace(/,/g, '')) : null;
     if (pe != null && c.pe != null) { cmp++; if (Math.abs(c.pe - pe) / pe > 0.15) peOff++; }
+    const pbOurs = c.pbTotal ?? c.pb;
+    const roeOurs = c.roeTotal ?? c.roe;
+    if (pb != null && pbOurs != null) {
+      // An A+H issuer's vendor cap uses the A-share price for every share; ours uses the H price.
+      // Comparing P/B across those two caps is comparing two listings, not checking the equity.
+      if (vcap && c.marketCap && Math.abs(c.marketCap - vcap) / vcap > 0.1) pbPriceBasis++;
+      else if (Math.abs(pbOurs - pb) / pb > 0.15) pbDiff++;
+    }
+    if (roe != null && roeOurs != null) {
+      // The vendor's ROE can be the prior fiscal year while ours is TTM; a match to our FY figure is
+      // a period difference, not a formula error.
+      const fyMatch = (c.roeFY != null && Math.abs(c.roeFY - roe) <= 3)
+        || (c.roePriorFY != null && Math.abs(c.roePriorFY - roe) <= 3);
+      if (!fyMatch && Math.abs(roeOurs - roe) > 3) roeDiff++;
+    }
     if (dy != null && c.dividendYield != null && Math.abs(c.dividendYield - dy) > 0.3) dyOff++;
+    if (sh > 0) {
+      shCmp++;
+      const ours = c.sharesCurrent ?? c.shares;
+      if (ours > 0 && Math.abs(ours - sh) / sh > 0.05) shOff++;
+    }
     await new Promise((r) => setTimeout(r, 250));
   }
   say('sample P/E compared / >15% off', `${cmp} / ${peOff}`);
+  say('sample P/B >15% from vendor (total equity)', pbDiff);
+  say('sample P/B skipped (A+H price basis)', pbPriceBasis);
+  say('sample ROE >3pp from vendor (total equity)', roeDiff);
   say('sample yield >0.3pp off', dyOff);
-  if (!cmp) warn.push('the sample cross-check compared nothing — the source no longer renders its P/E in a parseable table, so this is not evidence either way (the formula invariants above are the real check)');
-  if (peOff) warn.push(`${peOff}/${cmp} sample P/E differ from stockanalysis's own overview by >15% — the same source computing a different trailing window`);
+  say('sample shares compared / >5% off', `${shCmp} / ${shOff}`);
+  if (!cmp) warn.push('the sample cross-check compared nothing — check the stats-page parser before trusting the sample');
+  if (peOff) warn.push(`${peOff}/${cmp} sample P/E differ from stockanalysis's own statistics by >15% — check the price date or the trailing window`);
+  if (dyOff) warn.push(`${dyOff} sample dividend yields differ from the vendor by >0.3pp — check the DPS period and, for a foreign reporter, the payment-date FX (this build converts at the current rate)`);
+  if (shOff) warn.push(`${shOff}/${shCmp} sample market caps use a share count >5% from the vendor's current count`);
+  if (pbDiff || roeDiff) warn.push(`${pbDiff} P/B and ${roeDiff} ROE values differ from the vendor even on the total-equity reconciliation — investigate (the vendor's ROE can be the prior fiscal year while ours is TTM)`);
 }
 
 // --- list projection ------------------------------------------------------------------------------

@@ -7,6 +7,7 @@ import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { koreaList } from '../src/project.js';
+import { growthRates } from '../src/growth.js';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const korea = JSON.parse(readFileSync(join(ROOT, 'data', 'korea.json'), 'utf8'));
@@ -58,6 +59,48 @@ test('no company carries a negative market cap or share count', () => {
 test('every company with a price has a market cap', () => {
   const missing = companies.filter((c) => c.price != null && c.marketCap == null);
   assert.ok(missing.length <= 5, `${missing.length} companies have a price but no market cap`);
+});
+
+test('a cumulative four-quarter window does not get a TTM basis', () => {
+  const bad = companies.filter((c) => c.ttmSuspicious && c.peBasis !== 'FY');
+  assert.equal(bad.length, 0, `${bad.length} suspicious windows still use TTM`);
+  const samsung = companies.find((c) => c.ticker === '005930');
+  if (samsung) assert.equal(samsung.peBasis, 'FY', 'Samsung uses its fiscal year after the cumulative 2026 window');
+});
+
+test('growth rates reproduce from the annual reports', () => {
+  let checked = 0;
+  for (const c of companies) {
+    if (c.revenueCagr == null && c.epsCagr == null) continue;
+    const annuals = (c.reports || [])
+      .filter((r) => r.report === 'annual' && r.end)
+      .sort((a, b) => String(a.end).localeCompare(String(b.end)));
+    const sharesOf = (r) => {
+      if (r.sharesOutstanding > 0) return r.sharesOutstanding;
+      if (r.netIncome != null && r.eps && Math.sign(r.netIncome) === Math.sign(r.eps)) return r.netIncome / r.eps;
+      return c.shares > 0 ? c.shares : null;
+    };
+    const epsOf = (r) => {
+      if (r.eps != null) return r.eps;
+      if (r.netIncome != null && c.shares > 0) return +(r.netIncome / c.shares).toFixed(2);
+      return null;
+    };
+    const rows = annuals.slice(-5).map((r) => ({
+      year: Number(String(r.end).slice(0, 4)),
+      revenue: r.revenue,
+      eps: epsOf(r),
+      shares: sharesOf(r),
+    }));
+    const g = growthRates(rows);
+    assert.equal(c.revenueCagr, g.revenueCagr, `${c.ticker}: revenue CAGR`);
+    assert.equal(c.epsCagr, g.epsCagr, `${c.ticker}: EPS CAGR`);
+    assert.equal(c.cagrYears, g.cagrYears, `${c.ticker}: span`);
+    assert.equal(c.cagrNA, g.cagrNA, `${c.ticker}: revenue NA reason`);
+    assert.equal(c.epsCagrNA, g.epsCagrNA, `${c.ticker}: EPS NA reason`);
+    if (g.epsChange) assert.deepEqual(c.epsChange, g.epsChange, `${c.ticker}: EPS change`);
+    checked++;
+  }
+  assert.ok(checked > 300, `growth is exercised across the market (${checked})`);
 });
 
 test('sectors follow the KSIC division of each company\'s industry code', () => {

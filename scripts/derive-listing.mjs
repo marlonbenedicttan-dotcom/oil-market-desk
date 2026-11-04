@@ -10,6 +10,8 @@
 // `baseCurrency` is the listing currency. `fx.rate` is units of the listing currency per USD, and
 // `fx.rates` is the er-api USD table (currency per USD), so the cross is rates[base] / rates[report].
 
+import { growthRates } from '../src/growth.js';
+
 const round = (v, dp) => (v == null ? null : +v.toFixed(dp));
 const guard = (v, lo, hi) => (v != null && v > lo && v < hi ? v : null);
 
@@ -36,7 +38,10 @@ export function deriveListing({ companies, fx = null, baseCurrency = 'HKD' }) {
   for (const c of companies) {
     const price = c.price ?? null;
     const shares = c.shares ?? null;
-    const cap = c.marketCap ?? (price != null && shares > 0 ? price * shares : null);   // listing currency
+    // Market cap belongs to today's share count, not the diluted weighted-average the filing used
+    // for EPS. A placement after the period end otherwise leaves the cap (and P/E, P/B) stale.
+    const sharesForCap = c.sharesCurrent > 0 ? c.sharesCurrent : shares;
+    const cap = c.marketCap ?? (price != null && sharesForCap > 0 ? price * sharesForCap : null);   // listing currency
     const ccy = c.reportCurrency || base;
     const conv = perBase(ccy);
     // Ratios need a statement currency conversion. A foreign reporter whose rate is missing gets blanks.
@@ -62,12 +67,22 @@ export function deriveListing({ companies, fx = null, baseCurrency = 'HKD' }) {
     // minorities) understates both: BHP's minority is ~10% of book but a quarter of earnings, which
     // turned a 19% ROE into 17.5% on the old total-equity denominator.
     const equity = latest.equityCommon ?? latest.equity ?? (fy ? (fy.equityCommon ?? fy.equity) : null);
+    // Total equity is kept only for reconciling against the vendor, whose P/B and ROE divide by it.
+    // The published `pb`/`roe` stay on common equity, the ordinary shareholders' claim.
+    const equityTotal = latest.equity ?? (fy ? fy.equity : null);
     const cfo = ttm.operatingCashFlow ?? (fy ? fy.operatingCashFlow : null);
     const cfi = ttm.investingCashFlow ?? (fy ? fy.investingCashFlow : null);
-    const fcf = cfo != null && cfi != null ? cfo + cfi : (ttm.freeCashFlow ?? null);
+    const capex = ttm.capitalExpenditure ?? (fy ? fy.capitalExpenditure : null);
+    const fcfReported = ttm.freeCashFlow ?? (fy ? fy.freeCashFlow : null);
+    // Free cash flow is operating cash flow minus capital expenditure, not operating plus *all*
+    // investing flow: acquisitions and purchases of investments are not maintenance capex. The
+    // vendor publishes that exact number, so use it first; the line items are the fallback, and
+    // CFO + CFI is only the last resort when neither is available.
+    const fcf = fcfReported ?? (cfo != null && capex != null ? cfo - Math.abs(capex) : (cfo != null && cfi != null ? cfo + cfi : null));
     // Which period the cash figures belong to. Income and cash can have different vendor pages, so the
     // label follows the cash line, not the P/E basis.
-    const cashTrailing = ttm.operatingCashFlow != null || ttm.investingCashFlow != null;
+    const cashTrailing = ttm.operatingCashFlow != null || ttm.investingCashFlow != null
+      || ttm.freeCashFlow != null || ttm.capitalExpenditure != null;
     const fcfBasis = fcf == null ? null : (cashTrailing ? 'TTM' : 'FY');
     const fcfMargin = fcf != null && rev > 0 && Math.abs((fcf / rev) * 100) <= 100
       ? round((fcf / rev) * 100, 1) : null;
@@ -82,6 +97,16 @@ export function deriveListing({ companies, fx = null, baseCurrency = 'HKD' }) {
     // income is associates), so it is withheld too instead of printed as 58,000,000%.
     const peRaw = capRep && ni > 0 ? capRep / ni : null;
     const peOk = peRaw != null && peRaw >= 0.5;
+    const pbTotal = capRep && equityTotal > 0 ? round(guard(capRep / equityTotal, 0, 50), 2) : null;
+    const roeTotal = equityTotal > 0 && ni != null && Math.abs(ni / equityTotal) <= 10
+      ? round((ni / equityTotal) * 100, 1) : null;
+    // The vendor's ROE can be the prior fiscal year while ours is TTM; these let the audit tell a
+    // period difference from a formula error.
+    const roeFY = fy && fy.netIncome != null && fy.equity > 0 && Math.abs(fy.netIncome / fy.equity) <= 10
+      ? round((fy.netIncome / fy.equity) * 100, 1) : null;
+    const priorFY = annual.length >= 2 ? annual[annual.length - 2] : null;
+    const roePriorFY = priorFY && priorFY.netIncome != null && priorFY.equity > 0 && Math.abs(priorFY.netIncome / priorFY.equity) <= 10
+      ? round((priorFY.netIncome / priorFY.equity) * 100, 1) : null;
     const marginOf = (v) => (rev > 0 && v != null && Math.abs(v / rev) <= 5 ? round((v / rev) * 100, 1) : null);
 
     // Five-year P/E band: the year-end price against that year's diluted EPS. For a foreign-currency
@@ -109,17 +134,50 @@ export function deriveListing({ companies, fx = null, baseCurrency = 'HKD' }) {
       };
     }
 
+    // --- growth (same rules as the US and Japan pages) --------------------------------------------
+    // The shared helper handles the split check: a near-integer jump in the average share count
+    // restates prior EPS onto the latest basis, so a split is not published as a profit collapse.
+    const growthRows = annual.slice(-5).map((r) => ({
+      year: Number(String(r.end).slice(0, 4)),
+      revenue: r.revenue,
+      eps: r.eps,
+      shares: r.shares > 0 ? r.shares : (r.netIncome != null && r.eps ? r.netIncome / r.eps : null),
+    }));
+    const growth = growthRates(growthRows);
+    const gFirst = annual.slice(-5)[0] || null;
+    const gLast = annual.slice(-5).at(-1) || null;
+    const marginDelta = gFirst && gLast && gFirst.revenue > 0 && gLast.revenue > 0
+      && gFirst.netIncome != null && gLast.netIncome != null
+      ? +(((gLast.netIncome / gLast.revenue) - (gFirst.netIncome / gFirst.revenue)) * 100).toFixed(1)
+      : null;
+    const epsTTM = ttm.eps != null
+      ? ttm.eps
+      : (ni != null && shares > 0 && !c.crossListing ? +(ni / shares).toFixed(2) : null);
+
     // Dividend per share arrives in the statement currency; the price is in the listing currency.
-    const dps = ttm.dividendPerShare ?? (fy ? fy.dividendPerShare : null);
+    // Use the latest annual DPS, which is the figure the vendor's own yield uses. The trailing
+    // column is not a trailing-twelve-month dividend for every issuer (NAB prints 2× the annual),
+    // so it is only the fallback when the annual row has no DPS.
+    const dpsAnnual = fy && fy.dividendPerShare != null ? fy.dividendPerShare : null;
+    const dps = dpsAnnual ?? ttm.dividendPerShare ?? null;
     const dpsRate = perReport(ccy);
     const yieldRaw = dps > 0 && price > 0 && dpsRate != null ? ((dps * dpsRate) / price) * 100 : null;
+    // The vendor's own yield already converts the dividend at the payment-date rate and uses the
+    // count it considers current. Use it when the side file has one; the filed DPS is the fallback.
+    const vendorYield = Number.isFinite(c.vendorDividendYield) && c.vendorDividendYield >= 0 && c.vendorDividendYield < 30
+      ? c.vendorDividendYield : null;
+    const dividendYield = vendorYield ?? (yieldRaw != null ? round(guard(yieldRaw, 0, 30), 2) : null);
 
     out.push({
       ...c,
       marketCap: cap,
       marketCapUsd: cap != null && usdRate ? Math.round(cap / usdRate) : null,
       shares: shares || null,
-      sharesBasis: 'filing',
+      sharesCurrent: c.sharesCurrent > 0 ? c.sharesCurrent : null,
+      // Preserve a cross-listing / SEC note; a bare "filing" is replaced by the current-share label.
+      sharesBasis: (c.sharesBasis && !/^filing$/i.test(c.sharesBasis))
+        ? c.sharesBasis
+        : (c.sharesCurrent > 0 ? 'current (vendor)' : 'filing'),
       currency: base,
       reportCurrency: ccy,
       pe: peOk ? round(guard(peRaw, 0, 500), 2) : null,
@@ -128,9 +186,13 @@ export function deriveListing({ companies, fx = null, baseCurrency = 'HKD' }) {
       netIncomeTTMAsOf: niAsOf,
       ...(ttm.netIncome == null && ni != null ? { ttmFromFY: true } : {}),
       pb: round(guard(capRep && equity > 0 ? capRep / equity : null, 0, 50), 2),
+      pbTotal,
       // Near-zero book equity turns a small loss into a four-digit "ROE" that says nothing about the
       // business. Publish no ROE instead of a number that reads as a collapse.
       roe: equity > 0 && ni != null && Math.abs(ni / equity) <= 10 ? round((ni / equity) * 100, 1) : null,
+      roeTotal,
+      roeFY,
+      roePriorFY,
       opMargin: marginOf(op),
       netMargin: marginOf(ni),
       fcf,
@@ -138,11 +200,16 @@ export function deriveListing({ companies, fx = null, baseCurrency = 'HKD' }) {
       fcfYield: capRep && fcf != null ? round((fcf / capRep) * 100, 2) : null,
       fcfMargin,
       cashConversion,
-      dividendYield: round(guard(yieldRaw, 0, 30), 2),
+      dividendYield,
+      dividendYieldBasis: vendorYield != null ? 'vendor' : (dps == null ? null : (dpsAnnual != null ? 'FY' : 'TTM')),
+      ...growth,
+      marginDelta,
+      epsTTM,
+      epsTTMBasis: epsTTM == null ? null : (ttm.eps != null ? 'reported' : 'net income ÷ shares'),
       history: annual.slice(-5).map((r) => ({
         y: r.end, s: r.revenue, o: r.operatingProfit, n: r.netIncome,
         q: r.equity ?? r.equityCommon, ec: r.equityCommon ?? r.equity,
-        a: r.assets, c: r.operatingCashFlow, i: r.investingCashFlow,
+        a: r.assets, c: r.operatingCashFlow, i: r.investingCashFlow, x: r.capitalExpenditure,
       })),
       quarters: (c.quarters || []).slice(-8),
       bands,

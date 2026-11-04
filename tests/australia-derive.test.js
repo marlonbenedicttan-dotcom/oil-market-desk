@@ -58,6 +58,54 @@ test('a fiscal-year cash flow is labelled FY, not TTM', () => {
   assert.equal(c.fcfMargin, 20);
 });
 
+test('free cash flow uses the vendor FCF, not CFO + all investing flow', () => {
+  const c = derive({ ...base, ttm: { ...base.ttm, freeCashFlow: 1.2e8, capitalExpenditure: -2e7 } });
+  assert.equal(c.fcf, 1.2e8);
+  assert.equal(c.fcfYield, 12);
+});
+
+test('without a vendor FCF, free cash flow is CFO minus capex', () => {
+  const c = derive({ ...base, ttm: { ...base.ttm, capitalExpenditure: -3e7 } });
+  assert.equal(c.fcf, 1.2e8);   // 1.5e8 − 3e7, not 1.5e8 + (−5e7)
+});
+
+test('dividend yield uses the annual DPS, not a trailing column that prints half a year', () => {
+  const annual = base.annual.map((r, i) => (i === base.annual.length - 1 ? { ...r, dividendPerShare: 0.4 } : r));
+  const c = derive({ ...base, ttm: { ...base.ttm, dividendPerShare: 0.8 }, annual });
+  assert.equal(c.dividendYield, 4);   // A$0.40, not the 0.80 trailing column
+  assert.equal(c.dividendYieldBasis, 'FY');
+});
+
+test('market cap uses current shares while the diluted filing count stays visible', () => {
+  const c = derive({ ...base, marketCap: undefined, sharesCurrent: 1.2e8 });
+  assert.equal(c.marketCap, 1.2e9);   // A$10 × 120m current
+  assert.equal(c.shares, 1e8, 'the diluted filing count is still published');
+  assert.equal(c.sharesCurrent, 1.2e8);
+  assert.equal(c.sharesBasis, 'current (vendor)');
+  assert.equal(c.pe, 12);             // 1.2e9 / 1e8
+});
+
+test('a vendor yield overrides the filed DPS conversion', () => {
+  const c = derive({ ...base, vendorDividendYield: 6 });
+  assert.equal(c.dividendYield, 6);
+  assert.equal(c.dividendYieldBasis, 'vendor');
+});
+
+test('total equity is kept for vendor reconciliation, while P/B and ROE use common equity', () => {
+  const c = derive({ ...base, latest: { equity: 5e8, equityCommon: 4e8 } });
+  assert.equal(c.pb, 2.5);        // 1e9 ÷ 4e8 common
+  assert.equal(c.pbTotal, 2);     // 1e9 ÷ 5e8 total
+  assert.equal(c.roe, 25);        // 1e8 ÷ 4e8 common
+  assert.equal(c.roeTotal, 20);   // 1e8 ÷ 5e8 total
+  assert.equal(c.roeFY, 22.5);    // FY net income 9e7 ÷ FY equity 4e8
+  assert.equal(c.roePriorFY, 21.6); // prior FY 8e7 ÷ 3.7e8
+});
+
+test('a cross-listing share-count note survives the derivation', () => {
+  const c = derive({ ...base, sharesBasis: 'filing × 10 (CDI ratio)' });
+  assert.equal(c.sharesBasis, 'filing × 10 (CDI ratio)');
+});
+
 test('a loss has no cash conversion, because the ratio would read as a multiple of nothing', () => {
   const c = derive({ ...base, ttm: { ...base.ttm, netIncome: -1e8 } });
   assert.equal(c.cashConversion, null);

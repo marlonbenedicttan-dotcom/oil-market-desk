@@ -57,13 +57,14 @@ Six markets, same UI:
 | 🇯🇵 Japan | TSE Prime — **1,547 companies** with a market cap | JPX / J-Quants, JPY |
 | 🇰🇷 Korea | KOSPI — **746 companies** | DART, KRW |
 | 🇹🇼 Taiwan | TWSE — **1,084 listed companies** | TWSE master + stockanalysis, TWD |
-| 🇭🇰 Hong Kong | HKEX main board — every company with a statement page | HKEX tape + stockanalysis, HKD/CNY/USD |
-| 🇦🇺 Australia | ASX — **1,664 companies** with a share count | ASX CSV + stockanalysis, AUD/USD |
+| 🇭🇰 Hong Kong | HKEX main board — **1,930 companies** with a statement page | HKEX tape + stockanalysis, HKD/CNY/USD |
+| 🇦🇺 Australia | ASX — **1,650 companies** with a current share count | ASX CSV + stockanalysis, AUD/USD |
 
 - Search, filter, compare, and chart any company.
 - **Valuation vs its own history** — P/E, P/B, EV/EBITDA percentiles over five years, plus sector aggregates.
 - **Themes** — the names behind a story, across all markets.
-- Financials are **filed values, not estimates**. Market cap comes from the exchange/Nasdaq quote so buybacks and share classes are handled at the source; every ratio is recomputed from its own inputs and cross-checked against the exchange's table. Where the two disagree by more than 5% the cell is marked and both values are shown.
+- Financials are **filed values, not estimates**. Market cap uses the **current shares outstanding** (vendor statistics page; SEC 20-F/10-K/10-Q cover for ADRs; US listing × CDI ratio for ASX CDIs; filing count as the last fallback) so post-period placements and buybacks are reflected; FCF is **operating cash flow − capex**; dividend yield uses the **vendor's payment-date yield**, falling back to the latest annual DPS. Statements older than 450 days are excluded and listed in the audit. Every ratio is recomputed from its own inputs and the audit cross-checks a sample against the vendor's statistics page.
+- **Growth, on the same rules as the US**: revenue CAGR, split-adjusted EPS growth, and the net-margin change over the five fiscal years on file. Hong Kong, Australia and Korea show them on the company page and in the screener; a loss at either end is shown as the EPS move instead of a misleading percentage.
 
 ## Data sources (all free)
 

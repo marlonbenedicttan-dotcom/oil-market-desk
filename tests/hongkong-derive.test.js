@@ -39,6 +39,32 @@ test('a HKD reporter divides the HKD cap by HKD earnings', () => {
   assert.equal(c.quarters.length, 1);
 });
 
+test('free cash flow uses the vendor FCF, not CFO + all investing flow', () => {
+  const [c] = deriveHongKong({ companies: [{ ...base, ttm: { ...base.ttm, freeCashFlow: 1.2e10, capitalExpenditure: -2e9 } }], fx });
+  assert.equal(c.fcf, 1.2e10);
+  assert.equal(c.fcfYield, 12);
+});
+
+test('without a vendor FCF, free cash flow is CFO minus capex', () => {
+  const [c] = deriveHongKong({ companies: [{ ...base, ttm: { ...base.ttm, capitalExpenditure: -3e9 } }], fx });
+  assert.equal(c.fcf, 1.2e10);   // 1.5e10 − 3e9, not 1.5e10 + (−5e9)
+});
+
+test('dividend yield uses the annual DPS, not a trailing column that prints half a year', () => {
+  const annual = base.annual.map((r, i) => (i === base.annual.length - 1 ? { ...r, dividendPerShare: 0.4 } : r));
+  const [c] = deriveHongKong({ companies: [{ ...base, ttm: { ...base.ttm, dividendPerShare: 0.8 }, annual }], fx });
+  assert.equal(c.dividendYield, 0.4);
+  assert.equal(c.dividendYieldBasis, 'FY');
+});
+
+test('market cap uses current shares while the diluted filing count stays visible', () => {
+  const [c] = deriveHongKong({ companies: [{ ...base, marketCap: undefined, sharesCurrent: 1.2e9 }], fx });
+  assert.equal(c.marketCap, 1.2e11);
+  assert.equal(c.shares, 1e9);
+  assert.equal(c.sharesCurrent, 1.2e9);
+  assert.equal(c.pe, 12);
+});
+
 test('a CNY reporter is valued in CNY, not in HKD', () => {
   const cny = { ...base, reportCurrency: 'CNY' };
   const [c] = deriveHongKong({ companies: [cny], fx });

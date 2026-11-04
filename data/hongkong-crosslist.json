@@ -1,773 +1,775 @@
 {
- "entries": {
-  "1046": {
-   "exchange": "otc",
-   "code": "EUBG",
-   "sourceName": "Entrepreneur Universe Bright Group",
-   "hkgName": "UNIVERSE ENT",
-   "matched": "OTC:EUBG",
-   "verified": "2026-11-02"
-  },
-  "1055": {
-   "exchange": "sha",
-   "code": "601098",
-   "sourceName": "China South Publishing & Media Group Co., Ltd",
-   "hkgName": "CHINA SOUTH AIR",
-   "matched": "SHA:601098",
-   "verified": "2026-11-02"
-  },
-  "1071": {
-   "exchange": "sha",
-   "code": "600027",
-   "sourceName": "Huadian Power International Corporation Limited",
-   "hkgName": "HUADIAN POWER",
-   "matched": "SHA:600027",
-   "verified": "2026-11-02"
-  },
-  "1081": {
-   "exchange": "she",
-   "code": "002487",
-   "sourceName": "Dajin Heavy Industry Co.,Ltd.",
-   "hkgName": "DAJIN",
-   "matched": "SHE:002487",
-   "verified": "2026-11-02"
-  },
-  "1108": {
-   "exchange": "sha",
-   "code": "600876",
-   "sourceName": "Triumph New Energy Company Limited",
-   "hkgName": "TRIUMPH NEW EN",
-   "matched": "SHA:600876",
-   "verified": "2026-11-02"
-  },
-  "1157": {
-   "exchange": "she",
-   "code": "000157",
-   "sourceName": "Zoomlion Heavy Industry Science and Technology Co., Ltd.",
-   "hkgName": "ZOOMLION",
-   "matched": "SHE:000157",
-   "verified": "2026-11-02"
-  },
-  "1186": {
-   "exchange": "otc",
-   "code": "CICHY",
-   "sourceName": "China Construction Bank Corporation",
-   "hkgName": "CHINA RAIL CONS",
-   "matched": "OTC:CICHY",
-   "verified": "2026-11-02"
-  },
-  "1276": {
-   "exchange": "sha",
-   "code": "600276",
-   "sourceName": "Jiangsu Hengrui Pharmaceuticals Co.,Ltd",
-   "hkgName": "HENGRUI PHARMA",
-   "matched": "SHA:600276",
-   "verified": "2026-11-02"
-  },
-  "1304": {
-   "exchange": "sha",
-   "code": "688279",
-   "sourceName": "Fortior Technology (Shenzhen) Co., Ltd.",
-   "hkgName": "FORTIOR",
-   "matched": "SHA:688279",
-   "verified": "2026-11-02"
-  },
-  "1377": {
-   "exchange": "she",
-   "code": "301377",
-   "sourceName": "Guangdong Dtech Technology Co., Ltd.",
-   "hkgName": "DTECH",
-   "matched": "SHE:301377",
-   "verified": "2026-11-02"
-  },
-  "1513": {
-   "exchange": "she",
-   "code": "000513",
-   "sourceName": "Livzon Pharmaceutical Group Inc.",
-   "hkgName": "LIVZON PHARMA",
-   "matched": "SHE:000513",
-   "verified": "2026-11-02"
-  },
-  "1688": {
-   "exchange": "she",
-   "code": "002600",
-   "sourceName": "Lingyi iTech (Guangdong) Company",
-   "hkgName": "LINGYI ITECH",
-   "matched": "SHE:002600",
-   "verified": "2026-11-02"
-  },
-  "1766": {
-   "exchange": "sha",
-   "code": "601766",
-   "sourceName": "CRRC Corporation Limited",
-   "hkgName": "CRRC",
-   "matched": "SHA:601766",
-   "verified": "2026-11-02"
-  },
-  "1776": {
-   "exchange": "she",
-   "code": "000776",
-   "sourceName": "GF Securities Co., Ltd.",
-   "hkgName": "GF SEC",
-   "matched": "SHE:000776",
-   "verified": "2026-11-02"
-  },
-  "1787": {
-   "exchange": "sha",
-   "code": "600547",
-   "sourceName": "Shandong Gold Mining Co., Ltd.",
-   "hkgName": "SD GOLD",
-   "matched": "SHA:600547",
-   "verified": "2026-11-02"
-  },
-  "1988": {
-   "exchange": "sha",
-   "code": "600016",
-   "sourceName": "China Minsheng Banking Corp., Ltd.",
-   "hkgName": "MINSHENG BANK",
-   "matched": "SHA:600016",
-   "verified": "2026-11-02"
-  },
-  "1989": {
-   "exchange": "she",
-   "code": "001389",
-   "sourceName": "Delton Technology (Guangzhou) Inc.",
-   "hkgName": "DELTON",
-   "matched": "SHE:001389",
-   "verified": "2026-11-02"
-  },
-  "2039": {
-   "exchange": "she",
-   "code": "301039",
-   "sourceName": "CIMC Vehicles (Group) Co., Ltd.",
-   "hkgName": "CIMC",
-   "matched": "SHE:301039",
-   "verified": "2026-11-02"
-  },
-  "2050": {
-   "exchange": "she",
-   "code": "002050",
-   "sourceName": "Zhejiang Sanhua Intelligent Controls Co.,Ltd",
-   "hkgName": "SANHUA",
-   "matched": "SHE:002050",
-   "verified": "2026-11-02"
-  },
-  "2099": {
-   "exchange": "tsx",
-   "code": "CGG",
-   "sourceName": "China Gold International Resources Corp. Ltd.",
-   "hkgName": "CHINAGOLDINTL",
-   "matched": "TSX:CGG",
-   "verified": "2026-11-02"
-  },
-  "2196": {
-   "exchange": "sha",
-   "code": "600196",
-   "sourceName": "Shanghai Fosun Pharmaceutical (Group) Co., Ltd.",
-   "hkgName": "FOSUN PHARMA",
-   "matched": "SHA:600196",
-   "verified": "2026-11-02"
-  },
-  "2202": {
-   "exchange": "she",
-   "code": "000002",
-   "sourceName": "China Vanke Co., Ltd.",
-   "hkgName": "CHINA VANKE",
-   "matched": "SHE:000002",
-   "verified": "2026-11-02"
-  },
-  "2208": {
-   "exchange": "she",
-   "code": "002202",
-   "sourceName": "Goldwind Science&Technology Co., Ltd.",
-   "hkgName": "GOLDWIND",
-   "matched": "SHE:002202",
-   "verified": "2026-11-02"
-  },
-  "2249": {
-   "exchange": "sha",
-   "code": "688249",
-   "sourceName": "Nexchip Semiconductor Corporation",
-   "hkgName": "NEXCHIP",
-   "matched": "SHA:688249",
-   "verified": "2026-11-02"
-  },
-  "2318": {
-   "exchange": "otc",
-   "code": "PNGAY",
-   "sourceName": "Ping An Insurance (Group) Company of China, Ltd.",
-   "hkgName": "PING AN",
-   "matched": "OTC:PNGAY",
-   "verified": "2026-11-02"
-  },
-  "2359": {
-   "exchange": "sha",
-   "code": "603259",
-   "sourceName": "WuXi AppTec Co., Ltd.",
-   "hkgName": "WUXI APPTEC",
-   "matched": "SHA:603259",
-   "verified": "2026-11-02"
-  },
-  "2378": {
-   "exchange": "lon",
-   "code": "PRU",
-   "sourceName": "Prudential plc",
-   "hkgName": "PRU",
-   "matched": "LON:PRU",
-   "verified": "2026-11-02"
-  },
-  "2402": {
-   "exchange": "sha",
-   "code": "688339",
-   "sourceName": "Beijing SinoHytec Co., Ltd.",
-   "hkgName": "SINOHYTEC",
-   "matched": "SHA:688339",
-   "verified": "2026-11-02"
-  },
-  "2465": {
-   "exchange": "sha",
-   "code": "603906",
-   "sourceName": "Jiangsu Lopal Tech. Group Co., Ltd.",
-   "hkgName": "LOPAL TECH",
-   "matched": "SHA:603906",
-   "verified": "2026-11-02"
-  },
-  "2476": {
-   "exchange": "otc",
-   "code": "VGTL",
-   "sourceName": "VGTel, Inc.",
-   "hkgName": "VGT",
-   "matched": "OTC:VGTL",
-   "verified": "2026-11-02"
-  },
-  "2493": {
-   "exchange": "sha",
-   "code": "688062",
-   "sourceName": "Mabwell (Shanghai) Bioscience Co., Ltd.",
-   "hkgName": "MABWELL-B",
-   "matched": "SHA:688062",
-   "verified": "2026-11-02"
-  },
-  "2579": {
-   "exchange": "she",
-   "code": "300919",
-   "sourceName": "CNGR Advanced Material Co., Ltd.",
-   "hkgName": "CNGR",
-   "matched": "SHE:300919",
-   "verified": "2026-11-02"
-  },
-  "2601": {
-   "exchange": "sha",
-   "code": "601601",
-   "sourceName": "China Pacific Insurance (Group) Co., Ltd.",
-   "hkgName": "CPIC",
-   "matched": "SHA:601601",
-   "verified": "2026-11-02"
-  },
-  "2603": {
-   "exchange": "she",
-   "code": "002803",
-   "sourceName": "Xiamen Jihong Co., Ltd",
-   "hkgName": "JIHONG CO",
-   "matched": "SHE:002803",
-   "verified": "2026-11-02"
-  },
-  "2631": {
-   "exchange": "sha",
-   "code": "688234",
-   "sourceName": "SICC Co., Ltd.",
-   "hkgName": "SICC",
-   "matched": "SHA:688234",
-   "verified": "2026-11-02"
-  },
-  "2636": {
-   "exchange": "sha",
-   "code": "688036",
-   "sourceName": "Shenzhen Transsion Holdings Co., Ltd.",
-   "hkgName": "TRANSSION",
-   "matched": "SHA:688036",
-   "verified": "2026-11-02"
-  },
-  "2648": {
-   "exchange": "sha",
-   "code": "603345",
-   "sourceName": "Anjoy Foods Group Co., Ltd.",
-   "hkgName": "ANJOY FOOD",
-   "matched": "SHA:603345",
-   "verified": "2026-11-02"
-  },
-  "2676": {
-   "exchange": "sha",
-   "code": "688052",
-   "sourceName": "Suzhou Novosense Microelectronics Co., Ltd.",
-   "hkgName": "NOVOSENSE",
-   "matched": "SHA:688052",
-   "verified": "2026-11-02"
-  },
-  "2691": {
-   "exchange": "sha",
-   "code": "603093",
-   "sourceName": "Nanhua Futures Co., Ltd.",
-   "hkgName": "NANHUA FUTURES",
-   "matched": "SHA:603093",
-   "verified": "2026-11-02"
-  },
-  "2692": {
-   "exchange": "she",
-   "code": "003021",
-   "sourceName": "Shenzhen Zhaowei Machinery & Electronics Co., Ltd.",
-   "hkgName": "ZHAOWEI",
-   "matched": "SHE:003021",
-   "verified": "2026-11-02"
-  },
-  "2701": {
-   "exchange": "she",
-   "code": "300077",
-   "sourceName": "Nsing Technologies Inc.",
-   "hkgName": "NSING TECH",
-   "matched": "SHE:300077",
-   "verified": "2026-11-02"
-  },
-  "2714": {
-   "exchange": "she",
-   "code": "002714",
-   "sourceName": "Muyuan Foods Group Co., Ltd.",
-   "hkgName": "MUYUAN",
-   "matched": "SHE:002714",
-   "verified": "2026-11-02"
-  },
-  "2715": {
-   "exchange": "she",
-   "code": "002747",
-   "sourceName": "Estun Automation Co., Ltd",
-   "hkgName": "ESTUN",
-   "matched": "SHE:002747",
-   "verified": "2026-11-02"
-  },
-  "2768": {
-   "exchange": "she",
-   "code": "002768",
-   "sourceName": "Qingdao Gon Technology Co., Ltd.",
-   "hkgName": "GON TECHNOLOGY",
-   "matched": "SHE:002768",
-   "verified": "2026-11-02"
-  },
-  "3223": {
-   "exchange": "she",
-   "code": "300223",
-   "sourceName": "Ingenic Semiconductor Co., Ltd.",
-   "hkgName": "INGENIC",
-   "matched": "SHE:300223",
-   "verified": "2026-11-02"
-  },
-  "3228": {
-   "exchange": "sha",
-   "code": "603228",
-   "sourceName": "Shenzhen Kinwong Electronic Co., Ltd.",
-   "hkgName": "KINWONG",
-   "matched": "SHA:603228",
-   "verified": "2026-11-02"
-  },
-  "3268": {
-   "exchange": "she",
-   "code": "002881",
-   "sourceName": "MeiG Smart Technology Co., Ltd",
-   "hkgName": "MEIG",
-   "matched": "SHE:002881",
-   "verified": "2026-11-02"
-  },
-  "3288": {
-   "exchange": "sha",
-   "code": "603288",
-   "sourceName": "Foshan Haitian Flavouring and Food Company Ltd.",
-   "hkgName": "HAITIAN FLAV",
-   "matched": "SHA:603288",
-   "verified": "2026-11-02"
-  },
-  "3296": {
-   "exchange": "sha",
-   "code": "603296",
-   "sourceName": "Huaqin Co., Ltd.",
-   "hkgName": "HUAQIN",
-   "matched": "SHA:603296",
-   "verified": "2026-11-02"
-  },
-  "3308": {
-   "exchange": "she",
-   "code": "300308",
-   "sourceName": "Zhongji Innolight Co., Ltd.",
-   "hkgName": "ZJ INNOLIGHT",
-   "matched": "SHE:300308",
-   "verified": "2026-11-02"
-  },
-  "3347": {
-   "exchange": "she",
-   "code": "300347",
-   "sourceName": "Hangzhou Tigermed Consulting Co., Ltd",
-   "hkgName": "TIGERMED",
-   "matched": "SHE:300347",
-   "verified": "2026-11-02"
-  },
-  "3606": {
-   "exchange": "sha",
-   "code": "600660",
-   "sourceName": "Fuyao Glass Industry Group Co., Ltd.",
-   "hkgName": "FUYAO GLASS",
-   "matched": "SHA:600660",
-   "verified": "2026-11-02"
-  },
-  "3661": {
-   "exchange": "she",
-   "code": "300661",
-   "sourceName": "SG Micro Corp",
-   "hkgName": "SG MICRO",
-   "matched": "SHE:300661",
-   "verified": "2026-11-02"
-  },
-  "3750": {
-   "exchange": "otc",
-   "code": "CYATY",
-   "sourceName": "Contemporary Amperex Technology Co., Limited",
-   "hkgName": "CATL",
-   "matched": "OTC:CYATY",
-   "verified": "2026-11-02"
-  },
-  "3757": {
-   "exchange": "she",
-   "code": "300757",
-   "sourceName": "RoboTechnik Intelligent Technology Co., Ltd.",
-   "hkgName": "ROBOTECHNIK",
-   "matched": "SHE:300757",
-   "verified": "2026-11-02"
-  },
-  "3759": {
-   "exchange": "she",
-   "code": "300759",
-   "sourceName": "Pharmaron Beijing Co., Ltd.",
-   "hkgName": "PHARMARON",
-   "matched": "SHE:300759",
-   "verified": "2026-11-02"
-  },
-  "3968": {
-   "exchange": "sha",
-   "code": "600036",
-   "sourceName": "China Merchants Bank Co., Ltd.",
-   "hkgName": "CM BANK",
-   "matched": "SHA:600036",
-   "verified": "2026-11-02"
-  },
-  "3986": {
-   "exchange": "sha",
-   "code": "603986",
-   "sourceName": "GigaDevice Semiconductor Inc.",
-   "hkgName": "GIGADEVICE",
-   "matched": "SHA:603986",
-   "verified": "2026-11-02"
-  },
-  "3993": {
-   "exchange": "sha",
-   "code": "603993",
-   "sourceName": "CMOC Group Limited",
-   "hkgName": "CMOC",
-   "matched": "SHA:603993",
-   "verified": "2026-11-02"
-  },
-  "6030": {
-   "exchange": "sha",
-   "code": "600030",
-   "sourceName": "CITIC Securities Company Limited",
-   "hkgName": "CITIC SEC",
-   "matched": "SHA:600030",
-   "verified": "2026-11-02"
-  },
-  "6031": {
-   "exchange": "sha",
-   "code": "600031",
-   "sourceName": "Sany Heavy Industry Co.,Ltd",
-   "hkgName": "SANY HEAVY IND",
-   "matched": "SHA:600031",
-   "verified": "2026-11-02"
-  },
-  "6067": {
-   "exchange": "she",
-   "code": "300568",
-   "sourceName": "Shenzhen Senior Technology Material Co., Ltd.",
-   "hkgName": "SENIOR MATERIAL",
-   "matched": "SHE:300568",
-   "verified": "2026-11-02"
-  },
-  "6127": {
-   "exchange": "sha",
-   "code": "603127",
-   "sourceName": "Joinn Laboratories(China)Co.,Ltd.",
-   "hkgName": "JOINN",
-   "matched": "SHA:603127",
-   "verified": "2026-11-02"
-  },
-  "6166": {
-   "exchange": "sha",
-   "code": "603083",
-   "sourceName": "CIG Shanghai Co., Ltd.",
-   "hkgName": "CIG",
-   "matched": "SHA:603083",
-   "verified": "2026-11-02"
-  },
-  "6613": {
-   "exchange": "she",
-   "code": "300433",
-   "sourceName": "Lens Technology Co., Ltd.",
-   "hkgName": "LENS",
-   "matched": "SHE:300433",
-   "verified": "2026-11-02"
-  },
-  "6690": {
-   "exchange": "sha",
-   "code": "600690",
-   "sourceName": "Haier Smart Home Co., Ltd.",
-   "hkgName": "HAIER SMARTHOME",
-   "matched": "SHA:600690",
-   "verified": "2026-11-02"
-  },
-  "6693": {
-   "exchange": "sha",
-   "code": "600988",
-   "sourceName": "Chifeng Jilong Gold Mining Group Limited",
-   "hkgName": "CHIFENG GOLD",
-   "matched": "SHA:600988",
-   "verified": "2026-11-02"
-  },
-  "6727": {
-   "exchange": "sha",
-   "code": "688031",
-   "sourceName": "Transwarp Technology (Shanghai) Co.,Ltd.",
-   "hkgName": "TRANSWARP",
-   "matched": "SHA:688031",
-   "verified": "2026-11-02"
-  },
-  "6745": {
-   "exchange": "sha",
-   "code": "601678",
-   "sourceName": "Befar Group Co., Ltd",
-   "hkgName": "BEFAR GROUP",
-   "matched": "SHA:601678",
-   "verified": "2026-11-02"
-  },
-  "6809": {
-   "exchange": "sha",
-   "code": "688008",
-   "sourceName": "Montage Technology Co., Ltd.",
-   "hkgName": "MONTAGE TECH",
-   "matched": "SHA:688008",
-   "verified": "2026-11-02"
-  },
-  "6821": {
-   "exchange": "she",
-   "code": "002821",
-   "sourceName": "Asymchem Laboratories (Tianjin) Co., Ltd.",
-   "hkgName": "ASYMCHEM",
-   "matched": "SHE:002821",
-   "verified": "2026-11-02"
-  },
-  "6936": {
-   "exchange": "she",
-   "code": "002352",
-   "sourceName": "S.F. Holding Co., Ltd.",
-   "hkgName": "SF HOLDING",
-   "matched": "SHE:002352",
-   "verified": "2026-11-02"
-  },
-  "9611": {
-   "exchange": "sha",
-   "code": "603341",
-   "sourceName": "Shanghai Longcheer Technology Co., Ltd.",
-   "hkgName": "LONGCHEER",
-   "matched": "SHA:603341",
-   "verified": "2026-11-02"
-  },
-  "9696": {
-   "exchange": "she",
-   "code": "002466",
-   "sourceName": "Tianqi Lithium Corporation",
-   "hkgName": "TIANQI LITHIUM",
-   "matched": "SHE:002466",
-   "verified": "2026-11-02"
-  },
-  "9927": {
-   "exchange": "sha",
-   "code": "601127",
-   "sourceName": "Seres Group Co.,Ltd",
-   "hkgName": "SERES",
-   "matched": "SHA:601127",
-   "verified": "2026-11-02"
-  },
-  "9976": {
-   "exchange": "she",
-   "code": "301308",
-   "sourceName": "Shenzhen Longsys Electronics Co., Ltd.",
-   "hkgName": "LONGSYS",
-   "matched": "SHE:301308",
-   "verified": "2026-11-02"
-  },
-  "9980": {
-   "exchange": "sha",
-   "code": "605499",
-   "sourceName": "Eastroc Beverage (Group) Co., Ltd.",
-   "hkgName": "EASTROC",
-   "matched": "SHA:605499",
-   "verified": "2026-11-02"
-  },
-  "9981": {
-   "exchange": "she",
-   "code": "002130",
-   "sourceName": "ShenZhen Woer Heat-Shrinkable Material Co.,Ltd.",
-   "hkgName": "WOER",
-   "matched": "SHE:002130",
-   "verified": "2026-11-02"
-  },
-  "0005": {
-   "exchange": "lon",
-   "code": "HSBA",
-   "sourceName": "HSBC Holdings plc",
-   "hkgName": "HSBC HOLDINGS",
-   "matched": "LON:HSBA",
-   "verified": "2026-11-02"
-  },
-  "0168": {
-   "exchange": "sha",
-   "code": "600600",
-   "sourceName": "Tsingtao Brewery Company Limited",
-   "hkgName": "TSINGTAO BREW",
-   "matched": "SHA:600600",
-   "verified": "2026-11-02"
-  },
-  "0300": {
-   "exchange": "she",
-   "code": "000333",
-   "sourceName": "Midea Group Co., Ltd.",
-   "hkgName": "MIDEA GROUP",
-   "matched": "SHE:000333",
-   "verified": "2026-11-02"
-  },
-  "0390": {
-   "exchange": "sha",
-   "code": "601390",
-   "sourceName": "China Railway Group Limited",
-   "hkgName": "CHINA RAILWAY",
-   "matched": "SHA:601390",
-   "verified": "2026-11-02"
-  },
-  "0470": {
-   "exchange": "she",
-   "code": "300450",
-   "sourceName": "Wuxi Lead Intelligent Equipment CO.,LTD.",
-   "hkgName": "WUXI LEAD",
-   "matched": "SHE:300450",
-   "verified": "2026-11-02"
-  },
-  "0501": {
-   "exchange": "sha",
-   "code": "603501",
-   "sourceName": "OmniVision Integrated Circuits Group, Inc.",
-   "hkgName": "OMNIVISION",
-   "matched": "SHA:603501",
-   "verified": "2026-11-02"
-  },
-  "0537": {
-   "exchange": "sha",
-   "code": "688337",
-   "sourceName": "Rigol Technologies Co., Ltd.",
-   "hkgName": "RIGOL",
-   "matched": "SHA:688337",
-   "verified": "2026-11-02"
-  },
-  "0553": {
-   "exchange": "sha",
-   "code": "600775",
-   "sourceName": "Nanjing Panda Electronics Company Limited",
-   "hkgName": "NANJING PANDA",
-   "matched": "SHA:600775",
-   "verified": "2026-11-02"
-  },
-  "0564": {
-   "exchange": "sha",
-   "code": "601717",
-   "sourceName": "ZCZL Industrial Technology Group Company Limited",
-   "hkgName": "ZCZL",
-   "matched": "SHA:601717",
-   "verified": "2026-11-02"
-  },
-  "0638": {
-   "exchange": "she",
-   "code": "300638",
-   "sourceName": "Fibocom Wireless Inc.",
-   "hkgName": "FIBOCOM",
-   "matched": "SHE:300638",
-   "verified": "2026-11-02"
-  },
-  "0668": {
-   "exchange": "she",
-   "code": "300866",
-   "sourceName": "Anker Innovations Technology Co., Ltd.",
-   "hkgName": "ANKER",
-   "matched": "SHE:300866",
-   "verified": "2026-11-02"
-  },
-  "0670": {
-   "exchange": "she",
-   "code": "002140",
-   "sourceName": "East China Engineering Science and Technology Co., Ltd.",
-   "hkgName": "CHINA EAST AIR",
-   "matched": "SHE:002140",
-   "verified": "2026-11-02"
-  },
-  "0699": {
-   "exchange": "sha",
-   "code": "600699",
-   "sourceName": "Ningbo Joyson Electronic Corp.",
-   "hkgName": "JOYSON ELEC",
-   "matched": "SHA:600699",
-   "verified": "2026-11-02"
-  },
-  "0763": {
-   "exchange": "she",
-   "code": "000063",
-   "sourceName": "ZTE Corporation",
-   "hkgName": "ZTE",
-   "matched": "SHE:000063",
-   "verified": "2026-11-02"
-  },
-  "0874": {
-   "exchange": "sha",
-   "code": "600332",
-   "sourceName": "Guangzhou Baiyunshan Pharmaceutical Holdings Company Limited",
-   "hkgName": "BAIYUNSHAN PH",
-   "matched": "SHA:600332",
-   "verified": "2026-11-02"
-  },
-  "0914": {
-   "exchange": "sha",
-   "code": "600585",
-   "sourceName": "Anhui Conch Cement Company Limited",
-   "hkgName": "CONCH CEMENT",
-   "matched": "SHA:600585",
-   "verified": "2026-11-02"
-  },
-  "0921": {
-   "exchange": "sha",
-   "code": "600060",
-   "sourceName": "Hisense Visual Technology Co., Ltd.",
-   "hkgName": "HISENSE HA",
-   "matched": "SHA:600060",
-   "verified": "2026-11-02"
-  },
-  "0998": {
-   "exchange": "sha",
-   "code": "601998",
-   "sourceName": "China CITIC Bank Corporation Limited",
-   "hkgName": "CITIC BANK",
-   "matched": "SHA:601998",
-   "verified": "2026-11-02"
-  }
- },
- "updated": "2026-11-02T15:32:10.900Z"
+  "entries": {
+    "1046": {
+      "exchange": "otc",
+      "code": "EUBG",
+      "sourceName": "Entrepreneur Universe Bright Group",
+      "hkgName": "UNIVERSE ENT",
+      "matched": "OTC:EUBG",
+      "verified": "2026-11-02"
+    },
+    "1055": {
+      "exchange": "sha",
+      "code": "600029",
+      "sourceName": "China Southern Airlines Company Limited",
+      "hkgName": "CHINA SOUTH AIR",
+      "matched": "SHA:600029",
+      "verified": "2026-11-04",
+      "reviewed": "A-share of the same airline"
+    },
+    "1071": {
+      "exchange": "sha",
+      "code": "600027",
+      "sourceName": "Huadian Power International Corporation Limited",
+      "hkgName": "HUADIAN POWER",
+      "matched": "SHA:600027",
+      "verified": "2026-11-02"
+    },
+    "1081": {
+      "exchange": "she",
+      "code": "002487",
+      "sourceName": "Dajin Heavy Industry Co.,Ltd.",
+      "hkgName": "DAJIN",
+      "matched": "SHE:002487",
+      "verified": "2026-11-02"
+    },
+    "1108": {
+      "exchange": "sha",
+      "code": "600876",
+      "sourceName": "Triumph New Energy Company Limited",
+      "hkgName": "TRIUMPH NEW EN",
+      "matched": "SHA:600876",
+      "verified": "2026-11-02"
+    },
+    "1157": {
+      "exchange": "she",
+      "code": "000157",
+      "sourceName": "Zoomlion Heavy Industry Science and Technology Co., Ltd.",
+      "hkgName": "ZOOMLION",
+      "matched": "SHE:000157",
+      "verified": "2026-11-02"
+    },
+    "1186": {
+      "exchange": "otc",
+      "code": "CICHY",
+      "sourceName": "China Construction Bank Corporation",
+      "hkgName": "CHINA RAIL CONS",
+      "matched": "OTC:CICHY",
+      "verified": "2026-11-02"
+    },
+    "1276": {
+      "exchange": "sha",
+      "code": "600276",
+      "sourceName": "Jiangsu Hengrui Pharmaceuticals Co.,Ltd",
+      "hkgName": "HENGRUI PHARMA",
+      "matched": "SHA:600276",
+      "verified": "2026-11-02"
+    },
+    "1304": {
+      "exchange": "sha",
+      "code": "688279",
+      "sourceName": "Fortior Technology (Shenzhen) Co., Ltd.",
+      "hkgName": "FORTIOR",
+      "matched": "SHA:688279",
+      "verified": "2026-11-02"
+    },
+    "1377": {
+      "exchange": "she",
+      "code": "301377",
+      "sourceName": "Guangdong Dtech Technology Co., Ltd.",
+      "hkgName": "DTECH",
+      "matched": "SHE:301377",
+      "verified": "2026-11-02"
+    },
+    "1513": {
+      "exchange": "she",
+      "code": "000513",
+      "sourceName": "Livzon Pharmaceutical Group Inc.",
+      "hkgName": "LIVZON PHARMA",
+      "matched": "SHE:000513",
+      "verified": "2026-11-02"
+    },
+    "1688": {
+      "exchange": "she",
+      "code": "002600",
+      "sourceName": "Lingyi iTech (Guangdong) Company",
+      "hkgName": "LINGYI ITECH",
+      "matched": "SHE:002600",
+      "verified": "2026-11-02"
+    },
+    "1766": {
+      "exchange": "sha",
+      "code": "601766",
+      "sourceName": "CRRC Corporation Limited",
+      "hkgName": "CRRC",
+      "matched": "SHA:601766",
+      "verified": "2026-11-02"
+    },
+    "1776": {
+      "exchange": "she",
+      "code": "000776",
+      "sourceName": "GF Securities Co., Ltd.",
+      "hkgName": "GF SEC",
+      "matched": "SHE:000776",
+      "verified": "2026-11-02"
+    },
+    "1787": {
+      "exchange": "sha",
+      "code": "600547",
+      "sourceName": "Shandong Gold Mining Co., Ltd.",
+      "hkgName": "SD GOLD",
+      "matched": "SHA:600547",
+      "verified": "2026-11-02"
+    },
+    "1988": {
+      "exchange": "sha",
+      "code": "600016",
+      "sourceName": "China Minsheng Banking Corp., Ltd.",
+      "hkgName": "MINSHENG BANK",
+      "matched": "SHA:600016",
+      "verified": "2026-11-02"
+    },
+    "1989": {
+      "exchange": "she",
+      "code": "001389",
+      "sourceName": "Delton Technology (Guangzhou) Inc.",
+      "hkgName": "DELTON",
+      "matched": "SHE:001389",
+      "verified": "2026-11-02"
+    },
+    "2039": {
+      "exchange": "she",
+      "code": "301039",
+      "sourceName": "CIMC Vehicles (Group) Co., Ltd.",
+      "hkgName": "CIMC",
+      "matched": "SHE:301039",
+      "verified": "2026-11-02"
+    },
+    "2050": {
+      "exchange": "she",
+      "code": "002050",
+      "sourceName": "Zhejiang Sanhua Intelligent Controls Co.,Ltd",
+      "hkgName": "SANHUA",
+      "matched": "SHE:002050",
+      "verified": "2026-11-02"
+    },
+    "2099": {
+      "exchange": "tsx",
+      "code": "CGG",
+      "sourceName": "China Gold International Resources Corp. Ltd.",
+      "hkgName": "CHINAGOLDINTL",
+      "matched": "TSX:CGG",
+      "verified": "2026-11-02"
+    },
+    "2196": {
+      "exchange": "sha",
+      "code": "600196",
+      "sourceName": "Shanghai Fosun Pharmaceutical (Group) Co., Ltd.",
+      "hkgName": "FOSUN PHARMA",
+      "matched": "SHA:600196",
+      "verified": "2026-11-02"
+    },
+    "2202": {
+      "exchange": "she",
+      "code": "000002",
+      "sourceName": "China Vanke Co., Ltd.",
+      "hkgName": "CHINA VANKE",
+      "matched": "SHE:000002",
+      "verified": "2026-11-02"
+    },
+    "2208": {
+      "exchange": "she",
+      "code": "002202",
+      "sourceName": "Goldwind Science&Technology Co., Ltd.",
+      "hkgName": "GOLDWIND",
+      "matched": "SHE:002202",
+      "verified": "2026-11-02"
+    },
+    "2249": {
+      "exchange": "sha",
+      "code": "688249",
+      "sourceName": "Nexchip Semiconductor Corporation",
+      "hkgName": "NEXCHIP",
+      "matched": "SHA:688249",
+      "verified": "2026-11-02"
+    },
+    "2318": {
+      "exchange": "otc",
+      "code": "PNGAY",
+      "sourceName": "Ping An Insurance (Group) Company of China, Ltd.",
+      "hkgName": "PING AN",
+      "matched": "OTC:PNGAY",
+      "verified": "2026-11-02"
+    },
+    "2359": {
+      "exchange": "sha",
+      "code": "603259",
+      "sourceName": "WuXi AppTec Co., Ltd.",
+      "hkgName": "WUXI APPTEC",
+      "matched": "SHA:603259",
+      "verified": "2026-11-02"
+    },
+    "2378": {
+      "exchange": "lon",
+      "code": "PRU",
+      "sourceName": "Prudential plc",
+      "hkgName": "PRU",
+      "matched": "LON:PRU",
+      "verified": "2026-11-02"
+    },
+    "2402": {
+      "exchange": "sha",
+      "code": "688339",
+      "sourceName": "Beijing SinoHytec Co., Ltd.",
+      "hkgName": "SINOHYTEC",
+      "matched": "SHA:688339",
+      "verified": "2026-11-02"
+    },
+    "2465": {
+      "exchange": "sha",
+      "code": "603906",
+      "sourceName": "Jiangsu Lopal Tech. Group Co., Ltd.",
+      "hkgName": "LOPAL TECH",
+      "matched": "SHA:603906",
+      "verified": "2026-11-02"
+    },
+    "2476": {
+      "exchange": "otc",
+      "code": "VGTL",
+      "sourceName": "VGTel, Inc.",
+      "hkgName": "VGT",
+      "matched": "OTC:VGTL",
+      "verified": "2026-11-02"
+    },
+    "2493": {
+      "exchange": "sha",
+      "code": "688062",
+      "sourceName": "Mabwell (Shanghai) Bioscience Co., Ltd.",
+      "hkgName": "MABWELL-B",
+      "matched": "SHA:688062",
+      "verified": "2026-11-02"
+    },
+    "2579": {
+      "exchange": "she",
+      "code": "300919",
+      "sourceName": "CNGR Advanced Material Co., Ltd.",
+      "hkgName": "CNGR",
+      "matched": "SHE:300919",
+      "verified": "2026-11-02"
+    },
+    "2601": {
+      "exchange": "sha",
+      "code": "601601",
+      "sourceName": "China Pacific Insurance (Group) Co., Ltd.",
+      "hkgName": "CPIC",
+      "matched": "SHA:601601",
+      "verified": "2026-11-02"
+    },
+    "2603": {
+      "exchange": "she",
+      "code": "002803",
+      "sourceName": "Xiamen Jihong Co., Ltd",
+      "hkgName": "JIHONG CO",
+      "matched": "SHE:002803",
+      "verified": "2026-11-02"
+    },
+    "2631": {
+      "exchange": "sha",
+      "code": "688234",
+      "sourceName": "SICC Co., Ltd.",
+      "hkgName": "SICC",
+      "matched": "SHA:688234",
+      "verified": "2026-11-02"
+    },
+    "2636": {
+      "exchange": "sha",
+      "code": "688036",
+      "sourceName": "Shenzhen Transsion Holdings Co., Ltd.",
+      "hkgName": "TRANSSION",
+      "matched": "SHA:688036",
+      "verified": "2026-11-02"
+    },
+    "2648": {
+      "exchange": "sha",
+      "code": "603345",
+      "sourceName": "Anjoy Foods Group Co., Ltd.",
+      "hkgName": "ANJOY FOOD",
+      "matched": "SHA:603345",
+      "verified": "2026-11-02"
+    },
+    "2676": {
+      "exchange": "sha",
+      "code": "688052",
+      "sourceName": "Suzhou Novosense Microelectronics Co., Ltd.",
+      "hkgName": "NOVOSENSE",
+      "matched": "SHA:688052",
+      "verified": "2026-11-02"
+    },
+    "2691": {
+      "exchange": "sha",
+      "code": "603093",
+      "sourceName": "Nanhua Futures Co., Ltd.",
+      "hkgName": "NANHUA FUTURES",
+      "matched": "SHA:603093",
+      "verified": "2026-11-02"
+    },
+    "2692": {
+      "exchange": "she",
+      "code": "003021",
+      "sourceName": "Shenzhen Zhaowei Machinery & Electronics Co., Ltd.",
+      "hkgName": "ZHAOWEI",
+      "matched": "SHE:003021",
+      "verified": "2026-11-02"
+    },
+    "2701": {
+      "exchange": "she",
+      "code": "300077",
+      "sourceName": "Nsing Technologies Inc.",
+      "hkgName": "NSING TECH",
+      "matched": "SHE:300077",
+      "verified": "2026-11-02"
+    },
+    "2714": {
+      "exchange": "she",
+      "code": "002714",
+      "sourceName": "Muyuan Foods Group Co., Ltd.",
+      "hkgName": "MUYUAN",
+      "matched": "SHE:002714",
+      "verified": "2026-11-02"
+    },
+    "2715": {
+      "exchange": "she",
+      "code": "002747",
+      "sourceName": "Estun Automation Co., Ltd",
+      "hkgName": "ESTUN",
+      "matched": "SHE:002747",
+      "verified": "2026-11-02"
+    },
+    "2768": {
+      "exchange": "she",
+      "code": "002768",
+      "sourceName": "Qingdao Gon Technology Co., Ltd.",
+      "hkgName": "GON TECHNOLOGY",
+      "matched": "SHE:002768",
+      "verified": "2026-11-02"
+    },
+    "3223": {
+      "exchange": "she",
+      "code": "300223",
+      "sourceName": "Ingenic Semiconductor Co., Ltd.",
+      "hkgName": "INGENIC",
+      "matched": "SHE:300223",
+      "verified": "2026-11-02"
+    },
+    "3228": {
+      "exchange": "sha",
+      "code": "603228",
+      "sourceName": "Shenzhen Kinwong Electronic Co., Ltd.",
+      "hkgName": "KINWONG",
+      "matched": "SHA:603228",
+      "verified": "2026-11-02"
+    },
+    "3268": {
+      "exchange": "she",
+      "code": "002881",
+      "sourceName": "MeiG Smart Technology Co., Ltd",
+      "hkgName": "MEIG",
+      "matched": "SHE:002881",
+      "verified": "2026-11-02"
+    },
+    "3288": {
+      "exchange": "sha",
+      "code": "603288",
+      "sourceName": "Foshan Haitian Flavouring and Food Company Ltd.",
+      "hkgName": "HAITIAN FLAV",
+      "matched": "SHA:603288",
+      "verified": "2026-11-02"
+    },
+    "3296": {
+      "exchange": "sha",
+      "code": "603296",
+      "sourceName": "Huaqin Co., Ltd.",
+      "hkgName": "HUAQIN",
+      "matched": "SHA:603296",
+      "verified": "2026-11-02"
+    },
+    "3308": {
+      "exchange": "she",
+      "code": "300308",
+      "sourceName": "Zhongji Innolight Co., Ltd.",
+      "hkgName": "ZJ INNOLIGHT",
+      "matched": "SHE:300308",
+      "verified": "2026-11-02"
+    },
+    "3347": {
+      "exchange": "she",
+      "code": "300347",
+      "sourceName": "Hangzhou Tigermed Consulting Co., Ltd",
+      "hkgName": "TIGERMED",
+      "matched": "SHE:300347",
+      "verified": "2026-11-02"
+    },
+    "3606": {
+      "exchange": "sha",
+      "code": "600660",
+      "sourceName": "Fuyao Glass Industry Group Co., Ltd.",
+      "hkgName": "FUYAO GLASS",
+      "matched": "SHA:600660",
+      "verified": "2026-11-02"
+    },
+    "3661": {
+      "exchange": "she",
+      "code": "300661",
+      "sourceName": "SG Micro Corp",
+      "hkgName": "SG MICRO",
+      "matched": "SHE:300661",
+      "verified": "2026-11-02"
+    },
+    "3750": {
+      "exchange": "otc",
+      "code": "CYATY",
+      "sourceName": "Contemporary Amperex Technology Co., Limited",
+      "hkgName": "CATL",
+      "matched": "OTC:CYATY",
+      "verified": "2026-11-02"
+    },
+    "3757": {
+      "exchange": "she",
+      "code": "300757",
+      "sourceName": "RoboTechnik Intelligent Technology Co., Ltd.",
+      "hkgName": "ROBOTECHNIK",
+      "matched": "SHE:300757",
+      "verified": "2026-11-02"
+    },
+    "3759": {
+      "exchange": "she",
+      "code": "300759",
+      "sourceName": "Pharmaron Beijing Co., Ltd.",
+      "hkgName": "PHARMARON",
+      "matched": "SHE:300759",
+      "verified": "2026-11-02"
+    },
+    "3968": {
+      "exchange": "sha",
+      "code": "600036",
+      "sourceName": "China Merchants Bank Co., Ltd.",
+      "hkgName": "CM BANK",
+      "matched": "SHA:600036",
+      "verified": "2026-11-02"
+    },
+    "3986": {
+      "exchange": "sha",
+      "code": "603986",
+      "sourceName": "GigaDevice Semiconductor Inc.",
+      "hkgName": "GIGADEVICE",
+      "matched": "SHA:603986",
+      "verified": "2026-11-02"
+    },
+    "3993": {
+      "exchange": "sha",
+      "code": "603993",
+      "sourceName": "CMOC Group Limited",
+      "hkgName": "CMOC",
+      "matched": "SHA:603993",
+      "verified": "2026-11-02"
+    },
+    "6030": {
+      "exchange": "sha",
+      "code": "600030",
+      "sourceName": "CITIC Securities Company Limited",
+      "hkgName": "CITIC SEC",
+      "matched": "SHA:600030",
+      "verified": "2026-11-02"
+    },
+    "6031": {
+      "exchange": "sha",
+      "code": "600031",
+      "sourceName": "Sany Heavy Industry Co.,Ltd",
+      "hkgName": "SANY HEAVY IND",
+      "matched": "SHA:600031",
+      "verified": "2026-11-02"
+    },
+    "6067": {
+      "exchange": "she",
+      "code": "300568",
+      "sourceName": "Shenzhen Senior Technology Material Co., Ltd.",
+      "hkgName": "SENIOR MATERIAL",
+      "matched": "SHE:300568",
+      "verified": "2026-11-02"
+    },
+    "6127": {
+      "exchange": "sha",
+      "code": "603127",
+      "sourceName": "Joinn Laboratories(China)Co.,Ltd.",
+      "hkgName": "JOINN",
+      "matched": "SHA:603127",
+      "verified": "2026-11-02"
+    },
+    "6166": {
+      "exchange": "sha",
+      "code": "603083",
+      "sourceName": "CIG Shanghai Co., Ltd.",
+      "hkgName": "CIG",
+      "matched": "SHA:603083",
+      "verified": "2026-11-02"
+    },
+    "6613": {
+      "exchange": "she",
+      "code": "300433",
+      "sourceName": "Lens Technology Co., Ltd.",
+      "hkgName": "LENS",
+      "matched": "SHE:300433",
+      "verified": "2026-11-02"
+    },
+    "6690": {
+      "exchange": "sha",
+      "code": "600690",
+      "sourceName": "Haier Smart Home Co., Ltd.",
+      "hkgName": "HAIER SMARTHOME",
+      "matched": "SHA:600690",
+      "verified": "2026-11-02"
+    },
+    "6693": {
+      "exchange": "sha",
+      "code": "600988",
+      "sourceName": "Chifeng Jilong Gold Mining Group Limited",
+      "hkgName": "CHIFENG GOLD",
+      "matched": "SHA:600988",
+      "verified": "2026-11-02"
+    },
+    "6727": {
+      "exchange": "sha",
+      "code": "688031",
+      "sourceName": "Transwarp Technology (Shanghai) Co.,Ltd.",
+      "hkgName": "TRANSWARP",
+      "matched": "SHA:688031",
+      "verified": "2026-11-02"
+    },
+    "6745": {
+      "exchange": "sha",
+      "code": "601678",
+      "sourceName": "Befar Group Co., Ltd",
+      "hkgName": "BEFAR GROUP",
+      "matched": "SHA:601678",
+      "verified": "2026-11-02"
+    },
+    "6809": {
+      "exchange": "sha",
+      "code": "688008",
+      "sourceName": "Montage Technology Co., Ltd.",
+      "hkgName": "MONTAGE TECH",
+      "matched": "SHA:688008",
+      "verified": "2026-11-02"
+    },
+    "6821": {
+      "exchange": "she",
+      "code": "002821",
+      "sourceName": "Asymchem Laboratories (Tianjin) Co., Ltd.",
+      "hkgName": "ASYMCHEM",
+      "matched": "SHE:002821",
+      "verified": "2026-11-02"
+    },
+    "6936": {
+      "exchange": "she",
+      "code": "002352",
+      "sourceName": "S.F. Holding Co., Ltd.",
+      "hkgName": "SF HOLDING",
+      "matched": "SHE:002352",
+      "verified": "2026-11-02"
+    },
+    "9611": {
+      "exchange": "sha",
+      "code": "603341",
+      "sourceName": "Shanghai Longcheer Technology Co., Ltd.",
+      "hkgName": "LONGCHEER",
+      "matched": "SHA:603341",
+      "verified": "2026-11-02"
+    },
+    "9696": {
+      "exchange": "she",
+      "code": "002466",
+      "sourceName": "Tianqi Lithium Corporation",
+      "hkgName": "TIANQI LITHIUM",
+      "matched": "SHE:002466",
+      "verified": "2026-11-02"
+    },
+    "9927": {
+      "exchange": "sha",
+      "code": "601127",
+      "sourceName": "Seres Group Co.,Ltd",
+      "hkgName": "SERES",
+      "matched": "SHA:601127",
+      "verified": "2026-11-02"
+    },
+    "9976": {
+      "exchange": "she",
+      "code": "301308",
+      "sourceName": "Shenzhen Longsys Electronics Co., Ltd.",
+      "hkgName": "LONGSYS",
+      "matched": "SHE:301308",
+      "verified": "2026-11-02"
+    },
+    "9980": {
+      "exchange": "sha",
+      "code": "605499",
+      "sourceName": "Eastroc Beverage (Group) Co., Ltd.",
+      "hkgName": "EASTROC",
+      "matched": "SHA:605499",
+      "verified": "2026-11-02"
+    },
+    "9981": {
+      "exchange": "she",
+      "code": "002130",
+      "sourceName": "ShenZhen Woer Heat-Shrinkable Material Co.,Ltd.",
+      "hkgName": "WOER",
+      "matched": "SHE:002130",
+      "verified": "2026-11-02"
+    },
+    "0005": {
+      "exchange": "lon",
+      "code": "HSBA",
+      "sourceName": "HSBC Holdings plc",
+      "hkgName": "HSBC HOLDINGS",
+      "matched": "LON:HSBA",
+      "verified": "2026-11-02"
+    },
+    "0168": {
+      "exchange": "sha",
+      "code": "600600",
+      "sourceName": "Tsingtao Brewery Company Limited",
+      "hkgName": "TSINGTAO BREW",
+      "matched": "SHA:600600",
+      "verified": "2026-11-02"
+    },
+    "0300": {
+      "exchange": "she",
+      "code": "000333",
+      "sourceName": "Midea Group Co., Ltd.",
+      "hkgName": "MIDEA GROUP",
+      "matched": "SHE:000333",
+      "verified": "2026-11-02"
+    },
+    "0390": {
+      "exchange": "sha",
+      "code": "601390",
+      "sourceName": "China Railway Group Limited",
+      "hkgName": "CHINA RAILWAY",
+      "matched": "SHA:601390",
+      "verified": "2026-11-02"
+    },
+    "0470": {
+      "exchange": "she",
+      "code": "300450",
+      "sourceName": "Wuxi Lead Intelligent Equipment CO.,LTD.",
+      "hkgName": "WUXI LEAD",
+      "matched": "SHE:300450",
+      "verified": "2026-11-02"
+    },
+    "0501": {
+      "exchange": "sha",
+      "code": "603501",
+      "sourceName": "OmniVision Integrated Circuits Group, Inc.",
+      "hkgName": "OMNIVISION",
+      "matched": "SHA:603501",
+      "verified": "2026-11-02"
+    },
+    "0537": {
+      "exchange": "sha",
+      "code": "688337",
+      "sourceName": "Rigol Technologies Co., Ltd.",
+      "hkgName": "RIGOL",
+      "matched": "SHA:688337",
+      "verified": "2026-11-02"
+    },
+    "0553": {
+      "exchange": "sha",
+      "code": "600775",
+      "sourceName": "Nanjing Panda Electronics Company Limited",
+      "hkgName": "NANJING PANDA",
+      "matched": "SHA:600775",
+      "verified": "2026-11-02"
+    },
+    "0564": {
+      "exchange": "sha",
+      "code": "601717",
+      "sourceName": "ZCZL Industrial Technology Group Company Limited",
+      "hkgName": "ZCZL",
+      "matched": "SHA:601717",
+      "verified": "2026-11-02"
+    },
+    "0638": {
+      "exchange": "she",
+      "code": "300638",
+      "sourceName": "Fibocom Wireless Inc.",
+      "hkgName": "FIBOCOM",
+      "matched": "SHE:300638",
+      "verified": "2026-11-02"
+    },
+    "0668": {
+      "exchange": "she",
+      "code": "300866",
+      "sourceName": "Anker Innovations Technology Co., Ltd.",
+      "hkgName": "ANKER",
+      "matched": "SHE:300866",
+      "verified": "2026-11-02"
+    },
+    "0670": {
+      "exchange": "sha",
+      "code": "600115",
+      "sourceName": "China Eastern Airlines Corporation Limited",
+      "hkgName": "CHINA EAST AIR",
+      "matched": "SHA:600115",
+      "verified": "2026-11-04",
+      "reviewed": "A-share of the same airline"
+    },
+    "0699": {
+      "exchange": "sha",
+      "code": "600699",
+      "sourceName": "Ningbo Joyson Electronic Corp.",
+      "hkgName": "JOYSON ELEC",
+      "matched": "SHA:600699",
+      "verified": "2026-11-02"
+    },
+    "0763": {
+      "exchange": "she",
+      "code": "000063",
+      "sourceName": "ZTE Corporation",
+      "hkgName": "ZTE",
+      "matched": "SHE:000063",
+      "verified": "2026-11-02"
+    },
+    "0874": {
+      "exchange": "sha",
+      "code": "600332",
+      "sourceName": "Guangzhou Baiyunshan Pharmaceutical Holdings Company Limited",
+      "hkgName": "BAIYUNSHAN PH",
+      "matched": "SHA:600332",
+      "verified": "2026-11-02"
+    },
+    "0914": {
+      "exchange": "sha",
+      "code": "600585",
+      "sourceName": "Anhui Conch Cement Company Limited",
+      "hkgName": "CONCH CEMENT",
+      "matched": "SHA:600585",
+      "verified": "2026-11-02"
+    },
+    "0921": {
+      "exchange": "sha",
+      "code": "600060",
+      "sourceName": "Hisense Visual Technology Co., Ltd.",
+      "hkgName": "HISENSE HA",
+      "matched": "SHA:600060",
+      "verified": "2026-11-02"
+    },
+    "0998": {
+      "exchange": "sha",
+      "code": "601998",
+      "sourceName": "China CITIC Bank Corporation Limited",
+      "hkgName": "CITIC BANK",
+      "matched": "SHA:601998",
+      "verified": "2026-11-02"
+    }
+  },
+  "updated": "2026-11-02T15:32:10.900Z"
 }

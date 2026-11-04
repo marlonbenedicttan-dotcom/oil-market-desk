@@ -108,7 +108,7 @@ const audPerCcy = (c) => (c === 'AUD' ? 1 : rates && rates.AUD && rates[c] ? rat
 let capBad = 0, priceBad = 0, seriesBad = 0, staleBad = 0;
 const today = new Date().toISOString().slice(0, 10);
 for (const c of au.companies) {
-  if (Math.abs(c.price * c.shares - c.marketCap) / c.marketCap > 1e-9) capBad++;
+  if (Math.abs(c.price * (c.sharesCurrent ?? c.shares) - c.marketCap) / c.marketCap > 1e-9) capBad++;
   const s = seriesOf(c.code);
   const arr = s.daily.length ? s.daily : s.weekly;
   if (!arr.length) { seriesBad++; continue; }
@@ -118,7 +118,7 @@ for (const c of au.companies) {
   for (let i = 1; i < arr.length; i++) if (!(arr[i].d > arr[i - 1].d)) { seriesBad++; break; }
   if (Date.parse(c.priceDate) < Date.parse(today) - 10 * 864e5) staleBad++;
 }
-say('market cap != price × shares', capBad);
+say('market cap != price × current shares', capBad);
 say('price/date != last close', priceBad);
 say('series missing/unsorted', seriesBad);
 say('prices older than 10 days', staleBad);
@@ -161,14 +161,20 @@ for (const c of au.companies) {
     const want = (ni / eq) * 100;
     if (!(eq > 0) || Math.abs(want - c.roe) > 0.06) roeBad++;
   }
-  if (c.fcf != null && ttm.operatingCashFlow != null && ttm.investingCashFlow != null) {
-    if (Math.abs(ttm.operatingCashFlow + ttm.investingCashFlow - c.fcf) > 2) fcfBad++;
+  if (c.fcf != null) {
+    const cashT = c.fcfBasis === 'TTM';
+    const fcfWant = cashT ? ttm.freeCashFlow : (fy ? fy.freeCashFlow : null);
+    const cfo = cashT ? ttm.operatingCashFlow : (fy ? fy.operatingCashFlow : null);
+    const capex = cashT ? ttm.capitalExpenditure : (fy ? fy.capitalExpenditure : null);
+    const fallback = cfo != null && capex != null ? cfo - Math.abs(capex) : null;
+    if (fcfWant != null ? Math.abs(fcfWant - c.fcf) > 2 : (fallback != null && Math.abs(fallback - c.fcf) > 2)) fcfBad++;
   }
   if (c.opMargin != null && ttm.revenue && ttm.operatingProfit != null) {
     if (Math.abs((ttm.operatingProfit / ttm.revenue) * 100 - c.opMargin) > 0.06) marginBad++;
   }
-  if (c.dividendYield != null && ttm.dividendPerShare != null) {
-    const want = +(((ttm.dividendPerShare * dpsRate) / c.price) * 100).toFixed(2);
+  const dps = fy && fy.dividendPerShare != null ? fy.dividendPerShare : ttm.dividendPerShare;
+  if (c.dividendYield != null && dps != null && c.dividendYieldBasis !== 'vendor') {
+    const want = +(((dps * dpsRate) / c.price) * 100).toFixed(2);
     if (Math.abs(want - c.dividendYield) > 0.06) yldBad++;
   }
 }
@@ -240,6 +246,12 @@ if (missingRows.length) {
 say('without a statement page', a.withoutStatements ?? '—');
 say('without a price', a.withoutPrice ?? '—');
 say('throttled, not fetched this run', a.throttled ?? 0);
+say('statements older than 450 days (excluded)', a.stale ?? 0);
+say('removed: no defensible current shares', a.unsourced ?? 0);
+say('current share counts (vendor/US CDI)', `${a.currentShares ?? 0}/${au.companies.length}`);
+if (a.unsourced) warn.push(`${a.unsourced} companies have no vendor statistics page and are excluded (${(a.unsourcedCodes || []).map((x) => x.code).join(', ')})`);
+if (a.stale) warn.push(`${a.stale} companies have statements older than 450 days and are excluded (${(a.staleCodes || []).map((x) => `${x.code} ${x.end}`).join(', ')})`);
+if ((a.currentShares ?? 0) < au.companies.length) warn.push(`${au.companies.length - (a.currentShares ?? 0)} companies have no vendor statistics page; their cap uses the filing's total share count`);
 say('"Not Applic" rows resolved', `${a.notApplicSectors ?? 0} (${a.resolvedFromProfile ?? 0} from the profile)`);
 if (a.classPending) say('"Class Pend" rows resolved', a.classPending);
 if (a.withoutStatements) warn.push(`${a.withoutStatements} listed companies have no statement page (no share count, so no cap) — excluded rather than estimated`);
@@ -253,7 +265,7 @@ if (a.throttled) warn.push(`${a.throttled} companies were rate-limited and are N
 if (SAMPLE) {
   const sample = au.companies.slice(0, SAMPLE);
   mkdirSync(join(ROOT, 'data', 'cache', 'australia-audit'), { recursive: true });
-  let cmp = 0, peOff = 0, pbDiff = 0, roeDiff = 0;
+  let cmp = 0, peOff = 0, pbDiff = 0, roeDiff = 0, dyOff = 0, shCmp = 0, shOff = 0;
   const peOut = [];
   for (const c of sample) {
     // A DLC/CDI line has two prices; the vendor's US statistics page values it at the US price, while
@@ -267,20 +279,47 @@ if (SAMPLE) {
     if (!html) continue;
     const stat = (id) => {
       const m = new RegExp(`\\{id:"${id}",[^}]*value:"([^"]+)"`).exec(html);
-      return m ? Number(String(m[1]).replace('%', '').replace(/,/g, '')) : null;
+      if (!m) return null;
+      const n = Number(String(m[1]).replace('%', '').replace(/,/g, ''));
+      return Number.isFinite(n) ? n : null;
     };
-    const pe = stat('pe'), pb = stat('pb'), roe = stat('roe');
+    const pe = stat('pe'), pb = stat('pb'), roe = stat('roe'), dy = stat('dividendYield');
+    const sh = (() => {
+      const m = /has ([\d.,]+)\s*(thousand|million|billion|trillion) shares outstanding/i.exec(html);
+      if (!m) return null;
+      const mult = { thousand: 1e3, million: 1e6, billion: 1e9, trillion: 1e12 }[m[2].toLowerCase()];
+      const n = Number(m[1].replace(/,/g, ''));
+      return Number.isFinite(n) && mult ? n * mult : null;
+    })();
     if (pe != null && c.pe != null) { cmp++; if (Math.abs(c.pe - pe) / pe > 0.15) { peOff++; peOut.push(`${c.code} ${c.pe} vs ${pe}`); } }
-    if (pb != null && c.pb != null && Math.abs(c.pb - pb) / pb > 0.15) pbDiff++;
-    if (roe != null && c.roe != null && Math.abs(c.roe - roe) > 3) roeDiff++;
+    const pbOurs = c.pbTotal ?? c.pb;
+    const roeOurs = c.roeTotal ?? c.roe;
+    if (pb != null && pbOurs != null && Math.abs(pbOurs - pb) / pb > 0.15) pbDiff++;
+    if (roe != null && roeOurs != null) {
+      // The vendor's ROE can be the prior fiscal year while ours is TTM; a match to our FY figure is
+      // a period difference, not a formula error.
+      const fyMatch = (c.roeFY != null && Math.abs(c.roeFY - roe) <= 3)
+        || (c.roePriorFY != null && Math.abs(c.roePriorFY - roe) <= 3);
+      if (!fyMatch && Math.abs(roeOurs - roe) > 3) roeDiff++;
+    }
+    if (dy != null && c.dividendYield != null && Math.abs(c.dividendYield - dy) > 0.3) dyOff++;
+    if (sh > 0) {
+      shCmp++;
+      const ours = c.sharesCurrent ?? c.shares;
+      if (ours > 0 && Math.abs(ours - sh) / sh > 0.05) shOff++;
+    }
     await new Promise((r) => setTimeout(r, 250));
   }
   say('sample P/E compared / >15% off', `${cmp} / ${peOff}`);
   say('cross-listed skipped (two prices)', sample.filter((c) => c.crossListing).map((c) => c.code).join(', ') || 'none');
   say('sample P/B >15% from vendor (total equity)', pbDiff);
   say('sample ROE >3pp from vendor (total equity)', roeDiff);
+  say('sample yield >0.3pp off', dyOff);
+  say('sample shares compared / >5% off', `${shCmp} / ${shOff}`);
   if (peOff) warn.push(`${peOff}/${cmp} sample P/E differ from the vendor's own statistics by >15% — check the price date or the trailing window (${peOut.join(', ')})`);
-  if (pbDiff || roeDiff) warn.push(`${pbDiff} P/B and ${roeDiff} ROE values differ from the vendor because the vendor divides by total equity (including minorities); this build divides by common equity`);
+  if (dyOff) warn.push(`${dyOff} sample dividend yields differ from the vendor by >0.3pp — check the DPS period and, for a foreign reporter, the payment-date FX (this build converts at the current rate)`);
+  if (shOff) warn.push(`${shOff}/${shCmp} sample market caps use a share count >5% from the vendor's current count`);
+  if (pbDiff || roeDiff) warn.push(`${pbDiff} P/B and ${roeDiff} ROE values differ from the vendor even on the total-equity reconciliation — investigate (the vendor's ROE can be the prior fiscal year while ours is TTM)`);
 }
 
 // --- list projection ------------------------------------------------------------------------------

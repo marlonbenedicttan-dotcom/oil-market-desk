@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { growthRates } from '../src/growth.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const read = (f) => JSON.parse(fs.readFileSync(path.join(here, '..', 'data', f), 'utf8'));
@@ -24,9 +25,9 @@ test('every Australian company is a priced ASX stock with a sector and a stateme
   }
 });
 
-test('market cap is price × shares, in AUD', () => {
+test('market cap is price × current shares, in AUD', () => {
   for (const c of au.companies) {
-    const cap = c.price * c.shares;
+    const cap = c.price * (c.sharesCurrent ?? c.shares);
     assert.ok(Math.abs(cap - c.marketCap) / cap < 1e-9, `${c.code} cap reconciles`);
   }
 });
@@ -104,6 +105,86 @@ test('every company carries the trailing profit its P/E is built on', () => {
   assert.ok(fromFy > 0, 'the fiscal-year fallback is exercised, not dead');
 });
 
+test('free cash flow is the vendor FCF, not operating plus all investing flow', () => {
+  for (const c of au.companies) {
+    if (c.fcf == null) continue;
+    const r = c.reports || {};
+    const t = c.fcfBasis === 'TTM';
+    const ttm = r.ttm || {}, fy = (r.annual || []).at(-1) || {};
+    const vendor = t ? ttm.freeCashFlow : fy.freeCashFlow;
+    const cfo = t ? ttm.operatingCashFlow : fy.operatingCashFlow;
+    const capex = t ? ttm.capitalExpenditure : fy.capitalExpenditure;
+    const want = vendor ?? (cfo != null && capex != null ? cfo - Math.abs(capex) : null);
+    if (want == null) continue;
+    assert.ok(Math.abs(want - c.fcf) < 2, `${c.code}: FCF ${c.fcf} vs vendor ${want}`);
+  }
+});
+
+test('dividend yield is built from the latest annual DPS', () => {
+  const rates = au.fx.rates;
+  let checked = 0;
+  for (const c of au.companies) {
+    if (c.dividendYield == null) continue;
+    if (c.dividendYieldBasis === 'vendor') {
+      assert.ok(Number.isFinite(c.dividendYield), `${c.code}: vendor yield is a number`);
+      checked++;
+      continue;
+    }
+    const annualDps = (c.reports?.annual || []).at(-1)?.dividendPerShare;
+    const dps = annualDps ?? c.reports?.ttm?.dividendPerShare;
+    assert.ok(dps != null, `${c.code}: a yield needs a DPS`);
+    assert.equal(c.dividendYieldBasis, annualDps != null ? 'FY' : 'TTM', `${c.code}: the DPS basis is labelled`);
+    const perReport = c.reportCurrency === c.currency ? 1 : rates[c.currency] / rates[c.reportCurrency];
+    const want = +(((dps * perReport) / c.price) * 100).toFixed(2);
+    assert.ok(Math.abs(want - c.dividendYield) <= 0.011, `${c.code}: yield ${c.dividendYield} vs ${want}`);
+    checked++;
+  }
+  assert.ok(checked > 300, `the yield is exercised across the market (${checked})`);
+});
+
+test('a market cap uses the current share count when the vendor supplied one', () => {
+  let current = 0;
+  for (const c of au.companies) {
+    if (!(c.sharesCurrent > 0)) continue;
+    current++;
+    assert.ok(Math.abs(c.price * c.sharesCurrent - c.marketCap) / c.marketCap < 1e-9, `${c.code}: cap uses current shares`);
+    assert.ok(c.shares > 0, `${c.code}: the diluted filing count is still present`);
+  }
+  assert.ok(current > au.companies.length * 0.9, `most companies have a current share count (${current})`);
+});
+
+test('growth rates reproduce from the annual record', () => {
+  let checked = 0;
+  for (const c of au.companies) {
+    if (c.revenueCagr == null && c.epsCagr == null) continue;
+    const rows = (c.reports?.annual || []).slice(-5).map((r) => ({
+      year: Number(String(r.end).slice(0, 4)),
+      revenue: r.revenue,
+      eps: r.eps,
+      shares: r.shares > 0 ? r.shares : (r.netIncome != null && r.eps ? r.netIncome / r.eps : null),
+    }));
+    const g = growthRates(rows);
+    assert.equal(c.revenueCagr, g.revenueCagr, `${c.code}: revenue CAGR`);
+    assert.equal(c.epsCagr, g.epsCagr, `${c.code}: EPS CAGR`);
+    assert.equal(c.cagrYears, g.cagrYears, `${c.code}: span`);
+    assert.equal(c.cagrNA, g.cagrNA, `${c.code}: revenue NA reason`);
+    assert.equal(c.epsCagrNA, g.epsCagrNA, `${c.code}: EPS NA reason`);
+    if (g.epsChange) assert.deepEqual(c.epsChange, g.epsChange, `${c.code}: EPS change`);
+    checked++;
+  }
+  assert.ok(checked > 300, `growth is exercised across the market (${checked})`);
+});
+
+test('no company ships a statement older than 450 days', () => {
+  const session = new Date(au.session || au.index.date);
+  for (const c of au.companies) {
+    const end = c.reports?.ttmEnd || c.reports?.latestEnd;
+    if (!end) continue;
+    assert.ok((session - new Date(end)) / 864e5 <= 450, `${c.code}: statement ${end} is current`);
+  }
+  assert.ok(Array.isArray(au.audit?.staleCodes), 'the excluded stale names are listed');
+});
+
 test('financials keep the ratios that apply and drop the ones that do not', () => {
   const fins = au.companies.filter((c) => c.financial);
   assert.ok(fins.length >= 100, `the financial-sector rule finds the ASX financials (${fins.length})`);
@@ -155,8 +236,8 @@ test('the audit counters are honest about coverage and currency', () => {
   assert.equal(a.withStatements, au.companies.length);
   assert.ok(a.withoutStatements >= 0);
   assert.ok(a.notApplicSectors >= 0, 'the "Not Applic" rows are counted');
-  assert.equal(a.withoutStatements + (a.throttled || 0) + (a.withoutPrice || 0), a.considered - a.withStatements,
-    'every considered company is built, without a page, without a price, or throttled');
+  assert.equal(a.withoutStatements + (a.throttled || 0) + (a.withoutPrice || 0) + (a.stale || 0) + (a.unsourced || 0), a.considered - a.withStatements,
+    'every considered company is built, without a page, without a price, stale, unsourced, or throttled');
   const foreign = au.companies.filter((c) => c.reportCurrency !== 'AUD').length;
   assert.equal(a.foreignReporters, foreign);
 });

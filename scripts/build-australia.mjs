@@ -53,6 +53,9 @@ const CODES = (arg('codes', '') || '').split(',').map((s) => pad(s)).filter(Bool
 const YEARS = Number(arg('years', 5)) || 5;
 const SKIP_PRICES = flag('skip-prices');
 const SKIP_FIN = flag('skip-fin');
+// --cached-only re-parses the committed statement cache and never touches the network. That is how a
+// rebuild after a formula change is done while the source is throttled.
+const CACHED_ONLY = flag('cached-only');
 const PRICES_ONLY = flag('prices-only');
 
 const TTL_DAY = 6 * 3600e3;
@@ -281,13 +284,16 @@ function cashOf(html) {
   const cfo = rowOf(t, ['Operating Cash Flow']);
   const cfi = rowOf(t, ['Investing Cash Flow']);
   const fcf = rowOf(t, ['Free Cash Flow']);
+  const capex = rowOf(t, ['Capital Expenditures', 'Capital Expenditure']);
   return {
     ttmEnd,
     ttm: ttmId ? {
-      operatingCashFlow: scale(get(cfo, ttmId)), investingCashFlow: scale(get(cfi, ttmId)), freeCashFlow: scale(get(fcf, ttmId)),
+      operatingCashFlow: scale(get(cfo, ttmId)), investingCashFlow: scale(get(cfi, ttmId)),
+      capitalExpenditure: scale(get(capex, ttmId)), freeCashFlow: scale(get(fcf, ttmId)),
     } : null,
     annual: ann.map((c) => ({
-      end: c.id, operatingCashFlow: scale(get(cfo, c.id)), investingCashFlow: scale(get(cfi, c.id)), freeCashFlow: scale(get(fcf, c.id)),
+      end: c.id, operatingCashFlow: scale(get(cfo, c.id)), investingCashFlow: scale(get(cfi, c.id)),
+      capitalExpenditure: scale(get(capex, c.id)), freeCashFlow: scale(get(fcf, c.id)),
     })),
   };
 }
@@ -349,12 +355,20 @@ function trailingBalanceOf(html) {
 }
 async function page(code, p, q = false) {
   const f = join(AU_SA, `${code}-${p}${q ? '-t' : ''}.json`);
+  if (CACHED_ONLY) {
+    const hit = existsSync(f) ? readJson(f) : null;
+    return hit && hit.text ? hit.text : null;
+  }
   // A 404 returns null (the page genuinely does not exist); throttling throws, and the caller marks the
   // company so the audit can say "not fetched this run" instead of "no statements".
   return getCached(saPage(code, p, q), f, { ttlMs: q ? TTL_Q : TTL_FIN, timeout: 30000, retries: 6 });
 }
 async function usPage(ticker, p, q = false) {
   const f = join(AU_SA, `us-${ticker}-${p}${q ? '-q' : ''}.json`);
+  if (CACHED_ONLY) {
+    const hit = existsSync(f) ? readJson(f) : null;
+    return hit && hit.text ? hit.text : null;
+  }
   return getCached(saUsPage(ticker, p, q), f, { ttlMs: q ? TTL_Q : TTL_FIN, timeout: 30000, retries: 6 });
 }
 
@@ -452,15 +466,57 @@ if (!SKIP_FIN) {
     c.crossListing = p.crossListing || null;
     c.periodBasis = p.periodBasis || null;
     c.sharesBasis = p.sharesBasis || null;
+    if (c.crossListing) {
+      const ratio = c.crossListing.ratio;
+      c.sharesBasis = ratio === 1 ? 'filing (same ordinary shares)' : `filing × ${ratio} (CDI ratio)`;
+    }
   }
 }
+
+// --- current shares (vendor statistics page) ------------------------------------------------------
+// The statement's diluted count is a period weighted average; a placement or buyback after the
+// period end would leave the cap (and P/E, P/B) stale. This side file is written by
+// `fetch-listing-shares.mjs`; fall back to the filing count when it has no entry.
+const SHARES = (readJson(join(ROOT, 'data', 'australia-shares.json')) || {}).entries || {};
+for (const c of universe) {
+  const s = SHARES[c.code];
+  // A CDI line's ASX price is per CDI, while the filing share count is the global ordinary count
+  // scaled by the CDI ratio. Only a cross count that was itself scaled by that ratio is safe to use;
+  // an unscaled ASX-page count would be the wrong basis.
+  if (s && s.shares > 0 && (!c.crossListing || String(s.source || '').startsWith('us:'))) {
+    c.sharesCurrent = s.shares;
+    if (c.crossListing) {
+      c.sharesBasis = `current (${s.source})${c.crossListing.ratio !== 1 ? ` × ${c.crossListing.ratio}` : ''}`;
+    }
+  }
+  if (s && Number.isFinite(s.yield)) c.vendorDividendYield = s.yield;
+}
+
+// --- stale statements -----------------------------------------------------------------------------
+// A June-2025 statement on a November-2026 listing has missed a whole reporting year. 450 days
+// allows a September year-end whose next report is not due yet, but excludes delinquent filers.
+const STALE_DAYS = 450;
+const SESSION_DATE = universe.map((c) => c.priceDate).filter(Boolean).sort().pop() || iso(Date.now());
+const stale = universe.filter((c) => {
+  const end = c.ttmEnd || c.latestEnd || (c.annual && c.annual.length ? c.annual[c.annual.length - 1].end : null);
+  return end && (Date.parse(SESSION_DATE) - Date.parse(end)) / DAY > STALE_DAYS;
+});
+for (const c of stale) c.stale = true;
+if (stale.length) console.log(`  ${stale.length} companies with statements older than ${STALE_DAYS} days — excluded`);
+
+// Three small ASX lines have no vendor statistics page (AVR, EMH, NVA), so there is no current share
+// count to defend. Excluded and named, not left with a stale filing count.
+const UNSOURCED = new Set(['AVR', 'EMH', 'NVA']);
+const unsourced = universe.filter((c) => UNSOURCED.has(c.code));
+for (const c of unsourced) c.unsourced = true;
+if (unsourced.length) console.log(`  ${unsourced.length} companies without a defensible current share count — excluded`);
 
 // A company without a statement page has no share count, so it cannot have a market cap. A company
 // without a Yahoo price cannot have a cap either. Both are counted and named, never estimated.
 const throttled = universe.filter((c) => c.throttled);
-const covered = universe.filter((c) => c.shares > 0 && c.price > 0);
-const dropped = universe.filter((c) => !(c.shares > 0) && !c.throttled).map((c) => ({ code: c.code, name: c.name }));
-const noPrice = universe.filter((c) => c.shares > 0 && !(c.price > 0)).map((c) => ({ code: c.code, name: c.name }));
+const covered = universe.filter((c) => c.shares > 0 && c.price > 0 && !c.stale && !c.unsourced);
+const dropped = universe.filter((c) => !(c.shares > 0) && !c.throttled && !c.stale && !c.unsourced).map((c) => ({ code: c.code, name: c.name }));
+const noPrice = universe.filter((c) => c.shares > 0 && !(c.price > 0) && !c.stale && !c.unsourced).map((c) => ({ code: c.code, name: c.name }));
 if (dropped.length) console.log(`  ${dropped.length} listed companies without a statement page (no shares, no cap)`);
 if (noPrice.length) console.log(`  ${noPrice.length} companies without a price (no cap; excluded rather than estimated)`);
 if (throttled.length) console.log(`  ${throttled.length} companies throttled this run — rerun the build to fill them (nothing was cached as missing)`);
@@ -609,6 +665,11 @@ const audit = {
   considered: universe.length,
   withStatements: cleaned.length,
   withoutStatements: dropped.length,
+  stale: stale.length,
+  staleCodes: stale.map((c) => ({ code: c.code, name: c.name, end: c.ttmEnd || c.latestEnd })),
+  unsourced: unsourced.length,
+  unsourcedCodes: unsourced.map((c) => ({ code: c.code, name: c.name, marketCap: c.marketCap })),
+  currentShares: cleaned.filter((c) => c.sharesCurrent > 0).length,
   noStatements: dropped,
   withoutPrice: noPrice.length,
   noPrice,
@@ -632,8 +693,11 @@ writeJson(`${OUT}.tmp`, {
   currency: 'AUD',
   fx,
   session: (() => {
-    const t = Date.parse(csv.banner || '');
-    return Number.isFinite(t) ? iso(t) : (csv.banner || null);
+    // The CSV banner is "Tue Nov 03 19:57:53 AEDT 2026"; Node's parser does not know AEDT, so drop the
+    // zone abbreviation and keep the local date. The UI shows the date, never the banner text.
+    const raw = String(csv.banner || '');
+    const t = Date.parse(raw.replace(/\s+[A-Z]{3,5}\s+(\d{4})$/, ' $1'));
+    return Number.isFinite(t) ? iso(t) : (raw || null);
   })(),
   market, index: idx, themes, audit,
   companies: cleaned,

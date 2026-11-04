@@ -5,6 +5,11 @@
 //   node scripts/build-hongkong.mjs --codes=0700,9988       named companies
 //   node scripts/build-hongkong.mjs --skip-prices           reuse the cached daily files
 //   node scripts/build-hongkong.mjs --skip-fin              reuse the statements already in the file
+//   node scripts/build-hongkong.mjs --fresh-report          refetch just the newest HKEX report page
+//
+// `--fresh` refetches every statement page too, which is a cold crawl. The scheduled job wants the
+// opposite: a fresh exchange report (the page is occasionally posted incomplete and then corrected)
+// with the statement and price caches intact — that is `--fresh-report`.
 //
 // Sources:
 //   - HKEX daily quotation report: the universe, the day's official close and the previous close.
@@ -30,6 +35,7 @@ import {
 } from './hkex.mjs';
 import {
   UA, sleep, readJson, writeJson, getCached, parseSaTable, rowOf, periodFromTitle, statementCurrency,
+  cleanListingName,
 } from './stockanalysis.mjs';
 import { deriveHongKong } from './derive-hongkong.mjs';
 
@@ -83,18 +89,20 @@ async function pool(items, limit, fn) {
 
 // --- 1. the universe ------------------------------------------------------------------------------
 console.log('HKEX daily quotation report…');
-const daily = FRESH ? await latestDaily({ fresh: true }) : await latestDaily();
-const dailyText = (daily && daily.text) || (() => {
-  // A network failure falls back to the newest cached session rather than an empty build.
-  const stamp = arg('daily', null);
-  if (stamp) return readDaily(stamp);
-  return null;
-})();
+// `--daily=YYYY-MM-DD` pins the session. That matters when the exchange has posted a file that is
+// still incomplete: on 2026-11-03 the 7,305-line page omitted 147 live companies that the 11-02
+// report carried. A pinned build uses the complete session instead of silently shrinking the universe.
+const PINNED_DAILY = arg('daily', null);
+// A cached report is normally trusted, but the exchange sometimes posts one incomplete and replaces it
+// later. The scheduled job asks for the newest page every run without paying for a full refetch.
+const FRESH_REPORT = FRESH || flag('fresh-report');
+const daily = PINNED_DAILY ? null : (FRESH_REPORT ? await latestDaily({ fresh: true }) : await latestDaily());
+const dailyText = PINNED_DAILY ? readDaily(PINNED_DAILY) : (daily && daily.text);
 if (!dailyText) {
   console.error('No HKEX daily report available (network and cache both empty).');
   process.exit(1);
 }
-const sessionDate = arg('daily', null) || daily.date;
+const sessionDate = PINNED_DAILY || (daily && daily.date);
 const quoted = parseQuotations(dailyText);
 const companies = quoted.filter(isCompanyRow).map((r) => ({
   code: pad4(r.hkexCode),
@@ -302,13 +310,16 @@ function cashOf(html) {
   const cfo = rowOf(t, ['Operating Cash Flow']);
   const cfi = rowOf(t, ['Investing Cash Flow']);
   const fcf = rowOf(t, ['Free Cash Flow']);
+  const capex = rowOf(t, ['Capital Expenditures', 'Capital Expenditure']);
   return {
     ttmEnd,
     ttm: ttmId ? {
-      operatingCashFlow: scale(get(cfo, ttmId)), investingCashFlow: scale(get(cfi, ttmId)), freeCashFlow: scale(get(fcf, ttmId)),
+      operatingCashFlow: scale(get(cfo, ttmId)), investingCashFlow: scale(get(cfi, ttmId)),
+      capitalExpenditure: scale(get(capex, ttmId)), freeCashFlow: scale(get(fcf, ttmId)),
     } : null,
     annual: ann.map((c) => ({
-      end: c.id, operatingCashFlow: scale(get(cfo, c.id)), investingCashFlow: scale(get(cfi, c.id)), freeCashFlow: scale(get(fcf, c.id)),
+      end: c.id, operatingCashFlow: scale(get(cfo, c.id)), investingCashFlow: scale(get(cfi, c.id)),
+      capitalExpenditure: scale(get(capex, c.id)), freeCashFlow: scale(get(fcf, c.id)),
     })),
   };
 }
@@ -343,6 +354,15 @@ async function page(code, p, q = false) {
   if (CACHED_ONLY) {
     const hit = existsSync(f) ? readJson(f) : null;
     return hit && hit.text && looksLikeStatement(hit.text) ? hit.text : null;
+  }
+  // Read a warm page before taking the inter-request pause. The pause is there to protect the source
+  // from a crawler; making a cached company pay it too turned a 4-minute resume into an hour. A fresh
+  // page still waits its turn below.
+  const ttl = q ? TTL_Q : TTL_FIN;
+  if (!FRESH && existsSync(f)) {
+    const hit = readJson(f);
+    if (hit && hit.text && looksLikeStatement(hit.text) && hit.fetched && Date.now() - Date.parse(hit.fetched) < ttl) return hit.text;
+    if (hit && hit.notFound && hit.fetched && Date.now() - Date.parse(hit.fetched) < 7 * DAY) return null;
   }
   if (PAGE_GAP > 0) await sleep(PAGE_GAP);
   // A 404 returns null (the page genuinely does not exist); throttling throws, and the caller marks the
@@ -416,12 +436,53 @@ if (!SKIP_FIN) {
   }
 }
 
+// --- current shares (vendor statistics page) ------------------------------------------------------
+// The statement's diluted count is a period weighted average; a placement or buyback after the
+// period end would leave the cap (and P/E, P/B) stale. This side file is written by
+// `fetch-listing-shares.mjs`; fall back to the filing count when it has no entry.
+const SHARES = (readJson(join(ROOT, 'data', 'hongkong-shares.json')) || {}).entries || {};
+// SEC cover counts are the official point-in-time count for ADRs whose HKG statistics page is n/a.
+// They are used only when the vendor did not supply a current count, and the basis is kept on the
+// record so the company page and audit can say where the number came from.
+const SEC_SHARES = (readJson(join(ROOT, 'data', 'hongkong-sec-shares.json')) || {}).entries || {};
+for (const c of universe) {
+  const s = SHARES[c.code];
+  if (s && s.shares > 0) c.sharesCurrent = s.shares;
+  if (s && Number.isFinite(s.yield)) c.vendorDividendYield = s.yield;
+  if (!(c.sharesCurrent > 0)) {
+    const sec = SEC_SHARES[c.code];
+    if (sec && sec.shares > 0) {
+      c.sharesCurrent = sec.shares;
+      c.sharesBasis = `SEC cover${sec.asOf ? ` · ${sec.asOf}` : ''}`;
+    }
+  }
+}
+
+// --- stale statements -----------------------------------------------------------------------------
+// A 2014 statement on a 2026 listing is not "the latest annual result"; it is a dead shell. 450 days
+// allows a June year-end company that has not yet filed the next year, but excludes delinquent ones.
+const STALE_DAYS = 450;
+const stale = universe.filter((c) => {
+  const end = c.ttmEnd || c.latestEnd || (c.annual && c.annual.length ? c.annual[c.annual.length - 1].end : null);
+  return end && (Date.parse(sessionDate) - Date.parse(end)) / DAY > STALE_DAYS;
+});
+for (const c of stale) c.stale = true;
+if (stale.length) console.log(`  ${stale.length} companies with statements older than ${STALE_DAYS} days — excluded`);
+
+// Four HK lines have no vendor statistics page and no usable SEC cover count (their quarterly
+// primary document is the financial statements, the SEC cover is ADS, or there is no SEC filing).
+// They are named and excluded rather than carried with a filing count the audit cannot defend.
+const UNSOURCED = new Set(['6160', '9688', '2525', '9630']);
+const unsourced = universe.filter((c) => UNSOURCED.has(c.code));
+for (const c of unsourced) c.unsourced = true;
+if (unsourced.length) console.log(`  ${unsourced.length} companies without a defensible current share count — excluded`);
+
 // A company with no statement page has no share count, so it cannot have a market cap. Keeping it
 // would put an unpriced row in the middle of the market aggregates; instead it is counted and named,
 // never silently dropped. ETFs land here too, which is how the ones whose names do not say "ETF" go.
 const throttled = universe.filter((c) => c.throttled);
-const covered = universe.filter((c) => c.shares > 0);
-const dropped = universe.filter((c) => !(c.shares > 0) && !c.throttled).map((c) => ({ code: c.code, name: c.name }));
+const covered = universe.filter((c) => c.shares > 0 && !c.stale && !c.unsourced);
+const dropped = universe.filter((c) => !(c.shares > 0) && !c.throttled && !c.stale && !c.unsourced).map((c) => ({ code: c.code, name: c.name }));
 if (dropped.length) console.log(`  ${dropped.length} listed lines without a statement page (no shares, no cap)`);
 if (throttled.length) console.log(`  ${throttled.length} companies throttled this run — rerun the build to fill them (nothing was cached as missing)`);
 
@@ -473,13 +534,25 @@ const profiles = readJson(PROFILES) || { entries: {} };
 let withDesc = 0;
 for (const c of out) {
   const p = profiles.entries && profiles.entries[c.code];
-  c.nameEn = (p && p.name) || c.name;
+  // The exchange tape occasionally prints a full stop after a name ("ETHK LABS INC."). The company
+  // page shows this short name beside the ticker, so trim the punctuation rather than ship it.
+  c.name = String(c.name || '').replace(/[.\s]+$/, '').trim();
+  c.nameEn = cleanListingName((p && p.name) || c.name, (p && p.legal) || '');
   c.nameFull = (p && p.legal) || null;
   c.description = (p && p.desc) || null;
   c.sector = (p && p.sector) || 'Other';
   c.industry = (p && p.industry) || null;
   if (c.description) withDesc++;
 }
+
+// A company with no profile page has no description, no industry and a sector of "Other"; it adds a
+// row a reader cannot interpret. Keep a large one (that is a data failure worth seeing), but drop the
+// small shells: every one today is under HK$2.3B, and together they are a rounding error in the
+// market. The count is published in `audit.incompleteSmall`, never silently removed.
+const MIN_PROFILE_CAP = 5e9;
+const incomplete = out.filter((c) => !c.description && (c.marketCap || 0) < MIN_PROFILE_CAP)
+  .map((c) => ({ code: c.code, name: c.name, nameEn: c.nameEn, marketCap: c.marketCap }));
+out = out.filter((c) => c.description || (c.marketCap || 0) >= MIN_PROFILE_CAP);
 
 // --- 8. market aggregates + themes ----------------------------------------------------------------
 const median = (xs) => {
@@ -540,6 +613,14 @@ const audit = {
   considered: universe.length,
   withStatements: cleaned.length,
   withoutStatements: dropped.length,
+  stale: stale.length,
+  staleCodes: stale.map((c) => ({ code: c.code, name: c.name, end: c.ttmEnd || c.latestEnd })),
+  unsourced: unsourced.length,
+  unsourcedCodes: unsourced.map((c) => ({ code: c.code, name: c.name, marketCap: c.marketCap })),
+  currentShares: cleaned.filter((c) => c.sharesCurrent > 0).length,
+  secShares: cleaned.filter((c) => /^SEC cover/.test(c.sharesBasis || '')).length,
+  incompleteSmall: incomplete.length,
+  incomplete: incomplete.slice(0, 40),
   throttled: throttled.length,
   dropped: dropped.slice(0, 40),
   pe: cleaned.filter((c) => c.pe != null).length,

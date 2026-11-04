@@ -19,6 +19,23 @@ export const projectUs = (c) => {
   return o;
 };
 
+// Growth fields shared by the HK/AU/KR projections. The company page and the screener both read
+// them, so they must survive the compact list artifact (the same contract that `tests/filters.test.js`
+// enforces for the filter fields).
+const growthFields = (c) => ({
+  revenueCagr: c.revenueCagr ?? null,
+  epsCagr: c.epsCagr ?? null,
+  cagrYears: c.cagrYears ?? null,
+  cagrNA: c.cagrNA || null,
+  epsCagrNA: c.epsCagrNA || null,
+  epsChange: c.epsChange || null,
+  marginDelta: c.marginDelta ?? null,
+  epsTTM: c.epsTTM ?? null,
+  epsTTMBasis: c.epsTTMBasis || null,
+  ...(c.epsSplitAdjusted ? { epsSplitAdjusted: true } : {}),
+  ...(c.epsSplitUnverified ? { epsSplitUnverified: true } : {}),
+});
+
 // Only what the list, the screens and the search actually read. Everything else (margins beyond the
 // operating one, free-cash-flow yield, USD cap, share counts) lives on the company page, which loads the
 // full record from /api/korea/company. Trimming this cut the Korea payload by about a quarter.
@@ -28,6 +45,7 @@ export const projectKr = (c) => ({
   price: c.price, priceDate: c.priceDate, marketCap: c.marketCap,
   chg1d: c.chg1d, chg6m: c.chg6m, chgYtd: c.chgYtd,
   pe: c.pe, pb: c.pb, roe: c.roe, opMargin: c.opMargin,
+  ...growthFields(c),
   // CHEAP VS ITSELF reads the five-year P/E percentile; without it the preset matches nothing.
   bands: c.bands && c.bands.pe ? { pe: { percentile: c.bands.pe.percentile } } : null,
 });
@@ -70,6 +88,7 @@ export const projectHk = (c) => ({
   pe: c.pe, pb: c.pb, roe: c.roe, opMargin: c.opMargin,
   dividendYield: c.dividendYield ?? null,
   reportCurrency: c.reportCurrency || null,
+  ...growthFields(c),
   bands: c.bands && c.bands.pe ? { pe: { percentile: c.bands.pe.percentile } } : null,
 });
 
@@ -98,6 +117,7 @@ export const projectAu = (c) => ({
   fcfYield: c.fcfYield ?? null,
   dividendYield: c.dividendYield ?? null,
   reportCurrency: c.reportCurrency || null,
+  ...growthFields(c),
   bands: c.bands && c.bands.pe ? { pe: { percentile: c.bands.pe.percentile } } : null,
 });
 

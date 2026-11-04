@@ -753,7 +753,7 @@ test('/api/taiwan/company carries as-reported periods and five years of history'
   assert.ok(c.reports && c.reports.ttm && c.reports.ttm.revenue > 0, 'TTM revenue is missing');
   assert.ok(c.history.length >= 5, 'five fiscal years are missing');
   assert.ok(c.quarters.length >= 4, 'the quarterly table is missing');
-  assert.ok(c.marketCap === c.price * c.shares, 'market cap does not reconcile');
+  assert.ok(c.marketCap === c.price * (c.sharesCurrent ?? c.shares), 'market cap does not reconcile');
 });
 
 test('/api/taiwan/chart serves the range it was asked for', async () => {
@@ -794,7 +794,7 @@ test('/api/hongkong/company values a foreign-currency reporter in its own curren
   assert.equal(c.reportCurrency, 'CNY');
   assert.ok(c.reports && c.reports.ttm && c.reports.ttm.revenue > 0, 'TTM revenue is missing');
   assert.ok(c.history.length >= 3, 'the fiscal-year record is missing');
-  assert.ok(c.marketCap === c.price * c.shares, 'market cap does not reconcile');
+  assert.ok(c.marketCap === c.price * (c.sharesCurrent ?? c.shares), 'market cap does not reconcile');
   if (c.pe != null) {
     const conv = 6.6 / 7.8;   // CNY per HKD: the cap is HKD, the profit is CNY
     const want = +(c.marketCap * conv / c.reports.ttm.netIncome).toFixed(2);
@@ -841,7 +841,7 @@ test('/api/australia/company values a USD reporter in USD', async () => {
   assert.equal(c.reportCurrency, 'USD');
   assert.ok(c.reports && c.reports.ttm && c.reports.ttm.revenue > 0, 'TTM revenue is missing');
   assert.ok(c.history.length >= 3, 'the fiscal-year record is missing');
-  assert.ok(c.marketCap === c.price * c.shares, 'market cap does not reconcile');
+  assert.ok(c.marketCap === c.price * (c.sharesCurrent ?? c.shares), 'market cap does not reconcile');
   if (c.pe != null) {
     const usdPerAud = 1 / list.fx.rate;   // the cap is AUD; the profit is USD
     const want = +(c.marketCap * usdPerAud / c.reports.ttm.netIncome).toFixed(2);

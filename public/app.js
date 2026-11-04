@@ -2763,7 +2763,7 @@ function renderJapanScreen(el) {
 const KR_SCREEN_COLS = [
   { k: 'label', t: 'COMPANY' }, { k: 'price', t: 'PRICE' }, { k: 'chg1d', t: '1D' },
   { k: 'chg6m', t: '6M' }, { k: 'chgYtd', t: 'YTD' }, { k: 'pe', t: 'P/E' },
-  { k: 'pb', t: 'P/B' }, { k: 'roe', t: 'ROE' }, { k: 'marketCap', t: 'MKT CAP' },
+  { k: 'pb', t: 'P/B' }, { k: 'roe', t: 'ROE' }, { k: 'revenueCagr', t: 'REV CAGR' }, { k: 'marketCap', t: 'MKT CAP' },
 ];
 function renderKoreaScreen(el) {
   if (!koreaData) {
@@ -2796,7 +2796,7 @@ function renderKoreaScreen(el) {
       <td class="sc-name">${esc(c.nameEn || c.name)}<span class="sc-tick">${esc(c.ticker)}${c.sector ? ' · ' + esc(c.sector) : ''}</span></td>
       <td class="num">${wonPx(c.price)}</td>
       ${pct(fxRet(c.chg1d, 'KRW', 'd1'))}${pct(fxRet(c.chg6m, 'KRW', 'm6'))}${pct(fxRet(c.chgYtd, 'KRW', 'ytd'))}
-      ${num(c.pe, 1, '×')}${num(c.pb, 2, '×')}${num(c.roe, 1, '%')}
+      ${num(c.pe, 1, '×')}${num(c.pb, 2, '×')}${num(c.roe, 1, '%')}${num(c.revenueCagr, 1, '%')}
       <td class="num">${won(c.marketCap)}</td></tr>`).join('');
   el.innerHTML = `<div class="sc-bar">${screenModeHtml()}${screenMarketHtml()}
       <label class="sc-f">SEARCH <input id="cosk-q" type="search" placeholder="company or code…" value="${esc(coScreenKr.q)}"></label>
@@ -2859,7 +2859,8 @@ function renderTaiwanScreen(el) {
 const HK_SCREEN_COLS = [
   { k: 'label', t: 'COMPANY' }, { k: 'price', t: 'PRICE' }, { k: 'chg1d', t: '1D' },
   { k: 'chg6m', t: '6M' }, { k: 'chgYtd', t: 'YTD' }, { k: 'pe', t: 'P/E' },
-  { k: 'pb', t: 'P/B' }, { k: 'roe', t: 'ROE' }, { k: 'dividendYield', t: 'YIELD' }, { k: 'marketCap', t: 'MKT CAP' },
+  { k: 'pb', t: 'P/B' }, { k: 'roe', t: 'ROE' }, { k: 'revenueCagr', t: 'REV CAGR' },
+  { k: 'dividendYield', t: 'YIELD' }, { k: 'marketCap', t: 'MKT CAP' },
 ];
 function renderHongKongScreen(el) {
   if (!hkData) {
@@ -2892,7 +2893,7 @@ function renderHongKongScreen(el) {
       <td class="sc-name">${esc(c.nameEn || c.name)}<span class="sc-tick">${esc(c.ticker)}${c.sector ? ' · ' + esc(c.sector) : ''}</span></td>
       <td class="num">${hkPx(c.price)}</td>
       ${pct(c.chg1d)}${pct(c.chg6m)}${pct(c.chgYtd)}
-      ${num(c.pe, 1, '×')}${num(c.pb, 2, '×')}${num(c.roe, 1, '%')}${num(c.dividendYield, 2, '%')}
+      ${num(c.pe, 1, '×')}${num(c.pb, 2, '×')}${num(c.roe, 1, '%')}${num(c.revenueCagr, 1, '%')}${num(c.dividendYield, 2, '%')}
       <td class="num">${hkMoney(c.marketCap)}</td></tr>`).join('');
   el.innerHTML = `<div class="sc-bar">${screenModeHtml()}${screenMarketHtml()}
       <label class="sc-f">SEARCH <input id="coshk-q" type="search" placeholder="company or code…" value="${esc(coScreenHk.q)}"></label>
@@ -2907,8 +2908,8 @@ function renderHongKongScreen(el) {
 const AU_SCREEN_COLS = [
   { k: 'label', t: 'COMPANY' }, { k: 'price', t: 'PRICE' }, { k: 'chg1d', t: '1D' },
   { k: 'chg6m', t: '6M' }, { k: 'chgYtd', t: 'YTD' }, { k: 'pe', t: 'P/E' },
-  { k: 'pb', t: 'P/B' }, { k: 'roe', t: 'ROE' }, { k: 'fcfYield', t: 'FCF YLD' },
-  { k: 'dividendYield', t: 'YIELD' }, { k: 'marketCap', t: 'MKT CAP' },
+  { k: 'pb', t: 'P/B' }, { k: 'roe', t: 'ROE' }, { k: 'revenueCagr', t: 'REV CAGR' },
+  { k: 'fcfYield', t: 'FCF YLD' }, { k: 'dividendYield', t: 'YIELD' }, { k: 'marketCap', t: 'MKT CAP' },
 ];
 function renderAustraliaScreen(el) {
   if (!auData) {
@@ -2941,7 +2942,7 @@ function renderAustraliaScreen(el) {
       <td class="sc-name">${esc(c.nameEn || c.name)}<span class="sc-tick">${esc(c.ticker)}${c.sector ? ' · ' + esc(c.sector) : ''}</span></td>
       <td class="num">${auPx(c.price)}</td>
       ${pct(c.chg1d)}${pct(c.chg6m)}${pct(c.chgYtd)}
-      ${num(c.pe, 1, '×')}${num(c.pb, 2, '×')}${num(c.roe, 1, '%')}${num(c.fcfYield, 1, '%')}${num(c.dividendYield, 2, '%')}
+      ${num(c.pe, 1, '×')}${num(c.pb, 2, '×')}${num(c.roe, 1, '%')}${num(c.revenueCagr, 1, '%')}${num(c.fcfYield, 1, '%')}${num(c.dividendYield, 2, '%')}
       <td class="num">${auMoney(c.marketCap)}</td></tr>`).join('');
   el.innerHTML = `<div class="sc-bar">${screenModeHtml()}${screenMarketHtml()}
       <label class="sc-f">SEARCH <input id="cosau-q" type="search" placeholder="company or code…" value="${esc(coScreenAu.q)}"></label>
@@ -5436,12 +5437,22 @@ async function renderKoreaPage(stub) {
     + `<div class="co-stats co-stats-12">
         ${cell('MARKET CAP', won(c.marketCap), 'Price × shares outstanding')}
         ${cell('MARKET CAP · USD', c.marketCapUsd ? `$${(c.marketCapUsd / 1e9).toFixed(1)}B` : '—', 'Converted at the current USD/KRW rate')}
-        ${cell(`P/E · ${c.peBasis || 'FY'}`, c.pe != null ? `${c.pe.toFixed(2)}×` : '—', c.peBasis === 'TTM' ? 'Market cap ÷ the last four quarters of profit' : 'Market cap ÷ fiscal-year profit')}
+        ${cell(`P/E · ${c.peBasis || 'FY'}`, c.pe != null ? `${c.pe.toFixed(2)}×` : '—', c.peBasis === 'TTM' ? 'Market cap ÷ the last four quarters of profit' : `Market cap ÷ fiscal-year profit${c.ttmSuspicious ? ' — the four-quarter window looked cumulative, so the fiscal year is used' : ''}`)}
         ${cell('P/B', c.pb != null ? `${c.pb.toFixed(2)}×` : '—', 'Market cap ÷ shareholders\u2019 equity')}
         ${cell('RETURN ON EQUITY', c.roe != null ? `${c.roe.toFixed(1)}%` : '—', 'Profit ÷ equity', c.roe >= 0 ? 'pos' : 'neg')}
         ${cell('OPERATING MARGIN', c.opMargin != null ? `${c.opMargin.toFixed(1)}%` : '—', 'Operating profit ÷ revenue', c.opMargin >= 0 ? 'pos' : 'neg')}
         ${cell('NET MARGIN', c.netMargin != null ? `${c.netMargin.toFixed(1)}%` : '—', 'Net profit ÷ revenue', c.netMargin >= 0 ? 'pos' : 'neg')}
         ${cell('FCF YIELD', c.fcfYield != null ? `${c.fcfYield.toFixed(1)}%` : '—', 'Operating plus investing cash flow ÷ market cap')}
+        ${cell(`REVENUE CAGR${c.cagrYears ? ' · ' + c.cagrYears + 'Y' : ''}`, c.revenueCagr != null ? `${c.revenueCagr.toFixed(1)}%` : '—', c.cagrNA ? `No growth rate: ${c.cagrNA}.` : `Compound annual revenue growth over ${c.cagrYears} fiscal years`, c.revenueCagr >= 0 ? 'pos' : 'neg')}
+        ${(() => {
+          const e = c.epsCagr != null
+            ? { v: `${c.epsCagr.toFixed(1)}%`, cls: c.epsCagr >= 0 ? 'pos' : 'neg', t: `Compound annual EPS growth over ${c.cagrYears} fiscal years${c.epsSplitAdjusted ? ' (split-adjusted)' : ''}` }
+            : c.epsChange
+              ? { v: `${c.epsChange.from} → ${c.epsChange.to}`, cls: c.epsChange.to >= 0 ? 'pos' : 'neg', t: `No CAGR: ${c.epsCagrNA}. EPS went from ${c.epsChange.from} in FY${c.epsChange.fromFy} to ${c.epsChange.to} in FY${c.epsChange.toFy}.` }
+              : { v: '—', cls: '', t: c.epsCagrNA ? `No EPS growth: ${c.epsCagrNA}.` : 'No EPS growth rate' };
+          return cell(`EPS GROWTH${c.cagrYears ? ' · ' + c.cagrYears + 'Y' : ''}`, e.v, e.t, e.cls);
+        })()}
+        ${cell('NET MARGIN CHANGE', c.marginDelta != null ? `${c.marginDelta >= 0 ? '+' : ''}${c.marginDelta.toFixed(1)}pp` : '—', 'Change in net margin between the first and last fiscal year on file', c.marginDelta >= 0 ? 'pos' : 'neg')}
       </div>`
     + (() => {
         const fig = statementFigures(c, 'kr');
@@ -5912,7 +5923,7 @@ async function renderHongKong(token = takeToken()) {
   const sub = $('deals-sub');
   if (sub) {
     const what = hkView === 'screener' ? 'filter and sort' : hkView === 'themes' ? 'curated theme lists' : 'breadth, sectors and the Hang Seng';
-    sub.textContent = all.length ? `${all.length} companies · HKEX main board · HK$ HKD · ${what}` : 'HKEX · Hang Seng Index';
+    sub.textContent = all.length ? `${all.length} companies · HKEX main board · prices in HKD · ${what}` : 'HKEX · Hang Seng Index';
   }
   if (!all.length) {
     el.innerHTML = `<div class="macro-note">Hong Kong is not built yet. Run <code>node scripts/build-hongkong.mjs</code>.</div>`;
@@ -5982,16 +5993,16 @@ function renderHongKongMarket(all, d) {
     + `<div class="jp-market-head"><span class="ph-t">HANG SENG</span>
         ${idx.level != null ? `<span class="jp-market-lvl">${idx.level.toLocaleString('en-US', { maximumFractionDigits: 2 })}</span>` : '<span class="dimtext">index unavailable</span>'}
         <span class="${(idx.chg1d || 0) >= 0 ? 'pos' : 'neg'}">${chg(idx.chg1d)} today</span>
-        <span class="dimtext">${held} of ${inIndex} constituents held · ${d.session ? `session ${d.session}` : 'exchange tape'}</span></div>`
+        <span class="dimtext">${held} of ${inIndex} constituents held · ${d.session ? `HKEX session ${d.session}` : 'exchange tape'} · prices as of ${sessionOf(all, 'priceDate') || d.session}${idx.date ? ` · index as of ${idx.date}` : ''}</span></div>`
     + `<div class="co-stats co-stats-12">
         ${cell('INDEX MEMBERS', `${held} / ${inIndex}`, `Hang Seng Index constituents${hsi ? ` (list as of ${hsi.updated})` : ''}; every figure on this panel is computed over the members we hold`)}
         ${cell('MEMBERS\u2019 MARKET CAP', hkMoney(totalCap), 'Sum of the index members we hold — not the whole main board')}
         ${cell('INDEX P/E', indexPe != null ? `${indexPe.toFixed(1)}×` : '—', `Cap-weighted: total member market cap ÷ total member earnings — the way an index P/E is quoted. ${foreign} members report in CNY/USD, converted into HKD for the aggregate`)}
         ${cell('INDEX YIELD', indexYield != null ? `${indexYield.toFixed(2)}%` : '—', 'Cap-weighted dividend yield across the members')}
         ${cell('MEDIAN P/E', median(members.map((c) => c.pe)) != null ? `${median(members.map((c) => c.pe)).toFixed(1)}×` : '—', 'Median member — the typical company, not the index')}
-        ${cell('MEDIAN P/B', median(members.map((c) => c.pb)) != null ? `${median(members.map((c) => c.pb)).toFixed(2)}×` : '—', 'Median of the index members')}
-        ${cell('MEDIAN ROE', median(members.map((c) => c.roe)) != null ? `${median(members.map((c) => c.roe)).toFixed(1)}%` : '—', 'Trailing twelve months, median')}
-        ${cell('MEDIAN YIELD', median(members.map((c) => c.dividendYield)) != null ? `${median(members.map((c) => c.dividendYield)).toFixed(2)}%` : '—', 'From the filing dividend per share')}
+        ${cell('MEDIAN P/B', median(members.map((c) => c.pb)) != null ? `${median(members.map((c) => c.pb)).toFixed(2)}×` : '—', 'Median member — market cap ÷ common equity (excludes minorities)')}
+        ${cell('MEDIAN ROE', median(members.map((c) => c.roe)) != null ? `${median(members.map((c) => c.roe)).toFixed(1)}%` : '—', 'Median member — trailing profit ÷ common equity (excludes minorities), TTM where available')}
+        ${cell('MEDIAN YIELD', median(members.map((c) => c.dividendYield)) != null ? `${median(members.map((c) => c.dividendYield)).toFixed(2)}%` : '—', 'Median member — latest annual DPS ÷ price')}
         ${cell('BELOW BOOK', String(belowBook), 'Index members trading under 1× book')}
         ${cell('UP THIS YEAR', String(upYtd), 'Index members with a positive year-to-date return')}
       </div>`
@@ -6006,7 +6017,7 @@ function renderHongKongMarket(all, d) {
         <span>${x.yield != null ? x.yield.toFixed(2) + '%' : '—'}</span>
         <span class="${(x.chgYtd || 0) >= 0 ? 'pos' : 'neg'}">${chg(x.chgYtd)}</span>
       </div>`).join('')
-    + `<div class="macro-note">Every figure above is computed over the <b>${held} Hang Seng Index constituents we hold</b>${hsi ? ` (index list as of ${hsi.updated}, ${inIndex} members)` : ''} — not over our whole coverage, which is ${all.length} main-board companies in the SCREENER.${inIndex > held ? ` The ${inIndex - held} members not held here have no statement page we can reach (or are listed trusts, which the universe excludes by design).` : ''} Sectors from stockanalysis.com's field; prices are HKD and statements are in the issuer's report currency (${foreign} members report in CNY/USD), so ratios are computed in that currency. The exchange publishes no per-stock P/E, so the Hong Kong audit checks that every ratio reproduces from its own inputs rather than against an official table.</div>`;
+    + `<div class="macro-note">Every figure above is computed over the <b>${held} Hang Seng Index constituents we hold</b>${hsi ? ` (index list as of ${hsi.updated}, ${inIndex} members)` : ''} — not over our whole coverage, which is ${all.length} main-board companies in the SCREENER.${inIndex > held ? ` The ${inIndex - held} members not held here have no statement page we can reach (or are listed trusts, which the universe excludes by design).` : ''} Sectors from stockanalysis.com's field; prices are HKD and statements are in the issuer's report currency (${foreign} members report in CNY/USD), so ratios are computed in that currency. Market cap uses the current share count from the vendor statistics page, or the SEC 20-F/10-K/10-Q cover for ADRs; for A+H issuers it is total shares at the H price (the whole company), not the H-share float. The exchange publishes no per-stock P/E, so the Hong Kong audit checks every ratio against its own inputs and a sample against the vendor's statistics page.</div>`;
   if (idx.series && idx.series.length > 1) redrawHongKongIndex();
 }
 
@@ -6100,7 +6111,7 @@ function renderHongKongScreener(all, d) {
         <span class="co-mar ${c.roe == null ? 'dimtext' : c.roe >= 0 ? 'pos' : 'neg'}">${c.roe == null ? '—' : `${c.roe.toFixed(1)}%`}</span>
       </button>`).join('')
     + pagerHtml(sorted.length, page, hkPer, 'hklistpage')
-    + `<div class="macro-note">${rows.length} of ${all.length} · HKEX main board · statements from stockanalysis.com, prices from Yahoo (HKEX close on a cold build) · P/E is trailing twelve months, computed in the issuer's report currency · FX ${d.fx && d.fx.rate ? d.fx.rate.toFixed(2) : '—'} HKD per USD.</div>`;
+    + `<div class="macro-note">${rows.length} of ${all.length} · HKEX main board · statements from stockanalysis.com, prices from Yahoo (HKEX close on a cold build) · P/E is trailing twelve months where the vendor serves a trailing view, otherwise the last fiscal year (the company page labels which) · computed in the issuer's report currency · FX ${d.fx && d.fx.rate ? d.fx.rate.toFixed(2) : '—'} HKD per USD.</div>`;
 }
 
 async function renderHongKongPage(stub) {
@@ -6133,15 +6144,25 @@ async function renderHongKongPage(stub) {
         <span class="co-price-c ${c.chgYtd >= 0 ? 'pos' : 'neg'}">${chg(c.chgYtd)} YTD</span>
         <span class="dimtext">${c.priceDate ? `as of ${c.priceDate}` : ''}</span></div>`
     + `<div class="co-stats co-stats-12">
-        ${cell('MARKET CAP', hkMoney(c.marketCap), 'Price × shares from the latest filing')}
+        ${cell('MARKET CAP', hkMoney(c.marketCap), `Price × shares (${c.sharesBasis || 'filing'}) — the whole company at the H price; A+H issuers are not the H-share float`)}
         ${cell('MARKET CAP · USD', c.marketCapUsd ? `$${(c.marketCapUsd / 1e9).toFixed(1)}B` : '—', 'Converted at the current USD/HKD rate')}
-        ${cell(`P/E · ${c.peBasis || 'TTM'}`, c.pe != null ? `${c.pe.toFixed(2)}×` : '—', `Market cap ÷ the last four quarters of profit, both in ${ccy}${c.reports && c.reports.ttmEnd ? ` (through ${c.reports.ttmEnd})` : ''}`)}
-        ${cell('P/B', c.pb != null ? `${c.pb.toFixed(2)}×` : '—', `Market cap ÷ shareholders\u2019 equity in ${ccy}${c.reports && c.reports.latestEnd ? ` at ${c.reports.latestEnd}` : ''}`)}
-        ${cell('RETURN ON EQUITY', c.roe != null ? `${c.roe.toFixed(1)}%` : '—', 'Profit ÷ equity, same currency on both sides', c.roe >= 0 ? 'pos' : 'neg')}
+        ${cell(`P/E · ${c.peBasis || 'TTM'}`, c.pe != null ? `${c.pe.toFixed(2)}×` : '—', `Market cap ÷ ${c.peBasis === 'FY' ? 'the last fiscal year\u2019s profit' : 'the last four quarters of profit'}, both in ${ccy}${c.reports && c.reports.ttmEnd ? ` (through ${c.reports.ttmEnd})` : ''}`)}
+        ${cell('P/B', c.pb != null ? `${c.pb.toFixed(2)}×` : '—', `Market cap ÷ common shareholders\u2019 equity in ${ccy} (excludes minorities)${c.reports && c.reports.latestEnd ? ` at ${c.reports.latestEnd}` : ''}`)}
+        ${cell('RETURN ON EQUITY', c.roe != null ? `${c.roe.toFixed(1)}%` : '—', 'Profit ÷ common equity (excludes minorities), same currency on both sides', c.roe >= 0 ? 'pos' : 'neg')}
         ${fin ? '' : cell('OPERATING MARGIN', c.opMargin != null ? `${c.opMargin.toFixed(1)}%` : '—', 'Operating profit ÷ revenue', c.opMargin >= 0 ? 'pos' : 'neg')}
         ${cell('NET MARGIN', c.netMargin != null ? `${c.netMargin.toFixed(1)}%` : '—', 'Net profit ÷ revenue', c.netMargin >= 0 ? 'pos' : 'neg')}
-        ${cell('DIVIDEND YIELD', c.dividendYield != null ? `${c.dividendYield.toFixed(2)}%` : '—', 'Dividend per share from the filing, converted to HKD at the current rate')}
-        ${hkStatFill(fin ? 7 : 8)}
+        ${cell('DIVIDEND YIELD', c.dividendYield != null ? `${c.dividendYield.toFixed(2)}%` : '—', c.dividendYieldBasis === 'vendor' ? 'Vendor dividend yield (converted at the payment-date FX)' : `Latest annual dividend per share, converted to HKD at the current rate${c.dividendYieldBasis ? ` (${c.dividendYieldBasis})` : ''}`)}
+        ${cell(`REVENUE CAGR${c.cagrYears ? ' · ' + c.cagrYears + 'Y' : ''}`, c.revenueCagr != null ? `${c.revenueCagr.toFixed(1)}%` : '—', c.cagrNA ? `No growth rate: ${c.cagrNA}.` : `Compound annual revenue growth over ${c.cagrYears} fiscal years`, c.revenueCagr >= 0 ? 'pos' : 'neg')}
+        ${(() => {
+          const e = c.epsCagr != null
+            ? { v: `${c.epsCagr.toFixed(1)}%`, cls: c.epsCagr >= 0 ? 'pos' : 'neg', t: `Compound annual EPS growth over ${c.cagrYears} fiscal years${c.epsSplitAdjusted ? ' (split-adjusted)' : ''}` }
+            : c.epsChange
+              ? { v: `${c.epsChange.from} → ${c.epsChange.to}`, cls: c.epsChange.to >= 0 ? 'pos' : 'neg', t: `No CAGR: ${c.epsCagrNA}. EPS went from ${c.epsChange.from} in FY${c.epsChange.fromFy} to ${c.epsChange.to} in FY${c.epsChange.toFy}.` }
+              : { v: '—', cls: '', t: c.epsCagrNA ? `No EPS growth: ${c.epsCagrNA}.` : 'No EPS growth rate' };
+          return cell(`EPS GROWTH${c.cagrYears ? ' · ' + c.cagrYears + 'Y' : ''}`, e.v, e.t, e.cls);
+        })()}
+        ${cell('NET MARGIN CHANGE', c.marginDelta != null ? `${c.marginDelta >= 0 ? '+' : ''}${c.marginDelta.toFixed(1)}pp` : '—', 'Change in net margin between the first and last fiscal year on file', c.marginDelta >= 0 ? 'pos' : 'neg')}
+        ${hkStatFill(fin ? 10 : 11)}
       </div>`
     + (() => {
         const fig = statementFigures(c, 'hk');
@@ -6149,7 +6170,7 @@ async function renderHongKongPage(stub) {
         const cashWhen = periodLabel(fig.cash.basis, fig.cash.end);
         const bsWhen = fig.balance.end ? `As of ${fig.balance.end}` : 'Latest reported balance sheet';
         const sign = (v) => (v == null ? '' : v >= 0 ? 'pos' : 'neg');
-        const fcf = fig.cash.cfo != null && fig.cash.cfi != null ? fig.cash.cfo + fig.cash.cfi : null;
+        const fcf = c.fcf;
         const eps = (c.reports && c.reports.ttm && c.reports.ttm.eps != null)
           ? c.reports.ttm.eps
           : (h.length && h[h.length - 1].eps != null ? h[h.length - 1].eps : null);
@@ -6163,7 +6184,7 @@ async function renderHongKongPage(stub) {
         ${fin ? '' : cell(`OPERATING PROFIT · ${tileBasis(fig.flows.basis, fig.flows.end)}`, cur(fig.flows.op), opNote, sign(fig.flows.op))}
         ${cell(`NET PROFIT · ${tileBasis(fig.flows.basis, fig.flows.end)}`, cur(fig.flows.net), `${when}, attributable to owners of the parent — ${ccy} millions`, sign(fig.flows.net))}
         ${cell('EPS · DILUTED', eps != null ? Number(eps).toFixed(2) : '—', `Per share, ${ccy}, the same period as the profit above`)}
-        ${fin ? '' : cell(`FREE CASH FLOW · ${tileBasis(fig.cash.basis, fig.cash.end)}`, cur(fcf), `${cashWhen}: operating cash flow + investing cash flow — capex sits inside investing`)}
+        ${fin ? '' : cell(`FREE CASH FLOW · ${tileBasis(fig.cash.basis, fig.cash.end)}`, cur(fcf), `${cashWhen}: operating cash flow − capital expenditure`)}
         ${cell('TOTAL ASSETS', cur(fig.balance.assets), `${bsWhen} — ${ccy} millions`)}
         ${cell('LIABILITIES', cur(fig.balance.liabilities), `${bsWhen}: total assets less shareholders\u2019 equity`)}
         ${cell('SHAREHOLDERS\u2019 EQUITY', cur(fig.balance.equity), `${bsWhen}, attributable to owners of the parent`)}
@@ -6328,14 +6349,14 @@ function renderAustraliaMarket(all, d) {
     + `<div class="jp-market-head"><span class="ph-t">S&amp;P/ASX 200</span>
         ${idx.level != null ? `<span class="jp-market-lvl">${idx.level.toLocaleString('en-US', { maximumFractionDigits: 2 })}</span>` : '<span class="dimtext">index unavailable</span>'}
         <span class="${(idx.chg1d || 0) >= 0 ? 'pos' : 'neg'}">${chg(idx.chg1d)} today</span>
-        <span class="dimtext">${all.length} companies · ASX · ${asOfText(all, 'priceDate')}${idx.date ? ` · index as of ${idx.date}` : ''}</span></div>`
+        <span class="dimtext">${all.length} companies · ASX · prices as of ${sessionOf(all, 'priceDate') || d.session}${idx.date ? ` · index as of ${idx.date}` : ''}</span></div>`
     + `<div class="co-stats co-stats-12">
         ${cell('TOTAL MARKET CAP', auMoney(m.totalCap), 'Sum of every covered ASX constituent')}
         ${cell('COMPANIES', String(m.companies || all.length), 'Listed companies with a statement page and a share count')}
         ${cell('MEDIAN P/E', m.medianPe != null ? `${m.medianPe.toFixed(1)}×` : '—', `Median — the typical company, not the index. ${foreign}`)}
-        ${cell('MEDIAN P/B', m.medianPb != null ? `${m.medianPb.toFixed(2)}×` : '—', 'Median across the market')}
-        ${cell('MEDIAN ROE', m.medianRoe != null ? `${m.medianRoe.toFixed(1)}%` : '—', 'Median member, trailing twelve months where available (otherwise the last fiscal year)')}
-        ${cell('MEDIAN YIELD', m.medianYield != null ? `${m.medianYield.toFixed(2)}%` : '—', 'From the filing dividend per share')}
+        ${cell('MEDIAN P/B', m.medianPb != null ? `${m.medianPb.toFixed(2)}×` : '—', 'Median across the market — market cap ÷ common equity (excludes minorities)')}
+        ${cell('MEDIAN ROE', m.medianRoe != null ? `${m.medianRoe.toFixed(1)}%` : '—', 'Median member — trailing profit ÷ common equity (excludes minorities), TTM where available')}
+        ${cell('MEDIAN YIELD', m.medianYield != null ? `${m.medianYield.toFixed(2)}%` : '—', 'Median member — latest annual DPS ÷ price')}
         ${cell('BELOW BOOK', String(m.belowBook ?? '—'), 'Companies trading under 1× book')}
         ${cell('UP THIS YEAR', String(m.upYtd ?? '—'), 'Companies with a positive year-to-date return')}
       </div>`
@@ -6350,7 +6371,7 @@ function renderAustraliaMarket(all, d) {
         <span>${x.yield != null ? x.yield.toFixed(2) + '%' : '—'}</span>
         <span class="${(x.chgYtd || 0) >= 0 ? 'pos' : 'neg'}">${chg(x.chgYtd)}</span>
       </div>`).join('')
-    + `<div class="macro-note">Aggregates computed from the ${all.length} covered ASX-listed constituents. Sectors are the ASX's GICS industry groups (27), resolved from the profile where the CSV says "Not Applic". Prices are AUD; statements are in the issuer's report currency (${foreign}) and ratios are computed in that currency. The ASX publishes no per-stock P/E, so there is no official cross-check here — the Australia audit reports coverage instead.</div>`;
+    + `<div class="macro-note">Aggregates computed from the ${all.length} covered ASX-listed constituents. Sectors are the ASX's GICS industry groups (27), resolved from the profile where the CSV says "Not Applic". Prices are AUD; statements are in the issuer's report currency (${foreign}) and ratios are computed in that currency. Market cap uses the current share count from the vendor statistics page (the US listing for CDIs); the diluted filing count is still shown on the company page. Companies whose latest statement is older than 450 days are excluded and listed in the audit. The ASX publishes no per-stock P/E, so the Australia audit reports coverage plus a same-source sample.</div>`;
   if (idx.series && idx.series.length > 1) redrawAustraliaIndex();
 }
 
@@ -6484,24 +6505,36 @@ async function renderAustraliaPage(stub) {
         <span class="co-price-c ${c.chgYtd >= 0 ? 'pos' : 'neg'}">${chg(c.chgYtd)} YTD</span>
         <span class="dimtext">${c.priceDate ? `as of ${c.priceDate}` : ''}</span></div>`
     + `<div class="co-stats co-stats-12">
-        ${cell('MARKET CAP', auMoney(c.marketCap), 'Price × shares from the latest filing')}
+        ${cell('MARKET CAP', auMoney(c.marketCap), `Price × shares (${c.sharesBasis || 'filing'})`)}
         ${cell('MARKET CAP · USD', c.marketCapUsd ? `$${(c.marketCapUsd / 1e9).toFixed(1)}B` : '—', 'Converted at the current USD/AUD rate')}
         ${cell(`P/E · ${c.peBasis || 'TTM'}`, c.pe != null ? `${c.pe.toFixed(2)}×` : '—', `Market cap ÷ ${c.peBasis === 'FY' ? 'the last fiscal year\u2019s profit' : 'the rolling twelve months of profit'}, both in ${ccy}${c.reports && c.reports.ttmEnd ? ` (through ${c.reports.ttmEnd})` : ''}`)}
-        ${cell('P/B', c.pb != null ? `${c.pb.toFixed(2)}×` : '—', `Market cap ÷ shareholders\u2019 equity in ${ccy}${c.reports && c.reports.latestEnd ? ` at ${c.reports.latestEnd}` : ''}`)}
-        ${cell('RETURN ON EQUITY', c.roe != null ? `${c.roe.toFixed(1)}%` : '—', 'Profit ÷ equity, same currency on both sides', sign(c.roe))}
+        ${cell('P/B', c.pb != null ? `${c.pb.toFixed(2)}×` : '—', `Market cap ÷ common shareholders\u2019 equity in ${ccy} (excludes minorities)${c.reports && c.reports.latestEnd ? ` at ${c.reports.latestEnd}` : ''}`)}
+        ${cell('RETURN ON EQUITY', c.roe != null ? `${c.roe.toFixed(1)}%` : '—', 'Profit ÷ common equity (excludes minorities), same currency on both sides', sign(c.roe))}
         ${cell(`NET PROFIT · ${basis}`, cur(fig.flows.net), `${when}, attributable to owners of the parent — ${ccy} millions${c.ttmFromFY ? ' · fiscal year, because the source has no trailing page for this issuer' : ''}`, sign(fig.flows.net))}
         ${cell('NET MARGIN', c.netMargin != null ? `${c.netMargin.toFixed(1)}%` : '—', 'Net profit ÷ revenue', sign(c.netMargin))}
         ${stat('opMargin', 'OPERATING MARGIN', c.opMargin != null ? `${c.opMargin.toFixed(1)}%` : '—', 'Operating profit ÷ revenue', sign(c.opMargin))}
-        ${cell('DIVIDEND YIELD', c.dividendYield != null ? `${c.dividendYield.toFixed(2)}%` : '—', 'Dividend per share from the filing, converted to AUD at the current rate')}
+        ${cell('DIVIDEND YIELD', c.dividendYield != null ? `${c.dividendYield.toFixed(2)}%` : '—', c.dividendYieldBasis === 'vendor' ? 'Vendor dividend yield (converted at the payment-date FX)' : `Latest annual dividend per share, converted to AUD at the current rate${c.dividendYieldBasis ? ` (${c.dividendYieldBasis})` : ''}`)}
         ${stat('fcfYield', 'FCF YIELD', c.fcfYield != null ? `${c.fcfYield.toFixed(2)}%` : '—', 'Free cash flow ÷ market cap', sign(c.fcfYield))}
         ${stat('fcfMargin', 'FCF MARGIN', c.fcfMargin != null ? `${c.fcfMargin.toFixed(1)}%` : '—', 'Free cash flow ÷ revenue', sign(c.fcfMargin))}
         ${stat('cashConversion', 'CASH CONVERSION', c.cashConversion != null ? `${c.cashConversion.toFixed(2)}×` : '—', 'Free cash flow ÷ net profit — below 1 means profit is not turning into cash')}
+      </div>`
+    + `<div class="co-stats co-stats-12">
+        ${cell(`REVENUE CAGR${c.cagrYears ? ' · ' + c.cagrYears + 'Y' : ''}`, c.revenueCagr != null ? `${c.revenueCagr.toFixed(1)}%` : '—', c.cagrNA ? `No growth rate: ${c.cagrNA}.` : `Compound annual revenue growth over ${c.cagrYears} fiscal years`, sign(c.revenueCagr))}
+        ${(() => {
+          const e = c.epsCagr != null
+            ? { v: `${c.epsCagr.toFixed(1)}%`, cls: sign(c.epsCagr), t: `Compound annual EPS growth over ${c.cagrYears} fiscal years${c.epsSplitAdjusted ? ' (split-adjusted)' : ''}` }
+            : c.epsChange
+              ? { v: `${c.epsChange.from} → ${c.epsChange.to}`, cls: sign(c.epsChange.to), t: `No CAGR: ${c.epsCagrNA}. EPS went from ${c.epsChange.from} in FY${c.epsChange.fromFy} to ${c.epsChange.to} in FY${c.epsChange.toFy}.` }
+              : { v: '—', cls: '', t: c.epsCagrNA ? `No EPS growth: ${c.epsCagrNA}.` : 'No EPS growth rate' };
+          return cell(`EPS GROWTH${c.cagrYears ? ' · ' + c.cagrYears + 'Y' : ''}`, e.v, e.t, e.cls);
+        })()}
+        ${cell('NET MARGIN CHANGE', c.marginDelta != null ? `${c.marginDelta >= 0 ? '+' : ''}${c.marginDelta.toFixed(1)}pp` : '—', 'Change in net margin between the first and last fiscal year on file', sign(c.marginDelta))}
       </div>`
     + (() => {
         const cashWhen = periodLabel(fig.cash.basis, fig.cash.end);
         const cashBasis = tileBasis(fig.cash.basis, fig.cash.end);
         const bsWhen = fig.balance.end ? `As of ${fig.balance.end}` : 'Latest reported balance sheet';
-        const fcf = fig.cash.cfo != null && fig.cash.cfi != null ? fig.cash.cfo + fig.cash.cfi : null;
+        const fcf = c.fcf;
         const eps = (c.reports && c.reports.ttm && c.reports.ttm.eps != null)
           ? c.reports.ttm.eps
           : (h.length && h[h.length - 1].eps != null ? h[h.length - 1].eps : null);
@@ -6509,7 +6542,7 @@ async function renderAustraliaPage(stub) {
         ${cell(`REVENUE · ${basis}`, cur(fig.flows.revenue), `${when}, as reported — ${ccy} millions`)}
         ${stat('operatingProfit', `OPERATING PROFIT · ${basis}`, cur(fig.flows.op), fig.flows.op == null ? 'This issuer does not report an operating-profit line (common for banks)' : `${when}, as reported`, sign(fig.flows.op))}
         ${cell('EPS · DILUTED', eps != null ? Number(eps).toFixed(2) : '—', `Per share, ${ccy}, the same period as the net profit above${c.perShareBasis ? ` (${c.perShareBasis})` : ''}`)}
-        ${stat('fcf', `FREE CASH FLOW · ${cashBasis}`, cur(fcf), `${cashWhen}: operating cash flow + investing cash flow — capex sits inside investing`)}
+        ${stat('fcf', `FREE CASH FLOW · ${cashBasis}`, cur(fcf), `${cashWhen}: operating cash flow − capital expenditure`)}
         ${cell('TOTAL ASSETS', cur(fig.balance.assets), `${bsWhen} — ${ccy} millions`)}
         ${cell('LIABILITIES', cur(fig.balance.liabilities), `${bsWhen}: total assets less shareholders\u2019 equity`)}
         ${cell('SHAREHOLDERS\u2019 EQUITY', cur(fig.balance.equity), `${bsWhen}, attributable to owners of the parent`)}

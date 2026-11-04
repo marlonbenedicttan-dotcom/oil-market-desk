@@ -2963,6 +2963,7 @@ Audited at 360, 390 and 430 px with screenshots of every view, then fixed what l
   never refreshed.
 - **`check-freshness` now watches Korea too** (US/Japan/Korea), and the daily commit includes
   `data/korea-universe.json`.
+- **Hong Kong and Australia** joined the schedule on 2026-11-04 — see the last section of this file.
 - **Secrets** `DART_API_KEY` and `JQUANTS_API_KEY` are present in the GitHub repo.
 - **Not live yet**: the workflows run `main`, and the fixes on this machine are uncommitted. Push before
   the next weekday run (Tuesday 01:10 UTC) or CI will refresh data with the old code.
@@ -3588,6 +3589,113 @@ Audited at 360, 390 and 430 px with screenshots of every view, then fixed what l
   all charts render, **0 console errors**.
 - **Tests**: `tests/charts.test.js` asserts `^GSPC` is in the US store with > 100 points.
 
+## Hong Kong/Australia audit: names, coverage, and the numbers (2026-11-03)
+- **The HKEX 11-03 report was incomplete, not a smaller market.** The page had 7,305 quoted
+  lines and omitted 147 live companies (Wing Tai Properties, Lee & Man Chemical, Bank of Guizhou,
+  and 144 others) that the 11-02 report carried. `build-hongkong.mjs --daily=YYYY-MM-DD` now actually
+  pins the report instead of only changing the label; the shipped Hong Kong build is the complete
+  **2026-11-02** session. Prices are 11-02, the Hang Seng index is 11-03, and the market header says
+  both.
+- **Presentation markup was hiding quotations.** The 11-03 page wraps some lines as
+  `</font></pre><pre><font size='1'>* 1810 XIAOMI-W ...`; `parseQuotations` matched only lines that
+  began with whitespace, so Xiaomi and 155 other companies disappeared. The parser now strips tags
+  before matching. `tests/hkex.test.js` pins the markup case.
+- **Cross-list matches were wrong for three large issuers.** 1186 (China Railway Construction) was
+  matched to China Construction Bank's OTC ADR; 1055 and 0670 (China Southern/Eastern Air) were
+  matched to a publishing group and an engineering company. Their names, descriptions and statement
+  sets are now taken from the correct A-share listings (`SHA:601186`, `SHA:600029`, `SHA:600115`).
+  `audit:hongkong` now fails when a cross-list source name contradicts the exchange's own short name
+  on "AIR" or "BANK".
+- **Built (2026-11-03):** **1,908 companies** (up from 1,805) · 1,072 P/E · **1,908 descriptions** (all published rows have one) · 156 listed lines without a statement page, counted in `audit.dropped`
+  · 0 throttled · HSI 83/84 held (the missing member is Link REIT, a trust the universe excludes) ·
+  total cap HK$65.34T · median P/E 10.33 · P/B 0.74 · ROE 2.9% · yield 5.0%.
+- **Small incomplete rows are no longer published.** Seven HK shells with no profile page at all
+  (Dickson Concept, Dynamic Hold, Seven Elements, Realway Capital, FE Hotels, Walnut Capital,
+  CH Castson 81 — all under HK$2.3B) are excluded and counted as `audit.incompleteSmall`; every one of
+  the 1,908 published HK rows now has a description, sector and industry. The four chartless HK lines
+  are large, fully filed companies (OmniVision, Anker, Joyson, Fibocom) whose H-share history has not
+  accumulated in Yahoo yet, so they stay.
+- **Names and summaries.** The profile extractor now strips the other listing's tag
+  ("HSBC Holdings (LON:HSBA)" → "HSBC Holdings", "Ping An … (PNGAY)" → the company name) and uses the
+  legal first clause when the title is truncated ("PetroChina Company" → "PetroChina Company
+  Limited"; "smic" → "Semiconductor Manufacturing International Corporation"). The summary cutter
+  stops on a sentence instead of a segment-list semicolon; **0 of 2,052 HK and 0 of 1,671 AU
+  summaries end on `;`** (396 and 230 did before). The exchange short name is trimmed of trailing
+  full stops ("ETHK LABS INC.").
+- **Profile traps found by cross-checking the name against the paragraph.** GDI Property Group's
+  stockanalysis page had the right title and the wrong body (Gaming and Leisure Properties, a US
+  casino REIT); it now carries the Australian REIT description and `REIT - Office` industry. Three
+  renamed issuers (HK.AI Capital, Harbour Digital Asset Capital, Navigator Global Investments) still
+  described themselves by their former legal names; those paragraphs were updated to the current
+  name without touching the numbers.
+- **Numbers that are not a valuation are withheld.** A P/E below 0.5× (a debt-restructuring write-back
+  gave Shimao 0.02×) and an operating/net margin beyond ±500% (pre-revenue explorers and
+  associate-income holdcos printed up to 197,941%) are now blank rather than published. HK P/E
+  coverage is 1,072/1,908; the audit still reproduces every published ratio from its inputs with 0
+  mismatches.
+- **Australia:** 1,664 companies · 539 P/E after the same guard · **1,664/1,664 descriptions** · 271
+  listed lines without a statement page (25 debt/treasury, 50 foreign/NZ CDIs, 196 uncovered small
+  caps) · 0 throttled · 116 foreign reporters · total cap A$3.28T. Every exchange short name is free
+  of its trailing full stop (82 before). The curated themes were corrected: ALD (Ampol, energy) was
+  in the miners list and is now LTR (Liontown); ALK (Alkane, gold) was in consumer and is now SUL
+  (Super Retail); the consumer and tech notes now name the companies actually in the list.
+- **Search:** multi-word queries now match across the profile name, ticker and exchange short name —
+  "shk properties" finds `hk:0016`, "china railway construction" finds `hk:1186`. The index only
+  rebuilds when the server restarts, so a data refresh needs a restart (production deploys do).
+- **UI:** the market header states the HKEX session, the price session and the index date separately;
+  Australia does the same with ISO dates. P/E tiles and screener notes say whether the number is TTM
+  or the last fiscal year instead of claiming TTM for the 313 HK / 383 AU companies that fall back.
+  "HK$ HKD" / "A$ AUD" in the subtitle became "prices in HKD/AUD".
+- **Tests:** `npm test` at **319** (new: markup-wrapped quotation, profile name/summary helpers,
+  multi-word search, name/description invariants, margin/P/E guards). `npm run audit:hongkong` and
+  `audit:australia` both pass all hard invariants; `audit:all` remains 0 failures. Four newly listed
+  HK lines (OmniVision 0501, Anker 0668, Joyson 0699, Fibocom 0638) have no Yahoo history yet, so
+  they have a company page and price but no chart — the store is honest rather than inventing a line.
+
+## Australia and Hong Kong now refresh daily (2026-11-04)
+- **The gap.** Only US/Japan/Korea (`companies-daily`), Taiwan (`taiwan-daily`) and US filings
+  (`filings-watch`) were scheduled. Hong Kong and Australia had **no cron at all**: their prices,
+  statements and chart stores only moved when someone ran `npm run build:hongkong` /
+  `build:australia` by hand, and both were already a session or two behind. Nothing watched them
+  either — `check-freshness` only knew about the other four markets, so they could drift for weeks
+  without an issue being opened.
+- **New `.github/workflows/australia-daily.yml`** — `10 10 * * 1-5` (20:10–21:10 Sydney), after the
+  16:00 close *and* after the ASX regenerates its listed-companies CSV. Runs
+  `npm run refresh:australia` (build → fetch the profiles still missing → rebuild from cache), then
+  `audit-market-refresh au`, `audit:australia`, and commits `data/australia*.json`,
+  `australia-series/`, `australia-companies/` and `data/charts`.
+- **New `.github/workflows/hongkong-daily.yml`** — `10 12 * * 1-5` (20:10 HKT), after HKEX posts the
+  daily quotation report. The HSI list step is **non-fatal** (it reads a public wiki table; a hiccup
+  there must not block a price refresh). Then `npm run refresh:hongkong`,
+  `audit-market-refresh hk`, `audit:hongkong`, and commits `data/hongkong*.json`,
+  `hongkong-series/`, `hongkong-companies/`, `data/hongkong-hsi.json` and `data/charts`.
+- **`--fresh-report` is new on `build-hongkong.mjs`.** Plain `--fresh` refetches *every* statement page
+  (a cold crawl). The scheduled job wants a fresh exchange report with the statement and price caches
+  intact, so the new flag passes `{ fresh: true }` to `latestDaily` and nothing else.
+- **New guard `scripts/audit-market-refresh.mjs au|hk`** — the `audit-taiwan-refresh` idea, generalised.
+  The build writes before the job commits, so a rate-limited run would publish a smaller market that
+  still looked current. It compares the new file with `HEAD` and refuses to publish when companies fall
+  below 97% (AU) or 98% (HK), when priced names or 6M/1Y history collapse, when P/E coverage drops
+  15%, when `audit.throttled > 0`, when the latest price session moves backwards, when total cap falls
+  30%, or when the HKEX session goes backwards. Exit 1 means nothing was staged.
+- **New filings.** There is still no HKEX/ASX announcement watcher (EDGAR has one; these two do not), so
+  the statement cache TTL is what drives it: the current-period page is refetched daily (`TTL_Q`) and
+  the annual record every 7 days (`TTL_FIN`). A half-year result reaches the ratios within a day and
+  the five-year record within a week. A filing feed is the next step if same-day is required.
+- **Freshness.** `check-freshness` now watches both files at **84h**, not 36h: these jobs skip the
+  weekend, so a Friday build read on Monday afternoon is already 72h old, and a holiday Monday pushes
+  it later. 84h catches a failed Tuesday run without crying wolf every Monday.
+- **Caches.** `data/cache/{asx,australia-sa}` and `data/cache/{hkex,hongkong-sa,hongkong-profiles}`,
+  keyed by run id with a prefix restore — the same pattern Taiwan uses. A cache miss is survivable by
+  design: a cold HK run is ~9,500 statement pages and a cold AU run ~6,600, both well inside the
+  240-minute timeout. It is slower, not broken.
+- **Runtime.** Warm, the daily statement cost is only the expired tail (annual pages at 1/7 of the
+  market, current-period pages daily) plus every Yahoo series: roughly 30–60 minutes per market.
+- **Verified locally:** `audit-market-refresh` passes on both current files and fails as intended on a
+  simulated throttled build (1,200 companies, no 6M history, 12 throttled); `npm test` 322 green; both
+  workflow files parse and their crons read back correctly; the newest HKEX report (2026-11-03, 2,062
+  main-board companies) resolves through `--fresh-report`. **Not pushed yet**, so CI has not run them.
+
 ## Load: the first search no longer parses Japan, lists cache, peers overlap the chart (2026-11-04)
 - **The first search or peer lookup parsed `japan.json` (5.5 MB).** `searchIndex()` and `peerIndex()`
   read the source to get names, sectors and caps — even on a US company page — and that synchronous
@@ -3611,15 +3719,67 @@ Audited at 360, 390 and 430 px with screenshots of every view, then fixed what l
 - **Verified headless**: AAPL page chart 5 ms, peers 27 ms, 6 peers rendered, 0 console errors.
   `npm test` 322/322. Cold RSS after a US-only peer lookup +44 MB (the HK/AU lists and the index),
   which those pages need anyway; cold start on the free instance is still infrastructure.
-- **The search and peer indexes are built at boot, off the request path.** The first company page or
-  search would otherwise build them inside a request — about 0.5 s on the free instance — either in
-  front of the chart or in front of the filing. A one-off timer (1.2 s after listen) builds both from
-  the committed list artifacts when RSS is under 300 MB; it does **not** depend on `WARM`, because
-  the deployed instance runs with the feed warmer off. `/health` now reports `rssMB`, `warm` and
-  `idx`. Cost measured with `WARM=off`: +~20 MB (RSS 118 MB), peers 3 ms, search 9 ms; with the full
-  light warm the steady figure is ~348 MB. The company page no longer parses a market file.
-- **The search scan no longer allocates per row.** `r.n`/`r.t`/`r.extra` are already normalised, so
-  the old `r.n.split(/\s+/)` branch could never match, and a `hay` array was built for all ~10k rows
-  before the cheap exact/prefix checks. It is built only for a multi-word query now, and the dead
-  branch is gone; the free instance was spending ~0.5 s on that scan alone. Results unchanged
-  (toyota → 7203, tencent → 0700, "shk properties" → 0016, bhp → AU:BHP, samsung → 005930).
+
+## Company data accuracy: FCF, yield, current shares, staleness (2026-11-04)
+- **FCF is now CFO − capex.** The shared engine (`scripts/derive-listing.mjs`) used `CFO + CFI`, which
+  charged acquisitions and purchases of investments as if they were maintenance capex. The vendor's
+  own `Free Cash Flow` row is exactly CFO − capex on **2,006/2,006 Hong Kong** and **1,354/1,354
+  Australian** cached pages, so it is now the first source; the line items are the fallback and
+  CFO + CFI is the last resort. Tencent 97.8B → **168.3B HKD**; BHP 9.77B → **11.52B**; XRO −3.39B →
+  **+0.92B** (a sign flip). `fcfYield`, `fcfMargin` and `cashConversion` inherit the fix, and the
+  company-page FCF tile now prints `c.fcf` instead of recomputing CFO + CFI client-side.
+- **Dividend yield uses the latest annual DPS.** The vendor's trailing column is not a trailing-twelve-
+  month dividend for every issuer: NAB printed **3.40** against a **1.70** annual, doubling the yield
+  to **8.31%** versus the vendor's **4.15%**. `dividendYieldBasis` says `FY`/`TTM`; the audit checks
+  the annual basis, not the old trailing figure against itself.
+- **Market cap uses current shares.** `scripts/fetch-listing-shares.mjs` reads the vendor statistics
+  page's current count into `data/{market}-shares.json`; the build sets `sharesCurrent`, the derive uses
+  it for cap and keeps the diluted filing count for EPS. The 30-name audit sample had 8 ASX names >5%
+  off current (ECT **+55%**, KAL **+43%**, RGT **+35%**); the old cap was stale. Cross-listed CDIs keep
+  the filing count because the ASX price is per CDI. `sharesBasis` says `current (vendor)` or the CDI
+  note.
+- **Stale statements are excluded.** 450 days catches the Hong Kong 2014 shell (2476 VGT) and the nine
+  delinquent June-2025 ASX names; `audit.stale`/`staleCodes` list them. September year-ends stay,
+  because their next report is not due yet.
+- **The Hong Kong audit cross-check works again.** It read `/financials/` looking for a `>PE Ratio</td>`
+  table that no longer exists, so it compared **0/0**. It now reads `/statistics/` and compares P/E,
+  P/B, ROE, yield and current shares; the Australia sample gains yield and share-count checks.
+- **Tests**: derive tests for vendor-FCF precedence, annual DPS, current-share cap and cross-listing
+  notes; data tests for vendor FCF, annual yield, current-share cap and the 450-day rule.
+- **Growth metrics, same engine as the US/Japan.** `src/growth.js` now feeds the HK/AU shared engine and
+  the Korea derive: revenue CAGR, EPS CAGR (split-adjusted from the average share count), `cagrYears`,
+  `cagrNA`/`epsCagrNA`, `epsChange` when an end is a loss, and `marginDelta`. The HK/AU company pages
+  show REVENUE CAGR / EPS GROWTH / NET MARGIN CHANGE; the HK/AU/Korea screeners gained a REV CAGR
+  column. `data/{market}-list.json` projects the fields. BHP −2.5% revenue / −25% EPS over 4y; Tencent
+  7.6% / 1.1%; Samsung 4.5% / 3.4%.
+- **Rebuild (2026-11-04, final)**: Australia **1,650** companies (9 stale + 3 no-price + 3
+  no-share-source excluded) · 537 P/E · A$3.25T · median P/E 15.97 / P/B 1.54 / ROE −9.4% / yield
+  4.23%. Hong Kong **1,930** companies (4 no-share-source excluded; 0 stale) · 1,102 P/E · HK$64.88T ·
+  median P/E 10.36 / P/B 0.75 / ROE 3.0% / yield 5.2%. Current share counts **1,650/1,650 AU** and
+  **1,930/1,930 HK** (27 HK from the SEC cover). `npm test` **376/376**; `audit:australia`,
+  `audit:hongkong`, `audit-market-refresh` and `audit-markets` pass.
+- **Vendor yields.** The statistics page already carries the vendor's own yield, converted at the
+  payment-date FX. `fetch-listing-shares.mjs` now stores it; `dividendYieldBasis: 'vendor'` marks it,
+  and the filed annual DPS is the fallback. BHP 4.33% → **4.86%**, Tencent 1.43% → **1.33%**, 1184
+  9.28% → **6.04%**; the AU/HK sample yield differences are now **0**.
+- **Total-equity reconciliation.** `pbTotal`, `roeTotal`, `roeFY` and `roePriorFY` are published beside
+  the common-equity `pb`/`roe`. The audit compares the vendor on total equity and treats a match to the
+  prior fiscal year as a period difference, so the old “common vs total equity” warnings are gone
+  (except BHP's vendor figure above).
+- **Cross-listing current shares.** HK lines with no HKG statistics page fall back to their A-share /
+  LON / OTC page; AU CDIs use the US page × the CDI ratio (RIO 1:1, RMD 10:1, AMC 1:1). `sharesBasis`
+  labels the source, e.g. `current (us:RMD) × 10` or `current (sha:601318)`.
+- **SEC cover shares for ADRs.** `scripts/fetch-sec-shares.mjs` + `data/hk-adr-map.json`: for a Hong
+  Kong secondary/ADR listing whose HKG statistics page says `n/a`, read the latest 20-F/10-K/10-Q cover
+  (Class A+B summed; `Indicate the number...` or `based on X ordinary shares`), and validate with the
+  US market cap so an ADS count is not mistaken for ordinary. **27 counts stored** — BABA 18.58B,
+  JD 2.732B, LU 1.733B (fixes a 10× understatement), GDS 1.603B, XPEV 1.910B, BIDU 2.722B, QFIN/NOAH,
+  etc. The four without a defensible count are **excluded from the market**: BeOne/Zai Lab (the 10-Q
+  cover is not the primary document), Hesai (the SEC cover is ADS), CFMEE (no SEC filing).
+  `build:hongkong` / `refresh:hongkong` run `shares:sec` automatically, so the counts refresh with
+  each 20-F/10-Q.
+- **Korea TTM sanity.** A four-quarter window more than 2.5× the annual net income (or twice its
+  revenue) is treated as cumulative/misfiled and the fiscal year is used instead, flagged
+  `ttmSuspicious`. Samsung's P/E moves 8.55 → **28.52** and ROE 34.5% → **10.4%**; 170 companies were
+  corrected. `scripts/rederive-korea.mjs` also rewrites `korea-list.json` and the detail files, and
+  recomputes the market aggregates.
