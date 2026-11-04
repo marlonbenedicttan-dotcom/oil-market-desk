@@ -7870,8 +7870,8 @@ async function renderCompanyPageBody(el, c, all) {
         // Newest first, the same order Japan and Korea use.
         const qs = (c.quarters || []).filter((q) => q.revenue != null || q.netIncome != null).slice().reverse();
         if (!qs.length) return '';
-        return `<div class="gtitle">LAST EIGHT QUARTERS</div>
-          <div class="co-table co-qtr">
+        return `<div class="gtitle">QUARTERLY RESULTS · ${qs.length}</div>
+          <div class="jp-q-scroll"><div class="co-table co-qtr">
             <div class="co-tr co-th"><span>PERIOD</span><span>REVENUE</span><span>OP INCOME</span><span>MARGIN</span><span>NET INCOME</span></div>
             ${qs.map((q) => {
               // Operating margin where the company reports an operating line; banks do not, so they fall
@@ -7881,7 +7881,7 @@ async function renderCompanyPageBody(el, c, all) {
               const shown = opM != null ? opM : netM;
               return `<div class="co-tr"><span>${dealDateY(q.end)}</span><span>${val(q.revenue)}</span><span class="${q.operatingIncome >= 0 ? 'pos' : 'neg'}">${val(q.operatingIncome)}</span><span title="${opM != null ? 'operating margin' : 'net margin (no operating line reported)'}">${shown == null ? '—' : shown.toFixed(1) + '%'}</span><span class="${q.netIncome >= 0 ? 'pos' : 'neg'}">${val(q.netIncome)}</span></div>`;
             }).join('')}
-          </div>`;
+          </div></div>`;
       })()
     + (() => {
         const peers = all.filter((x) => x.sic && x.sic === c.sic && x.cik !== c.cik && x.marketCap).sort((a, b) => (b.marketCap || 0) - (a.marketCap || 0)).slice(0, 6);

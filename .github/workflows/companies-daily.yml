@@ -92,6 +92,9 @@ jobs:
         run: |
           node scripts/apply-restatements.mjs
           node scripts/derive-companies.mjs
+      # The US has no per-company detail file; its quarter table lives in companies.json.
+      - name: Keep every US quarter
+        run: node scripts/merge-history.mjs us
       # Hard gate: these only fail when a published ratio cannot be reproduced from its own inputs,
       # which is a bug, not a market move. check-snapshot is deliberately not here — a new filing
       # legitimately moves a P/E by more than its tolerance.

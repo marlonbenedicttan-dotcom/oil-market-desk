@@ -1,4 +1,4 @@
-// Build the last eight quarters of revenue and net income for each company.
+// Build every quarter of revenue and net income the filing index holds for each company.
 //
 // The five-year table answers "how has this business grown"; the quarterly table answers "what is
 // happening now". Both come from the same filing index, so the quarters reconcile with the annual
@@ -148,8 +148,8 @@ for (const c of todo) {
   if (!j) { skipped++; continue; }
   const g = j.facts?.['us-gaap'] || {};
   let rev = newestSeries(await Promise.all(REVENUE.map(async (tag) => ({ tag, rows: quarterRows(await conceptUnits(c.cik, tag)) }))));
-  // The per-concept endpoint is empty for some CIKs; fall back to the full index, caching only the
-  // eight rows we keep so a rebuild does not re-download a 15 MB document.
+  // The per-concept endpoint is empty for some CIKs; fall back to the full index, caching the series
+  // so a rebuild does not re-download a 15 MB document.
   if (!rev) {
     const qf = join(ROOT, 'data', 'cache', 'quarters', `${c.cik}.json`);
     mkdirSync(dirname(qf), { recursive: true });
@@ -206,7 +206,7 @@ for (const c of todo) {
   const niMap = mergeRows(niCandidates);
   if (!revMap.size && !niMap.size) { skipped++; continue; }
   const ends = new Set([...revMap.keys(), ...niMap.keys()]);
-  const quarters = [...ends].sort().slice(-8).map((end) => ({
+  const quarters = [...ends].sort().map((end) => ({
     end,
     revenue: revMap.get(end)?.val ?? null,
     netIncome: niMap.get(end)?.val ?? null,

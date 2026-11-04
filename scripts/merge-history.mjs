@@ -14,8 +14,10 @@
 //   node scripts/merge-history.mjs --dry-run          # what would be kept
 //
 // It is idempotent and silent: a run where the new file already holds every period writes nothing.
-// The US is deliberately not here — its quarters are filtered (a quarter filed in the wrong unit is
-// dropped) and merging them back would resurrect figures the build rejected.
+// The US keeps its quarter table here too. Its annual/growth series is still built separately from SEC
+// XBRL; this only preserves quarters that were already published, and only once they are older than the
+// build's current window. A quarter the build rejected never enters the committed file, so it cannot be
+// resurrected by the merge.
 
 import { readFileSync, writeFileSync, existsSync, renameSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
@@ -76,6 +78,11 @@ const MARKETS = {
       ['quarters', c.quarters, 'd'],
     ],
   },
+  // The US has no per-company detail directory: the whole record lives in companies.json.
+  us: {
+    file: 'companies.json', detail: null,
+    tables: (c) => [['quarters', c.quarters, 'end']],
+  },
 };
 
 const requested = process.argv.slice(2).filter((a) => !a.startsWith('-'));
@@ -86,7 +93,7 @@ if (unknown.length) {
   process.exit(2);
 }
 
-const codeOf = (c) => c.code || c.ticker;
+const codeOf = (c) => c.code || c.cik || c.ticker;
 
 // The annual table each market's growth fields are rebuilt from after older periods are merged.
 const annualsFor = (id, c) => {
@@ -148,7 +155,7 @@ for (const id of ids) {
           Object.assign(c, growthFromAnnuals(annuals, c.shares), { marginDelta: marginDeltaFromAnnuals(annuals) });
         }
       }
-      if (!DRY) {
+      if (!DRY && spec.detail) {
         const detail = join(ROOT, 'data', spec.detail, `${codeOf(c)}.json`);
         if (existsSync(detail)) writeFileSync(detail, JSON.stringify(c));
       }

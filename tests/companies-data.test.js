@@ -220,12 +220,13 @@ test('the index weights sum to about 100', () => {
   assert.ok(sum > 99 && sum < 101, `weights sum to ${sum}`);
 });
 
-test('the last eight quarters are complete where the company files eight', () => {
+test('the most recent eight quarters are complete where the company files eight', () => {
   // The old pass asked for one tag per concept, so 59 companies had eight blank revenue columns.
+  // The archive can now be longer than eight; the contract is about the latest eight.
   const short = data.companies.filter((c) => {
     const q = c.quarters || [];
     if (q.length < 8) return false;
-    return q.filter((x) => x.revenue != null).length < 8;
+    return q.slice(-8).filter((x) => x.revenue != null).length < 8;
   });
   assert.ok(short.length <= 15, `${short.length} companies have an incomplete quarter series: ${short.slice(0, 8).map((c) => c.ticker).join(' ')}`);
 });

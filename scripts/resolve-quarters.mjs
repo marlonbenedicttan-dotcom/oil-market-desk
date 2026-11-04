@@ -1,4 +1,4 @@
-// Resolve eight complete quarters per company from the full XBRL index.
+// Resolve every complete quarter per company from the full XBRL index.
 //
 // The old pass asked for a fixed list of tags per concept. A company that tags the same thing differently
 // got a null, so 59 companies had eight blank revenue columns and the margin column with them. This reads
@@ -168,7 +168,7 @@ async function worker() {
     const costs = periodMap(facts, opTags.filter((t) => /^CostsAndExpenses$|^CostOfRevenue$|^CostOfGoodsAndServicesSold$/.test(t)));
 
     const annualRev = c.revenue || null;
-    const ends = [...new Set([...rev.keys(), ...ni.keys()])].sort().slice(-8);
+    const ends = [...new Set([...rev.keys(), ...ni.keys()])].sort();
     const quarters = ends.map((end) => {
       const r = rev.get(end);
       const o = opi.get(end);

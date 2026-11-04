@@ -15,6 +15,8 @@ const wf = (f) => readFileSync(join(ROOT, '.github', 'workflows', f), 'utf8');
 test('every market workflow still keeps the history it accumulates', () => {
   const cd = wf('companies-daily.yml');
   assert.match(cd, /merge-history\.mjs jp kr/, 'companies-daily no longer keeps Japanese/Korean periods');
+  assert.match(cd, /merge-history\.mjs us/, 'companies-daily no longer keeps US quarters');
+  assert.match(wf('companies-weekly.yml'), /merge-history\.mjs us/, 'companies-weekly no longer keeps US quarters');
   assert.match(cd, /merge-series\.mjs us jp kr/, 'companies-daily no longer keeps US/Japan/Korea sessions');
 
   for (const [file, id] of [['taiwan-daily.yml', 'tw'], ['hongkong-daily.yml', 'hk'], ['australia-daily.yml', 'au'], ['india-daily.yml', 'in']]) {
