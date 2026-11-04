@@ -534,10 +534,10 @@ test('the Hong Kong company page omits industrial ratios for a balance-sheet fin
   assert.equal(ui.hkBalanceSheetFinancial({ sector: 'Technology', industry: 'Banks - Diversified' }), false);
 });
 
-test('a short stat strip leaves no blank box behind', () => {
-  // The strip used to paint its empty cells: the container's grey showed through the gaps, and Hong
-  // Kong padded the row with invisible filler tiles. Both read as empty boxes under the last real
-  // tile. Each tile now draws its own hairlines over the tile colour, so a short last row just ends.
+test('a short stat strip fills its last row instead of leaving a hole', () => {
+  // The strip used to paint its empty cells — the container's grey showed through the gaps, and Hong
+  // Kong padded the row with filler tiles. Both read as empty boxes under the last real tile. The
+  // tiles now grow to fill whatever the last row has left, so there is no empty cell at all.
   const css = fs.readFileSync(path.join(here, '..', 'public', 'style.css'), 'utf8');
   const app = fs.readFileSync(APP, 'utf8');
   const rule = (sel) => {
@@ -545,10 +545,11 @@ test('a short stat strip leaves no blank box behind', () => {
     return m ? m[0] : '';
   };
   const stats = rule('.co-stats');
-  assert.ok(stats, 'the stat strip has a rule');
-  assert.doesNotMatch(stats, /background:\s*var\(--line\)/, 'the strip does not paint its empty cells in the line colour');
-  assert.match(stats, /background:\s*#0c0f13/, 'an unfilled cell matches the tile colour');
-  assert.match(rule('.co-stat'), /box-shadow: inset -1px -1px 0 0 var\(--line\)/, 'each tile draws the grid line');
+  const tile = rule('.co-stat');
+  assert.match(stats, /display: flex/, 'a wrapping row of tiles, not a fixed grid');
+  assert.match(stats, /flex-wrap: wrap/, 'tiles wrap into rows');
+  assert.match(tile, /flex: 1 1 20%/, 'tiles grow to fill the row, so the last row is never short');
+  assert.match(css, /\.co-stat \{ flex-basis: 40%/, 'two tiles per row on a phone');
   assert.doesNotMatch(app, /co-stat-void/, 'no filler tiles are rendered');
 });
 
