@@ -4221,7 +4221,7 @@ function renderCompanyList(el, allDeals) {
       <span class="ma-val" title="${d.valueSource === 'computed' ? esc(d.valueBasis || 'computed from price × shares') : ''}">${valCell(d) || '—'}</span>
       <span class="ma-tags">${chipFor(d)}</span>
     </button>`;
-  el.innerHTML = `<div class="ma-crumb"><button class="ma-back" data-back="1">← SECTORS</button> <span>${esc(maSector)}</span></div>`
+  el.innerHTML = `<div class="ma-crumb"><button class="ma-back" data-back="1"><span class="ma-back-i" aria-hidden="true">←</span>SECTORS</button> <span>${esc(maSector)}</span></div>`
     + `<div class="ma-sec-head"><span class="ma-sec-head-n">${rows.length} deal${rows.length === 1 ? '' : 's'}</span><span class="ma-sec-head-v">${total ? dealVal(total) + ' disclosed' : 'no value disclosed'}</span><span class="ma-sec-head-c">${verified} verified</span></div>`
     + `<div class="ma-filters">${ranges.map(([d, l]) => `<button class="ma-chip${maSecDays === d ? ' on' : ''}" data-secdays="${d}">${l}</button>`).join('')}`
     + `<span class="ma-gap"></span><button class="ma-chip${maSecSort === 'date' ? ' on' : ''}" data-secsort="date">LATEST</button><button class="ma-chip${maSecSort === 'value' ? ' on' : ''}" data-secsort="value">LARGEST</button></div>`
@@ -4233,7 +4233,7 @@ function renderCompanyList(el, allDeals) {
 function renderCompanyDeals(el, deals) {
   const mine = deals.filter((d) => companyKey(d.acquirer) === companyKey(maCompany) || companyKey(d.target) === companyKey(maCompany));
   const d = mine[0];
-  if (!d) { el.innerHTML = `<div class="ma-crumb"><button class="ma-back" data-back="1">← BACK</button></div><div class="macro-note">No deals for this company.</div>`; return; }
+  if (!d) { el.innerHTML = `<div class="ma-crumb"><button class="ma-back" data-back="1"><span class="ma-back-i" aria-hidden="true">←</span>BACK</button></div><div class="macro-note">No deals for this company.</div>`; return; }
   const other = mine.slice(1);
   // Comparables: same sector, a price within half to twice this deal, within three years either side.
   const similar = d.value
@@ -4258,7 +4258,7 @@ function renderCompanyDeals(el, deals) {
   const asTgt = mine.filter((x) => companyKey(x.target) === companyKey(maCompany)).length;
   const total = mine.reduce((a2, b2) => a2 + (b2.value || 0), 0);
   const stats = `<div class="ma-sec-head"><span class="ma-sec-head-n">${mine.length} deal${mine.length === 1 ? '' : 's'}</span><span class="ma-sec-head-v">${asAcq} as buyer · ${asTgt} as target</span>${total ? `<span class="ma-sec-head-c">${dealVal(total)}</span>` : ''}</div>`;
-  el.innerHTML = `<div class="ma-crumb"><button class="ma-back" data-back="1">← ${esc(maSector || 'SECTORS')}</button> <span>${esc(maCompany)}</span></div>`
+  el.innerHTML = `<div class="ma-crumb"><button class="ma-back" data-back="1"><span class="ma-back-i" aria-hidden="true">←</span>${esc(maSector || 'SECTORS')}</button> <span>${esc(maCompany)}</span></div>`
     + stats
     + `<div class="ma-deal">
         <div class="ma-deal-pair">${maMono(d.target)}<span><button class="ma-part" data-company="${esc(d.acquirer || '')}">${esc(maName(d.acquirer) || '—')}</button> <span class="dimtext">→</span> <button class="ma-part" data-company="${esc(d.target || '')}">${esc(maName(d.target) || '—')}</button></span></div>
@@ -4764,7 +4764,7 @@ function renderJapanPageBody(c) {
   const pbOurs = v.fields && v.fields.equity ? v.fields.equity.ours : null;
   const starred = watchlist().includes(`jp:${c.code}`);
 
-  el.innerHTML = `<div class="ma-crumb"><button class="ma-back" data-jpback="1">← COMPANIES</button> <span>${esc(c.ticker)}</span><span class="mb-tag">JAPAN</span></div>`
+  el.innerHTML = `<div class="ma-crumb"><button class="ma-back" data-jpback="1"><span class="ma-back-i" aria-hidden="true">←</span>COMPANIES</button> <span>${esc(c.ticker)}</span><span class="mb-tag">JAPAN</span></div>`
     + `<div class="co-head">${jpMono(c)}
         <div><div class="co-name">${esc(c.name)}</div>
         <div class="co-sub">${esc(c.ticker)}${c.sector ? ' · ' + esc(c.sector) : ''}${c.size ? ' · ' + esc(c.size) : ''}${c.nameJa ? ' · ' + esc(c.nameJa) : ''}</div>
@@ -5517,7 +5517,7 @@ async function renderKoreaPage(stub) {
   const chg = (x) => (x == null ? '' : `${x >= 0 ? '+' : ''}${x.toFixed(1)}%`);
   const q = c.quarters || [];
   const h = c.history || [];
-  el.innerHTML = `<div class="ma-crumb"><button class="ma-back" data-krback="1">← COMPANIES</button> <span>${esc(c.ticker)}</span><span class="mb-tag">KOREA</span></div>`
+  el.innerHTML = `<div class="ma-crumb"><button class="ma-back" data-krback="1"><span class="ma-back-i" aria-hidden="true">←</span>COMPANIES</button> <span>${esc(c.ticker)}</span><span class="mb-tag">KOREA</span></div>`
     + `<div class="co-head">${krMono(c)}<div><div class="co-name">${esc(krName(c))}</div>
         <div class="co-sub">${esc(c.ticker)} · KOSPI${c.name ? ' · ' + esc(c.name) : ''}</div>
         ${c.description ? `<div class="co-desc">${esc(c.description)}</div>` : ''}
@@ -5846,7 +5846,7 @@ async function renderTaiwanPage(stub) {
   const chg = (x) => (x == null ? '' : `${x >= 0 ? '+' : ''}${x.toFixed(1)}%`);
   const q = c.quarters || [];
   const h = c.history || [];
-  el.innerHTML = `<div class="ma-crumb"><button class="ma-back" data-twback="1">← COMPANIES</button> <span>${esc(c.ticker)}</span><span class="mb-tag">TAIWAN</span></div>`
+  el.innerHTML = `<div class="ma-crumb"><button class="ma-back" data-twback="1"><span class="ma-back-i" aria-hidden="true">←</span>COMPANIES</button> <span>${esc(c.ticker)}</span><span class="mb-tag">TAIWAN</span></div>`
     + `<div class="co-head">${twMono(c)}<div><div class="co-name">${esc(twName(c))}</div>
         <div class="co-sub">${esc(c.ticker)} · TWSE${c.name && c.name !== twName(c) ? ' · ' + esc(c.name) : ''}</div>
         ${c.description ? `<div class="co-desc">${esc(c.description)}</div>` : ''}
@@ -6235,7 +6235,7 @@ async function renderHongKongPage(stub) {
   // figure; a CNY/USD reporter is suffixed, because "CNY 1.04T" is a readable size and "1,044,971"
   // (millions) is not.
   const cur = (v) => (ccy === 'HKD' ? hkMoney(v) : compactMoney(v, ccy));
-  el.innerHTML = `<div class="ma-crumb"><button class="ma-back" data-hkback="1">← COMPANIES</button> <span>${esc(c.ticker)}</span><span class="mb-tag">HONG KONG</span></div>`
+  el.innerHTML = `<div class="ma-crumb"><button class="ma-back" data-hkback="1"><span class="ma-back-i" aria-hidden="true">←</span>COMPANIES</button> <span>${esc(c.ticker)}</span><span class="mb-tag">HONG KONG</span></div>`
     + `<div class="co-head">${hkMono(c)}<div><div class="co-name">${esc(hkName(c))}</div>
         <div class="co-sub">${esc(c.ticker)} · HKEX main board${c.name && c.name !== hkName(c) ? ' · ' + esc(c.name) : ''}${c.industry ? ' · ' + esc(c.industry) : ''}</div>
         ${c.description ? `<div class="co-desc">${esc(c.description)}</div>` : ''}
@@ -6594,7 +6594,7 @@ async function renderAustraliaPage(stub) {
   const na = new Set(c.naRatios || []);
   const stat = (key, label, value, title, cls = '') => (key && na.has(key) ? '' : cell(label, value, title, cls));
   const sign = (v) => (v == null ? '' : v >= 0 ? 'pos' : 'neg');
-  el.innerHTML = `<div class="ma-crumb"><button class="ma-back" data-auback="1">← COMPANIES</button> <span>${esc(c.ticker)}</span><span class="mb-tag">AUSTRALIA</span></div>`
+  el.innerHTML = `<div class="ma-crumb"><button class="ma-back" data-auback="1"><span class="ma-back-i" aria-hidden="true">←</span>COMPANIES</button> <span>${esc(c.ticker)}</span><span class="mb-tag">AUSTRALIA</span></div>`
     + `<div class="co-head">${auMono(c)}<div><div class="co-name">${esc(auName(c))}</div>
         <div class="co-sub">${esc(c.ticker)} · ASX-listed${c.crossListing ? ' · US statements' : ''}${c.name && c.name !== auName(c) ? ' · ' + esc(c.name) : ''}${c.industry ? ' · ' + esc(c.industry) : ''}</div>
         ${c.description ? `<div class="co-desc">${esc(c.description)}</div>` : ''}
@@ -6952,7 +6952,7 @@ async function renderIndiaPage(stub) {
   const na = new Set(c.naRatios || []);
   const stat = (key, label, value, title, cls = '') => (key && na.has(key) ? '' : cell(label, value, title, cls));
   const sign = (v) => (v == null ? '' : v >= 0 ? 'pos' : 'neg');
-  el.innerHTML = `<div class="ma-crumb"><button class="ma-back" data-inback="1">← COMPANIES</button> <span>${esc(c.ticker)}</span><span class="mb-tag">INDIA</span></div>`
+  el.innerHTML = `<div class="ma-crumb"><button class="ma-back" data-inback="1"><span class="ma-back-i" aria-hidden="true">←</span>COMPANIES</button> <span>${esc(c.ticker)}</span><span class="mb-tag">INDIA</span></div>`
     + `<div class="co-head">${inMono(c)}<div><div class="co-name">${esc(inName(c))}</div>
         <div class="co-sub">${esc(c.ticker)} · NSE-listed${c.crossListing ? ' · US statements' : ''}${c.name && c.name !== inName(c) ? ' · ' + esc(c.name) : ''}${c.industry ? ' · ' + esc(c.industry) : ''}</div>
         ${c.description ? `<div class="co-desc">${esc(c.description)}</div>` : ''}
@@ -7735,7 +7735,7 @@ async function renderCompanyPageBody(el, c, all) {
   const series = (c.series || []).slice().sort((a, b) => a.fy - b.fy);
   const val = (v) => coMoney(v);
 
-  el.innerHTML = `<div class="ma-crumb"><button class="ma-back" data-coback="1">← COMPANIES</button> <span>${esc(c.ticker || c.name)}</span><span class="mb-tag">S&amp;P 500</span></div>`
+  el.innerHTML = `<div class="ma-crumb"><button class="ma-back" data-coback="1"><span class="ma-back-i" aria-hidden="true">←</span>COMPANIES</button> <span>${esc(c.ticker || c.name)}</span><span class="mb-tag">S&amp;P 500</span></div>`
     + `<div class="co-head">
         ${coMono(c)}
         <div><div class="co-name">${esc(c.name)}</div>
