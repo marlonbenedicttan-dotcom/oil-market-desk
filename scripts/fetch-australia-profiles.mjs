@@ -14,6 +14,7 @@ import { readFileSync, writeFileSync, renameSync, existsSync, mkdirSync } from '
 import { join } from 'node:path';
 import { ROOT, AU_CACHE, saProfile, saUsProfile, US_CROSS } from './asx.mjs';
 import { getCached } from './stockanalysis.mjs';
+import { extractBrands } from '../src/brand-extract.js';
 
 const FILE = join(ROOT, 'data', 'australia.json');
 const OUT = join(ROOT, 'data', 'australia-profiles.json');
@@ -47,12 +48,15 @@ export function extractProfile(html) {
   const desc = paras.join(' ');
   if (!name || desc.length < 60) return null;
   const first = (desc.match(/^.*?[.。](?=\s|$)/) || [desc])[0];
+  const brandInfo = extractBrands(desc);
   return {
     name,
     legal: first.length > 140 ? first.slice(0, 137) + '…' : first,
     desc: shorten(desc),
     sector: field(html, 'Sector'),
     industry: field(html, 'Industry'),
+    brands: brandInfo.brands,
+    brandQuote: brandInfo.quote,
   };
 }
 function shorten(t, max = 300) {

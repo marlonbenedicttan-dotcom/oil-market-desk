@@ -15,6 +15,7 @@
 import { readFileSync, writeFileSync, renameSync, existsSync, mkdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { extractBrands } from '../src/brand-extract.js';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const FILE = join(ROOT, 'data', 'japan.json');
@@ -52,8 +53,12 @@ const jp = JSON.parse(readFileSync(FILE, 'utf8'));
 // 4-digit code ("1301"). Both mean "already covered" — without the second set every run re-fetched
 // ~1,000 companies that already had a profile.
 const curated = new Set(Object.keys(JSON.parse(readFileSync(DESC, 'utf8')).entries || {}));
-let prev = {};
-try { prev = JSON.parse(readFileSync(STORE, 'utf8')).profiles || {}; } catch { /* first run */ }
+let prev = {}, brandStore = {};
+try {
+  const book = JSON.parse(readFileSync(STORE, 'utf8'));
+  prev = book.profiles || {};
+  brandStore = book.brands || {};
+} catch { /* first run */ }
 const covered = (code) => curated.has(code) || Object.prototype.hasOwnProperty.call(prev, short(code));
 const todo = jp.companies.filter((c) => FORCE || !covered(c.code));
 const list = LIMIT ? todo.slice(0, LIMIT) : todo;
@@ -87,7 +92,12 @@ for (let i = 0; i < list.length; i++) {
     } catch { /* counted below */ }
     await sleep(450);
   }
-  if (text) { profiles.set(short(c.code), shorten(text)); ok++; } else if (existsSync(f)) { miss++; } else { fail++; }
+  if (text) {
+    profiles.set(short(c.code), shorten(text));
+    const info = extractBrands(text);
+    if (info.brands.length) brandStore[short(c.code)] = info.brands;
+    ok++;
+  } else if (existsSync(f)) { miss++; } else { fail++; }
   if ((i + 1) % 100 === 0) console.log(`  ${i + 1}/${list.length} · ${ok} found · ${fail} failed`);
 }
 
@@ -104,7 +114,7 @@ for (const c of list) {
 }
 // Keep a committed copy too: the cache is gitignored and would vanish in CI.
 const store = Object.fromEntries(profiles);
-writeFileSync(STORE, JSON.stringify({ updated: new Date().toISOString().slice(0, 10), note: 'Fetched company profiles from stockanalysis.com, keyed by 4-digit TSE code.', profiles: store }));
+writeFileSync(STORE, JSON.stringify({ updated: new Date().toISOString().slice(0, 10), note: 'Fetched company profiles from stockanalysis.com, keyed by 4-digit TSE code.', profiles: store, brands: brandStore }));
 writeFileSync(FILE + '.tmp', JSON.stringify(jp));
 renameSync(`${FILE}.tmp`, FILE);
 console.log(`fetched ${ok} · already cached ${miss} · failed ${fail}`);

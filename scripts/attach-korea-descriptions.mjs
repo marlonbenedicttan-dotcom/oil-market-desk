@@ -32,8 +32,12 @@ const won = (v) => {
 };
 
 // Profiles live in a committed file so a CI rebuild — which has no local cache — keeps them.
-let stored = {};
-try { stored = JSON.parse(readFileSync(STORE, 'utf8')).profiles || {}; } catch { /* none yet */ }
+let stored = {}, storedBrands = {};
+try {
+  const book = JSON.parse(readFileSync(STORE, 'utf8'));
+  stored = book.profiles || {};
+  storedBrands = book.brands || {};
+} catch { /* none yet */ }
 
 // Hand-written lines for the few companies no profile source covers. Kept short and factual.
 const CURATED = {
@@ -52,7 +56,8 @@ for (const c of data.companies) {
   }
   let text = CURATED[c.ticker] || stored[c.ticker] || null;
   if (!text && fullText) text = fullText;
-  const merged = mergeBrands([brands[c.ticker], extractBrands(fullText || text || '').brands], GROUPS);
+  const auto = storedBrands[c.ticker] || extractBrands(fullText || text || '').brands;
+  const merged = mergeBrands([brands[c.ticker], auto], GROUPS);
   if (merged.length) c.brands = merged; else delete c.brands;
   if (text) {
     c.description = shorten(text);

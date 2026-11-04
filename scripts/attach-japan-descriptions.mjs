@@ -99,8 +99,12 @@ function generated(c, peers) {
 const jp = JSON.parse(readFileSync(FILE, 'utf8'));
 const book = JSON.parse(readFileSync(DESC, 'utf8'));
 // Fetched profiles live in a committed file so a rebuild cannot lose them.
-let profiles = {};
-try { profiles = JSON.parse(readFileSync(PROFILES, 'utf8')).profiles || {}; } catch { /* none yet */ }
+let profiles = {}, brandStore = {};
+try {
+  const book = JSON.parse(readFileSync(PROFILES, 'utf8'));
+  profiles = book.profiles || {};
+  brandStore = book.brands || {};
+} catch { /* none yet */ }
 const shorten = (text, max = 300) => {
   if (text.length <= max) return text;
   const cut = text.slice(0, max);
@@ -115,6 +119,10 @@ const brandCache = new Map();
 function autoBrands(code) {
   const key = String(code).slice(0, 4);
   if (brandCache.has(key)) return brandCache.get(key);
+  if (brandStore[key] && brandStore[key].length) {
+    brandCache.set(key, brandStore[key]);
+    return brandStore[key];
+  }
   let text = profiles[key] || '';
   const f = join(CACHE, `${key}.json`);
   if (existsSync(f)) {

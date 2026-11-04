@@ -10,6 +10,7 @@
 import { readFileSync, writeFileSync, renameSync, existsSync, mkdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { extractBrands } from '../src/brand-extract.js';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const FILE = join(ROOT, 'data', 'korea.json');
@@ -38,6 +39,11 @@ const shorten = (t, max = 300) => {
 
 const data = JSON.parse(readFileSync(FILE, 'utf8'));
 const brands = JSON.parse(readFileSync(BRANDS, 'utf8')).brands || {};
+const brandStore = {};
+try {
+  const book = JSON.parse(readFileSync(join(ROOT, 'data', 'korea-profiles.json'), 'utf8'));
+  Object.assign(brandStore, book.brands || {});
+} catch { /* first run */ }
 
 async function one(c) {
   const f = join(CACHE, `${c.ticker}.json`);
@@ -77,8 +83,14 @@ const pool = Array.from({ length: 4 }, async () => {
   while (at < list.length) {
     const c = list[at++];
     const text = await one(c);
-    if (text) { c.description = shorten(text); c.descSource = 'profile'; c.descSourceName = 'stockanalysis.com'; ok++; }
-    else fail++;
+    if (text) {
+      c.description = shorten(text);
+      c.descSource = 'profile';
+      c.descSourceName = 'stockanalysis.com';
+      const info = extractBrands(text);
+      if (info.brands.length) brandStore[c.ticker] = info.brands;
+      ok++;
+    } else fail++;
     c.brands = brands[c.ticker] || [];
     if ((ok + fail) % 100 === 0) console.log(`  ${ok + fail}/${data.companies.length} · ${ok} found`);
     await sleep(120);
@@ -102,7 +114,7 @@ for (const c of data.companies) {
 // Keep a committed copy: the cache is gitignored and CI would rebuild without it.
 const store = {};
 for (const c of data.companies) if (c.descSource === 'profile' && c.description) store[c.ticker] = c.description;
-writeFileSync(join(ROOT, 'data', 'korea-profiles.json'), JSON.stringify({ updated: new Date().toISOString().slice(0, 10), note: 'Fetched Korean company profiles from stockanalysis.com, keyed by ticker.', profiles: store }));
+writeFileSync(join(ROOT, 'data', 'korea-profiles.json'), JSON.stringify({ updated: new Date().toISOString().slice(0, 10), note: 'Fetched Korean company profiles from stockanalysis.com, keyed by ticker.', profiles: store, brands: brandStore }));
 data.updated = new Date().toISOString();
 writeFileSync(FILE + '.tmp', JSON.stringify(data));
 renameSync(FILE + '.tmp', FILE);
