@@ -317,7 +317,16 @@ try {
   fx = j?.rates?.KRW ?? null;
 } catch { fx = null; }
 
-const out = deriveKorea({ companies, fx });
+const out0 = deriveKorea({ companies, fx });
+// A company whose newest report is over 450 days old is not a current market quote for ratios.
+const STALE_DAYS = 450;
+const asOf = new Date();
+const stale = out0.filter((c) => {
+  const end = (c.reports || []).filter((r) => r.end).map((r) => r.end).sort().at(-1);
+  return end && (asOf - new Date(end)) / 864e5 > STALE_DAYS;
+});
+const staleTickers = new Set(stale.map((c) => c.ticker));
+const out = out0.filter((c) => !staleTickers.has(c.ticker));
 
 // KSIC division (first two digits of DART's induty_code) → one English sector. Coarse on purpose:
 // a dozen buckets that can be compared, not 100 codes that cannot.
@@ -448,6 +457,7 @@ writeJson(OUT, {
   currency: 'KRW',
   fx: { pair: 'USDKRW', rate: fx, date: iso(Date.now()) },
   market, index: idx, themes,
+  audit: { stale: stale.length, staleCodes: stale.map((c) => ({ ticker: c.ticker, name: c.name, end: (c.reports || []).filter((r) => r.end).map((r) => r.end).sort().at(-1) })) },
   companies: out,
 });
 // Descriptions and brands are attached by their own script; without this a rebuild wipes them.

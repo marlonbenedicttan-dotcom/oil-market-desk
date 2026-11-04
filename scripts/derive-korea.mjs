@@ -165,9 +165,16 @@ export function deriveKorea({ companies, fx = null }) {
     const rev = basis === 'TTM' ? ttm.revenue : (fy ? fy.revenue : null);
     const op = basis === 'TTM' ? ttm.operatingProfit : (fy ? fy.operatingProfit : null);
 
-    const equity = fy ? fy.equity : null;
+    const equityReport = (c.reports || [])
+      .filter((r) => r.equity > 0 && r.end)
+      .sort((a, b) => String(a.end).localeCompare(String(b.end)))
+      .at(-1) || null;
+    const equity = equityReport ? equityReport.equity : (fy ? fy.equity : null);
+    const equityAsOf = equityReport ? equityReport.end : (fy ? fy.end : null);
     const cfo = fy ? fy.operatingCashFlow : null;
     const cfi = fy ? fy.investingCashFlow : null;
+    // DART's summary has no capex line, so this is cash after investing, not standard free cash flow.
+    // The field keeps its historical name; the UI labels it CASH AFTER INVESTING.
     const fcf = cfo != null && cfi != null ? cfo + cfi : null;
     // A P/E under 0.01 is not a cheap stock, it is a division by a rounding artefact (a quarterly profit
     // larger than the whole company). Publish no P/E rather than a zero.
@@ -186,12 +193,14 @@ export function deriveKorea({ companies, fx = null }) {
       pe: peRaw != null && peRaw > 0.01 ? round(guard(peRaw, 0, 500), 2) : null,
       peBasis: basis,
       pb: round(guard(cap && equity > 0 ? cap / equity : null, 0, 50), 2),
+      equityAsOf,
       // ROE needs positive book equity: dividing by negative equity flips the sign, so a profitable
       // company with negative equity would print a loss-like ROE.
       roe: equity > 0 && ni != null ? round((ni / equity) * 100, 1) : null,
       opMargin: rev && op != null ? round((op / rev) * 100, 1) : null,
       netMargin: rev && ni != null ? round((ni / rev) * 100, 1) : null,
       fcf,
+      fcfBasis: fcf == null ? null : 'CFO+CFI',
       fcfYield: cap && fcf != null ? round((fcf / cap) * 100, 2) : null,
       ...growth,
       marginDelta,

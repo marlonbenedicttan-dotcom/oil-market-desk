@@ -3783,3 +3783,28 @@ Audited at 360, 390 and 430 px with screenshots of every view, then fixed what l
   `ttmSuspicious`. Samsung's P/E moves 8.55 → **28.52** and ROE 34.5% → **10.4%**; 170 companies were
   corrected. `scripts/rederive-korea.mjs` also rewrites `korea-list.json` and the detail files, and
   recomputes the market aggregates.
+
+## US, Japan, Korea: the same failure classes (2026-11-04)
+- **US book equity is refreshed from the latest 10-Q/10-K instant.** `scripts/refresh-us-equity.mjs`
+  reads the committed SEC company-facts cache (no new requests), matches parent equity (subtracting
+  minority interest), and updates `equity`/`equityEnd`/`equityForm`; `derive-companies.mjs` then
+  recomputes P/B and ROE. **435 values updated**; companies whose equity is >180 days behind the TTM
+  profit fell from **413 to 49** (the 49 have no newer XBRL instant in the cache). MSFT/AMZN/GOOGL/META
+  now use 2026-06/09 book value instead of FY2025.
+- **US growth now uses the shared split-aware `growthRates`.** Per-year shares are implied by
+  `netIncome ÷ EPS`; a split is restated, and two guards withhold the EPS CAGR when the series cannot
+  be reconciled to today's share count (`EPS/share-count series is inconsistent`) or when EPS growth
+  is >30pp away from net-income growth. NVDA's **131.7%** (built on a 2022 row implying 57.4B shares
+  against 24.5B today) is now blank; JNJ/NFLX 48.5%/113.8% false positives are blank too.
+- **Korea uses the newest quarterly balance sheet for P/B and ROE.** `deriveKorea` picks the latest
+  report with positive equity (q1/h1/q3), not the last annual. Samsung: FY2025 equity ₩436T → H1 2026
+  ₩579T, **P/B 2.95 → 2.23, ROE 10.4% → 7.8%**. `equityAsOf` is on the record and in the tooltip.
+- **Korea excludes 21 stale reporters.** Companies whose newest report is >450 days old (some 2021/22)
+  are out of the market (746 → **725**) and listed in `audit.staleCodes`. `build-korea` and
+  `rederive-korea` both enforce it; `naverCap` is refreshed from the Naver feed before re-deriving.
+- **FCF naming.** Japan already labelled the page **CASH AFTER INVESTING**; Korea now does too, with
+  **CASH YIELD** instead of “FCF YIELD” and a `fcfBasis: 'CFO+CFI'` on both. The US FCF remains
+  standard **CFO − capex**.
+- **Verified**: `npm test` **382/382**; `audit-calculations` 0 mismatches; `audit-markets` **0
+  failures** (Korea P/B now compares to the latest equity; Naver caps refreshed); `audit-deep` has one
+  residual PG equity-vs-series note (2%, a restatement-period difference, not a formula failure).

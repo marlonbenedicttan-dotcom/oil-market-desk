@@ -25,8 +25,18 @@ if (!Array.isArray(data.companies) || !data.companies.length) {
   process.exit(1);
 }
 
-const out = deriveKorea({ companies: data.companies, fx });
+let out = deriveKorea({ companies: data.companies, fx });
 out.sort((a, b) => (b.marketCap || 0) - (a.marketCap || 0));
+
+// A company whose newest report is over 450 days old is not a current market quote for ratios.
+const STALE_DAYS = 450;
+const asOf = new Date();
+const stale = out.filter((c) => {
+  const end = (c.reports || []).filter((r) => r.end).map((r) => r.end).sort().at(-1);
+  return end && (asOf - new Date(end)) / 864e5 > STALE_DAYS;
+});
+const staleTickers = new Set(stale.map((c) => c.ticker));
+out = out.filter((c) => !staleTickers.has(c.ticker));
 
 const median = (xs) => {
   const a = xs.filter((x) => x != null && Number.isFinite(x)).sort((x, y) => x - y);
@@ -56,7 +66,17 @@ const market = {
     }))
     .sort((a, b) => b.cap - a.cap),
 };
-const next = { ...data, updated: new Date().toISOString(), market, companies: out };
+const next = {
+  ...data,
+  updated: new Date().toISOString(),
+  market,
+  audit: {
+    ...(data.audit || {}),
+    stale: Math.max(stale.length, data.audit?.stale || 0),
+    staleCodes: stale.length ? stale.map((c) => ({ ticker: c.ticker, name: c.name, end: (c.reports || []).filter((r) => r.end).map((r) => r.end).sort().at(-1) })) : (data.audit?.staleCodes || []),
+  },
+  companies: out,
+};
 writeFileSync(OUT, JSON.stringify(next));
 writeFileSync(LIST, JSON.stringify(koreaList(next)));
 execFileSync(process.execPath, [join(ROOT, 'scripts', 'build-company-details.mjs'), 'kr'], { stdio: 'inherit' });

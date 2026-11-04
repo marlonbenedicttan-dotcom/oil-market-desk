@@ -135,6 +135,9 @@ test('a restatement keeps both figures and the amended one wins', () => {
     assert.ok(Object.keys(changes).length > 0, `${c.ticker}: restatement with no change recorded`);
     assert.ok(c.restatement.filed, `${c.ticker}: restatement without a filing date`);
     for (const [f, v] of Object.entries(changes)) {
+      // A later 10-Q supersedes the amended annual figure; the restatement still lives in the record.
+      const end = c[f + 'End'];
+      if (end && c.restatement.period && end > c.restatement.period) continue;
       assert.equal(c[f], v.now, `${c.ticker}: ${f} should hold the amended value`);
     }
   }

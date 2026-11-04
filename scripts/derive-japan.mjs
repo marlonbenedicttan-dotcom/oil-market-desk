@@ -276,6 +276,7 @@ export function deriveJapan({ ranked, fins, series, val = new Map(), nextByCode 
       opMargin: sales && marginBase != null ? round((marginBase / sales) * 100, 1) : null,
       marginBasis,
       fcfYield: cap && fcf ? round((fcf / cap) * 100, 2) : null,
+      fcfBasis: fcf == null ? null : 'CFO+CFI',
       shares,
       dividend: divAnn != null ? {
         perShare: divAnn, total: divTotal, payoutRatio: payout, forecast: fDivAnn,

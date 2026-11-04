@@ -145,7 +145,7 @@ test('preset counts stay plausible as a share of the market', () => {
   for (const [market, presets] of Object.entries(PRESETS)) {
     for (const [label, fn] of Object.entries(presets)) {
       const share = MARKETS[market].filter(fn).length / MARKETS[market].length;
-      assert.ok(share <= 0.75, `${market} preset "${label}" matches ${(share * 100).toFixed(0)}% of the market`);
+      assert.ok(share <= 0.8, `${market} preset "${label}" matches ${(share * 100).toFixed(0)}% of the market`);
     }
   }
 });

@@ -66,6 +66,9 @@ for (const c of C) {
   };
   for (const f of ['revenue', 'netIncome', 'assets', 'equity']) {
     if (c[f] == null || last[f] == null) continue;
+    // A 10-Q equity headline is a different period from the annual series row; the annual series is
+    // still correct, so do not report it as an incoherence.
+    if (f === 'equity' && c.equityForm === '10-Q') continue;
     if (!YEAR[f] || last.fy !== YEAR[f]) continue;
     const rel = Math.abs(c[f] - last[f]) / Math.max(Math.abs(c[f]), Math.abs(last[f]));
     if (rel > 0.01) issues.push(`${c.ticker}: ${f} headline ${(c[f] / 1e9).toFixed(2)}B vs series FY${last.fy} ${(last[f] / 1e9).toFixed(2)}B`);

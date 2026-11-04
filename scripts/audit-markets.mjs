@@ -221,8 +221,8 @@ function market(name, rows) {
       .map((c) => [c.ticker, `${(pct(c.pe, peCalc(c)) * 100).toFixed(1)}%`]));
 
   m.add('P/B = cap ÷ equity', 'fail', 'P/B does not reproduce from its own inputs',
-    rows.filter((c) => annual(c)?.equity > 0 && off(c.pb, c.marketCap / annual(c).equity, 0.03))
-      .map((c) => [c.ticker, `${(pct(c.pb, c.marketCap / annual(c).equity) * 100).toFixed(1)}%`]));
+    rows.filter((c) => c.equity > 0 && off(c.pb, c.marketCap / c.equity, 0.03))
+      .map((c) => [c.ticker, `${(pct(c.pb, c.marketCap / c.equity) * 100).toFixed(1)}%`]));
 
   m.add('negative dividend or payout yield', 'fail', 'Dividends paid is a magnitude, never negative',
     rows.filter((c) => c.dividendPaid < 0 || c.payoutYield < 0)

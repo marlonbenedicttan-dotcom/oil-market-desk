@@ -9,6 +9,8 @@
 //   - A share count of 1 is a broken cover-page fact, not a company.
 
 import { readFileSync, writeFileSync, renameSync } from 'node:fs';
+import { growthRates } from '../src/growth.js';
+
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -270,23 +272,46 @@ for (const c of data.companies) {
   const first = hist[0];
   const last = hist[hist.length - 1];
   const span = first && last ? last.fy - first.fy : 0;
-  const cagr = (a0, b0) => (a0 > 0 && b0 > 0 && span >= 2 ? +(((b0 / a0) ** (1 / span) - 1) * 100).toFixed(1) : null);
+  // Use the shared split-aware helper. The per-year share count is implied by net income ÷ EPS, so a
+  // split shows up as a jump in that count and is restated before the CAGR is taken.
+  const growthRows = hist.map((s) => ({
+    year: s.fy,
+    revenue: s.revenue,
+    eps: s.eps,
+    shares: s.netIncome != null && s.eps !== 0 && s.eps != null && Math.sign(s.netIncome) === Math.sign(s.eps)
+      ? s.netIncome / s.eps
+      : null,
+  }));
+  const growth = growthRates(growthRows);
+  // A spin-off or a bad EPS tag can move the implied share count without being a common split. If the
+  // first/last row cannot be reconciled to today's count, withhold the EPS CAGR rather than publish a
+  // number built on two different share bases (NVDA 2022 implied 57B vs 24.5B today).
+  const implied = [growthRows[0]?.shares, growthRows.at(-1)?.shares];
+  const inconsistent = !growth.epsSplitAdjusted && c.shares > 0
+    && implied.some((x) => x > 0 && (x / c.shares > 1.6 || x / c.shares < 0.67));
   // Trailing EPS: the per-share tag is missing for a quarter of the index, but net income ÷ shares is
   // the same number and both inputs exist. Marked so the page can say it was derived.
   if (c.epsTTM == null && c.netIncomeTTM != null && c.shares > 0) {
     c.epsTTM = +(c.netIncomeTTM / c.shares).toFixed(2);
     c.epsTTMBasis = 'net income ÷ shares';
   }
-  c.revenueCagr = cagr(first?.revenue, last?.revenue);
-  c.epsCagr = cagr(first?.eps, last?.eps);
-  c.cagrYears = span >= 2 ? span : null;
-  // Say why a growth rate is absent rather than leaving a dash: a loss at either end makes it meaningless.
-  c.cagrNA = c.revenueCagr == null ? (span < 2 ? 'history too short' : 'revenue was not positive in both years') : null;
-  c.epsCagrNA = c.epsCagr == null ? (span < 2 ? 'history too short' : 'a loss in the first or last year') : null;
-  // When a CAGR does not exist because one end is a loss, the change itself is still the useful fact:
-  // "−$2.10 → $1.50" tells the reader more than a dash.
-  if (c.epsCagr == null && span >= 2 && first && last && first.eps != null && last.eps != null) {
-    c.epsChange = { from: first.eps, to: last.eps, years: span, fromFy: first.fy, toFy: last.fy };
+  c.revenueCagr = growth.revenueCagr;
+  c.epsCagr = inconsistent ? null : growth.epsCagr;
+  c.cagrYears = growth.cagrYears;
+  c.cagrNA = growth.cagrNA;
+  c.epsCagrNA = inconsistent ? 'EPS/share-count series is inconsistent' : growth.epsCagrNA;
+  c.epsSplitAdjusted = growth.epsSplitAdjusted;
+  c.epsSplitUnverified = growth.epsSplitUnverified;
+  if (!inconsistent && growth.epsChange) c.epsChange = growth.epsChange;
+  // A split adjustment can still be a false positive (JNJ/Kenvue, NFLX's mixed EPS tags). If the
+  // resulting EPS rate is wildly different from the net-income rate, the EPS series is not on one
+  // consistent share basis; withhold it rather than publish a 48% "growth" for a 9% profit grower.
+  const niCagr = first && last && span >= 2 && first.netIncome > 0 && last.netIncome > 0
+    ? +(((last.netIncome / first.netIncome) ** (1 / span) - 1) * 100).toFixed(1) : null;
+  if (c.epsCagr != null && niCagr != null && Math.abs(c.epsCagr - niCagr) > 30) {
+    c.epsCagr = null;
+    c.epsCagrNA = 'EPS growth does not reconcile to net-income growth';
+    delete c.epsChange;
   }
   c.marginDelta = first?.revenue && last?.revenue && first.netIncome != null && last.netIncome != null
     ? +(((last.netIncome / last.revenue) - (first.netIncome / first.revenue)) * 100).toFixed(1) : null;

@@ -1,5 +1,5 @@
 {
- "checked": "2026-11-04T02:34:53.786Z",
+ "checked": "2026-11-04T07:48:58.571Z",
  "markets": {
   "us": {
    "name": "US",
@@ -81,7 +81,7 @@
     "companies": 503,
     "marketCap": 503,
     "pe": 477,
-    "pb": 468,
+    "pb": 467,
     "ttm": 502,
     "quarters8": 499
    }
@@ -175,7 +175,7 @@
   },
   "korea": {
    "name": "Korea",
-   "rows": 746,
+   "rows": 725,
    "checks": [
     {
      "check": "market cap vs price × shares",
@@ -228,36 +228,36 @@
     {
      "check": "share count differs from the filing",
      "severity": "info",
-     "count": 241,
+     "count": 134,
      "detail": "A split or consolidation since the last annual report"
     }
    ],
    "fail": 0,
-   "warn": 241,
+   "warn": 134,
    "examples": {
     "share count differs from the filing": [
-     "032830 (filing 179,574,779 → listed 200,581,959)",
-     "068270 (filing 218,613,124 → listed 232,073,120)",
-     "034730 (filing 55,086,352 → listed 72,502,783)",
-     "000810 (filing 39,828,296 → listed 44,716,333)",
-     "010120 (filing 29,738,491 → listed 150,202,020)",
-     "006800 (filing 436,049,860 → listed 544,159,329)",
-     "005830 (filing 60,643,469 → listed 65,463,026)",
-     "267250 (filing 70,668,430 → listed 78,993,343)"
+     "009150 (filing 74,693,687 → listed 79,682,342)",
+     "373220 (filing 234,000,000 → listed 254,976,816)",
+     "006400 (filing 80,585,537 → listed 89,077,066)",
+     "012450 (filing 51,563,462 → listed 48,305,220)",
+     "034020 (filing 640,561,024 → listed 675,868,110)",
+     "096770 (filing 169,053,075 → listed 182,582,982)",
+     "015760 (filing 640,373,245 → listed 599,025,599)",
+     "298040 (filing 9,324,548 → listed 8,439,859)"
     ]
    },
    "coverage": {
-    "companies": 746,
-    "marketCap": 746,
-    "pe": 561,
-    "peTTM": 518,
-    "peFY": 43,
-    "pb": 735,
-    "roe": 739,
-    "naverMatched": 744
+    "companies": 725,
+    "marketCap": 725,
+    "pe": 544,
+    "peTTM": 456,
+    "peFY": 88,
+    "pb": 721,
+    "roe": 721,
+    "naverMatched": 725
    }
   }
  },
  "failures": 0,
- "warnings": 271
+ "warnings": 164
 }

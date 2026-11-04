@@ -55,7 +55,7 @@ Six markets, same UI:
 |---|---|---|
 | 🇺🇸 United States | S&P 500 — **503 securities / 500 companies** (SPY holdings) | SEC XBRL, latest annual 10-K |
 | 🇯🇵 Japan | TSE Prime — **1,547 companies** with a market cap | JPX / J-Quants, JPY |
-| 🇰🇷 Korea | KOSPI — **746 companies** | DART, KRW |
+| 🇰🇷 Korea | KOSPI — **725 companies** | DART, KRW |
 | 🇹🇼 Taiwan | TWSE — **1,084 listed companies** | TWSE master + stockanalysis, TWD |
 | 🇭🇰 Hong Kong | HKEX main board — **1,930 companies** with a statement page | HKEX tape + stockanalysis, HKD/CNY/USD |
 | 🇦🇺 Australia | ASX — **1,650 companies** with a current share count | ASX CSV + stockanalysis, AUD/USD |
@@ -64,6 +64,7 @@ Six markets, same UI:
 - **Valuation vs its own history** — P/E, P/B, EV/EBITDA percentiles over five years, plus sector aggregates.
 - **Themes** — the names behind a story, across all markets.
 - Financials are **filed values, not estimates**. Market cap uses the **current shares outstanding** (vendor statistics page; SEC 20-F/10-K/10-Q cover for ADRs; US listing × CDI ratio for ASX CDIs; filing count as the last fallback) so post-period placements and buybacks are reflected; FCF is **operating cash flow − capex**; dividend yield uses the **vendor's payment-date yield**, falling back to the latest annual DPS. Statements older than 450 days are excluded and listed in the audit. Every ratio is recomputed from its own inputs and the audit cross-checks a sample against the vendor's statistics page.
+- **Book equity is on the newest balance-sheet instant** — the latest 10-Q/10-K in the US, the latest quarterly report in Korea — so P/B and ROE do not divide a TTM profit by year-old equity. US EPS growth is split-aware and withheld when the EPS/share series cannot be reconciled; Japan/Korea cash flow is labelled **CASH AFTER INVESTING (CFO+CFI)** because those summaries do not break out capex.
 - **Growth, on the same rules as the US**: revenue CAGR, split-adjusted EPS growth, and the net-margin change over the five fiscal years on file. Hong Kong, Australia and Korea show them on the company page and in the screener; a loss at either end is shown as the EPS move instead of a misleading percentage.
 
 ## Data sources (all free)

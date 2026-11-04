@@ -68,6 +68,34 @@ test('a cumulative four-quarter window does not get a TTM basis', () => {
   if (samsung) assert.equal(samsung.peBasis, 'FY', 'Samsung uses its fiscal year after the cumulative 2026 window');
 });
 
+test('no company ships a report older than 450 days', () => {
+  const today = new Date();
+  for (const c of companies) {
+    const end = (c.reports || []).filter((r) => r.end).map((r) => r.end).sort().at(-1);
+    if (!end) continue;
+    assert.ok((today - new Date(end)) / 864e5 <= 450, `${c.ticker}: latest report ${end} is current`);
+  }
+  assert.ok(korea.audit && korea.audit.stale >= 0, 'the excluded stale names are counted');
+});
+
+test('P/B and ROE use the latest reported equity, not last year\u2019s annual', () => {
+  let checked = 0;
+  for (const c of companies) {
+    const latest = (c.reports || []).filter((r) => r.equity > 0 && r.end).sort((a, b) => String(a.end).localeCompare(String(b.end))).at(-1);
+    if (!latest) continue;
+    assert.equal(c.equityAsOf, latest.end, `${c.ticker}: equity as-of`);
+    checked++;
+  }
+  assert.ok(checked > 600, `the equity period is exercised across the market (${checked})`);
+});
+
+test('a cash-flow metric without capex is labelled CFO+CFI, not free cash flow', () => {
+  for (const c of companies) {
+    if (c.fcf == null) continue;
+    assert.equal(c.fcfBasis, 'CFO+CFI', `${c.ticker}: FCF basis`);
+  }
+});
+
 test('growth rates reproduce from the annual reports', () => {
   let checked = 0;
   for (const c of companies) {

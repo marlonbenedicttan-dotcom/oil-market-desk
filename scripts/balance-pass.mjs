@@ -55,7 +55,9 @@ async function concept(cik, tag) {
 
 function latestInstant(doc) {
   const usd = Array.isArray(doc?.units?.USD) ? doc.units.USD : [];
-  const rows = usd.filter((e) => !e.start && e.end && e.form === '10-K');
+  // Use the newest 10-Q or 10-K instant: a 10-K-only pass leaves book equity up to a year behind the
+  // TTM profit, which makes P/B and ROE mix periods (AMZN/GOOGL: equity 2025-12 vs profit 2026-09).
+  const rows = usd.filter((e) => !e.start && e.end && (e.form === '10-K' || e.form === '10-Q'));
   if (!rows.length) return null;
   rows.sort((a, b) => a.end.localeCompare(b.end));
   const x = rows[rows.length - 1];
