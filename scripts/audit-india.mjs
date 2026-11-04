@@ -14,6 +14,8 @@ const read = (f) => JSON.parse(readFileSync(join(ROOT, 'data', f), 'utf8'));
 const ind = read('india.json');
 const list = read('india-list.json');
 
+const SAMPLE = Number((process.argv.find((x) => x.startsWith('--sample=')) || '').split('=')[1] || 0) || 0;
+
 const fails = [];
 const warn = [];
 const say = (label, value) => console.log(`${label.padEnd(42)} ${value}`);
@@ -140,6 +142,56 @@ if (!Array.isArray(idx.series) || idx.series.length < 100) warn.push('index seri
 say('list companies', list.companies.length);
 if (list.companies.length !== ind.companies.length) fails.push('list projection length differs');
 if (JSON.stringify(list.market) !== JSON.stringify(ind.market)) fails.push('list market differs from the full file');
+
+
+// --- optional cross-check against the vendor's own statistics page --------------------------------
+// The invariants above only prove the arithmetic is self-consistent. This asks whether the inputs are:
+// the vendor publishes its own P/E, P/B, ROE, yield and market cap, and a 15% gap means a different
+// price date, a different share count, or a formula that is not the one it claims.
+if (SAMPLE) {
+  const { getCached } = await import('./stockanalysis.mjs');
+  const { mkdirSync } = await import('node:fs');
+  const { saSlug } = await import('./nse.mjs');
+  mkdirSync(join(ROOT, 'data', 'cache', 'india-audit'), { recursive: true });
+  const sample = [...ind.companies].sort((a, b) => (b.marketCap || 0) - (a.marketCap || 0)).slice(0, SAMPLE);
+  const stat = (html, id) => {
+    const m = new RegExp(`\\{id:"${id}",[^}]*?(?:hover|value):"([^"]+)"`).exec(html);
+    if (!m) return null;
+    const n = Number(String(m[1]).replace('%', '').replace(/,/g, ''));
+    return Number.isFinite(n) ? n : null;
+  };
+  let cmp = 0, peOff = 0, dyOff = 0, pbDiff = 0, capOff = 0;
+  const peOut = [], capOut = [];
+  for (const c of sample) {
+    const f = join(ROOT, 'data', 'cache', 'india-audit', `stats-${saSlug(c.code)}.json`);
+    let html = null;
+    try { html = await getCached(`https://stockanalysis.com/quote/nse/${saSlug(c.code)}/statistics/`, f, { ttlMs: 7 * 864e5, retries: 2 }); } catch { html = null; }
+    if (!html) continue;
+    const pe = stat(html, 'pe'), pb = stat(html, 'pb'), dy = stat(html, 'dividendYield');
+    const capM = /\{id:"marketcap",[^}]*hover:"([\d,]+)"/.exec(html);
+    const vcap = capM ? Number(capM[1].replace(/,/g, '')) : null;
+    if (pe != null && c.pe != null) {
+      cmp++;
+      if (Math.abs(c.pe - pe) / pe > 0.15) { peOff++; peOut.push(`${c.code} ${c.pe} vs ${pe}`); }
+    }
+    if (dy != null && c.dividendYield != null && Math.abs(c.dividendYield - dy) > 0.3) dyOff++;
+    // The vendor divides P/B by total equity including minorities; this build uses common equity. A
+    // difference there is the definition, not an error, so it is counted separately.
+    if (pb != null && c.pb != null && Math.abs(c.pb - pb) / pb > 0.15) pbDiff++;
+    // A market cap gap means a stale or wrong share count — the input no formula check can catch.
+    if (vcap && c.marketCap) {
+      const gap = Math.abs(c.marketCap - vcap) / vcap;
+      if (gap > 0.1) { capOff++; capOut.push(`${c.code} ${(gap * 100).toFixed(1)}%`); }
+    }
+  }
+  say('sample P/E compared / >15% off', `${cmp} / ${peOff}`);
+  say('sample market cap >10% off', `${capOff}${capOut.length ? ' · ' + capOut.slice(0, 6).join(', ') : ''}`);
+  say('sample yield >0.3pp off', dyOff);
+  say('sample P/B >15% from vendor (total equity)', pbDiff);
+  if (peOff) warn.push(`${peOff}/${cmp} sample P/E differ from the vendor by >15% (${peOut.slice(0, 6).join(', ')})`);
+  if (capOff) warn.push(`${capOff}/${sample.length} sample market caps differ from the vendor by >10% — check the share count`);
+  if (!cmp) warn.push('the sample compared nothing — the vendor page did not render its P/E');
+}
 
 console.log('\nWARNINGS');
 for (const w of warn) console.log('  ! ' + w);

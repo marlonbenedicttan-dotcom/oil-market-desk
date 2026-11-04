@@ -2594,6 +2594,7 @@ const CO_VIEWS = {
   tw: [['twview', 'market', 'MARKET'], ['twview', 'screener', 'SCREENER'], ['twview', 'themes', 'THEMES']],
   hk: [['hkview', 'market', 'MARKET'], ['hkview', 'screener', 'SCREENER'], ['hkview', 'themes', 'THEMES']],
   au: [['auview', 'market', 'MARKET'], ['auview', 'screener', 'SCREENER'], ['auview', 'themes', 'THEMES']],
+  in: [['inview', 'market', 'MARKET'], ['inview', 'screener', 'SCREENER'], ['inview', 'themes', 'THEMES']],
 };
 function paintCoViews() {
   const bar = $('co-views');
@@ -3186,6 +3187,15 @@ $('screen')?.addEventListener('click', (e) => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
     return;
   }
+  const inrow2 = e.target.closest('tr[data-inrow]');
+  if (inrow2) {
+    coRegion = 'in'; try { localStorage.setItem('oilbasis.coRegion', 'in'); } catch {}
+    inSel = inrow2.dataset.inrow;
+    document.querySelector('[data-tab="deals"]')?.click();
+    renderIndia();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    return;
+  }
   const tr = e.target.closest('tr[data-id]');
   if (tr) goToInstrument(tr.dataset.id);
 });
@@ -3216,6 +3226,7 @@ $('screen')?.addEventListener('change', (e) => {
   if (e.target.dataset && e.target.dataset.twlistpageper) { twPer = Number(e.target.value) || 50; twPage = 1; renderTaiwan(); return; }
   if (e.target.dataset && e.target.dataset.hklistpageper) { hkPer = Number(e.target.value) || 50; hkPage = 1; renderHongKong(); return; }
   if (e.target.dataset && e.target.dataset.aulistpageper) { auPer = Number(e.target.value) || 50; auPage = 1; renderAustralia(); return; }
+  if (e.target.dataset && e.target.dataset.inlistpageper) { inPer = Number(e.target.value) || 50; inPage = 1; renderIndia(); return; }
   if (e.target.dataset && e.target.dataset.jplistpageper) { jpPer = Number(e.target.value) || 50; jpPage = 1; renderJapan(); return; }
   if (e.target.dataset && e.target.dataset.krlistpageper) { krPer = Number(e.target.value) || 50; krPage = 1; renderKorea(); return; }
   if (e.target.dataset && e.target.dataset.uslistpageper) { usListPer = Number(e.target.value) || 50; usListPage = 1; renderCompanies(); return; }
@@ -7939,11 +7950,11 @@ document.addEventListener('click', (e) => {
     document.querySelectorAll('[data-region]').forEach((b) => b.classList.toggle('on', b.dataset.region === coRegion));
     coCik = null; jpSel = null;
     const inp = $('co-search'); if (inp) inp.value = '';
-    const note = $('co-note'); if (note) note.classList.toggle('hidden', coRegion === 'jp' || coRegion === 'kr' || coRegion === 'tw' || coRegion === 'hk' || coRegion === 'au');
+    const note = $('co-note'); if (note) note.classList.toggle('hidden', coRegion === 'jp' || coRegion === 'kr' || coRegion === 'tw' || coRegion === 'hk' || coRegion === 'au' || coRegion === 'in');
     // Drop the old market's screen on the spot. The US render waits for data before it paints, and
     // until this the previous screen (often Japan's TOPIX view) was still the thing on the page.
     const body = $('co-body');
-    if (body) body.innerHTML = stLoading(coRegion === 'jp' ? 'Loading Japan…' : coRegion === 'kr' ? 'Loading KOSPI…' : coRegion === 'tw' ? 'Loading TAIEX…' : coRegion === 'hk' ? 'Loading the Hang Seng…' : coRegion === 'au' ? 'Loading the ASX 200…' : 'Loading the S&P 500…');
+    if (body) body.innerHTML = stLoading(coRegion === 'jp' ? 'Loading Japan…' : coRegion === 'kr' ? 'Loading KOSPI…' : coRegion === 'tw' ? 'Loading TAIEX…' : coRegion === 'hk' ? 'Loading the Hang Seng…' : coRegion === 'au' ? 'Loading the ASX 200…' : coRegion === 'in' ? 'Loading the NIFTY 500…' : 'Loading the S&P 500…');
     renderCompanies();
     return;
   }
@@ -8049,6 +8060,43 @@ document.addEventListener('click', (e) => {
   const aurow = e.target.closest('[data-au]');
   if (aurow) { auSel = aurow.dataset.au; renderAustralia(); window.scrollTo({ top: 0, behavior: 'smooth' }); return; }
   if (e.target.closest('[data-auback]')) { auSel = null; renderAustralia(); return; }
+  const inv = e.target.closest('[data-inview]');
+  if (inv) { inView = inv.dataset.inview; try { localStorage.setItem('oilbasis.inView', inView); } catch {} inSel = null; inPage = 1; renderIndia(); return; }
+  const int = e.target.closest('[data-intheme]');
+  if (int) { inTheme = int.dataset.intheme; try { localStorage.setItem('oilbasis.inTheme', inTheme); } catch {} renderIndia(); return; }
+  const inr = e.target.closest('[data-inrange]');
+  if (inr) {
+    inRange = inr.dataset.inrange;
+    try { localStorage.setItem('oilbasis.inRange', inRange); } catch {}
+    document.querySelectorAll('[data-inrange]').forEach((b) => b.classList.toggle('on', b.dataset.inrange === inRange));
+    const cur = (inData && inData.companies || []).find((x) => x.code === inSel);
+    if (cur) drawInChart(cur, inRange);
+    return;
+  }
+  const inps = e.target.closest('[data-inpreset]');
+  if (inps) {
+    const id = inps.dataset.inpreset;
+    if (id === 'clear') {
+      inPreset = null; inFilter = {}; inSector = 'all'; inQuery = '';
+      const inp = $('co-search'); if (inp) inp.value = '';
+    } else inPreset = id === inPreset ? null : id;
+    inPage = 1;
+    renderIndia();
+    return;
+  }
+  const inlp = e.target.closest('[data-inlistpage]');
+  if (inlp && inlp.dataset.inlistpage !== 'per') { inPage = Math.max(1, Number(inlp.dataset.inlistpage)); renderIndia(); return; }
+  const inm = e.target.closest('[data-inmkt]');
+  if (inm) {
+    inMktRange = inm.dataset.inmkt;
+    try { localStorage.setItem('oilbasis.inMktRange', inMktRange); } catch {}
+    if (coRegion === 'in' && inView === 'market' && redrawIndiaIndex()) return;
+    renderIndia();
+    return;
+  }
+  const inrow = e.target.closest('[data-in]');
+  if (inrow) { inSel = inrow.dataset.in; renderIndia(); window.scrollTo({ top: 0, behavior: 'smooth' }); return; }
+  if (e.target.closest('[data-inback]')) { inSel = null; renderIndia(); return; }
   const twv = e.target.closest('[data-twview]');
   if (twv) { twView = twv.dataset.twview; try { localStorage.setItem('oilbasis.twView', twView); } catch {} twSel = null; twPage = 1; renderTaiwan(); return; }
   const twt = e.target.closest('[data-twtheme]');
@@ -8257,6 +8305,15 @@ document.addEventListener('change', async (e) => {
     else { auFilter[k] = e.target.value; }
     auPage = 1;
     renderAustralia();
+    return;
+  }
+  if (e.target && e.target.dataset && e.target.dataset.inf) {
+    const k = e.target.dataset.inf;
+    if (k === 'sector') inSector = e.target.value || 'all';
+    else if (k === 'sort') { inSort = e.target.value || 'cap'; }
+    else { inFilter[k] = e.target.value; }
+    inPage = 1;
+    renderIndia();
     return;
   }
   if (e.target && e.target.dataset && e.target.dataset.twf) {
