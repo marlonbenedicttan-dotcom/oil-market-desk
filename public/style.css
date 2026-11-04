@@ -1528,6 +1528,8 @@ button.deal-sec-tile:hover { background: #10151b; }
 @media (max-width: 640px) {
   .totop { min-height: 44px; padding: 0 14px 0 12px; font-size: 11px; bottom: calc(12px + env(safe-area-inset-bottom)); }
   .totop-i { font-size: 17px; }
+  /* Keep the corner chip off the attribution line when the page is scrolled to the very end. */
+  footer { padding-bottom: 48px; }
 }
 @media (prefers-reduced-motion: reduce) { .totop { transition: none; } }
 
