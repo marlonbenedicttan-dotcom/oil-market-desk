@@ -579,12 +579,34 @@ test('export.csv returns CSV', async () => {
 test('security headers are set on every response', async () => {
   const html = await fetch(`http://localhost:${PORT}/`);
   assert.equal(html.headers.get('x-content-type-options'), 'nosniff');
-  assert.equal(html.headers.get('x-frame-options'), 'SAMEORIGIN');
+  assert.equal(html.headers.get('x-frame-options'), 'DENY');
   assert.match(html.headers.get('referrer-policy') || '', /strict-origin/);
   assert.match(html.headers.get('permissions-policy') || '', /geolocation=\(\)/);
-  assert.match(html.headers.get('content-security-policy-report-only') || '', /default-src 'self'/);
+  assert.equal(html.headers.get('cross-origin-opener-policy'), 'same-origin');
+  assert.equal(html.headers.get('cross-origin-resource-policy'), 'same-origin');
+  // Enforced, not report-only, and the inline shell script is pinned by hash rather than
+  // 'unsafe-inline' — otherwise the policy would wave through any injected script.
+  const csp = html.headers.get('content-security-policy') || '';
+  assert.match(csp, /default-src 'self'/);
+  assert.match(csp, /script-src 'self' 'sha256-/);
+  assert.doesNotMatch(csp.split(';').find((x) => /script-src/.test(x)) || '', /unsafe-inline/);
+  assert.match(csp, /frame-ancestors 'none'/);
+  assert.equal(html.headers.get('content-security-policy-report-only'), null);
   const api = await fetch(`http://localhost:${PORT}/api/market`);
   assert.equal(api.headers.get('x-content-type-options'), 'nosniff');
+});
+
+test('the API rate-limits a caller that hammers it', async () => {
+  const ip = '198.51.100.7';                 // TEST-NET-2: a real address to the limiter, nobody's
+  let last = null;
+  for (let i = 0; i < 150; i++) {
+    last = await fetch(`http://localhost:${PORT}/api/fx`, { headers: { 'x-forwarded-for': ip } });
+    if (last.status === 429) break;
+  }
+  assert.equal(last.status, 429, 'a burst past the bucket is refused');
+  assert.ok(Number(last.headers.get('retry-after')) >= 1, 'and says when to come back');
+  // Local traffic is exempt, so the rest of the suite is never throttled by this test.
+  assert.equal((await fetch(`http://localhost:${PORT}/api/fx`)).status, 200);
 });
 
 test('/api/options returns vol/put-call/skew for a proxy (or a clean error)', async () => {

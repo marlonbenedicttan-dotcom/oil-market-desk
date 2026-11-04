@@ -3913,7 +3913,9 @@ async function loadRemoteState() {
 }
 let lastDigestDate = state.lastDigestDate || null;
 let lastDigest = '';
-let lastTestAt = 0;
+// Per-caller, not global: one shared clock let a single visitor lock everyone else out of the test
+// button, and let anyone in the world trigger a mail every minute.
+const testSentAt = new Map();
 
 async function computeServerAlerts() {
   const m = await getMarket();
@@ -4922,16 +4924,73 @@ const sendChartJSON = (res, code, obj) => sendJSONCached(res, code, obj, CHART_C
 const LIST_CACHE = 'public, max-age=300, stale-while-revalidate=300';
 const sendListJSON = (res, code, obj) => sendJSONCached(res, code, obj, LIST_CACHE);
 
-// Security headers on every response. The CSP is report-only, so it can never break the app —
-// it just watches for drift (a new inline script, CDN, or tile host).
+// Security headers on every response. The CSP is enforced (not report-only): the shell has one
+// inline <script> and it is pinned by hash, so an injected script has nothing to run under. The
+// hashes are recomputed from the file at boot, so editing the shell cannot silently break the page.
+const INLINE_SCRIPT_HASHES = (() => {
+  try {
+    const html = fs.readFileSync(path.join(PUBLIC, 'index.html'), 'utf8');
+    return [...html.matchAll(/<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/gi)]
+      .map((m) => `'sha256-${crypto.createHash('sha256').update(m[1], 'utf8').digest('base64')}'`);
+  } catch { return []; }
+})();
+const CSP = [
+  "default-src 'self'",
+  `script-src 'self' ${INLINE_SCRIPT_HASHES.join(' ')}`.trim(),
+  "style-src 'self' 'unsafe-inline'",          // inline style attributes (bar widths, avatar tints)
+  "img-src 'self' data: blob:",
+  "connect-src 'self'",
+  "font-src 'self' data:",
+  "worker-src 'self'",
+  "manifest-src 'self'",
+  "object-src 'none'",
+  "base-uri 'self'",
+  "form-action 'self'",
+  "frame-ancestors 'none'",
+].join('; ');
 const SECURITY_HEADERS = {
   'X-Content-Type-Options': 'nosniff',
   'Referrer-Policy': 'strict-origin-when-cross-origin',
-  'X-Frame-Options': 'SAMEORIGIN',
-  'Permissions-Policy': 'geolocation=(), microphone=(), camera=()',
-  'Content-Security-Policy-Report-Only': "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com; style-src 'self' 'unsafe-inline' https://unpkg.com; img-src 'self' data: blob: https://server.arcgisonline.com https://tile.openstreetmap.org; connect-src 'self'; font-src 'self' data:; worker-src 'self'; frame-ancestors 'self'",
+  'X-Frame-Options': 'DENY',
+  'Cross-Origin-Opener-Policy': 'same-origin',
+  'Cross-Origin-Resource-Policy': 'same-origin',
+  'Permissions-Policy': 'geolocation=(), microphone=(), camera=(), payment=(), usb=()',
+  'Content-Security-Policy': CSP,
 };
 const sendHtml = (res, code, html) => { res.writeHead(code, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-cache' }); res.end(html); };
+
+// ---------------------------------------------------------------------------
+// Per-IP rate limit on the JSON API. Static files are cached and cheap; the API is what a scraper,
+// a runaway tab or a hostile loop hammers, and a single call can set off a cold upstream fetch.
+// Normal use is ~25 calls to open the board and then about one a minute, so 120/min with a 90-call
+// burst is generous for a reader and far too slow to lift the dataset.
+const RATE_BURST = Number(process.env.RATE_LIMIT_BURST || 90);
+const RATE_PER_MIN = Number(process.env.RATE_LIMIT_PER_MIN || 120);
+const RATE_REFILL = Math.max(0.1, RATE_PER_MIN / 60);      // tokens per second
+const rateBuckets = new Map();                             // ip -> { tokens, at }
+let rateChecks = 0;
+// Render terminates TLS and forwards the caller's address. Take the right-most entry: a client can
+// prepend a fake address to X-Forwarded-For, but the proxy appends the real one last. Loopback is
+// exempt so local development and the test suite never rate-limit themselves.
+const clientIp = (req) => {
+  const fwd = String(req.headers['x-forwarded-for'] || '').split(',').map((s) => s.trim()).filter(Boolean);
+  return fwd.length ? fwd[fwd.length - 1] : String(req.socket.remoteAddress || 'unknown');
+};
+const isLoopback = (ip) => ip === '::1' || ip.startsWith('127.') || ip === '::ffff:127.0.0.1';
+const takeToken = (ip) => {
+  const now = Date.now();
+  let b = rateBuckets.get(ip);
+  if (!b) { b = { tokens: RATE_BURST, at: now }; rateBuckets.set(ip, b); }
+  b.tokens = Math.min(RATE_BURST, b.tokens + ((now - b.at) / 1000) * RATE_REFILL);
+  b.at = now;
+  if (++rateChecks % 2000 === 0 && rateBuckets.size > 5000) {
+    for (const [k, v] of rateBuckets) if (now - v.at > 10 * 60e3) rateBuckets.delete(k);
+  }
+  if (b.tokens < 1) return Math.max(1, Math.ceil((1 - b.tokens) / RATE_REFILL));
+  b.tokens -= 1;
+  return 0;                                                 // 0 = allowed, otherwise seconds to wait
+};
+
 // A tiny standalone page for the confirm / unsubscribe links (no JS, no assets).
 const htmlPage = (title, body) => `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escHtml(title)} — Marlon's Watchtower</title>
 <style>body{margin:0;background:#05070a;color:#c9d4df;font:14px/1.7 ui-monospace,SFMono-Regular,Menlo,monospace;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
@@ -4948,9 +5007,24 @@ const readJsonBody = (req, limit = 20000) => new Promise((resolve) => {
 });
 const server = http.createServer(async (req, res) => {
   for (const k in SECURITY_HEADERS) res.setHeader(k, SECURITY_HEADERS[k]);
+  // HSTS only where TLS actually terminated: sending it from plain http would be a lie, and it is
+  // what keeps a browser from ever downgrading a later visit to this host.
+  if (req.headers['x-forwarded-proto'] === 'https' || req.socket.encrypted) {
+    res.setHeader('Strict-Transport-Security', 'max-age=15552000; includeSubDomains');
+  }
   const url = new URL(req.url, `http://${req.headers.host}`);
   // Health check (no auth) for uptime monitors.
   if (url.pathname === '/health') { res.writeHead(200, { 'content-type': 'application/json' }); return res.end(JSON.stringify({ ok: true, uptime: Math.round(process.uptime()), version: BUILD, rssMB: Math.round(process.memoryUsage().rss / 1048576), warm: process.env.WARM || 'on', idx: [!!SEARCH_INDEX, !!PEER_INDEX] })); }
+  // The API is the expensive surface, and the one a scraper or a runaway tab hammers. Local traffic
+  // is exempt: the test suite makes far more calls than a person ever will.
+  if (url.pathname.startsWith('/api/')) {
+    const ip = clientIp(req);
+    const wait = isLoopback(ip) ? 0 : takeToken(ip);
+    if (wait) {
+      res.writeHead(429, { 'content-type': 'application/json', 'retry-after': String(wait), 'cache-control': 'no-store' });
+      return res.end(JSON.stringify({ error: 'Too many requests — slow down.', retryAfter: wait }));
+    }
+  }
   // Optional basic auth — set AUTH_USER + AUTH_PASS to protect a public deployment.
   // The subscription surface stays PUBLIC by design: visitors have no login, and the confirm /
   // unsubscribe links are clicked from a mail client. Those routes protect themselves with a
@@ -5500,10 +5574,13 @@ const server = http.createServer(async (req, res) => {
       });
     }
     if (url.pathname === '/api/notify/test' && req.method === 'POST') {
-      // One test per minute — this endpoint is reachable without auth on a default deployment.
-      const since = Date.now() - (lastTestAt || 0);
+      // One test per caller per minute. The endpoint is reachable without auth on a default
+      // deployment, so the clock is keyed by address rather than shared.
+      const who = clientIp(req);
+      const since = Date.now() - (testSentAt.get(who) || 0);
       if (since < 60_000) return sendJSON(res, 429, { error: `slow down — try again in ${Math.ceil((60_000 - since) / 1000)}s` });
-      lastTestAt = Date.now();
+      testSentAt.set(who, Date.now());
+      if (testSentAt.size > 2000) for (const [k, t] of testSentAt) if (Date.now() - t > 3600e3) testSentAt.delete(k);
       const body = `This is a test from Marlon's Watchtower.\n\nIf you're reading it, alert + digest delivery works.\nChannels: ${[mailConfigured() && 'email', process.env.WEBHOOK_URL && 'webhook', process.platform === 'darwin' && process.env.NOTIFY !== 'off' && 'desktop'].filter(Boolean).join(', ') || 'none configured'}.`;
       await deliver('test', "Marlon's Watchtower · test message", body);
       return sendJSON(res, 200, { ok: notifyStatus.lastOk, error: notifyStatus.lastError, channels: { email: mailConfigured(), webhook: Boolean(process.env.WEBHOOK_URL) } });
@@ -5567,9 +5644,19 @@ const server = http.createServer(async (req, res) => {
     if (isIndex) return res.end(stampIndex(fs.readFileSync(full, 'utf8')));
     fs.createReadStream(full).pipe(res);
   } catch (err) {
-    sendJSON(res, 500, { error: String(err.message || err) });
+    // The reader gets a plain failure; the stack stays in the server log. An exception message can
+    // carry a file path, an upstream URL or a token fragment, and a 500 is exactly when someone is
+    // probing for one.
+    console.error('[request]', req.method, req.url, err && err.stack ? err.stack : err);
+    sendJSON(res, 500, { error: 'Something went wrong on the server.' });
   }
 });
+
+// Slowloris insurance: a connection that dribbles headers or a body cannot hold a worker for the
+// Node defaults (60 s / 300 s). Normal pages and API calls are far inside these.
+server.headersTimeout = 20_000;
+server.requestTimeout = 30_000;
+server.keepAliveTimeout = 65_000;
 
 server.listen(PORT, async () => {
   await loadRemoteState();                     // durable state first, so nothing reads stale values

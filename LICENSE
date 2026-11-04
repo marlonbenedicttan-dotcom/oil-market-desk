@@ -1,0 +1,18 @@
+Copyright (c) 2026 Marlon Benedict Tan. All rights reserved.
+
+Marlon's Watchtower — its source code, data pipeline, written copy, layout and
+design — is proprietary. No licence is granted to copy, modify, redistribute,
+sublicense, host, or use any part of it, including the generated datasets, in
+any product or service, without prior written permission from the copyright
+holder.
+
+Viewing the deployed site (https://oil-market-desk.onrender.com) is permitted
+for personal reference. Access to the site does not grant any right to the code
+or data behind it.
+
+The market data shown is sourced from third parties (public exchanges, Yahoo
+Finance, JPX/J-Quants, DART, TWSE, HKEX, ASX, NSE, the SEC, FRED, EIA, USDA,
+CFTC and public news wires) and remains subject to their own terms. This notice
+covers only the original work in this repository.
+
+Nothing here is investment advice.
