@@ -547,6 +547,9 @@ footer li { margin-bottom: 2px; }
 .sc-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; padding: 9px 12px; border-bottom: 1px solid var(--line); }
 .sc-f { display: inline-flex; align-items: center; gap: 7px; font-size: 10px; letter-spacing: 1.2px; color: var(--dim); }
 .sc-f select { min-height: 30px; }
+/* The sector list must not size itself to its longest option: Australia's "Consumer Discretionary
+   Distribution & Retail" made that bar three rows tall while the US sat on one. One width for all. */
+.sc-f select[id$="-sector"] { width: 190px; }
 .sc-pick { position: relative; }
 .sc-pick > summary { cursor: pointer; list-style: none; border: 1px solid var(--line2); padding: 6px 10px; font-size: 10px; letter-spacing: 1.2px; color: var(--dim); }
 .sc-pick > summary::-webkit-details-marker { display: none; }
@@ -1432,7 +1435,10 @@ button.deal-sec-tile:hover { background: #10151b; }
 
 /* Home screener: the search box and market switch, in the site's own language. */
 .sc-f input { background: #0c0f13; border: 1px solid var(--line2); color: var(--text); font: inherit;
-  font-size: 11px; padding: 6px 9px; min-height: 30px; min-width: 190px; outline: none; border-radius: 2px; }
+  font-size: 11px; padding: 6px 9px; min-height: 30px; min-width: 0; flex: 1 1 auto; outline: none; border-radius: 2px; }
+/* The search box gives up width before the count is pushed onto a second line: every market then
+   keeps the same one-row filter bar, however long its sector names or company total are. */
+.sc-f:has(input) { flex: 0 1 230px; min-width: 175px; }
 .sc-f input:focus { border-color: var(--amber); }
 .sc-f input::placeholder { color: #5b6773; }
 .sc-mkt { margin-left: 6px; }

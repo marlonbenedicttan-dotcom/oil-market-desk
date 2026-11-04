@@ -2624,11 +2624,14 @@ const pagerHtml = (total, page, per, attr) => {
     + `<button type="button" class="co-tgl" data-${attr}="${p + 1}" ${p >= pages ? 'disabled' : ''}>NEXT ›</button>`
     + `<select data-${attr}per="1" aria-label="Rows per page">${[25, 50, 100, 250].map((n) => `<option value="${n}"${n === per ? ' selected' : ''}>${n} / page</option>`).join('')}</select></div>`;
 };
-const JP_SCREEN_COLS = [
+// The same columns in every market, in the same order: a reader switching US → Japan → Hong Kong
+// should not have to re-learn the table. These are the lines every market actually computes.
+const STOCK_SCREEN_COLS = [
   { k: 'label', t: 'COMPANY' }, { k: 'price', t: 'PRICE' }, { k: 'chg1d', t: '1D' },
   { k: 'chg6m', t: '6M' }, { k: 'chgYtd', t: 'YTD' }, { k: 'pe', t: 'P/E' },
   { k: 'pb', t: 'P/B' }, { k: 'roe', t: 'ROE' }, { k: 'marketCap', t: 'MKT CAP' },
 ];
+const JP_SCREEN_COLS = STOCK_SCREEN_COLS;
 const screenMarketHtml = () => `<div class="sc-modes sc-mkt">${[['us', 'US'], ['jp', 'JAPAN'], ['kr', 'KOREA'], ['tw', 'TAIWAN'], ['hk', 'HONG KONG'], ['au', 'AUSTRALIA']].map(([k, t]) => `<button type="button" class="${screenMarket === k ? 'on' : ''}" data-screen-market="${k}">${t}</button>`).join('')}</div>`;
 
 // A company's return in the screener's chosen base currency. A Tokyo listing returns yen; a dollar
@@ -2662,12 +2665,7 @@ async function loadFxWin(base) {
   try { fxWin = await jget('/api/fxwindows?base=' + encodeURIComponent(base || 'USD'), 3600000); } catch { fxWin = null; }
 }
 
-const CO_SCREEN_COLS = [
-  { k: 'label', t: 'COMPANY' }, { k: 'price', t: 'PRICE' }, { k: 'chg1d', t: '1D' },
-  { k: 'chg6m', t: '6M' }, { k: 'chgYtd', t: 'YTD' }, { k: 'pe', t: 'P/E' },
-  { k: 'fcfYield', t: 'FCF YLD' }, { k: 'revenueCagr', t: 'REV CAGR' }, { k: 'roic', t: 'ROIC' },
-  { k: 'marketCap', t: 'MKT CAP' },
-];
+const CO_SCREEN_COLS = STOCK_SCREEN_COLS;
 function renderCompanyScreen(el) {
   if (!fxWin) { loadFxWin(fxBase).then(() => renderScreen(true)).catch(() => {}); }
   if (screenMarket === 'jp') return renderJapanScreen(el);
@@ -2707,11 +2705,10 @@ function renderCompanyScreen(el) {
   if (usPage > usPages) coScreen.page = usPages;
   const usShown = rows.slice(((coScreen.page || 1) - 1) * usPer, (coScreen.page || 1) * usPer);
   const body = usShown.map((c) => `<tr data-cocik="${esc(c.cik)}" title="${esc(c.name)}">
-      <td class="sc-name">${esc(c.name)}<span class="sc-tick">${esc(c.ticker)}</span></td>
+      <td class="sc-name">${esc(c.name)}<span class="sc-tick">${esc(c.ticker)}${c.sector ? ' · ' + esc(c.sector) : ''}</span></td>
       <td class="num">${c.price != null ? '$' + c.price.toFixed(2) : '—'}</td>
       ${pct(fxRet(c.chg1d, 'USD', 'd1'))}${pct(fxRet(c.chg6m, 'USD', 'm6'))}${pct(fxRet(c.chgYtd, 'USD', 'ytd'))}
-      ${cell(c.pe, 1, '×')}${c.fcfYield != null ? cell(c.fcfYield, 1, '%') : '<td class="num">' + (c.fcfNA ? 'n/a' : '—') + '</td>'}
-      ${cell(c.revenueCagr, 1, '%')}${cell(c.roic, 1, '%')}
+      ${cell(c.pe, 1, '×')}${cell(c.pb, 2, '×')}${cell(c.roe, 1, '%')}
       <td class="num">${coMoney(c.marketCap)}</td></tr>`).join('');
   el.innerHTML = `<div class="sc-bar">${screenModeHtml()}${screenMarketHtml()}
       <label class="sc-f">SEARCH <input id="cos-q" type="search" placeholder="company or ticker…" value="${esc(coScreen.q)}"></label>
@@ -2768,11 +2765,7 @@ function renderJapanScreen(el) {
 }
 
 // Korea in the home screener, the same shape as Japan's.
-const KR_SCREEN_COLS = [
-  { k: 'label', t: 'COMPANY' }, { k: 'price', t: 'PRICE' }, { k: 'chg1d', t: '1D' },
-  { k: 'chg6m', t: '6M' }, { k: 'chgYtd', t: 'YTD' }, { k: 'pe', t: 'P/E' },
-  { k: 'pb', t: 'P/B' }, { k: 'roe', t: 'ROE' }, { k: 'revenueCagr', t: 'REV CAGR' }, { k: 'marketCap', t: 'MKT CAP' },
-];
+const KR_SCREEN_COLS = STOCK_SCREEN_COLS;
 function renderKoreaScreen(el) {
   if (!koreaData) {
     el.innerHTML = stLoading('Reading the Korean filings…');
@@ -2804,7 +2797,7 @@ function renderKoreaScreen(el) {
       <td class="sc-name">${esc(c.nameEn || c.name)}<span class="sc-tick">${esc(c.ticker)}${c.sector ? ' · ' + esc(c.sector) : ''}</span></td>
       <td class="num">${wonPx(c.price)}</td>
       ${pct(fxRet(c.chg1d, 'KRW', 'd1'))}${pct(fxRet(c.chg6m, 'KRW', 'm6'))}${pct(fxRet(c.chgYtd, 'KRW', 'ytd'))}
-      ${num(c.pe, 1, '×')}${num(c.pb, 2, '×')}${num(c.roe, 1, '%')}${num(c.revenueCagr, 1, '%')}
+      ${num(c.pe, 1, '×')}${num(c.pb, 2, '×')}${num(c.roe, 1, '%')}
       <td class="num">${won(c.marketCap)}</td></tr>`).join('');
   el.innerHTML = `<div class="sc-bar">${screenModeHtml()}${screenMarketHtml()}
       <label class="sc-f">SEARCH <input id="cosk-q" type="search" placeholder="company or code…" value="${esc(coScreenKr.q)}"></label>
@@ -2816,11 +2809,7 @@ function renderKoreaScreen(el) {
 }
 
 // Taiwan in the home screener, the same shape as Korea's.
-const TW_SCREEN_COLS = [
-  { k: 'label', t: 'COMPANY' }, { k: 'price', t: 'PRICE' }, { k: 'chg1d', t: '1D' },
-  { k: 'chg6m', t: '6M' }, { k: 'chgYtd', t: 'YTD' }, { k: 'pe', t: 'P/E' },
-  { k: 'pb', t: 'P/B' }, { k: 'roe', t: 'ROE' }, { k: 'dividendYield', t: 'YIELD' }, { k: 'marketCap', t: 'MKT CAP' },
-];
+const TW_SCREEN_COLS = STOCK_SCREEN_COLS;
 function renderTaiwanScreen(el) {
   if (!taiwanData) {
     el.innerHTML = stLoading('Reading the TWSE filings…');
@@ -2852,7 +2841,7 @@ function renderTaiwanScreen(el) {
       <td class="sc-name">${esc(c.nameEn || c.name)}<span class="sc-tick">${esc(c.ticker)}${c.sector ? ' · ' + esc(c.sector) : ''}</span></td>
       <td class="num">${twPx(c.price)}</td>
       ${pct(c.chg1d)}${pct(c.chg6m)}${pct(c.chgYtd)}
-      ${num(c.pe, 1, '×')}${num(c.pb, 2, '×')}${num(c.roe, 1, '%')}${num(c.dividendYield, 2, '%')}
+      ${num(c.pe, 1, '×')}${num(c.pb, 2, '×')}${num(c.roe, 1, '%')}
       <td class="num">${twMoney(c.marketCap)}</td></tr>`).join('');
   el.innerHTML = `<div class="sc-bar">${screenModeHtml()}${screenMarketHtml()}
       <label class="sc-f">SEARCH <input id="costw-q" type="search" placeholder="company or code…" value="${esc(coScreenTw.q)}"></label>
@@ -2864,12 +2853,7 @@ function renderTaiwanScreen(el) {
 }
 
 // Hong Kong in the home screener, the same shape as Taiwan's.
-const HK_SCREEN_COLS = [
-  { k: 'label', t: 'COMPANY' }, { k: 'price', t: 'PRICE' }, { k: 'chg1d', t: '1D' },
-  { k: 'chg6m', t: '6M' }, { k: 'chgYtd', t: 'YTD' }, { k: 'pe', t: 'P/E' },
-  { k: 'pb', t: 'P/B' }, { k: 'roe', t: 'ROE' }, { k: 'revenueCagr', t: 'REV CAGR' },
-  { k: 'dividendYield', t: 'YIELD' }, { k: 'marketCap', t: 'MKT CAP' },
-];
+const HK_SCREEN_COLS = STOCK_SCREEN_COLS;
 function renderHongKongScreen(el) {
   if (!hkData) {
     el.innerHTML = stLoading('Reading the HKEX filings…');
@@ -2901,7 +2885,7 @@ function renderHongKongScreen(el) {
       <td class="sc-name">${esc(c.nameEn || c.name)}<span class="sc-tick">${esc(c.ticker)}${c.sector ? ' · ' + esc(c.sector) : ''}</span></td>
       <td class="num">${hkPx(c.price)}</td>
       ${pct(c.chg1d)}${pct(c.chg6m)}${pct(c.chgYtd)}
-      ${num(c.pe, 1, '×')}${num(c.pb, 2, '×')}${num(c.roe, 1, '%')}${num(c.revenueCagr, 1, '%')}${num(c.dividendYield, 2, '%')}
+      ${num(c.pe, 1, '×')}${num(c.pb, 2, '×')}${num(c.roe, 1, '%')}
       <td class="num">${hkMoney(c.marketCap)}</td></tr>`).join('');
   el.innerHTML = `<div class="sc-bar">${screenModeHtml()}${screenMarketHtml()}
       <label class="sc-f">SEARCH <input id="coshk-q" type="search" placeholder="company or code…" value="${esc(coScreenHk.q)}"></label>
@@ -2913,12 +2897,7 @@ function renderHongKongScreen(el) {
 }
 
 // Australia in the home screener, the same shape as Hong Kong's.
-const AU_SCREEN_COLS = [
-  { k: 'label', t: 'COMPANY' }, { k: 'price', t: 'PRICE' }, { k: 'chg1d', t: '1D' },
-  { k: 'chg6m', t: '6M' }, { k: 'chgYtd', t: 'YTD' }, { k: 'pe', t: 'P/E' },
-  { k: 'pb', t: 'P/B' }, { k: 'roe', t: 'ROE' }, { k: 'revenueCagr', t: 'REV CAGR' },
-  { k: 'fcfYield', t: 'FCF YLD' }, { k: 'dividendYield', t: 'YIELD' }, { k: 'marketCap', t: 'MKT CAP' },
-];
+const AU_SCREEN_COLS = STOCK_SCREEN_COLS;
 function renderAustraliaScreen(el) {
   if (!auData) {
     el.innerHTML = stLoading('Reading the ASX filings…');
@@ -2950,7 +2929,7 @@ function renderAustraliaScreen(el) {
       <td class="sc-name">${esc(c.nameEn || c.name)}<span class="sc-tick">${esc(c.ticker)}${c.sector ? ' · ' + esc(c.sector) : ''}</span></td>
       <td class="num">${auPx(c.price)}</td>
       ${pct(c.chg1d)}${pct(c.chg6m)}${pct(c.chgYtd)}
-      ${num(c.pe, 1, '×')}${num(c.pb, 2, '×')}${num(c.roe, 1, '%')}${num(c.revenueCagr, 1, '%')}${num(c.fcfYield, 1, '%')}${num(c.dividendYield, 2, '%')}
+      ${num(c.pe, 1, '×')}${num(c.pb, 2, '×')}${num(c.roe, 1, '%')}
       <td class="num">${auMoney(c.marketCap)}</td></tr>`).join('');
   el.innerHTML = `<div class="sc-bar">${screenModeHtml()}${screenMarketHtml()}
       <label class="sc-f">SEARCH <input id="cosau-q" type="search" placeholder="company or code…" value="${esc(coScreenAu.q)}"></label>
