@@ -119,8 +119,12 @@ await want('returned to the market list control exists', `!!document.querySelect
 // Themes view: the curated lists render and at least one has members.
 await evaluate(`document.querySelector('[data-inback]')?.click()`);
 await sleep(1200);
-await evaluate(`document.querySelector('[data-inview="themes"]')?.click()`);
-await sleep(3000);
+// A cold free instance can take several seconds to paint the panel; click, then wait for the chips.
+for (let i = 0; i < 8; i++) {
+  await evaluate(`document.querySelector('[data-inview="themes"]')?.click()`);
+  await sleep(1500);
+  if (await evaluate(`document.querySelectorAll('[data-intheme]').length`)) break;
+}
 const themes = await evaluate(`document.querySelectorAll('[data-intheme]').length`);
 const themeBody = await evaluate(`document.querySelector('#co-body')?.innerText || ''`);
 console.log(`${themes >= 5 ? 'ok  ' : 'FAIL'} theme presets · ${themes}`);
