@@ -58,6 +58,8 @@ step('ttm vs quarters', ['scripts/reconcile-ttm.mjs']);
 step('equity instants', ['scripts/refresh-us-equity.mjs']);
 step('ratios', ['scripts/derive-companies.mjs']);
 step('second source', ['scripts/reconcile-nasdaq.mjs']);
+// The second source can move a cap; recompute P/E, P/B and ROE against the final cap before the audit.
+step('ratios after second source', ['scripts/derive-companies.mjs']);
 step('verdicts', ['scripts/arbitrate.mjs']);
 step('single-source verification', ['scripts/verify-filing-index.mjs']);
 step('series sync', ['scripts/sync-series.mjs']);
