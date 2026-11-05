@@ -6,6 +6,11 @@ node_modules/
 .DS_Store
 *.log
 
+# Built in the deploy image (see Dockerfile): minified copies of the client, served at /app.js and
+# /style.css. Committing them would let a stale build shadow a newer source file.
+public/app.min.js
+public/style.min.css
+
 # Wrangler's local build cache
 **/.wrangler/
 

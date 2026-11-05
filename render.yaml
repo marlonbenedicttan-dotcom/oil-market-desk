@@ -7,7 +7,9 @@ services:
     plan: free             # free tier (sleeps after ~15 min idle, wakes on visit in 20-30s)
                            # → keep it awake: scripts/keepalive.sh, or a free uptime monitor hitting /health
     autoDeploy: true
-    healthCheckPath: /
+    # /health is deliberately public even with AUTH_USER/AUTH_PASS set: Render probes this path to
+    # decide a deploy is live, and a 401 from a password-protected "/" would mark every deploy failed.
+    healthCheckPath: /health
     envVars:
       - key: EIA_API_KEY
         sync: false

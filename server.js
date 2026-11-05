@@ -4868,7 +4868,12 @@ const encodeBuf = (raw, enc) => (enc === 'br'
 // year), so a deploy that changes app.js without bumping the number leaves every returning reader on
 // the old file. The stamp comes from the file's own mtime now, not from a hand-edited number.
 const VERSIONED_FILES = ['app.js', 'style.css', 'vendor/chart.umd.min.js'];
-const assetStamp = (f) => { try { return Math.floor(fs.statSync(path.join(PUBLIC, f)).mtimeMs).toString(36); } catch { return null; } };
+// The deploy image carries a minified client next to the source. Serve it at the SAME URL: index,
+// the service worker's precache list and every cached ?v= URL keep working, and local development
+// (no build) still gets the readable source.
+const MIN_CLIENT = { 'app.js': 'app.min.js', 'style.css': 'style.min.css' };
+const clientFile = (f) => (MIN_CLIENT[f] && fs.existsSync(path.join(PUBLIC, MIN_CLIENT[f])) ? MIN_CLIENT[f] : f);
+const assetStamp = (f) => { try { return Math.floor(fs.statSync(path.join(PUBLIC, clientFile(f))).mtimeMs).toString(36); } catch { return null; } };
 const stampIndex = (html) => {
   const stamps = Object.fromEntries(VERSIONED_FILES.map((f) => [f, assetStamp(f)]));
   return html.replace(/((?:app\.js|style\.css|vendor\/chart\.umd\.min\.js))\?v=[^"'&\s>]*/g,
@@ -5600,7 +5605,9 @@ const server = http.createServer(async (req, res) => {
     }
     let file = url.pathname === '/' ? '/index.html' : url.pathname;
     file = path.normalize(file).replace(/^(\.\.[/\\])+/, '');
-    const full = path.join(PUBLIC, file);
+    // Swap the source for the minified build when the image has one (see MIN_CLIENT above).
+    const served = '/' + clientFile(file.slice(1));
+    const full = path.join(PUBLIC, served);
     let st = null;
     try { st = fs.statSync(full); } catch {}
     if (!full.startsWith(PUBLIC) || !st || st.isDirectory()) {
