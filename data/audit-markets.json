@@ -1,5 +1,5 @@
 {
- "checked": "2026-11-05T02:50:22.003Z",
+ "checked": "2026-11-05T22:06:09.672Z",
  "markets": {
   "us": {
    "name": "US",
@@ -81,9 +81,9 @@
    "coverage": {
     "companies": 503,
     "marketCap": 503,
-    "pe": 478,
-    "pb": 467,
-    "ttm": 502,
+    "pe": 476,
+    "pb": 468,
+    "ttm": 501,
     "quarters8": 499
    }
   },
