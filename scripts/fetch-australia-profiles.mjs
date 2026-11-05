@@ -15,6 +15,7 @@ import { join } from 'node:path';
 import { ROOT, AU_CACHE, saProfile, saUsProfile, US_CROSS } from './asx.mjs';
 import { getCached } from './stockanalysis.mjs';
 import { extractBrands } from '../src/brand-extract.js';
+import { shortenDescription as shorten } from '../src/desc.js';
 
 const FILE = join(ROOT, 'data', 'australia.json');
 const OUT = join(ROOT, 'data', 'australia-profiles.json');
@@ -58,12 +59,6 @@ export function extractProfile(html) {
     brands: brandInfo.brands,
     brandQuote: brandInfo.quote,
   };
-}
-function shorten(t, max = 300) {
-  if (t.length <= max) return t;
-  const cut = t.slice(0, max);
-  const i = Math.max(cut.lastIndexOf('. '), cut.lastIndexOf('; '));
-  return i > 80 ? cut.slice(0, i + 1) : `${cut.replace(/[,;\s]+\S*$/, '')}…`;
 }
 
 const au = JSON.parse(readFileSync(FILE, 'utf8'));

@@ -16,6 +16,7 @@ import { join } from 'node:path';
 import { ROOT, saProfile } from './hkex.mjs';
 import { getCached, readJson } from './stockanalysis.mjs';
 import { extractBrands, profileDescription } from '../src/brand-extract.js';
+import { shortenDescription as shorten } from '../src/desc.js';
 
 const FILE = join(ROOT, 'data', 'hongkong.json');
 const CROSS = (readJson(join(ROOT, 'data', 'hongkong-crosslist.json')) || { entries: {} }).entries || {};
@@ -66,12 +67,6 @@ function extract(html) {
     brands: brandInfo.brands,
     brandQuote: brandInfo.quote,
   };
-}
-function shorten(t, max = 300) {
-  if (t.length <= max) return t;
-  const cut = t.slice(0, max);
-  const i = Math.max(cut.lastIndexOf('. '), cut.lastIndexOf('; '));
-  return i > 80 ? cut.slice(0, i + 1) : `${cut.replace(/[,;\s]+\S*$/, '')}…`;
 }
 
 const hk = JSON.parse(readFileSync(FILE, 'utf8'));

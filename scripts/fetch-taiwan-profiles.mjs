@@ -12,6 +12,7 @@ import { readFileSync, writeFileSync, renameSync, existsSync, mkdirSync } from '
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { extractBrands } from '../src/brand-extract.js';
+import { shortenDescription as shorten } from '../src/desc.js';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const FILE = join(ROOT, 'data', 'taiwan.json');
@@ -33,12 +34,6 @@ function extract(html) {
   const first = (text.match(/^.*?[.。](?=\s|$)/) || [text])[0];
   const brandInfo = extractBrands(text);
   return { name, legal: first.length > 140 ? first.slice(0, 137) + '…' : first, desc: shorten(text), brands: brandInfo.brands, brandQuote: brandInfo.quote };
-}
-function shorten(t, max = 300) {
-  if (t.length <= max) return t;
-  const cut = t.slice(0, max);
-  const i = Math.max(cut.lastIndexOf('. '), cut.lastIndexOf('; '));
-  return i > 80 ? cut.slice(0, i + 1) : `${cut.replace(/[,;\s]+\S*$/, '')}…`;
 }
 
 const tw = JSON.parse(readFileSync(FILE, 'utf8'));

@@ -16,6 +16,7 @@ import { readFileSync, writeFileSync, renameSync, existsSync, mkdirSync } from '
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { extractBrands } from '../src/brand-extract.js';
+import { shortenDescription as shorten } from '../src/desc.js';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const FILE = join(ROOT, 'data', 'japan.json');
@@ -41,12 +42,6 @@ function extract(html) {
 }
 
 // Two sentences is a card, not an article. Cut at a sentence boundary so it never ends mid-clause.
-function shorten(text, max = 300) {
-  if (text.length <= max) return text;
-  const cut = text.slice(0, max);
-  const i = Math.max(cut.lastIndexOf('. '), cut.lastIndexOf('; '));
-  return i > 80 ? cut.slice(0, i + 1) : `${cut.replace(/[,;\s]+\S*$/, '')}…`;
-}
 
 const jp = JSON.parse(readFileSync(FILE, 'utf8'));
 // Curated descriptions are keyed by the 5-digit TSE code ("13320"); the fetched store is keyed by the
