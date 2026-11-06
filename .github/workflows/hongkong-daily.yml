@@ -60,9 +60,20 @@ jobs:
       - name: Keep every traded session
         run: node scripts/merge-series.mjs hk
       # A rate-limited run loses companies and chart history; an incomplete HKEX report loses companies.
-      # Refuse to publish either.
+      # Refuse to publish either — but give the build one more pass first. The exchange posts the daily
+      # quotation report in stages, and the 20:10 HKT slot sometimes reads it half-written: the run
+      # then holds 1,866 names against 1,918 in HEAD and publishes nothing. Re-reading the report and
+      # filling the statement cache is exactly what the script asks a human to do; do it here.
       - name: Refuse a collapsed build
-        run: node scripts/audit-market-refresh.mjs hk
+        run: |
+          if node scripts/audit-market-refresh.mjs hk; then exit 0; fi
+          echo '::warning::collapsed build — waiting 5 minutes and rebuilding once'
+          sleep 300
+          rm -f "data/cache/hkex/daily-$(date -u +%F).json"
+          npm run refresh:hongkong
+          node scripts/merge-history.mjs hk
+          node scripts/merge-series.mjs hk
+          node scripts/audit-market-refresh.mjs hk
       - name: Audit the dataset
         run: npm run audit:hongkong
       - name: Commit if changed
