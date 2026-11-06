@@ -8453,6 +8453,9 @@ document.addEventListener('input', (e) => {
     if (coRegion === 'tw') { twQuery = e.target.value || ''; twSel = null; twPage = 1; renderTaiwan(); return; }
     if (coRegion === 'hk') { hkQuery = e.target.value || ''; hkSel = null; hkPage = 1; renderHongKong(); return; }
     if (coRegion === 'au') { auQuery = e.target.value || ''; auSel = null; auPage = 1; renderAustralia(); return; }
+    // India has its own query. Without this branch the text fell through to the US query below, so
+    // the box typed and the Indian screener never filtered.
+    if (coRegion === 'in') { inQuery = e.target.value || ''; inSel = null; inPage = 1; renderIndia(); return; }
     coQuery = e.target.value || ''; coCik = null; usListPage = 1; renderCompanies(); return;
   }
   if (e.target && ['co-cmp', 'jp-cmp', 'kr-cmp', 'tw-cmp', 'hk-cmp', 'au-cmp'].includes(e.target.id)) {
