@@ -4,9 +4,10 @@ name: companies-daily
 # new 10-K or 10-Q. Render auto-deploys on the resulting commit.
 on:
   schedule:
-    # 01:10 UTC Tue–Sat: after the 16:00 ET close *and* after Nasdaq settles its end-of-day batch.
-    # A run at 22:40 UTC was still being served the previous session, which shipped a day-old "1D".
-    - cron: '10 1 * * 2-6'
+    # 08:00 UTC Tue–Sat: after the Tokyo (06:00) and Seoul (06:30) closes, so Japan and Korea publish
+    # the same-day close; the prior US session has long settled and its historical close is available.
+    # The old 01:10 slot ran at 10:10 JST, before the Tokyo close, so Japan always shipped yesterday.
+    - cron: '0 8 * * 2-6'
   workflow_dispatch: {}
 
 concurrency:
