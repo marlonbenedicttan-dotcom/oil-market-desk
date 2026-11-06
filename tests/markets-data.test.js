@@ -58,24 +58,27 @@ test('ROE is only shown where book equity is positive', () => {
   assert.equal(bad.length, 0, `${bad.length} Korean companies show a large positive ROE without a P/B (${bad.slice(0, 3).map((c) => c.ticker).join(' ')})`);
 });
 
-test('prices come from one session, not a half-finished refresh', () => {
-  // A handful of names legitimately keep the session they last traded in — a thin stock that did not
-  // print today. So the invariant is "one session dominates", not "exactly one": a partial refresh,
-  // which is what this guards, leaves a large minority on the old date.
+test('prices are current and not a half-finished refresh', () => {
+  // The quote endpoint rolls over symbol by symbol, so a file built during the rollover can hold two
+  // adjacent sessions; a dormant name can sit further back. What must not happen is a cohort left on
+  // an older date (a half-finished refresh), or a file built on last week's session.
   const check = (rows, field, label) => {
     const days = rows.map((c) => c[field]).filter(Boolean);
     assert.ok(days.length, `${label}: prices are dated`);
     const counts = new Map();
     for (const d of days) counts.set(d, (counts.get(d) || 0) + 1);
-    const [topDay, topCount] = [...counts].sort((a, b) => b[1] - a[1])[0];
-    const share = topCount / days.length;
-    const spread = [...counts].map(([d, n]) => `${d}×${n}`).join(' ');
-    assert.ok(share >= 0.95, `${label}: only ${(share * 100).toFixed(1)}% on ${topDay} — ${spread}`);
-    // A straggler may lag a session or two; a week behind means the quote never came back.
-    for (const d of counts.keys()) {
-      const behind = (Date.parse(topDay) - Date.parse(d)) / 864e5;
-      assert.ok(behind <= 7, `${label}: ${d} is ${behind} days behind ${topDay} — ${spread}`);
-    }
+    const ranked = [...counts].sort((a, b) => b[1] - a[1]);
+    const [modal, modalCount] = ranked[0];
+    const spread = ranked.map(([d, n]) => `${d}×${n}`).join(' ');
+    const age = (Date.now() - Date.parse(modal)) / 864e5;
+    assert.ok(age <= 4, `${label}: built on ${modal}, ${age.toFixed(1)} days old — ${spread}`);
+    assert.ok(modalCount / days.length >= 0.5, `${label}: no session dominates — ${spread}`);
+    // One day apart is the rollover. Further back is a straggler, and a real cohort of them means the
+    // refresh stopped halfway.
+    const stragglers = ranked.slice(1)
+      .filter(([d]) => Math.abs(Date.parse(d) - Date.parse(modal)) > 864e5)
+      .reduce((a, [, n]) => a + n, 0);
+    assert.ok(stragglers / days.length <= 0.01, `${label}: ${stragglers} prices more than a session behind ${modal} — ${spread}`);
   };
   check(listedUs, 'priceAsOf', 'US');
   check(listedJp, 'priceDate', 'Japan');
