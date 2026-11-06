@@ -176,13 +176,15 @@ test('banks have no free cash flow but do have a margin', () => {
   assert.notEqual(by.AXP.marginNA, true, 'Amex margin is computable');
 });
 
-test('the quarterly series is chronological, capped at eight, and never empty', () => {
+test('the quarterly series is chronological, unique and never empty', () => {
+  // The series used to be capped at the vendor's eight quarters. The US build now keeps every filed
+  // quarter, so the invariant is the shape of the series, not its length; the client labels the count.
   for (const c of data.companies) {
     const q = c.quarters || [];
     if (!q.length) continue;
-    assert.ok(q.length <= 8, `${c.ticker}: ${q.length} quarters`);
     const ends = q.map((x) => x.end);
     assert.deepEqual(ends, [...ends].sort(), `${c.ticker}: quarters out of order`);
+    assert.equal(new Set(ends).size, ends.length, `${c.ticker}: duplicate quarter ends`);
     for (const x of q) assert.ok(x.revenue != null || x.netIncome != null, `${c.ticker}: empty quarter ${x.end}`);
   }
 });

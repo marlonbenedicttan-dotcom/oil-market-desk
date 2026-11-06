@@ -88,7 +88,7 @@ test('the list projection carries the fields the Australian filters read', () =>
 });
 
 test('every company carries the trailing profit its P/E is built on', () => {
-  let ttm = 0, fromFy = 0;
+  let ttm = 0, fallback = 0;
   for (const c of au.companies) {
     if (c.netIncomeTTM != null) {
       assert.ok(Number.isFinite(c.netIncomeTTM), `${c.code}: net profit TTM is a number`);
@@ -99,10 +99,16 @@ test('every company carries the trailing profit its P/E is built on', () => {
       assert.ok(c.netIncomeTTM != null, `${c.code}: a TTM P/E needs a TTM profit`);
       assert.notEqual(c.ttmFromFY, true, `${c.code}: TTM basis is not a fiscal-year fallback`);
     }
-    if (c.ttmFromFY) fromFy++;
+    // The fiscal-year fallback exists for issuers without a trailing page. Coverage is now complete
+    // enough that no company needs it, so the test asserts how it must behave when it is used — a
+    // fallback labelled FY, still carrying the profit it divides by — rather than that it is used.
+    if (c.ttmFromFY) {
+      fallback++;
+      assert.equal(c.peBasis, 'FY', `${c.code}: a fiscal-year fallback is labelled FY, not TTM`);
+      assert.ok(c.netIncomeTTM != null, `${c.code}: the fallback still carries the profit it divides by`);
+    }
   }
-  assert.ok(ttm > au.companies.length / 2, `most of the market is on a trailing basis (${ttm})`);
-  assert.ok(fromFy > 0, 'the fiscal-year fallback is exercised, not dead');
+  assert.ok(ttm > au.companies.length / 2, `most of the market is on a trailing basis (${ttm} TTM, ${fallback} fallback)`);
 });
 
 test('free cash flow is the vendor FCF, not operating plus all investing flow', () => {

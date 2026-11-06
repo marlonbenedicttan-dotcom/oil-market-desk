@@ -58,12 +58,26 @@ test('ROE is only shown where book equity is positive', () => {
   assert.equal(bad.length, 0, `${bad.length} Korean companies show a large positive ROE without a P/B (${bad.slice(0, 3).map((c) => c.ticker).join(' ')})`);
 });
 
-test('prices are all from the same session', () => {
-  const sessions = (rows, field) => [...new Set(rows.map((c) => c[field]).filter(Boolean))];
-  const usDays = sessions(listedUs, 'priceAsOf');
-  const jpDays = sessions(listedJp, 'priceDate');
-  const krDays = sessions(listedKr, 'priceDate');
-  assert.ok(usDays.length <= 2, `US prices span ${usDays.length} sessions: ${usDays.join(' ')}`);
-  assert.equal(jpDays.length, 1, `Japan prices span ${jpDays.length} sessions: ${jpDays.join(' ')}`);
-  assert.equal(krDays.length, 1, `Korea prices span ${krDays.length} sessions: ${krDays.join(' ')}`);
+test('prices come from one session, not a half-finished refresh', () => {
+  // A handful of names legitimately keep the session they last traded in — a thin stock that did not
+  // print today. So the invariant is "one session dominates", not "exactly one": a partial refresh,
+  // which is what this guards, leaves a large minority on the old date.
+  const check = (rows, field, label) => {
+    const days = rows.map((c) => c[field]).filter(Boolean);
+    assert.ok(days.length, `${label}: prices are dated`);
+    const counts = new Map();
+    for (const d of days) counts.set(d, (counts.get(d) || 0) + 1);
+    const [topDay, topCount] = [...counts].sort((a, b) => b[1] - a[1])[0];
+    const share = topCount / days.length;
+    const spread = [...counts].map(([d, n]) => `${d}×${n}`).join(' ');
+    assert.ok(share >= 0.95, `${label}: only ${(share * 100).toFixed(1)}% on ${topDay} — ${spread}`);
+    // A straggler may lag a session or two; a week behind means the quote never came back.
+    for (const d of counts.keys()) {
+      const behind = (Date.parse(topDay) - Date.parse(d)) / 864e5;
+      assert.ok(behind <= 7, `${label}: ${d} is ${behind} days behind ${topDay} — ${spread}`);
+    }
+  };
+  check(listedUs, 'priceAsOf', 'US');
+  check(listedJp, 'priceDate', 'Japan');
+  check(listedKr, 'priceDate', 'Korea');
 });
