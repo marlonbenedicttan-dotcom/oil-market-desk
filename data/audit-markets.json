@@ -1,5 +1,5 @@
 {
- "checked": "2026-11-06T03:45:11.077Z",
+ "checked": "2026-11-06T11:21:18.917Z",
  "markets": {
   "us": {
    "name": "US",
@@ -8,7 +8,7 @@
     {
      "check": "market cap vs price × shares",
      "severity": "warn",
-     "count": 6,
+     "count": 7,
      "detail": "A share class Nasdaq capitalises but the filing does not count"
     },
     {
@@ -67,15 +67,16 @@
     }
    ],
    "fail": 0,
-   "warn": 6,
+   "warn": 7,
    "examples": {
     "market cap vs price × shares": [
-     "DLR (10.1%)",
-     "XEL (9.0%)",
-     "IBKR (9.4%)",
-     "LH (10.8%)",
-     "FOXA (-8.5%)",
-     "UHS (-8.6%)"
+     "LRCX (-8.5%)",
+     "MRVL (10.5%)",
+     "STX (10.7%)",
+     "BE (8.5%)",
+     "DLR (10.5%)",
+     "KR (-8.1%)",
+     "LH (11.1%)"
     ]
    },
    "coverage": {
@@ -106,7 +107,7 @@
     {
      "check": "P/B vs the filing’s equity",
      "severity": "warn",
-     "count": 13,
+     "count": 0,
      "detail": "JPX values equity at a later filing date"
     },
     {
@@ -142,23 +143,13 @@
     {
      "check": "ROE sign disagrees with the fiscal-year profit",
      "severity": "warn",
-     "count": 21,
+     "count": 22,
      "detail": "JPX ROE is trailing; NP is the fiscal year"
     }
    ],
    "fail": 0,
-   "warn": 34,
+   "warn": 22,
    "examples": {
-    "P/B vs the filing’s equity": [
-     "94040 (7.0%)",
-     "74590 (-5.4%)",
-     "63700 (-9.5%)",
-     "64170 (5.5%)",
-     "80200 (5.0%)",
-     "49750 (6.3%)",
-     "69410 (5.4%)",
-     "32320 (5.4%)"
-    ],
     "ROE sign disagrees with the fiscal-year profit": [
      "45020 (ROE 0.6% vs NP $-152.39B)",
      "67230 (ROE 23.6% vs NP $-51.76B)",
@@ -166,14 +157,14 @@
      "25790 (ROE 4.7% vs NP $-50.76B)",
      "95010 (ROE 9.7% vs NP $-454.26B)",
      "94680 (ROE -2.5% vs NP $1.28B)",
-     "65880 (ROE 4.8% vs NP $-2.29B)",
-     "96030 (ROE -4% vs NP $4.72B)"
+     "34010 (ROE 4.8% vs NP $-88.00B)",
+     "65880 (ROE 4.8% vs NP $-2.29B)"
     ]
    },
    "coverage": {
     "companies": 1545,
     "marketCap": 1545,
-    "pe": 1484,
+    "pe": 1485,
     "pb": 1541,
     "roe": 1535,
     "jpxRatio": 1459
@@ -265,5 +256,5 @@
   }
  },
  "failures": 0,
- "warnings": 277
+ "warnings": 266
 }

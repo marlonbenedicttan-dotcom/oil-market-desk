@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-06T03:45:09.965Z",
+ "updated": "2026-11-06T11:21:17.806Z",
  "events": [
   {
    "date": "2026-10-08",
@@ -364,17 +364,6 @@
    "detail": "period ends 2026-09-29 · filed 41 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.066792,
-   "days": 3
-  },
-  {
-   "date": "2026-11-09",
-   "kind": "earnings",
-   "ticker": "CPAY",
-   "name": "CORPAY, INC.",
-   "label": "CPAY · quarterly report expected",
-   "detail": "period ends 2026-09-29 · filed 41 days after quarter end, historically",
-   "basis": "expected",
-   "weight": 0.039187,
    "days": 3
   },
   {
@@ -5011,17 +5000,6 @@
   {
    "date": "2027-02-03",
    "kind": "earnings",
-   "ticker": "SOLV",
-   "name": "Solventum Corp",
-   "label": "SOLV · quarterly report expected",
-   "detail": "period ends 2026-12-29 · filed 36 days after quarter end, historically",
-   "basis": "expected",
-   "weight": 0.018162,
-   "days": 89
-  },
-  {
-   "date": "2027-02-03",
-   "kind": "earnings",
    "ticker": "ALB",
    "name": "ALBEMARLE CORP",
    "label": "ALB · quarterly report expected",
@@ -5396,17 +5374,6 @@
   {
    "date": "2027-02-04",
    "kind": "earnings",
-   "ticker": "AXON",
-   "name": "AXON ENTERPRISE, INC.",
-   "label": "AXON · quarterly report expected",
-   "detail": "period ends 2026-12-29 · filed 37 days after quarter end, historically",
-   "basis": "expected",
-   "weight": 0.053454,
-   "days": 90
-  },
-  {
-   "date": "2027-02-04",
-   "kind": "earnings",
    "ticker": "IRM",
    "name": "IRON MOUNTAIN INC",
    "label": "IRM · quarterly report expected",
@@ -5468,6 +5435,17 @@
    "detail": "period ends 2026-12-30 · filed 36 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.042155,
+   "days": 90
+  },
+  {
+   "date": "2027-02-04",
+   "kind": "earnings",
+   "ticker": "CPAY",
+   "name": "CORPAY, INC.",
+   "label": "CPAY · quarterly report expected",
+   "detail": "period ends 2026-12-30 · filed 36 days after quarter end, historically",
+   "basis": "expected",
+   "weight": 0.039187,
    "days": 90
   },
   {
@@ -5649,6 +5627,17 @@
   {
    "date": "2027-02-04",
    "kind": "earnings",
+   "ticker": "SOLV",
+   "name": "Solventum Corp",
+   "label": "SOLV · quarterly report expected",
+   "detail": "period ends 2026-12-30 · filed 36 days after quarter end, historically",
+   "basis": "expected",
+   "weight": 0.018162,
+   "days": 90
+  },
+  {
+   "date": "2027-02-04",
+   "kind": "earnings",
    "ticker": "NWSA",
    "name": "NEWS CORP",
    "label": "NWSA · quarterly report expected",
@@ -5732,6 +5721,17 @@
    "detail": "period ends 2026-12-29 · filed 38 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.099637,
+   "days": 91
+  },
+  {
+   "date": "2027-02-05",
+   "kind": "earnings",
+   "ticker": "AXON",
+   "name": "AXON ENTERPRISE, INC.",
+   "label": "AXON · quarterly report expected",
+   "detail": "period ends 2026-12-30 · filed 37 days after quarter end, historically",
+   "basis": "expected",
+   "weight": 0.053454,
    "days": 91
   },
   {
