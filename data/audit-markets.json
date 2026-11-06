@@ -1,5 +1,5 @@
 {
- "checked": "2026-11-05T22:06:09.672Z",
+ "checked": "2026-11-06T03:45:11.077Z",
  "markets": {
   "us": {
    "name": "US",
@@ -72,8 +72,8 @@
     "market cap vs price × shares": [
      "DLR (10.1%)",
      "XEL (9.0%)",
+     "IBKR (9.4%)",
      "LH (10.8%)",
-     "BBY (8.1%)",
      "FOXA (-8.5%)",
      "UHS (-8.6%)"
     ]
@@ -89,7 +89,7 @@
   },
   "japan": {
    "name": "Japan",
-   "rows": 1547,
+   "rows": 1545,
    "checks": [
     {
      "check": "JPX PER × EPS = price",
@@ -106,7 +106,7 @@
     {
      "check": "P/B vs the filing’s equity",
      "severity": "warn",
-     "count": 9,
+     "count": 13,
      "detail": "JPX values equity at a later filing date"
     },
     {
@@ -147,36 +147,36 @@
     }
    ],
    "fail": 0,
-   "warn": 30,
+   "warn": 34,
    "examples": {
     "P/B vs the filing’s equity": [
-     "23710 (5.5%)",
-     "77290 (6.1%)",
-     "63680 (5.3%)",
-     "22220 (7.7%)",
-     "58570 (-11.8%)",
-     "90100 (6.1%)",
-     "76090 (-5.6%)",
-     "31500 (9.3%)"
+     "94040 (7.0%)",
+     "74590 (-5.4%)",
+     "63700 (-9.5%)",
+     "64170 (5.5%)",
+     "80200 (5.0%)",
+     "49750 (6.3%)",
+     "69410 (5.4%)",
+     "32320 (5.4%)"
     ],
     "ROE sign disagrees with the fiscal-year profit": [
      "45020 (ROE 0.6% vs NP $-152.39B)",
      "67230 (ROE 23.6% vs NP $-51.76B)",
      "95020 (ROE -7.6% vs NP $227.79B)",
-     "95010 (ROE 9.7% vs NP $-454.26B)",
      "25790 (ROE 4.7% vs NP $-50.76B)",
+     "95010 (ROE 9.7% vs NP $-454.26B)",
      "94680 (ROE -2.5% vs NP $1.28B)",
      "65880 (ROE 4.8% vs NP $-2.29B)",
      "96030 (ROE -4% vs NP $4.72B)"
     ]
    },
    "coverage": {
-    "companies": 1547,
-    "marketCap": 1547,
-    "pe": 1485,
-    "pb": 1543,
-    "roe": 1537,
-    "jpxRatio": 1460
+    "companies": 1545,
+    "marketCap": 1545,
+    "pe": 1484,
+    "pb": 1541,
+    "roe": 1535,
+    "jpxRatio": 1459
    }
   },
   "korea": {
@@ -234,29 +234,29 @@
     {
      "check": "share count differs from the filing",
      "severity": "info",
-     "count": 235,
+     "count": 237,
      "detail": "A split or consolidation since the last annual report"
     }
    ],
    "fail": 0,
-   "warn": 235,
+   "warn": 237,
    "examples": {
     "share count differs from the filing": [
-     "032830 (filing 179,574,779 → listed 200,400,802)",
-     "068270 (filing 218,613,124 → listed 232,073,023)",
-     "034730 (filing 55,086,352 → listed 72,651,177)",
-     "000810 (filing 39,828,296 → listed 44,782,202)",
-     "010120 (filing 29,738,491 → listed 150,331,370)",
-     "006800 (filing 436,049,860 → listed 544,130,612)",
-     "005830 (filing 60,643,469 → listed 65,500,279)",
-     "000150 (filing 13,562,516 → listed 14,274,256)"
+     "068270 (filing 218,613,124 → listed 233,172,512)",
+     "032830 (filing 179,574,779 → listed 200,425,532)",
+     "034730 (filing 55,086,352 → listed 72,583,875)",
+     "000810 (filing 39,828,296 → listed 44,647,517)",
+     "010120 (filing 29,738,491 → listed 149,746,193)",
+     "006800 (filing 436,049,860 → listed 541,802,691)",
+     "005830 (filing 60,643,469 → listed 65,615,205)",
+     "267250 (filing 70,668,430 → listed 79,119,871)"
     ]
    },
    "coverage": {
     "companies": 725,
     "marketCap": 725,
-    "pe": 544,
-    "peTTM": 456,
+    "pe": 545,
+    "peTTM": 457,
     "peFY": 88,
     "pb": 721,
     "roe": 721,
@@ -265,5 +265,5 @@
   }
  },
  "failures": 0,
- "warnings": 271
+ "warnings": 277
 }
