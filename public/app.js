@@ -7710,18 +7710,18 @@ async function renderBrazil(token = takeToken()) {
   syncMarketAccent();
   const noteUs = $('co-note'); if (noteUs) noteUs.classList.add('hidden');
   syncCoTools();
-  if (!brData) el.innerHTML = stLoading('Loading the B3 Composite…');
+  if (!brData) el.innerHTML = stLoading('Loading the Ibovespa…');
   const d = await loadBrazil();
   if (stale(token)) return;
   syncMarketAccent();
   const all = (d && d.companies) || [];
   const sub = $('deals-sub');
   if (sub) {
-    const what = brView === 'screener' ? 'filter and sort' : brView === 'themes' ? 'curated theme lists' : 'breadth, sectors and the B3 Composite';
-    sub.textContent = all.length ? `${all.length} companies · B3 · prices in BRL · ${what}` : 'B3 · B3 Composite';
+    const what = brView === 'screener' ? 'filter and sort' : brView === 'themes' ? 'curated theme lists' : 'breadth, sectors and the Ibovespa';
+    sub.textContent = all.length ? `${all.length} companies · B3 · prices in BRL · ${what}` : 'B3 · Ibovespa';
   }
   if (!all.length) {
-    el.innerHTML = `<div class="macro-note">Brazil is not built yet. Run <code>node scripts/build-indonesia.mjs</code>.</div>`;
+    el.innerHTML = `<div class="macro-note">Brazil is not built yet. Run <code>node scripts/build-brazil.mjs</code>.</div>`;
     return;
   }
   const sel = all.find((c) => c.code === brSel);
@@ -7739,7 +7739,7 @@ function brIndexSeries() {
 function redrawBrazilIndex(range = brMktRange) {
   const full = brIndexSeries();
   if (!full) return false;
-  brMktRange = drawMarketIndexChart('br-mkt', full, range, 'idmkt', 'B3 Composite');
+  brMktRange = drawMarketIndexChart('br-mkt', full, range, 'brmkt', 'Ibovespa');
   return true;
 }
 
@@ -8024,9 +8024,9 @@ async function drawBrChart(c, range = brRange) {
   const token = chartToken('br-chart');
   const full = await coLong('br:' + c.ticker);
   const use = full ? coFitRange(full, range) : range;
-  if (use !== range) { range = use; coMarkRange('idrange', range); }
+  if (use !== range) { range = use; coMarkRange('brrange', range); }
   if (!chartFresh('br-chart', token)) return;
-  if (full) paintReturns('br-rets', 'br-big', full, range, WINDOWS_5Y, 'idrange');
+  if (full) paintReturns('br-rets', 'br-big', full, range, WINDOWS_5Y, 'brrange');
   const wrap = $('br-chart') && $('br-chart').parentElement;
   const ch = full ? coSlice(full, range) : null;
   if (!ch || !ch.dates || ch.dates.length < 2) {
