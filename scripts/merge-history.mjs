@@ -164,7 +164,12 @@ for (const id of ids) {
       } else {
         const annuals = annualsFor(id, c);
         if (Array.isArray(annuals) && annuals.length) {
-          Object.assign(c, growthFromAnnuals(annuals, c.shares), { marginDelta: marginDeltaFromAnnuals(annuals) });
+          // Taiwan's vendor tables carry no per-year EPS, so its build synthesises one from net
+          // income over the current share count (derive-taiwan.mjs). The other markets publish EPS
+          // as filed. Handing them c.shares as a fallback would invent a rate their builder never
+          // computes — 9973 read 69% "EPS CAGR" off two reported years and net income before them.
+          const growth = id === 'tw' ? growthFromAnnuals(annuals, c.shares) : growthFromAnnuals(annuals);
+          Object.assign(c, growth, { marginDelta: marginDeltaFromAnnuals(annuals) });
         }
       }
       if (!DRY && spec.detail) {
