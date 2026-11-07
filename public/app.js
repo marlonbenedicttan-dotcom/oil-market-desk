@@ -9010,7 +9010,7 @@ document.addEventListener('click', (e) => {
     // Drop the old market's screen on the spot. The US render waits for data before it paints, and
     // until this the previous screen (often Japan's TOPIX view) was still the thing on the page.
     const body = $('co-body');
-    if (body) body.innerHTML = stLoading(coRegion === 'jp' ? 'Loading Japan…' : coRegion === 'kr' ? 'Loading KOSPI…' : coRegion === 'tw' ? 'Loading TAIEX…' : coRegion === 'hk' ? 'Loading the Hang Seng…' : coRegion === 'au' ? 'Loading the ASX 200…' : coRegion === 'in' ? 'Loading the NIFTY 500…' : coRegion === 'id' ? 'Loading the IDX…' : coRegion === 'br' ? 'Loading the Ibovespa…' : `Loading the ${usIndexLabel()}…`);
+    if (body) body.innerHTML = stLoading(coRegion === 'jp' ? 'Loading Japan…' : coRegion === 'kr' ? 'Loading KOSPI…' : coRegion === 'tw' ? 'Loading TAIEX…' : coRegion === 'hk' ? 'Loading the Hang Seng…' : coRegion === 'au' ? 'Loading the ASX 200…' : coRegion === 'in' ? 'Loading the NIFTY 500…' : coRegion === 'id' ? 'Loading the IDX…' : coRegion === 'br' ? 'Loading the Ibovespa…' : 'Loading the S&P 500…');
     renderCompanies();
     return;
   }
