@@ -4537,7 +4537,7 @@ let japanData = null, jpSel = null, jpQuery = '';
 let jpView = (() => { try { return localStorage.getItem('oilbasis.jpView') || 'market'; } catch { return 'market'; } })();
 let jpPage = 1, jpPer = 50;
 let jpMktRange = (() => { try { return localStorage.getItem('oilbasis.jpMktRange') || '1y'; } catch { return '1y'; } })();
-let jpRange = coStoredRange('jpRange', '6m');
+let jpRange = (() => { try { return localStorage.getItem('oilbasis.jpRange') || '6m'; } catch { return '6m'; } })();
 let jpCompare = '';
 let jpSort = (() => { try { return localStorage.getItem('oilbasis.jpSort') || 'cap'; } catch { return 'cap'; } })();
 let jpPreset = null;
@@ -5160,7 +5160,7 @@ let koreaData = null, krSel = null, krQuery = '';
 let renderSeq = 0;
 const takeToken = () => ++renderSeq;
 const stale = (t) => t !== renderSeq;
-let krRange = coStoredRange('krRange', '1y');
+let krRange = (() => { try { return localStorage.getItem('oilbasis.krRange') || '1y'; } catch { return '1y'; } })();
 let krPreset = null, krSector = 'all', krCompare = '';
 let krSort = (() => { try { return localStorage.getItem('oilbasis.krSort') || 'cap'; } catch { return 'cap'; } })();
 let krFilter = (() => { try { return JSON.parse(localStorage.getItem('oilbasis.krFilter') || '{}'); } catch { return {}; } })();
@@ -5770,7 +5770,7 @@ async function drawKrChart(c, range = krRange) {
 // come from TWSE; statements and English profiles from stockanalysis.com; TAIEX from TWSE's monthly
 // market report. TWD throughout — the ECB does not publish TWD.
 let taiwanData = null, twSel = null, twQuery = '', twCompare = '';
-let twRange = coStoredRange('twRange', '1y');
+let twRange = (() => { try { return localStorage.getItem('oilbasis.twRange') || '1y'; } catch { return '1y'; } })();
 let twMktRange = (() => { try { return localStorage.getItem('oilbasis.twMktRange') || '1y'; } catch { return '1y'; } })();
 let twView = (() => { try { return localStorage.getItem('oilbasis.twView') || 'market'; } catch { return 'market'; } })();
 let twTheme = (() => { try { return localStorage.getItem('oilbasis.twTheme') || 'semis'; } catch { return 'semis'; } })();
@@ -6107,7 +6107,7 @@ async function drawTwChart(c, range = twRange) {
 // international issuer reports in CNY or USD — its ratios are computed in the statement currency, so
 // the page says which one.
 let hkData = null, hkSel = null, hkQuery = '', hkCompare = '';
-let hkRange = coStoredRange('hkRange', '1y');
+let hkRange = (() => { try { return localStorage.getItem('oilbasis.hkRange') || '1y'; } catch { return '1y'; } })();
 let hkMktRange = (() => { try { return localStorage.getItem('oilbasis.hkMktRange') || '1y'; } catch { return '1y'; } })();
 let hkView = (() => { try { return localStorage.getItem('oilbasis.hkView') || 'market'; } catch { return 'market'; } })();
 let hkTheme = (() => { try { return localStorage.getItem('oilbasis.hkTheme') || 'platforms'; } catch { return 'platforms'; } })();
@@ -6504,7 +6504,7 @@ async function drawHkChart(c, range = hkRange) {
 // but BHP and RIO report in USD — their ratios are computed in the statement currency, so the page
 // says which one.
 let auData = null, auSel = null, auQuery = '', auCompare = '';
-let auRange = coStoredRange('auRange', '1y');
+let auRange = (() => { try { return localStorage.getItem('oilbasis.auRange') || '1y'; } catch { return '1y'; } })();
 let auMktRange = (() => { try { return localStorage.getItem('oilbasis.auMktRange') || '1y'; } catch { return '1y'; } })();
 let auView = (() => { try { return localStorage.getItem('oilbasis.auView') || 'market'; } catch { return 'market'; } })();
 let auTheme = (() => { try { return localStorage.getItem('oilbasis.auTheme') || 'materials'; } catch { return 'materials'; } })();
@@ -6862,7 +6862,7 @@ async function drawAuChart(c, range = auRange) {
 // but BHP and RIO report in USD — their ratios are computed in the statement currency, so the page
 // says which one.
 let inData = null, inSel = null, inQuery = '', inCompare = '';
-let inRange = coStoredRange('inRange', '1y');
+let inRange = (() => { try { return localStorage.getItem('oilbasis.inRange') || '1y'; } catch { return '1y'; } })();
 let inMktRange = (() => { try { return localStorage.getItem('oilbasis.inMktRange') || '1y'; } catch { return '1y'; } })();
 let inView = (() => { try { return localStorage.getItem('oilbasis.inView') || 'market'; } catch { return 'market'; } })();
 let inTheme = (() => { try { return localStorage.getItem('oilbasis.inTheme') || 'materials'; } catch { return 'materials'; } })();
@@ -7220,7 +7220,7 @@ async function drawInChart(c, range = inRange) {
 // of closes from Yahoo. Prices are rupiah; a handful of issuers report in USD, so the page says which
 // currency the ratios were computed in.
 let idData = null, idSel = null, idQuery = '', idCompare = '';
-let idRange = coStoredRange('idRange', '1y');
+let idRange = (() => { try { return localStorage.getItem('oilbasis.idRange') || '1y'; } catch { return '1y'; } })();
 let idMktRange = (() => { try { return localStorage.getItem('oilbasis.idMktRange') || '1y'; } catch { return '1y'; } })();
 let idView = (() => { try { return localStorage.getItem('oilbasis.idView') || 'market'; } catch { return 'market'; } })();
 let idTheme = (() => { try { return localStorage.getItem('oilbasis.idTheme') || 'banks'; } catch { return 'banks'; } })();
