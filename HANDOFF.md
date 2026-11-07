@@ -3915,6 +3915,11 @@ Audited at 360, 390 and 430 px with screenshots of every view, then fixed what l
 - **Server**: `/api/indonesia`, `/api/indonesia/company/{code}`, `/api/indonesia/chart?code=&range=`. The
   UI adds an eighth region button (`INDONESIA`) with MARKET / SCREENER / THEMES, the home screener row, a
   company page, search (`id:BBCA`), peers and compare. Market accent `#b03a48`.
+- **Deep audit**: `npm run audit:indonesia:deep` re-runs the ratio engine on the stored inputs and compares
+  **every** published field (29,215 engine comparisons), then independently recomputes cap, P/E, P/B, ROE,
+  growth, dividend yield, returns, the index, market aggregates, the list projection and the HSC/stale/theme
+  counters — ~40k checks. It is wired into `indonesia-daily.yml` after the standard audit, so engine drift
+  is caught on the next run rather than by inspection.
 - **Audit**: `npm run audit:indonesia` checks cap = price × shares, every ratio against its own inputs
   (with the USD cross), no bank with an operating margin, no financial with FCF, totals tie, the sector
   partition covers the market, the index is dated/ordered, and — new for this market — the vendor's own
