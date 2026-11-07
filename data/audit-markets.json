@@ -1,14 +1,14 @@
 {
- "checked": "2026-11-06T21:58:07.367Z",
+ "checked": "2026-11-07T09:01:14.780Z",
  "markets": {
   "us": {
    "name": "US",
-   "rows": 503,
+   "rows": 502,
    "checks": [
     {
      "check": "market cap vs price × shares",
      "severity": "warn",
-     "count": 7,
+     "count": 2,
      "detail": "A share class Nasdaq capitalises but the filing does not count"
     },
     {
@@ -67,25 +67,20 @@
     }
    ],
    "fail": 0,
-   "warn": 7,
+   "warn": 2,
    "examples": {
     "market cap vs price × shares": [
-     "LRCX (-8.5%)",
-     "MRVL (10.5%)",
-     "STX (10.7%)",
-     "BE (8.5%)",
-     "DLR (10.5%)",
-     "KR (-8.1%)",
-     "LH (11.1%)"
+     "DLR (10.1%)",
+     "LH (10.8%)"
     ]
    },
    "coverage": {
-    "companies": 503,
-    "marketCap": 503,
+    "companies": 502,
+    "marketCap": 502,
     "pe": 476,
     "pb": 468,
     "ttm": 501,
-    "quarters8": 499
+    "quarters8": 498
    }
   },
   "japan": {
@@ -107,7 +102,7 @@
     {
      "check": "P/B vs the filing’s equity",
      "severity": "warn",
-     "count": 0,
+     "count": 19,
      "detail": "JPX values equity at a later filing date"
     },
     {
@@ -148,8 +143,18 @@
     }
    ],
    "fail": 0,
-   "warn": 22,
+   "warn": 41,
    "examples": {
+    "P/B vs the filing’s equity": [
+     "81360 (9.5%)",
+     "35630 (5.9%)",
+     "94010 (-9.6%)",
+     "32880 (5.1%)",
+     "37740 (5.5%)",
+     "90720 (5.8%)",
+     "46260 (5.8%)",
+     "84250 (12.4%)"
+    ],
     "ROE sign disagrees with the fiscal-year profit": [
      "45020 (ROE 0.6% vs NP $-152.39B)",
      "67230 (ROE 23.6% vs NP $-51.76B)",
@@ -225,22 +230,22 @@
     {
      "check": "share count differs from the filing",
      "severity": "info",
-     "count": 237,
+     "count": 235,
      "detail": "A split or consolidation since the last annual report"
     }
    ],
    "fail": 0,
-   "warn": 237,
+   "warn": 235,
    "examples": {
     "share count differs from the filing": [
-     "068270 (filing 218,613,124 → listed 233,172,512)",
-     "032830 (filing 179,574,779 → listed 200,425,532)",
-     "034730 (filing 55,086,352 → listed 72,583,875)",
-     "000810 (filing 39,828,296 → listed 44,647,517)",
-     "010120 (filing 29,738,491 → listed 149,746,193)",
-     "006800 (filing 436,049,860 → listed 541,802,691)",
-     "005830 (filing 60,643,469 → listed 65,615,205)",
-     "267250 (filing 70,668,430 → listed 79,119,871)"
+     "068270 (filing 218,613,124 → listed 232,072,902)",
+     "032830 (filing 179,574,779 → listed 200,000,000)",
+     "034730 (filing 55,086,352 → listed 72,502,626)",
+     "000810 (filing 39,828,296 → listed 44,647,508)",
+     "010120 (filing 29,738,491 → listed 150,000,000)",
+     "006800 (filing 436,049,860 → listed 543,020,045)",
+     "005830 (filing 60,643,469 → listed 65,500,583)",
+     "267250 (filing 70,668,430 → listed 78,992,777)"
     ]
    },
    "coverage": {
@@ -256,5 +261,5 @@
   }
  },
  "failures": 0,
- "warnings": 266
+ "warnings": 278
 }
