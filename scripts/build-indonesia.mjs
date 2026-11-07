@@ -362,16 +362,17 @@ if (!SKIP_FIN) {
 } else {
   const prevDoc = readJson(OUT) || {};
   const prevBy = new Map((prevDoc.companies || []).map((c) => [c.code, c]));
-  // The first pass named the delinquent filers. Carry that verdict into the reuse pass, so a company
-  // that is absent because it was excluded as stale is still counted as stale (not as a new listing).
-  const prevStale = new Set(((prevDoc.audit && prevDoc.audit.staleCodes) || []).map((x) => x.code));
+  // The first pass named the delinquent filers. Carry that verdict (and the filing date) into the
+  // reuse pass, so a company that is absent because it was excluded as stale is still counted as stale
+  // (not as a new listing), and the audit keeps the date the exclusion was based on.
+  const prevStale = new Map(((prevDoc.audit && prevDoc.audit.staleCodes) || []).map((x) => [x.code, x.end || null]));
   for (const c of universe) {
     const p = prevBy.get(c.code);
     // A company absent from the previous file was never fetched in this pass. Re-adding it with empty
     // reports would put a statement-less shell back into the market (and undo the stale exclusion);
     // leave it out and let the next full run fetch it.
     if (!p) {
-      if (prevStale.has(c.code)) c.stale = true;
+      if (prevStale.has(c.code)) { c.stale = true; c.staleEnd = prevStale.get(c.code); }
       else c.noPrev = true;
       continue;
     }
@@ -676,7 +677,7 @@ const audit = {
   broken: broken.length,
   brokenCodes: broken.map((c) => ({ code: c.code, name: c.name })),
   stale: stale.length,
-  staleCodes: stale.map((c) => ({ code: c.code, name: c.name, end: c.ttmEnd || c.latestEnd || null })),
+  staleCodes: stale.map((c) => ({ code: c.code, name: c.name, end: c.ttmEnd || c.latestEnd || c.staleEnd || null })),
   dropped: dropped.slice(0, 40),
   sectors: market.sectors.length,
   resolvedFromProfile: cleaned.filter((c) => c.sectorSource === 'profile-gics-sector').length,
