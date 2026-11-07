@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-06",
+ "updated": "2026-11-07",
  "note": "KOSPI universe from DART: corp_cls Y, with share counts. Committed so CI does not rescan 4,000 filers.",
  "companies": [
   {
@@ -3959,7 +3959,8 @@
    "name": "한화머시너리앤서비스홀딩스",
    "nameEn": "HANWHA MACHINERY & SERVICE HOLDINGS CO LTD",
    "industry": "64992",
-   "shares": null
+   "shares": null,
+   "sharesIssued": null
   },
   {
    "code": "00155212",
@@ -5434,7 +5435,8 @@
    "name": "맥쿼리인프라",
    "nameEn": "MACQUARIE KOREA INFRA FUND",
    "industry": "64201",
-   "shares": null
+   "shares": null,
+   "sharesIssued": null
   },
   {
    "code": "00357935",
@@ -5613,7 +5615,8 @@
    "name": "맵스리얼티",
    "nameEn": "MIRAEASSET MAPS REALTY INVESTMENT COMPANY",
    "industry": "642",
-   "shares": null
+   "shares": null,
+   "sharesIssued": null
   },
   {
    "code": "00365387",
@@ -7196,7 +7199,8 @@
    "name": "KB발해인프라",
    "nameEn": "KB BALHAE INFRASTRUCTURE FUND",
    "industry": "642",
-   "shares": null
+   "shares": null,
+   "sharesIssued": null
   },
   {
    "code": "01180118",
