@@ -9,12 +9,15 @@ export const US_LIST_FIELDS = [
   'cik', 'ticker', 'name', 'sector', 'industry', 'indexName', 'shareClass', 'price', 'chg1d', 'chg6m',
   'chgYtd', 'pe', 'pb', 'evEbitda', 'roe', 'marketCap', 'revenue', 'netIncome', 'netIncomeTTM', 'marginNA',
   'fcfYield', 'fcfNA', 'revenueCagr', 'roic', 'adrNA', 'dividendYield', 'indexWeight', 'sic',
-  'buybacks', 'cash', 'priceAsOf', 'brands', 'noFilings',
+  'buybacks', 'cash', 'priceAsOf', 'brands', 'noFilings', 'spTier',
 ];
 
 export const projectUs = (c) => {
   const o = {};
-  for (const k of US_LIST_FIELDS) if (c[k] !== undefined) o[k] = c[k];
+  // Emit every field the filter bars can read, even when the value is absent. Omitting an undefined
+  // key made a filter silently match nothing once a company lacked that field (the projection contract
+  // is the set of keys, not this sample's values).
+  for (const k of US_LIST_FIELDS) o[k] = c[k] ?? null;
   if (c.verification && c.verification.status) o.verification = { status: c.verification.status };
   return o;
 };

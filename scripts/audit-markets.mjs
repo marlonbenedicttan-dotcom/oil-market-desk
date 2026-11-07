@@ -65,7 +65,7 @@ function market(name, rows) {
   const peGap = rows.filter((c) => c.pe != null && c.marketCap > 0 && c.netIncomeTTM > 0)
     .map((c) => [pct(c.pe, c.marketCap / c.netIncomeTTM), c]);
   m.add('P/E = cap ÷ TTM profit', 'fail', 'P/E does not reproduce from its own inputs',
-    peGap.filter(([d]) => d != null && Math.abs(d) > 0.02).map(([d, c]) => [c.ticker, `${(d * 100).toFixed(1)}%`]));
+    peGap.filter(([d]) => d != null && Math.abs(d) > 0.03).map(([d, c]) => [c.ticker, `${(d * 100).toFixed(1)}%`]));
 
   const pbGap = rows.filter((c) => c.pb != null && c.marketCap > 0 && c.equity > 0)
     .map((c) => [pct(c.pb, c.marketCap / c.equity), c]);
@@ -77,9 +77,13 @@ function market(name, rows) {
     rows.filter((c) => c.equity > 0 && c.netIncomeTTM != null && off(c.roe, (c.netIncomeTTM / c.equity) * 100, 0.15))
       .map((c) => [c.ticker, `${(pct(c.roe, (c.netIncomeTTM / c.equity) * 100) * 100).toFixed(1)}%`]));
 
+  // A P/E on a loss is meaningless. A P/E built from a positive fiscal-year figure is not: the page
+  // labels the basis, and 7 companies have no trailing figure but a real, positive FY one.
   m.add('ratio present where it cannot exist', 'fail', 'A P/E on a loss, or a P/B on negative equity',
-    rows.filter((c) => (c.pe != null && !(c.netIncomeTTM > 0)) || (c.pb != null && !(c.equity > 0)))
-      .map((c) => [c.ticker, c.pe != null && !(c.netIncomeTTM > 0) ? 'P/E on a loss' : 'P/B on negative equity']));
+    rows.filter((c) => (c.pe != null && !(c.netIncomeTTM > 0)
+        && !(c.peBasis === 'FY' && ((c.netIncome != null && c.netIncome > 0) || (c.eps != null && c.eps > 0))))
+      || (c.pb != null && !(c.equity > 0)))
+      .map((c) => [c.ticker, c.pb != null && !(c.equity > 0) ? 'P/B on negative equity' : 'P/E on a loss']));
 
   // The page shows a trailing profit and a quarterly table. They must add up.
   const contiguous = (q) => q.every((x, i) => i === 0

@@ -71,7 +71,9 @@ for (const c of C) {
     const want = +(c.debt / c.equity).toFixed(2);
     if (!near(c.debtEquity, want, 0.02)) issues.de.push([c.ticker, c.debtEquity, want]);
   }
-  if (c.revenue && c.netIncome != null && c.netIncome > c.revenue * 1.2) issues.margin.push([c.ticker, c.revenue, c.netIncome]);
+  // A financial's revenue is often net interest income, so profit > revenue is a definition, not a
+  // broken margin; derive marks those marginNA. Only a non-financial can be a scope mismatch.
+  if (!c.marginNA && c.revenue && c.netIncome != null && c.netIncome > c.revenue * 1.2) issues.margin.push([c.ticker, c.revenue, c.netIncome]);
 
   // --- sanity ranges ---------------------------------------------------------
   if (c.marketCap != null && (c.marketCap < 1e6 || c.marketCap > 2e13)) anomalies.push(`${c.ticker}: market cap ${c.marketCap}`);

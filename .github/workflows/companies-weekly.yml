@@ -17,7 +17,10 @@ permissions:
 jobs:
   rebuild:
     runs-on: ubuntu-latest
-    timeout-minutes: 180
+    timeout-minutes: 300
+    env:
+      # A stalled SEC/Nasdaq socket must fail a request, not hold the whole rebuild open.
+      NODE_OPTIONS: '--import=./scripts/fetch-timeout.mjs'
     steps:
       - uses: actions/checkout@v4
         with:
@@ -35,10 +38,16 @@ jobs:
         env:
           SEC_UA: 'MarlonWatchtower/1.0 (marlonbenedicttan@gmail.com)'
         run: |
-          node scripts/filter-sp500.mjs
+          # Re-read every SEC filer first: the filter can only narrow a broad set, and the committed
+          # file is already the narrow one. Then take the S&P 1500 membership from SPTM's holdings.
+          node scripts/build-companies-frames.mjs --years=5
+          node scripts/filter-us-universe.mjs
+          node scripts/fill-sic.mjs --limit=2000
           node scripts/fetch-nasdaq.mjs
           node scripts/refresh-prices.mjs
-          node scripts/add-share-classes.mjs
+          node scripts/price-companies.mjs --limit=2000
+          node scripts/complete-us-universe.mjs
+          node scripts/attach-us-tiers.mjs
           node scripts/apply-weights.mjs
           node scripts/fill-gaps.mjs
           node scripts/ttm-earnings.mjs
@@ -47,17 +56,25 @@ jobs:
           node scripts/repair-revenue.mjs
           node scripts/repair-revenue.mjs --recon
           node scripts/fix-net-income.mjs
-          node scripts/describe-companies.mjs --limit=500
+          node scripts/describe-companies.mjs --limit=1600
           node scripts/describe-nasdaq.mjs
           node scripts/describe-nasdaq.mjs --bad
+          node scripts/clean-descriptions.mjs
+          node scripts/finalize-descriptions.mjs
           node scripts/align-periods.mjs
           node scripts/attach-provenance.mjs
           node scripts/detect-restatements.mjs
+          node scripts/apply-restatements.mjs
+          node scripts/build-cashflow.mjs
+          node scripts/build-capital-metrics.mjs
+          node scripts/build-quarters.mjs
           node scripts/resolve-quarters.mjs
           node scripts/resolve-fundamentals.mjs
+          node scripts/fill-us-revenue.mjs
           node scripts/reconcile-ttm.mjs
           node scripts/sync-series.mjs
           node scripts/build-valuation.mjs
+          node scripts/build-price-changes.mjs
           node scripts/build-sector-valuation.mjs
           node scripts/build-us-charts.mjs
           node scripts/derive-companies.mjs
@@ -68,9 +85,11 @@ jobs:
           node scripts/arbitrate.mjs
           node scripts/verify-filing-index.mjs
           node scripts/attach-us-brands.mjs
+          node scripts/attach-us-themes.mjs
           node scripts/merge-history.mjs us
           node scripts/audit-calculations.mjs
           node scripts/audit-deep.mjs
+          node scripts/audit-universe.mjs
       - name: Korea (DART, optional)
         env:
           DART_API_KEY: ${{ secrets.DART_API_KEY }}

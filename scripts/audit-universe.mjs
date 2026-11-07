@@ -1,7 +1,7 @@
 // Universe audit: is the set itself well formed?
 //
 // Counts, uniqueness, weights, sectors, share classes and required identity fields. This is the layer
-// that would have caught "499 of 503" before it reached the screen.
+// that would have caught "499 of 503" in the old S&P 500 set before it reached the screen.
 //
 //   node scripts/audit-universe.mjs
 
@@ -15,6 +15,7 @@ const C = data.companies || [];
 const issues = [];
 
 const members = data.universe?.members;
+const absent = Array.isArray(data.universe?.absent) ? data.universe.absent : [];
 const ciks = new Set(C.filter((c) => c.cik).map((c) => String(c.cik)));
 const tickers = new Map();
 for (const c of C) {
@@ -23,15 +24,19 @@ for (const c of C) {
   tickers.set(c.ticker, c);
 }
 
-console.log(`UNIVERSE AUDIT · ${C.length} securities · ${ciks.size} companies · universe says ${members}\n`);
+console.log(`UNIVERSE AUDIT · ${C.length} securities · ${ciks.size} companies · ${data.universe?.name || 'unknown'} · ${C.length + absent.length}/${members ?? '?'} members accounted for\n`);
 
 // --- counts ----------------------------------------------------------------
-if (members && C.length !== members) issues.push(`row count ${C.length} ≠ universe members ${members}`);
+// A member with no sourceable row is disclosed in `universe.absent`; it is never dropped silently.
+if (members && C.length + absent.length !== members) {
+  issues.push(`row count ${C.length} + ${absent.length} absent ≠ universe members ${members}`);
+}
 const shareClasses = C.filter((c) => c.shareClass);
 const companies = C.length - shareClasses.length;
-if (members && companies !== members - shareClasses.length) {
-  issues.push(`company count ${companies} + ${shareClasses.length} share classes ≠ ${members}`);
+if (data.universe?.companies != null && companies !== data.universe.companies) {
+  issues.push(`company count ${companies} ≠ universe companies ${data.universe.companies}`);
 }
+for (const a of absent) if (!a.ticker || !a.reason) issues.push(`absent member without a reason: ${JSON.stringify(a)}`);
 
 // --- identity --------------------------------------------------------------
 for (const c of C) {
@@ -69,12 +74,16 @@ const totalCap = weighted.reduce((a, c) => a + (c.marketCap || 0), 0);
 const skew = weighted
   .filter((c) => c.marketCap && totalCap && c.indexWeight)
   .map((c) => ({ t: c.ticker, r: (c.marketCap / totalCap) / (c.indexWeight / sum) }))
-  // SPY weights are float-adjusted, so a low-float company can legitimately carry far less weight
-  // than its market cap implies. Only a 10x gap means one of the two numbers is wrong.
-  .filter((x) => x.r > 10 || x.r < 0.1)
+  // SPTM weights are float-adjusted, so a low-float company can legitimately carry far less weight
+  // than its market cap implies. Large caps rarely diverge past 10×; small caps with a controlling
+  // holder (Skydance, Sphere, Life360, Laureate) legitimately pass 20×. A 50× gap still means one of
+  // the two numbers is wrong, not that the float is small.
+  .filter((x) => x.r > 50 || x.r < 0.02)
   .sort((a, b) => Math.abs(Math.log(b.r)) - Math.abs(Math.log(a.r)));
 if (skew.length) issues.push(`${skew.length} cap/weight mismatches: ${skew.slice(0, 6).map((x) => `${x.t} ${x.r.toFixed(1)}x`).join(' ')}`);
 
 console.log(`\n${issues.length} universe issues`);
 for (const i of issues.slice(0, 20)) console.log('  ' + i);
 if (issues.length > 20) console.log(`  … ${issues.length - 20} more`);
+// The universe accounting is an invariant, not a market move: a non-zero exit is a real gate.
+if (issues.length) process.exit(1);

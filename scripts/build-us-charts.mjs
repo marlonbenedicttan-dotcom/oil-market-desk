@@ -53,10 +53,12 @@ function httpsGet(url, timeout = 30000) {
 // The index's own history. It is part of the same committed file and chart store as the companies, so
 // the US market chart is a byte read rather than a live Yahoo call on every cold cache. The fetch is
 // cached for six hours; a failed fetch keeps whatever is already committed.
-async function fetchIndex(symbol) {
-  const dir = join(ROOT, 'data', 'cache', 'index');
-  mkdirSync(dir, { recursive: true });
-  const f = join(dir, `${symbol.replace(/[^\w.-]/g, '_')}.json`);
+const INDEX_DIR = join(ROOT, 'data', 'cache', 'index');
+const indexFile = (symbol) => join(INDEX_DIR, `${symbol.replace(/[^\w.-]/g, '_')}.json`);
+
+async function fetchIndexRaw(symbol, allowThin = false) {
+  mkdirSync(INDEX_DIR, { recursive: true });
+  const f = indexFile(symbol);
   try {
     const j = JSON.parse(readFileSync(f, 'utf8'));
     if (j.fetched && Date.now() - Date.parse(j.fetched) < 6 * 3600e3 && Array.isArray(j.rows) && j.rows.length) return j.rows;
@@ -72,8 +74,28 @@ async function fetchIndex(symbol) {
     const c = closes[i];
     if (c != null && Number.isFinite(+c)) rows.push([new Date(ts[i] * 1000).toISOString().slice(0, 10), +c]);
   }
-  if (rows.length < 100) throw new Error('thin index series');
-  writeFileSync(f, JSON.stringify({ fetched: new Date().toISOString(), rows }));
+  if (!allowThin && rows.length < 100) throw new Error('thin index series');
+  if (rows.length) writeFileSync(f, JSON.stringify({ fetched: new Date().toISOString(), rows }));
+  return rows;
+}
+
+async function fetchIndex(symbol) {
+  // Yahoo publishes only a live quote for ^SP1500, no daily history. SPTM is the ETF that tracks the
+  // same index, so use its real history and scale the closes to the index's own level: the chart keeps
+  // the index's number and the shape is the fund's, not a fabricated series.
+  if (symbol !== '^SP1500') return fetchIndexRaw(symbol);
+  mkdirSync(INDEX_DIR, { recursive: true });
+  const f = indexFile('^SP1500-scaled');
+  try {
+    const j = JSON.parse(readFileSync(f, 'utf8'));
+    if (j.fetched && Date.now() - Date.parse(j.fetched) < 6 * 3600e3 && Array.isArray(j.rows) && j.rows.length) return j.rows;
+  } catch { /* fetch */ }
+  const [proxy, quote] = await Promise.all([fetchIndexRaw('SPTM'), fetchIndexRaw('^SP1500', true)]);
+  if (!proxy.length) throw new Error('no SPTM history');
+  const level = quote.at(-1)?.[1];
+  const factor = level && proxy.at(-1)?.[1] ? level / proxy.at(-1)[1] : 1;
+  const rows = proxy.map(([d, v]) => [d, +(v * factor).toFixed(2)]);
+  writeFileSync(f, JSON.stringify({ fetched: new Date().toISOString(), rows, proxy: 'SPTM', factor }));
   return rows;
 }
 
@@ -107,10 +129,10 @@ for (const c of data.companies) {
   built++;
 }
 
-// The US market view's S&P 500 chart is a chart endpoint too. Keep its series in this same file so
-// the chart store serves it from disk; without it the endpoint re-fetched Yahoo after every 10-minute
-// cache expiry and on every cold start, which is the slowest chart on the site.
-const INDEX_SYMBOLS = ['^GSPC'];
+// The US MARKET view's index charts: S&P 1500 composite (SPTM proxy, scaled), and the three size
+// indices Yahoo publishes directly. Keep them in this same file so the chart store serves each cohort
+// from disk instead of a live call on every cold start.
+const INDEX_SYMBOLS = ['^SP1500', '^GSPC', '^SP400', '^SP600'];
 let indexBuilt = 0;
 for (const sym of INDEX_SYMBOLS) {
   let kept = [];

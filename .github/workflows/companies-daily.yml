@@ -20,7 +20,10 @@ permissions:
 jobs:
   refresh:
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 180
+    env:
+      # A stalled SEC/Nasdaq socket must fail a request, not hold the whole refresh open.
+      NODE_OPTIONS: '--import=./scripts/fetch-timeout.mjs'
     steps:
       - uses: actions/checkout@v4
         with:

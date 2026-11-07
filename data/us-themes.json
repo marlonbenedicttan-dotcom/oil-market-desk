@@ -1,12 +1,15 @@
 {
-  "updated": "2026-10-30",
-  "note": "Theme = (industry rule ∪ curated additions) − exclusions. Anchors are tested: if a theme loses one, the build fails.",
+  "updated": "2026-11-08",
+  "note": "Theme = (industry rule ∪ curated additions) − exclusions, drawn against the S&P 1500 so mid and small caps join automatically. Anchors are tested: if a theme loses one, the build fails.",
   "themes": [
     {
       "id": "ai",
       "label": "AI & SEMICONDUCTORS",
       "industries": [
-        "Semiconductors"
+        "Semiconductors",
+        "Electronic Components",
+        "Computer Manufacturing",
+        "Computer peripheral equipment"
       ],
       "tickers": [
         "LRCX",
@@ -32,7 +35,36 @@
         "CRWD",
         "NOW",
         "CDNS",
-        "SNPS"
+        "SNPS",
+        "ALAB",
+        "CRDO",
+        "MRVL",
+        "ONTO",
+        "CAMT",
+        "ACLS",
+        "LSCC",
+        "SLAB",
+        "DIOD",
+        "POWI",
+        "SITM",
+        "AMBA",
+        "CRUS",
+        "SYNA",
+        "MKSI",
+        "UCTT",
+        "IPGP",
+        "AZTA",
+        "RMBS",
+        "CEVA",
+        "FORM",
+        "KLIC",
+        "COHU",
+        "ENTG",
+        "VSH",
+        "ACMR",
+        "VECO",
+        "PLXS",
+        "SOLS"
       ],
       "exclude": [],
       "anchors": [
@@ -50,7 +82,8 @@
       "id": "defence",
       "label": "DEFENCE",
       "industries": [
-        "Aerospace"
+        "Aerospace",
+        "Military/Government/Technical"
       ],
       "tickers": [
         "LMT",
@@ -63,7 +96,15 @@
         "AXON",
         "HWM",
         "TDY",
-        "PLTR"
+        "PLTR",
+        "KTOS",
+        "AVAV",
+        "CACI",
+        "SAIC",
+        "BWXT",
+        "TXT",
+        "CW",
+        "RTX"
       ],
       "exclude": [
         "HON"
@@ -81,7 +122,12 @@
     {
       "id": "power",
       "label": "NUCLEAR & POWER",
-      "industries": [],
+      "industries": [
+        "Electric Utilities: Central",
+        "Power Generation",
+        "Natural Gas Distribution",
+        "Oil/Gas Transmission"
+      ],
       "tickers": [
         "CEG",
         "VST",
@@ -98,7 +144,19 @@
         "ETR",
         "PEG",
         "SRE",
-        "ED"
+        "ED",
+        "OKLO",
+        "SMR",
+        "LEU",
+        "NNE",
+        "BWXT",
+        "TLN",
+        "FSLR",
+        "GNRC",
+        "CW",
+        "CPK",
+        "SEI",
+        "BE"
       ],
       "exclude": [],
       "anchors": [
@@ -124,7 +182,57 @@
         "AVGO",
         "MU",
         "AMD",
-        "PLTR"
+        "PLTR",
+        "ORCL",
+        "CRM",
+        "ADBE",
+        "NOW",
+        "INTU",
+        "IBM",
+        "CSCO",
+        "QCOM",
+        "TXN",
+        "AMAT",
+        "ADI",
+        "CRWD",
+        "DDOG",
+        "SNOW",
+        "PANW",
+        "FTNT",
+        "WDAY",
+        "TEAM",
+        "ZS",
+        "OKTA",
+        "MDB",
+        "NET",
+        "HUBS",
+        "VEEV",
+        "TWLO",
+        "APP",
+        "ADP",
+        "CDNS",
+        "SNPS",
+        "TYL",
+        "VRSK",
+        "PTC",
+        "MANH",
+        "GWRE",
+        "DT",
+        "GDDY",
+        "RDDT",
+        "TOST",
+        "XYZ",
+        "BSY",
+        "GEN"
+      ],
+      "industries": [],
+      "anchors": [
+        "MSFT",
+        "GOOGL",
+        "ORCL",
+        "CRM",
+        "ADBE",
+        "NOW"
       ]
     },
     {
@@ -142,7 +250,58 @@
         "AMGN",
         "GILD",
         "ABT",
-        "PFE"
+        "PFE",
+        "VRTX",
+        "REGN",
+        "ISRG",
+        "MDT",
+        "SYK",
+        "BSX",
+        "ZTS",
+        "CI",
+        "CVS",
+        "HUM",
+        "ELV",
+        "DHR",
+        "TMO",
+        "BMY",
+        "MRNA",
+        "BIIB",
+        "IDXX",
+        "EW",
+        "A",
+        "WAT",
+        "RMD",
+        "HOLX",
+        "DXCM",
+        "ALGN",
+        "ILMN",
+        "GEHC",
+        "SOLV"
+      ],
+      "industries": [
+        "Biotechnology: Pharmaceutical Preparations",
+        "Medical/Dental Instruments",
+        "Medical Specialities",
+        "Biotechnology: Biological Products (No Diagnostic Substances)",
+        "Medical/Nursing Services",
+        "Hospital/Nursing Management",
+        "Biotechnology: Electromedical & Electrotherapeutic Apparatus",
+        "Biotechnology: Commercial Physical & Biological Resarch",
+        "Biotechnology: In Vitro & In Vivo Diagnostic Substances",
+        "Ophthalmic Goods",
+        "Other Pharmaceuticals",
+        "Misc Health and Biotechnology Services",
+        " Medicinal Chemicals and Botanical Products ",
+        "Medical Electronics"
+      ],
+      "anchors": [
+        "LLY",
+        "JNJ",
+        "ABBV",
+        "MRK",
+        "UNH",
+        "ISRG"
       ]
     },
     {
@@ -160,7 +319,62 @@
         "AXP",
         "C",
         "BLK",
-        "SCHW"
+        "SCHW",
+        "PNC",
+        "USB",
+        "TFC",
+        "COF",
+        "BK",
+        "STT",
+        "NTRS",
+        "AIG",
+        "MET",
+        "PRU",
+        "ALL",
+        "TRV",
+        "PGR",
+        "CB",
+        "AJG",
+        "MMC",
+        "AON",
+        "ICE",
+        "CME",
+        "NDAQ",
+        "SPGI",
+        "MCO",
+        "APO",
+        "KKR",
+        "BX",
+        "ARES"
+      ],
+      "industries": [
+        "Major Banks",
+        "Property-Casualty Insurers",
+        "Investment Managers",
+        "Investment Bankers/Brokers/Service",
+        "Finance: Consumer Services",
+        "Life Insurance",
+        "Specialty Insurers",
+        "Savings Institutions",
+        "Accident &Health Insurance",
+        "Banks",
+        "State Commercial Banks",
+        "Finance Companies",
+        "Finance/Investors Services",
+        "Multi-Sector Companies",
+        "Fire, Marine & Casualty Insurance"
+      ],
+      "anchors": [
+        "JPM",
+        "BAC",
+        "MS",
+        "GS",
+        "WFC",
+        "AXP",
+        "C",
+        "BLK",
+        "SCHW",
+        "BRK-B"
       ]
     },
     {
@@ -177,6 +391,12 @@
         "VLO",
         "EOG",
         "SLB"
+      ],
+      "industries": [
+        "Oil & Gas Production",
+        "Integrated oil Companies",
+        "Oilfield Services/Equipment",
+        "Oil Refining/Marketing"
       ]
     },
     {
@@ -192,7 +412,36 @@
         "SPG",
         "DLR",
         "PSA",
-        "O"
+        "O",
+        "VICI",
+        "IRM",
+        "CCI",
+        "SBAC",
+        "AVB",
+        "EQR",
+        "INVH",
+        "ESS",
+        "MAA",
+        "UDR",
+        "CPT",
+        "EXR",
+        "CUBE",
+        "KIM",
+        "REG",
+        "FRT",
+        "BXP",
+        "VNO",
+        "ARE",
+        "DOC",
+        "OHI",
+        "VTR",
+        "GLPI",
+        "RHP",
+        "HST"
+      ],
+      "industries": [
+        "Real Estate Investment Trusts",
+        "Real Estate"
       ]
     }
   ]

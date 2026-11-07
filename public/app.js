@@ -2796,7 +2796,7 @@ function renderCompanyScreen(el) {
       <span class="sc-count dimtext">${rows.length} of ${all.length} companies</span>
     </div><div class="sc-wrap" id="sc-table"><table class="sc-table sc-cotable"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>
     ${pagerHtml(rows.length, coScreen.page, coScreen.per, 'copage')}
-    <div class="sc-note dimtext">${fxNote('USD')}S&amp;P 500 companies · SEC filings, GAAP as filed · ${asOfText(all, 'priceAsOf') || 'prices from Nasdaq'}. Click a row to open the company.</div>`;
+    <div class="sc-note dimtext">${fxNote('USD')}${esc(companiesData.universe?.name || 'S&P 500')} companies · SEC filings, GAAP as filed · ${asOfText(all, 'priceAsOf') || 'prices from Nasdaq'}. Click a row to open the company.</div>`;
 }
 
 // The same screener, on the Japanese market. Yen, its own columns, its own filters — never mixed
@@ -3134,7 +3134,7 @@ $('screen')?.addEventListener('click', (e) => {
     screenMarket = mkt.dataset.screenMarket;
     try { localStorage.setItem('oilbasis.screenMarket', screenMarket); } catch {}
     const cur = document.querySelector('#p-screen .controls');
-    if (cur) cur.classList.toggle('hidden', screenMarket === 'jp' || screenMarket === 'tw' || screenMarket === 'hk' || screenMarket === 'au' || screenMarket === 'in' || screenMarket === 'id');
+    if (cur) cur.classList.toggle('hidden', screenMarket === 'jp' || screenMarket === 'tw' || screenMarket === 'hk' || screenMarket === 'au' || screenMarket === 'in' || screenMarket === 'id' || screenMarket === 'br');
     renderScreen(true);
     return;
   }
@@ -3366,7 +3366,7 @@ const CAL_DOW = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const MONTH_NAMES = ['JANUARY', 'FEBRUARY', 'MARCH', 'APRIL', 'MAY', 'JUNE', 'JULY', 'AUGUST', 'SEPTEMBER', 'OCTOBER', 'NOVEMBER', 'DECEMBER'];
 let calEvents = null, calMonth = null, calSel = null, calFomc = null;
 let calCompany = [];
-// Which market the companies tab is showing: the S&P 500 or TSE Prime.
+// Which market the companies tab is showing: the S&P 1500 or TSE Prime.
 let coRegion = (() => { try { return localStorage.getItem('oilbasis.coRegion') || 'us'; } catch { return 'us'; } })();
 // Two views, not four: the macro calendar and company events. Anything else is a filter inside those.
 let calMode = (() => {
@@ -4456,6 +4456,14 @@ document.addEventListener('click', (e) => {
 // ---------------------------------------------------------------------------
 // COMPANIES — profiles and financials from SEC XBRL (tagged facts, no estimates).
 let companiesData = null, coQuery = '', coSector = 'all', coMin = 0, coCik = null, coTicker = null, coRange = '5y', coCompare = '';
+// Every market outside the US holds about five years of prices, so it has no 10Y chip. A stored 10Y
+// from an older visit would otherwise keep requesting a window the data cannot fill; land on 5Y instead.
+const coStoredRange = (key, fallback) => {
+  try {
+    const v = localStorage.getItem('oilbasis.' + key);
+    return v === '10y' ? '5y' : (v || fallback);
+  } catch { return fallback; }
+};
 // The compare box is per company: moving to another name starts clean instead of leaving the old
 // benchmark on the chart. `coOpenCik` is what the current comparison belongs to.
 let coOpenCik = null, jpOpenSel = null, krOpenSel = null;
@@ -4537,7 +4545,7 @@ let japanData = null, jpSel = null, jpQuery = '';
 let jpView = (() => { try { return localStorage.getItem('oilbasis.jpView') || 'market'; } catch { return 'market'; } })();
 let jpPage = 1, jpPer = 50;
 let jpMktRange = (() => { try { return localStorage.getItem('oilbasis.jpMktRange') || '1y'; } catch { return '1y'; } })();
-let jpRange = (() => { try { return localStorage.getItem('oilbasis.jpRange') || '6m'; } catch { return '6m'; } })();
+let jpRange = coStoredRange('jpRange', '6m');
 let jpCompare = '';
 let jpSort = (() => { try { return localStorage.getItem('oilbasis.jpSort') || 'cap'; } catch { return 'cap'; } })();
 let jpPreset = null;
@@ -4817,7 +4825,7 @@ function renderJapanScreener(all, d) {
             <em class="${(c.chg1d || 0) >= 0 ? 'pos' : 'neg'}">${c.chg1d == null ? '—' : `${c.chg1d >= 0 ? '+' : ''}${c.chg1d.toFixed(1)}%`}</em>
             <em class="${(c.chgYtd || 0) >= 0 ? 'pos' : 'neg'}">${c.chgYtd == null ? '—' : `${c.chgYtd >= 0 ? '+' : ''}${c.chgYtd.toFixed(1)}%`} ${c.chgYtdBasis === 'YTD' ? 'YTD' : 'SINCE ' + String(c.chgYtdBasis || '').slice(6)}</em>
           </span></span>
-        <span class="co-cap">${yen(c.marketCap)}<i class="co-bar"><i style="width:${Math.max(2, ((c.marketCap || 0) / max) * 100)}%"></i></i></span>
+        <span class="co-cap">${yen(c.marketCap)}<i class="co-bar"><i style="width:${Math.min(100, Math.max(2, ((c.marketCap || 0) / max) * 100))}%"></i></i></span>
         <span class="co-pe" title="${c.peBasis === 'TTM' ? 'trailing twelve months, from JPX' : 'fiscal year'}">${c.pe != null ? c.pe.toFixed(1) : '—'}</span>
         <span class="co-mar ${c.roe == null ? 'dimtext' : c.roe >= 0 ? 'pos' : 'neg'}">${c.roe == null ? '—' : `${c.roe.toFixed(1)}%`}</span>
       </button>`;
@@ -4955,7 +4963,7 @@ function renderJapanPageBody(c) {
         <span class="co-cmp-l">COMPARE</span><input class="co-cmp" id="jp-cmp" placeholder="company name, e.g. toyota" value="${esc(cmpCode(jpCompare))}" autocomplete="off">
         <button class="co-cmp-clear${jpCompare ? '' : ' hidden'}" id="jp-cmp-clear" data-cmpclear="jp" type="button" title="Clear comparison" aria-label="Clear comparison">×</button>
         <div class="co-sugg" id="jp-sugg"></div>
-        ${[['1m', '1M'], ['3m', '3M'], ['6m', '6M'], ['ytd', 'YTD'], ['1y', '1Y'], ['5y', '5Y'], ['10y', '10Y']].map(([k, t]) => `<button class="ma-chip${jpRange === k ? ' on' : ''}" data-jprange="${k}" title="${k === '10y' ? 'Ten years — fills in as the archive grows' : ''}">${t}</button>`).join('')}
+        ${[['1m', '1M'], ['3m', '3M'], ['6m', '6M'], ['ytd', 'YTD'], ['1y', '1Y'], ['5y', '5Y']].map(([k, t]) => `<button class="ma-chip${jpRange === k ? ' on' : ''}" data-jprange="${k}">${t}</button>`).join('')}
       </div>`
     + `<div class="co-rets" id="jp-rets"></div>`
               + `<div class="co-chartwrap"><div class="co-big" id="jp-big"></div><canvas id="jp-chart"></canvas></div>`
@@ -5160,7 +5168,7 @@ let koreaData = null, krSel = null, krQuery = '';
 let renderSeq = 0;
 const takeToken = () => ++renderSeq;
 const stale = (t) => t !== renderSeq;
-let krRange = (() => { try { return localStorage.getItem('oilbasis.krRange') || '1y'; } catch { return '1y'; } })();
+let krRange = coStoredRange('krRange', '1y');
 let krPreset = null, krSector = 'all', krCompare = '';
 let krSort = (() => { try { return localStorage.getItem('oilbasis.krSort') || 'cap'; } catch { return 'cap'; } })();
 let krFilter = (() => { try { return JSON.parse(localStorage.getItem('oilbasis.krFilter') || '{}'); } catch { return {}; } })();
@@ -5708,7 +5716,7 @@ async function renderKoreaPage(stub) {
         <span class="co-cmp-l">COMPARE</span><input class="co-cmp" id="kr-cmp" placeholder="company name, e.g. samsung" value="${esc(cmpCode(krCompare))}" autocomplete="off">
         <button class="co-cmp-clear${krCompare ? '' : ' hidden'}" id="kr-cmp-clear" data-cmpclear="kr" type="button" title="Clear comparison" aria-label="Clear comparison">×</button>
         <div class="co-sugg" id="kr-sugg"></div>
-        ${[['1m', '1M'], ['3m', '3M'], ['6m', '6M'], ['ytd', 'YTD'], ['1y', '1Y'], ['5y', '5Y'], ['10y', '10Y']].map(([k, t]) => `<button class="ma-chip${krRange === k ? ' on' : ''}" data-krrange="${k}" title="${k === '10y' ? 'Ten years — fills in as the archive grows' : ''}">${t}</button>`).join('')}
+        ${[['1m', '1M'], ['3m', '3M'], ['6m', '6M'], ['ytd', 'YTD'], ['1y', '1Y'], ['5y', '5Y']].map(([k, t]) => `<button class="ma-chip${krRange === k ? ' on' : ''}" data-krrange="${k}">${t}</button>`).join('')}
       </div>`
     + `<div class="co-rets" id="kr-rets"></div>`
               + `<div class="co-chartwrap"><div class="co-big" id="kr-big"></div><canvas id="kr-chart"></canvas></div>`
@@ -5770,7 +5778,7 @@ async function drawKrChart(c, range = krRange) {
 // come from TWSE; statements and English profiles from stockanalysis.com; TAIEX from TWSE's monthly
 // market report. TWD throughout — the ECB does not publish TWD.
 let taiwanData = null, twSel = null, twQuery = '', twCompare = '';
-let twRange = (() => { try { return localStorage.getItem('oilbasis.twRange') || '1y'; } catch { return '1y'; } })();
+let twRange = coStoredRange('twRange', '1y');
 let twMktRange = (() => { try { return localStorage.getItem('oilbasis.twMktRange') || '1y'; } catch { return '1y'; } })();
 let twView = (() => { try { return localStorage.getItem('oilbasis.twView') || 'market'; } catch { return 'market'; } })();
 let twTheme = (() => { try { return localStorage.getItem('oilbasis.twTheme') || 'semis'; } catch { return 'semis'; } })();
@@ -6042,7 +6050,7 @@ async function renderTaiwanPage(stub) {
         <span class="co-cmp-l">COMPARE</span><input class="co-cmp" id="tw-cmp" placeholder="company name, e.g. tsmc" value="${esc(cmpCode(twCompare))}" autocomplete="off">
         <button class="co-cmp-clear${twCompare ? '' : ' hidden'}" id="tw-cmp-clear" data-cmpclear="tw" type="button" title="Clear comparison" aria-label="Clear comparison">×</button>
         <div class="co-sugg" id="tw-sugg"></div>
-        ${[['1m', '1M'], ['3m', '3M'], ['6m', '6M'], ['ytd', 'YTD'], ['1y', '1Y'], ['5y', '5Y'], ['10y', '10Y']].map(([k, t]) => `<button class="ma-chip${twRange === k ? ' on' : ''}" data-twrange="${k}" title="${k === '10y' ? 'Ten years — fills in as the archive grows' : ''}">${t}</button>`).join('')}
+        ${[['1m', '1M'], ['3m', '3M'], ['6m', '6M'], ['ytd', 'YTD'], ['1y', '1Y'], ['5y', '5Y']].map(([k, t]) => `<button class="ma-chip${twRange === k ? ' on' : ''}" data-twrange="${k}">${t}</button>`).join('')}
       </div>`
     + `<div class="co-rets" id="tw-rets"></div>`
     + `<div class="co-chartwrap"><div class="co-big" id="tw-big"></div><canvas id="tw-chart"></canvas></div>`
@@ -6107,7 +6115,7 @@ async function drawTwChart(c, range = twRange) {
 // international issuer reports in CNY or USD — its ratios are computed in the statement currency, so
 // the page says which one.
 let hkData = null, hkSel = null, hkQuery = '', hkCompare = '';
-let hkRange = (() => { try { return localStorage.getItem('oilbasis.hkRange') || '1y'; } catch { return '1y'; } })();
+let hkRange = coStoredRange('hkRange', '1y');
 let hkMktRange = (() => { try { return localStorage.getItem('oilbasis.hkMktRange') || '1y'; } catch { return '1y'; } })();
 let hkView = (() => { try { return localStorage.getItem('oilbasis.hkView') || 'market'; } catch { return 'market'; } })();
 let hkTheme = (() => { try { return localStorage.getItem('oilbasis.hkTheme') || 'platforms'; } catch { return 'platforms'; } })();
@@ -6435,7 +6443,7 @@ async function renderHongKongPage(stub) {
         <span class="co-cmp-l">COMPARE</span><input class="co-cmp" id="hk-cmp" placeholder="company name, e.g. tencent" value="${esc(cmpCode(hkCompare))}" autocomplete="off">
         <button class="co-cmp-clear${hkCompare ? '' : ' hidden'}" id="hk-cmp-clear" data-cmpclear="hk" type="button" title="Clear comparison" aria-label="Clear comparison">×</button>
         <div class="co-sugg" id="hk-sugg"></div>
-        ${[['1m', '1M'], ['3m', '3M'], ['6m', '6M'], ['ytd', 'YTD'], ['1y', '1Y'], ['5y', '5Y'], ['10y', '10Y']].map(([k, t]) => `<button class="ma-chip${hkRange === k ? ' on' : ''}" data-hkrange="${k}" title="${k === '10y' ? 'Ten years — fills in as the archive grows' : ''}">${t}</button>`).join('')}
+        ${[['1m', '1M'], ['3m', '3M'], ['6m', '6M'], ['ytd', 'YTD'], ['1y', '1Y'], ['5y', '5Y']].map(([k, t]) => `<button class="ma-chip${hkRange === k ? ' on' : ''}" data-hkrange="${k}">${t}</button>`).join('')}
       </div>`
     + `<div class="co-rets" id="hk-rets"></div>`
     + `<div class="co-chartwrap"><div class="co-big" id="hk-big"></div><canvas id="hk-chart"></canvas></div>`
@@ -6504,7 +6512,7 @@ async function drawHkChart(c, range = hkRange) {
 // but BHP and RIO report in USD — their ratios are computed in the statement currency, so the page
 // says which one.
 let auData = null, auSel = null, auQuery = '', auCompare = '';
-let auRange = (() => { try { return localStorage.getItem('oilbasis.auRange') || '1y'; } catch { return '1y'; } })();
+let auRange = coStoredRange('auRange', '1y');
 let auMktRange = (() => { try { return localStorage.getItem('oilbasis.auMktRange') || '1y'; } catch { return '1y'; } })();
 let auView = (() => { try { return localStorage.getItem('oilbasis.auView') || 'market'; } catch { return 'market'; } })();
 let auTheme = (() => { try { return localStorage.getItem('oilbasis.auTheme') || 'materials'; } catch { return 'materials'; } })();
@@ -6796,7 +6804,7 @@ async function renderAustraliaPage(stub) {
         <span class="co-cmp-l">COMPARE</span><input class="co-cmp" id="au-cmp" placeholder="company name, e.g. bhp" value="${esc(cmpCode(auCompare))}" autocomplete="off">
         <button class="co-cmp-clear${auCompare ? '' : ' hidden'}" id="au-cmp-clear" data-cmpclear="au" type="button" title="Clear comparison" aria-label="Clear comparison">×</button>
         <div class="co-sugg" id="au-sugg"></div>
-        ${[['1m', '1M'], ['3m', '3M'], ['6m', '6M'], ['ytd', 'YTD'], ['1y', '1Y'], ['5y', '5Y'], ['10y', '10Y']].map(([k, t]) => `<button class="ma-chip${auRange === k ? ' on' : ''}" data-aurange="${k}" title="${k === '10y' ? 'Ten years — fills in as the archive grows' : ''}">${t}</button>`).join('')}
+        ${[['1m', '1M'], ['3m', '3M'], ['6m', '6M'], ['ytd', 'YTD'], ['1y', '1Y'], ['5y', '5Y']].map(([k, t]) => `<button class="ma-chip${auRange === k ? ' on' : ''}" data-aurange="${k}">${t}</button>`).join('')}
       </div>`
     + `<div class="co-rets" id="au-rets"></div>`
     + `<div class="co-chartwrap"><div class="co-big" id="au-big"></div><canvas id="au-chart"></canvas></div>`
@@ -6863,7 +6871,7 @@ async function drawAuChart(c, range = auRange) {
 // but BHP and RIO report in USD — their ratios are computed in the statement currency, so the page
 // says which one.
 let inData = null, inSel = null, inQuery = '', inCompare = '';
-let inRange = (() => { try { return localStorage.getItem('oilbasis.inRange') || '1y'; } catch { return '1y'; } })();
+let inRange = coStoredRange('inRange', '1y');
 let inMktRange = (() => { try { return localStorage.getItem('oilbasis.inMktRange') || '1y'; } catch { return '1y'; } })();
 let inView = (() => { try { return localStorage.getItem('oilbasis.inView') || 'market'; } catch { return 'market'; } })();
 let inTheme = (() => { try { return localStorage.getItem('oilbasis.inTheme') || 'materials'; } catch { return 'materials'; } })();
@@ -7154,7 +7162,7 @@ async function renderIndiaPage(stub) {
         <span class="co-cmp-l">COMPARE</span><input class="co-cmp" id="in-cmp" placeholder="company name, e.g. reliance" value="${esc(cmpCode(inCompare))}" autocomplete="off">
         <button class="co-cmp-clear${inCompare ? '' : ' hidden'}" id="in-cmp-clear" data-cmpclear="in" type="button" title="Clear comparison" aria-label="Clear comparison">×</button>
         <div class="co-sugg" id="in-sugg"></div>
-        ${[['1m', '1M'], ['3m', '3M'], ['6m', '6M'], ['ytd', 'YTD'], ['1y', '1Y'], ['5y', '5Y'], ['10y', '10Y']].map(([k, t]) => `<button class="ma-chip${inRange === k ? ' on' : ''}" data-inrange="${k}" title="${k === '10y' ? 'Ten years — fills in as the archive grows' : ''}">${t}</button>`).join('')}
+        ${[['1m', '1M'], ['3m', '3M'], ['6m', '6M'], ['ytd', 'YTD'], ['1y', '1Y'], ['5y', '5Y']].map(([k, t]) => `<button class="ma-chip${inRange === k ? ' on' : ''}" data-inrange="${k}">${t}</button>`).join('')}
       </div>`
     + `<div class="co-rets" id="in-rets"></div>`
     + `<div class="co-chartwrap"><div class="co-big" id="in-big"></div><canvas id="in-chart"></canvas></div>`
@@ -7221,7 +7229,7 @@ async function drawInChart(c, range = inRange) {
 // of closes from Yahoo. Prices are rupiah; a handful of issuers report in USD, so the page says which
 // currency the ratios were computed in.
 let idData = null, idSel = null, idQuery = '', idCompare = '';
-let idRange = (() => { try { return localStorage.getItem('oilbasis.idRange') || '1y'; } catch { return '1y'; } })();
+let idRange = coStoredRange('idRange', '1y');
 let idMktRange = (() => { try { return localStorage.getItem('oilbasis.idMktRange') || '1y'; } catch { return '1y'; } })();
 let idView = (() => { try { return localStorage.getItem('oilbasis.idView') || 'market'; } catch { return 'market'; } })();
 let idTheme = (() => { try { return localStorage.getItem('oilbasis.idTheme') || 'banks'; } catch { return 'banks'; } })();
@@ -7561,7 +7569,7 @@ async function renderIndonesiaPage(stub) {
         <span class="co-cmp-l">COMPARE</span><input class="co-cmp" id="id-cmp" placeholder="company name, e.g. bank central asia" value="${esc(cmpCode(idCompare))}" autocomplete="off">
         <button class="co-cmp-clear${idCompare ? '' : ' hidden'}" id="id-cmp-clear" data-cmpclear="id" type="button" title="Clear comparison" aria-label="Clear comparison">×</button>
         <div class="co-sugg" id="id-sugg"></div>
-        ${[['1m', '1M'], ['3m', '3M'], ['6m', '6M'], ['ytd', 'YTD'], ['1y', '1Y'], ['5y', '5Y'], ['10y', '10Y']].map(([k, t]) => `<button class="ma-chip${idRange === k ? ' on' : ''}" data-idrange="${k}" title="${k === '10y' ? 'Ten years — fills in as the archive grows' : ''}">${t}</button>`).join('')}
+        ${[['1m', '1M'], ['3m', '3M'], ['6m', '6M'], ['ytd', 'YTD'], ['1y', '1Y'], ['5y', '5Y']].map(([k, t]) => `<button class="ma-chip${idRange === k ? ' on' : ''}" data-idrange="${k}">${t}</button>`).join('')}
       </div>`
     + `<div class="co-rets" id="id-rets"></div>`
     + `<div class="co-chartwrap"><div class="co-big" id="id-big"></div><canvas id="id-chart"></canvas></div>`
@@ -8218,7 +8226,8 @@ function renderCompanies() {
     const what = usView === 'screener' ? 'filter and sort'
       : usView === 'themes' ? 'curated theme lists'
         : 'breadth, sectors and the index';
-    sub.textContent = `${all.length} securities · ${cos} companies · S&P 500 · ${what}`;
+    const uniName = companiesData.universe?.name || 'S&P 500';
+    sub.textContent = `${all.length} securities · ${cos} companies · ${uniName} · ${what}`;
   }
 
   if (coCik) return renderCompanyPage(el, all);
@@ -8325,7 +8334,7 @@ function renderCompanies() {
             ${c.price != null ? `<span class="co-px">$${c.price.toFixed(2)}</span>` : ''}
             ${c.chg1d != null ? `<em class="${c.chg1d >= 0 ? 'pos' : 'neg'}">${c.chg1d >= 0 ? '+' : ''}${c.chg1d.toFixed(1)}%</em>` : ''}
             ${c.chgYtd != null ? `<em class="${c.chgYtd >= 0 ? 'pos' : 'neg'}">${c.chgYtd >= 0 ? '+' : ''}${c.chgYtd.toFixed(1)}% YTD</em>` : ''}
-            ${c.shareClass ? '<em class="co-cl">2ND CLASS</em>' : ''}
+            ${c.shareClass ? '<em class="co-cl">2ND CLASS</em>' : c.noFilings ? '<em class="co-cl">NO FILINGS</em>' : ''}
           </span></span>
         <span class="co-cap">${coMoney(c.marketCap)}<i class="co-bar"><i style="width:${Math.max(2, ((c.marketCap || 0) / max) * 100)}%"></i></i></span>
         <span class="co-pe" title="${c.pe != null ? 'trailing P/E: price ÷ latest FY diluted EPS' : 'no positive trailing EPS'}">${c.pe != null ? c.pe.toFixed(1) : '—'}</span>
@@ -8578,11 +8587,24 @@ const coDesc = (t) => {
   return i > 120 ? cut.slice(0, i + 1) : cut.replace(/[,;\s]+\S*$/, '') + '…';
 };
 
-// The US market view: the same shape as Japan's, computed from the 503 constituents.
+// The MARKET view can be read as the full S&P 1500 or one of its size cohorts. Domicile is the
+// SPTM composite; the three sub-indices are the authoritative SPDR fund lists (attach-us-tiers.mjs).
+const US_COHORTS = [
+  { id: 'sp1500', label: 'S&P 1500', tier: null, index: '^SP1500' },
+  { id: 'sp500', label: 'S&P 500', tier: 'sp500', index: '^GSPC' },
+  { id: 'sp400', label: 'S&P 400', tier: 'sp400', index: '^SP400' },
+  { id: 'sp600', label: 'S&P 600', tier: 'sp600', index: '^SP600' },
+];
+let usMktCohort = (() => { try { return localStorage.getItem('oilbasis.usMktCohort') || 'sp1500'; } catch { return 'sp1500'; } })();
+const usCohort = () => US_COHORTS.find((x) => x.id === usMktCohort) || US_COHORTS[0];
+
+// The US market view: the same shape as Japan's, computed from the S&P 1500 constituents.
 async function renderUsMarket(el, all, token = renderSeq) {
   const noteUs = $('co-note'); if (noteUs) noteUs.classList.add('hidden');
-  prefetchUsMarketChart();   // overlap the index request with the market render, not follow it
-  const uniq = all.filter((c) => !c.shareClass);
+  const cohort = usCohort();
+  const list = cohort.tier ? all.filter((c) => c.spTier === cohort.tier) : all;
+  prefetchUsMarketChart(cohort.index);   // overlap the index request with the market render, not follow it
+  const uniq = list.filter((c) => !c.shareClass);
   const median = (xs) => {
     const a = xs.filter((x) => x != null && Number.isFinite(x)).sort((x, y) => x - y);
     if (!a.length) return null;
@@ -8590,6 +8612,8 @@ async function renderUsMarket(el, all, token = renderSeq) {
     return a.length % 2 ? a[m] : +((a[m - 1] + a[m]) / 2).toFixed(2);
   };
   const totalCap = uniq.reduce((a, c) => a + (c.marketCap || 0), 0);
+  const cohEarn = uniq.reduce((a, c) => a + (c.netIncomeTTM > 0 ? c.netIncomeTTM : 0), 0);
+  const cohPe = cohEarn > 0 ? totalCap / cohEarn : null;
   const belowBook = uniq.filter((c) => c.pb != null && c.pb < 1).length;
   const adv = uniq.filter((c) => (c.chg1d || 0) > 0).length;
   const dec = uniq.filter((c) => (c.chg1d || 0) < 0).length;
@@ -8605,21 +8629,25 @@ async function renderUsMarket(el, all, token = renderSeq) {
   const cell = (k, val, title, cls = '') => `<div class="co-stat" title="${esc(title)}"><span class="co-k">${k}</span><span class="co-v ${cls}">${val}</span></div>`;
   const chg = (x) => (x == null ? '—' : `${x >= 0 ? '+' : ''}${x.toFixed(1)}%`);
   const breadth = adv + dec ? `<div class="jp-breadth"><span class="pos">${adv} up</span><i><i style="width:${Math.round((adv / Math.max(1, adv + dec)) * 100)}%"></i></i><span class="neg">${dec} down</span></div>` : '';
-  // The index level comes from the macro quote feed; the changes are cap-weighted from the
-  // constituents, which is stated rather than passed off as the official index return.
-  // The quote pill must never hold the page. The tape is cached from boot in most sessions; when it
-  // is missing, the page paints now and the pill fills in — waiting here is what left the previous
-  // market's screen (TOPIX) sitting on screen after a switch to the US.
-  const quoteFrom = (items) => {
-    const spx = (items || []).find((x) => x.label === 'S&P 500');
-    if (!spx || (spx.price == null && spx.last == null)) return '<span class="dimtext">index quote unavailable</span>';
-    const px = Number(spx.price != null ? spx.price : spx.last).toLocaleString('en-US', { maximumFractionDigits: 2 });
-    return `<span class="jp-market-lvl">${px}</span>${spx.pct != null ? `<span class="${spx.pct >= 0 ? 'pos' : 'neg'}">${chg(spx.pct)} today</span>` : ''}`;
+  // The index pill reads the same series the chart below draws, never a different benchmark.
+  // It fills when the series lands, so a slow Yahoo call cannot hold the page.
+  const uniName = cohort.label;
+  const paintUsQuote = () => {
+    const q = $('us-mkt-quote');
+    if (!q) return;
+    const closes = (usMktSeries && usMktSeries.closes) || [];
+    const n = closes.length;
+    if (!n) { q.innerHTML = '<span class="dimtext">index quote unavailable</span>'; return; }
+    const px = Number(closes[n - 1]).toLocaleString('en-US', { maximumFractionDigits: 2 });
+    const pct = n > 1 && closes[n - 2] ? ((closes[n - 1] - closes[n - 2]) / closes[n - 2]) * 100 : null;
+    q.innerHTML = `<span class="jp-market-lvl">${px}</span>${pct != null ? `<span class="${pct >= 0 ? 'pos' : 'neg'}">${chg(pct)} today</span>` : ''}`;
   };
 
+  const cohortBar = `<div class="jp-presets" id="us-mkt-cohorts">${US_COHORTS.map((x) => `<button type="button" data-uscohort="${x.id}" class="${x.id === usMktCohort ? 'on' : ''}">${x.label}</button>`).join('')}</div>`;
   el.innerHTML = usViewsBar()
-    + `<div class="jp-market-head"><span class="ph-t">S&amp;P 500</span>
-        <span id="us-mkt-quote">${macroTickers ? quoteFrom(macroTickers) : ''}</span>
+    + cohortBar
+    + `<div class="jp-market-head"><span class="ph-t">${esc(uniName)}</span>
+        <span id="us-mkt-quote"></span>
         <span class="dimtext">${uniq.length} companies · aggregates computed from the constituent set</span></div>`
     + `<div class="co-stats co-stats-12">
         ${cell('TOTAL MARKET CAP', coMoney(totalCap), 'Sum of every constituent, share classes excluded')}
@@ -8629,7 +8657,7 @@ async function renderUsMarket(el, all, token = renderSeq) {
         ${cell('MEDIAN ROE', median(uniq.map((c) => c.roe)) != null ? `${median(uniq.map((c) => c.roe)).toFixed(1)}%` : '—', 'Trailing twelve months, median')}
         ${cell('MEDIAN YIELD', median(uniq.map((c) => c.dividendYield)) != null ? `${median(uniq.map((c) => c.dividendYield)).toFixed(2)}%` : '—', 'Median dividend yield')}
         ${cell('BELOW BOOK', String(belowBook), 'Companies trading under 1× book value')}
-        ${cell('INDEX P/E', v.pe != null ? `${v.pe.toFixed(1)}×` : '—', 'Cap-weighted: Σ market cap ÷ Σ trailing earnings', '')}
+        ${cell('INDEX P/E', cohPe != null ? `${cohPe.toFixed(1)}×` : '—', 'Cap-weighted: Σ market cap ÷ Σ trailing earnings for this cohort', '')}
       </div>`
     + breadth
     + `<div class="co-rets" id="us-mkt-rets"></div>`
@@ -8643,60 +8671,68 @@ async function renderUsMarket(el, all, token = renderSeq) {
         <span>${x.yield != null ? x.yield.toFixed(2) + '%' : '—'}</span>
         <span class="${(x.chgYtd || 0) >= 0 ? 'pos' : 'neg'}">${chg(x.chgYtd)}</span>
       </div>`).join('')
-    + `<div class="macro-note">Constituent medians are equal-weighted; the index P/E is cap-weighted and comes from the annual filings. ${v.percentile != null ? `The index sits at the ${v.percentile}th percentile of ${v.min}–${v.max} over the last ${(v.years || []).length} years.` : ''}</div>`;
-
-  // Fill the quote pill only if this screen is still the one on the page.
-  if (!macroTickers) {
-    jget('/api/macro-tickers', 900000).then((mt) => {
-      if (stale(token) || !el.isConnected) return;
-      const q = $('us-mkt-quote');
-      if (q && mt && mt.items) q.innerHTML = quoteFrom(mt.items);
-    }).catch(() => {});
-  }
+    + `<div class="macro-note">Constituent medians are equal-weighted; the index P/E is cap-weighted and comes from the annual filings. ${cohort.id === 'sp1500' && v.percentile != null ? `The index sits at the ${v.percentile}th percentile of ${v.min}–${v.max} over the last ${(v.years || []).length} years.` : ''} ${cohort.id === 'sp1500' ? 'The index line tracks the SPTM ETF, scaled to the S&amp;P 1500 level.' : `The index line is the ${esc(cohort.label)} index.`}</div>`;
 
   // The index's own price history, with the same window strip a company page carries.
   await drawUsMarketChart();
+  paintUsQuote();
 }
 
-// The S&P 500 chart on the market view: one long daily series feeds every window's return and every
-// line, so a range change is a local re-slice and never a request.
+// The MARKET chart follows the selected cohort: S&P 1500 (SPTM proxy), 500 (^GSPC), 400 (^SP400),
+// 600 (^SP600). One long daily series per cohort feeds every window's return and every line, so a
+// range change is a local re-slice and never a request.
+const usIndexLabel = () => companiesData?.universe?.name || 'S&P 500';
 let usMktRange = (() => { try { return localStorage.getItem('oilbasis.usMktRange') || '1y'; } catch { return '1y'; } })();
-let usMktSeries = null;    // { dates, closes } for ^GSPC, ten years daily/weekly
+let usMktSeries = null;    // { dates, closes } for the selected cohort's index
+let usMktSymbol = null;
 let usMktSeq = 0;          // invalidates a slow fetch if the screen is repainted
-let usMktFetch = null;     // the in-flight request, shared by the prefetch and the painter
+const usMktCache = new Map();    // symbol -> { dates, closes }
+const usMktPending = new Map();  // symbol -> in-flight promise
 // Start the index fetch before the market body is built, not after it. The chart sits below the
 // header and the sector table, so waiting until the DOM was ready left the request starting late on
 // a cold instance; this overlaps it with the render, and jget de-dupes the second caller.
-function prefetchUsMarketChart() {
-  if (usMktSeries) return Promise.resolve(usMktSeries);
-  if (usMktFetch) return usMktFetch;
-  usMktFetch = jget('/api/company-chart?ticker=%5EGSPC&range=10y&interval=1d', 900000)
+function prefetchUsMarketChart(symbol = usCohort().index) {
+  if (usMktCache.has(symbol)) {
+    const s = usMktCache.get(symbol);
+    if (symbol === usCohort().index) { usMktSeries = s; usMktSymbol = symbol; }
+    return Promise.resolve(s);
+  }
+  if (usMktPending.has(symbol)) return usMktPending.get(symbol);
+  const p = jget(`/api/company-chart?ticker=${encodeURIComponent(symbol)}&range=10y&interval=1d`, 900000)
     .then((long) => {
-      if (long && long.dates && long.dates.length > 1) usMktSeries = { dates: long.dates, closes: long.closes };
-      return usMktSeries;
+      const s = long && long.dates && long.dates.length > 1 ? { dates: long.dates, closes: long.closes } : null;
+      if (s) usMktCache.set(symbol, s); else usMktCache.delete(symbol);
+      if (symbol === usCohort().index) { usMktSeries = s; usMktSymbol = s ? symbol : null; }
+      return s;
     })
     .catch(() => null)
-    .finally(() => { usMktFetch = null; });
-  return usMktFetch;
+    .finally(() => { usMktPending.delete(symbol); });
+  usMktPending.set(symbol, p);
+  return p;
 }
 function redrawUsIndex(range = usMktRange) {
   if (!usMktSeries) return false;
-  usMktRange = drawMarketIndexChart('us-mkt', usMktSeries, range, 'usmkt', 'S&P 500');
+  usMktRange = drawMarketIndexChart('us-mkt', usMktSeries, range, 'usmkt', usCohort().label);
   return true;
 }
 async function drawUsMarketChart() {
   const canvas = $('us-mkt-chart');
   if (!canvas) return;
+  const sym = usCohort().index;
+  if (usMktSymbol !== sym) {
+    usMktSeries = usMktCache.get(sym) || null;
+    usMktSymbol = usMktSeries ? sym : null;
+  }
   // Already fetched once this session: redraw in place, keeping the chart instance (and its
   // animation) instead of blanking the frame and going back to the network.
   if (redrawUsIndex()) return;
   const seq = ++usMktSeq;
   const wrap = canvas.parentElement;
-  if (!usMktSeries && wrap) wrap.setAttribute('data-empty', 'Loading the S&P 500…');
-  const long = await prefetchUsMarketChart();
+  if (!usMktSeries && wrap) wrap.setAttribute('data-empty', `Loading the ${usCohort().label}…`);
+  const long = await prefetchUsMarketChart(sym);
   if (seq !== usMktSeq || !canvas.isConnected) return;
   if (!long || !long.dates || long.dates.length < 2) {
-    if (wrap) wrap.setAttribute('data-empty', 'No S&P 500 history available right now.');
+    if (wrap) wrap.setAttribute('data-empty', `No ${usCohort().label} history available right now.`);
     return;
   }
   if (wrap) wrap.removeAttribute('data-empty');
@@ -8748,7 +8784,7 @@ function renderUsMag7(el, all, themes = usThemesList()) {
   const chg = (x) => (x == null ? '—' : `${x >= 0 ? '+' : ''}${x.toFixed(1)}%`);
   el.innerHTML = usViewsBar()
     + usPresetsHtml(themes, 'mag7')
-    + `<div class="jp-market-head"><span class="ph-t">MAG 7</span><span class="jp-market-lvl">${weight.toFixed(1)}%</span><span class="dimtext">of the S&amp;P 500 by weight · ${coMoney(cap)} of ${coMoney(totalCap)}</span></div>`
+    + `<div class="jp-market-head"><span class="ph-t">MAG 7</span><span class="jp-market-lvl">${weight.toFixed(1)}%</span><span class="dimtext">of the ${esc(usIndexLabel())} by weight · ${coMoney(cap)} of ${coMoney(totalCap)}</span></div>`
     + `<div class="co-hrow jp-bank-hrow"><span>#</span><span>COMPANY</span><span>WEIGHT</span><span>CAP</span><span>1D</span><span>YTD</span><span>P/E</span><span>MARGIN</span></div>`
     + rows.map((c, i) => `<button class="jp-bank-row" data-cik="${esc(c.cik)}">
         <span>${i + 1}</span>
@@ -8760,7 +8796,7 @@ function renderUsMag7(el, all, themes = usThemesList()) {
         <span>${c.pe != null ? c.pe.toFixed(1) : '—'}</span>
         <span>${coMargin(c) != null ? coMargin(c).toFixed(1) + '%' : '—'}</span>
       </button>`).join('')
-    + `<div class="macro-note">Weight is the SPDR SPY holding weight, so it is the index's own number rather than a derivation. Seven companies at ${weight.toFixed(1)}% of the index means the other 496 share the remaining ${(100 - weight).toFixed(1)}%.</div>`;
+    + `<div class="macro-note">Weight is the SPDR SPTM holding weight, so it is the index's own number rather than a derivation. Seven companies at ${weight.toFixed(1)}% of the index means the other ${Math.max(0, uniq.length - rows.length)} share the remaining ${(100 - weight).toFixed(1)}%.</div>`;
 }
 
 // The list payload is a projection; the full record (series, quarters, description, verification) is
@@ -8794,7 +8830,7 @@ async function renderCompanyPageBody(el, c, all) {
   const dsp = (f) => (vfields[f]
     ? ` <em class="co-dispute" title="SEC ${coMoney(vfields[f].ours)} · Nasdaq ${coMoney(vfields[f].alt)} (${Math.round(vfields[f].diff * 100)}% apart)">≠</em>`
     : '');
-  const vtext = c.noFilings ? 'NEW LISTING · NO ANNUAL REPORT YET (FORM 10 FILED)'
+  const vtext = c.noFilings ? (c.noFilingsReason || 'no annual report in EDGAR yet').toUpperCase()
     : ver.status === 'verified' && ver.method === 'filing-index'
       ? `✓ VERIFIED · ${ver.checked} FIELDS RE-DERIVED FROM THE FILING INDEX`
       : ver.status === 'verified' ? `✓ CROSS-CHECKED · ${ver.checked} FIELDS VS NASDAQ`
@@ -8805,7 +8841,8 @@ async function renderCompanyPageBody(el, c, all) {
   const series = (c.series || []).slice().sort((a, b) => a.fy - b.fy);
   const val = (v) => coMoney(v);
 
-  el.innerHTML = `<div class="ma-crumb"><button class="ma-back" data-coback="1"><span class="ma-back-i" aria-hidden="true">←</span>COMPANIES</button> <span>${esc(c.ticker || c.name)}</span><span class="mb-tag">S&amp;P 500</span></div>`
+  const tierLabel = { sp500: 'S&P 500', sp400: 'S&P 400', sp600: 'S&P 600' }[c.spTier] || usIndexLabel();
+  el.innerHTML = `<div class="ma-crumb"><button class="ma-back" data-coback="1"><span class="ma-back-i" aria-hidden="true">←</span>COMPANIES</button> <span>${esc(c.ticker || c.name)}</span><span class="mb-tag">${esc(tierLabel)}</span></div>`
     + `<div class="co-head">
         ${coMono(c)}
         <div><div class="co-name">${esc(c.name)}</div>
@@ -9004,6 +9041,18 @@ document.addEventListener('click', (e) => {
     loadCoChart(coTicker, coRange, coCompare);
     return;
   }
+  // Switch the MARKET view between the S&P 1500 and its size cohorts. The chart series is cached per
+  // index, so going back to a cohort already viewed is instant.
+  const uc = e.target.closest('[data-uscohort]');
+  if (uc) {
+    usMktCohort = uc.dataset.uscohort;
+    try { localStorage.setItem('oilbasis.usMktCohort', usMktCohort); } catch {}
+    const sym = usCohort().index;
+    usMktSeries = usMktCache.get(sym) || null;
+    usMktSymbol = usMktSeries ? sym : null;
+    renderCompanies();
+    return;
+  }
   // The index strips on the market views work the same way: a window is a redraw, not a page change.
   const um = e.target.closest('[data-usmkt]');
   if (um) {
@@ -9041,7 +9090,7 @@ document.addEventListener('click', (e) => {
     // Drop the old market's screen on the spot. The US render waits for data before it paints, and
     // until this the previous screen (often Japan's TOPIX view) was still the thing on the page.
     const body = $('co-body');
-    if (body) body.innerHTML = stLoading(coRegion === 'jp' ? 'Loading Japan…' : coRegion === 'kr' ? 'Loading KOSPI…' : coRegion === 'tw' ? 'Loading TAIEX…' : coRegion === 'hk' ? 'Loading the Hang Seng…' : coRegion === 'au' ? 'Loading the ASX 200…' : coRegion === 'in' ? 'Loading the NIFTY 500…' : coRegion === 'id' ? 'Loading the IDX…' : coRegion === 'br' ? 'Loading the Ibovespa…' : 'Loading the S&P 500…');
+    if (body) body.innerHTML = stLoading(coRegion === 'jp' ? 'Loading Japan…' : coRegion === 'kr' ? 'Loading KOSPI…' : coRegion === 'tw' ? 'Loading TAIEX…' : coRegion === 'hk' ? 'Loading the Hang Seng…' : coRegion === 'au' ? 'Loading the ASX 200…' : coRegion === 'in' ? 'Loading the NIFTY 500…' : coRegion === 'id' ? 'Loading the IDX…' : coRegion === 'br' ? 'Loading the Ibovespa…' : `Loading the ${usIndexLabel()}…`);
     renderCompanies();
     return;
   }

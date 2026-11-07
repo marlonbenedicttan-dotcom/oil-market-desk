@@ -2,7 +2,7 @@
 //
 // For each company, take the price at each fiscal-year end and divide by that year's EPS. That gives a
 // five-year P/E range and where today sits inside it. Summing market caps and earnings across the
-// universe gives the same for the S&P 500 itself.
+// universe gives the same for the index itself.
 //
 // Prices come from Nasdaq's own historical chart (one request per company, cached). Shares are today's,
 // so historical market caps are approximate — buybacks and issuance move the true count. That is stated

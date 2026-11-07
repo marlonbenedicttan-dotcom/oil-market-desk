@@ -123,6 +123,17 @@ for (const c of data.companies) {
   // (a gross figure or a subsidiary's obligation); showing it would imply impossible leverage.
   if (c.debt != null && c.assets != null && c.debt > c.assets) { c.debt = null; c.debtNA = true; }
 
+  // Current assets/liabilities cannot exceed total assets either. ADP and Paylocity report client
+  // funds on both sides at a different scope; the current ratio would be meaningless.
+  if (c.currentAssets != null && c.assets != null && c.currentAssets > c.assets) c.currentAssets = null;
+  if (c.currentLiabilities != null && c.assets != null && c.currentLiabilities > c.assets) c.currentLiabilities = null;
+
+  // Cash cannot exceed total assets. A filing sometimes mistags a comparative in thousands
+  // (Interparfums' 2024 10-K carried 159,613,000,000 for a 2021 balance), which would turn EV negative.
+  if (c.cash != null && (c.cash < 0 || (c.assets != null && c.cash > c.assets))) {
+    c.cash = null; c.cashEnd = null; c.cashTag = null;
+  }
+
   // EV needs net debt. When a company tags neither debt nor cash, EV would silently equal market cap,
   // so mark it rather than present a guess as a measurement.
   c.evApprox = c.debt == null && c.cash == null;

@@ -586,12 +586,12 @@ test('an out-of-range window falls back to one the series actually covers', () =
 
 test('the US market page paints before the index quote arrives', () => {
   const { ui, document } = loadApp();
-  ui.setCompanies({ valuation: {}, companies: [] });
+  ui.setCompanies({ valuation: {}, universe: { name: 'S&P 1500' }, companies: [] });
   const el = document.getElementById('co-body');
   ui.renderUsMarket(el, [], 0);
   // The quote request is still in flight (the stub fetch never settles); the page must already be
-  // the S&P 500 — not whatever market was on screen before the click.
-  assert.match(el.innerHTML, /S&amp;P 500/);
+  // the S&P 1500 — not whatever market was on screen before the click.
+  assert.match(el.innerHTML, /S&amp;P 1500/);
   assert.match(el.innerHTML, /id="us-mkt-quote"/);
 });
 

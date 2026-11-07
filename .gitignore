@@ -26,5 +26,8 @@ data/.doc-heads/
 
 # Concept-level XBRL responses cached by scripts/fill-gaps.mjs (rebuilt on demand)
 data/cache/
-# Raw SPY holdings download used by scripts/filter-sp500.mjs
+# Raw universe holdings downloads used by the US universe/tier scripts
+data/.sptm-holdings.xlsx
 data/.spy-holdings.xlsx
+data/.mdy-holdings.xlsx
+data/.spsm-holdings.xlsx

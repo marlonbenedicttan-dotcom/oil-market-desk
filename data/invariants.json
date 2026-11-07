@@ -1,82 +1,356 @@
 {
- "generated": "2026-11-03T11:55:04.946Z",
- "companies": 503,
- "total": 17,
+ "generated": "2026-11-07T17:54:20.282Z",
+ "companies": 1506,
+ "total": 83,
  "causes": {
   "EV/EBITDA above 100 (check D&A)": [
    {
     "ticker": "TSLA",
-    "detail": "349.1"
+    "detail": "274.4"
+   },
+   {
+    "ticker": "DOW",
+    "detail": "105.2"
    },
    {
     "ticker": "AMD",
-    "detail": "128.1"
+    "detail": "187.3"
    },
    {
-    "ticker": "PLTR",
-    "detail": "165.6"
+    "ticker": "VTRS",
+    "detail": "251.7"
+   },
+   {
+    "ticker": "APD",
+    "detail": "104.4"
    },
    {
     "ticker": "PANW",
-    "detail": "192.9"
+    "detail": "245.4"
    },
    {
-    "ticker": "GEV",
-    "detail": "108.9"
+    "ticker": "TTWO",
+    "detail": "429.5"
    },
    {
-    "ticker": "LITE",
-    "detail": "113.4"
+    "ticker": "RXO",
+    "detail": "133.1"
    },
    {
-    "ticker": "WAT",
-    "detail": "109.7"
+    "ticker": "HAS",
+    "detail": "101.1"
+   },
+   {
+    "ticker": "PLTR",
+    "detail": "267.3"
    },
    {
     "ticker": "P",
-    "detail": "109.7"
+    "detail": "124.7"
    },
    {
-    "ticker": "AXON",
-    "detail": "265"
+    "ticker": "TLN",
+    "detail": "110.2"
+   },
+   {
+    "ticker": "MSGK",
+    "detail": "239.8"
+   },
+   {
+    "ticker": "SMTC",
+    "detail": "137.6"
+   },
+   {
+    "ticker": "TENB",
+    "detail": "128.6"
+   },
+   {
+    "ticker": "ROG",
+    "detail": "212.2"
+   },
+   {
+    "ticker": "CORT",
+    "detail": "170.7"
+   },
+   {
+    "ticker": "KLIC",
+    "detail": "214.6"
+   },
+   {
+    "ticker": "LSCC",
+    "detail": "139"
+   },
+   {
+    "ticker": "LIF",
+    "detail": "104.8"
+   },
+   {
+    "ticker": "MXL",
+    "detail": "119.3"
+   },
+   {
+    "ticker": "LEU",
+    "detail": "309.3"
+   },
+   {
+    "ticker": "PI",
+    "detail": "378.5"
+   },
+   {
+    "ticker": "VCEL",
+    "detail": "119.4"
+   },
+   {
+    "ticker": "PDFS",
+    "detail": "162.2"
    }
   ],
   "P/E above 300 (check earnings)": [
    {
     "ticker": "TSLA",
-    "detail": "491.1"
+    "detail": "440"
    },
    {
-    "ticker": "PANW",
-    "detail": "975.4"
-   },
-   {
-    "ticker": "DDOG",
-    "detail": "475.7"
-   },
-   {
-    "ticker": "LYV",
-    "detail": "311.2"
-   },
-   {
-    "ticker": "DD",
-    "detail": "343.9"
+    "ticker": "MDT",
+    "detail": "302.8"
    },
    {
     "ticker": "GPC",
-    "detail": "536.9"
+    "detail": "545.3"
+   },
+   {
+    "ticker": "ED",
+    "detail": "327.3"
+   },
+   {
+    "ticker": "PANW",
+    "detail": "836.7"
+   },
+   {
+    "ticker": "DD",
+    "detail": "353.1"
+   },
+   {
+    "ticker": "AIT",
+    "detail": "1033.7"
+   },
+   {
+    "ticker": "DDOG",
+    "detail": "364"
+   },
+   {
+    "ticker": "CHE",
+    "detail": "394"
+   },
+   {
+    "ticker": "SCL",
+    "detail": "352.4"
+   },
+   {
+    "ticker": "CWST",
+    "detail": "1095.7"
+   },
+   {
+    "ticker": "VNO",
+    "detail": "1158.5"
+   },
+   {
+    "ticker": "HAE",
+    "detail": "814.6"
+   },
+   {
+    "ticker": "XHR",
+    "detail": "588.6"
+   },
+   {
+    "ticker": "CUZ",
+    "detail": "328.4"
+   },
+   {
+    "ticker": "ICHR",
+    "detail": "331"
+   },
+   {
+    "ticker": "WRBY",
+    "detail": "421.5"
+   },
+   {
+    "ticker": "LSCC",
+    "detail": "333.9"
+   },
+   {
+    "ticker": "SITM",
+    "detail": "473.8"
+   },
+   {
+    "ticker": "AXTI",
+    "detail": "657.6"
+   }
+  ],
+  "missing: netIncome (no after-tax net income tag)": [
+   {
+    "ticker": "MAN",
+    "detail": ""
+   },
+   {
+    "ticker": "HRI",
+    "detail": ""
+   },
+   {
+    "ticker": "ALHC",
+    "detail": ""
+   },
+   {
+    "ticker": "ICUI",
+    "detail": ""
+   },
+   {
+    "ticker": "STWD",
+    "detail": ""
+   },
+   {
+    "ticker": "KLIC",
+    "detail": ""
+   },
+   {
+    "ticker": "SAFE",
+    "detail": ""
+   },
+   {
+    "ticker": "CYTK",
+    "detail": ""
+   },
+   {
+    "ticker": "VIR",
+    "detail": ""
+   },
+   {
+    "ticker": "CPT",
+    "detail": ""
+   },
+   {
+    "ticker": "ROIV",
+    "detail": ""
+   },
+   {
+    "ticker": "SKT",
+    "detail": ""
+   },
+   {
+    "ticker": "NLY",
+    "detail": ""
+   },
+   {
+    "ticker": "AGNC",
+    "detail": ""
+   },
+   {
+    "ticker": "ARR",
+    "detail": ""
+   },
+   {
+    "ticker": "PMT",
+    "detail": ""
    }
   ],
   "no annual report yet (new listing)": [
    {
+    "ticker": "VGNT",
+    "detail": "Form 10 filed, no 10-K"
+   },
+   {
+    "ticker": "MFP",
+    "detail": "Form 10 filed, no 10-K"
+   },
+   {
+    "ticker": "HONA",
+    "detail": "Form 10 filed, no 10-K"
+   },
+   {
+    "ticker": "MBGL",
+    "detail": "Form 10 filed, no 10-K"
+   },
+   {
+    "ticker": "ADIG",
+    "detail": "Form 10 filed, no 10-K"
+   },
+   {
     "ticker": "VYLR",
     "detail": "Form 10 filed, no 10-K"
+   },
+   {
+    "ticker": "OZK",
+    "detail": "Form 10 filed, no 10-K"
+   },
+   {
+    "ticker": "MSGR",
+    "detail": "Form 10 filed, no 10-K"
+   },
+   {
+    "ticker": "PFBC",
+    "detail": "Form 10 filed, no 10-K"
+   }
+  ],
+  "revenue implausibly small vs assets": [
+   {
+    "ticker": "STWD",
+    "detail": "0.29B vs assets 63B"
+   },
+   {
+    "ticker": "ROIV",
+    "detail": "0.01B vs assets 6B"
+   },
+   {
+    "ticker": "AGNC",
+    "detail": "0.68B vs assets 115B"
+   },
+   {
+    "ticker": "ARR",
+    "detail": "0.16B vs assets 21B"
+   },
+   {
+    "ticker": "PMT",
+    "detail": "0.01B vs assets 21B"
+   }
+  ],
+  "free cash flow implausible vs revenue": [
+   {
+    "ticker": "CYTK",
+    "detail": "-0.5B vs 0.1B"
+   },
+   {
+    "ticker": "VIR",
+    "detail": "-0.4B vs 0.1B"
+   },
+   {
+    "ticker": "ROIV",
+    "detail": "-0.8B vs 0.0B"
+   },
+   {
+    "ticker": "EFC",
+    "detail": "-0.9B vs 0.2B"
+   }
+  ],
+  "missing: revenue (no consolidated revenue tag)": [
+   {
+    "ticker": "MTH",
+    "detail": ""
+   },
+   {
+    "ticker": "APA",
+    "detail": ""
    }
   ],
   "P/B above 100 (check equity)": [
    {
     "ticker": "LYV",
-    "detail": "154.7"
+    "detail": "152.2"
+   }
+  ],
+  "revenue looks like a component (profit > revenue)": [
+   {
+    "ticker": "TMP",
+    "detail": "0.08B vs NI 0.16B"
    }
   ]
  }

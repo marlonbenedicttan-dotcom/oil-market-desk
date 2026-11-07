@@ -3959,12 +3959,79 @@ Audited at 360, 390 and 430 px with screenshots of every view, then fixed what l
 - **No forward P/E, no free guidance feed**; the five-year record is the fiscal year and the trailing
   column is labelled TTM or FY on the company page.
 
+## US companies: S&P 500 → S&P 1500 (2026-11-07)
+
+The US COMPANIES tab was the narrowest of the eight markets — 503 S&P 500 securities while Japan
+covers 1,547 TSE Prime names, Korea all KOSPI, Taiwan all TWSE, Hong Kong the main board, the ASX
+1,650 and the IDX 912. The broad dataset already existed: `build-companies-frames.mjs` writes
+five-year financials for **8,328 SEC filers**, so the S&P 500 was a *filter*, not a rebuild.
+
+- **Universe**: S&P 1500, membership from **SPTM** (SPDR Portfolio S&P 1500 Composite) holdings — one
+  State Street file with the composite float-adjusted weights, so there is no SPY+MDY+SPSM
+  concatenation problem. **1,506 securities / 1,500 companies, 0 absent.**
+- **Six extra securities are second share classes** (GOOG, FOX, NWS, UA, CENTA, RUSHB), cloned from
+  the sibling's filings with their own Nasdaq price/cap, marked `shareClass` and excluded from totals.
+- **New scripts**: `us-universe.mjs` (shared SPTM parser, SEC ticker map, no-filing reason),
+  `filter-us-universe.mjs` (replaces `filter-sp500.mjs`) and `complete-us-universe.mjs` (replaces
+  `add-share-classes.mjs`). The old filenames are thin aliases, so an existing command still works.
+- **The weekly CI now restores the frames build.** It used to run only `filter-sp500.mjs` against the
+  committed 500-row file, so swapping the holdings source alone would have found nothing new. The job
+  now runs `build-companies-frames` → `filter-us-universe` → `fill-sic` → Nasdaq → `complete` →
+  weights → the existing fundamentals/description/valuation passes.
+- **Same bar for every new name**: ticker, CIK, sector, price and market cap on every row (the
+  universe audit is **0 issues**); SIC for peers and bank detection; a 10-K description or a Nasdaq
+  profile; the same calculation, reconciliation, arbitration and deep audits. Weights sum to
+  **99.729%** (the equity portion of SPTM; cash and the futures overlay are not constituents).
+- **Dual-class coverage**: the frames build picks one class per CIK, so the filter now lets a row
+  follow its CIK onto the index ticker (UA/UAA, BRK-A/BRK-B) instead of dropping five years of
+  filings; `complete` clones the remaining classes. This is why GOOG/FOX/NWS are not "missing".
+- **Four index members have no SEC XBRL** and are published as labelled `noFilings` rows, never
+  guessed: **OZK** and **PFBC** file their annual report with the FDIC under the bank exemption
+  (EDGAR has no 10-K), **VYLR** has a Form 10 but no 10-K yet, **MSGR** has quarterly reports only.
+  Each company page states the reason; the screener badges them `NO FILINGS`.
+- **Parser gotchas fixed**: SPTM's cash/money-market rows carry no ticker; the futures overlay
+  (`ESZ6`) has a negative weight; Pathward Financial's ticker is literally `CASH` (cash is never
+  filtered by ticker text); a restructured issuer can appear twice (NAVI) and is de-duplicated.
+- **Audit threshold**: the cap-vs-weight check moved from 10× to 50× because float-adjusted small
+  caps legitimately diverge further (Skydance 21×, Sphere 25×); 50× still catches a broken row.
+- **Verification**: `npm test` **483/483** · `audit-universe` **0 issues** · `audit-calculations` **0 mismatches,
+  0 out-of-range** · `audit-deep` **0 coherence issues** · `audit-markets` US **0 failures** (39 float /
+  second-class cap-vs-shares warnings) · descriptions **1,506/1,506**, 0 flagged. Reconciliation of the
+  1,004 new names: **925 match · 42 close · 13 diverge · 5 period-mismatch · 11 no Nasdaq data · 6
+  immaterial · 2 definition**. Verification: **1,469 verified · 9 disputed · 4 definition · 24 unchecked**.
+  Coverage: price/cap/sector/market cap **1,506/1,506**, revenue **1,495**, net income **1,481**, TTM
+  **1,485**, equity **1,503**, 4+ quarters **1,497**, 5-year P/E history **1,365**, chart series **1,502**,
+  `^SP1500` chart present.
+- **Known source gaps, disclosed not guessed**: MTH and APA do not tag an annual revenue line in the
+  facts feed (their quarterly revenue is present); CNK's latest `Assets` tag stops in 2022; SKT has no
+  10-K net-income tag (revenue is filled from lease income); PNFP's 2025 reorganisation gives it a
+  one-row five-year table while the headline and quarters are correct. The freshness warnings for
+  GEF/HUBG/SKYD are their latest 10-Ks on file (FY2024; GEF's latest EDGAR 10-K is 2024-12-23), not
+  rebuilt-stale data. BF-B/IBOC/TCBI carry a derived cap because Nasdaq's summary did not price them.
+
+## Company charts: 10Y is only offered where it exists (2026-11-07)
+
+The US company page has ten years of committed prices. The other markets hold about five, so
+their 10Y chip was a no-op: `coFitRange` saw five years of dates, fell back to 5Y and re-drew the same
+line while the chip stayed unlit. The chip is gone from every non-US company page — Japan, Korea,
+Taiwan, Hong Kong, Australia, India, Indonesia and Brazil; the US keeps it.
+
+- Those non-US range rows now stop at **1M / 3M / 6M / YTD / 1Y / 5Y**, matching the return strip
+  that already used `WINDOWS_5Y`.
+- A stored `10y` selection from an older visit is read as **5Y** by `coStoredRange`, so a returning
+  reader lands on the longest window the archive actually covers instead of a chart that never changes.
+- The market-index charts were already data-aware (`coWindowsFor` drops 10Y when the span is short), so
+  only the company pages needed the change. `app.js?v=300`.
+
+
+
 ## Brazil: B3, one class per issuer (2026-11-07)
 
 - **Universe**: the vendor's B3 exchange list (1,228 rows) → **788 BDRs** (codes ending 31–39) and **26
   FII/funds** excluded by type → 414 class lines → **311 issuer groups**. The build selects the class with
-  a statement page (PETR4 yes, PETR3 404; SANB11 yes, SANB4/3 404), largest class first. **303 companies**
-  after 4 stale statements and 4 without a defensible share count. Published cap **R$ 4.8T**.
+  a statement page (PETR4 yes, PETR3 404; SANB11 yes, SANB4/3 404), largest class first. **303 domestic
+  companies** after 4 stale statements and 4 without a defensible share count. Published domestic cap
+  **R$ 4.8T**; **11 LatAm BDRs** are added separately below (314 listed).
 - **Company cap, class price**: the vendor's cap is the **company total**, repeated on every class line.
   The selected class keeps that cap; the price is the class price; classes are never summed. The audit
   checks `marketCap = vendorCap`, not `price × class shares`. The company page says which class it is.
@@ -3989,6 +4056,7 @@ Audited at 360, 390 and 430 px with screenshots of every view, then fixed what l
   (restatements/YTD) as notes, not failures.
 - **Schedule**: `.github/workflows/brazil-daily.yml`, 21:40 UTC Mon–Fri (18:40 BRT), with the statement
   cache, `merge-history br`, `merge-series br`, the collapse guard, both audits and the commit.
+
 
 ## Brazil BDR lens: 11 curated LatAm/Brazil receipts (2026-11-08)
 
@@ -4030,6 +4098,7 @@ Audited at 360, 390 and 430 px with screenshots of every view, then fixed what l
   and themes. The Brazil data test covers the 303/29/332 split, the allowlist, the BDR currencies and
   the separate totals; the API test covers `ROXO34` and the list's BDR fields.
 
+
 ## DATA & METHODOLOGY covers the five newer markets (2026-11-08)
 
 - The on-site **DATA & METHODOLOGY** (`src/lib.js` `METHODOLOGY`, served at `/api/market.methodology`)
@@ -4043,3 +4112,19 @@ Audited at 360, 390 and 430 px with screenshots of every view, then fixed what l
   LatAm-only 11-BDR lens (US mega-caps stay in the US section; 777 other BDRs/FIIs excluded).
 - `tests/lib.test.js` now asserts every one of the nine company markets appears in both the company
   data and the limits.
+
+
+## All-markets audit + automatic updates (2026-11-08)
+
+- **`npm run audit:all`** now runs the whole set, not just the US: US calculations/deep/universe/
+  freshness/deals/invariants/reconcile/arbitrate/snapshot/themes, the US/JP/KR cross-market check,
+  Taiwan, Hong Kong, Australia, India, Indonesia (standard + deep), Brazil (standard + deep), the
+  refresh-collapse guards and `check-freshness`. It writes `data/audit-all-markets.json` and exits
+  non-zero on any failure.
+- **`scripts/audit-all-markets.mjs`** is the wrapper; the individual scripts stay the source of truth.
+- **Auto updates**: `companies-daily` refreshes US/JP/KR; `taiwan-daily`, `hongkong-daily`,
+  `australia-daily`, `india-daily`, `indonesia-daily` and `brazil-daily` refresh the other six.
+  **`markets-audit-daily.yml`** runs Tue–Sat 22:30 UTC, after the US/JP/KR and Brazil refreshes, and
+  commits the combined audit report.
+- `tests/workflows.test.js` asserts the scheduled all-markets audit exists and that the wrapper names
+  every market, including the Indonesia and Brazil deep audits.

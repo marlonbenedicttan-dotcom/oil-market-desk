@@ -12,12 +12,18 @@ import { readFileSync } from 'node:fs';
 const data = JSON.parse(readFileSync(new URL('../data/companies.json', import.meta.url), 'utf8'));
 const by = Object.fromEntries(data.companies.filter((c) => c.ticker).map((c) => [c.ticker, c]));
 
-test('universe is the S&P 500 securities file', () => {
-  // The weekly rebuild re-reads SPY's holdings, so the exact count moves by a name or two. Assert the
-  // shape of the universe rather than a hardcoded 503: a sudden drop or a duplicated CIK is the bug.
-  assert.ok(data.companies.length >= 495 && data.companies.length <= 510, `rows ${data.companies.length}`);
+test('universe is the S&P 1500 securities file', () => {
+  // Membership comes from SPTM's holdings, and it moves by a name or two between snapshots. Assert
+  // the accounting (kept + disclosed absent = members) rather than a hardcoded count: a silent drop
+  // or a duplicated CIK is the bug.
+  const u = data.universe || {};
+  assert.equal(u.name, 'S&P 1500');
+  const absent = Array.isArray(u.absent) ? u.absent.length : 0;
+  assert.equal(data.companies.length + absent, u.members, 'kept + disclosed absent must equal index members');
+  assert.ok(data.companies.length >= 1400, `rows ${data.companies.length}`);
   const ciks = new Set(data.companies.filter((c) => c.cik).map((c) => c.cik));
-  assert.ok(ciks.size >= 495 && ciks.size <= 510, `unique CIKs ${ciks.size}`);
+  assert.equal(ciks.size, u.companies, 'unique CIKs must match the declared company count');
+  assert.ok(ciks.size >= 1400, `unique CIKs ${ciks.size}`);
 });
 
 test('every row has the identity fields the UI needs', () => {
@@ -111,9 +117,13 @@ test('every description passes the quality gate', () => {
     assert.ok(!NOT_BUSINESS.test(d), `${c.ticker}: not about the business`);
     // The description has to identify the company, but "Lilly is a medicine company" names Eli Lilly
     // perfectly well. Accept any distinctive word from the name, not just the first.
-    const w = String(c.name || '').split(/\s+/)
+    const STOP = /^(the|and|company|holdings|group|corporation|incorporated|limited|inc|corp|co|plc|ltd)$/i;
+    let w = String(c.name || '').split(/\s+/)
       .map((x) => x.replace(/[.,]/g, '').toLowerCase())
-      .filter((x) => x.length > 3 && !/^(the|and|company|holdings|group|corporation|incorporated|limited)$/i.test(x));
+      .filter((x) => x.length >= 3 && !STOP.test(x));
+    // "HP Inc." has no 3-letter distinctive token; use the short name itself rather than failing a
+    // description that plainly starts "HP is a global technology leader".
+    if (!w.length) w = [String(c.name || '').split(/\s+/)[0].replace(/[.,]/g, '').toLowerCase()].filter((x) => x.length >= 2);
     if (w.length) {
       // Compare with punctuation removed: "P&G serves consumers…" names Procter & Gamble, and
       // "AMD (NASDAQ: AMD)…" names Advanced Micro Devices.
@@ -151,7 +161,9 @@ test('free cash flow is cash, not a second earnings figure', () => {
     if (c.fcf == null) continue;
     assert.ok(c.operatingCashFlow != null, `${c.ticker}: FCF without operating cash flow`);
     assert.ok(c.fcf <= c.operatingCashFlow + 1, `${c.ticker}: FCF above operating cash flow`);
-    if (c.revenue) assert.ok(Math.abs(c.fcf) <= c.revenue * 2, `${c.ticker}: FCF implausible vs revenue`);
+    // A negative FCF is cash burn, not a second earnings figure; a clinical-stage biotech can
+    // legitimately burn many times its revenue. The ratio guard is for positive FCF.
+    if (c.revenue && c.fcf > 0) assert.ok(c.fcf <= c.revenue * 2, `${c.ticker}: FCF implausible vs revenue`);
   }
   assert.ok(by.AAPL.fcf > 5e10, 'Apple free cash flow should exceed $50B');
 });
@@ -159,6 +171,11 @@ test('free cash flow is cash, not a second earnings figure', () => {
 test('a company without free cash flow still carries its own metrics', () => {
   for (const c of data.companies) {
     if (c.sector !== 'Financials') continue;
+    // A no-filing row has no statements to carry a metric by design.
+    if (c.noFilings) continue;
+    // ROE is undefined on negative book equity (Equitable Holdings carries negative AOCI equity);
+    // there is no honest financial metric to demand in that case.
+    if (c.equity != null && c.equity <= 0) continue;
     // Banks get tangible book / efficiency / margin; asset managers and exchanges may have none of
     // those, but every financial still has a return on equity.
     assert.ok(c.ptbv != null || c.efficiencyRatio != null || c.nim != null || c.roe != null,
@@ -233,7 +250,8 @@ test('the most recent eight quarters are complete where the company files eight'
     if (q.length < 8) return false;
     return q.slice(-8).filter((x) => x.revenue != null).length < 8;
   });
-  assert.ok(short.length <= 15, `${short.length} companies have an incomplete quarter series: ${short.slice(0, 8).map((c) => c.ticker).join(' ')}`);
+  assert.ok(short.length <= Math.max(15, Math.ceil(data.companies.length * 0.02)),
+    `${short.length} companies have an incomplete quarter series: ${short.slice(0, 8).map((c) => c.ticker).join(' ')}`);
 });
 
 test('a quarterly margin is present wherever revenue and operating income are', () => {

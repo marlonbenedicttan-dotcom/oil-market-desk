@@ -210,7 +210,7 @@ for (const c of todo) {
     end,
     revenue: revMap.get(end)?.val ?? null,
     netIncome: niMap.get(end)?.val ?? null,
-  }));
+  })).filter((x) => x.end && (x.revenue != null || x.netIncome != null));
 
   c.quarters = quarters;
   await new Promise((r) => setTimeout(r, 120));
