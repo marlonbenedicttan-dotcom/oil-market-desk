@@ -4029,3 +4029,17 @@ Audited at 360, 390 and 430 px with screenshots of every view, then fixed what l
   checks the engine fields, P/E/P/B/ROE, four-quarter TTM, returns, flags, market/BDR aggregates, list
   and themes. The Brazil data test covers the 303/29/332 split, the allowlist, the BDR currencies and
   the separate totals; the API test covers `ROXO34` and the list's BDR fields.
+
+## DATA & METHODOLOGY covers the five newer markets (2026-11-08)
+
+- The on-site **DATA & METHODOLOGY** (`src/lib.js` `METHODOLOGY`, served at `/api/market.methodology`)
+  now documents **Hong Kong, Australia, India, Indonesia and Brazil** alongside US/Japan/Korea/Taiwan:
+  universe, fundamentals, prices/FX, valuation history, descriptions and limits.
+- The source table adds **stockanalysis.com** (statements, profiles, current shares, yield) and
+  **Exchange files** (HKEX, ASX, NIFTY 500, IDX, B3); Yahoo now explicitly covers company prices too.
+- The limits spell out the five markets' scope: HKEX main board only (GEM excluded; HKD/CNY/USD
+  statements), ASX with CDIs and USD reporters, NIFTY 500 with the April–March fiscal year, IDX with
+  the reviewed 95-name prune and the 82-name HSC list, and B3 with one class per issuer plus the
+  LatAm-only 11-BDR lens (US mega-caps stay in the US section; 777 other BDRs/FIIs excluded).
+- `tests/lib.test.js` now asserts every one of the nine company markets appears in both the company
+  data and the limits.

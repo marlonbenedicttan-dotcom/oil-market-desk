@@ -413,6 +413,17 @@ test('corrMatrix is +1 for a series with itself and −1 for a mirrored one', ()
   assert.equal(m.a.b, -1);
 });
 
+test('METHODOLOGY documents all nine company markets', () => {
+  const text = METHODOLOGY.companies.map((c) => `${c.name} ${c.basis} ${c.note}`).join(' ');
+  for (const market of ['Hong Kong', 'Australia', 'India', 'Indonesia', 'Brazil']) {
+    assert.ok(new RegExp(market, 'i').test(text), `missing ${market} in the company data`);
+  }
+  const limits = METHODOLOGY.limits.join(' ');
+  for (const market of ['Hong Kong', 'Australia', 'India', 'Indonesia', 'Brazil']) {
+    assert.match(limits, new RegExp(market, 'i'), `missing ${market} in the limits`);
+  }
+});
+
 test('METHODOLOGY is complete — every source and score carries its labels', () => {
   assert.ok(Array.isArray(METHODOLOGY.sources) && METHODOLOGY.sources.length >= 6, 'expect a source list');
   for (const s of METHODOLOGY.sources) assert.ok(s.name && s.covers && s.freshness, `source incomplete: ${JSON.stringify(s)}`);

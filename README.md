@@ -53,13 +53,13 @@ Nine markets, same UI:
 
 | Market | Universe | Financials |
 |---|---|---|
-| 🇺🇸 United States | S&P 1500 — **large, mid and small cap** (SPTM holdings) | SEC XBRL, latest annual 10-K |
+| 🇺🇸 United States | S&P 1500 — **1,506 securities / 1,500 companies** (SPTM holdings) | SEC XBRL, latest annual 10-K |
 | 🇯🇵 Japan | TSE Prime — **1,547 companies** with a market cap | JPX / J-Quants, JPY |
 | 🇰🇷 Korea | KOSPI — **725 companies** | DART, KRW |
 | 🇹🇼 Taiwan | TWSE — **1,084 listed companies** | TWSE master + stockanalysis, TWD |
-| 🇭🇰 Hong Kong | HKEX main board — **1,930 companies** with a statement page | HKEX tape + stockanalysis, HKD/CNY/USD |
-| 🇦🇺 Australia | ASX — **1,650 companies** with a current share count | ASX CSV + stockanalysis, AUD/USD |
-| 🇮🇳 India | NIFTY 500 — **498 companies** | niftyindices CSV + stockanalysis (NSE), INR |
+| 🇭🇰 Hong Kong | HKEX main board — **1,918 companies** with a statement page | HKEX tape + stockanalysis, HKD/CNY/USD |
+| 🇦🇺 Australia | ASX — **1,652 companies** with a current share count | ASX CSV + stockanalysis, AUD/USD |
+| 🇮🇳 India | NIFTY 500 — **494 companies** | niftyindices CSV + stockanalysis (NSE), INR |
 | 🇮🇩 Indonesia | IDX — **810 companies** | stockanalysis IDX list + statements + vendor statistics (yield, float), IDR |
 | 🇧🇷 Brazil | B3 — **314 listed: 303 domestic + 11 LatAm BDRs** | B3 list + statements, one class per issuer, plus the underlying US/TSX filings for the LatAm BDR lens; BRL |
 
