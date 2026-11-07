@@ -7793,14 +7793,17 @@ function brUniverseNote(d) {
   const a = (d && d.audit) || {};
   const stale = Array.isArray(a.staleCodes) ? a.staleCodes : [];
   const noShares = Array.isArray(a.noShares) ? a.noShares : [];
+  const noClass = Array.isArray(a.noCoveredClass) ? a.noCoveredClass : [];
   const staleList = stale.map((x) => `<b>${esc(x.code)}</b> (${esc(x.end || '—')})`).join(' · ') || 'none';
   const noShareList = noShares.map((x) => `<b>${esc(x.code)}</b>`).join(' · ') || 'none';
+  const noClassList = noClass.map((x) => `<b>${esc(x.base || '')}</b>${x.codes && x.codes.length ? ` (${x.codes.map(esc).join(', ')})` : ''}`).join(' · ') || 'none';
   return `<div class="prune-note">
-    <div class="prune-head">WHAT'S EXCLUDED FROM THIS MARKET — ${a.excludedBdr ?? 0} BDRs · ${a.excludedFunds ?? 0} FII/funds · ${stale.length} stale · ${noShares.length} no share count</div>
+    <div class="prune-head">WHAT'S EXCLUDED FROM THIS MARKET — ${a.excludedBdr ?? 0} BDRs · ${a.excludedFunds ?? 0} FII/funds · ${stale.length} stale · ${noShares.length} no share count · ${noClass.length} no statement page</div>
     <p><b>BDRs and FIIs.</b> The exchange list carries foreign companies' depositary receipts (codes ending 31–39) and real-estate funds. Neither is a B3 operating company, so they are excluded by type, not by hand.</p>
     <p><b>One class per issuer.</b> The vendor covers one class (PETR4, not PETR3). The build keeps that class and the <b>company-total market cap</b>; the price is the class price and the share count is the class count.</p>
     <p><b>Stale (${stale.length}).</b> No statement for more than 450 days: ${staleList}.</p>
     <p><b>No defensible share count (${noShares.length}).</b> ${noShareList}. Without a share count there is no market cap, so the name is recorded rather than estimated.</p>
+    <p><b>No covered statement page (${noClass.length}).</b> ${noClassList}. The vendor serves no financials for these classes.</p>
   </div>`;
 }
 
