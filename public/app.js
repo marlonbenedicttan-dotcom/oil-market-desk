@@ -7291,8 +7291,27 @@ function renderIndonesiaMarket(all, d) {
         <span>${x.yield != null ? x.yield.toFixed(2) + '%' : '—'}</span>
         <span class="${(x.chgYtd || 0) >= 0 ? 'pos' : 'neg'}">${chg(x.chgYtd)}</span>
       </div>`).join('')
-    + `<div class="macro-note">Aggregates computed from the ${all.length} covered IDX-listed constituents. Sectors are the eleven GICS sectors from the vendor profile (the exchange list carries no industry column). Prices are IDR; statements are in the issuer's report currency (${foreign}) and ratios are computed in that currency. Market cap uses the current share count from the vendor statistics page; the diluted filing count is still shown on the company page. Companies whose latest statement is older than 450 days are excluded and listed in the audit. IDX publishes no per-stock P/E here, so the Indonesia audit reports coverage plus a same-source sample.</div>`;
+    + `<div class="macro-note">Aggregates computed from the ${all.length} covered IDX-listed constituents. Sectors are the eleven GICS sectors from the vendor profile (the exchange list carries no industry column). Prices are IDR; statements are in the issuer's report currency (${foreign}) and ratios are computed in that currency. Market cap uses the current share count from the vendor statistics page; the diluted filing count is still shown on the company page. Companies whose latest statement is older than 450 days are excluded and listed in the audit. IDX publishes no per-stock P/E here, so the Indonesia audit reports coverage plus a same-source sample.</div>`
+    + idPruneSection(d);
   if (idx.series && idx.series.length > 1) redrawIndonesiaIndex();
+}
+
+// Why the published market is smaller than the exchange list. The reasoning stays visible at the bottom
+// of MARKET; the 45 reviewed names sit inside a collapsible so the section stays short. The two reviewed
+// exceptions are named, because "removed" without the exception reads as an automatic screen.
+function idPruneSection(d) {
+  const a = (d && d.audit) || {};
+  const stale = Array.isArray(a.staleCodes) ? a.staleCodes : [];
+  const pruned = Array.isArray(a.prunedCodes) ? a.prunedCodes : [];
+  if (!stale.length && !pruned.length) return '';
+  const staleList = stale.map((x) => `<b>${esc(x.code)}</b> (${esc(x.end || '—')})`).join(' · ');
+  const prunedList = pruned.map((x) => `<li><b>${esc(x.code)}</b> ${esc(x.name || '')} — ${esc(x.reason || 'reviewed removal')}</li>`).join('');
+  return `<div class="prune-note">
+    <div class="prune-head">WHAT'S EXCLUDED FROM THIS MARKET — ${stale.length} stale filers · ${pruned.length} reviewed removals</div>
+    <p><b>Stale filers (${stale.length}).</b> No statement for more than 450 days, so their "latest" result would be a year or more old. Excluded automatically by the 450-day rule: ${staleList}.</p>
+    <p><b>Reviewed removals (${pruned.length}).</b> Small lines whose numbers are not usable: negative equity (no P/B or ROE), an extreme P/E, no trailing column, a 402-day TTM, or an unresolved share count. This is a curated list, not an automatic screen — every name and reason is recorded, and a code must be reviewed again before it can return. <b>WSBP</b> (Waskita Beton Precast) and <b>CMPP</b> (AirAsia Indonesia) were on the review list and deliberately kept.</p>
+    <details><summary>Show the ${pruned.length} reviewed names</summary><ul class="prune-list">${prunedList}</ul></details>
+  </div>`;
 }
 
 function renderIndonesiaThemes(all, d) {

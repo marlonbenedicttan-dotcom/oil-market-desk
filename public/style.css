@@ -1607,3 +1607,13 @@ button.deal-sec-tile:hover { background: #10151b; }
 .chart-big em { font-style: normal; font-family: var(--mono); font-size: 11px; color: var(--faint); }
 .chart-wrap.lg { padding-top: 26px; }
 @media (max-width: 640px) { .chart-big b { font-size: 20px; } .chart-big em { display: none; } }
+
+/* Indonesia MARKET: why the published market is smaller than the exchange list. */
+.prune-note { border: 1px solid var(--line2); border-radius: 4px; margin: 12px 0; padding: 10px 12px; font-size: 12px; line-height: 1.55; color: var(--dim); }
+.prune-note .prune-head { color: var(--text); font-weight: 700; letter-spacing: .4px; margin-bottom: 6px; }
+.prune-note p { margin: 6px 0; }
+.prune-note b { color: var(--text); }
+.prune-note summary { cursor: pointer; color: var(--amber); margin-top: 6px; }
+.prune-note .prune-list { margin: 8px 0 0; padding-left: 18px; columns: 2; column-gap: 24px; }
+.prune-note .prune-list li { break-inside: avoid; margin: 2px 0; }
+@media (max-width: 640px) { .prune-note .prune-list { columns: 1; } }
