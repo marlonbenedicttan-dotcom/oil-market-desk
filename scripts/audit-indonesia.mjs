@@ -57,7 +57,10 @@ const stale = ind.companies.filter((c) => {
   return end && Number.isFinite(now) && (now - Date.parse(end)) / 864e5 > 450;
 });
 say('statements older than 450 days', stale.length);
-if (stale.length) warn.push(`${stale.length} companies ship a statement older than 450 days (${stale.slice(0, 5).map((c) => c.code).join(', ')})`);
+// The build excludes a delinquent filer rather than publish a two-year-old "latest" result. If one is
+// back in the file, the rule was bypassed — that is a hard failure, not a warning.
+if (stale.length) fails.push(`${stale.length} companies ship a statement older than 450 days (${stale.slice(0, 5).map((c) => c.code).join(', ')})`);
+say('stale statements excluded by the build', ind.audit && ind.audit.stale != null ? ind.audit.stale : '—');
 
 // --- formulas -------------------------------------------------------------------------------------
 const badCap = [];

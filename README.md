@@ -60,7 +60,7 @@ Eight markets, same UI:
 | 🇭🇰 Hong Kong | HKEX main board — **1,930 companies** with a statement page | HKEX tape + stockanalysis, HKD/CNY/USD |
 | 🇦🇺 Australia | ASX — **1,650 companies** with a current share count | ASX CSV + stockanalysis, AUD/USD |
 | 🇮🇳 India | NIFTY 500 — **498 companies** | niftyindices CSV + stockanalysis (NSE), INR |
-| 🇮🇩 Indonesia | IDX — **912 companies** | stockanalysis IDX list + statements, IDR |
+| 🇮🇩 Indonesia | IDX — **905 companies** | stockanalysis IDX list + statements, IDR |
 
 - Search, filter, compare, and chart any company.
 - **Valuation vs its own history** — P/E, P/B, EV/EBITDA percentiles over five years, plus sector aggregates.

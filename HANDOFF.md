@@ -3891,6 +3891,9 @@ Audited at 360, 390 and 430 px with screenshots of every view, then fixed what l
   `derive-listing` converts the rupiah cap before dividing by a dollar profit; the audit repeats the cross.
 - **A trailing column that is not trailing**: the same guard as India — an operating profit above its own
   revenue is two periods spliced together, so the company is excluded and named in `audit.brokenCodes`.
+- **Stale statements**: seven companies (BEBS, ZBRA, TELE, IPPE, SOUL, ALTO, TOPS) shipped a statement
+  older than 450 days and are excluded by the build (`audit.stale`), the same rule Hong Kong and Australia
+  use; the audit fails if one reappears. The published market is therefore **905 companies**.
 - **Build**: `npm run build:indonesia` — build → fetch profiles → rebuild from cache. `--limit=30` is the
   smoke test; `--codes=BBCA,TLKM` builds named companies; `--skip-prices` / `--skip-fin` reuse the caches;
   `--prices-only` warms Yahoo. Caches: `data/cache/idx/{yahoo,profiles}` and `data/cache/indonesia-sa`.

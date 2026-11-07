@@ -101,8 +101,10 @@ t('the index is dated, ordered and positive', () => {
 t('the list projection carries the fields the Indonesia filters read', () => {
   const fields = FILTER_FIELDS.id;
   assert.ok(Array.isArray(fields) && fields.length);
-  const sample = list.companies[0];
-  for (const f of fields) assert.ok(f in sample, `projection is missing ${f}`);
+  // A field survives projection when at least one company ships it. `brands` is intentionally absent
+  // from companies that have none (attach-market-brands deletes the empty key), so asserting it on
+  // companies[0] — a bank with no consumer brand — would fail for the wrong reason.
+  for (const f of fields) assert.ok(list.companies.some((c) => f in c), `projection is missing ${f}`);
   assert.equal(list.companies.length, ind.companies.length);
 });
 

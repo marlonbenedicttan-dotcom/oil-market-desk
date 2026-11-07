@@ -360,10 +360,21 @@ if (!SKIP_FIN) {
   });
   console.log(`  ${universe.length - miss} with statements · ${miss} missing`);
 } else {
-  const prevBy = new Map(((readJson(OUT) || {}).companies || []).map((c) => [c.code, c]));
+  const prevDoc = readJson(OUT) || {};
+  const prevBy = new Map((prevDoc.companies || []).map((c) => [c.code, c]));
+  // The first pass named the delinquent filers. Carry that verdict into the reuse pass, so a company
+  // that is absent because it was excluded as stale is still counted as stale (not as a new listing).
+  const prevStale = new Set(((prevDoc.audit && prevDoc.audit.staleCodes) || []).map((x) => x.code));
   for (const c of universe) {
     const p = prevBy.get(c.code);
-    if (!p) continue;
+    // A company absent from the previous file was never fetched in this pass. Re-adding it with empty
+    // reports would put a statement-less shell back into the market (and undo the stale exclusion);
+    // leave it out and let the next full run fetch it.
+    if (!p) {
+      if (prevStale.has(c.code)) c.stale = true;
+      else c.noPrev = true;
+      continue;
+    }
     c.ttm = (p.reports && p.reports.ttm) || null;
     c.latest = (p.reports && p.reports.latest) || {};
     c.annual = (p.reports && p.reports.annual) || [];
@@ -389,6 +400,23 @@ const broken = universe.filter((c) => {
 for (const c of broken) c.broken = true;
 if (broken.length) console.log(`  ${broken.length} companies with an inconsistent trailing column — excluded`);
 
+// --- stale statements -----------------------------------------------------------------------------
+// A statement older than 450 days is not "the latest result"; it is a delinquent filer (or a dead
+// shell). The window allows a non-December year-end whose next report is not due yet, but excludes a
+// company that has missed a whole reporting year. Same rule as Hong Kong and Australia, and the audit
+// re-checks it so a stale name can never re-enter unnoticed.
+const STALE_DAYS = 450;
+const SESSION_DATE = universe.map((c) => c.priceDate).filter(Boolean).sort().pop() || iso(Date.now());
+const stale = universe.filter((c) => {
+  // A company carried as stale from the previous pass stays stale even though its reports were not
+  // re-read here (the --skip-fin pass has no statement dates for it).
+  if (c.stale) return true;
+  const end = c.ttmEnd || c.latestEnd || (c.annual && c.annual.length ? c.annual[c.annual.length - 1].end : null);
+  return end && (Date.parse(SESSION_DATE) - Date.parse(end)) / DAY > STALE_DAYS;
+});
+for (const c of stale) c.stale = true;
+if (stale.length) console.log(`  ${stale.length} companies with statements older than ${STALE_DAYS} days — excluded`);
+
 // A company without a statement page has no share count, so it cannot have a market cap. A company
 // without a Yahoo price cannot have a cap either. Both are counted and named, never estimated.
 //
@@ -397,10 +425,14 @@ if (broken.length) console.log(`  ${broken.length} companies with an inconsisten
 // still capitalisable — it must be kept rather than dropped before the current-share file is applied.
 const SHARES = (readJson(join(ROOT, 'data', 'indonesia-shares.json')) || {}).entries || {};
 const hasShares = (c) => c.shares > 0 || (SHARES[c.code] && SHARES[c.code].shares > 0);
+// A record with a current share count but no statement is a shell: it has no profit, revenue or book
+// value to publish. The full build fetches all four pages; the --skip-fin second pass only reuses what
+// the first pass already read, so a company it never saw must not re-enter the market empty.
+const hasStatements = (c) => !!((c.ttm && (c.ttm.netIncome != null || c.ttm.revenue != null)) || (c.annual && c.annual.length));
 const throttled = universe.filter((c) => c.throttled);
-const covered = universe.filter((c) => hasShares(c) && c.price > 0 && !c.broken);
-const dropped = universe.filter((c) => !hasShares(c) && !c.throttled && !c.broken).map((c) => ({ code: c.code, name: c.name }));
-const noPrice = universe.filter((c) => hasShares(c) && !(c.price > 0)).map((c) => ({ code: c.code, name: c.name }));
+const covered = universe.filter((c) => !c.noPrev && hasStatements(c) && hasShares(c) && c.price > 0 && !c.broken && !c.stale);
+const dropped = universe.filter((c) => !c.throttled && !c.broken && !c.stale && !c.noPrev && !hasStatements(c)).map((c) => ({ code: c.code, name: c.name }));
+const noPrice = universe.filter((c) => !c.throttled && !c.broken && !c.stale && !c.noPrev && hasStatements(c) && hasShares(c) && !(c.price > 0)).map((c) => ({ code: c.code, name: c.name }));
 if (dropped.length) console.log(`  ${dropped.length} listed companies without a statement page (no shares, no cap)`);
 if (noPrice.length) console.log(`  ${noPrice.length} companies without a price (no cap; excluded rather than estimated)`);
 if (throttled.length) console.log(`  ${throttled.length} companies throttled this run — rerun the build to fill them (nothing was cached as missing)`);
@@ -617,6 +649,8 @@ const audit = {
   throttled: throttled.length,
   broken: broken.length,
   brokenCodes: broken.map((c) => ({ code: c.code, name: c.name })),
+  stale: stale.length,
+  staleCodes: stale.map((c) => ({ code: c.code, name: c.name, end: c.ttmEnd || c.latestEnd || null })),
   dropped: dropped.slice(0, 40),
   sectors: market.sectors.length,
   resolvedFromProfile: cleaned.filter((c) => c.sectorSource === 'profile-gics-sector').length,
