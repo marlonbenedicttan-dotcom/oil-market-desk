@@ -7972,9 +7972,9 @@ async function renderBrazilPage(stub) {
   const sign = (v) => (v == null ? '' : v >= 0 ? 'pos' : 'neg');
   el.innerHTML = `<div class="ma-crumb"><button class="ma-back" data-brback="1"><span class="ma-back-i" aria-hidden="true">←</span>COMPANIES</button> <span>${esc(c.ticker)}</span><span class="mb-tag">BRAZIL</span></div>`
     + brQualityBanners(c)
-    + (c.bdr ? `<div class="quality-banner bdr">BDR · ${esc(c.bdrUnderlying || '')} · global company cap ${brMoney(c.marketCap)}; the price is the BDR line; ratios are company-level in ${ccy}; no per-BDR P/E band. ` : '')
+    + (c.bdr ? `<div class="quality-banner info">BDR · ${esc(c.bdrUnderlying || '')} · global company cap ${brMoney(c.marketCap)}; the price is the BDR line; ratios are company-level in ${ccy}; no per-BDR P/E band.</div>` : '')
     + `<div class="co-head">${brMono(c)}<div><div class="co-name">${esc(brName(c))}</div>
-        <div class="co-sub">${esc(c.ticker)} · ${c.bdr ? '<span class="bdr-tag">BDR</span>' : esc(c.shareClass || '')} · B3-listed${c.name && c.name !== brName(c) ? ' · ' + esc(c.name) : ''}${c.industry ? ' · ' + esc(c.industry) : ''}</div>
+        <div class="co-sub">${esc(c.ticker)} · ${esc(c.shareClass || '')} · B3-listed${c.name && c.name !== brName(c) ? ' · ' + esc(c.name) : ''}${c.industry ? ' · ' + esc(c.industry) : ''}</div>
         ${c.description ? `<div class="co-desc">${esc(c.description)}</div>` : ''}
         ${c.brands && c.brands.length ? `<div class="jp-brands">${c.brands.map((b) => `<span>${esc(b)}</span>`).join('')}</div>` : ''}</div></div>`
     + `<div class="co-price"><span class="co-price-v">${brPx(c.price)}</span>
