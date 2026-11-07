@@ -67,6 +67,7 @@ const PRESETS = {
     'HIGH ROE': (c) => (c.roe || 0) > 12,
     'CHEAP VS ITSELF': (c) => c.bands && c.bands.pe && c.bands.pe.percentile <= 20,
     'HIGH YIELD': (c) => (c.dividendYield || 0) >= 4,
+    'HSC FLAGGED': (c) => !!c.hsc,
   },
 };
 

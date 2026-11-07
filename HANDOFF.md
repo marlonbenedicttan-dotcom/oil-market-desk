@@ -3891,6 +3891,18 @@ Audited at 360, 390 and 430 px with screenshots of every view, then fixed what l
   `derive-listing` converts the rupiah cap before dividing by a dollar profit; the audit repeats the cross.
 - **A trailing column that is not trailing**: the same guard as India — an operating profit above its own
   revenue is two periods spliced together, so the company is excluded and named in `audit.brokenCodes`.
+- **Dividend yield**: the vendor statistics page (already fetched for the share count) now supplies the
+  primary yield, with the income statement's Dividend Per Share as the fallback and `dividendYieldBasis`
+  labelling which. Coverage is **452/905** (451 from the vendor page). Banks often print no DPS row, so
+  BBNI (11.0%), BYAN (3.36%) and TPIA (0.46%) were blank before this; they are now populated without a
+  currency guess.
+- **High Shareholding Concentration (HSC)**: `data/indonesia-hsc.json` pins IDX's official 15 July 2026
+  list of **51 companies** (sourced from the IDX announcement via idxchannel/Maybank; idx.co.id's own page
+  is a Cloudflare challenge here). The build attaches `c.hsc {asOf, source, rank}`, the list projection
+  carries it, the market view shows a warning, the screener has an **HSC FLAGGED** preset and a badge, and
+  the company page shows a banner. The audit warns when the snapshot is more than **120 days** old — IDX
+  reviews quarterly (Jan/Apr/Jul/Oct), so replace the file on the next review. **Do not use the vendor's
+  Float as a proxy**: it does not reproduce the official list (BREN reads 87% vs the official 97%).
 - **Stale statements**: seven companies (BEBS, ZBRA, TELE, IPPE, SOUL, ALTO, TOPS) shipped a statement
   older than 450 days and are excluded by the build (`audit.stale`), the same rule Hong Kong and Australia
   use; the audit fails if one reappears. The published market is therefore **905 companies**.

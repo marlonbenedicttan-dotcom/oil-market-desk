@@ -7275,6 +7275,12 @@ function renderIndonesiaMarket(all, d) {
         ${cell('UP THIS YEAR', String(m.upYtd ?? '—'), 'Companies with a positive year-to-date return')}
       </div>`
     + breadth
+    + (() => {
+        const hscList = all.filter((c) => c.hsc);
+        if (!hscList.length) return '';
+        const asOf = (hscList[0].hsc && hscList[0].hsc.asOf) || (d.audit && d.audit.hscAsOf);
+        return `<div class="hsc-warn" title="IDX High Shareholding Concentration (HSC)">⚠ <b>${hscList.length} companies</b> are on IDX's High Shareholding Concentration list${asOf ? ` (as of ${esc(asOf)})` : ''}. Ownership is concentrated enough that the traded free float is thin — a small volume can move the price, and these stocks are excluded from LQ45 / IDX30 / IDX80. Use the <b>HSC FLAGGED</b> preset in the screener to list them.</div>`;
+      })()
     + (idx.series && idx.series.length > 1 ? `<div class="co-rets" id="id-mkt-rets"></div><div class="co-chartwrap"><canvas id="id-mkt-chart"></canvas></div>` : '')
     + `<div class="co-hrow jp-mkt-hrow"><span>SECTOR</span><span>N</span><span>CAP</span><span>P/E</span><span>P/B</span><span>ROE</span><span>YIELD</span><span>YTD</span></div>`
     + (m.sectors || []).map((x) => `<div class="jp-mkt-row">
@@ -7319,6 +7325,7 @@ const ID_PRESETS = [
   { id: 'roe', label: 'HIGH ROE', test: (c) => (c.roe || 0) > 12 },
   { id: 'cheap', label: 'CHEAP VS ITSELF', test: (c) => c.bands && c.bands.pe && c.bands.pe.percentile <= 20 },
   { id: 'yield', label: 'HIGH YIELD', test: (c) => (c.dividendYield || 0) >= 4 },
+  { id: 'hsc', label: 'HSC FLAGGED', test: (c) => !!c.hsc },
 ];
 
 function renderIndonesiaScreener(all, d) {
@@ -7373,6 +7380,7 @@ function renderIndonesiaScreener(all, d) {
             <span class="co-px">${idPx(c.price)}</span>
             <em class="${(c.chg1d || 0) >= 0 ? 'pos' : 'neg'}">${c.chg1d == null ? '—' : `${c.chg1d >= 0 ? '+' : ''}${c.chg1d.toFixed(1)}%`}</em>
             <em class="${(c.chgYtd || 0) >= 0 ? 'pos' : 'neg'}">${c.chgYtd == null ? '—' : `${c.chgYtd >= 0 ? '+' : ''}${c.chgYtd.toFixed(1)}%`} YTD</em>
+            ${c.hsc ? `<span class="sc-flag warm" title="IDX High Shareholding Concentration — concentrated ownership, thin free float">HSC</span>` : ''}
           </span></span>
         <span class="co-cap">${idMoney(c.marketCap)}<i class="co-bar"><i style="width:${Math.max(2, ((c.marketCap || 0) / max) * 100)}%"></i></i></span>
         <span class="co-pe">${c.pe != null ? c.pe.toFixed(1) : '—'}</span>
@@ -7409,6 +7417,7 @@ async function renderIndonesiaPage(stub) {
   const stat = (key, label, value, title, cls = '') => (key && na.has(key) ? '' : cell(label, value, title, cls));
   const sign = (v) => (v == null ? '' : v >= 0 ? 'pos' : 'neg');
   el.innerHTML = `<div class="ma-crumb"><button class="ma-back" data-idback="1"><span class="ma-back-i" aria-hidden="true">←</span>COMPANIES</button> <span>${esc(c.ticker)}</span><span class="mb-tag">INDONESIA</span></div>`
+    + (c.hsc ? `<div class="hsc-banner" title="${esc(c.hsc.source || 'IDX High Shareholding Concentration')}">⚠ <b>HIGH SHAREHOLDING CONCENTRATION</b> — on IDX's HSC list${c.hsc.asOf ? ` as of ${esc(c.hsc.asOf)}` : ''}. Ownership is concentrated enough that the traded free float is thin: a small volume can move the price, and the stock is excluded from LQ45 / IDX30 / IDX80. This is a supervisory flag, not a valuation.</div>` : '')
     + `<div class="co-head">${idMono(c)}<div><div class="co-name">${esc(idName(c))}</div>
         <div class="co-sub">${esc(c.ticker)} · IDX-listed${c.name && c.name !== idName(c) ? ' · ' + esc(c.name) : ''}${c.industry ? ' · ' + esc(c.industry) : ''}</div>
         ${c.description ? `<div class="co-desc">${esc(c.description)}</div>` : ''}

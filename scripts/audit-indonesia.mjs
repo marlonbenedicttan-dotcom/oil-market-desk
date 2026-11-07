@@ -50,6 +50,13 @@ const noDesc = ind.companies.filter((c) => !c.description).length;
 say('descriptions', `${ind.companies.length - noDesc}/${ind.companies.length}`);
 if (noDesc) warn.push(`${noDesc} companies have no description`);
 
+// The vendor statistics page is the primary dividend-yield source (the income statement often has no
+// Dividend Per Share row for banks). A sudden collapse to the DPS-only coverage means the merge broke.
+const withYield = ind.companies.filter((c) => c.dividendYield != null).length;
+const vendorYield = (ind.audit && ind.audit.vendorYield) || 0;
+say('dividend yield coverage', `${withYield}/${ind.companies.length} (${Math.round((withYield / ind.companies.length) * 100)}% · ${vendorYield} from the vendor statistics page)`);
+if (withYield / ind.companies.length < 0.4) warn.push('dividend yield covers under 40% of the market — check the vendor-yield merge');
+
 // A statement older than 450 days means a whole reporting year was missed.
 const now = Date.parse(ind.session || ind.updated);
 const stale = ind.companies.filter((c) => {
@@ -139,6 +146,17 @@ const idx = ind.index || {};
 say('index', `${ind.indexName || 'IDX Composite'} ${idx.level ?? '—'} as of ${idx.date || '—'}`);
 if (!(idx.level > 0)) warn.push('index level missing');
 if (!Array.isArray(idx.series) || idx.series.length < 100) warn.push('index series is short');
+
+// --- HSC ------------------------------------------------------------------------------------------
+const hsc = ind.audit || {};
+const flagged = ind.companies.filter((c) => c.hsc).length;
+say('HSC flagged', `${flagged} companies · list as of ${hsc.hscAsOf || '—'}${hsc.hscAgeDays != null ? ` (${hsc.hscAgeDays} days)` : ''}`);
+if (flagged !== (hsc.hsc ?? flagged)) fails.push('HSC flag count does not match audit.hsc');
+if (!hsc.hscAsOf) warn.push('no HSC snapshot applied — the IDX concentration warning is missing');
+const badHsc = ind.companies.filter((c) => c.hsc && !c.hsc.asOf);
+if (badHsc.length) fails.push(`${badHsc.length} companies carry an HSC flag without an as-of date`);
+if (hsc.hscMissing && hsc.hscMissing.length) warn.push(`${hsc.hscMissing.length} HSC codes are not in the market: ${hsc.hscMissing.join(', ')}`);
+if (hsc.hscAgeDays != null && hsc.hscAgeDays > 120) warn.push(`the HSC list is ${hsc.hscAgeDays} days old — replace data/indonesia-hsc.json with the next quarterly IDX list`);
 
 // --- list projection ------------------------------------------------------------------------------
 say('list companies', list.companies.length);

@@ -551,6 +551,10 @@ footer li { margin-bottom: 2px; }
 .sc-flag.hot { color: var(--red); border-color: #5a2020; }
 .sc-flag.warm { color: var(--amber); border-color: #5c4a1d; }
 .sc-flag.cool { color: var(--blue); border-color: #1c3a5a; }
+.sc-flag.warm { color: var(--amber); border-color: #5c4a1d; }
+.hsc-warn, .hsc-banner { border: 1px solid #5c4a1d; background: rgba(255, 158, 0, .07); color: var(--amber); border-radius: 4px; padding: 8px 12px; margin: 10px 0; font-size: 12px; line-height: 1.55; }
+.hsc-banner { border-left: 3px solid var(--amber); }
+.hsc-warn b, .hsc-banner b { color: var(--amber); }
 .sc-note { padding: 8px 12px; }
 /* Screener filters — narrow the board by segment, and/or tick exactly which instruments show. */
 .sc-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; padding: 9px 12px; border-bottom: 1px solid var(--line); }

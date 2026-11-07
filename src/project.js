@@ -169,6 +169,7 @@ export const projectId = (c) => ({
   fcfYield: c.fcfYield ?? null,
   dividendYield: c.dividendYield ?? null,
   reportCurrency: c.reportCurrency || null,
+  hsc: c.hsc ? { asOf: c.hsc.asOf, rank: c.hsc.rank ?? null } : null,
   ...growthFields(c),
   bands: c.bands && c.bands.pe ? { pe: { percentile: c.bands.pe.percentile } } : null,
 });
@@ -214,5 +215,5 @@ export const FILTER_FIELDS = {
   hk: ['sector', 'marketCap', 'pe', 'pb', 'roe', 'dividendYield', 'bands', 'chgYtd', 'priceDate', 'brands'],
   au: ['sector', 'marketCap', 'pe', 'pb', 'roe', 'dividendYield', 'bands', 'chgYtd', 'priceDate', 'brands'],
   in: ['sector', 'marketCap', 'pe', 'pb', 'roe', 'dividendYield', 'bands', 'chgYtd', 'priceDate', 'brands'],
-  id: ['sector', 'marketCap', 'pe', 'pb', 'roe', 'dividendYield', 'bands', 'chgYtd', 'priceDate', 'brands'],
+  id: ['sector', 'marketCap', 'pe', 'pb', 'roe', 'dividendYield', 'bands', 'chgYtd', 'priceDate', 'brands', 'hsc'],
 };

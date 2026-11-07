@@ -445,6 +445,11 @@ if (throttled.length) console.log(`  ${throttled.length} companies throttled thi
 let currentShares = 0, impliedShares = 0;
 for (const c of covered) {
   const s = SHARES[c.code];
+  // The vendor's statistics page carries its own dividend yield, converted at the payment-date rate and
+  // using the count it considers current. Without this the yield existed only when the income statement
+  // happened to print a Dividend Per Share row — banks in particular often do not, so BBNI, BYAN and
+  // TPIA were blank despite paying a dividend. `deriveListing` prefers this over the DPS calculation.
+  if (s && Number.isFinite(s.yield) && s.yield >= 0 && s.yield < 30) c.vendorDividendYield = s.yield;
   c.sharesBasis = 'filing (diluted weighted average)';
   if (s && s.shares > 0) {
     c.sharesCurrent = s.shares;
@@ -571,6 +576,27 @@ for (const c of out) {
 }
 if (withheld) console.log(`  ${withheld} companies with a ratio outside the published range — withheld`);
 
+// --- 7d. IDX High Shareholding Concentration -----------------------------------------------------
+// IDX publishes a quarterly list of companies whose ownership is concentrated enough that the actively
+// traded free float is thin. It is a supervisory flag, not a valuation: the stock is excluded from
+// LQ45 / IDX30 / IDX80, and a small volume can move the price. The exchange's own page is a Cloudflare
+// challenge on this network, so the list is a pinned, dated snapshot (data/indonesia-hsc.json); the
+// audit warns when it ages past a quarterly cycle.
+const HSC = readJson(join(ROOT, 'data', 'indonesia-hsc.json')) || { entries: {} };
+const hscEntries = HSC.entries || {};
+const hscKnown = new Set(out.map((c) => c.code));
+let hscCount = 0;
+for (const c of out) {
+  const h = hscEntries[c.code];
+  if (!h) continue;
+  c.hsc = { asOf: HSC.asOf || null, source: HSC.source || null, rank: h.rank ?? null, name: h.name || null };
+  hscCount++;
+}
+const hscMissing = Object.keys(hscEntries).filter((code) => !hscKnown.has(code));
+const hscAgeDays = HSC.asOf ? Math.round((Date.parse(SESSION_DATE) - Date.parse(HSC.asOf)) / DAY) : null;
+if (hscCount) console.log(`  ${hscCount} companies on IDX's High Shareholding Concentration list (as of ${HSC.asOf})`);
+if (hscMissing.length) console.log(`  ${hscMissing.length} HSC codes are not in the built market: ${hscMissing.join(', ')}`);
+
 // --- 8. market aggregates + themes ----------------------------------------------------------------
 const median = (xs) => {
   const a = xs.filter((x) => x != null && Number.isFinite(x)).sort((x, y) => x - y);
@@ -657,6 +683,12 @@ const audit = {
   pe: cleaned.filter((c) => c.pe != null).length,
   pb: cleaned.filter((c) => c.pb != null).length,
   roe: cleaned.filter((c) => c.roe != null).length,
+  dividendYield: cleaned.filter((c) => c.dividendYield != null).length,
+  vendorYield: cleaned.filter((c) => c.dividendYieldBasis === 'vendor').length,
+  hsc: hscCount,
+  hscAsOf: HSC.asOf || null,
+  hscAgeDays,
+  hscMissing,
   currentShares: cleaned.filter((c) => c.sharesCurrent > 0).length,
   netProfitTTM: cleaned.filter((c) => c.netIncomeTTM != null).length,
   financials: cleaned.filter((c) => c.financial).length,

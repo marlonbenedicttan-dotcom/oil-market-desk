@@ -130,3 +130,32 @@ t('the universe snapshot agrees with the built market', () => {
   const present = snap.rows.filter((r) => built.has(r.code)).length;
   assert.ok(present / snap.rows.length > 0.9, `only ${present}/${snap.rows.length} snapshot names are in the build`);
 });
+
+t('dividend yield uses the vendor statistics page where the filing has no DPS', () => {
+  const withYield = ind.companies.filter((c) => c.dividendYield != null).length;
+  assert.ok(withYield / ind.companies.length >= 0.45,
+    `dividend yield covers only ${withYield}/${ind.companies.length}`);
+  assert.ok((ind.audit.vendorYield || 0) > 300, `only ${ind.audit.vendorYield} yields came from the vendor page`);
+  // Banks rarely print a Dividend Per Share row; the vendor page still carries the yield.
+  for (const code of ['BBNI', 'BYAN', 'TPIA']) {
+    const c = ind.companies.find((x) => x.code === code);
+    assert.ok(c && c.dividendYield > 0, `${code}: no dividend yield`);
+    assert.equal(c.dividendYieldBasis, 'vendor', `${code}: yield is not labelled as the vendor's`);
+  }
+});
+
+t('the IDX High Shareholding Concentration list is applied and dated', () => {
+  const hsc = ind.audit || {};
+  const flagged = ind.companies.filter((c) => c.hsc);
+  assert.equal(flagged.length, hsc.hsc, 'HSC flag count does not match audit.hsc');
+  assert.ok(flagged.length >= 40, `only ${flagged.length} HSC companies`);
+  assert.ok(flagged.every((c) => c.hsc.asOf), 'an HSC flag has no as-of date');
+  assert.deepEqual(hsc.hscMissing, [], 'HSC codes are missing from the market');
+  assert.ok(list.companies.some((c) => c.hsc), 'the list projection does not carry the HSC flag');
+  // The published list is 51 names; every one must be in the market and flagged.
+  const snap = read('indonesia-hsc.json');
+  for (const code of Object.keys(snap.entries)) {
+    const c = ind.companies.find((x) => x.code === code);
+    assert.ok(c && c.hsc, `${code} is on the HSC list but not flagged`);
+  }
+});
