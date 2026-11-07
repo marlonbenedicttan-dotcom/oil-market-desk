@@ -158,21 +158,34 @@ if (badHsc.length) fails.push(`${badHsc.length} companies carry an HSC flag with
 if (hsc.hscMissing && hsc.hscMissing.length) warn.push(`${hsc.hscMissing.length} HSC codes are not in the market: ${hsc.hscMissing.join(', ')}`);
 if (hsc.hscAgeDays != null && hsc.hscAgeDays > 120) warn.push(`the HSC list is ${hsc.hscAgeDays} days old — replace data/indonesia-hsc.json with the next quarterly IDX list`);
 
+// --- curated prune ---------------------------------------------------------------------------------
+const prune = read('indonesia-prune.json');
+const prunedCodes = Object.keys(prune.entries || {});
+const prunedPresent = prunedCodes.filter((code) => ind.companies.some((c) => c.code === code));
+say('pruned by decision', `${prunedCodes.length} · ${prunedPresent.length} still in the market`);
+if (prunedPresent.length) fails.push(`pruned companies are still in the market: ${prunedPresent.join(', ')}`);
+if ((ind.audit.pruned || 0) !== prunedCodes.length) fails.push('audit.pruned does not match the prune file');
+
 // --- list projection ------------------------------------------------------------------------------
 say('list companies', list.companies.length);
 if (list.companies.length !== ind.companies.length) fails.push('list projection length differs');
 if (JSON.stringify(list.market) !== JSON.stringify(ind.market)) fails.push('list market differs from the full file');
 
 // --- universe snapshot ----------------------------------------------------------------------------
-// The committed list is what a failed vendor fetch falls back to. If it disagrees with the built market
-// by more than a few names, the snapshot is stale and the next live run should replace it.
+// The committed list is what a failed vendor fetch falls back to. The built market is deliberately
+// smaller than the snapshot: stale filers and the reviewed prune are excluded, so compare against the
+// publishable set, not the raw row count.
 if (snap) {
-  say('universe snapshot rows', snap.count);
+  const prune = read('indonesia-prune.json');
+  const prunedSet = new Set(Object.keys(prune.entries || {}));
+  const staleSet = new Set((ind.audit.staleCodes || []).map((x) => x.code));
+  const expected = (snap.rows || []).filter((r) => !prunedSet.has(r.code) && !staleSet.has(r.code));
+  say('universe snapshot rows', `${snap.count} · ${prunedSet.size} pruned · ${staleSet.size} stale`);
   const built = new Set(ind.companies.map((c) => c.code));
-  const inSnap = (snap.rows || []).filter((r) => built.has(r.code)).length;
-  const share = snap.count ? inSnap / snap.count : 0;
-  say('snapshot names present in the build', `${inSnap}/${snap.count} (${(share * 100).toFixed(1)}%)`);
-  if (share < 0.95) warn.push('the committed universe snapshot disagrees with the built market — the next live run should replace it');
+  const present = expected.filter((r) => built.has(r.code)).length;
+  const missing = expected.filter((r) => !built.has(r.code));
+  say('publishable snapshot names in the build', `${present}/${expected.length}`);
+  if (missing.length) warn.push(`${missing.length} publishable snapshot names are missing from the build: ${missing.slice(0, 8).map((r) => r.code).join(', ')}`);
 } else {
   warn.push('no committed universe snapshot: a failed vendor fetch has no fallback');
 }

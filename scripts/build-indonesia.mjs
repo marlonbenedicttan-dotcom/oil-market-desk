@@ -418,6 +418,17 @@ const stale = universe.filter((c) => {
 for (const c of stale) c.stale = true;
 if (stale.length) console.log(`  ${stale.length} companies with statements older than ${STALE_DAYS} days — excluded`);
 
+// --- curated pruning ------------------------------------------------------------------------------
+// A reviewed list of small lines whose data is not usable (negative equity, an extreme P/E, no TTM,
+// a stale TTM, or an unresolved share count). This is a product decision, not an automatic rule:
+// every code is named in audit.pruned, and the audit fails if one re-enters the market without review.
+// WSBP (Waskita Beton Precast) and CMPP (AirAsia Indonesia) were on the review list and deliberately
+// kept; they are not in the file.
+const PRUNE = readJson(join(ROOT, 'data', 'indonesia-prune.json')) || { entries: {} };
+const prunedEntries = PRUNE.entries || {};
+const pruned = universe.filter((c) => prunedEntries[c.code]);
+if (pruned.length) console.log(`  ${pruned.length} companies pruned by decision — excluded`);
+
 // A company without a statement page has no share count, so it cannot have a market cap. A company
 // without a Yahoo price cannot have a cap either. Both are counted and named, never estimated.
 //
@@ -431,9 +442,9 @@ const hasShares = (c) => c.shares > 0 || (SHARES[c.code] && SHARES[c.code].share
 // the first pass already read, so a company it never saw must not re-enter the market empty.
 const hasStatements = (c) => !!((c.ttm && (c.ttm.netIncome != null || c.ttm.revenue != null)) || (c.annual && c.annual.length));
 const throttled = universe.filter((c) => c.throttled);
-const covered = universe.filter((c) => !c.noPrev && hasStatements(c) && hasShares(c) && c.price > 0 && !c.broken && !c.stale);
-const dropped = universe.filter((c) => !c.throttled && !c.broken && !c.stale && !c.noPrev && !hasStatements(c)).map((c) => ({ code: c.code, name: c.name }));
-const noPrice = universe.filter((c) => !c.throttled && !c.broken && !c.stale && !c.noPrev && hasStatements(c) && hasShares(c) && !(c.price > 0)).map((c) => ({ code: c.code, name: c.name }));
+const covered = universe.filter((c) => !prunedEntries[c.code] && !c.noPrev && hasStatements(c) && hasShares(c) && c.price > 0 && !c.broken && !c.stale);
+const dropped = universe.filter((c) => !prunedEntries[c.code] && !c.throttled && !c.broken && !c.stale && !c.noPrev && !hasStatements(c)).map((c) => ({ code: c.code, name: c.name }));
+const noPrice = universe.filter((c) => !prunedEntries[c.code] && !c.throttled && !c.broken && !c.stale && !c.noPrev && hasStatements(c) && hasShares(c) && !(c.price > 0)).map((c) => ({ code: c.code, name: c.name }));
 if (dropped.length) console.log(`  ${dropped.length} listed companies without a statement page (no shares, no cap)`);
 if (noPrice.length) console.log(`  ${noPrice.length} companies without a price (no cap; excluded rather than estimated)`);
 if (throttled.length) console.log(`  ${throttled.length} companies throttled this run — rerun the build to fill them (nothing was cached as missing)`);
@@ -678,6 +689,8 @@ const audit = {
   brokenCodes: broken.map((c) => ({ code: c.code, name: c.name })),
   stale: stale.length,
   staleCodes: stale.map((c) => ({ code: c.code, name: c.name, end: c.ttmEnd || c.latestEnd || c.staleEnd || null })),
+  pruned: pruned.length,
+  prunedCodes: pruned.map((c) => ({ code: c.code, name: c.name, reason: (prunedEntries[c.code] || {}).reason || null })),
   dropped: dropped.slice(0, 40),
   sectors: market.sectors.length,
   resolvedFromProfile: cleaned.filter((c) => c.sectorSource === 'profile-gics-sector').length,

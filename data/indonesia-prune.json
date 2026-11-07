@@ -1,0 +1,232 @@
+{
+  "updated": "2026-11-07",
+  "decidedBy": "Marlon",
+  "note": "Reviewed removal of small, data-unclear IDX lines. This is a product decision, not an automatic rule: the build excludes these codes, audit.pruned records them, and the audit fails if one re-enters without review. WSBP (Waskita Beton Precast) and CMPP (AirAsia Indonesia) were on the review list and deliberately KEPT; they are not in this file.",
+  "entries": {
+    "INRU": {
+      "reason": "ROE withheld (near-zero equity)",
+      "cap": 820100000000,
+      "name": "PT Toba Pulp Lestari Tbk"
+    },
+    "GULA": {
+      "reason": "P/E withheld (extreme)",
+      "cap": 749000000000.0001,
+      "name": "PT Aman Agrindo Tbk"
+    },
+    "INPS": {
+      "reason": "negative equity",
+      "cap": 692250000000,
+      "name": "PT Indah Prakasa Sentosa Tbk"
+    },
+    "TIRT": {
+      "reason": "negative equity",
+      "cap": 595900000000,
+      "name": "PT Tirta Mahakam Resources Tbk"
+    },
+    "MREI": {
+      "reason": "TTM 402 days",
+      "cap": 476366799999.99994,
+      "name": "PT Maskapai Reasuransi Indonesia Tbk"
+    },
+    "ATAP": {
+      "reason": "P/E withheld (extreme)",
+      "cap": 462500000000,
+      "name": "PT Trimitra Prawara Goldland Tbk"
+    },
+    "IBOS": {
+      "reason": "no TTM column (FY only)",
+      "cap": 419640000000,
+      "name": "PT Indo Boga Sukses Tbk"
+    },
+    "MTFN": {
+      "reason": "negative equity",
+      "cap": 413920000000,
+      "name": "PT Capitalinc Investment Tbk"
+    },
+    "AREA": {
+      "reason": "P/E withheld (extreme)",
+      "cap": 406400000000,
+      "name": "PT Dunia Virtual Online Tbk"
+    },
+    "CASH": {
+      "reason": "negative equity",
+      "cap": 403380000000,
+      "name": "PT Cashlez Worldwide Indonesia Tbk"
+    },
+    "INAF": {
+      "reason": "negative equity",
+      "cap": 390600000000,
+      "name": "PT Indofarma Tbk"
+    },
+    "CNKO": {
+      "reason": "negative equity",
+      "cap": 331520000000,
+      "name": "PT Exploitasi Energi Indonesia Tbk"
+    },
+    "MYTX": {
+      "reason": "negative equity",
+      "cap": 317750000000,
+      "name": "PT Asia Pacific Investama Tbk"
+    },
+    "WICO": {
+      "reason": "negative equity",
+      "cap": 293970000000,
+      "name": "Pt Wicaksana Overseas International Tbk"
+    },
+    "KREN": {
+      "reason": "negative equity",
+      "cap": 236600000000,
+      "name": "PT Quantum Clovera Investama Tbk"
+    },
+    "HILL": {
+      "reason": "negative equity",
+      "cap": 235840000000,
+      "name": "PT Hillcon Tbk"
+    },
+    "JMAS": {
+      "reason": "TTM 402 days",
+      "cap": 228000000000,
+      "name": "PT Asuransi Jiwa Syariah Jasa Mitra Abadi Tbk"
+    },
+    "INTA": {
+      "reason": "negative equity",
+      "cap": 203740000000,
+      "name": "PT Intraco Penta Tbk"
+    },
+    "MDRN": {
+      "reason": "negative equity",
+      "cap": 198380000000,
+      "name": "PT Modern Internasional Tbk"
+    },
+    "SAGE": {
+      "reason": "share-count gap 14.2%",
+      "cap": 192719999999.99997,
+      "name": "PT Saptausaha Gemilangindah Tbk"
+    },
+    "GLOB": {
+      "reason": "negative equity",
+      "cap": 172050000000,
+      "name": "PT Globe Kita Terang Tbk"
+    },
+    "LAPD": {
+      "reason": "negative equity",
+      "cap": 142920000000,
+      "name": "PT Leyand International Tbk"
+    },
+    "PMMP": {
+      "reason": "negative equity + TTM 402 days",
+      "cap": 129500000000,
+      "name": "PT Panca Mitra Multiperdana Tbk"
+    },
+    "KARW": {
+      "reason": "negative equity",
+      "cap": 124475800000,
+      "name": "PT Meratus Jasa Prima Tbk"
+    },
+    "MARI": {
+      "reason": "TTM 402 days",
+      "cap": 120750000000,
+      "name": "PT Mahaka Radio Integra Tbk"
+    },
+    "TAMA": {
+      "reason": "negative equity",
+      "cap": 116400000000,
+      "name": "PT Lancartama Sejati Tbk"
+    },
+    "NINE": {
+      "reason": "no TTM column (FY only)",
+      "cap": 114480000000,
+      "name": "PT Techno9 Indonesia Tbk"
+    },
+    "FOOD": {
+      "reason": "negative equity",
+      "cap": 114400000000,
+      "name": "PT Sentra Food Indonesia Tbk"
+    },
+    "RAFI": {
+      "reason": "TTM 402 days",
+      "cap": 112680000000,
+      "name": "PT Sari Kreasi Boga Tbk"
+    },
+    "CANI": {
+      "reason": "negative equity",
+      "cap": 112514400000,
+      "name": "PT Capitol Nusantara Indonesia Tbk"
+    },
+    "PTDU": {
+      "reason": "negative equity + TTM 402 days",
+      "cap": 105000000000,
+      "name": "PT Djasa Ubersakti Tbk"
+    },
+    "DPNS": {
+      "reason": "no TTM column (FY only)",
+      "cap": 102650300000,
+      "name": "PT Duta Pertiwi Nusantara Tbk"
+    },
+    "IBFN": {
+      "reason": "negative equity",
+      "cap": 95760000000,
+      "name": "PT Intan Baru Prana Tbk"
+    },
+    "INCF": {
+      "reason": "no TTM column (FY only)",
+      "cap": 84000000000,
+      "name": "PT Indo Komoditi Korpora Tbk"
+    },
+    "POLY": {
+      "reason": "negative equity",
+      "cap": 80000000000,
+      "name": "PT Asia Pacific Fibers Tbk"
+    },
+    "BATA": {
+      "reason": "negative equity",
+      "cap": 76700000000,
+      "name": "PT Sepatu Bata Tbk."
+    },
+    "KOIN": {
+      "reason": "negative equity",
+      "cap": 76505520000,
+      "name": "PT Kokoh Inti Arebama Tbk"
+    },
+    "MENN": {
+      "reason": "no TTM column (FY only)",
+      "cap": 75790000000,
+      "name": "PT Menn Teknologi Indonesia Tbk"
+    },
+    "TGRA": {
+      "reason": "ROE withheld (near-zero equity)",
+      "cap": 74250000000,
+      "name": "PT. Terregra Asia Energy Tbk"
+    },
+    "TAYS": {
+      "reason": "TTM 402 days",
+      "cap": 55000000000,
+      "name": "PT Jaya Swarasa Agung Tbk"
+    },
+    "SWAT": {
+      "reason": "negative equity",
+      "cap": 48320000000,
+      "name": "PT Sriwahana Adityakarta Tbk"
+    },
+    "DIGI": {
+      "reason": "negative equity",
+      "cap": 47270000000,
+      "name": "PT Arkadia Digital Media Tbk"
+    },
+    "LMAX": {
+      "reason": "no TTM column (FY only)",
+      "cap": 44200680000,
+      "name": "PT Lupromax Pelumas Indonesia Tbk"
+    },
+    "ARKA": {
+      "reason": "TTM 402 days",
+      "cap": 44000000000,
+      "name": "PT Arkha Jayanti Persada Tbk"
+    },
+    "INDX": {
+      "reason": "no TTM column (FY only)",
+      "cap": 26274600000,
+      "name": "PT Tanah Laut Tbk"
+    }
+  }
+}

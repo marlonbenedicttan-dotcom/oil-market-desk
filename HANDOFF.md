@@ -3905,7 +3905,7 @@ Audited at 360, 390 and 430 px with screenshots of every view, then fixed what l
   Float as a proxy**: it does not reproduce the official list (BREN reads 87% vs the official 97%).
 - **Stale statements**: seven companies (BEBS, ZBRA, TELE, IPPE, SOUL, ALTO, TOPS) shipped a statement
   older than 450 days and are excluded by the build (`audit.stale`), the same rule Hong Kong and Australia
-  use; the audit fails if one reappears. The published market is therefore **905 companies**.
+  use; the audit fails if one reappears. The published market is therefore **905 companies** before the reviewed prune (see below).
 - **Build**: `npm run build:indonesia` — build → fetch profiles → rebuild from cache. `--limit=30` is the
   smoke test; `--codes=BBCA,TLKM` builds named companies; `--skip-prices` / `--skip-fin` reuse the caches;
   `--prices-only` warms Yahoo. Caches: `data/cache/idx/{yahoo,profiles}` and `data/cache/indonesia-sa`.
@@ -3915,6 +3915,12 @@ Audited at 360, 390 and 430 px with screenshots of every view, then fixed what l
 - **Server**: `/api/indonesia`, `/api/indonesia/company/{code}`, `/api/indonesia/chart?code=&range=`. The
   UI adds an eighth region button (`INDONESIA`) with MARKET / SCREENER / THEMES, the home screener row, a
   company page, search (`id:BBCA`), peers and compare. Market accent `#b03a48`.
+- **Curated prune (2026-11-07)**: `data/indonesia-prune.json` removes **45** small, data-unclear lines
+  (negative equity, an extreme P/E, no TTM, a 402-day TTM, or the SAGE share-count gap). WSBP (Waskita
+  Beton Precast) and CMPP (AirAsia Indonesia) were on the review list and deliberately kept. The build
+  excludes the codes, `audit.pruned`/`prunedCodes` records them, and the audit fails if one re-enters the
+  market without review. Published market: **860 companies**; total cap Rp 8,612T. The prune is reversible:
+  delete a code from the file and rebuild.
 - **Deep audit**: `npm run audit:indonesia:deep` re-runs the ratio engine on the stored inputs and compares
   **every** published field (29,215 engine comparisons), then independently recomputes cap, P/E, P/B, ROE,
   growth, dividend yield, returns, the index, market aggregates, the list projection and the HSC/stale/theme
