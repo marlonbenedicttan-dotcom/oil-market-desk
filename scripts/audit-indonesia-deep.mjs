@@ -226,6 +226,40 @@ close('market.advancing', m.advancing, d.companies.filter((c) => c.chg1d != null
 close('market.declining', m.declining, d.companies.filter((c) => c.chg1d != null && c.chg1d < 0).length, 0);
 const sectorSum = (m.sectors || []).reduce((a, s) => a + s.count, 0);
 close('market.sectorCount', sectorSum, d.companies.length, 0);
+for (const s of m.sectors || []) {
+  const list = d.companies.filter((c) => c.sector === s.name);
+  close(`sector.${s.name}.count`, s.count, list.length, 0);
+  close(`sector.${s.name}.cap`, s.cap, list.reduce((a, c) => a + (c.marketCap || 0), 0), 1);
+  close(`sector.${s.name}.pe`, s.pe, median(list.map((c) => c.pe)), 0.0051);
+  close(`sector.${s.name}.pb`, s.pb, median(list.map((c) => c.pb)), 0.0051);
+  close(`sector.${s.name}.roe`, s.roe, median(list.map((c) => c.roe)), 0.0051);
+  close(`sector.${s.name}.yield`, s.yield, median(list.map((c) => c.dividendYield)), 0.0051);
+  close(`sector.${s.name}.ytd`, s.chgYtd, median(list.map((c) => c.chgYtd)), 0.0051);
+}
+close('market.foreignReporters', m.foreignReporters, d.companies.filter((c) => c.reportCurrency !== 'IDR').length, 0);
+const session = d.companies.map((c) => c.priceDate).filter(Boolean).sort().pop();
+checks++;
+if (d.session !== session) fail('market.session', `${d.session} vs ${session}`);
+
+// --- 5b. chart store -------------------------------------------------------------------------------
+// The chart endpoints read a per-company weekly store, not the buckets. Its last point must be the
+// same session and close as the record, or a chart would silently end on an older price.
+{
+  const idx = read('charts/id.idx.json');
+  const lines = readFileSync(join(ROOT, 'data', 'charts', 'id.ndjson'), 'utf8').trim().split('\n').filter(Boolean);
+  const store = new Map(lines.map((l) => JSON.parse(l)).map((o) => [o.k, o.p]));
+  close('chart.keys', store.size, d.companies.length, 0);
+  checks++;
+  if (idx.through !== session) fail('chart.through', `${idx.through} vs ${session}`);
+  for (const c of d.companies) {
+    const p = store.get(c.code);
+    if (!Array.isArray(p) || !p.length) { fail(`${c.code}.chart`, 'missing from the chart store'); continue; }
+    const [di, px] = p[p.length - 1];
+    checks++;
+    if (idx.dates[di] !== c.priceDate) fail(`${c.code}.chartDate`, `${c.priceDate} vs ${idx.dates[di]}`);
+    close(`${c.code}.chartLast`, px, c.price, 0.0011);
+  }
+}
 
 // --- 6. list projection, HSC, stale, themes -------------------------------------------------------
 const projected = indonesiaList(d);
