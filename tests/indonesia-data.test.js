@@ -153,14 +153,33 @@ t('the IDX High Shareholding Concentration list is applied and dated', () => {
   const hsc = ind.audit || {};
   const flagged = ind.companies.filter((c) => c.hsc);
   assert.equal(flagged.length, hsc.hsc, 'HSC flag count does not match audit.hsc');
+  assert.equal(hsc.hsc, hsc.hscTotal, 'every HSC name is in the market');
   assert.ok(flagged.length >= 40, `only ${flagged.length} HSC companies`);
   assert.ok(flagged.every((c) => c.hsc.asOf), 'an HSC flag has no as-of date');
   assert.deepEqual(hsc.hscMissing, [], 'HSC codes are missing from the market');
+  assert.deepEqual(hsc.hscPruned, [], 'an HSC name is pruned');
   assert.ok(list.companies.some((c) => c.hsc), 'the list projection does not carry the HSC flag');
-  // The published list is 51 names; every one must be in the market and flagged.
+  // The published list is 82 names; every one must be in the market and flagged.
   const snap = read('indonesia-hsc.json');
   for (const code of Object.keys(snap.entries)) {
     const c = ind.companies.find((x) => x.code === code);
     assert.ok(c && c.hsc, `${code} is on the HSC list but not flagged`);
   }
+});
+
+t('trading-quality flags are consistent', () => {
+  for (const c of ind.companies) {
+    if (c.noRecentTrading) {
+      assert.ok(c.flatPct >= 90, `${c.code}: no-trade with flat ${c.flatPct}%`);
+      assert.equal(c.chg1d, null, `${c.code}: no-trade still has 1D`);
+      assert.equal(c.chg6m, null, `${c.code}: no-trade still has 6M`);
+      assert.equal(c.chgYtd, null, `${c.code}: no-trade still has YTD`);
+    }
+    if (c.ttmStale) assert.ok(c.ttmAgeDays > 365, `${c.code}: stale TTM with ${c.ttmAgeDays} days`);
+    if (c.thinTrading) assert.ok(c.avgValue30 != null && c.avgValue30 < 1e8, `${c.code}: thin with avg ${c.avgValue30}`);
+  }
+  assert.ok(ind.audit.noRecentTrading > 0, 'no no-trade flag');
+  assert.ok(ind.audit.shortHistory > 0, 'no short-history flag');
+  assert.ok(ind.audit.ttmStale > 0, 'no stale-TTM flag');
+  assert.ok(ind.audit.thinTrading > 0, 'no thin-trading flag');
 });

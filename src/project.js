@@ -170,6 +170,13 @@ export const projectId = (c) => ({
   dividendYield: c.dividendYield ?? null,
   reportCurrency: c.reportCurrency || null,
   hsc: c.hsc ? { asOf: c.hsc.asOf, rank: c.hsc.rank ?? null } : null,
+  noRecentTrading: !!c.noRecentTrading,
+  shortHistory: !!c.shortHistory,
+  ttmStale: !!c.ttmStale,
+  thinTrading: !!c.thinTrading,
+  ttmAgeDays: c.ttmAgeDays ?? null,
+  avgValue30: c.avgValue30 ?? null,
+  flatPct: c.flatPct ?? null,
   ...growthFields(c),
   bands: c.bands && c.bands.pe ? { pe: { percentile: c.bands.pe.percentile } } : null,
 });
@@ -215,5 +222,5 @@ export const FILTER_FIELDS = {
   hk: ['sector', 'marketCap', 'pe', 'pb', 'roe', 'dividendYield', 'bands', 'chgYtd', 'priceDate', 'brands'],
   au: ['sector', 'marketCap', 'pe', 'pb', 'roe', 'dividendYield', 'bands', 'chgYtd', 'priceDate', 'brands'],
   in: ['sector', 'marketCap', 'pe', 'pb', 'roe', 'dividendYield', 'bands', 'chgYtd', 'priceDate', 'brands'],
-  id: ['sector', 'marketCap', 'pe', 'pb', 'roe', 'dividendYield', 'bands', 'chgYtd', 'priceDate', 'brands', 'hsc'],
+  id: ['sector', 'marketCap', 'pe', 'pb', 'roe', 'dividendYield', 'bands', 'chgYtd', 'priceDate', 'brands', 'hsc', 'noRecentTrading', 'thinTrading'],
 };

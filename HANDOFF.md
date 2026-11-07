@@ -3891,18 +3891,20 @@ Audited at 360, 390 and 430 px with screenshots of every view, then fixed what l
   `derive-listing` converts the rupiah cap before dividing by a dollar profit; the audit repeats the cross.
 - **A trailing column that is not trailing**: the same guard as India — an operating profit above its own
   revenue is two periods spliced together, so the company is excluded and named in `audit.brokenCodes`.
-- **Dividend yield**: the vendor statistics page (already fetched for the share count) now supplies the
+- **Dividend yield**: the vendor statistics page (already fetched for the share count) supplies the
   primary yield, with the income statement's Dividend Per Share as the fallback and `dividendYieldBasis`
-  labelling which. Coverage is **452/905** (451 from the vendor page). Banks often print no DPS row, so
+  labelling which. Coverage is **442/810** (441 from the vendor page). Banks often print no DPS row, so
   BBNI (11.0%), BYAN (3.36%) and TPIA (0.46%) were blank before this; they are now populated without a
-  currency guess.
-- **High Shareholding Concentration (HSC)**: `data/indonesia-hsc.json` pins IDX's official 15 July 2026
-  list of **51 companies** (sourced from the IDX announcement via idxchannel/Maybank; idx.co.id's own page
-  is a Cloudflare challenge here). The build attaches `c.hsc {asOf, source, rank}`, the list projection
-  carries it, the market view shows a warning, the screener has an **HSC FLAGGED** preset and a badge, and
-  the company page shows a banner. The audit warns when the snapshot is more than **120 days** old — IDX
-  reviews quarterly (Jan/Apr/Jul/Oct), so replace the file on the next review. **Do not use the vendor's
-  Float as a proxy**: it does not reproduce the official list (BREN reads 87% vs the official 97%).
+  currency guess. A blank tile now says "No dividend declared or published by the vendor" rather than
+  implying a missing number.
+- **High Shareholding Concentration (HSC)**: `data/indonesia-hsc.json` pins IDX's official **22 October
+  2026 list of 82 companies** (sourced from Kontan/IDX; idx.co.id's own page is a Cloudflare challenge
+  here). Since 2 November 2026 HSC stocks are also excluded from the IHSG, not just LQ45/IDX30/IDX80.
+  The build attaches `c.hsc {asOf, source, rank}`, the list projection carries it, the market view shows a
+  warning, the screener has an **HSC FLAGGED** preset and a badge, and the company page shows a banner.
+  The audit reports `hscTotal / hscPruned / hscMissing` and warns when the snapshot is more than **120 days**
+  old — IDX reviews quarterly, so replace the file on the next review. **Do not use the vendor's Float as
+  a proxy**: it does not reproduce the official list (BREN reads 87% vs the official 97%).
 - **Stale statements**: seven companies (BEBS, ZBRA, TELE, IPPE, SOUL, ALTO, TOPS) shipped a statement
   older than 450 days and are excluded by the build (`audit.stale`), the same rule Hong Kong and Australia
   use; the audit fails if one reappears. The published market is therefore **905 companies** before the reviewed prune (see below).
@@ -3925,6 +3927,17 @@ Audited at 360, 390 and 430 px with screenshots of every view, then fixed what l
   Rp 8,605T. The prune is reversible: delete a code from the file and rebuild. The six large frozen
   names (SUPR, MKNT, FASW, PLIN, WIKA, SMCB) are deliberately kept — they need a 'no recent trading'
   warning, not removal.
+- **Trading quality (2026-11-07)**: the build flags a frozen price (>=90% unchanged over 250 sessions;
+  **6**: SUPR, MKNT, FASW, PLIN, WIKA, SMCB), a short history (<100 sessions; **6**: JECX, RANS, BACH,
+  EMMI, JELI, PRDL), a TTM older than 365 days (**2**: BHAT, SFAN) and thin turnover (< Rp 100M/day;
+  **144**). Frozen names get no 1D/6M/YTD return (null, not a fake 0%), a red market warning, a company
+  banner and a **NO RECENT TRADING** preset; thin names get a **THIN TRADING** preset and a banner. The
+  build also stores the 30-session average traded value from Yahoo volume.
+- **Prune review**: `npm run review:indonesia:prune` re-reads the 95 pruned codes and re-tests the reason
+  each was removed. A data-quality reason that no longer holds is reported as a reinstatement candidate;
+  size/liquidity removals stay a policy decision. Run it quarterly with the HSC refresh.
+- **Statement basis**: the vendor does not label consolidated vs standalone, so the company page says the
+  ratios use the one statement set it serves. This is a documented limitation, not a hidden assumption.
 - **Deep audit**: `npm run audit:indonesia:deep` re-runs the ratio engine on the stored inputs and compares
   **every** published field (29,215 engine comparisons), then independently recomputes cap, P/E, P/B, ROE,
   growth, dividend yield, returns, the index, market aggregates, the list projection and the HSC/stale/theme

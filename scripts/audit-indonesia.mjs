@@ -156,7 +156,34 @@ if (!hsc.hscAsOf) warn.push('no HSC snapshot applied — the IDX concentration w
 const badHsc = ind.companies.filter((c) => c.hsc && !c.hsc.asOf);
 if (badHsc.length) fails.push(`${badHsc.length} companies carry an HSC flag without an as-of date`);
 if (hsc.hscMissing && hsc.hscMissing.length) warn.push(`${hsc.hscMissing.length} HSC codes are not in the market: ${hsc.hscMissing.join(', ')}`);
+say('HSC list total / pruned / missing', `${hsc.hscTotal ?? '—'} / ${(hsc.hscPruned || []).length} / ${(hsc.hscMissing || []).length}`);
 if (hsc.hscAgeDays != null && hsc.hscAgeDays > 120) warn.push(`the HSC list is ${hsc.hscAgeDays} days old — replace data/indonesia-hsc.json with the next quarterly IDX list`);
+
+// --- trading quality -------------------------------------------------------------------------------
+const noTrade = ind.companies.filter((c) => c.noRecentTrading);
+const shortHist = ind.companies.filter((c) => c.shortHistory);
+const ttmStale = ind.companies.filter((c) => c.ttmStale);
+const thin = ind.companies.filter((c) => c.thinTrading);
+say('no recent trading', `${noTrade.length}${noTrade.length ? ' · ' + noTrade.map((c) => c.code).join(', ') : ''}`);
+say('short history (<100 sessions)', `${shortHist.length}${shortHist.length ? ' · ' + shortHist.map((c) => c.code).join(', ') : ''}`);
+say('TTM older than 365 days', `${ttmStale.length}${ttmStale.length ? ' · ' + ttmStale.map((c) => c.code).join(', ') : ''}`);
+say('thin trading (< Rp 100M/day)', thin.length);
+for (const c of noTrade) {
+  if (!(c.flatPct >= 90)) fails.push(`${c.code}: flagged no-trade with flat ${c.flatPct}%`);
+  if (c.chg1d != null || c.chg6m != null || c.chgYtd != null) fails.push(`${c.code}: no-trade company still publishes a return`);
+}
+for (const c of shortHist) {
+  const b = String(c.code).slice(0, 1).toUpperCase();
+  let n = 0;
+  try { n = (JSON.parse(readFileSync(join(ROOT, 'data', 'indonesia-series', `${b}.json`), 'utf8')).daily[c.code] || []).length; } catch { /* no bucket */ }
+  if (!(n > 0 && n < 100)) fails.push(`${c.code}: short-history flag but ${n} sessions`);
+}
+for (const c of ttmStale) {
+  if (!(c.ttmAgeDays > 365)) fails.push(`${c.code}: stale-TTM flag with age ${c.ttmAgeDays}`);
+}
+for (const c of thin) {
+  if (!(c.avgValue30 != null && c.avgValue30 < 1e8)) fails.push(`${c.code}: thin-trading flag with avg value ${c.avgValue30}`);
+}
 
 // --- curated prune ---------------------------------------------------------------------------------
 const prune = read('indonesia-prune.json');

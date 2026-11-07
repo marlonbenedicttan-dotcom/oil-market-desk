@@ -1617,3 +1617,12 @@ button.deal-sec-tile:hover { background: #10151b; }
 .prune-note .prune-list { margin: 8px 0 0; padding-left: 18px; columns: 2; column-gap: 24px; }
 .prune-note .prune-list li { break-inside: avoid; margin: 2px 0; }
 @media (max-width: 640px) { .prune-note .prune-list { columns: 1; } }
+
+/* Indonesia trading-quality flags: frozen price, short history, stale TTM, thin turnover. */
+.quality-banner, .quality-warn { border: 1px solid var(--line2); border-radius: 4px; padding: 8px 12px; margin: 10px 0; font-size: 12px; line-height: 1.55; }
+.quality-banner.bad { border-color: #5a2020; background: rgba(224, 82, 82, .08); color: var(--red); }
+.quality-banner.warn { border-color: #5c4a1d; background: rgba(255, 158, 0, .07); color: var(--amber); }
+.quality-banner.info { color: var(--dim); }
+.quality-warn { border-color: #5a2020; background: rgba(224, 82, 82, .07); color: var(--red); }
+.quality-warn b, .quality-banner b { color: inherit; }
+.sc-flag.bad { color: var(--red); border-color: #5a2020; }

@@ -56,7 +56,8 @@
     "audit:indonesia": "node scripts/audit-indonesia.mjs",
     "refresh:indonesia": "node scripts/fetch-listing-shares.mjs indonesia && node scripts/build-indonesia.mjs --fresh && node scripts/fetch-indonesia-profiles.mjs && node scripts/build-indonesia.mjs --skip-prices --skip-fin",
     "shares:indonesia": "node scripts/fetch-listing-shares.mjs indonesia",
-    "audit:indonesia:deep": "node scripts/audit-indonesia-deep.mjs"
+    "audit:indonesia:deep": "node scripts/audit-indonesia-deep.mjs",
+    "review:indonesia:prune": "node scripts/review-indonesia-prune.mjs"
   },
   "engines": {
     "node": ">=22"

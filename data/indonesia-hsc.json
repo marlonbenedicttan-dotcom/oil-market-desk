@@ -1,61 +1,338 @@
 {
   "updated": "2026-11-07",
-  "asOf": "2026-07-15",
-  "source": "IDX (Bursa Efek Indonesia) — High Shareholding Concentration list, 15 July 2026",
-  "url": "https://www.idxchannel.com/market-news/bei-tetapkan-51-saham-masuk-kategori-hsc-ini-daftar-lengkapnya/all",
-  "mirror": "https://www.maybanktrade.co.id/berita/intip-daftar-51-saham-hsc-pilihan-bei-terbaru/",
-  "note": "IDX's High Shareholding Concentration (HSC) list: ownership is concentrated enough that the actively traded free float is thin, so the price is sensitive to small volumes and the stock is excluded from LQ45 / IDX30 / IDX80. IDX reviews the list quarterly, following the main index cycle. The exchange's own page (idx.co.id/en/market-data/.../high-shareholding-concentration) is a Cloudflare challenge on this network, so the list is pinned here from the 15 July 2026 announcement and must be replaced when IDX publishes the next quarterly review. The audit warns when this snapshot is more than 120 days old.",
+  "asOf": "2026-10-22",
+  "source": "IDX (Bursa Efek Indonesia) — High Shareholding Concentration list, data as of 22 October 2026",
+  "url": "https://stocksetup.kontan.co.id/news/update-82-saham-hsc-bei-per-27-oktober-2026-ada-tfco-dan-film-masuk-ke-daftar",
+  "mirror": "https://koranindopos.com/bei-rilis-daftar-terbaru-82-saham-berstatus-high-shareholding-concentration-hsc/",
+  "note": "IDX's High Shareholding Concentration (HSC) list: ownership is concentrated enough that the actively traded free float is thin, so the price is sensitive to small volumes and the stock is excluded from the main indices (LQ45 / IDX30 / IDX80) and, from 2 November 2026, from the IHSG. IDX reviews the list quarterly; this is the 82-name list as of 22 October 2026 (Kontan/IDX). The exchange's own page is a Cloudflare challenge on this network, so the list is pinned here and must be replaced on the next quarterly review. All 82 names are in the published market (none is pruned). The audit warns when this snapshot is more than 120 days old.",
   "entries": {
-    "AGII": { "rank": 1, "name": "PT Samator Indo Gas Tbk" },
-    "BREN": { "rank": 2, "name": "PT Barito Renewables Energy Tbk" },
-    "DSSA": { "rank": 3, "name": "PT Dian Swastatika Sentosa Tbk" },
-    "IFSH": { "rank": 4, "name": "PT Ifishdeco Tbk" },
-    "MGLV": { "rank": 5, "name": "PT Panca Anugrah Wisesa Tbk" },
-    "RLCO": { "rank": 6, "name": "PT Abadi Lestari Indonesia Tbk" },
-    "ROCK": { "rank": 7, "name": "PT Rockfields Properti Indonesia Tbk" },
-    "SOTS": { "rank": 8, "name": "PT Satria Mega Kencana Tbk" },
-    "WBSA": { "rank": 9, "name": "PT BSA Logistics Indonesia Tbk" },
-    "TCPI": { "rank": 10, "name": "PT Transcoal Pacific Tbk" },
-    "MGRO": { "rank": 11, "name": "PT Mahkota Group Tbk" },
-    "SATU": { "rank": 12, "name": "PT Kota Satu Properti Tbk" },
-    "DGWG": { "rank": 13, "name": "PT Delta Giri Wacana Tbk" },
-    "HATM": { "rank": 14, "name": "PT Habco Trans Maritima Tbk" },
-    "DCII": { "rank": 15, "name": "PT DCI Indonesia Tbk" },
-    "BYAN": { "rank": 16, "name": "PT Bayan Resources Tbk" },
-    "DNET": { "rank": 17, "name": "PT Indoritel Makmur Internasional Tbk" },
-    "MORA": { "rank": 18, "name": "PT Ekamas Muda Republik Tbk" },
-    "SRAJ": { "rank": 19, "name": "PT Sejahteraraya Anugrahjaya Tbk" },
-    "BNLI": { "rank": 20, "name": "PT Bank Permata Tbk" },
-    "BINA": { "rank": 21, "name": "PT Bank Ina Perdana Tbk" },
-    "PGUN": { "rank": 22, "name": "PT Pradiksi Gunatama Tbk" },
-    "SOHO": { "rank": 23, "name": "PT Soho Global Health Tbk" },
-    "RISE": { "rank": 24, "name": "PT Jaya Sukses Makmur Sentosa Tbk" },
-    "FAPA": { "rank": 25, "name": "PT FAP Agri Tbk" },
-    "SILO": { "rank": 26, "name": "PT Siloam International Hospitals Tbk" },
-    "BBSI": { "rank": 27, "name": "PT Krom Bank Indonesia Tbk" },
-    "BTPN": { "rank": 28, "name": "PT Bank SMBC Indonesia Tbk" },
-    "STTP": { "rank": 29, "name": "PT Siantar Top Tbk" },
-    "MLPT": { "rank": 30, "name": "PT Multipolar Technology Tbk" },
-    "GEMS": { "rank": 31, "name": "PT Golden Energy Mines Tbk" },
-    "BELI": { "rank": 32, "name": "PT Global Digital Niaga Tbk" },
-    "MPRO": { "rank": 33, "name": "PT Maha Properti Indonesia Tbk" },
-    "PRAY": { "rank": 34, "name": "PT Famon Awal Bros Sedaya Tbk" },
-    "SMAR": { "rank": 35, "name": "PT Sinar Mas Agro Resources and Technology Tbk" },
-    "CMNT": { "rank": 36, "name": "PT Cemindo Gemilang Tbk" },
-    "MKPI": { "rank": 37, "name": "PT Metropolitan Kentjana Tbk" },
-    "KONI": { "rank": 38, "name": "PT Perdana Bangun Pusaka Tbk" },
-    "YUPI": { "rank": 39, "name": "PT Yupi Indo Jelly Gum Tbk" },
-    "FITT": { "rank": 40, "name": "PT Hotel Fitra International Tbk" },
-    "ALII": { "rank": 41, "name": "PT Ancara Logistics Indonesia Tbk" },
-    "KING": { "rank": 42, "name": "PT Hoffmen Cleanindo Tbk" },
-    "FILM": { "rank": 43, "name": "PT MD Entertainment Tbk" },
-    "ELPI": { "rank": 44, "name": "PT Pelayaran Nasional Ekalya Purnamasari Tbk" },
-    "POLU": { "rank": 45, "name": "PT Golden Flower Tbk" },
-    "LIFE": { "rank": 46, "name": "PT MSIG Life Insurance Indonesia Tbk" },
-    "MCOL": { "rank": 47, "name": "PT Prima Andalan Mandiri Tbk" },
-    "BNII": { "rank": 48, "name": "PT Bank Maybank Indonesia Tbk" },
-    "BBHI": { "rank": 49, "name": "PT Allo Bank Indonesia Tbk" },
-    "MEGA": { "rank": 50, "name": "PT Bank Mega Tbk" },
-    "CMNP": { "rank": 51, "name": "PT Citra Marga Nusaphala Persada Tbk" }
+    "MPRO": {
+      "rank": 1,
+      "name": "PT Maha Properti Indonesia Tbk"
+    },
+    "DCII": {
+      "rank": 2,
+      "name": "PT DCI Indonesia Tbk"
+    },
+    "BBSI": {
+      "rank": 3,
+      "name": "PT Krom Bank Indonesia Tbk"
+    },
+    "PGUN": {
+      "rank": 4,
+      "name": "PT Pradiksi Gunatama Tbk"
+    },
+    "POLU": {
+      "rank": 5,
+      "name": "PT Golden Flower Tbk"
+    },
+    "SOHO": {
+      "rank": 6,
+      "name": "PT Soho Global Health Tbk"
+    },
+    "BNLI": {
+      "rank": 7,
+      "name": "PT Bank Permata Tbk"
+    },
+    "YUPI": {
+      "rank": 8,
+      "name": "PT Yupi Indo Jelly Gum Tbk"
+    },
+    "ROCK": {
+      "rank": 9,
+      "name": "PT Rockfields Properti Indonesia Tbk"
+    },
+    "PRAY": {
+      "rank": 10,
+      "name": "PT Famon Awal Bros Sedaya Tbk"
+    },
+    "BTPN": {
+      "rank": 11,
+      "name": "PT Bank SMBC Indonesia Tbk"
+    },
+    "FAPA": {
+      "rank": 12,
+      "name": "PT FAP Agri Tbk"
+    },
+    "IFSH": {
+      "rank": 13,
+      "name": "PT Ifishdeco Tbk"
+    },
+    "SMAR": {
+      "rank": 14,
+      "name": "PT Sinar Mas Agro Resources and Technology Tbk"
+    },
+    "MLPT": {
+      "rank": 15,
+      "name": "PT Multipolar Technology Tbk"
+    },
+    "CMNT": {
+      "rank": 16,
+      "name": "PT Cemindo Gemilang Tbk"
+    },
+    "GEMS": {
+      "rank": 17,
+      "name": "PT Golden Energy Mines Tbk"
+    },
+    "LIFE": {
+      "rank": 18,
+      "name": "PT MSIG Life Insurance Indonesia Tbk"
+    },
+    "BNII": {
+      "rank": 19,
+      "name": "PT Bank Maybank Indonesia Tbk"
+    },
+    "ELPI": {
+      "rank": 20,
+      "name": "PT Pelayaran Nasional Ekalya Purnamasari Tbk"
+    },
+    "MCOL": {
+      "rank": 21,
+      "name": "PT Prima Andalan Mandiri Tbk"
+    },
+    "BYAN": {
+      "rank": 22,
+      "name": "PT Bayan Resources Tbk"
+    },
+    "KING": {
+      "rank": 23,
+      "name": "PT Hoffmen Cleanindo Tbk"
+    },
+    "SOTS": {
+      "rank": 24,
+      "name": "PT Satria Mega Kencana Tbk"
+    },
+    "DNET": {
+      "rank": 25,
+      "name": "PT Indoritel Makmur Internasional Tbk"
+    },
+    "RISE": {
+      "rank": 26,
+      "name": "PT Jaya Sukses Makmur Sentosa Tbk"
+    },
+    "AGII": {
+      "rank": 27,
+      "name": "PT Samator Indo Gas Tbk"
+    },
+    "ALII": {
+      "rank": 28,
+      "name": "PT Ancara Logistics Indonesia Tbk"
+    },
+    "DGWG": {
+      "rank": 29,
+      "name": "PT Delta Giri Wacana Tbk"
+    },
+    "BREN": {
+      "rank": 30,
+      "name": "PT Barito Renewables Energy Tbk"
+    },
+    "SRAJ": {
+      "rank": 31,
+      "name": "PT Sejahteraraya Anugrahjaya Tbk"
+    },
+    "MKPI": {
+      "rank": 32,
+      "name": "PT Metropolitan Kentjana Tbk"
+    },
+    "SILO": {
+      "rank": 33,
+      "name": "PT Siloam International Hospitals Tbk"
+    },
+    "HATM": {
+      "rank": 34,
+      "name": "PT Habco Trans Maritima Tbk"
+    },
+    "TBIG": {
+      "rank": 35,
+      "name": "PT Tower Bersama Infrastructure Tbk"
+    },
+    "WBSA": {
+      "rank": 36,
+      "name": "PT BSA Logistics Indonesia Tbk"
+    },
+    "DSSA": {
+      "rank": 37,
+      "name": "PT Dian Swastatika Sentosa Tbk"
+    },
+    "MEGA": {
+      "rank": 38,
+      "name": "PT Bank Mega Tbk"
+    },
+    "MORA": {
+      "rank": 39,
+      "name": "PT Ekamas Mora Republik Tbk"
+    },
+    "RLCO": {
+      "rank": 40,
+      "name": "PT Abadi Lestari Indonesia Tbk"
+    },
+    "KONI": {
+      "rank": 41,
+      "name": "PT Perdana Bangun Pusaka Tbk"
+    },
+    "FITT": {
+      "rank": 42,
+      "name": "PT Hotel Fitra International Tbk"
+    },
+    "STTP": {
+      "rank": 43,
+      "name": "PT Siantar Top Tbk"
+    },
+    "BINA": {
+      "rank": 44,
+      "name": "PT Bank Ina Perdana Tbk"
+    },
+    "SATU": {
+      "rank": 45,
+      "name": "PT Kota Satu Properti Tbk"
+    },
+    "TCPI": {
+      "rank": 46,
+      "name": "PT Transcoal Pacific Tbk"
+    },
+    "BELI": {
+      "rank": 47,
+      "name": "PT Global Digital Niaga Tbk"
+    },
+    "MGRO": {
+      "rank": 48,
+      "name": "PT Mahkota Group Tbk"
+    },
+    "SSMS": {
+      "rank": 49,
+      "name": "PT Sawit Sumbermas Sarana Tbk"
+    },
+    "BBHI": {
+      "rank": 50,
+      "name": "PT Allo Bank Indonesia Tbk"
+    },
+    "CMNP": {
+      "rank": 51,
+      "name": "PT Citra Marga Nusaphala Persada Tbk"
+    },
+    "AGAR": {
+      "rank": 52,
+      "name": "PT Asia Sejahtera Mina Tbk"
+    },
+    "ALKA": {
+      "rank": 53,
+      "name": "PT Alakasa Industrindo Tbk"
+    },
+    "BKDP": {
+      "rank": 54,
+      "name": "PT Bukit Darmo Property Tbk"
+    },
+    "BAJA": {
+      "rank": 55,
+      "name": "PT Saranacentral Bajatama Tbk"
+    },
+    "MDIA": {
+      "rank": 56,
+      "name": "PT Intermedia Capital Tbk"
+    },
+    "BDKR": {
+      "rank": 57,
+      "name": "PT Berdikari Pondasi Perkasa Tbk"
+    },
+    "SAFE": {
+      "rank": 58,
+      "name": "PT Steady Safe Tbk"
+    },
+    "NICK": {
+      "rank": 59,
+      "name": "PT Charnic Capital Tbk"
+    },
+    "MSJA": {
+      "rank": 60,
+      "name": "PT Multi Spunindo Jaya Tbk"
+    },
+    "BIKE": {
+      "rank": 61,
+      "name": "PT Bhineka Inovasi Ketahanan Energi Tbk"
+    },
+    "INDO": {
+      "rank": 62,
+      "name": "PT Royalindo Investa Wijaya Tbk"
+    },
+    "BSWD": {
+      "rank": 63,
+      "name": "PT Bank of India Indonesia Tbk"
+    },
+    "PSAB": {
+      "rank": 64,
+      "name": "PT J Resources Asia Pasifik Tbk"
+    },
+    "SMMT": {
+      "rank": 65,
+      "name": "PT Golden Eagle Energy Tbk"
+    },
+    "CITA": {
+      "rank": 66,
+      "name": "PT Cita Mineral Investindo Tbk"
+    },
+    "BMAS": {
+      "rank": 67,
+      "name": "PT Bank Kasikorn Indonesia Tbk"
+    },
+    "MTEL": {
+      "rank": 68,
+      "name": "PT Dayamitra Telekomunikasi Tbk"
+    },
+    "ADES": {
+      "rank": 69,
+      "name": "PT Akasha Wira International Tbk"
+    },
+    "SAME": {
+      "rank": 70,
+      "name": "PT Sarana Meditama Metropolitan Tbk"
+    },
+    "BBMD": {
+      "rank": 71,
+      "name": "PT Bank Mestika Dharma Tbk"
+    },
+    "SHIP": {
+      "rank": 72,
+      "name": "PT Sillo Maritime Perdana Tbk"
+    },
+    "BALI": {
+      "rank": 73,
+      "name": "PT Bali Towerindo Sentra Tbk"
+    },
+    "INPP": {
+      "rank": 74,
+      "name": "PT Indonesian Paradise Property Tbk"
+    },
+    "EPMT": {
+      "rank": 75,
+      "name": "PT Enseval Putera Megatrading Tbk"
+    },
+    "DUTI": {
+      "rank": 76,
+      "name": "PT Duta Pertiwi Tbk"
+    },
+    "MAYA": {
+      "rank": 77,
+      "name": "PT Bank Mayapada Internasional Tbk"
+    },
+    "CLAY": {
+      "rank": 78,
+      "name": "PT Citra Putra Realty Tbk"
+    },
+    "TMAS": {
+      "rank": 79,
+      "name": "PT Temas Tbk"
+    },
+    "DMND": {
+      "rank": 80,
+      "name": "PT Diamond Food Indonesia Tbk"
+    },
+    "FILM": {
+      "rank": 81,
+      "name": "PT MD Entertainment Tbk"
+    },
+    "TFCO": {
+      "rank": 82,
+      "name": "PT Tifico Fiber Indonesia Tbk"
+    }
   }
 }

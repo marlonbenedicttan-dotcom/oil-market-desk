@@ -123,7 +123,8 @@ async function yahooSeries(symbol, range = `${YEARS}y`) {
       const hit = JSON.parse(readFileSync(f, 'utf8'));
       if (hit.fetched && Date.now() - Date.parse(hit.fetched) < 6 * 3600e3) {
         const s = hit.text ? JSON.parse(hit.text) : null;
-        if (s) return s;
+        // A cache from before the volume pass has no `v`; refetch it so the liquidity flag is real.
+        if (s && (!s.length || s[0].v !== undefined)) return s;
       }
     } catch { /* refetch */ }
   }
@@ -139,13 +140,22 @@ async function yahooSeries(symbol, range = `${YEARS}y`) {
       const res = j.chart && j.chart.result && j.chart.result[0];
       if (!res) return [];
       const ts = res.timestamp || [];
-      const closes = (res.indicators.quote[0] || {}).close || [];
-      const s = ts.map((t, i) => ({ d: iso(t * 1000), c: closes[i] })).filter((p) => p.c != null && p.c > 0);
+      const q = res.indicators.quote[0] || {};
+      const closes = q.close || [];
+      const vols = q.volume || [];
+      const s = ts.map((t, i) => ({ d: iso(t * 1000), c: closes[i], v: vols[i] })).filter((p) => p.c != null && p.c > 0);
       if (!s.length) return [];
       writeFileSync(f, JSON.stringify({ fetched: new Date().toISOString(), text: JSON.stringify(s) }));
       return s;
     } catch { await sleep(800); }
   }
+  // A throttled refetch must not delete a company. Fall back to the last cached series (even one
+  // written before the volume pass); the liquidity fields stay blank until the next successful fetch.
+  try {
+    const hit = JSON.parse(readFileSync(f, 'utf8'));
+    const s = hit.text ? JSON.parse(hit.text) : null;
+    if (s && s.length) return s;
+  } catch { /* no cache */ }
   return [];
 }
 
@@ -408,6 +418,49 @@ if (broken.length) console.log(`  ${broken.length} companies with an inconsisten
 // re-checks it so a stale name can never re-enter unnoticed.
 const STALE_DAYS = 450;
 const SESSION_DATE = universe.map((c) => c.priceDate).filter(Boolean).sort().pop() || iso(Date.now());
+
+// --- trading quality and statement age -----------------------------------------------------------
+// A suspended or untraded stock prints the same close for months. Publishing 0% returns and a current
+// P/E on that price is a lie of omission, so the returns are withheld and the price is flagged. The
+// same block keeps a liquidity proxy (30-session average traded value) and the TTM age.
+const lastEndOf = (c) => c.ttmEnd || c.latestEnd || (c.annual && c.annual.length ? c.annual[c.annual.length - 1].end : null);
+const avgOver = (s, n, value) => {
+  const win = (s || []).slice(-n).filter((p) => p.v != null && Number.isFinite(p.v) && p.v > 0 && p.c > 0);
+  if (!win.length) return null;
+  const xs = win.map((p) => (value ? p.c * p.v : p.v));
+  return xs.reduce((a, b) => a + b, 0) / xs.length;
+};
+const flatOf = (s) => {
+  const win = (s || []).slice(-250);
+  if (win.length < 2) return null;
+  let same = 0;
+  for (let i = 1; i < win.length; i++) if (win[i].c === win[i - 1].c) same++;
+  return Math.round((same / (win.length - 1)) * 100);
+};
+for (const c of universe) {
+  c.flatPct = flatOf(c.series);
+  c.noRecentTrading = c.flatPct != null && c.flatPct >= 90;
+  c.shortHistory = !!c.series && c.series.length > 0 && c.series.length < 100;
+  c.avgVolume30 = avgOver(c.series, 30, false);
+  c.avgValue30 = avgOver(c.series, 30, true);
+  // Rp 100M/day is a deliberately low floor: below it a name is not investable at any size. The
+  // market median is ~Rp 0.9B, so this flags the thin tail, not half the exchange.
+  c.thinTrading = c.avgValue30 != null && c.avgValue30 < 1e8;
+  const end = lastEndOf(c);
+  c.ttmAgeDays = end ? Math.round((Date.parse(SESSION_DATE) - Date.parse(end)) / DAY) : null;
+  c.ttmStale = c.ttmAgeDays != null && c.ttmAgeDays > 365;
+  // A frozen price has no honest 1D/6M/YTD return. Null, not 0%.
+  if (c.noRecentTrading) { c.chg1d = null; c.chg6m = null; c.chgYtd = null; }
+}
+const noTrade = universe.filter((c) => c.noRecentTrading);
+const thinHist = universe.filter((c) => c.shortHistory);
+const ttmStale = universe.filter((c) => c.ttmStale);
+const thinTrade = universe.filter((c) => c.thinTrading);
+if (noTrade.length) console.log(`  ${noTrade.length} companies with no recent trading (flat >=90%) — returns withheld`);
+if (thinHist.length) console.log(`  ${thinHist.length} companies with a short price history (<100 sessions)`);
+if (ttmStale.length) console.log(`  ${ttmStale.length} companies with a TTM older than 365 days`);
+if (thinTrade.length) console.log(`  ${thinTrade.length} companies under Rp 100M/day average traded value`);
+
 const stale = universe.filter((c) => {
   // A company carried as stale from the previous pass stays stale even though its reports were not
   // re-read here (the --skip-fin pass has no statement dates for it).
@@ -604,9 +657,11 @@ for (const c of out) {
   c.hsc = { asOf: HSC.asOf || null, source: HSC.source || null, rank: h.rank ?? null, name: h.name || null };
   hscCount++;
 }
-const hscMissing = Object.keys(hscEntries).filter((code) => !hscKnown.has(code));
+const hscMissing = Object.keys(hscEntries).filter((code) => !hscKnown.has(code) && !prunedEntries[code]);
+const hscPruned = Object.keys(hscEntries).filter((code) => prunedEntries[code]);
 const hscAgeDays = HSC.asOf ? Math.round((Date.parse(SESSION_DATE) - Date.parse(HSC.asOf)) / DAY) : null;
 if (hscCount) console.log(`  ${hscCount} companies on IDX's High Shareholding Concentration list (as of ${HSC.asOf})`);
+if (hscPruned.length) console.log(`  ${hscPruned.length} HSC codes are pruned by decision: ${hscPruned.join(', ')}`);
 if (hscMissing.length) console.log(`  ${hscMissing.length} HSC codes are not in the built market: ${hscMissing.join(', ')}`);
 
 // --- 8. market aggregates + themes ----------------------------------------------------------------
@@ -661,7 +716,8 @@ const themes = (themeBook.themes || []).map((t) => ({
 out.sort((a, b) => (b.marketCap || 0) - (a.marketCap || 0));
 const series = { daily: {}, weekly: {} };
 for (const c of out) {
-  const s = c.series || [];
+  // The bucket files keep only date + close; volume is a build-time input for the liquidity flag.
+  const s = (c.series || []).map(({ d, c: close }) => ({ d, c: close }));
   series.daily[c.code] = s.slice(-400);
   const w = [];
   for (let i = s.length - 1; i >= 0; i -= 5) w.push(s[i]);
@@ -700,9 +756,19 @@ const audit = {
   dividendYield: cleaned.filter((c) => c.dividendYield != null).length,
   vendorYield: cleaned.filter((c) => c.dividendYieldBasis === 'vendor').length,
   hsc: hscCount,
+  hscTotal: Object.keys(hscEntries).length,
+  hscPruned,
   hscAsOf: HSC.asOf || null,
   hscAgeDays,
   hscMissing,
+  noRecentTrading: cleaned.filter((c) => c.noRecentTrading).length,
+  noRecentTradingCodes: cleaned.filter((c) => c.noRecentTrading).map((c) => c.code),
+  shortHistory: cleaned.filter((c) => c.shortHistory).length,
+  shortHistoryCodes: cleaned.filter((c) => c.shortHistory).map((c) => c.code),
+  ttmStale: cleaned.filter((c) => c.ttmStale).length,
+  ttmStaleCodes: cleaned.filter((c) => c.ttmStale).map((c) => c.code),
+  thinTrading: cleaned.filter((c) => c.thinTrading).length,
+  thinTradingCodes: cleaned.filter((c) => c.thinTrading).map((c) => c.code),
   currentShares: cleaned.filter((c) => c.sharesCurrent > 0).length,
   netProfitTTM: cleaned.filter((c) => c.netIncomeTTM != null).length,
   financials: cleaned.filter((c) => c.financial).length,

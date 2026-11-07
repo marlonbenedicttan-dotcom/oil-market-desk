@@ -68,6 +68,8 @@ const PRESETS = {
     'CHEAP VS ITSELF': (c) => c.bands && c.bands.pe && c.bands.pe.percentile <= 20,
     'HIGH YIELD': (c) => (c.dividendYield || 0) >= 4,
     'HSC FLAGGED': (c) => !!c.hsc,
+    'NO RECENT TRADING': (c) => !!c.noRecentTrading,
+    'THIN TRADING': (c) => !!c.thinTrading,
   },
 };
 

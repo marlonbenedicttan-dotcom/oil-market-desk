@@ -184,6 +184,11 @@ for (const c of d.companies) {
   ret++;
   if (last.d !== c.priceDate) fail(`${c.code}.priceDate`, `${c.priceDate} vs series ${last.d}`);
   close(`${c.code}.price`, c.price, last.c, 0.0011);
+  // A frozen price deliberately withholds the returns; 0% would be a lie of omission.
+  if (c.noRecentTrading) {
+    if (c.chg1d != null || c.chg6m != null || c.chgYtd != null) fail(`${c.code}.returns`, 'a no-trade company still publishes a return');
+    continue;
+  }
   close(`${c.code}.chg1d`, c.chg1d, ((last.c / prev.c) - 1) * 100, 0.011);
   const six = pointOnOrBefore(s, iso(Date.parse(last.d) - 182 * DAY));
   if (six) close(`${c.code}.chg6m`, c.chg6m, ((last.c / six.c) - 1) * 100, 0.011);
@@ -193,6 +198,32 @@ for (const c of d.companies) {
   else if (c.chgYtd != null) fail(`${c.code}.chgYtd`, 'published but the archived series has no YTD point');
 }
 say('returns reproduce from the series', `${ret} checked`);
+
+// --- 3b. trading quality ---------------------------------------------------------------------------
+const flatOf = (s) => {
+  const win = (s || []).slice(-250);
+  if (win.length < 2) return null;
+  let same = 0;
+  for (let i = 1; i < win.length; i++) if (win[i].c === win[i - 1].c) same++;
+  return Math.round((same / (win.length - 1)) * 100);
+};
+let quality = 0;
+for (const c of d.companies) {
+  const s = (bucketOf(c.code).daily || {})[c.code] || [];
+  const flat = flatOf(s);
+  quality++;
+  if (c.noRecentTrading) {
+    if (!(flat >= 90)) fail(`${c.code}.noTrade`, `flagged with flat ${flat}%`);
+    if (c.chg1d != null || c.chg6m != null || c.chgYtd != null) fail(`${c.code}.noTrade`, 'a return is still published');
+  } else if (flat != null && flat >= 90) fail(`${c.code}.noTrade`, `flat ${flat}% but not flagged`);
+  if (!!c.shortHistory !== (s.length > 0 && s.length < 100)) fail(`${c.code}.shortHistory`, `${s.length} sessions`);
+  const end = c.reports && (c.reports.ttmEnd || c.reports.latestEnd);
+  const age = end ? Math.round((Date.parse(d.session) - Date.parse(end)) / DAY) : null;
+  if (c.ttmAgeDays !== age) fail(`${c.code}.ttmAgeDays`, `${c.ttmAgeDays} vs ${age}`);
+  if (!!c.ttmStale !== (age != null && age > 365)) fail(`${c.code}.ttmStale`, `age ${age}`);
+  if (!!c.thinTrading !== (c.avgValue30 != null && c.avgValue30 < 1e8)) fail(`${c.code}.thinTrading`, `avg ${c.avgValue30}`);
+}
+say('trading-quality flags', `${quality} checked`);
 
 // --- 4. index --------------------------------------------------------------------------------------
 {
@@ -285,6 +316,12 @@ const hscCodes = Object.keys(hscFile.entries || {});
 const hscFlagged = d.companies.filter((c) => c.hsc);
 close('hsc.count', hscFlagged.length, hscCodes.length, 0);
 close('audit.hsc', d.audit.hsc, hscFlagged.length, 0);
+close('audit.hscTotal', d.audit.hscTotal, hscCodes.length, 0);
+if ((d.audit.hscPruned || []).length) fail('hsc.pruned', d.audit.hscPruned.join(', '));
+close('audit.noRecentTrading', d.audit.noRecentTrading, d.companies.filter((c) => c.noRecentTrading).length, 0);
+close('audit.shortHistory', d.audit.shortHistory, d.companies.filter((c) => c.shortHistory).length, 0);
+close('audit.ttmStale', d.audit.ttmStale, d.companies.filter((c) => c.ttmStale).length, 0);
+close('audit.thinTrading', d.audit.thinTrading, d.companies.filter((c) => c.thinTrading).length, 0);
 const hscMissing = hscCodes.filter((code) => !byCode.has(code));
 if (hscMissing.length) fail('hsc.missing', hscMissing.join(', '));
 for (const t of d.themes || []) {
