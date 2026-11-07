@@ -49,7 +49,7 @@ Nine segments: **crude · refined products · natural gas · precious metals · 
 - **Copper/gold** growth proxy and US–Japan spread panels.
 
 ### COMPANIES — profiles & financials
-Eight markets, same UI:
+Nine markets, same UI:
 
 | Market | Universe | Financials |
 |---|---|---|
@@ -61,11 +61,13 @@ Eight markets, same UI:
 | 🇦🇺 Australia | ASX — **1,650 companies** with a current share count | ASX CSV + stockanalysis, AUD/USD |
 | 🇮🇳 India | NIFTY 500 — **498 companies** | niftyindices CSV + stockanalysis (NSE), INR |
 | 🇮🇩 Indonesia | IDX — **810 companies** | stockanalysis IDX list + statements + vendor statistics (yield, float), IDR |
+| 🇧🇷 Brazil | B3 — **303 companies** | stockanalysis B3 list (BDRs/FIIs filtered) + statements, one class per issuer, BRL |
 
 - Search, filter, compare, and chart any company.
 - **Valuation vs its own history** — P/E, P/B, EV/EBITDA percentiles over five years, plus sector aggregates.
 - **Themes** — the names behind a story, across all markets.
 - Financials are **filed values, not estimates**. Market cap uses the **current shares outstanding** (vendor statistics page; SEC 20-F/10-K/10-Q cover for ADRs; US listing × CDI ratio for ASX CDIs; filing count as the last fallback) so post-period placements and buybacks are reflected; FCF is **operating cash flow − capex**; dividend yield uses the **vendor's payment-date yield**, falling back to the latest annual DPS. Statements older than 450 days are excluded and listed in the audit. Every ratio is recomputed from its own inputs and the audit cross-checks a sample against the vendor's statistics page.
+- **Brazil is one class per issuer.** The B3 list carries 790+ BDRs and the FII/funds; both are filtered by type. The vendor covers one class per company (PETR4, not PETR3), and its market cap is the **company total** repeated on every class line — so the build keeps one class, the company cap and the class price, and never sums classes. Trading-quality warnings, the vendor dividend yield and the report-currency basis work the same as Indonesia.
 - **Indonesia adds two supervisory reads.** Dividend yield prefers the vendor statistics page (the filing's Dividend Per Share row is often absent for banks), with the filed DPS as the fallback and the basis labelled. Companies on IDX's **High Shareholding Concentration (HSC)** list carry a warning on the company page, an HSC badge and an HSC FLAGGED preset in the screener, and a market-level note — concentrated ownership, thin free float, excluded from LQ45/IDX30/IDX80. The list is IDX's **22 October 2026 review of 82 names**, pinned and refreshed quarterly; HSC stocks are also excluded from the IHSG since 2 November 2026. A frozen price (no recent trading), a short history, a TTM older than 12 months and thin turnover are flagged with warnings and screener presets, and their returns are withheld rather than shown as 0%. A reviewed prune removes **95 small, data-unclear lines** in two rounds: 45 with negative equity, no usable P/E/ROE, no TTM, a stale TTM or an unresolved share count; then 35 unclean nano-caps, 8 shell-like lines (revenue under Rp 10B and a loss) and 7 frozen prices. WSBP (Waskita Beton Precast) and CMPP (AirAsia Indonesia) were reviewed and deliberately kept.
 - **Book equity is on the newest balance-sheet instant** — the latest 10-Q/10-K in the US, the latest quarterly report in Korea — so P/B and ROE do not divide a TTM profit by year-old equity. US EPS growth is split-aware and withheld when the EPS/share series cannot be reconciled; Japan/Korea cash flow is labelled **CASH AFTER INVESTING (CFO+CFI)** because those summaries do not break out capex.
 - **Growth, on the same rules as the US**: revenue CAGR, split-adjusted EPS growth, and the net-margin change over the five fiscal years on file. Hong Kong, Australia and Korea show them on the company page and in the screener; a loss at either end is shown as the EPS move instead of a misleading percentage.
@@ -87,6 +89,7 @@ Eight markets, same UI:
 | Australia | ASX listed-companies CSV + stockanalysis.com + Yahoo | no key |
 | India | niftyindices NIFTY 500 CSV + stockanalysis.com (NSE) + Yahoo | no key |
 | Indonesia | stockanalysis.com IDX exchange list + statements/profiles + Yahoo | no key; idx.co.id blocks cloud IPs (403) |
+| Brazil | stockanalysis.com B3 exchange list + statements/profiles + Yahoo | no key; BDRs/FIIs filtered, one class per issuer |
 | News | tier-1 wires via Google News RSS | headlines + links only |
 
 **Benchmarks** — WTI (Cushing), Brent, RBOB, ULSD/heating oil, jet fuel (spot only), propane (spot only), natural gas (Henry Hub), plus the Brent − WTI spread (paper & physical). Adding a benchmark is one row in the `BENCHMARKS` table in `server.js`.

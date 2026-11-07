@@ -19,7 +19,7 @@ test('every market workflow still keeps the history it accumulates', () => {
   assert.match(wf('companies-weekly.yml'), /merge-history\.mjs us/, 'companies-weekly no longer keeps US quarters');
   assert.match(cd, /merge-series\.mjs us jp kr/, 'companies-daily no longer keeps US/Japan/Korea sessions');
 
-  for (const [file, id] of [['taiwan-daily.yml', 'tw'], ['hongkong-daily.yml', 'hk'], ['australia-daily.yml', 'au'], ['india-daily.yml', 'in'], ['indonesia-daily.yml', 'id']]) {
+  for (const [file, id] of [['taiwan-daily.yml', 'tw'], ['hongkong-daily.yml', 'hk'], ['australia-daily.yml', 'au'], ['india-daily.yml', 'in'], ['indonesia-daily.yml', 'id'], ['brazil-daily.yml', 'br']]) {
     const y = wf(file);
     assert.match(y, new RegExp(`merge-history\\.mjs ${id}`), `${file} no longer keeps filed periods`);
     assert.match(y, new RegExp(`merge-series\\.mjs ${id}`), `${file} no longer keeps traded sessions`);
@@ -40,6 +40,7 @@ test('every market workflow still audits before it commits', () => {
     'australia-daily.yml': /audit:australia|audit-australia\.mjs/,
     'india-daily.yml': /audit:india|audit-india\.mjs/,
     'indonesia-daily.yml': /audit:indonesia|audit-indonesia\.mjs/,
+    'brazil-daily.yml': /audit:brazil|audit-brazil\.mjs/,
   };
   for (const [file, re] of Object.entries(audit)) assert.match(wf(file), re, `${file} lost its audit`);
 });

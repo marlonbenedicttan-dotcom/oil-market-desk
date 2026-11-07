@@ -188,6 +188,41 @@ export const indonesiaList = (ind) => ({
   companies: (ind.companies || []).map(projectId),
 });
 
+// Brazil ships the Indonesia shape, plus the share class and the company-cap/class-price note. The
+// vendor's market cap is the company total repeated on every class line; the build keeps one class per
+// issuer, so the cap is not price × class shares.
+export const projectBr = (c) => ({
+  code: c.code, ticker: c.ticker, name: c.name, nameEn: c.nameEn || null, sector: c.sector || null,
+  brands: c.brands && c.brands.length ? c.brands : null,
+  price: c.price, priceDate: c.priceDate, marketCap: c.marketCap,
+  vendorCap: c.vendorCap ?? null,
+  shareClass: c.shareClass || null, multiClass: !!c.multiClass,
+  chg1d: c.chg1d, chg6m: c.chg6m, chgYtd: c.chgYtd,
+  pe: c.pe, pb: c.pb, roe: c.roe, opMargin: c.opMargin,
+  netIncomeTTM: c.netIncomeTTM ?? null,
+  netIncomeTTMAsOf: c.netIncomeTTMAsOf || null,
+  ttmFromFY: c.ttmFromFY || undefined,
+  fcfYield: c.fcfYield ?? null,
+  dividendYield: c.dividendYield ?? null,
+  reportCurrency: c.reportCurrency || null,
+  noRecentTrading: !!c.noRecentTrading,
+  shortHistory: !!c.shortHistory,
+  ttmStale: !!c.ttmStale,
+  thinTrading: !!c.thinTrading,
+  ttmAgeDays: c.ttmAgeDays ?? null,
+  avgValue30: c.avgValue30 ?? null,
+  flatPct: c.flatPct ?? null,
+  ...growthFields(c),
+  bands: c.bands && c.bands.pe ? { pe: { percentile: c.bands.pe.percentile } } : null,
+});
+
+export const brazilList = (br) => ({
+  updated: br.updated, universe: br.universe, currency: br.currency, fx: br.fx,
+  market: br.market, index: br.index, themes: br.themes || [], audit: br.audit || null,
+  session: br.session || null, indexName: br.indexName || 'Ibovespa',
+  companies: (br.companies || []).map(projectBr),
+});
+
 export const projectJp = (c) => ({  code: c.code, ticker: c.ticker, name: c.name, nameJa: c.nameJa, sector: c.sector, size: c.size,
   price: c.price, priceDate: c.priceDate, marketCap: c.marketCap,
   chg1d: c.chg1d, chg6m: c.chg6m, chgYtd: c.chgYtd, chgYtdBasis: c.chgYtdBasis,
@@ -223,4 +258,5 @@ export const FILTER_FIELDS = {
   au: ['sector', 'marketCap', 'pe', 'pb', 'roe', 'dividendYield', 'bands', 'chgYtd', 'priceDate', 'brands'],
   in: ['sector', 'marketCap', 'pe', 'pb', 'roe', 'dividendYield', 'bands', 'chgYtd', 'priceDate', 'brands'],
   id: ['sector', 'marketCap', 'pe', 'pb', 'roe', 'dividendYield', 'bands', 'chgYtd', 'priceDate', 'brands', 'hsc', 'noRecentTrading', 'thinTrading'],
+  br: ['sector', 'marketCap', 'pe', 'pb', 'roe', 'dividendYield', 'bands', 'chgYtd', 'priceDate', 'brands', 'noRecentTrading', 'thinTrading'],
 };

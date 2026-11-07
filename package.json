@@ -57,7 +57,12 @@
     "refresh:indonesia": "node scripts/fetch-listing-shares.mjs indonesia && node scripts/build-indonesia.mjs --fresh && node scripts/fetch-indonesia-profiles.mjs && node scripts/build-indonesia.mjs --skip-prices --skip-fin",
     "shares:indonesia": "node scripts/fetch-listing-shares.mjs indonesia",
     "audit:indonesia:deep": "node scripts/audit-indonesia-deep.mjs",
-    "review:indonesia:prune": "node scripts/review-indonesia-prune.mjs"
+    "review:indonesia:prune": "node scripts/review-indonesia-prune.mjs",
+    "build:brazil": "node scripts/build-brazil.mjs && node scripts/fetch-brazil-profiles.mjs && node scripts/fetch-listing-shares.mjs brazil && node scripts/build-brazil.mjs && node scripts/fetch-brazil-profiles.mjs && node scripts/build-brazil.mjs --skip-prices --skip-fin",
+    "audit:brazil": "node scripts/audit-brazil.mjs",
+    "refresh:brazil": "node scripts/build-brazil.mjs --fresh && node scripts/fetch-brazil-profiles.mjs && node scripts/fetch-listing-shares.mjs brazil && node scripts/build-brazil.mjs --skip-prices --skip-fin",
+    "shares:brazil": "node scripts/fetch-listing-shares.mjs brazil",
+    "audit:brazil:deep": "node scripts/audit-brazil-deep.mjs"
   },
   "engines": {
     "node": ">=22"

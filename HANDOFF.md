@@ -3958,3 +3958,34 @@ Audited at 360, 390 and 430 px with screenshots of every view, then fixed what l
   caches statements, so a warm run is minutes and a cold run is a couple of hours.
 - **No forward P/E, no free guidance feed**; the five-year record is the fiscal year and the trailing
   column is labelled TTM or FY on the company page.
+
+## Brazil: B3, one class per issuer (2026-11-07)
+
+- **Universe**: the vendor's B3 exchange list (1,228 rows) → **788 BDRs** (codes ending 31–39) and **26
+  FII/funds** excluded by type → 414 class lines → **311 issuer groups**. The build selects the class with
+  a statement page (PETR4 yes, PETR3 404; SANB11 yes, SANB4/3 404), largest class first. **303 companies**
+  after 4 stale statements and 4 without a defensible share count. Published cap **R$ 4.8T**.
+- **Company cap, class price**: the vendor's cap is the **company total**, repeated on every class line.
+  The selected class keeps that cap; the price is the class price; classes are never summed. The audit
+  checks `marketCap = vendorCap`, not `price × class shares`. The company page says which class it is.
+- **Statements**: stockanalysis.com BVMF pages; TTM/annual/quarterly, current shares, vendor yield, GICS
+  sector/profile. USD/BRL from open.er-api; Ibovespa (`^BVSP`) and `.SA` prices from Yahoo.
+- **Trading quality**: frozen price (>=90% unchanged in 250 sessions), short history (<100 sessions), TTM
+  older than 365 days and thin turnover (< R$1M/day) are flagged with the same warnings/presets as
+  Indonesia. No HSC equivalent.
+- **Reports/currency**: most issuers report in BRL; the report currency is stored and the ratios are
+  computed in it. The vendor does not label consolidated vs standalone; the page says so.
+- **Build**: `npm run build:brazil` — build → profiles → shares → rebuild → profiles → rebuild from cache.
+  `--limit=N` / `--codes=PETR4,VALE3` are the smoke tests; caches in `data/cache/b3`.
+- **Output**: `data/brazil.json`, `data/brazil-series/{A..Z,0..9}.json`, `data/brazil-list.json`,
+  `data/brazil-companies/`, `data/brazil-profiles.json`, `data/brazil-brands.json`,
+  `data/brazil-themes.json` (12 curated lists), `data/brazil-universe.json`.
+- **Server/UI**: `/api/brazil`, `/api/brazil/company/{code}`, `/api/brazil/chart?code=&range=`; a ninth
+  region button (`BRAZIL`) with MARKET / SCREENER / THEMES, company page, search (`br:PETR4`), peers,
+  compare and the home screener row. Accent `#2e9e5b`.
+- **Audit**: `npm run audit:brazil` (hard invariants; sample cross-check) and
+  `npm run audit:brazil:deep` (engine fields, cap/ratios, four-quarter TTM, growth, dividends, returns,
+  flags, aggregates, list projection). The deep audit reports the vendor's TTM-vs-quarter differences
+  (restatements/YTD) as notes, not failures.
+- **Schedule**: `.github/workflows/brazil-daily.yml`, 21:40 UTC Mon–Fri (18:40 BRT), with the statement
+  cache, `merge-history br`, `merge-series br`, the collapse guard, both audits and the commit.

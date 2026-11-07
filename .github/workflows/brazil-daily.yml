@@ -1,0 +1,72 @@
+name: brazil-daily
+
+# Brazil's prices and statements are not in companies-daily: this job keeps B3 in step with the other
+# markets. B3 closes at 18:00 BRT (21:00 UTC), so 21:40 UTC is after the close and after Yahoo settles.
+#
+# The universe is the vendor's B3 exchange list: BDRs (31–39) and FII/funds are filtered, and one class
+# per issuer is selected (PETR4, not PETR3). The vendor's cap is the company total, kept on that class.
+#
+# The build re-reads every statement page whose cache has expired (annual 7 days, quarterly 1 day), so a
+# new filing flows through on its own. A throttled class-selection pass is visible in audit.noCoveredClass
+# and filled on the next run.
+
+on:
+  schedule:
+    - cron: '40 21 * * 1-5'   # 18:40 BRT, Mon–Fri
+  workflow_dispatch: {}
+
+concurrency:
+  group: brazil-refresh
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Cache B3 statements, the exchange list and Yahoo prices
+        uses: actions/cache@v4
+        with:
+          path: |
+            data/cache/b3
+            data/cache/brazil-sa
+            data/cache/brazil-shares
+          key: br-cache-${{ github.run_id }}
+          restore-keys: br-cache-
+      - name: Build prices, class selection, statements and profiles
+        run: npm run refresh:brazil
+      - name: Keep every filed period
+        run: node scripts/merge-history.mjs br
+      - name: Keep every traded session
+        run: node scripts/merge-series.mjs br
+      - name: Refuse a collapsed build
+        run: node scripts/audit-market-refresh.mjs br
+      - name: Audit the dataset
+        run: npm run audit:brazil
+      - name: Deep audit every number
+        run: npm run audit:brazil:deep
+      - name: Commit if changed
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add data/brazil.json data/brazil-list.json data/brazil-series data/brazil-companies data/brazil-profiles.json data/brazil-shares.json data/brazil-brands.json data/brazil-universe.json data/charts
+          if git diff --staged --quiet; then
+            echo 'no data change'
+          else
+            git commit -m "chore: daily Brazil refresh ($(date -u +%Y-%m-%d))"
+            pushed=0
+            for i in 1 2 3 4 5; do
+              if git pull --rebase -X theirs origin "${{ github.ref_name }}" && git push origin "HEAD:${{ github.ref_name }}"; then pushed=1; break; fi
+              echo "push rejected (attempt $i) — rebasing and retrying"; sleep $((i * 5))
+            done
+            [ "$pushed" = "1" ] || { echo 'could not push after 5 attempts'; exit 1; }
+          fi

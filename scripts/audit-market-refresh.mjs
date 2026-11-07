@@ -39,11 +39,17 @@ const MARKETS = {
     // The IDX list moves by a handful of listings a month; a 3% drop means a throttled crawl, not delistings.
     minCompanies: 0.97,
   },
+  br: {
+    label: 'Brazil',
+    file: 'data/brazil.json',
+    // B3 adds/delists a handful a quarter; a 3% drop is a throttled class-selection pass.
+    minCompanies: 0.97,
+  },
 };
 
 const requested = (process.argv[2] || '').toLowerCase();
 if (requested && !MARKETS[requested]) {
-  console.error('usage: node scripts/audit-market-refresh.mjs [au|hk|in|id]');
+  console.error('usage: node scripts/audit-market-refresh.mjs [au|hk|in|id|br]');
   process.exit(2);
 }
 

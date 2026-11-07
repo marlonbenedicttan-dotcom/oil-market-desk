@@ -87,6 +87,15 @@ const MARKETS = {
       ['quarters', c.quarters, 'd'],
     ],
   },
+  br: {
+    file: 'brazil.json',
+    detail: 'brazil-companies',
+    tables: (c) => [
+      ['reports.annual', c.reports && c.reports.annual, 'end'],
+      ['reports.quarters', c.reports && c.reports.quarters, 'd'],
+      ['quarters', c.quarters, 'd'],
+    ],
+  },
   // The US has no per-company detail directory: the whole record lives in companies.json. Its
   // annual table is `series` (numeric fiscal year), so growth follows the merged record too.
   us: {
@@ -108,7 +117,7 @@ const codeOf = (c) => c.code || c.cik || c.ticker;
 // The annual table each market's growth fields are rebuilt from after older periods are merged.
 const annualsFor = (id, c) => {
   if (id === 'kr') return (c.reports || []).filter((r) => r && r.report === 'annual' && r.end);
-  if (id === 'tw' || id === 'hk' || id === 'au' || id === 'in' || id === 'id') return (c.reports && c.reports.annual) || [];
+  if (id === 'tw' || id === 'hk' || id === 'au' || id === 'in' || id === 'id' || id === 'br') return (c.reports && c.reports.annual) || [];
   return null;
 };
 const getPath = (obj, path) => path.split('.').reduce((o, k) => (o == null ? o : o[k]), obj);

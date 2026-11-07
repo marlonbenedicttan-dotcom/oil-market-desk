@@ -8,7 +8,7 @@ import { execFile } from 'node:child_process';
 import crypto from 'node:crypto';
 import { sendMail } from './src/smtp.js';
 import { fileURLToPath } from 'node:url';
-import { projectUs, projectJp, japanList, koreaList, taiwanList, hongkongList, australiaList, indiaList, indonesiaList, US_LIST_FIELDS } from './src/project.js';
+import { projectUs, projectJp, japanList, koreaList, taiwanList, hongkongList, australiaList, indiaList, indonesiaList, brazilList, US_LIST_FIELDS } from './src/project.js';
 import { sliceRange, seriesFromLine } from './src/charts.js';
 import { growthRates, fromJapanHistory } from './src/growth.js';
 import { sgn, businessDaysSince, horizonDeltas, horizonDeltasAbs, isoWeek, monthly, pctOver, percentile, lastNonNull, escHtml, webhookPayload, realizedVol, computeCracks, computeCrush, computeSteel, buildRelValueRow, relValueZone, ordinal, alignPriceToRows, inventoryBands, backAdjust, pearson, logReturns, frontExpiry, curveTightness, inventoryTightness, weightedScore, seasonalGrade, seasonalAhead, contractMonthsBetween, signedPosition, signedMove, stretchScore, sdLabel, attributeMoves, newsContextOk, METHODOLOGY, positioningFlag, positioningRead, positioningDivergence, maxDrawdown, drawdownNow, realizedVolTerm, volPercentile, volVsOwnWord, corrMatrix, fxAdjust, parseOcc, drawdownWord, volWord, volTrend, corrShift, pairGroups, topPairs, bestDiversifier, riskRead, priorityOf, rankByPriority, clusterEvents, scoreEvents, selectEvents, explainRows } from './src/lib.js';
@@ -1343,6 +1343,63 @@ function readIndonesiaSeries(code) {
   } catch { return { daily: {}, weekly: {} }; }
 }
 
+const BRAZIL_FILE = path.join(__dirname, 'data', 'brazil.json');
+let BRZ_CACHE = { mtime: 0, data: null };
+function readBrazil() {
+  try {
+    const st = fs.statSync(BRAZIL_FILE);
+    if (BRZ_CACHE.data && BRZ_CACHE.mtime === st.mtimeMs) return BRZ_CACHE.data;
+    BRZ_CACHE = { mtime: st.mtimeMs, data: JSON.parse(fs.readFileSync(BRAZIL_FILE, 'utf8')) };
+    return BRZ_CACHE.data;
+  } catch { return { companies: [] }; }
+}
+const BRAZIL_LIST_FILE = path.join(__dirname, 'data', 'brazil-list.json');
+let BRZL_CACHE = { key: null, data: null };
+function brazilSourceUpdated() {
+  try {
+    const fd = fs.openSync(BRAZIL_FILE, 'r');
+    try {
+      const buf = Buffer.alloc(256);
+      const n = fs.readSync(fd, buf, 0, 256, 0);
+      const m = /"updated"\s*:\s*"([^"]+)"/.exec(buf.toString('utf8', 0, n));
+      return m ? m[1] : null;
+    } finally { fs.closeSync(fd); }
+  } catch { return null; }
+}
+function readBrazilList() {
+  try {
+    const srcUpdated = brazilSourceUpdated();
+    const key = `${srcUpdated}:${fs.statSync(BRAZIL_LIST_FILE).mtimeMs}`;
+    if (BRZL_CACHE.data && BRZL_CACHE.key === key) return BRZL_CACHE.data;
+    const artifact = JSON.parse(fs.readFileSync(BRAZIL_LIST_FILE, 'utf8'));
+    if (artifact.updated && artifact.updated === srcUpdated) { BRZL_CACHE = { key, data: artifact }; return artifact; }
+  } catch { /* no artifact yet */ }
+  return brazilList(readBrazil());
+}
+const BRAZIL_DETAIL_DIR = path.join(__dirname, 'data', 'brazil-companies');
+function readBrazilCompany(code) {
+  const c = String(code || '').trim().toUpperCase();
+  if (!/^[A-Z0-9]{4,7}$/.test(c)) return null;
+  try { return JSON.parse(fs.readFileSync(path.join(BRAZIL_DETAIL_DIR, `${c}.json`), 'utf8')); }
+  catch { return null; }
+}
+const BRAZIL_SERIES_DIR = path.join(__dirname, 'data', 'brazil-series');
+const BRZ_SERIES_CACHE = new Map();
+function readBrazilSeries(code) {
+  const b = String(code || '').slice(0, 1).toUpperCase();
+  if (!/^[A-Z0-9]$/.test(b)) return { daily: {}, weekly: {} };
+  const f = path.join(BRAZIL_SERIES_DIR, `${b}.json`);
+  try {
+    const st = fs.statSync(f);
+    const hit = BRZ_SERIES_CACHE.get(b);
+    if (hit && hit.mtime === st.mtimeMs) return hit.data;
+    const data = JSON.parse(fs.readFileSync(f, 'utf8'));
+    if (BRZ_SERIES_CACHE.size >= 2) BRZ_SERIES_CACHE.delete(BRZ_SERIES_CACHE.keys().next().value);
+    BRZ_SERIES_CACHE.set(b, { mtime: st.mtimeMs, data });
+    return data;
+  } catch { return { daily: {}, weekly: {} }; }
+}
+
 const JAPAN_FILE = path.join(__dirname, 'data', 'japan.json');
 let JP_CACHE = { mtime: 0, data: null };
 function readJapan() {
@@ -1560,6 +1617,11 @@ function searchIndex() {
   for (const c of (indnS.companies || [])) {
     add('id', c.ticker, c.nameEn || c.name, [c.name, c.sector, ...(c.brands || [])], Math.round((c.marketCap || 0) / idRateS));
   }
+  const brS = readBrazilList();
+  const brRateS = (brS.fx && brS.fx.rate) || 1;
+  for (const c of (brS.companies || [])) {
+    add('br', c.ticker, c.nameEn || c.name, [c.name, c.sector, c.shareClass, ...(c.brands || [])], Math.round((c.marketCap || 0) / brRateS));
+  }
   SEARCH_INDEX = rows;
   return rows;
 }
@@ -1695,6 +1757,10 @@ const PEER_BUCKET = {
     'Consumer Discretionary': 'consumer', 'Consumer Staples': 'consumer', 'Health Care': 'pharma',
     Financials: 'banks', 'Information Technology': 'tech', 'Communication Services': 'telecom',
     Utilities: 'utilities', 'Real Estate': 'realestate' },
+  br: { Energy: 'energy', Materials: 'materials', Industrials: 'industrials',
+    'Consumer Discretionary': 'consumer', 'Consumer Staples': 'consumer', 'Health Care': 'pharma',
+    Financials: 'banks', 'Information Technology': 'tech', 'Communication Services': 'telecom',
+    Utilities: 'utilities', 'Real Estate': 'realestate' },
 };
 
 // The US has a four-digit SIC for every filer, so the bucket comes from the code rather than the
@@ -1766,6 +1832,9 @@ function peerIndex() {
   const indnP = readIndonesiaList();
   const idRateP = (indnP.fx && indnP.fx.rate) || 1;
   for (const c of (indnP.companies || [])) push('id', `id:${c.ticker}`, c.nameEn || c.name, c.sector, Math.round((c.marketCap || 0) / idRateP));
+  const brP = readBrazilList();
+  const brRateP = (brP.fx && brP.fx.rate) || 1;
+  for (const c of (brP.companies || [])) push('br', `br:${c.ticker}`, c.nameEn || c.name, c.sector, Math.round((c.marketCap || 0) / brRateP));
   PEER_INDEX = rows;
   return rows;
 }
@@ -1783,7 +1852,7 @@ function getPeers(ref, n = 6) {
   // At least one peer from each other market when the bucket allows it, then fill by size.
   const picked = [];
   const taken = new Set();
-  for (const mkt of ['us', 'jp', 'kr', 'tw', 'hk', 'au', 'in', 'id']) {
+  for (const mkt of ['us', 'jp', 'kr', 'tw', 'hk', 'au', 'in', 'id', 'br']) {
     if (mkt === me.market) continue;
     const first = others.find((r) => r.market === mkt);
     if (first) { picked.push(first); taken.add(first.ref); }
@@ -5288,6 +5357,7 @@ const server = http.createServer(async (req, res) => {
         updated: COMPANIES.updated || null,
         count: list.length,
         companies: list,
+        universe: COMPANIES.universe || null,
         themes: COMPANIES.themes || [],
         valuation: valuation ? { ...valuation.index, sectors: valuation.sectors || {} } : null,
       });
@@ -5506,6 +5576,39 @@ const server = http.createServer(async (req, res) => {
       const ind = readIndonesiaList();
       if (!ind.companies || !ind.companies.length) return sendJSON(res, 200, { companies: [], error: 'Indonesia has not been built yet' });
       return sendListJSON(res, 200, ind);
+    }
+    if (url.pathname.startsWith('/api/brazil/company/')) {
+      const code = decodeURIComponent(url.pathname.slice('/api/brazil/company/'.length));
+      const c = readBrazilCompany(code);
+      if (!c) return sendJSON(res, 404, { error: 'not found' });
+      return sendJSONCached(res, 200, c);
+    }
+    if (url.pathname === '/api/brazil/chart') {
+      const code = String(url.searchParams.get('code') || '').toUpperCase();
+      const range = url.searchParams.get('range') || '1y';
+      const stored = storeChart('br', code, range);
+      if (stored) return sendChartJSON(res, 200, { dates: stored.dates, closes: stored.closes, range, code });
+      const store = readBrazilSeries(code);
+      const block = range === '5y' || range === '10y' ? store.weekly : store.daily;
+      const series = (block && block[code]) || (store.weekly && store.weekly[code]) || [];
+      if (!series.length) return sendJSON(res, 200, { dates: [], closes: [], range, code });
+      const iso = (t) => new Date(t).toISOString().slice(0, 10);
+      const now = Date.now();
+      const from = range === '1m' ? iso(now - 31 * 864e5)
+        : range === '3m' ? iso(now - 92 * 864e5)
+          : range === '6m' ? iso(now - 190 * 864e5)
+            : range === 'ytd' ? `${new Date().getUTCFullYear()}-01-01`
+              : range === '1y' ? iso(now - 366 * 864e5)
+                : range === '5y' ? iso(now - 1826 * 864e5)
+                  : range === '10y' ? iso(now - 3653 * 864e5)
+                    : '1900-01-01';
+      const rows = series.filter((p) => p.d >= from);
+      return sendChartJSON(res, 200, { dates: rows.map((p) => p.d), closes: rows.map((p) => p.c), range, code });
+    }
+    if (url.pathname === '/api/brazil') {
+      const br = readBrazilList();
+      if (!br.companies || !br.companies.length) return sendJSON(res, 200, { companies: [], error: 'Brazil has not been built yet' });
+      return sendListJSON(res, 200, br);
     }
     if (url.pathname.startsWith('/api/japan/company/')) {
       const code = decodeURIComponent(url.pathname.slice('/api/japan/company/'.length));

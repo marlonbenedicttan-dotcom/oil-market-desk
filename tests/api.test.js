@@ -941,6 +941,53 @@ test('/api/indonesia/chart serves the range it was asked for', async () => {
   for (let i = 1; i < d.dates.length; i++) assert.ok(d.dates[i] > d.dates[i - 1]);
 });
 
+test('/api/brazil ships the list projection, not the price history, and revalidates', async () => {
+  const r = await fetch(`http://localhost:${PORT}/api/brazil`);
+  assert.equal(r.status, 200);
+  const etag = r.headers.get('etag');
+  assert.ok(etag, 'the Brazil list must carry an ETag');
+  const d = await r.json();
+  assert.ok(d.companies.length > 200, `got ${d.companies.length} companies`);
+  assert.ok(d.index && d.index.level != null, 'the Ibovespa level is missing');
+  assert.ok(d.fx && d.fx.rate > 3, 'the USD/BRL rate is missing');
+  const petr = d.companies.find((x) => x.ticker === 'PETR4');
+  assert.ok(petr && petr.nameEn, 'Petrobras is missing');
+  assert.equal(petr.reportCurrency, 'BRL');
+  assert.equal(petr.shareClass, 'PN');
+  assert.equal(petr.series, undefined, 'the list must not carry per-company price history');
+  assert.ok(JSON.stringify(d).length < 3_000_000, 'the Brazil list payload ballooned');
+  const again = await new Promise((resolve, reject) => {
+    http.get({ host: 'localhost', port: PORT, path: '/api/brazil', headers: { 'if-none-match': etag }, agent: false }, resolve).on('error', reject);
+  });
+  assert.equal(again.statusCode, 304);
+  again.resume();
+});
+
+test('/api/brazil/company keeps the company cap and the class price apart', async () => {
+  const r = await fetch(`http://localhost:${PORT}/api/brazil/company/PETR4`);
+  assert.equal(r.status, 200);
+  const c = await r.json();
+  assert.ok(c.sector, 'the sector is missing');
+  assert.equal(c.reportCurrency, 'BRL');
+  assert.equal(c.shareClass, 'PN');
+  assert.ok(c.reports && c.reports.ttm && c.reports.ttm.revenue > 0, 'TTM revenue is missing');
+  assert.ok(c.history.length >= 3, 'the fiscal-year record is missing');
+  assert.ok(c.marketCap === c.vendorCap, 'the company cap is not the vendor total');
+  if (c.pe != null) {
+    const want = +(c.marketCap / c.reports.ttm.netIncome).toFixed(2);
+    assert.ok(Math.abs(want - c.pe) < 0.2, `P/E ${c.pe} is not the company cap ÷ profit`);
+  }
+});
+
+test('/api/brazil/chart serves the range it was asked for', async () => {
+  const r = await fetch(`http://localhost:${PORT}/api/brazil/chart?code=PETR4&range=5y`);
+  assert.equal(r.status, 200);
+  const d = await r.json();
+  assert.ok(d.dates.length > 200, `got ${d.dates.length} points`);
+  assert.equal(d.dates.length, d.closes.length);
+  for (let i = 1; i < d.dates.length; i++) assert.ok(d.dates[i] > d.dates[i - 1]);
+});
+
 // One company is one small file now (data/korea-companies), not a parse of the 28 MB market. The
 // detail page reads quarters/history; the chart comes from data/charts, so the record carries no series.
 test('/api/korea/company answers by code or ticker from the per-company file', async () => {

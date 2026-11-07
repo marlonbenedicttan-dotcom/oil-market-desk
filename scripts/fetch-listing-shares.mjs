@@ -26,6 +26,8 @@ const MARKETS = {
   india: { data: 'india.json', quote: 'nse', out: 'india-shares.json', cache: 'india-shares', slug: (c) => String(c).replace(/[&-]/g, '_') },
   // IDX tickers are four characters with no punctuation; the slug is the ticker.
   indonesia: { data: 'indonesia.json', quote: 'idx', out: 'indonesia-shares.json', cache: 'indonesia-shares' },
+  // B3 classes: the selected class per issuer; the vendor statistics page carries the company cap.
+  brazil: { data: 'brazil.json', quote: 'bvmf', out: 'brazil-shares.json', cache: 'brazil-shares' },
 };
 const market = (process.argv[2] || '').toLowerCase();
 const M = MARKETS[market];
@@ -46,7 +48,11 @@ const data = readJson(join(ROOT, 'data', M.data));
 // universe snapshot is the independent list.
 const universe = market === 'indonesia'
   ? ((readJson(join(ROOT, 'data', 'indonesia-universe.json')) || {}).rows || (data && data.companies) || [])
-  : (data && data.companies) || [];
+  : market === 'brazil'
+    // Fetch the whole class-line snapshot, not only the classes the first build kept: banks often have no
+    // diluted count on the income statement and need the vendor statistics page to be capitalisable.
+    ? ((readJson(join(ROOT, 'data', 'brazil-universe.json')) || {}).rows || (data && data.companies) || [])
+    : (data && data.companies) || [];
 if (!universe.length) {
   console.error(`no ${M.data} and no indonesia-universe.json — build the market once before fetching current shares`);
   process.exit(1);

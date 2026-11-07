@@ -146,6 +146,7 @@ const TASKS = {
   au: (dry) => bucket('au', 'australia-series', dry),
   in: (dry) => bucket('in', 'india-series', dry),
   id: (dry) => bucket('id', 'indonesia-series', dry),
+  br: (dry) => bucket('br', 'brazil-series', dry),
 };
 
 const requested = process.argv.slice(2).filter((a) => !a.startsWith('-'));
