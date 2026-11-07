@@ -147,17 +147,22 @@ test('the trading-quality flags are consistent', () => {
   assert.ok(br.audit.thinTrading > 0, 'no thin flag');
 });
 
-test('the BDR lens is separate and reports its own currencies', () => {
+test('the BDR lens is LatAm/Brazil-linked only, not a US duplicate', () => {
   const bdr = br.companies.filter((c) => c.bdr);
-  assert.ok(bdr.length >= 25, `only ${bdr.length} BDRs`);
-  assert.ok(bdr.some((c) => c.code === 'ROXO34'), 'Nubank BDR is missing');
-  assert.ok(bdr.some((c) => c.code === 'AAPL34'), 'Apple BDR is missing');
-  assert.ok(bdr.some((c) => c.bdrGroup === 'brazil'), 'no Brazil-linked BDRs');
-  assert.ok(bdr.some((c) => c.bdrGroup === 'global'), 'no global BDRs');
+  assert.ok(bdr.length >= 10, `only ${bdr.length} BDRs`);
+  for (const code of ['ROXO34', 'XPBR31', 'INBR32', 'MELI34', 'STOC34', 'PAGS34', 'V2TX34', 'G1LO34', 'JBSS32', 'GROP31', 'EVEB31']) {
+    assert.ok(bdr.some((c) => c.code === code), `${code} is missing`);
+  }
+  assert.ok(!bdr.some((c) => c.code === 'AAPL34'), 'Apple must stay in the US section');
+  assert.ok(!bdr.some((c) => c.bdrGroup === 'global'), 'no global mega-cap BDRs');
+  assert.ok(bdr.every((c) => c.bdrGroup === 'brazil'), 'a BDR is not LatAm/Brazil-linked');
   assert.ok(bdr.every((c) => c.marketCap > 0 && c.price > 0 && c.shares > 0), 'a BDR is missing cap/price/shares');
   assert.ok(bdr.every((c) => c.reportCurrency), 'a BDR is missing its report currency');
   assert.ok(br.audit.bdrReportCurrencies.length >= 2, 'BDR report currencies missing');
   assert.ok(br.audit.bdrPe > 0, 'BDR median P/E missing');
+  assert.equal(br.market.bdrs, bdr.length);
+  assert.equal(br.market.listed, br.companies.length);
+  assert.ok(br.market.bdrCap > 0 && br.market.bdrCap < br.market.totalCap, 'BDR caps should not swamp the domestic total');
 });
 
 test('the curated themes survive the universe filter', () => {

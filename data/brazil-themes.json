@@ -189,9 +189,9 @@
     },
     {
       "id": "bdrs",
-      "label": "SIGNIFICANT BDRs",
+      "label": "SIGNIFICANT LATAM BDRs",
       "kind": "global",
-      "note": "The curated B3 BDR lens: Nu Holdings, XP, Inter, MercadoLibre, StoneCo, PagSeguro, VTEX, Globant, JBS N.V., Aura, Brazil Potash and Eve, plus the global mega-caps. BDRs are depositary receipts of foreign companies; the cap is the global company cap in BRL, the price is the BDR line, and the ratios are company-level in the underlying report currency. They are excluded from the 303 domestic totals.",
+      "note": "Curated LatAm/Brazil-linked BDRs: Nubank, XP, Inter, MercadoLibre, StoneCo, PagSeguro, VTEX, Globant, JBS N.V., Aura, Brazil Potash and Eve. The US mega-caps stay in the US section and are not duplicated. The cap is the global company cap in BRL, the price is the BDR line, and the ratios are company-level in the underlying report currency; the BDRs are excluded from the 303 domestic totals.",
       "tickers": [
         "ROXO34",
         "XPBR31",
@@ -204,25 +204,7 @@
         "JBSS32",
         "AURA33",
         "GROP31",
-        "EVEB31",
-        "AAPL34",
-        "NVDC34",
-        "MSFT34",
-        "GOGL34",
-        "AMZO34",
-        "M1TA34",
-        "TSLA34",
-        "AVGO34",
-        "TSMC34",
-        "LILY34",
-        "WALM34",
-        "JPMC34",
-        "VISA34",
-        "EXXO34",
-        "JNJB34",
-        "BERK34",
-        "MUTC34",
-        "A1MD34"
+        "EVEB31"
       ]
     }
   ]

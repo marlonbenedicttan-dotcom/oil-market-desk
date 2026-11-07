@@ -3990,17 +3990,18 @@ Audited at 360, 390 and 430 px with screenshots of every view, then fixed what l
 - **Schedule**: `.github/workflows/brazil-daily.yml`, 21:40 UTC Mon–Fri (18:40 BRT), with the statement
   cache, `merge-history br`, `merge-series br`, the collapse guard, both audits and the commit.
 
-## Brazil BDR lens: 29 curated receipts (2026-11-08)
+## Brazil BDR lens: 11 curated LatAm/Brazil receipts (2026-11-08)
 
-- **Why a separate lens**: the B3 list has 788 BDRs; the user wanted the significant foreign names
-  (Nubank, XP, Inter, MercadoLibre, StoneCo, PagSeguro, VTEX, Globant, JBS N.V., Aura, Brazil Potash,
-  Eve, and the global mega-caps), not all 788. They are not domestic B3 operating companies, and their
-  global company caps would swamp the domestic totals, so they are appended as their own panel and
-  excluded from `market.totalCap`, sector medians, breadth and the domestic quality counts.
-- **Allowlist**: `data/brazil-bdrs.json` — 30 entries (12 Brazil-linked, 18 global), with `code`,
-  `underlying`, `exchange` (`stocks` or `tsx`), `ticker`, `group`, a pinned `vendorCap` fallback and a
-  note. 29 build; **AURA33** is dropped because the TSX filing is older than 450 days (the policy is
-  applied, not waived).
+- **Why a separate lens**: the B3 list has 788 BDRs; the user wanted the significant **LatAm/Brazil-linked**
+  names (Nubank, XP, Inter, MercadoLibre, StoneCo, PagSeguro, VTEX, Globant, JBS N.V., Aura, Brazil
+  Potash, Eve), **not** the US mega-caps, which already live in the US section. They are not domestic B3
+  operating companies, and their global company caps would swamp the domestic totals, so they are
+  appended as their own panel and excluded from `market.totalCap`, sector medians, breadth and the
+  domestic quality counts.
+- **Allowlist**: `data/brazil-bdrs.json` — 12 LatAm/Brazil-linked entries, with `code`, `underlying`,
+  `exchange` (`stocks` or `tsx`), `ticker`, `group`, a pinned `vendorCap` fallback and a note. 11 build;
+  **AURA33** is dropped because the TSX filing is older than 450 days (the policy is applied, not waived).
+  There are no global mega-caps in this lens: Apple, Microsoft, etc. stay in the US section.
 - **Sources**: the B3 list row gives the **global company cap in BRL** and the B3 name; the **underlying
   US/TSX listing** (`stockanalysis.com/stocks/<ticker>/` or `/quote/tsx/<ticker>/`) gives the statements,
   GICS profile, current shares and dividend yield; the BDR's own `.SA` Yahoo series gives the BDR price
@@ -4017,12 +4018,12 @@ Audited at 360, 390 and 430 px with screenshots of every view, then fixed what l
 - **Market fields**: `market.companies` stays the domestic count; `market.listed` = domestic + BDRs;
   `market.bdrs`; `market.bdrCap` (global, for the panel only); `market.bdrGroups`; `market.bdrPe/Pb/Roe/
   Yield`; `market.bdrReportCurrencies`. `audit.companies` is the total, with `domesticCompanies`,
-  `bdrCompanies`, `includedBdrs`, `excludedBdrs` (759) and the BDR flag counts.
-- **UI**: a **SIGNIFICANT BDRs** panel on MARKET (Brazil-linked and global groups, global cap, P/E, YTD,
+  `bdrCompanies`, `includedBdrs`, `excludedBdrs` (777) and the BDR flag counts.
+- **UI**: a **SIGNIFICANT LATAM BDRs** panel on MARKET (LatAm/Brazil names only, global cap, P/E, YTD,
   BDR price); `BDR` tags on the screener/themes/home rows; a `TYPE` filter (All/Domestic/BDRs); the
-  `SIGNIFICANT BDRs` and `BRAZIL-LINKED BDRs` presets; the `bdrs` theme; a BDR banner and global-cap/
-  global-EPS labels on the company page. The universe note names the included BDR count and the dropped
-  Aura.
+  `SIGNIFICANT LATAM BDRs` preset; the `bdrs` theme; a BDR banner and global-cap/global-EPS labels on
+  the company page. The universe note names the included BDR count and the dropped Aura, and says the
+  US mega-caps remain in the US section.
 - **Audits/tests**: the standard audit excludes BDRs from the domestic cap/sector partition, checks the
   allowlist, each BDR's global cap, report currency, class, no band and the underlying; the deep audit
   checks the engine fields, P/E/P/B/ROE, four-quarter TTM, returns, flags, market/BDR aggregates, list

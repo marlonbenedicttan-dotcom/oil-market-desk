@@ -6,7 +6,7 @@
 // BDRs are appended as a separate lens: global company caps, underlying statements and BDR prices.
 // They are excluded from totalCap, sector medians, breadth and the domestic trading-quality counts.
 
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync, mkdirSync, rmSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { join } from 'node:path';
 import { ROOT } from './b3.mjs';
@@ -18,6 +18,7 @@ const BDR = join(ROOT, 'data', 'brazil-bdr-data.json');
 const LIST = join(ROOT, 'data', 'brazil-list.json');
 const THEMES = join(ROOT, 'data', 'brazil-themes.json');
 const DETAIL = join(ROOT, 'data', 'brazil-companies');
+const PROFILES = join(ROOT, 'data', 'brazil-profiles.json');
 const SERIES = join(ROOT, 'data', 'brazil-series');
 const DAY = 864e5;
 const iso = (d) => new Date(d).toISOString().slice(0, 10);
@@ -30,6 +31,10 @@ if (!bdrDoc || !Array.isArray(bdrDoc.companies) || !bdrDoc.companies.length) thr
 const domestic = br.companies.filter((c) => !c.bdr);
 const bdr = bdrDoc.companies.filter((c) => c.bdr);
 const all = [...domestic, ...bdr];
+// Remove the BDRs that were in the previous lens but are not in the curated LatAm set now.
+const prevBdr = br.companies.filter((c) => c.bdr);
+const newBdrCodes = new Set(bdr.map((c) => c.code));
+const staleBdr = prevBdr.filter((c) => !newBdrCodes.has(c.code));
 
 const median = (xs) => {
   const a = xs.filter((x) => x != null && Number.isFinite(x)).sort((x, y) => x - y);
@@ -114,6 +119,27 @@ renameSync(`${LIST}.tmp`, LIST);
 
 mkdirSync(DETAIL, { recursive: true });
 for (const c of bdr) writeFileSync(join(DETAIL, `${c.code}.json`), JSON.stringify(c));
+for (const c of staleBdr) { try { rmSync(join(DETAIL, `${c.code}.json`), { force: true }); } catch { /* already gone */ } }
+if (staleBdr.length) {
+  const staleCodes = new Set(staleBdr.map((c) => c.code));
+  const book = readJson(PROFILES) || { entries: {} };
+  if (book.entries) {
+    for (const code of staleCodes) delete book.entries[code];
+    book.updated = new Date().toISOString();
+    writeFileSync(`${PROFILES}.tmp`, JSON.stringify(book));
+    renameSync(`${PROFILES}.tmp`, PROFILES);
+  }
+  const buckets = new Set([...staleCodes].map((code) => String(code).slice(0, 1).toUpperCase()));
+  for (const b of buckets) {
+    const f = join(SERIES, `${b}.json`);
+    if (!existsSync(f)) continue;
+    const obj = JSON.parse(readFileSync(f, 'utf8'));
+    for (const code of staleCodes) { if (obj.daily) delete obj.daily[code]; if (obj.weekly) delete obj.weekly[code]; }
+    writeJson(`${f}.tmp`, { updated: new Date().toISOString(), ...obj });
+    renameSync(`${f}.tmp`, f);
+  }
+}
+console.log(`${staleBdr.length} old BDRs removed from the lens${staleBdr.length ? `: ${staleBdr.map((c) => c.code).join(', ')}` : ''}`);
 
 // Merge the BDR price series into the existing buckets. Domestic daily is the last 400 sessions;
 // weekly keeps the five-year chart. Match the domestic shape exactly.
@@ -149,5 +175,5 @@ catch (e) { console.log(`  chart store: ${e.message}`); }
 try { execFileSync(process.execPath, [join(ROOT, 'scripts', 'attach-market-brands.mjs'), 'br'], { stdio: 'inherit' }); }
 catch (e) { console.log(`  brands: ${e.message}`); }
 
-console.log(`${domestic.length} domestic + ${bdr.length} BDRs (${bdrGroups.brazil || 0} Brazil-linked, ${bdrGroups.global || 0} global) · ${bdr.length} global caps, not summed into the domestic total`);
+console.log(`${domestic.length} domestic + ${bdr.length} BDRs (${bdrGroups.brazil || 0} Brazil/LatAm) · global caps, not summed into the domestic total`);
 console.log(`market ${market.companies} domestic · ${market.listed} listed · domestic cap R$${(market.totalCap / 1e12).toFixed(2)}T · BDR caps R$${(bdrCap / 1e12).toFixed(1)}T (global)`);

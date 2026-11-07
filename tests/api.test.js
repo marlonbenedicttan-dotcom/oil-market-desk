@@ -963,7 +963,8 @@ test('/api/brazil ships the list projection, not the price history, and revalida
   assert.ok(nubr.marketCap === nubr.vendorCap, 'the BDR cap is not the vendor company cap');
   assert.equal(d.market.companies, d.companies.filter((x) => !x.bdr).length);
   assert.equal(d.market.bdrs, d.companies.filter((x) => x.bdr).length);
-  assert.ok(d.market.bdrCap > d.market.totalCap, 'the BDR global caps should dwarf the domestic total');
+  assert.ok(d.market.bdrCap > 0 && d.market.bdrCap < d.market.totalCap, 'BDR caps should be separate and below the domestic total');
+  assert.ok(!d.companies.some((x) => x.code === 'AAPL34'), 'the US Apple line must not be duplicated as a Brazil BDR');
   assert.ok(JSON.stringify(d).length < 3_000_000, 'the Brazil list payload ballooned');
   const again = await new Promise((resolve, reject) => {
     http.get({ host: 'localhost', port: PORT, path: '/api/brazil', headers: { 'if-none-match': etag }, agent: false }, resolve).on('error', reject);

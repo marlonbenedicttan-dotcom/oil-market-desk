@@ -7405,8 +7405,7 @@ const ID_PRESETS = [
   { id: 'hsc', label: 'HSC FLAGGED', test: (c) => !!c.hsc },
   { id: 'notrade', label: 'NO RECENT TRADING', test: (c) => !!c.noRecentTrading },
   { id: 'thin', label: 'THIN TRADING', test: (c) => !!c.thinTrading },
-  { id: 'bdrs', label: 'SIGNIFICANT BDRs', test: (c) => !!c.bdr },
-  { id: 'brazilbdrs', label: 'BRAZIL-LINKED BDRs', test: (c) => !!c.bdr && c.bdrGroup === 'brazil' },
+  { id: 'bdrs', label: 'SIGNIFICANT LATAM BDRs', test: (c) => !!c.bdr },
 ];
 
 function renderIndonesiaScreener(all, d) {
@@ -7747,12 +7746,10 @@ function redrawBrazilIndex(range = brMktRange) {
 }
 
 function brBdrPanel(all, m) {
-  // Keep the curated allowlist order, so Nubank leads the Brazil-linked group instead of being
-  // re-sorted behind MercadoLibre by global cap.
+  // LatAm/Brazil-linked only. The US mega-caps live in the US section and are deliberately not
+  // duplicated here; that is what "significant" means in this market.
   const bdrs = all.filter((c) => c.bdr);
   if (!bdrs.length) return '';
-  const brazil = bdrs.filter((c) => c.bdrGroup === 'brazil');
-  const global = bdrs.filter((c) => c.bdrGroup === 'global');
   const row = (c) => `<button class="bdr-row" data-br="${esc(c.code)}" title="${esc(c.bdrNote || c.bdrUnderlying || 'BDR')}">
       <span class="bdr-code">${esc(c.code)}</span>
       <span class="bdr-name"><b>${esc(brName(c))}</b><i>${esc(c.bdrUnderlying || '')}</i></span>
@@ -7762,12 +7759,10 @@ function brBdrPanel(all, m) {
       <span class="bdr-px">${brPx(c.price)}</span>
     </button>`;
   return `<div class="bdr-panel">
-    <div class="bdr-head"><span class="ph-t">SIGNIFICANT BDRs</span><span class="dimtext">${bdrs.length} · global company caps · excluded from the ${m.companies ?? '303'} domestic totals</span></div>
-    <p class="bdr-lede">Depositary receipts of foreign companies. The cap is the global company total (B3 list, BRL); the price is the BDR line; ratios are company-level in the underlying report currency.</p>
-    <div class="bdr-sub">BRAZIL-LINKED · ${brazil.length}</div>
-    <div class="bdr-grid">${brazil.map(row).join('')}</div>
-    <div class="bdr-sub">GLOBAL MEGA-CAPS · ${global.length}</div>
-    <div class="bdr-grid">${global.map(row).join('')}</div>
+    <div class="bdr-head"><span class="ph-t">SIGNIFICANT LATAM BDRs</span><span class="dimtext">${bdrs.length} · global company caps · excluded from the ${m.companies ?? '303'} domestic totals</span></div>
+    <p class="bdr-lede">Depositary receipts of LatAm/Brazil-linked companies. The US mega-caps (Apple, Microsoft, etc.) stay in the US section and are not duplicated here. The cap is the global company total (B3 list, BRL); the price is the BDR line; ratios are company-level in the underlying report currency.</p>
+    <div class="bdr-sub">BRAZIL & LATAM · ${bdrs.length}</div>
+    <div class="bdr-grid">${bdrs.map(row).join('')}</div>
   </div>`;
 }
 
@@ -7829,8 +7824,8 @@ function brUniverseNote(d) {
   const bdrDropped = Array.isArray(a.bdrDropped) ? a.bdrDropped : [];
   const bdrDropList = bdrDropped.map((x) => `<b>${esc(x.code)}</b> (${esc(x.why || 'not built')})`).join(' · ') || 'none';
   return `<div class="prune-note">
-    <div class="prune-head">WHAT'S EXCLUDED — ${a.includedBdrs ?? 0} significant BDRs included · ${a.excludedBdrs ?? 0} other BDRs · ${a.excludedFunds ?? 0} FII/funds · ${stale.length} stale · ${noShares.length} no share · ${noClass.length} no statement</div>
-    <p><b>BDRs.</b> The exchange list carries ${a.excludedBdr ?? 0} BDRs. ${a.includedBdrs ?? 0} significant ones are in the BDR lens above (Nubank, XP, Inter, MercadoLibre, StoneCo, PagSeguro, VTEX, Globant, JBS N.V., Brazil Potash, Eve, plus the global mega-caps); the other ${a.excludedBdrs ?? 0} are excluded. BDRs use the global company cap and the BDR line price, and are excluded from the domestic totals. FII/funds are not operating companies and are excluded.</p>
+    <div class="prune-head">WHAT'S EXCLUDED — ${a.includedBdrs ?? 0} significant LatAm/Brazil BDRs included · ${a.excludedBdrs ?? 0} other BDRs · ${a.excludedFunds ?? 0} FII/funds · ${stale.length} stale · ${noShares.length} no share · ${noClass.length} no statement</div>
+    <p><b>BDRs.</b> The exchange list carries ${a.excludedBdr ?? 0} BDRs. ${a.includedBdrs ?? 0} significant LatAm/Brazil-linked ones are in the lens above: Nubank, XP, Inter, MercadoLibre, StoneCo, PagSeguro, VTEX, Globant, JBS N.V., Brazil Potash and Eve. The other ${a.excludedBdrs ?? 0} BDRs and the FII/funds are excluded. The US mega-caps (Apple, Microsoft, etc.) remain in the US section and are not duplicated here. BDRs use the global company cap and the BDR line price, and are excluded from the domestic totals.</p>
     <p><b>One class per issuer.</b> The vendor covers one class (PETR4, not PETR3). The build keeps that class and the <b>company-total market cap</b>; the price is the class price and the share count is the class count.</p>
     <p><b>Stale (${stale.length}).</b> No statement for more than 450 days: ${staleList}.</p>
     <p><b>No defensible share count (${noShares.length}).</b> ${noShareList}. Without a share count there is no market cap, so the name is recorded rather than estimated.</p>
