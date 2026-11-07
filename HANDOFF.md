@@ -4148,3 +4148,38 @@ Taiwan, Hong Kong, Australia, India, Indonesia and Brazil; the US keeps it.
   daily reattaches themes and rebuilds the four charts. Both jobs use the fetch timeout. The daily
   cross-market audit is `continue-on-error` because the dedicated markets-audit-daily job owns that
   gate; a known non-US source issue must not stop the US price commit.
+
+## All-markets audit + automatic updates (2026-11-08)
+
+- **`npm run audit:all`** now runs the whole set, not just the US: US calculations/deep/universe/
+  freshness/deals/invariants/reconcile/arbitrate/themes, the US/JP/KR cross-market check,
+  Taiwan, Hong Kong, Australia, India, Indonesia (standard + deep), Brazil (standard + deep), the
+  refresh-collapse guards and `check-freshness`. It writes `data/audit-all-markets.json` and exits
+  non-zero on any failure. `check-snapshot` stays a separate manual baseline refresh: a new filing
+  legitimately moves it, which is why the daily companies job deliberately keeps it off the hard gate.
+- **`scripts/audit-all-markets.mjs`** is the wrapper; the individual scripts stay the source of truth.
+- **Auto updates**: `companies-daily` refreshes US/JP/KR; `taiwan-daily`, `hongkong-daily`,
+  `australia-daily`, `india-daily`, `indonesia-daily` and `brazil-daily` refresh the other six.
+  **`markets-audit-daily.yml`** runs Tue–Sat 22:30 UTC, after the US/JP/KR and Brazil refreshes, and
+  commits the combined audit report.
+- `tests/workflows.test.js` asserts the scheduled all-markets audit exists and that the wrapper names
+  every market, including the Indonesia and Brazil deep audits.
+
+## US MARKET cohorts, tiers and broader themes (2026-11-08)
+
+- **Tiers**: `attach-us-tiers.mjs` reads the SPY (500), MDY (400) and SPSM (600) holdings and tags every
+  company with `spTier` — **503 / 400 / 603** across 1,506 securities. The composite membership is still
+  SPTM; the three fund lists are authoritative for the size cohorts.
+- **MARKET cohorts**: the US MARKET view switches between **S&P 1500 / 500 / 400 / 600**. Each cohort
+  recomputes market cap, medians, breadth, the sector table and the index P/E from its own constituents,
+  and draws the matching index chart — `^SP1500` (SPTM proxy, scaled), `^GSPC`, `^SP400`, `^SP600`. The
+  company page badge names the company's own index. The selector is remembered per browser.
+- **Themes**: the US themes are industry rules plus curated names against the 1500, with tested anchors:
+  **AI 87 · Defence 34 · Nuclear & Power 70 · Software 46 · Healthcare 150 · Financials 233 ·
+  Energy 49 · REITs 107.** The mid and small caps join through the industry rules; the curated lists
+  remain the sector representatives.
+- **Auto-update**: the weekly rebuild runs frames → filter → complete → **tiers** → weights, then the
+  fundamentals, `fill-us-revenue`, `build-capital-metrics`, restatements, and **four index charts**; the
+  daily reattaches themes and rebuilds the four charts. Both jobs use the fetch timeout. The daily
+  cross-market audit is `continue-on-error` because the dedicated markets-audit-daily job owns that
+  gate; a known non-US source issue must not stop the US price commit.

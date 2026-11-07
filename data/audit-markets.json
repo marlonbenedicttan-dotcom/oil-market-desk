@@ -1,14 +1,14 @@
 {
- "checked": "2026-11-07T17:59:13.955Z",
+ "checked": "2026-11-07T18:17:42.721Z",
  "markets": {
   "us": {
    "name": "US",
-   "rows": 1506,
+   "rows": 502,
    "checks": [
     {
      "check": "market cap vs price × shares",
      "severity": "warn",
-     "count": 39,
+     "count": 2,
      "detail": "A share class Nasdaq capitalises but the filing does not count"
     },
     {
@@ -67,26 +67,20 @@
     }
    ],
    "fail": 0,
-   "warn": 39,
+   "warn": 2,
    "examples": {
     "market cap vs price × shares": [
-     "ACI (-8.5%)",
-     "SMCI (9.7%)",
-     "DINO (-9.0%)",
-     "THC (-8.5%)",
-     "CRBG (-9.0%)",
-     "ABG (-8.4%)",
-     "UHS (-8.6%)",
-     "FOXA (-8.5%)"
+     "DLR (10.1%)",
+     "LH (10.8%)"
     ]
    },
    "coverage": {
-    "companies": 1506,
-    "marketCap": 1506,
-    "pe": 1327,
-    "pb": 1438,
-    "ttm": 1485,
-    "quarters8": 1491
+    "companies": 502,
+    "marketCap": 502,
+    "pe": 476,
+    "pb": 468,
+    "ttm": 501,
+    "quarters8": 498
    }
   },
   "japan": {
@@ -194,13 +188,19 @@
     {
      "check": "market cap vs Naver",
      "severity": "warn",
-     "count": 387,
+     "count": 1,
+     "detail": "No Naver cap feed on disk — the independent cross-check was skipped"
+    },
+    {
+     "check": "market cap vs Naver",
+     "severity": "warn",
+     "count": 0,
      "detail": "A split or a stale print since the cap was read"
     },
     {
      "check": "market cap vs Naver",
      "severity": "fail",
-     "count": 47,
+     "count": 0,
      "detail": "More than a rounding difference"
     },
     {
@@ -240,18 +240,11 @@
      "detail": "A split or consolidation since the last annual report"
     }
    ],
-   "fail": 47,
-   "warn": 622,
+   "fail": 0,
+   "warn": 236,
    "examples": {
     "market cap vs Naver": [
-     "000660 (-17.2%)",
-     "402340 (-17.5%)",
-     "009150 (-20.1%)",
-     "010120 (-22.5%)",
-     "298040 (-21.6%)",
-     "267260 (-15.8%)",
-     "272210 (-20.0%)",
-     "000150 (-25.7%)"
+     "—"
     ],
     "share count differs from the filing": [
      "068270 (filing 218,613,124 → listed 232,072,902)",
@@ -272,10 +265,10 @@
     "peFY": 88,
     "pb": 721,
     "roe": 721,
-    "naverMatched": 725
+    "naverMatched": 0
    }
   }
  },
- "failures": 47,
- "warnings": 702
+ "failures": 0,
+ "warnings": 279
 }

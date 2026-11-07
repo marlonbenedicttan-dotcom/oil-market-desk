@@ -1,0 +1,61 @@
+name: markets-audit-daily
+
+# One cross-market audit after the daily refreshes. The per-market jobs already audit their own market;
+# this runs the full set together (including the Indonesia and Brazil deep audits and the refresh guards)
+# so a regression in any market is visible in one place and the report is committed.
+#
+# Tue–Sat 22:30 UTC: after companies-daily (08:00 UTC, US/JP/KR) and brazil-daily (21:40 UTC), and after
+# the Asia-Pacific jobs that day. Sunday/Monday are covered by the per-market daily jobs and the
+# data-freshness workflow; this is the combined gate, not the only update path.
+
+on:
+  schedule:
+    - cron: '30 22 * * 2-6'
+  workflow_dispatch: {}
+
+concurrency:
+  group: markets-audit
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Restore the TWSE caches for the full Taiwan audit
+        uses: actions/cache@v4
+        with:
+          path: |
+            data/cache/twse
+            data/cache/taiwan-finmind
+            data/cache/taiwan-sa
+            data/cache/taiwan-profiles
+          key: tw-cache-${{ github.run_id }}
+          restore-keys: tw-cache-
+      - name: Audit every market
+        run: npm run audit:all
+      - name: Commit the audit report if changed
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add data/audit-all-markets.json data/audit-markets.json
+          if git diff --staged --quiet; then
+            echo 'no audit report change'
+          else
+            git commit -m "chore: all-markets audit ($(date -u +%Y-%m-%d))"
+            pushed=0
+            for i in 1 2 3 4 5; do
+              if git pull --rebase -X theirs origin "${{ github.ref_name }}" && git push origin "HEAD:${{ github.ref_name }}"; then pushed=1; break; fi
+              echo "push rejected (attempt $i) — rebasing and retrying"; sleep $((i * 5))
+            done
+            [ "$pushed" = "1" ] || { echo 'could not push after 5 attempts'; exit 1; }
+          fi

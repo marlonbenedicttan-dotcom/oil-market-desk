@@ -26,6 +26,14 @@ test('every market workflow still keeps the history it accumulates', () => {
   }
 });
 
+test('the all-markets audit covers Indonesia and Brazil deep, and every market', () => {
+  const a = readFileSync(join(ROOT, 'scripts', 'audit-all-markets.mjs'), 'utf8');
+  for (const script of ['audit-taiwan.mjs', 'audit-hongkong.mjs', 'audit-australia.mjs', 'audit-india.mjs', 'audit-indonesia.mjs', 'audit-indonesia-deep.mjs', 'audit-brazil.mjs', 'audit-brazil-deep.mjs', 'audit-markets.mjs', 'check-freshness.mjs']) {
+    assert.ok(a.includes(script), `all-markets audit is missing ${script}`);
+  }
+  assert.match(wf('markets-audit-daily.yml'), /audit:all|audit-all-markets/, 'the scheduled all-markets audit lost its command');
+});
+
 test('the new-listing profile fetchers are still wired and capped', () => {
   const cd = wf('companies-daily.yml');
   assert.match(cd, /fetch-japan-profiles\.mjs --limit=25/, 'Japan new listings would never get a profile');

@@ -1,0 +1,243 @@
+{
+  "checked": "2026-11-07T18:16:10.656Z",
+  "ok": true,
+  "durationMs": 183910,
+  "steps": [
+    {
+      "market": "US",
+      "script": "audit-calculations.mjs",
+      "args": [],
+      "status": 0,
+      "signal": null,
+      "ok": true,
+      "ms": 71
+    },
+    {
+      "market": "US",
+      "script": "audit-deep.mjs",
+      "args": [],
+      "status": 0,
+      "signal": null,
+      "ok": true,
+      "ms": 69
+    },
+    {
+      "market": "US",
+      "script": "audit-universe.mjs",
+      "args": [],
+      "status": 0,
+      "signal": null,
+      "ok": true,
+      "ms": 64
+    },
+    {
+      "market": "US",
+      "script": "audit-freshness.mjs",
+      "args": [],
+      "status": 0,
+      "signal": null,
+      "ok": true,
+      "ms": 66
+    },
+    {
+      "market": "US",
+      "script": "audit-deals.mjs",
+      "args": [],
+      "status": 0,
+      "signal": null,
+      "ok": true,
+      "ms": 44
+    },
+    {
+      "market": "US",
+      "script": "invariants.mjs",
+      "args": [],
+      "status": 0,
+      "signal": null,
+      "ok": true,
+      "ms": 65
+    },
+    {
+      "market": "US",
+      "script": "reconcile-nasdaq.mjs",
+      "args": [],
+      "status": 0,
+      "signal": null,
+      "ok": true,
+      "ms": 91200
+    },
+    {
+      "market": "US",
+      "script": "arbitrate.mjs",
+      "args": [],
+      "status": 0,
+      "signal": null,
+      "ok": true,
+      "ms": 108
+    },
+    {
+      "market": "US",
+      "script": "audit-themes.mjs",
+      "args": [],
+      "status": 0,
+      "signal": null,
+      "ok": true,
+      "ms": 110
+    },
+    {
+      "market": "US / JP / KR",
+      "script": "audit-markets.mjs",
+      "args": [],
+      "status": 0,
+      "signal": null,
+      "ok": true,
+      "ms": 308
+    },
+    {
+      "market": "TW",
+      "script": "audit-taiwan.mjs",
+      "args": [],
+      "status": 0,
+      "signal": null,
+      "ok": true,
+      "ms": 48476
+    },
+    {
+      "market": "TW",
+      "script": "audit-taiwan-refresh.mjs",
+      "args": [],
+      "status": 0,
+      "signal": null,
+      "ok": true,
+      "ms": 137
+    },
+    {
+      "market": "HK",
+      "script": "audit-hongkong.mjs",
+      "args": [],
+      "status": 0,
+      "signal": null,
+      "ok": true,
+      "ms": 15005
+    },
+    {
+      "market": "HK",
+      "script": "audit-market-refresh.mjs",
+      "args": [
+        "hk"
+      ],
+      "status": 0,
+      "signal": null,
+      "ok": true,
+      "ms": 178
+    },
+    {
+      "market": "AU",
+      "script": "audit-australia.mjs",
+      "args": [],
+      "status": 0,
+      "signal": null,
+      "ok": true,
+      "ms": 25558
+    },
+    {
+      "market": "AU",
+      "script": "audit-market-refresh.mjs",
+      "args": [
+        "au"
+      ],
+      "status": 0,
+      "signal": null,
+      "ok": true,
+      "ms": 160
+    },
+    {
+      "market": "IN",
+      "script": "audit-india.mjs",
+      "args": [],
+      "status": 0,
+      "signal": null,
+      "ok": true,
+      "ms": 59
+    },
+    {
+      "market": "IN",
+      "script": "audit-market-refresh.mjs",
+      "args": [
+        "in"
+      ],
+      "status": 0,
+      "signal": null,
+      "ok": true,
+      "ms": 94
+    },
+    {
+      "market": "ID",
+      "script": "audit-indonesia.mjs",
+      "args": [],
+      "status": 0,
+      "signal": null,
+      "ok": true,
+      "ms": 104
+    },
+    {
+      "market": "ID",
+      "script": "audit-indonesia-deep.mjs",
+      "args": [],
+      "status": 0,
+      "signal": null,
+      "ok": true,
+      "ms": 288
+    },
+    {
+      "market": "ID",
+      "script": "audit-market-refresh.mjs",
+      "args": [
+        "id"
+      ],
+      "status": 0,
+      "signal": null,
+      "ok": true,
+      "ms": 131
+    },
+    {
+      "market": "BR",
+      "script": "audit-brazil.mjs",
+      "args": [],
+      "status": 0,
+      "signal": null,
+      "ok": true,
+      "ms": 60
+    },
+    {
+      "market": "BR",
+      "script": "audit-brazil-deep.mjs",
+      "args": [],
+      "status": 0,
+      "signal": null,
+      "ok": true,
+      "ms": 160
+    },
+    {
+      "market": "BR",
+      "script": "audit-market-refresh.mjs",
+      "args": [
+        "br"
+      ],
+      "status": 0,
+      "signal": null,
+      "ok": true,
+      "ms": 80
+    },
+    {
+      "market": "ALL",
+      "script": "check-freshness.mjs",
+      "args": [],
+      "status": 0,
+      "signal": null,
+      "ok": true,
+      "ms": 1310
+    }
+  ],
+  "failures": []
+}

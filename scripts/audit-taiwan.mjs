@@ -12,8 +12,15 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const read = (f) => JSON.parse(readFileSync(join(ROOT, 'data', f), 'utf8'));
 const tw = read('taiwan.json');
 const list = read('taiwan-list.json');
-const master = JSON.parse(JSON.parse(readFileSync(join(ROOT, 'data', 'cache', 'twse', 'master.json'), 'utf8')).text);
-const val = JSON.parse(JSON.parse(readFileSync(join(ROOT, 'data', 'cache', 'twse', 'valuation.json'), 'utf8')).text);
+// The TWSE master/valuation caches are gitignored. The dedicated Taiwan daily job restores them for
+// the full exchange cross-check; a fresh audit checkout may not have them. Degrade to the committed
+// data checks instead of crashing the all-markets audit.
+let master = [];
+let val = [];
+try { master = JSON.parse(JSON.parse(readFileSync(join(ROOT, 'data', 'cache', 'twse', 'master.json'), 'utf8')).text); }
+catch { console.log('TWSE master cache absent — skipping the exchange-master cross-check (committed data checks still run)'); }
+try { val = JSON.parse(JSON.parse(readFileSync(join(ROOT, 'data', 'cache', 'twse', 'valuation.json'), 'utf8')).text); }
+catch { console.log('TWSE valuation cache absent — skipping the exchange-ratio cross-check (committed data checks still run)'); }
 const valBy = new Map(val.map((v) => [v.Code, v]));
 const fmDir = join(ROOT, 'data', 'cache', 'taiwan-finmind');
 const seriesOf = (code) => {
