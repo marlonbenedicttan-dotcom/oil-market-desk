@@ -123,12 +123,17 @@ t('the curated themes survive the universe filter', () => {
   }
 });
 
-t('the universe snapshot agrees with the built market', () => {
+t('the universe snapshot agrees with the publishable market', () => {
   const snap = read('indonesia-universe.json');
-  assert.ok(snap.rows.length > 500, `snapshot has ${snap.rows.length} rows`);
+  const prune = read('indonesia-prune.json');
+  const pruned = new Set(Object.keys(prune.entries || {}));
+  const stale = new Set((ind.audit.staleCodes || []).map((x) => x.code));
+  const expected = snap.rows.filter((r) => !pruned.has(r.code) && !stale.has(r.code));
+  assert.ok(expected.length > 500, `publishable snapshot has ${expected.length} rows`);
   const built = new Set(ind.companies.map((c) => c.code));
-  const present = snap.rows.filter((r) => built.has(r.code)).length;
-  assert.ok(present / snap.rows.length > 0.9, `only ${present}/${snap.rows.length} snapshot names are in the build`);
+  const missing = expected.filter((r) => !built.has(r.code)).map((r) => r.code);
+  assert.deepEqual(missing, [], `publishable snapshot names missing from the build: ${missing.join(', ')}`);
+  assert.equal(ind.companies.length, expected.length);
 });
 
 t('dividend yield uses the vendor statistics page where the filing has no DPS', () => {

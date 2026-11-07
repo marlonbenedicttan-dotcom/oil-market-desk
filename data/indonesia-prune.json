@@ -1,7 +1,7 @@
 {
   "updated": "2026-11-07",
   "decidedBy": "Marlon",
-  "note": "Reviewed removal of small, data-unclear IDX lines. This is a product decision, not an automatic rule: the build excludes these codes, audit.pruned records them, and the audit fails if one re-enters without review. WSBP (Waskita Beton Precast) and CMPP (AirAsia Indonesia) were on the review list and deliberately KEPT; they are not in this file.",
+  "note": "Reviewed removal of small, data-unclear IDX lines, in two rounds. This is a product decision, not an automatic rule: the build excludes these codes, audit.pruned records them, and the audit fails if one re-enters without review. WSBP (Waskita Beton Precast) and CMPP (AirAsia Indonesia) were on the first review list and deliberately KEPT; they are not in this file. Round 1: 45 lines (negative equity, extreme P/E, no TTM, 402-day TTM, share-count gap). Round 2: 35 unclean nano-caps, 8 shell-like lines and 7 frozen prices.",
   "entries": {
     "INRU": {
       "reason": "ROE withheld (near-zero equity)",
@@ -227,6 +227,256 @@
       "reason": "no TTM column (FY only)",
       "cap": 26274600000,
       "name": "PT Tanah Laut Tbk"
+    },
+    "BMBL": {
+      "reason": "nano-cap (< Rp 100B): loss-making",
+      "cap": 21630000000,
+      "name": "PT Lavender Bina Cendikia Tbk"
+    },
+    "LMSH": {
+      "reason": "nano-cap (< Rp 100B): frozen price",
+      "cap": 24576000000,
+      "name": "PT Lionmesh Prima Tbk"
+    },
+    "FIMP": {
+      "reason": "nano-cap (< Rp 100B): loss-making, frozen price",
+      "cap": 27600000000,
+      "name": "PT Fimperkasa Utama Tbk"
+    },
+    "FORU": {
+      "reason": "nano-cap (< Rp 100B): loss-making",
+      "cap": 31634960000,
+      "name": "PT Fortune Indonesia Tbk"
+    },
+    "WIDI": {
+      "reason": "nano-cap (< Rp 100B): loss-making",
+      "cap": 32000000000,
+      "name": "PT Widiant Jaya Krenindo Tbk"
+    },
+    "HADE": {
+      "reason": "nano-cap (< Rp 100B): loss-making",
+      "cap": 36040000000,
+      "name": "PT Himalaya Energi Perkasa Tbk"
+    },
+    "RICY": {
+      "reason": "nano-cap (< Rp 100B): loss-making",
+      "cap": 36578040000,
+      "name": "PT Ricky Putra Globalindo Tbk"
+    },
+    "PLAN": {
+      "reason": "nano-cap (< Rp 100B): loss-making",
+      "cap": 40351950000,
+      "name": "PT Planet Properindo Jaya Tbk"
+    },
+    "DEFI": {
+      "reason": "nano-cap (< Rp 100B): loss-making",
+      "cap": 44616000000,
+      "name": "PT Danasupra Erapacific Tbk"
+    },
+    "HDIT": {
+      "reason": "nano-cap (< Rp 100B): loss-making",
+      "cap": 45600000000,
+      "name": "PT Hensel Davest Indonesia Tbk"
+    },
+    "KJEN": {
+      "reason": "nano-cap (< Rp 100B): loss-making",
+      "cap": 49000000000,
+      "name": "PT Krida Jaringan Nusantara Tbk"
+    },
+    "RUNS": {
+      "reason": "nano-cap (< Rp 100B): loss-making",
+      "cap": 49043500000,
+      "name": "PT Global Sukses Solusi Tbk"
+    },
+    "BIMA": {
+      "reason": "nano-cap (< Rp 100B): loss-making, frozen price",
+      "cap": 49870760000,
+      "name": "PT. Primarindo Asia Infrastructure, Tbk."
+    },
+    "BAPA": {
+      "reason": "nano-cap (< Rp 100B): loss-making",
+      "cap": 52280620000,
+      "name": "PT Bekasi Asri Pemula Tbk"
+    },
+    "KICI": {
+      "reason": "nano-cap (< Rp 100B): loss-making",
+      "cap": 53268000000,
+      "name": "PT Kedaung Indah Can Tbk"
+    },
+    "TNCA": {
+      "reason": "nano-cap (< Rp 100B): loss-making",
+      "cap": 56078120000,
+      "name": "PT Trimuda Nuansa Citra Tbk"
+    },
+    "MPOW": {
+      "reason": "nano-cap (< Rp 100B): loss-making",
+      "cap": 56373000000,
+      "name": "PT Megapower Makmur Tbk"
+    },
+    "OPMS": {
+      "reason": "nano-cap (< Rp 100B): loss-making",
+      "cap": 57758520000,
+      "name": "PT Optima Prima Metal Sinergi Tbk"
+    },
+    "LUCK": {
+      "reason": "nano-cap (< Rp 100B): loss-making",
+      "cap": 59407250000,
+      "name": "PT Sentral Mitra Informatika Tbk"
+    },
+    "PCAR": {
+      "reason": "nano-cap (< Rp 100B): loss-making",
+      "cap": 64350000000,
+      "name": "PT Prima Cakrawala Abadi Tbk"
+    },
+    "KRYA": {
+      "reason": "nano-cap (< Rp 100B): loss-making",
+      "cap": 66400000000,
+      "name": "PT Bangun Karya Perkasa Jaya Tbk"
+    },
+    "INAI": {
+      "reason": "nano-cap (< Rp 100B): loss-making",
+      "cap": 67161600000,
+      "name": "PT Indal Aluminium Industry Tbk"
+    },
+    "LRNA": {
+      "reason": "nano-cap (< Rp 100B): loss-making",
+      "cap": 68950000000,
+      "name": "PT Eka Sari Lorena Transport Tbk"
+    },
+    "JAST": {
+      "reason": "nano-cap (< Rp 100B): loss-making",
+      "cap": 72360000000,
+      "name": "PT. Jasnita Telekomindo Tbk"
+    },
+    "CTTH": {
+      "reason": "nano-cap (< Rp 100B): loss-making",
+      "cap": 77490000000,
+      "name": "PT Citatah Tbk"
+    },
+    "CHEM": {
+      "reason": "nano-cap (< Rp 100B): loss-making",
+      "cap": 78200000000,
+      "name": "PT Chemstar Indonesia Tbk"
+    },
+    "BAPI": {
+      "reason": "nano-cap (< Rp 100B): loss-making",
+      "cap": 78260000000,
+      "name": "PT Bhakti Agung Propertindo Tbk"
+    },
+    "TOOL": {
+      "reason": "nano-cap (< Rp 100B): loss-making",
+      "cap": 79949999999.99998,
+      "name": "PT Rohartindo Nusantara Luas Tbk"
+    },
+    "MERI": {
+      "reason": "nano-cap (< Rp 100B): loss-making",
+      "cap": 82160000000,
+      "name": "PT Merry Riana Edukasi Tbk"
+    },
+    "LABA": {
+      "reason": "nano-cap (< Rp 100B): loss-making",
+      "cap": 86900000000,
+      "name": "PT Green Power Group Tbk"
+    },
+    "MEDS": {
+      "reason": "nano-cap (< Rp 100B): loss-making",
+      "cap": 88920000000,
+      "name": "PT Hetzer Medical Indonesia Tbk"
+    },
+    "OLIV": {
+      "reason": "nano-cap (< Rp 100B): loss-making",
+      "cap": 91200000000,
+      "name": "PT Atlas Nexus Group Tbk"
+    },
+    "SMKM": {
+      "reason": "nano-cap (< Rp 100B): loss-making",
+      "cap": 95000000000,
+      "name": "PT Sumber Mas Konstruksi Tbk"
+    },
+    "YELO": {
+      "reason": "nano-cap (< Rp 100B): loss-making",
+      "cap": 97410000000,
+      "name": "PT Yelooo Integra Datanet Tbk"
+    },
+    "SNLK": {
+      "reason": "nano-cap (< Rp 100B): loss-making",
+      "cap": 98100000000,
+      "name": "PT Sunter Lakeside Hotel Tbk"
+    },
+    "PTIS": {
+      "reason": "shell-like: revenue under Rp 10B and a loss (Rp 100–250B)",
+      "cap": 106182810000,
+      "name": "PT Indo Straits Tbk"
+    },
+    "KBLV": {
+      "reason": "shell-like: revenue under Rp 10B and a loss (Rp 100–250B)",
+      "cap": 120060000000,
+      "name": "PT First Media Tbk"
+    },
+    "NAYZ": {
+      "reason": "shell-like: revenue under Rp 10B and a loss (Rp 100–250B)",
+      "cap": 130050000000,
+      "name": "PT Hassana Boga Sejahtera Tbk"
+    },
+    "KLIN": {
+      "reason": "shell-like: revenue under Rp 10B and a loss (Rp 100–250B)",
+      "cap": 131000000000,
+      "name": "PT Klinko Karya Imaji Tbk"
+    },
+    "LPPS": {
+      "reason": "shell-like: revenue under Rp 10B and a loss (Rp 100–250B)",
+      "cap": 137270000000,
+      "name": "PT Lenox Pasifik Investama Tbk"
+    },
+    "REAL": {
+      "reason": "shell-like: revenue under Rp 10B and a loss (Rp 100–250B)",
+      "cap": 192270000000,
+      "name": "PT Repower Asia Indonesia Tbk"
+    },
+    "BBSS": {
+      "reason": "shell-like: revenue under Rp 10B and a loss (Rp 100–250B)",
+      "cap": 211200000000,
+      "name": "PT Bumi Benowo Sukses Sejahtera Tbk"
+    },
+    "MEJA": {
+      "reason": "shell-like: revenue under Rp 10B and a loss (Rp 100–250B)",
+      "cap": 211410000000,
+      "name": "PT Harta Djaya Karya Tbk"
+    },
+    "MTSM": {
+      "reason": "price frozen 100% — no recent trading (Rp 100B–1T)",
+      "cap": 116425000000,
+      "name": "PT Metro Realty Tbk"
+    },
+    "MTPS": {
+      "reason": "price frozen 97% — no recent trading (Rp 100B–1T)",
+      "cap": 168480000000,
+      "name": "PT Meta Epsi Tbk."
+    },
+    "ALMI": {
+      "reason": "price frozen 100% — no recent trading (Rp 100B–1T)",
+      "cap": 282680000000,
+      "name": "PT Alumindo Light Metal Industry Tbk"
+    },
+    "KIAS": {
+      "reason": "price frozen 100% — no recent trading (Rp 100B–1T)",
+      "cap": 313530000000,
+      "name": "PT Keramika Indonesia Assosiasi Tbk"
+    },
+    "PTMR": {
+      "reason": "price frozen 100% — no recent trading (Rp 100B–1T)",
+      "cap": 714340000000,
+      "name": "PT Master Print Tbk"
+    },
+    "HITS": {
+      "reason": "price frozen 100% — no recent trading (Rp 100B–1T)",
+      "cap": 823600000000,
+      "name": "PT Humpuss Intermoda Transportasi Tbk."
+    },
+    "MFMI": {
+      "reason": "price frozen 100% — no recent trading (Rp 100B–1T)",
+      "cap": 984854000000,
+      "name": "PT Multifiling Mitra Indonesia Tbk"
     }
   }
 }
