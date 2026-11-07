@@ -59,6 +59,15 @@ const MARKETS = {
     cache: join(ROOT, 'data', 'cache', 'nse', 'profiles'),
     detail: join(ROOT, 'data', 'india-companies'),
   },
+  id: {
+    label: 'Indonesia',
+    source: join(ROOT, 'data', 'indonesia.json'),
+    list: join(ROOT, 'data', 'indonesia-list.json'),
+    brands: join(ROOT, 'data', 'indonesia-brands.json'),
+    profiles: join(ROOT, 'data', 'indonesia-profiles.json'),
+    cache: join(ROOT, 'data', 'cache', 'idx', 'profiles'),
+    detail: join(ROOT, 'data', 'indonesia-companies'),
+  },
 };
 
 const writeJson = (file, value) => {

@@ -3864,3 +3864,54 @@ Audited at 360, 390 and 430 px with screenshots of every view, then fixed what l
 - **Schedule**: `.github/workflows/india-daily.yml`, 10:40 UTC Mon–Fri (16:10 IST), with the statement
   cache, `merge-history in`, `merge-series in`, the collapse guard and `audit:india` before the commit.
   `check-freshness` watches `india.json` at 84h.
+
+## Indonesia: the IDX (2026-11-07)
+
+- **The exchange blocks us.** `idx.co.id` answers a Cloudflare **403 "Sorry, you have been blocked"** on
+  every path — the JSON APIs (`/primary/...`), the static PDFs and the HTML pages — from both this Mac and
+  the cloud, and headless Chrome gets the same page because it is an IP/WAF rule, not a JS challenge. So
+  the universe is read from the same keyless vendor as the statements: **stockanalysis.com's Indonesia
+  exchange list** (`/list/indonesia-stock-exchange/`, 500 rows per page).
+- **Universe**: **915 rows → 912 companies**. Three are not companies and are named/excluded rather than
+  fetched: `XSPI` and `XCIS` (listed REITs) and `XBGS` (a gold equity fund). `data/indonesia-universe.json`
+  is the committed snapshot the build falls back to if the vendor is briefly throttled; the daily job
+  re-reads the live list so new listings flow in. IDX codes are exactly four characters, so no padding or
+  symbol traps.
+- **Sources**: the vendor list for the universe; **Yahoo** (`{TICKER}.JK`, `^JKSE` for the IDX Composite)
+  for five years of daily closes; **stockanalysis.com (IDX)** for annual/quarterly statements with a TTM
+  column, the diluted share count, the dividend per share, the GICS sector/industry and the profile;
+  **open.er-api.com** for USD/IDR.
+- **Sectors**: the exchange list has no industry column, so the eleven **GICS sectors come from the vendor
+  profile** (`sectorSource: 'profile-gics-sector'`). A failed profile keeps "Other" and is counted, never
+  guessed.
+- **Banks vs insurers**: `Financials` is the sector; the industry splits lenders from insurers. Banks,
+  multi-finance and securities houses are `bankLike` (no operating margin, no FCF); insurers keep the
+  margin and lose FCF — the same rule as US/JP/HK/AU/IN.
+- **Report currency**: default IDR, but a few issuers report in USD. The build records `reportCurrency` and
+  `derive-listing` converts the rupiah cap before dividing by a dollar profit; the audit repeats the cross.
+- **A trailing column that is not trailing**: the same guard as India — an operating profit above its own
+  revenue is two periods spliced together, so the company is excluded and named in `audit.brokenCodes`.
+- **Build**: `npm run build:indonesia` — build → fetch profiles → rebuild from cache. `--limit=30` is the
+  smoke test; `--codes=BBCA,TLKM` builds named companies; `--skip-prices` / `--skip-fin` reuse the caches;
+  `--prices-only` warms Yahoo. Caches: `data/cache/idx/{yahoo,profiles}` and `data/cache/indonesia-sa`.
+- **Output**: `data/indonesia.json`, `data/indonesia-series/{A..Z,0..9}.json` (one-character buckets),
+  `data/indonesia-list.json`, `data/indonesia-companies/`, `data/indonesia-profiles.json`,
+  `data/indonesia-brands.json`, `data/indonesia-themes.json` (10 curated lists), `data/indonesia-universe.json`.
+- **Server**: `/api/indonesia`, `/api/indonesia/company/{code}`, `/api/indonesia/chart?code=&range=`. The
+  UI adds an eighth region button (`INDONESIA`) with MARKET / SCREENER / THEMES, the home screener row, a
+  company page, search (`id:BBCA`), peers and compare. Market accent `#b03a48`.
+- **Audit**: `npm run audit:indonesia` checks cap = price × shares, every ratio against its own inputs
+  (with the USD cross), no bank with an operating margin, no financial with FCF, totals tie, the sector
+  partition covers the market, the index is dated/ordered, and — new for this market — the vendor's own
+  headline cap is compared with ours (`audit.vendorCap`, a stale share count is reported, not hidden).
+- **Cross-check**: Google Finance serves IDX statements and agrees with the vendor on BBCA's TTM net
+  income to 0.02% (59.35T vs 59.36T); use it for a spot-check, not a bulk source.
+- **Schedule**: `.github/workflows/indonesia-daily.yml`, 09:40 UTC Mon–Fri (16:40 WIB, after the IDX
+  close), with the statement cache, `merge-history id`, `merge-series id`, the collapse guard
+  (`audit-market-refresh.mjs id`) and `audit:indonesia` before the commit. `check-freshness` watches
+  `indonesia.json` at 84h.
+- **Yahoo from this Mac is 429.** The first full build must run in GitHub Actions (a different egress);
+  the local IP is rate-limited to `Too Many Requests` on every chart/download endpoint. The workflow
+  caches statements, so a warm run is minutes and a cold run is a couple of hours.
+- **No forward P/E, no free guidance feed**; the five-year record is the fiscal year and the trailing
+  column is labelled TTM or FY on the company page.

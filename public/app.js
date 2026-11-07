@@ -2666,11 +2666,12 @@ const CO_VIEWS = {
   hk: [['hkview', 'market', 'MARKET'], ['hkview', 'screener', 'SCREENER'], ['hkview', 'themes', 'THEMES']],
   au: [['auview', 'market', 'MARKET'], ['auview', 'screener', 'SCREENER'], ['auview', 'themes', 'THEMES']],
   in: [['inview', 'market', 'MARKET'], ['inview', 'screener', 'SCREENER'], ['inview', 'themes', 'THEMES']],
+  id: [['idview', 'market', 'MARKET'], ['idview', 'screener', 'SCREENER'], ['idview', 'themes', 'THEMES']],
 };
 function paintCoViews() {
   const bar = $('co-views');
   if (!bar) return;
-  const active = coRegion === 'jp' ? jpView : coRegion === 'kr' ? krView : coRegion === 'tw' ? twView : coRegion === 'hk' ? hkView : coRegion === 'au' ? auView : coRegion === 'in' ? inView : usView;
+  const active = coRegion === 'jp' ? jpView : coRegion === 'kr' ? krView : coRegion === 'tw' ? twView : coRegion === 'hk' ? hkView : coRegion === 'au' ? auView : coRegion === 'in' ? inView : coRegion === 'id' ? idView : usView;
   bar.innerHTML = (CO_VIEWS[coRegion] || CO_VIEWS.us)
     .map(([attr, key, label]) => `<button type="button" data-${attr}="${key}" class="${active === key ? 'on' : ''}">${label}</button>`)
     .join('');
@@ -2684,6 +2685,7 @@ const coScreenTw = { q: '', sector: 'all', sort: 'marketCap', dir: -1, page: 1, 
 const coScreenHk = { q: '', sector: 'all', sort: 'marketCap', dir: -1, page: 1, per: 50 };
 const coScreenAu = { q: '', sector: 'all', sort: 'marketCap', dir: -1, page: 1, per: 50 };
 const coScreenIn = { q: '', sector: 'all', sort: 'marketCap', dir: -1, page: 1, per: 50 };
+const coScreenId = { q: '', sector: 'all', sort: 'marketCap', dir: -1, page: 1, per: 50 };
 // A 1,500-row page is a wall of scroll. Paging keeps one screenful at a time and the whole list one
 // click away — no infinite scroll, nothing hidden.
 const pagerHtml = (total, page, per, attr) => {
@@ -2705,12 +2707,12 @@ const STOCK_SCREEN_COLS = [
   { k: 'pb', t: 'P/B' }, { k: 'roe', t: 'ROE' }, { k: 'marketCap', t: 'MKT CAP' },
 ];
 const JP_SCREEN_COLS = STOCK_SCREEN_COLS;
-const screenMarketHtml = () => `<div class="sc-modes sc-mkt">${[['us', 'US'], ['jp', 'JAPAN'], ['kr', 'KOREA'], ['tw', 'TAIWAN'], ['hk', 'HONG KONG'], ['au', 'AUSTRALIA'], ['in', 'INDIA']].map(([k, t]) => `<button type="button" class="${screenMarket === k ? 'on' : ''}" data-screen-market="${k}">${t}</button>`).join('')}</div>`;
+const screenMarketHtml = () => `<div class="sc-modes sc-mkt">${[['us', 'US'], ['jp', 'JAPAN'], ['kr', 'KOREA'], ['tw', 'TAIWAN'], ['hk', 'HONG KONG'], ['au', 'AUSTRALIA'], ['in', 'INDIA'], ['id', 'INDONESIA']].map(([k, t]) => `<button type="button" class="${screenMarket === k ? 'on' : ''}" data-screen-market="${k}">${t}</button>`).join('')}</div>`;
 
 // A company's return in the screener's chosen base currency. A Tokyo listing returns yen; a dollar
 // investor gets that return *plus* the yen's own move, so the two are compounded rather than added.
 // Falls back to the local number only when no FX move is known, and the note under the table says so.
-const CUR_OF_MARKET = { us: 'USD', jp: 'JPY', kr: 'KRW', tw: 'TWD', hk: 'HKD', au: 'AUD', in: 'INR' };
+const CUR_OF_MARKET = { us: 'USD', jp: 'JPY', kr: 'KRW', tw: 'TWD', hk: 'HKD', au: 'AUD', in: 'INR', id: 'IDR' };
 // The date the prices belong to — the modal session across the table, so a stale feed is visible
 // rather than implied.
 function sessionOf(list, field) {
@@ -2747,6 +2749,7 @@ function renderCompanyScreen(el) {
   if (screenMarket === 'hk') return renderHongKongScreen(el);
   if (screenMarket === 'au') return renderAustraliaScreen(el);
   if (screenMarket === 'in') return renderIndiaScreen(el);
+  if (screenMarket === 'id') return renderIndonesiaScreen(el);
   // The companies payload is normally fetched when the COMPANIES tab opens; the home screener can ask
   // for it first, so load it here and re-render when it lands.
   if (!companiesData) {
@@ -3128,7 +3131,7 @@ $('screen')?.addEventListener('click', (e) => {
     screenMarket = mkt.dataset.screenMarket;
     try { localStorage.setItem('oilbasis.screenMarket', screenMarket); } catch {}
     const cur = document.querySelector('#p-screen .controls');
-    if (cur) cur.classList.toggle('hidden', screenMarket === 'jp' || screenMarket === 'tw' || screenMarket === 'hk' || screenMarket === 'au' || screenMarket === 'in');
+    if (cur) cur.classList.toggle('hidden', screenMarket === 'jp' || screenMarket === 'tw' || screenMarket === 'hk' || screenMarket === 'au' || screenMarket === 'in' || screenMarket === 'id');
     renderScreen(true);
     return;
   }
@@ -3142,6 +3145,8 @@ $('screen')?.addEventListener('click', (e) => {
   if (aup && aup.dataset.aupage !== 'per') { coScreenAu.page = Math.max(1, Number(aup.dataset.aupage)); renderScreen(true); return; }
   const inp = e.target.closest('[data-inpage]');
   if (inp && inp.dataset.inpage !== 'per') { coScreenIn.page = Math.max(1, Number(inp.dataset.inpage)); renderScreen(true); return; }
+  const idp2 = e.target.closest('[data-idpage]');
+  if (idp2 && idp2.dataset.idpage !== 'per') { coScreenId.page = Math.max(1, Number(idp2.dataset.idpage)); renderScreen(true); return; }
   const aukey = e.target.closest('th[data-aukey]');
   if (aukey) {
     const k = aukey.dataset.aukey;
@@ -3157,6 +3162,15 @@ $('screen')?.addEventListener('click', (e) => {
     coScreenIn.dir = coScreenIn.sort === k ? -coScreenIn.dir : (k === 'label' ? 1 : -1);
     coScreenIn.sort = k;
     coScreenIn.page = 1;
+    renderScreen(true);
+    return;
+  }
+  const idkey = e.target.closest('th[data-idkey]');
+  if (idkey) {
+    const k = idkey.dataset.idkey;
+    coScreenId.dir = coScreenId.sort === k ? -coScreenId.dir : (k === 'label' ? 1 : -1);
+    coScreenId.sort = k;
+    coScreenId.page = 1;
     renderScreen(true);
     return;
   }
@@ -3267,6 +3281,15 @@ $('screen')?.addEventListener('click', (e) => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
     return;
   }
+  const idrow2 = e.target.closest('tr[data-idrow]');
+  if (idrow2) {
+    coRegion = 'id'; try { localStorage.setItem('oilbasis.coRegion', 'id'); } catch {}
+    idSel = idrow2.dataset.idrow;
+    document.querySelector('[data-tab="deals"]')?.click();
+    renderIndonesia();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    return;
+  }
   const tr = e.target.closest('tr[data-id]');
   if (tr) goToInstrument(tr.dataset.id);
 });
@@ -3279,6 +3302,7 @@ $('screen')?.addEventListener('input', (e) => {
   if (e.target.id === 'coshk-q') { coScreenHk.q = e.target.value || ''; coScreenHk.page = 1; renderScreen(true); }
   if (e.target.id === 'cosau-q') { coScreenAu.q = e.target.value || ''; coScreenAu.page = 1; renderScreen(true); }
   if (e.target.id === 'cosin-q') { coScreenIn.q = e.target.value || ''; coScreenIn.page = 1; renderScreen(true); }
+  if (e.target.id === 'cosid-q') { coScreenId.q = e.target.value || ''; coScreenId.page = 1; renderScreen(true); }
 });
 $('screen')?.addEventListener('change', (e) => {
   if (e.target.id === 'cos-sector') { coScreen = { ...coScreen, sector: e.target.value, page: 1 }; renderScreen(true); return; }
@@ -3288,6 +3312,7 @@ $('screen')?.addEventListener('change', (e) => {
   if (e.target.id === 'coshk-sector') { coScreenHk.sector = e.target.value; coScreenHk.page = 1; renderScreen(true); return; }
   if (e.target.id === 'cosau-sector') { coScreenAu.sector = e.target.value; coScreenAu.page = 1; renderScreen(true); return; }
   if (e.target.id === 'cosin-sector') { coScreenIn.sector = e.target.value; coScreenIn.page = 1; renderScreen(true); return; }
+  if (e.target.id === 'cosid-sector') { coScreenId.sector = e.target.value; coScreenId.page = 1; renderScreen(true); return; }
   if (e.target.dataset && e.target.dataset.jppageper) { coScreenJp.per = Number(e.target.value); coScreenJp.page = 1; renderScreen(true); return; }
   if (e.target.dataset && e.target.dataset.krpageper) { coScreenKr.per = Number(e.target.value); coScreenKr.page = 1; renderScreen(true); return; }
   if (e.target.dataset && e.target.dataset.twpageper) { coScreenTw.per = Number(e.target.value); coScreenTw.page = 1; renderScreen(true); return; }
@@ -4552,10 +4577,11 @@ function syncCoTools() {
     : coRegion === 'hk' ? (!hkSel && hkView === 'screener')
     : coRegion === 'au' ? (!auSel && auView === 'screener')
     : coRegion === 'in' ? (!inSel && inView === 'screener')
+    : coRegion === 'id' ? (!idSel && idView === 'screener')
     : (coCik ? true : usView === 'screener');
   tools.classList.toggle('hidden', !wanted);
   // On a phone, a company page should start at the top: the filter bar is for lists.
-  const detail = coRegion === 'jp' ? !!jpSel : coRegion === 'kr' ? !!krSel : coRegion === 'tw' ? !!twSel : coRegion === 'hk' ? !!hkSel : coRegion === 'au' ? !!auSel : coRegion === 'in' ? !!inSel : !!coCik;
+  const detail = coRegion === 'jp' ? !!jpSel : coRegion === 'kr' ? !!krSel : coRegion === 'tw' ? !!twSel : coRegion === 'hk' ? !!hkSel : coRegion === 'au' ? !!auSel : coRegion === 'in' ? !!inSel : coRegion === 'id' ? !!idSel : !!coCik;
   tools.dataset.detail = detail ? '1' : '';
 }
 
@@ -5240,10 +5266,12 @@ const currentCmpRef = () => (coRegion === 'jp'
           ? (auSel ? `au:${auSel}` : '')
           : coRegion === 'in'
             ? (inSel ? `in:${inSel}` : '')
-            : (coTicker ? `us:${coTicker}` : ''));
+            : coRegion === 'id'
+              ? (idSel ? `id:${idSel}` : '')
+              : (coTicker ? `us:${coTicker}` : ''));
 
 function syncCmpClear(region) {
-  const on = region === 'jp' ? !!jpCompare : region === 'kr' ? !!krCompare : region === 'tw' ? !!twCompare : region === 'hk' ? !!hkCompare : region === 'au' ? !!auCompare : region === 'in' ? !!inCompare : !!coCompare;
+  const on = region === 'jp' ? !!jpCompare : region === 'kr' ? !!krCompare : region === 'tw' ? !!twCompare : region === 'hk' ? !!hkCompare : region === 'au' ? !!auCompare : region === 'in' ? !!inCompare : region === 'id' ? !!idCompare : !!coCompare;
   const b = $(region + '-cmp-clear');
   if (b) b.classList.toggle('hidden', !on);
 }
@@ -5286,6 +5314,12 @@ function clearCompare(region = coRegion) {
     hideSuggestions('in-sugg'); syncCmpClear('in');
     const cur = (inData && inData.companies || []).find((x) => x.code === inSel);
     if (cur) drawInChart(cur, inRange);
+  } else if (region === 'id') {
+    idCompare = '';
+    const inp = $('id-cmp'); if (inp) inp.value = '';
+    hideSuggestions('id-sugg'); syncCmpClear('id');
+    const cur = (idData && idData.companies || []).find((x) => x.code === idSel);
+    if (cur) drawIdChart(cur, idRange);
   } else {
     coCompare = '';
     const inp = $('co-cmp'); if (inp) inp.value = '';
@@ -5337,6 +5371,12 @@ function setCompare(ref) {
     hideSuggestions('in-sugg'); syncCmpClear('in');
     const cur = (inData && inData.companies || []).find((x) => x.code === inSel);
     if (cur) drawInChart(cur, inRange);
+  } else if (coRegion === 'id') {
+    idCompare = clean;
+    const inp = $('id-cmp'); if (inp) inp.value = label;
+    hideSuggestions('id-sugg'); syncCmpClear('id');
+    const cur = (idData && idData.companies || []).find((x) => x.code === idSel);
+    if (cur) drawIdChart(cur, idRange);
   } else {
     coCompare = clean;
     const inp = $('co-cmp'); if (inp) inp.value = label;
@@ -5384,6 +5424,7 @@ async function seriesFor(ref, range) {
   if (mkt === 'hk') return await jget(`/api/hongkong/chart?code=${encodeURIComponent(code)}&range=${encodeURIComponent(range)}`, 600000);
   if (mkt === 'au') return await jget(`/api/australia/chart?code=${encodeURIComponent(code)}&range=${encodeURIComponent(range)}`, 600000);
   if (mkt === 'in') return await jget(`/api/india/chart?code=${encodeURIComponent(code)}&range=${encodeURIComponent(range)}`, 600000);
+  if (mkt === 'id') return await jget(`/api/indonesia/chart?code=${encodeURIComponent(code)}&range=${encodeURIComponent(range)}`, 600000);
   return await jget(`/api/company-chart?ticker=${encodeURIComponent(code)}&range=${encodeURIComponent(yRange)}`, 600000);
 }
 
@@ -7131,6 +7172,408 @@ async function drawInChart(c, range = inRange) {
 }
 
 
+// --- Indonesia: IDX-listed companies -------------------------------------------------------------
+// Same three views and company page as the other markets. The universe comes from the vendor's IDX
+// exchange list (the exchange's own site blocks the deploy network at the edge), statements, English
+// names, GICS sectors and profiles from stockanalysis.com's IDX pages, the IDX Composite and five years
+// of closes from Yahoo. Prices are rupiah; a handful of issuers report in USD, so the page says which
+// currency the ratios were computed in.
+let idData = null, idSel = null, idQuery = '', idCompare = '';
+let idRange = (() => { try { return localStorage.getItem('oilbasis.idRange') || '1y'; } catch { return '1y'; } })();
+let idMktRange = (() => { try { return localStorage.getItem('oilbasis.idMktRange') || '1y'; } catch { return '1y'; } })();
+let idView = (() => { try { return localStorage.getItem('oilbasis.idView') || 'market'; } catch { return 'market'; } })();
+let idTheme = (() => { try { return localStorage.getItem('oilbasis.idTheme') || 'banks'; } catch { return 'banks'; } })();
+let idSector = 'all', idSort = 'cap', idPreset = null, idFilter = {}, idOpenSel = null;
+let idPage = 1, idPer = 50;
+let indonesiaPromise = null;
+
+const idName = (c) => (c && (c.nameEn || c.name)) || '';
+const idMoney = (v) => {
+  if (v == null || !Number.isFinite(v)) return '—';
+  const a = Math.abs(v);
+  if (a >= 1e12) return `Rp ${(v / 1e12).toFixed(2)}T`;
+  if (a >= 1e9) return `Rp ${(v / 1e9).toFixed(1)}B`;
+  if (a >= 1e6) return `Rp ${(v / 1e6).toFixed(0)}M`;
+  return `Rp ${Math.round(v).toLocaleString('en-US')}`;
+};
+const idPx = (v) => (v == null || !Number.isFinite(v) ? '—' : `Rp ${Math.round(v).toLocaleString('en-US')}`);
+const idMono = (c) => coMono({ ticker: String(c.nameEn || c.name || '?').replace(/[^A-Za-z]/g, '').slice(0, 2) || 'ID', name: c.nameEn || c.name });
+const idViewsBar = () => '';
+
+async function loadIndonesia() {
+  if (idData) return idData;
+  if (indonesiaPromise) return indonesiaPromise;
+  indonesiaPromise = (async () => {
+    try { idData = await jget('/api/indonesia', 3600000); }
+    catch { idData = null; }
+    finally { indonesiaPromise = null; }
+    return idData;
+  })();
+  return indonesiaPromise;
+}
+
+async function renderIndonesia(token = takeToken()) {
+  paintCoViews();
+  const el = $('co-body'); if (!el) return;
+  if (idSel !== idOpenSel) { idCompare = ''; idOpenSel = idSel; }
+  syncMarketAccent();
+  const noteUs = $('co-note'); if (noteUs) noteUs.classList.add('hidden');
+  syncCoTools();
+  if (!idData) el.innerHTML = stLoading('Loading the IDX Composite…');
+  const d = await loadIndonesia();
+  if (stale(token)) return;
+  syncMarketAccent();
+  const all = (d && d.companies) || [];
+  const sub = $('deals-sub');
+  if (sub) {
+    const what = idView === 'screener' ? 'filter and sort' : idView === 'themes' ? 'curated theme lists' : 'breadth, sectors and the IDX Composite';
+    sub.textContent = all.length ? `${all.length} companies · IDX · prices in IDR · ${what}` : 'IDX · IDX Composite';
+  }
+  if (!all.length) {
+    el.innerHTML = `<div class="macro-note">Indonesia is not built yet. Run <code>node scripts/build-indonesia.mjs</code>.</div>`;
+    return;
+  }
+  const sel = all.find((c) => c.code === idSel);
+  if (sel) return renderIndonesiaPage(sel);
+  warmMarkets();
+  if (idView === 'market') return renderIndonesiaMarket(all, d);
+  if (idView === 'themes') return renderIndonesiaThemes(all, d);
+  return renderIndonesiaScreener(all, d);
+}
+
+function idIndexSeries() {
+  const s = idData && idData.index && idData.index.series;
+  return s && s.length > 1 ? { dates: s.map((p) => p.d), closes: s.map((p) => p.c) } : null;
+}
+function redrawIndonesiaIndex(range = idMktRange) {
+  const full = idIndexSeries();
+  if (!full) return false;
+  idMktRange = drawMarketIndexChart('id-mkt', full, range, 'idmkt', 'IDX Composite');
+  return true;
+}
+
+function renderIndonesiaMarket(all, d) {
+  const el = $('co-body'); if (!el) return;
+  const m = d.market || {}; const idx = d.index || {};
+  const cell = (k, v, t, cls = '') => `<div class="co-stat" title="${esc(t)}"><span class="co-k">${k}</span><span class="co-v ${cls}">${v}</span></div>`;
+  const chg = (x) => (x == null ? '—' : `${x >= 0 ? '+' : ''}${x.toFixed(1)}%`);
+  const breadth = m.advancing != null ? `<div class="jp-breadth"><span class="pos">${m.advancing} up</span><i><i style="width:${Math.round((m.advancing / Math.max(1, m.advancing + m.declining)) * 100)}%"></i></i><span class="neg">${m.declining} down</span></div>` : '';
+  const foreign = m.foreignReporters != null ? `${m.foreignReporters} report outside IDR` : 'IDR reporters';
+  el.innerHTML = idViewsBar()
+    + `<div class="jp-market-head"><span class="ph-t">IDX COMPOSITE</span>
+        ${idx.level != null ? `<span class="jp-market-lvl">${idx.level.toLocaleString('en-US', { maximumFractionDigits: 2 })}</span>` : '<span class="dimtext">index unavailable</span>'}
+        <span class="${(idx.chg1d || 0) >= 0 ? 'pos' : 'neg'}">${chg(idx.chg1d)} today</span>
+        <span class="dimtext">${all.length} companies · IDX · prices as of ${sessionOf(all, 'priceDate') || d.session}${idx.date ? ` · index as of ${idx.date}` : ''}</span></div>`
+    + `<div class="co-stats co-stats-12">
+        ${cell('TOTAL MARKET CAP', idMoney(m.totalCap), 'Sum of every covered IDX constituent')}
+        ${cell('COMPANIES', String(m.companies || all.length), 'Listed companies with a statement page and a share count')}
+        ${cell('MEDIAN P/E', m.medianPe != null ? `${m.medianPe.toFixed(1)}×` : '—', `Median — the typical company, not the index. ${foreign}`)}
+        ${cell('MEDIAN P/B', m.medianPb != null ? `${m.medianPb.toFixed(2)}×` : '—', 'Median across the market — market cap ÷ common equity (excludes minorities)')}
+        ${cell('MEDIAN ROE', m.medianRoe != null ? `${m.medianRoe.toFixed(1)}%` : '—', 'Median member — trailing profit ÷ common equity (excludes minorities), TTM where available')}
+        ${cell('MEDIAN YIELD', m.medianYield != null ? `${m.medianYield.toFixed(2)}%` : '—', 'Median member — latest annual DPS ÷ price')}
+        ${cell('BELOW BOOK', String(m.belowBook ?? '—'), 'Companies trading under 1× book')}
+        ${cell('UP THIS YEAR', String(m.upYtd ?? '—'), 'Companies with a positive year-to-date return')}
+      </div>`
+    + breadth
+    + (idx.series && idx.series.length > 1 ? `<div class="co-rets" id="id-mkt-rets"></div><div class="co-chartwrap"><canvas id="id-mkt-chart"></canvas></div>` : '')
+    + `<div class="co-hrow jp-mkt-hrow"><span>SECTOR</span><span>N</span><span>CAP</span><span>P/E</span><span>P/B</span><span>ROE</span><span>YIELD</span><span>YTD</span></div>`
+    + (m.sectors || []).map((x) => `<div class="jp-mkt-row">
+        <span>${esc(x.name)}</span><span>${x.count}</span><span>${idMoney(x.cap)}</span>
+        <span>${x.pe != null ? x.pe.toFixed(1) : '—'}</span>
+        <span class="${x.pb != null && x.pb < 1 ? 'pos' : ''}">${x.pb != null ? x.pb.toFixed(2) : '—'}</span>
+        <span class="${(x.roe || 0) >= 0 ? 'pos' : 'neg'}">${x.roe != null ? x.roe.toFixed(1) + '%' : '—'}</span>
+        <span>${x.yield != null ? x.yield.toFixed(2) + '%' : '—'}</span>
+        <span class="${(x.chgYtd || 0) >= 0 ? 'pos' : 'neg'}">${chg(x.chgYtd)}</span>
+      </div>`).join('')
+    + `<div class="macro-note">Aggregates computed from the ${all.length} covered IDX-listed constituents. Sectors are the eleven GICS sectors from the vendor profile (the exchange list carries no industry column). Prices are IDR; statements are in the issuer's report currency (${foreign}) and ratios are computed in that currency. Market cap uses the current share count from the vendor statistics page; the diluted filing count is still shown on the company page. Companies whose latest statement is older than 450 days are excluded and listed in the audit. IDX publishes no per-stock P/E here, so the Indonesia audit reports coverage plus a same-source sample.</div>`;
+  if (idx.series && idx.series.length > 1) redrawIndonesiaIndex();
+}
+
+function renderIndonesiaThemes(all, d) {
+  const el = $('co-body'); if (!el) return;
+  const themes = (d && d.themes) || [];
+  if (!themes.length) { el.innerHTML = idViewsBar() + '<div class="macro-note">No themes loaded.</div>'; return; }
+  const active = themes.find((t) => t.id === idTheme) || themes[0];
+  const set = new Set(active.tickers || []);
+  const rows = all.filter((c) => set.has(c.ticker)).sort((a, b) => (b.marketCap || 0) - (a.marketCap || 0));
+  const chg = (x) => (x == null ? '—' : `${x >= 0 ? '+' : ''}${x.toFixed(1)}%`);
+  el.innerHTML = idViewsBar()
+    + `<div class="jp-presets">${themes.map((t) => `<button type="button" data-idtheme="${t.id}" class="${t.id === active.id ? 'on' : ''}">${t.label}</button>`).join('')}</div>`
+    + `<div class="jp-market-head"><span class="ph-t">${esc(active.label)}</span><span class="dimtext">${rows.length} companies · curated list</span></div>`
+    + `<div class="co-hrow jp-bank-hrow"><span>#</span><span>COMPANY</span><span>CAP</span><span>P/E</span><span>P/B</span><span>ROE</span><span>YIELD</span><span>YTD</span></div>`
+    + rows.map((c, i) => `<button class="jp-bank-row" data-id="${esc(c.code)}">
+        <span>${i + 1}</span>
+        <span><b>${esc(idName(c))}</b><span class="co-tick">${esc(c.ticker)}</span></span>
+        <span>${idMoney(c.marketCap)}</span>
+        <span>${c.pe != null ? c.pe.toFixed(1) : '—'}</span>
+        <span class="${c.pb != null && c.pb < 1 ? 'pos' : ''}">${c.pb != null ? c.pb.toFixed(2) : '—'}</span>
+        <span class="${(c.roe || 0) >= 0 ? 'pos' : 'neg'}">${c.roe != null ? c.roe.toFixed(1) + '%' : '—'}</span>
+        <span>${c.dividendYield != null ? c.dividendYield.toFixed(2) + '%' : '—'}</span>
+        <span class="${(c.chgYtd || 0) >= 0 ? 'pos' : 'neg'}">${chg(c.chgYtd)}</span>
+      </button>`).join('')
+    + `<div class="macro-note">${esc(active.note || '')}</div>`;
+}
+
+const ID_PRESETS = [
+  { id: 'book', label: 'BELOW BOOK', test: (c) => c.pb != null && c.pb < 1 },
+  { id: 'roe', label: 'HIGH ROE', test: (c) => (c.roe || 0) > 12 },
+  { id: 'cheap', label: 'CHEAP VS ITSELF', test: (c) => c.bands && c.bands.pe && c.bands.pe.percentile <= 20 },
+  { id: 'yield', label: 'HIGH YIELD', test: (c) => (c.dividendYield || 0) >= 4 },
+];
+
+function renderIndonesiaScreener(all, d) {
+  const el = $('co-body'); if (!el) return;
+  const q = idQuery.trim().toLowerCase();
+  const sectors = [...new Set(all.map((c) => c.sector).filter(Boolean))].sort();
+  const preset = ID_PRESETS.find((p) => p.id === idPreset);
+  const f = idFilter;
+  const rows = all.filter((c) => (!q || `${c.name} ${c.nameEn || ''} ${c.ticker} ${(c.brands || []).join(' ')}`.toLowerCase().includes(q))
+    && (idSector === 'all' || c.sector === idSector)
+    && (!f.pe || (c.pe != null && (f.pe === 'lt10' ? c.pe < 10 : f.pe === '10to15' ? c.pe >= 10 && c.pe < 15 : f.pe === '15to25' ? c.pe >= 15 && c.pe < 25 : c.pe >= 25)))
+    && (!f.roe || (c.roe != null && c.roe >= Number(f.roe)))
+    && (!f.yield || (c.dividendYield != null && c.dividendYield >= Number(f.yield)))
+    && (!preset || preset.test(c)));
+  const sortOf = { cap: (c) => c.marketCap, pe: (c) => c.pe, pb: (c) => c.pb, roe: (c) => c.roe, yield: (c) => c.dividendYield, ytd: (c) => c.chgYtd };
+  const dir = idSort === 'pe' || idSort === 'pb' ? 1 : -1;
+  const kf = sortOf[idSort] || sortOf.cap;
+  const sorted = [...rows].sort((a, b) => {
+    const x = kf(a), y = kf(b);
+    if (x == null && y == null) return 0;
+    if (x == null) return 1;
+    if (y == null) return -1;
+    return (x - y) * dir;
+  });
+  const inChips = $('co-chips');
+  if (inChips) {
+    const nAu = Object.values(f).filter((v) => v != null && v !== '').length + (idSector !== 'all' ? 1 : 0) + (q ? 1 : 0);
+    inChips.innerHTML = coFilterBar({
+      presets: ID_PRESETS, preset: idPreset, presetAttr: 'data-idpreset',
+      selects: [
+        { key: 'sector', label: 'SECTOR', opts: [['all', 'All'], ...sectors.map((x) => [x, x.toUpperCase()])], cur: idSector, attr: 'data-idf' },
+        { key: 'pe', label: 'P/E', opts: [['', 'Any'], ['lt10', '<10'], ['10to15', '10–15'], ['15to25', '15–25'], ['gt25', '>25']], cur: f.pe, attr: 'data-idf' },
+        { key: 'roe', label: 'ROE', opts: [['', 'Any'], ['10', '>10%'], ['15', '>15%']], cur: f.roe, attr: 'data-idf' },
+        { key: 'yield', label: 'YIELD', opts: [['', 'Any'], ['3', '>3%'], ['5', '>5%']], cur: f.yield, attr: 'data-idf' },
+        { key: 'sort', label: 'SORT', opts: [['cap', 'Market cap'], ['pe', 'P/E low'], ['pb', 'P/B low'], ['roe', 'ROE high'], ['yield', 'Yield high'], ['ytd', 'YTD best']], cur: idSort, attr: 'data-idf' },
+      ],
+      clearAttr: 'data-idpreset', clearValue: 'clear', active: nAu || (idPreset ? 1 : 0), asOf: asOfText(all, 'priceDate'),
+    });
+  }
+  const max = Math.max(...all.map((c) => c.marketCap || 0), 1);
+  const pages = Math.max(1, Math.ceil(sorted.length / idPer));
+  const page = Math.min(idPage, pages);
+  const shown = sorted.slice((page - 1) * idPer, page * idPer);
+  el.innerHTML = idViewsBar()
+    + `<div class="co-hrow"><span>#</span><span></span><span>COMPANY</span><span>MARKET CAP</span><span>P/E</span><span>ROE</span></div>`
+    + shown.map((c, i) => `<button class="co-row" data-id="${esc(c.code)}">
+        <span class="co-rank">${(page - 1) * idPer + i + 1}</span>
+        ${idMono(c)}
+        <span class="co-id"><b>${esc(idName(c))}</b>
+          <span class="co-meta">
+            <span class="co-tick">${esc(c.ticker)}</span>
+            <span class="co-px">${idPx(c.price)}</span>
+            <em class="${(c.chg1d || 0) >= 0 ? 'pos' : 'neg'}">${c.chg1d == null ? '—' : `${c.chg1d >= 0 ? '+' : ''}${c.chg1d.toFixed(1)}%`}</em>
+            <em class="${(c.chgYtd || 0) >= 0 ? 'pos' : 'neg'}">${c.chgYtd == null ? '—' : `${c.chgYtd >= 0 ? '+' : ''}${c.chgYtd.toFixed(1)}%`} YTD</em>
+          </span></span>
+        <span class="co-cap">${idMoney(c.marketCap)}<i class="co-bar"><i style="width:${Math.max(2, ((c.marketCap || 0) / max) * 100)}%"></i></i></span>
+        <span class="co-pe">${c.pe != null ? c.pe.toFixed(1) : '—'}</span>
+        <span class="co-mar ${c.roe == null ? 'dimtext' : c.roe >= 0 ? 'pos' : 'neg'}">${c.roe == null ? '—' : `${c.roe.toFixed(1)}%`}</span>
+      </button>`).join('')
+    + pagerHtml(sorted.length, page, idPer, 'idlistpage')
+    + `<div class="macro-note">${rows.length} of ${all.length} · IDX · statements from stockanalysis.com, prices from Yahoo · P/E is trailing twelve months where the vendor serves a trailing view, otherwise the last fiscal year (the company page labels which) · computed in the issuer's report currency (most report in IDR; a few in USD) · FX ${d.fx && d.fx.rate ? d.fx.rate.toFixed(0) : '—'} IDR per USD.</div>`;
+}
+
+async function renderIndonesiaPage(stub) {
+  const el = $('co-body'); if (!el) return;
+  prefetchCoLong('id:' + (stub.ticker || stub.code));
+  prefetchPeers('id:' + (stub.ticker || stub.code));
+  let c = null;
+  el.innerHTML = stLoading('Reading the filing…');
+  try { c = await jget(`/api/indonesia/company/${encodeURIComponent(stub.code)}`, 1800000); } catch { c = null; }
+  if (!c) { el.innerHTML = stError('Couldn\u2019t load this company.'); return; }
+  const sub = $('deals-sub'); if (sub) sub.textContent = `${idName(c)} · ${c.ticker} · IDX`;
+  const cell = (k, v, t, cls = '') => `<div class="co-stat" title="${esc(t)}"><span class="co-k">${k}</span><span class="co-v ${cls}">${v}</span></div>`;
+  const chg = (x) => (x == null ? '' : `${x >= 0 ? '+' : ''}${x.toFixed(1)}%`);
+  const q = c.quarters || [];
+  const h = c.history || [];
+  const ccy = c.reportCurrency || 'IDR';
+  // `bank` means no operating-profit line (the columns go); `fin` means a financial business, whose
+  // investing cash flow is a loan book or an investment portfolio, not free cash flow (the FCF lines go).
+  const bank = !!c.bankLike;
+  const fin = !!c.financial || bank;
+  const cur = (v) => (ccy === 'IDR' ? idMoney(v) : compactMoney(v, ccy));
+  // The same figures the P/E and the margins are built on, computed once and used by both blocks.
+  const fig = statementFigures(c, 'au');
+  const when = periodLabel(fig.flows.basis, fig.flows.end);
+  const basis = tileBasis(fig.flows.basis, fig.flows.end);
+  const na = new Set(c.naRatios || []);
+  const stat = (key, label, value, title, cls = '') => (key && na.has(key) ? '' : cell(label, value, title, cls));
+  const sign = (v) => (v == null ? '' : v >= 0 ? 'pos' : 'neg');
+  el.innerHTML = `<div class="ma-crumb"><button class="ma-back" data-idback="1"><span class="ma-back-i" aria-hidden="true">←</span>COMPANIES</button> <span>${esc(c.ticker)}</span><span class="mb-tag">INDONESIA</span></div>`
+    + `<div class="co-head">${idMono(c)}<div><div class="co-name">${esc(idName(c))}</div>
+        <div class="co-sub">${esc(c.ticker)} · IDX-listed${c.name && c.name !== idName(c) ? ' · ' + esc(c.name) : ''}${c.industry ? ' · ' + esc(c.industry) : ''}</div>
+        ${c.description ? `<div class="co-desc">${esc(c.description)}</div>` : ''}
+        ${c.brands && c.brands.length ? `<div class="jp-brands">${c.brands.map((b) => `<span>${esc(b)}</span>`).join('')}</div>` : ''}</div></div>`
+    + `<div class="co-price"><span class="co-price-v">${idPx(c.price)}</span>
+        <span class="co-price-c ${c.chg1d >= 0 ? 'pos' : 'neg'}">${chg(c.chg1d)} today</span>
+        <span class="co-price-c ${c.chg6m >= 0 ? 'pos' : 'neg'}">${chg(c.chg6m)} 6M</span>
+        <span class="co-price-c ${c.chgYtd >= 0 ? 'pos' : 'neg'}">${chg(c.chgYtd)} YTD</span>
+        <span class="dimtext">${c.priceDate ? `as of ${c.priceDate}` : ''}</span></div>`
+    + `<div class="co-stats co-stats-12">
+        ${cell('MARKET CAP', idMoney(c.marketCap), `Price × shares (${c.sharesBasis || 'filing'})`)}
+        ${cell('MARKET CAP · USD', c.marketCapUsd ? `$${(c.marketCapUsd / 1e9).toFixed(1)}B` : '—', 'Converted at the current USD/IDR rate')}
+        ${cell(`P/E · ${c.peBasis || 'TTM'}`, c.pe != null ? `${c.pe.toFixed(2)}×` : '—', `Market cap ÷ ${c.peBasis === 'FY' ? 'the last fiscal year\u2019s profit' : 'the rolling twelve months of profit'}, both in ${ccy}${c.reports && c.reports.ttmEnd ? ` (through ${c.reports.ttmEnd})` : ''}`)}
+        ${cell('P/B', c.pb != null ? `${c.pb.toFixed(2)}×` : '—', `Market cap ÷ common shareholders\u2019 equity in ${ccy} (excludes minorities)${c.reports && c.reports.latestEnd ? ` at ${c.reports.latestEnd}` : ''}`)}
+        ${cell('RETURN ON EQUITY', c.roe != null ? `${c.roe.toFixed(1)}%` : '—', 'Profit ÷ common equity (excludes minorities), same currency on both sides', sign(c.roe))}
+        ${cell(`NET PROFIT · ${basis}`, cur(fig.flows.net), `${when}, attributable to owners of the parent — ${ccy} millions${c.ttmFromFY ? ' · fiscal year, because the source has no trailing page for this issuer' : ''}`, sign(fig.flows.net))}
+        ${cell('NET MARGIN', c.netMargin != null ? `${c.netMargin.toFixed(1)}%` : '—', 'Net profit ÷ revenue', sign(c.netMargin))}
+        ${stat('opMargin', 'OPERATING MARGIN', c.opMargin != null ? `${c.opMargin.toFixed(1)}%` : '—', 'Operating profit ÷ revenue', sign(c.opMargin))}
+        ${cell('DIVIDEND YIELD', c.dividendYield != null ? `${c.dividendYield.toFixed(2)}%` : '—', c.dividendYieldBasis === 'vendor' ? 'Vendor dividend yield (converted at the payment-date FX)' : `Latest annual dividend per share, converted to IDR at the current rate${c.dividendYieldBasis ? ` (${c.dividendYieldBasis})` : ''}`)}
+        ${stat('fcfYield', 'FCF YIELD', c.fcfYield != null ? `${c.fcfYield.toFixed(2)}%` : '—', 'Free cash flow ÷ market cap', sign(c.fcfYield))}
+        ${stat('fcfMargin', 'FCF MARGIN', c.fcfMargin != null ? `${c.fcfMargin.toFixed(1)}%` : '—', 'Free cash flow ÷ revenue', sign(c.fcfMargin))}
+        ${stat('cashConversion', 'CASH CONVERSION', c.cashConversion != null ? `${c.cashConversion.toFixed(2)}×` : '—', 'Free cash flow ÷ net profit — below 1 means profit is not turning into cash')}
+      </div>`
+    + `<div class="co-stats co-stats-12">
+        ${cell(`REVENUE CAGR${c.cagrYears ? ' · ' + c.cagrYears + 'Y' : ''}`, c.revenueCagr != null ? `${c.revenueCagr.toFixed(1)}%` : '—', c.cagrNA ? `No growth rate: ${c.cagrNA}.` : `Compound annual revenue growth over ${c.cagrYears} fiscal years`, sign(c.revenueCagr))}
+        ${(() => {
+          const e = c.epsCagr != null
+            ? { v: `${c.epsCagr.toFixed(1)}%`, cls: sign(c.epsCagr), t: `Compound annual EPS growth over ${c.cagrYears} fiscal years${c.epsSplitAdjusted ? ' (split-adjusted)' : ''}.${epsGrowthNote(c)}` }
+            : c.epsChange
+              ? { v: `${c.epsChange.from} → ${c.epsChange.to}`, cls: sign(c.epsChange.to), t: `No CAGR: ${c.epsCagrNA}. EPS went from ${c.epsChange.from} in FY${c.epsChange.fromFy} to ${c.epsChange.to} in FY${c.epsChange.toFy}.${epsGrowthNote(c)}` }
+              : { v: '—', cls: '', t: (c.epsCagrNA ? `No EPS growth: ${c.epsCagrNA}.` : 'No EPS growth rate') + epsGrowthNote(c) };
+          return cell(epsGrowthLabel(c), e.v, e.t, e.cls);
+        })()}
+        ${cell('NET MARGIN CHANGE', c.marginDelta != null ? `${c.marginDelta >= 0 ? '+' : ''}${c.marginDelta.toFixed(1)}pp` : '—', 'Change in net margin between the first and last fiscal year on file', sign(c.marginDelta))}
+      </div>`
+    + (() => {
+        const cashWhen = periodLabel(fig.cash.basis, fig.cash.end);
+        const cashBasis = tileBasis(fig.cash.basis, fig.cash.end);
+        const bsWhen = fig.balance.end ? `As of ${fig.balance.end}` : 'Latest reported balance sheet';
+        const fcf = c.fcf;
+        const eps = (c.reports && c.reports.ttm && c.reports.ttm.eps != null)
+          ? c.reports.ttm.eps
+          : (h.length && h[h.length - 1].eps != null ? h[h.length - 1].eps : null);
+        return `<div class="co-stats co-stats-12">
+        ${cell(`REVENUE · ${basis}`, cur(fig.flows.revenue), `${when}, as reported — ${ccy} millions`)}
+        ${stat('operatingProfit', `OPERATING PROFIT · ${basis}`, cur(fig.flows.op), fig.flows.op == null ? 'This issuer does not report an operating-profit line (common for banks)' : `${when}, as reported`, sign(fig.flows.op))}
+        ${cell('EPS · DILUTED', eps != null ? Number(eps).toFixed(2) : '—', `Per share, ${ccy}, the same period as the net profit above${c.perShareBasis ? ` (${c.perShareBasis})` : ''}`)}
+        ${stat('fcf', `FREE CASH FLOW · ${cashBasis}`, cur(fcf), `${cashWhen}: operating cash flow − capital expenditure`)}
+        ${cell('TOTAL ASSETS', cur(fig.balance.assets), `${bsWhen} — ${ccy} millions`)}
+        ${cell('LIABILITIES', cur(fig.balance.liabilities), `${bsWhen}: total assets less shareholders\u2019 equity`)}
+        ${cell('SHAREHOLDERS\u2019 EQUITY', cur(fig.balance.equity), `${bsWhen}, attributable to owners of the parent`)}
+        ${stat('operatingCashFlow', `OPERATING CASH FLOW · ${cashBasis}`, cur(fig.cash.cfo), `${cashWhen}, as reported — ${ccy} millions`)}
+      </div>`;
+      })()
+    + (fin ? `<div class="macro-note" style="padding:6px 12px">${bank
+        ? 'A bank reports net interest income, not an operating-profit line, and its operating cash flow is loans and deposits — not free cash flow.'
+        : 'A financial company\u2019s investing cash flow is its loan book or its investment portfolio, not free cash flow.'} Margins, returns and the balance sheet still apply; the FCF ratios and the operating-cash-flow line are omitted rather than shown as a number that is not one.</div>` : '')
+    + `<div class="co-ranges">
+        <span class="co-cmp-l">COMPARE</span><input class="co-cmp" id="id-cmp" placeholder="company name, e.g. bank central asia" value="${esc(cmpCode(idCompare))}" autocomplete="off">
+        <button class="co-cmp-clear${idCompare ? '' : ' hidden'}" id="id-cmp-clear" data-cmpclear="id" type="button" title="Clear comparison" aria-label="Clear comparison">×</button>
+        <div class="co-sugg" id="id-sugg"></div>
+        ${[['1m', '1M'], ['3m', '3M'], ['6m', '6M'], ['ytd', 'YTD'], ['1y', '1Y'], ['5y', '5Y'], ['10y', '10Y']].map(([k, t]) => `<button class="ma-chip${idRange === k ? ' on' : ''}" data-idrange="${k}" title="${k === '10y' ? 'Ten years — fills in as the archive grows' : ''}">${t}</button>`).join('')}
+      </div>`
+    + `<div class="co-rets" id="id-rets"></div>`
+    + `<div class="co-chartwrap"><div class="co-big" id="id-big"></div><canvas id="id-chart"></canvas></div>`
+    + '<div id="id-peers-x"></div>'
+    + (h.length > 1 ? `<div class="jp-q"><div class="jp-q-head"><span class="ph-t">FISCAL-YEAR RECORD</span><span class="dimtext">${h.length} fiscal years · ${ccy}</span></div>
+        <table class="jp-q-table"><thead><tr><th>FISCAL YEAR</th><th>REVENUE</th>${bank ? '' : '<th>OP PROFIT</th>'}<th>NET PROFIT</th><th>ROE</th></tr></thead><tbody>
+        ${[...h].reverse().map((x) => `<tr><td>${esc(x.y)}</td><td>${cur(x.s)}</td>${bank ? '' : `<td>${cur(x.o)}</td>`}<td>${cur(x.n)}</td><td>${x.n != null && (x.ec ?? x.q) ? `${((x.n / (x.ec ?? x.q)) * 100).toFixed(1)}%` : '—'}</td></tr>`).join('')}
+        </tbody></table></div>` : '')
+    + (q.length > 1 ? `<div class="jp-q"><div class="jp-q-head"><span class="ph-t">${c.periodBasis === 'quarter' ? 'REPORTED PERIODS' : 'TRAILING 12 MONTHS'}</span><span class="dimtext">${q.length} ${c.periodBasis === 'quarter' ? 'periods' : 'period ends'} · ${ccy} millions</span></div>
+        <div class="jp-q-scroll"><table class="jp-q-table"><thead><tr><th>PERIOD</th><th>REVENUE</th>${bank ? '<th>NET PROFIT</th><th>NET MARGIN</th>' : '<th>OP PROFIT</th><th>MARGIN</th><th>NET PROFIT</th>'}</tr></thead><tbody>
+        ${[...q].reverse().map((x) => `<tr><td>${esc(x.d)}</td><td>${cur(x.revenue)}</td>${bank
+          ? `<td>${cur(x.netIncome)}</td><td>${x.revenue && x.netIncome != null ? `${((x.netIncome / x.revenue) * 100).toFixed(1)}%` : '—'}</td>`
+          : `<td>${cur(x.operatingProfit)}</td><td>${x.revenue && x.operatingProfit != null ? `${((x.operatingProfit / x.revenue) * 100).toFixed(1)}%` : '—'}</td><td>${cur(x.netIncome)}</td>`}</tr>`).join('')}
+        </tbody></table></div></div>` : '')
+    + `<div class="macro-note">IDX-listed · statements from stockanalysis.com (millions ${ccy}), prices from Yahoo. Market cap is IDR; ratios are computed in ${ccy}, the currency the issuer reports in, then compared with a market cap converted at the build's USD/IDR rate. Profit, revenue and margins are the rolling twelve months where the vendor serves a trailing column; otherwise the last fiscal year, labelled. The five-year record is the fiscal year. Most Indonesian issuers report to 31 December. No free guidance feed, so there is no forward P/E.${c.description ? ' Company description and sector from stockanalysis.com.' : ''}</div>`;
+  drawIdChart(c);
+  fillPeers(`id:${c.ticker}`, 'id-peers-x');
+}
+
+async function drawIdChart(c, range = idRange) {
+  const token = chartToken('id-chart');
+  const full = await coLong('id:' + c.ticker);
+  const use = full ? coFitRange(full, range) : range;
+  if (use !== range) { range = use; coMarkRange('idrange', range); }
+  if (!chartFresh('id-chart', token)) return;
+  if (full) paintReturns('id-rets', 'id-big', full, range, WINDOWS_5Y, 'idrange');
+  const wrap = $('id-chart') && $('id-chart').parentElement;
+  const ch = full ? coSlice(full, range) : null;
+  if (!ch || !ch.dates || ch.dates.length < 2) {
+    chartMiss('id-chart', c.ticker, range, coLongFailed('id:' + c.ticker));
+    return;
+  }
+  if (wrap) wrap.removeAttribute('data-empty');
+  let other = null;
+  if (idCompare && cmpCode(idCompare) !== String(c.ticker)) {
+    const cl = await coLong(idCompare);
+    other = cl ? coSlice(cl, range) : null;
+  }
+  if (!chartFresh('id-chart', token)) return;
+  if (other && other.dates && other.dates.length > 1) {
+    const bmap = new Map(other.dates.map((d, i) => [d, other.closes[i]]));
+    const dates = ch.dates.filter((d, i) => ch.closes[i] != null && bmap.get(d) != null);
+    if (dates.length > 1) {
+      const a0 = ch.closes[ch.dates.indexOf(dates[0])];
+      const b0 = bmap.get(dates[0]);
+      mountChart('id-chart', {
+        labels: dates,
+        datasets: [
+          line(`${c.ticker} · ${(c.nameEn || c.name).slice(0, 14)}`, dates.map((d) => (ch.closes[ch.dates.indexOf(d)] / a0) * 100), CT.c1),
+          line(`${cmpCode(idCompare)}`, dates.map((d) => (bmap.get(d) / b0) * 100), CT.c2),
+        ],
+      }, baseOptions({ dp: 0, dateAxis: true, yTitle: 'indexed to 100' }));
+      return;
+    }
+  }
+  mountChart('id-chart', { labels: ch.dates, datasets: [line(`${c.ticker} · IDR · ${range.toUpperCase()}`, ch.closes, CT.c1)] }, baseOptions({ dp: 0, dateAxis: true, log: range === '5y' || range === '10y' }));
+}
+
+// Indonesia in the home screener, the same shape as India's.
+const ID_SCREEN_COLS = STOCK_SCREEN_COLS;
+function renderIndonesiaScreen(el) {
+  if (!idData) {
+    el.innerHTML = stLoading('Reading the IDX filings…');
+    loadIndonesia().then(() => renderScreen(true));
+    return;
+  }
+  const all = idData.companies || [];
+  const sectors = [...new Set(all.map((c) => c.sector).filter(Boolean))].sort();
+  const q = coScreenId.q.trim().toLowerCase();
+  const { sort, dir } = coScreenId;
+  const keyOf = (c) => (sort === 'label' ? (c.nameEn || c.name || '') : c[sort]);
+  let rows = all.filter((c) => (coScreenId.sector === 'all' || c.sector === coScreenId.sector)
+    && (!q || `${c.name} ${c.nameEn || ''} ${c.ticker} ${c.sector || ''} ${(c.brands || []).join(' ')}`.toLowerCase().includes(q)));
+  rows = [...rows].sort((a, b) => {
+    const x = keyOf(a), y = keyOf(b);
+    if (x == null && y == null) return 0;
+    if (x == null) return 1;
+    if (y == null) return -1;
+    return sort === 'label' ? x.localeCompare(y) * dir : (x - y) * dir;
+  });
+  const per = coScreenId.per || 50;
+  const pages = Math.max(1, Math.ceil(rows.length / per));
+  const page = Math.min(coScreenId.page || 1, pages);
+  const shown = rows.slice((page - 1) * per, page * per);
+  const head = ID_SCREEN_COLS.map((c) => `<th class="${sort === c.k ? 'on' : ''}" data-idkey="${c.k}">${c.t}${sort === c.k ? (dir < 0 ? ' ▼' : ' ▲') : ''}</th>`).join('');
+  const pct = (v) => (v == null ? '<td class="num">—</td>' : `<td class="num ${cls(v)}">${v >= 0 ? '+' : ''}${v.toFixed(1)}%</td>`);
+  const num = (v, dp, suffix = '') => (v == null ? '<td class="num">—</td>' : `<td class="num">${v.toFixed(dp)}${suffix}</td>`);
+  const body = shown.map((c) => `<tr data-idrow="${esc(c.code)}" title="${esc(c.nameEn || c.name)}">
+      <td class="sc-name">${esc(c.nameEn || c.name)}<span class="sc-tick">${esc(c.ticker)}${c.sector ? ' · ' + esc(c.sector) : ''}</span></td>
+      <td class="num">${idPx(c.price)}</td>
+      ${pct(c.chg1d)}${pct(c.chg6m)}${pct(c.chgYtd)}
+      ${num(c.pe, 1, '×')}${num(c.pb, 2, '×')}${num(c.roe, 1, '%')}
+      <td class="num">${idMoney(c.marketCap)}</td></tr>`).join('');
+  el.innerHTML = `<div class="sc-bar">${screenModeHtml()}${screenMarketHtml()}
+      <label class="sc-f">SEARCH <input id="cosid-q" type="search" placeholder="company or code…" value="${esc(coScreenId.q)}"></label>
+      <label class="sc-f">SECTOR <select id="cosid-sector"><option value="all">All sectors</option>${sectors.map((x) => `<option value="${esc(x)}"${coScreenId.sector === x ? ' selected' : ''}>${esc(x)}</option>`).join('')}</select></label>
+      <span class="sc-count dimtext">${rows.length} of ${all.length} companies</span>
+    </div><div class="sc-wrap" id="sc-table"><table class="sc-table sc-cotable"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>
+    ${pagerHtml(rows.length, page, per, 'idpage')}
+    <div class="sc-note dimtext">IDX-listed companies · statements from stockanalysis.com · ${asOfText(all, 'priceDate') || 'Yahoo prices'} · returns in IDR · P/E is trailing twelve months where the vendor serves a trailing view, otherwise the last fiscal year, in the issuer's report currency.</div>`;
+}
+
+
 // The pane carries the market's accent colour (the region pills, the active tab, the tag on a company
 // page). There used to be a quote strip here too — index name, level, day change, company count — but
 // the market view already states all of that, and repeating it above every view was noise.
@@ -7171,6 +7614,7 @@ function warmMarkets(delay = 1500) {
   // Australia is the sixth and similar in size; warming it after Hong Kong keeps a region switch free.
   setTimeout(() => { if (!auData) loadAustralia().catch(() => {}); }, delay + 6000);
   setTimeout(() => { if (!inData) loadIndia().catch(() => {}); }, delay + 7400);
+  setTimeout(() => { if (!idData) loadIndonesia().catch(() => {}); }, delay + 8800);
 }
 
 function renderCompanies() {
@@ -7191,6 +7635,7 @@ function renderCompanies() {
   if (coRegion === 'hk') return renderHongKong(token);
   if (coRegion === 'au') return renderAustralia(token);
   if (coRegion === 'in') return renderIndia(token);
+  if (coRegion === 'id') return renderIndonesia(token);
   const el = $('co-body');
   if (charts['co-chart']) { try { charts['co-chart'].destroy(); } catch {} delete charts['co-chart']; }
   if (!el) return;
@@ -8024,11 +8469,11 @@ document.addEventListener('click', (e) => {
     document.querySelectorAll('[data-region]').forEach((b) => b.classList.toggle('on', b.dataset.region === coRegion));
     coCik = null; jpSel = null;
     const inp = $('co-search'); if (inp) inp.value = '';
-    const note = $('co-note'); if (note) note.classList.toggle('hidden', coRegion === 'jp' || coRegion === 'kr' || coRegion === 'tw' || coRegion === 'hk' || coRegion === 'au' || coRegion === 'in');
+    const note = $('co-note'); if (note) note.classList.toggle('hidden', coRegion === 'jp' || coRegion === 'kr' || coRegion === 'tw' || coRegion === 'hk' || coRegion === 'au' || coRegion === 'in' || coRegion === 'id');
     // Drop the old market's screen on the spot. The US render waits for data before it paints, and
     // until this the previous screen (often Japan's TOPIX view) was still the thing on the page.
     const body = $('co-body');
-    if (body) body.innerHTML = stLoading(coRegion === 'jp' ? 'Loading Japan…' : coRegion === 'kr' ? 'Loading KOSPI…' : coRegion === 'tw' ? 'Loading TAIEX…' : coRegion === 'hk' ? 'Loading the Hang Seng…' : coRegion === 'au' ? 'Loading the ASX 200…' : coRegion === 'in' ? 'Loading the NIFTY 500…' : 'Loading the S&P 500…');
+    if (body) body.innerHTML = stLoading(coRegion === 'jp' ? 'Loading Japan…' : coRegion === 'kr' ? 'Loading KOSPI…' : coRegion === 'tw' ? 'Loading TAIEX…' : coRegion === 'hk' ? 'Loading the Hang Seng…' : coRegion === 'au' ? 'Loading the ASX 200…' : coRegion === 'in' ? 'Loading the NIFTY 500…' : coRegion === 'id' ? 'Loading the IDX…' : 'Loading the S&P 500…');
     renderCompanies();
     return;
   }
@@ -8171,6 +8616,43 @@ document.addEventListener('click', (e) => {
   const inrow = e.target.closest('[data-in]');
   if (inrow) { inSel = inrow.dataset.in; renderIndia(); window.scrollTo({ top: 0, behavior: 'smooth' }); return; }
   if (e.target.closest('[data-inback]')) { inSel = null; renderIndia(); return; }
+  const idv = e.target.closest('[data-idview]');
+  if (idv) { idView = idv.dataset.idview; try { localStorage.setItem('oilbasis.idView', idView); } catch {} idSel = null; idPage = 1; renderIndonesia(); return; }
+  const idt = e.target.closest('[data-idtheme]');
+  if (idt) { idTheme = idt.dataset.idtheme; try { localStorage.setItem('oilbasis.idTheme', idTheme); } catch {} renderIndonesia(); return; }
+  const idr = e.target.closest('[data-idrange]');
+  if (idr) {
+    idRange = idr.dataset.idrange;
+    try { localStorage.setItem('oilbasis.idRange', idRange); } catch {}
+    document.querySelectorAll('[data-idrange]').forEach((b) => b.classList.toggle('on', b.dataset.idrange === idRange));
+    const cur = (idData && idData.companies || []).find((x) => x.code === idSel);
+    if (cur) drawIdChart(cur, idRange);
+    return;
+  }
+  const idps = e.target.closest('[data-idpreset]');
+  if (idps) {
+    const id = idps.dataset.idpreset;
+    if (id === 'clear') {
+      idPreset = null; idFilter = {}; idSector = 'all'; idQuery = '';
+      const inp = $('co-search'); if (inp) inp.value = '';
+    } else idPreset = id === idPreset ? null : id;
+    idPage = 1;
+    renderIndonesia();
+    return;
+  }
+  const idlp = e.target.closest('[data-idlistpage]');
+  if (idlp && idlp.dataset.idlistpage !== 'per') { idPage = Math.max(1, Number(idlp.dataset.idlistpage)); renderIndonesia(); return; }
+  const idm = e.target.closest('[data-idmkt]');
+  if (idm) {
+    idMktRange = idm.dataset.idmkt;
+    try { localStorage.setItem('oilbasis.idMktRange', idMktRange); } catch {}
+    if (coRegion === 'id' && idView === 'market' && redrawIndonesiaIndex()) return;
+    renderIndonesia();
+    return;
+  }
+  const idrow = e.target.closest('[data-id]');
+  if (idrow) { idSel = idrow.dataset.id; renderIndonesia(); window.scrollTo({ top: 0, behavior: 'smooth' }); return; }
+  if (e.target.closest('[data-idback]')) { idSel = null; renderIndonesia(); return; }
   const twv = e.target.closest('[data-twview]');
   if (twv) { twView = twv.dataset.twview; try { localStorage.setItem('oilbasis.twView', twView); } catch {} twSel = null; twPage = 1; renderTaiwan(); return; }
   const twt = e.target.closest('[data-twtheme]');
@@ -8390,6 +8872,15 @@ document.addEventListener('change', async (e) => {
     renderIndia();
     return;
   }
+  if (e.target && e.target.dataset && e.target.dataset.idf) {
+    const k = e.target.dataset.idf;
+    if (k === 'sector') idSector = e.target.value || 'all';
+    else if (k === 'sort') { idSort = e.target.value || 'cap'; }
+    else { idFilter[k] = e.target.value; }
+    idPage = 1;
+    renderIndonesia();
+    return;
+  }
   if (e.target && e.target.dataset && e.target.dataset.twf) {
     const k = e.target.dataset.twf;
     if (k === 'sector') twSector = e.target.value || 'all';
@@ -8408,7 +8899,7 @@ document.addEventListener('change', async (e) => {
     renderKorea();
     return;
   }
-  if (e.target && (e.target.id === 'kr-cmp' || e.target.id === 'jp-cmp' || e.target.id === 'tw-cmp' || e.target.id === 'hk-cmp' || e.target.id === 'au-cmp')) {
+  if (e.target && (e.target.id === 'kr-cmp' || e.target.id === 'jp-cmp' || e.target.id === 'tw-cmp' || e.target.id === 'hk-cmp' || e.target.id === 'au-cmp' || e.target.id === 'in-cmp' || e.target.id === 'id-cmp')) {
     const ref = await resolveCompare(e.target.value);
     if (ref) setCompare(ref);
     return;
@@ -8422,8 +8913,8 @@ document.addEventListener('change', async (e) => {
 });
 
 document.addEventListener('keydown', async (e) => {
-  if (!(e.target && ['co-cmp', 'jp-cmp', 'kr-cmp', 'tw-cmp', 'hk-cmp', 'au-cmp'].includes(e.target.id))) return;
-  const box = { 'co-cmp': 'us-sugg', 'jp-cmp': 'jp-sugg', 'kr-cmp': 'kr-sugg', 'tw-cmp': 'tw-sugg', 'hk-cmp': 'hk-sugg', 'au-cmp': 'au-sugg' }[e.target.id];
+  if (!(e.target && ['co-cmp', 'jp-cmp', 'kr-cmp', 'tw-cmp', 'hk-cmp', 'au-cmp', 'in-cmp', 'id-cmp'].includes(e.target.id))) return;
+  const box = { 'co-cmp': 'us-sugg', 'jp-cmp': 'jp-sugg', 'kr-cmp': 'kr-sugg', 'tw-cmp': 'tw-sugg', 'hk-cmp': 'hk-sugg', 'au-cmp': 'au-sugg', 'in-cmp': 'in-sugg', 'id-cmp': 'id-sugg' }[e.target.id];
   if (e.key === 'Escape') { hideSuggestions(box); return; }
   if (e.key !== 'Enter') return;
   e.preventDefault();
@@ -8435,7 +8926,7 @@ document.addEventListener('keydown', async (e) => {
 
 // A benchmark ref like us:MSFT in the box is replaced by typing, not appended to.
 document.addEventListener('focusin', (e) => {
-  if (e.target && ['co-cmp', 'jp-cmp', 'kr-cmp', 'tw-cmp', 'hk-cmp', 'au-cmp'].includes(e.target.id)) e.target.select();
+  if (e.target && ['co-cmp', 'jp-cmp', 'kr-cmp', 'tw-cmp', 'hk-cmp', 'au-cmp', 'in-cmp', 'id-cmp'].includes(e.target.id)) e.target.select();
 });
 
 document.addEventListener('input', (e) => {
@@ -8456,10 +8947,11 @@ document.addEventListener('input', (e) => {
     // India has its own query. Without this branch the text fell through to the US query below, so
     // the box typed and the Indian screener never filtered.
     if (coRegion === 'in') { inQuery = e.target.value || ''; inSel = null; inPage = 1; renderIndia(); return; }
+    if (coRegion === 'id') { idQuery = e.target.value || ''; idSel = null; idPage = 1; renderIndonesia(); return; }
     coQuery = e.target.value || ''; coCik = null; usListPage = 1; renderCompanies(); return;
   }
-  if (e.target && ['co-cmp', 'jp-cmp', 'kr-cmp', 'tw-cmp', 'hk-cmp', 'au-cmp'].includes(e.target.id)) {
-    const box = { 'co-cmp': 'us-sugg', 'jp-cmp': 'jp-sugg', 'kr-cmp': 'kr-sugg', 'tw-cmp': 'tw-sugg', 'hk-cmp': 'hk-sugg', 'au-cmp': 'au-sugg' }[e.target.id];
+  if (e.target && ['co-cmp', 'jp-cmp', 'kr-cmp', 'tw-cmp', 'hk-cmp', 'au-cmp', 'in-cmp', 'id-cmp'].includes(e.target.id)) {
+    const box = { 'co-cmp': 'us-sugg', 'jp-cmp': 'jp-sugg', 'kr-cmp': 'kr-sugg', 'tw-cmp': 'tw-sugg', 'hk-cmp': 'hk-sugg', 'au-cmp': 'au-sugg', 'in-cmp': 'in-sugg', 'id-cmp': 'id-sugg' }[e.target.id];
     clearTimeout(suggTimer);
     const input = e.target;
     suggTimer = setTimeout(() => showSuggestions(input, box), 180);

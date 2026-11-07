@@ -33,11 +33,17 @@ const MARKETS = {
     // The NIFTY 500 is reconstituted twice a year; a handful of names change, not fifty.
     minCompanies: 0.95,
   },
+  id: {
+    label: 'Indonesia',
+    file: 'data/indonesia.json',
+    // The IDX list moves by a handful of listings a month; a 3% drop means a throttled crawl, not delistings.
+    minCompanies: 0.97,
+  },
 };
 
 const requested = (process.argv[2] || '').toLowerCase();
 if (requested && !MARKETS[requested]) {
-  console.error('usage: node scripts/audit-market-refresh.mjs [au|hk]');
+  console.error('usage: node scripts/audit-market-refresh.mjs [au|hk|in|id]');
   process.exit(2);
 }
 

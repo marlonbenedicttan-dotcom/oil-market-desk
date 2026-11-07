@@ -894,6 +894,53 @@ test('/api/australia/chart serves the range it was asked for', async () => {
   for (let i = 1; i < d.dates.length; i++) assert.ok(d.dates[i] > d.dates[i - 1]);
 });
 
+test('/api/indonesia ships the list projection, not the price history, and revalidates', async () => {
+  const r = await fetch(`http://localhost:${PORT}/api/indonesia`);
+  assert.equal(r.status, 200);
+  const etag = r.headers.get('etag');
+  assert.ok(etag, 'the Indonesia list must carry an ETag');
+  const d = await r.json();
+  assert.ok(d.companies.length > 800, `got ${d.companies.length} companies`);
+  assert.ok(d.index && d.index.level != null, 'the IDX Composite level is missing');
+  assert.ok(d.fx && d.fx.rate > 1000, 'the USD/IDR rate is missing — the ratios need it');
+  const bbca = d.companies.find((x) => x.ticker === 'BBCA');
+  assert.ok(bbca && bbca.nameEn, 'Bank Central Asia is missing from the list');
+  assert.equal(bbca.reportCurrency, 'IDR');
+  assert.equal(bbca.series, undefined, 'the list must not carry per-company price history');
+  assert.ok(JSON.stringify(d).length < 3_000_000, 'the Indonesia list payload ballooned');
+  const again = await new Promise((resolve, reject) => {
+    http.get({ host: 'localhost', port: PORT, path: '/api/indonesia', headers: { 'if-none-match': etag }, agent: false }, resolve).on('error', reject);
+  });
+  assert.equal(again.statusCode, 304);
+  again.resume();
+});
+
+test('/api/indonesia/company values a bank without inventing an operating margin', async () => {
+  const r = await fetch(`http://localhost:${PORT}/api/indonesia/company/BBCA`);
+  assert.equal(r.status, 200);
+  const c = await r.json();
+  assert.ok(c.sector, 'the sector is missing');
+  assert.equal(c.reportCurrency, 'IDR');
+  assert.ok(c.reports && c.reports.ttm && c.reports.ttm.revenue > 0, 'TTM revenue is missing');
+  assert.ok(c.history.length >= 3, 'the fiscal-year record is missing');
+  assert.ok(c.marketCap === c.price * (c.sharesCurrent ?? c.shares), 'market cap does not reconcile');
+  assert.equal(c.bankLike, true, 'BCA is a bank');
+  assert.equal(c.opMargin, null, 'a bank has no operating margin');
+  if (c.pe != null) {
+    const want = +(c.marketCap / c.reports.ttm.netIncome).toFixed(2);
+    assert.ok(Math.abs(want - c.pe) < 0.2, `P/E ${c.pe} is not cap ÷ profit`);
+  }
+});
+
+test('/api/indonesia/chart serves the range it was asked for', async () => {
+  const r = await fetch(`http://localhost:${PORT}/api/indonesia/chart?code=BBCA&range=5y`);
+  assert.equal(r.status, 200);
+  const d = await r.json();
+  assert.ok(d.dates.length > 200, `got ${d.dates.length} points`);
+  assert.equal(d.dates.length, d.closes.length);
+  for (let i = 1; i < d.dates.length; i++) assert.ok(d.dates[i] > d.dates[i - 1]);
+});
+
 // One company is one small file now (data/korea-companies), not a parse of the 28 MB market. The
 // detail page reads quarters/history; the chart comes from data/charts, so the record carries no series.
 test('/api/korea/company answers by code or ticker from the per-company file', async () => {

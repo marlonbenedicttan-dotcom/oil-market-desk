@@ -1,0 +1,76 @@
+{
+  "updated": "2026-11-07",
+  "note": "Curated by hand. A ticker that is not in the IDX universe is dropped by the build and counted, never invented.",
+  "themes": [
+    {
+      "id": "banks",
+      "label": "BANKS & LENDERS",
+      "kind": "sector",
+      "note": "The biggest weight in the IDX and the cleanest read on domestic credit. Net interest margin and the provisioning cycle drive earnings, so these names carry a P/E and a P/B but no free cash flow — a bank's cash flow statement is loans and deposits, not a business.",
+      "tickers": ["BBCA", "BBRI", "BMRI", "BBNI", "BRIS", "BTPS", "BNGA", "BBTN", "ARTO", "BJTM"]
+    },
+    {
+      "id": "nickel",
+      "label": "NICKEL & BATTERY METALS",
+      "kind": "commodity",
+      "note": "Indonesia is the world's largest nickel producer, and the battery chain runs through these names: laterite mines, ferronickel and matte smelters, and the copper-gold porphyries that come with them. A nickel price move reaches the equity before it reaches the index.",
+      "tickers": ["ANTM", "INCO", "MBMA", "NCKL", "AMMN", "MDKA", "TINS", "PSAB", "BRMS", "NIKL"]
+    },
+    {
+      "id": "coal",
+      "label": "COAL, OIL & ENERGY",
+      "kind": "commodity",
+      "note": "The thermal-coal exporters that supply China and India, plus the oil and gas names and the heavy-equipment dealer that serves the mines. Coal cash flow is cyclical and dividend-heavy; the oil names are more sensitive to crude and the rupiah.",
+      "tickers": ["ADRO", "PTBA", "ITMG", "UNTR", "INDY", "HRUM", "BUMI", "BYAN", "DSSA", "MEDC", "PGAS", "AKRA"]
+    },
+    {
+      "id": "palm",
+      "label": "PALM OIL & PLANTATIONS",
+      "kind": "commodity",
+      "note": "The upstream palm growers. CPO is priced in dollars and the cost base is in rupiah, so a weaker rupiah flatters the margin; export levies and Indonesia's domestic-market obligation are the policy swing factors.",
+      "tickers": ["AALI", "LSIP", "SIMP", "SGRO", "DSNG", "TBLA", "SSMS", "TAPG", "ANJT"]
+    },
+    {
+      "id": "consumer",
+      "label": "CONSUMER & RETAIL",
+      "kind": "sector",
+      "note": "The domestic demand story: staples, noodles, dairy, poultry, convenience retail and the mall operators. These are the names that read the rupiah through input costs and the consumer through volumes.",
+      "tickers": ["UNVR", "ICBP", "INDF", "MYOR", "AMRT", "MIDI", "ACES", "MAPI", "CPIN", "JPFA"]
+    },
+    {
+      "id": "telco",
+      "label": "TELCO & DIGITAL",
+      "kind": "sector",
+      "note": "The mobile operators, the tower owner and the two loss-making internet platforms. Telco is a cash-flow and dividend story; the platforms are an option on Indonesian e-commerce, priced on revenue rather than profit.",
+      "tickers": ["TLKM", "EXCL", "ISAT", "TOWR", "MTEL", "GOTO", "BUKA", "EMTK"]
+    },
+    {
+      "id": "infra",
+      "label": "INFRASTRUCTURE & CONSTRUCTION",
+      "kind": "sector",
+      "note": "Toll roads, construction and the state-linked builders. Order books and the government budget drive the cycle; leverage and receivables are the risk. A weaker rupiah raises imported material costs.",
+      "tickers": ["JSMR", "WIKA", "PTPP", "ADHI", "TOTL"]
+    },
+    {
+      "id": "property",
+      "label": "PROPERTY",
+      "kind": "sector",
+      "note": "Developers and the mall/office owners. The read is presales, inventory and mortgage rates; the balance sheet is the story, which is why P/B matters more here than P/E.",
+      "tickers": ["BSDE", "CTRA", "PWON", "SMRA", "ASRI", "LPKR", "DILD"]
+    },
+    {
+      "id": "health",
+      "label": "HEALTHCARE",
+      "kind": "sector",
+      "note": "Pharmaceutical makers, hospitals and the consumer-health names. A defensive, domestic sector with a long growth runway and little commodity exposure — useful as a hedge against the mining and energy weights.",
+      "tickers": ["KLBF", "SIDO", "KAEF", "INAF", "MIKA", "HEAL", "SILO"]
+    },
+    {
+      "id": "auto",
+      "label": "AUTOS & COMPONENTS",
+      "kind": "sector",
+      "note": "The assemblers, the motorcycle/auto parts makers and the tyre producers. Volumes track domestic demand and rates; costs track the rupiah and steel. Astra is also a proxy for the whole conglomerate economy.",
+      "tickers": ["ASII", "AUTO", "SMSM", "GJTL", "INDS"]
+    }
+  ]
+}

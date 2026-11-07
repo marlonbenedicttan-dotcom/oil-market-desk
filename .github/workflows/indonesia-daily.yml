@@ -1,0 +1,77 @@
+name: indonesia-daily
+
+# Indonesia's prices and statements are not in companies-daily: this job keeps the IDX in step with the
+# other markets. The IDX closes at 16:00 WIB (09:00 UTC), so 09:40 UTC is after the close and after
+# Yahoo has the day's bar.
+#
+# The universe comes from the vendor's IDX exchange list, because idx.co.id blocks the deploy network at
+# the edge (Cloudflare 403 on every path). The list is re-read every run, so a new listing flows in; the
+# committed snapshot in data/indonesia-universe.json is the fallback if the vendor is briefly throttled.
+#
+# The build re-reads every statement page whose cache has expired (annual 7 days, quarterly 1 day), so a
+# new filing flows through to the ratios on its own — there is no IDX announcement watcher behind this
+# yet, and the run is resumable: a throttled company is counted in audit.throttled and filled next run.
+
+on:
+  schedule:
+    - cron: '40 9 * * 1-5'   # 16:40 WIB, Mon–Fri
+  workflow_dispatch: {}
+
+concurrency:
+  group: indonesia-refresh
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0          # a rebase needs history, not just the tip
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      # The stockanalysis statement cache is the big one; without it a cold run fetches ~3,700 pages.
+      - name: Cache IDX statements, the exchange list and Yahoo prices
+        uses: actions/cache@v4
+        with:
+          path: |
+            data/cache/idx
+            data/cache/indonesia-sa
+            data/cache/indonesia-shares
+          key: id-cache-${{ github.run_id }}
+          restore-keys: id-cache-
+      - name: Build prices, statements and profiles
+        run: npm run refresh:indonesia
+      # Keep the fiscal years that scroll off the vendor's five-year table.
+      - name: Keep every filed period
+        run: node scripts/merge-history.mjs id
+      # Keep the sessions that scroll off the source's five-year window.
+      - name: Keep every traded session
+        run: node scripts/merge-series.mjs id
+      # A rate-limited run loses companies and chart history. Refuse to publish that.
+      - name: Refuse a collapsed build
+        run: node scripts/audit-market-refresh.mjs id
+      - name: Audit the dataset
+        run: npm run audit:indonesia
+      - name: Commit if changed
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add data/indonesia.json data/indonesia-list.json data/indonesia-series data/indonesia-companies data/indonesia-profiles.json data/indonesia-shares.json data/indonesia-brands.json data/indonesia-universe.json data/charts
+          if git diff --staged --quiet; then
+            echo 'no data change'
+          else
+            git commit -m "chore: daily Indonesia refresh ($(date -u +%Y-%m-%d))"
+            # Another push (a human commit, or the US/Taiwan/India job) can land while this runs.
+            pushed=0
+            for i in 1 2 3 4 5; do
+              if git pull --rebase -X theirs origin "${{ github.ref_name }}" && git push origin "HEAD:${{ github.ref_name }}"; then pushed=1; break; fi
+              echo "push rejected (attempt $i) — rebasing and retrying"; sleep $((i * 5))
+            done
+            [ "$pushed" = "1" ] || { echo 'could not push after 5 attempts'; exit 1; }
+          fi

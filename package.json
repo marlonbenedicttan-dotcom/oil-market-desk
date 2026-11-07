@@ -51,7 +51,11 @@
     "build:india": "node scripts/build-india.mjs && node scripts/fetch-india-profiles.mjs && node scripts/build-india.mjs --skip-prices --skip-fin",
     "audit:india": "node scripts/audit-india.mjs",
     "refresh:india": "node scripts/build-india.mjs --fresh && node scripts/fetch-india-profiles.mjs && node scripts/fetch-listing-shares.mjs india && node scripts/build-india.mjs --skip-prices --skip-fin",
-    "shares:india": "node scripts/fetch-listing-shares.mjs india"
+    "shares:india": "node scripts/fetch-listing-shares.mjs india",
+    "build:indonesia": "node scripts/fetch-listing-shares.mjs indonesia && node scripts/build-indonesia.mjs && node scripts/fetch-indonesia-profiles.mjs && node scripts/build-indonesia.mjs --skip-prices --skip-fin",
+    "audit:indonesia": "node scripts/audit-indonesia.mjs",
+    "refresh:indonesia": "node scripts/fetch-listing-shares.mjs indonesia && node scripts/build-indonesia.mjs --fresh && node scripts/fetch-indonesia-profiles.mjs && node scripts/build-indonesia.mjs --skip-prices --skip-fin",
+    "shares:indonesia": "node scripts/fetch-listing-shares.mjs indonesia"
   },
   "engines": {
     "node": ">=22"

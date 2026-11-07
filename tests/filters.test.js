@@ -9,7 +9,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { projectUs, projectKr, projectJp, projectTw, projectHk, projectAu, FILTER_FIELDS } from '../src/project.js';
+import { projectUs, projectKr, projectJp, projectTw, projectHk, projectAu, projectId, FILTER_FIELDS } from '../src/project.js';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const read = (f) => JSON.parse(readFileSync(join(ROOT, 'data', f), 'utf8'));
@@ -19,6 +19,10 @@ const kr = (read('korea.json').companies || []).map(projectKr);
 const tw = (read('taiwan.json').companies || []).map(projectTw);
 const hk = (read('hongkong.json').companies || []).map(projectHk);
 const au = (read('australia.json').companies || []).map(projectAu);
+// Indonesia is built by its own workflow on a runner that can reach Yahoo; until that first build
+// lands, the file is absent and its filter tests are skipped rather than red on a fresh clone.
+const idJson = (() => { try { return read('indonesia.json'); } catch { return null; } })();
+const id = idJson ? (idJson.companies || []).map(projectId) : null;
 const yld = (c) => (c.dividend && c.dividend.yield != null ? c.dividend.yield : null);
 
 // The presets and selects, exactly as public/app.js defines them.
@@ -53,6 +57,12 @@ const PRESETS = {
     'HIGH YIELD': (c) => (c.dividendYield || 0) >= 4,
   },
   au: {
+    'BELOW BOOK': (c) => c.pb != null && c.pb < 1,
+    'HIGH ROE': (c) => (c.roe || 0) > 12,
+    'CHEAP VS ITSELF': (c) => c.bands && c.bands.pe && c.bands.pe.percentile <= 20,
+    'HIGH YIELD': (c) => (c.dividendYield || 0) >= 4,
+  },
+  id: {
     'BELOW BOOK': (c) => c.pb != null && c.pb < 1,
     'HIGH ROE': (c) => (c.roe || 0) > 12,
     'CHEAP VS ITSELF': (c) => c.bands && c.bands.pe && c.bands.pe.percentile <= 20,
@@ -98,9 +108,16 @@ const SELECTS = {
     'YIELD > 3%': (c) => c.dividendYield != null && c.dividendYield >= 3,
     'SECTOR = Materials': (c) => c.sector === 'Materials',
   },
+  id: {
+    'P/E < 10': (c) => c.pe != null && c.pe < 10,
+    'ROE > 10%': (c) => c.roe != null && c.roe >= 10,
+    'YIELD > 3%': (c) => c.dividendYield != null && c.dividendYield >= 3,
+    'SECTOR = Financials': (c) => c.sector === 'Financials',
+  },
 };
 
-const MARKETS = { us, jp, kr, tw, hk, au };
+const MARKETS = { us, jp, kr, tw, hk, au, ...(id ? { id } : {}) };
+if (!id) { delete PRESETS.id; delete SELECTS.id; }
 
 test('every field the filter bars read survives the list projection', () => {
   for (const [market, rows] of Object.entries(MARKETS)) {
@@ -112,7 +129,7 @@ test('every field the filter bars read survives the list projection', () => {
 });
 
 test('filter fields are populated, not shipped as permanent nulls', () => {
-  const need = { us: { sector: 0.95, marketCap: 0.9, pe: 0.6 }, jp: { sector: 0.99, pe: 0.7, pb: 0.7, roe: 0.7, cash: 0.8 }, kr: { sector: 0.99, pe: 0.7, pb: 0.7, roe: 0.7 }, tw: { sector: 0.99, marketCap: 0.9, pe: 0.6, pb: 0.6, roe: 0.6, dividendYield: 0.5 }, hk: { sector: 0.99, marketCap: 0.9, pe: 0.45, pb: 0.5, roe: 0.5, dividendYield: 0.35 }, au: { sector: 0.99, marketCap: 0.9, pe: 0.3, pb: 0.85, roe: 0.85, dividendYield: 0.2 } };
+  const need = { us: { sector: 0.95, marketCap: 0.9, pe: 0.6 }, jp: { sector: 0.99, pe: 0.7, pb: 0.7, roe: 0.7, cash: 0.8 }, kr: { sector: 0.99, pe: 0.7, pb: 0.7, roe: 0.7 }, tw: { sector: 0.99, marketCap: 0.9, pe: 0.6, pb: 0.6, roe: 0.6, dividendYield: 0.5 }, hk: { sector: 0.99, marketCap: 0.9, pe: 0.45, pb: 0.5, roe: 0.5, dividendYield: 0.35 }, au: { sector: 0.99, marketCap: 0.9, pe: 0.3, pb: 0.85, roe: 0.85, dividendYield: 0.2 }, ...(id ? { id: { sector: 0.99, marketCap: 0.9, pe: 0.5, pb: 0.8, roe: 0.8, dividendYield: 0.25 } } : {}) };
   for (const [market, reqs] of Object.entries(need)) {
     for (const [f, share] of Object.entries(reqs)) {
       const have = MARKETS[market].filter((c) => c[f] != null).length / MARKETS[market].length;

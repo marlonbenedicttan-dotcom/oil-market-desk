@@ -8,7 +8,7 @@ import { execFile } from 'node:child_process';
 import crypto from 'node:crypto';
 import { sendMail } from './src/smtp.js';
 import { fileURLToPath } from 'node:url';
-import { projectUs, projectJp, japanList, koreaList, taiwanList, hongkongList, australiaList, indiaList, US_LIST_FIELDS } from './src/project.js';
+import { projectUs, projectJp, japanList, koreaList, taiwanList, hongkongList, australiaList, indiaList, indonesiaList, US_LIST_FIELDS } from './src/project.js';
 import { sliceRange, seriesFromLine } from './src/charts.js';
 import { growthRates, fromJapanHistory } from './src/growth.js';
 import { sgn, businessDaysSince, horizonDeltas, horizonDeltasAbs, isoWeek, monthly, pctOver, percentile, lastNonNull, escHtml, webhookPayload, realizedVol, computeCracks, computeCrush, computeSteel, buildRelValueRow, relValueZone, ordinal, alignPriceToRows, inventoryBands, backAdjust, pearson, logReturns, frontExpiry, curveTightness, inventoryTightness, weightedScore, seasonalGrade, seasonalAhead, contractMonthsBetween, signedPosition, signedMove, stretchScore, sdLabel, attributeMoves, newsContextOk, METHODOLOGY, positioningFlag, positioningRead, positioningDivergence, maxDrawdown, drawdownNow, realizedVolTerm, volPercentile, volVsOwnWord, corrMatrix, fxAdjust, parseOcc, drawdownWord, volWord, volTrend, corrShift, pairGroups, topPairs, bestDiversifier, riskRead, priorityOf, rankByPriority, clusterEvents, scoreEvents, selectEvents, explainRows } from './src/lib.js';
@@ -1283,6 +1283,66 @@ function readIndiaSeries(code) {
   } catch { return { daily: {}, weekly: {} }; }
 }
 
+const INDONESIA_FILE = path.join(__dirname, 'data', 'indonesia.json');
+let IDN_CACHE = { mtime: 0, data: null };
+function readIndonesia() {
+  try {
+    const st = fs.statSync(INDONESIA_FILE);
+    if (IDN_CACHE.data && IDN_CACHE.mtime === st.mtimeMs) return IDN_CACHE.data;
+    IDN_CACHE = { mtime: st.mtimeMs, data: JSON.parse(fs.readFileSync(INDONESIA_FILE, 'utf8')) };
+    return IDN_CACHE.data;
+  } catch { return { companies: [] }; }
+}
+const INDONESIA_LIST_FILE = path.join(__dirname, 'data', 'indonesia-list.json');
+let IDNL_CACHE = { key: null, data: null };
+function indonesiaSourceUpdated() {
+  try {
+    const fd = fs.openSync(INDONESIA_FILE, 'r');
+    try {
+      const buf = Buffer.alloc(256);
+      const n = fs.readSync(fd, buf, 0, 256, 0);
+      const m = /"updated"\s*:\s*"([^"]+)"/.exec(buf.toString('utf8', 0, n));
+      return m ? m[1] : null;
+    } finally { fs.closeSync(fd); }
+  } catch { return null; }
+}
+function readIndonesiaList() {
+  try {
+    const srcUpdated = indonesiaSourceUpdated();
+    const key = `${srcUpdated}:${fs.statSync(INDONESIA_LIST_FILE).mtimeMs}`;
+    if (IDNL_CACHE.data && IDNL_CACHE.key === key) return IDNL_CACHE.data;
+    const artifact = JSON.parse(fs.readFileSync(INDONESIA_LIST_FILE, 'utf8'));
+    if (artifact.updated && artifact.updated === srcUpdated) { IDNL_CACHE = { key, data: artifact }; return artifact; }
+  } catch { /* no artifact yet */ }
+  return indonesiaList(readIndonesia());
+}
+// One small file per company, the same reason Australia, Hong Kong and India have one: parsing the whole
+// market to return one record costs the free instance ~50 MB.
+const INDONESIA_DETAIL_DIR = path.join(__dirname, 'data', 'indonesia-companies');
+function readIndonesiaCompany(code) {
+  // IDX symbols are four upper-case letters/digits, and the file name is the ticker itself.
+  const c = String(code || '').trim().toUpperCase();
+  if (!/^[A-Z0-9]{4}$/.test(c)) return null;
+  try { return JSON.parse(fs.readFileSync(path.join(INDONESIA_DETAIL_DIR, `${c}.json`), 'utf8')); }
+  catch { return null; }
+}
+const INDONESIA_SERIES_DIR = path.join(__dirname, 'data', 'indonesia-series');
+const IDN_SERIES_CACHE = new Map();   // one letter bucket per chart, not the whole market
+function readIndonesiaSeries(code) {
+  const b = String(code || '').slice(0, 1).toUpperCase();
+  if (!/^[A-Z0-9]$/.test(b)) return { daily: {}, weekly: {} };
+  const f = path.join(INDONESIA_SERIES_DIR, `${b}.json`);
+  try {
+    const st = fs.statSync(f);
+    const hit = IDN_SERIES_CACHE.get(b);
+    if (hit && hit.mtime === st.mtimeMs) return hit.data;
+    const data = JSON.parse(fs.readFileSync(f, 'utf8'));
+    if (IDN_SERIES_CACHE.size >= 2) IDN_SERIES_CACHE.delete(IDN_SERIES_CACHE.keys().next().value);
+    IDN_SERIES_CACHE.set(b, { mtime: st.mtimeMs, data });
+    return data;
+  } catch { return { daily: {}, weekly: {} }; }
+}
+
 const JAPAN_FILE = path.join(__dirname, 'data', 'japan.json');
 let JP_CACHE = { mtime: 0, data: null };
 function readJapan() {
@@ -1493,6 +1553,13 @@ function searchIndex() {
   for (const c of (indS.companies || [])) {
     add('in', c.ticker, c.nameEn || c.name, [c.name, c.sector, ...(c.brands || [])], Math.round((c.marketCap || 0) / inRateS));
   }
+  // IDX symbols are four characters with no punctuation. The profile name ("Bank Central Asia") and the
+  // exchange name ("PT Bank Central Asia Tbk") both have to find the line, so both are indexed.
+  const indnS = readIndonesiaList();
+  const idRateS = (indnS.fx && indnS.fx.rate) || 1;
+  for (const c of (indnS.companies || [])) {
+    add('id', c.ticker, c.nameEn || c.name, [c.name, c.sector, ...(c.brands || [])], Math.round((c.marketCap || 0) / idRateS));
+  }
   SEARCH_INDEX = rows;
   return rows;
 }
@@ -1621,6 +1688,13 @@ const PEER_BUCKET = {
     'Capital Goods': 'industrials', Construction: 'industrials', Services: 'industrials', Diversified: 'industrials',
     Chemicals: 'materials', 'Metals & Mining': 'materials', 'Construction Materials': 'materials',
     'Oil Gas & Consumable Fuels': 'energy', Power: 'utilities', Realty: 'realestate' },
+  // Indonesia's sectors are the eleven GICS sectors from the vendor profile (the exchange list has no
+  // industry column). Financials maps to 'banks' for peers: a lender, an insurer and a securities house
+  // are not peers in a ratio table, but they are the same neighbourhood for a comparison.
+  id: { Energy: 'energy', Materials: 'materials', Industrials: 'industrials',
+    'Consumer Discretionary': 'consumer', 'Consumer Staples': 'consumer', 'Health Care': 'pharma',
+    Financials: 'banks', 'Information Technology': 'tech', 'Communication Services': 'telecom',
+    Utilities: 'utilities', 'Real Estate': 'realestate' },
 };
 
 // The US has a four-digit SIC for every filer, so the bucket comes from the code rather than the
@@ -1689,6 +1763,9 @@ function peerIndex() {
   const indP = readIndiaList();
   const inRateP = (indP.fx && indP.fx.rate) || 1;
   for (const c of (indP.companies || [])) push('in', `in:${c.ticker}`, c.nameEn || c.name, c.sector, Math.round((c.marketCap || 0) / inRateP));
+  const indnP = readIndonesiaList();
+  const idRateP = (indnP.fx && indnP.fx.rate) || 1;
+  for (const c of (indnP.companies || [])) push('id', `id:${c.ticker}`, c.nameEn || c.name, c.sector, Math.round((c.marketCap || 0) / idRateP));
   PEER_INDEX = rows;
   return rows;
 }
@@ -1706,7 +1783,7 @@ function getPeers(ref, n = 6) {
   // At least one peer from each other market when the bucket allows it, then fill by size.
   const picked = [];
   const taken = new Set();
-  for (const mkt of ['us', 'jp', 'kr', 'tw', 'hk', 'au', 'in']) {
+  for (const mkt of ['us', 'jp', 'kr', 'tw', 'hk', 'au', 'in', 'id']) {
     if (mkt === me.market) continue;
     const first = others.find((r) => r.market === mkt);
     if (first) { picked.push(first); taken.add(first.ref); }
@@ -5395,6 +5472,39 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname === '/api/india') {
       const ind = readIndiaList();
       if (!ind.companies || !ind.companies.length) return sendJSON(res, 200, { companies: [], error: 'India has not been built yet' });
+      return sendListJSON(res, 200, ind);
+    }
+    if (url.pathname.startsWith('/api/indonesia/company/')) {
+      const code = decodeURIComponent(url.pathname.slice('/api/indonesia/company/'.length));
+      const c = readIndonesiaCompany(code);
+      if (!c) return sendJSON(res, 404, { error: 'not found' });
+      return sendJSONCached(res, 200, c);
+    }
+    if (url.pathname === '/api/indonesia/chart') {
+      const code = String(url.searchParams.get('code') || '').toUpperCase();
+      const range = url.searchParams.get('range') || '1y';
+      const stored = storeChart('id', code, range);
+      if (stored) return sendChartJSON(res, 200, { dates: stored.dates, closes: stored.closes, range, code });
+      const store = readIndonesiaSeries(code);
+      const block = range === '5y' || range === '10y' ? store.weekly : store.daily;
+      const series = (block && block[code]) || (store.weekly && store.weekly[code]) || [];
+      if (!series.length) return sendJSON(res, 200, { dates: [], closes: [], range, code });
+      const iso = (t) => new Date(t).toISOString().slice(0, 10);
+      const now = Date.now();
+      const from = range === '1m' ? iso(now - 31 * 864e5)
+        : range === '3m' ? iso(now - 92 * 864e5)
+          : range === '6m' ? iso(now - 190 * 864e5)
+            : range === 'ytd' ? `${new Date().getUTCFullYear()}-01-01`
+              : range === '1y' ? iso(now - 366 * 864e5)
+                : range === '5y' ? iso(now - 1826 * 864e5)
+                  : range === '10y' ? iso(now - 3653 * 864e5)
+                    : '1900-01-01';
+      const rows = series.filter((p) => p.d >= from);
+      return sendChartJSON(res, 200, { dates: rows.map((p) => p.d), closes: rows.map((p) => p.c), range, code });
+    }
+    if (url.pathname === '/api/indonesia') {
+      const ind = readIndonesiaList();
+      if (!ind.companies || !ind.companies.length) return sendJSON(res, 200, { companies: [], error: 'Indonesia has not been built yet' });
       return sendListJSON(res, 200, ind);
     }
     if (url.pathname.startsWith('/api/japan/company/')) {

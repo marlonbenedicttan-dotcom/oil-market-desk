@@ -1552,6 +1552,7 @@ button.deal-sec-tile:hover { background: #10151b; }
 #p-deals[data-market="hk"] { --mkt: #c8574f; }
 #p-deals[data-market="au"] { --mkt: #6f8f3f; }
 #p-deals[data-market="in"] { --mkt: #c2703d; }
+#p-deals[data-market="id"] { --mkt: #b03a48; }
 .mb-tag { font-size: 8px; letter-spacing: 1px; color: var(--mkt, var(--dim)); border: 1px solid var(--mkt, var(--line));
   padding: 1px 5px; border-radius: 2px; margin-left: 6px; }
 

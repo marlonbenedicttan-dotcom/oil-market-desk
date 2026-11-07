@@ -155,6 +155,31 @@ export const indiaList = (ind) => ({
   companies: (ind.companies || []).map(projectIn),
 });
 
+// Indonesia ships the same shape as India. The report currency matters: IDX requires a rupiah filing,
+// but a few issuers report in USD, and a rupiah cap over a dollar profit is not a P/E.
+export const projectId = (c) => ({
+  code: c.code, ticker: c.ticker, name: c.name, nameEn: c.nameEn || null, sector: c.sector || null,
+  brands: c.brands && c.brands.length ? c.brands : null,
+  price: c.price, priceDate: c.priceDate, marketCap: c.marketCap,
+  chg1d: c.chg1d, chg6m: c.chg6m, chgYtd: c.chgYtd,
+  pe: c.pe, pb: c.pb, roe: c.roe, opMargin: c.opMargin,
+  netIncomeTTM: c.netIncomeTTM ?? null,
+  netIncomeTTMAsOf: c.netIncomeTTMAsOf || null,
+  ttmFromFY: c.ttmFromFY || undefined,
+  fcfYield: c.fcfYield ?? null,
+  dividendYield: c.dividendYield ?? null,
+  reportCurrency: c.reportCurrency || null,
+  ...growthFields(c),
+  bands: c.bands && c.bands.pe ? { pe: { percentile: c.bands.pe.percentile } } : null,
+});
+
+export const indonesiaList = (ind) => ({
+  updated: ind.updated, universe: ind.universe, currency: ind.currency, fx: ind.fx,
+  market: ind.market, index: ind.index, themes: ind.themes || [], audit: ind.audit || null,
+  session: ind.session || null, indexName: ind.indexName || 'IDX Composite',
+  companies: (ind.companies || []).map(projectId),
+});
+
 export const projectJp = (c) => ({  code: c.code, ticker: c.ticker, name: c.name, nameJa: c.nameJa, sector: c.sector, size: c.size,
   price: c.price, priceDate: c.priceDate, marketCap: c.marketCap,
   chg1d: c.chg1d, chg6m: c.chg6m, chgYtd: c.chgYtd, chgYtdBasis: c.chgYtdBasis,
@@ -189,4 +214,5 @@ export const FILTER_FIELDS = {
   hk: ['sector', 'marketCap', 'pe', 'pb', 'roe', 'dividendYield', 'bands', 'chgYtd', 'priceDate', 'brands'],
   au: ['sector', 'marketCap', 'pe', 'pb', 'roe', 'dividendYield', 'bands', 'chgYtd', 'priceDate', 'brands'],
   in: ['sector', 'marketCap', 'pe', 'pb', 'roe', 'dividendYield', 'bands', 'chgYtd', 'priceDate', 'brands'],
+  id: ['sector', 'marketCap', 'pe', 'pb', 'roe', 'dividendYield', 'bands', 'chgYtd', 'priceDate', 'brands'],
 };

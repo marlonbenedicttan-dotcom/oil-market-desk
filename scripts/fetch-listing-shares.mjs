@@ -24,6 +24,8 @@ const MARKETS = {
   hongkong: { data: 'hongkong.json', quote: 'hkg', out: 'hongkong-shares.json', cache: 'hongkong-shares' },
   // NSE symbols carry '&' and '-', which stockanalysis spells '_' in the slug (M_M, BAJAJ_AUTO).
   india: { data: 'india.json', quote: 'nse', out: 'india-shares.json', cache: 'india-shares', slug: (c) => String(c).replace(/[&-]/g, '_') },
+  // IDX tickers are four characters with no punctuation; the slug is the ticker.
+  indonesia: { data: 'indonesia.json', quote: 'idx', out: 'indonesia-shares.json', cache: 'indonesia-shares' },
 };
 const market = (process.argv[2] || '').toLowerCase();
 const M = MARKETS[market];
@@ -38,8 +40,15 @@ const CODES = (arg('codes', '') || '').split(',').map((s) => s.trim()).filter(Bo
 const TTL = 24 * 3600e3;
 
 const data = readJson(join(ROOT, 'data', M.data));
-if (!data || !Array.isArray(data.companies)) {
-  console.error(`no ${M.data} — build the market once before fetching current shares`);
+// Indonesia's share counts must be fetched for the whole exchange list, not for the companies a first
+// build happened to keep: some IDX banks print no diluted count on the income statement, so without the
+// vendor statistics page they would be dropped before they could ever receive one. The committed
+// universe snapshot is the independent list.
+const universe = market === 'indonesia'
+  ? ((readJson(join(ROOT, 'data', 'indonesia-universe.json')) || {}).rows || (data && data.companies) || [])
+  : (data && data.companies) || [];
+if (!universe.length) {
+  console.error(`no ${M.data} and no indonesia-universe.json — build the market once before fetching current shares`);
   process.exit(1);
 }
 const cacheDir = join(ROOT, 'data', 'cache', M.cache);
@@ -105,7 +114,7 @@ async function pool(items, limit, fn) {
   }));
 }
 
-let list = data.companies.map((c) => c.code);
+let list = universe.map((c) => c.code);
 if (CODES.length) {
   const want = new Set(CODES);
   list = list.filter((c) => want.has(c));
