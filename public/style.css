@@ -1645,3 +1645,4 @@ button.deal-sec-tile:hover { background: #10151b; }
 .bdr-px { color: var(--dim); }
 .bdr-tag { display: inline-block; font-size: 7px; letter-spacing: .8px; padding: 1px 3px; margin-left: 4px;
   border: 1px solid var(--mkt, #2e9e5b); color: var(--mkt, #2e9e5b); border-radius: 2px; vertical-align: middle; }
+.quality-banner.bdr { color: var(--mkt, #2e9e5b); border-color: var(--mkt, #2e9e5b); background: rgba(46, 158, 91, .08); }
