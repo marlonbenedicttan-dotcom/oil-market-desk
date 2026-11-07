@@ -58,11 +58,12 @@
     "shares:indonesia": "node scripts/fetch-listing-shares.mjs indonesia",
     "audit:indonesia:deep": "node scripts/audit-indonesia-deep.mjs",
     "review:indonesia:prune": "node scripts/review-indonesia-prune.mjs",
-    "build:brazil": "node scripts/build-brazil.mjs && node scripts/fetch-brazil-profiles.mjs && node scripts/fetch-listing-shares.mjs brazil && node scripts/build-brazil.mjs && node scripts/fetch-brazil-profiles.mjs && node scripts/build-brazil.mjs --skip-prices --skip-fin",
+    "build:brazil": "node scripts/build-brazil.mjs && node scripts/fetch-brazil-profiles.mjs && node scripts/fetch-listing-shares.mjs brazil && node scripts/build-brazil.mjs && node scripts/fetch-brazil-profiles.mjs && node scripts/build-brazil.mjs --skip-prices --skip-fin && node scripts/build-brazil-bdrs.mjs && node scripts/merge-brazil-bdrs.mjs",
     "audit:brazil": "node scripts/audit-brazil.mjs",
-    "refresh:brazil": "node scripts/build-brazil.mjs --fresh && node scripts/fetch-brazil-profiles.mjs && node scripts/fetch-listing-shares.mjs brazil && node scripts/build-brazil.mjs --skip-prices --skip-fin",
+    "refresh:brazil": "node scripts/build-brazil.mjs --fresh && node scripts/fetch-brazil-profiles.mjs && node scripts/fetch-listing-shares.mjs brazil && node scripts/build-brazil.mjs --skip-prices --skip-fin && node scripts/build-brazil-bdrs.mjs --fresh && node scripts/merge-brazil-bdrs.mjs",
     "shares:brazil": "node scripts/fetch-listing-shares.mjs brazil",
-    "audit:brazil:deep": "node scripts/audit-brazil-deep.mjs"
+    "audit:brazil:deep": "node scripts/audit-brazil-deep.mjs",
+    "build:brazil:bdrs": "node scripts/build-brazil-bdrs.mjs && node scripts/merge-brazil-bdrs.mjs"
   },
   "engines": {
     "node": ">=22"

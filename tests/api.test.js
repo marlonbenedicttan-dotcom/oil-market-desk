@@ -955,6 +955,15 @@ test('/api/brazil ships the list projection, not the price history, and revalida
   assert.equal(petr.reportCurrency, 'BRL');
   assert.equal(petr.shareClass, 'PN');
   assert.equal(petr.series, undefined, 'the list must not carry per-company price history');
+  const nubr = d.companies.find((x) => x.code === 'ROXO34');
+  assert.ok(nubr && nubr.bdr, 'the Nubank BDR is missing');
+  assert.equal(nubr.bdrUnderlying, 'NYSE: NU');
+  assert.equal(nubr.reportCurrency, 'USD');
+  assert.equal(nubr.shareClass, 'BDR');
+  assert.ok(nubr.marketCap === nubr.vendorCap, 'the BDR cap is not the vendor company cap');
+  assert.equal(d.market.companies, d.companies.filter((x) => !x.bdr).length);
+  assert.equal(d.market.bdrs, d.companies.filter((x) => x.bdr).length);
+  assert.ok(d.market.bdrCap > d.market.totalCap, 'the BDR global caps should dwarf the domestic total');
   assert.ok(JSON.stringify(d).length < 3_000_000, 'the Brazil list payload ballooned');
   const again = await new Promise((resolve, reject) => {
     http.get({ host: 'localhost', port: PORT, path: '/api/brazil', headers: { 'if-none-match': etag }, agent: false }, resolve).on('error', reject);
@@ -977,6 +986,21 @@ test('/api/brazil/company keeps the company cap and the class price apart', asyn
     const want = +(c.marketCap / c.reports.ttm.netIncome).toFixed(2);
     assert.ok(Math.abs(want - c.pe) < 0.2, `P/E ${c.pe} is not the company cap ÷ profit`);
   }
+});
+
+test('/api/brazil/company serves a BDR with the global cap and no per-BDR band', async () => {
+  const r = await fetch(`http://localhost:${PORT}/api/brazil/company/ROXO34`);
+  assert.equal(r.status, 200);
+  const c = await r.json();
+  assert.equal(c.bdr, true);
+  assert.equal(c.bdrUnderlying, 'NYSE: NU');
+  assert.equal(c.shareClass, 'BDR');
+  assert.equal(c.reportCurrency, 'USD');
+  assert.equal(c.bands, null);
+  assert.ok(c.marketCap === c.vendorCap, 'market cap is not the B3 company cap');
+  assert.ok(c.reports && c.reports.ttm && c.reports.ttm.revenue > 0, 'underlying TTM revenue is missing');
+  assert.ok(c.price > 0 && c.priceDate, 'BDR line price is missing');
+  assert.ok(c.history.length >= 3, 'underlying fiscal-year record is missing');
 });
 
 test('/api/brazil/chart serves the range it was asked for', async () => {

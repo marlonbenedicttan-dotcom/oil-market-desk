@@ -60,6 +60,24 @@ export const saPage = (code, page = '', quarterly = false) =>
   `https://stockanalysis.com/quote/bvmf/${saSlug(code)}/financials/${page}/${quarterly ? '?p=quarterly' : ''}`;
 export const saProfile = (code) => `https://stockanalysis.com/quote/bvmf/${saSlug(code)}/company/`;
 export const yaSymbol = (code) => `${encodeURIComponent(pad(code))}.SA`;
+
+// BDRs: the B3 quote page is a stub (profile/statements 404), so the underlying foreign listing is
+// the data source. `exchange: 'stocks'` is the stockanalysis US path; any other value is a quote path
+// such as `tsx`.
+export const bdrBase = (b) => (b.exchange === 'stocks'
+  ? `https://stockanalysis.com/stocks/${String(b.ticker).toLowerCase()}/`
+  : `https://stockanalysis.com/quote/${b.exchange}/${b.ticker}/`);
+export const saUnderlyingPage = (b, page = '', quarterly = false) =>
+  `${bdrBase(b)}financials/${page}/${quarterly ? '?p=quarterly' : ''}`;
+export const saUnderlyingProfile = (b) => `${bdrBase(b)}company/`;
+export const saUnderlyingStats = (b) => `${bdrBase(b)}statistics/`;
+
+export function readBdrs() {
+  try {
+    const j = JSON.parse(readFileSync(join(ROOT, 'data', 'brazil-bdrs.json'), 'utf8'));
+    return { ...j, bdrs: Array.isArray(j.bdrs) ? j.bdrs : [] };
+  } catch { return { bdrs: [] }; }
+}
 export const INDEX_SYMBOL = '^BVSP';
 
 export function parseCap(text) {
@@ -129,6 +147,7 @@ export async function b3Universe({ fresh = false, ttlMs = 6 * 3600e3 } = {}) {
   const companies = all.filter((r) => isOrdinaryLine(r.code, r.name));
   return {
     rows: companies,
+    all,
     excludedBdr: bdr.length,
     excludedFunds: funds.length,
     quoted: all.length,

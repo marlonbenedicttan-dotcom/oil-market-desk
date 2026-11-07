@@ -12,6 +12,7 @@ import { fileURLToPath } from 'node:url';
 import { deriveListing } from './derive-listing.mjs';
 import { growthRates } from '../src/growth.js';
 import { brazilList } from '../src/project.js';
+import { readBdrs } from './b3.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const read = (f) => JSON.parse(readFileSync(join(ROOT, 'data', f), 'utf8'));
@@ -19,6 +20,9 @@ const d = read('brazil.json');
 const list = read('brazil-list.json');
 const seriesDir = join(ROOT, 'data', 'brazil-series');
 const DAY = 864e5;
+const domestic = d.companies.filter((c) => !c.bdr);
+const bdr = d.companies.filter((c) => c.bdr);
+const bdrAllow = new Set((readBdrs().bdrs || []).map((b) => b.code));
 
 const failures = [];
 let checks = 0;
@@ -136,7 +140,8 @@ const shares = read('brazil-shares.json').entries || {};
 for (const c of d.companies) {
   if (c.dividendYield == null) continue;
   dy++;
-  if (c.dividendYieldBasis === 'vendor') close(`${c.code}.dividendYield`, c.dividendYield, (shares[c.code] || {}).yield, 0.0051);
+  // The BDR yield is parsed from the underlying statistics page; it is not in brazil-shares.json.
+  if (!c.bdr && c.dividendYieldBasis === 'vendor') close(`${c.code}.dividendYield`, c.dividendYield, (shares[c.code] || {}).yield, 0.0051);
 }
 say('dividend yield (vendor) reproduced', `${dy} checked`);
 
@@ -207,13 +212,21 @@ const median = (xs) => {
   const m = Math.floor(a.length / 2);
   return a.length % 2 ? a[m] : +((a[m - 1] + a[m]) / 2).toFixed(2);
 };
-close('market.totalCap', d.market.totalCap, d.companies.reduce((a, c) => a + (c.marketCap || 0), 0), 1);
-close('market.medianPe', d.market.medianPe, median(d.companies.map((c) => c.pe)), 0.0051);
-close('market.medianPb', d.market.medianPb, median(d.companies.map((c) => c.pb)), 0.0051);
-close('market.medianRoe', d.market.medianRoe, median(d.companies.map((c) => c.roe)), 0.0051);
-close('market.medianYield', d.market.medianYield, median(d.companies.map((c) => c.dividendYield)), 0.0051);
-close('market.advancing', d.market.advancing, d.companies.filter((c) => c.chg1d != null && c.chg1d > 0).length, 0);
-close('market.declining', d.market.declining, d.companies.filter((c) => c.chg1d != null && c.chg1d < 0).length, 0);
+close('market.totalCap', d.market.totalCap, domestic.reduce((a, c) => a + (c.marketCap || 0), 0), 1);
+close('market.medianPe', d.market.medianPe, median(domestic.map((c) => c.pe)), 0.0051);
+close('market.medianPb', d.market.medianPb, median(domestic.map((c) => c.pb)), 0.0051);
+close('market.medianRoe', d.market.medianRoe, median(domestic.map((c) => c.roe)), 0.0051);
+close('market.medianYield', d.market.medianYield, median(domestic.map((c) => c.dividendYield)), 0.0051);
+close('market.advancing', d.market.advancing, domestic.filter((c) => c.chg1d != null && c.chg1d > 0).length, 0);
+close('market.declining', d.market.declining, domestic.filter((c) => c.chg1d != null && c.chg1d < 0).length, 0);
+close('market.companies', d.market.companies, domestic.length, 0);
+close('market.listed', d.market.listed, d.companies.length, 0);
+close('market.bdrs', d.market.bdrs, bdr.length, 0);
+close('market.bdrCap', d.market.bdrCap, bdr.reduce((a, c) => a + (c.marketCap || 0), 0), 1);
+close('market.bdrPe', d.market.bdrPe, median(bdr.map((c) => c.pe)), 0.0051);
+close('market.bdrPb', d.market.bdrPb, median(bdr.map((c) => c.pb)), 0.0051);
+close('market.bdrRoe', d.market.bdrRoe, median(bdr.map((c) => c.roe)), 0.0051);
+close('market.bdrYield', d.market.bdrYield, median(bdr.map((c) => c.dividendYield)), 0.0051);
 
 const projected = brazilList(d);
 const normalise = (doc) => {
@@ -225,25 +238,51 @@ checks++;
 if (JSON.stringify(normalise(projected)) !== JSON.stringify(normalise(list))) fail('list', 'projection does not match the stored artifact');
 
 const bases = new Set();
-for (const c of d.companies) {
+for (const c of domestic) {
   const b = c.code.replace(/\d{1,2}B?$/, '');
-  if (bases.has(b)) fail(`${c.code}.base`, `duplicate issuer ${b}`);
+  if (bases.has(b)) fail(`${c.code}.base`, `duplicate domestic issuer ${b}`);
   bases.add(b);
+}
+const bdrSeen = new Set();
+for (const c of bdr) {
+  if (bdrSeen.has(c.code)) fail(`${c.code}.bdr`, 'duplicate BDR code');
+  bdrSeen.add(c.code);
+  if (!bdrAllow.has(c.code)) fail(`${c.code}.bdr`, 'not in the curated allowlist');
+  if (!c.bdrUnderlying) fail(`${c.code}.bdr`, 'missing the underlying');
+  if (c.shareClass !== 'BDR') fail(`${c.code}.bdr`, `class ${c.shareClass}`);
+  if (c.multiClass) fail(`${c.code}.bdr`, 'BDR marked multi-class');
+  if (c.bands != null) fail(`${c.code}.bdr`, 'BDR should not have a per-BDR P/E band');
+  close(`${c.code}.bdrCap`, c.marketCap, c.vendorCap, 0, 1e-9);
+}
+for (const c of d.companies) {
   if (!c.shareClass) fail(`${c.code}.class`, 'missing class label');
   if (c.multiClass && !c.shareClass) fail(`${c.code}.class`, 'multi-class without a class');
 }
+say('domestic / BDR bases', `${bases.size} / ${bdrSeen.size}`);
 for (const t of d.themes || []) for (const code of t.tickers || []) if (!d.companies.some((c) => c.code === code)) fail('theme', `${t.id}: ${code}`);
 
 const a = d.audit;
 close('audit.companies', a.companies, d.companies.length, 0);
-close('audit.pe', a.pe, d.companies.filter((c) => c.pe != null).length, 0);
-close('audit.pb', a.pb, d.companies.filter((c) => c.pb != null).length, 0);
-close('audit.roe', a.roe, d.companies.filter((c) => c.roe != null).length, 0);
-close('audit.dividendYield', a.dividendYield, d.companies.filter((c) => c.dividendYield != null).length, 0);
-close('audit.noRecentTrading', a.noRecentTrading, d.companies.filter((c) => c.noRecentTrading).length, 0);
-close('audit.shortHistory', a.shortHistory, d.companies.filter((c) => c.shortHistory).length, 0);
-close('audit.ttmStale', a.ttmStale, d.companies.filter((c) => c.ttmStale).length, 0);
-close('audit.thinTrading', a.thinTrading, d.companies.filter((c) => c.thinTrading).length, 0);
+close('audit.domesticCompanies', a.domesticCompanies, domestic.length, 0);
+close('audit.bdrCompanies', a.bdrCompanies, bdr.length, 0);
+close('audit.includedBdrs', a.includedBdrs, bdr.length, 0);
+close('audit.excludedBdrs', a.excludedBdrs, (a.excludedBdr || 0) - bdr.length, 0);
+close('audit.pe', a.pe, domestic.filter((c) => c.pe != null).length, 0);
+close('audit.pb', a.pb, domestic.filter((c) => c.pb != null).length, 0);
+close('audit.roe', a.roe, domestic.filter((c) => c.roe != null).length, 0);
+close('audit.dividendYield', a.dividendYield, domestic.filter((c) => c.dividendYield != null).length, 0);
+close('audit.noRecentTrading', a.noRecentTrading, domestic.filter((c) => c.noRecentTrading).length, 0);
+close('audit.shortHistory', a.shortHistory, domestic.filter((c) => c.shortHistory).length, 0);
+close('audit.ttmStale', a.ttmStale, domestic.filter((c) => c.ttmStale).length, 0);
+close('audit.thinTrading', a.thinTrading, domestic.filter((c) => c.thinTrading).length, 0);
+close('audit.bdrNoRecentTrading', a.bdrNoRecentTrading, bdr.filter((c) => c.noRecentTrading).length, 0);
+close('audit.bdrShortHistory', a.bdrShortHistory, bdr.filter((c) => c.shortHistory).length, 0);
+close('audit.bdrTtmStale', a.bdrTtmStale, bdr.filter((c) => c.ttmStale).length, 0);
+close('audit.bdrThinTrading', a.bdrThinTrading, bdr.filter((c) => c.thinTrading).length, 0);
+close('audit.bdrPe', a.bdrPe, median(bdr.map((c) => c.pe)), 0.0051);
+close('audit.bdrPb', a.bdrPb, median(bdr.map((c) => c.pb)), 0.0051);
+close('audit.bdrRoe', a.bdrRoe, median(bdr.map((c) => c.roe)), 0.0051);
+close('audit.bdrYield', a.bdrYield, median(bdr.map((c) => c.dividendYield)), 0.0051);
 
 say('checks run', checks.toLocaleString());
 if (ttmNotes.length) {

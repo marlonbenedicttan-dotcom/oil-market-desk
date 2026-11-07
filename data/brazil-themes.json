@@ -7,84 +7,223 @@
       "label": "BANKS & FINANCIALS",
       "kind": "sector",
       "note": "The private and state banks, the exchange and the payment/fintech names. Net interest margin and the provisioning cycle drive earnings; these carry a P/E and a P/B but no free cash flow.",
-      "tickers": ["ITUB4", "BBDC4", "BBAS3", "SANB11", "BPAC11", "B3SA3", "ABCB4", "BRBI11", "ITSA4"]
+      "tickers": [
+        "ITUB4",
+        "BBDC4",
+        "BBAS3",
+        "SANB11",
+        "BPAC11",
+        "B3SA3",
+        "ABCB4",
+        "BRBI11",
+        "ITSA4"
+      ]
     },
     {
       "id": "oil",
       "label": "OIL, GAS & FUELS",
       "kind": "commodity",
       "note": "Petrobras and the independent producers, plus the fuel distribution and sugar/ethanol names. Crude, the pre-salt cycle and the government's pricing policy are the swing factors.",
-      "tickers": ["PETR4", "PRIO3", "RRRP3", "RECV3", "CSAN3", "UGPA3", "VBBR3", "BRAV3"]
+      "tickers": [
+        "PETR4",
+        "PRIO3",
+        "RRRP3",
+        "RECV3",
+        "CSAN3",
+        "UGPA3",
+        "VBBR3",
+        "BRAV3"
+      ]
     },
     {
       "id": "mining",
       "label": "MINING & STEEL",
       "kind": "commodity",
       "note": "Iron ore, pellets, steel and the metals chain. Vale is the global iron-ore benchmark; the steelmakers read Chinese demand and the BRL cost base.",
-      "tickers": ["VALE3", "GGBR4", "CSNA3", "USIM5", "CMIN3", "BRAP3", "BRAP4"]
+      "tickers": [
+        "VALE3",
+        "GGBR4",
+        "CSNA3",
+        "USIM5",
+        "CMIN3",
+        "BRAP3",
+        "BRAP4"
+      ]
     },
     {
       "id": "agri",
       "label": "AGRIBUSINESS & PROTEIN",
       "kind": "commodity",
       "note": "Soy, corn, sugar, coffee, orange and the protein exporters. A weaker BRL helps the export margin; weather and Chinese demand set the cycle.",
-      "tickers": ["SLCE3", "AGRO3", "SOJA3", "SMTO3", "JALL3", "LAND3", "BEEF3", "JBSS3", "MRFG3", "BRFS3"]
+      "tickers": [
+        "SLCE3",
+        "AGRO3",
+        "SOJA3",
+        "SMTO3",
+        "JALL3",
+        "LAND3",
+        "BEEF3",
+        "JBSS3",
+        "MRFG3",
+        "BRFS3"
+      ]
     },
     {
       "id": "pulp",
       "label": "PULP, PAPER & PACKAGING",
       "kind": "commodity",
       "note": "Eucalyptus pulp and paper. Pulp is a dollar price with a BRL cost base, so the exchange rate is half the story.",
-      "tickers": ["SUZB3", "KLBN11", "RANI3", "DXCO3"]
+      "tickers": [
+        "SUZB3",
+        "KLBN11",
+        "RANI3",
+        "DXCO3"
+      ]
     },
     {
       "id": "consumer",
       "label": "CONSUMER & RETAIL",
       "kind": "sector",
       "note": "Beer, food, fashion, e-commerce and the retailers. Domestic demand, real income and the Selic rate drive the cycle.",
-      "tickers": ["ABEV3", "CRFB3", "PCAR3", "MGLU3", "LREN3", "NTCO3", "ARZZ3", "SOMA3", "VIVA3"]
+      "tickers": [
+        "ABEV3",
+        "CRFB3",
+        "PCAR3",
+        "MGLU3",
+        "LREN3",
+        "NTCO3",
+        "ARZZ3",
+        "SOMA3",
+        "VIVA3"
+      ]
     },
     {
       "id": "utilities",
       "label": "UTILITIES & SANITATION",
       "kind": "sector",
       "note": "Electricity, transmission, water and gas. Regulated returns, the hydrological cycle and the renewal of concessions are the drivers.",
-      "tickers": ["ELET3", "CMIG4", "CPLE6", "EQTL3", "ENGI11", "TAEE11", "SAPR11", "SBSP3", "CSMG3"]
+      "tickers": [
+        "ELET3",
+        "CMIG4",
+        "CPLE6",
+        "EQTL3",
+        "ENGI11",
+        "TAEE11",
+        "SAPR11",
+        "SBSP3",
+        "CSMG3"
+      ]
     },
     {
       "id": "industrials",
       "label": "INDUSTRIALS & CAPITAL GOODS",
       "kind": "sector",
       "note": "Motors, auto parts, machinery and electrical equipment. The read is investment, credit and the BRL cost of imported components.",
-      "tickers": ["WEGE3", "EMBR3", "RAPT4", "ROMI3", "TUPY3", "POMO4", "LEVE3", "MYPK3"]
+      "tickers": [
+        "WEGE3",
+        "EMBR3",
+        "RAPT4",
+        "ROMI3",
+        "TUPY3",
+        "POMO4",
+        "LEVE3",
+        "MYPK3"
+      ]
     },
     {
       "id": "logistics",
       "label": "LOGISTICS & TRANSPORT",
       "kind": "sector",
       "note": "Rail, ports, toll roads and the trucking/rental names. Volumes track the commodity and industrial cycle; concessions and leverage are the risk.",
-      "tickers": ["RAIL3", "CCRO3", "ECOR3", "SIMH3", "VAMO3", "TGMA3", "STBP3"]
+      "tickers": [
+        "RAIL3",
+        "CCRO3",
+        "ECOR3",
+        "SIMH3",
+        "VAMO3",
+        "TGMA3",
+        "STBP3"
+      ]
     },
     {
       "id": "health",
       "label": "HEALTHCARE",
       "kind": "sector",
       "note": "Hospitals, diagnostics, pharmacies and the health insurers. A domestic, defensive sector with a long runway and little commodity exposure.",
-      "tickers": ["HAPV3", "RDOR3", "FLRY3", "DASA3", "QUAL3", "HYPE3"]
+      "tickers": [
+        "HAPV3",
+        "RDOR3",
+        "FLRY3",
+        "DASA3",
+        "QUAL3",
+        "HYPE3"
+      ]
     },
     {
       "id": "property",
       "label": "PROPERTY & CONSTRUCTION",
       "kind": "sector",
       "note": "Developers and construction. Presales, inventory, mortgage rates and the Selic rate are the read; the balance sheet is the story, so P/B matters.",
-      "tickers": ["CYRE3", "EZTC3", "MRVE3", "DIRR3", "TEND3", "CURY3", "LAVV3"]
+      "tickers": [
+        "CYRE3",
+        "EZTC3",
+        "MRVE3",
+        "DIRR3",
+        "TEND3",
+        "CURY3",
+        "LAVV3"
+      ]
     },
     {
       "id": "tech",
       "label": "TELECOM & TECHNOLOGY",
       "kind": "sector",
       "note": "The incumbent telecom, enterprise software, e-commerce infrastructure and the digital names. Cash flow and growth, not commodities.",
-      "tickers": ["VIVT3", "TOTS3", "LWSA3", "POSI3", "INTB3"]
+      "tickers": [
+        "VIVT3",
+        "TOTS3",
+        "LWSA3",
+        "POSI3",
+        "INTB3"
+      ]
+    },
+    {
+      "id": "bdrs",
+      "label": "SIGNIFICANT BDRs",
+      "kind": "global",
+      "note": "The curated B3 BDR lens: Nu Holdings, XP, Inter, MercadoLibre, StoneCo, PagSeguro, VTEX, Globant, JBS N.V., Aura, Brazil Potash and Eve, plus the global mega-caps. BDRs are depositary receipts of foreign companies; the cap is the global company cap in BRL, the price is the BDR line, and the ratios are company-level in the underlying report currency. They are excluded from the 303 domestic totals.",
+      "tickers": [
+        "ROXO34",
+        "XPBR31",
+        "INBR32",
+        "MELI34",
+        "STOC34",
+        "PAGS34",
+        "V2TX34",
+        "G1LO34",
+        "JBSS32",
+        "AURA33",
+        "GROP31",
+        "EVEB31",
+        "AAPL34",
+        "NVDC34",
+        "MSFT34",
+        "GOGL34",
+        "AMZO34",
+        "M1TA34",
+        "TSLA34",
+        "AVGO34",
+        "TSMC34",
+        "LILY34",
+        "WALM34",
+        "JPMC34",
+        "VISA34",
+        "EXXO34",
+        "JNJB34",
+        "BERK34",
+        "MUTC34",
+        "A1MD34"
+      ]
     }
   ]
 }

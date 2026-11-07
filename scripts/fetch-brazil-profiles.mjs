@@ -8,8 +8,7 @@ import { readFileSync, writeFileSync, renameSync, existsSync, mkdirSync } from '
 import { join } from 'node:path';
 import { ROOT, BR_CACHE, saProfile } from './b3.mjs';
 import { getCached } from './stockanalysis.mjs';
-import { extractBrands } from '../src/brand-extract.js';
-import { shortenDescription as shorten } from '../src/desc.js';
+import { extractProfile } from './profile.mjs';
 
 const FILE = join(ROOT, 'data', 'brazil.json');
 const OUT = join(ROOT, 'data', 'brazil-profiles.json');
@@ -20,40 +19,6 @@ const FORCE = process.argv.includes('--force');
 const DRY = process.argv.includes('--dry-run');
 const TTL = 30 * 864e5;
 mkdirSync(CACHE, { recursive: true });
-
-const text = (s) => String(s || '')
-  .replace(/&amp;/g, '&').replace(/&#39;/g, "'").replace(/&quot;/g, '"')
-  .replace(/&nbsp;/g, ' ').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
-
-function field(html, label) {
-  const m = new RegExp(`>${label}</td>\\s*<td[^>]*>([\\s\\S]*?)</td>`).exec(html);
-  return m ? text(m[1]) || null : null;
-}
-
-export function extractProfile(html) {
-  const title = (/<title>([^<]*)<\/title>/.exec(html) || [])[1] || '';
-  const name = text(title)
-    .replace(/\s*\([A-Z]{2,6}:[^)]*\).*$/i, '')
-    .replace(/\s*\([A-Z.]{1,6}\).*$/i, '')
-    .replace(/\s*Company Profile.*$/i, '')
-    .replace(/\s*Stock Price.*$/i, '')
-    .trim();
-  const box = /mb-5">([\s\S]*?)<\/div>/.exec(html);
-  const paras = box ? [...box[1].matchAll(/<p>([\s\S]*?)<\/p>/g)].map((m) => text(m[1])) : [];
-  const desc = paras.join(' ');
-  if (!name || desc.length < 60) return null;
-  const first = (desc.match(/^.*?[.。](?=\s|$)/) || [desc])[0];
-  const brandInfo = extractBrands(desc);
-  return {
-    name,
-    legal: first.length > 140 ? first.slice(0, 137) + '…' : first,
-    desc: shorten(desc),
-    sector: field(html, 'Sector'),
-    industry: field(html, 'Industry'),
-    brands: brandInfo.brands,
-    brandQuote: brandInfo.quote,
-  };
-}
 
 const br = JSON.parse(readFileSync(FILE, 'utf8'));
 const book = existsSync(OUT) ? JSON.parse(readFileSync(OUT, 'utf8')) : { entries: {} };

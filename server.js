@@ -1620,7 +1620,10 @@ function searchIndex() {
   const brS = readBrazilList();
   const brRateS = (brS.fx && brS.fx.rate) || 1;
   for (const c of (brS.companies || [])) {
-    add('br', c.ticker, c.nameEn || c.name, [c.name, c.sector, c.shareClass, ...(c.brands || [])], Math.round((c.marketCap || 0) / brRateS));
+    // BDRs are a secondary lens. Keep them searchable, but rank them below the primary listing so
+    // 'Apple' / 'JPMorgan' still resolves to the US line; the BDR appears just after it.
+    const cap = Math.round((c.marketCap || 0) / brRateS);
+    add('br', c.ticker, c.nameEn || c.name, [c.name, c.nameEn, c.sector, c.shareClass, c.bdrNote, c.bdrUnderlying, ...(c.brands || [])], c.bdr ? Math.round(cap / 1000) : cap);
   }
   SEARCH_INDEX = rows;
   return rows;

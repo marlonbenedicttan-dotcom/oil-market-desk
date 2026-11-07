@@ -70,6 +70,8 @@ const PRESETS = {
     'HIGH YIELD': (c) => (c.dividendYield || 0) >= 4,
     'NO RECENT TRADING': (c) => !!c.noRecentTrading,
     'THIN TRADING': (c) => !!c.thinTrading,
+    'SIGNIFICANT BDRs': (c) => !!c.bdr,
+    'BRAZIL-LINKED BDRs': (c) => !!c.bdr && c.bdrGroup === 'brazil',
   },
   id: {
     'BELOW BOOK': (c) => c.pb != null && c.pb < 1,

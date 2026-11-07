@@ -1627,3 +1627,21 @@ button.deal-sec-tile:hover { background: #10151b; }
 .quality-warn { border-color: #5a2020; background: rgba(224, 82, 82, .07); color: var(--red); }
 .quality-warn b, .quality-banner b { color: inherit; }
 .sc-flag.bad { color: var(--red); border-color: #5a2020; }
+
+/* Brazil's curated BDR lens: a separate panel, never mixed into the domestic totals. */
+.bdr-panel { margin: 14px 12px 0; border: 1px solid var(--line); border-radius: 3px; background: #0e1319; overflow: hidden; }
+.bdr-head { display: flex; align-items: baseline; gap: 10px; padding: 10px 12px 4px; }
+.bdr-lede { margin: 0; padding: 0 12px 8px; color: var(--dim); font-size: 11px; line-height: 1.45; }
+.bdr-sub { padding: 7px 12px 4px; font-size: 8px; letter-spacing: 1.4px; color: var(--mkt, #2e9e5b); border-top: 1px solid var(--line); }
+.bdr-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 0 1px; }
+.bdr-row { display: grid; grid-template-columns: 52px minmax(0, 1fr) 66px 42px 46px 58px; align-items: center; gap: 6px;
+  width: 100%; padding: 7px 12px; background: transparent; border: 0; border-top: 1px solid var(--line);
+  text-align: left; cursor: pointer; color: inherit; font: inherit; }
+.bdr-row:hover { background: #121820; }
+.bdr-code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 10px; color: var(--mkt, #2e9e5b); }
+.bdr-name b { display: block; font-size: 11px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bdr-name i { display: block; font-style: normal; font-size: 8px; color: var(--dim); letter-spacing: .5px; }
+.bdr-cap, .bdr-pe, .bdr-y, .bdr-px { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 10px; text-align: right; }
+.bdr-px { color: var(--dim); }
+.bdr-tag { display: inline-block; font-size: 7px; letter-spacing: .8px; padding: 1px 3px; margin-left: 4px;
+  border: 1px solid var(--mkt, #2e9e5b); color: var(--mkt, #2e9e5b); border-radius: 2px; vertical-align: middle; }

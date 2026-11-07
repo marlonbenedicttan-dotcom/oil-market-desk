@@ -2874,7 +2874,7 @@ function renderKoreaScreen(el) {
   const pct = (v) => (v == null ? '<td class="num">—</td>' : `<td class="num ${cls(v)}">${v >= 0 ? '+' : ''}${v.toFixed(1)}%</td>`);
   const num = (v, dp, suffix = '') => (v == null ? '<td class="num">—</td>' : `<td class="num">${v.toFixed(dp)}${suffix}</td>`);
   const body = shown.map((c) => `<tr data-krrow="${esc(c.code)}" title="${esc(c.nameEn || c.name)}">
-      <td class="sc-name">${esc(c.nameEn || c.name)}<span class="sc-tick">${esc(c.ticker)}${c.sector ? ' · ' + esc(c.sector) : ''}</span></td>
+      <td class="sc-name">${esc(c.nameEn || c.name)}${c.bdr ? '<span class="bdr-tag">BDR</span>' : ''}<span class="sc-tick">${esc(c.ticker)}${c.sector ? ' · ' + esc(c.sector) : ''}</span></td>
       <td class="num">${wonPx(c.price)}</td>
       ${pct(fxRet(c.chg1d, 'KRW', 'd1'))}${pct(fxRet(c.chg6m, 'KRW', 'm6'))}${pct(fxRet(c.chgYtd, 'KRW', 'ytd'))}
       ${num(c.pe, 1, '×')}${num(c.pb, 2, '×')}${num(c.roe, 1, '%')}
@@ -6591,7 +6591,8 @@ function renderAustraliaMarket(all, d) {
         <span class="dimtext">${all.length} companies · ASX · prices as of ${sessionOf(all, 'priceDate') || d.session}${idx.date ? ` · index as of ${idx.date}` : ''}</span></div>`
     + `<div class="co-stats co-stats-12">
         ${cell('TOTAL MARKET CAP', auMoney(m.totalCap), 'Sum of every covered ASX constituent')}
-        ${cell('COMPANIES', String(m.companies || all.length), 'Listed companies with a statement page and a share count')}
+        ${cell('DOMESTIC COMPANIES', String(m.companies || all.length), 'Domestic B3 companies with a statement page and a share count; the BDR lens is separate')}
+        ${cell('BDRs', String(m.bdrs ?? 0), 'Curated significant BDRs, global company caps — excluded from the domestic totals')}
         ${cell('MEDIAN P/E', m.medianPe != null ? `${m.medianPe.toFixed(1)}×` : '—', `Median — the typical company, not the index. ${foreign}`)}
         ${cell('MEDIAN P/B', m.medianPb != null ? `${m.medianPb.toFixed(2)}×` : '—', 'Median across the market — market cap ÷ common equity (excludes minorities)')}
         ${cell('MEDIAN ROE', m.medianRoe != null ? `${m.medianRoe.toFixed(1)}%` : '—', 'Median member — trailing profit ÷ common equity (excludes minorities), TTM where available')}
@@ -6780,7 +6781,7 @@ async function renderAustraliaPage(stub) {
         return `<div class="co-stats co-stats-12">
         ${cell(`REVENUE · ${basis}`, cur(fig.flows.revenue), `${when}, as reported — ${ccy} millions`)}
         ${stat('operatingProfit', `OPERATING PROFIT · ${basis}`, cur(fig.flows.op), fig.flows.op == null ? 'This issuer does not report an operating-profit line (common for banks)' : `${when}, as reported`, sign(fig.flows.op))}
-        ${cell('EPS · DILUTED', eps != null ? Number(eps).toFixed(2) : '—', `Per share, ${ccy}, the same period as the net profit above${c.perShareBasis ? ` (${c.perShareBasis})` : ''}`)}
+        ${cell('EPS · DILUTED', eps != null ? Number(eps).toFixed(2) : '—', `Per share, ${ccy}, the same period as the net profit above${c.perShareBasis ? ` (${c.perShareBasis})` : ''}${c.bdr ? ' · global EPS, not per BDR' : ''}`)}
         ${stat('fcf', `FREE CASH FLOW · ${cashBasis}`, cur(fcf), `${cashWhen}: operating cash flow − capital expenditure`)}
         ${cell('TOTAL ASSETS', cur(fig.balance.assets), `${bsWhen} — ${ccy} millions`)}
         ${cell('LIABILITIES', cur(fig.balance.liabilities), `${bsWhen}: total assets less shareholders\u2019 equity`)}
@@ -7404,6 +7405,8 @@ const ID_PRESETS = [
   { id: 'hsc', label: 'HSC FLAGGED', test: (c) => !!c.hsc },
   { id: 'notrade', label: 'NO RECENT TRADING', test: (c) => !!c.noRecentTrading },
   { id: 'thin', label: 'THIN TRADING', test: (c) => !!c.thinTrading },
+  { id: 'bdrs', label: 'SIGNIFICANT BDRs', test: (c) => !!c.bdr },
+  { id: 'brazilbdrs', label: 'BRAZIL-LINKED BDRs', test: (c) => !!c.bdr && c.bdrGroup === 'brazil' },
 ];
 
 function renderIndonesiaScreener(all, d) {
@@ -7718,7 +7721,7 @@ async function renderBrazil(token = takeToken()) {
   const sub = $('deals-sub');
   if (sub) {
     const what = brView === 'screener' ? 'filter and sort' : brView === 'themes' ? 'curated theme lists' : 'breadth, sectors and the Ibovespa';
-    sub.textContent = all.length ? `${all.length} companies · B3 · prices in BRL · ${what}` : 'B3 · Ibovespa';
+    sub.textContent = all.length ? `${d.market?.companies ?? all.length} domestic + ${d.market?.bdrs ?? 0} BDRs · B3 · prices in BRL · ${what}` : 'B3 · Ibovespa';
   }
   if (!all.length) {
     el.innerHTML = `<div class="macro-note">Brazil is not built yet. Run <code>node scripts/build-brazil.mjs</code>.</div>`;
@@ -7743,6 +7746,31 @@ function redrawBrazilIndex(range = brMktRange) {
   return true;
 }
 
+function brBdrPanel(all, m) {
+  // Keep the curated allowlist order, so Nubank leads the Brazil-linked group instead of being
+  // re-sorted behind MercadoLibre by global cap.
+  const bdrs = all.filter((c) => c.bdr);
+  if (!bdrs.length) return '';
+  const brazil = bdrs.filter((c) => c.bdrGroup === 'brazil');
+  const global = bdrs.filter((c) => c.bdrGroup === 'global');
+  const row = (c) => `<button class="bdr-row" data-br="${esc(c.code)}" title="${esc(c.bdrNote || c.bdrUnderlying || 'BDR')}">
+      <span class="bdr-code">${esc(c.code)}</span>
+      <span class="bdr-name"><b>${esc(brName(c))}</b><i>${esc(c.bdrUnderlying || '')}</i></span>
+      <span class="bdr-cap">${brMoney(c.marketCap)}</span>
+      <span class="bdr-pe">${c.pe != null ? c.pe.toFixed(1) + '×' : '—'}</span>
+      <span class="bdr-y ${(c.chgYtd || 0) >= 0 ? 'pos' : 'neg'}">${c.chgYtd != null ? `${c.chgYtd >= 0 ? '+' : ''}${c.chgYtd.toFixed(1)}%` : '—'}</span>
+      <span class="bdr-px">${brPx(c.price)}</span>
+    </button>`;
+  return `<div class="bdr-panel">
+    <div class="bdr-head"><span class="ph-t">SIGNIFICANT BDRs</span><span class="dimtext">${bdrs.length} · global company caps · excluded from the ${m.companies ?? '303'} domestic totals</span></div>
+    <p class="bdr-lede">Depositary receipts of foreign companies. The cap is the global company total (B3 list, BRL); the price is the BDR line; ratios are company-level in the underlying report currency.</p>
+    <div class="bdr-sub">BRAZIL-LINKED · ${brazil.length}</div>
+    <div class="bdr-grid">${brazil.map(row).join('')}</div>
+    <div class="bdr-sub">GLOBAL MEGA-CAPS · ${global.length}</div>
+    <div class="bdr-grid">${global.map(row).join('')}</div>
+  </div>`;
+}
+
 function renderBrazilMarket(all, d) {
   const el = $('co-body'); if (!el) return;
   const m = d.market || {}; const idx = d.index || {};
@@ -7754,9 +7782,9 @@ function renderBrazilMarket(all, d) {
     + `<div class="jp-market-head"><span class="ph-t">IBOVESPA</span>
         ${idx.level != null ? `<span class="jp-market-lvl">${idx.level.toLocaleString('en-US', { maximumFractionDigits: 2 })}</span>` : '<span class="dimtext">index unavailable</span>'}
         <span class="${(idx.chg1d || 0) >= 0 ? 'pos' : 'neg'}">${chg(idx.chg1d)} today</span>
-        <span class="dimtext">${all.length} companies · B3 · prices as of ${sessionOf(all, 'priceDate') || d.session}${idx.date ? ` · index as of ${idx.date}` : ''}</span></div>`
+        <span class="dimtext">${m.companies ?? all.length} domestic · ${m.bdrs ?? 0} BDRs · prices as of ${sessionOf(all, 'priceDate') || d.session}${idx.date ? ` · index as of ${idx.date}` : ''}</span></div>`
     + `<div class="co-stats co-stats-12">
-        ${cell('TOTAL MARKET CAP', brMoney(m.totalCap), 'Sum of every covered B3 constituent')}
+        ${cell('TOTAL MARKET CAP', brMoney(m.totalCap), 'Sum of the domestic constituents; BDR global caps are not included')}
         ${cell('COMPANIES', String(m.companies || all.length), 'Listed companies with a statement page and a share count')}
         ${cell('MEDIAN P/E', m.medianPe != null ? `${m.medianPe.toFixed(1)}×` : '—', `Median — the typical company, not the index. ${foreign}`)}
         ${cell('MEDIAN P/B', m.medianPb != null ? `${m.medianPb.toFixed(2)}×` : '—', 'Median across the market — market cap ÷ common equity (excludes minorities)')}
@@ -7781,7 +7809,8 @@ function renderBrazilMarket(all, d) {
         <span>${x.yield != null ? x.yield.toFixed(2) + '%' : '—'}</span>
         <span class="${(x.chgYtd || 0) >= 0 ? 'pos' : 'neg'}">${chg(x.chgYtd)}</span>
       </div>`).join('')
-    + `<div class="macro-note">Aggregates computed from the ${all.length} covered B3 operating companies (one class per issuer). Market cap is the company total from the vendor; the price is the selected class. BDRs and FII/funds are excluded, and companies whose latest statement is older than 450 days are excluded and named in the audit below. Sectors are the GICS sectors from the vendor profile. Statements are in the issuer's report currency; ratios are computed in that currency. B3 publishes no per-stock P/E here, so the audit reports coverage plus a same-source sample.`
+    + brBdrPanel(all, m)
+    + `<div class="macro-note">Aggregates computed from the ${m.companies} domestic B3 operating companies (one class per issuer); the ${m.bdrs} BDRs are a separate lens and are excluded from the domestic totals and sector medians. Market cap is the company total from the vendor; the price is the selected class. The remaining BDRs and the FII/funds are excluded, and companies whose latest statement is older than 450 days are excluded and named in the audit below. Sectors are the GICS sectors from the vendor profile. Statements are in the issuer's report currency; ratios are computed in that currency. B3 publishes no per-stock P/E here, so the audit reports coverage plus a same-source sample.`
     + brUniverseNote(d);
   if (idx.series && idx.series.length > 1) redrawBrazilIndex();
 }
@@ -7797,13 +7826,16 @@ function brUniverseNote(d) {
   const staleList = stale.map((x) => `<b>${esc(x.code)}</b> (${esc(x.end || '—')})`).join(' · ') || 'none';
   const noShareList = noShares.map((x) => `<b>${esc(x.code)}</b>`).join(' · ') || 'none';
   const noClassList = noClass.map((x) => `<b>${esc(x.base || '')}</b>${x.codes && x.codes.length ? ` (${x.codes.map(esc).join(', ')})` : ''}`).join(' · ') || 'none';
+  const bdrDropped = Array.isArray(a.bdrDropped) ? a.bdrDropped : [];
+  const bdrDropList = bdrDropped.map((x) => `<b>${esc(x.code)}</b> (${esc(x.why || 'not built')})`).join(' · ') || 'none';
   return `<div class="prune-note">
-    <div class="prune-head">WHAT'S EXCLUDED FROM THIS MARKET — ${a.excludedBdr ?? 0} BDRs · ${a.excludedFunds ?? 0} FII/funds · ${stale.length} stale · ${noShares.length} no share count · ${noClass.length} no statement page</div>
-    <p><b>BDRs and FIIs.</b> The exchange list carries foreign companies' depositary receipts (codes ending 31–39) and real-estate funds. Neither is a B3 operating company, so they are excluded by type, not by hand.</p>
+    <div class="prune-head">WHAT'S EXCLUDED — ${a.includedBdrs ?? 0} significant BDRs included · ${a.excludedBdrs ?? 0} other BDRs · ${a.excludedFunds ?? 0} FII/funds · ${stale.length} stale · ${noShares.length} no share · ${noClass.length} no statement</div>
+    <p><b>BDRs.</b> The exchange list carries ${a.excludedBdr ?? 0} BDRs. ${a.includedBdrs ?? 0} significant ones are in the BDR lens above (Nubank, XP, Inter, MercadoLibre, StoneCo, PagSeguro, VTEX, Globant, JBS N.V., Brazil Potash, Eve, plus the global mega-caps); the other ${a.excludedBdrs ?? 0} are excluded. BDRs use the global company cap and the BDR line price, and are excluded from the domestic totals. FII/funds are not operating companies and are excluded.</p>
     <p><b>One class per issuer.</b> The vendor covers one class (PETR4, not PETR3). The build keeps that class and the <b>company-total market cap</b>; the price is the class price and the share count is the class count.</p>
     <p><b>Stale (${stale.length}).</b> No statement for more than 450 days: ${staleList}.</p>
     <p><b>No defensible share count (${noShares.length}).</b> ${noShareList}. Without a share count there is no market cap, so the name is recorded rather than estimated.</p>
     <p><b>No covered statement page (${noClass.length}).</b> ${noClassList}. The vendor serves no financials for these classes.</p>
+    <p><b>BDRs not built (${bdrDropped.length}).</b> ${bdrDropList}.</p>
   </div>`;
 }
 
@@ -7832,7 +7864,7 @@ function renderBrazilThemes(all, d) {
     + `<div class="co-hrow jp-bank-hrow"><span>#</span><span>COMPANY</span><span>CAP</span><span>P/E</span><span>P/B</span><span>ROE</span><span>YIELD</span><span>YTD</span></div>`
     + rows.map((c, i) => `<button class="jp-bank-row" data-br="${esc(c.code)}">
         <span>${i + 1}</span>
-        <span><b>${esc(brName(c))}</b><span class="co-tick">${esc(c.ticker)}</span></span>
+        <span><b>${esc(brName(c))}${c.bdr ? '<span class="bdr-tag">BDR</span>' : ''}</b><span class="co-tick">${esc(c.ticker)}</span></span>
         <span>${brMoney(c.marketCap)}</span>
         <span>${c.pe != null ? c.pe.toFixed(1) : '—'}</span>
         <span class="${c.pb != null && c.pb < 1 ? 'pos' : ''}">${c.pb != null ? c.pb.toFixed(2) : '—'}</span>
@@ -7858,7 +7890,9 @@ function renderBrazilScreener(all, d) {
   const sectors = [...new Set(all.map((c) => c.sector).filter(Boolean))].sort();
   const preset = BR_PRESETS.find((p) => p.id === brPreset);
   const f = brFilter;
+  const typ = f.type || 'all';
   const rows = all.filter((c) => (!q || `${c.name} ${c.nameEn || ''} ${c.ticker} ${(c.brands || []).join(' ')}`.toLowerCase().includes(q))
+    && (typ === 'all' || (typ === 'bdr' ? !!c.bdr : !c.bdr))
     && (brSector === 'all' || c.sector === brSector)
     && (!f.pe || (c.pe != null && (f.pe === 'lt10' ? c.pe < 10 : f.pe === '10to15' ? c.pe >= 10 && c.pe < 15 : f.pe === '15to25' ? c.pe >= 15 && c.pe < 25 : c.pe >= 25)))
     && (!f.roe || (c.roe != null && c.roe >= Number(f.roe)))
@@ -7880,6 +7914,7 @@ function renderBrazilScreener(all, d) {
     inChips.innerHTML = coFilterBar({
       presets: BR_PRESETS, preset: brPreset, presetAttr: 'data-brpreset',
       selects: [
+        { key: 'type', label: 'TYPE', opts: [['all', 'All'], ['domestic', 'Domestic'], ['bdr', 'BDRs']], cur: f.type || 'all', attr: 'data-brf' },
         { key: 'sector', label: 'SECTOR', opts: [['all', 'All'], ...sectors.map((x) => [x, x.toUpperCase()])], cur: brSector, attr: 'data-brf' },
         { key: 'pe', label: 'P/E', opts: [['', 'Any'], ['lt10', '<10'], ['10to15', '10–15'], ['15to25', '15–25'], ['gt25', '>25']], cur: f.pe, attr: 'data-brf' },
         { key: 'roe', label: 'ROE', opts: [['', 'Any'], ['10', '>10%'], ['15', '>15%']], cur: f.roe, attr: 'data-brf' },
@@ -7898,7 +7933,7 @@ function renderBrazilScreener(all, d) {
     + shown.map((c, i) => `<button class="co-row" data-br="${esc(c.code)}">
         <span class="co-rank">${(page - 1) * brPer + i + 1}</span>
         ${brMono(c)}
-        <span class="co-id"><b>${esc(brName(c))}</b>
+        <span class="co-id"><b>${esc(brName(c))}${c.bdr ? '<span class="bdr-tag">BDR</span>' : ''}</b>
           <span class="co-meta">
             <span class="co-tick">${esc(c.ticker)}</span>
             <span class="co-px">${brPx(c.price)}</span>
@@ -7911,7 +7946,7 @@ function renderBrazilScreener(all, d) {
         <span class="co-mar ${c.roe == null ? 'dimtext' : c.roe >= 0 ? 'pos' : 'neg'}">${c.roe == null ? '—' : `${c.roe.toFixed(1)}%`}</span>
       </button>`).join('')
     + pagerHtml(sorted.length, page, brPer, 'brlistpage')
-    + `<div class="macro-note">${rows.length} of ${all.length} · B3 · statements from stockanalysis.com, prices from Yahoo · P/E is trailing twelve months where the vendor serves a trailing view, otherwise the last fiscal year (the company page labels which) · computed in the issuer's report currency (most report in BRL; a few in USD) · FX ${d.fx && d.fx.rate ? d.fx.rate.toFixed(0) : '—'} BRL per USD.</div>`;
+    + `<div class="macro-note">${rows.length} of ${all.length} · ${d.market?.companies ?? '—'} domestic + ${d.market?.bdrs ?? 0} BDRs · B3 · statements from stockanalysis.com, prices from Yahoo · P/E is trailing twelve months where the vendor serves a trailing view, otherwise the last fiscal year (the company page labels which) · computed in the issuer's report currency (most report in BRL; a few in USD) · BDR rows use the global company cap and the BDR line price · FX ${d.fx && d.fx.rate ? d.fx.rate.toFixed(0) : '—'} BRL per USD.</div>`;
 }
 
 async function renderBrazilPage(stub) {
@@ -7942,6 +7977,7 @@ async function renderBrazilPage(stub) {
   const sign = (v) => (v == null ? '' : v >= 0 ? 'pos' : 'neg');
   el.innerHTML = `<div class="ma-crumb"><button class="ma-back" data-brback="1"><span class="ma-back-i" aria-hidden="true">←</span>COMPANIES</button> <span>${esc(c.ticker)}</span><span class="mb-tag">BRAZIL</span></div>`
     + brQualityBanners(c)
+    + (c.bdr ? `<div class="quality-banner info">BDR · ${esc(c.bdrUnderlying || '')} · global company cap ${brMoney(c.marketCap)}; the price is the BDR line; ratios are company-level in ${ccy}; no per-BDR P/E band. ` : '')
     + `<div class="co-head">${brMono(c)}<div><div class="co-name">${esc(brName(c))}</div>
         <div class="co-sub">${esc(c.ticker)} · ${esc(c.shareClass || '')} · B3-listed${c.name && c.name !== brName(c) ? ' · ' + esc(c.name) : ''}${c.industry ? ' · ' + esc(c.industry) : ''}</div>
         ${c.description ? `<div class="co-desc">${esc(c.description)}</div>` : ''}
@@ -7952,7 +7988,7 @@ async function renderBrazilPage(stub) {
         <span class="co-price-c ${c.chgYtd >= 0 ? 'pos' : 'neg'}">${chg(c.chgYtd)} YTD</span>
         <span class="dimtext">${c.priceDate ? `as of ${c.priceDate}` : ''}</span></div>`
     + `<div class="co-stats co-stats-12">
-        ${cell('MARKET CAP', brMoney(c.marketCap), `Company total from the vendor${c.multiClass ? `; price is the ${c.shareClass} class` : ''}`)}
+        ${cell('MARKET CAP', brMoney(c.marketCap), c.bdr ? 'Global company cap from the B3 list, not the BDR tranche; the price is the BDR line' : `Company total from the vendor${c.multiClass ? `; price is the ${c.shareClass} class` : ''}`)}
         ${cell('MARKET CAP · USD', c.marketCapUsd ? `$${(c.marketCapUsd / 1e9).toFixed(1)}B` : '—', 'Converted at the current USD/BRL rate')}
         ${cell(`P/E · ${c.peBasis || 'TTM'}`, c.pe != null ? `${c.pe.toFixed(2)}×` : '—', `Market cap ÷ ${c.peBasis === 'FY' ? 'the last fiscal year\u2019s profit' : 'the rolling twelve months of profit'}, both in ${ccy}${c.reports && c.reports.ttmEnd ? ` (through ${c.reports.ttmEnd})` : ''}`)}
         ${cell('P/B', c.pb != null ? `${c.pb.toFixed(2)}×` : '—', `Market cap ÷ common shareholders\u2019 equity in ${ccy} (excludes minorities)${c.reports && c.reports.latestEnd ? ` at ${c.reports.latestEnd}` : ''}`)}
@@ -7960,7 +7996,7 @@ async function renderBrazilPage(stub) {
         ${cell(`NET PROFIT · ${basis}`, cur(fig.flows.net), `${when}, attributable to owners of the parent — ${ccy} millions${c.ttmFromFY ? ' · fiscal year, because the source has no trailing page for this issuer' : ''}`, sign(fig.flows.net))}
         ${cell('NET MARGIN', c.netMargin != null ? `${c.netMargin.toFixed(1)}%` : '—', 'Net profit ÷ revenue', sign(c.netMargin))}
         ${stat('opMargin', 'OPERATING MARGIN', c.opMargin != null ? `${c.opMargin.toFixed(1)}%` : '—', 'Operating profit ÷ revenue', sign(c.opMargin))}
-        ${cell('DIVIDEND YIELD', c.dividendYield != null ? `${c.dividendYield.toFixed(2)}%` : '—', c.dividendYield != null ? (c.dividendYieldBasis === 'vendor' ? 'Vendor dividend yield (converted at the payment-date FX)' : `Latest annual dividend per share, converted to BRL at the current rate${c.dividendYieldBasis ? ` (${c.dividendYieldBasis})` : ''}`) : 'No dividend declared or published by the vendor')}
+        ${cell('DIVIDEND YIELD', c.dividendYield != null ? `${c.dividendYield.toFixed(2)}%` : '—', c.dividendYield != null ? (c.bdr ? 'Underlying company dividend yield (global; the BDR line tracks it)' : c.dividendYieldBasis === 'vendor' ? 'Vendor dividend yield (converted at the payment-date FX)' : `Latest annual dividend per share, converted to BRL at the current rate${c.dividendYieldBasis ? ` (${c.dividendYieldBasis})` : ''}`) : 'No dividend declared or published by the vendor')}
         ${stat('fcfYield', 'FCF YIELD', c.fcfYield != null ? `${c.fcfYield.toFixed(2)}%` : '—', 'Free cash flow ÷ market cap', sign(c.fcfYield))}
         ${stat('fcfMargin', 'FCF MARGIN', c.fcfMargin != null ? `${c.fcfMargin.toFixed(1)}%` : '—', 'Free cash flow ÷ revenue', sign(c.fcfMargin))}
         ${stat('cashConversion', 'CASH CONVERSION', c.cashConversion != null ? `${c.cashConversion.toFixed(2)}×` : '—', 'Free cash flow ÷ net profit — below 1 means profit is not turning into cash')}
@@ -8018,7 +8054,7 @@ async function renderBrazilPage(stub) {
           ? `<td>${cur(x.netIncome)}</td><td>${x.revenue && x.netIncome != null ? `${((x.netIncome / x.revenue) * 100).toFixed(1)}%` : '—'}</td>`
           : `<td>${cur(x.operatingProfit)}</td><td>${x.revenue && x.operatingProfit != null ? `${((x.operatingProfit / x.revenue) * 100).toFixed(1)}%` : '—'}</td><td>${cur(x.netIncome)}</td>`}</tr>`).join('')}
         </tbody></table></div></div>` : '')
-    + `<div class="macro-note">B3-listed · statements from stockanalysis.com (millions ${ccy}), prices from Yahoo. Market cap is the company total from the vendor; the price is the ${c.shareClass || 'selected'} class${c.multiClass ? ' (the vendor covers one class per issuer; PETR4, not PETR3)' : ''}. Ratios are computed in ${ccy}, the currency the issuer reports in, then compared with the market cap at the build's USD/BRL rate. Profit, revenue and margins are the rolling twelve months where the vendor serves a trailing column; otherwise the last fiscal year, labelled. The five-year record is the fiscal year. Most Brazilian issuers report to 31 December. The vendor serves one statement set and does not label consolidated vs standalone. No free guidance feed, so there is no forward P/E.${c.description ? ' Company description and sector from stockanalysis.com.' : ''}`;
+    + `<div class="macro-note">B3-listed · statements from stockanalysis.com (millions ${ccy}), prices from Yahoo. Market cap is the company total from the vendor; the price is the ${c.shareClass || 'selected'} class${c.multiClass ? ' (the vendor covers one class per issuer; PETR4, not PETR3)' : ''}. Ratios are computed in ${ccy}, the currency the issuer reports in, then compared with the market cap at the build's USD/BRL rate. Profit, revenue and margins are the rolling twelve months where the vendor serves a trailing column; otherwise the last fiscal year, labelled. The five-year record is the fiscal year. Most Brazilian issuers report to 31 December. The vendor serves one statement set and does not label consolidated vs standalone. No free guidance feed, so there is no forward P/E.${c.bdr ? ` This is a BDR of ${c.bdrUnderlying}; the statements, sector and current shares are the underlying company's, the cap is the global company total, the price is the BDR line, and no per-BDR EPS or P/E band is shown.` : ''}${c.description ? ' Company description and sector from stockanalysis.com.' : ''}`;
   drawBrChart(c);
   fillPeers(`br:${c.ticker}`, 'br-peers-x');
 }
@@ -8100,10 +8136,10 @@ function renderBrazilScreen(el) {
   el.innerHTML = `<div class="sc-bar">${screenModeHtml()}${screenMarketHtml()}
       <label class="sc-f">SEARCH <input id="cosbr-q" type="search" placeholder="company or code…" value="${esc(coScreenBr.q)}"></label>
       <label class="sc-f">SECTOR <select id="cosbr-sector"><option value="all">All sectors</option>${sectors.map((x) => `<option value="${esc(x)}"${coScreenBr.sector === x ? ' selected' : ''}>${esc(x)}</option>`).join('')}</select></label>
-      <span class="sc-count dimtext">${rows.length} of ${all.length} companies</span>
+      <span class="sc-count dimtext">${rows.length} of ${all.length} · ${brData.market?.companies ?? '—'} domestic + ${brData.market?.bdrs ?? 0} BDRs</span>
     </div><div class="sc-wrap" id="sc-table"><table class="sc-table sc-cotable"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>
     ${pagerHtml(rows.length, page, per, 'brpage')}
-    <div class="sc-note dimtext">B3-listed companies · statements from stockanalysis.com · ${asOfText(all, 'priceDate') || 'Yahoo prices'} · returns in BRL · P/E is trailing twelve months where the vendor serves a trailing view, otherwise the last fiscal year, in the issuer's report currency.</div>`;
+    <div class="sc-note dimtext">B3-listed · ${brData.market?.companies ?? '—'} domestic + ${brData.market?.bdrs ?? 0} BDRs · statements from stockanalysis.com · ${asOfText(all, 'priceDate') || 'Yahoo prices'} · returns in BRL · BDR rows use the global company cap and the BDR line price · P/E is trailing twelve months where the vendor serves a trailing view, otherwise the last fiscal year, in the issuer's report currency.</div>`;
 }
 
 

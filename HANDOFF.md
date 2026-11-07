@@ -3989,3 +3989,42 @@ Audited at 360, 390 and 430 px with screenshots of every view, then fixed what l
   (restatements/YTD) as notes, not failures.
 - **Schedule**: `.github/workflows/brazil-daily.yml`, 21:40 UTC Mon–Fri (18:40 BRT), with the statement
   cache, `merge-history br`, `merge-series br`, the collapse guard, both audits and the commit.
+
+## Brazil BDR lens: 29 curated receipts (2026-11-08)
+
+- **Why a separate lens**: the B3 list has 788 BDRs; the user wanted the significant foreign names
+  (Nubank, XP, Inter, MercadoLibre, StoneCo, PagSeguro, VTEX, Globant, JBS N.V., Aura, Brazil Potash,
+  Eve, and the global mega-caps), not all 788. They are not domestic B3 operating companies, and their
+  global company caps would swamp the domestic totals, so they are appended as their own panel and
+  excluded from `market.totalCap`, sector medians, breadth and the domestic quality counts.
+- **Allowlist**: `data/brazil-bdrs.json` — 30 entries (12 Brazil-linked, 18 global), with `code`,
+  `underlying`, `exchange` (`stocks` or `tsx`), `ticker`, `group`, a pinned `vendorCap` fallback and a
+  note. 29 build; **AURA33** is dropped because the TSX filing is older than 450 days (the policy is
+  applied, not waived).
+- **Sources**: the B3 list row gives the **global company cap in BRL** and the B3 name; the **underlying
+  US/TSX listing** (`stockanalysis.com/stocks/<ticker>/` or `/quote/tsx/<ticker>/`) gives the statements,
+  GICS profile, current shares and dividend yield; the BDR's own `.SA` Yahoo series gives the BDR price
+  and returns. The B3 BDR quote page is a stub (profile/statements 404), so it is not used for data.
+- **Numbers**: cap = B3 company-total cap, not the BDR tranche; price = BDR line; P/E, P/B, ROE and yield
+  are company-level in the underlying report currency (USD/BRL/TWD) and converted at the build's FX.
+  No per-BDR EPS or P/E band: the BDR ratio would make `BDR price ÷ global EPS` meaningless. The company
+  page says which class/line it is and that the band is omitted.
+- **Build**: `scripts/build-brazil-bdrs.mjs` → `data/brazil-bdr-data.json`, the BDR series and the BDR
+  profile entries; `scripts/merge-brazil-bdrs.mjs` appends them to the domestic `brazil.json`, updates
+  `market`/`audit`, rebuilds the themes against the merged codes, writes the BDR detail files, merges
+  the series buckets and runs the chart store + brand attach. `npm run refresh:brazil` ends with both;
+  `npm run build:brazil:bdrs` is the manual pass.
+- **Market fields**: `market.companies` stays the domestic count; `market.listed` = domestic + BDRs;
+  `market.bdrs`; `market.bdrCap` (global, for the panel only); `market.bdrGroups`; `market.bdrPe/Pb/Roe/
+  Yield`; `market.bdrReportCurrencies`. `audit.companies` is the total, with `domesticCompanies`,
+  `bdrCompanies`, `includedBdrs`, `excludedBdrs` (759) and the BDR flag counts.
+- **UI**: a **SIGNIFICANT BDRs** panel on MARKET (Brazil-linked and global groups, global cap, P/E, YTD,
+  BDR price); `BDR` tags on the screener/themes/home rows; a `TYPE` filter (All/Domestic/BDRs); the
+  `SIGNIFICANT BDRs` and `BRAZIL-LINKED BDRs` presets; the `bdrs` theme; a BDR banner and global-cap/
+  global-EPS labels on the company page. The universe note names the included BDR count and the dropped
+  Aura.
+- **Audits/tests**: the standard audit excludes BDRs from the domestic cap/sector partition, checks the
+  allowlist, each BDR's global cap, report currency, class, no band and the underlying; the deep audit
+  checks the engine fields, P/E/P/B/ROE, four-quarter TTM, returns, flags, market/BDR aggregates, list
+  and themes. The Brazil data test covers the 303/29/332 split, the allowlist, the BDR currencies and
+  the separate totals; the API test covers `ROXO34` and the list's BDR fields.

@@ -1,0 +1,306 @@
+{
+  "updated": "2026-11-08",
+  "note": "Curated significant B3 BDRs. BDRs are depositary receipts of foreign companies: the B3 list gives the company-total cap in BRL, the BDR line gives the BRL price, and the underlying foreign listing gives the statements, profile and GICS sector. They are shown as a separate BDR lens and are excluded from the 303 domestic totals and sector medians. The list is deliberately curated, not all 788 BDRs.",
+  "bdrs": [
+    {
+      "code": "ROXO34",
+      "name": "Nu Holdings Ltd.",
+      "underlying": "NYSE: NU",
+      "exchange": "stocks",
+      "ticker": "nu",
+      "group": "brazil",
+      "vendorCap": 319540000000,
+      "note": "Nubank (Nu Holdings) \u2014 Brazilian digital bank"
+    },
+    {
+      "code": "XPBR31",
+      "name": "XP Inc.",
+      "underlying": "NASDAQ: XP",
+      "exchange": "stocks",
+      "ticker": "xp",
+      "group": "brazil",
+      "vendorCap": 42610000000,
+      "note": "XP Inc. \u2014 Brazilian investment platform"
+    },
+    {
+      "code": "INBR32",
+      "name": "Inter & Co, Inc.",
+      "underlying": "NASDAQ: INTR",
+      "exchange": "stocks",
+      "ticker": "intr",
+      "group": "brazil",
+      "vendorCap": 15400000000,
+      "note": "Inter & Co \u2014 Brazilian digital bank"
+    },
+    {
+      "code": "MELI34",
+      "name": "MercadoLibre, Inc.",
+      "underlying": "NASDAQ: MELI",
+      "exchange": "stocks",
+      "ticker": "meli",
+      "group": "brazil",
+      "vendorCap": 420920000000,
+      "note": "MercadoLibre \u2014 LatAm e-commerce and fintech"
+    },
+    {
+      "code": "STOC34",
+      "name": "StoneCo Ltd.",
+      "underlying": "NASDAQ: STNE",
+      "exchange": "stocks",
+      "ticker": "stne",
+      "group": "brazil",
+      "vendorCap": 9520000000,
+      "note": "StoneCo \u2014 Brazilian payments"
+    },
+    {
+      "code": "PAGS34",
+      "name": "PagSeguro Digital Ltd.",
+      "underlying": "NYSE: PAGS",
+      "exchange": "stocks",
+      "ticker": "pags",
+      "group": "brazil",
+      "vendorCap": 11450000000,
+      "note": "PagSeguro \u2014 Brazilian payments"
+    },
+    {
+      "code": "V2TX34",
+      "name": "VTEX",
+      "underlying": "NYSE: VTEX",
+      "exchange": "stocks",
+      "ticker": "vtex",
+      "group": "brazil",
+      "vendorCap": 3840000000,
+      "note": "VTEX \u2014 Brazilian commerce software"
+    },
+    {
+      "code": "G1LO34",
+      "name": "Globant S.A.",
+      "underlying": "NYSE: GLOB",
+      "exchange": "stocks",
+      "ticker": "glob",
+      "group": "brazil",
+      "vendorCap": 11260000000,
+      "note": "Globant \u2014 LatAm digital engineering"
+    },
+    {
+      "code": "JBSS32",
+      "name": "JBS N.V.",
+      "underlying": "NYSE: JBS",
+      "exchange": "stocks",
+      "ticker": "jbs",
+      "group": "brazil",
+      "vendorCap": 73610000000,
+      "note": "JBS N.V. \u2014 global protein, Brazilian roots"
+    },
+    {
+      "code": "AURA33",
+      "name": "Aura Minerals Inc.",
+      "underlying": "TSX: ORA",
+      "exchange": "tsx",
+      "ticker": "ORA",
+      "group": "brazil",
+      "vendorCap": 36630000000,
+      "note": "Aura Minerals \u2014 Americas gold/copper"
+    },
+    {
+      "code": "GROP31",
+      "name": "Brazil Potash Corp.",
+      "underlying": "NYSE American: GRO",
+      "exchange": "stocks",
+      "ticker": "gro",
+      "group": "brazil",
+      "vendorCap": 625450000,
+      "note": "Brazil Potash \u2014 Amazon potash project"
+    },
+    {
+      "code": "EVEB31",
+      "name": "Eve Holding, Inc.",
+      "underlying": "NYSE: EVEX",
+      "exchange": "stocks",
+      "ticker": "evex",
+      "group": "brazil",
+      "vendorCap": 3460000000,
+      "note": "Eve \u2014 Embraer-backed eVTOL"
+    },
+    {
+      "code": "AAPL34",
+      "name": "Apple Inc.",
+      "underlying": "NASDAQ: AAPL",
+      "exchange": "stocks",
+      "ticker": "aapl",
+      "group": "global",
+      "vendorCap": 27530000000000,
+      "note": "Apple"
+    },
+    {
+      "code": "NVDC34",
+      "name": "NVIDIA Corporation",
+      "underlying": "NASDAQ: NVDA",
+      "exchange": "stocks",
+      "ticker": "nvda",
+      "group": "global",
+      "vendorCap": 24800000000000,
+      "note": "NVIDIA"
+    },
+    {
+      "code": "MSFT34",
+      "name": "Microsoft Corporation",
+      "underlying": "NASDAQ: MSFT",
+      "exchange": "stocks",
+      "ticker": "msft",
+      "group": "global",
+      "vendorCap": 21670000000000,
+      "note": "Microsoft"
+    },
+    {
+      "code": "GOGL34",
+      "name": "Alphabet Inc.",
+      "underlying": "NASDAQ: GOOGL",
+      "exchange": "stocks",
+      "ticker": "googl",
+      "group": "global",
+      "vendorCap": 19250000000000,
+      "note": "Alphabet Class A"
+    },
+    {
+      "code": "AMZO34",
+      "name": "Amazon.com, Inc.",
+      "underlying": "NASDAQ: AMZN",
+      "exchange": "stocks",
+      "ticker": "amzn",
+      "group": "global",
+      "vendorCap": 15500000000000,
+      "note": "Amazon"
+    },
+    {
+      "code": "M1TA34",
+      "name": "Meta Platforms, Inc.",
+      "underlying": "NASDAQ: META",
+      "exchange": "stocks",
+      "ticker": "meta",
+      "group": "global",
+      "vendorCap": 8580000000000,
+      "note": "Meta Platforms"
+    },
+    {
+      "code": "TSLA34",
+      "name": "Tesla, Inc.",
+      "underlying": "NASDAQ: TSLA",
+      "exchange": "stocks",
+      "ticker": "tsla",
+      "group": "global",
+      "vendorCap": 7790000000000,
+      "note": "Tesla"
+    },
+    {
+      "code": "AVGO34",
+      "name": "Broadcom Inc.",
+      "underlying": "NASDAQ: AVGO",
+      "exchange": "stocks",
+      "ticker": "avgo",
+      "group": "global",
+      "vendorCap": 7710000000000,
+      "note": "Broadcom"
+    },
+    {
+      "code": "TSMC34",
+      "name": "Taiwan Semiconductor Manufacturing Company Limited",
+      "underlying": "NYSE: TSM",
+      "exchange": "stocks",
+      "ticker": "tsm",
+      "group": "global",
+      "vendorCap": 9240000000000,
+      "note": "TSMC"
+    },
+    {
+      "code": "LILY34",
+      "name": "Eli Lilly and Company",
+      "underlying": "NYSE: LLY",
+      "exchange": "stocks",
+      "ticker": "lly",
+      "group": "global",
+      "vendorCap": 6630000000000,
+      "note": "Eli Lilly"
+    },
+    {
+      "code": "WALM34",
+      "name": "Walmart Inc.",
+      "underlying": "NYSE: WMT",
+      "exchange": "stocks",
+      "ticker": "wmt",
+      "group": "global",
+      "vendorCap": 5480000000000,
+      "note": "Walmart"
+    },
+    {
+      "code": "JPMC34",
+      "name": "JPMorgan Chase & Co.",
+      "underlying": "NYSE: JPM",
+      "exchange": "stocks",
+      "ticker": "jpm",
+      "group": "global",
+      "vendorCap": 4920000000000,
+      "note": "JPMorgan"
+    },
+    {
+      "code": "VISA34",
+      "name": "Visa Inc.",
+      "underlying": "NYSE: V",
+      "exchange": "stocks",
+      "ticker": "v",
+      "group": "global",
+      "vendorCap": 4380000000000,
+      "note": "Visa"
+    },
+    {
+      "code": "EXXO34",
+      "name": "ExxonMobil Holdings Corporation",
+      "underlying": "NYSE: XOM",
+      "exchange": "stocks",
+      "ticker": "xom",
+      "group": "global",
+      "vendorCap": 3720000000000,
+      "note": "ExxonMobil"
+    },
+    {
+      "code": "JNJB34",
+      "name": "Johnson & Johnson",
+      "underlying": "NYSE: JNJ",
+      "exchange": "stocks",
+      "ticker": "jnj",
+      "group": "global",
+      "vendorCap": 3700000000000,
+      "note": "Johnson & Johnson"
+    },
+    {
+      "code": "BERK34",
+      "name": "Berkshire Hathaway Inc.",
+      "underlying": "NYSE: BRK.B",
+      "exchange": "stocks",
+      "ticker": "brk.b",
+      "group": "global",
+      "vendorCap": 6740000000000,
+      "note": "Berkshire Hathaway"
+    },
+    {
+      "code": "MUTC34",
+      "name": "Micron Technology, Inc.",
+      "underlying": "NASDAQ: MU",
+      "exchange": "stocks",
+      "ticker": "mu",
+      "group": "global",
+      "vendorCap": 4300000000000,
+      "note": "Micron"
+    },
+    {
+      "code": "A1MD34",
+      "name": "Advanced Micro Devices, Inc.",
+      "underlying": "NASDAQ: AMD",
+      "exchange": "stocks",
+      "ticker": "amd",
+      "group": "global",
+      "vendorCap": 4060000000000,
+      "note": "AMD"
+    }
+  ]
+}

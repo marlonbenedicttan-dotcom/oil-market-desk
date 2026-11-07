@@ -18,16 +18,32 @@ test('the B3 build has a real universe', () => {
   assert.equal(br.indexName, 'Ibovespa');
 });
 
-test('no BDRs, funds or duplicate issuer classes', () => {
+test('only curated BDRs, no funds, and one class per domestic issuer', () => {
+  const allow = new Set(JSON.parse(readFileSync(join(ROOT, 'data', 'brazil-bdrs.json'), 'utf8')).bdrs.map((b) => b.code));
+  const domestic = br.companies.filter((c) => !c.bdr);
+  const bdr = br.companies.filter((c) => c.bdr);
   const bases = new Set();
-  for (const c of br.companies) {
+  for (const c of domestic) {
     assert.match(c.code, /^[A-Z0-9]{4,7}$/, c.code);
-    assert.ok(!/3[1-9]$/.test(c.code), `${c.code} is a BDR`);
+    assert.ok(!/3[1-9]$/.test(c.code), `${c.code} is an unmarked BDR`);
     assert.ok(!/\b(fundo|fii|fiagro|fidc|etf)\b/i.test(c.name || ''), `${c.code} is a fund`);
     const b = c.code.replace(/\d{1,2}B?$/, '');
-    assert.ok(!bases.has(b), `${c.code}: duplicate issuer base ${b}`);
+    assert.ok(!bases.has(b), `${c.code}: duplicate domestic issuer base ${b}`);
     bases.add(b);
   }
+  for (const c of bdr) {
+    assert.ok(allow.has(c.code), `${c.code} is not in the curated allowlist`);
+    assert.ok(c.bdrUnderlying, `${c.code} has no underlying`);
+    assert.equal(c.shareClass, 'BDR', `${c.code} class`);
+    assert.equal(c.multiClass, false, `${c.code} BDR marked multi-class`);
+    assert.equal(c.bands, null, `${c.code} should not carry a per-BDR band`);
+  }
+  assert.equal(bdr.length, br.market.bdrs);
+  assert.equal(domestic.length, br.market.companies);
+  assert.equal(br.companies.length, br.market.listed);
+  assert.equal(br.audit.domesticCompanies, domestic.length);
+  assert.equal(br.audit.bdrCompanies, bdr.length);
+  assert.equal(br.audit.companies, br.companies.length);
 });
 
 test('the cap is the vendor company total, not price × class shares', () => {
@@ -77,12 +93,19 @@ test('a bank ships no operating margin and no free cash flow', () => {
   }
 });
 
-test('market totals are the sum of the constituents', () => {
-  const total = br.companies.reduce((a, c) => a + (c.marketCap || 0), 0);
+test('domestic totals and sectors exclude the BDR lens', () => {
+  const domestic = br.companies.filter((c) => !c.bdr);
+  const bdr = br.companies.filter((c) => c.bdr);
+  const total = domestic.reduce((a, c) => a + (c.marketCap || 0), 0);
   assert.ok(Math.abs(total - br.market.totalCap) / total < 0.001);
   const sectorCount = (br.market.sectors || []).reduce((a, s) => a + s.count, 0);
-  assert.equal(sectorCount, br.companies.length);
+  assert.equal(sectorCount, domestic.length);
   assert.ok((br.market.sectors || []).length >= 8, `only ${(br.market.sectors || []).length} sectors`);
+  assert.equal(br.market.companies, domestic.length);
+  assert.equal(br.market.bdrs, bdr.length);
+  assert.equal(br.market.listed, br.companies.length);
+  const bdrCap = bdr.reduce((a, c) => a + (c.marketCap || 0), 0);
+  assert.ok(Math.abs(bdrCap - br.market.bdrCap) / bdrCap < 0.001);
 });
 
 test('the index is dated, ordered and positive', () => {
@@ -122,6 +145,19 @@ test('the trading-quality flags are consistent', () => {
   }
   assert.ok(br.audit.noRecentTrading > 0, 'no no-trade flag');
   assert.ok(br.audit.thinTrading > 0, 'no thin flag');
+});
+
+test('the BDR lens is separate and reports its own currencies', () => {
+  const bdr = br.companies.filter((c) => c.bdr);
+  assert.ok(bdr.length >= 25, `only ${bdr.length} BDRs`);
+  assert.ok(bdr.some((c) => c.code === 'ROXO34'), 'Nubank BDR is missing');
+  assert.ok(bdr.some((c) => c.code === 'AAPL34'), 'Apple BDR is missing');
+  assert.ok(bdr.some((c) => c.bdrGroup === 'brazil'), 'no Brazil-linked BDRs');
+  assert.ok(bdr.some((c) => c.bdrGroup === 'global'), 'no global BDRs');
+  assert.ok(bdr.every((c) => c.marketCap > 0 && c.price > 0 && c.shares > 0), 'a BDR is missing cap/price/shares');
+  assert.ok(bdr.every((c) => c.reportCurrency), 'a BDR is missing its report currency');
+  assert.ok(br.audit.bdrReportCurrencies.length >= 2, 'BDR report currencies missing');
+  assert.ok(br.audit.bdrPe > 0, 'BDR median P/E missing');
 });
 
 test('the curated themes survive the universe filter', () => {

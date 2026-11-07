@@ -197,6 +197,7 @@ export const projectBr = (c) => ({
   price: c.price, priceDate: c.priceDate, marketCap: c.marketCap,
   vendorCap: c.vendorCap ?? null,
   shareClass: c.shareClass || null, multiClass: !!c.multiClass,
+  bdr: !!c.bdr, bdrUnderlying: c.bdrUnderlying || null, bdrGroup: c.bdrGroup || null, bdrNote: c.bdrNote || null,
   chg1d: c.chg1d, chg6m: c.chg6m, chgYtd: c.chgYtd,
   pe: c.pe, pb: c.pb, roe: c.roe, opMargin: c.opMargin,
   netIncomeTTM: c.netIncomeTTM ?? null,
@@ -258,5 +259,5 @@ export const FILTER_FIELDS = {
   au: ['sector', 'marketCap', 'pe', 'pb', 'roe', 'dividendYield', 'bands', 'chgYtd', 'priceDate', 'brands'],
   in: ['sector', 'marketCap', 'pe', 'pb', 'roe', 'dividendYield', 'bands', 'chgYtd', 'priceDate', 'brands'],
   id: ['sector', 'marketCap', 'pe', 'pb', 'roe', 'dividendYield', 'bands', 'chgYtd', 'priceDate', 'brands', 'hsc', 'noRecentTrading', 'thinTrading'],
-  br: ['sector', 'marketCap', 'pe', 'pb', 'roe', 'dividendYield', 'bands', 'chgYtd', 'priceDate', 'brands', 'noRecentTrading', 'thinTrading'],
+  br: ['sector', 'marketCap', 'pe', 'pb', 'roe', 'dividendYield', 'bands', 'chgYtd', 'priceDate', 'brands', 'noRecentTrading', 'thinTrading', 'bdr', 'bdrGroup'],
 };

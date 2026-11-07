@@ -40,10 +40,12 @@ jobs:
             data/cache/b3
             data/cache/brazil-sa
             data/cache/brazil-shares
+            data/cache/brazil-bdr
           key: br-cache-${{ github.run_id }}
           restore-keys: br-cache-
-      - name: Build prices, class selection, statements and profiles
+      - name: Build domestic prices, class selection, statements and profiles
         run: npm run refresh:brazil
+      # refresh:brazil ends with build-brazil-bdrs + merge-brazil-bdrs; the BDR lens stays separate.
       - name: Keep every filed period
         run: node scripts/merge-history.mjs br
       - name: Keep every traded session

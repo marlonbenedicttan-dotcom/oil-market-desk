@@ -8,6 +8,7 @@
 import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { readBdrs } from './b3.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const read = (f) => JSON.parse(readFileSync(join(ROOT, 'data', f), 'utf8'));
@@ -30,26 +31,40 @@ if (dupes.length) fails.push(`duplicate codes: ${dupes.join(', ')}`);
 const badCode = br.companies.filter((c) => !/^[A-Z0-9]{4,7}$/.test(c.code)).map((c) => c.code);
 say('codes that are not valid B3 lines', badCode.length);
 if (badCode.length) fails.push(`bad codes: ${badCode.slice(0, 10).join(', ')}`);
-const bdrs = br.companies.filter((c) => /3[1-9]$/.test(c.code));
-say('BDRs in the market (must be 0)', bdrs.length);
-if (bdrs.length) fails.push(`BDRs in the market: ${bdrs.slice(0, 6).map((c) => c.code).join(', ')}`);
+const domestic = br.companies.filter((c) => !c.bdr);
+const bdr = br.companies.filter((c) => c.bdr);
+const allow = readBdrs();
+const allowCodes = new Set((allow.bdrs || []).map((b) => b.code));
+say('domestic companies', domestic.length);
+say('BDRs in the market', bdr.length);
+say('BDRs outside the allowlist', bdr.filter((c) => !allowCodes.has(c.code)).length);
+const strayBdr = br.companies.filter((c) => /3[1-9]$/.test(c.code) && !c.bdr);
+if (strayBdr.length) fails.push(`unmarked BDRs in the domestic market: ${strayBdr.slice(0, 6).map((c) => c.code).join(', ')}`);
+if (bdr.some((c) => !allowCodes.has(c.code))) fails.push(`BDRs outside the curated allowlist: ${bdr.filter((c) => !allowCodes.has(c.code)).slice(0, 6).map((c) => c.code).join(', ')}`);
 const funds = br.companies.filter((c) => /\b(fundo|fii|fiagro|fidc|etf)\b/i.test(c.name || ''));
 say('funds in the market (must be 0)', funds.length);
 if (funds.length) fails.push(`funds in the market: ${funds.slice(0, 6).map((c) => c.code).join(', ')}`);
 
-// One class per issuer: the base is the code without its class suffix.
+// One class per domestic issuer: the base is the code without its class suffix. BDRs use their own
+// code identity (`bdr:CODE`), because a BDR and a domestic subsidiary can share a base (JBSS32/JBSS3).
 const baseOf = (code) => String(code).replace(/\d{1,2}B?$/, '');
 const bases = new Map();
 const multiBases = [];
-for (const c of br.companies) {
+for (const c of domestic) {
   const b = baseOf(c.code);
   if (bases.has(b)) multiBases.push(`${b}: ${bases.get(b)},${c.code}`);
   else bases.set(b, c.code);
 }
-say('issuer base codes', bases.size);
-say('duplicate issuer bases', multiBases.length);
-if (multiBases.length) fails.push(`duplicate issuer classes: ${multiBases.slice(0, 6).join(' · ')}`);
-say('multi-class issuers (one class kept)', br.companies.filter((c) => c.multiClass).length);
+say('domestic issuer base codes', bases.size);
+say('duplicate domestic issuer bases', multiBases.length);
+if (multiBases.length) fails.push(`duplicate domestic issuer classes: ${multiBases.slice(0, 6).join(' · ')}`);
+const bdrCodes = new Set();
+for (const c of bdr) {
+  if (bdrCodes.has(c.code)) fails.push(`duplicate BDR code: ${c.code}`);
+  bdrCodes.add(c.code);
+  if (!c.bdrUnderlying) fails.push(`${c.code}: BDR without an underlying`);
+}
+say('multi-class issuers (one class kept)', domestic.filter((c) => c.multiClass).length);
 
 let badField = 0;
 for (const c of br.companies) {
@@ -119,12 +134,16 @@ if (finWithFcf.length) fails.push(`financials with FCF: ${finWithFcf.slice(0, 6)
 say('without a share count (excluded)', `${br.audit.withoutShares ?? '—'}`);
 say('bank-like / financial companies', `${br.companies.filter((c) => c.bankLike).length} / ${br.companies.filter((c) => c.financial).length}`);
 
-const total = br.companies.reduce((a, c) => a + (c.marketCap || 0), 0);
+const total = domestic.reduce((a, c) => a + (c.marketCap || 0), 0);
 say('total cap = sum of constituents', `${(total / 1e12).toFixed(1)}T vs ${(br.market.totalCap / 1e12).toFixed(1)}T`);
 if (Math.abs(total - br.market.totalCap) / Math.max(1, total) > 0.001) fails.push('market totalCap is not the sum of its constituents');
 const sectorSum = (br.market.sectors || []).reduce((a, s) => a + s.count, 0);
-say('sector rows cover every company', `${sectorSum} vs ${br.companies.length}`);
-if (sectorSum !== br.companies.length) fails.push('sector partition does not cover the market');
+say('sector rows cover every domestic company', `${sectorSum} vs ${domestic.length}`);
+if (sectorSum !== domestic.length) fails.push('domestic sector partition does not cover the domestic market');
+say('market domestic/listed/BDRs', `${br.market.companies} / ${br.market.listed} / ${br.market.bdrs}`);
+if (br.market.companies !== domestic.length) fails.push('market.companies is not the domestic count');
+if (br.market.bdrs !== bdr.length) fails.push('market.bdrs is not the BDR count');
+if (br.market.listed !== br.companies.length) fails.push('market.listed is not the combined count');
 
 say('FX snapshot', br.fx && br.fx.rate ? `USD/BRL ${br.fx.rate}` : 'missing');
 if (!(br.fx && br.fx.rate > 0)) fails.push('no FX snapshot');
@@ -134,10 +153,15 @@ say('index', `${br.indexName || 'Ibovespa'} ${idx.level ?? '—'} as of ${idx.da
 if (!(idx.level > 0)) warn.push('index level missing');
 if (!Array.isArray(idx.series) || idx.series.length < 100) warn.push('index series is short');
 
-const noTrade = br.companies.filter((c) => c.noRecentTrading);
-const short = br.companies.filter((c) => c.shortHistory);
-const ttmStale = br.companies.filter((c) => c.ttmStale);
-const thin = br.companies.filter((c) => c.thinTrading);
+const noTrade = domestic.filter((c) => c.noRecentTrading);
+const short = domestic.filter((c) => c.shortHistory);
+const ttmStale = domestic.filter((c) => c.ttmStale);
+const thin = domestic.filter((c) => c.thinTrading);
+const bdrNoTrade = bdr.filter((c) => c.noRecentTrading);
+const bdrShort = bdr.filter((c) => c.shortHistory);
+const bdrStale = bdr.filter((c) => c.ttmStale);
+const bdrThin = bdr.filter((c) => c.thinTrading);
+say('BDR no-trade / short / stale / thin', `${bdrNoTrade.length} / ${bdrShort.length} / ${bdrStale.length} / ${bdrThin.length}`);
 say('no recent trading', `${noTrade.length}${noTrade.length ? ' · ' + noTrade.map((c) => c.code).join(', ') : ''}`);
 say('short history (<100 sessions)', `${short.length}${short.length ? ' · ' + short.map((c) => c.code).join(', ') : ''}`);
 say('TTM older than 365 days', `${ttmStale.length}${ttmStale.length ? ' · ' + ttmStale.map((c) => c.code).join(', ') : ''}`);
@@ -170,7 +194,7 @@ if (SAMPLE) {
   const { mkdirSync } = await import('node:fs');
   const { saSlug } = await import('./b3.mjs');
   mkdirSync(join(ROOT, 'data', 'cache', 'brazil-audit'), { recursive: true });
-  const sample = [...br.companies].sort((a, b) => (b.marketCap || 0) - (a.marketCap || 0)).slice(0, SAMPLE);
+  const sample = [...domestic].sort((a, b) => (b.marketCap || 0) - (a.marketCap || 0)).slice(0, SAMPLE);
   const stat = (html, id) => {
     const m = new RegExp(`\\{id:"${id}",[^}]*?(?:hover|value):"([^"]+)"`).exec(html);
     if (!m) return null;
