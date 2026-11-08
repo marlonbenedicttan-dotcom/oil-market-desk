@@ -12,6 +12,7 @@ import { projectUs, projectJp, japanList, koreaList, taiwanList, hongkongList, a
 import { sliceRange, seriesFromLine } from './src/charts.js';
 import { searchEntries, prepareEntries } from './src/search.js';
 import { growthRates, fromJapanHistory } from './src/growth.js';
+import { REGIME_BOARD, keepLastGood, buildRegimeRow } from './src/regime.js';
 import { sgn, businessDaysSince, horizonDeltas, horizonDeltasAbs, isoWeek, monthly, pctOver, percentile, lastNonNull, escHtml, webhookPayload, realizedVol, computeCracks, computeCrush, computeSteel, buildRelValueRow, relValueZone, ordinal, alignPriceToRows, inventoryBands, backAdjust, pearson, logReturns, frontExpiry, curveTightness, inventoryTightness, weightedScore, seasonalGrade, seasonalAhead, contractMonthsBetween, signedPosition, signedMove, stretchScore, sdLabel, attributeMoves, newsContextOk, METHODOLOGY, positioningFlag, positioningRead, positioningDivergence, maxDrawdown, drawdownNow, realizedVolTerm, volPercentile, volVsOwnWord, corrMatrix, fxAdjust, parseOcc, drawdownWord, volWord, volTrend, corrShift, pairGroups, topPairs, bestDiversifier, riskRead, priorityOf, rankByPriority, clusterEvents, scoreEvents, selectEvents, explainRows } from './src/lib.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -151,7 +152,9 @@ function getMarkets() {
 // ---------------------------------------------------------------------------
 // Feeds
 // ---------------------------------------------------------------------------
-const YF = 'https://query1.finance.yahoo.com/v8/finance/chart/';
+// `YF_BASE` is a diagnostics/test override: point it at an unreachable host to exercise the
+// last-good and FRED fallbacks without waiting for a real Yahoo block.
+const YF = process.env.YF_BASE || 'https://query1.finance.yahoo.com/v8/finance/chart/';
 
 async function yahooSeries(symbol, range = '6mo', interval = '1d') {
   const res = await fetch(`${YF}${encodeURIComponent(symbol)}?range=${range}&interval=${interval}`, { headers: UA });
@@ -804,40 +807,88 @@ async function getPositioningSegment(seg) {
 // Cross-asset "regime" board — one glance at the backdrop that sets the day's tone.
 // Everything comes from sources already wired (Yahoo + FRED); the 10y yield shows pp, not %.
 // ---------------------------------------------------------------------------
-const REGIME_BOARD = [
-  { id: 'dxy', label: 'US dollar (DXY)', sym: 'DX-Y.NYB', source: 'Yahoo', unit: '', dp: 2 },
-  { id: 'vix', label: 'VIX (volatility)', sym: '^VIX', source: 'Yahoo', unit: '', dp: 2 },
-  { id: 'us10y', label: 'US 10y yield', fred: 'DGS10', altSym: '^TNX', source: 'FRED', unit: '%', dp: 2, rate: true },
-  { id: 'spx', label: 'S&P 500', sym: '^GSPC', source: 'Yahoo', unit: '', dp: 0 },
-  { id: 'gold', label: 'Gold', sym: 'GC=F', source: 'Yahoo', unit: '$/oz', dp: 2 },
-  { id: 'copper', label: 'Copper', sym: 'HG=F', source: 'Yahoo', unit: '$/lb', dp: 3 },
-  { id: 'wti', label: 'WTI crude', sym: 'CL=F', source: 'Yahoo', unit: '$/bbl', dp: 2 },
-  { id: 'brent', label: 'Brent crude', sym: 'BZ=F', source: 'Yahoo', unit: '$/bbl', dp: 2 },
-];
+// The board used to cache whatever one refresh produced — including blank rows after a Yahoo 429 —
+// for the whole TTL. Keep the last good row per instrument instead. The runtime cache survives a
+// restart of this process; the committed seed covers a deploy that lands while Yahoo is unavailable.
+const REGIME_SEED_FILE = path.join(__dirname, 'data', 'regime-seed.json');
+const REGIME_CACHE_FILE = path.join(__dirname, '.regime-cache.json');
+const REGIME_KEEP_MS = 14 * 864e5;
+function readRegimeRows(file) {
+  try {
+    const j = JSON.parse(fs.readFileSync(file, 'utf8'));
+    if (!j || !Array.isArray(j.rows)) return [];
+    if (!j.updated || Date.now() - Date.parse(j.updated) > REGIME_KEEP_MS) return [];
+    return j.rows.filter((r) => r && r.id && r.price != null);
+  } catch { return []; }
+}
+const REGIME_LAST = new Map();
+for (const r of [...readRegimeRows(REGIME_CACHE_FILE), ...readRegimeRows(REGIME_SEED_FILE)]) {
+  const prev = REGIME_LAST.get(r.id);
+  if (!prev || String(r.asOf || '') >= String(prev.asOf || '')) REGIME_LAST.set(r.id, r);
+}
+let regimeCacheAt = 0;
+function saveRegimeCache() {
+  const now = Date.now();
+  if (now - regimeCacheAt < 15 * 60e3) return;   // a backdrop does not need a write every refresh
+  regimeCacheAt = now;
+  try {
+    const body = JSON.stringify({ updated: new Date(now).toISOString(), rows: [...REGIME_LAST.values()] });
+    fs.writeFileSync(`${REGIME_CACHE_FILE}.tmp`, body);
+    fs.renameSync(`${REGIME_CACHE_FILE}.tmp`, REGIME_CACHE_FILE);
+  } catch { /* a read-only filesystem is not a reason to fail the board */ }
+}
+async function regimeSeries(s) {
+  if (s.fred) {
+    let map = {};
+    try { map = await cached('regime:' + s.id, 3600e3, () => fredSeries(s.fred, 40 * 366).catch(() => ({}))); } catch {}
+    let source = s.source;
+    if (Object.keys(map).length < 5 && s.altSym) {          // FRED is down / rate-limited
+      try {
+        map = (await cached('regime:alt:' + s.id, 900e3, () => yahooSeries(s.altSym, '2y', '1d'))).series || {};
+        source = 'Yahoo';
+        // ^TNX has been quoted as yield x10 in the past; normalise anything implausible.
+        if (Object.values(map).some((v) => v > 20)) map = Object.fromEntries(Object.entries(map).map(([k, v]) => [k, v / 10]));
+      } catch { map = {}; }
+    }
+    return { map, source };
+  }
+  let map = {};
+  try { map = (await cached('regime:' + s.id, 900e3, () => yahooSeries(s.sym, '2y', '1d'))).series || {}; } catch {}
+  let source = s.source;
+  // VIX and the S&P are published by FRED under the same definition, so a Yahoo block still leaves
+  // the two headline risk tiles populated instead of showing a dash.
+  if (Object.keys(map).length < 5 && s.fallbackFred) {
+    try {
+      map = await cached('regime:fb:' + s.id, 3600e3, () => fredSeries(s.fallbackFred, 2 * 366).catch(() => ({})));
+      if (Object.keys(map).length >= 5) source = 'FRED';
+    } catch { map = {}; }
+  }
+  return { map, source };
+}
 async function getRegime() {
-  return cachedSWR('regime', 120e3, async () => {
+  return cachedSWR('regime', 900e3, async () => {
+    let freshCount = 0;
     const rows = await Promise.all(REGIME_BOARD.map(async (s) => {
       const base = { id: s.id, label: s.label, source: s.source, unit: s.unit, dp: s.dp, rate: !!s.rate };
+      let fresh = null;
       try {
-        let map = s.fred
-          ? await cached('regime:' + s.id, 3600e3, () => fredSeries(s.fred, 40 * 366).catch(() => ({})))
-          : (await cached('regime:' + s.id, 120e3, () => yahooSeries(s.sym, '2y', '1d'))).series || {};
-        let source = s.source;
-        if (Object.keys(map).length < 5 && s.altSym) {          // FRED is down / rate-limited
-          map = (await cached('regime:alt:' + s.id, 120e3, () => yahooSeries(s.altSym, '2y', '1d'))).series || {};
-          source = 'Yahoo';
-          // ^TNX has been quoted as yield x10 in the past; normalise anything implausible.
-          if (Object.values(map).some((v) => v > 20)) map = Object.fromEntries(Object.entries(map).map(([k, v]) => [k, v / 10]));
+        const { map, source } = await regimeSeries(s);
+        const row = buildRegimeRow(s, map, source);
+        if (row) {
+          fresh = row;
+          REGIME_LAST.set(s.id, fresh);
+          freshCount++;
         }
-        const dates = Object.keys(map).sort();
-        const values = dates.map((d) => map[d]);
-        const lastIdx = values.reduce((acc, v, i) => (v != null ? i : acc), -1);
-        if (lastIdx < 0) return { ...base, price: null, deltas: null, asOf: null };
-        return { ...base, source, price: +(+values[lastIdx]).toFixed(s.dp), asOf: dates[lastIdx], deltas: s.rate ? horizonDeltasAbs(dates, values) : horizonDeltas(dates, values) };
-      } catch {
-        return { ...base, price: null, deltas: null, asOf: null };
-      }
+      } catch { /* keep the last good row below */ }
+      const row = keepLastGood(fresh, REGIME_LAST.get(s.id));
+      if (!row) return { ...base, price: null, deltas: null, asOf: null };
+      return {
+        ...base, price: row.price, deltas: row.deltas, asOf: row.asOf,
+        source: row.stale ? `${row.source} (last good)` : row.source,
+        stale: !!row.stale,
+      };
     }));
+    if (freshCount) saveRegimeCache();
     return { updated: new Date().toISOString(), rows };
   });
 }

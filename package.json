@@ -30,6 +30,7 @@
     "audit:taiwan": "node scripts/audit-taiwan.mjs",
     "audit:all": "node scripts/audit-all-markets.mjs",
     "companies:daily": "node scripts/refresh-daily.mjs",
+    "build:regime-seed": "node scripts/build-regime-seed.mjs",
     "companies:restatements": "node scripts/detect-restatements.mjs",
     "companies:quarters": "node scripts/build-quarters.mjs",
     "companies:ttm": "node scripts/reconcile-ttm.mjs",
