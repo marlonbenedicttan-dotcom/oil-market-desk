@@ -8561,10 +8561,10 @@ async function renderSouthAfricaPage(stub) {
         <span class="co-cmp-l">COMPARE</span><input class="co-cmp" id="za-cmp" placeholder="company name, e.g. bank central asia" value="${esc(cmpCode(zaCompare))}" autocomplete="off">
         <button class="co-cmp-clear${zaCompare ? '' : ' hidden'}" id="za-cmp-clear" data-cmpclear="za" type="button" title="Clear comparison" aria-label="Clear comparison">×</button>
         <div class="co-sugg" id="za-sugg"></div>
-        ${[['1m', '1M'], ['3m', '3M'], ['6m', '6M'], ['ytd', 'YTD'], ['1y', '1Y'], ['5y', '5Y']].map(([k, t]) => `<button class="ma-chip${zaRange === k ? ' on' : ''}" data-zarange="${k}">${t}</button>`).join('')}
+        ${[['1m', '1M'], ['3m', '3M'], ['6m', '6M'], ['ytd', 'YTD'], ['1y', '1Y'], ['5y', '5Y'], ['max', 'MAX']].map(([k, t]) => `<button class="ma-chip${zaRange === k ? ' on' : ''}" data-zarange="${k}">${t}</button>`).join('')}
       </div>`
     + `<div class="co-rets" id="za-rets"></div>`
-    + `<div class="co-chartwrap"><div class="co-big" id="za-big"></div><canvas id="za-chart"></canvas></div>`
+    + `<div class="co-chartwrap"><div class="co-big" id="za-big"></div><canvas id="za-chart"></canvas><div class="dimtext" id="za-chart-note" style="padding:4px 12px 0"></div></div>`
     + '<div id="za-peers-x"></div>'
     + (h.length > 1 ? `<div class="jp-q"><div class="jp-q-head"><span class="ph-t">FISCAL-YEAR RECORD</span><span class="dimtext">${h.length} fiscal years · ${ccy}</span></div>
         <table class="jp-q-table"><thead><tr><th>FISCAL YEAR</th><th>REVENUE</th>${bank ? '' : '<th>OP PROFIT</th>'}<th>NET PROFIT</th><th>ROE</th></tr></thead><tbody>
@@ -8576,7 +8576,7 @@ async function renderSouthAfricaPage(stub) {
           ? `<td>${cur(x.netIncome)}</td><td>${x.revenue && x.netIncome != null ? `${((x.netIncome / x.revenue) * 100).toFixed(1)}%` : '—'}</td>`
           : `<td>${cur(x.operatingProfit)}</td><td>${x.revenue && x.operatingProfit != null ? `${((x.operatingProfit / x.revenue) * 100).toFixed(1)}%` : '—'}</td><td>${cur(x.netIncome)}</td>`}</tr>`).join('')}
         </tbody></table></div></div>` : '')
-    + `<div class="macro-note">JSE-listed · statements from stockanalysis.com (millions ${ccy}), prices from Yahoo. Market cap is the company total from the vendor in rand; the price is the JSE line. Ratios are computed in ${ccy}, the currency the issuer reports in, then compared with the market cap at the build's USD/ZAR rate. Profit, revenue and margins are the rolling twelve months — the vendor\u2019s trailing column, or its separate rolling view, where one exists, otherwise the sum of the latest two half-year filings — and the last fiscal year, labelled, when neither is available. The five-year record is the fiscal year. Most JSE issuers report to 31 December, but the build takes each period end from the filing. Yahoo supplies up to five years of JSE prices, but some heavily traded lines are capped at about 500 sessions; the chart falls back to the longest window the line actually covers. The vendor serves one statement set and does not label consolidated vs standalone. No free guidance feed, so there is no forward P/E.${c.foreignSecondary ? ` This is the JSE line of a foreign-domiciled issuer; the statements and sector come from ${c.secondaryExchange || 'the primary listing'}, the cap is the global company total, and the price is the JSE line.` : ''}${c.description ? ' Company description and sector from stockanalysis.com.' : ''}`;
+    + `<div class="macro-note">JSE-listed · statements from stockanalysis.com (millions ${ccy}), prices from Yahoo. Market cap is the company total from the vendor in rand; the price is the JSE line. Ratios are computed in ${ccy}, the currency the issuer reports in, then compared with the market cap at the build's USD/ZAR rate. Profit, revenue and margins are the rolling twelve months — the vendor\u2019s trailing column, or its separate rolling view, where one exists, otherwise the sum of the latest two half-year filings — and the last fiscal year, labelled, when neither is available. The five-year record is the fiscal year. Most JSE issuers report to 31 December, but the build takes each period end from the filing. Yahoo supplies up to five years of JSE prices; where the line starts later (Richemont starts in 2023), the MAX window draws all of the history that exists instead of falling back to one year. The vendor serves one statement set and does not label consolidated vs standalone. No free guidance feed, so there is no forward P/E.${c.foreignSecondary ? ` This is the JSE line of a foreign-domiciled issuer; the statements and sector come from ${c.secondaryExchange || 'the primary listing'}, the cap is the global company total, and the price is the JSE line.` : ''}${c.description ? ' Company description and sector from stockanalysis.com.' : ''}`;
   drawZaChart(c);
   fillPeers(`za:${c.ticker}`, 'za-peers-x');
 }
@@ -8584,11 +8584,18 @@ async function renderSouthAfricaPage(stub) {
 async function drawZaChart(c, range = zaRange) {
   const token = chartToken('za-chart');
   const full = await coLong('za:' + c.ticker);
-  const use = full ? coFitRange(full, range) : range;
+  // Yahoo's JSE history starts later for some lines (Richemont starts in 2023). A 5Y click must
+  // still draw the history that exists, so it falls through to MAX instead of jumping back to 1Y.
+  let use = range === 'max' ? 'max' : full ? coFitRange(full, range) : range;
+  if (full && range === '5y' && use !== '5y') use = 'max';
   if (use !== range) { range = use; coMarkRange('zarange', range); }
   if (!chartFresh('za-chart', token)) return;
-  if (full) paintReturns('za-rets', 'za-big', full, range, WINDOWS_5Y, 'zarange');
+  if (full) paintReturns('za-rets', 'za-big', full, range, [...WINDOWS_5Y, 'max'], 'zarange');
   const wrap = $('za-chart') && $('za-chart').parentElement;
+  const note = $('za-chart-note');
+  if (note) note.textContent = range === 'max' && full && full.dates && full.dates.length
+    ? `All available Yahoo history for ${c.ticker} · starts ${full.dates[0]}`
+    : '';
   const ch = full ? coSlice(full, range) : null;
   if (!ch || !ch.dates || ch.dates.length < 2) {
     chartMiss('za-chart', c.ticker, range, coLongFailed('za:' + c.ticker));
@@ -8966,8 +8973,9 @@ function coWindow(ch, range) {
   if (!ch || !ch.dates || !ch.closes || ch.closes.length < 2) return null;
   const w = CO_WIN.find((x) => x[0] === range);
   const last = ch.dates[ch.dates.length - 1];
-  const from = range === 'ytd' ? `${last.slice(0, 4)}-01-01`
-    : new Date(Date.parse(last) - (w ? w[2] : 366) * 864e5).toISOString().slice(0, 10);
+  const from = range === 'max' ? ch.dates[0]
+    : range === 'ytd' ? `${last.slice(0, 4)}-01-01`
+      : new Date(Date.parse(last) - (w ? w[2] : 366) * 864e5).toISOString().slice(0, 10);
   let i = ch.dates.findIndex((d) => d >= from);
   if (i < 0) i = 0;
   const a = ch.closes[i], b = ch.closes[ch.closes.length - 1];

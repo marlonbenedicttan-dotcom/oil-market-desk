@@ -4263,6 +4263,18 @@ keeps the 10-K text.
 - **Not used**: the official JSE market-data API is licensed (no free key); the keyless vendor path is
   the delivery route.
 
+## JSE charts: 5Y and short Yahoo histories (2026-11-08)
+
+- **Symptom**: Richemont's 5Y button jumped back to 1Y, and other JSE lines had only about two
+  years of chart. Yahoo's `.JO` cache was keyed only by symbol, so a 2-year fetch poisoned every
+  later 5-year run; the series was then truncated to 400 daily points by design.
+- **Fix**: the Yahoo cache key now carries the requested range (`CFR.JO-5y.json`). A 5-year rebuild
+  gives NPN/FSR and most JSE lines the full five years. Seventeen lines still start later (Richemont
+  starts 2023-04); the company page now has a **MAX** window, and a 5Y click on a short series opens
+  MAX with a note naming the first available date instead of falling back to 1Y.
+- **Guard**: `tests/app-ui.test.js` covers `coWindow(..., 'max')` and the ZA MAX chip.
+- **Cache**: `oil-desk-v12`, `app.js?v=309`.
+
 ## Brazil tab loaded the South Africa feed (2026-11-08)
 
 - **Symptom**: opening BRAZIL painted SOUTH AFRICA, the market header said **0 BDRs**, and clicking

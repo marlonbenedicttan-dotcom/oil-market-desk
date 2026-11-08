@@ -120,7 +120,9 @@ function httpsGet(url, timeout = 25000) {
 }
 let yahooUntil = 0;
 async function yahooSeries(symbol, range = `${YEARS}y`) {
-  const f = join(YH_CACHE, `${symbol.replace(/[^\w.-]/g, '_')}.json`);
+  // The cache key must carry the range. The old single key was poisoned by a 2-year fetch, so a
+  // later 5-year build silently reused 500 sessions and every long chart fell back to 1Y.
+  const f = join(YH_CACHE, `${symbol.replace(/[^\w.-]/g, '_')}-${String(range).replace(/[^\w.-]/g, '_')}.json`);
   if (existsSync(f)) {
     try {
       const hit = JSON.parse(readFileSync(f, 'utf8'));
@@ -207,7 +209,7 @@ if (!SKIP_PRICES) {
 } else {
   for (const c of universe) {
     try {
-      const f = join(YH_CACHE, `${yaSymbol(c.code).replace(/[^\w.-]/g, '_')}.json`);
+      const f = join(YH_CACHE, `${yaSymbol(c.code).replace(/[^\w.-]/g, '_')}-${YEARS}y.json`);
       if (existsSync(f)) {
         const s = JSON.parse(JSON.parse(readFileSync(f, 'utf8')).text);
         if (s && s.length > 1) {

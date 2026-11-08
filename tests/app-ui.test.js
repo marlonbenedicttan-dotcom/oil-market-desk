@@ -169,6 +169,7 @@ function loadApp() {
     hkBalanceSheetFinancial,
     drawMarketIndexChart,
     coWindowsFor,
+    coWindow,
     coSlice,
     charts,
   };`;
@@ -669,4 +670,22 @@ test('each market loader fetches its own endpoint', () => {
   const brEnd = app.indexOf('\nasync function ', brStart + 1);
   const brBody = app.slice(brStart, brEnd < 0 ? undefined : brEnd);
   assert.doesNotMatch(brBody, /\/api\/southafrica/, 'Brazil still reads the South Africa feed');
+});
+
+
+test('a short JSE history still has a MAX window', () => {
+  // Richemont's Yahoo JSE series starts in 2023, so a 5Y click must not fall back to 1Y.
+  const { ui } = loadApp();
+  const dates = [];
+  for (let i = 0; i < 180; i++) dates.push(new Date(Date.UTC(2023, 3, 21) + i * 7 * 864e5).toISOString().slice(0, 10));
+  const ch = { dates, closes: dates.map((_, i) => 1000 + i) };
+  assert.deepEqual(ui.coSlice(ch, 'max'), ch, 'MAX keeps every point');
+  const r = ui.coWindow(ch, 'max');
+  assert.ok(r, 'MAX must produce a return');
+  assert.equal(r.from, 1000, 'MAX starts at the first available close');
+  assert.equal(r.to, 1179, 'MAX ends at the latest close');
+  const app = fs.readFileSync(APP, 'utf8');
+  assert.match(app, /data-zarange="\$\{k\}"/);
+  assert.match(app, /\['max', 'MAX'\]/);
+  assert.match(app, /range === '5y' && use !== '5y'\) use = 'max'/);
 });
