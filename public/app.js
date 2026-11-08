@@ -10315,6 +10315,18 @@ function gsOpenPanel() {
   else gsFetch(gsQueryText);
 }
 
+function gsFocusSearch() {
+  const pane = document.querySelector('[data-pane="deals"]');
+  if (pane && pane.classList.contains('hidden')) document.querySelector('[data-tab="deals"]')?.click();
+  const input = $('co-global-input');
+  if (input) {
+    input.focus();
+    input.select();
+    gsSetOpen(true);
+    if (!gsQueryText) gsBoard();
+  }
+}
+
 function gsOnInput() {
   const inp = $('co-global-input'); if (!inp) return;
   const q = inp.value.trim();
@@ -10546,7 +10558,7 @@ function gsOpenCompany(r) {
   else if (r.market === 'br') brSel = String(r.id);
   else if (r.market === 'za') zaSel = String(r.id);
   renderCompanies();
-  window.scrollTo({ top: 0, behavior: 'smooth' });
+  if (typeof window.scrollTo === 'function') window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 function gsOpenMarket(market) {
@@ -10567,7 +10579,7 @@ function gsOpenMarket(market) {
   else if (market === 'za') zaView = 'market';
   try { localStorage.setItem('oilbasis.' + viewKeys[market], 'market'); } catch { /* private */ }
   renderCompanies();
-  window.scrollTo({ top: 0, behavior: 'smooth' });
+  if (typeof window.scrollTo === 'function') window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 function isCompanyOpen() {
@@ -10694,14 +10706,12 @@ document.addEventListener('keydown', (e) => {
   const tag = (e.target && e.target.tagName || '').toLowerCase();
   if ((e.metaKey || e.ctrlKey) && String(e.key).toLowerCase() === 'k') {
     e.preventDefault();
-    const input = $('co-global-input');
-    if (input) { input.focus(); input.select(); gsSetOpen(true); if (!gsQueryText) gsBoard(); }
+    gsFocusSearch();
     return;
   }
   if (e.key === '/' && !e.metaKey && !e.ctrlKey && !['input', 'textarea', 'select'].includes(tag) && !(e.target && e.target.isContentEditable)) {
     e.preventDefault();
-    const input = $('co-global-input');
-    if (input) { input.focus(); gsSetOpen(true); if (!gsQueryText) gsBoard(); }
+    gsFocusSearch();
   }
 });
 
