@@ -7748,7 +7748,7 @@ async function loadBrazil() {
   if (brData) return brData;
   if (brazilPromise) return brazilPromise;
   brazilPromise = (async () => {
-    try { brData = await jget('/api/southafrica', 3600000); }
+    try { brData = await jget('/api/brazil', 3600000); }
     catch { brData = null; }
     finally { brazilPromise = null; }
     return brData;

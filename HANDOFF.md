@@ -4260,6 +4260,18 @@ keeps the 10-K text.
 - **Not used**: the official JSE market-data API is licensed (no free key); the keyless vendor path is
   the delivery route.
 
+## Brazil tab loaded the South Africa feed (2026-11-08)
+
+- **Symptom**: opening BRAZIL painted SOUTH AFRICA, the market header said **0 BDRs**, and clicking
+  any company produced an error. `loadBrazil()` was fetching `/api/southafrica`, so the B3 screen held
+  the 226 JSE lines; the subsequent `/api/brazil/company/{code}` call then asked for a JSE code and
+  returned 404. The BDR count was 0 because the JSE feed has no `market.bdrs`.
+- **Fix**: `loadBrazil()` now fetches `/api/brazil`; the B3 header reads **303 domestic + 11 BDRs** and
+  the BDR panel is populated.
+- **Guard**: `tests/app-ui.test.js` pins every market loader (`loadJapan` … `loadSouthAfrica`) to its
+  own endpoint and asserts Brazil never reads `/api/southafrica`.
+- **Cache**: `oil-desk-v10`, `app.js?v=307`.
+
 ## Mobile COMPANIES navigation: scrolling row, active market in view (2026-11-08)
 
 - **Symptom**: on a phone, India, Indonesia, Brazil and South Africa sometimes looked missing from

@@ -640,3 +640,33 @@ test('all ten markets are reachable in the COMPANIES navigation', () => {
   const app = fs.readFileSync(APP, 'utf8');
   assert.match(app, /function scrollActiveIntoView/, 'the active market must be scrolled into view');
 });
+
+
+test('each market loader fetches its own endpoint', () => {
+  // Brazil shipped loading /api/southafrica: the B3 tab painted the JSE list, then every company
+  // click asked the Brazil company route for a JSE code and failed. Guard the whole loader set.
+  const app = fs.readFileSync(APP, 'utf8');
+  const loaders = {
+    loadJapan: '/api/japan',
+    loadKorea: '/api/korea',
+    loadTaiwan: '/api/taiwan',
+    loadHongKong: '/api/hongkong',
+    loadAustralia: '/api/australia',
+    loadIndia: '/api/india',
+    loadIndonesia: '/api/indonesia',
+    loadBrazil: '/api/brazil',
+    loadSouthAfrica: '/api/southafrica',
+    loadCompanies: '/api/companies',
+  };
+  for (const [fn, endpoint] of Object.entries(loaders)) {
+    const start = app.indexOf(`async function ${fn}(`);
+    assert.ok(start >= 0, `${fn} is missing`);
+    const next = app.indexOf('\nasync function ', start + 1);
+    const body = app.slice(start, next < 0 ? undefined : next);
+    assert.ok(body.includes(`'${endpoint}'`), `${fn} does not fetch ${endpoint}`);
+  }
+  const brStart = app.indexOf('async function loadBrazil(');
+  const brEnd = app.indexOf('\nasync function ', brStart + 1);
+  const brBody = app.slice(brStart, brEnd < 0 ? undefined : brEnd);
+  assert.doesNotMatch(brBody, /\/api\/southafrica/, 'Brazil still reads the South Africa feed');
+});
