@@ -4449,6 +4449,9 @@ $('macro-links')?.addEventListener('click', (e) => { const el = e.target.closest
   // History and prices do not depend on each other — run them together rather than back to back.
   const histP = loadHistory().catch(() => {});   // never fatal — degrades to an empty history
   const liveP = refreshLive();
+  // The backdrop does not read the live price table — start it beside the prices instead of behind
+  // them, so one round-trip does not wait for another on a slow link.
+  const regimeP = loadRegime();
   fxList = await fxP; rateList = await rateP;
   renderCmpPresets();
   bootStep('Loading markets…');
@@ -4459,8 +4462,7 @@ $('macro-links')?.addEventListener('click', (e) => { const el = e.target.closest
   macroCountries = await ctryP;
   bootStep('Loading prices…');
   await liveP;                // prices (sets `data` first)
-  loadRegime();               // the backdrop is part of the first screen — start it with the prices,
-                              // not after history (the overlay waits for data + segments + regime)
+  await regimeP;              // the backdrop is part of the first screen — it started with the prices
   loadBrief();                // and the brief runs beside history instead of after it
   await histP;
   initCurveHist();            // arm the lazy loader for the (expensive) curve-history chart
@@ -9038,8 +9040,11 @@ function warmMarkets(delay = 1500) {
   // ~50 KB gzipped — a fraction of that — and its first click otherwise pays a full round trip
   // behind a "Loading KOSPI…" spinner, so it is warmed too. Japan (~140 KB) still waits for its
   // own renderer: spending it on every first visit was competing with the first screen.
+  // Prefetching ten market lists is ~1 MB. On a metered or slow link that is bandwidth the first
+  // screen needs, so stand down there: the COMPANIES tab still loads a market on click, it just does
+  // not do it in the background.
   const conn = (typeof navigator !== 'undefined' && navigator.connection) || {};
-  if (conn.saveData || /(^|-)2g$/.test(conn.effectiveType || '')) return;
+  if (conn.saveData || /^(slow-2g|2g|3g)$/.test(conn.effectiveType || '')) return;
   // A cold start means the instance just woke: it is parsing eleven megabytes of committed JSON and
   // serving its first pages on a tenth of a CPU. Adding Korea's 28 MB parse there is what made the
   // COMPANIES tab crawl on the first visit after a deploy — so on a cold start the warm-up stands
@@ -10835,6 +10840,17 @@ function gsLoadMarkets() {
     .finally(() => { gsMktPromise = null; });
   return gsMktPromise;
 }
+// The search indexes are ~0.9 MB (the country index plus the local-first company index) — a sixth of
+// the site's whole first-load weight — and most visits never open the search box. Warm them when the
+// reader reaches for search (hover/focus/Cmd-K), never on page load. Until they land, the debounced
+// server search answers keystrokes, so search is never blocked by the download.
+let gsWarmed = false;
+function gsWarmSearch() {
+  if (gsWarmed) return;
+  gsWarmed = true;
+  gsLoadMarkets();
+  gsLoadQuick();
+}
 function gsMeta(market) { return (gsMkt && gsMkt.markets && gsMkt.markets[market]) || {}; }
 function gsIndex(market, symbol) {
   const m = gsMeta(market);
@@ -11243,6 +11259,9 @@ async function drawMctx(ix, token) {
   input.addEventListener('input', gsOnInput);
   input.addEventListener('focus', gsOpenSearchUI);
   input.addEventListener('click', gsOpenSearchUI);
+  // Start the (large) local search index as soon as a pointer reaches for search, so opening it is
+  // instant without paying for it on every page load.
+  input.addEventListener('pointerenter', gsWarmSearch, { once: true });
   input.addEventListener('keydown', (e) => {
     if (!gsOpen) return;
     if (e.key === 'ArrowDown') { e.preventDefault(); gsSelectByIndex(gsActive + 1, true); }
@@ -11257,8 +11276,8 @@ async function drawMctx(ix, token) {
   });
   $('co-global-done')?.addEventListener('click', gsDismissSearch);
   $('co-global-backdrop')?.addEventListener('click', gsDismissSearch);
-  gsLoadMarkets();   // warm the country index so group headers and the board open instantly
-  setTimeout(() => { gsLoadQuick(); }, 500);   // local-first search index
+  // Search indexes are intent-loaded by gsWarmSearch (hover, focus or Cmd-K), not at boot: they are
+  // ~0.9 MB and most visits never open the box.
 })();
 
 document.addEventListener('keydown', (e) => {
@@ -11305,6 +11324,6 @@ document.addEventListener('click', (e) => {
   const mr = t.closest('[data-mctxrange]');
   if (mr) { mctxExpanded = true; mctxRange = mr.dataset.mctxrange; renderGlobalMarketContext(); return; }
   const gsearch = t.closest('[data-gsearch]');
-  if (gsearch) { gsFocusSearch(); return; }
+  if (gsearch) { gsWarmSearch(); gsFocusSearch(); return; }
   if (gsOpen && !t.closest('#co-global') && !t.closest('#onboarding')) gsDismissSearch();
 });

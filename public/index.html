@@ -29,9 +29,13 @@
   <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v=3" />
   <link rel="apple-touch-icon" sizes="167x167" href="/apple-touch-icon-167.png?v=3" />
   <link rel="apple-touch-icon" sizes="152x152" href="/apple-touch-icon-152.png?v=3" />
-  <link rel="stylesheet" href="style.css?v=131" />
+  <link rel="stylesheet" href="style.css?v=132" />
   <noscript><style>#boot{display:none!important}</style></noscript>
-  <script src="/vendor/chart.umd.min.js?v=4.4.1"></script>
+  <!-- Preload the app shell in parallel with the stylesheet, then execute it after the document is
+       parsed. The chart library is deferred too: 200 KB of JS is not a reason to block first paint,
+       and deferring both preserves their order (the vendor runs first). -->
+  <link rel="preload" href="app.js?v=311" as="script" fetchpriority="high" />
+  <script src="/vendor/chart.umd.min.js?v=4.4.1" defer></script>
 </head>
 <body>
   <!-- Boot beacon: static markup so it paints on the first byte, then fades when the app is ready
@@ -526,7 +530,7 @@
     <span class="totop-i" aria-hidden="true">↑</span>TOP
   </button>
 
-  <script src="app.js?v=311"></script>
-  <script src="gmap-motion.js?v=1"></script>
+  <script src="app.js?v=311" defer></script>
+  <script src="gmap-motion.js?v=1" defer></script>
 </body>
 </html>
