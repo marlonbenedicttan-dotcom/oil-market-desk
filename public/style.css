@@ -1893,3 +1893,17 @@ button.deal-sec-tile:hover { background: #10151b; }
   .topbar .tab.active::after { bottom:-6px; }
   .topbar .meta { font-size:9px; gap:8px; margin-left:auto; }
 }
+
+/* Primary navigation: icon + label, left-aligned, with a filled amber active tab. */
+.topbar .tabs { gap:2px; }
+.topbar .tab { display:inline-flex; align-items:center; gap:7px; padding:7px 13px; font-size:11px; font-weight:700; letter-spacing:1.1px; color:#b6c2ce; border:1px solid transparent; border-radius:2px; }
+.topbar .tab svg { width:14px; height:14px; stroke:currentColor; fill:none; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; opacity:.8; }
+.topbar .tab:hover { color:var(--text); background:#111419; border-color:var(--line); }
+.topbar .tab.active { color:#080a0e; background:var(--amber); border-color:var(--amber); box-shadow:none; }
+.topbar .tab.active svg { opacity:1; }
+.topbar .tab.active::after { display:none; }
+@media (max-width:900px) {
+  .topbar .tabs { gap:0; }
+  .topbar .tab { flex:1; justify-content:center; padding:8px 3px; font-size:9.5px; gap:5px; }
+  .topbar .tab svg { width:13px; height:13px; }
+}
