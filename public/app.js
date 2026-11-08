@@ -4691,7 +4691,7 @@ function syncCoTools() {
     : coRegion === 'id' ? (!idSel && idView === 'screener')
     : coRegion === 'br' ? (!brSel && brView === 'screener')
     : coRegion === 'za' ? (!zaSel && zaView === 'screener')
-    : (coCik ? true : usView === 'screener');
+    : (!coCik && usView === 'screener');
   tools.classList.toggle('hidden', !wanted);
   // On a phone, a company page should start at the top: the filter bar is for lists.
   const detail = coRegion === 'jp' ? !!jpSel : coRegion === 'kr' ? !!krSel : coRegion === 'tw' ? !!twSel : coRegion === 'hk' ? !!hkSel : coRegion === 'au' ? !!auSel : coRegion === 'in' ? !!inSel : coRegion === 'id' ? !!idSel : coRegion === 'br' ? !!brSel : coRegion === 'za' ? !!zaSel : !!coCik;
@@ -10441,6 +10441,9 @@ function gsSetOpen(on) {
   gsOpen = !!on;
   const inp = $('co-global-input');
   if (inp) inp.setAttribute('aria-expanded', String(!!on));
+  $('co-global-backdrop')?.classList.toggle('hidden', !on);
+  $('co-global-done')?.classList.toggle('hidden', !on);
+  document.querySelector('.co-global-kbd')?.classList.toggle('hidden', !!on);
 }
 function gsOpenPanel() {
   gsSetOpen(true);
@@ -10578,7 +10581,9 @@ function gsRenderResults(data) {
     map.get(r.market).push(r);
   }
   let idx = 0;
-  left.innerHTML = groups.map((market) => {
+  const shown = data.total != null && data.total > results.length ? ` of ${data.total}` : '';
+  const head = `<div class="g-res-head"><span>All markets</span><span><b>${results.length}</b>${shown} result${results.length === 1 ? '' : 's'} · ${groups.length} market${groups.length === 1 ? '' : 's'}</span></div>`;
+  left.innerHTML = head + groups.map((market) => {
     const rows = map.get(market);
     const meta = gsMeta(market);
     const sm = (data.markets || {})[market] || {};
@@ -10661,7 +10666,6 @@ async function gsRenderContext(r) {
       ${chips ? `<div class="g-chips">${chips}</div>` : ''}
       <div class="g-actions">
         <button type="button" class="g-btn" data-gopen="1">Open company page</button>
-        <button type="button" class="g-btn ghost" data-gopenmarket="${gsEsc(r.market)}">Open ${gsEsc(mlabel)} market</button>
       </div>
     </div>`;
   gsDrawIndex(ix);
@@ -10782,7 +10786,7 @@ async function renderGlobalMarketContext() {
       <span class="idx">${gsEsc(ix.label)}</span><span class="lvl">${gsNum(ix.level, 2)}</span>
       <span class="move ${gsCls(ix.pct1d)}">${gsPct(ix.pct1d, 2)} today</span><span class="ytd">${gsPct(ix.pctYtd, 2)} YTD</span>
       <span class="spacer"></span>
-      ${gsQueryText ? '<button type="button" data-gsearch="1">Search results</button>' : ''}
+      ${gsQueryText ? '<button type="button" data-gsearch="1">← Results</button>' : ''}
       <button type="button" data-mctxrange="1y" class="${mctxRange === '1y' ? 'on' : ''}">1Y</button>
       <button type="button" data-mctxrange="5y" class="${mctxRange === '5y' ? 'on' : ''}">5Y</button>
       <button type="button" data-mctx-vs="1" class="${mctxVs ? 'on' : ''}">vs index</button>
@@ -10850,6 +10854,8 @@ async function drawMctx(ix, token) {
     input.focus();
     gsOnInput();
   });
+  $('co-global-done')?.addEventListener('click', () => gsSetOpen(false));
+  $('co-global-backdrop')?.addEventListener('click', () => gsSetOpen(false));
   gsLoadMarkets();   // warm the country index so group headers and the board open instantly
   setTimeout(() => { gsLoadQuick(); }, 500);   // local-first search index
 })();

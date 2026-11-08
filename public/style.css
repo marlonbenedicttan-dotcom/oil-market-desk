@@ -1656,7 +1656,7 @@ button.deal-sec-tile:hover { background: #10151b; }
 
 /* ---------- Global company search (all markets) ---------- */
 .co-global { position: relative; padding: 10px 12px 0; }
-.co-global-box { display: flex; align-items: center; gap: 8px; background: #0c0f13; border: 1px solid var(--line2); border-radius: 9px; padding: 7px 10px; transition: border-color .15s ease, box-shadow .15s ease; }
+.co-global-box { position: relative; z-index: 80; display: flex; align-items: center; gap: 8px; background: #0c0f13; border: 1px solid var(--line2); border-radius: 9px; padding: 7px 10px; transition: border-color .15s ease, box-shadow .15s ease; }
 .co-global-box:focus-within { border-color: var(--amber); box-shadow: 0 0 0 1px #ff9e0033; }
 .co-global-ico { color: var(--dim); font-size: 16px; line-height: 1; }
 .co-global-input { flex: 1 1 auto; min-width: 0; background: transparent; border: 0; outline: 0; color: var(--text); font: 13px/1.4 var(--mono); }
@@ -1664,6 +1664,13 @@ button.deal-sec-tile:hover { background: #10151b; }
 .co-global-kbd { border: 1px solid var(--line2); border-radius: 5px; padding: 2px 6px; color: var(--dim); font-size: 10px; white-space: nowrap; }
 .co-global-clear { background: none; border: 0; color: var(--dim); font-size: 17px; line-height: 1; padding: 0 2px; cursor: pointer; }
 .co-global-clear:hover { color: var(--amber); }
+.co-global-backdrop { position: fixed; inset: 0; z-index: 60; background: rgba(2, 5, 8, .68); backdrop-filter: blur(1.5px); }
+.co-global-backdrop.hidden { display: none; }
+.co-global-done { background: #11161c; border: 1px solid var(--line2); border-radius: 5px; color: var(--dim); font: inherit; font-size: 10px; padding: 3px 7px; cursor: pointer; white-space: nowrap; }
+.co-global-done:hover { color: var(--amber); border-color: var(--amber); }
+.co-global-done.hidden { display: none; }
+.g-res-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 7px 7px; color: var(--dim); font-size: 8px; letter-spacing: 1.1px; text-transform: uppercase; border-bottom: 1px solid var(--line); }
+.g-res-head b { color: var(--text); font-weight: 600; }
 .co-global-panel { position: absolute; z-index: 70; top: calc(100% + 6px); left: 12px; right: 12px;
   display: grid; grid-template-columns: minmax(280px, .88fr) minmax(0, 1.32fr); max-height: min(78vh, 760px);
   background: var(--panel); border: 1px solid var(--line2); border-radius: 11px; box-shadow: 0 24px 70px #000d; overflow: hidden; }
@@ -1748,6 +1755,8 @@ button.deal-sec-tile:hover { background: #10151b; }
 .co-mctx-row button { background: none; border: 1px solid var(--line2); border-radius: 4px; color: var(--dim); font: inherit; font-size: 8.5px; padding: 2px 6px; cursor: pointer; }
 .co-mctx-row button:hover { color: var(--amber); border-color: var(--amber); }
 .co-mctx-row button.on { color: #080a0e; background: var(--amber); border-color: var(--amber); }
+.co-mctx-row button[data-gsearch] { color: var(--amber); border-color: var(--amber); }
+.co-mctx-row button[data-gsearch]:hover { background: #ff9e001a; }
 .co-mctx-chart { height: 150px !important; padding: 0 !important; border: 0 !important; margin-top: 2px; }
 
 @media (max-width: 900px) {
@@ -1906,4 +1915,17 @@ button.deal-sec-tile:hover { background: #10151b; }
   .topbar .tabs { gap:0; }
   .topbar .tab { flex:1; justify-content:center; padding:8px 3px; font-size:9.5px; gap:5px; }
   .topbar .tab svg { width:13px; height:13px; }
+}
+
+/* Desktop: the country pills and the MARKET/SCREENER/THEMES tabs share one control row. The search
+   bar and the list filters no longer stack into four separate bands. */
+@media (min-width: 900px) {
+  .co-nav { display: flex; align-items: center; gap: 14px; }
+  .co-nav .co-navrow { margin: 0; padding: 0; }
+  .co-nav .co-navrow:first-child { flex: 1 1 auto; min-width: 0; }
+  .co-nav .co-navrow:last-child { flex: 0 0 auto; }
+  .co-nav .co-region { gap: 4px; }
+  .co-nav .co-region button { padding: 0 8px; }
+  .co-nav .co-views { border-left: 1px solid var(--line); padding-left: 10px; }
+  .co-nav .co-views button { padding: 0 9px; }
 }

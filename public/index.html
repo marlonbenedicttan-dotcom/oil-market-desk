@@ -346,12 +346,14 @@
     <div class="tabpane hidden" data-pane="deals" id="pane-deals" role="tabpanel" aria-labelledby="tab-deals">
       <section class="panel" id="p-deals">
         <div class="ph"><span class="ph-t">COMPANIES — profiles &amp; financials</span><span class="dimtext" id="deals-sub">SEC XBRL · US filers</span></div>
+        <div id="co-global-backdrop" class="co-global-backdrop hidden"></div>
         <div class="co-global" id="co-global">
           <div class="co-global-box">
             <span class="co-global-ico" aria-hidden="true">⌕</span>
-            <input id="co-global-input" class="co-global-input" type="search" placeholder="Search any company, ticker, code or brand — Apple, Toyota, Samsung, TSMC…" autocomplete="off" spellcheck="false" role="combobox" aria-expanded="false" aria-controls="co-global-panel" aria-autocomplete="list">
+            <input id="co-global-input" class="co-global-input" type="search" placeholder="Search 10 markets — company, ticker or brand" autocomplete="off" spellcheck="false" role="combobox" aria-expanded="false" aria-controls="co-global-panel" aria-autocomplete="list">
             <button class="co-global-clear hidden" id="co-global-clear" type="button" aria-label="Clear search">×</button>
             <kbd class="co-global-kbd">⌘K</kbd>
+            <button class="co-global-done hidden" id="co-global-done" type="button">Close</button>
           </div>
           <div class="co-global-panel hidden" id="co-global-panel" role="dialog" aria-label="Global company search">
             <div class="co-global-results" id="co-global-results" role="listbox" aria-label="Company results"></div>
@@ -378,7 +380,7 @@
           </div>
         </div>
         <div class="co-tools">
-          <input class="ma-search" id="co-search" type="search" placeholder="Search a company or ticker…" autocomplete="off">
+          <input class="ma-search" id="co-search" type="search" placeholder="Filter this market…" autocomplete="off">
           <button class="co-ftoggle" id="co-ftoggle" type="button" aria-expanded="false">FILTERS</button>
           <div class="ma-chips" id="co-chips"></div>
         </div>
