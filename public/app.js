@@ -8920,6 +8920,21 @@ const GMAP = {
   us: [23.8, 33.7], jp: [86.9, 35.6], kr: [84.2, 35.3], tw: [82.4, 43.5], hk: [80.6, 44.4],
   au: [85.9, 74.6], in: [70.9, 45.2], id: [81.6, 59.9], br: [36.1, 65.0], za: [56.4, 77.2],
 };
+// East Asia and Europe are close on a flat map; a label always to the right of its dot put KR on top
+// of JP and TW/HK on top of each other. These offsets point each label away from its neighbour, so
+// the cluster stays readable without moving the dots off their real positions.
+const GMAP_LABEL = {
+  us: { side: 'left', gap: 9, dy: -10 },
+  jp: { side: 'right', gap: 13, dy: -4 },
+  kr: { side: 'left', gap: 9, dy: 9 },
+  tw: { side: 'left', gap: 9, dy: 12 },
+  hk: { side: 'left', gap: 9, dy: 22 },
+  au: { side: 'right', gap: 12, dy: 10 },
+  in: { side: 'left', gap: 16, dy: 5 },
+  id: { side: 'right', gap: 13, dy: 5 },
+  br: { side: 'left', gap: 14, dy: 6 },
+  za: { side: 'right', gap: 13, dy: 4 },
+};
 const GMARKET_COLORS = { us:'#4f8cff', jp:'#e05252', kr:'#2fb5a8', tw:'#d4a017', hk:'#c8574f', au:'#6f8f3f', in:'#c2703d', id:'#b03a48', br:'#2e9e5b', za:'#c9a227' };
 
 async function renderGlobalBoard(token) {
@@ -8941,7 +8956,11 @@ async function renderGlobalBoard(token) {
   const dec = home.markets.filter((m) => (m.chg1d || 0) < 0).length;
   const markers = home.markets.map((m) => {
     const [x, y] = GMAP[m.id] || [50, 50];
-    return `<button type="button" class="gmap-dot ${cls(m.chg1d)}" data-region="${esc(m.id)}" style="left:${x}%;top:${y}%" title="${esc(m.label)} · ${esc(m.index)} ${pctf(m.chg1d)}"><span>${esc(String(m.id).toUpperCase())}</span></button>`;
+    const lab = GMAP_LABEL[m.id] || { side: 'right', gap: 13, dy: -4 };
+    const labelStyle = lab.side === 'left'
+      ? `left:auto;right:${lab.gap}px;top:${lab.dy}px`
+      : `left:${lab.gap}px;top:${lab.dy}px`;
+    return `<button type="button" class="gmap-dot ${cls(m.chg1d)}" data-region="${esc(m.id)}" style="left:${x}%;top:${y}%" title="${esc(m.label)} · ${esc(m.index)} ${pctf(m.chg1d)}"><span style="${labelStyle}">${esc(String(m.id).toUpperCase())}</span></button>`;
   }).join('');
   const tiles = home.markets.map((m) => {
     const total = (m.adv || 0) + (m.dec || 0);
