@@ -172,7 +172,7 @@ select {
 .cmp-presets { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 12px 0; }
 /* The "each commodity opens on its own spread" hint is a nice-to-have: on a phone the three
    pickers need the whole row, so drop it rather than crowd them. */
-@media (max-width: 900px) { #compare-panel .ph .dimtext { display: none; } }
+@media (max-width: 1000px) { #compare-panel .ph .dimtext { display: none; } }
 .card.clickable { cursor: pointer; transition: border-color .12s; }
 .card.clickable:hover { border-color: var(--amber); }
 .card.clickable:hover h3 { color: var(--amber2); }
@@ -514,7 +514,7 @@ footer li { margin-bottom: 2px; }
    on a row of its own, which read as a broken grid). */
 .regime-board { display: grid; grid-template-columns: repeat(var(--rb-cols, 4), minmax(0, 1fr)); gap: 1px; background: var(--line); }
 .rb-cell { background: #0c0f13; padding: 9px 11px; min-width: 0; }
-@media (max-width: 900px) { .regime-board { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 1000px) { .regime-board { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .rb-l { font-size: 10px; color: var(--dim); letter-spacing: .3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .rb-v { font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; margin: 3px 0 1px; }
 .rb-v.pos { color: var(--green); }
@@ -758,7 +758,7 @@ footer li { margin-bottom: 2px; }
 
 /* Bottom line */
 .bottomline .bl { display: grid; grid-template-columns: 200px 1fr 1fr 1fr; gap: 0; }
-@media (max-width: 900px) { .bottomline .bl { grid-template-columns: 1fr; } }
+@media (max-width: 1000px) { .bottomline .bl { grid-template-columns: 1fr; } }
 .bl-score { padding: 16px; border-right: 1px solid var(--line); display: flex; flex-direction: column; justify-content: center; }
 .bl-num { font-size: 46px; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; }
 .bl-num span { font-size: 16px; color: var(--dim); font-weight: 400; }
@@ -1386,6 +1386,12 @@ button.deal-sec-tile:hover { background: #10151b; }
   white-space: nowrap; cursor: pointer; }
 .co-region button:hover { color: var(--text); }
 .co-region button.on { background: var(--mkt, var(--amber)); border-color: var(--mkt, var(--amber)); color: #080a0e; }
+/* Ten markets do not fit one row on a phone or a tablet. The row used to scroll sideways with the
+   scrollbar hidden, so the newer markets sat off-screen and looked missing. Wrap them. */
+@media (max-width: 1000px) {
+  .co-region { flex-wrap: wrap; overflow: visible; }
+  .sc-mkt { flex-wrap: wrap; overflow: visible; }
+}
 .co-chart-tabs { display: flex; gap: 16px; padding: 10px 12px 0; }
 .co-chart-tabs button { background: none; border: 0; border-bottom: 2px solid transparent; color: var(--dim);
   font: inherit; font-size: 9px; letter-spacing: 1px; padding: 4px 1px; cursor: pointer; }
@@ -1478,14 +1484,24 @@ button.deal-sec-tile:hover { background: #10151b; }
 .sc-f input::placeholder { color: #5b6773; }
 .sc-mkt { margin-left: 6px; }
 @media (max-width: 640px) { .sc-f input { min-width: 0; width: 100%; } .sc-f { flex: 1 1 100%; } }
+@media (max-width: 420px) {
+  .co-region button { padding: 0 10px; font-size: 9px; letter-spacing: .5px; }
+  .sc-mkt button { padding: 6px 7px; font-size: 9px; }
+}
 
 /* Japan on a phone: the filter row and the row metadata were both too heavy. */
 @media (max-width: 640px) {
   .co-nav { padding: 8px 10px 0; }
   .co-navrow { gap: 8px; }
   .co-navrow + .co-navrow { margin-top: 6px; }
-  .co-region { gap: 5px; }
-  .co-region button { min-height: 44px; font-size: 10px; padding: 0 13px; }
+  /* Ten markets no longer fit one phone row. The row used to scroll sideways with the scrollbar
+     hidden, so India, Indonesia, Brazil and South Africa sat off-screen with no affordance. Wrap the
+     pills instead: every market is visible, and the second row is obviously more markets. */
+  .co-region { flex-wrap: wrap; overflow: visible; gap: 5px; }
+  .co-region button { flex: 0 0 auto; min-height: 44px; font-size: 10px; padding: 0 13px; }
+  /* The home screener's market switch had the same hidden-overflow problem. */
+  .sc-mkt { flex-wrap: wrap; overflow: visible; }
+  .sc-mkt button { flex: 1 1 auto; min-height: 34px; }
   .co-views button { min-height: 44px; font-size: 10px; padding: 0 10px; }
   .jp-presets { gap: 4px; padding: 8px 10px 4px; }
   .jp-presets button { font-size: 8px; letter-spacing: .5px; padding: 5px 7px; }

@@ -627,3 +627,16 @@ test('property and REIT EPS growth is labelled statutory', () => {
   assert.equal(ui.epsGrowthLabel(bank), 'EPS GROWTH · 4Y', 'non-property names are not labelled');
   assert.equal(ui.epsGrowthNote(bank), '');
 });
+
+test('every market stays visible in the mobile COMPANIES navigation', () => {
+  // On a phone the ten region pills used to scroll sideways with the scrollbar hidden, so the four
+  // newest markets sat off-screen and looked missing. The row must wrap instead.
+  const html = fs.readFileSync(path.join(here, '..', 'public', 'index.html'), 'utf8');
+  for (const region of ['us', 'jp', 'kr', 'tw', 'hk', 'au', 'in', 'id', 'br', 'za']) {
+    assert.match(html, new RegExp(`data-region="${region}"`), `${region} region button is missing`);
+  }
+  const css = fs.readFileSync(path.join(here, '..', 'public', 'style.css'), 'utf8');
+  assert.match(css, /@media \(max-width: 640px\)/, 'the phone breakpoint is missing');
+  assert.match(css, /\.co-region \{[^}]*flex-wrap: wrap/s, 'the market row must wrap on a phone');
+  assert.match(css, /\.sc-mkt \{[^}]*flex-wrap: wrap/s, 'the home market switch must wrap on a phone');
+});
