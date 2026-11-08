@@ -45,6 +45,12 @@ const MARKETS = {
     // B3 adds/delists a handful a quarter; a 3% drop is a throttled class-selection pass.
     minCompanies: 0.97,
   },
+  za: {
+    label: 'South Africa',
+    file: 'data/southafrica.json',
+    // The JSE list moves by a handful a quarter; a 3% drop is a throttled statement pass.
+    minCompanies: 0.97,
+  },
 };
 
 const requested = (process.argv[2] || '').toLowerCase();

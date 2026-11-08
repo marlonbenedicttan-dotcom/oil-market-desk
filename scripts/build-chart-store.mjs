@@ -49,7 +49,7 @@ function sourceStamp(id) {
   if (id === 'kr') return fileStamp(DATA('korea.json'));
   if (id === 'jp') return fileStamp(DATA('japan-series.json'));
   if (id === 'us') return fileStamp(DATA('us-charts.json'));
-  const dir = { tw: 'taiwan-series', hk: 'hongkong-series', au: 'australia-series', in: 'india-series', id: 'indonesia-series', br: 'brazil-series' }[id];
+  const dir = { tw: 'taiwan-series', hk: 'hongkong-series', au: 'australia-series', in: 'india-series', id: 'indonesia-series', br: 'brazil-series', za: 'southafrica-series' }[id];
   const first = dir ? firstBucket(dir) : null;
   return first ? fileStamp(first) : null;
 }
@@ -123,6 +123,7 @@ const MARKETS = {
   in: { label: 'India', write: (add) => eachBucketed('india-series', add) },
   id: { label: 'Indonesia', write: (add) => eachBucketed('indonesia-series', add) },
   br: { label: 'Brazil', write: (add) => eachBucketed('brazil-series', add) },
+  za: { label: 'South Africa', write: (add) => eachBucketed('southafrica-series', add) },
 };
 
 function build(id) {

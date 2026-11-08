@@ -2668,11 +2668,12 @@ const CO_VIEWS = {
   in: [['inview', 'market', 'MARKET'], ['inview', 'screener', 'SCREENER'], ['inview', 'themes', 'THEMES']],
   id: [['idview', 'market', 'MARKET'], ['idview', 'screener', 'SCREENER'], ['idview', 'themes', 'THEMES']],
   br: [['brview', 'market', 'MARKET'], ['brview', 'screener', 'SCREENER'], ['brview', 'themes', 'THEMES']],
+  za: [['zaview', 'market', 'MARKET'], ['zaview', 'screener', 'SCREENER'], ['zaview', 'themes', 'THEMES']],
 };
 function paintCoViews() {
   const bar = $('co-views');
   if (!bar) return;
-  const active = coRegion === 'jp' ? jpView : coRegion === 'kr' ? krView : coRegion === 'tw' ? twView : coRegion === 'hk' ? hkView : coRegion === 'au' ? auView : coRegion === 'in' ? inView : coRegion === 'id' ? idView : coRegion === 'br' ? brView : usView;
+  const active = coRegion === 'jp' ? jpView : coRegion === 'kr' ? krView : coRegion === 'tw' ? twView : coRegion === 'hk' ? hkView : coRegion === 'au' ? auView : coRegion === 'in' ? inView : coRegion === 'id' ? idView : coRegion === 'br' ? brView : coRegion === 'za' ? zaView : usView;
   bar.innerHTML = (CO_VIEWS[coRegion] || CO_VIEWS.us)
     .map(([attr, key, label]) => `<button type="button" data-${attr}="${key}" class="${active === key ? 'on' : ''}">${label}</button>`)
     .join('');
@@ -2688,6 +2689,7 @@ const coScreenAu = { q: '', sector: 'all', sort: 'marketCap', dir: -1, page: 1, 
 const coScreenIn = { q: '', sector: 'all', sort: 'marketCap', dir: -1, page: 1, per: 50 };
 const coScreenId = { q: '', sector: 'all', sort: 'marketCap', dir: -1, page: 1, per: 50 };
 const coScreenBr = { q: '', sector: 'all', sort: 'marketCap', dir: -1, page: 1, per: 50 };
+const coScreenZa = { q: '', sector: 'all', sort: 'marketCap', dir: -1, page: 1, per: 50 };
 // A 1,500-row page is a wall of scroll. Paging keeps one screenful at a time and the whole list one
 // click away — no infinite scroll, nothing hidden.
 const pagerHtml = (total, page, per, attr) => {
@@ -2709,12 +2711,12 @@ const STOCK_SCREEN_COLS = [
   { k: 'pb', t: 'P/B' }, { k: 'roe', t: 'ROE' }, { k: 'marketCap', t: 'MKT CAP' },
 ];
 const JP_SCREEN_COLS = STOCK_SCREEN_COLS;
-const screenMarketHtml = () => `<div class="sc-modes sc-mkt">${[['us', 'US'], ['jp', 'JAPAN'], ['kr', 'KOREA'], ['tw', 'TAIWAN'], ['hk', 'HONG KONG'], ['au', 'AUSTRALIA'], ['in', 'INDIA'], ['id', 'INDONESIA'], ['br', 'BRAZIL']].map(([k, t]) => `<button type="button" class="${screenMarket === k ? 'on' : ''}" data-screen-market="${k}">${t}</button>`).join('')}</div>`;
+const screenMarketHtml = () => `<div class="sc-modes sc-mkt">${[['us', 'US'], ['jp', 'JAPAN'], ['kr', 'KOREA'], ['tw', 'TAIWAN'], ['hk', 'HONG KONG'], ['au', 'AUSTRALIA'], ['in', 'INDIA'], ['id', 'INDONESIA'], ['br', 'BRAZIL'], ['za', 'SOUTH AFRICA']].map(([k, t]) => `<button type="button" class="${screenMarket === k ? 'on' : ''}" data-screen-market="${k}">${t}</button>`).join('')}</div>`;
 
 // A company's return in the screener's chosen base currency. A Tokyo listing returns yen; a dollar
 // investor gets that return *plus* the yen's own move, so the two are compounded rather than added.
 // Falls back to the local number only when no FX move is known, and the note under the table says so.
-const CUR_OF_MARKET = { us: 'USD', jp: 'JPY', kr: 'KRW', tw: 'TWD', hk: 'HKD', au: 'AUD', in: 'INR', id: 'IDR', br: 'BRL' };
+const CUR_OF_MARKET = { us: 'USD', jp: 'JPY', kr: 'KRW', tw: 'TWD', hk: 'HKD', au: 'AUD', in: 'INR', id: 'IDR', br: 'BRL', za: 'ZAR' };
 // The date the prices belong to — the modal session across the table, so a stale feed is visible
 // rather than implied.
 function sessionOf(list, field) {
@@ -2753,6 +2755,7 @@ function renderCompanyScreen(el) {
   if (screenMarket === 'in') return renderIndiaScreen(el);
   if (screenMarket === 'id') return renderIndonesiaScreen(el);
   if (screenMarket === 'br') return renderBrazilScreen(el);
+  if (screenMarket === 'za') return renderSouthAfricaScreen(el);
   // The companies payload is normally fetched when the COMPANIES tab opens; the home screener can ask
   // for it first, so load it here and re-render when it lands.
   if (!companiesData) {
@@ -3134,7 +3137,7 @@ $('screen')?.addEventListener('click', (e) => {
     screenMarket = mkt.dataset.screenMarket;
     try { localStorage.setItem('oilbasis.screenMarket', screenMarket); } catch {}
     const cur = document.querySelector('#p-screen .controls');
-    if (cur) cur.classList.toggle('hidden', screenMarket === 'jp' || screenMarket === 'tw' || screenMarket === 'hk' || screenMarket === 'au' || screenMarket === 'in' || screenMarket === 'id' || screenMarket === 'br');
+    if (cur) cur.classList.toggle('hidden', screenMarket === 'jp' || screenMarket === 'tw' || screenMarket === 'hk' || screenMarket === 'au' || screenMarket === 'in' || screenMarket === 'id' || screenMarket === 'br' || screenMarket === 'za');
     renderScreen(true);
     return;
   }
@@ -3152,6 +3155,8 @@ $('screen')?.addEventListener('click', (e) => {
   if (idp2 && idp2.dataset.idpage !== 'per') { coScreenId.page = Math.max(1, Number(idp2.dataset.idpage)); renderScreen(true); return; }
   const brp2 = e.target.closest('[data-brpage]');
   if (brp2 && brp2.dataset.brpage !== 'per') { coScreenBr.page = Math.max(1, Number(brp2.dataset.brpage)); renderScreen(true); return; }
+  const zap2 = e.target.closest('[data-zapage]');
+  if (zap2 && zap2.dataset.zapage !== 'per') { coScreenZa.page = Math.max(1, Number(zap2.dataset.zapage)); renderScreen(true); return; }
   const aukey = e.target.closest('th[data-aukey]');
   if (aukey) {
     const k = aukey.dataset.aukey;
@@ -3176,6 +3181,15 @@ $('screen')?.addEventListener('click', (e) => {
     coScreenBr.dir = coScreenBr.sort === k ? -coScreenBr.dir : (k === 'label' ? 1 : -1);
     coScreenBr.sort = k;
     coScreenBr.page = 1;
+    renderScreen(true);
+    return;
+  }
+  const zakey = e.target.closest('th[data-zakey]');
+  if (zakey) {
+    const k = zakey.dataset.zakey;
+    coScreenZa.dir = coScreenZa.sort === k ? -coScreenZa.dir : (k === 'label' ? 1 : -1);
+    coScreenZa.sort = k;
+    coScreenZa.page = 1;
     renderScreen(true);
     return;
   }
@@ -3304,6 +3318,15 @@ $('screen')?.addEventListener('click', (e) => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
     return;
   }
+  const zarow2 = e.target.closest('tr[data-zarow]');
+  if (zarow2) {
+    coRegion = 'za'; try { localStorage.setItem('oilbasis.coRegion', 'za'); } catch {}
+    zaSel = zarow2.dataset.zarow;
+    document.querySelector('[data-tab="deals"]')?.click();
+    renderSouthAfrica();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    return;
+  }
   const idrow2 = e.target.closest('tr[data-idrow]');
   if (idrow2) {
     coRegion = 'id'; try { localStorage.setItem('oilbasis.coRegion', 'id'); } catch {}
@@ -3327,6 +3350,7 @@ $('screen')?.addEventListener('input', (e) => {
   if (e.target.id === 'cosin-q') { coScreenIn.q = e.target.value || ''; coScreenIn.page = 1; renderScreen(true); }
   if (e.target.id === 'cosid-q') { coScreenId.q = e.target.value || ''; coScreenId.page = 1; renderScreen(true); }
   if (e.target.id === 'cosbr-q') { coScreenBr.q = e.target.value || ''; coScreenBr.page = 1; renderScreen(true); }
+  if (e.target.id === 'cosza-q') { coScreenZa.q = e.target.value || ''; coScreenZa.page = 1; renderScreen(true); }
 });
 $('screen')?.addEventListener('change', (e) => {
   if (e.target.id === 'cos-sector') { coScreen = { ...coScreen, sector: e.target.value, page: 1 }; renderScreen(true); return; }
@@ -3338,6 +3362,7 @@ $('screen')?.addEventListener('change', (e) => {
   if (e.target.id === 'cosin-sector') { coScreenIn.sector = e.target.value; coScreenIn.page = 1; renderScreen(true); return; }
   if (e.target.id === 'cosid-sector') { coScreenId.sector = e.target.value; coScreenId.page = 1; renderScreen(true); return; }
   if (e.target.id === 'cosbr-sector') { coScreenBr.sector = e.target.value; coScreenBr.page = 1; renderScreen(true); return; }
+  if (e.target.id === 'cosza-sector') { coScreenZa.sector = e.target.value; coScreenZa.page = 1; renderScreen(true); return; }
   if (e.target.dataset && e.target.dataset.jppageper) { coScreenJp.per = Number(e.target.value); coScreenJp.page = 1; renderScreen(true); return; }
   if (e.target.dataset && e.target.dataset.krpageper) { coScreenKr.per = Number(e.target.value); coScreenKr.page = 1; renderScreen(true); return; }
   if (e.target.dataset && e.target.dataset.twpageper) { coScreenTw.per = Number(e.target.value); coScreenTw.page = 1; renderScreen(true); return; }
@@ -4612,10 +4637,11 @@ function syncCoTools() {
     : coRegion === 'in' ? (!inSel && inView === 'screener')
     : coRegion === 'id' ? (!idSel && idView === 'screener')
     : coRegion === 'br' ? (!brSel && brView === 'screener')
+    : coRegion === 'za' ? (!zaSel && zaView === 'screener')
     : (coCik ? true : usView === 'screener');
   tools.classList.toggle('hidden', !wanted);
   // On a phone, a company page should start at the top: the filter bar is for lists.
-  const detail = coRegion === 'jp' ? !!jpSel : coRegion === 'kr' ? !!krSel : coRegion === 'tw' ? !!twSel : coRegion === 'hk' ? !!hkSel : coRegion === 'au' ? !!auSel : coRegion === 'in' ? !!inSel : coRegion === 'id' ? !!idSel : coRegion === 'br' ? !!brSel : !!coCik;
+  const detail = coRegion === 'jp' ? !!jpSel : coRegion === 'kr' ? !!krSel : coRegion === 'tw' ? !!twSel : coRegion === 'hk' ? !!hkSel : coRegion === 'au' ? !!auSel : coRegion === 'in' ? !!inSel : coRegion === 'id' ? !!idSel : coRegion === 'br' ? !!brSel : coRegion === 'za' ? !!zaSel : !!coCik;
   tools.dataset.detail = detail ? '1' : '';
 }
 
@@ -5304,10 +5330,12 @@ const currentCmpRef = () => (coRegion === 'jp'
               ? (idSel ? `id:${idSel}` : '')
               : coRegion === 'br'
                 ? (brSel ? `br:${brSel}` : '')
-                : (coTicker ? `us:${coTicker}` : ''));
+                : coRegion === 'za'
+                  ? (zaSel ? `za:${zaSel}` : '')
+                  : (coTicker ? `us:${coTicker}` : ''));
 
 function syncCmpClear(region) {
-  const on = region === 'jp' ? !!jpCompare : region === 'kr' ? !!krCompare : region === 'tw' ? !!twCompare : region === 'hk' ? !!hkCompare : region === 'au' ? !!auCompare : region === 'in' ? !!inCompare : region === 'id' ? !!idCompare : region === 'br' ? !!brCompare : !!coCompare;
+  const on = region === 'jp' ? !!jpCompare : region === 'kr' ? !!krCompare : region === 'tw' ? !!twCompare : region === 'hk' ? !!hkCompare : region === 'au' ? !!auCompare : region === 'in' ? !!inCompare : region === 'id' ? !!idCompare : region === 'br' ? !!brCompare : region === 'za' ? !!zaCompare : !!coCompare;
   const b = $(region + '-cmp-clear');
   if (b) b.classList.toggle('hidden', !on);
 }
@@ -5356,6 +5384,12 @@ function clearCompare(region = coRegion) {
     hideSuggestions('br-sugg'); syncCmpClear('br');
     const cur = (brData && brData.companies || []).find((x) => x.code === brSel);
     if (cur) drawBrChart(cur, brRange);
+  } else if (region === 'za') {
+    zaCompare = '';
+    const inp = $('za-cmp'); if (inp) inp.value = '';
+    hideSuggestions('za-sugg'); syncCmpClear('za');
+    const cur = (zaData && zaData.companies || []).find((x) => x.code === zaSel);
+    if (cur) drawZaChart(cur, zaRange);
   } else if (region === 'id') {
     idCompare = '';
     const inp = $('id-cmp'); if (inp) inp.value = '';
@@ -5419,6 +5453,12 @@ function setCompare(ref) {
     hideSuggestions('br-sugg'); syncCmpClear('br');
     const cur = (brData && brData.companies || []).find((x) => x.code === brSel);
     if (cur) drawBrChart(cur, brRange);
+  } else if (coRegion === 'za') {
+    zaCompare = clean;
+    const inp = $('za-cmp'); if (inp) inp.value = label;
+    hideSuggestions('za-sugg'); syncCmpClear('za');
+    const cur = (zaData && zaData.companies || []).find((x) => x.code === zaSel);
+    if (cur) drawZaChart(cur, zaRange);
   } else if (coRegion === 'id') {
     idCompare = clean;
     const inp = $('id-cmp'); if (inp) inp.value = label;
@@ -5474,6 +5514,7 @@ async function seriesFor(ref, range) {
   if (mkt === 'in') return await jget(`/api/india/chart?code=${encodeURIComponent(code)}&range=${encodeURIComponent(range)}`, 600000);
   if (mkt === 'id') return await jget(`/api/indonesia/chart?code=${encodeURIComponent(code)}&range=${encodeURIComponent(range)}`, 600000);
   if (mkt === 'br') return await jget(`/api/brazil/chart?code=${encodeURIComponent(code)}&range=${encodeURIComponent(range)}`, 600000);
+  if (mkt === 'za') return await jget(`/api/southafrica/chart?code=${encodeURIComponent(code)}&range=${encodeURIComponent(range)}`, 600000);
   return await jget(`/api/company-chart?ticker=${encodeURIComponent(code)}&range=${encodeURIComponent(yRange)}`, 600000);
 }
 
@@ -6813,7 +6854,7 @@ async function renderAustraliaPage(stub) {
         <table class="jp-q-table"><thead><tr><th>FISCAL YEAR</th><th>REVENUE</th>${bank ? '' : '<th>OP PROFIT</th>'}<th>NET PROFIT</th><th>ROE</th></tr></thead><tbody>
         ${[...h].reverse().map((x) => `<tr><td>${esc(x.y)}</td><td>${cur(x.s)}</td>${bank ? '' : `<td>${cur(x.o)}</td>`}<td>${cur(x.n)}</td><td>${x.n != null && (x.ec ?? x.q) ? `${((x.n / (x.ec ?? x.q)) * 100).toFixed(1)}%` : '—'}</td></tr>`).join('')}
         </tbody></table></div>` : '')
-    + (q.length > 1 ? `<div class="jp-q"><div class="jp-q-head"><span class="ph-t">${c.periodBasis === 'quarter' ? 'REPORTED PERIODS' : 'TRAILING 12 MONTHS'}</span><span class="dimtext">${q.length} ${c.periodBasis === 'quarter' ? 'periods' : 'period ends'} · ${ccy} millions</span></div>
+    + (q.length > 1 ? `<div class="jp-q"><div class="jp-q-head"><span class="ph-t">${c.periodBasis === 'quarter' ? 'REPORTED QUARTERS' : c.periodBasis === 'half' ? 'REPORTED HALF-YEARS' : 'TRAILING 12 MONTHS'}</span><span class="dimtext">${q.length} ${c.periodBasis === 'quarter' ? 'quarters' : c.periodBasis === 'half' ? 'half-years' : 'period ends'} · ${ccy} millions</span></div>
         <div class="jp-q-scroll"><table class="jp-q-table"><thead><tr><th>PERIOD</th><th>REVENUE</th>${bank ? '<th>NET PROFIT</th><th>NET MARGIN</th>' : '<th>OP PROFIT</th><th>MARGIN</th><th>NET PROFIT</th>'}</tr></thead><tbody>
         ${[...q].reverse().map((x) => `<tr><td>${esc(x.d)}</td><td>${cur(x.revenue)}</td>${bank
           ? `<td>${cur(x.netIncome)}</td><td>${x.revenue && x.netIncome != null ? `${((x.netIncome / x.revenue) * 100).toFixed(1)}%` : '—'}</td>`
@@ -7171,7 +7212,7 @@ async function renderIndiaPage(stub) {
         <table class="jp-q-table"><thead><tr><th>FISCAL YEAR</th><th>REVENUE</th>${bank ? '' : '<th>OP PROFIT</th>'}<th>NET PROFIT</th><th>ROE</th></tr></thead><tbody>
         ${[...h].reverse().map((x) => `<tr><td>${esc(x.y)}</td><td>${cur(x.s)}</td>${bank ? '' : `<td>${cur(x.o)}</td>`}<td>${cur(x.n)}</td><td>${x.n != null && (x.ec ?? x.q) ? `${((x.n / (x.ec ?? x.q)) * 100).toFixed(1)}%` : '—'}</td></tr>`).join('')}
         </tbody></table></div>` : '')
-    + (q.length > 1 ? `<div class="jp-q"><div class="jp-q-head"><span class="ph-t">${c.periodBasis === 'quarter' ? 'REPORTED PERIODS' : 'TRAILING 12 MONTHS'}</span><span class="dimtext">${q.length} ${c.periodBasis === 'quarter' ? 'periods' : 'period ends'} · ${ccy} millions</span></div>
+    + (q.length > 1 ? `<div class="jp-q"><div class="jp-q-head"><span class="ph-t">${c.periodBasis === 'quarter' ? 'REPORTED QUARTERS' : c.periodBasis === 'half' ? 'REPORTED HALF-YEARS' : 'TRAILING 12 MONTHS'}</span><span class="dimtext">${q.length} ${c.periodBasis === 'quarter' ? 'quarters' : c.periodBasis === 'half' ? 'half-years' : 'period ends'} · ${ccy} millions</span></div>
         <div class="jp-q-scroll"><table class="jp-q-table"><thead><tr><th>PERIOD</th><th>REVENUE</th>${bank ? '<th>NET PROFIT</th><th>NET MARGIN</th>' : '<th>OP PROFIT</th><th>MARGIN</th><th>NET PROFIT</th>'}</tr></thead><tbody>
         ${[...q].reverse().map((x) => `<tr><td>${esc(x.d)}</td><td>${cur(x.revenue)}</td>${bank
           ? `<td>${cur(x.netIncome)}</td><td>${x.revenue && x.netIncome != null ? `${((x.netIncome / x.revenue) * 100).toFixed(1)}%` : '—'}</td>`
@@ -7578,7 +7619,7 @@ async function renderIndonesiaPage(stub) {
         <table class="jp-q-table"><thead><tr><th>FISCAL YEAR</th><th>REVENUE</th>${bank ? '' : '<th>OP PROFIT</th>'}<th>NET PROFIT</th><th>ROE</th></tr></thead><tbody>
         ${[...h].reverse().map((x) => `<tr><td>${esc(x.y)}</td><td>${cur(x.s)}</td>${bank ? '' : `<td>${cur(x.o)}</td>`}<td>${cur(x.n)}</td><td>${x.n != null && (x.ec ?? x.q) ? `${((x.n / (x.ec ?? x.q)) * 100).toFixed(1)}%` : '—'}</td></tr>`).join('')}
         </tbody></table></div>` : '')
-    + (q.length > 1 ? `<div class="jp-q"><div class="jp-q-head"><span class="ph-t">${c.periodBasis === 'quarter' ? 'REPORTED PERIODS' : 'TRAILING 12 MONTHS'}</span><span class="dimtext">${q.length} ${c.periodBasis === 'quarter' ? 'periods' : 'period ends'} · ${ccy} millions</span></div>
+    + (q.length > 1 ? `<div class="jp-q"><div class="jp-q-head"><span class="ph-t">${c.periodBasis === 'quarter' ? 'REPORTED QUARTERS' : c.periodBasis === 'half' ? 'REPORTED HALF-YEARS' : 'TRAILING 12 MONTHS'}</span><span class="dimtext">${q.length} ${c.periodBasis === 'quarter' ? 'quarters' : c.periodBasis === 'half' ? 'half-years' : 'period ends'} · ${ccy} millions</span></div>
         <div class="jp-q-scroll"><table class="jp-q-table"><thead><tr><th>PERIOD</th><th>REVENUE</th>${bank ? '<th>NET PROFIT</th><th>NET MARGIN</th>' : '<th>OP PROFIT</th><th>MARGIN</th><th>NET PROFIT</th>'}</tr></thead><tbody>
         ${[...q].reverse().map((x) => `<tr><td>${esc(x.d)}</td><td>${cur(x.revenue)}</td>${bank
           ? `<td>${cur(x.netIncome)}</td><td>${x.revenue && x.netIncome != null ? `${((x.netIncome / x.revenue) * 100).toFixed(1)}%` : '—'}</td>`
@@ -7705,7 +7746,7 @@ async function loadBrazil() {
   if (brData) return brData;
   if (brazilPromise) return brazilPromise;
   brazilPromise = (async () => {
-    try { brData = await jget('/api/brazil', 3600000); }
+    try { brData = await jget('/api/southafrica', 3600000); }
     catch { brData = null; }
     finally { brazilPromise = null; }
     return brData;
@@ -8040,7 +8081,7 @@ async function renderBrazilPage(stub) {
         : 'A financial company\u2019s investing cash flow is its loan book or its investment portfolio, not free cash flow.'} Margins, returns and the balance sheet still apply; the FCF ratios and the operating-cash-flow line are omitted rather than shown as a number that is not one.</div>` : '')
     + `<div class="co-ranges">
         <span class="co-cmp-l">COMPARE</span><input class="co-cmp" id="br-cmp" placeholder="company name, e.g. bank central asia" value="${esc(cmpCode(brCompare))}" autocomplete="off">
-        <button class="co-cmp-clear${brCompare ? '' : ' hidden'}" id="br-cmp-clear" data-cmpclear="id" type="button" title="Clear comparison" aria-label="Clear comparison">×</button>
+        <button class="co-cmp-clear${brCompare ? '' : ' hidden'}" id="br-cmp-clear" data-cmpclear="br" type="button" title="Clear comparison" aria-label="Clear comparison">×</button>
         <div class="co-sugg" id="br-sugg"></div>
         ${[['1m', '1M'], ['3m', '3M'], ['6m', '6M'], ['ytd', 'YTD'], ['1y', '1Y'], ['5y', '5Y']].map(([k, t]) => `<button class="ma-chip${brRange === k ? ' on' : ''}" data-brrange="${k}">${t}</button>`).join('')}
       </div>`
@@ -8051,7 +8092,7 @@ async function renderBrazilPage(stub) {
         <table class="jp-q-table"><thead><tr><th>FISCAL YEAR</th><th>REVENUE</th>${bank ? '' : '<th>OP PROFIT</th>'}<th>NET PROFIT</th><th>ROE</th></tr></thead><tbody>
         ${[...h].reverse().map((x) => `<tr><td>${esc(x.y)}</td><td>${cur(x.s)}</td>${bank ? '' : `<td>${cur(x.o)}</td>`}<td>${cur(x.n)}</td><td>${x.n != null && (x.ec ?? x.q) ? `${((x.n / (x.ec ?? x.q)) * 100).toFixed(1)}%` : '—'}</td></tr>`).join('')}
         </tbody></table></div>` : '')
-    + (q.length > 1 ? `<div class="jp-q"><div class="jp-q-head"><span class="ph-t">${c.periodBasis === 'quarter' ? 'REPORTED PERIODS' : 'TRAILING 12 MONTHS'}</span><span class="dimtext">${q.length} ${c.periodBasis === 'quarter' ? 'periods' : 'period ends'} · ${ccy} millions</span></div>
+    + (q.length > 1 ? `<div class="jp-q"><div class="jp-q-head"><span class="ph-t">${c.periodBasis === 'quarter' ? 'REPORTED QUARTERS' : c.periodBasis === 'half' ? 'REPORTED HALF-YEARS' : 'TRAILING 12 MONTHS'}</span><span class="dimtext">${q.length} ${c.periodBasis === 'quarter' ? 'quarters' : c.periodBasis === 'half' ? 'half-years' : 'period ends'} · ${ccy} millions</span></div>
         <div class="jp-q-scroll"><table class="jp-q-table"><thead><tr><th>PERIOD</th><th>REVENUE</th>${bank ? '<th>NET PROFIT</th><th>NET MARGIN</th>' : '<th>OP PROFIT</th><th>MARGIN</th><th>NET PROFIT</th>'}</tr></thead><tbody>
         ${[...q].reverse().map((x) => `<tr><td>${esc(x.d)}</td><td>${cur(x.revenue)}</td>${bank
           ? `<td>${cur(x.netIncome)}</td><td>${x.revenue && x.netIncome != null ? `${((x.netIncome / x.revenue) * 100).toFixed(1)}%` : '—'}</td>`
@@ -8111,10 +8152,10 @@ function renderBrazilScreen(el) {
   }
   const all = brData.companies || [];
   const sectors = [...new Set(all.map((c) => c.sector).filter(Boolean))].sort();
-  const q = coScreenBr.q.trim().toLowerCase();
-  const { sort, dir } = coScreenBr;
+  const q = coScreenZa.q.trim().toLowerCase();
+  const { sort, dir } = coScreenZa;
   const keyOf = (c) => (sort === 'label' ? (c.nameEn || c.name || '') : c[sort]);
-  let rows = all.filter((c) => (coScreenBr.sector === 'all' || c.sector === coScreenBr.sector)
+  let rows = all.filter((c) => (coScreenZa.sector === 'all' || c.sector === coScreenZa.sector)
     && (!q || `${c.name} ${c.nameEn || ''} ${c.ticker} ${c.sector || ''} ${(c.brands || []).join(' ')}`.toLowerCase().includes(q)));
   rows = [...rows].sort((a, b) => {
     const x = keyOf(a), y = keyOf(b);
@@ -8144,6 +8185,483 @@ function renderBrazilScreen(el) {
     ${pagerHtml(rows.length, page, per, 'brpage')}
     <div class="sc-note dimtext">B3-listed · ${brData.market?.companies ?? '—'} domestic + ${brData.market?.bdrs ?? 0} BDRs · statements from stockanalysis.com · ${asOfText(all, 'priceDate') || 'Yahoo prices'} · returns in BRL · BDR rows use the global company cap and the BDR line price · P/E is trailing twelve months where the vendor serves a trailing view, otherwise the last fiscal year, in the issuer's report currency.</div>`;
 }
+
+
+
+
+// --- South Africa: JSE-listed companies -------------------------------------------------------------
+// Same three views and company page as the other markets. The universe comes from the vendor's JSE
+// exchange list (the exchange's own site blocks the deploy network at the edge), statements, English
+// names, GICS sectors and profiles from stockanalysis.com's JSE pages, the JSE All Share and five years
+// of closes from Yahoo. Prices are rand; a handful of issuers report in another currency, so the page says
+// which currency the ratios were computed in. Six lines are foreign-domiciled secondary listings: their
+// statements come from the primary exchange, the price is the JSE line and the cap is the global total.
+let zaData = null, zaSel = null, zaQuery = '', zaCompare = '';
+let zaRange = (() => { try { return localStorage.getItem('oilbasis.zaRange') || '1y'; } catch { return '1y'; } })();
+let zaMktRange = (() => { try { return localStorage.getItem('oilbasis.zaMktRange') || '1y'; } catch { return '1y'; } })();
+let zaView = (() => { try { return localStorage.getItem('oilbasis.zaView') || 'market'; } catch { return 'market'; } })();
+let zaTheme = (() => { try { return localStorage.getItem('oilbasis.zaTheme') || 'banks'; } catch { return 'banks'; } })();
+let zaSector = 'all', zaSort = 'cap', zaPreset = null, zaFilter = {}, zaOpenSel = null;
+let zaPage = 1, zaPer = 50;
+let southafricaPromise = null;
+
+const zaName = (c) => (c && (c.nameEn || c.name)) || '';
+const zaMoney = (v) => {
+  if (v == null || !Number.isFinite(v)) return '—';
+  const a = Math.abs(v);
+  if (a >= 1e12) return `R ${(v / 1e12).toFixed(2)}T`;
+  if (a >= 1e9) return `R ${(v / 1e9).toFixed(1)}B`;
+  if (a >= 1e6) return `R ${(v / 1e6).toFixed(0)}M`;
+  return `R ${Math.round(v).toLocaleString('en-US')}`;
+};
+const zaPx = (v) => (v == null || !Number.isFinite(v) ? '—' : `R ${Number(v).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`);
+const zaMono = (c) => coMono({ ticker: String(c.nameEn || c.name || '?').replace(/[^A-Za-z]/g, '').slice(0, 2) || 'ID', name: c.nameEn || c.name });
+const zaViewsBar = () => '';
+
+async function loadSouthAfrica() {
+  if (zaData) return zaData;
+  if (southafricaPromise) return southafricaPromise;
+  southafricaPromise = (async () => {
+    try { zaData = await jget('/api/southafrica', 3600000); }
+    catch { zaData = null; }
+    finally { southafricaPromise = null; }
+    return zaData;
+  })();
+  return southafricaPromise;
+}
+
+async function renderSouthAfrica(token = takeToken()) {
+  paintCoViews();
+  const el = $('co-body'); if (!el) return;
+  if (zaSel !== zaOpenSel) { zaCompare = ''; zaOpenSel = zaSel; }
+  syncMarketAccent();
+  const noteUs = $('co-note'); if (noteUs) noteUs.classList.add('hidden');
+  syncCoTools();
+  if (!zaData) el.innerHTML = stLoading('Loading the JSE All Share…');
+  const d = await loadSouthAfrica();
+  if (stale(token)) return;
+  syncMarketAccent();
+  const all = (d && d.companies) || [];
+  const sub = $('deals-sub');
+  if (sub) {
+    const what = zaView === 'screener' ? 'filter and sort' : zaView === 'themes' ? 'curated theme lists' : 'breadth, sectors and the JSE All Share';
+    sub.textContent = all.length ? `${d.market?.primary ?? all.length} JSE-primary + ${d.market?.secondary ?? 0} foreign-secondary · JSE · prices in ZAR · ${what}` : 'JSE · JSE All Share';
+  }
+  if (!all.length) {
+    el.innerHTML = `<div class="macro-note">South Africa is not built yet. Run <code>node scripts/build-southafrica.mjs</code>.</div>`;
+    return;
+  }
+  const sel = all.find((c) => c.code === zaSel);
+  if (sel) return renderSouthAfricaPage(sel);
+  warmMarkets();
+  if (zaView === 'market') return renderSouthAfricaMarket(all, d);
+  if (zaView === 'themes') return renderSouthAfricaThemes(all, d);
+  return renderSouthAfricaScreener(all, d);
+}
+
+function zaIndexSeries() {
+  const s = zaData && zaData.index && zaData.index.series;
+  return s && s.length > 1 ? { dates: s.map((p) => p.d), closes: s.map((p) => p.c) } : null;
+}
+function redrawSouthAfricaIndex(range = zaMktRange) {
+  const full = zaIndexSeries();
+  if (!full) return false;
+  zaMktRange = drawMarketIndexChart('za-mkt', full, range, 'zamkt', 'JSE All Share');
+  return true;
+}
+
+function zaSecondaryPanel(all, m) {
+  // The six foreign-domiciled lines are part of the JSE market, not a separate rail. The panel names
+  // where each company's statements come from, because the JSE page carries only the price.
+  const sec = all.filter((c) => c.foreignSecondary);
+  if (!sec.length) return '';
+  const row = (c) => `<button class="bdr-row" data-za="${esc(c.code)}" title="${esc(c.secondaryExchange || 'primary exchange')} · ${esc(c.secondarySource || '')}">
+      <span class="bdr-code">${esc(c.code)}</span>
+      <span class="bdr-name"><b>${esc(zaName(c))}</b><i>${esc(c.secondaryExchange || '')}${c.secondaryTicker ? ` · ${esc(c.secondaryTicker)}` : ''}</i></span>
+      <span class="bdr-cap">${zaMoney(c.marketCap)}</span>
+      <span class="bdr-pe">${c.pe != null ? c.pe.toFixed(1) + '×' : '—'}</span>
+      <span class="bdr-y ${(c.chgYtd || 0) >= 0 ? 'pos' : 'neg'}">${c.chgYtd != null ? `${c.chgYtd >= 0 ? '+' : ''}${c.chgYtd.toFixed(1)}%` : '—'}</span>
+      <span class="bdr-px">${zaPx(c.price)}</span>
+    </button>`;
+  return `<div class="bdr-panel">
+    <div class="bdr-head"><span class="ph-t">FOREIGN-SECONDARY LISTINGS</span><span class="dimtext">${sec.length} · included in the ${m.listed ?? all.length} JSE lines · global company caps</span></div>
+    <p class="bdr-lede">JSE lines of foreign-domiciled issuers. The JSE quote page carries the price but no statements, so the statements, sector and ratios come from the primary listing named under each company. The cap is the global company total in rand; the price is the JSE line. These lines are inside the market totals, not a separate rail.</p>
+    <div class="bdr-sub">JSE SECONDARY · ${sec.length}</div>
+    <div class="bdr-grid">${sec.map(row).join('')}</div>
+  </div>`;
+}
+
+function renderSouthAfricaMarket(all, d) {
+  const el = $('co-body'); if (!el) return;
+  const m = d.market || {}; const idx = d.index || {};
+  const cell = (k, v, t, cls = '') => `<div class="co-stat" title="${esc(t)}"><span class="co-k">${k}</span><span class="co-v ${cls}">${v}</span></div>`;
+  const chg = (x) => (x == null ? '—' : `${x >= 0 ? '+' : ''}${x.toFixed(1)}%`);
+  const breadth = m.advancing != null ? `<div class="jp-breadth"><span class="pos">${m.advancing} up</span><i><i style="width:${Math.round((m.advancing / Math.max(1, m.advancing + m.declining)) * 100)}%"></i></i><span class="neg">${m.declining} down</span></div>` : '';
+  const foreign = m.foreignReporters != null ? `${m.foreignReporters} report outside ZAR` : 'ZAR reporters';
+  el.innerHTML = zaViewsBar()
+    + `<div class="jp-market-head"><span class="ph-t">JSE ALL SHARE</span>
+        ${idx.level != null ? `<span class="jp-market-lvl">${idx.level.toLocaleString('en-US', { maximumFractionDigits: 2 })}</span>` : '<span class="dimtext">index unavailable</span>'}
+        <span class="${(idx.chg1d || 0) >= 0 ? 'pos' : 'neg'}">${chg(idx.chg1d)} today</span>
+        <span class="dimtext">${m.primary ?? all.length} JSE-primary · ${m.secondary ?? 0} foreign-secondary · prices as of ${sessionOf(all, 'priceDate') || d.session}${idx.date ? ` · index as of ${idx.date}` : ''}</span></div>`
+    + `<div class="co-stats co-stats-12">
+        ${cell('TOTAL MARKET CAP', zaMoney(m.totalCap), 'Sum of all JSE lines, including the six foreign-secondary listings at their global company caps')}
+        ${cell('COMPANIES', String(m.listed || all.length), `${m.primary ?? '—'} JSE-primary + ${m.secondary ?? 0} foreign-secondary`)}
+        ${cell('MEDIAN P/E', m.medianPe != null ? `${m.medianPe.toFixed(1)}×` : '—', `Median — the typical company, not the index. ${foreign}`)}
+        ${cell('MEDIAN P/B', m.medianPb != null ? `${m.medianPb.toFixed(2)}×` : '—', 'Median across the market — market cap ÷ common equity (excludes minorities)')}
+        ${cell('MEDIAN ROE', m.medianRoe != null ? `${m.medianRoe.toFixed(1)}%` : '—', 'Median member — trailing profit ÷ common equity (excludes minorities), TTM where available')}
+        ${cell('MEDIAN YIELD', m.medianYield != null ? `${m.medianYield.toFixed(2)}%` : '—', 'Median member — latest annual DPS ÷ price')}
+        ${cell('BELOW BOOK', String(m.belowBook ?? '—'), 'Companies trading under 1× book')}
+        ${cell('UP THIS YEAR', String(m.upYtd ?? '—'), 'Companies with a positive year-to-date return')}
+      </div>`
+    + breadth
+    + (() => {
+        const nt = all.filter((c) => c.noRecentTrading);
+        if (!nt.length) return '';
+        return `<div class="quality-warn" title="No recent trading">⚠ <b>${nt.length} companies have no recent trading</b> — the close is unchanged for at least 90% of the last 250 sessions, so 1D / 6M / YTD returns are withheld: ${nt.map((c) => `<b>${esc(c.code)}</b>`).join(' · ')}. Their P/E still uses the last traded close.</div>`;
+      })()
+    + (idx.series && idx.series.length > 1 ? `<div class="co-rets" id="za-mkt-rets"></div><div class="co-chartwrap"><canvas id="za-mkt-chart"></canvas></div>` : '')
+    + `<div class="co-hrow jp-mkt-hrow"><span>SECTOR</span><span>N</span><span>CAP</span><span>P/E</span><span>P/B</span><span>ROE</span><span>YIELD</span><span>YTD</span></div>`
+    + (m.sectors || []).map((x) => `<div class="jp-mkt-row">
+        <span>${esc(x.name)}</span><span>${x.count}</span><span>${zaMoney(x.cap)}</span>
+        <span>${x.pe != null ? x.pe.toFixed(1) : '—'}</span>
+        <span class="${x.pb != null && x.pb < 1 ? 'pos' : ''}">${x.pb != null ? x.pb.toFixed(2) : '—'}</span>
+        <span class="${(x.roe || 0) >= 0 ? 'pos' : 'neg'}">${x.roe != null ? x.roe.toFixed(1) + '%' : '—'}</span>
+        <span>${x.yield != null ? x.yield.toFixed(2) + '%' : '—'}</span>
+        <span class="${(x.chgYtd || 0) >= 0 ? 'pos' : 'neg'}">${chg(x.chgYtd)}</span>
+      </div>`).join('')
+    + zaSecondaryPanel(all, m)
+    + `<div class="macro-note">Aggregates computed from all ${m.listed} JSE lines: ${m.primary} JSE-primary companies plus ${m.secondary} foreign-domiciled secondary listings whose statements come from the primary exchange. Market cap is the company total from the vendor in rand; the price is the JSE line. Companies whose latest statement is older than 450 days are excluded and named in the audit below. Sectors are the GICS sectors from the vendor profile. Statements are in the issuer's report currency; ratios are computed in that currency at the build's USD/ZAR rate. JSE publishes no per-stock P/E here, so the audit reports coverage plus a same-source sample.`
+    + zaUniverseNote(d);
+  if (idx.series && idx.series.length > 1) redrawSouthAfricaIndex();
+}
+
+// Why the published market is smaller than the exchange list. Every exclusion is named, and the six
+// foreign-secondary lines are listed separately so "included" never reads as an automatic screen.
+function zaUniverseNote(d) {
+  const a = (d && d.audit) || {};
+  const stale = Array.isArray(a.staleCodes) ? a.staleCodes : [];
+  const noCap = Array.isArray(a.noCap) ? a.noCap : [];
+  const noStmt = Array.isArray(a.noStatements) ? a.noStatements : [];
+  const excluded = Array.isArray(a.excluded) ? a.excluded : [];
+  const sec = Array.isArray(a.secondary) ? a.secondary : [];
+  const list = (xs, fn) => xs.map(fn).join(' · ') || 'none';
+  const staleList = list(stale, (x) => `<b>${esc(x.code)}</b> (${esc(x.end || '—')})`);
+  const noCapList = list(noCap, (x) => `<b>${esc(x.code)}</b>`);
+  const noStmtList = list(noStmt, (x) => `<b>${esc(x.code)}</b>`);
+  const excludedList = list(excluded, (x) => `<b>${esc(x.code)}</b> — ${esc(x.reason || 'excluded')}`);
+  return `<div class="prune-note">
+    <div class="prune-head">WHAT'S EXCLUDED — ${a.excludedCount ?? excluded.length} named exclusions · ${stale.length} stale · ${noCap.length} no cap · ${noStmt.length} no statement · ${sec.length} foreign-secondary included</div>
+    <p><b>Universe.</b> The vendor list carries ${a.quoted ?? '—'} JSE lines. ${a.excludedCount ?? excluded.length} are excluded by decision: ${excludedList}.</p>
+    <p><b>Foreign-secondary (${sec.length}).</b> ${list(sec, (x) => `<b>${esc(x.code)}</b> (${esc(x.exchange || '')})`)}. These are JSE lines of foreign-domiciled issuers; the statements come from the primary listing, the price is the JSE line and the cap is the global company total. They are included in the market totals.</p>
+    <p><b>Stale (${stale.length}).</b> No statement for more than 450 days: ${staleList}.</p>
+    <p><b>No market cap (${noCap.length}).</b> ${noCapList}. Without a vendor cap or a share count there is no cap, so the name is recorded rather than estimated.</p>
+    <p><b>No statement page (${noStmt.length}).</b> ${noStmtList}. The vendor serves no financials for these lines.</p>
+  </div>`;
+}
+
+// Trading-quality banners on the company page. A frozen price, a short series, a stale TTM or thin
+// turnover all make a return or a ratio look odd; explain it instead of hiding the row.
+function zaQualityBanners(c) {
+  const out = [];
+  if (c.noRecentTrading) out.push(`<div class="quality-banner bad">⚠ <b>NO RECENT TRADING</b> — the last close is unchanged for ${c.flatPct ?? '—'}% of the last 250 sessions; 1D / 6M / YTD returns are withheld. The price and P/E use the last traded close${c.priceDate ? ` (${esc(c.priceDate)})` : ''}.</div>`);
+  if (c.shortHistory) out.push(`<div class="quality-banner warn">⚠ <b>SHORT HISTORY</b> — this line has fewer than 100 traded sessions in the archive, so long-range returns are not comparable.</div>`);
+  if (c.ttmStale) out.push(`<div class="quality-banner warn">⚠ <b>STALE TTM</b> — the last statement is ${c.ttmAgeDays ?? '—'} days old${c.netIncomeTTMAsOf ? ` (${esc(c.netIncomeTTMAsOf)})` : ''}; the P/E is not current.</div>`);
+  if (c.thinTrading) out.push(`<div class="quality-banner info">⚠ <b>THIN TRADING</b> — average traded value is about R ${(c.avgValue30 / 1e6).toFixed(0)}M/day over the last 30 sessions.</div>`);
+  return out.join('');
+}
+
+function renderSouthAfricaThemes(all, d) {
+  const el = $('co-body'); if (!el) return;
+  const themes = (d && d.themes) || [];
+  if (!themes.length) { el.innerHTML = zaViewsBar() + '<div class="macro-note">No themes loaded.</div>'; return; }
+  const active = themes.find((t) => t.id === zaTheme) || themes[0];
+  const set = new Set(active.tickers || []);
+  const rows = all.filter((c) => set.has(c.ticker)).sort((a, b) => (b.marketCap || 0) - (a.marketCap || 0));
+  const chg = (x) => (x == null ? '—' : `${x >= 0 ? '+' : ''}${x.toFixed(1)}%`);
+  el.innerHTML = zaViewsBar()
+    + `<div class="jp-presets">${themes.map((t) => `<button type="button" data-zatheme="${t.id}" class="${t.id === active.id ? 'on' : ''}">${t.label}</button>`).join('')}</div>`
+    + `<div class="jp-market-head"><span class="ph-t">${esc(active.label)}</span><span class="dimtext">${rows.length} companies · curated list</span></div>`
+    + `<div class="co-hrow jp-bank-hrow"><span>#</span><span>COMPANY</span><span>CAP</span><span>P/E</span><span>P/B</span><span>ROE</span><span>YIELD</span><span>YTD</span></div>`
+    + rows.map((c, i) => `<button class="jp-bank-row" data-za="${esc(c.code)}">
+        <span>${i + 1}</span>
+        <span><b>${esc(zaName(c))}${c.foreignSecondary ? '<span class="bdr-tag">JSE 2ND</span>' : ''}</b><span class="co-tick">${esc(c.ticker)}</span></span>
+        <span>${zaMoney(c.marketCap)}</span>
+        <span>${c.pe != null ? c.pe.toFixed(1) : '—'}</span>
+        <span class="${c.pb != null && c.pb < 1 ? 'pos' : ''}">${c.pb != null ? c.pb.toFixed(2) : '—'}</span>
+        <span class="${(c.roe || 0) >= 0 ? 'pos' : 'neg'}">${c.roe != null ? c.roe.toFixed(1) + '%' : '—'}</span>
+        <span>${c.dividendYield != null ? c.dividendYield.toFixed(2) + '%' : '—'}</span>
+        <span class="${(c.chgYtd || 0) >= 0 ? 'pos' : 'neg'}">${chg(c.chgYtd)}</span>
+      </button>`).join('')
+    + `<div class="macro-note">${esc(active.note || '')}</div>`;
+}
+
+const ZA_PRESETS = [
+  { id: 'book', label: 'BELOW BOOK', test: (c) => c.pb != null && c.pb < 1 },
+  { id: 'roe', label: 'HIGH ROE', test: (c) => (c.roe || 0) > 12 },
+  { id: 'cheap', label: 'CHEAP VS ITSELF', test: (c) => c.bands && c.bands.pe && c.bands.pe.percentile <= 20 },
+  { id: 'yield', label: 'HIGH YIELD', test: (c) => (c.dividendYield || 0) >= 4 },
+  { id: 'notrade', label: 'NO RECENT TRADING', test: (c) => !!c.noRecentTrading },
+  { id: 'thin', label: 'THIN TRADING', test: (c) => !!c.thinTrading },
+];
+
+function renderSouthAfricaScreener(all, d) {
+  const el = $('co-body'); if (!el) return;
+  const q = zaQuery.trim().toLowerCase();
+  const sectors = [...new Set(all.map((c) => c.sector).filter(Boolean))].sort();
+  const preset = ZA_PRESETS.find((p) => p.id === zaPreset);
+  const f = zaFilter;
+  const typ = f.type || 'all';
+  const rows = all.filter((c) => (!q || `${c.name} ${c.nameEn || ''} ${c.ticker} ${(c.brands || []).join(' ')}`.toLowerCase().includes(q))
+    && (typ === 'all' || (typ === 'secondary' ? !!c.foreignSecondary : !c.foreignSecondary))
+    && (zaSector === 'all' || c.sector === zaSector)
+    && (!f.pe || (c.pe != null && (f.pe === 'lt10' ? c.pe < 10 : f.pe === '10to15' ? c.pe >= 10 && c.pe < 15 : f.pe === '15to25' ? c.pe >= 15 && c.pe < 25 : c.pe >= 25)))
+    && (!f.roe || (c.roe != null && c.roe >= Number(f.roe)))
+    && (!f.yield || (c.dividendYield != null && c.dividendYield >= Number(f.yield)))
+    && (!preset || preset.test(c)));
+  const sortOf = { cap: (c) => c.marketCap, pe: (c) => c.pe, pb: (c) => c.pb, roe: (c) => c.roe, yield: (c) => c.dividendYield, ytd: (c) => c.chgYtd };
+  const dir = zaSort === 'pe' || zaSort === 'pb' ? 1 : -1;
+  const kf = sortOf[zaSort] || sortOf.cap;
+  const sorted = [...rows].sort((a, b) => {
+    const x = kf(a), y = kf(b);
+    if (x == null && y == null) return 0;
+    if (x == null) return 1;
+    if (y == null) return -1;
+    return (x - y) * dir;
+  });
+  const inChips = $('co-chips');
+  if (inChips) {
+    const nAu = Object.values(f).filter((v) => v != null && v !== '').length + (zaSector !== 'all' ? 1 : 0) + (q ? 1 : 0);
+    inChips.innerHTML = coFilterBar({
+      presets: ZA_PRESETS, preset: zaPreset, presetAttr: 'data-zapreset',
+      selects: [
+        { key: 'type', label: 'TYPE', opts: [['all', 'All'], ['primary', 'JSE-primary'], ['secondary', 'Foreign-secondary']], cur: f.type || 'all', attr: 'data-zaf' },
+        { key: 'sector', label: 'SECTOR', opts: [['all', 'All'], ...sectors.map((x) => [x, x.toUpperCase()])], cur: zaSector, attr: 'data-zaf' },
+        { key: 'pe', label: 'P/E', opts: [['', 'Any'], ['lt10', '<10'], ['10to15', '10–15'], ['15to25', '15–25'], ['gt25', '>25']], cur: f.pe, attr: 'data-zaf' },
+        { key: 'roe', label: 'ROE', opts: [['', 'Any'], ['10', '>10%'], ['15', '>15%']], cur: f.roe, attr: 'data-zaf' },
+        { key: 'yield', label: 'YIELD', opts: [['', 'Any'], ['3', '>3%'], ['5', '>5%']], cur: f.yield, attr: 'data-zaf' },
+        { key: 'sort', label: 'SORT', opts: [['cap', 'Market cap'], ['pe', 'P/E low'], ['pb', 'P/B low'], ['roe', 'ROE high'], ['yield', 'Yield high'], ['ytd', 'YTD best']], cur: zaSort, attr: 'data-zaf' },
+      ],
+      clearAttr: 'data-zapreset', clearValue: 'clear', active: nAu || (zaPreset ? 1 : 0), asOf: asOfText(all, 'priceDate'),
+    });
+  }
+  const max = Math.max(...all.map((c) => c.marketCap || 0), 1);
+  const pages = Math.max(1, Math.ceil(sorted.length / zaPer));
+  const page = Math.min(zaPage, pages);
+  const shown = sorted.slice((page - 1) * zaPer, page * zaPer);
+  el.innerHTML = zaViewsBar()
+    + `<div class="co-hrow"><span>#</span><span></span><span>COMPANY</span><span>MARKET CAP</span><span>P/E</span><span>ROE</span></div>`
+    + shown.map((c, i) => `<button class="co-row" data-za="${esc(c.code)}">
+        <span class="co-rank">${(page - 1) * zaPer + i + 1}</span>
+        ${zaMono(c)}
+        <span class="co-id"><b>${esc(zaName(c))}${c.foreignSecondary ? '<span class="bdr-tag">JSE 2ND</span>' : ''}</b>
+          <span class="co-meta">
+            <span class="co-tick">${esc(c.ticker)}</span>
+            <span class="co-px">${zaPx(c.price)}</span>
+            <em class="${(c.chg1d || 0) >= 0 ? 'pos' : 'neg'}">${c.chg1d == null ? '—' : `${c.chg1d >= 0 ? '+' : ''}${c.chg1d.toFixed(1)}%`}</em>
+            <em class="${(c.chgYtd || 0) >= 0 ? 'pos' : 'neg'}">${c.chgYtd == null ? '—' : `${c.chgYtd >= 0 ? '+' : ''}${c.chgYtd.toFixed(1)}%`} YTD</em>
+            ${c.noRecentTrading ? `<span class="sc-flag bad" title="No recent trading — returns withheld">NO TRADE</span>` : ''}
+          </span></span>
+        <span class="co-cap">${zaMoney(c.marketCap)}<i class="co-bar"><i style="width:${Math.max(2, ((c.marketCap || 0) / max) * 100)}%"></i></i></span>
+        <span class="co-pe">${c.pe != null ? c.pe.toFixed(1) : '—'}</span>
+        <span class="co-mar ${c.roe == null ? 'dimtext' : c.roe >= 0 ? 'pos' : 'neg'}">${c.roe == null ? '—' : `${c.roe.toFixed(1)}%`}</span>
+      </button>`).join('')
+    + pagerHtml(sorted.length, page, zaPer, 'zalistpage')
+    + `<div class="macro-note">${rows.length} of ${all.length} · ${d.market?.primary ?? '—'} JSE-primary + ${d.market?.secondary ?? 0} foreign-secondary · JSE · statements from stockanalysis.com, prices from Yahoo · P/E is trailing twelve months where the vendor serves a trailing view, otherwise the last fiscal year (the company page labels which) · computed in the issuer's report currency (most report in ZAR; several in USD, EUR or GBP) · foreign-secondary rows use the global company cap and the JSE line price · FX ${d.fx && d.fx.rate ? d.fx.rate.toFixed(1) : '—'} ZAR per USD.</div>`;
+}
+
+async function renderSouthAfricaPage(stub) {
+  const el = $('co-body'); if (!el) return;
+  prefetchCoLong('za:' + (stub.ticker || stub.code));
+  prefetchPeers('za:' + (stub.ticker || stub.code));
+  let c = null;
+  el.innerHTML = stLoading('Reading the filing…');
+  try { c = await jget(`/api/southafrica/company/${encodeURIComponent(stub.code)}`, 1800000); } catch { c = null; }
+  if (!c) { el.innerHTML = stError('Couldn\u2019t load this company.'); return; }
+  const sub = $('deals-sub'); if (sub) sub.textContent = `${zaName(c)} · ${c.ticker} · JSE`;
+  const cell = (k, v, t, cls = '') => `<div class="co-stat" title="${esc(t)}"><span class="co-k">${k}</span><span class="co-v ${cls}">${v}</span></div>`;
+  const chg = (x) => (x == null ? '' : `${x >= 0 ? '+' : ''}${x.toFixed(1)}%`);
+  const q = c.quarters || [];
+  const h = c.history || [];
+  const ccy = c.reportCurrency || 'ZAR';
+  // `bank` means no operating-profit line (the columns go); `fin` means a financial business, whose
+  // investing cash flow is a loan book or an investment portfolio, not free cash flow (the FCF lines go).
+  const bank = !!c.bankLike;
+  const fin = !!c.financial || bank;
+  const cur = (v) => (ccy === 'ZAR' ? zaMoney(v) : compactMoney(v, ccy));
+  // The same figures the P/E and the margins are built on, computed once and used by both blocks.
+  const fig = statementFigures(c, 'au');
+  const when = periodLabel(fig.flows.basis, fig.flows.end);
+  const basis = tileBasis(fig.flows.basis, fig.flows.end);
+  const na = new Set(c.naRatios || []);
+  const stat = (key, label, value, title, cls = '') => (key && na.has(key) ? '' : cell(label, value, title, cls));
+  const sign = (v) => (v == null ? '' : v >= 0 ? 'pos' : 'neg');
+  el.innerHTML = `<div class="ma-crumb"><button class="ma-back" data-zaback="1"><span class="ma-back-i" aria-hidden="true">←</span>COMPANIES</button> <span>${esc(c.ticker)}</span><span class="mb-tag">SOUTH AFRICA</span></div>`
+    + zaQualityBanners(c)
+    + (c.foreignSecondary ? `<div class="quality-banner info">FOREIGN-SECONDARY LISTING · statements from ${esc(c.secondaryExchange || 'the primary exchange')}${c.secondaryTicker ? ` (${esc(c.secondaryTicker)})` : ''} · global company cap ${zaMoney(c.marketCap)}; the price is the JSE line; ratios are company-level in ${ccy}.</div>` : '')
+    + `<div class="co-head">${zaMono(c)}<div><div class="co-name">${esc(zaName(c))}</div>
+        <div class="co-sub">${esc(c.ticker)} · ${esc(c.shareClass || '')} · JSE-listed${c.name && c.name !== zaName(c) ? ' · ' + esc(c.name) : ''}${c.industry ? ' · ' + esc(c.industry) : ''}</div>
+        ${c.description ? `<div class="co-desc">${esc(c.description)}</div>` : ''}
+        ${c.brands && c.brands.length ? `<div class="jp-brands">${c.brands.map((b) => `<span>${esc(b)}</span>`).join('')}</div>` : ''}</div></div>`
+    + `<div class="co-price"><span class="co-price-v">${zaPx(c.price)}</span>
+        <span class="co-price-c ${c.chg1d >= 0 ? 'pos' : 'neg'}">${chg(c.chg1d)} today</span>
+        <span class="co-price-c ${c.chg6m >= 0 ? 'pos' : 'neg'}">${chg(c.chg6m)} 6M</span>
+        <span class="co-price-c ${c.chgYtd >= 0 ? 'pos' : 'neg'}">${chg(c.chgYtd)} YTD</span>
+        <span class="dimtext">${c.priceDate ? `as of ${c.priceDate}` : ''}</span></div>`
+    + `<div class="co-stats co-stats-12">
+        ${cell('MARKET CAP', zaMoney(c.marketCap), c.foreignSecondary ? 'Global company cap from the JSE list; the price is the JSE line' : 'Company total from the vendor, in rand')}
+        ${cell('MARKET CAP · USD', c.marketCapUsd ? `$${(c.marketCapUsd / 1e9).toFixed(1)}B` : '—', 'Converted at the current USD/ZAR rate')}
+        ${cell(`P/E · ${c.peBasis || 'TTM'}`, c.pe != null ? `${c.pe.toFixed(2)}×` : '—', `Market cap ÷ ${c.peBasis === 'FY' ? 'the last fiscal year\u2019s profit' : 'the rolling twelve months of profit'}, both in ${ccy}${c.reports && c.reports.ttmEnd ? ` (through ${c.reports.ttmEnd})` : ''}`)}
+        ${cell('P/B', c.pb != null ? `${c.pb.toFixed(2)}×` : '—', `Market cap ÷ common shareholders\u2019 equity in ${ccy} (excludes minorities)${c.reports && c.reports.latestEnd ? ` at ${c.reports.latestEnd}` : ''}`)}
+        ${cell('RETURN ON EQUITY', c.roe != null ? `${c.roe.toFixed(1)}%` : '—', 'Profit ÷ common equity (excludes minorities), same currency on both sides', sign(c.roe))}
+        ${cell(`NET PROFIT · ${basis}`, cur(fig.flows.net), `${when}, attributable to owners of the parent — ${ccy} millions${c.ttmFromFY ? ' · fiscal year, because the source has no trailing page for this issuer' : ''}`, sign(fig.flows.net))}
+        ${cell('NET MARGIN', c.netMargin != null ? `${c.netMargin.toFixed(1)}%` : '—', 'Net profit ÷ revenue', sign(c.netMargin))}
+        ${stat('opMargin', 'OPERATING MARGIN', c.opMargin != null ? `${c.opMargin.toFixed(1)}%` : '—', 'Operating profit ÷ revenue', sign(c.opMargin))}
+        ${cell('DIVIDEND YIELD', c.dividendYield != null ? `${c.dividendYield.toFixed(2)}%` : '—', c.dividendYield != null ? (c.foreignSecondary ? 'Underlying company dividend yield (global; the JSE line tracks it)' : c.dividendYieldBasis === 'vendor' ? 'Vendor dividend yield (converted at the payment-date FX)' : `Latest annual dividend per share, converted to ZAR at the current rate${c.dividendYieldBasis ? ` (${c.dividendYieldBasis})` : ''}`) : 'No dividend declared or published by the vendor')}
+        ${stat('fcfYield', 'FCF YIELD', c.fcfYield != null ? `${c.fcfYield.toFixed(2)}%` : '—', 'Free cash flow ÷ market cap', sign(c.fcfYield))}
+        ${stat('fcfMargin', 'FCF MARGIN', c.fcfMargin != null ? `${c.fcfMargin.toFixed(1)}%` : '—', 'Free cash flow ÷ revenue', sign(c.fcfMargin))}
+        ${stat('cashConversion', 'CASH CONVERSION', c.cashConversion != null ? `${c.cashConversion.toFixed(2)}×` : '—', 'Free cash flow ÷ net profit — below 1 means profit is not turning into cash')}
+      </div>`
+    + `<div class="co-stats co-stats-12">
+        ${cell(`REVENUE CAGR${c.cagrYears ? ' · ' + c.cagrYears + 'Y' : ''}`, c.revenueCagr != null ? `${c.revenueCagr.toFixed(1)}%` : '—', c.cagrNA ? `No growth rate: ${c.cagrNA}.` : `Compound annual revenue growth over ${c.cagrYears} fiscal years`, sign(c.revenueCagr))}
+        ${(() => {
+          const e = c.epsCagr != null
+            ? { v: `${c.epsCagr.toFixed(1)}%`, cls: sign(c.epsCagr), t: `Compound annual EPS growth over ${c.cagrYears} fiscal years${c.epsSplitAdjusted ? ' (split-adjusted)' : ''}.${epsGrowthNote(c)}` }
+            : c.epsChange
+              ? { v: `${c.epsChange.from} → ${c.epsChange.to}`, cls: sign(c.epsChange.to), t: `No CAGR: ${c.epsCagrNA}. EPS went from ${c.epsChange.from} in FY${c.epsChange.fromFy} to ${c.epsChange.to} in FY${c.epsChange.toFy}.${epsGrowthNote(c)}` }
+              : { v: '—', cls: '', t: (c.epsCagrNA ? `No EPS growth: ${c.epsCagrNA}.` : 'No EPS growth rate') + epsGrowthNote(c) };
+          return cell(epsGrowthLabel(c), e.v, e.t, e.cls);
+        })()}
+        ${cell('NET MARGIN CHANGE', c.marginDelta != null ? `${c.marginDelta >= 0 ? '+' : ''}${c.marginDelta.toFixed(1)}pp` : '—', 'Change in net margin between the first and last fiscal year on file', sign(c.marginDelta))}
+      </div>`
+    + (() => {
+        const cashWhen = periodLabel(fig.cash.basis, fig.cash.end);
+        const cashBasis = tileBasis(fig.cash.basis, fig.cash.end);
+        const bsWhen = fig.balance.end ? `As of ${fig.balance.end}` : 'Latest reported balance sheet';
+        const fcf = c.fcf;
+        const eps = (c.reports && c.reports.ttm && c.reports.ttm.eps != null)
+          ? c.reports.ttm.eps
+          : (h.length && h[h.length - 1].eps != null ? h[h.length - 1].eps : null);
+        return `<div class="co-stats co-stats-12">
+        ${cell(`REVENUE · ${basis}`, cur(fig.flows.revenue), `${when}, as reported — ${ccy} millions`)}
+        ${stat('operatingProfit', `OPERATING PROFIT · ${basis}`, cur(fig.flows.op), fig.flows.op == null ? 'This issuer does not report an operating-profit line (common for banks)' : `${when}, as reported`, sign(fig.flows.op))}
+        ${cell('EPS · DILUTED', eps != null ? Number(eps).toFixed(2) : '—', `Per share, ${ccy}, the same period as the net profit above${c.perShareBasis ? ` (${c.perShareBasis})` : ''}`)}
+        ${stat('fcf', `FREE CASH FLOW · ${cashBasis}`, cur(fcf), `${cashWhen}: operating cash flow − capital expenditure`)}
+        ${cell('TOTAL ASSETS', cur(fig.balance.assets), `${bsWhen} — ${ccy} millions`)}
+        ${cell('LIABILITIES', cur(fig.balance.liabilities), `${bsWhen}: total assets less shareholders\u2019 equity`)}
+        ${cell('SHAREHOLDERS\u2019 EQUITY', cur(fig.balance.equity), `${bsWhen}, attributable to owners of the parent`)}
+        ${stat('operatingCashFlow', `OPERATING CASH FLOW · ${cashBasis}`, cur(fig.cash.cfo), `${cashWhen}, as reported — ${ccy} millions`)}
+      </div>`;
+      })()
+    + (fin ? `<div class="macro-note" style="padding:6px 12px">${bank
+        ? 'A bank reports net interest income, not an operating-profit line, and its operating cash flow is loans and deposits — not free cash flow.'
+        : 'A financial company\u2019s investing cash flow is its loan book or its investment portfolio, not free cash flow.'} Margins, returns and the balance sheet still apply; the FCF ratios and the operating-cash-flow line are omitted rather than shown as a number that is not one.</div>` : '')
+    + `<div class="co-ranges">
+        <span class="co-cmp-l">COMPARE</span><input class="co-cmp" id="za-cmp" placeholder="company name, e.g. bank central asia" value="${esc(cmpCode(zaCompare))}" autocomplete="off">
+        <button class="co-cmp-clear${zaCompare ? '' : ' hidden'}" id="za-cmp-clear" data-cmpclear="za" type="button" title="Clear comparison" aria-label="Clear comparison">×</button>
+        <div class="co-sugg" id="za-sugg"></div>
+        ${[['1m', '1M'], ['3m', '3M'], ['6m', '6M'], ['ytd', 'YTD'], ['1y', '1Y'], ['5y', '5Y']].map(([k, t]) => `<button class="ma-chip${zaRange === k ? ' on' : ''}" data-zarange="${k}">${t}</button>`).join('')}
+      </div>`
+    + `<div class="co-rets" id="za-rets"></div>`
+    + `<div class="co-chartwrap"><div class="co-big" id="za-big"></div><canvas id="za-chart"></canvas></div>`
+    + '<div id="za-peers-x"></div>'
+    + (h.length > 1 ? `<div class="jp-q"><div class="jp-q-head"><span class="ph-t">FISCAL-YEAR RECORD</span><span class="dimtext">${h.length} fiscal years · ${ccy}</span></div>
+        <table class="jp-q-table"><thead><tr><th>FISCAL YEAR</th><th>REVENUE</th>${bank ? '' : '<th>OP PROFIT</th>'}<th>NET PROFIT</th><th>ROE</th></tr></thead><tbody>
+        ${[...h].reverse().map((x) => `<tr><td>${esc(x.y)}</td><td>${cur(x.s)}</td>${bank ? '' : `<td>${cur(x.o)}</td>`}<td>${cur(x.n)}</td><td>${x.n != null && (x.ec ?? x.q) ? `${((x.n / (x.ec ?? x.q)) * 100).toFixed(1)}%` : '—'}</td></tr>`).join('')}
+        </tbody></table></div>` : '')
+    + (q.length > 1 ? `<div class="jp-q"><div class="jp-q-head"><span class="ph-t">${c.periodBasis === 'quarter' ? 'REPORTED QUARTERS' : c.periodBasis === 'half' ? 'REPORTED HALF-YEARS' : 'TRAILING 12 MONTHS'}</span><span class="dimtext">${q.length} ${c.periodBasis === 'quarter' ? 'quarters' : c.periodBasis === 'half' ? 'half-years' : 'period ends'} · ${ccy} millions</span></div>
+        <div class="jp-q-scroll"><table class="jp-q-table"><thead><tr><th>PERIOD</th><th>REVENUE</th>${bank ? '<th>NET PROFIT</th><th>NET MARGIN</th>' : '<th>OP PROFIT</th><th>MARGIN</th><th>NET PROFIT</th>'}</tr></thead><tbody>
+        ${[...q].reverse().map((x) => `<tr><td>${esc(x.d)}</td><td>${cur(x.revenue)}</td>${bank
+          ? `<td>${cur(x.netIncome)}</td><td>${x.revenue && x.netIncome != null ? `${((x.netIncome / x.revenue) * 100).toFixed(1)}%` : '—'}</td>`
+          : `<td>${cur(x.operatingProfit)}</td><td>${x.revenue && x.operatingProfit != null ? `${((x.operatingProfit / x.revenue) * 100).toFixed(1)}%` : '—'}</td><td>${cur(x.netIncome)}</td>`}</tr>`).join('')}
+        </tbody></table></div></div>` : '')
+    + `<div class="macro-note">JSE-listed · statements from stockanalysis.com (millions ${ccy}), prices from Yahoo. Market cap is the company total from the vendor in rand; the price is the JSE line. Ratios are computed in ${ccy}, the currency the issuer reports in, then compared with the market cap at the build's USD/ZAR rate. Profit, revenue and margins are the rolling twelve months where the vendor serves a trailing column; otherwise the last fiscal year, labelled. The five-year record is the fiscal year. Most JSE issuers report to 31 December, but the build takes each period end from the filing. The vendor serves one statement set and does not label consolidated vs standalone. No free guidance feed, so there is no forward P/E.${c.foreignSecondary ? ` This is the JSE line of a foreign-domiciled issuer; the statements and sector come from ${c.secondaryExchange || 'the primary listing'}, the cap is the global company total, and the price is the JSE line.` : ''}${c.description ? ' Company description and sector from stockanalysis.com.' : ''}`;
+  drawZaChart(c);
+  fillPeers(`za:${c.ticker}`, 'za-peers-x');
+}
+
+async function drawZaChart(c, range = zaRange) {
+  const token = chartToken('za-chart');
+  const full = await coLong('za:' + c.ticker);
+  const use = full ? coFitRange(full, range) : range;
+  if (use !== range) { range = use; coMarkRange('zarange', range); }
+  if (!chartFresh('za-chart', token)) return;
+  if (full) paintReturns('za-rets', 'za-big', full, range, WINDOWS_5Y, 'zarange');
+  const wrap = $('za-chart') && $('za-chart').parentElement;
+  const ch = full ? coSlice(full, range) : null;
+  if (!ch || !ch.dates || ch.dates.length < 2) {
+    chartMiss('za-chart', c.ticker, range, coLongFailed('za:' + c.ticker));
+    return;
+  }
+  if (wrap) wrap.removeAttribute('data-empty');
+  let other = null;
+  if (zaCompare && cmpCode(zaCompare) !== String(c.ticker)) {
+    const cl = await coLong(zaCompare);
+    other = cl ? coSlice(cl, range) : null;
+  }
+  if (!chartFresh('za-chart', token)) return;
+  if (other && other.dates && other.dates.length > 1) {
+    const bmap = new Map(other.dates.map((d, i) => [d, other.closes[i]]));
+    const dates = ch.dates.filter((d, i) => ch.closes[i] != null && bmap.get(d) != null);
+    if (dates.length > 1) {
+      const a0 = ch.closes[ch.dates.indexOf(dates[0])];
+      const b0 = bmap.get(dates[0]);
+      mountChart('za-chart', {
+        labels: dates,
+        datasets: [
+          line(`${c.ticker} · ${(c.nameEn || c.name).slice(0, 14)}`, dates.map((d) => (ch.closes[ch.dates.indexOf(d)] / a0) * 100), CT.c1),
+          line(`${cmpCode(zaCompare)}`, dates.map((d) => (bmap.get(d) / b0) * 100), CT.c2),
+        ],
+      }, baseOptions({ dp: 0, dateAxis: true, yTitle: 'indexed to 100' }));
+      return;
+    }
+  }
+  mountChart('za-chart', { labels: ch.dates, datasets: [line(`${c.ticker} · ZAR · ${range.toUpperCase()}`, ch.closes, CT.c1)] }, baseOptions({ dp: 0, dateAxis: true, log: range === '5y' || range === '10y' }));
+}
+
+// South Africa in the home screener, the same shape as India's.
+const ZA_SCREEN_COLS = STOCK_SCREEN_COLS;
+function renderSouthAfricaScreen(el) {
+  if (!zaData) {
+    el.innerHTML = stLoading('Reading the JSE filings…');
+    loadSouthAfrica().then(() => renderScreen(true));
+    return;
+  }
+  const all = zaData.companies || [];
+  const sectors = [...new Set(all.map((c) => c.sector).filter(Boolean))].sort();
+  const q = coScreenZa.q.trim().toLowerCase();
+  const { sort, dir } = coScreenZa;
+  const keyOf = (c) => (sort === 'label' ? (c.nameEn || c.name || '') : c[sort]);
+  let rows = all.filter((c) => (coScreenZa.sector === 'all' || c.sector === coScreenZa.sector)
+    && (!q || `${c.name} ${c.nameEn || ''} ${c.ticker} ${c.sector || ''} ${(c.brands || []).join(' ')}`.toLowerCase().includes(q)));
+  rows = [...rows].sort((a, b) => {
+    const x = keyOf(a), y = keyOf(b);
+    if (x == null && y == null) return 0;
+    if (x == null) return 1;
+    if (y == null) return -1;
+    return sort === 'label' ? x.localeCompare(y) * dir : (x - y) * dir;
+  });
+  const per = coScreenZa.per || 50;
+  const pages = Math.max(1, Math.ceil(rows.length / per));
+  const page = Math.min(coScreenZa.page || 1, pages);
+  const shown = rows.slice((page - 1) * per, page * per);
+  const head = ZA_SCREEN_COLS.map((c) => `<th class="${sort === c.k ? 'on' : ''}" data-zakey="${c.k}">${c.t}${sort === c.k ? (dir < 0 ? ' ▼' : ' ▲') : ''}</th>`).join('');
+  const pct = (v) => (v == null ? '<td class="num">—</td>' : `<td class="num ${cls(v)}">${v >= 0 ? '+' : ''}${v.toFixed(1)}%</td>`);
+  const num = (v, dp, suffix = '') => (v == null ? '<td class="num">—</td>' : `<td class="num">${v.toFixed(dp)}${suffix}</td>`);
+  const body = shown.map((c) => `<tr data-zarow="${esc(c.code)}" title="${esc(c.nameEn || c.name)}">
+      <td class="sc-name">${esc(c.nameEn || c.name)}<span class="sc-tick">${esc(c.ticker)}${c.sector ? ' · ' + esc(c.sector) : ''}</span></td>
+      <td class="num">${zaPx(c.price)}</td>
+      ${pct(c.chg1d)}${pct(c.chg6m)}${pct(c.chgYtd)}
+      ${num(c.pe, 1, '×')}${num(c.pb, 2, '×')}${num(c.roe, 1, '%')}
+      <td class="num">${zaMoney(c.marketCap)}</td></tr>`).join('');
+  el.innerHTML = `<div class="sc-bar">${screenModeHtml()}${screenMarketHtml()}
+      <label class="sc-f">SEARCH <input id="cosza-q" type="search" placeholder="company or code…" value="${esc(coScreenZa.q)}"></label>
+      <label class="sc-f">SECTOR <select id="cosza-sector"><option value="all">All sectors</option>${sectors.map((x) => `<option value="${esc(x)}"${coScreenZa.sector === x ? ' selected' : ''}>${esc(x)}</option>`).join('')}</select></label>
+      <span class="sc-count dimtext">${rows.length} of ${all.length} · ${zaData.market?.primary ?? '—'} JSE-primary + ${zaData.market?.secondary ?? 0} foreign-secondary</span>
+    </div><div class="sc-wrap" id="sc-table"><table class="sc-table sc-cotable"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>
+    ${pagerHtml(rows.length, page, per, 'zapage')}
+    <div class="sc-note dimtext">JSE-listed · ${zaData.market?.primary ?? '—'} JSE-primary + ${zaData.market?.secondary ?? 0} foreign-secondary · statements from stockanalysis.com · ${asOfText(all, 'priceDate') || 'Yahoo prices'} · returns in ZAR · foreign-secondary rows use the global company cap and the JSE line price · P/E is trailing twelve months where the vendor serves a trailing view, otherwise the last fiscal year, in the issuer's report currency.</div>`;
+}
+
 
 
 
@@ -8190,6 +8708,7 @@ function warmMarkets(delay = 1500) {
   setTimeout(() => { if (!inData) loadIndia().catch(() => {}); }, delay + 7400);
   setTimeout(() => { if (!idData) loadIndonesia().catch(() => {}); }, delay + 8800);
   setTimeout(() => { if (!brData) loadBrazil().catch(() => {}); }, delay + 10200);
+  setTimeout(() => { if (!zaData) loadSouthAfrica().catch(() => {}); }, delay + 11600);
 }
 
 function renderCompanies() {
@@ -8212,6 +8731,7 @@ function renderCompanies() {
   if (coRegion === 'in') return renderIndia(token);
   if (coRegion === 'id') return renderIndonesia(token);
   if (coRegion === 'br') return renderBrazil(token);
+  if (coRegion === 'za') return renderSouthAfrica(token);
   const el = $('co-body');
   if (charts['co-chart']) { try { charts['co-chart'].destroy(); } catch {} delete charts['co-chart']; }
   if (!el) return;
@@ -9086,11 +9606,11 @@ document.addEventListener('click', (e) => {
     document.querySelectorAll('[data-region]').forEach((b) => b.classList.toggle('on', b.dataset.region === coRegion));
     coCik = null; jpSel = null;
     const inp = $('co-search'); if (inp) inp.value = '';
-    const note = $('co-note'); if (note) note.classList.toggle('hidden', coRegion === 'jp' || coRegion === 'kr' || coRegion === 'tw' || coRegion === 'hk' || coRegion === 'au' || coRegion === 'in' || coRegion === 'id' || coRegion === 'br');
+    const note = $('co-note'); if (note) note.classList.toggle('hidden', coRegion === 'jp' || coRegion === 'kr' || coRegion === 'tw' || coRegion === 'hk' || coRegion === 'au' || coRegion === 'in' || coRegion === 'id' || coRegion === 'br' || coRegion === 'za');
     // Drop the old market's screen on the spot. The US render waits for data before it paints, and
     // until this the previous screen (often Japan's TOPIX view) was still the thing on the page.
     const body = $('co-body');
-    if (body) body.innerHTML = stLoading(coRegion === 'jp' ? 'Loading Japan…' : coRegion === 'kr' ? 'Loading KOSPI…' : coRegion === 'tw' ? 'Loading TAIEX…' : coRegion === 'hk' ? 'Loading the Hang Seng…' : coRegion === 'au' ? 'Loading the ASX 200…' : coRegion === 'in' ? 'Loading the NIFTY 500…' : coRegion === 'id' ? 'Loading the IDX…' : coRegion === 'br' ? 'Loading the Ibovespa…' : `Loading the ${usIndexLabel()}…`);
+    if (body) body.innerHTML = stLoading(coRegion === 'jp' ? 'Loading Japan…' : coRegion === 'kr' ? 'Loading KOSPI…' : coRegion === 'tw' ? 'Loading TAIEX…' : coRegion === 'hk' ? 'Loading the Hang Seng…' : coRegion === 'au' ? 'Loading the ASX 200…' : coRegion === 'in' ? 'Loading the NIFTY 500…' : coRegion === 'id' ? 'Loading the IDX…' : coRegion === 'br' ? 'Loading the Ibovespa…' : coRegion === 'za' ? 'Loading the JSE All Share…' : `Loading the ${usIndexLabel()}…`);
     renderCompanies();
     return;
   }
@@ -9308,6 +9828,43 @@ document.addEventListener('click', (e) => {
   const brrow = e.target.closest('[data-br]');
   if (brrow) { brSel = brrow.dataset.br; renderBrazil(); window.scrollTo({ top: 0, behavior: 'smooth' }); return; }
   if (e.target.closest('[data-brback]')) { brSel = null; renderBrazil(); return; }
+  const zav = e.target.closest('[data-zaview]');
+  if (zav) { zaView = zav.dataset.zaview; try { localStorage.setItem('oilbasis.zaView', zaView); } catch {} zaSel = null; zaPage = 1; renderSouthAfrica(); return; }
+  const zat = e.target.closest('[data-zatheme]');
+  if (zat) { zaTheme = zat.dataset.zatheme; try { localStorage.setItem('oilbasis.zaTheme', zaTheme); } catch {} renderSouthAfrica(); return; }
+  const zar = e.target.closest('[data-zarange]');
+  if (zar) {
+    zaRange = zar.dataset.zarange;
+    try { localStorage.setItem('oilbasis.zaRange', zaRange); } catch {}
+    document.querySelectorAll('[data-zarange]').forEach((b) => b.classList.toggle('on', b.dataset.zarange === zaRange));
+    const cur = (zaData && zaData.companies || []).find((x) => x.code === zaSel);
+    if (cur) drawZaChart(cur, zaRange);
+    return;
+  }
+  const zaps = e.target.closest('[data-zapreset]');
+  if (zaps) {
+    const id = zaps.dataset.zapreset;
+    if (id === 'clear') {
+      zaPreset = null; zaFilter = {}; zaSector = 'all'; zaQuery = '';
+      const inp = $('co-search'); if (inp) inp.value = '';
+    } else zaPreset = id === zaPreset ? null : id;
+    zaPage = 1;
+    renderSouthAfrica();
+    return;
+  }
+  const zalp = e.target.closest('[data-zalistpage]');
+  if (zalp && zalp.dataset.zalistpage !== 'per') { zaPage = Math.max(1, Number(zalp.dataset.zalistpage)); renderSouthAfrica(); return; }
+  const zam = e.target.closest('[data-zamkt]');
+  if (zam) {
+    zaMktRange = zam.dataset.zamkt;
+    try { localStorage.setItem('oilbasis.zaMktRange', zaMktRange); } catch {}
+    if (coRegion === 'za' && zaView === 'market' && redrawSouthAfricaIndex()) return;
+    renderSouthAfrica();
+    return;
+  }
+  const zarow = e.target.closest('[data-za]');
+  if (zarow) { zaSel = zarow.dataset.za; renderSouthAfrica(); window.scrollTo({ top: 0, behavior: 'smooth' }); return; }
+  if (e.target.closest('[data-zaback]')) { zaSel = null; renderSouthAfrica(); return; }
   const twv = e.target.closest('[data-twview]');
   if (twv) { twView = twv.dataset.twview; try { localStorage.setItem('oilbasis.twView', twView); } catch {} twSel = null; twPage = 1; renderTaiwan(); return; }
   const twt = e.target.closest('[data-twtheme]');
@@ -9536,6 +10093,15 @@ document.addEventListener('change', async (e) => {
     renderBrazil();
     return;
   }
+  if (e.target && e.target.dataset && e.target.dataset.zaf) {
+    const k = e.target.dataset.zaf;
+    if (k === 'sector') zaSector = e.target.value || 'all';
+    else if (k === 'sort') { zaSort = e.target.value || 'cap'; }
+    else { zaFilter[k] = e.target.value; }
+    zaPage = 1;
+    renderSouthAfrica();
+    return;
+  }
   if (e.target && e.target.dataset && e.target.dataset.idf) {
     const k = e.target.dataset.idf;
     if (k === 'sector') idSector = e.target.value || 'all';
@@ -9577,8 +10143,8 @@ document.addEventListener('change', async (e) => {
 });
 
 document.addEventListener('keydown', async (e) => {
-  if (!(e.target && ['co-cmp', 'jp-cmp', 'kr-cmp', 'tw-cmp', 'hk-cmp', 'au-cmp', 'in-cmp', 'id-cmp', 'br-cmp'].includes(e.target.id))) return;
-  const box = { 'co-cmp': 'us-sugg', 'jp-cmp': 'jp-sugg', 'kr-cmp': 'kr-sugg', 'tw-cmp': 'tw-sugg', 'hk-cmp': 'hk-sugg', 'au-cmp': 'au-sugg', 'in-cmp': 'in-sugg', 'id-cmp': 'id-sugg', 'br-cmp': 'br-sugg' }[e.target.id];
+  if (!(e.target && ['co-cmp', 'jp-cmp', 'kr-cmp', 'tw-cmp', 'hk-cmp', 'au-cmp', 'in-cmp', 'id-cmp', 'br-cmp', 'za-cmp'].includes(e.target.id))) return;
+  const box = { 'co-cmp': 'us-sugg', 'jp-cmp': 'jp-sugg', 'kr-cmp': 'kr-sugg', 'tw-cmp': 'tw-sugg', 'hk-cmp': 'hk-sugg', 'au-cmp': 'au-sugg', 'in-cmp': 'in-sugg', 'id-cmp': 'id-sugg', 'br-cmp': 'br-sugg', 'za-cmp': 'za-sugg' }[e.target.id];
   if (e.key === 'Escape') { hideSuggestions(box); return; }
   if (e.key !== 'Enter') return;
   e.preventDefault();
@@ -9590,7 +10156,7 @@ document.addEventListener('keydown', async (e) => {
 
 // A benchmark ref like us:MSFT in the box is replaced by typing, not appended to.
 document.addEventListener('focusin', (e) => {
-  if (e.target && ['co-cmp', 'jp-cmp', 'kr-cmp', 'tw-cmp', 'hk-cmp', 'au-cmp', 'in-cmp', 'id-cmp', 'br-cmp'].includes(e.target.id)) e.target.select();
+  if (e.target && ['co-cmp', 'jp-cmp', 'kr-cmp', 'tw-cmp', 'hk-cmp', 'au-cmp', 'in-cmp', 'id-cmp', 'br-cmp', 'za-cmp'].includes(e.target.id)) e.target.select();
 });
 
 document.addEventListener('input', (e) => {
@@ -9613,10 +10179,11 @@ document.addEventListener('input', (e) => {
     if (coRegion === 'in') { inQuery = e.target.value || ''; inSel = null; inPage = 1; renderIndia(); return; }
     if (coRegion === 'id') { idQuery = e.target.value || ''; idSel = null; idPage = 1; renderIndonesia(); return; }
     if (coRegion === 'br') { brQuery = e.target.value || ''; brSel = null; brPage = 1; renderBrazil(); return; }
+    if (coRegion === 'za') { zaQuery = e.target.value || ''; zaSel = null; zaPage = 1; renderSouthAfrica(); return; }
     coQuery = e.target.value || ''; coCik = null; usListPage = 1; renderCompanies(); return;
   }
-  if (e.target && ['co-cmp', 'jp-cmp', 'kr-cmp', 'tw-cmp', 'hk-cmp', 'au-cmp', 'in-cmp', 'id-cmp', 'br-cmp'].includes(e.target.id)) {
-    const box = { 'co-cmp': 'us-sugg', 'jp-cmp': 'jp-sugg', 'kr-cmp': 'kr-sugg', 'tw-cmp': 'tw-sugg', 'hk-cmp': 'hk-sugg', 'au-cmp': 'au-sugg', 'in-cmp': 'in-sugg', 'id-cmp': 'id-sugg', 'br-cmp': 'br-sugg' }[e.target.id];
+  if (e.target && ['co-cmp', 'jp-cmp', 'kr-cmp', 'tw-cmp', 'hk-cmp', 'au-cmp', 'in-cmp', 'id-cmp', 'br-cmp', 'za-cmp'].includes(e.target.id)) {
+    const box = { 'co-cmp': 'us-sugg', 'jp-cmp': 'jp-sugg', 'kr-cmp': 'kr-sugg', 'tw-cmp': 'tw-sugg', 'hk-cmp': 'hk-sugg', 'au-cmp': 'au-sugg', 'in-cmp': 'in-sugg', 'id-cmp': 'id-sugg', 'br-cmp': 'br-sugg', 'za-cmp': 'za-sugg' }[e.target.id];
     clearTimeout(suggTimer);
     const input = e.target;
     suggTimer = setTimeout(() => showSuggestions(input, box), 180);

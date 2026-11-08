@@ -63,7 +63,12 @@
     "refresh:brazil": "node scripts/build-brazil.mjs --fresh && node scripts/fetch-brazil-profiles.mjs && node scripts/fetch-listing-shares.mjs brazil && node scripts/build-brazil.mjs --skip-prices --skip-fin && node scripts/build-brazil-bdrs.mjs --fresh && node scripts/merge-brazil-bdrs.mjs",
     "shares:brazil": "node scripts/fetch-listing-shares.mjs brazil",
     "audit:brazil:deep": "node scripts/audit-brazil-deep.mjs",
-    "build:brazil:bdrs": "node scripts/build-brazil-bdrs.mjs && node scripts/merge-brazil-bdrs.mjs"
+    "build:brazil:bdrs": "node scripts/build-brazil-bdrs.mjs && node scripts/merge-brazil-bdrs.mjs",
+    "build:southafrica": "node scripts/build-southafrica.mjs && node scripts/fetch-southafrica-profiles.mjs && node scripts/build-southafrica.mjs --skip-prices --skip-fin",
+    "refresh:southafrica": "node scripts/build-southafrica.mjs --fresh && node scripts/fetch-southafrica-profiles.mjs && node scripts/build-southafrica.mjs --skip-prices --skip-fin",
+    "audit:southafrica": "node scripts/audit-southafrica.mjs",
+    "audit:southafrica:deep": "node scripts/audit-southafrica-deep.mjs",
+    "build:za": "node scripts/build-southafrica.mjs && node scripts/fetch-southafrica-profiles.mjs && node scripts/build-southafrica.mjs --skip-prices --skip-fin"
   },
   "engines": {
     "node": ">=22"

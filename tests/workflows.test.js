@@ -19,16 +19,16 @@ test('every market workflow still keeps the history it accumulates', () => {
   assert.match(wf('companies-weekly.yml'), /merge-history\.mjs us/, 'companies-weekly no longer keeps US quarters');
   assert.match(cd, /merge-series\.mjs us jp kr/, 'companies-daily no longer keeps US/Japan/Korea sessions');
 
-  for (const [file, id] of [['taiwan-daily.yml', 'tw'], ['hongkong-daily.yml', 'hk'], ['australia-daily.yml', 'au'], ['india-daily.yml', 'in'], ['indonesia-daily.yml', 'id'], ['brazil-daily.yml', 'br']]) {
+  for (const [file, id] of [['taiwan-daily.yml', 'tw'], ['hongkong-daily.yml', 'hk'], ['australia-daily.yml', 'au'], ['india-daily.yml', 'in'], ['indonesia-daily.yml', 'id'], ['brazil-daily.yml', 'br'], ['south-africa-daily.yml', 'za']]) {
     const y = wf(file);
     assert.match(y, new RegExp(`merge-history\\.mjs ${id}`), `${file} no longer keeps filed periods`);
     assert.match(y, new RegExp(`merge-series\\.mjs ${id}`), `${file} no longer keeps traded sessions`);
   }
 });
 
-test('the all-markets audit covers Indonesia and Brazil deep, and every market', () => {
+test('the all-markets audit covers Indonesia, Brazil and South Africa deep, and every market', () => {
   const a = readFileSync(join(ROOT, 'scripts', 'audit-all-markets.mjs'), 'utf8');
-  for (const script of ['audit-taiwan.mjs', 'audit-hongkong.mjs', 'audit-australia.mjs', 'audit-india.mjs', 'audit-indonesia.mjs', 'audit-indonesia-deep.mjs', 'audit-brazil.mjs', 'audit-brazil-deep.mjs', 'audit-markets.mjs', 'check-freshness.mjs']) {
+  for (const script of ['audit-taiwan.mjs', 'audit-hongkong.mjs', 'audit-australia.mjs', 'audit-india.mjs', 'audit-indonesia.mjs', 'audit-indonesia-deep.mjs', 'audit-brazil.mjs', 'audit-brazil-deep.mjs', 'audit-southafrica.mjs', 'audit-southafrica-deep.mjs', 'audit-markets.mjs', 'check-freshness.mjs']) {
     assert.ok(a.includes(script), `all-markets audit is missing ${script}`);
   }
   assert.match(wf('markets-audit-daily.yml'), /audit:all|audit-all-markets/, 'the scheduled all-markets audit lost its command');
@@ -49,6 +49,7 @@ test('every market workflow still audits before it commits', () => {
     'india-daily.yml': /audit:india|audit-india\.mjs/,
     'indonesia-daily.yml': /audit:indonesia|audit-indonesia\.mjs/,
     'brazil-daily.yml': /audit:brazil|audit-brazil\.mjs/,
+    'south-africa-daily.yml': /audit:southafrica|audit-southafrica\.mjs/,
   };
   for (const [file, re] of Object.entries(audit)) assert.match(wf(file), re, `${file} lost its audit`);
 });

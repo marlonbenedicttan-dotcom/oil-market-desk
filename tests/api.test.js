@@ -1013,6 +1013,76 @@ test('/api/brazil/chart serves the range it was asked for', async () => {
   for (let i = 1; i < d.dates.length; i++) assert.ok(d.dates[i] > d.dates[i - 1]);
 });
 
+test('/api/southafrica ships the list projection, not the price history, and revalidates', async () => {
+  const r = await fetch(`http://localhost:${PORT}/api/southafrica`);
+  assert.equal(r.status, 200);
+  const etag = r.headers.get('etag');
+  assert.ok(etag, 'the South Africa list must carry an ETag');
+  const d = await r.json();
+  assert.ok(d.companies.length > 200, `got ${d.companies.length} companies`);
+  assert.equal(d.currency, 'ZAR');
+  assert.equal(d.indexName, 'JSE All Share');
+  assert.ok(d.index && d.index.level != null, 'the JSE All Share level is missing');
+  assert.ok(d.fx && d.fx.rate > 5, 'the USD/ZAR rate is missing');
+  const npn = d.companies.find((x) => x.ticker === 'NPN');
+  assert.ok(npn && npn.nameEn, 'Naspers is missing');
+  assert.equal(npn.foreignSecondary, false);
+  assert.ok(npn.marketCap === npn.vendorCap, 'the JSE cap is not the vendor company total');
+  assert.equal(npn.series, undefined, 'the list must not carry per-company price history');
+  const bti = d.companies.find((x) => x.ticker === 'BTI');
+  assert.ok(bti && bti.foreignSecondary, 'the BAT secondary line is missing');
+  assert.ok(bti.secondarySource && bti.secondaryExchange, 'the secondary line has no primary source');
+  assert.equal(bti.reportCurrency, 'GBP');
+  assert.ok(bti.marketCap === bti.vendorCap, 'the secondary cap is not the vendor company total');
+  assert.equal(d.market.primary, d.companies.filter((x) => !x.foreignSecondary).length);
+  assert.equal(d.market.secondary, d.companies.filter((x) => x.foreignSecondary).length);
+  assert.equal(d.market.listed, d.companies.length);
+  assert.ok(JSON.stringify(d).length < 3_000_000, 'the South Africa list payload ballooned');
+  const again = await new Promise((resolve, reject) => {
+    http.get({ host: 'localhost', port: PORT, path: '/api/southafrica', headers: { 'if-none-match': etag }, agent: false }, resolve).on('error', reject);
+  });
+  assert.equal(again.statusCode, 304);
+  again.resume();
+});
+
+test('/api/southafrica/company serves a JSE-primary company in rand', async () => {
+  const r = await fetch(`http://localhost:${PORT}/api/southafrica/company/NPN`);
+  assert.equal(r.status, 200);
+  const c = await r.json();
+  assert.ok(c.sector, 'the sector is missing');
+  assert.equal(c.currency, 'ZAR');
+  assert.equal(c.foreignSecondary, false);
+  // Naspers' year-end has just passed, so the vendor serves annual columns and no TTM; the engine
+  // falls back to the fiscal year and flags it. Either is a real revenue line, not a missing one.
+  const ttm = (c.reports && c.reports.ttm) || {};
+  const fy = (c.reports && c.reports.annual && c.reports.annual.at(-1)) || {};
+  assert.ok(ttm.revenue > 0 || fy.revenue > 0, 'no revenue line in the statement record');
+  assert.ok(c.history.length >= 3, 'the fiscal-year record is missing');
+  assert.ok(c.price > 0 && c.priceDate, 'the JSE price is missing');
+  assert.ok(c.marketCap === c.vendorCap, 'the company cap is not the vendor total');
+});
+
+test('/api/southafrica/company serves a foreign-secondary line with its primary source', async () => {
+  const r = await fetch(`http://localhost:${PORT}/api/southafrica/company/BTI`);
+  assert.equal(r.status, 200);
+  const c = await r.json();
+  assert.equal(c.foreignSecondary, true);
+  assert.equal(c.secondaryExchange, 'NYSE');
+  assert.equal(c.reportCurrency, 'GBP');
+  assert.ok(c.marketCap === c.vendorCap, 'market cap is not the JSE company total');
+  assert.ok(c.reports && c.reports.ttm && c.reports.ttm.revenue > 0, 'underlying TTM revenue is missing');
+  assert.ok(c.price > 0 && c.priceDate, 'JSE line price is missing');
+});
+
+test('/api/southafrica/chart serves the range it was asked for', async () => {
+  const r = await fetch(`http://localhost:${PORT}/api/southafrica/chart?code=NPN&range=5y`);
+  assert.equal(r.status, 200);
+  const d = await r.json();
+  assert.ok(d.dates.length > 200, `got ${d.dates.length} points`);
+  assert.equal(d.dates.length, d.closes.length);
+  for (let i = 1; i < d.dates.length; i++) assert.ok(d.dates[i] > d.dates[i - 1]);
+});
+
 // One company is one small file now (data/korea-companies), not a parse of the 28 MB market. The
 // detail page reads quarters/history; the chart comes from data/charts, so the record carries no series.
 test('/api/korea/company answers by code or ticker from the per-company file', async () => {

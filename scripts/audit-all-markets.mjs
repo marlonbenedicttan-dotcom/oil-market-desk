@@ -2,7 +2,7 @@
 //
 //   node scripts/audit-all-markets.mjs
 //
-// Runs the per-market hard audits, the Indonesia/Brazil deep audits, the refresh-collapse guards and
+// Runs the per-market hard audits, the Indonesia/Brazil/South Africa deep audits, the refresh-collapse guards and
 // the cross-market freshness check. Writes data/audit-all-markets.json and exits non-zero if any step
 // fails. The scheduled markets-audit-daily workflow runs this after the daily refreshes.
 
@@ -49,6 +49,10 @@ const STEPS = [
   ['BR', 'audit-brazil.mjs'],
   ['BR', 'audit-brazil-deep.mjs'],
   ['BR', 'audit-market-refresh.mjs', 'br'],
+  // South Africa
+  ['ZA', 'audit-southafrica.mjs'],
+  ['ZA', 'audit-southafrica-deep.mjs'],
+  ['ZA', 'audit-market-refresh.mjs', 'za'],
   // Freshness across all committed datasets
   ['ALL', 'check-freshness.mjs'],
 ];

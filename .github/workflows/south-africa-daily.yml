@@ -1,0 +1,75 @@
+name: south-africa-daily
+
+# South Africa's prices and statements are not in companies-daily: this job keeps the JSE in step with
+# the other markets. The JSE closes at 17:00 SAST (15:00 UTC), so 15:40 UTC is after the close and after
+# Yahoo settles.
+#
+# The universe is the vendor's Johannesburg exchange list. Six lines are foreign-domiciled secondary
+# listings (CFR, PRX, ANH, ANG, BTI, GLN) whose statements come from the primary exchange; six lines are
+# excluded by decision (BHG/S32 are in the Australia market, INP duplicates INL, AGL/MNP/QLT have no free
+# statement page).
+#
+# The build re-reads every statement page whose cache has expired (annual 7 days, quarterly 1 day), so a
+# new filing flows through on its own. A throttled pass is visible in audit.throttled and filled on the
+# next run.
+
+on:
+  schedule:
+    - cron: '40 15 * * 1-5'   # 17:40 SAST, Mon–Fri
+  workflow_dispatch: {}
+
+concurrency:
+  group: south-africa-refresh
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Cache JSE statements, the exchange list and Yahoo prices
+        uses: actions/cache@v4
+        with:
+          path: |
+            data/cache/jse
+            data/cache/southafrica-sa
+            data/cache/southafrica-audit
+          key: za-cache-${{ github.run_id }}
+          restore-keys: za-cache-
+      - name: Build prices, statements and profiles
+        run: npm run refresh:southafrica
+      - name: Keep every filed period
+        run: node scripts/merge-history.mjs za
+      - name: Keep every traded session
+        run: node scripts/merge-series.mjs za
+      - name: Refuse a collapsed build
+        run: node scripts/audit-market-refresh.mjs za
+      - name: Audit the dataset
+        run: npm run audit:southafrica
+      - name: Deep audit every number
+        run: npm run audit:southafrica:deep
+      - name: Commit if changed
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add data/southafrica.json data/southafrica-list.json data/southafrica-series data/southafrica-companies data/southafrica-profiles.json data/southafrica-brands.json data/southafrica-themes.json data/southafrica-universe.json data/charts
+          if git diff --staged --quiet; then
+            echo 'no data change'
+          else
+            git commit -m "chore: daily South Africa refresh ($(date -u +%Y-%m-%d))"
+            pushed=0
+            for i in 1 2 3 4 5; do
+              if git pull --rebase -X theirs origin "${{ github.ref_name }}" && git push origin "HEAD:${{ github.ref_name }}"; then pushed=1; break; fi
+              echo "push rejected (attempt $i) — rebasing and retrying"; sleep $((i * 5))
+            done
+            [ "$pushed" = "1" ] || { echo 'could not push after 5 attempts'; exit 1; }
+          fi

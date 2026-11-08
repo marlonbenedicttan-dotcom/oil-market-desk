@@ -413,13 +413,13 @@ test('corrMatrix is +1 for a series with itself and −1 for a mirrored one', ()
   assert.equal(m.a.b, -1);
 });
 
-test('METHODOLOGY documents all nine company markets', () => {
+test('METHODOLOGY documents all ten company markets', () => {
   const text = METHODOLOGY.companies.map((c) => `${c.name} ${c.basis} ${c.note}`).join(' ');
-  for (const market of ['Hong Kong', 'Australia', 'India', 'Indonesia', 'Brazil']) {
+  for (const market of ['Hong Kong', 'Australia', 'India', 'Indonesia', 'Brazil', 'South Africa']) {
     assert.ok(new RegExp(market, 'i').test(text), `missing ${market} in the company data`);
   }
   const limits = METHODOLOGY.limits.join(' ');
-  for (const market of ['Hong Kong', 'Australia', 'India', 'Indonesia', 'Brazil']) {
+  for (const market of ['Hong Kong', 'Australia', 'India', 'Indonesia', 'Brazil', 'South Africa']) {
     assert.match(limits, new RegExp(market, 'i'), `missing ${market} in the limits`);
   }
 });

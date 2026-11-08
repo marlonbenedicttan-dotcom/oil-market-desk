@@ -122,11 +122,36 @@ export function parseSaTable(html) {
     const label = ENT(m[2].replace(/<[^>]+>/g, ' ')).replace(/\s+/g, ' ').trim();
     if (id && id !== 'header-title' && !cols.some((c) => c.id === id)) cols.push({ id, label, title });
   }
+  // New layout (stockanalysis rolled it out across every exchange in November 2026): the header has no
+  // `id` attributes. The period row carries the dates in a `date-row`, and the first column is marked
+  // "TTM" / "FY 2026" above it. Without this branch every fresh fetch parsed to zero columns, which made
+  // a live build look like a market with no statements.
+  if (!cols.length) {
+    const dateRow = /<tr[^>]*class="[^"]*date-row[^"]*"[^>]*>([\s\S]*?)<\/tr>/.exec(h);
+    if (dateRow) {
+      const ths = [...dateRow[1].matchAll(/<th\b([^>]*)>([\s\S]*?)<\/th>/g)];
+      for (let i = 1; i < ths.length; i++) {
+        const attrs = ths[i][1];
+        const title = (/title="([^"]*)"/.exec(attrs) || [])[1] || '';
+        const label = ENT(ths[i][2].replace(/<[^>]+>/g, ' ')).replace(/\s+/g, ' ').trim();
+        const date = periodFromTitle(title) || periodFromTitle(label);
+        if (/trailing twelve month/i.test(title)) cols.push({ id: 'TTM', label: 'TTM', title });
+        else if (date) cols.push({ id: date, label, title });
+        else if (label) cols.push({ id: `col${i}`, label, title });
+      }
+    }
+  }
   const rows = [];
   for (const tr of h.matchAll(/<tr[^>]*>([\s\S]*?)<\/tr>/g)) {
     const tds = [...tr[1].matchAll(/<td[^>]*>([\s\S]*?)<\/td>/g)].map((m) => m[1]);
     if (tds.length < 2) continue;
-    const label = ENT(tds[0].replace(/<[^>]+>/g, ' ')).replace(/\s+/g, ' ').trim();
+    // New layout: the visible label sits in a `font-medium` div, while the row also carries an
+    // invisible growth label (so the old whole-cell text read "Revenue Revenue Growth"). Prefer the
+    // visible label; fall back to the plain cell text for the older layout.
+    const strong = /class="[^"]*font-medium[^"]*"[^>]*>([\s\S]*?)<\/div>/.exec(tds[0]);
+    const label = strong
+      ? ENT(strong[1].replace(/<[^>]+>/g, ' ')).replace(/\s+/g, ' ').trim()
+      : ENT(tds[0].replace(/<[^>]+>/g, ' ')).replace(/\s+/g, ' ').trim();
     if (!label) continue;
     const values = {};
     // The first <td> is the label; the rest line up with the header columns. Growth rows have one

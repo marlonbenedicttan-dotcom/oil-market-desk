@@ -1,0 +1,548 @@
+{
+  "updated": "2026-11-08",
+  "brands": {
+    "NPN": [
+      "Naspers",
+      "Takealot",
+      "OLX",
+      "PayU",
+      "iFood"
+    ],
+    "PRX": [
+      "Prosus",
+      "Tencent",
+      "iFood",
+      "OLX",
+      "PayU",
+      "Mail.ru",
+      "Despegar"
+    ],
+    "BTI": [
+      "Dunhill",
+      "Lucky Strike",
+      "Newport",
+      "Camel",
+      "Vuse",
+      "Velo",
+      "Glo"
+    ],
+    "CFR": [
+      "Cartier",
+      "Van Cleef & Arpels",
+      "Montblanc",
+      "Jaeger-LeCoultre",
+      "Piaget",
+      "Chloé"
+    ],
+    "ANH": [
+      "Budweiser",
+      "Stella Artois",
+      "Corona",
+      "Beck's",
+      "Leffe",
+      "Hoegaarden"
+    ],
+    "GLN": [
+      "Glencore",
+      "Copper",
+      "Cobalt",
+      "Coal",
+      "Zinc"
+    ],
+    "ANG": [
+      "AngloGold Ashanti",
+      "Geita",
+      "Obuasi",
+      "Kibali"
+    ],
+    "GFI": [
+      "Gold Fields",
+      "South Deep",
+      "St Ives",
+      "Gruyere"
+    ],
+    "HAR": [
+      "Harmony",
+      "Moab Khotsong",
+      "Mponeng"
+    ],
+    "IMP": [
+      "Impala Platinum",
+      "Implats",
+      "Zimplats"
+    ],
+    "VAL": [
+      "Valterra Platinum",
+      "Anglo American Platinum",
+      "Amplats"
+    ],
+    "KIO": [
+      "Kumba Iron Ore",
+      "Sishen",
+      "Kolomela"
+    ],
+    "SOL": [
+      "Sasol",
+      "Sasol Chemicals",
+      "Sasol Energy"
+    ],
+    "FSR": [
+      "FirstRand",
+      "FNB",
+      "Rand Merchant Bank",
+      "Ashburton"
+    ],
+    "SBK": [
+      "Standard Bank",
+      "Stanbic",
+      "Standard Bank Insurance"
+    ],
+    "ABG": [
+      "Absa",
+      "Absa Bank"
+    ],
+    "NED": [
+      "Nedbank",
+      "Nedbank Wealth"
+    ],
+    "CPI": [
+      "Capitec",
+      "Capitec Bank",
+      "Live Better"
+    ],
+    "INL": [
+      "Investec",
+      "Investec Bank",
+      "Investec Wealth"
+    ],
+    "DSY": [
+      "Discovery",
+      "Vitality",
+      "Discovery Bank",
+      "Discovery Health"
+    ],
+    "SLM": [
+      "Sanlam",
+      "Sanlam Investments",
+      "Shinano"
+    ],
+    "OMU": [
+      "Old Mutual",
+      "Old Mutual Wealth"
+    ],
+    "OUT": [
+      "OUTsurance",
+      "Youi"
+    ],
+    "MTN": [
+      "MTN",
+      "MTN Mobile Money",
+      "Ayoba"
+    ],
+    "VOD": [
+      "Vodacom",
+      "M-Pesa",
+      "Vodacom Financial Services"
+    ],
+    "TKG": [
+      "Telkom",
+      "BCX",
+      "Openserve"
+    ],
+    "SHP": [
+      "Shoprite",
+      "Checkers",
+      "Usave",
+      "LiquorShop",
+      "Sixty60"
+    ],
+    "WHL": [
+      "Woolworths",
+      "Country Road",
+      "David Jones"
+    ],
+    "MRP": [
+      "Mr Price",
+      "Miladys",
+      "Sheet Street",
+      "Sportscene"
+    ],
+    "TFG": [
+      "The Foschini Group",
+      "TFG",
+      "Sportscene",
+      "Totalsports"
+    ],
+    "CLS": [
+      "Clicks",
+      "GNC",
+      "Sorbet",
+      "The Body Shop"
+    ],
+    "DCP": [
+      "Dis-Chem",
+      "Dis-Chem Pharmacies"
+    ],
+    "PIK": [
+      "Pick n Pay",
+      "Boxer",
+      "PnP"
+    ],
+    "SPP": [
+      "SPAR",
+      "Build it",
+      "TOPS at SPAR"
+    ],
+    "BOX": [
+      "Boxer",
+      "Boxer Superstores"
+    ],
+    "PPH": [
+      "Pepkor",
+      "Pep",
+      "Ackermans",
+      "Tekkie Town",
+      "Sleepmasters"
+    ],
+    "BVT": [
+      "Bidvest",
+      "Bidfood",
+      "Makro",
+      "Bidvest Bank"
+    ],
+    "BID": [
+      "Bid Corporation",
+      "Bidfood",
+      "Caterplus"
+    ],
+    "APN": [
+      "Aspen Pharmacare",
+      "Aspen",
+      "Aspen Global"
+    ],
+    "NTC": [
+      "Netcare",
+      "Netcare 911",
+      "Akeso"
+    ],
+    "LHC": [
+      "Life Healthcare",
+      "Life Esidimeni"
+    ],
+    "GRT": [
+      "Growthpoint",
+      "Growthpoint Properties"
+    ],
+    "RDF": [
+      "Redefine",
+      "Redefine Properties"
+    ],
+    "RES": [
+      "Resilient",
+      "Resilient REIT"
+    ],
+    "HYP": [
+      "Hyprop",
+      "CapeGate",
+      "Canal Walk"
+    ],
+    "VKE": [
+      "Vukile",
+      "Vukile Property Fund"
+    ],
+    "TGA": [
+      "Thungela",
+      "Thungela Resources"
+    ],
+    "EXX": [
+      "Exxaro",
+      "Exxaro Resources",
+      "Belfast"
+    ],
+    "N91": [
+      "Ninety One",
+      "Investec Asset Management"
+    ],
+    "CML": [
+      "Coronation",
+      "Coronation Fund Managers"
+    ],
+    "JSE": [
+      "JSE",
+      "Johannesburg Stock Exchange"
+    ],
+    "SAP": [
+      "Sappi",
+      "Sappi Southern Africa"
+    ],
+    "AFT": [
+      "Afrimat",
+      "Afrimat Aggregates"
+    ],
+    "MTH": [
+      "Motus",
+      "Motus Holdings"
+    ],
+    "KAP": [
+      "KAP",
+      "PG Bison",
+      "Safripol"
+    ],
+    "NPK": [
+      "Nampak",
+      "Nampak Bevcan"
+    ],
+    "MPT": [
+      "Mpact",
+      "Mpact Paper"
+    ],
+    "ITE": [
+      "Italtile",
+      "CTM",
+      "Tile Africa"
+    ],
+    "AEL": [
+      "Altron",
+      "Altron Nexus",
+      "Bytes"
+    ],
+    "SUR": [
+      "Spur",
+      "Spur Steak Ranches",
+      "Panarottis"
+    ],
+    "FBR": [
+      "Famous Brands",
+      "Wimpy",
+      "Mugg & Bean",
+      "Steers"
+    ],
+    "SUI": [
+      "Sun International",
+      "Sun City",
+      "The Table Bay"
+    ],
+    "TSG": [
+      "Tsogo Sun",
+      "Southern Sun"
+    ],
+    "ARL": [
+      "Astral Foods",
+      "Astral"
+    ],
+    "RCL": [
+      "RCL Foods",
+      "Selati",
+      "Yum Yum"
+    ],
+    "AVI": [
+      "AVI",
+      "I&J",
+      "Bakers",
+      "Entyce"
+    ],
+    "TBS": [
+      "Tiger Brands",
+      "Koo",
+      "All Gold",
+      "Jungle Oats"
+    ],
+    "OCE": [
+      "Oceana",
+      "Lucky Star"
+    ],
+    "SHG": [
+      "Sea Harvest",
+      "Cape Harvest"
+    ],
+    "LBR": [
+      "Libstar",
+      "Cape Herb & Spice"
+    ],
+    "QFH": [
+      "Quantum Foods",
+      "Nulaid"
+    ],
+    "SRE": [
+      "Sirius Real Estate",
+      "BizSpace"
+    ],
+    "SHC": [
+      "Shaftesbury Capital",
+      "Covent Garden"
+    ],
+    "HMN": [
+      "Hammerson",
+      "Brent Cross"
+    ],
+    "PHP": [
+      "Primary Health Properties",
+      "PHP"
+    ],
+    "LTE": [
+      "Lighthouse Properties",
+      "Lighthouse"
+    ],
+    "GTC": [
+      "Globe Trade Centre",
+      "GTC"
+    ],
+    "SCD": [
+      "Schroder European REIT",
+      "Schroder"
+    ],
+    "SEA": [
+      "Spear REIT",
+      "Spear"
+    ],
+    "EXP": [
+      "Exemplar REITail",
+      "Exemplar"
+    ],
+    "CPP": [
+      "Collins Property Group",
+      "Collins"
+    ],
+    "DIB": [
+      "Dipula",
+      "Dipula Properties"
+    ],
+    "OCT": [
+      "Octodec",
+      "Octodec Investments"
+    ],
+    "ARI": [
+      "African Rainbow Minerals",
+      "ARM"
+    ],
+    "DRD": [
+      "DRDGOLD",
+      "Ergo"
+    ],
+    "PAN": [
+      "Pan African Resources",
+      "Evander"
+    ],
+    "APH": [
+      "Alphamin",
+      "Bisie"
+    ],
+    "THA": [
+      "Tharisa",
+      "Tharisa Minerals"
+    ],
+    "JBL": [
+      "Jubilee Metals",
+      "Jubilee"
+    ],
+    "WEZ": [
+      "Wesizwe Platinum",
+      "Wesizwe"
+    ],
+    "MRF": [
+      "Merafe",
+      "Merafe Resources"
+    ],
+    "SLP": [
+      "Southern Palladium",
+      "Southern Palladium"
+    ],
+    "SNV": [
+      "Santova",
+      "Santova Logistics"
+    ],
+    "ADR": [
+      "Adcorp",
+      "Adcorp Holdings"
+    ],
+    "TPC": [
+      "Transpaco",
+      "Transpaco"
+    ],
+    "BEL": [
+      "Bell Equipment",
+      "Bell"
+    ],
+    "IVT": [
+      "Invicta",
+      "Invicta Holdings"
+    ],
+    "ART": [
+      "Argent",
+      "Argent Industrial"
+    ],
+    "HDC": [
+      "Hudaco",
+      "Hudaco Industries"
+    ],
+    "OMN": [
+      "Omnia",
+      "Omnia Holdings"
+    ],
+    "AFE": [
+      "AECI",
+      "AECI Chemicals"
+    ],
+    "RBO": [
+      "Rainbow Chicken",
+      "Rainbow"
+    ],
+    "ADH": [
+      "ADvTECH",
+      "ADvTECH Schools"
+    ],
+    "CSB": [
+      "Cashbuild",
+      "Cashbuild"
+    ],
+    "LEW": [
+      "Lewis",
+      "Lewis Group",
+      "Beares"
+    ],
+    "BLU": [
+      "Blue Label",
+      "Blue Label Telecoms"
+    ],
+    "CCD": [
+      "Cell C",
+      "Cell C"
+    ],
+    "EMH": [
+      "eMedia",
+      "eTV"
+    ],
+    "AME": [
+      "African Media Entertainment",
+      "OFM"
+    ],
+    "PPC": [
+      "PPC",
+      "PPC Cement"
+    ],
+    "SSW": [
+      "Sibanye-Stillwater",
+      "Stillwater"
+    ],
+    "NPH": [
+      "Northam Platinum",
+      "Zondereinde"
+    ],
+    "RLO": [
+      "Reunert",
+      "Reutech"
+    ],
+    "TRU": [
+      "Truworths",
+      "Uzzi"
+    ],
+    "KRO": [
+      "Karooooo",
+      "Cartrack"
+    ],
+    "GND": [
+      "Grindrod",
+      "Grindrod Shipping"
+    ]
+  }
+}

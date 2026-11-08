@@ -4102,7 +4102,7 @@ Taiwan, Hong Kong, Australia, India, Indonesia and Brazil; the US keeps it.
 ## DATA & METHODOLOGY covers the five newer markets (2026-11-08)
 
 - The on-site **DATA & METHODOLOGY** (`src/lib.js` `METHODOLOGY`, served at `/api/market.methodology`)
-  now documents **Hong Kong, Australia, India, Indonesia and Brazil** alongside US/Japan/Korea/Taiwan:
+  now documents **Hong Kong, Australia, India, Indonesia, Brazil and South Africa** alongside US/Japan/Korea/Taiwan:
   universe, fundamentals, prices/FX, valuation history, descriptions and limits.
 - The source table adds **stockanalysis.com** (statements, profiles, current shares, yield) and
   **Exchange files** (HKEX, ASX, NIFTY 500, IDX, B3); Yahoo now explicitly covers company prices too.
@@ -4110,7 +4110,7 @@ Taiwan, Hong Kong, Australia, India, Indonesia and Brazil; the US keeps it.
   statements), ASX with CDIs and USD reporters, NIFTY 500 with the April–March fiscal year, IDX with
   the reviewed 95-name prune and the 82-name HSC list, and B3 with one class per issuer plus the
   LatAm-only 11-BDR lens (US mega-caps stay in the US section; 777 other BDRs/FIIs excluded).
-- `tests/lib.test.js` now asserts every one of the nine company markets appears in both the company
+- `tests/lib.test.js` now asserts every one of the ten company markets appears in both the company
   data and the limits.
 
 
@@ -4118,17 +4118,18 @@ Taiwan, Hong Kong, Australia, India, Indonesia and Brazil; the US keeps it.
 
 - **`npm run audit:all`** now runs the whole set, not just the US: US calculations/deep/universe/
   freshness/deals/invariants/reconcile/arbitrate/themes, the US/JP/KR cross-market check,
-  Taiwan, Hong Kong, Australia, India, Indonesia (standard + deep), Brazil (standard + deep), the
-  refresh-collapse guards and `check-freshness`. It writes `data/audit-all-markets.json` and exits
+  Taiwan, Hong Kong, Australia, India, Indonesia (standard + deep), Brazil (standard + deep), South Africa
+  (standard + deep), the refresh-collapse guards and `check-freshness`. It writes `data/audit-all-markets.json` and exits
   non-zero on any failure. `check-snapshot` stays a separate manual baseline refresh: a new filing
   legitimately moves it, which is why the daily companies job deliberately keeps it off the hard gate.
 - **`scripts/audit-all-markets.mjs`** is the wrapper; the individual scripts stay the source of truth.
 - **Auto updates**: `companies-daily` refreshes US/JP/KR; `taiwan-daily`, `hongkong-daily`,
-  `australia-daily`, `india-daily`, `indonesia-daily` and `brazil-daily` refresh the other six.
+  `australia-daily`, `india-daily`, `indonesia-daily`, `brazil-daily` and `south-africa-daily` refresh the
+  other seven.
   **`markets-audit-daily.yml`** runs Tue–Sat 22:30 UTC, after the US/JP/KR and Brazil refreshes, and
   commits the combined audit report.
 - `tests/workflows.test.js` asserts the scheduled all-markets audit exists and that the wrapper names
-  every market, including the Indonesia and Brazil deep audits.
+  every market, including the Indonesia, Brazil and South Africa deep audits.
 
 ## US MARKET cohorts, tiers and broader themes (2026-11-08)
 
@@ -4153,17 +4154,18 @@ Taiwan, Hong Kong, Australia, India, Indonesia and Brazil; the US keeps it.
 
 - **`npm run audit:all`** now runs the whole set, not just the US: US calculations/deep/universe/
   freshness/deals/invariants/reconcile/arbitrate/themes, the US/JP/KR cross-market check,
-  Taiwan, Hong Kong, Australia, India, Indonesia (standard + deep), Brazil (standard + deep), the
-  refresh-collapse guards and `check-freshness`. It writes `data/audit-all-markets.json` and exits
+  Taiwan, Hong Kong, Australia, India, Indonesia (standard + deep), Brazil (standard + deep), South Africa
+  (standard + deep), the refresh-collapse guards and `check-freshness`. It writes `data/audit-all-markets.json` and exits
   non-zero on any failure. `check-snapshot` stays a separate manual baseline refresh: a new filing
   legitimately moves it, which is why the daily companies job deliberately keeps it off the hard gate.
 - **`scripts/audit-all-markets.mjs`** is the wrapper; the individual scripts stay the source of truth.
 - **Auto updates**: `companies-daily` refreshes US/JP/KR; `taiwan-daily`, `hongkong-daily`,
-  `australia-daily`, `india-daily`, `indonesia-daily` and `brazil-daily` refresh the other six.
+  `australia-daily`, `india-daily`, `indonesia-daily`, `brazil-daily` and `south-africa-daily` refresh the
+  other seven.
   **`markets-audit-daily.yml`** runs Tue–Sat 22:30 UTC, after the US/JP/KR and Brazil refreshes, and
   commits the combined audit report.
 - `tests/workflows.test.js` asserts the scheduled all-markets audit exists and that the wrapper names
-  every market, including the Indonesia and Brazil deep audits.
+  every market, including the Indonesia, Brazil and South Africa deep audits.
 
 ## US MARKET cohorts, tiers and broader themes (2026-11-08)
 
@@ -4199,3 +4201,51 @@ committed by both jobs, so a CI rebuild cannot lose the profiles (the Korea less
 no longer treats a legitimate mention of "charitable organizations" as a foundation page, and
 accent-folded names (Schrödinger) satisfy the name check. ICHR's stockanalysis page is missing, so it
 keeps the 10-K text.
+
+
+## South Africa: the JSE (2026-11-08)
+
+- **Universe**: the vendor's Johannesburg exchange list (**258 lines**) → **244 after 14 named
+  exclusions** → **225 built** = **202 JSE-primary** + **23 foreign-secondary**. The secondary lines are
+  JSE lines of foreign-domiciled issuers (CFR, PRX, ANH, ANG, BTI, GLN, SRE, SHC, PHP, HMN, SRI, SCD,
+  N91, BYI, CNP, GTC, APH, AII, PAN, SDL, ORN, UPL, MCZ, EPS): statements and profiles come from the
+  primary listing, the price is the JSE line and the cap is the **global company total**, all in rand.
+  They are **inside the market totals**, not a separate rail.
+- **Exclusions** (named, never estimated): **BHG** (BHP) and **S32** (South32) belong to the Australia
+  market; **INP** is Investec’s duplicate (INL kept); **AGL**, **MNP** and **QLT** have no free
+  statement page; **SOLBE1/FTB/EMN/RTO/AON/BRN/NY1** are duplicate share classes of an issuer already
+  built; **FDETNQ** is a FirstRand Bank note, not an operating company. That leaves 13 lines with no
+  free statement page, 3 stale statements and 3 without a JSE price — all named in the audit.
+- **Prices**: Yahoo `.JO` quotes the JSE in **cents** (NPN prints 75,725.0 = R757.25). The build divides
+  once to rand, so the price, returns, traded value and charts are all rand. The JSE All Share is
+  `^J203.JO`.
+- **Caps**: the vendor list cap is the **company total in rand** and is the authority; the audit checks
+  `marketCap = vendorCap` and the company page never re-derives the cap from price × shares. The latest
+  balance sheet’s ordinary count is published for per-share displays.
+- **Statements**: stockanalysis.com JSE pages for the primary companies and the primary exchange for the
+  six secondary lines. TTM/annual/quarterly, current shares, vendor dividend yield, GICS profile, report
+  currency (ZAR/USD/EUR/GBP) carried into the ratios. USD/ZAR from open.er-api.
+- **Shared parser fix**: stockanalysis.com changed its statement-table markup in November 2026 (no
+  `id` attributes; the period row is a `date-row` and the label sits in a `font-medium` div).
+  `parseSaTable` now supports both layouts, so a fresh build no longer reads every page as empty.
+- **Trading quality**: frozen price (>=90% unchanged in 250 sessions), short history (<100 sessions), TTM
+  older than 365 days and thin turnover (< R1M/day) are flagged; returns are withheld on frozen lines.
+- **Build**: `npm run build:southafrica` — build → profiles → rebuild from cache. `--limit=N` /
+  `--codes=NPN,FSR` are the smoke tests; caches in `data/cache/jse` and `data/cache/southafrica-sa`.
+- **Output**: `data/southafrica.json`, `data/southafrica-series/{A..Z,0..9}.json`,
+  `data/southafrica-list.json`, `data/southafrica-companies/`, `data/southafrica-profiles.json`,
+  `data/southafrica-brands.json`, `data/southafrica-themes.json` (9 curated lists),
+  `data/southafrica-universe.json`.
+- **Server/UI**: `/api/southafrica`, `/api/southafrica/company/{code}`,
+  `/api/southafrica/chart?code=&range=`; a tenth region button (**SOUTH AFRICA**) with MARKET / SCREENER /
+  THEMES, a company page, search (`za:NPN`), peers, compare and the home screener row. Accent gold
+  `#c9a227`. The MARKET view carries a **FOREIGN-SECONDARY LISTINGS** panel naming each primary exchange.
+- **Audits/tests**: `npm run audit:southafrica` (hard invariants, caps, ratio reproduction, secondary
+  sources, aggregates, list projection) and `npm run audit:southafrica:deep` (engine fields, caps,
+  ratios, four-quarter TTM, flags, list). `tests/southafrica-data.test.js` covers the 252/246/6 split,
+  the named exclusions and secondary map, caps, ratios and list fields; `filters`, `workflows` and
+  `lib` tests include South Africa.
+- **Schedule**: `.github/workflows/south-africa-daily.yml`, 15:40 UTC Mon–Fri (17:40 SAST), with the
+  statement cache, `merge-history za`, `merge-series za`, the collapse guard, both audits and the commit.
+- **Not used**: the official JSE market-data API is licensed (no free key); the keyless vendor path is
+  the delivery route.

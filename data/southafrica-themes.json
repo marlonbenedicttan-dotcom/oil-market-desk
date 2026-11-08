@@ -1,0 +1,69 @@
+{
+  "updated": "2026-11-08",
+  "note": "Curated by hand. A ticker that is not in the selected JSE universe is dropped by the build and counted, never invented.",
+  "themes": [
+    {
+      "id": "banks",
+      "label": "BANKS & FINANCIALS",
+      "kind": "sector",
+      "note": "The large banks, the insurers and the asset managers. Net interest margin, credit losses and the SARB repo rate drive earnings; lenders carry a P/E and a P/B but no free cash flow.",
+      "tickers": ["FSR", "SBK", "ABG", "NED", "CPI", "INL", "DSY", "SLM", "OMU", "OUT", "SNT", "MTM", "N91", "CML", "PSG", "SYG", "AFH", "JSE"]
+    },
+    {
+      "id": "mining",
+      "label": "MINING & PLATINUM",
+      "kind": "commodity",
+      "note": "Gold, platinum-group metals, iron ore, coal and the diversified miners. The rand cost base, the platinum basket and Chinese steel demand are the swing factors.",
+      "tickers": ["ANG", "GFI", "HAR", "IMP", "VAL", "SSW", "NPH", "KIO", "EXX", "ARI", "TGA", "DRD", "PAN", "APH", "THA", "JBL", "WEZ", "MRF", "SLP", "GLN"]
+    },
+    {
+      "id": "telecoms",
+      "label": "TELECOMS & MEDIA",
+      "kind": "sector",
+      "note": "Mobile networks, fixed-line and the media houses. Data revenue and fintech attach rates are the growth lines; spectrum and load-shedding are the costs.",
+      "tickers": ["MTN", "VOD", "TKG", "BLU", "CCD", "EMH", "AME", "KRO"]
+    },
+    {
+      "id": "retail",
+      "label": "RETAIL & CONSUMER",
+      "kind": "sector",
+      "note": "Food, fashion, pharmacy and general retail. Volume growth, credit sales and the consumer cycle matter more than headline inflation.",
+      "tickers": ["SHP", "WHL", "MRP", "TFG", "TRU", "CLS", "DCP", "PIK", "SPP", "BOX", "PPH", "LEW", "CSB", "SUR", "FBR", "SUI", "TSG"]
+    },
+    {
+      "id": "industrials",
+      "label": "INDUSTRIALS",
+      "kind": "sector",
+      "note": "Building materials, equipment, logistics and business services — the domestic capex and infrastructure read.",
+      "tickers": ["BVT", "BID", "WBHO", "RBX", "MTH", "HDC", "AFT", "OMN", "KAP", "NPK", "MPT", "AFE", "ITE", "RLO", "AEL", "GND", "SNV", "ADR", "TPC", "BEL", "IVT", "ART"]
+    },
+    {
+      "id": "energy",
+      "label": "ENERGY & CHEMICALS",
+      "kind": "commodity",
+      "note": "Sasol's synfuels and chemicals, the coal exporters and the industrial chemical names. Brent, the rand and the coal price are the three inputs.",
+      "tickers": ["SOL", "EXX", "OMN", "AFE", "TGA", "RBO"]
+    },
+    {
+      "id": "healthcare",
+      "label": "HEALTHCARE",
+      "kind": "sector",
+      "note": "Private hospitals, pharmacies and pharmaceuticals. Demand is defensive; the risk is the medical-scheme reimbursement cycle.",
+      "tickers": ["APN", "NTC", "LHC", "CLS", "DCP", "ADH"]
+    },
+    {
+      "id": "property",
+      "label": "PROPERTY & REITS",
+      "kind": "sector",
+      "note": "Listed real estate, from domestic REITs to the European and UK portfolios. Distribution growth and the bond yield are the valuation anchors.",
+      "tickers": ["GRT", "RDF", "RES", "HYP", "VKE", "ATT", "SSS", "EQU", "EMI", "FFB", "SAC", "DLT", "TEX", "APF", "NRL", "CVW", "BTN", "MSP", "NRP", "SRE", "SHC", "HMN", "PHP", "LTE", "GTC", "SCD", "SEA", "EXP", "CPP", "DIB", "OCT"]
+    },
+    {
+      "id": "secondary",
+      "label": "FOREIGN-SECONDARY LISTINGS",
+      "kind": "listing",
+      "note": "The six JSE lines of foreign-domiciled issuers. Statements come from the primary exchange; the price is the JSE line and the cap is the global company total.",
+      "tickers": ["BTI", "CFR", "PRX", "ANH", "ANG", "GLN"]
+    }
+  ]
+}

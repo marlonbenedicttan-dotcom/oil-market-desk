@@ -68,6 +68,15 @@ const MARKETS = {
     cache: join(ROOT, 'data', 'cache', 'b3', 'profiles'),
     detail: join(ROOT, 'data', 'brazil-companies'),
   },
+  za: {
+    label: 'South Africa',
+    source: join(ROOT, 'data', 'southafrica.json'),
+    list: join(ROOT, 'data', 'southafrica-list.json'),
+    brands: join(ROOT, 'data', 'southafrica-brands.json'),
+    profiles: join(ROOT, 'data', 'southafrica-profiles.json'),
+    cache: join(ROOT, 'data', 'cache', 'jse', 'profiles'),
+    detail: join(ROOT, 'data', 'southafrica-companies'),
+  },
   id: {
     label: 'Indonesia',
     source: join(ROOT, 'data', 'indonesia.json'),

@@ -96,6 +96,15 @@ const MARKETS = {
       ['quarters', c.quarters, 'd'],
     ],
   },
+  za: {
+    file: 'southafrica.json',
+    detail: 'southafrica-companies',
+    tables: (c) => [
+      ['reports.annual', c.reports && c.reports.annual, 'end'],
+      ['reports.quarters', c.reports && c.reports.quarters, 'd'],
+      ['quarters', c.quarters, 'd'],
+    ],
+  },
   // The US has no per-company detail directory: the whole record lives in companies.json. Its
   // annual table is `series` (numeric fiscal year), so growth follows the merged record too.
   us: {

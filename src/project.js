@@ -227,6 +227,46 @@ export const brazilList = (br) => ({
   companies: (br.companies || []).map(projectBr),
 });
 
+// South Africa ships the Brazil/Indonesia shape. Six JSE lines are foreign-domiciled secondary listings
+// (CFR, PRX, ANH, ANG, BTI, GLN): their statements come from the primary exchange, the price is the JSE
+// line and the cap is the global company total. They stay in the market totals rather than a separate
+// rail, so the flag and the source ride along for the company page and the screener.
+export const projectZa = (c) => ({
+  code: c.code, ticker: c.ticker, name: c.name, nameEn: c.nameEn || null, sector: c.sector || null,
+  brands: c.brands && c.brands.length ? c.brands : null,
+  price: c.price, priceDate: c.priceDate, marketCap: c.marketCap,
+  vendorCap: c.vendorCap ?? null,
+  foreignSecondary: !!c.foreignSecondary,
+  secondaryExchange: c.secondaryExchange || null,
+  secondaryCountry: c.secondaryCountry || null,
+  secondaryTicker: c.secondaryTicker || null,
+  secondarySource: c.secondarySource || null,
+  chg1d: c.chg1d, chg6m: c.chg6m, chgYtd: c.chgYtd,
+  pe: c.pe, pb: c.pb, roe: c.roe, opMargin: c.opMargin,
+  netIncomeTTM: c.netIncomeTTM ?? null,
+  netIncomeTTMAsOf: c.netIncomeTTMAsOf || null,
+  ttmFromFY: c.ttmFromFY || undefined,
+  fcfYield: c.fcfYield ?? null,
+  dividendYield: c.dividendYield ?? null,
+  reportCurrency: c.reportCurrency || null,
+  noRecentTrading: !!c.noRecentTrading,
+  shortHistory: !!c.shortHistory,
+  ttmStale: !!c.ttmStale,
+  thinTrading: !!c.thinTrading,
+  ttmAgeDays: c.ttmAgeDays ?? null,
+  avgValue30: c.avgValue30 ?? null,
+  flatPct: c.flatPct ?? null,
+  ...growthFields(c),
+  bands: c.bands && c.bands.pe ? { pe: { percentile: c.bands.pe.percentile } } : null,
+});
+
+export const southafricaList = (za) => ({
+  updated: za.updated, universe: za.universe, currency: za.currency, fx: za.fx,
+  market: za.market, index: za.index, themes: za.themes || [], audit: za.audit || null,
+  session: za.session || null, indexName: za.indexName || 'JSE All Share',
+  companies: (za.companies || []).map(projectZa),
+});
+
 export const projectJp = (c) => ({  code: c.code, ticker: c.ticker, name: c.name, nameJa: c.nameJa, sector: c.sector, size: c.size,
   price: c.price, priceDate: c.priceDate, marketCap: c.marketCap,
   chg1d: c.chg1d, chg6m: c.chg6m, chgYtd: c.chgYtd, chgYtdBasis: c.chgYtdBasis,
@@ -263,4 +303,5 @@ export const FILTER_FIELDS = {
   in: ['sector', 'marketCap', 'pe', 'pb', 'roe', 'dividendYield', 'bands', 'chgYtd', 'priceDate', 'brands'],
   id: ['sector', 'marketCap', 'pe', 'pb', 'roe', 'dividendYield', 'bands', 'chgYtd', 'priceDate', 'brands', 'hsc', 'noRecentTrading', 'thinTrading'],
   br: ['sector', 'marketCap', 'pe', 'pb', 'roe', 'dividendYield', 'bands', 'chgYtd', 'priceDate', 'brands', 'noRecentTrading', 'thinTrading', 'bdr', 'bdrGroup'],
+  za: ['sector', 'marketCap', 'pe', 'pb', 'roe', 'dividendYield', 'bands', 'chgYtd', 'priceDate', 'brands', 'noRecentTrading', 'thinTrading', 'foreignSecondary'],
 };
