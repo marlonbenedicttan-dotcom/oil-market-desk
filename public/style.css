@@ -2561,3 +2561,17 @@ body.gs-search-open { overflow: hidden; }
   .home-markets { display: flex; overflow-x: auto; gap: 8px; padding: 8px 12px 10px; scroll-snap-type: x proximity; -webkit-overflow-scrolling: touch; }
   .home-markets .home-mkt { flex: 0 0 172px; scroll-snap-align: start; }
 }
+
+/* The global-board loading skeletons reserve desktop-sized boxes. On a phone they
+   become empty vertical space around real content — let the content set the height. */
+@media (max-width: 900px) {
+  #home-brief, #home-brief-more, #calendar, #home-backdrop,
+  #home-markets, #home-ideas, #regime-board { min-height: 0; }
+}
+
+@media (max-width: 760px) {
+  .gb-bubble { max-width: 30px; max-height: 30px; }
+  .gb-scroll { -webkit-overflow-scrolling: touch; }
+  .gb-table th:first-child, .gb-table td:first-child { position: sticky; left: 0; background: var(--panel); z-index: 1; }
+  .gb-table thead th:first-child { background: #0c0f13; z-index: 2; }
+}
