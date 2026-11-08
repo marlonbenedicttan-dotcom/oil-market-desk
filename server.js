@@ -1533,6 +1533,77 @@ function readJapanList() {
   return japanList(readJapan());
 }
 
+// The HOME summary: ten market tiles and three idea counts, without shipping ten company lists to the
+// browser. Index levels come from data/market-index.json; breadth and medians come from each market's
+// committed list artifact (US from companies.json). Cached for five minutes; the inputs change daily.
+let HOME_CACHE = { at: 0, data: null };
+function homeSummary() {
+  if (HOME_CACHE.data && Date.now() - HOME_CACHE.at < 5 * 60e3) return HOME_CACHE.data;
+  const median = (xs) => {
+    const a = xs.filter((x) => x != null && Number.isFinite(x)).sort((x, y) => x - y);
+    if (!a.length) return null;
+    const m = Math.floor(a.length / 2);
+    return a.length % 2 ? a[m] : +((a[m - 1] + a[m]) / 2).toFixed(2);
+  };
+  const mi = globalMarketIndex();
+  const lists = {
+    jp: readJapanList(), kr: readKoreaList(), tw: readTaiwanList(), hk: readHongKongList(),
+    au: readAustraliaList(), in: readIndiaList(), id: readIndonesiaList(), br: readBrazilList(), za: readSouthAfricaList(),
+  };
+  const us = COMPANIES.companies || [];
+  const usAdv = us.filter((c) => (c.chg1d || 0) > 0).length;
+  const usDec = us.filter((c) => (c.chg1d || 0) < 0).length;
+  const usPe = median(us.map((c) => (c.pe > 0 && c.pe < 500 ? c.pe : null)));
+  const out = [];
+  const add = (id, label, idx, count, adv, dec, pe) => {
+    if (!idx) return;
+    out.push({
+      id, label,
+      index: idx.label, level: idx.level,
+      chg1d: idx.pct1d ?? idx.chg1d ?? null,
+      chgYtd: idx.pctYtd ?? idx.chgYtd ?? null,
+      count, adv, dec, pe,
+    });
+  };
+  const usg = mi.markets && mi.markets.us;
+  add('us', 'United States', usg && usg.indices && usg.indices[usg.default], us.length, usAdv, usDec, usPe);
+  for (const [id, label] of [['jp', 'Japan'], ['kr', 'Korea'], ['tw', 'Taiwan'], ['hk', 'Hong Kong'], ['au', 'Australia'], ['in', 'India'], ['id', 'Indonesia'], ['br', 'Brazil'], ['za', 'South Africa']]) {
+    const list = lists[id];
+    const g = mi.markets && mi.markets[id];
+    const idx = g && g.indices && g.indices[g.default];
+    const m = (list && list.market) || {};
+    add(id, label, idx, m.companies ?? (list && list.companies ? list.companies.length : 0), m.advancing ?? null, m.declining ?? null, m.medianPe ?? null);
+  }
+  // The same rules used on the company pages: a P/E percentile is the valuation signal; quality is
+  // high ROE without a premium multiple. Counted across every market, one share class per company.
+  let cheap = 0, quality = 0, total = 0;
+  const scan = (rows) => {
+    for (const c of rows || []) {
+      if (c.shareClass) continue;
+      total++;
+      const p = c.bands && c.bands.pe ? c.bands.pe.percentile : (c.peHistory ? c.peHistory.percentile : null);
+      if (p != null && p <= 20 && c.pe > 0) cheap++;
+      if (c.roe >= 15 && c.pe > 0 && c.pe <= 20) quality++;
+    }
+  };
+  scan(us);
+  for (const l of Object.values(lists)) scan(l.companies);
+  let filings = 0;
+  try { filings = (JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'filings-changed.json'), 'utf8')).tickers || []).length; } catch { /* none */ }
+  const pricesAsOf = Object.values(mi.markets || {})
+    .map((g) => g && g.indices && g.indices[g.default] && g.indices[g.default].date)
+    .filter(Boolean).sort().pop() || mi.updated || null;
+  const data = {
+    updated: new Date().toISOString(),
+    pricesAsOf,
+    companies: total,
+    markets: out,
+    ideas: { cheap, quality, filings },
+  };
+  HOME_CACHE = { at: Date.now(), data };
+  return data;
+}
+
 const DEAL_ARCHIVE = (() => { try { return JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'ma.json'), 'utf8')); } catch { return { deals: [], coverage: {} }; } })();
 const DEAL_STORE_FILE = path.join(__dirname, 'data', 'deals-store.json');
 import { DEAL_SECTOR_RULES, dealSector, DEAL_SITES, DEAL_RUMOUR, DEAL_CLOSED, DEAL_ENDED, eventStatus,
@@ -5498,6 +5569,9 @@ const server = http.createServer(async (req, res) => {
         return sendJSONCached(res, 200, m, 'public, max-age=60, stale-while-revalidate=300');
       }
       return sendJSONCached(res, 200, mi, 'public, max-age=60, stale-while-revalidate=300');
+    }
+    if (url.pathname === '/api/home') {
+      return sendJSONCached(res, 200, homeSummary(), 'public, max-age=60, stale-while-revalidate=300');
     }
     if (url.pathname === '/api/companies') {
       let valuation = null;

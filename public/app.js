@@ -421,9 +421,14 @@ function renderWatchlist() {
     const c = companiesData?.companies?.find((x) => x.ticker === id);
     return c ? companyTile(c) : null;
   }).filter(Boolean);
-  el.innerHTML = tiles.length
-    ? `<div class="tiles">${tiles.join('')}</div>`
-    : stEmpty('Nothing pinned yet — open <b>COMMODITIES</b> and click <b>☆</b> on an instrument, or open a company and click <b>☆</b> next to its name.');
+  if (tiles.length) { el.innerHTML = `<div class="tiles">${tiles.join('')}</div>`; return; }
+  // An empty board should still be useful: show three liquid instruments to pin, not a blank panel.
+  const picks = ['wti', 'gold', 'copper'].map((id) => data?.benchmarks?.find((b) => b.id === id)).filter(Boolean);
+  const suggested = picks.length ? picks : (data?.benchmarks || []).slice(0, 3);
+  el.innerHTML = `<div class="macro-note" style="padding:8px 12px">Nothing pinned yet — pin an instrument or a company and it lands here.</div>`
+    + (suggested.length
+      ? `<div class="gtitle" style="padding:2px 12px 0">SUGGESTED</div><div class="tiles">${suggested.map((b) => tileHtml(b)).join('')}</div>`
+      : stEmpty('Open <b>COMMODITIES</b> and click <b>☆</b> on an instrument, or open a company and click <b>☆</b> next to its name.'));
 }
 
 // ---------------------------------------------------------------------------
@@ -2439,32 +2444,26 @@ function renderBrief(b) {
     if (d.toDateString() === new Date(now.getTime() - 864e5).toDateString()) return hasTime ? `Yesterday ${time}` : 'Yesterday';
     return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
   };
-  const impHtml = (b.events || []).length
-    ? `<div class="gtitle">IMPORTANT · ${esc(b.sessionDate ? evDate(b.sessionDate) : 'TODAY')}</div><div class="imp-list">${b.events.slice(0, 5).map((e) => {
-      const mkt = (e.market || []).map((m) => `<span class="imp-m ${cls(m.d1)}">${esc(m.label)} ${pctf(m.d1)}</span>`).join('');
-      const src = e.url ? `<a href="${esc(e.url)}" target="_blank" rel="noopener noreferrer">${esc(e.source || 'Source')}</a>` : '';
-      const wires = (e.sources || []).length > 1 ? `<span class="dimtext">${e.sources.length} wires</span>` : '';
-      const why = e.why ? esc(e.why) : (e.mechanism ? esc(e.mechanism) : '<span class="dimtext">Reason not established in the wire coverage.</span>');
-      const whyK = e.why ? 'WHY' : (e.mechanism ? 'WHY IT MATTERS' : 'WHY');
-      const mech = e.why && e.mechanism ? ` <span class="dimtext">— ${esc(e.mechanism)}</span>` : '';
-      return `<div class="imp">`
-        + `<div class="imp-top"><span class="imp-tag">${esc(e.label)}</span>`
-        + `${e.novelty === 'new' ? '<span class="imp-badge new">NEW</span>' : '<span class="imp-badge">DEVELOPING</span>'}`
-        + `<span class="imp-date">${esc(evDate(e.at || e.date))}</span></div>`
-        + `<div class="imp-what">${esc(e.what)}</div>`
-        + `<div class="imp-why"><span class="why-k">${whyK}</span>${why}${mech}</div>`
-        + `<div class="imp-mkt">${mkt}${mkt && (src || wires) ? '<span class="dimtext">·</span>' : ''}${src}${src && wires ? '<span class="dimtext">·</span>' : ''}${wires}</div>`
-        + `</div>`;
-    }).join('')}</div>`
-    : '';
-  const relDay = (d) => {
-    if (!d) return '';
-    const today = new Date().toISOString().slice(0, 10);
-    const tomorrow = new Date(Date.now() + 864e5).toISOString().slice(0, 10);
-    if (d === today) return 'Today';
-    if (d === tomorrow) return 'Tomorrow';
-    return new Date(d + 'T00:00:00Z').toLocaleDateString('en-GB', { weekday: 'short', day: '2-digit', month: 'short', timeZone: 'UTC' });
+  const impCard = (e) => {
+    const mkt = (e.market || []).map((m) => `<span class="imp-m ${cls(m.d1)}">${esc(m.label)} ${pctf(m.d1)}</span>`).join('');
+    const src = e.url ? `<a href="${esc(e.url)}" target="_blank" rel="noopener noreferrer">${esc(e.source || 'Source')}</a>` : '';
+    const wires = (e.sources || []).length > 1 ? `<span class="dimtext">${e.sources.length} wires</span>` : '';
+    const why = e.why ? esc(e.why) : (e.mechanism ? esc(e.mechanism) : '<span class="dimtext">Reason not established in the wire coverage.</span>');
+    const whyK = e.why ? 'WHY' : (e.mechanism ? 'WHY IT MATTERS' : 'WHY');
+    const mech = e.why && e.mechanism ? ` <span class="dimtext">— ${esc(e.mechanism)}</span>` : '';
+    return `<div class="imp">`
+      + `<div class="imp-top"><span class="imp-tag">${esc(e.label)}</span>`
+      + `${e.novelty === 'new' ? '<span class="imp-badge new">NEW</span>' : '<span class="imp-badge">DEVELOPING</span>'}`
+      + `<span class="imp-date">${esc(evDate(e.at || e.date))}</span></div>`
+      + `<div class="imp-what">${esc(e.what)}</div>`
+      + `<div class="imp-why"><span class="why-k">${whyK}</span>${why}${mech}</div>`
+      + `<div class="imp-mkt">${mkt}${mkt && (src || wires) ? '<span class="dimtext">·</span>' : ''}${src}${src && wires ? '<span class="dimtext">·</span>' : ''}${wires}</div>`
+      + `</div>`;
   };
+  const lead = (b.events || [])[0] || null;
+  const leadHtml = lead
+    ? `<div class="gtitle">IMPORTANT · ${esc(b.sessionDate ? evDate(b.sessionDate) : 'TODAY')}</div><div class="imp-list">${impCard(lead)}</div>`
+    : '';
   const spark = (arr, up, fill) => (arr && arr.length ? tileSpark(arr, up, fill) : '');
   // The hero: the number and its shape side by side, then the one line that says WHY.
   const heroHtml = h ? `<div class="hero${h.route ? ' link' : ''}"${h.route ? ` data-go="${esc(h.route)}" role="link" tabindex="0"` : ''}>`
@@ -2478,51 +2477,30 @@ function renderBrief(b) {
     + (h.why ? `<div class="hero-w"><span class="why-k">WHY</span><a href="${esc(h.why.url)}" target="_blank" rel="noopener noreferrer">${esc(h.why.title)}</a> <span class="dimtext">— ${esc(h.why.source)}</span></div>` : '')
     + ((h.facts || []).length ? `<div class="hero-f">${esc(h.facts.slice(0, 2).join(' · '))}</div>` : '')
     + `</div>` : '';
-  // One line under a row: either the computed contract-roll note or the wire story that fits.
-  const whyLine = (x) => {
-    if (x.roll) {
-      const r = x.roll;
-      const full = `Front month expires ${r.when}. The curve is $${r.spread.toFixed(2)} backwardated (front above next), so about ${Math.abs(r.pct).toFixed(1)}% of this ${pctf(x.d1)} move is the contract rolling, not a selloff.`;
-      return `<span class="mvr-why roll" title="${esc(full)}">Roll, not a selloff — ${Math.abs(r.pct).toFixed(1)}% of this move is the expiring contract.</span>`;
-    }
-    if (x.why) {
-      const tag = x.why.scope === 'regional' ? 'REGIONAL' : x.why.scope === 'global' ? 'GLOBAL'
-        : x.why.scope === 'commodity' ? 'COMMODITY' : '';
-      return `<span class="mvr-why" title="${esc(x.why.title + ' — ' + (x.why.source || '') + (x.why.via ? ' (' + x.why.via + ')' : ''))}">`
-        + `${tag ? `<b class="why-scope">${tag}</b> ` : ''}<a href="${esc(x.why.url)}" target="_blank" rel="noopener noreferrer">${esc(x.why.title)}</a> <span class="dimtext">— ${esc(x.why.source)}</span></span>`;
-    }
-    // No wire story that day. Say it is context, not a cause, so a bare number never reads as a reason.
-    if ((x.facts || []).length) return `<span class="mvr-why context" title="${esc(x.facts.join(' · '))}">CONTEXT — ${esc(x.facts.join(' · '))}</span>`;
-    return '<span class="mvr-why context">No wire reason found.</span>';
-  };
-  // Everything else, one grammar. The hero's own row is skipped so nothing is said twice.
-  // The server ranked these already (one leaderboard for commodities and countries). Do NOT re-sort:
-  // WHAT HAPPENED is simply the next five on the same board.
-  const rest = b.rows || [];
-  const rows = rest.slice(0, 7).map((x) => x.kind === 'deal'
-    ? `<div class="mvr deal">`
-      + `<span class="mvr-tag">M&A</span>`
-      + `<span class="mvr-n deal-name" title="${esc(x.label)}">`
-      + (x.acquirer ? `<b>${esc(x.acquirer)}</b>` : '')
-      + (x.acquirer && x.target ? '<i class="deal-arrow">→</i>' : '')
-      + (x.target ? `<b>${esc(x.target)}</b>` : '')
-      + `</span>`
-      + `<span class="mvr-v deal-v">${dealVal(x.value)}</span><span class="mvr-sp">${chipFor(x)}</span>`
-      + `<span class="mvr-why">announced ${dealDateY(x.date)}${x.closed ? ' · closed ' + dealDateY(x.closed) : ''}</span></div>`
-    : `<div class="mvr${x.flat != null && x.flat >= 10 ? ' thin' : ''}">`
-      + `<span class="mvr-tag">${esc(x.tag)}</span><span class="mvr-n" title="${esc(x.label)}">${esc(x.label)}</span>`
-      + `<span class="mvr-v ${cls(x.d1)}">${pctf(x.d1)}</span><span class="mvr-sp">${spark(x.spark, x.d1 >= 0)}</span>`
-      + whyLine(x) + `</div>`).join('')
-    || '<div class="mvr"><span class="mvr-tag"></span><span class="mvr-n dimtext">Nothing moved enough to flag today.</span><span></span><span></span></div>';
-  const nextRows = (b.next || []).slice(0, 4).map((e) => `<div class="mvr">`
-    + `<span class="mvr-tag">${esc(relDay(e.date))}</span><span class="mvr-n">${esc(e.name)}</span>`
-    + `<span class="mvr-v dimtext" style="font-weight:400">${esc(e.time || '')}</span><span class="mvr-sp"></span></div>`).join('')
-    || '<div class="mvr"><span class="mvr-tag"></span><span class="mvr-n dimtext">Nothing scheduled.</span><span></span><span></span></div>';
   const ctx = (b.happened || []).filter((x) => x.kind !== 'move').map((x) => x.text).join(' · ');
-  el.innerHTML = impHtml + heroHtml
-    + `<div class="brief-cols"><div class="brief-col"><div class="gtitle">WHAT HAPPENED</div>${rows}</div>`
-    + `<div class="brief-col"><div class="gtitle">WHAT'S NEXT</div>${nextRows}</div></div>`
-    + (ctx ? `<div class="brief-ctx dimtext">${ctx}</div>` : '');
+  const moreEl = $('home-brief-more');
+  const secondary = (b.events || []).slice(1, 3);
+  const mini = secondary.map((e) => {
+    const mkt = (e.market || []).map((m) => `${esc(m.label)} ${pctf(m.d1)}`).join(' · ');
+    const why = e.why ? esc(e.why) : (e.mechanism ? esc(e.mechanism) : 'Reason not established in the wire coverage.');
+    return `<div class="brief-mini"><span class="tag">${esc(e.label)}</span><h4>${esc(e.what)}</h4><p>${why}</p><span class="age">${esc(evDate(e.at || e.date))}${mkt ? ' · ' + mkt : ''}</span></div>`;
+  }).join('');
+  const fillMoves = secondary.length < 2 ? (b.rows || []).slice(0, 2 - secondary.length) : [];
+  const miniMoves = fillMoves.map((x) => `<div class="brief-mini"><span class="tag">${esc(x.tag || 'MOVE')}</span><h4>${esc(x.label)}</h4><p>${x.why ? `${esc(x.why.title)} — ${esc(x.why.source || '')}` : 'No wire reason found.'}</p><span class="age">${pctf(x.d1)} today</span></div>`).join('');
+  const readBits = [];
+  if (b.hero) readBits.push(`${b.hero.label} ${pctf(b.hero.d1)}`);
+  for (const x of (b.rows || []).slice(0, 2)) if (x.d1 != null) readBits.push(`${x.label} ${pctf(x.d1)}`);
+  const idxMoves = (b.macro || []).filter((x) => x.kind === 'index' && x.d1 != null).sort((x, y) => x.d1 - y.d1).slice(0, 3);
+  const read = idxMoves.length
+    ? `${idxMoves.every((x) => x.d1 < 0) ? 'Risk-off' : idxMoves.every((x) => x.d1 > 0) ? 'Risk-on' : 'Index moves'}: ${idxMoves.map((x) => `${x.label} ${pctf(x.d1)}`).join(' · ')}.`
+    : (readBits.length ? `Today's tape: ${readBits.join(' · ')}.` : '');
+  const tape = (b.rows || []).slice(0, 6).map((x) => `<div class="brief-tape-row"><span>${esc(x.label)}</span><b class="${cls(x.d1)}">${pctf(x.d1)}</b></div>`).join('');
+  const more = (mini || miniMoves ? `<div class="brief-mini-grid">${mini}${miniMoves}</div>` : '')
+    + (read ? `<div class="brief-read"><span class="k">THE READ</span><p>${read}</p></div>` : '')
+    + (tape ? `<div class="brief-tape"><span class="k">TAPE</span>${tape}</div>` : '')
+    + (ctx ? `<div class="brief-foot"><span class="k">CONTEXT</span>${ctx}</div>` : '');
+  el.innerHTML = leadHtml || heroHtml || '<div class="macro-note">No ranked story today — the tape is below.</div>';
+  if (moreEl) moreEl.innerHTML = more || '<div class="macro-note">No further context on the tape today.</div>';
 }
 async function loadBrief() {
   const el = $('home-brief');
@@ -2568,6 +2546,73 @@ function renderRegime(d) {
       + `<div class="rb-v ${cls(dv)}">${fmtNum(r.price, r.dp)}${r.unit ? `<span class="rb-u">${r.unit}</span>` : ''}</div>${strip}`
       + `<div class="rb-src">${src}</div></div>`;
   })(), i)).join('');
+  renderHomeBackdrop(rows);
+}
+
+// The compact five-line backdrop beside the watchlist. Same /api/regime rows, just the headline five.
+function renderHomeBackdrop(rows) {
+  const el = $('home-backdrop'); if (!el) return;
+  const wanted = ['dxy', 'vix', 'us10y', 'brent', 'gold'];
+  const picked = wanted.map((id) => rows.find((r) => r.id === id)).filter(Boolean);
+  const list = picked.length ? picked : rows.slice(0, 5);
+  const d1 = (r) => (r.rate ? `${r.deltas && r.deltas.d1 > 0 ? '+' : ''}${((r.deltas && r.deltas.d1) || 0).toFixed(2)}` : pctf(r.deltas && r.deltas.d1));
+  const ytd = (r) => (r.rate
+    ? `YTD ${r.deltas && r.deltas.ytd > 0 ? '+' : ''}${(((r.deltas && r.deltas.ytd) || 0) * 100).toFixed(0)}bp`
+    : `YTD ${r.deltas && r.deltas.ytd >= 0 ? '+' : ''}${((r.deltas && r.deltas.ytd) || 0).toFixed(2)}%`);
+  el.innerHTML = list.map((r) => `<div class="home-bd" title="${esc(r.label)} · ${esc(r.source || '')}${r.asOf ? ' · ' + esc(r.asOf) : ''}">`
+    + `<span class="l">${esc(r.label)}</span><span class="v">${fmtNum(r.price, r.dp)}${r.unit ? `<span class="dimtext">${esc(r.unit)}</span>` : ''}</span>`
+    + `<span class="d ${cls(r.deltas && r.deltas.d1)}">${d1(r)}</span><span class="y">${ytd(r)}</span></div>`).join('');
+  const sub = $('backdrop-sub');
+  if (sub) sub.textContent = list[0] && list[0].asOf ? `as of ${dealDateY(list[0].asOf)}` : '';
+}
+
+// The ten-market board and the idea counts. One small endpoint, not ten company payloads.
+async function loadHome() {
+  const el = $('home-markets');
+  if (el && !el.innerHTML) el.innerHTML = stLoading('Loading the ten markets…');
+  let d = null;
+  try { d = await jget('/api/home', 300000); } catch { d = null; }
+  renderHomeStatus(d);
+  renderHomeMarkets(d);
+  renderHomeIdeas(d);
+}
+function renderHomeStatus(d) {
+  const m = $('home-status-markets');
+  const a = $('home-status-asof');
+  const ms = $('home-markets-sub');
+  if (m) m.textContent = d && d.markets ? `${d.markets.length} markets · ${Number(d.companies || 0).toLocaleString()} companies` : '10 markets';
+  if (a) a.textContent = d && d.pricesAsOf ? `prices as of ${dealDateY(d.pricesAsOf)} · filings and statements daily` : '';
+  if (ms) ms.textContent = d && d.pricesAsOf ? `index · breadth · median P/E · prices as of ${dealDateY(d.pricesAsOf)}` : 'index · breadth · median P/E';
+}
+function renderHomeMarkets(d) {
+  const el = $('home-markets'); if (!el) return;
+  const rows = (d && d.markets) || [];
+  if (!rows.length) { el.innerHTML = stError('Couldn’t load the ten markets — retrying.'); return; }
+  el.innerHTML = rows.map((m) => {
+    const adv = m.adv, dec = m.dec;
+    const total = (adv || 0) + (dec || 0);
+    const wa = total ? Math.round((adv / total) * 100) : 0;
+    const wd = total ? 100 - wa : 0;
+    const dp = Math.abs(m.level) >= 1000 ? 0 : 2;
+    return `<button class="home-mkt" type="button" data-region="${esc(m.id)}" title="${esc(m.label)} — open the market">`
+      + `<span class="top"><span class="code">${esc(String(m.id).toUpperCase())}</span><span class="nm">${esc(m.index || '')}</span></span>`
+      + `<span class="lvl">${fmtNum(m.level, dp)}</span>`
+      + `<span class="rets"><em class="${cls(m.chg1d)}">${m.chg1d == null ? '—' : pctf(m.chg1d)}</em><span>YTD ${m.chgYtd == null ? '—' : `${m.chgYtd >= 0 ? '+' : ''}${m.chgYtd.toFixed(2)}%`}</span></span>`
+      + `<span class="bar"><i style="width:${wa}%;background:var(--green)"></i><i style="width:${wd}%;background:var(--red)"></i></span>`
+      + `<span class="foot"><span>${adv == null ? '—' : `${adv} / ${dec}`}</span><span>P/E ${m.pe == null ? '—' : m.pe.toFixed(1)}</span></span>`
+      + `</button>`;
+  }).join('');
+}
+function renderHomeIdeas(d) {
+  const el = $('home-ideas'); if (!el) return;
+  const ideas = d && d.ideas;
+  if (!ideas) { el.innerHTML = stError('Couldn’t load the idea screens — retrying.'); return; }
+  const n = (x) => Number(x || 0).toLocaleString();
+  el.innerHTML = [
+    { k: 'CHEAP VS ITS OWN HISTORY', n: ideas.cheap, unit: 'names', p: 'P/E in the bottom 20% of its own five-year range. A valuation signal, not a recommendation.', ex: 'across 10 markets' },
+    { k: 'NEW FILINGS', n: ideas.filings, unit: 'US names this week', p: 'New 10-K / 10-Q filings with updated revenue, earnings and balance sheet.', ex: 'US filings tracker' },
+    { k: 'QUALITY AT A REASONABLE PRICE', n: ideas.quality, unit: 'names', p: 'ROE ≥ 15% and P/E ≤ 20. Quality without a premium multiple.', ex: 'across 10 markets' },
+  ].map((x) => `<div class="home-idea"><span class="k">${x.k}</span><span class="n">${n(x.n)}<small>${x.unit}</small></span><p>${x.p}</p><span class="ex">${x.ex} · <button type="button" class="linkbtn" data-tab="deals">Open COMPANIES →</button></span></div>`).join('');
 }
 // Screener — every instrument in one sortable table (assembled server-side at /api/screen).
 let screenRows = null, screenSort = { key: 'absd1', dir: -1 }, fxBase = 'USD', fxRows = null;
@@ -3853,6 +3898,7 @@ async function loadExtraCore() {
   if (!data) return; // need prices first
   reloadHistory();    // deltas + sparklines
   loadRegime();       // HOME: markets at a glance
+  loadHome();         // HOME: ten-market board + idea counts
   // Loaded eagerly (a gate here is unreliable: these panels define the page height, so their
   // on-screen position is only known once they've rendered). The loading overlay no longer waits on
   // them — they sit below the fold, so BOOT_CORE excludes the screener and calendar.
@@ -4008,6 +4054,11 @@ function goToInstrument(id, range = '6m') {
   loadMarketRead();
 }
 $('tabs').addEventListener('click', (e) => { const b = e.target.closest('.tab'); if (b) showTab(b.dataset.tab); });
+// A data-tab button outside the masthead (the HOME idea cards) still switches the pane.
+document.addEventListener('click', (e) => {
+  const b = e.target.closest('[data-tab]');
+  if (b && !b.closest('#tabs')) showTab(b.dataset.tab);
+});
 // Arrow keys move between tabs (standard tablist behaviour).
 $('tabs').addEventListener('keydown', (e) => {
   if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
@@ -9648,6 +9699,8 @@ document.addEventListener('click', (e) => {
     // until this the previous screen (often Japan's TOPIX view) was still the thing on the page.
     const body = $('co-body');
     if (body) body.innerHTML = stLoading(coRegion === 'jp' ? 'Loading Japan…' : coRegion === 'kr' ? 'Loading KOSPI…' : coRegion === 'tw' ? 'Loading TAIEX…' : coRegion === 'hk' ? 'Loading the Hang Seng…' : coRegion === 'au' ? 'Loading the ASX 200…' : coRegion === 'in' ? 'Loading the NIFTY 500…' : coRegion === 'id' ? 'Loading the IDX…' : coRegion === 'br' ? 'Loading the Ibovespa…' : coRegion === 'za' ? 'Loading the JSE All Share…' : `Loading the ${usIndexLabel()}…`);
+    // A tile on the HOME board opens the same market's company view.
+    if (region.closest('.home-mkt')) document.querySelector('[data-tab="deals"]')?.click();
     renderCompanies();
     return;
   }

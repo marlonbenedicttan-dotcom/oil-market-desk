@@ -62,6 +62,12 @@
   <noscript><div class="noscript-note">This desk needs JavaScript to run. Please enable it, or grab the raw data from <a href="/api/export.csv">the CSV export</a>.</div></noscript>
   <header class="topbar">
     <div class="brand"><span class="logo">♜</span><h1>MARLON'S WATCHTOWER</h1><span class="sub">COMMODITIES · COMPANIES · MACRO</span></div>
+    <nav class="tabs" id="tabs" role="tablist" aria-label="Sections">
+      <button class="tab active" data-tab="home" id="tab-home" role="tab" aria-selected="true" aria-controls="pane-home">HOME</button>
+      <button class="tab" data-tab="commodities" id="tab-commodities" role="tab" aria-selected="false" aria-controls="pane-commodities">COMMODITIES</button>
+      <button class="tab" data-tab="macro" id="tab-macro" role="tab" aria-selected="false" aria-controls="pane-macro">MACRO</button>
+      <button class="tab" data-tab="deals" id="tab-deals" role="tab" aria-selected="false" aria-controls="pane-deals">COMPANIES</button>
+    </nav>
     <div class="meta">
       <span id="fresh" class="fresh-dot" role="img" title="Data freshness" aria-label="Data freshness"></span>
       <span id="clock" class="clock">--:--:--</span>
@@ -78,32 +84,62 @@
   <main>
     <div id="error" class="errbar hidden" role="alert"></div>
 
-    <!-- TABS -->
-    <nav class="tabs" id="tabs" role="tablist" aria-label="Sections">
-      <button class="tab active" data-tab="home" id="tab-home" role="tab" aria-selected="true" aria-controls="pane-home">HOME</button>
-      <button class="tab" data-tab="commodities" id="tab-commodities" role="tab" aria-selected="false" aria-controls="pane-commodities">COMMODITIES</button>
-      <button class="tab" data-tab="macro" id="tab-macro" role="tab" aria-selected="false" aria-controls="pane-macro">MACRO</button>
-      <button class="tab" data-tab="deals" id="tab-deals" role="tab" aria-selected="false" aria-controls="pane-deals">COMPANIES</button>
-    </nav>
-
     <!-- HOME: daily brief + markets + screener + risk + calendar + watchlist + headlines -->
     <div class="tabpane" data-pane="home" id="pane-home" role="tabpanel" aria-labelledby="tab-home">
+      <div class="home-status">
+        <div><span class="home-dot"></span><b id="home-status-markets">10 markets</b></div>
+        <div id="home-status-asof" class="dimtext"></div>
+      </div>
       <nav class="jumpnav" aria-label="Jump to a section">
         <a href="#p-brief">Brief</a>
-        <a href="#p-regime">Markets</a>
+        <a href="#p-watch">Watchlist</a>
+        <a href="#p-home-markets">Markets</a>
+        <a href="#p-ideas">Ideas</a>
+        <a href="#p-calendar">Calendar</a>
         <a href="#p-screen">Screener</a>
         <a href="#p-risk">Risk</a>
-        <a href="#p-calendar">Calendar</a>
-        <a href="#p-watch">Watchlist</a>
         <a href="#p-headlines">Headlines</a>
       </nav>
-      <section class="panel" id="p-brief">
-        <div class="ph"><span class="ph-t">DAILY BRIEF — what happened · what's next</span><span id="brief-updated" class="dimtext"></span></div>
-        <div id="home-brief"></div>
+
+      <div class="home-brief-grid">
+        <section class="panel home-brief-lead" id="p-brief">
+          <div class="ph"><span class="ph-t">TODAY'S BRIEF</span><span id="brief-updated" class="dimtext"></span></div>
+          <div id="home-brief"></div>
+        </section>
+
+        <section class="panel home-calendar" id="p-calendar">
+          <div id="calendar" class="calendar calendar-rail"></div>
+        </section>
+
+        <section class="panel home-brief-more" id="p-brief-more">
+          <div id="home-brief-more"></div>
+        </section>
+      </div>
+
+      <div class="home-two">
+        <section class="panel" id="p-watch">
+          <div class="ph"><span class="ph-t">WATCHLIST</span><span class="dimtext">★ on any instrument pins it here · click a tile for its chart</span></div>
+          <div id="home-watch"></div>
+        </section>
+
+        <section class="panel" id="p-backdrop">
+          <div class="ph"><span class="ph-t">MACRO BACKDROP</span><span id="backdrop-sub" class="dimtext"></span></div>
+          <div id="home-backdrop" class="home-backdrop"></div>
+        </section>
+      </div>
+
+      <section class="panel" id="p-home-markets">
+        <div class="ph"><span class="ph-t">MARKETS</span><span id="home-markets-sub" class="dimtext"></span></div>
+        <div id="home-markets" class="home-markets"></div>
+      </section>
+
+      <section class="panel" id="p-ideas">
+        <div class="ph"><span class="ph-t">IDEAS</span><span id="ideas-sub" class="dimtext">screens across every market · criteria shown, not hidden</span></div>
+        <div id="home-ideas" class="home-ideas"></div>
       </section>
 
       <section class="panel" id="p-regime">
-        <div class="ph"><span class="ph-t">MARKETS AT A GLANCE</span><span class="dimtext">dollar · volatility · rates · risk · metals · oil</span></div>
+        <div class="ph"><span class="ph-t">MACRO BACKDROP — FULL BOARD</span><span class="dimtext">dollar · volatility · rates · risk · metals · oil</span></div>
         <div id="regime-board" class="regime-board"></div>
       </section>
 
@@ -120,17 +156,6 @@
         <div class="ph"><span class="ph-t">RISK &amp; CORRELATION</span><span id="risk-sub" class="dimtext"></span></div>
         <div id="risk" class="risk"></div>
       </section>
-
-      <section class="panel" id="p-calendar">
-        <div class="ph"><span class="ph-t">ECONOMIC CALENDAR</span><span id="cal-sub" class="dimtext"></span></div>
-        <div id="calendar" class="calendar"></div>
-      </section>
-
-      <section class="panel" id="p-watch">
-        <div class="ph"><span class="ph-t">WATCHLIST</span><span class="dimtext">★ on any instrument pins it here · click a tile for its chart</span></div>
-        <div id="home-watch"></div>
-      </section>
-
 
       <section class="panel" id="p-headlines">
         <div class="ph"><span class="ph-t">HEADLINES</span><span class="dimtext">tier-1 wire · ranked by materiality · refreshes every 10 min</span></div>
