@@ -2308,3 +2308,89 @@ body.gs-search-open { overflow: hidden; }
   #c-tight .ev-n { display: none; }
   #compare-panel .chart-wrap.lg { height: 230px; }
 }
+
+/* ---------------------------------------------------------------------------
+   MOBILE POLISH
+   One coherent phone scale: bigger icons and tap targets where the eye lands
+   first, smaller chrome where it was crowding the content, and no desktop
+   tables pretending they still fit a 390px screen.
+--------------------------------------------------------------------------- */
+@media (max-width: 900px) {
+  .topbar { padding: 7px 10px 0; gap: 6px; }
+  .brand { gap: 7px; }
+  .brand .logo { font-size: 22px; line-height: 1; }
+  .brand h1 { font-size: 11.5px; letter-spacing: 1.2px; }
+  .meta { gap: 6px; }
+  .clock { font-size: 10px; letter-spacing: 0; margin-right: 4px; }
+  .meta .ghost, .meta .ghost.small { min-width: 34px; min-height: 34px; padding: 0 6px; font-size: 14px; }
+  .topbar .tabs {
+    order: 3; width: 100%; margin: 5px -10px 0; padding: 0 10px;
+    border-top: 1px solid var(--line); border-left: 0; overflow-x: auto;
+  }
+  .topbar .tab {
+    flex: 1 0 25%; min-height: 46px; padding: 6px 1px;
+    font-size: 9px; letter-spacing: .4px; gap: 4px; justify-content: center;
+  }
+  .topbar .tab svg { flex: 0 0 auto; width: 17px; height: 17px; }
+  .gmap-dot { width: 14px; height: 14px; }
+}
+
+@media (max-width: 760px) {
+  /* The compact backdrop beside the watchlist is enough on a phone. */
+  #p-regime { display: none; }
+
+  /* Screener: show the five columns that matter on a phone, inside a shorter scroll box. */
+  #p-screen .sc-wrap { max-height: 560px; overflow: auto; -webkit-overflow-scrolling: touch; }
+  #p-screen .sc-bar { padding: 8px 10px; gap: 6px 8px; }
+  #p-screen .sc-bar .sc-f { flex: 1 1 100%; }
+  #p-screen .sc-bar .sc-f select { width: 100%; }
+  #p-screen .sc-table:not(.sc-cotable) { min-width: 0; width: 100%; table-layout: fixed; font-size: 11px; }
+  #p-screen .sc-table:not(.sc-cotable) th,
+  #p-screen .sc-table:not(.sc-cotable) td { padding: 7px 4px; }
+  #p-screen .sc-table:not(.sc-cotable) th:nth-child(4),
+  #p-screen .sc-table:not(.sc-cotable) td:nth-child(4),
+  #p-screen .sc-table:not(.sc-cotable) th:nth-child(7),
+  #p-screen .sc-table:not(.sc-cotable) td:nth-child(7),
+  #p-screen .sc-table:not(.sc-cotable) th:nth-child(n+8),
+  #p-screen .sc-table:not(.sc-cotable) td:nth-child(n+8) { display: none; }
+  #p-screen .sc-table:not(.sc-cotable) th:nth-child(1),
+  #p-screen .sc-table:not(.sc-cotable) td:nth-child(1) { width: 38%; }
+  #p-screen .sc-table:not(.sc-cotable) th:nth-child(2),
+  #p-screen .sc-table:not(.sc-cotable) td:nth-child(2) { width: 16%; }
+  #p-screen .sc-table:not(.sc-cotable) th:nth-child(3),
+  #p-screen .sc-table:not(.sc-cotable) td:nth-child(3),
+  #p-screen .sc-table:not(.sc-cotable) th:nth-child(5),
+  #p-screen .sc-table:not(.sc-cotable) td:nth-child(5) { width: 14%; }
+  #p-screen .sc-table:not(.sc-cotable) th:nth-child(6),
+  #p-screen .sc-table:not(.sc-cotable) td:nth-child(6) { width: 18%; }
+  #p-screen .sc-table:not(.sc-cotable) td.num { font-size: 10.5px; white-space: nowrap; }
+  #p-screen .sc-name { white-space: normal; line-height: 1.25; }
+
+  /* Commodity and macro tab buttons are primary controls, not tiny labels. */
+  .comm-nav button { min-height: 40px; }
+  .macro-tabs button { min-height: 38px; }
+}
+
+@media (max-width: 640px) {
+  .calendar-rail .cal-day { min-height: 38px; padding: 2px; }
+  .calendar-rail .cal-rows { max-height: 210px; }
+  .calendar-rail .cal-nav button { width: 32px; height: 32px; font-size: 16px; }
+  .calendar-rail .cal-today { min-height: 32px; padding: 4px 8px; }
+  .calendar-rail .cal-modes button { min-height: 32px; }
+  .comm-name, .macro-country-name { font-size: 24px; }
+}
+@media (max-width: 360px) {
+  .topbar .tab { font-size: 8px; gap: 3px; }
+  .topbar .tab svg { width: 15px; height: 15px; }
+  .brand h1 { font-size: 10.5px; letter-spacing: .8px; }
+}
+
+.sc-note-mobile { display: none; }
+@media (max-width: 760px) {
+  .sc-note-detail { display: none; }
+  .sc-note-mobile { display: inline; }
+  /* All five commodity views fit across the phone, no hidden swipe target. */
+  .comm-nav { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 2px; overflow: visible; padding: 5px 6px; }
+  .comm-nav button { width: 100%; min-width: 0; padding: 6px 1px; font-size: 9px; letter-spacing: 0; }
+  .gmap-foot, .gmap-legend { font-size: 9px; }
+}

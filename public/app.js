@@ -3255,7 +3255,9 @@ function renderScreen(full) {  const el = $('screen'); if (!el) return;
   const cnt = $('sc-count'); if (cnt) cnt.textContent = `${rows.length} of ${screenRows.length} shown`;
   $('sc-note').innerHTML = (rows.length !== screenRows.length ? `Filtered to <b>${rows.length}</b> of ${screenRows.length} instruments. ` : '')
     + (fxBase !== 'USD' ? `Returns converted to <b>${fxBase}</b> (USD move + the currency's own move). ` : '')
-    + 'Click a header to sort; click a row to open its chart. STRETCH is −100 (cheap)…+100 (rich) · TIGHT is 0 (oversupplied)…100 (undersupplied) · BASIS% and CROWD are percentiles.';
+    + 'Click a header to sort; click a row to open its chart. '
+    + '<span class="sc-note-detail">STRETCH is −100 (cheap)…+100 (rich) · TIGHT is 0 (oversupplied)…100 (undersupplied) · BASIS% and CROWD are percentiles.</span>'
+    + '<span class="sc-note-mobile">Phone view shows instrument, last, 1D, 1M and YTD; open a row for the full chart.</span>';
 }
 $('base-cur')?.addEventListener('change', async (e) => {
   fxBase = e.target.value || 'USD';
