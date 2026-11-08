@@ -1967,6 +1967,9 @@ body.gs-search-open { overflow: hidden; }
 }
 
 /* ---------- COMPANIES — global first board ---------- */
+/* The global board is a card, not a continuation of the market tabs. With the 16px gap above the map
+   the tab row's rule would float as a stray line, so the card's own border is the only separator. */
+#p-deals[data-market="global"] .co-nav { border-bottom: 0; }
 .gmap-card { position:relative; margin:16px 0; border:1px solid var(--line); background:var(--panel); overflow:hidden; }
 .gmap { position:relative; width:100%; aspect-ratio:1000 / 420; background:#05070a; }
 .gmap > img { position:absolute; inset:0; width:100%; height:100%; display:block; }
