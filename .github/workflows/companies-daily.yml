@@ -110,12 +110,14 @@ jobs:
           node scripts/audit-markets.mjs
       - name: Snapshot the macro backdrop seed
         continue-on-error: true
-        run: node scripts/build-regime-seed.mjs
+        run: |
+          node scripts/build-regime-seed.mjs
+          node scripts/build-risk-seed.mjs
       - name: Commit if changed
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email 'github-actions[bot]@users.noreply.github.com'
-          git add data/companies.json data/us-profiles.json data/japan.json data/japan-list.json data/japan-series.json data/japan-companies data/japan-profiles.json data/korea.json data/korea-list.json data/korea-universe.json data/korea-companies data/korea-profiles.json data/valuation.json data/events.json data/reconciliation.json data/invariants.json data/filings-state.json data/filings-changed.json data/snapshot.json data/us-charts.json data/audit-markets.json data/charts data/regime-seed.json 2>/dev/null || true
+          git add data/companies.json data/us-profiles.json data/japan.json data/japan-list.json data/japan-series.json data/japan-companies data/japan-profiles.json data/korea.json data/korea-list.json data/korea-universe.json data/korea-companies data/korea-profiles.json data/valuation.json data/events.json data/reconciliation.json data/invariants.json data/filings-state.json data/filings-changed.json data/snapshot.json data/us-charts.json data/audit-markets.json data/charts data/regime-seed.json data/risk-seed.json 2>/dev/null || true
           if git diff --staged --quiet; then
             echo 'no data change'
           else

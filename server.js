@@ -13,6 +13,7 @@ import { sliceRange, seriesFromLine } from './src/charts.js';
 import { searchEntries, prepareEntries } from './src/search.js';
 import { growthRates, fromJapanHistory } from './src/growth.js';
 import { REGIME_BOARD, keepLastGood, buildRegimeRow } from './src/regime.js';
+import { RISK_SERIES, keepLastSeries, latestDate } from './src/risk.js';
 import { sgn, businessDaysSince, horizonDeltas, horizonDeltasAbs, isoWeek, monthly, pctOver, percentile, lastNonNull, escHtml, webhookPayload, realizedVol, computeCracks, computeCrush, computeSteel, buildRelValueRow, relValueZone, ordinal, alignPriceToRows, inventoryBands, backAdjust, pearson, logReturns, frontExpiry, curveTightness, inventoryTightness, weightedScore, seasonalGrade, seasonalAhead, contractMonthsBetween, signedPosition, signedMove, stretchScore, sdLabel, attributeMoves, newsContextOk, METHODOLOGY, positioningFlag, positioningRead, positioningDivergence, maxDrawdown, drawdownNow, realizedVolTerm, volPercentile, volVsOwnWord, corrMatrix, fxAdjust, parseOcc, drawdownWord, volWord, volTrend, corrShift, pairGroups, topPairs, bestDiversifier, riskRead, priorityOf, rankByPriority, clusterEvents, scoreEvents, selectEvents, explainRows } from './src/lib.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -2334,30 +2335,78 @@ async function getOptions(id = 'wti') {
 // a realised-vol term structure normalised against its own history, and 1-year + 3-month
 // correlation matrices over aligned daily log-returns.
 // ---------------------------------------------------------------------------
-const RISK_SERIES = [
-  { key: 'wti', label: 'WTI crude', short: 'WTI', sym: 'CL=F' },
-  { key: 'gold', label: 'Gold', short: 'Gold', sym: 'GC=F' },
-  { key: 'copper', label: 'Copper', short: 'Copper', sym: 'HG=F' },
-  { key: 'spx', label: 'S&P 500', short: 'S&P', sym: '^GSPC' },
-  { key: 'dxy', label: 'Dollar (DXY)', short: 'Dollar', sym: 'DX-Y.NYB' },
-  { key: 'us10y', label: 'US 10y', short: 'US 10y', fred: 'DGS10', altSym: '^TNX', rate: true, level: true },
-  { key: 'vix', label: 'VIX', short: 'VIX', sym: '^VIX', level: true },
-];
+// The risk board used to cache a whole payload with blank series for an hour after one Yahoo 429.
+// Keep the last good map per instrument (memory + a runtime cache) and fall back to a committed seed;
+// the correlation matrix is then computed from complete, real series instead of blank columns.
+const RISK_SEED_FILE = path.join(__dirname, 'data', 'risk-seed.json');
+const RISK_CACHE_FILE = path.join(__dirname, '.risk-cache.json');
+const RISK_KEEP_MS = 14 * 864e5;
+function readRiskMaps(file) {
+  try {
+    const j = JSON.parse(fs.readFileSync(file, 'utf8'));
+    if (!j || !j.series) return {};
+    if (!j.updated || Date.now() - Date.parse(j.updated) > RISK_KEEP_MS) return {};
+    return j.series;
+  } catch { return {}; }
+}
+const RISK_MAPS = new Map();
+for (const source of [readRiskMaps(RISK_CACHE_FILE), readRiskMaps(RISK_SEED_FILE)]) {
+  for (const [key, v] of Object.entries(source)) {
+    if (!v || !v.map) continue;
+    const prev = RISK_MAPS.get(key);
+    if (!prev || latestDate(v.map) >= latestDate(prev.map)) RISK_MAPS.set(key, v);
+  }
+}
+let riskCacheAt = 0;
+function saveRiskCache() {
+  const now = Date.now();
+  if (now - riskCacheAt < 15 * 60e3) return;
+  riskCacheAt = now;
+  try {
+    const body = JSON.stringify({ updated: new Date(now).toISOString(), series: Object.fromEntries(RISK_MAPS) });
+    fs.writeFileSync(`${RISK_CACHE_FILE}.tmp`, body);
+    fs.renameSync(`${RISK_CACHE_FILE}.tmp`, RISK_CACHE_FILE);
+  } catch { /* read-only filesystem is fine */ }
+}
+async function riskSeries(s) {
+  if (s.fred) {
+    try {
+      let map = await cached('risk:' + s.key, 6 * 3600e3, () => fredSeries(s.fred, 400));
+      if (Object.keys(map).length >= 5) return { map, source: 'FRED' };
+    } catch {}
+    if (s.altSym) {
+      try {
+        let map = (await cached('risk:alt:' + s.key, 3600e3, () => yahooSeries(s.altSym, '1y', '1d'))).series || {};
+        if (Object.values(map).some((v) => v > 20)) map = Object.fromEntries(Object.entries(map).map(([k, v]) => [k, v / 10]));
+        if (Object.keys(map).length >= 5) return { map, source: 'Yahoo' };
+      } catch {}
+    }
+    return null;
+  }
+  try {
+    const map = (await cached('risk:' + s.key, 3600e3, () => yahooSeries(s.sym, '1y', '1d'))).series || {};
+    if (Object.keys(map).length >= 5) return { map, source: 'Yahoo' };
+  } catch {}
+  if (s.fallbackFred) {
+    try {
+      const map = await cached('risk:fb:' + s.key, 6 * 3600e3, () => fredSeries(s.fallbackFred, 400));
+      if (Object.keys(map).length >= 5) return { map, source: 'FRED' };
+    } catch {}
+  }
+  return null;
+}
 async function getRisk() {
   return cachedSWR('risk', 3600e3, async () => {
     const maps = {};
+    let freshCount = 0;
     await Promise.all(RISK_SERIES.map(async (s) => {
-      try {
-        let map = s.fred
-          ? await cached('risk:' + s.key, 6 * 3600e3, () => fredSeries(s.fred, 400))
-          : ((await cached('risk:' + s.key, 3600e3, () => yahooSeries(s.sym, '1y', '1d'))).series) || {};
-        if (Object.keys(map).length < 5 && s.altSym) {   // FRED is down; ^TNX carries the same yield
-          map = (await cached('risk:alt:' + s.key, 3600e3, () => yahooSeries(s.altSym, '1y', '1d'))).series || {};
-          if (Object.values(map).some((v) => v > 20)) map = Object.fromEntries(Object.entries(map).map(([k, v]) => [k, v / 10]));
-        }
-        maps[s.key] = map;
-      } catch { maps[s.key] = {}; }
+      let merged = null;
+      try { merged = keepLastSeries(await riskSeries(s), RISK_MAPS.get(s.key)); } catch {}
+      if (merged && !merged.stale) freshCount++;
+      if (merged) RISK_MAPS.set(s.key, merged);
+      maps[s.key] = merged ? merged.map : {};
     }));
+    if (freshCount) saveRiskCache();
     const metrics = RISK_SERIES.map((s) => {
       const dates = Object.keys(maps[s.key]).sort();
       const vals = dates.map((d) => maps[s.key][d]);
