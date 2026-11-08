@@ -109,7 +109,7 @@ test('descriptions are sentences, not table-of-contents residue', () => {
 test('every description passes the quality gate', () => {
   const RESIDUE = /(Item\s+\d+[A-Z]?\.|PART\s+I{1,3}\b|Mine Safety Disclosures|Table of Contents|Market for Registrant|Common Equity, Related|Issuer Purchases|herein by reference)/i;
   // "a nonprofit supported by" is a foundation page; "the foundation of wireless connectivity" is not.
-  const NOT_BUSINESS = /(charitable|political action committee|\bPAC\b|Foundation, a nonprofit)/i;
+  const NOT_BUSINESS = /(\bfoundation\b[^.]{0,60}\bnonprofit\b|\bpolitical action committee\b|\bPAC\b|employee stock purchase plan)/i;
   for (const c of data.companies) {
     const d = c.description || '';
     assert.ok(d.length >= 80 && d.length <= 420, `${c.ticker}: ${d.length} chars`);
@@ -127,7 +127,7 @@ test('every description passes the quality gate', () => {
     if (w.length) {
       // Compare with punctuation removed: "P&G serves consumers…" names Procter & Gamble, and
       // "AMD (NASDAQ: AMD)…" names Advanced Micro Devices.
-      const flat = (x) => String(x).toLowerCase().replace(/[^a-z0-9]/g, '');
+      const flat = (x) => String(x).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '');
       const head = flat(d.slice(0, 140));
       const tick = flat(c.ticker || '');
       assert.ok(w.some((x) => head.includes(flat(x))) || (tick.length > 1 && head.includes(tick)), `${c.ticker}: does not name the company`);

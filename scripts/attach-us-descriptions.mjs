@@ -17,11 +17,13 @@ try { profiles = JSON.parse(readFileSync(STORE, 'utf8')).profiles || {}; } catch
 let attached = 0;
 for (const c of data.companies) {
   // Curated text wins: it was written for this page and is not a scraped paragraph.
-  const text = c.descSource === 'curated' ? c.description : (c.ticker ? profiles[c.ticker] : null);
+  if (c.descSource === 'curated' && c.description) continue;
+  const text = c.ticker ? profiles[c.ticker] : null;
   if (!text) continue;
   c.description = text;
   c.descSource = 'profile';
   c.descSourceName = 'stockanalysis.com';
+  c.descriptionSource = 'profile';
   attached++;
 }
 

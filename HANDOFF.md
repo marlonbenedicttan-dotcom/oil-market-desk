@@ -4183,3 +4183,19 @@ Taiwan, Hong Kong, Australia, India, Indonesia and Brazil; the US keeps it.
   daily reattaches themes and rebuilds the four charts. Both jobs use the fetch timeout. The daily
   cross-market audit is `continue-on-error` because the dedicated markets-audit-daily job owns that
   gate; a known non-US source issue must not stop the US price commit.
+
+## US descriptions: stockanalysis.com profiles (2026-11-08)
+
+The US COMPANIES descriptions now use the same **stockanalysis.com company-page profile** extractor as
+Japan, Korea, India, Taiwan, Hong Kong, Australia and Indonesia — not the 10-K Item 1 legal text and not
+Nasdaq's short marketing blurb. `fetch-us-descriptions.mjs` prefers stockanalysis, with Nasdaq/10-K as
+the fallback; `attach-us-descriptions.mjs` puts the committed `data/us-profiles.json` back after a
+rebuild.
+
+Backfilled **1,189 of 1,506** from stockanalysis; **317** remain on the Nasdaq fallback (stockanalysis
+has no page for them yet, or the page was still throttled) and are upgraded by the daily
+`--only-missing --limit=25` and weekly `--only-missing --limit=200` jobs. `data/us-profiles.json` is now
+committed by both jobs, so a CI rebuild cannot lose the profiles (the Korea lesson). The description gate
+no longer treats a legitimate mention of "charitable organizations" as a foundation page, and
+accent-folded names (Schrödinger) satisfy the name check. ICHR's stockanalysis page is missing, so it
+keeps the 10-K text.

@@ -37,6 +37,8 @@ jobs:
           path: data/cache
           key: sec-cache-${{ github.run_id }}
           restore-keys: sec-cache-
+      - name: New US listing profiles
+        run: node scripts/fetch-us-descriptions.mjs --only-missing --limit=25 || echo 'US profile source unavailable, retry tomorrow'
       - name: Refresh prices, caps and new filings
         env:
           SEC_UA: 'MarlonWatchtower/1.0 (marlonbenedicttan@gmail.com)'
@@ -110,7 +112,7 @@ jobs:
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email 'github-actions[bot]@users.noreply.github.com'
-          git add data/companies.json data/japan.json data/japan-list.json data/japan-series.json data/japan-companies data/japan-profiles.json data/korea.json data/korea-list.json data/korea-universe.json data/korea-companies data/korea-profiles.json data/valuation.json data/events.json data/reconciliation.json data/invariants.json data/filings-state.json data/filings-changed.json data/snapshot.json data/us-charts.json data/audit-markets.json data/charts 2>/dev/null || true
+          git add data/companies.json data/us-profiles.json data/japan.json data/japan-list.json data/japan-series.json data/japan-companies data/japan-profiles.json data/korea.json data/korea-list.json data/korea-universe.json data/korea-companies data/korea-profiles.json data/valuation.json data/events.json data/reconciliation.json data/invariants.json data/filings-state.json data/filings-changed.json data/snapshot.json data/us-charts.json data/audit-markets.json data/charts 2>/dev/null || true
           if git diff --staged --quiet; then
             echo 'no data change'
           else

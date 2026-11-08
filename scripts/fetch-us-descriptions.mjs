@@ -1,11 +1,15 @@
-// Fetch a written company profile for every US company, the same way Japan and Korea are described.
+// Fetch a written company profile for every US company, the same way Japan, Korea and India are
+// described: stockanalysis.com's server-rendered company page, not the 10-K's legal "Item 1" text and
+// not Nasdaq's short marketing blurb.
 //
-// The 10-K "Item 1" text is what a lawyer wrote, not what a reader wants: fragments ("Originally
-// organized as Caterpillar Tractor Co."), legal-terms openings, and half-sentences. A profile written
-// about the company reads like a profile. Precedence is curated → fetched → filing text.
+// Precedence on the page is curated → fetched profile → filing/Nasdaq fallback. The fetched text lives
+// in a committed store (data/us-profiles.json), so a CI rebuild with no local cache still has profiles.
 //
-//   node scripts/fetch-us-descriptions.mjs
-//   node scripts/fetch-us-descriptions.mjs --only=AAPL,MSFT
+//   node scripts/fetch-us-descriptions.mjs                     every company without a stored profile
+//   node scripts/fetch-us-descriptions.mjs --only-missing --limit=25
+//   node scripts/fetch-us-descriptions.mjs --force             refetch every page
+//   node scripts/fetch-us-descriptions.mjs --dry-run
+
 import { readFileSync, writeFileSync, renameSync, existsSync, mkdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -15,6 +19,10 @@ const FILE = join(ROOT, 'data', 'companies.json');
 const STORE = join(ROOT, 'data', 'us-profiles.json');
 const CACHE = join(ROOT, 'data', 'cache', 'us-profiles');
 const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126 Safari/537.36';
+const ONLY_MISSING = process.argv.includes('--only-missing');
+const FORCE = process.argv.includes('--force');
+const DRY = process.argv.includes('--dry-run');
+const LIMIT = Number((process.argv.find((x) => x.startsWith('--limit=')) || '').split('=')[1] || 0);
 const ONLY = (process.argv.find((x) => x.startsWith('--only=')) || '').split('=')[1];
 const onlySet = ONLY ? new Set(ONLY.split(',').map((x) => x.trim().toUpperCase())) : null;
 mkdirSync(CACHE, { recursive: true });
@@ -35,70 +43,66 @@ const shorten = (t, max = 320) => {
 };
 
 const data = JSON.parse(readFileSync(FILE, 'utf8'));
-const todo = data.companies.filter((c) => c.ticker && (!onlySet || onlySet.has(c.ticker.toUpperCase())));
-
-// Nasdaq publishes a written company description next to the quote we already use. It is the better
-// source here: no extra host, no throttle, and the text reads like a profile rather than a filing.
-async function fromNasdaq(ticker) {
-  const sym = String(ticker).replace('-', '.');
-  try {
-    const res = await fetch(`https://api.nasdaq.com/api/company/${encodeURIComponent(sym)}/company-profile`, {
-      headers: { 'User-Agent': UA, Accept: 'application/json, text/plain, */*', 'Accept-Language': 'en-US,en;q=0.9' },
-      signal: AbortSignal.timeout(20000),
-    });
-    if (!res.ok) return null;
-    const j = await res.json();
-    const v = j && j.data && j.data.CompanyDescription && j.data.CompanyDescription.value;
-    const text = String(v || '').replace(/\s+/g, ' ').trim();
-    return text.length > 60 ? text : null;
-  } catch { return null; }
-}
+let store = {};
+try { store = JSON.parse(readFileSync(STORE, 'utf8')).profiles || {}; } catch { /* first run */ }
 
 async function one(c) {
   const f = join(CACHE, `${c.ticker}.json`);
-  if (existsSync(f)) { try { const t = JSON.parse(readFileSync(f, 'utf8')).text; if (t) return t; } catch { /* refetch */ } }
-  const nasdaq = await fromNasdaq(c.ticker);
-  if (nasdaq) { writeFileSync(f, JSON.stringify({ fetched: new Date().toISOString(), source: 'nasdaq', text: nasdaq })); return nasdaq; }
-  for (let attempt = 0; attempt < 2; attempt++) {
+  if (!FORCE && existsSync(f)) {
+    try { const t = JSON.parse(readFileSync(f, 'utf8')).text; if (t) return t; } catch { /* refetch */ }
+  }
+  for (let attempt = 0; attempt < 3; attempt++) {
     try {
       const res = await fetch(`https://stockanalysis.com/stocks/${encodeURIComponent(c.ticker)}/company/`, {
         headers: { 'User-Agent': UA, 'Accept-Language': 'en-US,en;q=0.9' },
         signal: AbortSignal.timeout(20000),
       });
-      // stockanalysis throttles hard: back off properly instead of burning the whole run on 429s.
+      // stockanalysis throttles hard: back off instead of burning the run on 429s.
       if (res.status === 429) { await sleep(20000 + attempt * 15000); continue; }
       if (!res.ok) return null;
       const text = extract(await res.text());
-      if (text) { writeFileSync(f, JSON.stringify({ fetched: new Date().toISOString(), text })); return text; }
+      if (text) { writeFileSync(f, JSON.stringify({ fetched: new Date().toISOString(), source: 'stockanalysis.com', text })); return text; }
       return null;
-    } catch { await sleep(600); }
+    } catch { await sleep(600 * (attempt + 1)); }
   }
   return null;
 }
 
+const queue = data.companies.filter((c) => c.ticker
+  && (!onlySet || onlySet.has(String(c.ticker).toUpperCase()))
+  && (FORCE || !(ONLY_MISSING && store[c.ticker])));
+const list = LIMIT ? queue.slice(0, LIMIT) : queue;
+console.log(`${list.length} companies to describe (${Object.keys(store).length} already stored)`);
+if (DRY) {
+  for (const c of list.slice(0, 25)) console.log(`  ${c.ticker} ${c.name}`);
+  if (list.length > 25) console.log(`  … ${list.length - 25} more`);
+  process.exit(0);
+}
+if (!list.length) { console.log('nothing new — no file written'); process.exit(0); }
+
 let ok = 0, fail = 0, at = 0;
 const pool = Array.from({ length: 3 }, async () => {
-  while (at < todo.length) {
-    const c = todo[at++];
+  while (at < list.length) {
+    const c = list[at++];
     const text = await one(c);
     if (text) {
       c.description = shorten(text);
       c.descSource = 'profile';
       c.descSourceName = 'stockanalysis.com';
+      store[c.ticker] = c.description;
       ok++;
     } else fail++;
-    if ((ok + fail) % 50 === 0) console.log(`  ${ok + fail}/${todo.length} · ${ok} found`);
+    if ((ok + fail) % 50 === 0) console.log(`  ${ok + fail}/${list.length} · ${ok} found`);
     await sleep(140);
   }
 });
 await Promise.all(pool);
 
-// A committed store: CI rebuilds have no local cache, and that is exactly how Korea lost its profiles.
-let store = {};
-try { store = JSON.parse(readFileSync(STORE, 'utf8')).profiles || {}; } catch { /* first run */ }
-for (const c of data.companies) if (c.descSource === 'profile' && c.description) store[c.ticker] = c.description;
-writeFileSync(STORE, JSON.stringify({ updated: new Date().toISOString().slice(0, 10), note: 'Fetched US company profiles from stockanalysis.com, keyed by ticker.', profiles: store }));
-
+writeFileSync(STORE, JSON.stringify({
+  updated: new Date().toISOString().slice(0, 10),
+  note: 'Fetched US company profiles from stockanalysis.com, keyed by ticker.',
+  profiles: store,
+}));
 data.updated = new Date().toISOString();
 writeFileSync(FILE + '.tmp', JSON.stringify(data));
 renameSync(FILE + '.tmp', FILE);
