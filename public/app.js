@@ -8271,8 +8271,8 @@ function redrawSouthAfricaIndex(range = zaMktRange) {
 }
 
 function zaSecondaryPanel(all, m) {
-  // The six foreign-domiciled lines are part of the JSE market, not a separate rail. The panel names
-  // where each company's statements come from, because the JSE page carries only the price.
+  // The foreign-domiciled lines are part of the JSE market, not a separate rail. The panel names where
+  // each company's statements come from, because the JSE page carries only the price.
   const sec = all.filter((c) => c.foreignSecondary);
   if (!sec.length) return '';
   const row = (c) => `<button class="bdr-row" data-za="${esc(c.code)}" title="${esc(c.secondaryExchange || 'primary exchange')} · ${esc(c.secondarySource || '')}">
@@ -8304,7 +8304,7 @@ function renderSouthAfricaMarket(all, d) {
         <span class="${(idx.chg1d || 0) >= 0 ? 'pos' : 'neg'}">${chg(idx.chg1d)} today</span>
         <span class="dimtext">${m.primary ?? all.length} JSE-primary · ${m.secondary ?? 0} foreign-secondary · prices as of ${sessionOf(all, 'priceDate') || d.session}${idx.date ? ` · index as of ${idx.date}` : ''}</span></div>`
     + `<div class="co-stats co-stats-12">
-        ${cell('TOTAL MARKET CAP', zaMoney(m.totalCap), 'Sum of all JSE lines, including the six foreign-secondary listings at their global company caps')}
+        ${cell('TOTAL MARKET CAP', zaMoney(m.totalCap), `Sum of all JSE lines, including the ${m.secondary ?? 0} foreign-secondary listings at their global company caps`)}
         ${cell('COMPANIES', String(m.listed || all.length), `${m.primary ?? '—'} JSE-primary + ${m.secondary ?? 0} foreign-secondary`)}
         ${cell('MEDIAN P/E', m.medianPe != null ? `${m.medianPe.toFixed(1)}×` : '—', `Median — the typical company, not the index. ${foreign}`)}
         ${cell('MEDIAN P/B', m.medianPb != null ? `${m.medianPb.toFixed(2)}×` : '—', 'Median across the market — market cap ÷ common equity (excludes minorities)')}
@@ -8335,7 +8335,7 @@ function renderSouthAfricaMarket(all, d) {
   if (idx.series && idx.series.length > 1) redrawSouthAfricaIndex();
 }
 
-// Why the published market is smaller than the exchange list. Every exclusion is named, and the six
+// Why the published market is smaller than the exchange list. Every exclusion is named, and the
 // foreign-secondary lines are listed separately so "included" never reads as an automatic screen.
 function zaUniverseNote(d) {
   const a = (d && d.audit) || {};
