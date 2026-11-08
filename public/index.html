@@ -35,6 +35,13 @@
        parsed. The chart library is deferred too: 200 KB of JS is not a reason to block first paint,
        and deferring both preserves their order (the vendor runs first). -->
   <link rel="preload" href="app.js?v=313" as="script" fetchpriority="high" />
+  <!-- Start the first-screen data with the HTML, not after app.js parses: these are the five
+       endpoints the boot gate waits for, so the server round-trip overlaps the script download. -->
+  <link rel="preload" href="/api/market" as="fetch" crossorigin="anonymous" />
+  <link rel="preload" href="/api/markets" as="fetch" crossorigin="anonymous" />
+  <link rel="preload" href="/api/history" as="fetch" crossorigin="anonymous" />
+  <link rel="preload" href="/api/regime" as="fetch" crossorigin="anonymous" />
+  <link rel="preload" href="/api/brief" as="fetch" crossorigin="anonymous" />
   <script src="/vendor/chart.umd.min.js?v=4.4.1" defer></script>
 </head>
 <body>
