@@ -4060,7 +4060,9 @@ $('macro-links')?.addEventListener('click', (e) => { const el = e.target.closest
     topbarRAF = requestAnimationFrame(() => { topbarRAF = 0; setTopbarH(); });
   };
   setTopbarH(); addEventListener('resize', onViewportResize, { passive: true });
-  if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});
+  // `updateViaCache: 'none'` makes the browser revalidate sw.js on every visit, so a deploy that
+  // changes the market list cannot sit behind a cached worker.
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' }).catch(() => {});
   const onboardEl = $('onboarding');
   // Give the tower's contact blips a fresh random phase/duration each time the intro opens.
   const seedBlips = () => document.querySelectorAll('.tower-blip').forEach((b) => {

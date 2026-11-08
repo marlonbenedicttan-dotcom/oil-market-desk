@@ -1,7 +1,7 @@
 // Service worker — the versioned assets (app.js?v=…, style.css?v=…) are immutable, so they are served
 // from cache and never revalidated; the shell itself stays network-first so a new deploy always shows.
 // API calls are never cached.
-const CACHE = 'oil-desk-v6';
+const CACHE = 'oil-desk-v7';
 const SHELL = ['/', '/style.css', '/app.js', '/icon.svg?v=3', '/manifest.json?v=3'];
 
 const isVersioned = (url) => ['v', 'ver', 'version'].some((k) => url.searchParams.has(k));
