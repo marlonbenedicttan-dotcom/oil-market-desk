@@ -77,6 +77,17 @@ say('cap = vendor headline cap (>2% off)', badCap.length);
 if (badCap.length) fails.push(`caps do not reproduce the vendor headline: ${badCap.slice(0, 6).join(', ')}`);
 say('caps compared', capCompared);
 
+// The exchange list price is in cents; Yahoo's JSE unit is inconsistent, so the build calibrates each
+// series to the list last price. This catches a unit mistake before it becomes a wrong return or chart.
+const badPrice = [];
+for (const c of za.companies) {
+  if (!(c.vendorPrice > 0) || !(c.price > 0)) continue;
+  const gap = Math.abs(c.price / (c.vendorPrice / 100) - 1);
+  if (gap > 0.02) badPrice.push(`${c.code} ${c.price} vs ${(c.vendorPrice / 100).toFixed(2)}`);
+}
+say('price ≠ exchange-list price (>2%)', badPrice.length);
+if (badPrice.length) fails.push(`prices do not match the exchange list: ${badPrice.slice(0, 8).join(', ')}`);
+
 const off = (a, b, abs = 0) => a != null && b != null && b !== 0
   && Math.abs(a - b) > abs && Math.abs(a - b) / Math.abs(b) > 0.02;
 const rates = (za.fx && za.fx.rates) || null;

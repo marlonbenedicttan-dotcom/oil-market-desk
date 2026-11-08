@@ -42,6 +42,17 @@ test('foreign-secondary lines are flagged and sourced, the exclusions are out', 
   assert.equal(za.audit.secondaryCount, secondary.length);
 });
 
+test('the price is the JSE line, calibrated to the exchange list in rand', () => {
+  let checked = 0;
+  for (const c of za.companies) {
+    if (!(c.vendorPrice > 0) || !(c.price > 0)) continue;
+    checked++;
+    // The list prints cents; the dataset is rand. Yahoo's own unit varies by line.
+    assert.ok(Math.abs(c.price / (c.vendorPrice / 100) - 1) < 0.02, `${c.code}: ${c.price} vs list ${c.vendorPrice / 100}`);
+  }
+  assert.ok(checked > 200, `only ${checked} prices compared`);
+});
+
 test('the cap is the vendor company total in rand', () => {
   let checked = 0;
   for (const c of za.companies) {

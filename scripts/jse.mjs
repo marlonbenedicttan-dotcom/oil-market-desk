@@ -76,7 +76,7 @@ export const SECONDARY = {
   PAN: { exchange: 'lon', ticker: 'paf', market: 'London Stock Exchange', country: 'United Kingdom', name: 'Pan African Resources' },
   SDL: { exchange: 'asx', ticker: 'spd', market: 'Australian Securities Exchange', country: 'Australia', name: 'Southern Palladium' },
   ORN: { exchange: 'asx', ticker: 'orn', market: 'Australian Securities Exchange', country: 'Australia', name: 'Orion Minerals' },
-  UPL: { exchange: 'lon', ticker: 'upl', market: 'London Stock Exchange', country: 'United Kingdom', name: 'Universal Partners' },
+  GCT: { exchange: 'ise', ticker: 'grp', market: 'Euronext Dublin', country: 'Ireland', name: 'Greencoat Renewables' },
   N91: { exchange: 'lon', ticker: 'n91', market: 'London Stock Exchange', country: 'United Kingdom', name: 'Ninety One' },
   BYI: { exchange: 'lon', ticker: 'byit', market: 'London Stock Exchange', country: 'United Kingdom', name: 'Bytes Technology' },
   CNP: { exchange: 'lon', ticker: 'can', market: 'London Stock Exchange', country: 'United Kingdom', name: 'Canal+' },
@@ -148,7 +148,8 @@ export function parseListPage(html) {
       .map((c) => c[1].replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim());
     const code = m[1].toUpperCase();
     if (!/^[A-Z0-9]{2,8}$/.test(code)) continue;
-    rows.push({ code, name: cells[2] || null, vendorCap: parseCap(cells[3]) });
+    const px = Number(String(cells[4] || '').replace(/,/g, ''));
+    rows.push({ code, name: cells[2] || null, vendorCap: parseCap(cells[3]), vendorPrice: Number.isFinite(px) && px > 0 ? px : null });
   }
   return rows;
 }

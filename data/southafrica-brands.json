@@ -32,7 +32,7 @@
       "Montblanc",
       "Jaeger-LeCoultre",
       "Piaget",
-      "Chloé"
+      "Chlo\u00e9"
     ],
     "ANH": [
       "Budweiser",
@@ -387,10 +387,6 @@
       "Globe Trade Centre",
       "GTC"
     ],
-    "SCD": [
-      "Schroder European REIT",
-      "Schroder"
-    ],
     "SEA": [
       "Spear REIT",
       "Spear"
@@ -442,10 +438,6 @@
     "MRF": [
       "Merafe",
       "Merafe Resources"
-    ],
-    "SLP": [
-      "Southern Palladium",
-      "Southern Palladium"
     ],
     "SNV": [
       "Santova",
@@ -543,6 +535,10 @@
     "GND": [
       "Grindrod",
       "Grindrod Shipping"
+    ],
+    "SDL": [
+      "Southern Palladium",
+      "Southern Palladium"
     ]
   }
 }

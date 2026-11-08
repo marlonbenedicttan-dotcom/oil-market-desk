@@ -4206,25 +4206,32 @@ keeps the 10-K text.
 ## South Africa: the JSE (2026-11-08)
 
 - **Universe**: the vendor's Johannesburg exchange list (**258 lines**) → **244 after 14 named
-  exclusions** → **225 built** = **202 JSE-primary** + **23 foreign-secondary**. The secondary lines are
-  JSE lines of foreign-domiciled issuers (CFR, PRX, ANH, ANG, BTI, GLN, SRE, SHC, PHP, HMN, SRI, SCD,
-  N91, BYI, CNP, GTC, APH, AII, PAN, SDL, ORN, UPL, MCZ, EPS): statements and profiles come from the
-  primary listing, the price is the JSE line and the cap is the **global company total**, all in rand.
-  They are **inside the market totals**, not a separate rail.
+  exclusions** → **226 built** = **204 JSE-primary** + **22 foreign-secondary**. Twenty-four JSE lines
+  are foreign-domiciled and mapped to a primary listing (CFR, PRX, ANH, ANG, BTI, GLN, SRE, SHC, PHP,
+  HMN, SRI, SCD, N91, BYI, CNP, GTC, GCT, APH, AII, PAN, SDL, ORN, MCZ, EPS); 22 build, because AII and
+  SCD have no trustworthy JSE price. Statements and profiles come from the primary listing, the price is
+  the JSE line and the cap is the **global company total**, all in rand. They are **inside the market
+  totals**, not a separate rail.
 - **Exclusions** (named, never estimated): **BHG** (BHP) and **S32** (South32) belong to the Australia
   market; **INP** is Investec’s duplicate (INL kept); **AGL**, **MNP** and **QLT** have no free
   statement page; **SOLBE1/FTB/EMN/RTO/AON/BRN/NY1** are duplicate share classes of an issuer already
   built; **FDETNQ** is a FirstRand Bank note, not an operating company. That leaves 13 lines with no
-  free statement page, 3 stale statements and 3 without a JSE price — all named in the audit.
-- **Prices**: Yahoo `.JO` quotes the JSE in **cents** (NPN prints 75,725.0 = R757.25). The build divides
-  once to rand, so the price, returns, traded value and charts are all rand. The JSE All Share is
-  `^J203.JO`.
+  free statement page, 3 stale statements and 2 without a trustworthy JSE price — all named in the audit.
+- **Prices**: the exchange list quotes the JSE in **cents** (NPN prints 75,725.0 = R757.25), but Yahoo is
+  not consistent: most `.JO` lines print cents, several thin lines already print rand, and a foreign
+  secondary may print another instrument's unit. Every series is therefore scaled so its last close
+  equals the exchange-list price in rand; a ratio outside the rand/cents conventions is rejected and the
+  line is named as no-price (SCD was rejected this way). The JSE All Share is `^J203.JO`.
+  Yahoo supplies up to **five years** for most JSE lines, but caps some heavily traded names at about
+  **500 sessions**; each company chart falls back to the longest window that line actually covers, and
+  the fiscal-year table still spans five years.
 - **Caps**: the vendor list cap is the **company total in rand** and is the authority; the audit checks
-  `marketCap = vendorCap` and the company page never re-derives the cap from price × shares. The latest
-  balance sheet’s ordinary count is published for per-share displays.
+  `marketCap = vendorCap` and the company page never re-derives the cap from price × shares. The statistics
+  page’s current count is published for per-share displays (the balance sheet is the fallback).
 - **Statements**: stockanalysis.com JSE pages for the primary companies and the primary exchange for the
-  six secondary lines. TTM/annual/quarterly, current shares, vendor dividend yield, GICS profile, report
-  currency (ZAR/USD/EUR/GBP) carried into the ratios. USD/ZAR from open.er-api.
+  foreign-secondary lines. TTM/annual/half-year, current shares, vendor dividend yield, GICS profile, report
+  currency (ZAR/USD/EUR/GBP) carried into the ratios. The JSE reports half-yearly and the page labels
+  the table REPORTED HALF-YEARS. USD/ZAR from open.er-api.
 - **Shared parser fix**: stockanalysis.com changed its statement-table markup in November 2026 (no
   `id` attributes; the period row is a `date-row` and the label sits in a `font-medium` div).
   `parseSaTable` now supports both layouts, so a fresh build no longer reads every page as empty.

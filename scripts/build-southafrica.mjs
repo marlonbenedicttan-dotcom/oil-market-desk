@@ -21,7 +21,7 @@
 // price times a share count is not used to re-derive it. A company whose statements are older than 450
 // days is excluded and named.
 
-import { writeFileSync, renameSync, readFileSync, existsSync, mkdirSync, rmSync } from 'node:fs';
+import { writeFileSync, renameSync, readFileSync, existsSync, mkdirSync, rmSync, readdirSync, unlinkSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import https from 'node:https';
 import { join } from 'node:path';
@@ -90,6 +90,10 @@ const listed = uni.rows.filter((r) => !EXCLUDED.has(r.code)).map((r) => {
     ticker: pad(r.code),
     name: String(r.name || '').replace(/\s+/g, ' ').trim() || pad(r.code),
     vendorCap: r.vendorCap ?? null,
+    // The exchange list quotes JSE prices in cents. It is the calibration point for the Yahoo series:
+    // Yahoo is not consistent across JSE lines (most print cents, some already rand, and a few foreign
+    // secondaries print a different unit), so the whole series is scaled to this last price.
+    vendorPrice: r.vendorPrice ?? null,
     foreignSecondary: !!s,
     ...(s ? { secondaryExchange: s.market, secondaryCountry: s.country, secondaryTicker: s.ticker.toUpperCase(), secondarySource: `${s.exchange}:${s.ticker}` } : {}),
   };
@@ -177,9 +181,20 @@ if (!SKIP_PRICES) {
   let done = 0;
   await pool(universe, Number(arg('price-workers', 3)) || 3, async (c) => {
     const raw = await yahooSeries(yaSymbol(c.code));
-    // JSE equities are quoted in cents (the vendor list and Yahoo both print 75,725.0 for Naspers,
-    // i.e. R757.25). The dataset is in rand, so the series is divided once here; the index is not.
-    const scaled = raw.map((p) => ({ ...p, c: p.c / 100 }));
+    // JSE quotes are in cents on the exchange list, but Yahoo is not consistent across lines: most
+    // print cents (75,725.0 for Naspers), several thin lines already print rand, and a few foreign
+    // secondaries print another unit. Scale the whole series so its last close equals the exchange
+    // list price in rand; returns are invariant to the scale and the traded-value proxy is then real.
+    const rawLast = raw.length ? raw[raw.length - 1].c : null;
+    const target = c.vendorPrice > 0 ? c.vendorPrice / 100 : null;
+    const scale = target > 0 && rawLast > 0 ? target / rawLast : 0.01;
+    // Accept only the two honest JSE conventions: rand (ratio ~1) and cents (ratio ~100). A wildly
+    // different ratio means the Yahoo symbol is another instrument, not another unit — e.g. SCD.JO
+    // was ~15,000× the JSE line. Drop the series and let the no-price audit name it.
+    const ratio = rawLast > 0 && target > 0 ? rawLast / target : null;
+    const usable = ratio == null || (ratio >= 0.5 && ratio <= 2) || (ratio >= 50 && ratio <= 200);
+    c.priceScale = usable ? +scale.toPrecision(6) : null;
+    const scaled = usable ? raw.map((p) => ({ ...p, c: p.c * scale })) : [];
     if (scaled.length > 1) {
       const clean = sanitizeSeries(scaled);
       c.series = clean.s;
@@ -196,7 +211,14 @@ if (!SKIP_PRICES) {
       if (existsSync(f)) {
         const s = JSON.parse(JSON.parse(readFileSync(f, 'utf8')).text);
         if (s && s.length > 1) {
-          const clean = sanitizeSeries(s.map((p) => ({ ...p, c: p.c / 100 })));
+          const rawLast = s[s.length - 1].c;
+          const target = c.vendorPrice > 0 ? c.vendorPrice / 100 : null;
+          const scale = target > 0 && rawLast > 0 ? target / rawLast : 0.01;
+          const ratio = rawLast > 0 && target > 0 ? rawLast / target : null;
+          const usable = ratio == null || (ratio >= 0.5 && ratio <= 2) || (ratio >= 50 && ratio <= 200);
+          c.priceScale = usable ? +scale.toPrecision(6) : null;
+          if (!usable) continue;
+          const clean = sanitizeSeries(s.map((p) => ({ ...p, c: p.c * scale })));
           c.series = clean.s; c.priceSource = 'yahoo'; c.priceAdjusted = clean.adjustments || 0;
         }
       }
@@ -542,6 +564,12 @@ for (const c of out) {
   c.description = (p && p.desc) || null;
   c.sector = (p && p.sector) || 'Other';
   c.sectorSource = p && p.sector ? 'profile-gics-sector' : 'other';
+  // A REIT whose vendor profile omits the GICS row is still real estate; the name and the description
+  // both say so. This is a narrow rule, not a blanket fallback for an unclassified company.
+  if (!p?.sector && /\b(reit|property fund|real estate)\b/i.test(`${c.nameEn || ''} ${c.description || ''}`)) {
+    c.sector = 'Real Estate';
+    c.sectorSource = 'profile-name-rule';
+  }
   c.industry = (p && p.industry) || null;
   if (c.description) withDesc++;
 }
@@ -665,6 +693,10 @@ const audit = {
   brokenCodes: broken.map((c) => ({ code: c.code, name: c.name })),
   stale: stale.length,
   staleCodes: stale.map((c) => ({ code: c.code, name: c.name, end: lastEndOf(c) })),
+  priceScale: (() => {
+    const bad = cleaned.filter((c) => c.vendorPrice > 0 && c.price > 0 && Math.abs(c.price / (c.vendorPrice / 100) - 1) > 0.02);
+    return { compared: cleaned.filter((c) => c.vendorPrice > 0 && c.price > 0).length, over2pct: bad.length, examples: bad.slice(0, 8).map((c) => ({ code: c.code, price: c.price, list: c.vendorPrice / 100 })) };
+  })(),
   sectors: market.sectors.length,
   pe: cleaned.filter((c) => c.pe != null).length,
   pb: cleaned.filter((c) => c.pb != null).length,
@@ -725,6 +757,13 @@ for (const [b, obj] of Object.entries(bucketBook)) {
   const f = join(SERIES_DIR, `${b}.json`);
   writeJson(`${f}.tmp`, { updated: seriesStamp, ...obj });
   renameSync(`${f}.tmp`, f);
+}
+// A removed line must not leave its bucket behind: a stale UPL.json would still answer a chart
+// request for a company the market no longer publishes.
+for (const f of readdirSync(SERIES_DIR)) {
+  if (!f.endsWith('.json')) continue;
+  if (bucketBook[f.replace(/\.json$/, '')]) continue;
+  unlinkSync(join(SERIES_DIR, f));
 }
 
 try {
