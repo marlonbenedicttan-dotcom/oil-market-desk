@@ -9017,14 +9017,34 @@ function warmMarkets(delay = 1500) {
 
 // The region row scrolls sideways on a phone. A saved market can therefore sit off-screen; centre the
 // active pill instead of leaving the reader looking at United States while India is selected.
+// The row also fades the side that has more to scroll, so a half-visible pill reads as "there is more"
+// instead of a sliced word ("AL" where GLOBAL used to be).
+function syncRegionFade(row) {
+  if (!row) return;
+  const max = row.scrollWidth - row.clientWidth;
+  const left = row.scrollLeft > 2;
+  const right = max - row.scrollLeft > 2;
+  row.dataset.fade = left && right ? 'both' : left ? 'left' : right ? 'right' : 'none';
+}
+function bindRegionFade(row) {
+  if (!row || row.dataset.fadeBound) return;
+  row.dataset.fadeBound = '1';
+  row.addEventListener('scroll', () => syncRegionFade(row), { passive: true });
+  addEventListener('resize', () => syncRegionFade(row), { passive: true });
+}
 function scrollActiveIntoView(row) {
   if (!row) return;
+  bindRegionFade(row);
   const on = row.querySelector('button.on');
-  if (!on) return;
-  const r = on.getBoundingClientRect(), rr = row.getBoundingClientRect();
-  if (r.left < rr.left || r.right > rr.right) {
-    row.scrollLeft += (r.left - rr.left) - Math.max(0, (rr.width - r.width) / 2);
+  if (on) {
+    const r = on.getBoundingClientRect(), rr = row.getBoundingClientRect();
+    const pad = 30;   // keep the active pill clear of the 26px fade, never flush with the edge
+    if (r.left < rr.left + pad || r.right > rr.right - pad) {
+      const target = row.scrollLeft + (r.left - rr.left) - (rr.width - r.width) / 2;
+      row.scrollTo({ left: Math.max(0, target), behavior: 'smooth' });
+    }
   }
+  syncRegionFade(row);
 }
 
 let globalBoardData = null, globalThemesData = null, globalThemeSel = 'ai';

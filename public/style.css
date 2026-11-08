@@ -1386,9 +1386,12 @@ button.deal-sec-tile:hover { background: #10151b; }
   -webkit-mask-image: linear-gradient(to right, transparent 0, #000 var(--fade-l), #000 calc(100% - var(--fade-r)), transparent 100%);
   mask-image: linear-gradient(to right, transparent 0, #000 var(--fade-l), #000 calc(100% - var(--fade-r)), transparent 100%); }
 /* Fade only the side that still has content: a partly scrolled pill dissolves instead of being sliced. */
-.co-region[data-fade="left"], .co-region[data-fade="both"] { --fade-l: 22px; }
-.co-region[data-fade="right"], .co-region[data-fade="both"] { --fade-r: 22px; }
+.co-region[data-fade="left"], .co-region[data-fade="both"] { --fade-l: 26px; }
+.co-region[data-fade="right"], .co-region[data-fade="both"] { --fade-r: 26px; }
 .co-region::-webkit-scrollbar { display: none; }
+/* A trailing spacer lets the row scroll the leading pill fully out of view instead of parking a
+   half-word under the fade, and keeps the last pill off the edge. */
+.co-region::after { content: ''; flex: 0 0 26px; }
 /* The row scrolls sideways; the active market is scrolled into view on render (scrollActiveIntoView in
    app.js), so a saved India/Indonesia/Brazil/South Africa selection is never left off-screen. */
 .co-region button { background: #0d1219; border: 1px solid var(--line2); border-radius: 999px; color: var(--dim);
