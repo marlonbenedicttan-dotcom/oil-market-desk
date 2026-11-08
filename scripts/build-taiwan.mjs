@@ -558,10 +558,6 @@ for (const [b, obj] of Object.entries(bucketBook)) {
   renameSync(`${f}.tmp`, f);
 }
 
-// Re-index the per-company chart store so a chart never has to parse a whole bucket again.
-try { execFileSync(process.execPath, [join(ROOT, 'scripts', 'build-chart-store.mjs'), 'tw'], { stdio: 'inherit' }); }
-catch (e) { console.log(`  chart store: ${e.message}`); }
-
 // Curated brands are not in the exchange feed; attach them after every rebuild so search keeps
 // resolving "TSMC" or "Giant" to the listed company instead of losing the tags.
 try { execFileSync(process.execPath, [join(ROOT, 'scripts', 'attach-market-brands.mjs'), 'tw'], { stdio: 'inherit' }); }
@@ -579,6 +575,11 @@ try {
 // Last, so the detail records carry the descriptions and brands attached above.
 try { execFileSync(process.execPath, [join(ROOT, 'scripts', 'build-company-details.mjs'), 'tw'], { stdio: 'inherit' }); }
 catch (e) { console.log(`  company details: ${e.message}`); }
+
+// Re-index the per-company chart store LAST: every step above can rewrite the source, and the store
+// stamps the source it was built from. A stale stamp sends the server back to parsing buckets.
+try { execFileSync(process.execPath, [join(ROOT, 'scripts', 'build-chart-store.mjs'), 'tw'], { stdio: 'inherit' }); }
+catch (e) { console.log(`  chart store: ${e.message}`); }
 
 console.log(`${cleaned.length} companies · ${cleaned.filter((c) => c.pe != null).length} P/E · ${withDesc} descriptions · TAIEX ${idx ? idx.level : '—'} · FX ${fxRate}`);
 console.log(`audit: P/E ${peDiff}/${chk.length} off >15% · P/B ${pbDiff}/${chkPb.length} off >15%`);

@@ -8701,23 +8701,27 @@ function warmMarkets(delay = 1500) {
   const cold = (() => { try { return window.__coldStart === true; } catch { return false; } })();
   if (cold) return;
   warmed = true;
-  setTimeout(() => {
-    if (!companiesData) jget('/api/companies', 300000).then((d) => { companiesData = d; }).catch(() => {});
-  }, delay);
-  // Staggered behind the US list, and after the boot overlay has lifted, so the one-off 28 MB parse
-  // the server does for Korea never competes with the first screen. `loadKorea()` de-dupes with the
-  // click, so opening KOREA while this is in flight shares the one request instead of a second.
-  setTimeout(() => { if (!koreaData) loadKorea().catch(() => {}); }, delay + 1500);
-  // Taiwan's list is ~0.5 MB; warm it after Korea so a region switch does not pay the round trip.
-  setTimeout(() => { if (!taiwanData) loadTaiwan().catch(() => {}); }, delay + 3200);
-  // Hong Kong's list is the biggest of the five (~2,000 companies), so it warms last.
-  setTimeout(() => { if (!hkData) loadHongKong().catch(() => {}); }, delay + 4600);
-  // Australia is the sixth and similar in size; warming it after Hong Kong keeps a region switch free.
-  setTimeout(() => { if (!auData) loadAustralia().catch(() => {}); }, delay + 6000);
-  setTimeout(() => { if (!inData) loadIndia().catch(() => {}); }, delay + 7400);
-  setTimeout(() => { if (!idData) loadIndonesia().catch(() => {}); }, delay + 8800);
-  setTimeout(() => { if (!brData) loadBrazil().catch(() => {}); }, delay + 10200);
-  setTimeout(() => { if (!zaData) loadSouthAfrica().catch(() => {}); }, delay + 11600);
+  // Warm the US list first (it backs the default screener), then the region this reader last used,
+  // then the rest. A returning India/Indonesia/Brazil/South Africa reader should not wait while nine
+  // other lists download ahead of theirs.
+  const loaders = [
+    ['us', () => { if (!companiesData) jget('/api/companies', 300000).then((d) => { companiesData = d; }).catch(() => {}); }],
+    ['jp', () => loadJapan().catch(() => {})],
+    ['kr', () => loadKorea().catch(() => {})],
+    ['tw', () => loadTaiwan().catch(() => {})],
+    ['hk', () => loadHongKong().catch(() => {})],
+    ['au', () => loadAustralia().catch(() => {})],
+    ['in', () => loadIndia().catch(() => {})],
+    ['id', () => loadIndonesia().catch(() => {})],
+    ['br', () => loadBrazil().catch(() => {})],
+    ['za', () => loadSouthAfrica().catch(() => {})],
+  ];
+  const last = String(coRegion || 'us');
+  const ordered = [
+    ...loaders.filter(([id]) => id === last),
+    ...loaders.filter(([id]) => id !== last),
+  ];
+  ordered.forEach(([, load], i) => setTimeout(load, delay + i * 1400));
 }
 
 // The region row scrolls sideways on a phone. A saved market can therefore sit off-screen; centre the

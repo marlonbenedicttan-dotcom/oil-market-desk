@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync, openSync, readSync, closeSync, existsSync } from 'node:fs';
+import { readFileSync, openSync, readSync, closeSync, existsSync, readdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { combineSeries, pointsFromColumns, rangeStart, sliceRange, seriesFromLine } from '../src/charts.js';
@@ -70,7 +70,10 @@ test('the US store carries the S&P 1500, so the market chart is not a live Yahoo
 });
 
 test('the chart store covers every market', () => {
-  const markets = { us: 'NVDA', jp: '72030', kr: '005930', tw: '2330', hk: '0700', au: 'BHP' };
+  const markets = {
+    us: 'NVDA', jp: '72030', kr: '005930', tw: '2330', hk: '0700', au: 'BHP',
+    in: 'RELIANCE', id: 'BBCA', br: 'PETR4', za: 'NPN',
+  };
   for (const [market, code] of Object.entries(markets)) {
     const idxFile = join(ROOT, 'data', 'charts', `${market}.idx.json`);
     assert.ok(existsSync(idxFile), `${market}: chart index is missing`);
@@ -87,5 +90,33 @@ test('the chart store covers every market', () => {
     const series = seriesFromLine(JSON.parse(buf.toString('utf8', 0, n)), idx.dates);
     assert.ok(series.dates.length > 10, `${market}: ${code} has ${series.dates.length} points`);
     assert.equal(series.dates.length, series.closes.length);
+  }
+});
+
+// A store built before the final data rewrite is worse than no store: the server sees the stamp
+// mismatch and falls back to the slow whole-market parse, which is exactly the regression that made
+// Korea 7 s on the live site. The build scripts run the store builder last; this catches a build that
+// forgot to, before the commit reaches production.
+test('every chart store is current with the source it was built from', () => {
+  const sources = {
+    us: 'us-charts.json', jp: 'japan-series.json', kr: 'korea.json',
+    tw: 'taiwan-series', hk: 'hongkong-series', au: 'australia-series',
+    in: 'india-series', id: 'indonesia-series', br: 'brazil-series', za: 'southafrica-series',
+  };
+  const fileStamp = (file) => {
+    const buf = Buffer.alloc(256);
+    const fd = openSync(file, 'r');
+    const n = readSync(fd, buf, 0, 256, 0);
+    closeSync(fd);
+    const m = /"updated"\s*:\s*"([^"]+)"/.exec(buf.toString('utf8', 0, n));
+    return m ? m[1] : null;
+  };
+  for (const [market, src] of Object.entries(sources)) {
+    const p = join(ROOT, 'data', src);
+    const source = src.endsWith('.json')
+      ? p
+      : join(p, readdirSync(p).filter((f) => f.endsWith('.json')).sort()[0]);
+    const idx = JSON.parse(readFileSync(join(ROOT, 'data', 'charts', `${market}.idx.json`), 'utf8'));
+    assert.equal(idx.source, fileStamp(source), `${market}: chart store is behind ${src} — run scripts/build-chart-store.mjs ${market}`);
   }
 });
