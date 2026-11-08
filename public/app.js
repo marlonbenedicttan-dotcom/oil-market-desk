@@ -3515,12 +3515,13 @@ function renderCalendar() {
     ? `<div class="cal-row cal-crow" ${e.market === 'JP' ? `data-caljp="${esc(e.code || '')}"` : `data-calco="${esc(e.ticker || '')}"`}><span class="cal-date">${esc(e.basis === 'expected' ? 'EST' : 'FILED')}</span><span class="cal-name">${esc(e.label)}</span><span class="cal-src">${esc(e.kind === 'earnings' ? 'company' : e.kind)}</span><span class="cal-note dimtext">${esc(e.detail || '')}</span></div>`
     : `<div class="cal-row"><span class="cal-date">${esc(e.time || '—')}</span><span class="cal-name">${e.cc ? `<em class="cal-cc">${esc(e.cc)}</em>` : ''}${esc(e.name)}</span><span class="cal-src">${esc(e.source || '')}</span>${e.note ? `<span class="cal-note dimtext">${esc(e.note)}</span>` : ''}</div>`);
   const modes = [['macro', 'MACRO'], ['companies', 'COMPANIES']];
+  const selRows = (selEv.length ? selEv.map(row).join('') : `<div class="cal-foot dimtext">Nothing ${calMode === 'companies' ? 'from a company' : 'high-impact'} scheduled on this day.</div>`)
+    + (calFomc === 'fallback' ? '<div class="cal-foot dimtext">FOMC dates from the published schedule — the live Federal Reserve feed was unavailable.</div>' : '');
   el.innerHTML = `<div class="cal-modes">${modes.map(([k, t]) => `<button type="button" class="${calMode === k ? 'on' : ''}" data-calmode="${k}">${t}</button>`).join('')}</div>`
     + `<div class="cal-head"><div class="cal-nav"><button id="cal-prev" type="button" aria-label="Previous month">‹</button><span class="cal-title">${MONTH_NAMES[m]} ${y}</span><button id="cal-next" type="button" aria-label="Next month">›</button></div><button id="cal-today" class="ghost small" type="button">TODAY</button></div>`
     + `<div class="cal-grid">${CAL_DOW.map((x) => `<div class="cal-dow">${x}</div>`).join('')}${grid}</div>`
     + `<div class="cal-dayh">${dayLabel}</div>`
-    + (selEv.length ? selEv.map(row).join('') : `<div class="cal-foot dimtext">Nothing ${calMode === 'companies' ? 'from a company' : 'high-impact'} scheduled on this day.</div>`)
-    + (calFomc === 'fallback' ? '<div class="cal-foot dimtext">FOMC dates from the published schedule — the live Federal Reserve feed was unavailable.</div>' : '');
+    + `<div class="cal-rows">${selRows}</div>`;
 }
 const calPick = (k) => { if (k) { calSel = k; renderCalendar(); } };
 $('calendar')?.addEventListener('click', (e) => {

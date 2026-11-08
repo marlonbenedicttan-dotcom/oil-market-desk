@@ -1929,3 +1929,9 @@ button.deal-sec-tile:hover { background: #10151b; }
   .co-nav .co-views { border-left: 1px solid var(--line); padding-left: 10px; }
   .co-nav .co-views button { padding: 0 9px; }
 }
+
+/* The selected-day list gets its own scroll area: a heavy event day must not stretch the HOME page. */
+.calendar-rail .cal-rows { max-height:190px; overflow-y:auto; overscroll-behavior:contain; scrollbar-width:thin; }
+.calendar-rail .cal-rows::-webkit-scrollbar { width:6px; }
+.calendar-rail .cal-rows::-webkit-scrollbar-thumb { background:var(--line2); }
+@media (max-width:1050px) { .calendar-rail .cal-rows { max-height:240px; } }
