@@ -4464,9 +4464,11 @@ $('macro-links')?.addEventListener('click', (e) => { const el = e.target.closest
   // History and prices do not depend on each other — run them together rather than back to back.
   const histP = loadHistory().catch(() => {});   // never fatal — degrades to an empty history
   const liveP = refreshLive();
-  // The backdrop does not read the live price table — start it beside the prices instead of behind
-  // them, so one round-trip does not wait for another on a slow link.
+  // The backdrop and the day's brief do not read the live price table — start both beside the prices
+  // instead of behind them, so one round-trip does not wait for another on a slow link. The brief is
+  // the largest above-the-fold text on HOME, so it is also the page's LCP on a returning visit.
   const regimeP = loadRegime();
+  loadBrief();
   fxList = await fxP; rateList = await rateP;
   renderCmpPresets();
   bootStep('Loading markets…');
@@ -4478,7 +4480,6 @@ $('macro-links')?.addEventListener('click', (e) => { const el = e.target.closest
   bootStep('Loading prices…');
   await liveP;                // prices (sets `data` first)
   await regimeP;              // the backdrop is part of the first screen — it started with the prices
-  loadBrief();                // and the brief runs beside history instead of after it
   await histP;
   initCurveHist();            // arm the lazy loader for the (expensive) curve-history chart
   bootStep('reading the market…');
