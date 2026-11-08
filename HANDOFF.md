@@ -4256,3 +4256,18 @@ keeps the 10-K text.
   statement cache, `merge-history za`, `merge-series za`, the collapse guard, both audits and the commit.
 - **Not used**: the official JSE market-data API is licensed (no free key); the keyless vendor path is
   the delivery route.
+
+## Mobile COMPANIES navigation: every market visible (2026-11-08)
+
+- **Symptom**: on a phone, India, Indonesia, Brazil and South Africa sometimes looked missing from
+  COMPANIES. They were present in the DOM, but `.co-region` was a one-row flex strip with
+  `overflow-x: auto` and a hidden scrollbar, so the four newest markets sat off-screen with no swipe
+  affordance. The home screener's ten-market switch (`.sc-mkt`) had the same hidden overflow.
+- **Fix**: the region row and the home market switch now **wrap** at every width (no horizontal
+  overflow), with phone sizing preserved. This also covers tablets and narrow desktop windows where the
+  ten pills never fit one row.
+- **Cache**: the service worker's cache moved to `oil-desk-v7`, and registration uses
+  `updateViaCache: 'none'`, so a deploy cannot leave the old nine-market shell behind. Asset versions
+  are bumped (`app.js?v=304`, `style.css?v=130`).
+- **Guard**: `tests/app-ui.test.js` asserts all ten `data-region` buttons exist and that both market
+  rows carry `flex-wrap: wrap`.
