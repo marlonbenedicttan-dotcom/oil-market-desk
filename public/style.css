@@ -2328,7 +2328,7 @@ body.gs-search-open { overflow: hidden; }
     border-top: 1px solid var(--line); border-left: 0; overflow-x: auto;
   }
   .topbar .tab {
-    flex: 1 0 25%; min-height: 46px; padding: 6px 1px;
+    flex: 1 1 0; min-width: 0; min-height: 46px; padding: 6px 1px;
     font-size: 9px; letter-spacing: .4px; gap: 4px; justify-content: center;
   }
   .topbar .tab svg { flex: 0 0 auto; width: 17px; height: 17px; }
@@ -2340,7 +2340,8 @@ body.gs-search-open { overflow: hidden; }
   #p-regime { display: none; }
 
   /* Screener: show the five columns that matter on a phone, inside a shorter scroll box. */
-  #p-screen .sc-wrap { max-height: 560px; overflow: auto; -webkit-overflow-scrolling: touch; }
+  #p-screen .sc-wrap { max-height: 560px; overflow: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
+  #p-screen .sc-table thead th { position: sticky; top: 0; z-index: 2; }
   #p-screen .sc-bar { padding: 8px 10px; gap: 6px 8px; }
   #p-screen .sc-bar .sc-f { flex: 1 1 100%; }
   #p-screen .sc-bar .sc-f select { width: 100%; }
