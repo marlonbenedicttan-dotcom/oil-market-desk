@@ -10,6 +10,7 @@ import { sendMail } from './src/smtp.js';
 import { fileURLToPath } from 'node:url';
 import { projectUs, projectJp, japanList, koreaList, taiwanList, hongkongList, australiaList, indiaList, indonesiaList, brazilList, southafricaList, US_LIST_FIELDS } from './src/project.js';
 import { sliceRange, seriesFromLine } from './src/charts.js';
+import { searchEntries } from './src/search.js';
 import { growthRates, fromJapanHistory } from './src/growth.js';
 import { sgn, businessDaysSince, horizonDeltas, horizonDeltasAbs, isoWeek, monthly, pctOver, percentile, lastNonNull, escHtml, webhookPayload, realizedVol, computeCracks, computeCrush, computeSteel, buildRelValueRow, relValueZone, ordinal, alignPriceToRows, inventoryBands, backAdjust, pearson, logReturns, frontExpiry, curveTightness, inventoryTightness, weightedScore, seasonalGrade, seasonalAhead, contractMonthsBetween, signedPosition, signedMove, stretchScore, sdLabel, attributeMoves, newsContextOk, METHODOLOGY, positioningFlag, positioningRead, positioningDivergence, maxDrawdown, drawdownNow, realizedVolTerm, volPercentile, volVsOwnWord, corrMatrix, fxAdjust, parseOcc, drawdownWord, volWord, volTrend, corrShift, pairGroups, topPairs, bestDiversifier, riskRead, priorityOf, rankByPriority, clusterEvents, scoreEvents, selectEvents, explainRows } from './src/lib.js';
 
@@ -858,6 +859,25 @@ function usCharts() {
   try { US_CHARTS = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'us-charts.json'), 'utf8')).series || {}; }
   catch { US_CHARTS = {}; }
   return US_CHARTS;
+}
+
+// ---------------------------------------------------------------------------
+// Global company search — one compact index over every company market.
+// Built by scripts/build-search-index.mjs and committed; loaded lazily because it is ~6.7 MB.
+// ---------------------------------------------------------------------------
+let GLOBAL_SEARCH_INDEX = null;
+function globalSearchIndex() {
+  if (GLOBAL_SEARCH_INDEX) return GLOBAL_SEARCH_INDEX;
+  try { GLOBAL_SEARCH_INDEX = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'search-index.json'), 'utf8')); }
+  catch { GLOBAL_SEARCH_INDEX = { entries: [], markets: {} }; }
+  return GLOBAL_SEARCH_INDEX;
+}
+let GLOBAL_MARKET_INDEX = null;
+function globalMarketIndex() {
+  if (GLOBAL_MARKET_INDEX) return GLOBAL_MARKET_INDEX;
+  try { GLOBAL_MARKET_INDEX = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'market-index.json'), 'utf8')); }
+  catch { GLOBAL_MARKET_INDEX = { markets: {} }; }
+  return GLOBAL_MARKET_INDEX;
 }
 
 // ---------------------------------------------------------------------------
@@ -5439,6 +5459,24 @@ const server = http.createServer(async (req, res) => {
       }).catch(() => null);
       if (!out) return sendJSON(res, 200, { error: 'no chart', dates: [], closes: [] });
       return sendChartJSON(res, 200, out);
+    }
+    if (url.pathname === '/api/global-search') {
+      const q = String(url.searchParams.get('q') || '').slice(0, 80);
+      const market = url.searchParams.get('market') || null;
+      const limit = Math.max(1, Math.min(50, Number(url.searchParams.get('limit')) || 30));
+      const idx = globalSearchIndex();
+      const out = searchEntries(idx.entries, q, { market, limit });
+      return sendJSONCached(res, 200, { ...out, markets: idx.markets }, 'public, max-age=15, stale-while-revalidate=30');
+    }
+    if (url.pathname === '/api/market-index') {
+      const mid = url.searchParams.get('market');
+      const mi = globalMarketIndex();
+      if (mid) {
+        const m = mi.markets && mi.markets[mid];
+        if (!m) return sendJSON(res, 404, { error: 'unknown market' });
+        return sendJSONCached(res, 200, m, 'public, max-age=60, stale-while-revalidate=300');
+      }
+      return sendJSONCached(res, 200, mi, 'public, max-age=60, stale-while-revalidate=300');
     }
     if (url.pathname === '/api/companies') {
       let valuation = null;

@@ -4680,6 +4680,7 @@ function jpMatches(c) {
 
 async function renderJapan(token = takeToken()) {
   paintCoViews();
+  renderGlobalMarketContext();
   const el = $('co-body'); if (!el) return;
   if (jpSel !== jpOpenSel) { jpCompare = ''; jpOpenSel = jpSel; }
   syncMarketAccent();
@@ -5540,6 +5541,7 @@ const krViewsBar = () => '';
 
 async function renderKorea(token = takeToken()) {
   paintCoViews();
+  renderGlobalMarketContext();
   const el = $('co-body'); if (!el) return;
   if (krSel !== krOpenSel) { krCompare = ''; krOpenSel = krSel; }
   syncMarketAccent();
@@ -5856,6 +5858,7 @@ async function loadTaiwan() {
 
 async function renderTaiwan(token = takeToken()) {
   paintCoViews();
+  renderGlobalMarketContext();
   const el = $('co-body'); if (!el) return;
   if (twSel !== twOpenSel) { twCompare = ''; twOpenSel = twSel; }
   syncMarketAccent();
@@ -6202,6 +6205,7 @@ async function loadHongKong() {
 
 async function renderHongKong(token = takeToken()) {
   paintCoViews();
+  renderGlobalMarketContext();
   const el = $('co-body'); if (!el) return;
   if (hkSel !== hkOpenSel) { hkCompare = ''; hkOpenSel = hkSel; }
   syncMarketAccent();
@@ -6590,6 +6594,7 @@ async function loadAustralia() {
 
 async function renderAustralia(token = takeToken()) {
   paintCoViews();
+  renderGlobalMarketContext();
   const el = $('co-body'); if (!el) return;
   if (auSel !== auOpenSel) { auCompare = ''; auOpenSel = auSel; }
   syncMarketAccent();
@@ -6949,6 +6954,7 @@ async function loadIndia() {
 
 async function renderIndia(token = takeToken()) {
   paintCoViews();
+  renderGlobalMarketContext();
   const el = $('co-body'); if (!el) return;
   if (inSel !== inOpenSel) { inCompare = ''; inOpenSel = inSel; }
   syncMarketAccent();
@@ -7307,6 +7313,7 @@ async function loadIndonesia() {
 
 async function renderIndonesia(token = takeToken()) {
   paintCoViews();
+  renderGlobalMarketContext();
   const el = $('co-body'); if (!el) return;
   if (idSel !== idOpenSel) { idCompare = ''; idOpenSel = idSel; }
   syncMarketAccent();
@@ -7758,6 +7765,7 @@ async function loadBrazil() {
 
 async function renderBrazil(token = takeToken()) {
   paintCoViews();
+  renderGlobalMarketContext();
   const el = $('co-body'); if (!el) return;
   if (brSel !== brOpenSel) { brCompare = ''; brOpenSel = brSel; }
   syncMarketAccent();
@@ -8234,6 +8242,7 @@ async function loadSouthAfrica() {
 
 async function renderSouthAfrica(token = takeToken()) {
   paintCoViews();
+  renderGlobalMarketContext();
   const el = $('co-body'); if (!el) return;
   if (zaSel !== zaOpenSel) { zaCompare = ''; zaOpenSel = zaSel; }
   syncMarketAccent();
@@ -8749,6 +8758,7 @@ function renderCompanies() {
   // the Japanese screen over it. The chosen renderer gets this token and bails if another wins.
   const token = takeToken();
   syncMarketAccent();
+  if (coRegion === 'us') renderGlobalMarketContext();
   if (coRegion === 'jp') return renderJapan(token);
   if (coRegion === 'kr') return renderKorea(token);
   if (coRegion === 'tw') return renderTaiwan(token);
@@ -10244,3 +10254,490 @@ if (toTopBtn) {
     window.scrollTo({ top: 0, behavior: reduced ? 'auto' : 'smooth' });
   });
 }
+
+// ============================================================================================
+// Global company search — one box across every company market.
+//
+// The search index is built by scripts/build-search-index.mjs and served by /api/search. The country
+// index series come from /api/market-index, so the search pane, the country cards and the company-page
+// market context all use the same series as each country's MARKET view.
+// ============================================================================================
+var gsMkt = null, gsMktPromise = null, gsSeq = 0, gsCtxSeq = 0, gsQueryText = '';
+var gsData = null, gsRows = [], gsActive = -1, gsSelected = null, gsOpen = false, gsTimer = 0;
+var gsCtl = null, gsRange = '1y', gsCache = new Map();
+var gsRecent = (() => { try { const x = JSON.parse(localStorage.getItem('oilbasis.gsRecent') || '[]'); return Array.isArray(x) ? x.slice(0, 8) : []; } catch { return []; } })();
+var mctxRange = '1y', mctxVs = false, mctxSeq = 0;
+var GS_ORDER = ['us', 'jp', 'kr', 'tw', 'hk', 'au', 'in', 'id', 'br', 'za'];
+var GS_POPULAR = ['Apple', 'Toyota', 'Samsung', 'TSMC', 'BHP', 'Nubank', 'Reliance', 'BBCA', 'Petrobras', 'Naspers'];
+
+const gsEsc = (x) => (typeof esc === 'function' ? esc(x) : String(x == null ? '' : x));
+const gsNum = (n, dp = 2) => n == null || !Number.isFinite(Number(n)) ? '—' : Number(n).toLocaleString('en-US', { maximumFractionDigits: dp });
+const gsPct = (n, dp = 1) => n == null || !Number.isFinite(Number(n)) ? '—' : `${Number(n) >= 0 ? '+' : ''}${Number(n).toFixed(dp)}%`;
+const gsCls = (n) => n == null || !Number.isFinite(Number(n)) ? 'dimtext' : Number(n) >= 0 ? 'pos' : 'neg';
+const GS_CUR = { USD: '$', JPY: '¥', KRW: '₩', TWD: 'NT$', HKD: 'HK$', AUD: 'A$', INR: '₹', IDR: 'Rp', BRL: 'R$', ZAR: 'R' };
+const gsCur = (cur, v) => v == null || !Number.isFinite(Number(v)) ? '—' : `${GS_CUR[cur] || ''}${Number(v).toLocaleString('en-US', { maximumFractionDigits: Number(v) >= 1000 ? 0 : 2 })}`;
+const gsTitle = (s) => {
+  s = String(s || '');
+  if (!s || /[a-z]/.test(s)) return s;
+  const legal = { CO: 'Co', LTD: 'Ltd', INC: 'Inc', CORP: 'Corp', PLC: 'Plc', SA: 'SA', NV: 'NV', AG: 'AG', SE: 'SE', SPA: 'SpA' };
+  return s.split(/\s+/).map((w) => legal[w] || (w.length <= 4 ? w : w[0] + w.slice(1).toLowerCase())).join(' ');
+};
+const gsDisplay = (r) => gsTitle((r && (r.nameEn || r.name)) || '');
+const gsLocal = (r) => (r && (r.nameLocal || (r.name && r.nameEn && r.name !== r.nameEn && /[^\x00-\x7F]/.test(r.name) ? r.name : null))) || '';
+
+function gsLoadMarkets() {
+  if (gsMkt) return Promise.resolve(gsMkt);
+  if (gsMktPromise) return gsMktPromise;
+  gsMktPromise = jget('/api/market-index', 300000)
+    .then((d) => { if (d && d.markets) gsMkt = d; return gsMkt; })
+    .catch(() => null)
+    .finally(() => { gsMktPromise = null; });
+  return gsMktPromise;
+}
+function gsMeta(market) { return (gsMkt && gsMkt.markets && gsMkt.markets[market]) || {}; }
+function gsIndex(market, symbol) {
+  const m = gsMeta(market);
+  if (!m.indices) return null;
+  return (symbol && m.indices[symbol]) || m.indices[m.default] || Object.values(m.indices)[0] || null;
+}
+
+function gsSetOpen(on) {
+  const p = $('co-global-panel'); if (!p) return;
+  p.classList.toggle('hidden', !on);
+  gsOpen = !!on;
+  const inp = $('co-global-input');
+  if (inp) inp.setAttribute('aria-expanded', String(!!on));
+}
+function gsOpenPanel() {
+  gsSetOpen(true);
+  if (!gsQueryText) gsBoard();
+  else if (gsData) gsRenderResults(gsData);
+  else gsFetch(gsQueryText);
+}
+
+function gsOnInput() {
+  const inp = $('co-global-input'); if (!inp) return;
+  const q = inp.value.trim();
+  gsQueryText = q;
+  const clr = $('co-global-clear'); if (clr) clr.classList.toggle('hidden', !q);
+  gsSetOpen(true);
+  clearTimeout(gsTimer);
+  if (!q) { gsData = null; gsSelected = null; gsActive = -1; gsRows = []; gsBoard(); return; }
+  if (gsCache.has(q)) { gsRenderResults(gsCache.get(q)); return; }
+  gsTimer = setTimeout(() => gsFetch(q), 140);
+}
+
+async function gsFetch(q) {
+  const seq = ++gsSeq;
+  try { if (gsCtl) gsCtl.abort(); } catch { /* none */ }
+  gsCtl = new AbortController();
+  try {
+    const res = await fetch(`/api/global-search?q=${encodeURIComponent(q)}&limit=30`, { signal: gsCtl.signal, headers: { Accept: 'application/json' } });
+    if (!res.ok) throw new Error(String(res.status));
+    const data = await res.json();
+    if (seq !== gsSeq || q !== gsQueryText) return;
+    if (!gsMkt) await gsLoadMarkets();
+    if (seq !== gsSeq || q !== gsQueryText) return;
+    if (gsCache.size > 60) gsCache.clear();
+    gsCache.set(q, data);
+    gsRenderResults(data);
+  } catch (e) {
+    if (e.name !== 'AbortError' && seq === gsSeq) gsRenderError(q);
+  }
+}
+
+function gsRenderError(q) {
+  gsCtxSeq++;
+  const left = $('co-global-results');
+  if (left) left.innerHTML = `<div class="g-empty"><b>Couldn’t search right now.</b><br>Try again, or pick a country index on the right. <span class="dimtext">“${gsEsc(q)}”</span></div>` + gsPopularHtml();
+  gsBoardCards(true);
+}
+
+function gsPopularHtml() {
+  return `<div class="g-recent-h">Try</div><div class="g-sugg">${GS_POPULAR.map((x) => `<button type="button" data-gsugg="${gsEsc(x)}">${gsEsc(x)}</button>`).join('')}</div>`;
+}
+function gsRecentHtml() {
+  if (!gsRecent.length) return '';
+  return `<div class="g-recent-h">Recent</div>` + gsRecent.map((r, i) => `
+    <button type="button" class="g-row" data-grecent="${i}">
+      <span class="g-tick">${gsEsc(r.ticker || '')}</span>
+      <span class="g-id"><b>${gsEsc(gsTitle(r.nameEn || r.name || r.ticker || ''))}</b><span class="g-meta">${gsEsc((gsMeta(r.market).label) || r.market || '')} · recent</span></span>
+      <span class="g-right"><span>→</span></span>
+    </button>`).join('');
+}
+
+function gsBoard() {
+  gsCtxSeq++;
+  const left = $('co-global-results');
+  if (left) {
+    left.innerHTML = (gsRecentHtml() || `<div class="g-empty"><b>Search ${GS_ORDER.length} markets at once.</b><br>Type a company, ticker, local code or brand — Apple, Toyota, Samsung, TSMC, BHP, Nubank, Reliance, BBCA, Petrobras.</div>`) + gsPopularHtml();
+  }
+  gsBoardCards();
+}
+
+async function gsBoardCards(force = false) {
+  if (gsQueryText && !force) return;
+  const right = $('co-global-context'); if (!right) return;
+  right.innerHTML = '<div class="g-empty">Loading country indices…</div>';
+  await gsLoadMarkets();
+  if (!gsMkt || gsQueryText) return;
+  const cards = GS_ORDER.map((market) => {
+    const m = gsMeta(market); const ix = gsIndex(market);
+    if (!m || !ix) return '';
+    const pts = (ix.points || []).slice(-120).map((p) => p[1]);
+    return `<button type="button" class="g-card" data-gmarket="${market}">
+      <span class="g-card-top"><span class="flag">${m.flag || ''}</span><b>${gsEsc(m.label || market)}</b><span class="n">${m.count != null ? m.count : ''}</span></span>
+      <span class="g-card-idx">${gsEsc(ix.label)} <b>${gsNum(ix.level, 2)}</b> <em class="${gsCls(ix.pct1d)}">${gsPct(ix.pct1d, 2)}</em></span>
+      ${tileSpark(pts)}
+      <span class="g-card-foot"><span class="${gsCls(ix.pctYtd)}">${gsPct(ix.pctYtd, 2)} YTD</span><span>Browse →</span></span>
+    </button>`;
+  }).join('');
+  right.innerHTML = `<div class="g-board-h">Country indices · ${GS_ORDER.length} markets</div><div class="g-cards">${cards}</div>`;
+}
+
+function gsRenderResults(data) {
+  gsData = data;
+  gsRows = [];
+  gsActive = -1;
+  gsSelected = null;
+  const results = data.results || [];
+  const left = $('co-global-results'); if (!left) return;
+  if (!results.length) {
+    gsCtxSeq++;
+    left.innerHTML = `<div class="g-empty"><b>No company matches “${gsEsc(data.q || gsQueryText)}”.</b><br>Try a ticker (AAPL), a code (7203 / 0700 / 2330), or a brand (Samsung, Toyota, Nubank).</div>` + gsPopularHtml();
+    gsBoardCards(true);
+    return;
+  }
+  const groups = [];
+  const map = new Map();
+  for (const r of results) {
+    if (!map.has(r.market)) { map.set(r.market, []); groups.push(r.market); }
+    map.get(r.market).push(r);
+  }
+  let idx = 0;
+  left.innerHTML = groups.map((market) => {
+    const rows = map.get(market);
+    const meta = gsMeta(market);
+    const sm = (data.markets || {})[market] || {};
+    const label = meta.label || sm.label || market;
+    const flag = meta.flag || sm.flag || '';
+    const ix = gsIndex(market, rows[0].indexSymbol);
+    const head = `<div class="g-group-h"><span class="g-flag">${flag}</span><span>${gsEsc(label)}</span>${ix ? `<span class="g-idx">${gsEsc(ix.label)} ${gsNum(ix.level, 2)} <span class="${gsCls(ix.pct1d)}">${gsPct(ix.pct1d, 2)}</span></span>` : ''}</div>`;
+    return head + rows.map((r) => {
+      const i = idx++;
+      gsRows.push(r);
+      const local = gsLocal(r);
+      const chips = (r.listings || []).filter((l) => String(l.ticker || l.code) !== String(r.ticker)).slice(0, 3)
+        .map((l) => `<span class="g-chip">${gsEsc(l.label || `${l.exchange || ''} ${l.ticker || l.code || ''}`.trim())}</span>`).join('');
+      return `<button type="button" id="g-row-${i}" role="option" aria-selected="false" class="g-row" data-gidx="${i}" data-gmarket="${gsEsc(r.market)}" data-gid="${gsEsc(r.id)}">
+        <span class="g-tick">${gsEsc(r.ticker || r.code || '')}</span>
+        <span class="g-id"><b>${gsEsc(gsDisplay(r))}</b>${local ? `<span class="g-local">${gsEsc(local)}</span>` : ''}
+          <span class="g-meta">${gsEsc(label)} · ${gsEsc(r.exchange || '')}${r.sector ? ` · ${gsEsc(r.sector)}` : ''}${r.pe != null ? ` · P/E ${Number(r.pe).toFixed(1)}` : ''}</span>
+          ${chips ? `<span class="g-chips">${chips}</span>` : ''}
+        </span>
+        <span class="g-right"><b>${r.capUsd ? coMoney(r.capUsd) : '—'}</b><span class="${gsCls(r.ytd)}">${gsPct(r.ytd, 1)} YTD</span></span>
+      </button>`;
+    }).join('');
+  }).join('');
+  gsSelectByIndex(0, false);
+}
+
+function gsSelectByIndex(i, scroll = true) {
+  if (!gsRows.length) return;
+  i = Math.max(0, Math.min(gsRows.length - 1, i));
+  gsActive = i;
+  gsSelected = gsRows[i];
+  document.querySelectorAll('#co-global-results [data-gidx]').forEach((b) => {
+    const on = Number(b.dataset.gidx) === i;
+    b.classList.toggle('active', on);
+    b.setAttribute('aria-selected', String(on));
+  });
+  const inp = $('co-global-input'); if (inp) inp.setAttribute('aria-activedescendant', `g-row-${i}`);
+  if (scroll) { const b = document.getElementById(`g-row-${i}`); if (b && b.scrollIntoView) b.scrollIntoView({ block: 'nearest' }); }
+  if (gsSelected) gsRenderContext(gsSelected);
+}
+
+function gsStat(k, v, title = '') {
+  return `<div class="g-stat" title="${gsEsc(title)}"><span>${gsEsc(k)}</span><b>${v}</b></div>`;
+}
+
+async function gsRenderContext(r) {
+  if (!r) return;
+  const seq = ++gsCtxSeq;
+  const right = $('co-global-context'); if (!right) return;
+  await gsLoadMarkets();
+  if (seq !== gsCtxSeq) return;
+  const meta = gsMeta(r.market);
+  const sm = (gsData && gsData.markets || {})[r.market] || {};
+  const mlabel = meta.label || sm.label || r.market;
+  const mflag = meta.flag || sm.flag || '';
+  const ix = gsIndex(r.market, r.indexSymbol) || gsIndex(r.market);
+  const ranges = ['1m', '3m', '6m', 'ytd', '1y', '5y'].map((x) => `<button type="button" data-grange="${x}" class="${gsRange === x ? 'on' : ''}">${x === 'ytd' ? 'YTD' : x.toUpperCase()}</button>`).join('');
+  const local = gsLocal(r);
+  const chips = (r.listings || []).map((l) => `<span class="g-chip">${gsEsc(l.label || `${l.exchange || ''} ${l.ticker || l.code || ''}`.trim())}</span>`).join('');
+  right.innerHTML = `
+    <div class="g-context-head">
+      <span class="g-flag">${mflag}</span><span class="g-country">${gsEsc(mlabel)}</span>
+      ${ix ? `<span class="g-index-name">${gsEsc(ix.label)}</span><span class="g-level">${gsNum(ix.level, 2)}</span><span class="g-move ${gsCls(ix.pct1d)}">${gsPct(ix.pct1d, 2)} today</span><span class="dimtext">${gsPct(ix.pctYtd, 2)} YTD</span>` : ''}
+      <button type="button" class="g-openmarket" data-gopenmarket="${gsEsc(r.market)}">Open ${gsEsc(mlabel)} market →</button>
+    </div>
+    <div class="g-ranges">${ranges}</div>
+    <div class="co-chartwrap g-chart"><div class="co-canvas"><canvas id="g-index-chart"></canvas></div></div>
+    <div class="g-company">
+      <div class="g-company-name">${gsEsc(gsDisplay(r))}</div>
+      ${local ? `<div class="g-company-sub">${gsEsc(local)}</div>` : ''}
+      <div class="g-company-sub">${gsEsc(r.ticker || r.code || '')} · ${gsEsc(mlabel)} · ${gsEsc(r.exchange || '')}${r.sector ? ` · ${gsEsc(r.sector)}` : ''}</div>
+      <div class="g-stats">
+        ${gsStat('PRICE', gsCur(r.currency, r.price), r.priceDate ? `as of ${r.priceDate}` : '')}
+        ${gsStat('MARKET CAP', r.capUsd ? coMoney(r.capUsd) : '—', r.capLocal ? `${gsCur(r.currency, r.capLocal)} local` : 'USD')}
+        ${gsStat('P/E', r.pe != null ? `${Number(r.pe).toFixed(1)}×` : '—', 'trailing')}
+        ${gsStat('ROE', r.roe != null ? `${Number(r.roe).toFixed(1)}%` : '—', 'trailing')}
+        ${gsStat('YTD', gsPct(r.ytd, 1), 'price return')}
+        ${gsStat('LISTINGS', String((r.listings || []).length || 1), 'securities')}
+      </div>
+      ${chips ? `<div class="g-chips">${chips}</div>` : ''}
+      <div class="g-actions">
+        <button type="button" class="g-btn" data-gopen="1">Open company page</button>
+        <button type="button" class="g-btn ghost" data-gopenmarket="${gsEsc(r.market)}">Open ${gsEsc(mlabel)} market</button>
+      </div>
+    </div>`;
+  gsDrawIndex(ix);
+}
+
+function gsDrawIndex(ix) {
+  const cv = $('g-index-chart');
+  if (!cv) return;
+  if (!ix || !ix.points || ix.points.length < 2) {
+    const wrap = cv.parentElement && cv.parentElement.parentElement;
+    if (wrap) wrap.setAttribute('data-empty', 'Index history unavailable');
+    return;
+  }
+  const full = { dates: ix.points.map((p) => p[0]), closes: ix.points.map((p) => p[1]) };
+  const v = coSlice(full, gsRange);
+  mountChart('g-index-chart', { labels: v.dates, datasets: [line(`${ix.label} · ${gsRange.toUpperCase()}`, v.closes, CT.c1)] }, baseOptions({ dp: 0, dateAxis: true }));
+}
+
+function gsRemember(r) {
+  gsRecent = [{ market: r.market, id: r.id, ticker: r.ticker, name: r.name, nameEn: r.nameEn, nameLocal: r.nameLocal }, ...gsRecent.filter((x) => !(x.market === r.market && String(x.id) === String(r.id)))].slice(0, 8);
+  try { localStorage.setItem('oilbasis.gsRecent', JSON.stringify(gsRecent)); } catch { /* private mode */ }
+}
+
+function gsClearSelections() {
+  coCik = null; coOpenCik = null;
+  jpSel = null; krSel = null; twSel = null; hkSel = null; auSel = null; inSel = null; idSel = null; brSel = null; zaSel = null;
+}
+
+function gsOpenCompany(r) {
+  if (!r) return;
+  gsRemember(r);
+  gsSetOpen(false);
+  coRegion = r.market;
+  try { localStorage.setItem('oilbasis.coRegion', coRegion); } catch { /* private */ }
+  const search = $('co-search'); if (search) search.value = '';
+  gsClearSelections();
+  if (r.market === 'us') coCik = String(r.id);
+  else if (r.market === 'jp') jpSel = String(r.id);
+  else if (r.market === 'kr') krSel = String(r.id);
+  else if (r.market === 'tw') twSel = String(r.id);
+  else if (r.market === 'hk') hkSel = String(r.id);
+  else if (r.market === 'au') auSel = String(r.id);
+  else if (r.market === 'in') inSel = String(r.id);
+  else if (r.market === 'id') idSel = String(r.id);
+  else if (r.market === 'br') brSel = String(r.id);
+  else if (r.market === 'za') zaSel = String(r.id);
+  renderCompanies();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function gsOpenMarket(market) {
+  gsSetOpen(false);
+  coRegion = market;
+  try { localStorage.setItem('oilbasis.coRegion', coRegion); } catch { /* private */ }
+  gsClearSelections();
+  const viewKeys = { us: 'usView', jp: 'jpView', kr: 'krView', tw: 'twView', hk: 'hkView', au: 'auView', in: 'inView', id: 'idView', br: 'brView', za: 'zaView' };
+  if (market === 'us') usView = 'market';
+  else if (market === 'jp') jpView = 'market';
+  else if (market === 'kr') krView = 'market';
+  else if (market === 'tw') twView = 'market';
+  else if (market === 'hk') hkView = 'market';
+  else if (market === 'au') auView = 'market';
+  else if (market === 'in') inView = 'market';
+  else if (market === 'id') idView = 'market';
+  else if (market === 'br') brView = 'market';
+  else if (market === 'za') zaView = 'market';
+  try { localStorage.setItem('oilbasis.' + viewKeys[market], 'market'); } catch { /* private */ }
+  renderCompanies();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function isCompanyOpen() {
+  if (coRegion === 'us') return !!coCik;
+  if (coRegion === 'jp') return !!jpSel;
+  if (coRegion === 'kr') return !!krSel;
+  if (coRegion === 'tw') return !!twSel;
+  if (coRegion === 'hk') return !!hkSel;
+  if (coRegion === 'au') return !!auSel;
+  if (coRegion === 'in') return !!inSel;
+  if (coRegion === 'id') return !!idSel;
+  if (coRegion === 'br') return !!brSel;
+  if (coRegion === 'za') return !!zaSel;
+  return false;
+}
+
+function gsCompanyRef() {
+  if (coRegion === 'us') {
+    const c = (companiesData && companiesData.companies || []).find((x) => String(x.cik) === String(coCik));
+    return c ? { id: String(c.cik), ticker: c.ticker, name: c.name } : null;
+  }
+  const sel = { jp: jpSel, kr: krSel, tw: twSel, hk: hkSel, au: auSel, in: inSel, id: idSel, br: brSel, za: zaSel }[coRegion];
+  const data = { jp: japanData, kr: koreaData, tw: taiwanData, hk: hkData, au: auData, in: inData, id: idData, br: brData, za: zaData }[coRegion];
+  const c = data && (data.companies || []).find((x) => String(x.code) === String(sel));
+  return { id: String(sel), ticker: (c && (c.ticker || c.code)) || String(sel), name: (c && c.name) || String(sel) };
+}
+
+async function renderGlobalMarketContext() {
+  const el = $('co-mctx'); if (!el) return;
+  if (!isCompanyOpen()) { el.classList.add('hidden'); el.innerHTML = ''; return; }
+  const token = ++mctxSeq;
+  await gsLoadMarkets();
+  if (token !== mctxSeq) return;
+  const market = coRegion;
+  const meta = gsMeta(market);
+  let symbol = meta.default;
+  if (market === 'us') {
+    const c = (companiesData && companiesData.companies || []).find((x) => String(x.cik) === String(coCik));
+    if (c && c.spTier === 'sp500') symbol = '^GSPC';
+    else if (c && c.spTier === 'sp400') symbol = '^SP400';
+    else if (c && c.spTier === 'sp600') symbol = '^SP600';
+    else symbol = '^SP1500';
+  }
+  const ix = gsIndex(market, symbol) || gsIndex(market);
+  if (!ix) { el.classList.add('hidden'); return; }
+  el.classList.remove('hidden');
+  el.innerHTML = `<div class="co-mctx-row">
+      <span class="flag">${meta.flag || ''}</span><span class="country">${gsEsc(meta.label || market)}</span>
+      <span class="idx">${gsEsc(ix.label)}</span><span class="lvl">${gsNum(ix.level, 2)}</span>
+      <span class="move ${gsCls(ix.pct1d)}">${gsPct(ix.pct1d, 2)} today</span><span class="ytd">${gsPct(ix.pctYtd, 2)} YTD</span>
+      <span class="spacer"></span>
+      ${gsQueryText ? '<button type="button" data-gsearch="1">Search results</button>' : ''}
+      <button type="button" data-mctxrange="1y" class="${mctxRange === '1y' ? 'on' : ''}">1Y</button>
+      <button type="button" data-mctxrange="5y" class="${mctxRange === '5y' ? 'on' : ''}">5Y</button>
+      <button type="button" data-mctx-vs="1" class="${mctxVs ? 'on' : ''}">vs index</button>
+      <button type="button" data-mctx-open="1">Open market →</button>
+    </div>
+    <div class="co-chartwrap co-mctx-chart"><div class="co-canvas"><canvas id="co-mctx-chart"></canvas></div></div>`;
+  drawMctx(ix, token);
+}
+
+async function drawMctx(ix, token) {
+  const cv = $('co-mctx-chart'); if (!cv) return;
+  const full = ix && ix.points && ix.points.length > 1 ? { dates: ix.points.map((p) => p[0]), closes: ix.points.map((p) => p[1]) } : null;
+  if (!full) {
+    const wrap = cv.parentElement && cv.parentElement.parentElement;
+    if (wrap) wrap.setAttribute('data-empty', 'Index history unavailable');
+    return;
+  }
+  if (!mctxVs) {
+    const v = coSlice(full, mctxRange);
+    mountChart('co-mctx-chart', { labels: v.dates, datasets: [line(`${ix.label} · ${mctxRange.toUpperCase()}`, v.closes, CT.c1)] }, baseOptions({ dp: 0, dateAxis: true }));
+    return;
+  }
+  const ref = gsCompanyRef();
+  if (!ref) return;
+  const key = coRegion === 'us' ? ref.ticker : ref.id;
+  const co = await seriesFor(`${coRegion}:${key}`, '10y').catch(() => null);
+  if (token !== mctxSeq) return;
+  if (!co || !co.dates || co.dates.length < 2) {
+    const v = coSlice(full, mctxRange);
+    mountChart('co-mctx-chart', { labels: v.dates, datasets: [line(`${ix.label} · ${mctxRange.toUpperCase()}`, v.closes, CT.c1)] }, baseOptions({ dp: 0, dateAxis: true }));
+    return;
+  }
+  const imap = new Map(ix.points.map((p) => [p[0], p[1]]));
+  const cmap = new Map(co.dates.map((d, i) => [d, co.closes[i]]));
+  const dates = ix.points.map((p) => p[0]).filter((d) => cmap.has(d));
+  if (dates.length < 2) return;
+  const cvw = coSlice({ dates, closes: dates.map((d) => cmap.get(d)) }, mctxRange);
+  const ivw = coSlice({ dates, closes: dates.map((d) => imap.get(d)) }, mctxRange);
+  mountChart('co-mctx-chart', {
+    labels: cvw.dates,
+    datasets: [line(ref.name || ref.ticker, rebase(cvw.closes), CT.c1), line(ix.label, rebase(ivw.closes), CT.c2)],
+  }, baseOptions({ dp: 0, dateAxis: true, yTitle: 'indexed to 100' }));
+}
+
+// Input, keyboard and pointer wiring.
+(() => {
+  const input = $('co-global-input');
+  if (!input) return;
+  input.addEventListener('input', gsOnInput);
+  input.addEventListener('focus', () => {
+    gsSetOpen(true);
+    if (!gsQueryText) gsBoard();
+    else if (gsData) gsRenderResults(gsData);
+    else gsFetch(gsQueryText);
+  });
+  input.addEventListener('keydown', (e) => {
+    if (!gsOpen) return;
+    if (e.key === 'ArrowDown') { e.preventDefault(); gsSelectByIndex(gsActive + 1, true); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); gsSelectByIndex(gsActive - 1, true); }
+    else if (e.key === 'Enter') { if (gsSelected) { e.preventDefault(); gsOpenCompany(gsSelected); } }
+    else if (e.key === 'Escape') { e.preventDefault(); gsSetOpen(false); }
+  });
+  $('co-global-clear')?.addEventListener('click', () => {
+    input.value = '';
+    input.focus();
+    gsOnInput();
+  });
+  gsLoadMarkets();   // warm the country index so group headers and the board open instantly
+})();
+
+document.addEventListener('keydown', (e) => {
+  const tag = (e.target && e.target.tagName || '').toLowerCase();
+  if ((e.metaKey || e.ctrlKey) && String(e.key).toLowerCase() === 'k') {
+    e.preventDefault();
+    const input = $('co-global-input');
+    if (input) { input.focus(); input.select(); gsSetOpen(true); if (!gsQueryText) gsBoard(); }
+    return;
+  }
+  if (e.key === '/' && !e.metaKey && !e.ctrlKey && !['input', 'textarea', 'select'].includes(tag) && !(e.target && e.target.isContentEditable)) {
+    e.preventDefault();
+    const input = $('co-global-input');
+    if (input) { input.focus(); gsSetOpen(true); if (!gsQueryText) gsBoard(); }
+  }
+});
+
+document.addEventListener('mouseover', (e) => {
+  if (!gsOpen) return;
+  const row = e.target.closest('#co-global-results [data-gidx]');
+  if (row) { const i = Number(row.dataset.gidx); if (i !== gsActive) gsSelectByIndex(i, false); }
+});
+
+document.addEventListener('click', (e) => {
+  const t = e.target;
+  const row = t.closest('#co-global-results [data-gidx]');
+  if (row) { gsOpenCompany(gsRows[Number(row.dataset.gidx)]); return; }
+  const grange = t.closest('[data-grange]');
+  if (grange) { gsRange = grange.dataset.grange; if (gsSelected) gsRenderContext(gsSelected); return; }
+  const gm = t.closest('[data-gopenmarket]');
+  if (gm) { gsOpenMarket(gm.dataset.gopenmarket || (gsSelected && gsSelected.market) || coRegion); return; }
+  const go = t.closest('[data-gopen]');
+  if (go) { if (gsSelected) gsOpenCompany(gsSelected); return; }
+  const recent = t.closest('[data-grecent]');
+  if (recent) { const r = gsRecent[Number(recent.dataset.grecent)]; if (r) gsOpenCompany(r); return; }
+  const sug = t.closest('[data-gsugg]');
+  if (sug) { const input = $('co-global-input'); if (input) { input.value = sug.dataset.gsugg; gsOnInput(); input.focus(); } return; }
+  const card = t.closest('.g-card[data-gmarket]');
+  if (card) { gsOpenMarket(card.dataset.gmarket); return; }
+  const mopen = t.closest('[data-mctx-open]');
+  if (mopen) { gsOpenMarket(coRegion); return; }
+  const mvs = t.closest('[data-mctx-vs]');
+  if (mvs) { mctxVs = !mctxVs; renderGlobalMarketContext(); return; }
+  const mr = t.closest('[data-mctxrange]');
+  if (mr) { mctxRange = mr.dataset.mctxrange; renderGlobalMarketContext(); return; }
+  const gsearch = t.closest('[data-gsearch]');
+  if (gsearch) {
+    const input = $('co-global-input');
+    if (input) { input.value = gsQueryText; input.focus(); gsSetOpen(true); gsOnInput(); }
+    return;
+  }
+  if (gsOpen && !t.closest('#co-global')) gsSetOpen(false);
+});

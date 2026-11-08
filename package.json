@@ -6,6 +6,7 @@
   "scripts": {
     "start": "node --env-file-if-exists=.env server.js",
     "test": "node --test",
+    "search:build": "node scripts/build-search-index.mjs",
     "build:japan": "node scripts/build-japan.mjs",
     "build:korea": "node scripts/refresh-korea-shares.mjs && node scripts/refresh-korea-quarters.mjs && node scripts/build-korea.mjs",
     "rederive:korea": "node scripts/rederive-korea.mjs",

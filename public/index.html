@@ -321,6 +321,18 @@
     <div class="tabpane hidden" data-pane="deals" id="pane-deals" role="tabpanel" aria-labelledby="tab-deals">
       <section class="panel" id="p-deals">
         <div class="ph"><span class="ph-t">COMPANIES — profiles &amp; financials</span><span class="dimtext" id="deals-sub">SEC XBRL · US filers</span></div>
+        <div class="co-global" id="co-global">
+          <div class="co-global-box">
+            <span class="co-global-ico" aria-hidden="true">⌕</span>
+            <input id="co-global-input" class="co-global-input" type="search" placeholder="Search any company, ticker, code or brand — Apple, Toyota, Samsung, TSMC…" autocomplete="off" spellcheck="false" role="combobox" aria-expanded="false" aria-controls="co-global-panel" aria-autocomplete="list">
+            <button class="co-global-clear hidden" id="co-global-clear" type="button" aria-label="Clear search">×</button>
+            <kbd class="co-global-kbd">⌘K</kbd>
+          </div>
+          <div class="co-global-panel hidden" id="co-global-panel" role="dialog" aria-label="Global company search">
+            <div class="co-global-results" id="co-global-results" role="listbox" aria-label="Company results"></div>
+            <div class="co-global-context" id="co-global-context"></div>
+          </div>
+        </div>
         <div class="co-nav">
           <div class="co-navrow">
             <div class="co-region" id="co-region">
@@ -345,6 +357,7 @@
           <button class="co-ftoggle" id="co-ftoggle" type="button" aria-expanded="false">FILTERS</button>
           <div class="ma-chips" id="co-chips"></div>
         </div>
+        <div id="co-mctx" class="co-mctx hidden"></div>
         <div id="co-body"><div class="macro-note">LOADING COMPANIES…</div></div>
         <div class="macro-note" id="co-note">S&amp;P 1500 constituents (SPDR Portfolio S&amp;P 1500 Composite — SPTM — holdings, State Street); second share classes are listed but excluded from totals so nothing is double-counted. Financials are the latest annual 10-K values tagged in XBRL — no estimates; a listing with no annual filing yet is labelled on its page rather than estimated. Market cap comes from Nasdaq's own quote data (so share classes and buybacks are handled at the source); ratios are computed from it and the filing's earnings, equity and cash. Every figure is cross-checked against Nasdaq's own financial tables — where the two disagree by more than 5%, the cell is marked and both values are shown on hover.</div>
       </section>

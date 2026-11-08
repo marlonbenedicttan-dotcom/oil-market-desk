@@ -1,0 +1,53 @@
+name: search-index-daily
+
+# One global company search index for the COMPANIES tab, plus the country index series the search
+# pane and each company page's market-context strip draw. This is a pure transform of the committed
+# market artifacts; it does not fetch anything. Runs after the market dailies and the all-markets
+# audit (markets-audit-daily at 22:30 UTC), so the search index sees that day's prices and caps.
+#
+# The index is committed so the server can serve /api/global-search and /api/market-index without a
+# cold rebuild. A failed ranking/index test blocks the commit.
+
+on:
+  schedule:
+    - cron: '10 23 * * *'
+  workflow_dispatch: {}
+
+concurrency:
+  group: search-index
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Build the global search and country index
+        run: node scripts/build-search-index.mjs
+      - name: Validate the ranking and the built artifacts
+        run: node --test tests/search.test.js tests/search-index.test.js
+      - name: Commit the index if changed
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add data/search-index.json data/market-index.json
+          if git diff --staged --quiet; then
+            echo 'no search-index change'
+          else
+            git commit -m "chore: rebuild global search index ($(date -u +%Y-%m-%d))"
+            pushed=0
+            for i in 1 2 3 4 5; do
+              if git pull --rebase -X theirs origin "${{ github.ref_name }}" && git push origin "HEAD:${{ github.ref_name }}"; then pushed=1; break; fi
+              echo "push rejected (attempt $i) — rebasing and retrying"; sleep $((i * 5))
+            done
+            [ "$pushed" = "1" ] || { echo 'could not push after 5 attempts'; exit 1; }
+          fi

@@ -1120,3 +1120,40 @@ test('/api/korea ships the list projection, not the price history, and revalidat
   assert.equal(again.statusCode, 304);
   again.resume();
 });
+
+// --- global company search + country index series -------------------------------------------------
+test('/api/global-search finds the same company from any market', async () => {
+  const get = async (q, extra = '') => (await fetch(`http://localhost:${PORT}/api/global-search?q=${encodeURIComponent(q)}&limit=5${extra}`)).json();
+  const toyota = await get('toyota');
+  assert.ok(toyota.results.length, 'toyota returns results');
+  assert.equal(toyota.results[0].market, 'jp');
+  assert.equal(String(toyota.results[0].ticker), '7203');
+  assert.ok(toyota.results[0].indexSymbol, 'the result carries its country index');
+  const samsung = await get('samsung');
+  assert.equal(samsung.results[0].market, 'kr');
+  const tsmc = await get('tsmc');
+  assert.equal(tsmc.results[0].market, 'tw');
+  const nubank = await get('nubank');
+  assert.equal(nubank.results[0].market, 'br');
+  const filtered = await get('samsung', '&market=tw');
+  assert.equal(filtered.results.length, 0, 'a market filter excludes other markets');
+  const empty = await get('');
+  assert.deepEqual(empty.results, [], 'an empty query does not dump the universe');
+});
+
+test('/api/market-index carries every country index the search page draws', async () => {
+  const all = await (await fetch(`http://localhost:${PORT}/api/market-index`)).json();
+  for (const m of ['us', 'jp', 'kr', 'tw', 'hk', 'au', 'in', 'id', 'br', 'za']) {
+    assert.ok(all.markets[m], `${m} is present`);
+    assert.ok(all.markets[m].default, `${m} has a default index`);
+    assert.ok(all.markets[m].indices[all.markets[m].default], `${m} default series exists`);
+  }
+  assert.ok(all.markets.us.indices['^SP1500'], 'US S&P 1500');
+  assert.ok(all.markets.us.indices['^GSPC'], 'US S&P 500');
+  assert.ok(all.markets.jp.indices.TOPIX, 'Japan TOPIX');
+  const jp = await (await fetch(`http://localhost:${PORT}/api/market-index?market=jp`)).json();
+  assert.equal(jp.label, 'Japan');
+  assert.ok(jp.indices.TOPIX.points.length > 100, 'TOPIX has history');
+  const no = await fetch(`http://localhost:${PORT}/api/market-index?market=xx`);
+  assert.equal(no.status, 404);
+});

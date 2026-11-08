@@ -53,3 +53,13 @@ test('every market workflow still audits before it commits', () => {
   };
   for (const [file, re] of Object.entries(audit)) assert.match(wf(file), re, `${file} lost its audit`);
 });
+
+test('the global search index is rebuilt and committed after the market refreshes', () => {
+  const y = wf('search-index-daily.yml');
+  assert.match(y, /build-search-index\.mjs/, 'the search index build is missing');
+  assert.match(y, /tests\/search\.test\.js/, 'the ranking tests are missing');
+  assert.match(y, /tests\/search-index\.test\.js/, 'the built-index tests are missing');
+  assert.match(y, /data\/search-index\.json/, 'the search index is not committed');
+  assert.match(y, /data\/market-index\.json/, 'the country index series are not committed');
+  assert.match(y, /contents:\s*write/, 'the workflow cannot commit');
+});
