@@ -172,6 +172,8 @@ function loadApp() {
     coWindow,
     coSlice,
     charts,
+    gsQuickSearch,
+    setGsQuick: (v) => { gsQuick = v; },
   };`;
   const ctx = makeContext();
   vm.createContext(ctx);
@@ -688,4 +690,20 @@ test('a short JSE history still has a MAX window', () => {
   assert.match(app, /data-zarange="\$\{k\}"/);
   assert.match(app, /\['max', 'MAX'\]/);
   assert.match(app, /range === '5y' && use !== '5y'\) use = 'max'/);
+});
+
+test('the local quick index ranks exact names, brands and codes without a request', () => {
+  const { ui } = loadApp();
+  ui.setGsQuick({
+    markets: { us: { label: 'United States', flag: '\u{1F1FA}\u{1F1F8}' }, br: { label: 'Brazil', flag: '\u{1F1E7}\u{1F1F7}' } },
+    entries: [
+      { market: 'us', id: '1', ticker: 'AAPL', code: 'AAPL', name: 'Apple Inc.', nameEn: 'Apple Inc.', capUsd: 3e12, hay: 'apple inc apple inc aapl', codes: ['AAPL'] },
+      { market: 'us', id: '2', ticker: 'APLE', code: 'APLE', name: 'Apple Hospitality', nameEn: 'Apple Hospitality', capUsd: 2e9, hay: 'apple hospitality apple hospitality aple', codes: ['APLE'] },
+      { market: 'br', id: 'ROXO34', ticker: 'ROXO34', code: 'ROXO34', name: 'Nu Holdings', nameEn: 'Nu Holdings', capUsd: 5e10, hay: 'nu holdings nu holdings roxo34 nubank', codes: ['ROXO34'] },
+    ],
+  });
+  assert.equal(ui.gsQuickSearch('apple').results[0].ticker, 'AAPL');
+  assert.equal(ui.gsQuickSearch('nubank').results[0].market, 'br');
+  assert.equal(ui.gsQuickSearch('aapl').results[0].ticker, 'AAPL');
+  assert.equal(ui.gsQuickSearch('nothing-here-xyz').total, 0);
 });

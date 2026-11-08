@@ -9,6 +9,7 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { normalize } from '../src/search.js';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const DATA = (f) => join(ROOT, 'data', f);
@@ -234,11 +235,36 @@ const search = {
 };
 const indices = { updated: search.updated, markets: marketsIndex };
 
+// A smaller, pre-normalised copy for the browser. The full index is the server fallback and keeps
+// every alias/listing; this copy is deliberately just what a result row and the preview need, plus
+// one searchable `hay` string. It makes keystrokes local instead of a round-trip.
+const quickEntries = entries.map((e) => {
+  const codes = uniq([e.ticker, e.code, ...(e.listings || []).flatMap((l) => [l.ticker, l.code])]);
+  const q = {
+    market: e.market, id: e.id, ticker: e.ticker, code: e.code,
+    name: e.name, nameEn: e.nameEn, nameLocal: e.nameLocal || null,
+    sector: e.sector, exchange: e.exchange, currency: e.currency,
+    capLocal: e.capLocal, capUsd: e.capUsd, price: e.price, priceDate: e.priceDate, pe: e.pe, roe: e.roe, ytd: e.ytd,
+    indexSymbol: e.indexSymbol, codes,
+    hay: normalize([e.nameEn, e.name, e.nameLocal, e.ticker, e.code, ...(e.aliases || []), ...codes].filter(Boolean).join(' ')),
+  };
+  if ((e.listings || []).length > 1) {
+    q.listings = e.listings.map((l) => ({
+      ticker: l.ticker, code: l.code, exchange: l.exchange, label: l.label,
+      link: l.link, securityType: l.securityType,
+    }));
+  }
+  return q;
+});
+const quick = { updated: search.updated, markets: search.markets, entries: quickEntries };
+
 writeFileSync(DATA('search-index.json'), JSON.stringify(search));
 writeFileSync(DATA('market-index.json'), JSON.stringify(indices));
+writeFileSync(DATA('search-quick.json'), JSON.stringify(quick));
 
 const size = (s) => (Buffer.byteLength(s) / 1048576).toFixed(2);
 console.log(`search index: ${entries.length} companies across ${Object.keys(MARKETS).length} markets · ${size(JSON.stringify(search))} MB`);
+console.log(`local quick index: ${quickEntries.length} companies · ${size(JSON.stringify(quick))} MB`);
 console.log(`market index: ${Object.values(marketsIndex).reduce((a, m) => a + Object.keys(m.indices).length, 0)} indices · ${size(JSON.stringify(indices))} MB`);
 const sample = (q) => {
   // lazy import to keep the build self-contained; the ranking lives in one place

@@ -10,7 +10,7 @@ import { sendMail } from './src/smtp.js';
 import { fileURLToPath } from 'node:url';
 import { projectUs, projectJp, japanList, koreaList, taiwanList, hongkongList, australiaList, indiaList, indonesiaList, brazilList, southafricaList, US_LIST_FIELDS } from './src/project.js';
 import { sliceRange, seriesFromLine } from './src/charts.js';
-import { searchEntries } from './src/search.js';
+import { searchEntries, prepareEntries } from './src/search.js';
 import { growthRates, fromJapanHistory } from './src/growth.js';
 import { sgn, businessDaysSince, horizonDeltas, horizonDeltasAbs, isoWeek, monthly, pctOver, percentile, lastNonNull, escHtml, webhookPayload, realizedVol, computeCracks, computeCrush, computeSteel, buildRelValueRow, relValueZone, ordinal, alignPriceToRows, inventoryBands, backAdjust, pearson, logReturns, frontExpiry, curveTightness, inventoryTightness, weightedScore, seasonalGrade, seasonalAhead, contractMonthsBetween, signedPosition, signedMove, stretchScore, sdLabel, attributeMoves, newsContextOk, METHODOLOGY, positioningFlag, positioningRead, positioningDivergence, maxDrawdown, drawdownNow, realizedVolTerm, volPercentile, volVsOwnWord, corrMatrix, fxAdjust, parseOcc, drawdownWord, volWord, volTrend, corrShift, pairGroups, topPairs, bestDiversifier, riskRead, priorityOf, rankByPriority, clusterEvents, scoreEvents, selectEvents, explainRows } from './src/lib.js';
 
@@ -868,8 +868,10 @@ function usCharts() {
 let GLOBAL_SEARCH_INDEX = null;
 function globalSearchIndex() {
   if (GLOBAL_SEARCH_INDEX) return GLOBAL_SEARCH_INDEX;
-  try { GLOBAL_SEARCH_INDEX = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'search-index.json'), 'utf8')); }
-  catch { GLOBAL_SEARCH_INDEX = { entries: [], markets: {} }; }
+  try {
+    GLOBAL_SEARCH_INDEX = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'search-index.json'), 'utf8'));
+    prepareEntries(GLOBAL_SEARCH_INDEX.entries || []);
+  } catch { GLOBAL_SEARCH_INDEX = { entries: [], markets: {} }; }
   return GLOBAL_SEARCH_INDEX;
 }
 let GLOBAL_MARKET_INDEX = null;
@@ -879,6 +881,16 @@ function globalMarketIndex() {
   catch { GLOBAL_MARKET_INDEX = { markets: {} }; }
   return GLOBAL_MARKET_INDEX;
 }
+// The browser's local-first copy: smaller, pre-normalised, no aliases/listings except where they are
+// needed to display a result. Served once and cached by the browser; keystrokes never touch it again.
+let GLOBAL_SEARCH_QUICK = null;
+function globalSearchQuick() {
+  if (GLOBAL_SEARCH_QUICK) return GLOBAL_SEARCH_QUICK;
+  try { GLOBAL_SEARCH_QUICK = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'search-quick.json'), 'utf8')); }
+  catch { GLOBAL_SEARCH_QUICK = { markets: {}, entries: [] }; }
+  return GLOBAL_SEARCH_QUICK;
+}
+const GLOBAL_SEARCH_CACHE = new Map();
 
 // ---------------------------------------------------------------------------
 // Chart store — one byte-range read per chart, instead of parsing a whole market.
@@ -5460,13 +5472,22 @@ const server = http.createServer(async (req, res) => {
       if (!out) return sendJSON(res, 200, { error: 'no chart', dates: [], closes: [] });
       return sendChartJSON(res, 200, out);
     }
+    if (url.pathname === '/api/search-quick') {
+      return sendJSONCached(res, 200, globalSearchQuick(), 'public, max-age=300, stale-while-revalidate=3600');
+    }
     if (url.pathname === '/api/global-search') {
       const q = String(url.searchParams.get('q') || '').slice(0, 80);
       const market = url.searchParams.get('market') || null;
       const limit = Math.max(1, Math.min(50, Number(url.searchParams.get('limit')) || 30));
-      const idx = globalSearchIndex();
-      const out = searchEntries(idx.entries, q, { market, limit });
-      return sendJSONCached(res, 200, { ...out, markets: idx.markets }, 'public, max-age=15, stale-while-revalidate=30');
+      const key = `${q.toLowerCase()}|${market || ''}|${limit}`;
+      let out = GLOBAL_SEARCH_CACHE.get(key);
+      if (!out) {
+        const idx = globalSearchIndex();
+        out = { ...searchEntries(idx.entries, q, { market, limit }), markets: idx.markets };
+        if (GLOBAL_SEARCH_CACHE.size > 240) GLOBAL_SEARCH_CACHE.clear();
+        GLOBAL_SEARCH_CACHE.set(key, out);
+      }
+      return sendJSONCached(res, 200, out, 'public, max-age=15, stale-while-revalidate=30');
     }
     if (url.pathname === '/api/market-index') {
       const mid = url.searchParams.get('market');
@@ -6114,7 +6135,7 @@ server.listen(PORT, async () => {
   // paying a synchronous ~0.5 s parse inside the first company page or search, in front of the chart.
   setTimeout(() => {
     if (process.memoryUsage().rss < 300 * 1024 * 1024) {
-      try { searchIndex(); peerIndex(); } catch (e) { console.log('[indexes]', e.message); }
+      try { searchIndex(); peerIndex(); globalSearchIndex(); globalSearchQuick(); } catch (e) { console.log('[indexes]', e.message); }
     }
   }, 1200);
 

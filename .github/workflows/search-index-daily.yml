@@ -39,7 +39,7 @@ jobs:
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email 'github-actions[bot]@users.noreply.github.com'
-          git add data/search-index.json data/market-index.json
+          git add data/search-index.json data/search-quick.json data/market-index.json
           if git diff --staged --quiet; then
             echo 'no search-index change'
           else

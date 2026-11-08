@@ -77,12 +77,21 @@ function entryNames(e) {
   return [...out];
 }
 
+// Normalise the lookup fields once when the index loads; a keystroke must not re-normalise 10k rows.
+export function prepareEntries(entries) {
+  for (const e of entries) {
+    if (!e._codes) e._codes = entryCodes(e);
+    if (!e._names) e._names = entryNames(e);
+  }
+  return entries;
+}
+
 // 0 = no match. Returned values are only compared with other entries for the same query.
-export function scoreEntry(e, q) {
+export function scoreEntry(e, q, fuzzy = true) {
   const qq = typeof q === 'string' ? query(q) : q;
   if (!qq || qq.empty) return 0;
-  const codes = entryCodes(e);
-  const names = entryNames(e);
+  const codes = e._codes || entryCodes(e);
+  const names = e._names || entryNames(e);
   let best = 0;
   let matchedOn = null;
 
@@ -102,7 +111,7 @@ export function scoreEntry(e, q) {
   }
 
   // Fuzzy only for real words, and only when the exact/prefix passes found nothing.
-  if (!best && qq.norm.length >= 4) {
+  if (!best && fuzzy && qq.norm.length >= 4) {
     let sim = 0;
     for (const n of names) sim = Math.max(sim, similarity(n, qq.norm));
     if (sim >= 0.62) { best = 220 + sim * 180; matchedOn = 'close'; }
@@ -120,14 +129,26 @@ export function searchEntries(entries, q, { market = null, limit = 30 } = {}) {
   if (qq.empty || !Array.isArray(entries) || !entries.length) {
     return { q: qq.raw, total: 0, results: [], counts: {} };
   }
-  const counts = {};
-  const scored = [];
+  let counts = {};
+  let scored = [];
   for (const e of entries) {
     if (market && e.market !== market) continue;
-    const s = scoreEntry(e, qq);
+    const s = scoreEntry(e, qq, false);
     if (!s) continue;
     counts[e.market] = (counts[e.market] || 0) + 1;
     scored.push({ e, s });
+  }
+  // A typo is the only reason to pay for edit distance. The normal exact/prefix path is a string
+  // pass and stays fast; fuzzy runs only when that path found nothing at all.
+  if (!scored.length && qq.norm.length >= 4) {
+    counts = {};
+    for (const e of entries) {
+      if (market && e.market !== market) continue;
+      const s = scoreEntry(e, qq, true);
+      if (!s) continue;
+      counts[e.market] = (counts[e.market] || 0) + 1;
+      scored.push({ e, s });
+    }
   }
   scored.sort((a, b) => b.s - a.s || (b.e.capUsd || 0) - (a.e.capUsd || 0));
   const results = scored.slice(0, Math.max(1, Math.min(50, Number(limit) || 30))).map(({ e }) => ({

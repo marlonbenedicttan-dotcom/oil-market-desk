@@ -61,5 +61,6 @@ test('the global search index is rebuilt and committed after the market refreshe
   assert.match(y, /tests\/search-index\.test\.js/, 'the built-index tests are missing');
   assert.match(y, /data\/search-index\.json/, 'the search index is not committed');
   assert.match(y, /data\/market-index\.json/, 'the country index series are not committed');
+  assert.match(y, /data\/search-quick\.json/, 'the local-first search index is not committed');
   assert.match(y, /contents:\s*write/, 'the workflow cannot commit');
 });

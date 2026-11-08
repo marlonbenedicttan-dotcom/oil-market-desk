@@ -6,6 +6,7 @@ import { searchEntries } from '../src/search.js';
 const read = (f) => JSON.parse(readFileSync(new URL(`../data/${f}`, import.meta.url), 'utf8'));
 const index = read('search-index.json');
 const markets = read('market-index.json');
+const quick = read('search-quick.json');
 const top = (q) => searchEntries(index.entries, q, { limit: 1 }).results[0];
 
 test('the global index covers every company market', () => {
@@ -61,4 +62,19 @@ test('the canonical cross-market searches land on the right company', () => {
     assert.equal(r.market, market, `${q} market`);
     assert.equal(String(r.ticker), ticker, `${q} ticker`);
   }
+});
+
+test('the local quick index is complete and searchable', () => {
+  assert.equal(quick.entries.length, index.entries.length, 'every issuer has a quick row');
+  for (const e of quick.entries) {
+    for (const k of ['market', 'id', 'ticker', 'name', 'hay']) assert.ok(e[k] != null && e[k] !== '', `${e.ticker || e.id}: missing ${k}`);
+    assert.ok(Array.isArray(e.codes) && e.codes.length, `${e.ticker}: codes`);
+  }
+  const nubank = quick.entries.find((e) => e.hay.includes('nubank'));
+  assert.ok(nubank, 'Nubank is searchable in the local index');
+  assert.equal(nubank.market, 'br');
+  assert.equal(String(nubank.ticker), 'ROXO34');
+  const apple = quick.entries.find((e) => String(e.ticker) === 'AAPL');
+  assert.match(apple.hay, /apple/, 'Apple is searchable in the local index');
+  assert.equal(Object.keys(quick.markets).length, Object.keys(index.markets).length);
 });

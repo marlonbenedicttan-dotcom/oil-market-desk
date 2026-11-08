@@ -1157,3 +1157,15 @@ test('/api/market-index carries every country index the search page draws', asyn
   const no = await fetch(`http://localhost:${PORT}/api/market-index?market=xx`);
   assert.equal(no.status, 404);
 });
+
+test('/api/search-quick serves the local-first index', async () => {
+  const r = await fetch(`http://localhost:${PORT}/api/search-quick`);
+  assert.equal(r.status, 200);
+  const d = await r.json();
+  assert.ok(Array.isArray(d.entries) && d.entries.length > 9000, 'quick index is complete');
+  const nubank = d.entries.find((e) => e.hay && e.hay.includes('nubank'));
+  assert.ok(nubank, 'Nubank is in the quick index');
+  assert.equal(nubank.market, 'br');
+  assert.equal(String(nubank.ticker), 'ROXO34');
+  assert.ok(d.markets.us && d.markets.jp && d.markets.za, 'market metadata is present');
+});

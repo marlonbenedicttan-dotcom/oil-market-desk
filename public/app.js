@@ -10258,13 +10258,15 @@ if (toTopBtn) {
 // ============================================================================================
 // Global company search — one box across every company market.
 //
-// The search index is built by scripts/build-search-index.mjs and served by /api/search. The country
+// The full index is built by scripts/build-search-index.mjs and served by /api/global-search; a compact
+// pre-normalised copy is served once by /api/search-quick and searched locally on every keystroke. The country
 // index series come from /api/market-index, so the search pane, the country cards and the company-page
 // market context all use the same series as each country's MARKET view.
 // ============================================================================================
 var gsMkt = null, gsMktPromise = null, gsSeq = 0, gsCtxSeq = 0, gsQueryText = '';
 var gsData = null, gsRows = [], gsActive = -1, gsSelected = null, gsOpen = false, gsTimer = 0;
 var gsCtl = null, gsRange = '1y', gsCache = new Map();
+var gsQuick = null, gsQuickPromise = null;
 var gsRecent = (() => { try { const x = JSON.parse(localStorage.getItem('oilbasis.gsRecent') || '[]'); return Array.isArray(x) ? x.slice(0, 8) : []; } catch { return []; } })();
 var mctxRange = '1y', mctxVs = false, mctxSeq = 0;
 var GS_ORDER = ['us', 'jp', 'kr', 'tw', 'hk', 'au', 'in', 'id', 'br', 'za'];
@@ -10284,6 +10286,85 @@ const gsTitle = (s) => {
 };
 const gsDisplay = (r) => gsTitle((r && (r.nameEn || r.name)) || '');
 const gsLocal = (r) => (r && (r.nameLocal || (r.name && r.nameEn && r.name !== r.nameEn && /[^\x00-\x7F]/.test(r.name) ? r.name : null))) || '';
+
+const gsFold = (s) => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').normalize('NFC').toLowerCase();
+const gsNorm = (s) => gsFold(s).replace(/&/g, ' and ').replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
+const gsCode = (s) => String(s || '').toUpperCase()
+  .replace(/^(NASDAQ|NYSE|AMEX|ARCA|TSE|JPX|HKEX|SEHK|KRX|KOSPI|TWSE|TPE|ASX|NSE|BSE|IDX|B3|JSE)\s*[:.]\s*/i, '')
+  .replace(/[^A-Z0-9]/g, '');
+const gsNumeric = (s) => /^\d{1,8}$/.test(s) ? String(Number(s)) : null;
+function gsQuery(s) {
+  const raw = String(s || '').trim().slice(0, 80);
+  const norm = gsNorm(raw);
+  const code = gsCode(raw);
+  return { raw, norm, code, numeric: gsNumeric(code), empty: !norm && !code };
+}
+
+function gsLoadQuick() {
+  if (gsQuick) return Promise.resolve(gsQuick);
+  if (gsQuickPromise) return gsQuickPromise;
+  gsQuickPromise = jget('/api/search-quick', 900000)
+    .then((d) => {
+      if (d && Array.isArray(d.entries)) {
+        for (const e of d.entries) {
+          e._codes = (e.codes || [e.ticker, e.code]).map(gsCode).filter(Boolean);
+          e._cap = Number(e.capUsd) || 0;
+        }
+        gsQuick = d;
+        if (gsOpen && gsQueryText) {
+          const local = gsQuickSearch(gsQueryText);
+          if (local.total) gsRenderResults(local);
+        }
+      }
+      return gsQuick;
+    })
+    .catch(() => null)
+    .finally(() => { gsQuickPromise = null; });
+  return gsQuickPromise;
+}
+
+function gsQuickSearch(q) {
+  const qq = gsQuery(q);
+  if (qq.empty || !gsQuick) return { q: qq.raw, total: 0, results: [], counts: {}, markets: (gsQuick && gsQuick.markets) || {} };
+  const counts = {};
+  const scored = [];
+  for (const e of gsQuick.entries) {
+    let best = 0;
+    let matched = null;
+    const codes = e._codes || (e.codes || [e.ticker, e.code]).map(gsCode).filter(Boolean);
+    for (const c of codes) {
+      if (c === qq.code) { best = 1200; matched = 'ticker'; break; }
+      if (qq.numeric && gsNumeric(c) === qq.numeric) { best = Math.max(best, 1150); matched = 'ticker'; }
+      else if (qq.code.length >= 2 && c.startsWith(qq.code)) { best = Math.max(best, 900); matched = matched || 'ticker'; }
+    }
+    const hay = e.hay || '';
+    if (hay) {
+      if (hay === qq.norm || hay.startsWith(qq.norm + ' ')) { best = Math.max(best, 1050); matched = matched || 'name'; }
+      else if (hay.startsWith(qq.norm)) { best = Math.max(best, 850); matched = matched || 'name'; }
+      else if (qq.norm.length >= 2 && hay.includes(' ' + qq.norm)) { best = Math.max(best, 780); matched = matched || 'name'; }
+      else if (qq.norm.length >= 2 && hay.includes(qq.norm)) { best = Math.max(best, 620); matched = matched || 'name'; }
+    }
+    if (!best) continue;
+    const cap = e._cap != null ? e._cap : (Number(e.capUsd) || 0);
+    scored.push({ e, s: best + Math.min(12, cap > 0 ? Math.log10(cap + 1) : 0), matched });
+    counts[e.market] = (counts[e.market] || 0) + 1;
+  }
+  scored.sort((a, b) => b.s - a.s || (b.e.capUsd || 0) - (a.e.capUsd || 0));
+  const results = scored.slice(0, 30).map(({ e, matched }) => ({
+    market: e.market, id: e.id, ticker: e.ticker, code: e.code,
+    name: e.name, nameEn: e.nameEn, nameLocal: e.nameLocal || null,
+    sector: e.sector, exchange: e.exchange, currency: e.currency,
+    capLocal: e.capLocal, capUsd: e.capUsd, price: e.price, priceDate: e.priceDate, pe: e.pe, roe: e.roe, ytd: e.ytd,
+    indexSymbol: e.indexSymbol, listings: e.listings || [], matchedOn: matched,
+  }));
+  return { q: qq.raw, total: scored.length, results, counts, markets: gsQuick.markets || {} };
+}
+
+function gsShowSearching() {
+  gsCtxSeq++;
+  const left = $('co-global-results');
+  if (left) left.innerHTML = '<div class="g-empty">Searching…</div>';
+}
 
 function gsLoadMarkets() {
   if (gsMkt) return Promise.resolve(gsMkt);
@@ -10310,8 +10391,12 @@ function gsSetOpen(on) {
 }
 function gsOpenPanel() {
   gsSetOpen(true);
-  if (!gsQueryText) gsBoard();
-  else if (gsData) gsRenderResults(gsData);
+  if (!gsQueryText) { gsBoard(); return; }
+  if (gsQuick) {
+    const local = gsQuickSearch(gsQueryText);
+    if (local.total) { gsRenderResults(local); return; }
+  }
+  if (gsData) gsRenderResults(gsData);
   else gsFetch(gsQueryText);
 }
 
@@ -10335,8 +10420,17 @@ function gsOnInput() {
   gsSetOpen(true);
   clearTimeout(gsTimer);
   if (!q) { gsData = null; gsSelected = null; gsActive = -1; gsRows = []; gsBoard(); return; }
+  if (gsQuick) {
+    const local = gsQuickSearch(q);
+    if (local.total) { gsRenderResults(local); return; }
+    if (gsCache.has(q)) { gsRenderResults(gsCache.get(q)); return; }
+    gsShowSearching();
+    gsTimer = setTimeout(() => gsFetch(q), 100);
+    return;
+  }
+  gsLoadQuick();
   if (gsCache.has(q)) { gsRenderResults(gsCache.get(q)); return; }
-  gsTimer = setTimeout(() => gsFetch(q), 140);
+  gsTimer = setTimeout(() => gsFetch(q), 60);
 }
 
 async function gsFetch(q) {
@@ -10352,6 +10446,10 @@ async function gsFetch(q) {
     if (seq !== gsSeq || q !== gsQueryText) return;
     if (gsCache.size > 60) gsCache.clear();
     gsCache.set(q, data);
+    if (gsQuick) {
+      const local = gsQuickSearch(q);
+      if (local.total) { gsRenderResults(local); return; }
+    }
     gsRenderResults(data);
   } catch (e) {
     if (e.name !== 'AbortError' && seq === gsSeq) gsRenderError(q);
@@ -10683,9 +10781,9 @@ async function drawMctx(ix, token) {
   input.addEventListener('input', gsOnInput);
   input.addEventListener('focus', () => {
     gsSetOpen(true);
+    gsLoadQuick();
     if (!gsQueryText) gsBoard();
-    else if (gsData) gsRenderResults(gsData);
-    else gsFetch(gsQueryText);
+    else gsOnInput();
   });
   input.addEventListener('keydown', (e) => {
     if (!gsOpen) return;
@@ -10700,6 +10798,7 @@ async function drawMctx(ix, token) {
     gsOnInput();
   });
   gsLoadMarkets();   // warm the country index so group headers and the board open instantly
+  setTimeout(() => { gsLoadQuick(); }, 500);   // local-first search index
 })();
 
 document.addEventListener('keydown', (e) => {
