@@ -3781,7 +3781,95 @@ function initCurveHist() {
 // button walks your tabs instead of leaving the app. Tab changes push a
 // history entry; everything finer-grained replaces, so Back isn't noisy.
 // ---------------------------------------------------------------------------
-let routeSuppress = false, routingReady = false;
+let routeSuppress = false, routingReady = false, gsBackNav = false;
+
+// The companies section uses two explicit routes on top of the existing tab router:
+//   #/companies/search/<query>          the global search sheet
+//   #/companies/<market>/company/<id>   a company page
+// The rest of the tab keeps the existing #/deals route, so M&A deep links are untouched.
+function coRouteView() {
+  if (coRegion === 'jp') return jpView;
+  if (coRegion === 'kr') return krView;
+  if (coRegion === 'tw') return twView;
+  if (coRegion === 'hk') return hkView;
+  if (coRegion === 'au') return auView;
+  if (coRegion === 'in') return inView;
+  if (coRegion === 'id') return idView;
+  if (coRegion === 'br') return brView;
+  if (coRegion === 'za') return zaView;
+  return usView;
+}
+function coRouteId() {
+  if (coRegion === 'us') return coCik;
+  if (coRegion === 'jp') return jpSel;
+  if (coRegion === 'kr') return krSel;
+  if (coRegion === 'tw') return twSel;
+  if (coRegion === 'hk') return hkSel;
+  if (coRegion === 'au') return auSel;
+  if (coRegion === 'in') return inSel;
+  if (coRegion === 'id') return idSel;
+  if (coRegion === 'br') return brSel;
+  if (coRegion === 'za') return zaSel;
+  return null;
+}
+function coRouteCompany() {
+  const id = coRouteId();
+  return id == null || id === '' ? '#/deals' : `#/companies/${coRegion}/company/${encodeURIComponent(String(id))}`;
+}
+function coRouteSearch() {
+  return `#/companies/search${gsQueryText ? '/' + encodeURIComponent(gsQueryText) : ''}`;
+}
+function coSetView(market, view) {
+  if (!['market', 'screener', 'themes'].includes(view)) return;
+  if (market === 'us') usView = view;
+  else if (market === 'jp') jpView = view;
+  else if (market === 'kr') krView = view;
+  else if (market === 'tw') twView = view;
+  else if (market === 'hk') hkView = view;
+  else if (market === 'au') auView = view;
+  else if (market === 'in') inView = view;
+  else if (market === 'id') idView = view;
+  else if (market === 'br') brView = view;
+  else if (market === 'za') zaView = view;
+}
+function gsRouteOpenCompany(market, id) {
+  gsSetOpen(false);
+  coRegion = market;
+  try { localStorage.setItem('oilbasis.coRegion', market); } catch {}
+  gsClearSelections();
+  if (market === 'us') coCik = String(id);
+  else if (market === 'jp') jpSel = String(id);
+  else if (market === 'kr') krSel = String(id);
+  else if (market === 'tw') twSel = String(id);
+  else if (market === 'hk') hkSel = String(id);
+  else if (market === 'au') auSel = String(id);
+  else if (market === 'in') inSel = String(id);
+  else if (market === 'id') idSel = String(id);
+  else if (market === 'br') brSel = String(id);
+  else if (market === 'za') zaSel = String(id);
+  renderCompanies();
+}
+function gsRouteOpenMarket(market, view) {
+  gsSetOpen(false);
+  coRegion = market;
+  try { localStorage.setItem('oilbasis.coRegion', market); } catch {}
+  gsClearSelections();
+  if (view) {
+    coSetView(market, view);
+    const key = { us: 'usView', jp: 'jpView', kr: 'krView', tw: 'twView', hk: 'hkView', au: 'auView', in: 'inView', id: 'idView', br: 'brView', za: 'zaView' }[market];
+    if (key) try { localStorage.setItem('oilbasis.' + key, view); } catch {}
+  }
+  renderCompanies();
+}
+function gsRouteOpenSearch(q) {
+  const input = $('co-global-input');
+  if (input) input.value = q;
+  gsQueryText = q;
+  gsSetOpen(true);
+  gsLoadQuick();
+  if (!q) gsBoard(); else gsOnInput();
+}
+
 function currentRoute() {
   const tab = document.querySelector('.tab.active')?.dataset.tab || 'home';
   if (tab === 'commodities') {
@@ -3790,6 +3878,8 @@ function currentRoute() {
   }
   if (tab === 'macro') return `#/macro/${macroRegion}/${macroCountry}`;
   if (tab === 'deals') {
+    if (gsOpen) return coRouteSearch();
+    if (isCompanyOpen()) return coRouteCompany();
     if (!maSector) return '#/deals';
     return `#/deals/sector/${encodeURIComponent(maSector)}${maCompany ? '/company/' + encodeURIComponent(maCompany) : ''}`;
   }
@@ -3808,16 +3898,30 @@ function applyRoute(hash) {
   const parts = String(hash || '').replace(/^#\/?/, '').split('/').filter(Boolean)
     .map((p) => { try { return decodeURIComponent(p); } catch { return p; } });
   if (!parts.length) return false;
-  const [tab, a, b] = parts;
+  const [tab, a, b, c] = parts;
   routeSuppress = true;
   try {
-    if (tab === 'home') { showTab('home'); return true; }
+    if (!(tab === 'companies' && a === 'search')) { try { gsSetOpen(false); } catch {} }
+    if (tab === 'companies') {
+      showTab('deals');
+      maSector = null; maCompany = null;
+      if (a === 'search') { gsRouteOpenSearch(b || ''); return true; }
+      if (a && b === 'company' && c) { gsRouteOpenCompany(a, c); return true; }
+      if (a && b && ['market', 'screener', 'themes'].includes(b)) { gsRouteOpenMarket(a, b); return true; }
+      if (a) { gsRouteOpenMarket(a, null); return true; }
+      gsClearSelections();
+      renderCompanies();
+      return true;
+    }
+    if (tab === 'home') { gsClearSelections(); showTab('home'); return true; }
     if (tab === 'deals') {
       maView = a ? 'sectors' : 'highlights';
       maSector = null; maCompany = null;
       if (a === 'sector' && b) { maSector = b; if (c === 'company' && parts[3]) maCompany = parts[3]; }
       if (a === 'company' && b) { maCompany = b; }
+      gsClearSelections();
       showTab('deals');
+      renderCompanies();
       return true;
     }
     if (tab === 'commodities') {
@@ -3852,6 +3956,11 @@ document.addEventListener('click', (e) => {
 });
 addEventListener('popstate', () => { if (!applyRoute(location.hash)) syncRoute(false); });
 addEventListener('hashchange', () => { if (routingReady && !applyRoute(location.hash)) syncRoute(false); });
+// The in-app company back button is a real back: replace the company history entry with the list,
+// rather than stacking a list entry on top of the company. Capture before the existing handlers.
+document.addEventListener('click', (e) => {
+  if (e.target.closest && e.target.closest('[data-coback],[data-jpback],[data-krback],[data-twback],[data-hkback],[data-auback],[data-inback],[data-idback],[data-brback],[data-zaback]')) gsBackNav = true;
+}, true);
 
 function syncJumpnavs() {
   document.querySelectorAll('.jumpnav').forEach((nav) => {
@@ -4089,6 +4198,7 @@ $('macro-fx')?.addEventListener('click', (e) => { const el = e.target.closest('[
 $('macro-links')?.addEventListener('click', (e) => { const el = e.target.closest('[data-metric]'); if (el) pickMetric(el.dataset.metric, '1y'); });
 
 (async function boot() {
+  const bootRoute = location.hash;   // capture before selectMarket/syncRoute can rewrite it
   document.querySelectorAll('details.fold-panel').forEach((d) => d.addEventListener('toggle', () => {
     if (!d.open) return;
   }));
@@ -4188,12 +4298,15 @@ $('macro-links')?.addEventListener('click', (e) => { const el = e.target.closest
   // Always land on a segment (first visit included) so the read actually loads.
   selectMarket(savedSeg && markets.some((m) => m.id === savedSeg) ? savedSeg : (markets[0] && markets[0].id) || 'crude');
   restoreCompare();
-  // Always start on HOME. A reload must not drop you back into whichever tab you left (MACRO, say),
-  // and the URL hash is rewritten to #/home so it can't restore one either. In-app navigation still
-  // updates the hash, back/forward still works (popstate), and pasting a route later still works
-  // (hashchange) — only the boot state is pinned to HOME.
-  showTab('home');
-  syncRoute(false);
+  // A pasted company/search route is a deep link and must survive the boot. Other tabs still start on
+  // HOME on a cold load (the old behaviour); in-app navigation updates the hash and Back/Forward work.
+  if (bootRoute && /^#\/(companies|deals)(\/|$)/.test(bootRoute)) {
+    if (!applyRoute(bootRoute)) { showTab('home'); syncRoute(false); }
+    else { try { window.history.replaceState(null, '', bootRoute); } catch {} }
+  } else {
+    showTab('home');
+    syncRoute(false);
+  }
   routingReady = true;
   setTimeout(() => loadExtraSlow().catch(() => {}), 300);   // the slow, below-the-fold feeds
   // COMPANIES is a separate tab, so it is not part of the loading gate — but its payloads can load
@@ -10322,7 +10435,7 @@ var gsData = null, gsRows = [], gsActive = -1, gsSelected = null, gsOpen = false
 var gsCtl = null, gsRange = '1y', gsCache = new Map();
 var gsQuick = null, gsQuickPromise = null;
 var gsRecent = (() => { try { const x = JSON.parse(localStorage.getItem('oilbasis.gsRecent') || '[]'); return Array.isArray(x) ? x.slice(0, 8) : []; } catch { return []; } })();
-var mctxRange = '1y', mctxVs = false, mctxSeq = 0;
+var mctxRange = '1y', mctxVs = false, mctxSeq = 0, mctxExpanded = false;
 var GS_ORDER = ['us', 'jp', 'kr', 'tw', 'hk', 'au', 'in', 'id', 'br', 'za'];
 var GS_POPULAR = ['Apple', 'Toyota', 'Samsung', 'TSMC', 'BHP', 'Nubank', 'Reliance', 'BBCA', 'Petrobras', 'Naspers'];
 
@@ -10436,6 +10549,10 @@ function gsIndex(market, symbol) {
   return (symbol && m.indices[symbol]) || m.indices[m.default] || Object.values(m.indices)[0] || null;
 }
 
+function gsSyncSearchChrome() {
+  const root = $('co-global');
+  if (root) root.classList.toggle('gs-has-query', !!gsQueryText);
+}
 function gsSetOpen(on) {
   const p = $('co-global-panel'); if (!p) return;
   p.classList.toggle('hidden', !on);
@@ -10445,6 +10562,21 @@ function gsSetOpen(on) {
   $('co-global-backdrop')?.classList.toggle('hidden', !on);
   $('co-global-done')?.classList.toggle('hidden', !on);
   document.querySelector('.co-global-kbd')?.classList.toggle('hidden', !!on);
+  $('co-global')?.classList.toggle('gs-open', !!on);
+  document.body?.classList.toggle('gs-search-open', !!on);
+  gsSyncSearchChrome();
+}
+function gsDismissSearch() {
+  if (!gsOpen) return;
+  gsSetOpen(false);
+  syncRoute(false);
+}
+function gsOpenSearchUI() {
+  const wasOpen = gsOpen;
+  gsSetOpen(true);
+  if (!wasOpen && document.querySelector('.tab.active')?.dataset.tab === 'deals') syncRoute(true);
+  gsLoadQuick();
+  if (!gsQueryText) gsBoard(); else gsOnInput();
 }
 function gsOpenPanel() {
   gsSetOpen(true);
@@ -10461,12 +10593,8 @@ function gsFocusSearch() {
   const pane = document.querySelector('[data-pane="deals"]');
   if (pane && pane.classList.contains('hidden')) document.querySelector('[data-tab="deals"]')?.click();
   const input = $('co-global-input');
-  if (input) {
-    input.focus();
-    input.select();
-    gsSetOpen(true);
-    if (!gsQueryText) gsBoard();
-  }
+  if (input) { input.focus(); input.select(); }
+  gsOpenSearchUI();
 }
 
 function gsOnInput() {
@@ -10474,7 +10602,10 @@ function gsOnInput() {
   const q = inp.value.trim();
   gsQueryText = q;
   const clr = $('co-global-clear'); if (clr) clr.classList.toggle('hidden', !q);
+  const wasOpen = gsOpen;
   gsSetOpen(true);
+  if (!wasOpen && document.querySelector('.tab.active')?.dataset.tab === 'deals') syncRoute(true);
+  else if (gsOpen) syncRoute(false);
   clearTimeout(gsTimer);
   if (!q) { gsData = null; gsSelected = null; gsActive = -1; gsRows = []; gsBoard(); return; }
   if (gsQuick) {
@@ -10714,6 +10845,7 @@ function gsOpenCompany(r) {
   else if (r.market === 'br') brSel = String(r.id);
   else if (r.market === 'za') zaSel = String(r.id);
   renderCompanies();
+  syncRoute(true);
   if (typeof window.scrollTo === 'function') window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
@@ -10735,6 +10867,7 @@ function gsOpenMarket(market) {
   else if (market === 'za') zaView = 'market';
   try { localStorage.setItem('oilbasis.' + viewKeys[market], 'market'); } catch { /* private */ }
   renderCompanies();
+  syncRoute(true);
   if (typeof window.scrollTo === 'function') window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
@@ -10765,6 +10898,11 @@ function gsCompanyRef() {
 
 async function renderGlobalMarketContext() {
   const el = $('co-mctx'); if (!el) return;
+  if (document.querySelector('.tab.active')?.dataset.tab === 'deals') {
+    const push = !gsBackNav;
+    gsBackNav = false;
+    syncRoute(push);
+  }
   if (!isCompanyOpen()) { el.classList.add('hidden'); el.innerHTML = ''; return; }
   const token = ++mctxSeq;
   await gsLoadMarkets();
@@ -10782,12 +10920,14 @@ async function renderGlobalMarketContext() {
   const ix = gsIndex(market, symbol) || gsIndex(market);
   if (!ix) { el.classList.add('hidden'); return; }
   el.classList.remove('hidden');
+  el.dataset.open = mctxExpanded ? '1' : '0';
   el.innerHTML = `<div class="co-mctx-row">
       <span class="flag">${meta.flag || ''}</span><span class="country">${gsEsc(meta.label || market)}</span>
       <span class="idx">${gsEsc(ix.label)}</span><span class="lvl">${gsNum(ix.level, 2)}</span>
       <span class="move ${gsCls(ix.pct1d)}">${gsPct(ix.pct1d, 2)} today</span><span class="ytd">${gsPct(ix.pctYtd, 2)} YTD</span>
       <span class="spacer"></span>
       ${gsQueryText ? '<button type="button" data-gsearch="1">← Results</button>' : ''}
+      <button type="button" data-mctx-toggle="1" class="mctx-toggle">${mctxExpanded ? 'Hide' : 'Chart'}</button>
       <button type="button" data-mctxrange="1y" class="${mctxRange === '1y' ? 'on' : ''}">1Y</button>
       <button type="button" data-mctxrange="5y" class="${mctxRange === '5y' ? 'on' : ''}">5Y</button>
       <button type="button" data-mctx-vs="1" class="${mctxVs ? 'on' : ''}">vs index</button>
@@ -10837,26 +10977,22 @@ async function drawMctx(ix, token) {
   const input = $('co-global-input');
   if (!input) return;
   input.addEventListener('input', gsOnInput);
-  input.addEventListener('focus', () => {
-    gsSetOpen(true);
-    gsLoadQuick();
-    if (!gsQueryText) gsBoard();
-    else gsOnInput();
-  });
+  input.addEventListener('focus', gsOpenSearchUI);
+  input.addEventListener('click', gsOpenSearchUI);
   input.addEventListener('keydown', (e) => {
     if (!gsOpen) return;
     if (e.key === 'ArrowDown') { e.preventDefault(); gsSelectByIndex(gsActive + 1, true); }
     else if (e.key === 'ArrowUp') { e.preventDefault(); gsSelectByIndex(gsActive - 1, true); }
     else if (e.key === 'Enter') { if (gsSelected) { e.preventDefault(); gsOpenCompany(gsSelected); } }
-    else if (e.key === 'Escape') { e.preventDefault(); gsSetOpen(false); }
+    else if (e.key === 'Escape') { e.preventDefault(); gsDismissSearch(); }
   });
   $('co-global-clear')?.addEventListener('click', () => {
     input.value = '';
     input.focus();
     gsOnInput();
   });
-  $('co-global-done')?.addEventListener('click', () => gsSetOpen(false));
-  $('co-global-backdrop')?.addEventListener('click', () => gsSetOpen(false));
+  $('co-global-done')?.addEventListener('click', gsDismissSearch);
+  $('co-global-backdrop')?.addEventListener('click', gsDismissSearch);
   gsLoadMarkets();   // warm the country index so group headers and the board open instantly
   setTimeout(() => { gsLoadQuick(); }, 500);   // local-first search index
 })();
@@ -10898,15 +11034,13 @@ document.addEventListener('click', (e) => {
   if (card) { gsOpenMarket(card.dataset.gmarket); return; }
   const mopen = t.closest('[data-mctx-open]');
   if (mopen) { gsOpenMarket(coRegion); return; }
+  const mtoggle = t.closest('[data-mctx-toggle]');
+  if (mtoggle) { mctxExpanded = !mctxExpanded; renderGlobalMarketContext(); return; }
   const mvs = t.closest('[data-mctx-vs]');
-  if (mvs) { mctxVs = !mctxVs; renderGlobalMarketContext(); return; }
+  if (mvs) { mctxExpanded = true; mctxVs = !mctxVs; renderGlobalMarketContext(); return; }
   const mr = t.closest('[data-mctxrange]');
-  if (mr) { mctxRange = mr.dataset.mctxrange; renderGlobalMarketContext(); return; }
+  if (mr) { mctxExpanded = true; mctxRange = mr.dataset.mctxrange; renderGlobalMarketContext(); return; }
   const gsearch = t.closest('[data-gsearch]');
-  if (gsearch) {
-    const input = $('co-global-input');
-    if (input) { input.value = gsQueryText; input.focus(); gsSetOpen(true); gsOnInput(); }
-    return;
-  }
-  if (gsOpen && !t.closest('#co-global')) gsSetOpen(false);
+  if (gsearch) { gsFocusSearch(); return; }
+  if (gsOpen && !t.closest('#co-global') && !t.closest('#onboarding')) gsDismissSearch();
 });

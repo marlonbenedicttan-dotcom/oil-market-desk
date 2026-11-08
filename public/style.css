@@ -1656,6 +1656,7 @@ button.deal-sec-tile:hover { background: #10151b; }
 
 /* ---------- Global company search (all markets) ---------- */
 .co-global { position: relative; padding: 10px 12px 0; }
+.co-global.gs-open { z-index: 10001; }
 .co-global-box { position: relative; z-index: 80; display: flex; align-items: center; gap: 8px; background: #0c0f13; border: 1px solid var(--line2); border-radius: 9px; padding: 7px 10px; transition: border-color .15s ease, box-shadow .15s ease; }
 .co-global-box:focus-within { border-color: var(--amber); box-shadow: 0 0 0 1px #ff9e0033; }
 .co-global-ico { color: var(--dim); font-size: 16px; line-height: 1; }
@@ -1664,7 +1665,7 @@ button.deal-sec-tile:hover { background: #10151b; }
 .co-global-kbd { border: 1px solid var(--line2); border-radius: 5px; padding: 2px 6px; color: var(--dim); font-size: 10px; white-space: nowrap; }
 .co-global-clear { background: none; border: 0; color: var(--dim); font-size: 17px; line-height: 1; padding: 0 2px; cursor: pointer; }
 .co-global-clear:hover { color: var(--amber); }
-.co-global-backdrop { position: fixed; inset: 0; z-index: 60; background: rgba(2, 5, 8, .68); backdrop-filter: blur(1.5px); }
+.co-global-backdrop { position: fixed; inset: 0; z-index: 10000; background: rgba(2, 5, 8, .68); backdrop-filter: blur(1.5px); }
 .co-global-backdrop.hidden { display: none; }
 .co-global-done { background: #11161c; border: 1px solid var(--line2); border-radius: 5px; color: var(--dim); font: inherit; font-size: 10px; padding: 3px 7px; cursor: pointer; white-space: nowrap; }
 .co-global-done:hover { color: var(--amber); border-color: var(--amber); }
@@ -1935,3 +1936,32 @@ button.deal-sec-tile:hover { background: #10151b; }
 .calendar-rail .cal-rows::-webkit-scrollbar { width:6px; }
 .calendar-rail .cal-rows::-webkit-scrollbar-thumb { background:var(--line2); }
 @media (max-width:1050px) { .calendar-rail .cal-rows { max-height:240px; } }
+
+/* ---------- Mobile: search is a screen, not a squeezed desktop panel ---------- */
+body.gs-search-open { overflow: hidden; }
+.mctx-toggle { display: none; }
+@media (max-width: 760px) {
+  .co-global.gs-open {
+    position: fixed; inset: 0; z-index: 10001; display: flex; flex-direction: column;
+    box-sizing: border-box; width: auto; height: 100vh; height: 100dvh; margin: 0;
+    padding: calc(8px + env(safe-area-inset-top)) 8px calc(8px + env(safe-area-inset-bottom));
+    background: var(--bg);
+  }
+  .co-global.gs-open .co-global-box { flex: 0 0 auto; z-index: 101; }
+  .co-global.gs-open .co-global-input { font-size: 16px; }
+  .co-global.gs-open .co-global-backdrop { display: none !important; }
+  .co-global.gs-open .co-global-panel {
+    position: static; display: block; flex: 1 1 auto; min-height: 0; max-height: none;
+    margin-top: 6px; overflow-y: auto; border: 0; border-radius: 0; background: transparent; box-shadow: none;
+  }
+  .co-global.gs-open .co-global-results { max-height: none; border: 0; padding: 0; }
+  .co-global.gs-open .co-global-context { max-height: none; overflow: visible; padding: 0; background: transparent; }
+  .co-global.gs-open.gs-has-query .co-global-context { display: none; }
+  .co-global.gs-open .g-res-head { position: sticky; top: 0; z-index: 3; background: var(--bg); }
+  .co-global.gs-open .g-group-h { top: 26px; }
+  #deals-sub { display: none; }
+  .mctx-toggle { display: inline-flex; align-items: center; }
+  .co-mctx:not([data-open="1"]) .co-mctx-chart { display: none !important; }
+  .co-mctx:not([data-open="1"]) [data-mctxrange],
+  .co-mctx:not([data-open="1"]) [data-mctx-vs] { display: none; }
+}
