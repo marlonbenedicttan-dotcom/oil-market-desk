@@ -2132,55 +2132,50 @@ async function prefetchRegion(seq = macroRegionSeq) {
   };
   await Promise.all([worker(), worker()]);
 }
-async function loadCountry() {
-  const el = $('macro-region-panel');
-  if (!el) return;
-  const req = macroCountry;                       // guard: newest country wins
-  loadRegionCurrencies();                         // country-scoped, and independent of the card
-  const showUsJp = req === 'us' || req === 'jp';
-  const up = $('usjp-panel');
-  if (up) up.classList.toggle('hidden', !showUsJp);
-  syncJumpnavs();
-  if (showUsJp) loadUsJp();
-  const sel = $('macro-country');
-  const label = (sel && sel.selectedOptions[0] ? sel.selectedOptions[0].textContent : req).trim();
-  el.innerHTML = `<div class="macro-note">${label.toUpperCase()}</div>${stLoading()}`;
-  const c = await fetchCountry(req);
-  if (req !== macroCountry) return;
-  if (!c || c.error) { el.innerHTML = `<div class="macro-note">${label.toUpperCase()}</div>${stError('Couldn\u2019t load this country\u2019s data.')}`; return; }
-  const num = (v, dp) => (v == null ? '—' : Number(v).toFixed(dp));
-  const fxId = COUNTRY_FX_ID[c.fx.sym];
+// A single factual sentence under the country name: the four numbers that frame the country,
+// then the market's own one-year move. No forecast, no invented interpretation.
+function macroRead(c, ctx = {}) {
+  const f = ctx.f || c.fund || {};
+  const policy = ctx.policy || (c.policy && c.policy.latest);
+  const cpi = ctx.cpiM && ctx.cpiM.v != null ? ctx.cpiM.v : (f.inflation && f.inflation.value);
+  const gdp = ctx.gdpM && ctx.gdpM.v != null ? ctx.gdpM.v
+    : (f.gdpGrowth && f.gdpGrowth.length ? f.gdpGrowth[f.gdpGrowth.length - 1].value : null);
+  const y10 = ctx.y10 && ctx.y10.v != null ? ctx.y10.v : null;
+  const parts = [];
+  if (policy) parts.push(`policy ${policy.value}%`);
+  if (cpi != null) parts.push(`inflation ${cpi}%${ctx.cpiM ? ' y/y' : ''}`);
+  if (gdp != null) parts.push(`growth ${gdp}%${ctx.gdpM ? ' q/q ann.' : ''}`);
+  if (y10 != null) parts.push(`the 10-year at ${y10}%`);
+  const tail = [];
+  if (c.perf && c.perf.index != null) tail.push(`${c.index && c.index.label ? c.index.label : 'the index'} ${signed(c.perf.index, 1)}% over a year`);
+  if (c.perf && c.perf.fx != null) tail.push(`${c.fx && c.fx.label ? c.fx.label : 'the currency'} ${signed(c.perf.fx, 1)}%`);
+  if (!parts.length && !tail.length) return (c.takeaways && c.takeaways[0]) || 'No summary data for this country right now.';
+  return `${parts.join(' · ')}${parts.length && tail.length ? ' — ' : ''}${tail.join('; ')}${tail.length ? '.' : ''}`;
+}
+// Everything that is useful but not needed in the first screen. Lives behind COUNTRY DETAIL so
+// the pulse above stays eight numbers instead of a wall of cards.
+function macroDetail(c) {
   const f = c.fund || {};
   const gdp = f.gdpGrowth || [];
-  const card = (l, v, s, k, dl) => `<div class="bb-card"${fxId && l === c.fx.label ? ` data-metric="fx:${fxId}" style="cursor:pointer"` : ''}><div class="bb-l">${l}</div><div class="bb-v ${k || ''}">${v}</div><div class="bb-s">${s || ''}</div>${dl ? deltaStrip(dl) : ''}</div>`;
-  let html = `<div class="bb-head">${c.label.toUpperCase()} <span class="dimtext">· ${(c.region || '').toUpperCase()}</span></div>`;
-
-  const hasIndex = !!(c.index.label && !/not free/i.test(c.index.label));
-  html += '<div class="bb-sec">MARKET</div><div class="bb-grid">'
-    + card(c.fx.label, num(c.fx.price, c.fx.price != null && c.fx.price < 10 ? 4 : 2), (c.fx.pct != null ? pctf(c.fx.pct) + ' today' : '—') + freshBadge(c.fx.source, c.fx.asOf), cls(c.fx.pct), c.fx.deltas)
-    + (hasIndex ? card(c.index.label, num(c.index.price, c.index.price != null && c.index.price < 1000 ? 1 : 0), (c.index.pct != null ? pctf(c.index.pct) + ' today' : '—') + freshBadge(c.index.source, c.index.asOf), cls(c.index.pct), c.index.deltas)
-        : card('Equity market', 'N/A', 'no free index exists for this country', 'dim'))
-    + '</div>'
-    + (hasIndex ? '' : `<div class="macro-note">Equity market: <b>not available</b> — no free index or ETF tracks ${esc(c.label)}, so the currency and the macro data above are what we can show.</div>`);
-
-  html += '<div class="bb-sec">RATES &amp; INFLATION</div><div class="bb-grid">';
-  if (c.policy) html += card('CENTRAL BANK RATE', c.policy.latest.value + '%', 'as of ' + c.policy.latest.date, '');
-  if (c.macro && c.macro.fields) for (const mf of c.macro.fields) html += card(mf.k.toUpperCase(), mf.v == null ? '—' : `${mf.v}${mf.suf || ''}`, mf.asOf ? 'as of ' + mf.asOf : '', '');
-  html += card('CPI (LATEST)', f.inflation ? f.inflation.value + '%' : '—', f.inflation ? String(f.inflation.year) : 'n/a', '') + '</div>';
-
+  const card = (l, v, s, k) => `<div class="bb-card"><div class="bb-l">${l}</div><div class="bb-v ${k || ''}">${v}</div><div class="bb-s">${s || ''}</div></div>`;
+  let html = '';
+  if (c.policy || (c.macro && c.macro.fields && c.macro.fields.length)) {
+    html += '<div class="bb-sec">RATES &amp; INFLATION</div><div class="bb-grid">';
+    if (c.policy) html += card('CENTRAL BANK RATE', `${c.policy.latest.value}%`, 'as of ' + c.policy.latest.date, '');
+    if (c.macro && c.macro.fields) for (const mf of c.macro.fields) html += card(mf.k.toUpperCase(), mf.v == null ? '—' : `${mf.v}${mf.suf || ''}`, mf.asOf ? 'as of ' + mf.asOf : '', '');
+    if (f.inflation) html += card('CPI (ANNUAL)', `${f.inflation.value}%`, String(f.inflation.year), '');
+    html += '</div>';
+  }
   html += '<div class="bb-sec">GROWTH &amp; DEBT</div><div class="bb-grid">'
-    + card('GDP GROWTH', gdp.length ? gdp[gdp.length - 1].value + '%' : '—', gdp.length ? String(gdp[gdp.length - 1].year) : 'n/a', '')
+    + card('GDP GROWTH (ANNUAL)', gdp.length ? gdp[gdp.length - 1].value + '%' : '—', gdp.length ? String(gdp[gdp.length - 1].year) : 'n/a', '')
     + card('DEBT / GDP', f.debtToGdp && f.debtToGdp.year >= 2018 ? f.debtToGdp.value + '%' : '—', f.debtToGdp ? `${f.debtToGdp.year}${f.debtToGdp.year < 2018 ? ' — old' : ''}` : 'not available', '')
-    + card('UNEMPLOYMENT', f.unemployment ? f.unemployment.value + '%' : '—', f.unemployment ? String(f.unemployment.year) : 'n/a', '')
+    + card('UNEMPLOYMENT (ANNUAL)', f.unemployment ? f.unemployment.value + '%' : '—', f.unemployment ? String(f.unemployment.year) : 'n/a', '')
     + '</div>'
     + (f.source ? `<div class="macro-note">${f.source} — labelled by year.</div>` : '');
-
   if (!c.policy && c.policyNote) html += `<div class="macro-note">${c.policyNote}</div>`;
-  if (gdp.length > 1) html += `<div class="dimtext" style="padding:2px 12px 8px">real GDP growth by year — ${gdp.map((g) => `${g.year}: ${g.value}%`).join(' · ')}</div>`;
-
+  if (gdp.length > 1) html += `<div class="dimtext macro-yearline">real GDP growth by year — ${gdp.map((g) => `${g.year}: ${g.value}%`).join(' · ')}</div>`;
   html += '<div class="bb-sec">COMMODITY LINKAGE</div>';
   if (c.peg) {
-    // A pegged currency does not float, so a correlation against it measures nothing.
     html += `<div class="macro-note">Nothing to correlate — the currency is <b>pegged to the US dollar at ${c.peg}</b>, so it does not float against it.</div>`;
   } else {
     if (c.links && c.links.length) {
@@ -2198,8 +2193,74 @@ async function loadCountry() {
     }
   }
   if (c.takeaways && c.takeaways.length) html += '<div class="bb-sec">KEY TAKEAWAYS</div><ul class="ins-list">' + c.takeaways.map((t) => `<li>${t}</li>`).join('') + '</ul>';
-  html += '<div class="bb-sec">CROSS-ASSET — HOW THIS REGION IS AFFECTED</div>' + crossAssetBlock((i) => (i.regions || []).includes(macroRegion));
-  el.innerHTML = html;
+  return html;
+}
+async function loadCountry() {
+  const el = $('macro-region-panel');
+  if (!el) return;
+  const req = macroCountry;                       // guard: newest country wins
+  loadRegionCurrencies();                         // country-scoped, and independent of the card
+  const showUsJp = req === 'us' || req === 'jp';
+  syncMacroChartTabs(showUsJp);
+  syncJumpnavs();
+  if (showUsJp) loadUsJp();
+  const sel = $('macro-country');
+  const label = (sel && sel.selectedOptions[0] ? sel.selectedOptions[0].textContent : req).trim();
+  const rsel = $('macro-region');
+  const regionLabel = (rsel && rsel.selectedOptions[0] ? rsel.selectedOptions[0].textContent : macroRegion || '').trim();
+  const nameEl = $('macro-country-name'); if (nameEl) nameEl.textContent = label;
+  const regEl = $('macro-region-name'); if (regEl) regEl.textContent = regionLabel.toUpperCase();
+  el.innerHTML = stLoading();
+  const c = await fetchCountry(req);
+  if (req !== macroCountry) return;
+  if (!c || c.error) {
+    el.innerHTML = stError('Couldn\u2019t load this country\u2019s data.');
+    const readEl = $('macro-read'); if (readEl) readEl.textContent = 'This country\u2019s data could not be loaded right now.';
+    return;
+  }
+  const num = (v, dp) => (v == null ? '—' : Number(v).toFixed(dp));
+  const f = c.fund || {};
+  const fields = (c.macro && c.macro.fields) || [];
+  const fld = (needle) => fields.find((x) => String(x.k || '').toLowerCase().includes(needle));
+  const policy = c.policy && c.policy.latest;
+  const y10 = fld('10-year');
+  const cpiM = fld('cpi');
+  const gdpM = fld('gdp');
+  const unempM = fld('unemployment');
+  const fx = c.fx || {};
+  const ix = c.index || {};
+  const hasIndex = !!(ix.label && !/not free/i.test(ix.label));
+  const fxId = COUNTRY_FX_ID[fx.sym];
+  const fxDp = fx.price != null && fx.price < 10 ? 4 : 2;
+  const ixDp = ix.price != null && ix.price < 1000 ? 1 : 0;
+  const gdpA = (f.gdpGrowth || []).slice(-1)[0];
+  const debt = f.debtToGdp;
+  const infl = f.inflation;
+  const unemp = f.unemployment;
+  const stat = (l, v, s, k, extra, metric) => `<div class="mstat${metric ? ' clickable' : ''}"${metric ? ` data-metric="${metric}" title="Click for the chart"` : ''}><div class="mstat-l">${l}</div><div class="mstat-v ${k || ''}">${v}</div>${s ? `<div class="mstat-s">${s}</div>` : ''}${extra || ''}</div>`;
+  const srcLine = (x) => `${x && x.source ? x.source : '—'}${x && x.asOf ? ' · ' + x.asOf : ''}`;
+  let stats = '';
+  stats += stat('CURRENCY', fx.price == null ? '—' : num(fx.price, fxDp), `${fx.pct != null ? pctf(fx.pct) + ' today' : '—'} · ${srcLine(fx)}`, cls(fx.pct), deltaStrip(fx.deltas), fxId ? 'fx:' + fxId : null);
+  stats += hasIndex ? stat('EQUITY INDEX', num(ix.price, ixDp), `${ix.pct != null ? pctf(ix.pct) + ' today' : '—'} · ${srcLine(ix)}`, cls(ix.pct), deltaStrip(ix.deltas))
+    : stat('EQUITY INDEX', 'N/A', 'no free index for this country', 'dim');
+  stats += stat('POLICY RATE', policy ? `${policy.value}%` : '—', policy ? `as of ${policy.date}` : (c.policyNote || 'no policy-rate series'));
+  stats += `<div class="mstat"><div class="mstat-l">10-YEAR YIELD</div><div class="mstat-v" id="macro-y10">${y10 && y10.v != null ? `${y10.v}%` : (c.yields && c.yields.long && c.yields.long.latest != null ? `${c.yields.long.latest.toFixed(2)}%` : '—')}</div><div class="mstat-s" id="macro-y10-s">${y10 && y10.asOf ? `as of ${y10.asOf}` : (c.yields && c.yields.asOf ? `as of ${c.yields.asOf}` : 'loading yield series…')}</div></div>`;
+  const cpiV = cpiM && cpiM.v != null ? cpiM.v : (infl && infl.value);
+  stats += stat('CPI YOY', cpiV == null ? '—' : `${cpiV}%`, cpiM && cpiM.asOf ? `as of ${cpiM.asOf}` : (infl ? String(infl.year) : '—'));
+  const gdpV = gdpM && gdpM.v != null ? gdpM.v : (gdpA && gdpA.value);
+  stats += stat('GDP GROWTH', gdpV == null ? '—' : `${gdpV}%`, gdpM && gdpM.asOf ? `QoQ ann. · ${gdpM.asOf}` : (gdpA ? `${gdpA.year} annual` : '—'));
+  const unV = unempM && unempM.v != null ? unempM.v : (unemp && unemp.value);
+  stats += stat('UNEMPLOYMENT', unV == null ? '—' : `${unV}%`, unempM && unempM.asOf ? `as of ${unempM.asOf}` : (unemp ? String(unemp.year) : '—'));
+  stats += stat('DEBT / GDP', debt && debt.value != null ? `${debt.value}%` : '—', debt ? `${debt.year}${debt.year < 2018 ? ' — old' : ''}` : 'not available');
+  el.innerHTML = `<div class="macro-pulse">${stats}</div>`;
+  const readEl = $('macro-read'); if (readEl) readEl.innerHTML = macroRead(c, { policy, cpiM, gdpM, y10, f });
+  const readCard = $('m-read');
+  const readList = $('macro-read-list');
+  const takeaways = c.takeaways || [];
+  if (readCard) readCard.classList.toggle('hidden', !takeaways.length);
+  if (readList) readList.innerHTML = takeaways.slice(0, 4).map((t) => `<li>${t}</li>`).join('');
+  const detail = $('macro-detail'); if (detail) detail.innerHTML = macroDetail(c);
+  const cross = $('macro-cross'); if (cross) cross.innerHTML = crossAssetBlock((i) => (i.regions || []).includes(macroRegion));
   // The card, news and chart series all arrived in this one payload. The two slow, independent feeds
   // (yields + catalysts) come from /api/country-extras in a single follow-up request, so the card is
   // never held hostage by them; the separate loaders remain as a fallback for an upstream outage.
@@ -2210,6 +2271,40 @@ async function loadCountry() {
   renderPolicyChart(c.policy, c.policyNote);
   renderCpiChart(c.cpi);
 }
+// One chart at a time in the RATES & INFLATION card. The tab is remembered across countries, and
+// the US–Japan carry chart only exists for those two countries. Charts are resized on reveal so a
+// chart mounted while its pane was hidden gets the right width.
+let macroTabInit = false;
+function setMacroChart(name, save = true) {
+  const tabs = [...document.querySelectorAll('#macro-chart-tabs [data-mchart]')];
+  const valid = tabs.filter((b) => !b.classList.contains('hidden')).map((b) => b.dataset.mchart);
+  if (!valid.includes(name)) name = 'policy';
+  for (const b of tabs) {
+    const on = b.dataset.mchart === name;
+    b.classList.toggle('active', on);
+    b.setAttribute('aria-selected', String(on));
+  }
+  document.querySelectorAll('#m-charts .macro-pane').forEach((p) => p.classList.toggle('hidden', p.dataset.mpane !== name));
+  if (save) { try { localStorage.setItem('oilbasis.macroChart', name); } catch {} }
+  requestAnimationFrame(() => {
+    const chart = { policy: policyChart, yields: yieldsChart, cpi: cpiChart, usjp: usjpChart }[name];
+    if (chart) { chart.resize(); chart.update('none'); }
+  });
+}
+function syncMacroChartTabs(showUsJp) {
+  const btn = document.querySelector('#macro-chart-tabs [data-mchart="usjp"]');
+  if (btn) btn.classList.toggle('hidden', !showUsJp);
+  const valid = [...document.querySelectorAll('#macro-chart-tabs [data-mchart]')]
+    .filter((b) => !b.classList.contains('hidden')).map((b) => b.dataset.mchart);
+  let active = document.querySelector('#macro-chart-tabs .active')?.dataset.mchart;
+  if (!macroTabInit) {
+    macroTabInit = true;
+    try { active = localStorage.getItem('oilbasis.macroChart') || active; } catch {}
+  }
+  if (!active || !valid.includes(active)) active = 'policy';
+  setMacroChart(active, false);
+}
+
 // Yields + catalysts in one request (the card does not wait for them).
 async function loadCountryExtras(req = macroCountry) {
   let d = null;
@@ -2266,7 +2361,7 @@ async function loadCountryChart(pre = null) {
   if (note) note.textContent = `${d.label} — ${main.label || 'this market'} vs ${d.vsLabel || 'nothing'}, both starting at 100; hover a point for its % change.`
     + `${hasIdx ? '' : ' No free equity index exists for this country, so the currency is the line above.'}`
     + `${d.peg ? ` (The currency is pegged at ${d.peg}, so it is not charted — a flat line says nothing.)` : ''}`;
-  macroChart = mountChart('macro-chart', { labels: d.dates, datasets }, baseOptions({ dp: 1 }));
+  macroChart = mountChart('macro-chart', { labels: d.dates, datasets }, baseOptions({ dp: 1, dateAxis: true }));
   attachMarkers(macroChart, req, d.dates, [main.arr, d.vs].filter(Boolean), '#macro-chart-events');
 }
 // Central-bank policy rate history (stepped line; hover shows the rate).
@@ -2284,7 +2379,7 @@ function renderPolicyChart(policy, policyNote) {
   if (wrap) wrap.style.display = '';
   if (note) note.textContent = `${policy.latest.value}% · as of ${policy.latest.date}`;
   const data = { labels: policy.history.map((h) => h.date), datasets: [{ label: 'policy rate', data: policy.history.map((h) => h.value), borderColor: CT.c2, backgroundColor: CT.c2 + '22', borderWidth: 2, pointRadius: 0, stepped: true, fill: false }] };
-  policyChart = mountChart('policy-chart', data, baseOptions({ dp: 2, percentAxis: true, legend: false }));
+  policyChart = mountChart('policy-chart', data, baseOptions({ dp: 2, percentAxis: true, legend: false, dateAxis: true }));
   attachMarkers(policyChart, macroCountry, data.labels, [data.datasets[0].data], '#policy-events', 'abs');
 }
 // CPI — annual inflation % per country (World Bank), hover shows year + %.
@@ -2314,6 +2409,12 @@ function renderYields(d) {
   const wrap = cv ? cv.parentElement : null;
   const note = $('yields-note');
   const sum = $('yields-summary');
+  const y10 = $('macro-y10');
+  const y10s = $('macro-y10-s');
+  if (y10) y10.textContent = d && d.long && d.long.latest != null ? `${d.long.latest.toFixed(2)}%` : '—';
+  if (y10s) y10s.textContent = d && d.long
+    ? `${d.long.label || '10-year'} · ${d.asOf ? 'as of ' + d.asOf : (d.freq || '')}`
+    : ((d && d.error) || 'no free 10-year yield series');
   if (!d || d.error || (!d.short && !d.long)) {
     if (wrap) wrap.style.display = 'none';
     if (sum) sum.textContent = '';
@@ -2333,7 +2434,7 @@ function renderYields(d) {
   if (d.short) datasets.push(line(`${d.short.label} yield`, arr(d.short), CT.c1));
   if (d.long) datasets.push(line(`${d.long.label} yield`, arr(d.long), CT.c2));
   const chartData = { labels: dates, datasets };
-  yieldsChart = mountChart('yields-chart', chartData, baseOptions({ dp: 2, percentAxis: true }));
+  yieldsChart = mountChart('yields-chart', chartData, baseOptions({ dp: 2, percentAxis: true, dateAxis: true }));
   const ysrc = d.long || d.short;
   if (ysrc) attachMarkers(yieldsChart, macroCountry, dates, [arr(ysrc)], '#yields-events', 'abs');
 }
@@ -2362,7 +2463,7 @@ function renderUsJp(us, jp) {
   if (sum) sum.textContent = `US 10-yr ${ul.latest == null ? '—' : ul.latest.toFixed(2) + '%'} · Japan 10-yr ${jl.latest == null ? '—' : jl.latest.toFixed(2) + '%'}${spread != null ? ` · US–Japan spread ${spread >= 0 ? '+' : ''}${spread}pp (the carry gap)` : ''}`;
   const datasets = [line('US 10-yr', usArr, CT.c1), line('Japan 10-yr', jpArr, CT.c4)];
   const chartData = { labels: dates, datasets };
-  usjpChart = mountChart('usjp-chart', chartData, baseOptions({ dp: 2, percentAxis: true }));
+  usjpChart = mountChart('usjp-chart', chartData, baseOptions({ dp: 2, percentAxis: true, dateAxis: true }));
   attachMarkers(usjpChart, macroCountry === 'jp' ? 'jp' : 'us', dates, [usArr, jpArr], '#usjp-events', 'abs');
 }
 async function loadUsJp() {
@@ -3938,6 +4039,7 @@ function applyRoute(hash) {
       showTab('macro');
       const rs = $('macro-region'), cs = $('macro-country');
       if (a && rs && [...rs.options].some((o) => o.value === a)) {
+        if (b) prefCountry = b;   // the country lists may still be loading; renderMacroRegion consumes this
         rs.value = a; rs.dispatchEvent(new Event('change', { bubbles: true }));
         if (b && cs && [...cs.options].some((o) => o.value === b)) { cs.value = b; cs.dispatchEvent(new Event('change', { bubbles: true })); }
       }
@@ -3998,7 +4100,7 @@ function showTab(name) {
     warmMarkets(0);
     loadCompanies();
   }
-  if (name === 'macro') { loadMacroTickers(); if (!extraSlowDone) setTimeout(() => loadExtraSlow().catch(() => {}), 0); if (macroChart) setTimeout(() => macroChart.resize(), 60); if (policyChart) setTimeout(() => policyChart.resize(), 70); if (cpiChart) setTimeout(() => cpiChart.resize(), 80); if (yieldsChart) setTimeout(() => yieldsChart.resize(), 85); if (usjpChart) setTimeout(() => usjpChart.resize(), 90); }
+  if (name === 'macro') { loadMacroTickers(); if (!extraSlowDone) setTimeout(() => loadExtraSlow().catch(() => {}), 0); if (macroChart) setTimeout(() => macroChart.resize(), 60); if (policyChart) setTimeout(() => policyChart.resize(), 70); if (cpiChart) setTimeout(() => cpiChart.resize(), 80); if (yieldsChart) setTimeout(() => yieldsChart.resize(), 85); if (usjpChart) setTimeout(() => usjpChart.resize(), 90); const mt = document.querySelector('#macro-chart-tabs .active'); if (mt) setTimeout(() => setMacroChart(mt.dataset.mchart, false), 95); }
   if (data) renderTicker(data);
   syncJumpnavs();
   if (typeof syncToTop === 'function') syncToTop();   // tab switches change the page height, so re-test
@@ -4116,6 +4218,16 @@ $('macro-region-panel')?.addEventListener('click', (e) => { const el = e.target.
 $('macro-country')?.addEventListener('change', () => { macroCountry = $('macro-country').value; saveStr('macroCountry', macroCountry); loadCountry(); syncRoute(false); });
 $('macro-range')?.addEventListener('change', loadCountryChart);
 $('macro-vs')?.addEventListener('change', () => { try { localStorage.setItem('oilbasis.macroVs', $('macro-vs').value); } catch {} loadCountryChart(); });
+$('macro-chart-tabs')?.addEventListener('click', (e) => {
+  const b = e.target.closest('[data-mchart]');
+  if (!b || b.classList.contains('hidden')) return;
+  setMacroChart(b.dataset.mchart);
+});
+document.addEventListener('click', (e) => {
+  const a = e.target.closest && e.target.closest('.macro-nav a');
+  if (!a) return;
+  document.querySelectorAll('.macro-nav a').forEach((x) => x.classList.toggle('active', x === a));
+});
 $('chart').addEventListener('click', (ev) => {
   if (!chart) return;
   const pts = chart.getElementsAtEventForMode(ev, 'index', { intersect: false }, true);

@@ -391,67 +391,105 @@
       </section>
     </div>
     <div class="tabpane hidden" data-pane="macro" id="pane-macro" role="tabpanel" aria-labelledby="tab-macro">
-      <nav class="jumpnav" aria-label="Jump to a section">
-        <a href="#m-region">Country</a>
-        <a href="#m-policy">Policy</a>
-        <a href="#m-yields">Yields</a>
-        <a href="#usjp-panel">US&ndash;Japan</a>
-        <a href="#m-cpi">Inflation</a>
-        <a href="#m-index">Benchmark</a>
+      <nav class="jumpnav macro-nav" aria-label="Macro sections">
+        <a href="#m-overview" class="active">Overview</a>
+        <a href="#m-charts">Charts</a>
         <a href="#m-news">News</a>
-        <a href="#m-fx">Currency</a>
-        <a href="#cat-fold">Catalysts</a>
+        <a href="#cat-fold">Calendar</a>
       </nav>
-      <section id="m-region" class="panel">
-        <div class="ph"><span class="ph-t">REGION &amp; COUNTRY</span>
-          <div class="controls">
-            <select id="macro-region" aria-label="Region"><option value="us">Americas</option><option value="eu">Europe</option><option value="jp">Japan</option><option value="cn">China</option><option value="in">India</option><option value="apac">Asia-Pacific</option><option value="me">Middle East</option><option value="af">Africa</option></select>
-            <select id="macro-country" aria-label="Country"></select>
+
+      <section id="m-overview" class="macro-hero">
+        <div class="macro-hero-top">
+          <div class="macro-hero-copy">
+            <div class="macro-kicker">MACRO · <span id="macro-region-name">—</span></div>
+            <h2 class="macro-country-name" id="macro-country-name">—</h2>
+            <p class="macro-read" id="macro-read">Choose a country to see its growth, prices, rates and market.</p>
+          </div>
+          <div class="macro-picker">
+            <label>REGION
+              <select id="macro-region" aria-label="Region"><option value="us">Americas</option><option value="eu">Europe</option><option value="jp">Japan</option><option value="cn">China</option><option value="in">India</option><option value="apac">Asia-Pacific</option><option value="me">Middle East</option><option value="af">Africa</option></select>
+            </label>
+            <label>COUNTRY
+              <select id="macro-country" aria-label="Country"></select>
+            </label>
           </div>
         </div>
         <div id="macro-region-panel" class="macro"></div>
       </section>
-      <section id="m-policy" class="panel">
-        <div class="ph"><span class="ph-t">POLICY RATE — history</span><span id="policy-note" class="dimtext"></span></div>
-        <div class="chart-wrap sm"><canvas id="policy-chart"></canvas></div>
-        <div id="policy-events" class="chart-events"></div>
-      </section>
-      <section id="m-yields" class="panel">
-        <div class="ph"><span class="ph-t">BOND YIELDS</span><span id="yields-note" class="dimtext"></span></div>
-        <div class="chart-wrap"><canvas id="yields-chart"></canvas></div>
-        <div id="yields-events" class="chart-events"></div>
-        <div id="yields-summary" class="dimtext lt-summary"></div>
-      </section>
-      <section class="panel" id="usjp-panel">
-        <div class="ph"><span class="ph-t">US vs JAPAN — 10-year yields</span><span id="usjp-note" class="dimtext"></span></div>
-        <div class="chart-wrap"><canvas id="usjp-chart"></canvas></div>
-        <div id="usjp-summary" class="dimtext lt-summary"></div>
-        <div id="usjp-events" class="chart-events"></div>
-      </section>
-      <section id="m-cpi" class="panel">
-        <div class="ph"><span class="ph-t">INFLATION — CPI, annual % (IMF WEO / World Bank)</span><span id="cpi-note" class="dimtext"></span></div>
-        <div class="chart-wrap sm"><canvas id="cpi-chart"></canvas></div>
-      </section>
-      <section id="m-index" class="panel">
-        <div class="ph"><span class="ph-t">INDEX vs BENCHMARK (indexed to 100)</span>
-          <div class="controls"><select id="macro-vs" aria-label="Compare this country's index against"></select><select id="macro-range" aria-label="Macro chart range"><option value="3m">3M</option><option value="6m">6M</option><option value="1y" selected>1Y</option><option value="ytd">YTD</option><option value="5y">5Y</option></select></div>
+
+      <div class="macro-layout">
+        <div class="macro-main">
+          <section id="m-index" class="panel macro-chart-card">
+            <div class="ph"><span class="ph-t">MARKET vs BENCHMARK</span>
+              <div class="controls"><select id="macro-vs" aria-label="Compare this country's index against"></select><select id="macro-range" aria-label="Macro chart range"><option value="3m">3M</option><option value="6m">6M</option><option value="1y" selected>1Y</option><option value="ytd">YTD</option><option value="5y">5Y</option></select></div>
+            </div>
+            <div class="chart-wrap lg"><canvas id="macro-chart"></canvas></div>
+            <div id="macro-chart-note" class="dimtext lt-summary"></div>
+            <div id="macro-chart-events" class="chart-events"></div>
+          </section>
+
+          <section id="m-charts" class="panel macro-chart-card">
+            <div class="ph"><span class="ph-t">RATES &amp; INFLATION</span>
+              <div class="macro-tabs" id="macro-chart-tabs" role="tablist" aria-label="Macro chart">
+                <button type="button" data-mchart="policy" class="active" role="tab" aria-selected="true">POLICY</button>
+                <button type="button" data-mchart="yields" role="tab" aria-selected="false">YIELDS</button>
+                <button type="button" data-mchart="cpi" role="tab" aria-selected="false">INFLATION</button>
+                <button type="button" data-mchart="usjp" role="tab" aria-selected="false">US–JAPAN</button>
+              </div>
+            </div>
+            <div class="macro-pane" data-mpane="policy">
+              <div id="policy-note" class="dimtext macro-pane-note"></div>
+              <div class="chart-wrap sm"><canvas id="policy-chart"></canvas></div>
+              <div id="policy-events" class="chart-events"></div>
+            </div>
+            <div class="macro-pane hidden" data-mpane="yields">
+              <div id="yields-note" class="dimtext macro-pane-note"></div>
+              <div class="chart-wrap"><canvas id="yields-chart"></canvas></div>
+              <div id="yields-summary" class="dimtext lt-summary"></div>
+              <div id="yields-events" class="chart-events"></div>
+            </div>
+            <div class="macro-pane hidden" data-mpane="cpi">
+              <div id="cpi-note" class="dimtext macro-pane-note"></div>
+              <div class="chart-wrap sm"><canvas id="cpi-chart"></canvas></div>
+            </div>
+            <div class="macro-pane hidden" data-mpane="usjp" id="usjp-panel">
+              <div id="usjp-note" class="dimtext macro-pane-note"></div>
+              <div class="chart-wrap"><canvas id="usjp-chart"></canvas></div>
+              <div id="usjp-summary" class="dimtext lt-summary"></div>
+              <div id="usjp-events" class="chart-events"></div>
+            </div>
+          </section>
+
+          <section id="m-read" class="panel macro-read-card">
+            <div class="ph"><span class="ph-t">THE READ</span><span class="dimtext">policy · market · inflation</span></div>
+            <ul id="macro-read-list" class="macro-read-list"></ul>
+          </section>
+
+          <details class="fold-panel macro-detail" id="m-country-detail">
+            <summary>COUNTRY DETAIL — growth, debt, commodities</summary>
+            <div class="fold-body"><div id="macro-detail" class="macro"></div></div>
+          </details>
         </div>
-        <div class="chart-wrap lg"><canvas id="macro-chart"></canvas></div>
-        <div id="macro-chart-note" class="dimtext lt-summary"></div>
-        <div id="macro-chart-events" class="chart-events"></div>
-      </section>
-      <section id="m-news" class="panel">
-        <div class="ph"><span class="ph-t">REGIONAL NEWS</span><span id="macro-news-sub" class="dimtext"></span></div>
-        <div id="macro-news" class="news"></div>
-      </section>
-      <section id="m-fx" class="panel">
-        <div class="ph"><span class="ph-t">CURRENCY — <span id="fx-scope">COUNTRY</span></span><span class="dimtext">the chosen country's currency · click for its chart</span></div>
-        <div id="macro-fx" class="macro"></div>
-      </section>
-      <details class="fold-panel" id="cat-fold">
-        <summary>UPCOMING CATALYSTS — <span id="cat-scope">REGION</span> <span id="cat-count" class="dimtext"></span></summary>
-        <div class="fold-body"><div id="macro-events" class="macro"></div></div>
-      </details>
+
+        <aside class="macro-rail">
+          <section id="m-fx" class="panel">
+            <div class="ph"><span class="ph-t">CURRENCY</span><span id="fx-scope" class="dimtext">COUNTRY</span></div>
+            <div id="macro-fx" class="macro"></div>
+          </section>
+          <section id="m-news" class="panel">
+            <div class="ph"><span class="ph-t">REGIONAL NEWS</span><span id="macro-news-sub" class="dimtext"></span></div>
+            <div id="macro-news" class="news macro-news"></div>
+          </section>
+          <section id="m-cross" class="panel">
+            <div class="ph"><span class="ph-t">CROSS-ASSET</span><span class="dimtext">how this region is affected</span></div>
+            <div id="macro-cross" class="macro"></div>
+          </section>
+          <details class="fold-panel" id="cat-fold">
+            <summary>UPCOMING CATALYSTS — <span id="cat-scope">REGION</span> <span id="cat-count" class="dimtext"></span></summary>
+            <div class="fold-body"><div id="macro-events" class="macro"></div></div>
+          </details>
+        </aside>
+      </div>
     </div>
 
     <footer id="notes"></footer>
