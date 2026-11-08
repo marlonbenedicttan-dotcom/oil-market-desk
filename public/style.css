@@ -2575,3 +2575,18 @@ body.gs-search-open { overflow: hidden; }
   .gb-table th:first-child, .gb-table td:first-child { position: sticky; left: 0; background: var(--panel); z-index: 1; }
   .gb-table thead th:first-child { background: #0c0f13; z-index: 2; }
 }
+
+/* The phone layout turns markets / ideas / watchlist into one-row swipe strips, so the desktop
+   reservations above are the wrong shape. These are the strip heights: one row, not five. Keeping
+   them reserved removes the first-visit jumps without leaving the empty vertical space that made
+   the desktop-sized boxes wrong on a phone. They come after the min-height:0 reset on purpose. */
+@media (max-width: 900px) {
+  #home-brief { min-height: 145px; }
+  #home-brief-more { min-height: 470px; }
+  #calendar { min-height: 430px; }
+  #home-watch { min-height: 285px; }
+  #home-backdrop { min-height: 230px; }
+  #home-markets { min-height: 125px; }
+  #home-ideas { min-height: 170px; }
+  #screen { min-height: 700px; }
+}
