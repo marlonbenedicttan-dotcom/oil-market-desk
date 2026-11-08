@@ -9149,6 +9149,212 @@ const GMAP_LABEL = {
 };
 const GMARKET_COLORS = { us:'#4f8cff', jp:'#e05252', kr:'#2fb5a8', tw:'#d4a017', hk:'#c8574f', au:'#6f8f3f', in:'#c2703d', id:'#b03a48', br:'#2e9e5b', za:'#c9a227' };
 
+const GB_FLAG = { us: '🇺🇸', jp: '🇯🇵', kr: '🇰🇷', tw: '🇹🇼', hk: '🇭🇰', au: '🇦🇺', in: '🇮🇳', id: '🇮🇩', br: '🇧🇷', za: '🇿🇦' };
+// Brighter than the old muted set: the mix bar and the map have to read at a glance on a dark panel.
+const GB_COLORS = { us: '#5aa2ff', jp: '#ff5c5c', kr: '#2fd4c4', tw: '#ffc233', hk: '#ff6b5e', au: '#8fd14f', in: '#ff9b52', id: '#ff4d6d', br: '#3ddc84', za: '#ffd54a' };
+let gbMSort = 'cap', gbTopTab = 'cap', gbScrSort = 'cap', gbScrLimit = 50;
+let gbScr = { market: 'all', sector: 'all', peMax: 0, roeMin: '', capMin: 0, ytdMin: '', q: '' };
+let gbScrRows = [], gbScrTotal = 0, gbSectorsLoaded = false, gbThemeAll = false, gbQTimer = 0, gbScrSeq = 0;
+
+const gbCap = (v) => coMoney(v);
+
+function gbHero(home) {
+  const adv = home.adv ?? 0, dec = home.dec ?? 0, tot = adv + dec;
+  const best = home.best, worst = home.worst;
+  return `<section class="gb-hero">
+    <div class="gb-hero-main">
+      <span class="k">GLOBAL COVERAGE</span>
+      <div class="big">${gbCap(home.totalCapUsd)}</div>
+      <div class="sub">${Number(home.companies || 0).toLocaleString()} companies · ${home.markets.length} markets</div>
+      <div class="asof">prices as of ${home.pricesAsOf ? dealDateY(home.pricesAsOf) : '—'} · filings daily</div>
+    </div>
+    <div class="gb-stats">
+      <div class="gb-stat"><span class="k">MEDIAN P/E</span><span class="v">${home.medianPe == null ? '—' : home.medianPe.toFixed(1) + '×'}</span><span class="b">across all covered companies</span></div>
+      <div class="gb-stat"><span class="k">BREADTH</span><span class="v small"><span class="pos">${adv.toLocaleString()}</span> up · <span class="neg">${dec.toLocaleString()}</span> down</span><div class="gb-breadth"><i style="width:${tot ? (adv / tot * 100).toFixed(1) : 0}%;background:#00e676"></i><i style="width:${tot ? (dec / tot * 100).toFixed(1) : 0}%;background:#ff5252"></i></div></div>
+      <div class="gb-stat"><span class="k">BEST MARKET · YTD</span><span class="v pos">${best ? `${GB_FLAG[best.id] || ''} ${esc(best.label)}` : '—'}</span><span class="b">${best && best.chgYtd != null ? `${pctf(best.chgYtd)} YTD · ${esc(best.index || '')}` : ''}</span></div>
+      <div class="gb-stat"><span class="k">WORST MARKET · YTD</span><span class="v neg">${worst ? `${GB_FLAG[worst.id] || ''} ${esc(worst.label)}` : '—'}</span><span class="b">${worst && worst.chgYtd != null ? `${pctf(worst.chgYtd)} YTD · ${esc(worst.index || '')}` : ''}</span></div>
+    </div>
+  </section>`;
+}
+
+function gbMap(home) {
+  const max = Math.max(...home.markets.map((m) => m.capUsd || 0), 1);
+  return `<section class="gb-card">
+    <div class="gb-head"><span class="t">MARKET MAP</span><span class="s">bubble = market cap · colour = YTD</span></div>
+    <div class="gb-map"><img src="/world-map.svg" alt="World map of covered markets"><div class="gb-bubbles">${home.markets.map((m) => {
+    const cap = m.capUsd || 0;
+    const size = Math.round(9 + 27 * Math.sqrt(cap / max));
+    const [x, y] = GMAP[m.id] || [50, 50];
+    const lab = GMAP_LABEL[m.id] || { side: 'right', dy: 0 };
+    const up = (m.chgYtd || 0) >= 0;
+    return `<div class="gb-pin ${lab.side || 'right'}" style="left:${x}%;top:${y}%"><button type="button" class="gb-bubble ${up ? 'up' : 'down'}" style="width:${size}px;height:${size}px" data-gb-market="${esc(m.id)}" title="${esc(m.label)} · ${pctf(m.chgYtd)} YTD · ${gbCap(cap)}"></button><span class="gb-lbl" style="margin-top:${lab.dy || 0}px"><b>${esc(String(m.id).toUpperCase())}</b></span></div>`;
+  }).join('')}</div></div>
+  </section>`;
+}
+
+function gbMarketsRows(home) {
+  const rows = [...home.markets];
+  const key = {
+    cap: (m) => m.capUsd || 0,
+    ytd: (m) => m.chgYtd ?? -1e9,
+    pe: (m) => (m.pe == null ? 1e9 : -m.pe),
+    breadth: (m) => (m.adv || 0) / Math.max(1, (m.adv || 0) + (m.dec || 0)),
+  }[gbMSort] || ((m) => m.capUsd || 0);
+  rows.sort((a, b) => key(b) - key(a));
+  const head = `<div class="gb-mrow head"><span class="rk">#</span><span>MARKET</span><span class="num">CAP</span><span class="num">YTD</span><span class="num">P/E</span><span>BREADTH</span></div>`;
+  return head + rows.map((m, i) => {
+    const adv = m.adv || 0, dec = m.dec || 0, tot = adv + dec;
+    return `<div class="gb-mrow" data-gb-market="${esc(m.id)}"><span class="rk">${i + 1}</span><span class="nm"><span class="fl">${GB_FLAG[m.id] || ''}</span><span class="n">${esc(m.label)} <span class="ix">${esc(m.index || '')}</span></span></span><span class="num">${gbCap(m.capUsd)}</span><span class="num ${cls(m.chgYtd)}">${m.chgYtd == null ? '—' : pctf(m.chgYtd)}</span><span class="num">${m.pe == null ? '—' : m.pe.toFixed(1) + '×'}</span><span class="bar" title="${adv.toLocaleString()} up · ${dec.toLocaleString()} down"><i style="width:${tot ? (adv / tot * 100).toFixed(0) : 0}%;background:#00e676"></i><i style="width:${tot ? (dec / tot * 100).toFixed(0) : 0}%;background:#ff5252"></i></span></div>`;
+  }).join('');
+}
+
+function gbMarkets(home) {
+  return `<section class="gb-card">
+    <div class="gb-head"><span class="t">MARKETS</span><span class="s">click a row to open</span></div>
+    <div class="gb-mtabs">${[['cap', 'CAP'], ['ytd', 'YTD'], ['pe', 'P/E'], ['breadth', 'BREADTH']].map(([k, t]) => `<button type="button" data-gb-ms="${k}" class="${gbMSort === k ? 'on' : ''}">${t}</button>`).join('')}</div>
+    <div id="gb-markets">${gbMarketsRows(home)}</div>
+  </section>`;
+}
+
+function gbSectors(home) {
+  const list = home.sectors || [];
+  const max = list[0] ? list[0].cap : 1;
+  const total = list.reduce((a, s) => a + s.cap, 0) || 1;
+  return `<section class="gb-card">
+    <div class="gb-head"><span class="t">SECTOR ALLOCATION</span><span class="s">share of total market cap</span></div>
+    <div class="gb-sectors">${list.map((s) => `<div class="gb-srow"><span class="sn">${esc(s.name)}</span><span class="sb"><i style="width:${(s.cap / max * 100).toFixed(1)}%"></i></span><span class="sv">${gbCap(s.cap)} <span class="dim">${(s.cap / total * 100).toFixed(0)}%</span></span></div>`).join('')}</div>
+  </section>`;
+}
+
+function gbScreenerShell(home) {
+  return `<section class="gb-card" id="gb-screener">
+    <div class="gb-head"><span class="t">GLOBAL SCREENER</span><span class="s" id="gb-scr-count"></span></div>
+    <div class="gb-filters">
+      <select id="gb-f-market"><option value="all">All markets</option>${home.markets.map((m) => `<option value="${esc(m.id)}">${GB_FLAG[m.id] || ''} ${esc(m.label)}</option>`).join('')}</select>
+      <select id="gb-f-sector"><option value="all">All sectors</option></select>
+      <select id="gb-f-pe"><option value="0">P/E any</option><option value="10">P/E &lt; 10</option><option value="15">P/E &lt; 15</option><option value="20">P/E &lt; 20</option><option value="30">P/E &lt; 30</option></select>
+      <select id="gb-f-roe"><option value="">ROE any</option><option value="10">ROE &gt; 10%</option><option value="15">ROE &gt; 15%</option><option value="20">ROE &gt; 20%</option></select>
+      <select id="gb-f-cap"><option value="0">Cap any</option><option value="1e10">Cap &gt; $10B</option><option value="5e10">Cap &gt; $50B</option><option value="1e11">Cap &gt; $100B</option></select>
+      <select id="gb-f-ytd"><option value="">YTD any</option><option value="0">YTD &gt; 0%</option><option value="10">YTD &gt; 10%</option><option value="25">YTD &gt; 25%</option></select>
+      <input id="gb-f-q" type="search" placeholder="Filter by name or ticker…">
+    </div>
+    <div class="gb-scroll" id="gb-scr-table"></div>
+    <div class="gb-note"><span id="gb-scr-note"></span><span id="gb-scr-more"></span></div>
+  </section>`;
+}
+
+async function gbLoadScreener() {
+  const seq = ++gbScrSeq;
+  const p = new URLSearchParams({
+    market: gbScr.market, sector: gbScr.sector,
+    peMax: String(gbScr.peMax || 0),
+    roeMin: gbScr.roeMin === '' ? '' : String(gbScr.roeMin),
+    capMin: String(gbScr.capMin || 0),
+    ytdMin: gbScr.ytdMin === '' ? '' : String(gbScr.ytdMin),
+    q: gbScr.q, sort: gbScrSort, limit: String(gbScrLimit), offset: '0',
+  });
+  const d = await jget('/api/global-companies?' + p.toString(), 120000).catch(() => null);
+  if (seq !== gbScrSeq || !d) return;
+  if (!gbSectorsLoaded && Array.isArray(d.sectors)) {
+    const sel = $('gb-f-sector');
+    if (sel) sel.innerHTML = '<option value="all">All sectors</option>' + d.sectors.map((s) => `<option value="${esc(s)}">${esc(s)}</option>`).join('');
+    gbSectorsLoaded = true;
+  }
+  gbScrRows = d.rows || []; gbScrTotal = d.total || 0;
+  gbRenderScreener();
+}
+
+function gbRenderScreener() {
+  const rows = gbScrRows;
+  const head = `<tr><th>COMPANY</th><th>MARKET</th><th>SECTOR</th><th data-gb-sort="cap" class="${gbScrSort === 'cap' ? 'on' : ''}">MKT CAP</th><th data-gb-sort="pe" class="${gbScrSort === 'pe' ? 'on' : ''}">P/E</th><th data-gb-sort="roe" class="${gbScrSort === 'roe' ? 'on' : ''}">ROE</th><th data-gb-sort="ytd" class="${gbScrSort === 'ytd' ? 'on' : ''}">YTD</th></tr>`;
+  const body = rows.map((r) => `<tr data-gb-company="${esc(r.m)}:${esc(r.id)}"><td>${esc(r.t)} <span class="dim">${esc(r.n)}</span></td><td>${GB_FLAG[r.m] || ''} ${esc(String(r.m).toUpperCase())}</td><td>${esc(r.s)}</td><td style="text-align:right">${gbCap(r.cap)}</td><td style="text-align:right">${r.pe == null ? '—' : r.pe.toFixed(1) + '×'}</td><td style="text-align:right">${r.roe == null ? '—' : r.roe.toFixed(1) + '%'}</td><td style="text-align:right" class="${cls(r.ytd)}">${r.ytd == null ? '—' : pctf(r.ytd)}</td></tr>`).join('');
+  const table = $('gb-scr-table'); if (table) table.innerHTML = `<table class="gb-table"><thead>${head}</thead><tbody>${body}</tbody></table>`;
+  const count = $('gb-scr-count'); if (count) count.textContent = `${gbScrTotal.toLocaleString()} companies`;
+  const note = $('gb-scr-note'); if (note) note.textContent = `showing ${rows.length} of ${gbScrTotal.toLocaleString()}`;
+  const more = $('gb-scr-more');
+  if (more) more.innerHTML = rows.length < gbScrTotal && gbScrLimit < 200 ? '<button type="button" class="gb-more" data-gb-more="1">SHOW MORE</button>' : '';
+}
+
+async function gbLoadTop() {
+  const p = new URLSearchParams({ sort: gbTopTab, limit: '8' });
+  // Curated tabs: keep micro-caps, loss-makers and split-driven outliers out of "best"/"cheapest".
+  if (gbTopTab !== 'cap') p.set('capMin', '1e9');
+  if (gbTopTab === 'ytd') p.set('ytdMax', '300');
+  if (gbTopTab === 'pe') p.set('peMin', '2');
+  if (gbTopTab === 'roe') { p.set('roeMin', '15'); p.set('peMax', '20'); p.set('peMin', '2'); }
+  const d = await jget('/api/global-companies?' + p.toString(), 120000).catch(() => null);
+  if (!d) return;
+  const el = $('gb-top'); if (!el) return;
+  el.innerHTML = (d.rows || []).map((r) => `<div class="gb-trow" data-gb-company="${esc(r.m)}:${esc(r.id)}"><span class="tk">${esc(String(r.t).slice(0, 2))}</span><span><span class="n">${esc(r.n)}</span><span class="s">${esc(r.s)} · ${esc(String(r.m).toUpperCase())}</span></span><span class="num">${gbCap(r.cap)}</span><span class="num">${r.pe == null ? '—' : r.pe.toFixed(1) + '×'}</span><span class="num ${cls(r.ytd)}">${r.ytd == null ? '—' : pctf(r.ytd)}</span></div>`).join('');
+}
+
+function gbTheme() {
+  const themes = globalThemesData && globalThemesData.themes;
+  const chips = $('gtheme-chips'), body = $('gtheme-body'), meta = $('gtheme-meta'), mixEl = $('gtheme-mix');
+  if (!chips || !body || !themes) return;
+  const t = themes.find((x) => x.id === globalThemeSel) || themes[0];
+  if (!t) return;
+  chips.innerHTML = themes.map((x) => `<button type="button" class="gtheme-chip${x.id === t.id ? ' on' : ''}" data-gtheme="${esc(x.id)}">${esc(x.label)}</button>`).join('');
+  if (meta) meta.textContent = `${t.count || 0} companies · ${t.markets || 0} markets · ${gbCap(t.totalCap)}`;
+  if (mixEl) mixEl.innerHTML = (t.mix || []).map((x) => `<i style="width:${x.pct}%;background:${GB_COLORS[x.market] || 'var(--dim)'}"></i>`).join('');
+  const members = t.members || [];
+  const shown = gbThemeAll ? members : members.slice(0, 6);
+  body.innerHTML = `<div class="gmix-legend">${(t.mix || []).map((x) => `<span><i style="background:${GB_COLORS[x.market] || 'var(--dim)'}"></i>${esc(String(x.market).toUpperCase())} ${x.pct}%</span>`).join('')}</div>`
+    + `<div class="gb-theme-list">${shown.map((m) => `<div class="gb-trow" data-gb-company="${esc(m.market)}:${esc(m.id || m.ticker)}"><span class="tk">${esc(String(m.ticker).slice(0, 2))}</span><span><span class="n">${esc(m.name)}</span><span class="s">${esc(m.sector || '')} · ${esc(String(m.market).toUpperCase())}</span></span><span class="num">${gbCap(m.capUsd)}</span><span class="num">${m.pe == null ? '—' : m.pe.toFixed(1) + '×'}</span><span class="num ${cls(m.chgYtd)}">${m.chgYtd == null ? '—' : pctf(m.chgYtd)}</span></div>`).join('')}</div>`
+    + (members.length > 6 ? `<div class="gb-note"><span>showing ${shown.length} of ${members.length}</span><button type="button" class="gb-more" data-gb-themeall="1">${gbThemeAll ? 'SHOW LESS' : 'SHOW ALL'}</button></div>` : '');
+}
+
+function gbIdeas(home) {
+  const ideas = home.ideas || {};
+  const cards = [
+    { id: 'cheap', k: 'CHEAP VS ITS OWN HISTORY', n: ideas.cheap, u: 'names', p: 'P/E in the bottom 20% of its own five-year range, across all ten markets.' },
+    { id: 'filings', k: 'NEW FILINGS · US', n: ideas.filings, u: 'names this week', p: 'New 10-K / 10-Q filings with updated revenue, earnings and balance sheet.' },
+    { id: 'quality', k: 'QUALITY AT A REASONABLE PRICE', n: ideas.quality, u: 'names', p: 'ROE ≥ 15% and P/E ≤ 20, across all ten markets.' },
+  ];
+  return `<div class="gb-ideas">${cards.map((c) => `<button type="button" class="gb-idea" data-gb-idea="${c.id}"><span class="k">${c.k}</span><span class="n">${Number(c.n || 0).toLocaleString()}<small>${c.u}</small></span><p>${c.p}</p><span class="go">OPEN IN SCREENER →</span></button>`).join('')}</div>`;
+}
+
+function gbSyncFilterUi() {
+  const set = (id, v) => { const el = $(id); if (el) el.value = v; };
+  set('gb-f-market', gbScr.market);
+  set('gb-f-sector', gbScr.sector);
+  set('gb-f-pe', String(gbScr.peMax || 0));
+  set('gb-f-roe', gbScr.roeMin === '' ? '' : String(gbScr.roeMin));
+  set('gb-f-cap', String(gbScr.capMin || 0));
+  set('gb-f-ytd', gbScr.ytdMin === '' ? '' : String(gbScr.ytdMin));
+  set('gb-f-q', gbScr.q);
+  document.querySelectorAll('[data-gb-sort]').forEach((b) => b.classList.toggle('on', b.dataset.gbSort === gbScrSort));
+}
+
+function gbBindFilters() {
+  const read = () => {
+    gbScr = {
+      market: $('gb-f-market')?.value || 'all',
+      sector: $('gb-f-sector')?.value || 'all',
+      peMax: Number($('gb-f-pe')?.value) || 0,
+      roeMin: $('gb-f-roe')?.value || '',
+      capMin: Number($('gb-f-cap')?.value) || 0,
+      ytdMin: $('gb-f-ytd')?.value || '',
+      q: $('gb-f-q')?.value.trim() || '',
+    };
+    gbScrLimit = 50;
+    gbLoadScreener();
+  };
+  ['gb-f-market', 'gb-f-sector', 'gb-f-pe', 'gb-f-roe', 'gb-f-cap', 'gb-f-ytd'].forEach((id) => $(id)?.addEventListener('change', read));
+  $('gb-f-q')?.addEventListener('input', () => { clearTimeout(gbQTimer); gbQTimer = setTimeout(read, 300); });
+}
+
+function gbApplyIdea(kind) {
+  gbScr = { market: 'all', sector: 'all', peMax: 0, roeMin: '', capMin: 0, ytdMin: '', q: '' };
+  gbScrLimit = 50;
+  if (kind === 'cheap') { gbScr.peMax = 15; gbScrSort = 'pe'; }
+  else if (kind === 'quality') { gbScr.roeMin = '15'; gbScr.peMax = 20; gbScrSort = 'roe'; }
+  else if (kind === 'filings') { gbScr.market = 'us'; gbScrSort = 'cap'; }
+  gbSyncFilterUi();
+  gbLoadScreener();
+  document.getElementById('gb-screener')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
 async function renderGlobalBoard(token) {
   const el = $('co-body'); if (!el) return;
   el.innerHTML = stLoading('Loading the global board…');
@@ -9158,73 +9364,56 @@ async function renderGlobalBoard(token) {
   ]);
   if (stale(token)) return;
   if (!home || !Array.isArray(home.markets) || !home.markets.length) { el.innerHTML = stError('Couldn’t load the global board — retrying.'); return; }
-  globalBoardData = home; globalThemesData = themes; if (themes && themes.themes && !themes.themes.some((t) => t.id === globalThemeSel)) globalThemeSel = themes.themes[0]?.id || 'ai';
+  globalBoardData = home; globalThemesData = themes;
+  gbScr = { market: 'all', sector: 'all', peMax: 0, roeMin: '', capMin: 0, ytdMin: '', q: '' };
+  gbScrLimit = 50; gbScrSort = 'cap'; gbSectorsLoaded = false;
+  if (themes && themes.themes && !themes.themes.some((t) => t.id === globalThemeSel)) globalThemeSel = themes.themes[0]?.id || 'ai';
   const sub = $('deals-sub');
   if (sub) sub.textContent = `${home.markets.length} markets · ${Number(home.companies || 0).toLocaleString()} companies · global board`;
   const note = $('co-note'); if (note) note.classList.add('hidden');
   const mctx = $('co-mctx'); if (mctx) mctx.classList.add('hidden');
   syncCoTools();
-  const adv = home.markets.filter((m) => (m.chg1d || 0) > 0).length;
-  const dec = home.markets.filter((m) => (m.chg1d || 0) < 0).length;
-  const markers = home.markets.map((m) => {
-    const [x, y] = GMAP[m.id] || [50, 50];
-    const lab = GMAP_LABEL[m.id] || { side: 'right', gap: 13, dy: -4 };
-    const labelStyle = lab.side === 'left'
-      ? `left:auto;right:${lab.gap}px;top:${lab.dy}px`
-      : `left:${lab.gap}px;top:${lab.dy}px`;
-    return `<button type="button" class="gmap-dot ${cls(m.chg1d)}" data-region="${esc(m.id)}" style="left:${x}%;top:${y}%" title="${esc(m.label)} · ${esc(m.index)} ${pctf(m.chg1d)}"><span style="${labelStyle}">${esc(String(m.id).toUpperCase())}</span></button>`;
-  }).join('');
-  const tiles = home.markets.map((m) => {
-    const total = (m.adv || 0) + (m.dec || 0);
-    const wa = total ? Math.round((m.adv / total) * 100) : 0;
-    const dp = Math.abs(m.level) >= 1000 ? 0 : 2;
-    return `<button class="home-mkt" type="button" data-region="${esc(m.id)}" title="${esc(m.label)} — open the market">`
-      + `<span class="top"><span class="code">${esc(String(m.id).toUpperCase())}</span><span class="nm">${esc(m.index || '')}</span></span>`
-      + `<span class="lvl">${fmtNum(m.level, dp)}</span>`
-      + `<span class="rets"><em class="${cls(m.chg1d)}">${m.chg1d == null ? '—' : pctf(m.chg1d)}</em><span>YTD ${m.chgYtd == null ? '—' : `${m.chgYtd >= 0 ? '+' : ''}${m.chgYtd.toFixed(2)}%`}</span></span>`
-      + `<span class="bar"><i style="width:${wa}%;background:var(--green)"></i><i style="width:${100 - wa}%;background:var(--red)"></i></span>`
-      + `<span class="foot"><span>${m.adv == null ? '—' : `${m.adv} / ${m.dec}`}</span><span>P/E ${m.pe == null ? '—' : m.pe.toFixed(1)}</span></span>`
-      + `</button>`;
-  }).join('');
-  const top = (home.top || []).map((c) => `<tr><td><div class="gco"><span class="tk">${esc(c.ticker)}</span><span class="nm">${esc(c.name)}</span></div><span class="sub">${esc(c.sector || '')}</span></td>`
-    + `<td><span class="gmk">${esc(c.market.toUpperCase())}</span></td><td>${coMoney(c.capUsd)}</td><td>${c.pe == null ? '—' : `${c.pe.toFixed(1)}×`}</td><td class="${cls(c.chgYtd)}">${c.chgYtd == null ? '—' : pctf(c.chgYtd)}</td></tr>`).join('');
-  const ideas = home.ideas || {};
-  el.innerHTML = `<div class="gmap-card">
-      <div class="gmap-overlay"><div class="l">GLOBAL COVERAGE<b>${home.markets.length} markets · ${Number(home.companies || 0).toLocaleString()} companies</b></div><div class="gmap-legend"><span><i style="background:var(--green)"></i>${adv} advancing</span><span><i style="background:var(--red)"></i>${dec} declining</span></div></div>
-      <div class="gmap"><img src="/world-map.svg" alt="World map of covered markets"><div class="gmap-markers">${markers}</div></div>
-      <div class="gmap-foot"><span>flat map · markers coloured by 1D move · click a market to open its overview</span><span>prices as of ${home.pricesAsOf ? dealDateY(home.pricesAsOf) : '—'}</span></div>
-    </div>
-    <div class="home-markets gboard-markets">${tiles}</div>
-    <div class="gboard-two">
-      <div class="panel gtheme"><div class="gtheme-head"><span class="t">GLOBAL THEME</span><span class="m" id="gtheme-meta"></span></div><div class="gtheme-chips" id="gtheme-chips"></div><div id="gtheme-body"></div></div>
-      <div class="panel gtop"><div class="gtheme-head"><span class="t">GLOBAL TOP COMPANIES</span><span class="m">one class per issuer · USD market cap</span></div><table class="gtable"><thead><tr><th>COMPANY</th><th>MARKET</th><th>MKT CAP</th><th>P/E</th><th>YTD</th></tr></thead><tbody>${top}</tbody></table></div>
-    </div>
-    <div class="home-ideas">${[
-      { k: 'CHEAP VS ITS OWN HISTORY', n: ideas.cheap, unit: 'names', p: 'P/E in the bottom 20% of its own five-year range, across all ten markets.' },
-      { k: 'NEW FILINGS · US', n: ideas.filings, unit: 'names this week', p: 'New 10-K / 10-Q filings with updated revenue, earnings and balance sheet.' },
-      { k: 'QUALITY AT A REASONABLE PRICE', n: ideas.quality, unit: 'names', p: 'ROE ≥ 15% and P/E ≤ 20, across all ten markets.' },
-    ].map((x) => `<div class="home-idea"><span class="k">${x.k}</span><span class="n">${Number(x.n || 0).toLocaleString()}<small>${x.unit}</small></span><p>${x.p}</p></div>`).join('')}</div>`;
-  renderGlobalTheme();
-}
-
-function renderGlobalTheme() {
-  const chips = $('gtheme-chips'), body = $('gtheme-body'), meta = $('gtheme-meta');
-  if (!chips || !body || !globalThemesData || !Array.isArray(globalThemesData.themes)) return;
-  const themes = globalThemesData.themes;
-  const t = themes.find((x) => x.id === globalThemeSel) || themes[0];
-  if (!t) return;
-  chips.innerHTML = themes.map((x) => `<button type="button" class="gtheme-chip${x.id === t.id ? ' on' : ''}" data-gtheme="${esc(x.id)}">${esc(x.label)}</button>`).join('');
-  if (meta) meta.textContent = `${t.count || 0} companies · ${t.markets || 0} markets · ${coMoney(t.totalCap)}`;
-  const mix = (t.mix || []).map((x) => `<i style="width:${x.pct}%;background:${GMARKET_COLORS[x.market] || 'var(--dim)'}"></i>`).join('');
-  const legend = (t.mix || []).map((x) => `<span>${esc(String(x.market).toUpperCase())} ${x.pct}%</span>`).join('');
-  const rows = (t.members || []).map((m) => `<tr><td><div class="gco"><span class="tk">${esc(m.ticker)}</span><span class="nm">${esc(m.name)}</span></div><span class="sub">${esc(m.sector || '')}</span></td>`
-    + `<td><span class="gmk">${esc(String(m.market).toUpperCase())}</span></td><td>${coMoney(m.capUsd)}</td><td>${m.pe == null ? '—' : `${m.pe.toFixed(1)}×`}</td><td class="${cls(m.chgYtd)}">${m.chgYtd == null ? '—' : pctf(m.chgYtd)}</td></tr>`).join('');
-  body.innerHTML = `<div class="gmix">${mix}</div><div class="gmix-legend">${legend}</div><table class="gtable"><thead><tr><th>COMPANY</th><th>MARKET</th><th>MKT CAP</th><th>P/E</th><th>YTD</th></tr></thead><tbody>${rows}</tbody></table>`;
+  el.innerHTML = gbHero(home)
+    + `<div class="gb-split">${gbMap(home)}${gbMarkets(home)}</div>`
+    + gbSectors(home)
+    + gbScreenerShell(home)
+    + `<div class="gb-split"><section class="gb-card"><div class="gb-head"><span class="t">GLOBAL THEME</span><span class="s" id="gtheme-meta"></span></div><div class="gtheme-chips" id="gtheme-chips"></div><div class="gmix" id="gtheme-mix"></div><div id="gtheme-body"></div></section><section class="gb-card"><div class="gb-head"><span class="t">GLOBAL TOP COMPANIES</span><span class="s">one class per issuer · USD</span></div><div class="gb-ttabs">${[['cap', 'LARGEST'], ['ytd', 'BEST YTD'], ['pe', 'CHEAPEST'], ['roe', 'QUALITY']].map(([k, t]) => `<button type="button" data-gb-top="${k}" class="${gbTopTab === k ? 'on' : ''}">${t}</button>`).join('')}</div><div id="gb-top"></div></section></div>`
+    + gbIdeas(home);
+  gbTheme();
+  gbBindFilters();
+  gbLoadScreener();
+  gbLoadTop();
 }
 
 document.addEventListener('click', (e) => {
+  const market = e.target.closest('[data-gb-market]');
+  if (market) { gsRouteOpenMarket(market.dataset.gbMarket, 'market'); return; }
+  const co = e.target.closest('[data-gb-company]');
+  if (co) { const [m, id] = co.dataset.gbCompany.split(':'); gsRouteOpenCompany(m, id); return; }
+  const ms = e.target.closest('[data-gb-ms]');
+  if (ms) {
+    gbMSort = ms.dataset.gbMs;
+    document.querySelectorAll('[data-gb-ms]').forEach((b) => b.classList.toggle('on', b === ms));
+    const box = $('gb-markets'); if (box && globalBoardData) box.innerHTML = gbMarketsRows(globalBoardData);
+    return;
+  }
+  const sort = e.target.closest('[data-gb-sort]');
+  if (sort) { gbScrSort = sort.dataset.gbSort; gbScrLimit = 50; gbLoadScreener(); return; }
+  const top = e.target.closest('[data-gb-top]');
+  if (top) {
+    gbTopTab = top.dataset.gbTop;
+    document.querySelectorAll('[data-gb-top]').forEach((b) => b.classList.toggle('on', b === top));
+    gbLoadTop();
+    return;
+  }
+  const more = e.target.closest('[data-gb-more]');
+  if (more) { gbScrLimit = Math.min(200, gbScrLimit + 50); gbLoadScreener(); return; }
+  const themeAll = e.target.closest('[data-gb-themeall]');
+  if (themeAll) { gbThemeAll = !gbThemeAll; gbTheme(); return; }
+  const idea = e.target.closest('[data-gb-idea]');
+  if (idea) { gbApplyIdea(idea.dataset.gbIdea); return; }
   const chip = e.target.closest('[data-gtheme]');
-  if (chip) { globalThemeSel = chip.dataset.gtheme; renderGlobalTheme(); }
+  if (chip) { globalThemeSel = chip.dataset.gtheme; gbTheme(); }
 });
 
 function renderCompanies() {

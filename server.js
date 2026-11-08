@@ -944,6 +944,24 @@ function globalSearchQuick() {
 }
 const GLOBAL_SEARCH_CACHE = new Map();
 
+// The global screener's row set: one compact line per issuer, projected from the search index that is
+// already in memory. The global board uses it for the market/sector totals and the screener.
+let GLOBAL_ROWS_CACHE = { at: 0, rows: null };
+function globalRows() {
+  if (GLOBAL_ROWS_CACHE.rows && Date.now() - GLOBAL_ROWS_CACHE.at < 5 * 60e3) return GLOBAL_ROWS_CACHE.rows;
+  const rows = [];
+  for (const e of (globalSearchIndex().entries || [])) {
+    if (e.securityType === 'BDR') continue;
+    rows.push({
+      m: e.market, id: e.id, t: e.ticker || e.code, n: e.nameEn || e.name || e.ticker,
+      s: e.sector || 'Other', cap: e.capUsd || 0,
+      pe: e.pe == null ? null : e.pe, roe: e.roe == null ? null : e.roe, ytd: e.ytd == null ? null : e.ytd,
+    });
+  }
+  GLOBAL_ROWS_CACHE = { at: Date.now(), rows };
+  return rows;
+}
+
 // ---------------------------------------------------------------------------
 // Chart store — one byte-range read per chart, instead of parsing a whole market.
 //
@@ -1606,6 +1624,15 @@ function homeSummary() {
   const usAdv = us.filter((c) => (c.chg1d || 0) > 0).length;
   const usDec = us.filter((c) => (c.chg1d || 0) < 0).length;
   const usPe = median(us.map((c) => (c.pe > 0 && c.pe < 500 ? c.pe : null)));
+  // Global totals and the sector split, from the same row set the screener uses.
+  const grow = globalRows();
+  const capByMarket = {};
+  let totalCapUsd = 0;
+  for (const r of grow) { capByMarket[r.m] = (capByMarket[r.m] || 0) + r.cap; totalCapUsd += r.cap; }
+  const medianPe = median(grow.map((r) => (r.pe > 0 && r.pe < 500 ? r.pe : null)));
+  const sectorCap = {};
+  for (const r of grow) sectorCap[r.s] = (sectorCap[r.s] || 0) + r.cap;
+  const sectors = Object.entries(sectorCap).sort((a, b) => b[1] - a[1]).slice(0, 8).map(([name, cap]) => ({ name, cap }));
   const out = [];
   const add = (id, label, idx, count, adv, dec, pe) => {
     if (!idx) return;
@@ -1615,6 +1642,7 @@ function homeSummary() {
       chg1d: idx.pct1d ?? idx.chg1d ?? null,
       chgYtd: idx.pctYtd ?? idx.chgYtd ?? null,
       count, adv, dec, pe,
+      capUsd: capByMarket[id] || 0,
     });
   };
   const usg = mi.markets && mi.markets.us;
@@ -1666,6 +1694,13 @@ function homeSummary() {
     pricesAsOf,
     companies: total,
     markets: out,
+    totalCapUsd,
+    medianPe,
+    sectors,
+    adv: out.reduce((a, m) => a + (m.adv || 0), 0),
+    dec: out.reduce((a, m) => a + (m.dec || 0), 0),
+    best: out.slice().sort((a, b) => (b.chgYtd ?? -1e9) - (a.chgYtd ?? -1e9))[0] || null,
+    worst: out.slice().sort((a, b) => (a.chgYtd ?? 1e9) - (b.chgYtd ?? 1e9))[0] || null,
     top,
     ideas: { cheap, quality, filings },
   };
@@ -1737,6 +1772,7 @@ function globalThemes() {
         seen.add(id);
         members.push({
           market, ticker: c.ticker || c.code, name: c.nameEn || c.name,
+          id: c.cik || c.code || c.ticker,
           capUsd: market === 'us' ? c.marketCap : c.marketCap / fx,
           pe: c.pe ?? null, chgYtd: c.chgYtd ?? null, sector: c.sector || c.industry || null,
         });
@@ -5792,6 +5828,50 @@ const server = http.createServer(async (req, res) => {
         return sendJSONCached(res, 200, m, 'public, max-age=60, stale-while-revalidate=300');
       }
       return sendJSONCached(res, 200, mi, 'public, max-age=60, stale-while-revalidate=300');
+    }
+    if (url.pathname === '/api/global-companies') {
+      const p = url.searchParams;
+      const market = p.get('market') || 'all';
+      const sector = p.get('sector') || 'all';
+      const peMax = Number(p.get('peMax')) || 0;
+      const peMin = Number(p.get('peMin')) || 0;
+      const ytdMaxRaw = p.get('ytdMax');
+      const ytdMax = ytdMaxRaw == null || ytdMaxRaw === '' ? null : Number(ytdMaxRaw);
+      const roeRaw = p.get('roeMin');
+      const roeMin = roeRaw == null || roeRaw === '' ? null : Number(roeRaw);
+      const capMin = Number(p.get('capMin')) || 0;
+      const ytdRaw = p.get('ytdMin');
+      const ytdMin = ytdRaw == null || ytdRaw === '' ? null : Number(ytdRaw);
+      const q = String(p.get('q') || '').trim().toLowerCase();
+      const sort = p.get('sort') || 'cap';
+      const limit = Math.max(1, Math.min(200, Number(p.get('limit')) || 50));
+      const offset = Math.max(0, Number(p.get('offset')) || 0);
+      const all = globalRows();
+      const rows = all.filter((r) =>
+        (market === 'all' || r.m === market)
+        && (sector === 'all' || r.s === sector)
+        && (!peMax || (r.pe != null && r.pe > 0 && r.pe < peMax))
+        && (!peMin || (r.pe != null && r.pe >= peMin))
+        && (ytdMax == null || (r.ytd != null && r.ytd <= ytdMax))
+        && (roeMin == null || (r.roe != null && r.roe >= roeMin))
+        && (!capMin || r.cap >= capMin)
+        && (ytdMin == null || (r.ytd != null && r.ytd >= ytdMin))
+        && (!q || (r.n + ' ' + r.t).toLowerCase().includes(q)));
+      const cmp = {
+        cap: (a, b) => b.cap - a.cap,
+        ytd: (a, b) => (b.ytd ?? -1e9) - (a.ytd ?? -1e9),
+        pe: (a, b) => (a.pe == null || a.pe <= 0 ? 1e9 : a.pe) - (b.pe == null || b.pe <= 0 ? 1e9 : b.pe),
+        roe: (a, b) => (b.roe ?? -1e9) - (a.roe ?? -1e9),
+      }[sort] || ((a, b) => b.cap - a.cap);
+      rows.sort(cmp);
+      return sendJSON(res, 200, {
+        total: rows.length,
+        offset,
+        limit,
+        rows: rows.slice(offset, offset + limit),
+        sectors: [...new Set(all.map((r) => r.s))].sort(),
+        markets: [...new Set(all.map((r) => r.m))],
+      });
     }
     if (url.pathname === '/api/home') {
       return sendJSONCached(res, 200, homeSummary(), 'public, max-age=60, stale-while-revalidate=300');
