@@ -2250,7 +2250,7 @@ body.gs-search-open { overflow: hidden; }
 .comm-hero .bp-k { font-size: 9px; letter-spacing: 1.2px; }
 .comm-hero .bp-v { font-size: 21px; }
 .comm-hero .bp-v span { font-size: 10px; }
-.comm-hero .bp-spark { padding: 4px 12px 0; }
+.comm-hero .bp-spark { padding: 4px 12px 0; max-width: 560px; }
 .comm-hero .bp-spark svg { height: 34px; }
 .comm-hero .read-line { padding: 7px 12px 2px; font-size: 11.5px; color: var(--amber2); }
 .comm-hero .bp-comps { padding-top: 4px; }
@@ -2258,7 +2258,7 @@ body.gs-search-open { overflow: hidden; }
 
 #c-tiles .ph .dimtext { display: none; }
 #c-tiles #cards { padding: 8px 12px 10px; }
-#c-tiles .tiles { grid-template-columns: repeat(auto-fit, minmax(125px, 1fr)); gap: 6px; }
+#c-tiles .tiles { grid-template-columns: repeat(auto-fit, minmax(190px, 260px)); justify-content: start; gap: 6px; }
 #c-tiles .tile { padding: 6px 8px; }
 #c-tiles .t-name { font-size: 11px; }
 #c-tiles .t-px { font-size: 13px; }
@@ -2303,7 +2303,8 @@ body.gs-search-open { overflow: hidden; }
   .comm-hero .bp-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .comm-hero .bp-v { font-size: 18px; }
   .comm-hero .read-line { font-size: 10.5px; }
-  #c-tiles .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .comm-hero .bp-spark { max-width: none; }
+  #c-tiles .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); justify-content: stretch; }
   #chart-panel .chart-wrap.lg { height: 260px; }
   #chart-panel .ph { flex-wrap: wrap; }
   #chart-panel .ph .controls { width: 100%; display: grid; grid-template-columns: minmax(0, 1fr) 84px; }
