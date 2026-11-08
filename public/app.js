@@ -4064,7 +4064,9 @@ function jumpToSection(t) {
   const go = () => {
     if (!t.getClientRects().length) return;
     const r = t.getBoundingClientRect();
-    if (r.top >= -8 && r.top <= window.innerHeight * 0.55) return;
+    // Once the section is on screen, leave it alone: late retries must never fight a reader who has
+    // already started scrolling somewhere else. Only an off-screen target gets another attempt.
+    if (r.bottom > 0 && r.top < window.innerHeight) return;
     t.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
   go();
