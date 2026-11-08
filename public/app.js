@@ -8713,6 +8713,18 @@ function warmMarkets(delay = 1500) {
   setTimeout(() => { if (!zaData) loadSouthAfrica().catch(() => {}); }, delay + 11600);
 }
 
+// The region row scrolls sideways on a phone. A saved market can therefore sit off-screen; centre the
+// active pill instead of leaving the reader looking at United States while India is selected.
+function scrollActiveIntoView(row) {
+  if (!row) return;
+  const on = row.querySelector('button.on');
+  if (!on) return;
+  const r = on.getBoundingClientRect(), rr = row.getBoundingClientRect();
+  if (r.left < rr.left || r.right > rr.right) {
+    row.scrollLeft += (r.left - rr.left) - Math.max(0, (rr.width - r.width) / 2);
+  }
+}
+
 function renderCompanies() {
   // A new company starts without the previous company's benchmark. Same-company re-renders (a watch
   // star, a range change) keep it.
@@ -8720,6 +8732,7 @@ function renderCompanies() {
   paintCoViews();
   // Keep the market switch in sync with the remembered choice (it also survives a reload).
   document.querySelectorAll('[data-region]').forEach((b) => b.classList.toggle('on', b.dataset.region === coRegion));
+  scrollActiveIntoView(document.getElementById('co-region'));
   // Every market change takes a token, the US included. Switching away used to leave an in-flight
   // Japan/Korea render valid, so a slow TOPIX fetch could finish after the US was chosen and paint
   // the Japanese screen over it. The chosen renderer gets this token and bails if another wins.

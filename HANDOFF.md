@@ -4257,17 +4257,17 @@ keeps the 10-K text.
 - **Not used**: the official JSE market-data API is licensed (no free key); the keyless vendor path is
   the delivery route.
 
-## Mobile COMPANIES navigation: every market visible (2026-11-08)
+## Mobile COMPANIES navigation: scrolling row, active market in view (2026-11-08)
 
 - **Symptom**: on a phone, India, Indonesia, Brazil and South Africa sometimes looked missing from
-  COMPANIES. They were present in the DOM, but `.co-region` was a one-row flex strip with
-  `overflow-x: auto` and a hidden scrollbar, so the four newest markets sat off-screen with no swipe
-  affordance. The home screener's ten-market switch (`.sc-mkt`) had the same hidden overflow.
-- **Fix**: the region row and the home market switch now **wrap** at every width (no horizontal
-  overflow), with phone sizing preserved. This also covers tablets and narrow desktop windows where the
-  ten pills never fit one row.
-- **Cache**: the service worker's cache moved to `oil-desk-v7`, and registration uses
+  COMPANIES. They were present in the DOM, but `.co-region` is a one-row horizontal scroller, so the
+  four newest markets can sit off-screen until the reader swipes.
+- **Decision**: the horizontal scroll is the preferred interaction, so it stays. The fix is to
+  **scroll the active market into view** when COMPANIES renders (`scrollActiveIntoView`), plus
+  `scroll-snap` for cleaner swipes. A saved India/Indonesia/Brazil/South Africa selection can no longer
+  open with its pill off-screen. The home market switch keeps its scrolling row too.
+- **Cache**: the service worker's cache moved to `oil-desk-v8`, and registration uses
   `updateViaCache: 'none'`, so a deploy cannot leave the old nine-market shell behind. Asset versions
-  are bumped (`app.js?v=304`, `style.css?v=130`).
-- **Guard**: `tests/app-ui.test.js` asserts all ten `data-region` buttons exist and that both market
-  rows carry `flex-wrap: wrap`.
+  are bumped (`app.js?v=305`, `style.css?v=131`).
+- **Guard**: `tests/app-ui.test.js` asserts all ten `data-region` buttons exist, that the row keeps
+  `overflow-x: auto`, and that `scrollActiveIntoView` is wired.

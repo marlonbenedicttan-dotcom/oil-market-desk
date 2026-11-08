@@ -628,15 +628,15 @@ test('property and REIT EPS growth is labelled statutory', () => {
   assert.equal(ui.epsGrowthNote(bank), '');
 });
 
-test('every market stays visible in the mobile COMPANIES navigation', () => {
-  // On a phone the ten region pills used to scroll sideways with the scrollbar hidden, so the four
-  // newest markets sat off-screen and looked missing. The row must wrap instead.
+test('all ten markets are reachable in the COMPANIES navigation', () => {
+  // The row is a deliberate horizontal scroll on a phone; every region must be present, and the
+  // active one is scrolled into view so a saved newer market is not left off-screen.
   const html = fs.readFileSync(path.join(here, '..', 'public', 'index.html'), 'utf8');
   for (const region of ['us', 'jp', 'kr', 'tw', 'hk', 'au', 'in', 'id', 'br', 'za']) {
     assert.match(html, new RegExp(`data-region="${region}"`), `${region} region button is missing`);
   }
   const css = fs.readFileSync(path.join(here, '..', 'public', 'style.css'), 'utf8');
-  assert.match(css, /@media \(max-width: 640px\)/, 'the phone breakpoint is missing');
-  assert.match(css, /\.co-region \{[^}]*flex-wrap: wrap/s, 'the market row must wrap on a phone');
-  assert.match(css, /\.sc-mkt \{[^}]*flex-wrap: wrap/s, 'the home market switch must wrap on a phone');
+  assert.match(css, /\.co-region \{[^}]*overflow-x: auto/s, 'the market row must scroll sideways');
+  const app = fs.readFileSync(APP, 'utf8');
+  assert.match(app, /function scrollActiveIntoView/, 'the active market must be scrolled into view');
 });

@@ -1379,10 +1379,11 @@ button.deal-sec-tile:hover { background: #10151b; }
 .co-nav { padding: 10px 12px 0; border-bottom: 1px solid var(--line); }
 .co-navrow { display: flex; align-items: center; gap: 12px; min-width: 0; }
 .co-navrow + .co-navrow { margin-top: 8px; padding-bottom: 4px; }
-.co-region { display: flex; flex-wrap: wrap; gap: 6px; min-width: 0; }
-/* Every market is visible at every width. This row used to scroll sideways with the scrollbar hidden;
-   on a phone that put India, Indonesia, Brazil and South Africa off-screen with no affordance. */
-.co-region button { background: #0d1219; border: 1px solid var(--line2); border-radius: 999px; color: var(--dim);
+.co-region { display: flex; flex-wrap: nowrap; gap: 6px; min-width: 0; overflow-x: auto; scrollbar-width: none; scroll-snap-type: x proximity; }
+.co-region::-webkit-scrollbar { display: none; }
+/* The row scrolls sideways; the active market is scrolled into view on render (scrollActiveIntoView in
+   app.js), so a saved India/Indonesia/Brazil/South Africa selection is never left off-screen. */
+.co-region button { scroll-snap-align: start; background: #0d1219; border: 1px solid var(--line2); border-radius: 999px; color: var(--dim);
   font: 600 10.5px/1 var(--sans); letter-spacing: .8px; padding: 0 14px; min-height: 34px;
   white-space: nowrap; cursor: pointer; }
 .co-region button:hover { color: var(--text); }
@@ -1477,7 +1478,8 @@ button.deal-sec-tile:hover { background: #10151b; }
 .sc-f:has(input) { flex: 1 1 120px; min-width: 130px; max-width: 240px; }
 .sc-f input:focus { border-color: var(--amber); }
 .sc-f input::placeholder { color: #5b6773; }
-.sc-mkt { margin-left: 6px; flex-wrap: wrap; overflow: visible; }
+.sc-mkt { margin-left: 6px; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; }
+.sc-mkt::-webkit-scrollbar { display: none; }
 @media (max-width: 640px) { .sc-f input { min-width: 0; width: 100%; } .sc-f { flex: 1 1 100%; } }
 @media (max-width: 420px) {
   .co-region button { padding: 0 10px; font-size: 9px; letter-spacing: .5px; }
@@ -1491,7 +1493,6 @@ button.deal-sec-tile:hover { background: #10151b; }
   .co-navrow + .co-navrow { margin-top: 6px; }
   .co-region { gap: 5px; }
   .co-region button { flex: 0 0 auto; min-height: 44px; font-size: 10px; padding: 0 13px; }
-  .sc-mkt button { flex: 1 1 auto; min-height: 34px; }
   .co-views button { min-height: 44px; font-size: 10px; padding: 0 10px; }
   .jp-presets { gap: 4px; padding: 8px 10px 4px; }
   .jp-presets button { font-size: 8px; letter-spacing: .5px; padding: 5px 7px; }
