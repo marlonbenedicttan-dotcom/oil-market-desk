@@ -89,6 +89,27 @@ test('every published ratio reproduces from its own inputs', () => {
   assert.ok(checked > 100, `only ${checked} P/Es checked`);
 });
 
+test('a missing vendor TTM is built from the latest two half-years', () => {
+  // stockanalysis serves only annual columns for some JSE issuers (Richemont is the obvious one).
+  // The build must expose a trailing figure from the two half-year filings, not silently label the
+  // fiscal year as if it were the only option.
+  const cfr = za.companies.find((c) => c.code === 'CFR');
+  assert.ok(cfr, 'CFR is missing');
+  assert.equal(cfr.peBasis, 'TTM');
+  assert.equal(cfr.ttmComputed, '2 half-years');
+  assert.equal(cfr.netIncomeTTMAsOf, '2026-03-31');
+  const computed = za.companies.filter((c) => c.ttmComputed);
+  assert.ok(computed.length > 100, `only ${computed.length} computed trailing figures`);
+  for (const c of computed) {
+    const q = (c.quarters || []).slice(-2);
+    assert.equal(q.length, 2, `${c.code}: not two half-years`);
+    const sum = q.reduce((a, x) => a + (x.netIncome || 0), 0);
+    assert.equal(c.netIncomeTTM, sum, `${c.code}: TTM does not equal the two halves`);
+    assert.equal(c.netIncomeTTMAsOf, q[1].d, `${c.code}: TTM end is not the latest half`);
+    assert.equal(c.peBasis, 'TTM', `${c.code}: computed trailing profit is labelled ${c.peBasis}`);
+  }
+});
+
 test('a bank ships no operating margin and no free cash flow', () => {
   for (const c of za.companies) {
     if (c.bankLike) assert.equal(c.opMargin, null, `${c.code} is bank-like with an op margin`);

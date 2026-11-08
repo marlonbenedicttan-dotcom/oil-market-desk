@@ -4231,7 +4231,10 @@ keeps the 10-K text.
 - **Statements**: stockanalysis.com JSE pages for the primary companies and the primary exchange for the
   foreign-secondary lines. TTM/annual/half-year, current shares, vendor dividend yield, GICS profile, report
   currency (ZAR/USD/EUR/GBP) carried into the ratios. The JSE reports half-yearly and the page labels
-  the table REPORTED HALF-YEARS. USD/ZAR from open.er-api.
+  the table REPORTED HALF-YEARS. Where the vendor serves no trailing column — Richemont is the obvious
+  case — the build sums the latest two half-year filings into a TTM. The sum must reconcile with the
+  fiscal year when the period ends coincide; a half-year table that lags the annual report keeps the
+  labelled fiscal year (TEX). USD/ZAR from open.er-api.
 - **Shared parser fix**: stockanalysis.com changed its statement-table markup in November 2026 (no
   `id` attributes; the period row is a `date-row` and the label sits in a `font-medium` div).
   `parseSaTable` now supports both layouts, so a fresh build no longer reads every page as empty.
@@ -4249,9 +4252,9 @@ keeps the 10-K text.
   `#c9a227`. The MARKET view carries a **FOREIGN-SECONDARY LISTINGS** panel naming each primary exchange.
 - **Audits/tests**: `npm run audit:southafrica` (hard invariants, caps, ratio reproduction, secondary
   sources, aggregates, list projection) and `npm run audit:southafrica:deep` (engine fields, caps,
-  ratios, four-quarter TTM, flags, list). `tests/southafrica-data.test.js` covers the 252/246/6 split,
-  the named exclusions and secondary map, caps, ratios and list fields; `filters`, `workflows` and
-  `lib` tests include South Africa.
+  ratios, TTM from four quarters or two half-years, flags, list). `tests/southafrica-data.test.js` covers
+  the 258/244/226 split, computed half-year TTM, the named exclusions and secondary map, caps, ratios
+  and list fields; `filters`, `workflows` and `lib` tests include South Africa.
 - **Schedule**: `.github/workflows/south-africa-daily.yml`, 15:40 UTC Mon–Fri (17:40 SAST), with the
   statement cache, `merge-history za`, `merge-series za`, the collapse guard, both audits and the commit.
 - **Not used**: the official JSE market-data API is licensed (no free key); the keyless vendor path is
@@ -4266,8 +4269,8 @@ keeps the 10-K text.
   **scroll the active market into view** when COMPANIES renders (`scrollActiveIntoView`), plus
   `scroll-snap` for cleaner swipes. A saved India/Indonesia/Brazil/South Africa selection can no longer
   open with its pill off-screen. The home market switch keeps its scrolling row too.
-- **Cache**: the service worker's cache moved to `oil-desk-v8`, and registration uses
+- **Cache**: the service worker's cache moved to `oil-desk-v9`, and registration uses
   `updateViaCache: 'none'`, so a deploy cannot leave the old nine-market shell behind. Asset versions
-  are bumped (`app.js?v=305`, `style.css?v=131`).
+  are bumped (`app.js?v=306`, `style.css?v=131`).
 - **Guard**: `tests/app-ui.test.js` asserts all ten `data-region` buttons exist, that the row keeps
   `overflow-x: auto`, and that `scrollActiveIntoView` is wired.

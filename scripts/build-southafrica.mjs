@@ -353,6 +353,29 @@ function basisOf(quarters) {
   return medGap != null && medGap > 120 ? 'half' : 'quarter';
 }
 
+// stockanalysis serves no trailing column for some JSE issuers (Richemont is the obvious one). The
+// half-year table still holds the two periods that make a trailing twelve months, so build it there.
+// The sum is only accepted when it reconciles with the fiscal year at a shared period end; a
+// cumulative rather than discrete half-year table therefore falls back to the labelled fiscal year.
+function trailingFromHalves(c) {
+  const q = c.quarters || [];
+  if (c.periodBasis !== 'half' || q.length < 2) return null;
+  const last = q.slice(-2);
+  const gap = (Date.parse(last[1].d) - Date.parse(last[0].d)) / DAY;
+  if (!(gap > 120 && gap < 250)) return null;
+  const sum = {};
+  for (const f of ['revenue', 'operatingProfit', 'netIncome']) {
+    if (last.every((x) => x[f] != null)) sum[f] = last[0][f] + last[1][f];
+  }
+  if (sum.netIncome == null) return null;
+  const fy = (c.annual || []).at(-1);
+  // A lagging half-year table must not replace a newer annual report: TEX's last half is 2025-06
+  // while its annual is 2026-06, and using the halves would make a current company look stale.
+  if (fy && last[1].d < fy.end) return null;
+  if (fy && fy.end === last[1].d && fy.netIncome != null && Math.abs(sum.netIncome - fy.netIncome) / Math.max(1, Math.abs(fy.netIncome)) > 0.03) return null;
+  return { ttm: sum, ttmEnd: last[1].d };
+}
+
 async function page(code, p, q = false) {
   const s = secondaryOf(code);
   const key = s ? `${s.exchange}-${s.ticker}` : code;
@@ -400,6 +423,10 @@ if (!SKIP_FIN) {
       c.annual = [...annual.values()].filter((r) => r.revenue != null || r.equity != null).sort((a, b) => a.end.localeCompare(b.end));
       c.quarters = quartersOf(qtr);
       c.periodBasis = basisOf(c.quarters);
+      if (!(c.ttm && c.ttm.netIncome != null)) {
+        const half = trailingFromHalves(c);
+        if (half) { c.ttm = half.ttm; c.ttmEnd = half.ttmEnd; c.ttmComputed = '2 half-years'; }
+      }
       c.reportCurrency = I.currency || 'ZAR';
       if (Number.isFinite(I.vendorYield) && I.vendorYield >= 0 && I.vendorYield < 30) c.vendorDividendYield = I.vendorYield;
       const stats = await statsPage(c.code);
@@ -444,6 +471,10 @@ if (!SKIP_FIN) {
     c.vendorDividendYield = p.vendorDividendYield;
     c.sharesCurrent = p.sharesCurrent || c.sharesCurrent || null;
     c.periodBasis = basisOf(c.quarters);
+    if (!(c.ttm && c.ttm.netIncome != null)) {
+      const half = trailingFromHalves(c);
+      if (half) { c.ttm = half.ttm; c.ttmEnd = half.ttmEnd; c.ttmComputed = '2 half-years'; }
+    }
   }
 }
 
