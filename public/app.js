@@ -461,6 +461,8 @@ function renderSnapshot() {
   const selId = currentComponent || (mk ? mk.primary : $('bp-metric').value);
   const b = data.benchmarks.find((x) => x.id === selId);
   if (!b) { el.innerHTML = ''; return; }
+  const heroName = $('comm-name'); if (heroName) heroName.textContent = mk ? mk.label : b.label;
+  const heroGroup = $('comm-group'); if (heroGroup) heroGroup.textContent = (mk && mk.group ? mk.group : '').toUpperCase();
   const s = history?.series?.[b.id];
   const arr = b.paper != null ? s?.paper : s?.physical;
   const val = b.paper != null ? b.paper : b.physical;
@@ -601,6 +603,8 @@ function renderAdaptive() {
   const kl = score == null ? 'elevated' : score >= 20 ? 'high' : score <= -20 ? 'low' : 'elevated';
   const sdCls = sd.score == null ? '' : sd.score >= 58 ? 'pos' : sd.score <= 42 ? 'neg' : '';
   const sdWord = (s) => (s == null ? '—' : s >= 70 ? 'UNDERSUPPLIED' : s >= 58 ? 'TIGHT' : s >= 42 ? 'BALANCED' : s >= 30 ? 'WELL SUPPLIED' : 'OVERSUPPLIED');
+  const cs = $('comm-score');
+  if (cs) cs.innerHTML = `<span class="cs-score ${kl}">${score == null ? '—' : signed(score, 0)}<em>/100</em></span><span class="cs-lbl">${v.label}</span><span class="cs-sd ${sdCls}">${sd.score == null ? 'no supply/demand data' : `${sd.label} · ${sd.score}/100`}</span>`;
   // The verdict bar's colour reflects the supply/demand read (tight/loose); price richness is
   // shown by the tile colour above. No physical data → stay neutral.
   const vk = sd.score == null ? 'mixed' : sd.score >= 58 ? 'tight' : sd.score <= 42 ? 'loose' : 'mixed';
@@ -653,6 +657,7 @@ function renderAdaptive() {
 // An instant, correct-segment skeleton shown while the full read loads (price/6m from memory).
 function readSkeleton(mk) {
   const b = mk && data && data.benchmarks.find((x) => x.id === mk.primary);
+  const cs = $('comm-score'); if (cs) cs.innerHTML = '<span class="cs-lbl">reading price, curve and supply/demand…</span>';
   const s = b && history?.series?.[b.id];
   const arr = b ? (b.paper != null ? s?.paper : s?.physical) : null;
   const val = b ? (b.paper != null ? b.paper : b.physical) : null;
@@ -1815,7 +1820,7 @@ function renderCurveHistory(d) {
   if (!d?.dates?.length || d.dates.length < 20) { if (block) block.style.display = 'none'; return; }
   if (block) block.style.display = '';
   const data = { labels: d.dates, datasets: [line('WTI: this month − next month', d.m1m2, CT.c2)] };
-  curveHistChart = mountChart('curvehist', data, baseOptions({ dp: 2, yTitle: '$/bbl' }));
+  curveHistChart = mountChart('curvehist', data, baseOptions({ dp: 2, yTitle: '$/bbl', dateAxis: true }));
   attachMarkers(curveHistChart, currentMarket, d.dates, [d.m1m2], '#curvehist-events');
 }
 function renderCurve(d) { if (!d) return; $('curve').innerHTML = curveBlock('WTI', d.wti) + curveBlock('Brent', d.brent); }
@@ -1873,7 +1878,7 @@ function renderCrushHistory(h) {
     { label: 'Crush $/bu', data: h.crush, borderColor: CT.accent, backgroundColor: CT.accent + '22', borderWidth: 2, pointRadius: 0, tension: 0.25, yAxisID: 'y' },
     { label: 'Oil share %', data: h.oilShare, borderColor: CT.c1, backgroundColor: CT.c1 + '22', borderWidth: 1.5, pointRadius: 0, tension: 0.25, yAxisID: 'y1' },
   ] };
-  crushChart = mountChart('crushhist', data, baseOptions({ dp: 2, yTitle: '$/bu', y1Title: '%' }));
+  crushChart = mountChart('crushhist', data, baseOptions({ dp: 2, yTitle: '$/bu', y1Title: '%', dateAxis: true }));
   attachMarkers(crushChart, 'grains', h.dates, [h.crush], '#crush-events');
 }
 
@@ -1916,7 +1921,7 @@ function renderSteelHistory(h) {
     { label: 'Steel margin $/t', data: h.margin, borderColor: CT.accent, backgroundColor: CT.accent + '22', borderWidth: 2, pointRadius: 0, tension: 0.25, yAxisID: 'y' },
     { label: 'Coil ÷ ore', data: h.ratio, borderColor: CT.c1, backgroundColor: CT.c1 + '22', borderWidth: 1.5, pointRadius: 0, tension: 0.25, yAxisID: 'y1' },
   ] };
-  steelChart = mountChart('steelhist', data, baseOptions({ dp: 0, yTitle: '$/t', y1Title: '×' }));
+  steelChart = mountChart('steelhist', data, baseOptions({ dp: 0, yTitle: '$/t', y1Title: '×', dateAxis: true }));
   // focus 'steel' so a margin move is explained by a steel story, not whichever copper headline
   // happens to be in the industrial segment's feed.
   attachMarkers(steelChart, 'industrial', h.dates, [h.margin], '#steel-events', 'pct', 'steel');
@@ -1987,7 +1992,7 @@ function renderCrackHistory(h) {
     { label: 'Gasoline', data: h.gasoline, borderColor: CT.c1, backgroundColor: CT.c1 + '22', borderWidth: 2, pointRadius: 0, tension: 0.25 },
     { label: '3-2-1', data: h.c321, borderColor: CT.c3, backgroundColor: CT.c3 + '22', borderWidth: 1.5, pointRadius: 0, tension: 0.25 },
   ] };
-  crackHistChart = mountChart('crackhist', data, baseOptions({ dp: 2, yTitle: '$/bbl' }));
+  crackHistChart = mountChart('crackhist', data, baseOptions({ dp: 2, yTitle: '$/bbl', dateAxis: true }));
   attachMarkers(crackHistChart, 'refined', h.dates, [h.diesel, h.c321, h.gasoline], '#crack-events');
 }
 function renderProducts(d) {
@@ -4079,6 +4084,41 @@ function syncJumpnavs() {
   });
 }
 
+// ---------------------------------------------------------------------------
+// Commodities — five analysis tabs under the always-visible hero, instrument
+// strip and price chart. Each section carries data-ctab; sections outside the
+// active tab get .comm-off so the market-only visibility rules keep working.
+// ---------------------------------------------------------------------------
+let commTabInit = false;
+function resizeCommodityCharts() {
+  for (const c of [chart, cmpChart, curveHistChart, crushChart, steelChart, crackHistChart, posChart, invChart]) {
+    if (c) { try { c.resize(); } catch {} }
+  }
+}
+function setCommodityTab(name, save = true) {
+  const tabs = [...document.querySelectorAll('#comm-nav [data-ctab]')];
+  const valid = tabs.map((b) => b.dataset.ctab);
+  if (!valid.includes(name)) name = 'overview';
+  for (const b of tabs) {
+    const on = b.dataset.ctab === name;
+    b.classList.toggle('active', on);
+    b.setAttribute('aria-selected', String(on));
+  }
+  document.querySelectorAll('#pane-commodities > [data-ctab]').forEach((el) => el.classList.toggle('comm-off', el.dataset.ctab !== name));
+  if (name === 'structure') { curveHistVisible = true; loadCurveHistory(); }
+  if (name === 'positioning') { loadPositioning(); loadOptions(); }
+  if (save) { try { localStorage.setItem('oilbasis.commTab', name); } catch {} }
+  [50, 250, 800].forEach((ms) => setTimeout(resizeCommodityCharts, ms));
+}
+function syncCommodityTab() {
+  let name = document.querySelector('#comm-nav .active')?.dataset.ctab;
+  if (!commTabInit) {
+    commTabInit = true;
+    try { name = localStorage.getItem('oilbasis.commTab') || name; } catch {}
+  }
+  setCommodityTab(name || 'overview', false);
+}
+
 function showTab(name) {
   saveStr('tab', name);
   document.querySelectorAll('.tab').forEach((t) => { const on = t.dataset.tab === name; t.classList.toggle('active', on); t.setAttribute('aria-selected', String(on)); });
@@ -4093,6 +4133,8 @@ function showTab(name) {
     if (posChart) setTimeout(() => posChart.resize(), 70);
     if (invChart) setTimeout(() => invChart.resize(), 75);
     if (crackHistChart && currentMarket === 'refined') setTimeout(() => crackHistChart.resize(), 80);
+    syncCommodityTab();
+    [100, 300, 900].forEach((ms) => setTimeout(resizeCommodityCharts, ms));
   }
   if (name === 'deals') {
     // Warm all three markets as soon as the tab opens: switching region should not wait on a 70 KB
@@ -4202,6 +4244,11 @@ function ensureCmpLegs() {
 }));
 $('cmp-presets')?.addEventListener('click', (e) => { const btn = e.target.closest('.cmp-preset'); if (!btn) return; $('cmp-a').value = btn.dataset.a; $('cmp-b').value = btn.dataset.b; $('cmp-view').value = btn.dataset.v; saveCompare(); renderCmpPresets(); renderCompare(); });
 $('bp-metric')?.addEventListener('change', () => selectMarket($('bp-metric').value));
+$('comm-nav')?.addEventListener('click', (e) => {
+  const b = e.target.closest('[data-ctab]');
+  if (!b) return;
+  setCommodityTab(b.dataset.ctab);
+});
 $('bp-snapshot')?.addEventListener('click', (e) => {
   const c = e.target.closest('.bp-comp[data-component]');
   if (!c) return;

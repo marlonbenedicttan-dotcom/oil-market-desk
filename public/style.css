@@ -2194,3 +2194,121 @@ body.gs-search-open { overflow: hidden; }
   .macro-chart-card .chart-events { padding-bottom: 8px; }
   .macro-read-card .macro-read-list { grid-template-columns: 1fr; }
 }
+
+/* ---------------------------------------------------------------------------
+   COMMODITIES — instrument dashboard
+   The old tab was fourteen jump links over a 5,700px stack. Keep the things a
+   reader needs every time (segment, snapshot, instruments, price chart) in the
+   first screen, then put the deeper analysis behind five calm tabs.
+--------------------------------------------------------------------------- */
+#pane-commodities { gap: 12px; }
+#pane-commodities > [data-ctab].comm-off { display: none !important; }
+.comm-nav {
+  position: sticky; top: var(--topbar-h, 44px); z-index: 60;
+  display: flex; gap: 4px; overflow-x: auto; padding: 6px 8px;
+  background: #05070a; border: 1px solid var(--line); scrollbar-width: none;
+}
+.comm-nav::-webkit-scrollbar { display: none; }
+.comm-nav button {
+  flex: 0 0 auto; border: 1px solid var(--line2); background: transparent; color: var(--dim);
+  padding: 7px 11px; font: 700 9.5px/1 var(--mono); letter-spacing: 1.2px; cursor: pointer; white-space: nowrap;
+}
+.comm-nav button:hover { color: var(--amber); border-color: var(--amber); }
+.comm-nav button.active { color: #1a1200; background: var(--amber); border-color: var(--amber); }
+
+.comm-hero {
+  position: relative;
+  padding: 15px 16px 12px;
+  background:
+    radial-gradient(1000px 260px at 0% 0%, rgba(255, 158, 0, .075), transparent 62%),
+    var(--panel);
+}
+.comm-hero::before {
+  content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 2px;
+  background: linear-gradient(180deg, var(--amber), transparent 72%);
+}
+.comm-hero-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
+.comm-hero-copy { min-width: 0; }
+.comm-kicker { font-size: 9px; letter-spacing: 2px; color: var(--dim); }
+.comm-kicker span { color: var(--amber); }
+.comm-name { margin: 3px 0 6px; font-size: clamp(24px, 3vw, 34px); line-height: 1.05; letter-spacing: -.5px; }
+.comm-score { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; min-height: 22px; }
+.cs-score { font-size: 24px; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; }
+.cs-score em { font-style: normal; font-size: 10px; color: var(--dim); font-weight: 400; }
+.cs-score.high { color: var(--red); } .cs-score.low { color: var(--green); } .cs-score.elevated { color: var(--amber); }
+.cs-lbl { font-size: 10px; letter-spacing: 1px; color: var(--dim); text-transform: uppercase; }
+.cs-sd { font-size: 9px; letter-spacing: .7px; border: 1px solid var(--line2); padding: 2px 6px; color: var(--dim); }
+.cs-sd.pos { color: var(--green); border-color: #1d5c38; }
+.cs-sd.neg { color: var(--red); border-color: #5a2020; }
+.comm-picker { display: flex; flex: 0 0 auto; align-items: flex-end; }
+.comm-picker label { display: grid; gap: 4px; font-size: 9px; letter-spacing: 1.2px; color: var(--dim); }
+.comm-picker select { min-width: 180px; padding: 6px 28px 6px 9px; border-color: var(--line2); background-color: #0c0f13; }
+
+.comm-hero .bp-snapshot { margin-top: 11px; }
+.comm-hero .bp-head { display: none; }
+.comm-hero .bp-cell { padding: 9px 11px; }
+.comm-hero .bp-k { font-size: 9px; letter-spacing: 1.2px; }
+.comm-hero .bp-v { font-size: 21px; }
+.comm-hero .bp-v span { font-size: 10px; }
+.comm-hero .bp-spark { padding: 4px 12px 0; }
+.comm-hero .bp-spark svg { height: 34px; }
+.comm-hero .read-line { padding: 7px 12px 2px; font-size: 11.5px; color: var(--amber2); }
+.comm-hero .bp-comps { padding-top: 4px; }
+.comm-hero .bp-comp { padding: 3px 7px; font-size: 10px; }
+
+#c-tiles .ph .dimtext { display: none; }
+#c-tiles #cards { padding: 8px 12px 10px; }
+#c-tiles .tiles { grid-template-columns: repeat(auto-fit, minmax(125px, 1fr)); gap: 6px; }
+#c-tiles .tile { padding: 6px 8px; }
+#c-tiles .t-name { font-size: 11px; }
+#c-tiles .t-px { font-size: 13px; }
+#c-tiles .tile .spark { height: 18px; }
+#c-tiles .t-foot { font-size: 9px; }
+#c-tiles .t-sig { margin-top: 1px; }
+#c-tiles .t-chip { font-size: 8px; }
+
+#chart-panel .chart-wrap.lg { height: 320px; }
+#chart-panel .chart-events { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: thin; }
+#chart-panel .chart-events > .dimtext { flex: 0 0 auto; white-space: nowrap; }
+#chart-panel .chart-events a.ce { flex: 0 0 auto; white-space: nowrap; }
+
+#c-read .bottomline .bl { grid-template-columns: 190px minmax(0, 1fr) minmax(0, 1fr); }
+#c-read .bl-score { grid-row: 1 / span 2; }
+#c-read .bl-sec:nth-child(4) { grid-column: 2 / -1; border-top: 1px solid var(--line); }
+#c-read .bl-sec { padding: 12px 14px; }
+#c-read .bl-num { font-size: 40px; }
+#c-read .bl-sec p, #c-read .bl-sec li { font-size: 12px; }
+#c-read .bl-ti { padding: 12px 14px; }
+
+#c-tight .ev { grid-template-columns: 170px 82px 60px minmax(0, 1fr); }
+#c-tight .tightness { padding: 10px 12px; }
+
+#compare-panel .chart-wrap.lg { height: 260px; }
+#c-curve .chart-wrap.sm { height: 190px; }
+
+@media (max-width: 1000px) {
+  #c-read .bottomline .bl { grid-template-columns: 1fr; }
+  #c-read .bl-score { grid-row: auto; }
+  #c-read .bl-sec:nth-child(4) { grid-column: auto; }
+}
+@media (max-width: 760px) {
+  .comm-hero { padding: 12px; }
+  .comm-hero-top { flex-direction: column; gap: 10px; }
+  .comm-picker { width: 100%; }
+  .comm-picker label { flex: 1; min-width: 0; }
+  .comm-picker select { width: 100%; min-width: 0; }
+  .comm-name { font-size: 26px; }
+  .comm-score { gap: 6px; }
+  .cs-score { font-size: 21px; }
+  .comm-hero .bp-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .comm-hero .bp-v { font-size: 18px; }
+  .comm-hero .read-line { font-size: 10.5px; }
+  #c-tiles .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  #chart-panel .chart-wrap.lg { height: 260px; }
+  #chart-panel .ph { flex-wrap: wrap; }
+  #chart-panel .ph .controls { width: 100%; display: grid; grid-template-columns: minmax(0, 1fr) 84px; }
+  #chart-panel .ph .controls select { width: 100%; }
+  #c-tight .ev { grid-template-columns: 1fr 62px 52px; }
+  #c-tight .ev-n { display: none; }
+  #compare-panel .chart-wrap.lg { height: 230px; }
+}

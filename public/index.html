@@ -166,51 +166,31 @@
 
     <!-- COMMODITIES -->
     <div class="tabpane hidden" data-pane="commodities" id="pane-commodities" role="tabpanel" aria-labelledby="tab-commodities">
-      <nav class="jumpnav" aria-label="Jump to a section">
-        <a href="#c-relval">Spreads</a>
-        <a href="#c-read">Read</a>
-        <a href="#chart-panel">Chart</a>
-        <a href="#compare-panel">Compare</a>
-        <a href="#c-curve">Curve</a>
-        <a href="#c-seasonal">Season</a>
-        <a href="#c-tight">Tightness</a>
-        <a href="#positioning-panel">Positioning</a>
-        <a href="#options-panel">Options</a>
-        <a href="#c-cracks">Cracks</a>
-        <a href="#c-supply">Supply</a>
-        <a href="#c-fundamentals">Basics</a>
-        <a href="#c-news">News</a>
-        <a href="#c-more">More</a>
+      <nav class="comm-nav" id="comm-nav" aria-label="Commodity sections" role="tablist">
+        <button type="button" data-ctab="overview" class="active" role="tab" aria-selected="true">OVERVIEW</button>
+        <button type="button" data-ctab="structure" role="tab" aria-selected="false">STRUCTURE</button>
+        <button type="button" data-ctab="positioning" role="tab" aria-selected="false">POSITIONING</button>
+        <button type="button" data-ctab="supply" role="tab" aria-selected="false">SUPPLY</button>
+        <button type="button" data-ctab="news" role="tab" aria-selected="false">NEWS</button>
       </nav>
 
       <!-- 1. WHERE ARE WE -->
-      <section id="c-seg" class="panel">
-        <div class="ph"><span class="ph-t">SEGMENT</span>
-          <div class="controls"><select id="bp-metric"></select></div>
+      <section id="c-seg" class="panel comm-hero">
+        <div class="comm-hero-top">
+          <div class="comm-hero-copy">
+            <div class="comm-kicker">COMMODITIES · <span id="comm-group">—</span></div>
+            <h2 class="comm-name" id="comm-name">—</h2>
+            <div class="comm-score" id="comm-score"></div>
+          </div>
+          <div class="comm-picker"><label>SEGMENT
+            <select id="bp-metric"></select>
+          </label></div>
         </div>
         <div id="bp-snapshot" class="bp-snapshot"></div>
       </section>
-
-      <!-- 2. WHERE INSIDE THE SEGMENT (the curated spreads worth watching) -->
-      <section id="c-relval" class="panel">
-        <div class="ph"><span class="ph-t">RELATIVE VALUE — where this segment is stretched</span><span id="rv-sub" class="dimtext"></span></div>
-        <div id="relval" class="relval"></div>
-      </section>
-
-      <!-- 3. THE SO-WHAT (read first) — one read: what happened, key points, what's next, trade ideas -->
-      <section id="c-read" class="panel">
-        <div class="ph"><span class="ph-t">THE READ — what happened · key points · what's next · trade ideas</span><span class="dimtext">NOT INVESTMENT ADVICE</span></div>
-        <div id="bottomline" class="bottomline"></div>
-      </section>
-
-      <section id="c-transmit" class="panel market-only" data-when="*">
-        <div class="ph"><span class="ph-t">HOW IT TRANSMITS — <span id="xa-seg"></span></span><span class="dimtext">cross-asset links · a framework, not a forecast</span></div>
-        <div id="crossasset" class="macro"></div>
-      </section>
-
       <!-- 3. THE MARKET (price & structure) -->
       <section id="c-tiles" class="panel">
-        <div class="ph"><span class="ph-t" id="cards-title">INSTRUMENTS</span><span class="dimtext">click a tile for its chart · P price score · S&amp;D supply/demand · CURVE shape · COT/BASIS percentiles · ★ to pin</span></div>
+        <div class="ph"><span class="ph-t" id="cards-title">INSTRUMENTS</span><span class="dimtext">click a tile for its chart · ★ to pin</span></div>
         <div id="cards"></div>
       </section>
 
@@ -224,7 +204,26 @@
         <div id="chart-events" class="chart-events"></div>
       </section>
 
-      <section class="panel" id="compare-panel">
+
+
+      <!-- 2. WHERE INSIDE THE SEGMENT (the curated spreads worth watching) -->
+      <section id="c-relval" class="panel" data-ctab="structure">
+        <div class="ph"><span class="ph-t">RELATIVE VALUE — where this segment is stretched</span><span id="rv-sub" class="dimtext"></span></div>
+        <div id="relval" class="relval"></div>
+      </section>
+
+      <!-- 3. THE SO-WHAT (read first) — one read: what happened, key points, what's next, trade ideas -->
+      <section id="c-read" class="panel" data-ctab="overview">
+        <div class="ph"><span class="ph-t">THE READ — what happened · key points · what's next · trade ideas</span><span class="dimtext">NOT INVESTMENT ADVICE</span></div>
+        <div id="bottomline" class="bottomline"></div>
+      </section>
+
+      <section id="c-transmit" class="panel market-only" data-when="*" data-ctab="overview">
+        <div class="ph"><span class="ph-t">HOW IT TRANSMITS — <span id="xa-seg"></span></span><span class="dimtext">cross-asset links · a framework, not a forecast</span></div>
+        <div id="crossasset" class="macro"></div>
+      </section>
+
+      <section class="panel" id="compare-panel" data-ctab="structure">
         <div class="ph">
           <span class="ph-t">COMPARE / SPREAD</span>
           <span class="dimtext">each commodity opens on its own spread · edit it and it is remembered</span>
@@ -239,7 +238,7 @@
         <div id="cmp-summary" class="dimtext lt-summary"></div>
       </section>
 
-      <section id="c-curve" class="panel">
+      <section id="c-curve" class="panel" data-ctab="structure">
         <div class="ph"><span class="ph-t">FORWARD CURVE — <span id="curve-title"></span></span><span class="dimtext">is it cheaper or pricier later? (the “curve”)</span></div>
         <div id="curve" class="curve"></div>
         <div id="curvehist-block">
@@ -249,13 +248,13 @@
         </div>
       </section>
 
-      <section id="c-seasonal" class="panel market-only" data-when="gas,grains,softs">
+      <section id="c-seasonal" class="panel market-only" data-when="gas,grains,softs" data-ctab="structure">
         <div class="ph"><span class="ph-t">SEASONALITY — vs the 5-year norm</span><span class="dimtext" id="seasonal-sub"></span></div>
         <div id="seasonal" class="seasonal"></div>
       </section>
 
       <!-- GRAINS only: the soybean crush (the oilseed complex's core signal) -->
-      <section id="c-crush" class="panel market-only" data-when="grains">
+      <section id="c-crush" class="panel market-only" data-when="grains" data-ctab="structure">
         <div class="ph"><span class="ph-t">SOYBEAN CRUSH — processor margin</span><span class="dimtext">meal + oil − beans, per bushel</span></div>
         <div id="crush" class="products"></div>
         <div class="chokes-h dimtext" style="padding:0 12px">SOYBEAN CRUSH OVER TIME ($/bu · oil share %, last 6 months)</div>
@@ -264,7 +263,7 @@
       </section>
 
       <!-- INDUSTRIAL only: the steel margin (iron ore -> hot-rolled coil), the crush's industrial twin -->
-      <section id="c-steel" class="panel market-only" data-when="industrial">
+      <section id="c-steel" class="panel market-only" data-when="industrial" data-ctab="structure">
         <div class="ph"><span class="ph-t">STEEL MARGIN — hot-rolled coil vs iron ore</span><span class="dimtext">$/tonne · gross spread, before coking coal, energy &amp; scrap</span></div>
         <div id="steel" class="products"></div>
         <div class="chokes-h dimtext" style="padding:0 12px">STEEL MARGIN OVER TIME ($/t · coil ÷ ore multiple, last 6 months)</div>
@@ -273,48 +272,48 @@
       </section>
 
       <!-- 4. EVIDENCE — the segment's own defining signal comes first -->
-      <section id="c-tight" class="panel">
+      <section id="c-tight" class="panel" data-ctab="overview">
         <div class="ph"><span class="ph-t" id="tightness-title">TIGHTNESS</span><span class="dimtext" id="tightness-sub">six independent checks</span></div>
         <div id="tightness" class="tightness"></div>
       </section>
 
       <!-- POSITIONING: who is long / short (CFTC, weekly) -->
-      <section class="panel market-only" data-when="*" id="positioning-panel">
+      <section class="panel market-only" data-when="*" id="positioning-panel" data-ctab="positioning">
         <div class="ph"><span class="ph-t">POSITIONING</span><span id="pos-sub" class="dimtext"></span></div>
         <div id="positioning" class="positioning"></div>
       </section>
 
       <!-- OPTIONS: implied vol, put/call, skew (CBOE delayed, via the ETF proxy) -->
-      <section class="panel market-only" data-when="*" id="options-panel">
+      <section class="panel market-only" data-when="*" id="options-panel" data-ctab="positioning">
         <div class="ph"><span class="ph-t">OPTIONS</span><span id="opt-sub" class="dimtext"></span></div>
         <div id="options" class="options"></div>
       </section>
 
       <!-- REFINED only: refining margins (the sector's core signal) + who it helps/hurts -->
-      <section id="c-cracks" class="panel market-only" data-when="refined">
+      <section id="c-cracks" class="panel market-only" data-when="refined" data-ctab="structure">
         <div class="ph"><span class="ph-t">REFINING MARGINS</span><span class="dimtext">profit per barrel</span></div>
         <div id="products" class="products"></div>
         <div class="chokes-h dimtext" style="padding:0 12px">REFINING PROFIT OVER TIME ($/bbl, last 6 months)</div>
         <div class="chart-wrap sm"><canvas id="crackhist"></canvas></div>
         <div id="crack-events" class="chart-events"></div>
       </section>
-      <section id="c-who" class="panel market-only" data-when="refined">
+      <section id="c-who" class="panel market-only" data-when="refined" data-ctab="structure">
         <div class="ph"><span class="ph-t">WHO IT HELPS / HURTS</span><span id="eq-date" class="dimtext"></span></div>
         <div id="sector-read" class="sector-read"></div>
         <div id="sectors" class="sectors"></div>
       </section>
 
-      <section id="c-supply" class="panel market-only" data-when="crude,refined,gas">
+      <section id="c-supply" class="panel market-only" data-when="crude,refined,gas" data-ctab="supply">
         <div class="ph"><span class="ph-t">SUPPLY</span><span id="inv-date" class="dimtext">updated weekly</span></div>
         <div id="inventories" class="tbl"></div>
       </section>
 
-      <section id="c-fundamentals" class="panel market-only" data-when="*">
+      <section id="c-fundamentals" class="panel market-only" data-when="*" data-ctab="supply">
         <div class="ph"><span class="ph-t">FUNDAMENTALS</span><span id="fund-sub" class="dimtext"></span></div>
         <div id="fundamentals" class="macro"></div>
       </section>
 
-      <section id="c-news" class="panel market-only" data-when="*">
+      <section id="c-news" class="panel market-only" data-when="*" data-ctab="news">
         <div class="ph"><span class="ph-t">IN THE NEWS</span><span id="news-sub" class="dimtext"></span></div>
         <div id="news" class="news"></div>
       </section>
