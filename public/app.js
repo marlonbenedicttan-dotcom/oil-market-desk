@@ -2718,6 +2718,7 @@ const CO_VIEWS = {
 function paintCoViews() {
   const bar = $('co-views');
   if (!bar) return;
+  if (coRegion === 'global') { bar.innerHTML = ''; return; }
   const active = coRegion === 'jp' ? jpView : coRegion === 'kr' ? krView : coRegion === 'tw' ? twView : coRegion === 'hk' ? hkView : coRegion === 'au' ? auView : coRegion === 'in' ? inView : coRegion === 'id' ? idView : coRegion === 'br' ? brView : coRegion === 'za' ? zaView : usView;
   bar.innerHTML = (CO_VIEWS[coRegion] || CO_VIEWS.us)
     .map(([attr, key, label]) => `<button type="button" data-${attr}="${key}" class="${active === key ? 'on' : ''}">${label}</button>`)
@@ -3437,7 +3438,10 @@ const MONTH_NAMES = ['JANUARY', 'FEBRUARY', 'MARCH', 'APRIL', 'MAY', 'JUNE', 'JU
 let calEvents = null, calMonth = null, calSel = null, calFomc = null;
 let calCompany = [];
 // Which market the companies tab is showing: the S&P 1500 or TSE Prime.
-let coRegion = (() => { try { return localStorage.getItem('oilbasis.coRegion') || 'us'; } catch { return 'us'; } })();
+// The global board is the first Companies screen. Existing readers keep their saved market after
+// this one-time migration; a new reader starts on the world board.
+try { if (!localStorage.getItem('oilbasis.globalBoard')) { localStorage.setItem('oilbasis.globalBoard', '1'); localStorage.setItem('oilbasis.coRegion', 'global'); } } catch {}
+let coRegion = (() => { try { return localStorage.getItem('oilbasis.coRegion') || 'global'; } catch { return 'global'; } })();
 // Two views, not four: the macro calendar and company events. Anything else is a filter inside those.
 let calMode = (() => {
   try {
@@ -4795,7 +4799,8 @@ function syncCoTools() {
   // repainted. Uniform place, uniform shape, market-specific choices.
   const chips = document.getElementById('co-chips');
   if (chips) chips.classList.remove('hidden');
-  const wanted = coRegion === 'jp'
+  const wanted = coRegion === 'global' ? false
+    : coRegion === 'jp'
     ? (!jpSel && jpView === 'screener')
     : coRegion === 'kr' ? (!krSel && krView === 'screener')
     : coRegion === 'tw' ? (!twSel && twView === 'screener')
@@ -8910,6 +8915,87 @@ function scrollActiveIntoView(row) {
   }
 }
 
+let globalBoardData = null, globalThemesData = null, globalThemeSel = 'ai';
+const GMAP = {
+  us: [23.8, 33.7], jp: [86.9, 35.6], kr: [84.2, 35.3], tw: [82.4, 43.5], hk: [80.6, 44.4],
+  au: [85.9, 74.6], in: [70.9, 45.2], id: [81.6, 59.9], br: [36.1, 65.0], za: [56.4, 77.2],
+};
+const GMARKET_COLORS = { us:'#4f8cff', jp:'#e05252', kr:'#2fb5a8', tw:'#d4a017', hk:'#c8574f', au:'#6f8f3f', in:'#c2703d', id:'#b03a48', br:'#2e9e5b', za:'#c9a227' };
+
+async function renderGlobalBoard(token) {
+  const el = $('co-body'); if (!el) return;
+  el.innerHTML = stLoading('Loading the global board…');
+  const [home, themes] = await Promise.all([
+    jget('/api/home', 300000).catch(() => null),
+    jget('/api/global-themes', 300000).catch(() => null),
+  ]);
+  if (stale(token)) return;
+  if (!home || !Array.isArray(home.markets) || !home.markets.length) { el.innerHTML = stError('Couldn’t load the global board — retrying.'); return; }
+  globalBoardData = home; globalThemesData = themes; if (themes && themes.themes && !themes.themes.some((t) => t.id === globalThemeSel)) globalThemeSel = themes.themes[0]?.id || 'ai';
+  const sub = $('deals-sub');
+  if (sub) sub.textContent = `${home.markets.length} markets · ${Number(home.companies || 0).toLocaleString()} companies · global board`;
+  const note = $('co-note'); if (note) note.classList.add('hidden');
+  const mctx = $('co-mctx'); if (mctx) mctx.classList.add('hidden');
+  syncCoTools();
+  const adv = home.markets.filter((m) => (m.chg1d || 0) > 0).length;
+  const dec = home.markets.filter((m) => (m.chg1d || 0) < 0).length;
+  const markers = home.markets.map((m) => {
+    const [x, y] = GMAP[m.id] || [50, 50];
+    return `<button type="button" class="gmap-dot ${cls(m.chg1d)}" data-region="${esc(m.id)}" style="left:${x}%;top:${y}%" title="${esc(m.label)} · ${esc(m.index)} ${pctf(m.chg1d)}"><span>${esc(String(m.id).toUpperCase())}</span></button>`;
+  }).join('');
+  const tiles = home.markets.map((m) => {
+    const total = (m.adv || 0) + (m.dec || 0);
+    const wa = total ? Math.round((m.adv / total) * 100) : 0;
+    const dp = Math.abs(m.level) >= 1000 ? 0 : 2;
+    return `<button class="home-mkt" type="button" data-region="${esc(m.id)}" title="${esc(m.label)} — open the market">`
+      + `<span class="top"><span class="code">${esc(String(m.id).toUpperCase())}</span><span class="nm">${esc(m.index || '')}</span></span>`
+      + `<span class="lvl">${fmtNum(m.level, dp)}</span>`
+      + `<span class="rets"><em class="${cls(m.chg1d)}">${m.chg1d == null ? '—' : pctf(m.chg1d)}</em><span>YTD ${m.chgYtd == null ? '—' : `${m.chgYtd >= 0 ? '+' : ''}${m.chgYtd.toFixed(2)}%`}</span></span>`
+      + `<span class="bar"><i style="width:${wa}%;background:var(--green)"></i><i style="width:${100 - wa}%;background:var(--red)"></i></span>`
+      + `<span class="foot"><span>${m.adv == null ? '—' : `${m.adv} / ${m.dec}`}</span><span>P/E ${m.pe == null ? '—' : m.pe.toFixed(1)}</span></span>`
+      + `</button>`;
+  }).join('');
+  const top = (home.top || []).map((c) => `<tr><td><div class="gco"><span class="tk">${esc(c.ticker)}</span><span class="nm">${esc(c.name)}</span></div><span class="sub">${esc(c.sector || '')}</span></td>`
+    + `<td><span class="gmk">${esc(c.market.toUpperCase())}</span></td><td>${coMoney(c.capUsd)}</td><td>${c.pe == null ? '—' : `${c.pe.toFixed(1)}×`}</td><td class="${cls(c.chgYtd)}">${c.chgYtd == null ? '—' : pctf(c.chgYtd)}</td></tr>`).join('');
+  const ideas = home.ideas || {};
+  el.innerHTML = `<div class="gmap-card">
+      <div class="gmap-overlay"><div class="l">GLOBAL COVERAGE<b>${home.markets.length} markets · ${Number(home.companies || 0).toLocaleString()} companies</b></div><div class="gmap-legend"><span><i style="background:var(--green)"></i>${adv} advancing</span><span><i style="background:var(--red)"></i>${dec} declining</span></div></div>
+      <div class="gmap"><img src="/world-map.svg" alt="World map of covered markets"><div class="gmap-markers">${markers}</div></div>
+      <div class="gmap-foot"><span>flat map · markers coloured by 1D move · click a market to open its overview</span><span>prices as of ${home.pricesAsOf ? dealDateY(home.pricesAsOf) : '—'}</span></div>
+    </div>
+    <div class="home-markets gboard-markets">${tiles}</div>
+    <div class="gboard-two">
+      <div class="panel gtheme"><div class="gtheme-head"><span class="t">GLOBAL THEME</span><span class="m" id="gtheme-meta"></span></div><div class="gtheme-chips" id="gtheme-chips"></div><div id="gtheme-body"></div></div>
+      <div class="panel gtop"><div class="gtheme-head"><span class="t">GLOBAL TOP COMPANIES</span><span class="m">one class per issuer · USD market cap</span></div><table class="gtable"><thead><tr><th>COMPANY</th><th>MARKET</th><th>MKT CAP</th><th>P/E</th><th>YTD</th></tr></thead><tbody>${top}</tbody></table></div>
+    </div>
+    <div class="home-ideas">${[
+      { k: 'CHEAP VS ITS OWN HISTORY', n: ideas.cheap, unit: 'names', p: 'P/E in the bottom 20% of its own five-year range, across all ten markets.' },
+      { k: 'NEW FILINGS · US', n: ideas.filings, unit: 'names this week', p: 'New 10-K / 10-Q filings with updated revenue, earnings and balance sheet.' },
+      { k: 'QUALITY AT A REASONABLE PRICE', n: ideas.quality, unit: 'names', p: 'ROE ≥ 15% and P/E ≤ 20, across all ten markets.' },
+    ].map((x) => `<div class="home-idea"><span class="k">${x.k}</span><span class="n">${Number(x.n || 0).toLocaleString()}<small>${x.unit}</small></span><p>${x.p}</p></div>`).join('')}</div>`;
+  renderGlobalTheme();
+}
+
+function renderGlobalTheme() {
+  const chips = $('gtheme-chips'), body = $('gtheme-body'), meta = $('gtheme-meta');
+  if (!chips || !body || !globalThemesData || !Array.isArray(globalThemesData.themes)) return;
+  const themes = globalThemesData.themes;
+  const t = themes.find((x) => x.id === globalThemeSel) || themes[0];
+  if (!t) return;
+  chips.innerHTML = themes.map((x) => `<button type="button" class="gtheme-chip${x.id === t.id ? ' on' : ''}" data-gtheme="${esc(x.id)}">${esc(x.label)}</button>`).join('');
+  if (meta) meta.textContent = `${t.count || 0} companies · ${t.markets || 0} markets · ${coMoney(t.totalCap)}`;
+  const mix = (t.mix || []).map((x) => `<i style="width:${x.pct}%;background:${GMARKET_COLORS[x.market] || 'var(--dim)'}"></i>`).join('');
+  const legend = (t.mix || []).map((x) => `<span>${esc(String(x.market).toUpperCase())} ${x.pct}%</span>`).join('');
+  const rows = (t.members || []).map((m) => `<tr><td><div class="gco"><span class="tk">${esc(m.ticker)}</span><span class="nm">${esc(m.name)}</span></div><span class="sub">${esc(m.sector || '')}</span></td>`
+    + `<td><span class="gmk">${esc(String(m.market).toUpperCase())}</span></td><td>${coMoney(m.capUsd)}</td><td>${m.pe == null ? '—' : `${m.pe.toFixed(1)}×`}</td><td class="${cls(m.chgYtd)}">${m.chgYtd == null ? '—' : pctf(m.chgYtd)}</td></tr>`).join('');
+  body.innerHTML = `<div class="gmix">${mix}</div><div class="gmix-legend">${legend}</div><table class="gtable"><thead><tr><th>COMPANY</th><th>MARKET</th><th>MKT CAP</th><th>P/E</th><th>YTD</th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+document.addEventListener('click', (e) => {
+  const chip = e.target.closest('[data-gtheme]');
+  if (chip) { globalThemeSel = chip.dataset.gtheme; renderGlobalTheme(); }
+});
+
 function renderCompanies() {
   // A new company starts without the previous company's benchmark. Same-company re-renders (a watch
   // star, a range change) keep it.
@@ -8923,6 +9009,7 @@ function renderCompanies() {
   // the Japanese screen over it. The chosen renderer gets this token and bails if another wins.
   const token = takeToken();
   syncMarketAccent();
+  if (coRegion === 'global') return renderGlobalBoard(token);
   if (coRegion === 'us') renderGlobalMarketContext();
   if (coRegion === 'jp') return renderJapan(token);
   if (coRegion === 'kr') return renderKorea(token);
@@ -9812,7 +9899,7 @@ document.addEventListener('click', (e) => {
     // Drop the old market's screen on the spot. The US render waits for data before it paints, and
     // until this the previous screen (often Japan's TOPIX view) was still the thing on the page.
     const body = $('co-body');
-    if (body) body.innerHTML = stLoading(coRegion === 'jp' ? 'Loading Japan…' : coRegion === 'kr' ? 'Loading KOSPI…' : coRegion === 'tw' ? 'Loading TAIEX…' : coRegion === 'hk' ? 'Loading the Hang Seng…' : coRegion === 'au' ? 'Loading the ASX 200…' : coRegion === 'in' ? 'Loading the NIFTY 500…' : coRegion === 'id' ? 'Loading the IDX…' : coRegion === 'br' ? 'Loading the Ibovespa…' : coRegion === 'za' ? 'Loading the JSE All Share…' : `Loading the ${usIndexLabel()}…`);
+    if (body) body.innerHTML = stLoading(coRegion === 'global' ? 'Loading the global board…' : coRegion === 'jp' ? 'Loading Japan…' : coRegion === 'kr' ? 'Loading KOSPI…' : coRegion === 'tw' ? 'Loading TAIEX…' : coRegion === 'hk' ? 'Loading the Hang Seng…' : coRegion === 'au' ? 'Loading the ASX 200…' : coRegion === 'in' ? 'Loading the NIFTY 500…' : coRegion === 'id' ? 'Loading the IDX…' : coRegion === 'br' ? 'Loading the Ibovespa…' : coRegion === 'za' ? 'Loading the JSE All Share…' : `Loading the ${usIndexLabel()}…`);
     // A tile on the HOME board opens the same market's company view.
     if (region.closest('.home-mkt')) document.querySelector('[data-tab="deals"]')?.click();
     renderCompanies();

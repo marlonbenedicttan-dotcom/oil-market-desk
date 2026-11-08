@@ -1579,7 +1579,7 @@ function homeSummary() {
   let cheap = 0, quality = 0, total = 0;
   const scan = (rows) => {
     for (const c of rows || []) {
-      if (c.shareClass) continue;
+      if (c.shareClass === true) continue;
       total++;
       const p = c.bands && c.bands.pe ? c.bands.pe.percentile : (c.peHistory ? c.peHistory.percentile : null);
       if (p != null && p <= 20 && c.pe > 0) cheap++;
@@ -1588,6 +1588,22 @@ function homeSummary() {
   };
   scan(us);
   for (const l of Object.values(lists)) scan(l.companies);
+  // Global top companies by USD market cap, one class per issuer. Used on the global board.
+  const allRows = [];
+  const collect = (rows, market, rate) => {
+    for (const c of rows || []) {
+      if (c.shareClass === true || c.bdr || !(c.marketCap > 0)) continue;
+      allRows.push({
+        market, ticker: c.ticker || c.code, name: c.nameEn || c.name,
+        capUsd: market === 'us' ? c.marketCap : c.marketCap / (rate || 1),
+        pe: c.pe ?? null, chgYtd: c.chgYtd ?? null, sector: c.sector || c.industry || null,
+      });
+    }
+  };
+  collect(us, 'us', 1);
+  for (const [id, list] of Object.entries(lists)) collect(list.companies, id, list.fx && list.fx.rate);
+  allRows.sort((a, b) => b.capUsd - a.capUsd);
+  const top = allRows.slice(0, 12);
   let filings = 0;
   try { filings = (JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'filings-changed.json'), 'utf8')).tickers || []).length; } catch { /* none */ }
   const pricesAsOf = Object.values(mi.markets || {})
@@ -1598,9 +1614,116 @@ function homeSummary() {
     pricesAsOf,
     companies: total,
     markets: out,
+    top,
     ideas: { cheap, quality, filings },
   };
   HOME_CACHE = { at: Date.now(), data };
+  return data;
+}
+
+// A global theme is the union of the same idea across the ten local theme registers. The local files
+// name the same concept differently (us:ai, kr:semis, tw:ai-hardware, …); the map is deliberately
+// explicit so a rename in one market does not silently lose its members from the global lens.
+const GLOBAL_THEME_DEFS = [
+  {
+    id: 'ai', label: 'AI & SEMICONDUCTORS',
+    maps: { us: 'ai', jp: 'ai', kr: 'semis', tw: 'semis', hk: 'semis' },
+    extras: {
+      us: ['NVDA', 'AVGO', 'AMD', 'MU', 'AMAT', 'LRCX', 'KLAC'],
+      tw: ['2330', '2454', '2317', '3711'],
+      kr: ['005930', '000660'],
+      jp: ['8035', '6857', '6146'],
+      hk: ['0981', '1347'],
+    },
+  },
+  { id: 'defence', label: 'DEFENCE', maps: { us: 'defence', jp: 'defence', kr: 'defence', in: 'psu-capex' } },
+  { id: 'energy', label: 'ENERGY & POWER', maps: { us: 'energy-us', hk: 'energy', au: 'energy', in: 'energy', id: 'coal', br: 'oil', za: 'energy' } },
+  { id: 'banks', label: 'BANKS & FINANCIALS', maps: { us: 'financials', jp: 'banks-jp', kr: 'banks', tw: 'financials', hk: 'banks', au: 'banks', in: 'banks', id: 'banks', br: 'banks', za: 'banks' } },
+  { id: 'mining', label: 'METALS & MINING', maps: { au: 'materials', br: 'mining', za: 'mining', id: 'nickel' } },
+];
+let GLOBAL_THEME_CACHE = { at: 0, data: null };
+function globalThemes() {
+  if (GLOBAL_THEME_CACHE.data && Date.now() - GLOBAL_THEME_CACHE.at < 5 * 60e3) return GLOBAL_THEME_CACHE.data;
+  const lists = {
+    us: { companies: COMPANIES.companies || [], fx: { rate: 1 } },
+    jp: readJapanList(), kr: readKoreaList(), tw: readTaiwanList(), hk: readHongKongList(),
+    au: readAustraliaList(), in: readIndiaList(), id: readIndonesiaList(), br: readBrazilList(), za: readSouthAfricaList(),
+  };
+  const THEME_FILE = {
+    us: 'us', jp: 'japan', kr: 'korea', tw: 'taiwan', hk: 'hongkong',
+    au: 'australia', in: 'india', id: 'indonesia', br: 'brazil', za: 'southafrica',
+  };
+  const themeFiles = {};
+  for (const id of Object.keys(lists)) {
+    try { themeFiles[id] = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', `${THEME_FILE[id]}-themes.json`), 'utf8')).themes || []; }
+    catch { themeFiles[id] = []; }
+  }
+  const lookup = {};
+  for (const [id, l] of Object.entries(lists)) {
+    lookup[id] = new Map();
+    for (const c of l.companies || []) {
+      if (c.shareClass === true || c.bdr) continue;
+      // Some markets file the listed code and the DART/JPX code separately (Japan: 7203 vs 72030).
+      // A local theme may use either, so index both.
+      if (c.ticker) lookup[id].set(String(c.ticker), c);
+      if (c.code) lookup[id].set(String(c.code), c);
+    }
+  }
+  const themes = GLOBAL_THEME_DEFS.map((def) => {
+    const seen = new Set();
+    const members = [];
+    for (const [market, themeId] of Object.entries(def.maps || {})) {
+      const local = (themeFiles[market] || []).find((t) => t.id === themeId);
+      const codes = [...((local && (local.codes || local.tickers)) || []), ...((def.extras && def.extras[market]) || [])];
+      const fx = (lists[market].fx && lists[market].fx.rate) || 1;
+      for (const code of codes) {
+        const key = String(code);
+        const c = lookup[market].get(key);
+        if (!c) continue;
+        const id = `${market}:${c.ticker || c.code}`;
+        if (seen.has(id)) continue;
+        seen.add(id);
+        members.push({
+          market, ticker: c.ticker || c.code, name: c.nameEn || c.name,
+          capUsd: market === 'us' ? c.marketCap : c.marketCap / fx,
+          pe: c.pe ?? null, chgYtd: c.chgYtd ?? null, sector: c.sector || c.industry || null,
+        });
+      }
+    }
+    members.sort((a, b) => (b.capUsd || 0) - (a.capUsd || 0));
+    // Keep the theme genuinely global: every mapped market gets a seat before the remaining slots go
+    // to the largest names. Otherwise the US mega-caps crowd out Japan, Hong Kong and the smaller
+    // markets and a "global" theme reads like a US screen.
+    const byMarket = {};
+    for (const m of members) (byMarket[m.market] = byMarket[m.market] || []).push(m);
+    const seat = Object.keys(byMarket).length <= 6 ? 2 : 1;
+    const chosen = [];
+    const chosenIds = new Set();
+    for (const [market, list] of Object.entries(byMarket)) {
+      for (const m of list.slice(0, seat)) { chosen.push(m); chosenIds.add(`${m.market}:${m.ticker}`); }
+    }
+    for (const m of members) {
+      if (chosen.length >= 12) break;
+      const id = `${m.market}:${m.ticker}`;
+      if (!chosenIds.has(id)) { chosen.push(m); chosenIds.add(id); }
+    }
+    const topMembers = chosen.slice(0, 12).sort((a, b) => (b.capUsd || 0) - (a.capUsd || 0));
+    const capByMarket = {};
+    for (const m of topMembers) capByMarket[m.market] = (capByMarket[m.market] || 0) + (m.capUsd || 0);
+    const topTotal = topMembers.reduce((a, m) => a + (m.capUsd || 0), 0);
+    const totalCap = members.reduce((a, m) => a + (m.capUsd || 0), 0);
+    const mix = Object.entries(capByMarket).map(([market, cap]) => ({ market, pct: topTotal ? +(cap / topTotal * 100).toFixed(0) : 0 })).sort((a, b) => b.pct - a.pct);
+    return {
+      id: def.id, label: def.label,
+      count: members.length,
+      markets: [...new Set(members.map((m) => m.market))].length,
+      totalCap,
+      mix,
+      members: topMembers,
+    };
+  });
+  const data = { updated: new Date().toISOString(), themes };
+  GLOBAL_THEME_CACHE = { at: Date.now(), data };
   return data;
 }
 
@@ -5572,6 +5695,9 @@ const server = http.createServer(async (req, res) => {
     }
     if (url.pathname === '/api/home') {
       return sendJSONCached(res, 200, homeSummary(), 'public, max-age=60, stale-while-revalidate=300');
+    }
+    if (url.pathname === '/api/global-themes') {
+      return sendJSONCached(res, 200, globalThemes(), 'public, max-age=60, stale-while-revalidate=300');
     }
     if (url.pathname === '/api/companies') {
       let valuation = null;
