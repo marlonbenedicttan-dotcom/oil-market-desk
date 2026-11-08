@@ -4055,6 +4055,21 @@ function applyRoute(hash) {
 }
 // Jump-nav chips stay plain anchors for accessibility, but we scroll them ourselves so they don't
 // overwrite the route hash in the address bar.
+//
+// A section can grow above the target after the first scroll (a slow macro chart or news feed lands,
+// and the rail reflows), which pushes the target back off-screen. Retry only while it is still
+// off-screen, so a jump that already landed stays put.
+function jumpToSection(t) {
+  if (!t) return;
+  const go = () => {
+    if (!t.getClientRects().length) return;
+    const r = t.getBoundingClientRect();
+    if (r.top >= -8 && r.top <= window.innerHeight * 0.55) return;
+    t.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+  go();
+  [700, 1600, 2800].forEach((ms) => setTimeout(go, ms));
+}
 document.addEventListener('click', (e) => {
   const a = e.target.closest && e.target.closest('.jumpnav a[href^="#"]');
   if (!a) return;
@@ -4063,7 +4078,7 @@ document.addEventListener('click', (e) => {
   e.preventDefault();
   const pane = a.closest('.tabpane');
   if (pane) showTab(pane.dataset.pane);
-  setTimeout(() => t.scrollIntoView({ behavior: 'smooth', block: 'start' }), 40);
+  setTimeout(() => jumpToSection(t), 40);
 });
 addEventListener('popstate', () => { if (!applyRoute(location.hash)) syncRoute(false); });
 addEventListener('hashchange', () => { if (routingReady && !applyRoute(location.hash)) syncRoute(false); });
@@ -4255,7 +4270,7 @@ $('comm-nav')?.addEventListener('click', (e) => {
   // FUNDAMENTALS on markets that do not publish inventories).
   const target = [...document.querySelectorAll('#pane-commodities > [data-ctab]')]
     .find((el) => el.dataset.ctab === name && !el.classList.contains('comm-off') && el.getClientRects().length);
-  if (target) setTimeout(() => target.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60);
+  if (target) setTimeout(() => jumpToSection(target), 60);
 });
 $('bp-snapshot')?.addEventListener('click', (e) => {
   const c = e.target.closest('.bp-comp[data-component]');
