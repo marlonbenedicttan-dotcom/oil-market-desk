@@ -4301,3 +4301,42 @@ keeps the 10-K text.
   are bumped (`app.js?v=306`, `style.css?v=131`).
 - **Guard**: `tests/app-ui.test.js` asserts all ten `data-region` buttons exist, that the row keeps
   `overflow-x: auto`, and that `scrollActiveIntoView` is wired.
+
+## Load speed: the first paint, the boot gate and the layout (2026-11-09)
+
+Measured with headless Chrome against the live site (cache disabled; mobile = 390×844, 4× CPU,
+1.6 Mbps / 150 ms; desktop = warm instance). Before → after:
+
+| | mobile first visit | mobile repeat visit | desktop |
+|---|---|---|---|
+| FCP | 1.30 s → **0.84–1.06 s** | **0.24 s** | 1.22 s → **0.50–0.69 s** |
+| Boot overlay gone | 4.36 s → **1.3–2.1 s** | **0.30 s** | — |
+| LCP | 1.55 s → **1.0–1.9 s** | **0.31 s** | 1.36 s → **0.75–0.92 s** |
+| CLS | 1.16 → **0.06** | **0** | 0.40 → **0.03** |
+| First-screen bytes | 2.09 MB → **1.3 MB** | **63 KB** | 1.18 MB → **0.60 MB** |
+| Main-thread long tasks | 414 ms → **328 ms** | — | — |
+
+- **The search indexes are intent-loaded.** `/api/search-quick` (0.8 MB brotli) and `/api/market-index`
+  were fetched 0.5 s into every visit even when nobody searched — two thirds of the first load. They
+  now start on hover/focus/Cmd-K of the search box (`gsWarmSearch`); until they land, the debounced
+  `/api/global-search` answers keystrokes, so search is never blocked.
+- **Chart.js and app.js are deferred** (`index.html`), with app.js preloaded `fetchpriority=high`.
+  Chart.js is 200 KB and was parser-blocking in `<head>`; nothing inline needs `Chart` before app.js
+  runs, and the document order is preserved. The first-screen API calls (`market`, `markets`,
+  `history`, `regime`, `brief`) are preloaded `as=fetch` with the HTML — the app's later `getJSON`
+  reuses the cached response (one request per URL, verified) so the data round-trip overlaps the
+  script download instead of following it. Boot 4.4 s → 1.3 s on a throttled phone.
+- **The brief and the regime board start with the prices**, not after them; neither reads the price
+  table. The brief is HOME's LCP on a returning visit.
+- **HOME reserves the space its panels will fill.** The panels are fixed shapes (ten market tiles,
+  three ideas, a month calendar, the tape), but each arrived later and pushed the page down. Reserving
+  their heights took CLS 1.16 → 0.06. On phones the desktop reservations were the wrong shape (the
+  new mobile layout uses one-row swipe strips), so the strip heights are reserved instead — one row,
+  not five — with no empty space around the real content.
+- **Warm prefetch stands down on 3G/save-data**: ten market lists (~1 MB) are not worth stealing from
+  the first screen on a metered link; the tab still loads a market on click.
+- **Repeat visits** are served by the immutable (`max-age=31536000, immutable`, brotli) versioned
+  assets and the service worker: 41 resources, 63 KB, FCP 0.24 s, CLS 0.
+- **Tests**: 537 pass. Headless smoke: all four tabs, commodity chart 6M/1Y/5Y, global board,
+  AU/HK company chart 1Y/5Y, global search (quick index loads on click, not at boot), zero console
+  errors and zero HTTP ≥ 400.
