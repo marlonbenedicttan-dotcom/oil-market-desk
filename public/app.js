@@ -4247,7 +4247,15 @@ $('bp-metric')?.addEventListener('change', () => selectMarket($('bp-metric').val
 $('comm-nav')?.addEventListener('click', (e) => {
   const b = e.target.closest('[data-ctab]');
   if (!b) return;
-  setCommodityTab(b.dataset.ctab);
+  const name = b.dataset.ctab;
+  setCommodityTab(name);
+  // The five panels sit below the always-visible hero and price chart. Switching a tab without
+  // moving the viewport looks like nothing happened: the panel changed, but stayed off-screen.
+  // Jump to the first panel that is actually visible for this tab (SUPPLY falls through to
+  // FUNDAMENTALS on markets that do not publish inventories).
+  const target = [...document.querySelectorAll('#pane-commodities > [data-ctab]')]
+    .find((el) => el.dataset.ctab === name && !el.classList.contains('comm-off') && el.getClientRects().length);
+  if (target) setTimeout(() => target.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60);
 });
 $('bp-snapshot')?.addEventListener('click', (e) => {
   const c = e.target.closest('.bp-comp[data-component]');
