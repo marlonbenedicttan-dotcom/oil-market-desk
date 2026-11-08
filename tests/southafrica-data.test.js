@@ -98,8 +98,8 @@ test('a missing vendor TTM is built from the latest two half-years', () => {
   assert.equal(cfr.peBasis, 'TTM');
   assert.equal(cfr.ttmComputed, '2 half-years');
   assert.equal(cfr.netIncomeTTMAsOf, '2026-03-31');
-  const computed = za.companies.filter((c) => c.ttmComputed);
-  assert.ok(computed.length > 100, `only ${computed.length} computed trailing figures`);
+  const computed = za.companies.filter((c) => c.ttmComputed === '2 half-years');
+  assert.ok(computed.length > 100, `only ${computed.length} half-year trailing figures`);
   for (const c of computed) {
     const q = (c.quarters || []).slice(-2);
     assert.equal(q.length, 2, `${c.code}: not two half-years`);
@@ -108,6 +108,17 @@ test('a missing vendor TTM is built from the latest two half-years', () => {
     assert.equal(c.netIncomeTTMAsOf, q[1].d, `${c.code}: TTM end is not the latest half`);
     assert.equal(c.peBasis, 'TTM', `${c.code}: computed trailing profit is labelled ${c.peBasis}`);
   }
+  // A lagging/inconsistent half-year table falls through to stockanalysis's own ?p=trailing view.
+  const rolling = za.companies.filter((c) => c.ttmComputed === 'vendor trailing view');
+  assert.ok(rolling.length >= 1, 'no company used the vendor trailing view');
+  for (const c of rolling) {
+    assert.equal(c.peBasis, 'TTM', `${c.code}: vendor trailing profit is labelled ${c.peBasis}`);
+    assert.equal(c.netIncomeTTMAsOf, c.reports.ttmEnd, `${c.code}: TTM end does not match the trailing view`);
+    assert.ok(c.netIncomeTTM != null, `${c.code}: vendor trailing view has no net income`);
+  }
+  const fsr = za.companies.find((c) => c.code === 'FSR');
+  assert.equal(fsr.peBasis, 'TTM', 'FirstRand must be on a trailing basis');
+  assert.equal(fsr.ttmComputed, 'vendor trailing view');
 });
 
 test('a bank ships no operating margin and no free cash flow', () => {

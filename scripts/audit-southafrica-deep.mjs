@@ -98,9 +98,22 @@ for (const c of d.companies) {
 }
 say('P/E / P/B / ROE reproduced', `${pe} / ${pb} / ${roe}`);
 
-let ttmChecked = 0;
+let ttmChecked = 0, vendorTrailing = 0;
 const ttmNotes = [];
 for (const c of d.companies) {
+  // The vendor's own ?p=trailing view is a rolling twelve-month column, not a sum of the half-year
+  // table. When it ends at the same period as the annual report, the two must agree; when it ends
+  // later, the stored periods cannot reproduce it and the audit says so rather than pretending.
+  if (c.ttmComputed === 'vendor trailing view') {
+    if (c.netIncomeTTM == null) continue;
+    const fy = (c.reports.annual || []).at(-1);
+    vendorTrailing++;
+    if (fy && fy.end === c.reports.ttmEnd && fy.netIncome != null) {
+      const gap = Math.abs(c.netIncomeTTM - fy.netIncome) / Math.max(1, Math.abs(fy.netIncome));
+      if (gap > 0.01) ttmNotes.push(`${c.code} trailing ${c.netIncomeTTM} vs annual ${fy.netIncome}`);
+    }
+    continue;
+  }
   // JSE issuers report half-yearly, so the trailing year is two columns, not four. A four-column
   // sum would compare the TTM with two years and flag every half-year reporter.
   const n = c.periodBasis === 'half' ? 2 : 4;
@@ -112,7 +125,7 @@ for (const c of d.companies) {
   const gap = Math.abs(c.netIncomeTTM - sum) / Math.max(1, Math.abs(sum));
   if (gap > 0.01) ttmNotes.push(`${c.code} ${c.netIncomeTTM} vs ${sum}${Math.sign(c.netIncomeTTM) !== Math.sign(sum) ? ' (sign flip)' : ''}`);
 }
-say('TTM versus reported periods', `${ttmChecked} checked · ${ttmNotes.length} differ (vendor restatement/YTD)`);
+say('TTM versus reported periods', `${ttmChecked} checked · ${vendorTrailing} vendor trailing · ${ttmNotes.length} differ (vendor restatement/YTD)`);
 
 // --- 3. secondary listings keep the JSE line and the company statements ----------------------------
 let sec = 0;

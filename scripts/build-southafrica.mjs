@@ -282,6 +282,29 @@ function incomeOf(html) {
     })),
   };
 }
+// A few JSE issuers have no trailing column on the annual page, but stockanalysis still publishes a
+// separate ?p=trailing view: one rolling twelve-month column per period end. It is the vendor's own
+// TTM, so prefer it to arithmetic on the half-year columns. The newest dated column is the current
+// window; older columns are the same rolling window at earlier dates.
+function trailingOf(html) {
+  const t = parseSaTable(html);
+  const col = t.cols.find((c) => /^\d{4}-\d{2}-\d{2}$/.test(c.id));
+  if (!col) return null;
+  const get = (row) => (row ? row.values[col.id] : null);
+  const rev = rowOf(t, ['Revenue', 'Total Revenue', 'Operating Revenue']);
+  const op = rowOf(t, ['Operating Income']);
+  const ni = rowOf(t, ['Net Income to Common', 'Net Income']);
+  const eps = rowOf(t, ['Earnings Per Share', 'EPS (Diluted)', 'EPS (Basic)', 'Earnings Per Share (Diluted)']);
+  const dps = rowOf(t, ['Dividend Per Share']);
+  return {
+    end: col.id,
+    ttm: {
+      revenue: scale(get(rev)), operatingProfit: scale(get(op)),
+      netIncome: scale(get(ni)), eps: perShare(get(eps)), dividendPerShare: perShare(get(dps)),
+    },
+  };
+}
+
 function balanceOf(html) {
   const t = parseSaTable(html);
   const ttmCol = t.cols.find((c) => c.id === 'TTM') || t.cols[0];
@@ -376,11 +399,20 @@ function trailingFromHalves(c) {
   return { ttm: sum, ttmEnd: last[1].d };
 }
 
-async function page(code, p, q = false) {
+async function page(code, p, q = false, trailing = false) {
   const s = secondaryOf(code);
   const key = s ? `${s.exchange}-${s.ticker}` : code;
-  const f = join(ZA_SA, `${key.replace(/[^\w-]/g, '_')}-${p}${q ? '-q' : ''}.json`);
-  return getCached(sourcePage(code, p, q), f, { ttlMs: q ? TTL_Q : TTL_FIN, timeout: 30000, retries: 6 });
+  const f = join(ZA_SA, `${key.replace(/[^\w-]/g, '_')}-${p}${q ? '-q' : trailing ? '-trailing' : ''}.json`);
+  return getCached(sourcePage(code, p, q, trailing), f, { ttlMs: q ? TTL_Q : TTL_FIN, timeout: 30000, retries: 6 });
+}
+
+async function trailingIncome(code) {
+  try {
+    const html = await page(code, 'income-statement', false, true);
+    return trailingOf(html);
+  } catch {
+    return null;
+  }
 }
 
 // The statistics page carries the current share count and dividend yield. The financials page used to
@@ -424,8 +456,20 @@ if (!SKIP_FIN) {
       c.quarters = quartersOf(qtr);
       c.periodBasis = basisOf(c.quarters);
       if (!(c.ttm && c.ttm.netIncome != null)) {
+        // The half-year table is already in hand, so use it first. If it lags the annual report or
+        // does not reconcile, ask the vendor for its separate ?p=trailing view before giving up.
         const half = trailingFromHalves(c);
-        if (half) { c.ttm = half.ttm; c.ttmEnd = half.ttmEnd; c.ttmComputed = '2 half-years'; }
+        if (half) {
+          c.ttm = half.ttm; c.ttmEnd = half.ttmEnd; c.ttmComputed = '2 half-years';
+        } else {
+          const t = await trailingIncome(c.code);
+          const fy = c.annual.at(-1);
+          if (t && t.ttm.netIncome != null && (!fy || t.end >= fy.end)) {
+            c.ttm = { ...(c.ttm || {}), ...t.ttm };
+            c.ttmEnd = t.end;
+            c.ttmComputed = 'vendor trailing view';
+          }
+        }
       }
       c.reportCurrency = I.currency || 'ZAR';
       if (Number.isFinite(I.vendorYield) && I.vendorYield >= 0 && I.vendorYield < 30) c.vendorDividendYield = I.vendorYield;
@@ -464,6 +508,7 @@ if (!SKIP_FIN) {
     c.annual = (p.reports && p.reports.annual) || [];
     c.quarters = (p.reports && p.reports.quarters) || [];
     c.ttmEnd = (p.reports && p.reports.ttmEnd) || null;
+    c.ttmComputed = p.ttmComputed;
     c.latestEnd = (p.reports && p.reports.latestEnd) || null;
     c.reportCurrency = p.reportCurrency || 'ZAR';
     c.shares = p.shares || null;

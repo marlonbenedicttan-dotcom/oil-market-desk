@@ -4232,9 +4232,11 @@ keeps the 10-K text.
   foreign-secondary lines. TTM/annual/half-year, current shares, vendor dividend yield, GICS profile, report
   currency (ZAR/USD/EUR/GBP) carried into the ratios. The JSE reports half-yearly and the page labels
   the table REPORTED HALF-YEARS. Where the vendor serves no trailing column — Richemont is the obvious
-  case — the build sums the latest two half-year filings into a TTM. The sum must reconcile with the
-  fiscal year when the period ends coincide; a half-year table that lags the annual report keeps the
-  labelled fiscal year (TEX). USD/ZAR from open.er-api.
+  case — the build first sums the latest two half-year filings. The sum must reconcile with the fiscal
+  year when the period ends coincide. If the half-year table lags (TEX) or does not reconcile (WBO),
+  the build reads stockanalysis's separate `?p=trailing` view, which carries one rolling twelve-month
+  column per period end. That lifts the market to **225 of 226 lines on TTM**; only OAO (no trailing
+  data, no P/E) keeps the labelled fiscal year. USD/ZAR from open.er-api.
 - **Shared parser fix**: stockanalysis.com changed its statement-table markup in November 2026 (no
   `id` attributes; the period row is a `date-row` and the label sits in a `font-medium` div).
   `parseSaTable` now supports both layouts, so a fresh build no longer reads every page as empty.
@@ -4252,9 +4254,10 @@ keeps the 10-K text.
   `#c9a227`. The MARKET view carries a **FOREIGN-SECONDARY LISTINGS** panel naming each primary exchange.
 - **Audits/tests**: `npm run audit:southafrica` (hard invariants, caps, ratio reproduction, secondary
   sources, aggregates, list projection) and `npm run audit:southafrica:deep` (engine fields, caps,
-  ratios, TTM from four quarters or two half-years, flags, list). `tests/southafrica-data.test.js` covers
-  the 258/244/226 split, computed half-year TTM, the named exclusions and secondary map, caps, ratios
-  and list fields; `filters`, `workflows` and `lib` tests include South Africa.
+  ratios, TTM from the vendor column, two half-years or the vendor trailing view, flags, list).
+  `tests/southafrica-data.test.js` covers the 258/244/226 split, computed half-year TTM, vendor
+  trailing TTM, the named exclusions and secondary map, caps, ratios and list fields; `filters`,
+  `workflows` and `lib` tests include South Africa.
 - **Schedule**: `.github/workflows/south-africa-daily.yml`, 15:40 UTC Mon–Fri (17:40 SAST), with the
   statement cache, `merge-history za`, `merge-series za`, the collapse guard, both audits and the commit.
 - **Not used**: the official JSE market-data API is licensed (no free key); the keyless vendor path is

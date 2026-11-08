@@ -150,9 +150,13 @@ if (za.indexName !== 'JSE All Share') fails.push(`indexName is ${za.indexName}`)
 const noTrade = za.companies.filter((c) => c.noRecentTrading);
 const short = za.companies.filter((c) => c.shortHistory);
 const ttmStale = za.companies.filter((c) => c.ttmStale);
+const ttmBasis = za.companies.reduce((a, c) => { const k = c.peBasis || 'none'; a[k] = (a[k] || 0) + 1; return a; }, {});
+const ttmBuild = za.companies.reduce((a, c) => { const k = c.ttmComputed || (c.peBasis === 'TTM' ? 'vendor column' : 'none'); a[k] = (a[k] || 0) + 1; return a; }, {});
 const thin = za.companies.filter((c) => c.thinTrading);
 say('no recent trading', `${noTrade.length}${noTrade.length ? ' · ' + noTrade.map((c) => c.code).join(', ') : ''}`);
 say('short history (<100 sessions)', `${short.length}${short.length ? ' · ' + short.map((c) => c.code).join(', ') : ''}`);
+say('P/E profit basis', `TTM ${ttmBasis.TTM || 0} · FY ${ttmBasis.FY || 0}${ttmBasis.FY ? ' · ' + za.companies.filter((c) => c.peBasis === 'FY').map((c) => c.code).join(', ') : ''}`);
+say('TTM construction', Object.entries(ttmBuild).map(([k, v]) => `${k} ${v}`).join(' · '));
 say('TTM older than 365 days', `${ttmStale.length}${ttmStale.length ? ' · ' + ttmStale.map((c) => c.code).join(', ') : ''}`);
 say('thin trading (< R1M/day)', thin.length);
 for (const c of noTrade) {

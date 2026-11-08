@@ -90,10 +90,10 @@ export const secondaryOf = (code) => SECONDARY[pad(code)] || null;
 const baseOf = (b) => (b.exchange === 'stocks'
   ? `https://stockanalysis.com/stocks/${b.ticker}/`
   : `https://stockanalysis.com/quote/${b.exchange}/${b.ticker}/`);
-export const sourcePage = (code, page = '', quarterly = false) => {
+export const sourcePage = (code, page = '', quarterly = false, trailing = false) => {
   const s = secondaryOf(code);
-  if (s) return `${baseOf(s)}financials/${page}/${quarterly ? '?p=quarterly' : ''}`;
-  return saPage(code, page, quarterly);
+  if (s) return `${baseOf(s)}financials/${page}/${quarterly ? '?p=quarterly' : trailing ? '?p=trailing' : ''}`;
+  return saPage(code, page, quarterly, trailing);
 };
 export const sourceProfile = (code) => {
   const s = secondaryOf(code);
@@ -105,8 +105,8 @@ export const sourceStats = (code) => {
 };
 
 export const saSlug = (code) => pad(code);
-export const saPage = (code, page = '', quarterly = false) =>
-  `https://stockanalysis.com/quote/jse/${saSlug(code)}/financials/${page}/${quarterly ? '?p=quarterly' : ''}`;
+export const saPage = (code, page = '', quarterly = false, trailing = false) =>
+  `https://stockanalysis.com/quote/jse/${saSlug(code)}/financials/${page}/${quarterly ? '?p=quarterly' : trailing ? '?p=trailing' : ''}`;
 export const saProfile = (code) => `https://stockanalysis.com/quote/jse/${saSlug(code)}/company/`;
 export const saStats = (code) => `https://stockanalysis.com/quote/jse/${saSlug(code)}/statistics/`;
 
