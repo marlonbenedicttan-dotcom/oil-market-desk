@@ -1375,15 +1375,23 @@ button.deal-sec-tile:hover { background: #10151b; }
 
 /* Companies: TWO navigation rows in ONE block — which market, then which view. The old build had two
    identical-looking tab strips in different places, which is what made "press US, then find Screener"
-   a mis-tap into Japan. Market = filled segmented buttons, view = underline tabs. */
-.co-nav { padding: 10px 12px 0; border-bottom: 1px solid var(--line); }
+   a mis-tap into Japan. Market = filled segmented buttons, view = underline tabs.
+   No rule under the block: spacing separates it from whatever follows (map card, filters or market
+   content). A bottom border here floated as a stray line once the content gained breathing room. */
+.co-nav { padding: 10px 12px 16px; }
 .co-navrow { display: flex; align-items: center; gap: 12px; min-width: 0; }
 .co-navrow + .co-navrow { margin-top: 8px; padding-bottom: 4px; }
-.co-region { display: flex; flex-wrap: nowrap; gap: 6px; min-width: 0; overflow-x: auto; scrollbar-width: none; scroll-snap-type: x proximity; }
+.co-region { display: flex; flex-wrap: nowrap; gap: 6px; min-width: 0; overflow-x: auto; scrollbar-width: none;
+  scroll-behavior: smooth; scroll-padding-inline: 14px; --fade-l: 0px; --fade-r: 0px;
+  -webkit-mask-image: linear-gradient(to right, transparent 0, #000 var(--fade-l), #000 calc(100% - var(--fade-r)), transparent 100%);
+  mask-image: linear-gradient(to right, transparent 0, #000 var(--fade-l), #000 calc(100% - var(--fade-r)), transparent 100%); }
+/* Fade only the side that still has content: a partly scrolled pill dissolves instead of being sliced. */
+.co-region[data-fade="left"], .co-region[data-fade="both"] { --fade-l: 22px; }
+.co-region[data-fade="right"], .co-region[data-fade="both"] { --fade-r: 22px; }
 .co-region::-webkit-scrollbar { display: none; }
 /* The row scrolls sideways; the active market is scrolled into view on render (scrollActiveIntoView in
    app.js), so a saved India/Indonesia/Brazil/South Africa selection is never left off-screen. */
-.co-region button { scroll-snap-align: start; background: #0d1219; border: 1px solid var(--line2); border-radius: 999px; color: var(--dim);
+.co-region button { background: #0d1219; border: 1px solid var(--line2); border-radius: 999px; color: var(--dim);
   font: 600 10.5px/1 var(--sans); letter-spacing: .8px; padding: 0 14px; min-height: 34px;
   white-space: nowrap; cursor: pointer; }
 .co-region button:hover { color: var(--text); }
@@ -1488,7 +1496,7 @@ button.deal-sec-tile:hover { background: #10151b; }
 
 /* Japan on a phone: the filter row and the row metadata were both too heavy. */
 @media (max-width: 640px) {
-  .co-nav { padding: 8px 10px 0; }
+  .co-nav { padding: 8px 10px 12px; }
   .co-navrow { gap: 8px; }
   .co-navrow + .co-navrow { margin-top: 6px; }
   .co-region { gap: 5px; }
@@ -1967,10 +1975,7 @@ body.gs-search-open { overflow: hidden; }
 }
 
 /* ---------- COMPANIES — global first board ---------- */
-/* The global board is a card, not a continuation of the market tabs. With the 16px gap above the map
-   the tab row's rule would float as a stray line, so the card's own border is the only separator. */
-#p-deals[data-market="global"] .co-nav { border-bottom: 0; }
-.gmap-card { position:relative; margin:16px 0; border:1px solid var(--line); background:var(--panel); overflow:hidden; }
+.gmap-card { position:relative; margin:0 0 16px; border:1px solid var(--line); background:var(--panel); overflow:hidden; }
 .gmap { position:relative; width:100%; aspect-ratio:1000 / 420; background:#05070a; }
 .gmap > img { position:absolute; inset:0; width:100%; height:100%; display:block; }
 .gmap-markers { position:absolute; inset:0; }
