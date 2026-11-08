@@ -1380,7 +1380,7 @@ button.deal-sec-tile:hover { background: #10151b; }
    content). A bottom border here floated as a stray line once the content gained breathing room. */
 .co-nav { padding: 10px 12px 16px; }
 .co-navrow { display: flex; align-items: center; gap: 12px; min-width: 0; }
-.co-navrow + .co-navrow { margin-top: 8px; padding-bottom: 4px; }
+.co-navrow + .co-navrow { margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--line); }
 .co-region { display: flex; flex-wrap: nowrap; gap: 6px; min-width: 0; overflow-x: auto; scrollbar-width: none;
   scroll-behavior: smooth; scroll-padding-inline: 14px; --fade-l: 0px; --fade-r: 0px;
   -webkit-mask-image: linear-gradient(to right, transparent 0, #000 var(--fade-l), #000 calc(100% - var(--fade-r)), transparent 100%);
@@ -1439,7 +1439,7 @@ button.deal-sec-tile:hover { background: #10151b; }
 .co-views { display: flex; gap: 2px; min-width: 0; overflow-x: auto; scrollbar-width: none; }
 .co-views::-webkit-scrollbar { display: none; }
 .co-views button { background: none; border: 0; border-bottom: 2px solid transparent; color: var(--dim);
-  font: 600 10.5px/1 var(--sans); letter-spacing: .9px; padding: 0 11px; min-height: 34px;
+  font: 600 11px/1 var(--sans); letter-spacing: 1px; padding: 0 14px; min-height: 36px;
   white-space: nowrap; cursor: pointer; }
 .co-views button:hover { color: var(--text); }
 .co-views button.on { color: var(--text); border-bottom-color: var(--mkt, var(--amber)); }
@@ -1929,17 +1929,12 @@ button.deal-sec-tile:hover { background: #10151b; }
   .topbar .tab svg { width:13px; height:13px; }
 }
 
-/* Desktop: the country pills and the MARKET/SCREENER/THEMES tabs share one control row. The search
-   bar and the list filters no longer stack into four separate bands. */
+/* Desktop: the region pills keep their own row and the MARKET/SCREENER/THEMES tabs sit directly
+   under them, left-aligned with the content, instead of being pushed to the far right. */
 @media (min-width: 900px) {
-  .co-nav { display: flex; align-items: center; gap: 14px; }
-  .co-nav .co-navrow { margin: 0; padding: 0; }
-  .co-nav .co-navrow:first-child { flex: 1 1 auto; min-width: 0; }
-  .co-nav .co-navrow:last-child { flex: 0 0 auto; }
   .co-nav .co-region { gap: 4px; }
   .co-nav .co-region button { padding: 0 8px; }
-  .co-nav .co-views { border-left: 1px solid var(--line); padding-left: 10px; }
-  .co-nav .co-views button { padding: 0 9px; }
+  .co-nav .co-views button { padding: 0 14px; }
 }
 
 /* The selected-day list gets its own scroll area: a heavy event day must not stretch the HOME page. */

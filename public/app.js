@@ -11188,38 +11188,9 @@ async function renderGlobalMarketContext() {
     gsBackNav = false;
     syncRoute(push);
   }
-  if (!isCompanyOpen()) { el.classList.add('hidden'); el.innerHTML = ''; return; }
-  const token = ++mctxSeq;
-  await gsLoadMarkets();
-  if (token !== mctxSeq) return;
-  const market = coRegion;
-  const meta = gsMeta(market);
-  let symbol = meta.default;
-  if (market === 'us') {
-    const c = (companiesData && companiesData.companies || []).find((x) => String(x.cik) === String(coCik));
-    if (c && c.spTier === 'sp500') symbol = '^GSPC';
-    else if (c && c.spTier === 'sp400') symbol = '^SP400';
-    else if (c && c.spTier === 'sp600') symbol = '^SP600';
-    else symbol = '^SP1500';
-  }
-  const ix = gsIndex(market, symbol) || gsIndex(market);
-  if (!ix) { el.classList.add('hidden'); return; }
-  el.classList.remove('hidden');
-  el.dataset.open = mctxExpanded ? '1' : '0';
-  el.innerHTML = `<div class="co-mctx-row">
-      <span class="flag">${meta.flag || ''}</span><span class="country">${gsEsc(meta.label || market)}</span>
-      <span class="idx">${gsEsc(ix.label)}</span><span class="lvl">${gsNum(ix.level, 2)}</span>
-      <span class="move ${gsCls(ix.pct1d)}">${gsPct(ix.pct1d, 2)} today</span><span class="ytd">${gsPct(ix.pctYtd, 2)} YTD</span>
-      <span class="spacer"></span>
-      ${gsQueryText ? '<button type="button" data-gsearch="1">← Results</button>' : ''}
-      <button type="button" data-mctx-toggle="1" class="mctx-toggle">${mctxExpanded ? 'Hide' : 'Chart'}</button>
-      <button type="button" data-mctxrange="1y" class="${mctxRange === '1y' ? 'on' : ''}">1Y</button>
-      <button type="button" data-mctxrange="5y" class="${mctxRange === '5y' ? 'on' : ''}">5Y</button>
-      <button type="button" data-mctx-vs="1" class="${mctxVs ? 'on' : ''}">vs index</button>
-      <button type="button" data-mctx-open="1">Open market →</button>
-    </div>
-    <div class="co-chartwrap co-mctx-chart"><div class="co-canvas"><canvas id="co-mctx-chart"></canvas></div></div>`;
-  drawMctx(ix, token);
+  // The market chart card is not part of the company page; the market view is one click away.
+  el.classList.add('hidden');
+  el.innerHTML = '';
 }
 
 async function drawMctx(ix, token) {
