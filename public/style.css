@@ -2533,3 +2533,31 @@ body.gs-search-open { overflow: hidden; }
   #home-ideas { min-height: 460px; }
   #regime-board { min-height: 560px; }
 }
+
+/* HOME on a phone: read the brief before the calendar, and keep the watchlist
+   as one swipeable strip instead of an orphaned 2-column grid. */
+@media (max-width: 900px) {
+  #p-brief { order: 1; }
+  #p-brief-more { order: 2; }
+  #p-calendar { order: 3; }
+}
+@media (max-width: 640px) {
+  #home-watch .tiles { display: flex; overflow-x: auto; gap: 8px; padding: 8px 12px 10px; scroll-snap-type: x proximity; -webkit-overflow-scrolling: touch; }
+  #home-watch .tile { flex: 0 0 158px; scroll-snap-align: start; }
+}
+
+@media (max-width: 640px) {
+  .home-ideas { display: flex; overflow-x: auto; gap: 8px; padding: 8px 12px 10px; scroll-snap-type: x proximity; -webkit-overflow-scrolling: touch; }
+  .home-idea { flex: 0 0 262px; scroll-snap-align: start; }
+}
+
+@media (max-width: 640px) {
+  .calendar-rail .cal-day { min-height: 42px; padding: 3px; }
+  .calendar-rail .cal-dn { font-size: 11px; }
+  .calendar-rail .cal-modes button { font-size: 9px; }
+}
+
+@media (max-width: 640px) {
+  .home-markets { display: flex; overflow-x: auto; gap: 8px; padding: 8px 12px 10px; scroll-snap-type: x proximity; -webkit-overflow-scrolling: touch; }
+  .home-markets .home-mkt { flex: 0 0 172px; scroll-snap-align: start; }
+}
