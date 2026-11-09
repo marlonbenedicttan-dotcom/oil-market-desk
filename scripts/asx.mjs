@@ -127,6 +127,10 @@ export const isBankLike = (c = {}) => {
 
 export const saPage = (code, page = '', trailing = false) =>
   `https://stockanalysis.com/quote/asx/${pad(code)}/financials/${page}/${trailing ? '?p=trailing' : ''}`;
+// The "quarterly" view is the as-reported period table: half-years for most ASX issuers, genuine
+// quarters for the handful that file quarterly (the big banks) and for US dual-listed lines.
+export const saPeriodPage = (code, page = 'income-statement') =>
+  `https://stockanalysis.com/quote/asx/${pad(code)}/financials/${page}/?p=quarterly`;
 export const saProfile = (code) => `https://stockanalysis.com/quote/asx/${pad(code)}/company/`;
 
 // A handful of ASX lines are CDIs or the Australian leg of a dual-listed group; stockanalysis has no

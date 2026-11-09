@@ -111,6 +111,33 @@ test('every company carries the trailing profit its P/E is built on', () => {
   assert.ok(ttm > au.companies.length / 2, `most of the market is on a trailing basis (${ttm} TTM, ${fallback} fallback)`);
 });
 
+test('the period table is as-reported periods, not a trailing-twelve-month window', () => {
+  const counts = { half: 0, quarter: 0 };
+  for (const c of au.companies) {
+    if (!c.periodBasis) continue;
+    assert.ok(c.periodBasis === 'half' || c.periodBasis === 'quarter', `${c.code}: known period basis`);
+    counts[c.periodBasis]++;
+    const q = (c.reports && c.reports.quarters) || [];
+    assert.ok(q.length >= 2, `${c.code}: at least two periods`);
+    assert.deepEqual(q, c.quarters, `${c.code}: the detail and report period tables agree`);
+    const gaps = [];
+    for (let i = 1; i < q.length; i++) {
+      gaps.push((Date.parse(q[i].d) - Date.parse(q[i - 1].d)) / (864e5 * 30.44));
+    }
+    gaps.sort((a, b) => a - b);
+    const median = gaps[Math.floor(gaps.length / 2)];
+    if (c.periodBasis === 'half') {
+      assert.ok(median >= 4.5 && median <= 9, `${c.code}: half-year spacing (${median.toFixed(1)} months)`);
+    } else {
+      assert.ok(median >= 1.5 && median < 4.5, `${c.code}: quarterly spacing (${median.toFixed(1)} months)`);
+    }
+  }
+  assert.ok(counts.half > 1200, `most ASX issuers report half-yearly (${counts.half} half-year, ${counts.quarter} quarterly)`);
+  assert.ok(counts.quarter > 10, `the banks and US dual-listed lines report quarterly (${counts.quarter})`);
+  const rio = au.companies.find((c) => c.code === 'RIO');
+  assert.equal(rio && rio.periodBasis, 'half', 'RIO is a half-year reporter even though it is a US dual listing');
+});
+
 test('free cash flow is the vendor FCF, not operating plus all investing flow', () => {
   for (const c of au.companies) {
     if (c.fcf == null) continue;

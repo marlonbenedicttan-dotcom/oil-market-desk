@@ -25,7 +25,7 @@ import { execFileSync } from 'node:child_process';
 import https from 'node:https';
 import { join } from 'node:path';
 import {
-  ROOT, AU_CACHE, AU_SA, asxCsv, sectorOf, isNotApplic, isUnclassified, isFundLine, pad, saPage, saUsPage, US_CROSS, yaSymbol,
+  ROOT, AU_CACHE, AU_SA, asxCsv, sectorOf, isNotApplic, isUnclassified, isFundLine, pad, saPage, saPeriodPage, saUsPage, US_CROSS, yaSymbol,
   isBankLike, isFinancialSector,
 } from './asx.mjs';
 import {
@@ -307,6 +307,26 @@ function quartersOf(html) {
     d: c.id, revenue: scale(rev && rev.values[c.id]), operatingProfit: scale(op && op.values[c.id]), netIncome: scale(ni && ni.values[c.id]),
   }));
 }
+// The `?p=quarterly` table is the as-reported period table, not TTM. Most ASX issuers report
+// half-yearly, so the columns are six months apart; the major banks and the US dual-listed lines
+// file quarters. Read the spacing rather than the page label, which calls both "Fiscal Quarter".
+function periodBasisOf(periods) {
+  const ds = periods.map((p) => p.d).filter(Boolean).sort();
+  if (ds.length < 2) return null;
+  const gaps = [];
+  for (let i = 1; i < ds.length; i++) {
+    const a = Date.parse(`${ds[i - 1]}T00:00:00Z`), b = Date.parse(`${ds[i]}T00:00:00Z`);
+    if (Number.isFinite(a) && Number.isFinite(b)) gaps.push((b - a) / (864e5 * 30.44));
+  }
+  if (!gaps.length) return null;
+  gaps.sort((a, b) => a - b);
+  const median = gaps[Math.floor(gaps.length / 2)];
+  // An annual-only table is not a half-year series: keep it out of the matrix and let the page use
+  // the trailing table rather than presenting twelve-month periods as H1/H2.
+  if (median >= 4.5 && median <= 9) return 'half';
+  if (median >= 1.5 && median < 4.5) return 'quarter';
+  return null;
+}
 
 // The ASX pages have no "TTM" column in the annual table: stockanalysis serves the rolling twelve
 // months on the `?p=trailing` view, one column per period end, newest first. The latest column is the
@@ -363,6 +383,14 @@ async function page(code, p, q = false) {
   // company so the audit can say "not fetched this run" instead of "no statements".
   return getCached(saPage(code, p, q), f, { ttlMs: q ? TTL_Q : TTL_FIN, timeout: 30000, retries: 6 });
 }
+async function periodPage(code, p = 'income-statement') {
+  const f = join(AU_SA, `${code}-${p}-q.json`);
+  if (CACHED_ONLY) {
+    const hit = existsSync(f) ? readJson(f) : null;
+    return hit && hit.text ? hit.text : null;
+  }
+  return getCached(saPeriodPage(code, p), f, { ttlMs: TTL_Q, timeout: 30000, retries: 6 });
+}
 async function usPage(ticker, p, q = false) {
   const f = join(AU_SA, `us-${ticker}-${p}${q ? '-q' : ''}.json`);
   if (CACHED_ONLY) {
@@ -384,6 +412,7 @@ if (!SKIP_FIN) {
       let csh = await page(c.code, 'cash-flow-statement');
       let tinc = await page(c.code, 'income-statement', true);
       let tbal = await page(c.code, 'balance-sheet', true);
+      let pinc = await periodPage(c.code, 'income-statement');
       let cross = null;
       // A CDI / dual-listed line with no ASX statement page: read the same company's primary US
       // listing, and scale the share count by the CDI ratio so the ASX price still gives the cap.
@@ -393,6 +422,7 @@ if (!SKIP_FIN) {
         bal = await usPage(cross.ticker, 'balance-sheet');
         csh = await usPage(cross.ticker, 'cash-flow-statement');
         tinc = await usPage(cross.ticker, 'income-statement', true);
+        pinc = await usPage(cross.ticker, 'income-statement', true);
         tbal = null;
       }
       const I = incomeOf(inc), B = balanceOf(bal), C = cashOf(csh);
@@ -409,7 +439,13 @@ if (!SKIP_FIN) {
       c.latest = cross ? (B.latest || {}) : ((TB && TB.latest) || B.latest || {});
       c.latestEnd = cross ? B.ttmEnd : ((TB && TB.end) || B.ttmEnd || null);
       c.annual = [...annual.values()].filter((r) => r.revenue != null || r.equity != null).sort((a, b) => a.end.localeCompare(b.end));
-      c.quarters = cross ? quartersOf(tinc) : ((TI && TI.periods) || quartersOf(tinc));
+      // The period table is the as-reported series the matrix needs. The trailing table is only a
+      // fallback: its columns are TTM windows at each period end, so using it as quarters makes every
+      // half-year look flat and repeats the annual figure in four consecutive cells.
+      const periodQuarters = (pinc && pinc.trim()) ? quartersOf(pinc) : [];
+      const ttmQuarters = cross ? quartersOf(tinc) : ((TI && TI.periods) || quartersOf(tinc));
+      c.quarters = periodQuarters.length >= 2 ? periodQuarters : ttmQuarters;
+      c.periodBasis = periodQuarters.length >= 2 ? periodBasisOf(periodQuarters) : null;
       c.reportCurrency = I.currency || (cross ? 'USD' : 'AUD');
       // Shares come from the filing, not from a divisor: diluted shares are the count the EPS row uses.
       const rawShares = (cross ? (I.ttm && I.ttm.shares) : (TI && TI.ttm.shares)) || (I.ttm && I.ttm.shares) || (c.annual.length ? c.annual[c.annual.length - 1].shares : null) || null;
@@ -417,7 +453,6 @@ if (!SKIP_FIN) {
       if (cross) {
         c.crossListing = { market: 'us', ticker: cross.ticker.toUpperCase(), ratio: cross.ratio, note: cross.note };
         c.sharesBasis = cross.ratio === 1 ? 'filing (same ordinary shares)' : `filing × ${cross.ratio} (CDI ratio)`;
-        c.periodBasis = 'quarter';
         // The ASX price is per CDI. One global share is `ratio` CDIs, so per-share figures (EPS, DPS)
         // must be divided by the ratio before they are compared with that price; otherwise the P/E
         // band and the dividend yield are off by the CDI ratio (RMD's yield read 10.5%, not 1.05%).

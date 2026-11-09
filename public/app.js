@@ -5301,6 +5301,7 @@ function coMatrixPeriods(c) {
 }
 function coMatrixDetectN(c, periods) {
   if (c.periodBasis === 'half') return 2;
+  if (c.periodBasis === 'quarter') return 4;
   const dates = periods.map((p) => p.date).filter(Boolean);
   if (dates.length < 2) return 4;
   const gaps = [];
@@ -5383,15 +5384,16 @@ function coMatrixBuild(c, opts = {}) {
       p.fyN = fy; p.qN = q;
     }
   } else {
-    // US: match the annual series to a window of n periods ending in that fiscal year.
     const annual = (c.series || []).map((x) => ({ year: Number(x.fy), revenue: x.revenue, netIncome: x.netIncome })).filter((a) => a.year).sort((a, b) => a.year - b.year);
-    let lastEnd = -1;
+    // Infer the fiscal year-end month from the latest annual window, then group every
+    // quarter by date. A January/February fiscal year puts Q4 in the next calendar year
+    // (NVIDIA FY2025 ends Jan 2026); the old window-only grouping both dropped quarters
+    // and labelled columns with the vendor's label year instead of the fiscal year end.
+    let endMonth = null;
+    let latestYear = -Infinity;
     for (const a of annual) {
       let best = null;
       for (let i = n - 1; i < periods.length; i++) {
-        // Match the annual revenue to any n-quarter window. A January fiscal year puts Q4
-        // in the next calendar year (NVIDIA FY2025 ends Jan 2026), so restricting the
-        // window's last quarter to the label year dropped every recent group.
         const win = periods.slice(i - n + 1, i + 1);
         if (win.length !== n) continue;
         const sum = win.reduce((s, p) => s + (p.revenue || 0), 0);
@@ -5399,38 +5401,81 @@ function coMatrixBuild(c, opts = {}) {
         const diff = Math.abs(sum - a.revenue) / Math.abs(a.revenue);
         if (!best || diff < best.diff) best = { i, diff, win };
       }
-      if (best && best.diff <= 0.02) {
-        if (!groups.has(a.year)) groups.set(a.year, {});
-        best.win.forEach((p, idx) => { groups.get(a.year)[idx + 1] = { revenue: p.revenue, netIncome: p.netIncome }; p.fyN = a.year; p.qN = idx + 1; });
-        lastEnd = Math.max(lastEnd, best.i);
+      if (best && best.diff <= 0.02 && a.year > latestYear) {
+        latestYear = a.year;
+        endMonth = Number(String(best.win[best.win.length - 1].date).slice(5, 7));
       }
     }
-    if (lastEnd >= 0) {
-      // Assign every leftover quarter, not just the first n. A newer fiscal year can have
-      // more than one partial year after the last annual match.
-      const rest = periods.slice(lastEnd + 1);
-      let year = Math.max(...groups.keys()) + 1;
-      for (let k = 0; k < rest.length; k += n) {
-        const chunk = rest.slice(k, k + n);
-        if (!groups.has(year)) groups.set(year, {});
-        chunk.forEach((p, idx) => { groups.get(year)[idx + 1] = { revenue: p.revenue, netIncome: p.netIncome }; p.fyN = year; p.qN = idx + 1; });
-        year++;
-      }
-    } else {
-      grouping = 'calendar';
+    if (endMonth) {
+      // Assign the fiscal year by date, then rank the periods inside each year. This
+      // handles 4-4-5 retail calendars (Best Buy, etc.) whose quarter-end days drift.
+      const byFy = new Map();
       for (const p of periods) {
         const d = new Date(p.date + 'T00:00:00Z');
-        const year = d.getUTCFullYear();
-        const q = n === 2 ? (d.getUTCMonth() < 6 ? 1 : 2) : Math.floor(d.getUTCMonth() / 3) + 1;
-        if (!groups.has(year)) groups.set(year, {});
-        groups.get(year)[q] = { revenue: p.revenue, netIncome: p.netIncome };
-        p.fyN = year; p.qN = q;
+        let m = d.getUTCMonth() + 1;
+        if (d.getUTCDate() <= 5) m = m === 1 ? 12 : m - 1;
+        const y = d.getUTCFullYear();
+        const fy = m > endMonth ? y + 1 : y;
+        if (!byFy.has(fy)) byFy.set(fy, []);
+        byFy.get(fy).push(p);
+      }
+      for (const [fy, ps] of byFy) {
+        ps.sort((a, b) => String(a.date).localeCompare(String(b.date)));
+        if (!groups.has(fy)) groups.set(fy, {});
+        ps.forEach((p, idx) => {
+          const q = Math.min(idx + 1, n);
+          groups.get(fy)[q] = { revenue: p.revenue, netIncome: p.netIncome };
+          p.fyN = fy; p.qN = q;
+        });
+      }
+    } else {
+      // No annual history to infer the fiscal calendar: match windows, then assign the rest.
+      let lastEnd = -1;
+      for (const a of annual) {
+        let best = null;
+        for (let i = n - 1; i < periods.length; i++) {
+          const win = periods.slice(i - n + 1, i + 1);
+          if (win.length !== n) continue;
+          const sum = win.reduce((s, p) => s + (p.revenue || 0), 0);
+          if (!sum || a.revenue == null) continue;
+          const diff = Math.abs(sum - a.revenue) / Math.abs(a.revenue);
+          if (!best || diff < best.diff) best = { i, diff, win };
+        }
+        if (best && best.diff <= 0.02) {
+          if (!groups.has(a.year)) groups.set(a.year, {});
+          best.win.forEach((p, idx) => { groups.get(a.year)[idx + 1] = { revenue: p.revenue, netIncome: p.netIncome }; p.fyN = a.year; p.qN = idx + 1; });
+          lastEnd = Math.max(lastEnd, best.i);
+        }
+      }
+      if (lastEnd >= 0) {
+        const rest = periods.slice(lastEnd + 1);
+        let year = Math.max(...groups.keys()) + 1;
+        for (let k = 0; k < rest.length; k += n) {
+          const chunk = rest.slice(k, k + n);
+          if (!groups.has(year)) groups.set(year, {});
+          chunk.forEach((p, idx) => { groups.get(year)[idx + 1] = { revenue: p.revenue, netIncome: p.netIncome }; p.fyN = year; p.qN = idx + 1; });
+          year++;
+        }
+      } else {
+        grouping = 'calendar';
+        for (const p of periods) {
+          const d = new Date(p.date + 'T00:00:00Z');
+          const year = d.getUTCFullYear();
+          const q = n === 2 ? (d.getUTCMonth() < 6 ? 1 : 2) : Math.floor(d.getUTCMonth() / 3) + 1;
+          if (!groups.has(year)) groups.set(year, {});
+          groups.get(year)[q] = { revenue: p.revenue, netIncome: p.netIncome };
+          p.fyN = year; p.qN = q;
+        }
       }
     }
   }
   const am = coMatrixAnnualMap(c);
   const market = opts.market || '';
-  const rawBasis = market === 'us' ? 'period' : coMatrixBasis({ groups, n }, am);
+  // An explicit period basis means the feed carried as-reported periods, not a TTM window. Trust it
+  // even when a restatement keeps the periods from summing exactly to the annual record: falling back
+  // to the TTM table there would hide the real half-year or quarterly series we just fetched.
+  const explicitPeriod = c.periodBasis === 'half' || c.periodBasis === 'quarter';
+  const rawBasis = market === 'us' || explicitPeriod ? 'period' : coMatrixBasis({ groups, n }, am);
   const basis = (market === 'au' && !c.periodBasis) ? 'ttm' : (rawBasis === 'unknown' ? (market === 'au' ? 'ttm' : 'period') : rawBasis);
   let outlierNote = '';
   if (basis === 'cumulative') {
@@ -7545,7 +7590,7 @@ async function renderAustraliaPage(stub) {
         ${[...h].reverse().map((x) => `<tr><td>${esc(x.y)}</td><td>${cur(x.s)}</td>${bank ? '' : `<td>${cur(x.o)}</td>`}<td>${cur(x.n)}</td><td>${x.n != null && (x.ec ?? x.q) ? `${((x.n / (x.ec ?? x.q)) * 100).toFixed(1)}%` : '—'}</td></tr>`).join('')}
         </tbody></table></div>` : '')
     + periodMatrixHtml(c, { market: 'au', money: cur, ccy: ccy })
-    + `<div class="macro-note">ASX-listed · statements from stockanalysis.com (millions ${ccy}), prices from Yahoo. Market cap is AUD; ratios are computed in ${ccy}, the currency the issuer reports in, then compared with a market cap converted at the build's USD/AUD rate${ccy === 'AUD' || ccy === 'USD' ? '' : ` and USD/${ccy} cross`}. ${c.crossListing ? `This line is a CDI/dual listing: statements come from the ${esc(c.crossListing.ticker)} listing, and the market cap uses the ASX price × the filing share count × the ${c.crossListing.ratio}:1 CDI ratio.${c.perShareBasis ? ` Per-share figures are ${esc(c.perShareBasis)}.` : ''}` : `Profit, revenue and margins are the rolling twelve months (the vendor's ASX "trailing" view); the five-year record is the fiscal year.`} Australian companies report half-yearly. No free guidance feed, so there is no forward P/E.${c.description ? ' Company description and sector from stockanalysis.com.' : ''}</div>`;
+    + `<div class="macro-note">ASX-listed · statements from stockanalysis.com (millions ${ccy}), prices from Yahoo. Market cap is AUD; ratios are computed in ${ccy}, the currency the issuer reports in, then compared with a market cap converted at the build's USD/AUD rate${ccy === 'AUD' || ccy === 'USD' ? '' : ` and USD/${ccy} cross`}. ${c.crossListing ? `This line is a CDI/dual listing: statements come from the ${esc(c.crossListing.ticker)} listing, and the market cap uses the ASX price × the filing share count × the ${c.crossListing.ratio}:1 CDI ratio.${c.perShareBasis ? ` Per-share figures are ${esc(c.perShareBasis)}.` : ''}` : `Profit, revenue and margins are the rolling twelve months (the vendor's ASX "trailing" view); the five-year record and the results matrix use the as-reported period columns.`} Most Australian companies report half-yearly; the major banks and the US dual-listed lines report quarterly. No free guidance feed, so there is no forward P/E.${c.description ? ' Company description and sector from stockanalysis.com.' : ''}</div>`;
   drawAuChart(c);
   fillPeers(`au:${c.ticker}`, 'au-peers-x');
 }
