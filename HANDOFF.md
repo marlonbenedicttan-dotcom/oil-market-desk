@@ -4340,3 +4340,27 @@ Measured with headless Chrome against the live site (cache disabled; mobile = 39
 - **Tests**: 537 pass. Headless smoke: all four tabs, commodity chart 6M/1Y/5Y, global board,
   AU/HK company chart 1Y/5Y, global search (quick index loads on click, not at boot), zero console
   errors and zero HTTP ≥ 400.
+
+### Follow-up: the MACRO click and the background warm (2026-11-09, later)
+
+- **The first MACRO open was animating five charts at once.** `baseOptions` carried a 200 ms Chart.js
+  animation, so opening the tab ran five overlapping animations: **736 ms of long tasks** at 4× CPU in
+  five 100–240 ms blocks. Charts now draw their final frame immediately (`animation: false`), and the
+  same open is **57–86 ms** with zero long tasks on a second visit. Country, range and chart-tab
+  changes are immediate too.
+- **The background warm was competing with the reading window.** 2.5 s after load the client fetched
+  and parsed all ten market lists (~1 MB). It now warms only US and the last-used region; the other
+  eight start when COMPANIES is opened or hovered. API bytes in the first 12 s: **~1.3 MB → 264 KB**;
+  first 18 s transfer **2.1 MB (original) → 466 KB**.
+- **Below-the-fold HOME panels render on approach.** The screener, risk matrix, headline board, market
+  board and idea cards were laid out and painted while the reader was on the brief. They now use the
+  existing `whenNear` observer (400 px of lead), keeping their loaders and loading states. First-load
+  long tasks on the throttled phone dropped to ~130–220 ms (three 60–85 ms tasks at 4× CPU, i.e.
+  ~20 ms each on a normal CPU); jumpnav anchors and fast scrolls still populate every panel.
+- **Interaction check (4× CPU, production):** HOME scroll 60 fps (p95 17 ms), HOME sort/jumpnav 0 long
+  tasks, MACRO country/range changes 0 long tasks, MACRO tab reveal ≤54 ms, HOME market tile ≤81 ms.
+  Desktop: 0 long tasks on every one of those interactions.
+- **Production (warm, mobile 4×/1.6 Mbps):** FCP 1.15–1.20 s, boot 2.1 s, LCP 1.86 s, CLS 0.081,
+  466 KB. Desktop: FCP 0.55–0.67 s, LCP 0.68–0.83 s, CLS 0.060, 466 KB. Repeat visit: FCP 0.42 s,
+  LCP 0.50 s, boot 0.49 s, CLS 0, 0 KB transferred (service-worker + immutable cache).
+- **Tests:** 537 pass. AU/HK company charts 1Y/5Y verified again on production after the changes.
