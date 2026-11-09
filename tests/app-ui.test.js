@@ -675,21 +675,23 @@ test('each market loader fetches its own endpoint', () => {
 });
 
 
-test('a short JSE history still has a MAX window', () => {
-  // Richemont's Yahoo JSE series starts in 2023, so a 5Y click must not fall back to 1Y.
-  const { ui } = loadApp();
-  const dates = [];
-  for (let i = 0; i < 180; i++) dates.push(new Date(Date.UTC(2023, 3, 21) + i * 7 * 864e5).toISOString().slice(0, 10));
-  const ch = { dates, closes: dates.map((_, i) => 1000 + i) };
-  assert.deepEqual(ui.coSlice(ch, 'max'), ch, 'MAX keeps every point');
-  const r = ui.coWindow(ch, 'max');
-  assert.ok(r, 'MAX must produce a return');
-  assert.equal(r.from, 1000, 'MAX starts at the first available close');
-  assert.equal(r.to, 1179, 'MAX ends at the latest close');
+test('the JSE chart uses the same six windows as every other market', () => {
+  // The JSE page used to expose a seventh MAX chip. It now shares the 1M–5Y controls and
+  // the coFitRange fallback with Japan, Korea, Taiwan, Hong Kong, Australia, India,
+  // Indonesia and Brazil. A stored MAX preference must fall back to 1Y, not resurrect it.
   const app = fs.readFileSync(APP, 'utf8');
-  assert.match(app, /data-zarange="\$\{k\}"/);
-  assert.match(app, /\['max', 'MAX'\]/);
-  assert.match(app, /range === '5y' && use !== '5y'\) use = 'max'/);
+  const start = app.indexOf('data-zarange');
+  assert.ok(start >= 0, 'ZA range controls are missing');
+  const arrStart = app.lastIndexOf('[[', start);
+  const arrEnd = app.indexOf('].map', arrStart);
+  const chip = app.slice(arrStart, arrEnd + 1);
+  assert.match(chip, /'1m'/);
+  assert.match(chip, /'5y'/);
+  assert.doesNotMatch(chip, /'max'/);
+  assert.match(app, /paintReturns\('za-rets', 'za-big', full, range, WINDOWS_5Y, 'zarange'\)/);
+  assert.match(app, /const use = full \? coFitRange\(full, range\) : range;/);
+  assert.doesNotMatch(app, /use = 'max'/);
+  assert.match(app, /\['1m', '3m', '6m', 'ytd', '1y', '5y'\]\.includes\(v\) \? v : '1y'/);
 });
 
 test('the local quick index ranks exact names, brands and codes without a request', () => {
