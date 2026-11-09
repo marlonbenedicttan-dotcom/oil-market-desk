@@ -2747,3 +2747,18 @@ body.gs-search-open { overflow: hidden; }
 
 .co-matrix-table td.qchgpos { color: var(--green); }
 .co-matrix-table td.qchgneg { color: var(--red); }
+
+/* The GLOBAL chip is a fixed anchor, not the first item in the market scroller. A saved India /
+   Indonesia / Brazil selection scrolls the market row; GLOBAL must never scroll off-screen with it. */
+.co-region-wrap { display: flex; flex: 1 1 auto; align-items: center; gap: 6px; min-width: 0; }
+.co-region-wrap > .co-region { flex: 1 1 auto; min-width: 0; }
+.co-region-fixed {
+  flex: 0 0 auto; background: #0d1219; border: 1px solid var(--line2); border-radius: 999px;
+  color: var(--dim); font: 600 10.5px/1 var(--sans); letter-spacing: .8px; padding: 0 14px;
+  min-height: 34px; white-space: nowrap; cursor: pointer;
+}
+.co-region-fixed:hover { color: var(--text); }
+.co-region-fixed.on { background: var(--amber); border-color: var(--amber); color: #080a0e; }
+@media (max-width: 640px) {
+  .co-region-fixed { min-height: 44px; font-size: 10px; padding: 0 13px; }
+}

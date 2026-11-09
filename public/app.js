@@ -9421,13 +9421,18 @@ function scrollActiveIntoView(row) {
   if (!row) return;
   bindRegionFade(row);
   const on = row.querySelector('button.on');
-  if (on) {
-    const r = on.getBoundingClientRect(), rr = row.getBoundingClientRect();
-    const pad = 30;   // keep the active pill clear of the 26px fade, never flush with the edge
-    if (r.left < rr.left + pad || r.right > rr.right - pad) {
-      const target = row.scrollLeft + (r.left - rr.left) - (rr.width - r.width) / 2;
-      row.scrollTo({ left: Math.max(0, target), behavior: 'smooth' });
-    }
+  if (!on) {
+    // GLOBAL is a fixed chip outside this scroller. When it is active there is no market pill to
+    // centre, so return the market row to its start instead of leaving it parked on old India.
+    row.scrollTo({ left: 0, behavior: 'smooth' });
+    syncRegionFade(row);
+    return;
+  }
+  const r = on.getBoundingClientRect(), rr = row.getBoundingClientRect();
+  const pad = 30;   // keep the active pill clear of the 26px fade, never flush with the edge
+  if (r.left < rr.left + pad || r.right > rr.right - pad) {
+    const target = row.scrollLeft + (r.left - rr.left) - (rr.width - r.width) / 2;
+    row.scrollTo({ left: Math.max(0, target), behavior: 'smooth' });
   }
   syncRegionFade(row);
 }
@@ -10868,6 +10873,9 @@ document.addEventListener('click', (e) => {
     // A tile on the HOME board opens the same market's company view.
     if (region.closest('.home-mkt')) document.querySelector('[data-tab="deals"]')?.click();
     renderCompanies();
+    // Keep the address bar in step with the chosen market/global board. Without this, clicking
+    // GLOBAL from a company page left the company URL behind, so coming back reopened the company.
+    syncRoute(false);
     return;
   }
   const krv = e.target.closest('[data-krview]');
