@@ -2856,7 +2856,7 @@ const coScreenKr = { q: '', sector: 'all', sort: 'marketCap', dir: -1, page: 1, 
 const coScreenTw = { q: '', sector: 'all', sort: 'marketCap', dir: -1, page: 1, per: 50 };
 const coScreenHk = { q: '', sector: 'all', sort: 'marketCap', dir: -1, page: 1, per: 50 };
 const coScreenAu = { q: '', sector: 'all', sort: 'marketCap', dir: -1, page: 1, per: 50 };
-const coScreenIn = { q: '', sector: 'all', sort: 'marketCap', dir: -1, page: 1, per: 50 };
+const coScreenIn = { q: '', sector: 'all', tier: 'all', sort: 'marketCap', dir: -1, page: 1, per: 50 };
 const coScreenId = { q: '', sector: 'all', sort: 'marketCap', dir: -1, page: 1, per: 50 };
 const coScreenBr = { q: '', sector: 'all', sort: 'marketCap', dir: -1, page: 1, per: 50 };
 const coScreenZa = { q: '', sector: 'all', sort: 'marketCap', dir: -1, page: 1, per: 50 };
@@ -3207,6 +3207,7 @@ function renderIndiaScreen(el) {
   const { sort, dir } = coScreenIn;
   const keyOf = (c) => (sort === 'label' ? (c.nameEn || c.name || '') : c[sort]);
   let rows = all.filter((c) => (coScreenIn.sector === 'all' || c.sector === coScreenIn.sector)
+    && (coScreenIn.tier === 'all' || c.tier === coScreenIn.tier)
     && (!q || `${c.name} ${c.nameEn || ''} ${c.ticker} ${c.sector || ''} ${(c.brands || []).join(' ')}`.toLowerCase().includes(q)));
   rows = [...rows].sort((a, b) => {
     const x = keyOf(a), y = keyOf(b);
@@ -3230,6 +3231,7 @@ function renderIndiaScreen(el) {
       <td class="num">${inMoney(c.marketCap)}</td></tr>`).join('');
   el.innerHTML = `<div class="sc-bar">${screenModeHtml()}${screenMarketHtml()}
       <label class="sc-f">SEARCH <input id="cosin-q" type="search" placeholder="company or code…" value="${esc(coScreenIn.q)}"></label>
+      <label class="sc-f">TIER <select id="cosin-tier"><option value="all"${coScreenIn.tier === 'all' ? ' selected' : ''}>All</option><option value="nifty500"${coScreenIn.tier === 'nifty500' ? ' selected' : ''}>NIFTY 500</option><option value="microcap250"${coScreenIn.tier === 'microcap250' ? ' selected' : ''}>MICROCAP 250</option></select></label>
       <label class="sc-f">SECTOR <select id="cosin-sector"><option value="all">All sectors</option>${sectors.map((x) => `<option value="${esc(x)}"${coScreenIn.sector === x ? ' selected' : ''}>${esc(x)}</option>`).join('')}</select></label>
       <span class="sc-count dimtext">${rows.length} of ${all.length} companies</span>
     </div><div class="sc-wrap" id="sc-table"><table class="sc-table sc-cotable"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>
@@ -3531,6 +3533,7 @@ $('screen')?.addEventListener('change', (e) => {
   if (e.target.id === 'costw-sector') { coScreenTw.sector = e.target.value; coScreenTw.page = 1; renderScreen(true); return; }
   if (e.target.id === 'coshk-sector') { coScreenHk.sector = e.target.value; coScreenHk.page = 1; renderScreen(true); return; }
   if (e.target.id === 'cosau-sector') { coScreenAu.sector = e.target.value; coScreenAu.page = 1; renderScreen(true); return; }
+  if (e.target.id === 'cosin-tier') { coScreenIn.tier = e.target.value || 'all'; coScreenIn.page = 1; renderScreen(true); return; }
   if (e.target.id === 'cosin-sector') { coScreenIn.sector = e.target.value; coScreenIn.page = 1; renderScreen(true); return; }
   if (e.target.id === 'cosid-sector') { coScreenId.sector = e.target.value; coScreenId.page = 1; renderScreen(true); return; }
   if (e.target.id === 'cosbr-sector') { coScreenBr.sector = e.target.value; coScreenBr.page = 1; renderScreen(true); return; }
@@ -7307,7 +7310,7 @@ let inRange = coStoredRange('inRange', '1y');
 let inMktRange = (() => { try { return localStorage.getItem('oilbasis.inMktRange') || '1y'; } catch { return '1y'; } })();
 let inView = (() => { try { return localStorage.getItem('oilbasis.inView') || 'market'; } catch { return 'market'; } })();
 let inTheme = (() => { try { return localStorage.getItem('oilbasis.inTheme') || 'materials'; } catch { return 'materials'; } })();
-let inSector = 'all', inSort = 'cap', inPreset = null, inFilter = {}, inOpenSel = null;
+let inSector = 'all', inTier = 'all', inSort = 'cap', inPreset = null, inFilter = {}, inOpenSel = null;
 let inPage = 1, inPer = 50;
 let indiaPromise = null;
 
@@ -7410,7 +7413,7 @@ function renderIndiaMarket(all, d) {
         <span>${x.yield != null ? x.yield.toFixed(2) + '%' : '—'}</span>
         <span class="${(x.chgYtd || 0) >= 0 ? 'pos' : 'neg'}">${chg(x.chgYtd)}</span>
       </div>`).join('')
-    + `<div class="macro-note">Aggregates computed from the ${all.length} covered NSE-listed constituents. Sectors are the NSE's GICS industry groups (27), resolved from the profile where the CSV says "Not Applic". Prices are INR; statements are in the issuer's report currency (${foreign}) and ratios are computed in that currency. Market cap uses the current share count from the vendor statistics page (the US listing for CDIs); the diluted filing count is still shown on the company page. Companies whose latest statement is older than 450 days are excluded and listed in the audit. The NSE publishes no per-stock P/E, so the India audit reports coverage plus a same-source sample.</div>`;
+    + `<div class="macro-note">${all.some((c) => c.tier) ? `Universe: NIFTY 500 (${all.filter((c) => c.tier === 'nifty500').length}) + NIFTY Microcap 250 (${all.filter((c) => c.tier === 'microcap250').length}). ` : ''}Aggregates computed from the ${all.length} covered NSE-listed constituents. Sectors are the NSE's GICS industry groups (27), resolved from the profile where the CSV says "Not Applic". Prices are INR; statements are in the issuer's report currency (${foreign}) and ratios are computed in that currency. Market cap uses the current share count from the vendor statistics page (the US listing for CDIs); the diluted filing count is still shown on the company page. Companies whose latest statement is older than 450 days are excluded and listed in the audit. The NSE publishes no per-stock P/E, so the India audit reports coverage plus a same-source sample.</div>`;
   if (idx.series && idx.series.length > 1) redrawIndiaIndex();
 }
 
@@ -7454,6 +7457,7 @@ function renderIndiaScreener(all, d) {
   const f = inFilter;
   const rows = all.filter((c) => (!q || `${c.name} ${c.nameEn || ''} ${c.ticker} ${(c.brands || []).join(' ')}`.toLowerCase().includes(q))
     && (inSector === 'all' || c.sector === inSector)
+    && (inTier === 'all' || c.tier === inTier)
     && (!f.pe || (c.pe != null && (f.pe === 'lt10' ? c.pe < 10 : f.pe === '10to15' ? c.pe >= 10 && c.pe < 15 : f.pe === '15to25' ? c.pe >= 15 && c.pe < 25 : c.pe >= 25)))
     && (!f.roe || (c.roe != null && c.roe >= Number(f.roe)))
     && (!f.yield || (c.dividendYield != null && c.dividendYield >= Number(f.yield)))
@@ -7470,10 +7474,11 @@ function renderIndiaScreener(all, d) {
   });
   const inChips = $('co-chips');
   if (inChips) {
-    const nAu = Object.values(f).filter((v) => v != null && v !== '').length + (inSector !== 'all' ? 1 : 0) + (q ? 1 : 0);
+    const nAu = Object.values(f).filter((v) => v != null && v !== '').length + (inSector !== 'all' ? 1 : 0) + (inTier !== 'all' ? 1 : 0) + (q ? 1 : 0);
     inChips.innerHTML = coFilterBar({
       presets: IN_PRESETS, preset: inPreset, presetAttr: 'data-inpreset',
       selects: [
+        { key: 'tier', label: 'INDEX', opts: [['all', 'All'], ['nifty500', 'NIFTY 500'], ['microcap250', 'MICROCAP 250']], cur: inTier, attr: 'data-inf' },
         { key: 'sector', label: 'SECTOR', opts: [['all', 'All'], ...sectors.map((x) => [x, x.toUpperCase()])], cur: inSector, attr: 'data-inf' },
         { key: 'pe', label: 'P/E', opts: [['', 'Any'], ['lt10', '<10'], ['10to15', '10–15'], ['15to25', '15–25'], ['gt25', '>25']], cur: f.pe, attr: 'data-inf' },
         { key: 'roe', label: 'ROE', opts: [['', 'Any'], ['10', '>10%'], ['15', '>15%']], cur: f.roe, attr: 'data-inf' },
@@ -7504,7 +7509,7 @@ function renderIndiaScreener(all, d) {
         <span class="co-mar ${c.roe == null ? 'dimtext' : c.roe >= 0 ? 'pos' : 'neg'}">${c.roe == null ? '—' : `${c.roe.toFixed(1)}%`}</span>
       </button>`).join('')
     + pagerHtml(sorted.length, page, inPer, 'inlistpage')
-    + `<div class="macro-note">${rows.length} of ${all.length} · NSE · statements from stockanalysis.com, prices from Yahoo · P/E is trailing twelve months where the vendor serves a trailing view, otherwise the last fiscal year (the company page labels which) · computed in the issuer's report currency (BHP and RIO report in USD) · FX ${d.fx && d.fx.rate ? d.fx.rate.toFixed(2) : '—'} INR per USD.</div>`;
+    + `<div class="macro-note">${rows.length} of ${all.length} · NIFTY 500 + Microcap 250 · statements from stockanalysis.com, prices from Yahoo · P/E is trailing twelve months where the vendor serves a trailing view, otherwise the last fiscal year (the company page labels which) · computed in the issuer's report currency (BHP and RIO report in USD) · FX ${d.fx && d.fx.rate ? d.fx.rate.toFixed(2) : '—'} INR per USD.</div>`;
 }
 
 async function renderIndiaPage(stub) {
@@ -7533,7 +7538,7 @@ async function renderIndiaPage(stub) {
   const na = new Set(c.naRatios || []);
   const stat = (key, label, value, title, cls = '') => (key && na.has(key) ? '' : cell(label, value, title, cls));
   const sign = (v) => (v == null ? '' : v >= 0 ? 'pos' : 'neg');
-  el.innerHTML = `<div class="ma-crumb"><button class="ma-back" data-inback="1"><span class="ma-back-i" aria-hidden="true">←</span>COMPANIES</button> <span>${esc(c.ticker)}</span><span class="mb-tag">INDIA</span></div>`
+  el.innerHTML = `<div class="ma-crumb"><button class="ma-back" data-inback="1"><span class="ma-back-i" aria-hidden="true">←</span>COMPANIES</button> <span>${esc(c.ticker)}</span><span class="mb-tag">INDIA</span>${c.tier ? `<span class="co-tier ${c.tier === 'microcap250' ? 'micro' : ''}">${c.tier === 'microcap250' ? 'MICROCAP 250' : 'NIFTY 500'}</span>` : ''}</div>`
     + `<div class="co-head">${inMono(c)}<div><div class="co-name">${esc(inName(c))}</div>
         <div class="co-sub">${esc(c.ticker)} · NSE-listed${c.crossListing ? ' · US statements' : ''}${c.name && c.name !== inName(c) ? ' · ' + esc(c.name) : ''}${c.industry ? ' · ' + esc(c.industry) : ''}</div>
         ${c.description ? `<div class="co-desc">${esc(c.description)}</div>` : ''}
@@ -10605,7 +10610,7 @@ document.addEventListener('click', (e) => {
     // Drop the old market's screen on the spot. The US render waits for data before it paints, and
     // until this the previous screen (often Japan's TOPIX view) was still the thing on the page.
     const body = $('co-body');
-    if (body) body.innerHTML = stLoading(coRegion === 'global' ? 'Loading the global board…' : coRegion === 'jp' ? 'Loading Japan…' : coRegion === 'kr' ? 'Loading KOSPI…' : coRegion === 'tw' ? 'Loading TAIEX…' : coRegion === 'hk' ? 'Loading the Hang Seng…' : coRegion === 'au' ? 'Loading the ASX 200…' : coRegion === 'in' ? 'Loading the NIFTY 500…' : coRegion === 'id' ? 'Loading the IDX…' : coRegion === 'br' ? 'Loading the Ibovespa…' : coRegion === 'za' ? 'Loading the JSE All Share…' : `Loading the ${usIndexLabel()}…`);
+    if (body) body.innerHTML = stLoading(coRegion === 'global' ? 'Loading the global board…' : coRegion === 'jp' ? 'Loading Japan…' : coRegion === 'kr' ? 'Loading KOSPI…' : coRegion === 'tw' ? 'Loading TAIEX…' : coRegion === 'hk' ? 'Loading the Hang Seng…' : coRegion === 'au' ? 'Loading the ASX 200…' : coRegion === 'in' ? 'Loading the NIFTY Total Market…' : coRegion === 'id' ? 'Loading the IDX…' : coRegion === 'br' ? 'Loading the Ibovespa…' : coRegion === 'za' ? 'Loading the JSE All Share…' : `Loading the ${usIndexLabel()}…`);
     // A tile on the HOME board opens the same market's company view.
     if (region.closest('.home-mkt')) document.querySelector('[data-tab="deals"]')?.click();
     renderCompanies();
@@ -11075,6 +11080,7 @@ document.addEventListener('change', async (e) => {
   if (e.target && e.target.dataset && e.target.dataset.inf) {
     const k = e.target.dataset.inf;
     if (k === 'sector') inSector = e.target.value || 'all';
+    else if (k === 'tier') inTier = e.target.value || 'all';
     else if (k === 'sort') { inSort = e.target.value || 'cap'; }
     else { inFilter[k] = e.target.value; }
     inPage = 1;

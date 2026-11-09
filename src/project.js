@@ -137,6 +137,7 @@ export const australiaList = (au) => ({
 // and a rupee cap over a dollar profit is not a P/E.
 export const projectIn = (c) => ({
   code: c.code, ticker: c.ticker, name: c.name, nameEn: c.nameEn || null, sector: c.sector || null,
+  tier: c.tier || null,
   brands: c.brands && c.brands.length ? c.brands : null,
   price: c.price, priceDate: c.priceDate, marketCap: c.marketCap,
   chg1d: c.chg1d, chg6m: c.chg6m, chgYtd: c.chgYtd,

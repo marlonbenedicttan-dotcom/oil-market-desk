@@ -1,5 +1,5 @@
-// Fetch an English name, a written business description and the sector/industry for every NIFTY 500
-// company.
+// Fetch an English name, a written business description and the sector/industry for every covered
+// India company.
 //
 // The same source and extractor the Japan, Korea, Taiwan, Hong Kong and Australia profile fetchers use:
 // stockanalysis.com's server-rendered company pages. The page title gives the English display name, the

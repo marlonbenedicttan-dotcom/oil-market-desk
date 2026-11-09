@@ -2701,3 +2701,7 @@ body.gs-search-open { overflow: hidden; }
   .gb-markets-card .gb-mrow { flex: 1 1 auto; }
   .gb-markets-card .gb-mrow.head { flex: 0 0 auto; }
 }
+
+/* India index tier tag — CORE vs MICROCAP is a membership label, not a size claim. */
+.co-tier { display: inline-block; margin-left: 6px; padding: 1px 5px; border: 1px solid var(--line2); color: var(--dim); font-size: 8px; letter-spacing: .5px; text-transform: uppercase; vertical-align: 1px; }
+.co-tier.micro { color: var(--amber); border-color: #5c4a1d; }

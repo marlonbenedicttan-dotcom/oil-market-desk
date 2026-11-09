@@ -1,15 +1,17 @@
-// Build the India dataset: the NIFTY 500.
+// Build the India dataset: the NIFTY Total Market (NIFTY 500 + Microcap 250).
 //
-//   node scripts/build-india.mjs                          full run (500 companies, five years)
-//   node scripts/build-india.mjs --limit=30               smoke test
+//   node scripts/build-india.mjs --universe=total          full run (751 rows, five years)
+//   node scripts/build-india.mjs --universe=microcap --sample=100   pilot
+//   node scripts/build-india.mjs --universe=total --limit=30        smoke test
 //   node scripts/build-india.mjs --codes=RELIANCE,TCS     named companies
 //   node scripts/build-india.mjs --skip-prices            reuse the cached daily files
 //   node scripts/build-india.mjs --skip-fin               reuse the statements already in the file
 //   node scripts/build-india.mjs --prices-only            warm Yahoo and stop
 //
 // Sources:
-//   - niftyindices.com NIFTY 500 CSV: the universe, the NSE symbol and the NSE industry (20 macro
-//     sectors). Keyless, refreshed daily.
+//   - niftyindices.com NIFTY Total Market CSV: the universe, the NSE symbol and the NSE industry
+//     (20 macro sectors). The NIFTY 500 file is read too, only to tag each name as core or microcap.
+//     Keyless, refreshed daily.
 //   - Yahoo (https.get — undici's fingerprint is rejected): five years of daily closes for {SYMBOL}.NS
 //     and the NIFTY 50 (^NSEI).
 //   - stockanalysis.com (NSE): English statements with a TTM column, the diluted share count, the
@@ -45,6 +47,15 @@ const arg = (k, d = null) => { const x = process.argv.find((a) => a.startsWith(`
 const flag = (k) => process.argv.includes(`--${k}`);
 
 const LIMIT = Number(arg('limit', 0)) || 0;
+const SAMPLE = Number(arg('sample', 0)) || 0;
+const UNIVERSE = arg('universe', 'nifty500');
+const UNI = {
+  nifty500: { label: 'NIFTY 500', file: 'ind_nifty500list.csv', cache: 'ind_nifty500list.json' },
+  microcap: { label: 'NIFTY Microcap 250', file: 'ind_niftymicrocap250_list.csv', cache: 'ind_niftymicrocap250_list.json' },
+  total: { label: 'NIFTY Total Market', file: 'ind_niftytotalmarket_list.csv', cache: 'ind_niftytotalmarket_list.json' },
+}[UNIVERSE];
+if (!UNI) throw new Error(`unknown --universe=${UNIVERSE}`);
+const UNI_URL = `https://www.niftyindices.com/IndexConstituent/${UNI.file}`;
 const CODES = (arg('codes', '') || '').split(',').map((s) => pad(s)).filter(Boolean);
 const YEARS = Number(arg('years', 5)) || 5;
 const SKIP_PRICES = flag('skip-prices');
@@ -68,13 +79,13 @@ async function pool(items, limit, fn) {
 }
 
 // --- 1. the universe ------------------------------------------------------------------------------
-console.log('NIFTY 500 constituents…');
+console.log(`${UNI.label} constituents…`);
 const csv = await (async () => {
-  const f = join(IN_CACHE, 'ind_nifty500list.json');
-  const text = await getCached('https://www.niftyindices.com/IndexConstituent/ind_nifty500list.csv', f, {
+  const f = join(IN_CACHE, UNI.cache);
+  const text = await getCached(UNI_URL, f, {
     fresh: flag('fresh'), ttlMs: TTL_DAY, timeout: 45000, retries: 4,
   });
-  if (!text) throw new Error('NIFTY 500 CSV returned nothing');
+  if (!text || /<!DOCTYPE html>/i.test(text)) throw new Error(`${UNI.label} CSV returned nothing usable`);
   const { parseNifty500 } = await import('./nse.mjs');
   const rows = parseNifty500(text);
   if (!rows.length) throw new Error('NIFTY 500 CSV parsed to zero rows');
@@ -90,10 +101,60 @@ const listed = csv.rows.filter((r) => isOrdinaryLine(r.series)).map((r) => ({
   // `series` is the price history on every other market; keeping the NSE trading series under this
   // name is what stops the EQ/BE flag from being read as a price series (498 "histories" of length 2).
   seriesCode: r.series,
+  tier: UNIVERSE === 'microcap' ? 'microcap250' : 'nifty500',
 }));
 console.log(`  ${csv.rows.length} rows · ${excluded.length} non-equity lines excluded · ${listed.length} companies`);
 
+// NIFTY Total Market = NIFTY 500 + NIFTY Microcap 250, but the file itself does not say which tier a
+// name belongs to. Fetch the NIFTY 500 list once and mark the split explicitly.
+if (UNIVERSE === 'total') {
+  try {
+    const { parseNifty500 } = await import('./nse.mjs');
+    // Prefer the existing NIFTY 500 cache: the constituent endpoint can rate-limit while the
+    // total-market file is being fetched, and a temporary 404 must not mislabel all 751 names.
+    let coreText = null;
+    try {
+      const raw = JSON.parse(readFileSync(join(IN_CACHE, 'ind_nifty500list.json'), 'utf8'));
+      coreText = raw && (raw.text || (typeof raw === 'string' ? raw : null));
+    } catch { /* cache miss */ }
+    if (!coreText) {
+      coreText = await getCached('https://www.niftyindices.com/IndexConstituent/ind_nifty500list.csv', join(IN_CACHE, 'ind_nifty500list.json'), {
+        fresh: true, ttlMs: TTL_DAY, timeout: 45000, retries: 4,
+      });
+    }
+    const coreRows = coreText ? parseNifty500(coreText) : [];
+    const core = new Set(coreRows.filter((r) => isOrdinaryLine(r.series)).map((r) => pad(r.code)));
+    if (!core.size) throw new Error('NIFTY 500 tier set is empty');
+    for (const c of listed) c.tier = core.has(c.code) ? 'nifty500' : 'microcap250';
+    console.log(`  tiers: ${listed.filter((c) => c.tier === 'nifty500').length} NIFTY 500 · ${listed.filter((c) => c.tier === 'microcap250').length} Microcap 250`);
+  } catch (e) {
+    console.error(`  tier split failed: ${e.message}`);
+    process.exit(1);
+  }
+}
+
 let universe = CODES.length ? listed.filter((c) => CODES.includes(c.code)) : (LIMIT ? listed.slice(0, LIMIT) : listed);
+if (SAMPLE && !CODES.length && !LIMIT) {
+  // A pilot should not be the first alphabetical 100: take a round-robin slice from every NSE industry.
+  const groups = new Map();
+  for (const c of listed) {
+    const k = c.gicsIndustryGroup || 'Other';
+    if (!groups.has(k)) groups.set(k, []);
+    groups.get(k).push(c);
+  }
+  const buckets = [...groups.values()].sort((a, b) => b.length - a.length);
+  const picked = [];
+  for (let i = 0; picked.length < SAMPLE; i++) {
+    let added = false;
+    for (const b of buckets) {
+      if (picked.length >= SAMPLE) break;
+      if (b[i]) { picked.push(b[i]); added = true; }
+    }
+    if (!added) break;
+  }
+  universe = picked;
+  console.log(`  pilot sample: ${picked.length} companies across ${buckets.length} industries`);
+}
 
 // --- 2. Yahoo price history -----------------------------------------------------------------------
 const YH_CACHE = join(IN_CACHE, 'yahoo');
@@ -613,7 +674,7 @@ const audit = {
 
 writeJson(`${OUT}.tmp`, {
   updated: new Date().toISOString(),
-  universe: `NIFTY 500 · ${cleaned.length} companies`,
+  universe: `${UNI.label} · ${cleaned.length} companies`,
   indexName: 'NIFTY 50',
   currency: 'INR',
   fx,

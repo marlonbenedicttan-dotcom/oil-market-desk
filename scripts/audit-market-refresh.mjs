@@ -30,7 +30,7 @@ const MARKETS = {
   in: {
     label: 'India',
     file: 'data/india.json',
-    // The NIFTY 500 is reconstituted twice a year; a handful of names change, not fifty.
+    // The Total Market index is reconstituted twice a year; a handful of names change, not fifty.
     minCompanies: 0.95,
   },
   id: {

@@ -1,7 +1,7 @@
 name: india-daily
 
-# India's prices and statements are not in companies-daily: this job keeps the NIFTY 500 in step with
-# the other markets. The NSE closes at 15:30 IST (10:00 UTC), so 10:40 UTC is after the close and after
+# India's prices and statements are not in companies-daily: this job keeps the NIFTY Total Market
+# (NIFTY 500 + Microcap 250) in step with the other markets. The NSE closes at 15:30 IST (10:00 UTC), so 10:40 UTC is after the close and after
 # Yahoo has the day's bar.
 #
 # The build re-reads every statement page whose cache has expired (annual 7 days, quarterly 1 day), so a
