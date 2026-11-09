@@ -2680,13 +2680,12 @@ function renderHomeBackdrop(rows) {
 
 // The ten-market board and the idea counts. One small endpoint, not ten company payloads.
 async function loadHome() {
-  const el = $('home-markets');
-  if (el && !el.innerHTML) el.innerHTML = stLoading('Loading the ten markets…');
   let d = null;
   try { d = await jget('/api/home', 300000); } catch { d = null; }
+  // The status line is above the fold; the two boards are not. Paint the status now, the boards when
+  // the reader is near them. The payload is already in hand, so arriving is instant.
   renderHomeStatus(d);
-  renderHomeMarkets(d);
-  renderHomeIdeas(d);
+  whenNear('#home-markets', () => { renderHomeMarkets(d); renderHomeIdeas(d); });
 }
 function renderHomeStatus(d) {
   const m = $('home-status-markets');
@@ -3797,7 +3796,9 @@ $('risk')?.addEventListener('click', (e) => {
   riskWin = w.dataset.win === '1y' ? '1y' : '3m';
   renderRisk(riskData);
 });
+let headlinesLoaded = false;
 async function loadHeadlines() {
+  headlinesLoaded = true;
   const el = $('headlines');
   if (!el) return;
   try { renderHeadlines(await getJSON('/api/headlines')); }
@@ -4186,9 +4187,13 @@ async function loadExtraCore() {
   // Loaded eagerly (a gate here is unreliable: these panels define the page height, so their
   // on-screen position is only known once they've rendered). The loading overlay no longer waits on
   // them — they sit below the fold, so BOOT_CORE excludes the screener and calendar.
-  afterBoot(loadScreen);      // ~400 rows, below the fold
-  afterBoot(loadCalendar);    // 170 events + 548 earnings dates
-  loadRisk();
+  // These sit below the fold. Render them when the reader is near them, not a second after boot:
+  // the 400-row screener, risk matrix and headline board were laid out and painted while the reader
+  // was still on the brief. `whenNear` keeps the same loader, so arriving at the panel still shows
+  // its own loading state instead of a blank.
+  whenNear('#p-screen', loadScreen);
+  afterBoot(loadCalendar);    // 170 events + 548 earnings dates — the calendar is near the first screen
+  whenNear('#p-risk', loadRisk);
   loadTransmission(); // COMMODITIES: how it transmits
 
   renderAdaptive();
@@ -4513,8 +4518,8 @@ $('macro-links')?.addEventListener('click', (e) => { const el = e.target.closest
   // quietly once the first screen is settled, which makes the tab open instantly.
   setTimeout(() => { try { warmMarkets(0); } catch {} }, 2500);
   loadAnalogue();
-  loadHeadlines();
-  setInterval(loadHeadlines, 600000);   // refresh the live headline board
+  whenNear('#p-headlines', loadHeadlines);
+  setInterval(() => { if (headlinesLoaded) loadHeadlines(); }, 600000);   // refresh the live headline board
   setInterval(loadExtra, 600000);                                   // slow feeds every 10 min
   setInterval(() => { nextRefresh -= 5; if (nextRefresh <= 0) { nextRefresh = 60; refreshLive(); } const cd = $('countdown'); if (cd) cd.textContent = `auto ${nextRefresh}s`; }, 5000);
   // Any request resets the host's idle timer; a tab left open keeps the instance from sleeping, which
