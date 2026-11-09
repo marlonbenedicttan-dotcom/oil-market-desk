@@ -5299,16 +5299,6 @@ function coMatrixPeriods(c) {
   })).filter((p) => p.date && (p.revenue != null || p.netIncome != null))
     .sort((a, b) => String(a.date).localeCompare(String(b.date)));
 }
-function coMatrixAnnual(c) {
-  if (Array.isArray(c.series) && c.series.length) {
-    return c.series.map((s) => ({ year: Number(s.fy), revenue: s.revenue, netIncome: s.netIncome })).filter((a) => a.year);
-  }
-  return (c.history || []).map((h) => ({
-    year: Number(String(h.y || '').slice(0, 4)),
-    revenue: h.s,
-    netIncome: h.n,
-  })).filter((a) => a.year);
-}
 function coMatrixDetectN(c, periods) {
   if (c.periodBasis === 'half') return 2;
   const dates = periods.map((p) => p.date).filter(Boolean);
@@ -5319,10 +5309,43 @@ function coMatrixDetectN(c, periods) {
     if (isFinite(a) && isFinite(b)) gaps.push((b - a) / (864e5 * 30.44));
   }
   gaps.sort((a, b) => a - b);
-  const med = gaps[Math.floor(gaps.length / 2)];
-  return med > 4.5 ? 2 : 4;
+  return gaps[Math.floor(gaps.length / 2)] > 4.5 ? 2 : 4;
 }
-function coMatrixBuild(c) {
+function coMatrixAnnualMap(c) {
+  const m = new Map();
+  if (Array.isArray(c.series) && c.series.length) {
+    for (const s of c.series) { const y = Number(s.fy); if (y) m.set(y, { revenue: s.revenue, netIncome: s.netIncome }); }
+  }
+  for (const h of c.history || []) {
+    const y = Number(String(h.y || '').slice(0, 4));
+    if (y) m.set(y, { revenue: h.s, netIncome: h.n });
+  }
+  return m;
+}
+// Decide how the feed presents its periods from the complete fiscal years:
+//   period      — the n periods sum to the annual
+//   cumulative  — the last period equals the annual and the first is a fraction of it
+//   ttm         — every period is close to the annual (a trailing-twelve-month series)
+function coMatrixBasis(g, am) {
+  let period = 0, cumulative = 0, ttm = 0;
+  for (const [fy, grp] of g.groups) {
+    const a = am.get(fy); if (!a || !a.revenue) continue;
+    const qs = Object.keys(grp).map(Number).sort((x, y) => x - y);
+    if (qs.length !== g.n) continue;
+    const vals = qs.map((q) => grp[q].revenue).filter((v) => v != null);
+    if (vals.length !== g.n) continue;
+    const sum = vals.reduce((x, y) => x + y, 0), first = vals[0], last = vals[vals.length - 1];
+    const sumD = Math.abs(sum - a.revenue) / Math.abs(a.revenue);
+    const lastD = Math.abs(last - a.revenue) / Math.abs(a.revenue);
+    if (sumD <= 0.06) period++;
+    else if (lastD <= 0.08 && sumD > 0.10) { if (first / a.revenue < 0.6) cumulative++; else ttm++; }
+  }
+  if (period >= cumulative && period >= ttm && period > 0) return 'period';
+  if (cumulative >= period && cumulative >= ttm && cumulative > 0) return 'cumulative';
+  if (ttm >= period && ttm >= cumulative && ttm > 0) return 'ttm';
+  return 'unknown';
+}
+function coMatrixBuild(c, opts = {}) {
   const periods = coMatrixPeriods(c);
   if (periods.length < 2) return null;
   const n = coMatrixDetectN(c, periods);
@@ -5338,9 +5361,9 @@ function coMatrixBuild(c) {
       if (!fy || !q) continue;
       if (!groups.has(fy)) groups.set(fy, {});
       groups.get(fy)[q] = { revenue: p.revenue, netIncome: p.netIncome };
+      p.fyN = fy; p.qN = q;
     }
   } else if ((c.history || []).some((h) => h.y)) {
-    // The annual history carries the fiscal year-end date; use its month to place each period.
     const lastY = c.history.map((h) => String(h.y)).sort().pop();
     const endMonth = Number(lastY.slice(5, 7)) || 12;
     for (const p of periods) {
@@ -5357,10 +5380,11 @@ function coMatrixBuild(c) {
       }
       if (!groups.has(fy)) groups.set(fy, {});
       groups.get(fy)[q] = { revenue: p.revenue, netIncome: p.netIncome };
+      p.fyN = fy; p.qN = q;
     }
   } else {
     // US: match the annual series to a window of n periods ending in that fiscal year.
-    const annual = coMatrixAnnual(c).sort((a, b) => a.year - b.year);
+    const annual = (c.series || []).map((x) => ({ year: Number(x.fy), revenue: x.revenue, netIncome: x.netIncome })).filter((a) => a.year).sort((a, b) => a.year - b.year);
     let lastEnd = -1;
     for (const a of annual) {
       let best = null;
@@ -5375,7 +5399,7 @@ function coMatrixBuild(c) {
       }
       if (best && best.diff <= 0.02) {
         if (!groups.has(a.year)) groups.set(a.year, {});
-        best.win.forEach((p, idx) => { groups.get(a.year)[idx + 1] = { revenue: p.revenue, netIncome: p.netIncome }; });
+        best.win.forEach((p, idx) => { groups.get(a.year)[idx + 1] = { revenue: p.revenue, netIncome: p.netIncome }; p.fyN = a.year; p.qN = idx + 1; });
         lastEnd = Math.max(lastEnd, best.i);
       }
     }
@@ -5384,7 +5408,7 @@ function coMatrixBuild(c) {
       if (rest.length) {
         const year = Math.max(...groups.keys()) + 1;
         if (!groups.has(year)) groups.set(year, {});
-        rest.slice(0, n).forEach((p, idx) => { groups.get(year)[idx + 1] = { revenue: p.revenue, netIncome: p.netIncome }; });
+        rest.slice(0, n).forEach((p, idx) => { groups.get(year)[idx + 1] = { revenue: p.revenue, netIncome: p.netIncome }; p.fyN = year; p.qN = idx + 1; });
       }
     } else {
       grouping = 'calendar';
@@ -5394,20 +5418,71 @@ function coMatrixBuild(c) {
         const q = n === 2 ? (d.getUTCMonth() < 6 ? 1 : 2) : Math.floor(d.getUTCMonth() / 3) + 1;
         if (!groups.has(year)) groups.set(year, {});
         groups.get(year)[q] = { revenue: p.revenue, netIncome: p.netIncome };
+        p.fyN = year; p.qN = q;
+      }
+    }
+  }
+  const am = coMatrixAnnualMap(c);
+  const market = opts.market || '';
+  const rawBasis = market === 'us' ? 'period' : coMatrixBasis({ groups, n }, am);
+  const basis = rawBasis === 'unknown' ? (market === 'au' ? 'ttm' : 'period') : rawBasis;
+  let outlierNote = '';
+  if (basis === 'cumulative') {
+    for (const grp of groups.values()) {
+      const qs = Object.keys(grp).map(Number).sort((a, b) => a - b);
+      let prevRev = null, prevNi = null;
+      for (const q of qs) {
+        const cur = grp[q];
+        const rev = cur.revenue == null ? null : (q === 1 ? cur.revenue : (prevRev != null ? cur.revenue - prevRev : null));
+        const ni = cur.netIncome == null ? null : (q === 1 ? cur.netIncome : (prevNi != null ? cur.netIncome - prevNi : null));
+        grp[q] = { revenue: rev, netIncome: ni };
+        if (cur.revenue != null) prevRev = cur.revenue;
+        if (cur.netIncome != null) prevNi = cur.netIncome;
+      }
+    }
+    for (const p of periods) { const v = groups.get(p.fyN)?.[p.qN]; if (v) { p.revenue = v.revenue; p.netIncome = v.netIncome; } }
+  } else if (basis === 'period' && market !== 'us') {
+    // A latest, still-incomplete fiscal year can contain one cumulative period even when the
+    // company normally files genuine periods (BBRI Q3 2026, Nippon Steel Q2 2027, …).
+    const latestFy = Math.max(...groups.keys());
+    const latestGroup = groups.get(latestFy);
+    const latestQs = Object.keys(latestGroup).map(Number).sort((a, b) => a - b);
+    const annual = am.get(latestFy);
+    const complete = latestQs.length >= n && annual != null;
+    if (!complete) {
+      for (const metric of ['revenue', 'netIncome']) {
+        for (const q of latestQs.filter((x) => x >= 2)) {
+          const raw = latestGroup[q]?.[metric];
+          const prev = latestGroup[q - 1]?.[metric];
+          const sameQ = groups.get(latestFy - 1)?.[q]?.[metric];
+          if (raw == null || prev == null || prev <= 0 || sameQ == null || sameQ <= 0) continue;
+          if (raw / prev < 2.2 || raw / sameQ < 2.2) continue;
+          const prior = [];
+          let ok = true;
+          for (let k = 1; k < q; k++) { const x = latestGroup[k]?.[metric]; if (x == null) { ok = false; break; } prior.push(x); }
+          if (!ok || !prior.length) continue;
+          const ytd = prior.reduce((a, b) => a + b, 0), expected = ytd + sameQ;
+          if (!expected || Math.abs(raw - expected) / expected > 0.25) continue;
+          const corrected = raw - ytd, rd = corrected / sameQ;
+          if (corrected <= 0 || rd < 0.5 || rd > 1.5) continue;
+          latestGroup[q][metric] = corrected;
+          for (const p of periods) if (p.fyN === latestFy && p.qN === q) p[metric] = corrected;
+          outlierNote = `${metric === 'revenue' ? 'Revenue' : 'Net profit'} for ${labels[q - 1]} ${latestFy} was reported cumulatively; converted to a period value.`;
+        }
       }
     }
   }
   const years = [...groups.keys()].sort((a, b) => b - a).slice(0, 3);
   if (!years.length) return null;
-  return { periods, groups, years, n, labels, grouping };
+  return { periods, groups, years, n, labels, grouping, basis, outlierNote };
 }
 function coMatrixInner() {
   const store = coMatrixStore;
   if (!store) return '';
   const { c, opts } = store;
-  const model = coMatrixBuild(c);
+  const model = coMatrixBuild(c, opts);
   if (!model) return '<div class="macro-note">Quarterly or half-year periods are not available for this company.</div>';
-  const { periods, groups, years, n, labels, grouping } = model;
+  const { periods, groups, years, n, labels, grouping, basis, outlierNote } = model;
   const metric = coMatrixMetric === 'profit' ? 'netIncome' : 'revenue';
   const money = opts.money || ((v) => String(v));
   const pctOf = (v, prev) => (v != null && prev != null && v > 0 && prev > 0 ? (v / prev - 1) * 100 : null);
@@ -5415,6 +5490,21 @@ function coMatrixInner() {
     const pct = pctOf(v, prev);
     return `<td><span>${v == null ? '—' : money(v)}</span>${pct != null ? `<em class="qchg ${pct >= 0 ? 'pos' : 'neg'}">${pct >= 0 ? '+' : ''}${pct.toFixed(1)}%</em>` : ''}</td>`;
   };
+  const metricBtns = `<button type="button" data-cometric="revenue" class="${coMatrixMetric === 'revenue' ? 'on' : ''}">REVENUE</button><button type="button" data-cometric="profit" class="${coMatrixMetric === 'profit' ? 'on' : ''}">NET PROFIT</button>`;
+  if (basis === 'ttm') {
+    const rows = [...periods].slice(-8).reverse();
+    const val = (p) => p[metric];
+    const prevOf = (p) => { const i = periods.indexOf(p); return i - n >= 0 ? periods[i - n][metric] : null; };
+    const table = `<div class="co-matrix-scroll"><table class="co-matrix-table"><thead><tr><th>PERIOD</th><th>TTM ${metric === 'revenue' ? 'REVENUE' : 'NET PROFIT'}</th><th>YOY</th></tr></thead><tbody>`
+      + rows.map((p) => {
+        const v = val(p), pct = pctOf(v, prevOf(p));
+        return `<tr><td>${esc(dealDateY(p.date))}</td><td>${v == null ? '—' : money(v)}</td><td class="${pct == null ? '' : pct >= 0 ? 'qchgpos' : 'qchgneg'}">${pct == null ? '—' : `${pct >= 0 ? '+' : ''}${pct.toFixed(1)}%`}</td></tr>`;
+      }).join('')
+      + '</tbody></table></div>';
+    return `<div class="co-matrix-head"><span class="t">TRAILING 12 MONTHS</span><span class="s">${n === 2 ? 'half-year' : 'quarter-end'} TTM · ${esc(opts.ccy || '')}</span><div class="co-matrix-ctls">${metricBtns}</div></div>`
+      + `<div class="co-matrix-body">${table}</div>`
+      + `<div class="co-matrix-note">The feed carries trailing-twelve-month values, not quarterly periods, so a Q1–Q4 / H1–H2 matrix would be false. The table shows the TTM at each period end and its year-on-year change; the fiscal-year record above is the audited annual.</div>`;
+  }
   const vals = (y) => Array.from({ length: n }, (_, i) => groups.get(y)[i + 1]?.[metric]).filter((v) => v != null);
   const annualised = (y) => { const a = vals(y); return a.length >= 2 ? a.reduce((x, z) => x + z, 0) * n / a.length : null; };
   const ttm = (y) => {
@@ -5439,11 +5529,21 @@ function coMatrixInner() {
   const list = `<div class="co-matrix-scroll"><table class="co-matrix-table co-matrix-list"><thead><tr><th>PERIOD</th><th>REVENUE</th><th>NET PROFIT</th></tr></thead><tbody>`
     + [...periods].reverse().map((p) => `<tr><td>${esc(dealDateY(p.date))}${p.q ? ` <em>${esc(p.q)}</em>` : ''}</td><td>${p.revenue == null ? '—' : money(p.revenue)}</td><td>${p.netIncome == null ? '—' : money(p.netIncome)}</td></tr>`).join('')
     + '</tbody></table></div>';
-  const note = `${n === 2 ? 'Half-year' : 'Quarterly'} reporting detected from the period spacing. ${grouping === 'calendar' ? 'Fiscal years could not be matched to the annual history, so the columns are calendar years.' : grouping === 'reported' ? 'Period labels are the company’s own.' : 'Fiscal periods derived from the annual history.'} Annualised = available periods × n/year ÷ n (at least two); TTM = trailing ${n} periods. Change is year-on-year (green up, red down); a change from a loss is left blank.`;
-  return `<div class="co-matrix-head"><span class="t">${n === 2 ? 'HALF-YEAR' : 'QUARTERLY'} RESULTS</span><span class="s">${years.length} fiscal years · ${esc(opts.ccy || '')}</span><div class="co-matrix-ctls"><button type="button" data-cometric="revenue" class="${coMatrixMetric === 'revenue' ? 'on' : ''}">REVENUE</button><button type="button" data-cometric="profit" class="${coMatrixMetric === 'profit' ? 'on' : ''}">NET PROFIT</button><span class="co-matrix-sep"></span><button type="button" data-comaview="matrix" class="${coMatrixView === 'matrix' ? 'on' : ''}">MATRIX</button><button type="button" data-comaview="list" class="${coMatrixView === 'list' ? 'on' : ''}">LIST</button></div></div>`
+  const basisNote = basis === 'cumulative'
+    ? 'Reported as cumulative year-to-date; converted to period values.'
+    : outlierNote
+      ? `${outlierNote}`
+      : grouping === 'calendar'
+        ? 'Fiscal years could not be matched to the annual history, so the columns are calendar years.'
+        : grouping === 'reported'
+          ? 'Period labels are the company’s own.'
+          : 'Fiscal periods derived from the annual history.';
+  const note = `${n === 2 ? 'Half-year' : 'Quarterly'} reporting detected from the period spacing. ${basisNote} Annualised = available periods × n/year ÷ n (at least two); TTM = trailing ${n} periods. Change is year-on-year (green up, red down); a change from a loss is left blank.`;
+  return `<div class="co-matrix-head"><span class="t">${n === 2 ? 'HALF-YEAR' : 'QUARTERLY'} RESULTS</span><span class="s">${years.length} fiscal years · ${esc(opts.ccy || '')}</span><div class="co-matrix-ctls">${metricBtns}<span class="co-matrix-sep"></span><button type="button" data-comaview="matrix" class="${coMatrixView === 'matrix' ? 'on' : ''}">MATRIX</button><button type="button" data-comaview="list" class="${coMatrixView === 'list' ? 'on' : ''}">LIST</button></div></div>`
     + `<div class="co-matrix-body">${coMatrixView === 'list' ? list : table}</div>`
     + `<div class="co-matrix-note">${note}</div>`;
 }
+
 function periodMatrixHtml(c, opts = {}) {
   coMatrixStore = { c, opts };
   coMatrixMetric = 'revenue';

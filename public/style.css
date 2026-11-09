@@ -2744,3 +2744,6 @@ body.gs-search-open { overflow: hidden; }
   .co-matrix-table th:first-child, .co-matrix-table td:first-child { width: 72px; }
   .co-matrix-table .qchg { font-size: 8px; }
 }
+
+.co-matrix-table td.qchgpos { color: var(--green); }
+.co-matrix-table td.qchgneg { color: var(--red); }
