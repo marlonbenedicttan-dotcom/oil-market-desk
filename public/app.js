@@ -5425,7 +5425,7 @@ function coMatrixBuild(c, opts = {}) {
   const am = coMatrixAnnualMap(c);
   const market = opts.market || '';
   const rawBasis = market === 'us' ? 'period' : coMatrixBasis({ groups, n }, am);
-  const basis = rawBasis === 'unknown' ? (market === 'au' ? 'ttm' : 'period') : rawBasis;
+  const basis = (market === 'au' && !c.periodBasis) ? 'ttm' : (rawBasis === 'unknown' ? (market === 'au' ? 'ttm' : 'period') : rawBasis);
   let outlierNote = '';
   if (basis === 'cumulative') {
     for (const grp of groups.values()) {
@@ -5538,7 +5538,7 @@ function coMatrixInner() {
         : grouping === 'reported'
           ? 'Period labels are the company’s own.'
           : 'Fiscal periods derived from the annual history.';
-  const note = `${n === 2 ? 'Half-year' : 'Quarterly'} reporting detected from the period spacing. ${basisNote} Annualised = available periods × n/year ÷ n (at least two); TTM = trailing ${n} periods. Change is year-on-year (green up, red down); a change from a loss is left blank.`;
+  const note = `${n === 2 ? 'Half-year' : 'Quarterly'} reporting detected from the period spacing. ${basisNote} Annualised = available periods × n/year ÷ n (at least two); TTM = trailing ${n} periods. Change is year-on-year (green up, red down); a change from a loss is left blank. The fiscal-year record above uses the annual filing; the matrix uses the quarterly feed, which can differ.`;
   return `<div class="co-matrix-head"><span class="t">${n === 2 ? 'HALF-YEAR' : 'QUARTERLY'} RESULTS</span><span class="s">${years.length} fiscal years · ${esc(opts.ccy || '')}</span><div class="co-matrix-ctls">${metricBtns}<span class="co-matrix-sep"></span><button type="button" data-comaview="matrix" class="${coMatrixView === 'matrix' ? 'on' : ''}">MATRIX</button><button type="button" data-comaview="list" class="${coMatrixView === 'list' ? 'on' : ''}">LIST</button></div></div>`
     + `<div class="co-matrix-body">${coMatrixView === 'list' ? list : table}</div>`
     + `<div class="co-matrix-note">${note}</div>`;
