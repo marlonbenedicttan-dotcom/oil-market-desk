@@ -5389,7 +5389,9 @@ function coMatrixBuild(c, opts = {}) {
     for (const a of annual) {
       let best = null;
       for (let i = n - 1; i < periods.length; i++) {
-        if (Number(String(periods[i].date).slice(0, 4)) !== a.year) continue;
+        // Match the annual revenue to any n-quarter window. A January fiscal year puts Q4
+        // in the next calendar year (NVIDIA FY2025 ends Jan 2026), so restricting the
+        // window's last quarter to the label year dropped every recent group.
         const win = periods.slice(i - n + 1, i + 1);
         if (win.length !== n) continue;
         const sum = win.reduce((s, p) => s + (p.revenue || 0), 0);
@@ -5404,11 +5406,15 @@ function coMatrixBuild(c, opts = {}) {
       }
     }
     if (lastEnd >= 0) {
+      // Assign every leftover quarter, not just the first n. A newer fiscal year can have
+      // more than one partial year after the last annual match.
       const rest = periods.slice(lastEnd + 1);
-      if (rest.length) {
-        const year = Math.max(...groups.keys()) + 1;
+      let year = Math.max(...groups.keys()) + 1;
+      for (let k = 0; k < rest.length; k += n) {
+        const chunk = rest.slice(k, k + n);
         if (!groups.has(year)) groups.set(year, {});
-        rest.slice(0, n).forEach((p, idx) => { groups.get(year)[idx + 1] = { revenue: p.revenue, netIncome: p.netIncome }; p.fyN = year; p.qN = idx + 1; });
+        chunk.forEach((p, idx) => { groups.get(year)[idx + 1] = { revenue: p.revenue, netIncome: p.netIncome }; p.fyN = year; p.qN = idx + 1; });
+        year++;
       }
     } else {
       grouping = 'calendar';
