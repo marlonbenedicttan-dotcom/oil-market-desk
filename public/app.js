@@ -4165,6 +4165,7 @@ function showTab(name) {
     // Warm all three markets as soon as the tab opens: switching region should not wait on a 70 KB
     // fetch that could have been in flight since the tab opened.
     warmMarkets(0);
+    warmMarketsRest();
     loadCompanies();
   }
   if (name === 'macro') { loadMacroTickers(); if (!extraSlowDone) setTimeout(() => loadExtraSlow().catch(() => {}), 0); if (macroChart) setTimeout(() => macroChart.resize(), 60); if (policyChart) setTimeout(() => policyChart.resize(), 70); if (cpiChart) setTimeout(() => cpiChart.resize(), 80); if (yieldsChart) setTimeout(() => yieldsChart.resize(), 85); if (usjpChart) setTimeout(() => usjpChart.resize(), 90); const mt = document.querySelector('#macro-chart-tabs .active'); if (mt) setTimeout(() => setMacroChart(mt.dataset.mchart, false), 95); }
@@ -9062,10 +9063,6 @@ function syncMarketAccent() {
 let warmed = false;
 function warmMarkets(delay = 1500) {
   if (warmed) return;
-  // The US screener (~90 KB gzipped) is prefetched so COMPANIES opens instantly. Korea is only
-  // ~50 KB gzipped — a fraction of that — and its first click otherwise pays a full round trip
-  // behind a "Loading KOSPI…" spinner, so it is warmed too. Japan (~140 KB) still waits for its
-  // own renderer: spending it on every first visit was competing with the first screen.
   // Prefetching ten market lists is ~1 MB. On a metered or slow link that is bandwidth the first
   // screen needs, so stand down there: the COMPANIES tab still loads a market on click, it just does
   // not do it in the background.
@@ -9078,9 +9075,9 @@ function warmMarkets(delay = 1500) {
   const cold = (() => { try { return window.__coldStart === true; } catch { return false; } })();
   if (cold) return;
   warmed = true;
-  // Warm the US list first (it backs the default screener), then the region this reader last used,
-  // then the rest. A returning India/Indonesia/Brazil/South Africa reader should not wait while nine
-  // other lists download ahead of theirs.
+  // Warm only the list the reader is most likely to open: US (the default screener) and the region
+  // they used last. The other eight are ~900 KB of background JSON — main-thread parses while they
+  // read HOME or MACRO — so they wait until the COMPANIES tab is actually reached for.
   const loaders = [
     ['us', () => { if (!companiesData) jget('/api/companies', 300000).then((d) => { companiesData = d; }).catch(() => {}); }],
     ['jp', () => loadJapan().catch(() => {})],
@@ -9094,12 +9091,21 @@ function warmMarkets(delay = 1500) {
     ['za', () => loadSouthAfrica().catch(() => {})],
   ];
   const last = String(coRegion || 'us');
-  const ordered = [
-    ...loaders.filter(([id]) => id === last),
-    ...loaders.filter(([id]) => id !== last),
-  ];
-  ordered.forEach(([, load], i) => setTimeout(load, delay + i * 1400));
+  const first = [last, 'us'].filter((id, i, a) => a.indexOf(id) === i && loaders.some(([x]) => x === id));
+  first.forEach((id, i) => { const l = loaders.find(([x]) => x === id); if (l) setTimeout(l[1], delay + i * 600); });
+  warmQueue = loaders.filter(([id]) => !first.includes(id));
 }
+// The remaining market lists, once the reader reaches COMPANIES (tab open or pointer over it).
+let warmQueue = [], warmedRest = false;
+function warmMarketsRest(delay = 0) {
+  if (warmedRest || !warmQueue.length) return;
+  warmedRest = true;
+  const q = warmQueue; warmQueue = [];
+  q.forEach(([, load], i) => setTimeout(load, delay + i * 1200));
+}
+// A pointer resting on COMPANIES is intent: start the remaining lists before the click, so the tab
+// still opens warm. Touch devices skip this and warm on the tab's own click (showTab).
+document.querySelector('[data-tab="deals"]')?.addEventListener('pointerenter', () => { warmMarkets(0); warmMarketsRest(); }, { passive: true });
 
 // The region row scrolls sideways on a phone. A saved market can therefore sit off-screen; centre the
 // active pill instead of leaving the reader looking at United States while India is selected.
