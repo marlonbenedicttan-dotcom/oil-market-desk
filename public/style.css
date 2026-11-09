@@ -2711,3 +2711,36 @@ body.gs-search-open { overflow: hidden; }
 /* India index tier tag — CORE vs MICROCAP is a membership label, not a size claim. */
 .co-tier { display: inline-block; margin-left: 6px; padding: 1px 5px; border: 1px solid var(--line2); color: var(--dim); font-size: 8px; letter-spacing: .5px; text-transform: uppercase; vertical-align: 1px; }
 .co-tier.micro { color: var(--amber); border-color: #5c4a1d; }
+
+/* ---------- Shared quarterly / half-year matrix ---------- */
+.co-matrix { background: var(--panel); border-top: 1px solid var(--line); }
+.co-matrix-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; padding: 12px 12px 6px; }
+.co-matrix-head .t { font-size: 9px; letter-spacing: 1.3px; color: var(--amber); }
+.co-matrix-head .s { font-size: 8px; color: var(--dim); }
+.co-matrix-ctls { display: flex; align-items: center; gap: 3px; margin-left: auto; flex-wrap: wrap; }
+.co-matrix-ctls button { background: #0c0f13; border: 1px solid var(--line2); color: var(--dim); font: 600 8px/1 var(--mono); letter-spacing: .6px; padding: 4px 6px; cursor: pointer; }
+.co-matrix-ctls button.on { color: #080a0e; background: var(--amber); border-color: var(--amber); }
+.co-matrix-sep { width: 1px; align-self: stretch; background: var(--line2); margin: 0 2px; }
+.co-matrix-scroll { overflow-x: auto; }
+.co-matrix-table { width: 100%; border-collapse: collapse; font-size: 11px; font-variant-numeric: tabular-nums; }
+.co-matrix-table th { text-align: right; font-size: 8px; letter-spacing: .9px; color: #5b6773; font-weight: 400; padding: 8px 12px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+.co-matrix-table th:first-child, .co-matrix-table td:first-child { text-align: left; }
+.co-matrix-table td { padding: 8px 12px; border-bottom: 1px solid #151b21; text-align: right; white-space: nowrap; color: #c9d4df; }
+.co-matrix-table tr:hover td { background: #0e141a; }
+.co-matrix-table tr.total td { font-weight: 700; color: var(--text); }
+.co-matrix-table tr.total td:first-child { color: var(--amber); }
+.co-matrix-table tr.ttm td:first-child { color: var(--dim); }
+.co-matrix-table .qchg { display: block; font-style: normal; font-size: 8px; margin-top: 2px; letter-spacing: .2px; }
+.co-matrix-table .qchg.pos { color: var(--green); }
+.co-matrix-table .qchg.neg { color: var(--red); }
+.co-matrix-table td em { font-style: normal; color: var(--dim); font-size: 8px; margin-left: 4px; }
+.co-matrix-note { padding: 9px 12px; border-top: 1px solid var(--line); font-size: 8.5px; line-height: 1.6; color: #586674; }
+@media (max-width: 760px) {
+  .co-matrix-head { padding: 10px 8px 4px; }
+  .co-matrix-ctls { width: 100%; margin-left: 0; }
+  .co-matrix-table { min-width: 0; width: 100%; }
+  .co-matrix-table th, .co-matrix-table td { padding: 6px 5px; font-size: 9.5px; }
+  .co-matrix-table th { font-size: 8px; }
+  .co-matrix-table th:first-child, .co-matrix-table td:first-child { width: 72px; }
+  .co-matrix-table .qchg { font-size: 8px; }
+}

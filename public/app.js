@@ -5281,6 +5281,189 @@ async function renderJapanPage(stub) {
   return renderJapanPageBody(c);
 }
 
+// ---------------------------------------------------------------------------
+// Quarterly / half-year matrix — shared by every market's company page.
+// The rows are the company's own periods (Q1–Q4 or H1–H2), the columns are fiscal years,
+// and each value carries its year-on-year change. The list view is the audit trail.
+let coMatrixStore = null;
+let coMatrixMetric = 'revenue';
+let coMatrixView = 'matrix';
+
+function coMatrixPeriods(c) {
+  return (c.quarters || []).map((x) => ({
+    date: x.end || x.d,
+    revenue: x.revenue != null ? x.revenue : (x.sales != null ? x.sales : null),
+    netIncome: x.netIncome != null ? x.netIncome : (x.np != null ? x.np : null),
+    fy: x.fy || null,
+    q: x.q || null,
+  })).filter((p) => p.date && (p.revenue != null || p.netIncome != null))
+    .sort((a, b) => String(a.date).localeCompare(String(b.date)));
+}
+function coMatrixAnnual(c) {
+  if (Array.isArray(c.series) && c.series.length) {
+    return c.series.map((s) => ({ year: Number(s.fy), revenue: s.revenue, netIncome: s.netIncome })).filter((a) => a.year);
+  }
+  return (c.history || []).map((h) => ({
+    year: Number(String(h.y || '').slice(0, 4)),
+    revenue: h.s,
+    netIncome: h.n,
+  })).filter((a) => a.year);
+}
+function coMatrixDetectN(c, periods) {
+  if (c.periodBasis === 'half') return 2;
+  const dates = periods.map((p) => p.date).filter(Boolean);
+  if (dates.length < 2) return 4;
+  const gaps = [];
+  for (let i = 1; i < dates.length; i++) {
+    const a = new Date(dates[i - 1] + 'T00:00:00Z'), b = new Date(dates[i] + 'T00:00:00Z');
+    if (isFinite(a) && isFinite(b)) gaps.push((b - a) / (864e5 * 30.44));
+  }
+  gaps.sort((a, b) => a - b);
+  const med = gaps[Math.floor(gaps.length / 2)];
+  return med > 4.5 ? 2 : 4;
+}
+function coMatrixBuild(c) {
+  const periods = coMatrixPeriods(c);
+  if (periods.length < 2) return null;
+  const n = coMatrixDetectN(c, periods);
+  const labels = n === 2 ? ['H1', 'H2'] : ['Q1', 'Q2', 'Q3', 'Q4'];
+  const groups = new Map();
+  let grouping = 'fiscal';
+  const explicit = periods.some((p) => p.fy && p.q);
+  if (explicit) {
+    grouping = 'reported';
+    for (const p of periods) {
+      const fy = Number(String(p.fy).slice(0, 4));
+      const q = Number(String(p.q).replace(/\D/g, ''));
+      if (!fy || !q) continue;
+      if (!groups.has(fy)) groups.set(fy, {});
+      groups.get(fy)[q] = { revenue: p.revenue, netIncome: p.netIncome };
+    }
+  } else if ((c.history || []).some((h) => h.y)) {
+    // The annual history carries the fiscal year-end date; use its month to place each period.
+    const lastY = c.history.map((h) => String(h.y)).sort().pop();
+    const endMonth = Number(lastY.slice(5, 7)) || 12;
+    for (const p of periods) {
+      const d = new Date(p.date + 'T00:00:00Z');
+      const m = d.getUTCMonth() + 1, y = d.getUTCFullYear();
+      let q, fy;
+      if (n === 2) {
+        q = m === endMonth ? 2 : 1;
+        fy = m === endMonth ? y : (m > endMonth ? y + 1 : y);
+      } else {
+        q = ((m - endMonth + 12) % 12) / 3 + 1;
+        q = q === 1 ? 4 : q - 1;
+        fy = m > endMonth ? y + 1 : y;
+      }
+      if (!groups.has(fy)) groups.set(fy, {});
+      groups.get(fy)[q] = { revenue: p.revenue, netIncome: p.netIncome };
+    }
+  } else {
+    // US: match the annual series to a window of n periods ending in that fiscal year.
+    const annual = coMatrixAnnual(c).sort((a, b) => a.year - b.year);
+    let lastEnd = -1;
+    for (const a of annual) {
+      let best = null;
+      for (let i = n - 1; i < periods.length; i++) {
+        if (Number(String(periods[i].date).slice(0, 4)) !== a.year) continue;
+        const win = periods.slice(i - n + 1, i + 1);
+        if (win.length !== n) continue;
+        const sum = win.reduce((s, p) => s + (p.revenue || 0), 0);
+        if (!sum || a.revenue == null) continue;
+        const diff = Math.abs(sum - a.revenue) / Math.abs(a.revenue);
+        if (!best || diff < best.diff) best = { i, diff, win };
+      }
+      if (best && best.diff <= 0.02) {
+        if (!groups.has(a.year)) groups.set(a.year, {});
+        best.win.forEach((p, idx) => { groups.get(a.year)[idx + 1] = { revenue: p.revenue, netIncome: p.netIncome }; });
+        lastEnd = Math.max(lastEnd, best.i);
+      }
+    }
+    if (lastEnd >= 0) {
+      const rest = periods.slice(lastEnd + 1);
+      if (rest.length) {
+        const year = Math.max(...groups.keys()) + 1;
+        if (!groups.has(year)) groups.set(year, {});
+        rest.slice(0, n).forEach((p, idx) => { groups.get(year)[idx + 1] = { revenue: p.revenue, netIncome: p.netIncome }; });
+      }
+    } else {
+      grouping = 'calendar';
+      for (const p of periods) {
+        const d = new Date(p.date + 'T00:00:00Z');
+        const year = d.getUTCFullYear();
+        const q = n === 2 ? (d.getUTCMonth() < 6 ? 1 : 2) : Math.floor(d.getUTCMonth() / 3) + 1;
+        if (!groups.has(year)) groups.set(year, {});
+        groups.get(year)[q] = { revenue: p.revenue, netIncome: p.netIncome };
+      }
+    }
+  }
+  const years = [...groups.keys()].sort((a, b) => b - a).slice(0, 3);
+  if (!years.length) return null;
+  return { periods, groups, years, n, labels, grouping };
+}
+function coMatrixInner() {
+  const store = coMatrixStore;
+  if (!store) return '';
+  const { c, opts } = store;
+  const model = coMatrixBuild(c);
+  if (!model) return '<div class="macro-note">Quarterly or half-year periods are not available for this company.</div>';
+  const { periods, groups, years, n, labels, grouping } = model;
+  const metric = coMatrixMetric === 'profit' ? 'netIncome' : 'revenue';
+  const money = opts.money || ((v) => String(v));
+  const pctOf = (v, prev) => (v != null && prev != null && v > 0 && prev > 0 ? (v / prev - 1) * 100 : null);
+  const cell = (v, prev) => {
+    const pct = pctOf(v, prev);
+    return `<td><span>${v == null ? '—' : money(v)}</span>${pct != null ? `<em class="qchg ${pct >= 0 ? 'pos' : 'neg'}">${pct >= 0 ? '+' : ''}${pct.toFixed(1)}%</em>` : ''}</td>`;
+  };
+  const vals = (y) => Array.from({ length: n }, (_, i) => groups.get(y)[i + 1]?.[metric]).filter((v) => v != null);
+  const annualised = (y) => { const a = vals(y); return a.length >= 2 ? a.reduce((x, z) => x + z, 0) * n / a.length : null; };
+  const ttm = (y) => {
+    if (y === years[0]) {
+      const last = periods.slice(-n).map((p) => p[metric]);
+      return last.length === n && last.every((v) => v != null) ? last.reduce((a, b) => a + b, 0) : null;
+    }
+    const a = vals(y);
+    return a.length === n ? a.reduce((x, z) => x + z, 0) : null;
+  };
+  const latestQ = Math.max(...Object.keys(groups.get(years[0])).map(Number));
+  const prevYear = (yi) => (years[yi + 1] != null ? years[yi + 1] : null);
+  const table = `<div class="co-matrix-scroll"><table class="co-matrix-table"><thead><tr><th>Period</th>${years.map((y) => `<th>${y}</th>`).join('')}</tr></thead><tbody>`
+    + labels.map((label, idx) => `<tr><td>${label}</td>${years.map((y, yi) => {
+      const v = groups.get(y)[idx + 1]?.[metric];
+      const pv = years[yi + 1] != null ? groups.get(years[yi + 1])[idx + 1]?.[metric] : null;
+      return cell(v, pv);
+    }).join('')}</tr>`).join('')
+    + `<tr class="total"><td>Annualised</td>${years.map((y, yi) => cell(annualised(y), prevYear(yi) ? annualised(prevYear(yi)) : null)).join('')}</tr>`
+    + `<tr class="total ttm"><td>TTM (${labels[latestQ - 1]})</td>${years.map((y, yi) => cell(ttm(y), prevYear(yi) ? ttm(prevYear(yi)) : null)).join('')}</tr>`
+    + '</tbody></table></div>';
+  const list = `<div class="co-matrix-scroll"><table class="co-matrix-table co-matrix-list"><thead><tr><th>PERIOD</th><th>REVENUE</th><th>NET PROFIT</th></tr></thead><tbody>`
+    + [...periods].reverse().map((p) => `<tr><td>${esc(dealDateY(p.date))}${p.q ? ` <em>${esc(p.q)}</em>` : ''}</td><td>${p.revenue == null ? '—' : money(p.revenue)}</td><td>${p.netIncome == null ? '—' : money(p.netIncome)}</td></tr>`).join('')
+    + '</tbody></table></div>';
+  const note = `${n === 2 ? 'Half-year' : 'Quarterly'} reporting detected from the period spacing. ${grouping === 'calendar' ? 'Fiscal years could not be matched to the annual history, so the columns are calendar years.' : grouping === 'reported' ? 'Period labels are the company’s own.' : 'Fiscal periods derived from the annual history.'} Annualised = available periods × n/year ÷ n (at least two); TTM = trailing ${n} periods. Change is year-on-year (green up, red down); a change from a loss is left blank.`;
+  return `<div class="co-matrix-head"><span class="t">${n === 2 ? 'HALF-YEAR' : 'QUARTERLY'} RESULTS</span><span class="s">${years.length} fiscal years · ${esc(opts.ccy || '')}</span><div class="co-matrix-ctls"><button type="button" data-cometric="revenue" class="${coMatrixMetric === 'revenue' ? 'on' : ''}">REVENUE</button><button type="button" data-cometric="profit" class="${coMatrixMetric === 'profit' ? 'on' : ''}">NET PROFIT</button><span class="co-matrix-sep"></span><button type="button" data-comaview="matrix" class="${coMatrixView === 'matrix' ? 'on' : ''}">MATRIX</button><button type="button" data-comaview="list" class="${coMatrixView === 'list' ? 'on' : ''}">LIST</button></div></div>`
+    + `<div class="co-matrix-body">${coMatrixView === 'list' ? list : table}</div>`
+    + `<div class="co-matrix-note">${note}</div>`;
+}
+function periodMatrixHtml(c, opts = {}) {
+  coMatrixStore = { c, opts };
+  coMatrixMetric = 'revenue';
+  coMatrixView = 'matrix';
+  return `<section class="co-matrix" id="co-matrix">${coMatrixInner()}</section>`;
+}
+document.addEventListener('click', (e) => {
+  const metric = e.target.closest('[data-cometric]');
+  if (metric) {
+    coMatrixMetric = metric.dataset.cometric;
+    const box = $('co-matrix'); if (box) box.innerHTML = coMatrixInner();
+    return;
+  }
+  const view = e.target.closest('[data-comaview]');
+  if (view) {
+    coMatrixView = view.dataset.comaview;
+    const box = $('co-matrix'); if (box) box.innerHTML = coMatrixInner();
+  }
+});
+
 function renderJapanPageBody(c) {
   const el = $('co-body'); if (!el) return;
   const sub = $('deals-sub'); if (sub) sub.textContent = `${c.name} · ${c.ticker} · TSE Prime`;
@@ -5384,7 +5567,7 @@ function renderJapanPageBody(c) {
     + `<div class="co-rets" id="jp-rets"></div>`
               + `<div class="co-chartwrap"><div class="co-big" id="jp-big"></div><canvas id="jp-chart"></canvas></div>`
     + '<div id="jp-peers-x"></div>'
-    + jpQuartersHtml(c)
+    + periodMatrixHtml(c, { market: 'jp', money: yen, ccy: 'JPY' })
     + jpHistoryHtml(c)
     + jpPeersHtml(c)
     + `<div class="macro-note">
@@ -6157,10 +6340,7 @@ async function renderKoreaPage(stub) {
         <table class="jp-q-table"><thead><tr><th>FISCAL YEAR</th><th>REVENUE</th><th>OP PROFIT</th><th>NET PROFIT</th><th>ROE</th></tr></thead><tbody>
         ${[...h].reverse().map((x) => `<tr><td>${esc(x.y)}</td><td>${won(x.s)}</td><td>${won(x.o)}</td><td>${won(x.n)}</td><td>${x.n != null && x.q ? `${((x.n / x.q) * 100).toFixed(1)}%` : '—'}</td></tr>`).join('')}
         </tbody></table></div>` : '')
-    + (q.length > 1 ? `<div class="jp-q"><div class="jp-q-head"><span class="ph-t">QUARTERLY RESULTS</span><span class="dimtext">${q.length} quarters · ₩</span></div>
-        <div class="jp-q-scroll"><table class="jp-q-table"><thead><tr><th>QUARTER</th><th>REVENUE</th><th>OP PROFIT</th><th>MARGIN</th><th>NET PROFIT</th></tr></thead><tbody>
-        ${[...q].reverse().map((x) => `<tr><td>${esc(x.d)} <em>${esc(x.q)}</em></td><td>${won(x.revenue)}</td><td>${won(x.operatingProfit)}</td><td>${x.revenue && x.operatingProfit != null ? `${((x.operatingProfit / x.revenue) * 100).toFixed(1)}%` : '—'}</td><td>${won(x.netIncome)}</td></tr>`).join('')}
-        </tbody></table></div></div>` : '')
+    + periodMatrixHtml(c, { market: 'kr', money: won, ccy: 'KRW' })
     + `<div class="macro-note">KOSPI · statements from DART (Financial Supervisory Service), prices from Naver Finance. Korean companies report cumulatively (Q1, H1, Q3, annual), so quarters here are the differences and the annual report is Q4. No guidance is published, so there is no forward P/E.${c.descSource === 'profile' ? ' Company description from stockanalysis.com.' : ''}</div>`;
   drawKrChart(c);
   fillPeers(`kr:${c.ticker}`, 'kr-peers-x');
@@ -6492,10 +6672,7 @@ async function renderTaiwanPage(stub) {
         <table class="jp-q-table"><thead><tr><th>FISCAL YEAR</th><th>REVENUE</th><th>OP PROFIT</th><th>NET PROFIT</th><th>ROE</th></tr></thead><tbody>
         ${[...h].reverse().map((x) => `<tr><td>${esc(x.y)}</td><td>${twMoney(x.s)}</td><td>${twMoney(x.o)}</td><td>${twMoney(x.n)}</td><td>${x.n != null && x.q ? `${((x.n / x.q) * 100).toFixed(1)}%` : '—'}</td></tr>`).join('')}
         </tbody></table></div>` : '')
-    + (q.length > 1 ? `<div class="jp-q"><div class="jp-q-head"><span class="ph-t">QUARTERLY RESULTS</span><span class="dimtext">${q.length} quarters · NT$</span></div>
-        <div class="jp-q-scroll"><table class="jp-q-table"><thead><tr><th>QUARTER</th><th>REVENUE</th><th>OP PROFIT</th><th>MARGIN</th><th>NET PROFIT</th></tr></thead><tbody>
-        ${[...q].reverse().map((x) => `<tr><td>${esc(x.d)}</td><td>${twMoney(x.revenue)}</td><td>${twMoney(x.operatingProfit)}</td><td>${x.revenue && x.operatingProfit != null ? `${((x.operatingProfit / x.revenue) * 100).toFixed(1)}%` : '—'}</td><td>${twMoney(x.netIncome)}</td></tr>`).join('')}
-        </tbody></table></div></div>` : '')
+    + periodMatrixHtml(c, { market: 'tw', money: twMoney, ccy: 'TWD' })
     + `<div class="macro-note">TWSE-listed · statements from stockanalysis.com (millions TWD), prices and dividend yield from TWSE. Taiwanese companies report cumulatively (Q1, H1, Q3, annual); the quarterly figures here are the reported period columns. No free guidance feed, so there is no forward P/E.${c.description ? ' Company description from stockanalysis.com.' : ''}</div>`;
   drawTwChart(c);
   fillPeers(`tw:${c.ticker}`, 'tw-peers-x');
@@ -6889,12 +7066,7 @@ async function renderHongKongPage(stub) {
         ${rows.map((x) => `<tr><td>${esc(x.y)}</td><td>${cur(x.s)}</td>${fin ? '' : `<td>${cur(x.o)}</td>`}<td>${cur(x.n)}</td><td>${x.n != null && (x.ec ?? x.q) ? `${((x.n / (x.ec ?? x.q)) * 100).toFixed(1)}%` : '—'}</td></tr>`).join('')}
         </tbody></table></div>`;
       })() : '')
-    + (q.length > 1 ? `<div class="jp-q"><div class="jp-q-head"><span class="ph-t">REPORTED PERIODS</span><span class="dimtext">${q.length} periods · ${ccy}</span></div>
-        <div class="jp-q-scroll"><table class="jp-q-table"><thead><tr><th>PERIOD</th><th>REVENUE</th>${fin ? '<th>NET PROFIT</th><th>NET MARGIN</th>' : '<th>OP PROFIT</th><th>MARGIN</th><th>NET PROFIT</th>'}</tr></thead><tbody>
-        ${[...q].reverse().map((x) => `<tr><td>${esc(x.d)}</td><td>${cur(x.revenue)}</td>${fin
-          ? `<td>${cur(x.netIncome)}</td><td>${x.revenue && x.netIncome != null ? `${((x.netIncome / x.revenue) * 100).toFixed(1)}%` : '—'}</td>`
-          : `<td>${cur(x.operatingProfit)}</td><td>${x.revenue && x.operatingProfit != null ? `${((x.operatingProfit / x.revenue) * 100).toFixed(1)}%` : '—'}</td><td>${cur(x.netIncome)}</td>`}</tr>`).join('')}
-        </tbody></table></div></div>` : '')
+    + periodMatrixHtml(c, { market: 'hk', money: cur, ccy: ccy })
     + `<div class="macro-note">${c.statementsFrom ? `Statements are this same company's own, taken from its ${c.statementsFrom.split(':')[0]} listing (${c.statementsFrom}) because the source serves no Hong Kong statement page for it; the market cap still uses the Hong Kong price × total shares. ` : ''}HKEX main-board listing · statements from stockanalysis.com (millions ${ccy}), prices from Yahoo. Market cap is HKD; ratios are computed in ${ccy}, the currency the issuer reports in, then compared with a market cap converted at the build's USD/HKD and USD/${ccy} rates. Hong Kong companies report half-yearly, so the period table is half-year and annual periods, not four quarters. No free guidance feed, so there is no forward P/E.${fin ? ' Banks and insurers are valued on book value and return on equity; an operating margin and a free cash flow do not describe a balance-sheet business, so those ratios are not shown. ' : ''}${c.description ? ' Company description and sector from stockanalysis.com.' : ''}</div>`;
   drawHkChart(c);
   fillPeers(`hk:${c.ticker}`, 'hk-peers-x');
@@ -7248,12 +7420,7 @@ async function renderAustraliaPage(stub) {
         <table class="jp-q-table"><thead><tr><th>FISCAL YEAR</th><th>REVENUE</th>${bank ? '' : '<th>OP PROFIT</th>'}<th>NET PROFIT</th><th>ROE</th></tr></thead><tbody>
         ${[...h].reverse().map((x) => `<tr><td>${esc(x.y)}</td><td>${cur(x.s)}</td>${bank ? '' : `<td>${cur(x.o)}</td>`}<td>${cur(x.n)}</td><td>${x.n != null && (x.ec ?? x.q) ? `${((x.n / (x.ec ?? x.q)) * 100).toFixed(1)}%` : '—'}</td></tr>`).join('')}
         </tbody></table></div>` : '')
-    + (q.length > 1 ? `<div class="jp-q"><div class="jp-q-head"><span class="ph-t">${c.periodBasis === 'quarter' ? 'REPORTED QUARTERS' : c.periodBasis === 'half' ? 'REPORTED HALF-YEARS' : 'TRAILING 12 MONTHS'}</span><span class="dimtext">${q.length} ${c.periodBasis === 'quarter' ? 'quarters' : c.periodBasis === 'half' ? 'half-years' : 'period ends'} · ${ccy} millions</span></div>
-        <div class="jp-q-scroll"><table class="jp-q-table"><thead><tr><th>PERIOD</th><th>REVENUE</th>${bank ? '<th>NET PROFIT</th><th>NET MARGIN</th>' : '<th>OP PROFIT</th><th>MARGIN</th><th>NET PROFIT</th>'}</tr></thead><tbody>
-        ${[...q].reverse().map((x) => `<tr><td>${esc(x.d)}</td><td>${cur(x.revenue)}</td>${bank
-          ? `<td>${cur(x.netIncome)}</td><td>${x.revenue && x.netIncome != null ? `${((x.netIncome / x.revenue) * 100).toFixed(1)}%` : '—'}</td>`
-          : `<td>${cur(x.operatingProfit)}</td><td>${x.revenue && x.operatingProfit != null ? `${((x.operatingProfit / x.revenue) * 100).toFixed(1)}%` : '—'}</td><td>${cur(x.netIncome)}</td>`}</tr>`).join('')}
-        </tbody></table></div></div>` : '')
+    + periodMatrixHtml(c, { market: 'au', money: cur, ccy: ccy })
     + `<div class="macro-note">ASX-listed · statements from stockanalysis.com (millions ${ccy}), prices from Yahoo. Market cap is AUD; ratios are computed in ${ccy}, the currency the issuer reports in, then compared with a market cap converted at the build's USD/AUD rate${ccy === 'AUD' || ccy === 'USD' ? '' : ` and USD/${ccy} cross`}. ${c.crossListing ? `This line is a CDI/dual listing: statements come from the ${esc(c.crossListing.ticker)} listing, and the market cap uses the ASX price × the filing share count × the ${c.crossListing.ratio}:1 CDI ratio.${c.perShareBasis ? ` Per-share figures are ${esc(c.perShareBasis)}.` : ''}` : `Profit, revenue and margins are the rolling twelve months (the vendor's ASX "trailing" view); the five-year record is the fiscal year.`} Australian companies report half-yearly. No free guidance feed, so there is no forward P/E.${c.description ? ' Company description and sector from stockanalysis.com.' : ''}</div>`;
   drawAuChart(c);
   fillPeers(`au:${c.ticker}`, 'au-peers-x');
@@ -7618,12 +7785,7 @@ async function renderIndiaPage(stub) {
         <table class="jp-q-table"><thead><tr><th>FISCAL YEAR</th><th>REVENUE</th>${bank ? '' : '<th>OP PROFIT</th>'}<th>NET PROFIT</th><th>ROE</th></tr></thead><tbody>
         ${[...h].reverse().map((x) => `<tr><td>${esc(x.y)}</td><td>${cur(x.s)}</td>${bank ? '' : `<td>${cur(x.o)}</td>`}<td>${cur(x.n)}</td><td>${x.n != null && (x.ec ?? x.q) ? `${((x.n / (x.ec ?? x.q)) * 100).toFixed(1)}%` : '—'}</td></tr>`).join('')}
         </tbody></table></div>` : '')
-    + (q.length > 1 ? `<div class="jp-q"><div class="jp-q-head"><span class="ph-t">${c.periodBasis === 'quarter' ? 'REPORTED QUARTERS' : c.periodBasis === 'half' ? 'REPORTED HALF-YEARS' : 'TRAILING 12 MONTHS'}</span><span class="dimtext">${q.length} ${c.periodBasis === 'quarter' ? 'quarters' : c.periodBasis === 'half' ? 'half-years' : 'period ends'} · ${ccy} millions</span></div>
-        <div class="jp-q-scroll"><table class="jp-q-table"><thead><tr><th>PERIOD</th><th>REVENUE</th>${bank ? '<th>NET PROFIT</th><th>NET MARGIN</th>' : '<th>OP PROFIT</th><th>MARGIN</th><th>NET PROFIT</th>'}</tr></thead><tbody>
-        ${[...q].reverse().map((x) => `<tr><td>${esc(x.d)}</td><td>${cur(x.revenue)}</td>${bank
-          ? `<td>${cur(x.netIncome)}</td><td>${x.revenue && x.netIncome != null ? `${((x.netIncome / x.revenue) * 100).toFixed(1)}%` : '—'}</td>`
-          : `<td>${cur(x.operatingProfit)}</td><td>${x.revenue && x.operatingProfit != null ? `${((x.operatingProfit / x.revenue) * 100).toFixed(1)}%` : '—'}</td><td>${cur(x.netIncome)}</td>`}</tr>`).join('')}
-        </tbody></table></div></div>` : '')
+    + periodMatrixHtml(c, { market: 'in', money: cur, ccy: ccy })
     + `<div class="macro-note">NSE-listed · statements from stockanalysis.com (millions ${ccy}), prices from Yahoo. Market cap is INR; ratios are computed in ${ccy}, the currency the issuer reports in, then compared with a market cap converted at the build's USD/INR rate${ccy === 'INR' || ccy === 'USD' ? '' : ` and USD/${ccy} cross`}. ${c.crossListing ? `This line is a CDI/dual listing: statements come from the ${esc(c.crossListing.ticker)} listing, and the market cap uses the NSE price × the filing share count × the ${c.crossListing.ratio}:1 CDI ratio.${c.perShareBasis ? ` Per-share figures are ${esc(c.perShareBasis)}.` : ''}` : `Profit, revenue and margins are the rolling twelve months (the vendor's NSE "trailing" view); the five-year record is the fiscal year.`} Indian companies report half-yearly. No free guidance feed, so there is no forward P/E.${c.description ? ' Company description and sector from stockanalysis.com.' : ''}</div>`;
   drawInChart(c);
   fillPeers(`in:${c.ticker}`, 'in-peers-x');
@@ -8026,12 +8188,7 @@ async function renderIndonesiaPage(stub) {
         <table class="jp-q-table"><thead><tr><th>FISCAL YEAR</th><th>REVENUE</th>${bank ? '' : '<th>OP PROFIT</th>'}<th>NET PROFIT</th><th>ROE</th></tr></thead><tbody>
         ${[...h].reverse().map((x) => `<tr><td>${esc(x.y)}</td><td>${cur(x.s)}</td>${bank ? '' : `<td>${cur(x.o)}</td>`}<td>${cur(x.n)}</td><td>${x.n != null && (x.ec ?? x.q) ? `${((x.n / (x.ec ?? x.q)) * 100).toFixed(1)}%` : '—'}</td></tr>`).join('')}
         </tbody></table></div>` : '')
-    + (q.length > 1 ? `<div class="jp-q"><div class="jp-q-head"><span class="ph-t">${c.periodBasis === 'quarter' ? 'REPORTED QUARTERS' : c.periodBasis === 'half' ? 'REPORTED HALF-YEARS' : 'TRAILING 12 MONTHS'}</span><span class="dimtext">${q.length} ${c.periodBasis === 'quarter' ? 'quarters' : c.periodBasis === 'half' ? 'half-years' : 'period ends'} · ${ccy} millions</span></div>
-        <div class="jp-q-scroll"><table class="jp-q-table"><thead><tr><th>PERIOD</th><th>REVENUE</th>${bank ? '<th>NET PROFIT</th><th>NET MARGIN</th>' : '<th>OP PROFIT</th><th>MARGIN</th><th>NET PROFIT</th>'}</tr></thead><tbody>
-        ${[...q].reverse().map((x) => `<tr><td>${esc(x.d)}</td><td>${cur(x.revenue)}</td>${bank
-          ? `<td>${cur(x.netIncome)}</td><td>${x.revenue && x.netIncome != null ? `${((x.netIncome / x.revenue) * 100).toFixed(1)}%` : '—'}</td>`
-          : `<td>${cur(x.operatingProfit)}</td><td>${x.revenue && x.operatingProfit != null ? `${((x.operatingProfit / x.revenue) * 100).toFixed(1)}%` : '—'}</td><td>${cur(x.netIncome)}</td>`}</tr>`).join('')}
-        </tbody></table></div></div>` : '')
+    + periodMatrixHtml(c, { market: 'id', money: cur, ccy: ccy })
     + `<div class="macro-note">IDX-listed · statements from stockanalysis.com (millions ${ccy}), prices from Yahoo. Market cap is IDR; ratios are computed in ${ccy}, the currency the issuer reports in, then compared with a market cap converted at the build's USD/IDR rate. Profit, revenue and margins are the rolling twelve months where the vendor serves a trailing column; otherwise the last fiscal year, labelled. The five-year record is the fiscal year. Most Indonesian issuers report to 31 December. The vendor serves one statement set and does not label consolidated vs standalone, so the ratios use the statement it serves. No free guidance feed, so there is no forward P/E.${c.description ? ' Company description and sector from stockanalysis.com.' : ''}</div>`;
   drawIdChart(c);
   fillPeers(`id:${c.ticker}`, 'id-peers-x');
@@ -8500,12 +8657,7 @@ async function renderBrazilPage(stub) {
         <table class="jp-q-table"><thead><tr><th>FISCAL YEAR</th><th>REVENUE</th>${bank ? '' : '<th>OP PROFIT</th>'}<th>NET PROFIT</th><th>ROE</th></tr></thead><tbody>
         ${[...h].reverse().map((x) => `<tr><td>${esc(x.y)}</td><td>${cur(x.s)}</td>${bank ? '' : `<td>${cur(x.o)}</td>`}<td>${cur(x.n)}</td><td>${x.n != null && (x.ec ?? x.q) ? `${((x.n / (x.ec ?? x.q)) * 100).toFixed(1)}%` : '—'}</td></tr>`).join('')}
         </tbody></table></div>` : '')
-    + (q.length > 1 ? `<div class="jp-q"><div class="jp-q-head"><span class="ph-t">${c.periodBasis === 'quarter' ? 'REPORTED QUARTERS' : c.periodBasis === 'half' ? 'REPORTED HALF-YEARS' : 'TRAILING 12 MONTHS'}</span><span class="dimtext">${q.length} ${c.periodBasis === 'quarter' ? 'quarters' : c.periodBasis === 'half' ? 'half-years' : 'period ends'} · ${ccy} millions</span></div>
-        <div class="jp-q-scroll"><table class="jp-q-table"><thead><tr><th>PERIOD</th><th>REVENUE</th>${bank ? '<th>NET PROFIT</th><th>NET MARGIN</th>' : '<th>OP PROFIT</th><th>MARGIN</th><th>NET PROFIT</th>'}</tr></thead><tbody>
-        ${[...q].reverse().map((x) => `<tr><td>${esc(x.d)}</td><td>${cur(x.revenue)}</td>${bank
-          ? `<td>${cur(x.netIncome)}</td><td>${x.revenue && x.netIncome != null ? `${((x.netIncome / x.revenue) * 100).toFixed(1)}%` : '—'}</td>`
-          : `<td>${cur(x.operatingProfit)}</td><td>${x.revenue && x.operatingProfit != null ? `${((x.operatingProfit / x.revenue) * 100).toFixed(1)}%` : '—'}</td><td>${cur(x.netIncome)}</td>`}</tr>`).join('')}
-        </tbody></table></div></div>` : '')
+    + periodMatrixHtml(c, { market: 'br', money: cur, ccy: ccy })
     + `<div class="macro-note">B3-listed · statements from stockanalysis.com (millions ${ccy}), prices from Yahoo. Market cap is the company total from the vendor; the price is the ${c.shareClass || 'selected'} class${c.multiClass ? ' (the vendor covers one class per issuer; PETR4, not PETR3)' : ''}. Ratios are computed in ${ccy}, the currency the issuer reports in, then compared with the market cap at the build's USD/BRL rate. Profit, revenue and margins are the rolling twelve months where the vendor serves a trailing column; otherwise the last fiscal year, labelled. The five-year record is the fiscal year. Most Brazilian issuers report to 31 December. The vendor serves one statement set and does not label consolidated vs standalone. No free guidance feed, so there is no forward P/E.${c.bdr ? ` This is a BDR of ${c.bdrUnderlying}; the statements, sector and current shares are the underlying company's, the cap is the global company total, the price is the BDR line, and no per-BDR EPS or P/E band is shown.` : ''}${c.description ? ' Company description and sector from stockanalysis.com.' : ''}`;
   drawBrChart(c);
   fillPeers(`br:${c.ticker}`, 'br-peers-x');
@@ -8977,12 +9129,7 @@ async function renderSouthAfricaPage(stub) {
         <table class="jp-q-table"><thead><tr><th>FISCAL YEAR</th><th>REVENUE</th>${bank ? '' : '<th>OP PROFIT</th>'}<th>NET PROFIT</th><th>ROE</th></tr></thead><tbody>
         ${[...h].reverse().map((x) => `<tr><td>${esc(x.y)}</td><td>${cur(x.s)}</td>${bank ? '' : `<td>${cur(x.o)}</td>`}<td>${cur(x.n)}</td><td>${x.n != null && (x.ec ?? x.q) ? `${((x.n / (x.ec ?? x.q)) * 100).toFixed(1)}%` : '—'}</td></tr>`).join('')}
         </tbody></table></div>` : '')
-    + (q.length > 1 ? `<div class="jp-q"><div class="jp-q-head"><span class="ph-t">${c.periodBasis === 'quarter' ? 'REPORTED QUARTERS' : c.periodBasis === 'half' ? 'REPORTED HALF-YEARS' : 'TRAILING 12 MONTHS'}</span><span class="dimtext">${q.length} ${c.periodBasis === 'quarter' ? 'quarters' : c.periodBasis === 'half' ? 'half-years' : 'period ends'} · ${ccy} millions</span></div>
-        <div class="jp-q-scroll"><table class="jp-q-table"><thead><tr><th>PERIOD</th><th>REVENUE</th>${bank ? '<th>NET PROFIT</th><th>NET MARGIN</th>' : '<th>OP PROFIT</th><th>MARGIN</th><th>NET PROFIT</th>'}</tr></thead><tbody>
-        ${[...q].reverse().map((x) => `<tr><td>${esc(x.d)}</td><td>${cur(x.revenue)}</td>${bank
-          ? `<td>${cur(x.netIncome)}</td><td>${x.revenue && x.netIncome != null ? `${((x.netIncome / x.revenue) * 100).toFixed(1)}%` : '—'}</td>`
-          : `<td>${cur(x.operatingProfit)}</td><td>${x.revenue && x.operatingProfit != null ? `${((x.operatingProfit / x.revenue) * 100).toFixed(1)}%` : '—'}</td><td>${cur(x.netIncome)}</td>`}</tr>`).join('')}
-        </tbody></table></div></div>` : '')
+    + periodMatrixHtml(c, { market: 'za', money: cur, ccy: ccy })
     + `<div class="macro-note">JSE-listed · statements from stockanalysis.com (millions ${ccy}), prices from Yahoo. Market cap is the company total from the vendor in rand; the price is the JSE line. Ratios are computed in ${ccy}, the currency the issuer reports in, then compared with the market cap at the build's USD/ZAR rate. Profit, revenue and margins are the rolling twelve months — the vendor\u2019s trailing column, or its separate rolling view, where one exists, otherwise the sum of the latest two half-year filings — and the last fiscal year, labelled, when neither is available. The five-year record is the fiscal year. Most JSE issuers report to 31 December, but the build takes each period end from the filing. Yahoo supplies up to five years of JSE prices; where the line starts later (Richemont starts in 2023), the MAX window draws all of the history that exists instead of falling back to one year. The vendor serves one statement set and does not label consolidated vs standalone. No free guidance feed, so there is no forward P/E.${c.foreignSecondary ? ` This is the JSE line of a foreign-domiciled issuer; the statements and sector come from ${c.secondaryExchange || 'the primary listing'}, the cap is the global company total, and the price is the JSE line.` : ''}${c.description ? ' Company description and sector from stockanalysis.com.' : ''}`;
   drawZaChart(c);
   fillPeers(`za:${c.ticker}`, 'za-peers-x');
@@ -10502,23 +10649,7 @@ async function renderCompanyPageBody(el, c, all) {
           return `<div class="co-tr"><span>${s.fy}</span><span>${val(s.revenue)}</span><span class="${s.netIncome >= 0 ? 'pos' : 'neg'}">${val(s.netIncome)}</span><span>${mg == null ? '—' : mg.toFixed(1) + '%'}</span><span>${val(s.assets)}</span><span>${val(s.equity)}</span><span>${s.eps != null ? '$' + s.eps.toFixed(2) : '—'}</span></div>`;
         }).join('')}
       </div></div>` : '')
-    + (() => {
-        // Newest first, the same order Japan and Korea use.
-        const qs = (c.quarters || []).filter((q) => q.revenue != null || q.netIncome != null).slice().reverse();
-        if (!qs.length) return '';
-        return `<div class="gtitle">QUARTERLY RESULTS · ${qs.length}</div>
-          <div class="jp-q-scroll"><div class="co-table co-qtr">
-            <div class="co-tr co-th"><span>PERIOD</span><span>REVENUE</span><span>OP INCOME</span><span>MARGIN</span><span>NET INCOME</span></div>
-            ${qs.map((q) => {
-              // Operating margin where the company reports an operating line; banks do not, so they fall
-              // back to net margin rather than showing a blank column.
-              const opM = q.margin != null ? q.margin : null;
-              const netM = q.netMargin != null ? q.netMargin : (q.revenue && q.netIncome != null ? (q.netIncome / q.revenue) * 100 : null);
-              const shown = opM != null ? opM : netM;
-              return `<div class="co-tr"><span>${dealDateY(q.end)}</span><span>${val(q.revenue)}</span><span class="${q.operatingIncome >= 0 ? 'pos' : 'neg'}">${val(q.operatingIncome)}</span><span title="${opM != null ? 'operating margin' : 'net margin (no operating line reported)'}">${shown == null ? '—' : shown.toFixed(1) + '%'}</span><span class="${q.netIncome >= 0 ? 'pos' : 'neg'}">${val(q.netIncome)}</span></div>`;
-            }).join('')}
-          </div></div>`;
-      })()
+    + periodMatrixHtml(c, { market: 'us', money: coMoney, ccy: 'USD' })
     + (() => {
         const peers = all.filter((x) => x.sic && x.sic === c.sic && x.cik !== c.cik && x.marketCap).sort((a, b) => (b.marketCap || 0) - (a.marketCap || 0)).slice(0, 6);
         return peers.length ? `<div class="gtitle">PEERS · ${esc(c.industry || 'same industry')}</div>`
