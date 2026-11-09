@@ -1558,8 +1558,8 @@ button.deal-sec-tile:hover { background: #10151b; }
 .totop:focus-visible { outline: 2px solid var(--amber2); outline-offset: 2px; }
 .totop-i { font-size: 14px; line-height: 1; margin-top: -1px; }
 @media (max-width: 640px) {
-  .totop { min-height: 44px; padding: 0 14px 0 12px; font-size: 11px; bottom: calc(12px + env(safe-area-inset-bottom)); }
-  .totop-i { font-size: 17px; }
+  .totop { width: 44px; min-height: 44px; padding: 0; justify-content: center; font-size: 0; letter-spacing: 0; border-radius: 50%; bottom: calc(12px + env(safe-area-inset-bottom)); }
+  .totop-i { font-size: 18px; }
   /* Keep the corner chip off the attribution line when the page is scrolled to the very end. */
   footer { padding-bottom: 48px; }
 }
@@ -2420,6 +2420,8 @@ body.gs-search-open { overflow: hidden; }
 
 /* the map is the same 1000×420 asset as the old board, so it fills the card edge-to-edge */
 .gb-map { position:relative; aspect-ratio:1000 / 420; background:#05070a; overflow:hidden; }
+.gb-strip { display:none; }
+.gb-mob { display:none; }
 .gb-map > img { position:absolute; inset:0; width:100%; height:100%; display:block; }
 .gb-bubbles { position:absolute; inset:0; }
 .gb-pin { position:absolute; transform:translate(-50%,-50%); }
@@ -2501,6 +2503,16 @@ body.gs-search-open { overflow: hidden; }
 }
 @media (max-width:760px) {
   .gb-hero-main .big { font-size:30px; }
+  .gb-desk { display:none; }
+  .gb-mob { display:inline; }
+  .gb-map { display:none; }
+  .gb-strip { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:1px; background:var(--line); }
+  .gb-chip { display:grid; grid-template-columns:auto 1fr auto; gap:8px; align-items:baseline; background:var(--panel); border:0; padding:9px 12px; color:inherit; font:inherit; text-align:left; cursor:pointer; box-shadow:inset 3px 0 0 #ff5252; }
+  .gb-chip.up { box-shadow:inset 3px 0 0 #00e676; }
+  .gb-chip.down { box-shadow:inset 3px 0 0 #ff5252; }
+  .gb-chip b { font-size:10.5px; letter-spacing:.8px; color:var(--text); }
+  .gb-chip .cap { font-size:8px; color:var(--dim); text-align:left; white-space:nowrap; }
+  .gb-chip .num { font-size:10px; text-align:right; font-variant-numeric:tabular-nums; white-space:nowrap; }
   .gb-lbl { display:none; }
   .gb-ideas { grid-template-columns:1fr; }
   .gb-mrow { grid-template-columns:16px minmax(0,1fr) 56px 48px 44px; }
@@ -2589,4 +2601,43 @@ body.gs-search-open { overflow: hidden; }
   #home-markets { min-height: 125px; }
   #home-ideas { min-height: 170px; }
   #screen { min-height: 700px; }
+}
+
+/* ---------- Companies on a phone: fit the tables, lift the tiny labels ---------- */
+@media (max-width: 760px) {
+  /* US company page — fiscal table: keep FY, revenue, net income, margin, EPS. */
+  .co-k { font-size: 9px; }
+  .co-v { font-size: 17px; }
+  .gb-stat .k { font-size: 8.5px; }
+  .gb-stat .v { font-size: 16px; }
+  .gb-stat .b { font-size: 8px; }
+  .gb-table th { font-size: 8.5px; }
+  .gb-table td { font-size: 10.5px; }
+  .co-table:not(.co-qtr) .co-tr {
+    grid-template-columns: 40px repeat(4, minmax(0, 1fr));
+    gap: 6px; padding: 6px 8px; font-size: 10px;
+  }
+  .co-table:not(.co-qtr) .co-tr > span:nth-child(5),
+  .co-table:not(.co-qtr) .co-tr > span:nth-child(6) { display: none; }
+  /* US company page — quarterly: keep period, revenue, margin, net income. */
+  .co-qtr .co-tr {
+    grid-template-columns: 0.9fr 1fr 0.8fr 1fr;
+    gap: 6px; padding: 6px 8px; font-size: 10px;
+  }
+  .co-qtr .co-tr > span:nth-child(3) { display: none; }
+  .co-qtr .co-tr > span:nth-child(5) { display: block; }
+  .co-table .co-th { font-size: 8.5px; }
+
+  /* Global screener: sector and ROE live in the filters; keep the five columns that fit. */
+  .gb-table { table-layout: fixed; }
+  .gb-table th:nth-child(3), .gb-table td:nth-child(3),
+  .gb-table th:nth-child(6), .gb-table td:nth-child(6) { display: none; }
+  .gb-table th:nth-child(1), .gb-table td:nth-child(1) { width: 40%; }
+  .gb-table th:nth-child(2), .gb-table td:nth-child(2) { width: 13%; }
+  .gb-table th:nth-child(4), .gb-table td:nth-child(4) { width: 15%; }
+  .gb-table th:nth-child(5), .gb-table td:nth-child(5) { width: 11%; }
+  .gb-table th:nth-child(7), .gb-table td:nth-child(7) { width: 15%; }
+  .gb-table th, .gb-table td { padding: 6px 5px; font-size: 10.5px; }
+  .gb-table td:first-child { overflow: hidden; text-overflow: ellipsis; }
+  .gb-table th { font-size: 8.5px; }
 }

@@ -1022,7 +1022,9 @@ function baseOptions({ dp = 2, unit = '', percentAxis = false, yTitle = '', y1Ti
       y: {
         type: log ? 'logarithmic' : 'linear',
         ...(yTitle ? { title: { display: true, text: yTitle, color: CT.text } } : {}),
-        ticks: { color: CT.text, callback: tick }, grid: { color: CT.grid },
+        ticks: { color: CT.text, callback: tick, maxTicksLimit: 5, autoSkip: true },
+        ...(log ? { afterBuildTicks: (axis) => { const n = axis.ticks.length; if (n > 5) { const keep = Math.ceil(n / 5); axis.ticks = axis.ticks.filter((_, i) => i % keep === 0 || i === n - 1); } } } : {}),
+        grid: { color: CT.grid },
       },
       ...(y1Title ? { y1: { position: 'right', title: { display: true, text: y1Title, color: CT.text }, ticks: { color: CT.text }, grid: { drawOnChartArea: false } } } : {}),
     },
@@ -9170,7 +9172,7 @@ function gbHero(home) {
     </div>
     <div class="gb-stats">
       <div class="gb-stat"><span class="k">MEDIAN P/E</span><span class="v">${home.medianPe == null ? '—' : home.medianPe.toFixed(1) + '×'}</span><span class="b">across all covered companies</span></div>
-      <div class="gb-stat"><span class="k">BREADTH</span><span class="v small"><span class="pos">${adv.toLocaleString()}</span> up · <span class="neg">${dec.toLocaleString()}</span> down</span><div class="gb-breadth"><i style="width:${tot ? (adv / tot * 100).toFixed(1) : 0}%;background:#00e676"></i><i style="width:${tot ? (dec / tot * 100).toFixed(1) : 0}%;background:#ff5252"></i></div></div>
+      <div class="gb-stat"><span class="k">BREADTH</span><span class="v small"><span class="pos">${adv.toLocaleString()}</span> ↑ · <span class="neg">${dec.toLocaleString()}</span> ↓</span><div class="gb-breadth"><i style="width:${tot ? (adv / tot * 100).toFixed(1) : 0}%;background:#00e676"></i><i style="width:${tot ? (dec / tot * 100).toFixed(1) : 0}%;background:#ff5252"></i></div></div>
       <div class="gb-stat"><span class="k">BEST MARKET · YTD</span><span class="v pos">${best ? `${GB_FLAG[best.id] || ''} ${esc(best.label)}` : '—'}</span><span class="b">${best && best.chgYtd != null ? `${pctf(best.chgYtd)} YTD · ${esc(best.index || '')}` : ''}</span></div>
       <div class="gb-stat"><span class="k">WORST MARKET · YTD</span><span class="v neg">${worst ? `${GB_FLAG[worst.id] || ''} ${esc(worst.label)}` : '—'}</span><span class="b">${worst && worst.chgYtd != null ? `${pctf(worst.chgYtd)} YTD · ${esc(worst.index || '')}` : ''}</span></div>
     </div>
@@ -9180,7 +9182,7 @@ function gbHero(home) {
 function gbMap(home) {
   const max = Math.max(...home.markets.map((m) => m.capUsd || 0), 1);
   return `<section class="gb-card">
-    <div class="gb-head"><span class="t">MARKET MAP</span><span class="s">bubble = market cap · colour = YTD</span></div>
+    <div class="gb-head"><span class="t"><span class="gb-desk">MARKET MAP</span><span class="gb-mob">MARKETS AT A GLANCE</span></span><span class="s"><span class="gb-desk">bubble = market cap · colour = YTD</span><span class="gb-mob">market cap · YTD · click to open</span></span></div>
     <div class="gb-map"><img src="/world-map.svg" alt="World map of covered markets"><div class="gb-bubbles">${home.markets.map((m) => {
     const cap = m.capUsd || 0;
     const size = Math.round(9 + 27 * Math.sqrt(cap / max));
@@ -9189,6 +9191,7 @@ function gbMap(home) {
     const up = (m.chgYtd || 0) >= 0;
     return `<div class="gb-pin ${lab.side || 'right'}" style="left:${x}%;top:${y}%"><button type="button" class="gb-bubble ${up ? 'up' : 'down'}" style="width:${size}px;height:${size}px" data-gb-market="${esc(m.id)}" title="${esc(m.label)} · ${pctf(m.chgYtd)} YTD · ${gbCap(cap)}"></button><span class="gb-lbl" style="margin-top:${lab.dy || 0}px"><b>${esc(String(m.id).toUpperCase())}</b></span></div>`;
   }).join('')}</div></div>
+    <div class="gb-strip">${home.markets.map((m) => `<button type="button" class="gb-chip ${(m.chgYtd || 0) >= 0 ? 'up' : 'down'}" data-gb-market="${esc(m.id)}" title="${esc(m.label)} · ${pctf(m.chgYtd)} YTD · ${gbCap(m.capUsd)}"><b>${esc(String(m.id).toUpperCase())}</b><span class="cap">${gbCap(m.capUsd)}</span><span class="num ${cls(m.chgYtd)}">${m.chgYtd == null ? '—' : pctf(m.chgYtd)}</span></button>`).join('')}</div>
   </section>`;
 }
 
