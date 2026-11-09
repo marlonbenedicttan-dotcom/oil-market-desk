@@ -2068,6 +2068,9 @@ function countryLabel(id) {
 async function loadRegionCurrencies() {
   const el = $('macro-fx');
   if (!el) return;
+  // The panel title carries the pair, so a glance at the card says "USD / IDR", not just "CURRENCY".
+  const title = document.querySelector('#m-fx .ph-t');
+  if (title) title.textContent = 'CURRENCY';
   el.innerHTML = stLoading();
   const reqR = macroRegion, reqC = macroCountry;
   let items = null;
@@ -2077,11 +2080,18 @@ async function loadRegionCurrencies() {
   const byLabel = {};
   for (const f of (fxList || [])) byLabel[f.label.replace(/\s*·.*/, '')] = f.id;   // chartable ones only
   const fx = (items || []).filter((i) => i.kind === 'fx' && i.id === reqC);
+  const pair = fx.length ? (fx[0].label || '') : '';
+  if (title) title.textContent = pair ? `CURRENCY · ${pair}` : 'CURRENCY';
+  // Spell the quote out once: "USD / IDR" plus 18,107 could still be read either way round.
+  const pm = pair.match(/([A-Z]{3})\s*\/\s*([A-Z]{3})/);
+  const pairNote = pm && fx.length
+    ? `${pm[1]} / ${pm[2]} — 1 ${pm[1]} = ${Number(fx[0].price).toFixed(fx[0].price < 10 ? 4 : 2)} ${pm[2]} · moves over 1D/1W/1M/YTD/1Y`
+    : 'the chosen country\'s currency · moves over 1D/1W/1M/YTD/1Y';
   el.innerHTML = fx.length
     ? '<div class="kpis">' + fx.map((f) => {
       const cid = byLabel[f.label.replace(/\s*·.*/, '')];
       return macroTile(f.label, f.price == null ? '—' : Number(f.price).toFixed(f.price < 10 ? 4 : 2), f.pct != null ? pctf(f.pct) : '', cls(f.pct), cid ? 'fx:' + cid : null, f.deltas ? deltaStrip(f.deltas) : '');
-    }).join('') + '</div><div class="macro-note">the chosen country\'s currency · moves over 1D/1W/1M/YTD/1Y</div>'
+    }).join('') + '</div><div class="macro-note">' + pairNote + '</div>'
     : stEmpty('No currency for this country.');
 }
 async function loadMacroTickers() {
@@ -2251,7 +2261,10 @@ async function loadCountry() {
   const stat = (l, v, s, k, extra, metric) => `<div class="mstat${metric ? ' clickable' : ''}"${metric ? ` data-metric="${metric}" title="Click for the chart"` : ''}><div class="mstat-l">${l}</div><div class="mstat-v ${k || ''}">${v}</div>${s ? `<div class="mstat-s">${s}</div>` : ''}${extra || ''}</div>`;
   const srcLine = (x) => `${x && x.source ? x.source : '—'}${x && x.asOf ? ' · ' + x.asOf : ''}`;
   let stats = '';
-  stats += stat('CURRENCY', fx.price == null ? '—' : num(fx.price, fxDp), `${fx.pct != null ? pctf(fx.pct) + ' today' : '—'} · ${srcLine(fx)}`, cls(fx.pct), deltaStrip(fx.deltas), fxId ? 'fx:' + fxId : null);
+  // Say WHICH pair the number is: "CURRENCY" alone left the reader guessing whether 18,107 was
+  // rupiah per dollar, dollars per rupiah, or a dollar index.
+  const fxPair = fx.label || c.fxLabel || (c.fx && c.fx.sym) || '';
+  stats += stat(fxPair ? `CURRENCY · ${fxPair}` : 'CURRENCY', fx.price == null ? '—' : num(fx.price, fxDp), `${fx.pct != null ? pctf(fx.pct) + ' today' : '—'} · ${srcLine(fx)}`, cls(fx.pct), deltaStrip(fx.deltas), fxId ? 'fx:' + fxId : null);
   stats += hasIndex ? stat('EQUITY INDEX', num(ix.price, ixDp), `${ix.pct != null ? pctf(ix.pct) + ' today' : '—'} · ${srcLine(ix)}`, cls(ix.pct), deltaStrip(ix.deltas))
     : stat('EQUITY INDEX', 'N/A', 'no free index for this country', 'dim');
   stats += stat('POLICY RATE', policy ? `${policy.value}%` : '—', policy ? `as of ${policy.date}` : (c.policyNote || 'no policy-rate series'));
