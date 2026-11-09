@@ -157,8 +157,25 @@ function getMarkets() {
 // last-good and FRED fallbacks without waiting for a real Yahoo block.
 const YF = process.env.YF_BASE || 'https://query1.finance.yahoo.com/v8/finance/chart/';
 
+// Yahoo 429s and 5xx bursts are transient, and a single one used to leave a whole market read
+// without a price series. One short retry costs nothing and turns most of those into a normal read.
+async function yahooFetch(url) {
+  let last = null;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const res = await fetch(url, { headers: UA });
+      if (res.ok) return res;
+      last = new Error(`yahoo -> ${res.status}`);
+      if (res.status !== 429 && res.status < 500) throw last;
+    } catch (e) {
+      last = e;
+    }
+    await new Promise((r) => setTimeout(r, 300 * (attempt + 1)));
+  }
+  throw last;
+}
 async function yahooSeries(symbol, range = '6mo', interval = '1d') {
-  const res = await fetch(`${YF}${encodeURIComponent(symbol)}?range=${range}&interval=${interval}`, { headers: UA });
+  const res = await yahooFetch(`${YF}${encodeURIComponent(symbol)}?range=${range}&interval=${interval}`);
   if (!res.ok) throw new Error(`yahoo ${symbol} -> ${res.status}`);
   const r = (await res.json()).chart?.result?.[0];
   if (!r) throw new Error(`yahoo ${symbol} -> no result`);
