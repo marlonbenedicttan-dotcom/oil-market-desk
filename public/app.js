@@ -981,7 +981,11 @@ function baseOptions({ dp = 2, unit = '', percentAxis = false, yTitle = '', y1Ti
   const tick = (v) => (percentAxis ? v + '%' : fmtNum(v, dp) + unit);
   return {
     responsive: true, maintainAspectRatio: false,
-    animation: { duration: 200 },
+    // Charts are a reading tool, not an entrance. A 200 ms animation per chart sounds small, but the
+    // MACRO tab mounts five at once: on a throttled phone that was five 100–240 ms long tasks
+    // (~740 ms of blocked main thread) on the first open. Drawing the final frame immediately keeps
+    // the click responsive; updates that should animate can opt in per chart.
+    animation: false,
     interaction: { mode: 'index', intersect: false },
     plugins: {
       legend: { display: legend, labels: { color: CT.text, boxWidth: 10, usePointStyle: true, font: { family: 'monospace' }, filter: (item, data) => !(data.datasets[item.datasetIndex] && data.datasets[item.datasetIndex].$news) } },
