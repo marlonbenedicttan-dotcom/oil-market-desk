@@ -150,7 +150,7 @@ docker run -p 4173 -e EIA_API_KEY=... watchtower
 **Keep the free instance awake.** Render sleeps after ~15 minutes idle and a cold start takes 20–30s, which reads as "broken". Two free keepalives are wired:
 
 - `.github/workflows/keepalive.yml` — pings `/health` every five minutes from Actions.
-- `workers/keepalive/` — a Cloudflare Worker cron doing the same (`cd workers/keepalive && npx wrangler deploy`).
+- `workers/keepalive/` — a Cloudflare Worker cron doing the same, **live** at https://watchtower-keepalive.marlonbenedicttan.workers.dev (every 5 minutes).
 
 Self-hosted assets mean a repeat visit downloads only what changed: `app.js`, `style.css` and Chart.js are immutable for a year behind `?v=`.
 

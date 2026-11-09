@@ -8,7 +8,7 @@
 //   cd workers/keepalive && npx wrangler deploy
 //
 // Test by hand:
-//   curl https://watchtower-keepalive.<your-subdomain>.workers.dev
+//   curl https://watchtower-keepalive.marlonbenedicttan.workers.dev
 const TARGET = 'https://oil-market-desk.onrender.com/health';
 
 async function ping() {

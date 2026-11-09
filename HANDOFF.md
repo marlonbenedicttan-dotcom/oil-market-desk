@@ -3074,6 +3074,7 @@ Audited at 360, 390 and 430 px with screenshots of every view, then fixed what l
 - **Boot runs history and prices in parallel** instead of back to back (~0.3s).
 - **`macro-tickers` is warmed at boot** with the other slow feeds; it is a 2.2s Yahoo call.
 - **Keepalive**: a Cloudflare Worker cron (`workers/keepalive/`) pings `/health` every five minutes —
+  live at https://watchtower-keepalive.marlonbenedicttan.workers.dev. Redeploy with
   `cd workers/keepalive && npx wrangler deploy` after `npx wrangler login`. The GitHub Actions job
   stays as a best-effort fallback, and the page pings `/health` itself every five minutes while a tab
   is open. The cold start is the single largest perceived delay: 20–30 seconds on Render's free plan.
