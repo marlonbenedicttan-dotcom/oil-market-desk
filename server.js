@@ -964,6 +964,66 @@ const GLOBAL_SEARCH_CACHE = new Map();
 // The global screener's row set: one compact line per issuer, projected from the search index that is
 // already in memory. The global board uses it for the market/sector totals and the screener.
 let GLOBAL_ROWS_CACHE = { at: 0, rows: null };
+// A company's reported EPS is not always on the vendor's TTM row. The build usually
+// resolves epsTTM from net income / shares, but the company pages read reports.ttm.eps
+// and history[].eps. Fill every representation once, at the API boundary, so all ten
+// markets show the same EPS and the same basis note.
+function normalizeCompanyEps(c) {
+  if (!c || typeof c !== 'object') return c;
+  const r = (c.reports = c.reports || {});
+  const ttm = (r.ttm = r.ttm || {});
+  const annual = Array.isArray(r.annual) ? r.annual : (r.annual = []);
+  const history = Array.isArray(c.history) ? c.history : (c.history = []);
+  const shares = c.sharesCurrent || c.shares || (r.latest && r.latest.shares) || null;
+  const ttmNi = ttm.netIncome != null ? ttm.netIncome : (c.netIncomeTTM != null ? c.netIncomeTTM : null);
+  const annualOf = (end) => annual.find((a) => String(a.end || '').slice(0, 10) === String(end || '').slice(0, 10));
+  let ttmEps = null;
+  let ttmBasis = null;
+  if (ttm.eps != null) { ttmEps = Number(ttm.eps); ttmBasis = c.perShareBasis || 'reported TTM'; }
+  else if (c.epsTTM != null) { ttmEps = Number(c.epsTTM); ttmBasis = c.epsTTMBasis || 'TTM'; }
+  else if (ttmNi != null && shares > 0) { ttmEps = ttmNi / shares; ttmBasis = 'net income ÷ shares (TTM)'; }
+  for (const a of annual) {
+    if (a.eps == null && a.netIncome != null && a.shares > 0) a.eps = a.netIncome / a.shares;
+  }
+  for (const h of history) {
+    if (h.eps == null) {
+      const a = annualOf(h.y);
+      if (a && a.eps != null) h.eps = a.eps;
+      else if (h.n != null && h.shares > 0) h.eps = h.n / h.shares;
+    }
+  }
+  const lastAnnual = annual.length ? annual[annual.length - 1] : null;
+  const lastHistory = history.length ? history[history.length - 1] : null;
+  const annualEps = lastAnnual && lastAnnual.eps != null ? lastAnnual.eps : (lastHistory && lastHistory.eps != null ? lastHistory.eps : null);
+  if (ttmEps != null) {
+    ttm.eps = ttmEps;
+    c.epsTTM = ttmEps;
+    if (c.epsTTMBasis == null) c.epsTTMBasis = ttmBasis;
+    if (/net income/i.test(String(ttmBasis)) && c.perShareBasis == null) c.perShareBasis = ttmBasis;
+  }
+  if (c.eps == null && annualEps != null) c.eps = annualEps;
+  if (c.epsCagr == null && c.epsChange == null && annual.length >= 2) {
+    const pts = annual.filter((a) => a.eps != null);
+    if (pts.length >= 2) {
+      const first = pts[0];
+      const last = pts[pts.length - 1];
+      const years = pts.length - 1;
+      if (first.eps > 0 && last.eps > 0) {
+        c.epsCagr = (Math.pow(last.eps / first.eps, 1 / years) - 1) * 100;
+        c.cagrYears = c.cagrYears || years;
+        if (c.epsSplitAdjusted == null) c.epsSplitAdjusted = false;
+      } else {
+        c.epsChange = { from: first.eps, to: last.eps, fromFy: String(first.end || '').slice(0, 4), toFy: String(last.end || '').slice(0, 4) };
+      }
+    }
+  }
+  if (c.pe == null && ttmNi > 0 && c.marketCap != null && c.currency && c.reportCurrency && c.currency === c.reportCurrency) {
+    c.pe = c.marketCap / ttmNi;
+    c.peBasis = 'TTM';
+  }
+  return c;
+}
+
 function globalRows() {
   if (GLOBAL_ROWS_CACHE.rows && Date.now() - GLOBAL_ROWS_CACHE.at < 5 * 60e3) return GLOBAL_ROWS_CACHE.rows;
   const rows = [];
@@ -5913,7 +5973,7 @@ const server = http.createServer(async (req, res) => {
       const cik = decodeURIComponent(url.pathname.slice('/api/company/'.length));
       const c = (COMPANIES.companies || []).find((x) => String(x.cik) === cik || x.ticker === cik);
       if (!c) return sendJSON(res, 404, { error: 'not found' });
-      return sendJSONCached(res, 200, c);
+      return sendJSONCached(res, 200, normalizeCompanyEps(c));
     }
     if (url.pathname === '/api/japan') {
       const jp = readJapanList();
@@ -5954,7 +6014,7 @@ const server = http.createServer(async (req, res) => {
         return (kr.companies || []).find((x) => x.code === code || x.ticker === code) || null;
       })();
       if (!c) return sendJSON(res, 404, { error: 'not found' });
-      return sendJSONCached(res, 200, c);
+      return sendJSONCached(res, 200, normalizeCompanyEps(c));
     }
     if (url.pathname === '/api/taiwan') {
       const tw = readTaiwanList();
@@ -5990,13 +6050,13 @@ const server = http.createServer(async (req, res) => {
         return (tw.companies || []).find((x) => x.code === code || x.ticker === code) || null;
       })();
       if (!c) return sendJSON(res, 404, { error: 'not found' });
-      return sendJSONCached(res, 200, c);
+      return sendJSONCached(res, 200, normalizeCompanyEps(c));
     }
     if (url.pathname.startsWith('/api/hongkong/company/')) {
       const code = decodeURIComponent(url.pathname.slice('/api/hongkong/company/'.length));
       const c = readHongKongCompany(code);
       if (!c) return sendJSON(res, 404, { error: 'not found' });
-      return sendJSONCached(res, 200, c);
+      return sendJSONCached(res, 200, normalizeCompanyEps(c));
     }
     if (url.pathname === '/api/hongkong/chart') {
       const code = url.searchParams.get('code');
@@ -6029,7 +6089,7 @@ const server = http.createServer(async (req, res) => {
       const code = decodeURIComponent(url.pathname.slice('/api/australia/company/'.length));
       const c = readAustraliaCompany(code);
       if (!c) return sendJSON(res, 404, { error: 'not found' });
-      return sendJSONCached(res, 200, c);
+      return sendJSONCached(res, 200, normalizeCompanyEps(c));
     }
     if (url.pathname === '/api/australia/chart') {
       const code = String(url.searchParams.get('code') || '').toUpperCase();
@@ -6062,7 +6122,7 @@ const server = http.createServer(async (req, res) => {
       const code = decodeURIComponent(url.pathname.slice('/api/india/company/'.length));
       const c = readIndiaCompany(code);
       if (!c) return sendJSON(res, 404, { error: 'not found' });
-      return sendJSONCached(res, 200, c);
+      return sendJSONCached(res, 200, normalizeCompanyEps(c));
     }
     if (url.pathname === '/api/india/chart') {
       const code = String(url.searchParams.get('code') || '').toUpperCase();
@@ -6095,7 +6155,7 @@ const server = http.createServer(async (req, res) => {
       const code = decodeURIComponent(url.pathname.slice('/api/indonesia/company/'.length));
       const c = readIndonesiaCompany(code);
       if (!c) return sendJSON(res, 404, { error: 'not found' });
-      return sendJSONCached(res, 200, c);
+      return sendJSONCached(res, 200, normalizeCompanyEps(c));
     }
     if (url.pathname === '/api/indonesia/chart') {
       const code = String(url.searchParams.get('code') || '').toUpperCase();
@@ -6128,7 +6188,7 @@ const server = http.createServer(async (req, res) => {
       const code = decodeURIComponent(url.pathname.slice('/api/brazil/company/'.length));
       const c = readBrazilCompany(code);
       if (!c) return sendJSON(res, 404, { error: 'not found' });
-      return sendJSONCached(res, 200, c);
+      return sendJSONCached(res, 200, normalizeCompanyEps(c));
     }
     if (url.pathname === '/api/brazil/chart') {
       const code = String(url.searchParams.get('code') || '').toUpperCase();
@@ -6161,7 +6221,7 @@ const server = http.createServer(async (req, res) => {
       const code = decodeURIComponent(url.pathname.slice('/api/southafrica/company/'.length));
       const c = readSouthAfricaCompany(code);
       if (!c) return sendJSON(res, 404, { error: 'not found' });
-      return sendJSONCached(res, 200, c);
+      return sendJSONCached(res, 200, normalizeCompanyEps(c));
     }
     if (url.pathname === '/api/southafrica/chart') {
       const code = String(url.searchParams.get('code') || '').toUpperCase();
@@ -6197,7 +6257,7 @@ const server = http.createServer(async (req, res) => {
         return (jp.companies || []).find((x) => x.code === code || x.ticker === code) || null;
       })());
       if (!c) return sendJSON(res, 404, { error: 'not found' });
-      return sendJSONCached(res, 200, c);
+      return sendJSONCached(res, 200, normalizeCompanyEps(c));
     }
     if (url.pathname === '/api/japan-chart') {
       const code = url.searchParams.get('code');

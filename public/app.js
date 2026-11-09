@@ -5564,6 +5564,26 @@ document.addEventListener('click', (e) => {
   }
 });
 
+// One EPS resolver for every company page. The vendor's TTM row sometimes omits EPS
+// even when net income and shares are present; the build resolves epsTTM, so use that
+// before falling back to the annual series or a net-income / shares calculation.
+function companyEps(c) {
+  const r = (c && c.reports) || {};
+  const ttm = r.ttm || {};
+  if (ttm.eps != null) return { eps: Number(ttm.eps), basis: c.perShareBasis || 'reported TTM' };
+  if (c.epsTTM != null) return { eps: Number(c.epsTTM), basis: c.perShareBasis || c.epsTTMBasis || 'TTM' };
+  if (c.eps != null) return { eps: Number(c.eps), basis: 'annual' };
+  const h = c.history || [];
+  if (h.length && h[h.length - 1].eps != null) return { eps: Number(h[h.length - 1].eps), basis: 'annual' };
+  const last = (r.annual || [])[r.annual.length - 1];
+  if (last && last.eps != null) return { eps: Number(last.eps), basis: 'annual' };
+  const ni = ttm.netIncome != null ? ttm.netIncome : c.netIncomeTTM;
+  const sh = c.sharesCurrent || c.shares || (r.latest && r.latest.shares);
+  if (ni != null && sh > 0) return { eps: ni / sh, basis: 'TTM net income ÷ shares' };
+  if (last && last.netIncome != null && last.shares > 0) return { eps: last.netIncome / last.shares, basis: 'annual net income ÷ shares' };
+  return { eps: null, basis: null };
+}
+
 function renderJapanPageBody(c) {
   const el = $('co-body'); if (!el) return;
   const sub = $('deals-sub'); if (sub) sub.textContent = `${c.name} · ${c.ticker} · TSE Prime`;
@@ -7130,9 +7150,8 @@ async function renderHongKongPage(stub) {
         const bsWhen = fig.balance.end ? `As of ${fig.balance.end}` : 'Latest reported balance sheet';
         const sign = (v) => (v == null ? '' : v >= 0 ? 'pos' : 'neg');
         const fcf = c.fcf;
-        const eps = (c.reports && c.reports.ttm && c.reports.ttm.eps != null)
-          ? c.reports.ttm.eps
-          : (h.length && h[h.length - 1].eps != null ? h[h.length - 1].eps : null);
+        const epsInfo = companyEps(c);
+        const eps = epsInfo.eps;
         // Banks, insurers and some conglomerates do not split out operating profit. A dash with the
         // reason is honest; a made-up number is not.
         const opNote = fig.flows.op == null
@@ -7142,7 +7161,7 @@ async function renderHongKongPage(stub) {
         ${cell(`REVENUE · ${tileBasis(fig.flows.basis, fig.flows.end)}`, cur(fig.flows.revenue), `${when}, as reported — ${ccy} millions`)}
         ${fin ? '' : cell(`OPERATING PROFIT · ${tileBasis(fig.flows.basis, fig.flows.end)}`, cur(fig.flows.op), opNote, sign(fig.flows.op))}
         ${cell(`NET PROFIT · ${tileBasis(fig.flows.basis, fig.flows.end)}`, cur(fig.flows.net), `${when}, attributable to owners of the parent — ${ccy} millions`, sign(fig.flows.net))}
-        ${cell('EPS · DILUTED', eps != null ? Number(eps).toFixed(2) : '—', `Per share, ${ccy}, the same period as the profit above`)}
+        ${cell('EPS · DILUTED', eps != null ? Number(eps).toFixed(2) : '—', `Per share, ${ccy}, the same period as the net profit above${epsInfo.basis ? ` (${epsInfo.basis})` : ''}${c.bdr ? ' · global EPS, not per BDR' : ''}${c.foreignSecondary ? ' · global company EPS, not the JSE line' : ''}`)}
         ${fin ? '' : cell(`FREE CASH FLOW · ${tileBasis(fig.cash.basis, fig.cash.end)}`, cur(fcf), `${cashWhen}: operating cash flow − capital expenditure`)}
         ${cell('TOTAL ASSETS', cur(fig.balance.assets), `${bsWhen} — ${ccy} millions`)}
         ${cell('LIABILITIES', cur(fig.balance.liabilities), `${bsWhen}: total assets less shareholders\u2019 equity`)}
@@ -7490,13 +7509,12 @@ async function renderAustraliaPage(stub) {
         const cashBasis = tileBasis(fig.cash.basis, fig.cash.end);
         const bsWhen = fig.balance.end ? `As of ${fig.balance.end}` : 'Latest reported balance sheet';
         const fcf = c.fcf;
-        const eps = (c.reports && c.reports.ttm && c.reports.ttm.eps != null)
-          ? c.reports.ttm.eps
-          : (h.length && h[h.length - 1].eps != null ? h[h.length - 1].eps : null);
+        const epsInfo = companyEps(c);
+        const eps = epsInfo.eps;
         return `<div class="co-stats co-stats-12">
         ${cell(`REVENUE · ${basis}`, cur(fig.flows.revenue), `${when}, as reported — ${ccy} millions`)}
         ${stat('operatingProfit', `OPERATING PROFIT · ${basis}`, cur(fig.flows.op), fig.flows.op == null ? 'This issuer does not report an operating-profit line (common for banks)' : `${when}, as reported`, sign(fig.flows.op))}
-        ${cell('EPS · DILUTED', eps != null ? Number(eps).toFixed(2) : '—', `Per share, ${ccy}, the same period as the net profit above${c.perShareBasis ? ` (${c.perShareBasis})` : ''}${c.bdr ? ' · global EPS, not per BDR' : ''}`)}
+        ${cell('EPS · DILUTED', eps != null ? Number(eps).toFixed(2) : '—', `Per share, ${ccy}, the same period as the net profit above${epsInfo.basis ? ` (${epsInfo.basis})` : ''}${c.bdr ? ' · global EPS, not per BDR' : ''}${c.foreignSecondary ? ' · global company EPS, not the JSE line' : ''}`)}
         ${stat('fcf', `FREE CASH FLOW · ${cashBasis}`, cur(fcf), `${cashWhen}: operating cash flow − capital expenditure`)}
         ${cell('TOTAL ASSETS', cur(fig.balance.assets), `${bsWhen} — ${ccy} millions`)}
         ${cell('LIABILITIES', cur(fig.balance.liabilities), `${bsWhen}: total assets less shareholders\u2019 equity`)}
@@ -7855,13 +7873,12 @@ async function renderIndiaPage(stub) {
         const cashBasis = tileBasis(fig.cash.basis, fig.cash.end);
         const bsWhen = fig.balance.end ? `As of ${fig.balance.end}` : 'Latest reported balance sheet';
         const fcf = c.fcf;
-        const eps = (c.reports && c.reports.ttm && c.reports.ttm.eps != null)
-          ? c.reports.ttm.eps
-          : (h.length && h[h.length - 1].eps != null ? h[h.length - 1].eps : null);
+        const epsInfo = companyEps(c);
+        const eps = epsInfo.eps;
         return `<div class="co-stats co-stats-12">
         ${cell(`REVENUE · ${basis}`, cur(fig.flows.revenue), `${when}, as reported — ${ccy} millions`)}
         ${stat('operatingProfit', `OPERATING PROFIT · ${basis}`, cur(fig.flows.op), fig.flows.op == null ? 'This issuer does not report an operating-profit line (common for banks)' : `${when}, as reported`, sign(fig.flows.op))}
-        ${cell('EPS · DILUTED', eps != null ? Number(eps).toFixed(2) : '—', `Per share, ${ccy}, the same period as the net profit above${c.perShareBasis ? ` (${c.perShareBasis})` : ''}`)}
+        ${cell('EPS · DILUTED', eps != null ? Number(eps).toFixed(2) : '—', `Per share, ${ccy}, the same period as the net profit above${epsInfo.basis ? ` (${epsInfo.basis})` : ''}${c.bdr ? ' · global EPS, not per BDR' : ''}${c.foreignSecondary ? ' · global company EPS, not the JSE line' : ''}`)}
         ${stat('fcf', `FREE CASH FLOW · ${cashBasis}`, cur(fcf), `${cashWhen}: operating cash flow − capital expenditure`)}
         ${cell('TOTAL ASSETS', cur(fig.balance.assets), `${bsWhen} — ${ccy} millions`)}
         ${cell('LIABILITIES', cur(fig.balance.liabilities), `${bsWhen}: total assets less shareholders\u2019 equity`)}
@@ -8258,13 +8275,12 @@ async function renderIndonesiaPage(stub) {
         const cashBasis = tileBasis(fig.cash.basis, fig.cash.end);
         const bsWhen = fig.balance.end ? `As of ${fig.balance.end}` : 'Latest reported balance sheet';
         const fcf = c.fcf;
-        const eps = (c.reports && c.reports.ttm && c.reports.ttm.eps != null)
-          ? c.reports.ttm.eps
-          : (h.length && h[h.length - 1].eps != null ? h[h.length - 1].eps : null);
+        const epsInfo = companyEps(c);
+        const eps = epsInfo.eps;
         return `<div class="co-stats co-stats-12">
         ${cell(`REVENUE · ${basis}`, cur(fig.flows.revenue), `${when}, as reported — ${ccy} millions`)}
         ${stat('operatingProfit', `OPERATING PROFIT · ${basis}`, cur(fig.flows.op), fig.flows.op == null ? 'This issuer does not report an operating-profit line (common for banks)' : `${when}, as reported`, sign(fig.flows.op))}
-        ${cell('EPS · DILUTED', eps != null ? Number(eps).toFixed(2) : '—', `Per share, ${ccy}, the same period as the net profit above${c.perShareBasis ? ` (${c.perShareBasis})` : ''}`)}
+        ${cell('EPS · DILUTED', eps != null ? Number(eps).toFixed(2) : '—', `Per share, ${ccy}, the same period as the net profit above${epsInfo.basis ? ` (${epsInfo.basis})` : ''}${c.bdr ? ' · global EPS, not per BDR' : ''}${c.foreignSecondary ? ' · global company EPS, not the JSE line' : ''}`)}
         ${stat('fcf', `FREE CASH FLOW · ${cashBasis}`, cur(fcf), `${cashWhen}: operating cash flow − capital expenditure`)}
         ${cell('TOTAL ASSETS', cur(fig.balance.assets), `${bsWhen} — ${ccy} millions`)}
         ${cell('LIABILITIES', cur(fig.balance.liabilities), `${bsWhen}: total assets less shareholders\u2019 equity`)}
@@ -8727,13 +8743,12 @@ async function renderBrazilPage(stub) {
         const cashBasis = tileBasis(fig.cash.basis, fig.cash.end);
         const bsWhen = fig.balance.end ? `As of ${fig.balance.end}` : 'Latest reported balance sheet';
         const fcf = c.fcf;
-        const eps = (c.reports && c.reports.ttm && c.reports.ttm.eps != null)
-          ? c.reports.ttm.eps
-          : (h.length && h[h.length - 1].eps != null ? h[h.length - 1].eps : null);
+        const epsInfo = companyEps(c);
+        const eps = epsInfo.eps;
         return `<div class="co-stats co-stats-12">
         ${cell(`REVENUE · ${basis}`, cur(fig.flows.revenue), `${when}, as reported — ${ccy} millions`)}
         ${stat('operatingProfit', `OPERATING PROFIT · ${basis}`, cur(fig.flows.op), fig.flows.op == null ? 'This issuer does not report an operating-profit line (common for banks)' : `${when}, as reported`, sign(fig.flows.op))}
-        ${cell('EPS · DILUTED', eps != null ? Number(eps).toFixed(2) : '—', `Per share, ${ccy}, the same period as the net profit above${c.perShareBasis ? ` (${c.perShareBasis})` : ''}`)}
+        ${cell('EPS · DILUTED', eps != null ? Number(eps).toFixed(2) : '—', `Per share, ${ccy}, the same period as the net profit above${epsInfo.basis ? ` (${epsInfo.basis})` : ''}${c.bdr ? ' · global EPS, not per BDR' : ''}${c.foreignSecondary ? ' · global company EPS, not the JSE line' : ''}`)}
         ${stat('fcf', `FREE CASH FLOW · ${cashBasis}`, cur(fcf), `${cashWhen}: operating cash flow − capital expenditure`)}
         ${cell('TOTAL ASSETS', cur(fig.balance.assets), `${bsWhen} — ${ccy} millions`)}
         ${cell('LIABILITIES', cur(fig.balance.liabilities), `${bsWhen}: total assets less shareholders\u2019 equity`)}
@@ -9199,13 +9214,12 @@ async function renderSouthAfricaPage(stub) {
         const cashBasis = tileBasis(fig.cash.basis, fig.cash.end);
         const bsWhen = fig.balance.end ? `As of ${fig.balance.end}` : 'Latest reported balance sheet';
         const fcf = c.fcf;
-        const eps = (c.reports && c.reports.ttm && c.reports.ttm.eps != null)
-          ? c.reports.ttm.eps
-          : (h.length && h[h.length - 1].eps != null ? h[h.length - 1].eps : null);
+        const epsInfo = companyEps(c);
+        const eps = epsInfo.eps;
         return `<div class="co-stats co-stats-12">
         ${cell(`REVENUE · ${basis}`, cur(fig.flows.revenue), `${when}, as reported — ${ccy} millions`)}
         ${stat('operatingProfit', `OPERATING PROFIT · ${basis}`, cur(fig.flows.op), fig.flows.op == null ? 'This issuer does not report an operating-profit line (common for banks)' : `${when}, as reported`, sign(fig.flows.op))}
-        ${cell('EPS · DILUTED', eps != null ? Number(eps).toFixed(2) : '—', `Per share, ${ccy}, the same period as the net profit above${c.perShareBasis ? ` (${c.perShareBasis})` : ''}`)}
+        ${cell('EPS · DILUTED', eps != null ? Number(eps).toFixed(2) : '—', `Per share, ${ccy}, the same period as the net profit above${epsInfo.basis ? ` (${epsInfo.basis})` : ''}${c.bdr ? ' · global EPS, not per BDR' : ''}${c.foreignSecondary ? ' · global company EPS, not the JSE line' : ''}`)}
         ${stat('fcf', `FREE CASH FLOW · ${cashBasis}`, cur(fcf), `${cashWhen}: operating cash flow − capital expenditure`)}
         ${cell('TOTAL ASSETS', cur(fig.balance.assets), `${bsWhen} — ${ccy} millions`)}
         ${cell('LIABILITIES', cur(fig.balance.liabilities), `${bsWhen}: total assets less shareholders\u2019 equity`)}
