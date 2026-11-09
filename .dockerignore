@@ -7,3 +7,7 @@ digest.log
 *.log
 .git
 .DS_Store
+
+# The NSE/Yahoo caches are build-time only. They are ~800 MB in a working tree and must never be
+# shipped in the Render build context or runtime image.
+data/cache
