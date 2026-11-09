@@ -2411,7 +2411,7 @@ body.gs-search-open { overflow: hidden; }
 .gb-stat .b { display:block; font-size:7.5px; color:#586674; margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .gb-breadth { display:flex; height:5px; margin-top:5px; background:#1b2733; }
 .gb-breadth i { display:block; height:100%; }
-.gb-split { display:grid; grid-template-columns:minmax(0,1.45fr) minmax(340px,1fr); gap:14px; margin-bottom:14px; align-items:start; }
+.gb-split { display:grid; grid-template-columns:minmax(0,1.45fr) minmax(340px,1fr); gap:14px; margin-bottom:14px; align-items:stretch; }
 .gb-split .gb-card { margin-bottom:0; }
 .gb-card { background:var(--panel); border:1px solid var(--line); margin-bottom:14px; min-width:0; }
 .gb-head { display:flex; align-items:baseline; justify-content:space-between; gap:10px; padding:10px 12px; border-bottom:1px solid var(--line); }
@@ -2438,7 +2438,7 @@ body.gs-search-open { overflow: hidden; }
 .gb-mtabs { display:flex; gap:2px; padding:8px 12px 0; border-bottom:1px solid var(--line); }
 .gb-mtabs button { background:none; border:0; border-bottom:2px solid transparent; color:var(--dim); font:600 9px/1 var(--sans); letter-spacing:.9px; padding:7px 9px; cursor:pointer; }
 .gb-mtabs button.on { color:var(--amber); border-bottom-color:var(--amber); }
-.gb-mrow { display:grid; grid-template-columns:18px minmax(0,1fr) 62px 56px 52px 64px; gap:6px; align-items:center; padding:5px 12px; border-bottom:1px solid #151b21; font-size:9.5px; cursor:pointer; }
+.gb-mrow { display:grid; grid-template-columns:18px minmax(0,1fr) 62px 56px 52px 64px; gap:6px; align-items:center; padding:2px 12px; border-bottom:1px solid #151b21; font-size:9px; cursor:pointer; }
 .gb-mrow:last-child { border-bottom:0; }
 .gb-mrow:hover { background:#0e141a; }
 .gb-mrow.head { font-size:7.5px; color:#5b6773; letter-spacing:.8px; cursor:default; }
@@ -2446,7 +2446,7 @@ body.gs-search-open { overflow: hidden; }
 .gb-mrow .rk { color:#5b6773; font-size:8px; text-align:right; }
 .gb-mrow .nm { display:flex; align-items:center; gap:6px; min-width:0; }
 .gb-mrow .fl { font-size:12px; }
-.gb-mrow .n { display:block; font-size:9.5px; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.gb-mrow .n { display:block; font-size:9px; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .gb-mrow .ix { font-size:7px; color:var(--dim); letter-spacing:.3px; white-space:nowrap; }
 .gb-mrow .num { text-align:right; font-variant-numeric:tabular-nums; }
 .gb-mrow .bar { height:4px; background:#1b2733; display:flex; }

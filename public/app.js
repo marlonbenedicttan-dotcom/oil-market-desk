@@ -9171,7 +9171,25 @@ const GB_FLAG = { us: '🇺🇸', jp: '🇯🇵', kr: '🇰🇷', tw: '🇹🇼'
 const GB_COLORS = { us: '#5aa2ff', jp: '#ff5c5c', kr: '#2fd4c4', tw: '#ffc233', hk: '#ff6b5e', au: '#8fd14f', in: '#ff9b52', id: '#ff4d6d', br: '#3ddc84', za: '#ffd54a' };
 let gbMSort = 'cap', gbTopTab = 'cap', gbScrSort = 'cap', gbScrLimit = 50;
 let gbScr = { market: 'all', sector: 'all', peMax: 0, roeMin: '', capMin: 0, ytdMin: '', q: '' };
-let gbScrRows = [], gbScrTotal = 0, gbSectorsLoaded = false, gbThemeAll = false, gbQTimer = 0, gbScrSeq = 0;
+let gbScrRows = [], gbScrTotal = 0, gbSectorsLoaded = false, gbThemeAll = false, gbQTimer = 0, gbScrSeq = 0, gbFitTimer = 0;
+
+// The map card's height is set by the map's aspect ratio; the markets card is capped to the same
+// height so the two columns end together and the map still fills its border.
+function gbFitSplit() {
+  const box = $('gb-markets');
+  if (!box) return;
+  if (window.innerWidth <= 1100) { box.style.maxHeight = ''; box.style.overflowY = ''; return; }
+  const split = box.closest('.gb-split');
+  if (!split) return;
+  const cards = split.querySelectorAll('.gb-card');
+  const mapCard = cards[0], marketsCard = cards[1];
+  if (!mapCard || !marketsCard) return;
+  const head = marketsCard.querySelector('.gb-head')?.getBoundingClientRect().height || 0;
+  const tabs = marketsCard.querySelector('.gb-mtabs')?.getBoundingClientRect().height || 0;
+  const avail = Math.floor(mapCard.getBoundingClientRect().height - head - tabs - 2);
+  box.style.maxHeight = Math.max(140, avail) + 'px';
+  box.style.overflowY = 'auto';
+}
 
 const gbCap = (v) => coMoney(v);
 
@@ -9401,7 +9419,10 @@ async function renderGlobalBoard(token) {
   gbBindFilters();
   gbLoadScreener();
   gbLoadTop();
+  requestAnimationFrame(gbFitSplit);
 }
+
+addEventListener('resize', () => { clearTimeout(gbFitTimer); gbFitTimer = setTimeout(gbFitSplit, 150); }, { passive: true });
 
 document.addEventListener('click', (e) => {
   const market = e.target.closest('[data-gb-market]');
@@ -9412,7 +9433,7 @@ document.addEventListener('click', (e) => {
   if (ms) {
     gbMSort = ms.dataset.gbMs;
     document.querySelectorAll('[data-gb-ms]').forEach((b) => b.classList.toggle('on', b === ms));
-    const box = $('gb-markets'); if (box && globalBoardData) box.innerHTML = gbMarketsRows(globalBoardData);
+    const box = $('gb-markets'); if (box && globalBoardData) { box.innerHTML = gbMarketsRows(globalBoardData); gbFitSplit(); }
     return;
   }
   const sort = e.target.closest('[data-gb-sort]');
