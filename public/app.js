@@ -5369,7 +5369,14 @@ function coMatrixBuild(c, opts = {}) {
     const endMonth = Number(lastY.slice(5, 7)) || 12;
     for (const p of periods) {
       const d = new Date(p.date + 'T00:00:00Z');
-      const m = d.getUTCMonth() + 1, y = d.getUTCFullYear();
+      let m = d.getUTCMonth() + 1, y = d.getUTCFullYear();
+      // A 52/53-week retailer can close its fiscal year in the first days of the next month
+      // (Woolworths FY2023 ended 2 July 2023). Treat that as the year-end month, not as the
+      // first period of the following year.
+      if (m === (endMonth % 12) + 1 && d.getUTCDate() <= 7) {
+        m = endMonth;
+        if (m === 12) y -= 1;
+      }
       let q, fy;
       if (n === 2) {
         q = m === endMonth ? 2 : 1;
