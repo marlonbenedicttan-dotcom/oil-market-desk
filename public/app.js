@@ -9186,12 +9186,115 @@ function gbFitSplit() {
   if (!mapCard || !marketsCard) return;
   const head = marketsCard.querySelector('.gb-head')?.getBoundingClientRect().height || 0;
   const tabs = marketsCard.querySelector('.gb-mtabs')?.getBoundingClientRect().height || 0;
-  const avail = Math.floor(mapCard.getBoundingClientRect().height - head - tabs - 2);
+  const foot = marketsCard.querySelector('.gb-table-foot')?.getBoundingClientRect().height || 0;
+  const avail = Math.floor(mapCard.getBoundingClientRect().height - head - tabs - foot - 2);
   box.style.maxHeight = Math.max(140, avail) + 'px';
   box.style.overflowY = 'auto';
 }
 
 const gbCap = (v) => coMoney(v);
+let gbSizeMetric = 'cap', gbColorMetric = 'ytd', gbIndexData = null;
+const GB_RED = '#ff5252', GB_GREEN = '#00e676', GB_NEUTRAL = '#5b6773', GB_AMBER = '#ffb020';
+const gbHex = (c) => (String(c).startsWith('#') ? [parseInt(c.slice(1, 3), 16), parseInt(c.slice(3, 5), 16), parseInt(c.slice(5, 7), 16)] : (String(c).match(/\d+/g) || [0, 0, 0]).map(Number));
+const gbMix = (a, b, t) => { const A = gbHex(a), B = gbHex(b); return `rgb(${Math.round(A[0] + (B[0] - A[0]) * t)},${Math.round(A[1] + (B[1] - A[1]) * t)},${Math.round(A[2] + (B[2] - A[2]) * t)})`; };
+const gbShade = (c, t) => { const A = gbHex(c); const f = t >= 0 ? 255 : 0, p = Math.abs(t); return `rgb(${Math.round(A[0] + (f - A[0]) * p)},${Math.round(A[1] + (f - A[1]) * p)},${Math.round(A[2] + (f - A[2]) * p)})`; };
+const gbDivColor = (v, dom) => { const t = Math.max(-1, Math.min(1, v / (dom || 1))); const mag = Math.sign(t) * (0.35 + 0.65 * Math.abs(t)); return mag < 0 ? gbMix(GB_NEUTRAL, GB_RED, -mag) : gbMix(GB_NEUTRAL, GB_GREEN, mag); };
+const gbSeqColor = (t) => (t < 0.5 ? gbMix(GB_RED, GB_AMBER, t / 0.5) : gbMix(GB_AMBER, GB_GREEN, (t - 0.5) / 0.5));
+const gbPeColor = (v, min, max) => { const t = Math.max(0, Math.min(1, (v - min) / ((max - min) || 1))); return t < 0.5 ? gbMix(GB_GREEN, GB_AMBER, t / 0.5) : gbMix(GB_AMBER, GB_RED, (t - 0.5) / 0.5); };
+const gbBreadth = (m) => { const a = m.adv || 0, d = m.dec || 0; return a + d ? a / (a + d) : 0.5; };
+const gbSizeValue = (m) => (gbSizeMetric === 'cap' ? (m.capUsd || 0) : gbSizeMetric === 'companies' ? (m.count || 0) : gbSizeMetric === 'pe' ? (m.pe || 0) : (m.chgYtd || 0));
+function gbSizeForValue(v) {
+  const ms = (globalBoardData && globalBoardData.markets) || [];
+  if (!ms.length) return 12;
+  if (gbSizeMetric === 'cap' || gbSizeMetric === 'companies') {
+    const max = Math.max(...ms.map((m) => (gbSizeMetric === 'cap' ? (m.capUsd || 0) : (m.count || 0))), 1);
+    return 10 + 30 * Math.sqrt(Math.max(0, v) / max);
+  }
+  const vals = ms.map((m) => (gbSizeMetric === 'pe' ? (m.pe || 0) : (m.chgYtd || 0)));
+  const min = Math.min(...vals), max = Math.max(...vals);
+  return 10 + 30 * (max === min ? 0.5 : (v - min) / (max - min));
+}
+function gbColorFor(m) {
+  const ms = (globalBoardData && globalBoardData.markets) || [];
+  if (gbColorMetric === 'breadth') return gbSeqColor(gbBreadth(m));
+  if (gbColorMetric === 'pe') {
+    const vals = ms.map((x) => x.pe || 0);
+    return gbPeColor(m.pe || 0, Math.min(...vals), Math.max(...vals));
+  }
+  const key = gbColorMetric === 'd1' ? 'chg1d' : 'chgYtd';
+  const dom = Math.max(gbColorMetric === 'd1' ? 1 : 10, ...ms.map((x) => Math.abs(x[key] || 0)));
+  return gbDivColor(m[key] || 0, dom);
+}
+function gbColorDomain() {
+  const ms = (globalBoardData && globalBoardData.markets) || [];
+  if (gbColorMetric === 'breadth') return [0, 0.5, 1];
+  if (gbColorMetric === 'pe') {
+    const vals = ms.map((x) => x.pe || 0).sort((a, b) => a - b);
+    return [vals[0], vals[Math.floor(vals.length / 2)], vals[vals.length - 1]];
+  }
+  const key = gbColorMetric === 'd1' ? 'chg1d' : 'chgYtd';
+  const dom = Math.max(gbColorMetric === 'd1' ? 1 : 10, ...ms.map((x) => Math.abs(x[key] || 0)));
+  return [-dom, 0, dom];
+}
+const gbSizeLabel = () => ({ cap: 'market cap', companies: 'companies', pe: 'P/E', ytd: 'YTD' }[gbSizeMetric]);
+const gbColorLabel = () => ({ ytd: 'YTD', d1: '1D', breadth: 'breadth', pe: 'P/E' }[gbColorMetric]);
+function gbIndexFor(id) {
+  const g = gbIndexData && gbIndexData.markets && gbIndexData.markets[id];
+  return (g && g.indices && g.indices[g.default]) || null;
+}
+function gbSpark(points, color) {
+  if (!points || points.length < 2) return '';
+  const vals = points.slice(-60).map((p) => p[1]).filter((v) => v != null);
+  if (vals.length < 2) return '';
+  const min = Math.min(...vals), max = Math.max(...vals);
+  const w = 120, h = 30;
+  const pts = vals.map((v, i) => `${(i / (vals.length - 1) * w).toFixed(1)},${(h - ((v - min) / ((max - min) || 1)) * h).toFixed(1)}`).join(' ');
+  return `<svg class="gb-spark" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" aria-hidden="true"><polyline points="${pts}" fill="none" stroke="${color}" stroke-width="1.5"/></svg>`;
+}
+const gbMarketById = (id) => ((globalBoardData && globalBoardData.markets) || []).find((m) => m.id === id) || null;
+function gbTipHtml(m) {
+  const a = m.adv || 0, d = m.dec || 0;
+  return `<div class="gb-tip-head"><span class="fl">${GB_FLAG[m.id] || ''}</span><b>${esc(m.label)}</b><span class="ix">${esc(m.index || '')}</span></div>
+    <div class="gb-tip-row"><span>Level</span><b>${m.level == null ? '—' : fmtNum(m.level)}</b></div>
+    <div class="gb-tip-row"><span>1D / YTD</span><b><span class="${cls(m.chg1d)}">${m.chg1d == null ? '—' : pctf(m.chg1d)}</span> / <span class="${cls(m.chgYtd)}">${m.chgYtd == null ? '—' : pctf(m.chgYtd)}</span></b></div>
+    <div class="gb-tip-row"><span>Market cap</span><b>${gbCap(m.capUsd)}</b></div>
+    <div class="gb-tip-row"><span>P/E</span><b>${m.pe == null ? '—' : m.pe.toFixed(1) + '×'}</b></div>
+    <div class="gb-tip-row"><span>Breadth</span><b>${a.toLocaleString()} up / ${d.toLocaleString()} down</b></div>
+    ${gbSpark(gbIndexFor(m.id) && gbIndexFor(m.id).points, gbColorFor(m))}
+    <a class="gb-tip-open" href="/#/companies/${esc(m.id)}/market" target="_blank" rel="noopener">OPEN MARKET →</a>`;
+}
+function gbShowTip(e, m) {
+  const tip = $('gb-tooltip'); if (!tip) return;
+  tip.innerHTML = gbTipHtml(m);
+  tip.classList.remove('hidden');
+  const w = tip.offsetWidth, h = tip.offsetHeight;
+  let x = e.clientX + 16, y = e.clientY + 16;
+  if (x + w > innerWidth - 12) x = e.clientX - w - 16;
+  if (y + h > innerHeight - 12) y = e.clientY - h - 16;
+  tip.style.left = Math.max(12, x) + 'px';
+  tip.style.top = Math.max(12, y) + 'px';
+}
+function gbShowTipAt(rect, m) {
+  const tip = $('gb-tooltip'); if (!tip) return;
+  tip.innerHTML = gbTipHtml(m);
+  tip.classList.remove('hidden');
+  const w = tip.offsetWidth, h = tip.offsetHeight;
+  let x = rect.left - w - 14, y = rect.top + 4;
+  if (x < 12) x = rect.right + 14;
+  if (x + w > innerWidth - 12) x = innerWidth - w - 12;
+  if (y + h > innerHeight - 12) y = innerHeight - h - 12;
+  tip.style.left = Math.max(12, x) + 'px';
+  tip.style.top = Math.max(12, y) + 'px';
+}
+function gbHideTip() { const tip = $('gb-tooltip'); if (tip) tip.classList.add('hidden'); }
+function gbHighlight(id) {
+  document.querySelectorAll('.gb-bub').forEach((b) => {
+    b.classList.toggle('hot', b.dataset.gbMarket === id);
+    b.classList.toggle('dim', !!id && b.dataset.gbMarket !== id);
+  });
+  document.querySelectorAll('.gb-pin').forEach((p) => p.classList.toggle('hot', !!id && p.querySelector('.gb-bub') && p.querySelector('.gb-bub').dataset.gbMarket === id));
+  document.querySelectorAll('.gb-mrow[data-gb-market]').forEach((r) => r.classList.toggle('hot', r.dataset.gbMarket === id));
+}
 
 function gbHero(home) {
   const adv = home.adv ?? 0, dec = home.dec ?? 0, tot = adv + dec;
@@ -9213,19 +9316,129 @@ function gbHero(home) {
 }
 
 function gbMap(home) {
-  const max = Math.max(...home.markets.map((m) => m.capUsd || 0), 1);
-  return `<section class="gb-card">
-    <div class="gb-head"><span class="t"><span class="gb-desk">MARKET MAP</span><span class="gb-mob">MARKETS AT A GLANCE</span></span><span class="s"><span class="gb-desk">bubble = market cap · colour = YTD</span><span class="gb-mob">market cap · YTD · click to open</span></span></div>
-    <div class="gb-map"><img src="/world-map.svg" alt="World map of covered markets"><div class="gb-bubbles">${home.markets.map((m) => {
-    const cap = m.capUsd || 0;
-    const size = Math.round(9 + 27 * Math.sqrt(cap / max));
-    const [x, y] = GMAP[m.id] || [50, 50];
-    const lab = GMAP_LABEL[m.id] || { side: 'right', dy: 0 };
-    const up = (m.chgYtd || 0) >= 0;
-    return `<div class="gb-pin ${lab.side || 'right'}" style="left:${x}%;top:${y}%"><button type="button" class="gb-bubble ${up ? 'up' : 'down'}" style="width:${size}px;height:${size}px" data-gb-market="${esc(m.id)}" title="${esc(m.label)} · ${pctf(m.chgYtd)} YTD · ${gbCap(cap)}"></button><span class="gb-lbl" style="margin-top:${lab.dy || 0}px"><b>${esc(String(m.id).toUpperCase())}</b></span></div>`;
-  }).join('')}</div></div>
-    <div class="gb-strip">${home.markets.map((m) => `<button type="button" class="gb-chip ${(m.chgYtd || 0) >= 0 ? 'up' : 'down'}" data-gb-market="${esc(m.id)}" title="${esc(m.label)} · ${pctf(m.chgYtd)} YTD · ${gbCap(m.capUsd)}"><b>${esc(String(m.id).toUpperCase())}</b><span class="cap">${gbCap(m.capUsd)}</span><span class="num ${cls(m.chgYtd)}">${m.chgYtd == null ? '—' : pctf(m.chgYtd)}</span></button>`).join('')}</div>
+  return `<section class="gb-card gb-map-card">
+    <div class="gb-head"><span class="t"><span class="gb-desk">MARKET MAP</span><span class="gb-mob">MARKETS AT A GLANCE</span> <i class="gb-live" aria-hidden="true"></i></span><span class="s"><span id="gb-map-sub">bubble = market cap · colour = YTD</span><span id="gb-map-asof"></span></span></div>
+    <div class="gb-map" id="gb-map">
+      <div class="gb-land" aria-hidden="true"></div>
+      <div class="gb-grid" aria-hidden="true"></div>
+      <div class="gb-vignette" aria-hidden="true"></div>
+      <span class="gb-corner tl" aria-hidden="true"></span><span class="gb-corner tr" aria-hidden="true"></span><span class="gb-corner bl" aria-hidden="true"></span><span class="gb-corner br" aria-hidden="true"></span>
+      <div class="gb-bubbles" id="gb-bubbles"></div>
+    </div>
+    <div class="gb-map-ctls">
+      <div class="gb-ctl"><span class="k">SIZE</span>${[['cap', 'CAP'], ['companies', 'COMPANIES'], ['pe', 'P/E'], ['ytd', 'YTD']].map(([k, t]) => `<button type="button" data-gb-size="${k}" class="${gbSizeMetric === k ? 'on' : ''}">${t}</button>`).join('')}</div>
+      <div class="gb-ctl"><span class="k">COLOUR</span>${[['ytd', 'YTD'], ['d1', '1D'], ['breadth', 'BREADTH'], ['pe', 'P/E']].map(([k, t]) => `<button type="button" data-gb-color="${k}" class="${gbColorMetric === k ? 'on' : ''}">${t}</button>`).join('')}</div>
+    </div>
+    <div class="gb-legends">
+      <div class="gb-legend"><span class="k">SIZE</span><div class="gb-size-legend" id="gb-size-legend"></div></div>
+      <div class="gb-legend"><span class="k">COLOUR</span><div><div class="gb-color-bar" id="gb-color-bar"></div><div class="gb-color-labels" id="gb-color-labels"></div></div></div>
+    </div>
+    <div class="gb-strip" id="gb-strip">${gbStripHtml(home)}</div>
+    <div id="gb-tooltip" class="gb-tip hidden"></div>
   </section>`;
+}
+
+function gbStripHtml(home) {
+  return home.markets.map((m) => `<button type="button" class="gb-chip" data-gb-market="${esc(m.id)}" style="box-shadow:inset 3px 0 0 ${gbColorFor(m)}"><b>${esc(String(m.id).toUpperCase())}</b><span class="cap">${gbCap(m.capUsd)}</span><span class="num ${cls(m.chgYtd)}">${m.chgYtd == null ? '—' : pctf(m.chgYtd)}</span></button>`).join('');
+}
+
+function gbRenderLegends() {
+  const sizeEl = $('gb-size-legend');
+  if (sizeEl) {
+    const vals = gbSizeMetric === 'cap' ? [5e11, 5e12, 5e13]
+      : gbSizeMetric === 'companies' ? [250, 1000, 2000]
+        : gbSizeMetric === 'pe' ? [10, 20, 30] : [-20, 0, 20];
+    sizeEl.innerHTML = vals.map((v) => {
+      const s = Math.round(gbSizeForValue(v));
+      const label = gbSizeMetric === 'cap' ? gbCap(v) : gbSizeMetric === 'pe' ? `${v}×` : gbSizeMetric === 'ytd' ? `${v >= 0 ? '+' : ''}${v}%` : v;
+      return `<div class="gb-size-item"><span class="gb-size-dot" style="width:${s}px;height:${s}px"></span><span>${label}</span></div>`;
+    }).join('');
+  }
+  const [a, b, c] = gbColorDomain();
+  const bar = $('gb-color-bar');
+  if (bar) {
+    let grad;
+    if (gbColorMetric === 'breadth') grad = `linear-gradient(to right, ${gbSeqColor(0)}, ${gbSeqColor(0.5)}, ${gbSeqColor(1)})`;
+    else if (gbColorMetric === 'pe') grad = `linear-gradient(to right, ${gbPeColor(a, a, c)}, ${gbPeColor(b, a, c)}, ${gbPeColor(c, a, c)})`;
+    else grad = `linear-gradient(to right, ${gbDivColor(a, c)}, ${gbDivColor(0, c)}, ${gbDivColor(c, c)})`;
+    bar.style.background = grad;
+  }
+  const labels = $('gb-color-labels');
+  if (labels) {
+    const fmt = (v) => (v === 0 ? '0' : gbColorMetric === 'breadth' ? `${Math.round(v * 100)}%` : gbColorMetric === 'pe' ? `${Number(v).toFixed(0)}×` : `${v >= 0 ? '+' : ''}${Number(v).toFixed(1)}%`);
+    labels.innerHTML = `<span>${fmt(a)}</span><span>${fmt(b)}</span><span>${fmt(c)}</span>`;
+  }
+}
+
+function gbRenderMap() {
+  const home = globalBoardData; if (!home) return;
+  const bubbles = $('gb-bubbles');
+  if (bubbles) {
+    bubbles.innerHTML = home.markets.map((m) => {
+      const s = Math.round(gbSizeForValue(gbSizeValue(m)));
+      const [x, y] = GMAP[m.id] || [50, 50];
+      const lab = GMAP_LABEL[m.id] || { side: 'right', dy: 0 };
+      const col = gbColorFor(m);
+      return `<div class="gb-pin ${lab.side || 'right'}" style="left:${x}%;top:${y}%"><span class="gb-halo" style="width:${Math.round(s * 2.3)}px;height:${Math.round(s * 2.3)}px;background:radial-gradient(circle, ${col} 0%, transparent 70%)"></span><button type="button" class="gb-bub" data-gb-market="${esc(m.id)}" style="width:${s}px;height:${s}px;background:radial-gradient(circle at 35% 30%, ${gbShade(col, 0.42)} 0%, ${col} 55%, ${gbShade(col, -0.4)} 100%);--ring:${col}" aria-label="${esc(m.label)}: ${gbCap(m.capUsd)}, ${m.chgYtd == null ? '—' : pctf(m.chgYtd)} YTD"></button><span class="gb-lbl" style="margin-top:${lab.dy || 0}px"><b>${esc(String(m.id).toUpperCase())}</b></span></div>`;
+    }).join('');
+  }
+  const markets = $('gb-markets'); if (markets) markets.innerHTML = gbMarketsRows(home);
+  const strip = $('gb-strip'); if (strip) strip.innerHTML = gbStripHtml(home);
+  gbRenderLegends();
+  const sub = $('gb-map-sub');
+  if (sub) sub.textContent = `bubble = ${gbSizeLabel()} · colour = ${gbColorLabel()}`;
+  const asof = $('gb-map-asof');
+  if (asof) asof.textContent = home.pricesAsOf ? `as of ${dealDateY(home.pricesAsOf)}` : '';
+  const foot = $('gb-table-foot');
+  if (foot) foot.textContent = `${home.markets.length} markets · ${gbCap(home.totalCapUsd)} total · prices as of ${home.pricesAsOf ? dealDateY(home.pricesAsOf) : '—'}`;
+  gbFitSplit();
+}
+
+function gbBindMapEvents() {
+  const bub = $('gb-bubbles');
+  if (bub) {
+    bub.addEventListener('pointermove', (e) => {
+      const b = e.target.closest('.gb-bub');
+      if (!b) { gbHideTip(); gbHighlight(null); return; }
+      const m = gbMarketById(b.dataset.gbMarket);
+      if (m) { gbShowTip(e, m); gbHighlight(m.id); }
+    });
+    bub.addEventListener('pointerleave', () => { gbHideTip(); gbHighlight(null); });
+  }
+  const rows = $('gb-markets');
+  if (rows) {
+    rows.addEventListener('pointermove', (e) => {
+      const r = e.target.closest('.gb-mrow[data-gb-market]');
+      if (!r) { gbHideTip(); gbHighlight(null); return; }
+      const m = gbMarketById(r.dataset.gbMarket);
+      if (m) { gbShowTipAt(r.getBoundingClientRect(), m); gbHighlight(m.id); }
+    });
+    rows.addEventListener('pointerleave', () => { gbHideTip(); gbHighlight(null); });
+  }
+  const strip = $('gb-strip');
+  if (strip) {
+    strip.addEventListener('pointermove', (e) => {
+      const b = e.target.closest('.gb-chip');
+      if (!b) { gbHideTip(); gbHighlight(null); return; }
+      const m = gbMarketById(b.dataset.gbMarket);
+      if (m) { gbShowTip(e, m); gbHighlight(m.id); }
+    });
+    strip.addEventListener('pointerleave', () => { gbHideTip(); gbHighlight(null); });
+  }
+  const map = $('gb-map');
+  if (map) {
+    map.addEventListener('pointermove', (e) => {
+      if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+      const r = map.getBoundingClientRect();
+      if (!r.width || !r.height) return;
+      map.style.setProperty('--gx', ((0.5 - (e.clientX - r.left) / r.width) * 6).toFixed(2) + 'px');
+      map.style.setProperty('--gy', ((0.5 - (e.clientY - r.top) / r.height) * 6).toFixed(2) + 'px');
+    });
+    map.addEventListener('pointerleave', () => {
+      map.style.setProperty('--gx', '0px');
+      map.style.setProperty('--gy', '0px');
+    });
+  }
 }
 
 function gbMarketsRows(home) {
@@ -9245,10 +9458,11 @@ function gbMarketsRows(home) {
 }
 
 function gbMarkets(home) {
-  return `<section class="gb-card">
+  return `<section class="gb-card gb-markets-card">
     <div class="gb-head"><span class="t">MARKETS</span><span class="s">click a row to open</span></div>
     <div class="gb-mtabs">${[['cap', 'CAP'], ['ytd', 'YTD'], ['pe', 'P/E'], ['breadth', 'BREADTH']].map(([k, t]) => `<button type="button" data-gb-ms="${k}" class="${gbMSort === k ? 'on' : ''}">${t}</button>`).join('')}</div>
     <div id="gb-markets">${gbMarketsRows(home)}</div>
+    <div class="gb-table-foot" id="gb-table-foot"></div>
   </section>`;
 }
 
@@ -9394,13 +9608,14 @@ function gbApplyIdea(kind) {
 async function renderGlobalBoard(token) {
   const el = $('co-body'); if (!el) return;
   el.innerHTML = stLoading('Loading the global board…');
-  const [home, themes] = await Promise.all([
+  const [home, themes, mi] = await Promise.all([
     jget('/api/home', 300000).catch(() => null),
     jget('/api/global-themes', 300000).catch(() => null),
+    jget('/api/market-index', 300000).catch(() => null),
   ]);
   if (stale(token)) return;
   if (!home || !Array.isArray(home.markets) || !home.markets.length) { el.innerHTML = stError('Couldn’t load the global board — retrying.'); return; }
-  globalBoardData = home; globalThemesData = themes;
+  globalBoardData = home; globalThemesData = themes; gbIndexData = mi;
   gbScr = { market: 'all', sector: 'all', peMax: 0, roeMin: '', capMin: 0, ytdMin: '', q: '' };
   gbScrLimit = 50; gbScrSort = 'cap'; gbSectorsLoaded = false;
   if (themes && themes.themes && !themes.themes.some((t) => t.id === globalThemeSel)) globalThemeSel = themes.themes[0]?.id || 'ai';
@@ -9415,6 +9630,8 @@ async function renderGlobalBoard(token) {
     + gbScreenerShell(home)
     + `<div class="gb-split"><section class="gb-card"><div class="gb-head"><span class="t">GLOBAL THEME</span><span class="s" id="gtheme-meta"></span></div><div class="gtheme-chips" id="gtheme-chips"></div><div class="gmix" id="gtheme-mix"></div><div id="gtheme-body"></div></section><section class="gb-card"><div class="gb-head"><span class="t">GLOBAL TOP COMPANIES</span><span class="s">one class per issuer · USD</span></div><div class="gb-ttabs">${[['cap', 'LARGEST'], ['ytd', 'BEST YTD'], ['pe', 'CHEAPEST'], ['roe', 'QUALITY']].map(([k, t]) => `<button type="button" data-gb-top="${k}" class="${gbTopTab === k ? 'on' : ''}">${t}</button>`).join('')}</div><div id="gb-top"></div></section></div>`
     + gbIdeas(home);
+  gbRenderMap();
+  gbBindMapEvents();
   gbTheme();
   gbBindFilters();
   gbLoadScreener();
@@ -9425,6 +9642,20 @@ async function renderGlobalBoard(token) {
 addEventListener('resize', () => { clearTimeout(gbFitTimer); gbFitTimer = setTimeout(gbFitSplit, 150); }, { passive: true });
 
 document.addEventListener('click', (e) => {
+  const gsz = e.target.closest('[data-gb-size]');
+  if (gsz) {
+    gbSizeMetric = gsz.dataset.gbSize;
+    document.querySelectorAll('[data-gb-size]').forEach((b) => b.classList.toggle('on', b === gsz));
+    gbRenderMap();
+    return;
+  }
+  const gcol = e.target.closest('[data-gb-color]');
+  if (gcol) {
+    gbColorMetric = gcol.dataset.gbColor;
+    document.querySelectorAll('[data-gb-color]').forEach((b) => b.classList.toggle('on', b === gcol));
+    gbRenderMap();
+    return;
+  }
   const market = e.target.closest('[data-gb-market]');
   if (market) { gsRouteOpenMarket(market.dataset.gbMarket, 'market'); return; }
   const co = e.target.closest('[data-gb-company]');

@@ -30,7 +30,7 @@
   // Delegated: the global board is re-rendered on every market visit, so per-element listeners would
   // have to be re-attached each time.
   document.addEventListener('pointermove', function (e) {
-    var target = e.target && e.target.closest ? e.target.closest('.gmap') : null;
+    var target = e.target && e.target.closest ? e.target.closest('.gb-map') : null;
     if (!target) { if (map) reset(); return; }
     var r = target.getBoundingClientRect();
     if (!r.width || !r.height) return;

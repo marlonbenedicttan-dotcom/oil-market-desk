@@ -2419,21 +2419,66 @@ body.gs-search-open { overflow: hidden; }
 .gb-head .s { font-size:8px; color:var(--dim); text-align:right; }
 
 /* the map is the same 1000×420 asset as the old board, so it fills the card edge-to-edge */
-.gb-map { position:relative; aspect-ratio:1000 / 420; background:#05070a; overflow:hidden; }
+.gb-map-card { display:flex; flex-direction:column; }
+.gb-map { position:relative; aspect-ratio:1000 / 420; background:radial-gradient(ellipse at 50% 38%,#0c1c2a 0%,#071018 52%,#03070b 100%); overflow:hidden; flex:0 0 auto; }
 .gb-strip { display:none; }
 .gb-mob { display:none; }
-.gb-map > img { position:absolute; inset:0; width:100%; height:100%; display:block; }
-.gb-bubbles { position:absolute; inset:0; }
+.gb-land { position:absolute; inset:0; background:linear-gradient(180deg,#33536a 0%,#244256 45%,#172c3c 100%); -webkit-mask:url(/world-map.svg) center/contain no-repeat; mask:url(/world-map.svg) center/contain no-repeat; opacity:.92; }
+.gb-grid { position:absolute; inset:0; background-image:linear-gradient(rgba(130,175,205,.07) 1px,transparent 1px),linear-gradient(90deg,rgba(130,175,205,.07) 1px,transparent 1px); background-size:8.333% 16.666%; pointer-events:none; }
+.gb-vignette { position:absolute; inset:0; background:radial-gradient(ellipse at 50% 44%,transparent 38%,rgba(0,0,0,.6) 100%); pointer-events:none; }
+.gb-corner { position:absolute; width:16px; height:16px; border:0 solid rgba(255,158,0,.38); pointer-events:none; z-index:3; }
+.gb-corner.tl { top:8px; left:8px; border-top-width:1px; border-left-width:1px; }
+.gb-corner.tr { top:8px; right:8px; border-top-width:1px; border-right-width:1px; }
+.gb-corner.bl { bottom:8px; left:8px; border-bottom-width:1px; border-left-width:1px; }
+.gb-corner.br { bottom:8px; right:8px; border-bottom-width:1px; border-right-width:1px; }
+.gb-bubbles { position:absolute; inset:0; transform:translate(var(--gx,0px),var(--gy,0px)); transition:transform .22s ease; }
+.gb-land, .gb-grid, .gb-vignette { transform:translate(var(--gx,0px),var(--gy,0px)); transition:transform .22s ease; }
 .gb-pin { position:absolute; transform:translate(-50%,-50%); }
-.gb-bubble { position:relative; display:block; border-radius:50%; border:2px solid #05070a; cursor:pointer; transition:transform .15s; }
-.gb-bubble.up { background:#00e676; box-shadow:0 0 0 4px rgba(0,230,118,.16); }
-.gb-bubble.down { background:#ff5252; box-shadow:0 0 0 4px rgba(255,82,82,.16); }
-.gb-bubble:hover { transform:scale(1.16); z-index:3; }
-.gb-lbl { position:absolute; top:50%; transform:translateY(-50%); font-size:8px; letter-spacing:.4px; color:#c9d4df; white-space:nowrap; pointer-events:none; text-shadow:0 0 4px #05070a, 0 0 2px #05070a; }
+.gb-halo { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); border-radius:50%; pointer-events:none; opacity:.35; filter:blur(2px); transition:opacity .2s,transform .2s; z-index:0; }
+.gb-pin:hover .gb-halo, .gb-pin.hot .gb-halo { opacity:.8; transform:translate(-50%,-50%) scale(1.15); }
+.gb-bub { position:relative; display:block; border-radius:50%; border:1px solid rgba(255,255,255,.3); padding:0; z-index:2; cursor:pointer; box-shadow:0 0 0 1px rgba(0,0,0,.45),0 5px 16px rgba(0,0,0,.5); transition:width .25s,height .25s,background .25s,box-shadow .2s,opacity .2s; }
+.gb-bub:hover, .gb-bub.hot { z-index:4; box-shadow:0 0 0 2px rgba(255,255,255,.7),0 0 22px var(--ring),0 6px 20px rgba(0,0,0,.55); }
+.gb-bub.dim { opacity:.3; }
+.gb-bub.hot::after { content:''; position:absolute; inset:-7px; border-radius:50%; border:1px solid var(--ring); animation:gb-ping 1.5s ease-out infinite; pointer-events:none; }
+@keyframes gb-ping { 0%{transform:scale(.85);opacity:.75} 100%{transform:scale(1.45);opacity:0} }
+.gb-lbl { position:absolute; top:50%; transform:translateY(-50%); font-size:8px; letter-spacing:.4px; color:#dbe6ee; white-space:nowrap; pointer-events:none; background:rgba(3,7,11,.72); border:1px solid rgba(130,175,205,.18); padding:2px 5px; border-radius:2px; backdrop-filter:blur(2px); z-index:1; }
 .gb-lbl b { color:#fff; font-weight:600; }
 .gb-lbl em { font-style:normal; color:#9eabb6; }
 .gb-pin.left .gb-lbl { right:calc(100% + 7px); text-align:right; }
 .gb-pin.right .gb-lbl { left:calc(100% + 7px); }
+.gb-live { display:inline-block; width:5px; height:5px; border-radius:50%; background:var(--green); box-shadow:0 0 7px var(--green); margin-left:6px; vertical-align:middle; animation:gb-blink 2.2s infinite; }
+@keyframes gb-blink { 0%,100%{opacity:1} 50%{opacity:.35} }
+#gb-map-asof:before { content:' · '; }
+#gb-map-asof { color:#586674; }
+.gb-map-ctls { display:flex; gap:14px; flex-wrap:wrap; align-items:center; padding:8px 12px; border-top:1px solid var(--line); }
+.gb-ctl { display:flex; align-items:center; gap:4px; }
+.gb-ctl .k { font-size:7.5px; letter-spacing:1px; color:var(--dim); margin-right:2px; }
+.gb-ctl button { background:#0c0f13; border:1px solid var(--line2); color:var(--dim); font:600 8px/1 var(--mono); letter-spacing:.6px; padding:4px 6px; cursor:pointer; }
+.gb-ctl button.on { color:#080a0e; background:var(--amber); border-color:var(--amber); }
+.gb-legends { display:flex; gap:20px; flex-wrap:wrap; padding:8px 12px 10px; border-top:1px solid var(--line); margin-top:auto; }
+.gb-legend { display:flex; align-items:center; gap:8px; font-size:8px; color:var(--dim); }
+.gb-legend .k { font-size:7.5px; letter-spacing:1px; color:#586674; }
+.gb-size-legend { display:flex; align-items:flex-end; gap:10px; }
+.gb-size-item { display:flex; flex-direction:column; align-items:center; gap:3px; }
+.gb-size-dot { border-radius:50%; border:1px solid #3a4a5a; background:radial-gradient(circle at 35% 30%,#405566,#1b2733); box-shadow:inset 0 0 6px rgba(0,0,0,.45); }
+.gb-size-item span { font-size:7px; color:#8fa0b2; white-space:nowrap; }
+.gb-color-bar { width:140px; height:8px; border:1px solid var(--line2); }
+.gb-color-labels { display:flex; justify-content:space-between; width:140px; font-size:7px; color:#8fa0b2; }
+.gb-tip { position:fixed; z-index:1200; width:250px; background:#0c0f13; border:1px solid #3a4a5a; box-shadow:0 12px 40px rgba(0,0,0,.7); padding:10px 11px; pointer-events:none; }
+.gb-tip.hidden { display:none; }
+.gb-tip-head { display:flex; align-items:baseline; gap:6px; margin-bottom:6px; }
+.gb-tip-head .fl { font-size:14px; }
+.gb-tip-head b { font-size:11px; }
+.gb-tip-head .ix { font-size:8px; color:var(--dim); margin-left:auto; }
+.gb-tip-row { display:flex; justify-content:space-between; gap:10px; padding:3px 0; border-bottom:1px solid #151b21; font-size:9px; }
+.gb-tip-row:last-of-type { border-bottom:0; }
+.gb-tip-row span { color:var(--dim); }
+.gb-tip-row b { font-weight:500; color:var(--text); font-variant-numeric:tabular-nums; text-align:right; }
+.gb-spark { display:block; width:100%; height:32px; margin:7px 0 4px; }
+.gb-tip-open { display:block; margin-top:6px; font-size:8px; letter-spacing:.8px; color:var(--amber); }
+.gb-mrow.hot { background:#0e141a; box-shadow:inset 2px 0 0 var(--amber); }
+.gb-markets-card { display:flex; flex-direction:column; }
+.gb-table-foot { margin-top:auto; padding:9px 12px; border-top:1px solid var(--line); font-size:8px; color:#586674; }
 
 .gb-mtabs { display:flex; gap:2px; padding:8px 12px 0; border-bottom:1px solid var(--line); }
 .gb-mtabs button { background:none; border:0; border-bottom:2px solid transparent; color:var(--dim); font:600 9px/1 var(--sans); letter-spacing:.9px; padding:7px 9px; cursor:pointer; }
@@ -2505,7 +2550,7 @@ body.gs-search-open { overflow: hidden; }
   .gb-hero-main .big { font-size:30px; }
   .gb-desk { display:none; }
   .gb-mob { display:inline; }
-  .gb-map { display:none; }
+  .gb-map, .gb-map-ctls, .gb-legends { display:none; }
   .gb-strip { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:1px; background:var(--line); }
   .gb-chip { display:grid; grid-template-columns:auto 1fr auto; gap:8px; align-items:baseline; background:var(--panel); border:0; padding:9px 12px; color:inherit; font:inherit; text-align:left; cursor:pointer; box-shadow:inset 3px 0 0 #ff5252; }
   .gb-chip.up { box-shadow:inset 3px 0 0 #00e676; }
@@ -2640,4 +2685,12 @@ body.gs-search-open { overflow: hidden; }
   .gb-table th, .gb-table td { padding: 6px 5px; font-size: 10.5px; }
   .gb-table td:first-child { overflow: hidden; text-overflow: ellipsis; }
   .gb-table th { font-size: 8.5px; }
+}
+
+/* Desktop: let the ten market rows fill the height the map card sets, so the table does not leave
+   a blank block above its footer. Phones keep natural row heights. */
+@media (min-width: 1101px) {
+  .gb-markets-card #gb-markets { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; }
+  .gb-markets-card .gb-mrow { flex: 1 1 auto; }
+  .gb-markets-card .gb-mrow.head { flex: 0 0 auto; }
 }
