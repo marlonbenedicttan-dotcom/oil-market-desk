@@ -246,6 +246,9 @@ test('the most recent eight quarters are complete where the company files eight'
   // The old pass asked for one tag per concept, so 59 companies had eight blank revenue columns.
   // The archive can now be longer than eight; the contract is about the latest eight.
   const short = data.companies.filter((c) => {
+    // A bank does not always tag a single total-revenue line; its quarters can carry net profit
+    // without a revenue figure. That is an honest blank, not an incomplete series.
+    if (c.sector === 'Financials' || /^(60|6199)/.test(String(c.sic || ''))) return false;
     const q = c.quarters || [];
     if (q.length < 8) return false;
     return q.slice(-8).filter((x) => x.revenue != null).length < 8;

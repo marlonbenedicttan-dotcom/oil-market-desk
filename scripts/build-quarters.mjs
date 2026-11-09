@@ -16,6 +16,7 @@ const FILE = join(ROOT, 'data', 'companies.json');
 const FACTS = join(ROOT, 'data', 'cache', 'facts');
 const UA = process.env.SEC_UA || 'MarlonWatchtower/1.0 (marlonbenedicttan@gmail.com)';
 const ONLY = (process.argv.find((x) => x.startsWith('--only=')) || '').split('=')[1];
+const STALE = process.argv.includes('--stale');
 const onlySet = ONLY ? new Set(ONLY.split(',').map((x) => x.trim().toUpperCase())) : null;
 const DAY = 86400000;
 const dur = (e) => (Date.parse(e.end) - Date.parse(e.start)) / DAY;
@@ -23,10 +24,22 @@ mkdirSync(FACTS, { recursive: true });
 
 const REVENUE = ['Revenues', 'RevenuesNetOfInterestExpense', 'RevenueFromContractWithCustomerIncludingAssessedTax', 'RevenueFromContractWithCustomerExcludingAssessedTax', 'RegulatedAndUnregulatedOperatingRevenue', 'OperatingRevenues'];
 const NETINC = ['NetIncomeLossAvailableToCommonStockholdersBasic', 'NetIncomeLoss', 'ProfitLoss'];
+// A total revenue line, not a slice of one. The broad companyfacts fallback used to accept every
+// concept containing "revenue" or "sales", so Abbott's `ContractWithCustomerLiabilityRevenueRecognized`
+// (a contract-liability balance) and a bank's gains on securities sales were selected as revenue.
+// They are not revenue; whitelist the total lines and reject the slices.
+const REV_WHITELIST = new Set([
+  'Revenues', 'RevenuesNetOfInterestExpense', 'RevenueFromContractWithCustomerExcludingAssessedTax',
+  'RevenueFromContractWithCustomerIncludingAssessedTax', 'SalesRevenueNet', 'SalesRevenueGoodsNet',
+  'RegulatedAndUnregulatedOperatingRevenue', 'OperatingRevenues',
+]);
+const JUNK = /commission|brokerage|segment|product|service|liability|adjustment|gain|loss|interestincome|fee|premium|rental|relatedparty|deferred|costof|^other|proceeds|fairvalue|comprehensive|disposal|newaccounting/i;
+const isRevenue = (t) => /revenue|sales/i.test(t) && !JUNK.test(t);
+const legitRevenue = (t) => REV_WHITELIST.has(t) || isRevenue(t);
 
-async function facts(cik) {
+async function facts(cik, force = false) {
   const f = join(FACTS, `${cik}.json`);
-  if (existsSync(f)) { try { return JSON.parse(readFileSync(f, 'utf8')); } catch { /* refetch */ } }
+  if (!force && existsSync(f)) { try { return JSON.parse(readFileSync(f, 'utf8')); } catch { /* refetch */ } }
   try {
     const res = await fetch(`https://data.sec.gov/api/xbrl/companyfacts/CIK${String(cik).padStart(10, '0')}.json`, { headers: { 'User-Agent': UA } });
     if (!res.ok) return null;
@@ -89,9 +102,9 @@ function quarterRows(usd) {
 // Revenue is not in the slim facts cache (the earnings passes never needed it), so read it per concept.
 const CONCEPTS = join(ROOT, 'data', 'cache', 'concepts');
 mkdirSync(CONCEPTS, { recursive: true });
-async function conceptUnits(cik, tag) {
+async function conceptUnits(cik, tag, force = false) {
   const f = join(CONCEPTS, `${cik}_${tag}.json`);
-  if (existsSync(f)) { try { const j = JSON.parse(readFileSync(f, 'utf8')); const u = j?.units?.USD; if (Array.isArray(u) && u.length) return u; } catch { /* refetch */ } }
+  if (!force && existsSync(f)) { try { const j = JSON.parse(readFileSync(f, 'utf8')); const u = j?.units?.USD; if (Array.isArray(u) && u.length) return u; } catch { /* refetch */ } }
   try {
     const res = await fetch(`https://data.sec.gov/api/xbrl/companyconcept/CIK${String(cik).padStart(10, '0')}/us-gaap/${tag}.json`, { headers: { 'User-Agent': UA } });
     if (!res.ok) return null;
@@ -105,9 +118,22 @@ async function conceptUnits(cik, tag) {
 // When none of the whitelisted tags carries a quarter, read the whole company document and take every
 // revenue-ish tag it has. Visa tags `Revenues`, Abbott `RevenueFromContractWithCustomerExcludingAssessedTax`
 // only in the 10-K — the whitelist cannot know every variant, so the fallback stops whitelisting.
-async function factsRevenue(cik) {
+async function factsRevenue(cik, force = false) {
   const f = join(ROOT, 'data', 'cache', 'quarters', `${cik}.json`);
-  if (existsSync(f)) { try { return JSON.parse(readFileSync(f, 'utf8')); } catch { /* refetch */ } }
+  const keep = (raw) => {
+    const out = {};
+    for (const [tag, rows] of Object.entries(raw || {})) {
+      if (!legitRevenue(tag) || !Array.isArray(rows) || rows.length < 2) continue;
+      out[tag] = rows;
+    }
+    return out;
+  };
+  if (!force && existsSync(f)) {
+    try {
+      const hit = keep(JSON.parse(readFileSync(f, 'utf8')));
+      if (Object.keys(hit).length) return hit;
+    } catch { /* refetch */ }
+  }
   try {
     const res = await fetch(`https://data.sec.gov/api/xbrl/companyfacts/CIK${String(cik).padStart(10, '0')}.json`, { headers: { 'User-Agent': UA } });
     if (!res.ok) return null;
@@ -115,7 +141,7 @@ async function factsRevenue(cik) {
     const g = j.facts?.['us-gaap'] || {};
     const out = {};
     for (const [tag, v] of Object.entries(g)) {
-      if (!/revenue|sales/i.test(tag)) continue;
+      if (!legitRevenue(tag)) continue;
       const rows = quarterRows(v?.units?.USD);
       if (rows.length >= 2) out[tag] = rows.map((r) => ({ end: r.end, val: r.val, derived: !!r.derived }));
     }
@@ -144,10 +170,9 @@ console.log(`${todo.length} companies`);
 let built = 0;
 let skipped = 0;
 for (const c of todo) {
-  const j = await facts(c.cik);
-  if (!j) { skipped++; continue; }
-  const g = j.facts?.['us-gaap'] || {};
-  let rev = newestSeries(await Promise.all(REVENUE.map(async (tag) => ({ tag, rows: quarterRows(await conceptUnits(c.cik, tag)) }))));
+  const lastQuarter = (c.quarters || []).slice(-1)[0]?.end || null;
+  const stale = STALE && c.lastFiling?.period && (!lastQuarter || c.lastFiling.period > lastQuarter);
+  let rev = newestSeries(await Promise.all(REVENUE.map(async (tag) => ({ tag, rows: quarterRows(await conceptUnits(c.cik, tag, stale)) }))));
   // The per-concept endpoint is empty for some CIKs; fall back to the full index, caching the series
   // so a rebuild does not re-download a 15 MB document.
   if (!rev) {
@@ -173,37 +198,63 @@ for (const c of todo) {
       } catch { /* leave revenue empty */ }
     }
   }
-  const ni = series(g, NETINC);
   // One tag is not enough: Visa, Ford, General Dynamics and HCA tag quarterly revenue under a different
   // concept than their annual figure, so picking a single series left eight blank columns. Merge every
   // candidate tag per period — the primary (newest) series wins, the others fill the gaps.
   const revCandidates = [];
   for (const tag of REVENUE) {
-    const rows = quarterRows(await conceptUnits(c.cik, tag));
+    const rows = quarterRows(await conceptUnits(c.cik, tag, stale));
     if (rows.length) revCandidates.push({ tag, rows });
   }
-  const mergeRows = (cands) => {
+  const mergeRaw = (cands) => {
     const primary = newestSeries(cands);
     const byEnd = new Map();
     if (primary) for (const r of primary.rows) byEnd.set(r.end, { val: r.val, tag: primary.tag });
     for (const { tag, rows } of cands) for (const r of rows) if (!byEnd.has(r.end)) byEnd.set(r.end, { val: r.val, tag });
     return byEnd;
   };
-  let revMap = mergeRows(revCandidates);
+  const mergeRevenue = (cands) => mergeRaw(cands.filter(({ tag }) => legitRevenue(tag)));
+  let revMap = mergeRevenue(revCandidates);
   if (revMap.size < 4) {
-    const broad = await factsRevenue(c.cik);
+    const broad = await factsRevenue(c.cik, stale);
     if (broad) {
       const extra = Object.entries(broad).map(([tag, rows]) => ({ tag, rows }));
-      revMap = mergeRows([...revCandidates, ...extra]);
+      revMap = mergeRevenue([...revCandidates, ...extra]);
     }
     await new Promise((r) => setTimeout(r, 200));
   }
+  // Banks do not tag a single revenue line: they report net interest income and noninterest income
+  // separately, and total revenue is the two added together. Without this, the broad fallback picked
+  // a securities-sale gain or a balance-sheet movement as "revenue".
+  const bankLike = /^(60|6199)/.test(String(c.sic || '')) || (c.sector === 'Financials' && revMap.size === 0);
+  if (bankLike) {
+    const mapFor = async (tags) => {
+      const cands = [];
+      for (const tag of tags) {
+        const rows = quarterRows(await conceptUnits(c.cik, tag, stale));
+        if (rows.length) cands.push({ tag, rows });
+      }
+      return mergeRaw(cands);
+    };
+    const nii = await mapFor(['InterestIncomeExpenseNet', 'InterestIncomeExpenseNonoperatingNet', 'InterestIncomeExpenseAfterProvisionForLoanLoss']);
+    const nonii = await mapFor(['NoninterestIncome']);
+    const bank = new Map();
+    for (const end of new Set([...nii.keys(), ...nonii.keys()])) {
+      const a = nii.get(end), b = nonii.get(end);
+      if (a && b) bank.set(end, { val: a.val + b.val, tag: 'net interest + noninterest income' });
+      else if (a) bank.set(end, a);
+      else if (b) bank.set(end, b);
+    }
+    // Use the bank build even when it is short: a bank with no clean net-interest line should show
+    // no revenue, not a securities-sale gain or a cash-flow movement. All-zero rows are not revenue.
+    revMap = [...bank.values()].some((v) => Math.abs(v.val) > 0) ? bank : new Map();
+  }
   const niCandidates = [];
   for (const tag of NETINC) {
-    const rows = quarterRows(g[tag]?.units?.USD);
+    const rows = quarterRows(await conceptUnits(c.cik, tag, stale));
     if (rows.length) niCandidates.push({ tag, rows });
   }
-  const niMap = mergeRows(niCandidates);
+  const niMap = mergeRaw(niCandidates);
   if (!revMap.size && !niMap.size) { skipped++; continue; }
   const ends = new Set([...revMap.keys(), ...niMap.keys()]);
   const quarters = [...ends].sort().map((end) => ({

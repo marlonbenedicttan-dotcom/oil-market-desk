@@ -2734,6 +2734,9 @@ body.gs-search-open { overflow: hidden; }
 .co-matrix-table .qchg.pos { color: var(--green); }
 .co-matrix-table .qchg.neg { color: var(--red); }
 .co-matrix-table td em { font-style: normal; color: var(--dim); font-size: 8px; margin-left: 4px; }
+.co-matrix-table th small { display: block; margin-top: 2px; font-size: 7px; letter-spacing: 0; color: #4b5764; font-weight: 400; }
+.co-matrix-table .qpartial { display: block; margin-top: 2px; font-size: 7px; letter-spacing: .3px; color: var(--amber); }
+.co-matrix-table .qdate { display: block; margin-top: 2px; font-size: 7px; letter-spacing: 0; color: #4b5764; }
 .co-matrix-note { padding: 9px 12px; border-top: 1px solid var(--line); font-size: 8.5px; line-height: 1.6; color: #586674; }
 @media (max-width: 760px) {
   .co-matrix-head { padding: 10px 8px 4px; }

@@ -5290,13 +5290,16 @@ let coMatrixMetric = 'revenue';
 let coMatrixView = 'matrix';
 
 function coMatrixPeriods(c) {
+  const today = new Date().toISOString().slice(0, 10);
   return (c.quarters || []).map((x) => ({
     date: x.end || x.d,
-    revenue: x.revenue != null ? x.revenue : (x.sales != null ? x.sales : null),
+    // A negative revenue line is a tagging/derivation error, not a period result. Leave the cell
+    // blank rather than printing a negative bar; net profit is still shown.
+    revenue: x.revenue != null && x.revenue >= 0 ? x.revenue : (x.sales != null && x.sales >= 0 ? x.sales : null),
     netIncome: x.netIncome != null ? x.netIncome : (x.np != null ? x.np : null),
     fy: x.fy || null,
     q: x.q || null,
-  })).filter((p) => p.date && (p.revenue != null || p.netIncome != null))
+  })).filter((p) => p.date && p.date <= today && (p.revenue != null || p.netIncome != null))
     .sort((a, b) => String(a.date).localeCompare(String(b.date)));
 }
 function coMatrixDetectN(c, periods) {
@@ -5365,6 +5368,7 @@ function coMatrixBuild(c, opts = {}) {
       p.fyN = fy; p.qN = q;
     }
   } else if ((c.history || []).some((h) => h.y)) {
+    grouping = 'history';
     const lastY = c.history.map((h) => String(h.y)).sort().pop();
     const endMonth = Number(lastY.slice(5, 7)) || 12;
     for (const p of periods) {
@@ -5394,15 +5398,24 @@ function coMatrixBuild(c, opts = {}) {
     const annual = (c.series || []).map((x) => ({ year: Number(x.fy), revenue: x.revenue, netIncome: x.netIncome })).filter((a) => a.year).sort((a, b) => a.year - b.year);
     // Infer the fiscal year-end month from the latest annual window, then group every
     // quarter by date. A January/February fiscal year puts Q4 in the next calendar year
-    // (NVIDIA FY2025 ends Jan 2026); the old window-only grouping both dropped quarters
-    // and labelled columns with the vendor's label year instead of the fiscal year end.
+    // (NVIDIA FY2025 ends Jan 2026); the old window-only grouping dropped quarters and
+    // mislabelled the older 4-4-5 groups.
     let endMonth = null;
     let latestYear = -Infinity;
+    let latestEndYear = null;
     for (const a of annual) {
       let best = null;
       for (let i = n - 1; i < periods.length; i++) {
         const win = periods.slice(i - n + 1, i + 1);
         if (win.length !== n) continue;
+        // Only compare windows that end in the annual record's own year (or the next year for a
+        // January fiscal year). Without this, a coincidental revenue match in 2012 can win the
+        // FY2025 window and shift every column label by more than a decade.
+        const winEndYear = Number(String(win[win.length - 1].date).slice(0, 4));
+        // The fiscal year ends in its label year (Apple FY2025 ends Sep 2025) or the next year
+        // (Walmart FY2025 ends Jan 2026). A window ending before the label year is a different
+        // fiscal year, even if its revenue happens to be close.
+        if (winEndYear !== a.year && winEndYear !== a.year + 1) continue;
         const sum = win.reduce((s, p) => s + (p.revenue || 0), 0);
         if (!sum || a.revenue == null) continue;
         const diff = Math.abs(sum - a.revenue) / Math.abs(a.revenue);
@@ -5410,30 +5423,45 @@ function coMatrixBuild(c, opts = {}) {
       }
       if (best && best.diff <= 0.02 && a.year > latestYear) {
         latestYear = a.year;
-        endMonth = Number(String(best.win[best.win.length - 1].date).slice(5, 7));
+        const lastDate = String(best.win[best.win.length - 1].date);
+        // A 52/53-week year can close in the first days of the next month (Sandisk's
+        // FY2026 ended 3 July 2026). Read that as the previous month and year.
+        let em = Number(lastDate.slice(5, 7));
+        let ey = Number(lastDate.slice(0, 4));
+        if (Number(lastDate.slice(8, 10)) <= 5) {
+          em -= 1;
+          if (em === 0) { em = 12; ey -= 1; }
+        }
+        endMonth = em;
+        latestEndYear = ey;
       }
     }
     if (endMonth) {
-      // Assign the fiscal year by date, then rank the periods inside each year. This
-      // handles 4-4-5 retail calendars (Best Buy, etc.) whose quarter-end days drift.
-      const byFy = new Map();
+      grouping = 'annual';
+      // Assign the fiscal year and the quarter from the period's own month, not from its rank in
+      // the year. Ranking shifts every later cell when a quarter is missing; the month is stable.
+      // A 52/53-week calendar is handled by moving a period in the first days of the next month
+      // back to the year-end month. The annual record's own label decides the year convention:
+      // Walmart FY2025 ends in January 2026, Apple FY2025 ends in September 2025.
+      const fyOffset = latestEndYear != null ? latestEndYear - latestYear : 0;
       for (const p of periods) {
         const d = new Date(p.date + 'T00:00:00Z');
         let m = d.getUTCMonth() + 1;
-        if (d.getUTCDate() <= 5) m = m === 1 ? 12 : m - 1;
-        const y = d.getUTCFullYear();
-        const fy = m > endMonth ? y + 1 : y;
-        if (!byFy.has(fy)) byFy.set(fy, []);
-        byFy.get(fy).push(p);
-      }
-      for (const [fy, ps] of byFy) {
-        ps.sort((a, b) => String(a.date).localeCompare(String(b.date)));
+        let y = d.getUTCFullYear();
+        if (d.getUTCDate() <= 5) {
+          if (m === 1) { m = 12; y -= 1; } else m -= 1;
+        }
+        const fy = (m > endMonth ? y + 1 : y) - fyOffset;
+        let q;
+        if (n === 2) {
+          q = m === endMonth ? 2 : 1;
+        } else {
+          q = ((m - endMonth + 12) % 12) / 3 + 1;
+          q = q === 1 ? 4 : q - 1;
+        }
         if (!groups.has(fy)) groups.set(fy, {});
-        ps.forEach((p, idx) => {
-          const q = Math.min(idx + 1, n);
-          groups.get(fy)[q] = { revenue: p.revenue, netIncome: p.netIncome };
-          p.fyN = fy; p.qN = q;
-        });
+        groups.get(fy)[q] = { revenue: p.revenue, netIncome: p.netIncome, date: p.date };
+        p.fyN = fy; p.qN = q;
       }
     } else {
       // No annual history to infer the fiscal calendar: match windows, then assign the rest.
@@ -5476,6 +5504,12 @@ function coMatrixBuild(c, opts = {}) {
       }
     }
   }
+  // Keep the exact period end on every grouped cell. The matrix needs it for the column's fiscal
+  // year end, the cell tooltip, and the "latest reported period" line.
+  for (const p of periods) {
+    const v = groups.get(p.fyN)?.[p.qN];
+    if (v) v.date = p.date;
+  }
   const am = coMatrixAnnualMap(c);
   const market = opts.market || '';
   // An explicit period basis means the feed carried as-reported periods, not a TTM window. Trust it
@@ -5493,7 +5527,7 @@ function coMatrixBuild(c, opts = {}) {
         const cur = grp[q];
         const rev = cur.revenue == null ? null : (q === 1 ? cur.revenue : (prevRev != null ? cur.revenue - prevRev : null));
         const ni = cur.netIncome == null ? null : (q === 1 ? cur.netIncome : (prevNi != null ? cur.netIncome - prevNi : null));
-        grp[q] = { revenue: rev, netIncome: ni };
+        grp[q] = { revenue: rev, netIncome: ni, date: cur.date };
         if (cur.revenue != null) prevRev = cur.revenue;
         if (cur.netIncome != null) prevNi = cur.netIncome;
       }
@@ -5564,7 +5598,10 @@ function coMatrixInner() {
       + `<div class="co-matrix-note">The feed carries trailing-twelve-month values, not quarterly periods, so a Q1–Q4 / H1–H2 matrix would be false. The table shows the TTM at each period end and its year-on-year change; the fiscal-year record above is the audited annual.</div>`;
   }
   const vals = (y) => Array.from({ length: n }, (_, i) => groups.get(y)[i + 1]?.[metric]).filter((v) => v != null);
-  const annualised = (y) => { const a = vals(y); return a.length >= 2 ? a.reduce((x, z) => x + z, 0) * n / a.length : null; };
+  const complete = (y) => vals(y).length >= n;
+  // Do not annualise a partial year: multiplying one quarter by four is an estimate, not the
+  // company's result. A complete year is the sum of its n periods.
+  const annualised = (y) => { const a = vals(y); return a.length === n ? a.reduce((x, z) => x + z, 0) : null; };
   const ttm = (y) => {
     if (y === years[0]) {
       const last = periods.slice(-n).map((p) => p[metric]);
@@ -5573,13 +5610,21 @@ function coMatrixInner() {
     const a = vals(y);
     return a.length === n ? a.reduce((x, z) => x + z, 0) : null;
   };
+  const groupEnd = (y) => {
+    const ds = Object.keys(groups.get(y)).map((q) => groups.get(y)[q]?.date).filter(Boolean).sort();
+    return ds[ds.length - 1] || null;
+  };
+  const endLabel = (y) => (groupEnd(y) ? dealDateY(groupEnd(y)) : '');
+  const latestPeriod = periods.length ? periods[periods.length - 1].date : null;
   const latestQ = Math.max(...Object.keys(groups.get(years[0])).map(Number));
   const prevYear = (yi) => (years[yi + 1] != null ? years[yi + 1] : null);
-  const table = `<div class="co-matrix-scroll"><table class="co-matrix-table"><thead><tr><th>Period</th>${years.map((y) => `<th>${y}</th>`).join('')}</tr></thead><tbody>`
+  const table = `<div class="co-matrix-scroll"><table class="co-matrix-table"><thead><tr><th>Period</th>${years.map((y) => `<th><span>${y}</span><small>${complete(y) ? esc(endLabel(y)) : `through ${esc(endLabel(y))}`}</small>${complete(y) ? '' : '<em class="qpartial">partial</em>'}</th>`).join('')}</tr></thead><tbody>`
     + labels.map((label, idx) => `<tr><td>${label}</td>${years.map((y, yi) => {
-      const v = groups.get(y)[idx + 1]?.[metric];
+      const g = groups.get(y)[idx + 1];
+      const v = g?.[metric];
       const pv = years[yi + 1] != null ? groups.get(years[yi + 1])[idx + 1]?.[metric] : null;
-      return cell(v, pv);
+      const pct = pctOf(v, pv);
+      return `<td title="${g && g.date ? `${label} FY${y} · period ending ${esc(dealDateY(g.date))}` : `${label} FY${y}`}"><span>${v == null ? '—' : money(v)}</span>${pct != null ? `<em class="qchg ${pct >= 0 ? 'pos' : 'neg'}">${pct >= 0 ? '+' : ''}${pct.toFixed(1)}%</em>` : ''}${g && g.date ? `<small class="qdate">${esc(dealDateY(g.date))}</small>` : ''}</td>`;
     }).join('')}</tr>`).join('')
     + `<tr class="total"><td>Annualised</td>${years.map((y, yi) => cell(annualised(y), prevYear(yi) ? annualised(prevYear(yi)) : null)).join('')}</tr>`
     + `<tr class="total ttm"><td>TTM (${labels[latestQ - 1]})</td>${years.map((y, yi) => cell(ttm(y), prevYear(yi) ? ttm(prevYear(yi)) : null)).join('')}</tr>`
@@ -5595,9 +5640,12 @@ function coMatrixInner() {
         ? 'Fiscal years could not be matched to the annual history, so the columns are calendar years.'
         : grouping === 'reported'
           ? 'Period labels are the company’s own.'
-          : 'Fiscal periods derived from the annual history.';
-  const note = `${n === 2 ? 'Half-year' : 'Quarterly'} reporting detected from the period spacing. ${basisNote} Annualised = available periods × n/year ÷ n (at least two); TTM = trailing ${n} periods. Change is year-on-year (green up, red down); a change from a loss is left blank. The fiscal-year record above uses the annual filing; the matrix uses the quarterly feed, which can differ.`;
-  return `<div class="co-matrix-head"><span class="t">${n === 2 ? 'HALF-YEAR' : 'QUARTERLY'} RESULTS</span><span class="s">${years.length} fiscal years · ${esc(opts.ccy || '')}</span><div class="co-matrix-ctls">${metricBtns}<span class="co-matrix-sep"></span><button type="button" data-comaview="matrix" class="${coMatrixView === 'matrix' ? 'on' : ''}">MATRIX</button><button type="button" data-comaview="list" class="${coMatrixView === 'list' ? 'on' : ''}">LIST</button></div></div>`
+          : grouping === 'annual'
+            ? 'Fiscal years are matched to the annual series; the subline is each year’s end.'
+            : 'Fiscal periods are derived from the annual history.';
+  const stale = latestPeriod && (Date.now() - Date.parse(latestPeriod)) / 864e5 > 450;
+  const note = `${n === 2 ? 'Half-year' : 'Quarterly'} reporting detected from the period spacing. ${basisNote} The column subline is the fiscal year end for a complete year (the latest reported period for a partial year); each cell carries its actual period end date, so Q4 2026 is the quarter ending in the month shown, not calendar Q4. Annualised is shown only for a complete year; TTM is the trailing ${n} periods. Change is year-on-year (green up, red down); a change from a loss is left blank.${latestPeriod ? ` Latest reported period: ${dealDateY(latestPeriod)}.` : ''}${stale ? ' That period is more than 15 months old; the feed may be stale.' : ''} The fiscal-year record above uses the annual filing; the matrix uses the quarterly feed, which can differ.`;
+  return `<div class="co-matrix-head"><span class="t">${n === 2 ? 'HALF-YEAR' : 'QUARTERLY'} RESULTS</span><span class="s">${years.length} fiscal years · ${esc(opts.ccy || '')}${latestPeriod ? ` · latest ${dealDateY(latestPeriod)}` : ''}</span><div class="co-matrix-ctls">${metricBtns}<span class="co-matrix-sep"></span><button type="button" data-comaview="matrix" class="${coMatrixView === 'matrix' ? 'on' : ''}">MATRIX</button><button type="button" data-comaview="list" class="${coMatrixView === 'list' ? 'on' : ''}">LIST</button></div></div>`
     + `<div class="co-matrix-body">${coMatrixView === 'list' ? list : table}</div>`
     + `<div class="co-matrix-note">${note}</div>`;
 }

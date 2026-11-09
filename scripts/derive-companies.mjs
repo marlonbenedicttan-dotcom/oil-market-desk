@@ -160,15 +160,24 @@ for (const c of data.companies) {
   // Prefer the trailing EBITDA where we have it; fall back to the fiscal-year figure.
   // TTM revenue: the last four quarters. The annual figure is a fiscal year that may have ended eighteen
   // months ago (Microsoft's FY ends in June), so the page was pairing a FY revenue with a TTM net income.
-  if (c.revenueTTM == null) {
-    const q4 = (c.quarters || []).slice(-4);
-    if (q4.length === 4 && q4.every((q) => q.revenue != null)) {
-      const ttm = q4.reduce((a1, q) => a1 + q.revenue, 0);
-      const latest = Date.parse(q4[3].end);
-      if (Number.isFinite(latest) && Date.now() - latest < 300 * 86400000 && ttm > 0) {
+  {
+    const q4rev = (c.quarters || []).slice(-4);
+    if (q4rev.length === 4 && q4rev.every((q) => q.revenue != null)) {
+      const ttm = q4rev.reduce((a1, q) => a1 + q.revenue, 0);
+      const latest = Date.parse(q4rev[3].end);
+      // Rebuild when the quarter feed is newer than the stored TTM. A repaired revenue tag must not
+      // leave the headline showing the old (wrong) trailing figure.
+      if (Number.isFinite(latest) && Date.now() - latest < 300 * 86400000 && ttm > 0
+          && (c.revenueTTM == null || !c.revenueTTMEnd || q4rev[3].end > c.revenueTTMEnd)) {
         c.revenueTTM = ttm;
-        c.revenueTTMEnd = q4[3].end;
+        c.revenueTTMEnd = q4rev[3].end;
       }
+    } else if (q4rev.length === 4 && q4rev.every((q) => q.revenue == null)
+        && c.revenueTTM != null && c.revenueTTMEnd && q4rev[3].end >= c.revenueTTMEnd) {
+      // The quarters exist but carry no revenue line (a bank with no net-interest tag). Do not keep
+      // an old revenue TTM that the repaired feed no longer supports.
+      c.revenueTTM = null;
+      c.revenueTTMEnd = null;
     }
   }
 
