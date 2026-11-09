@@ -41,7 +41,7 @@ async function facts(cik, force = false) {
   const f = join(FACTS, `${cik}.json`);
   if (!force && existsSync(f)) { try { return JSON.parse(readFileSync(f, 'utf8')); } catch { /* refetch */ } }
   try {
-    const res = await fetch(`https://data.sec.gov/api/xbrl/companyfacts/CIK${String(cik).padStart(10, '0')}.json`, { headers: { 'User-Agent': UA } });
+    const res = await fetch(`https://data.sec.gov/api/xbrl/companyfacts/CIK${String(cik).padStart(10, '0')}.json`, { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(30000) });
     if (!res.ok) return null;
     const j = await res.json();
     const slim = { facts: { 'us-gaap': {} } };
@@ -106,7 +106,7 @@ async function conceptUnits(cik, tag, force = false) {
   const f = join(CONCEPTS, `${cik}_${tag}.json`);
   if (!force && existsSync(f)) { try { const j = JSON.parse(readFileSync(f, 'utf8')); const u = j?.units?.USD; if (Array.isArray(u) && u.length) return u; } catch { /* refetch */ } }
   try {
-    const res = await fetch(`https://data.sec.gov/api/xbrl/companyconcept/CIK${String(cik).padStart(10, '0')}/us-gaap/${tag}.json`, { headers: { 'User-Agent': UA } });
+    const res = await fetch(`https://data.sec.gov/api/xbrl/companyconcept/CIK${String(cik).padStart(10, '0')}/us-gaap/${tag}.json`, { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(30000) });
     if (!res.ok) return null;
     const j = await res.json();
     writeFileSync(f, JSON.stringify(j));
@@ -135,7 +135,7 @@ async function factsRevenue(cik, force = false) {
     } catch { /* refetch */ }
   }
   try {
-    const res = await fetch(`https://data.sec.gov/api/xbrl/companyfacts/CIK${String(cik).padStart(10, '0')}.json`, { headers: { 'User-Agent': UA } });
+    const res = await fetch(`https://data.sec.gov/api/xbrl/companyfacts/CIK${String(cik).padStart(10, '0')}.json`, { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(30000) });
     if (!res.ok) return null;
     const j = await res.json();
     const g = j.facts?.['us-gaap'] || {};
@@ -184,7 +184,7 @@ for (const c of todo) {
         let res = null;
         for (let attempt = 0; attempt < 3 && !res?.ok; attempt++) {
           if (attempt) await new Promise((r) => setTimeout(r, 1500 * attempt));
-          res = await fetch(`https://data.sec.gov/api/xbrl/companyfacts/CIK${String(c.cik).padStart(10, '0')}.json`, { headers: { 'User-Agent': UA } });
+          res = await fetch(`https://data.sec.gov/api/xbrl/companyfacts/CIK${String(c.cik).padStart(10, '0')}.json`, { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(30000) });
         }
         if (res?.ok) {
           const jj = await res.json();
