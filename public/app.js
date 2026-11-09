@@ -7308,6 +7308,9 @@ async function drawAuChart(c, range = auRange) {
 let inData = null, inSel = null, inQuery = '', inCompare = '';
 let inRange = coStoredRange('inRange', '1y');
 let inMktRange = (() => { try { return localStorage.getItem('oilbasis.inMktRange') || '1y'; } catch { return '1y'; } })();
+const IN_INDEXES = [{ id: 'nifty50', label: 'NIFTY 50' }, { id: 'nifty500', label: 'NIFTY 500' }];
+let inIndex = (() => { try { return localStorage.getItem('oilbasis.inIndex') || 'nifty50'; } catch { return 'nifty50'; } })();
+const inIndexDef = () => IN_INDEXES.find((x) => x.id === inIndex) || IN_INDEXES[0];
 let inView = (() => { try { return localStorage.getItem('oilbasis.inView') || 'market'; } catch { return 'market'; } })();
 let inTheme = (() => { try { return localStorage.getItem('oilbasis.inTheme') || 'materials'; } catch { return 'materials'; } })();
 let inSector = 'all', inTier = 'all', inSort = 'cap', inPreset = null, inFilter = {}, inOpenSel = null;
@@ -7354,7 +7357,7 @@ async function renderIndia(token = takeToken()) {
   const all = (d && d.companies) || [];
   const sub = $('deals-sub');
   if (sub) {
-    const what = inView === 'screener' ? 'filter and sort' : inView === 'themes' ? 'curated theme lists' : 'breadth, sectors and the NIFTY 50';
+    const what = inView === 'screener' ? 'filter and sort' : inView === 'themes' ? 'curated theme lists' : 'breadth, sectors and the benchmark';
     sub.textContent = all.length ? `${all.length} companies · NSE · prices in INR · ${what}` : 'NSE · S&P/NIFTY 50';
   }
   if (!all.length) {
@@ -7370,25 +7373,31 @@ async function renderIndia(token = takeToken()) {
 }
 
 function inIndexSeries() {
-  const s = inData && inData.index && inData.index.series;
+  const src = inIndex === 'nifty500'
+    ? (inData && inData.indices && inData.indices.nifty500)
+    : (inData && inData.index);
+  const s = src && src.series;
   return s && s.length > 1 ? { dates: s.map((p) => p.d), closes: s.map((p) => p.c) } : null;
 }
 function redrawIndiaIndex(range = inMktRange) {
   const full = inIndexSeries();
   if (!full) return false;
-  inMktRange = drawMarketIndexChart('in-mkt', full, range, 'inmkt', 'S&P/NIFTY 50');
+  inMktRange = drawMarketIndexChart('in-mkt', full, range, 'inmkt', `S&P/${inIndexDef().label}`);
   return true;
 }
 
 function renderIndiaMarket(all, d) {
   const el = $('co-body'); if (!el) return;
-  const m = d.market || {}; const idx = d.index || {};
+  const m = d.market || {};
+  const idx = (inIndex !== 'nifty50' && d.indices && d.indices[inIndex]) || d.index || {};
+  const indexBar = `<div class="jp-presets" id="in-index-tabs">${IN_INDEXES.map((x) => `<button type="button" data-inindex="${x.id}" class="${x.id === inIndex ? 'on' : ''}">${x.label}</button>`).join('')}</div>`;
   const cell = (k, v, t, cls = '') => `<div class="co-stat" title="${esc(t)}"><span class="co-k">${k}</span><span class="co-v ${cls}">${v}</span></div>`;
   const chg = (x) => (x == null ? '—' : `${x >= 0 ? '+' : ''}${x.toFixed(1)}%`);
   const breadth = m.advancing != null ? `<div class="jp-breadth"><span class="pos">${m.advancing} up</span><i><i style="width:${Math.round((m.advancing / Math.max(1, m.advancing + m.declining)) * 100)}%"></i></i><span class="neg">${m.declining} down</span></div>` : '';
   const foreign = m.foreignReporters != null ? `${m.foreignReporters} report outside INR` : 'INR reporters';
   el.innerHTML = inViewsBar()
-    + `<div class="jp-market-head"><span class="ph-t">S&amp;P/NIFTY 50</span>
+    + indexBar
+    + `<div class="jp-market-head"><span class="ph-t">S&amp;P/${esc(inIndexDef().label)}</span>
         ${idx.level != null ? `<span class="jp-market-lvl">${idx.level.toLocaleString('en-US', { maximumFractionDigits: 2 })}</span>` : '<span class="dimtext">index unavailable</span>'}
         <span class="${(idx.chg1d || 0) >= 0 ? 'pos' : 'neg'}">${chg(idx.chg1d)} today</span>
         <span class="dimtext">${all.length} companies · NSE · prices as of ${sessionOf(all, 'priceDate') || d.session}${idx.date ? ` · index as of ${idx.date}` : ''}</span></div>`
@@ -10744,6 +10753,13 @@ document.addEventListener('click', (e) => {
   }
   const inlp = e.target.closest('[data-inlistpage]');
   if (inlp && inlp.dataset.inlistpage !== 'per') { inPage = Math.max(1, Number(inlp.dataset.inlistpage)); renderIndia(); return; }
+  const ini = e.target.closest('[data-inindex]');
+  if (ini) {
+    inIndex = ini.dataset.inindex === 'nifty500' ? 'nifty500' : 'nifty50';
+    try { localStorage.setItem('oilbasis.inIndex', inIndex); } catch {}
+    renderIndia();
+    return;
+  }
   const inm = e.target.closest('[data-inmkt]');
   if (inm) {
     inMktRange = inm.dataset.inmkt;

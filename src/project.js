@@ -154,7 +154,7 @@ export const projectIn = (c) => ({
 
 export const indiaList = (ind) => ({
   updated: ind.updated, universe: ind.universe, currency: ind.currency, fx: ind.fx,
-  market: ind.market, index: ind.index, themes: ind.themes || [], audit: ind.audit || null,
+  market: ind.market, index: ind.index, indices: ind.indices || null, themes: ind.themes || [], audit: ind.audit || null,
   session: ind.session || null, indexName: ind.indexName || 'NIFTY 50',
   companies: (ind.companies || []).map(projectIn),
 });

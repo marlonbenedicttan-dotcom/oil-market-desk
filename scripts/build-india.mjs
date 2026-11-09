@@ -511,20 +511,27 @@ try {
   }
 } catch { /* fx stays null; foreign reporters get no ratios */ }
 
-// --- 5. the NIFTY 50 ------------------------------------------------------------------------------
-const nsei = (await yahooSeries(INDEX_SYMBOL, `${YEARS}y`)).slice(-1300);
-const idx = nsei.length > 1 ? (() => {
-  const last = nsei[nsei.length - 1], prev = nsei[nsei.length - 2];
-  const six = pointOnOrBefore(nsei, iso(Date.parse(last.d) - 182 * DAY));
-  const jan = nsei.find((p) => p.d >= `${last.d.slice(0, 4)}-01-01`);
+// --- 5. the benchmarks ----------------------------------------------------------------------------
+// The NIFTY 50 is the large-cap quote; the NIFTY 500 is the broad core benchmark. Both are real
+// Yahoo index series (^NSEI and ^CRSLDX), so the market page can switch without estimating a level.
+const NIFTY500_SYMBOL = '^CRSLDX';
+function indexObject(series) {
+  if (!(series && series.length > 1)) return null;
+  const last = series[series.length - 1], prev = series[series.length - 2];
+  const six = pointOnOrBefore(series, iso(Date.parse(last.d) - 182 * DAY));
+  const jan = series.find((p) => p.d >= `${last.d.slice(0, 4)}-01-01`);
   return {
     level: last.c, date: last.d,
     chg1d: prev ? +(((last.c / prev.c) - 1) * 100).toFixed(2) : null,
     chg6m: six ? +(((last.c / six.c) - 1) * 100).toFixed(2) : null,
     chgYtd: jan ? +(((last.c / jan.c) - 1) * 100).toFixed(2) : null,
-    series: nsei,
+    series,
   };
-})() : null;
+}
+const nsei = (await yahooSeries(INDEX_SYMBOL, `${YEARS}y`)).slice(-1300);
+const nifty500 = (await yahooSeries(NIFTY500_SYMBOL, `${YEARS}y`)).slice(-1300);
+const idx = indexObject(nsei);
+const idx500 = indexObject(nifty500);
 
 // --- 6. derive ------------------------------------------------------------------------------------
 // The P/E band pairs each fiscal year's EPS with the price at that period end, not the calendar year
@@ -679,7 +686,7 @@ writeJson(`${OUT}.tmp`, {
   currency: 'INR',
   fx,
   session: cleaned.map((c) => c.priceDate).filter(Boolean).sort().pop() || null,
-  market, index: idx, themes, audit, companies: cleaned,
+  market, index: idx, indices: { nifty500: idx500 }, themes, audit, companies: cleaned,
 });
 renameSync(`${OUT}.tmp`, OUT);
 
