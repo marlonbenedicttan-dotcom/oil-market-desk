@@ -9330,13 +9330,15 @@ function gbHero(home) {
 
 function gbMap(home) {
   return `<section class="gb-card gb-map-card">
-    <div class="gb-head"><span class="t"><span class="gb-desk">MARKET MAP</span><span class="gb-mob">MARKETS AT A GLANCE</span> <i class="gb-live" aria-hidden="true"></i></span><span class="s"><span id="gb-map-sub">bubble = market cap · colour = YTD</span><span id="gb-map-asof"></span></span></div>
+    <div class="gb-head"><span class="t"><span class="gb-desk">MARKET MAP</span><span class="gb-mob">MARKETS AT A GLANCE</span> <i class="gb-live" aria-hidden="true"></i></span><span class="s"><span id="gb-map-sub">bubble = market cap · colour = YTD</span><span id="gb-map-asof"></span><span class="gb-swipe">swipe to pan ↔</span></span></div>
     <div class="gb-map" id="gb-map">
-      <div class="gb-land" aria-hidden="true"></div>
-      <div class="gb-grid" aria-hidden="true"></div>
-      <div class="gb-vignette" aria-hidden="true"></div>
-      <span class="gb-corner tl" aria-hidden="true"></span><span class="gb-corner tr" aria-hidden="true"></span><span class="gb-corner bl" aria-hidden="true"></span><span class="gb-corner br" aria-hidden="true"></span>
-      <div class="gb-bubbles" id="gb-bubbles"></div>
+      <div class="gb-map-inner">
+        <div class="gb-land" aria-hidden="true"></div>
+        <div class="gb-grid" aria-hidden="true"></div>
+        <div class="gb-vignette" aria-hidden="true"></div>
+        <span class="gb-corner tl" aria-hidden="true"></span><span class="gb-corner tr" aria-hidden="true"></span><span class="gb-corner bl" aria-hidden="true"></span><span class="gb-corner br" aria-hidden="true"></span>
+        <div class="gb-bubbles" id="gb-bubbles"></div>
+      </div>
     </div>
     <div class="gb-map-ctls">
       <div class="gb-ctl"><span class="k">SIZE</span>${[['cap', 'CAP'], ['companies', 'COMPANIES'], ['pe', 'P/E'], ['ytd', 'YTD']].map(([k, t]) => `<button type="button" data-gb-size="${k}" class="${gbSizeMetric === k ? 'on' : ''}">${t}</button>`).join('')}</div>
@@ -9441,6 +9443,7 @@ function gbBindMapEvents() {
   const map = $('gb-map');
   if (map) {
     map.addEventListener('pointermove', (e) => {
+      if (window.innerWidth <= 760) return;
       if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
       const r = map.getBoundingClientRect();
       if (!r.width || !r.height) return;

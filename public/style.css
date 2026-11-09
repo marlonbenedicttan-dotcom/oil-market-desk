@@ -2420,7 +2420,10 @@ body.gs-search-open { overflow: hidden; }
 
 /* the map is the same 1000×420 asset as the old board, so it fills the card edge-to-edge */
 .gb-map-card { display:flex; flex-direction:column; }
-.gb-map { position:relative; aspect-ratio:1000 / 420; background:radial-gradient(ellipse at 50% 38%,#0c1c2a 0%,#071018 52%,#03070b 100%); overflow:hidden; flex:0 0 auto; }
+.gb-map { position:relative; background:radial-gradient(ellipse at 50% 38%,#0c1c2a 0%,#071018 52%,#03070b 100%); overflow:hidden; flex:0 0 auto; }
+.gb-map-inner { position:relative; width:100%; aspect-ratio:1000 / 420; }
+.gb-swipe { display:none; }
+.gb-swipe:before { content:' · '; }
 .gb-strip { display:none; }
 .gb-mob { display:none; }
 .gb-land { position:absolute; inset:0; background:linear-gradient(180deg,#33536a 0%,#244256 45%,#172c3c 100%); -webkit-mask:url(/world-map.svg) center/contain no-repeat; mask:url(/world-map.svg) center/contain no-repeat; opacity:.92; }
@@ -2550,15 +2553,19 @@ body.gs-search-open { overflow: hidden; }
   .gb-hero-main .big { font-size:30px; }
   .gb-desk { display:none; }
   .gb-mob { display:inline; }
-  .gb-map, .gb-map-ctls, .gb-legends { display:none; }
-  .gb-strip { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:1px; background:var(--line); }
+  .gb-map { overflow-x:auto; overflow-y:hidden; scrollbar-width:none; -webkit-overflow-scrolling:touch; }
+  .gb-map::-webkit-scrollbar { display:none; }
+  .gb-map-inner { width:640px; height:269px; aspect-ratio:auto; }
+  #gb-map-sub { display:none; }
+  .gb-swipe { display:inline; color:var(--amber); }
+  .gb-strip { display:none; }
   .gb-chip { display:grid; grid-template-columns:auto 1fr auto; gap:8px; align-items:baseline; background:var(--panel); border:0; padding:9px 12px; color:inherit; font:inherit; text-align:left; cursor:pointer; box-shadow:inset 3px 0 0 #ff5252; }
   .gb-chip.up { box-shadow:inset 3px 0 0 #00e676; }
   .gb-chip.down { box-shadow:inset 3px 0 0 #ff5252; }
   .gb-chip b { font-size:10.5px; letter-spacing:.8px; color:var(--text); }
   .gb-chip .cap { font-size:8px; color:var(--dim); text-align:left; white-space:nowrap; }
   .gb-chip .num { font-size:10px; text-align:right; font-variant-numeric:tabular-nums; white-space:nowrap; }
-  .gb-lbl { display:none; }
+  .gb-lbl { display:block; }
   .gb-ideas { grid-template-columns:1fr; }
   .gb-mrow { grid-template-columns:16px minmax(0,1fr) 56px 48px 44px; }
   .gb-mrow .bar { display:none; }
