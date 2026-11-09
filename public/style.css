@@ -1558,7 +1558,7 @@ button.deal-sec-tile:hover { background: #10151b; }
 .totop:focus-visible { outline: 2px solid var(--amber2); outline-offset: 2px; }
 .totop-i { font-size: 14px; line-height: 1; margin-top: -1px; }
 @media (max-width: 640px) {
-  .totop { width: 44px; min-height: 44px; padding: 0; justify-content: center; font-size: 0; letter-spacing: 0; border-radius: 50%; bottom: calc(12px + env(safe-area-inset-bottom)); }
+  .totop { width: 44px; height: 44px; min-height: 44px; padding: 0; gap: 0; justify-content: center; font-size: 0; letter-spacing: 0; border-radius: 50%; bottom: calc(12px + env(safe-area-inset-bottom)); }
   .totop-i { font-size: 18px; }
   /* Keep the corner chip off the attribution line when the page is scrolled to the very end. */
   footer { padding-bottom: 48px; }
