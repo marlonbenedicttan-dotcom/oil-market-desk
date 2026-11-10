@@ -11448,6 +11448,20 @@ async function renderCompanyPageBody(el, c, all) {
         // omission is explained on hover — because dropping it changed the grid's shape per company.
         const na = new Set(c.naRatios || []);
         const tiles = [];
+        const peBand = c.peHistory
+          ? (() => {
+              const h = c.peHistory;
+              const span = Math.max(0.1, h.max - h.min);
+              const at = c.pe != null ? Math.max(0, Math.min(100, ((c.pe - h.min) / span) * 100)) : null;
+              return `<div class="co-band" title="Price at each fiscal year end ÷ that year's EPS. Current P/E is market cap ÷ trailing earnings.">
+          <span class="co-band-k">P/E vs ITS OWN 5 YEARS</span>
+          <span class="co-band-track">${at != null ? `<i style="left:${at.toFixed(1)}%"></i>` : ''}</span>
+          <span class="co-band-n">${h.min}–${h.max} · median ${h.median}${h.percentile != null && c.pe != null ? ` · ${h.percentile}th percentile` : ''}</span>
+        </div>`;
+            })()
+          : (c.pe == null
+            ? `<div class="co-band"><span class="co-band-k">P/E vs ITS OWN 5 YEARS</span><span class="co-band-n">no band — the company lost money in most of the last five years, so a P/E range does not exist</span></div>`
+            : '');
         const sect = (t) => tiles.push(`</div><div class="co-sect">${t}</div><div class="co-stats co-stats-12">`);
         const add = (key, label, value, title, cls) => {
           const missing = !!(key && na.has(key));
@@ -11462,7 +11476,7 @@ async function renderCompanyPageBody(el, c, all) {
             : 'Market cap ÷ trailing earnings.');
         add('evEbitda', 'EV / EBITDA', c.evEbitda != null ? c.evEbitda.toFixed(1) : '—', 'Enterprise value ÷ operating income plus D&A');
         add(null, 'P/B', `${c.pb != null ? c.pb.toFixed(1) : '—'}${dsp('equity')}`);
-        sect('Leverage');
+        tiles.push(`</div>${peBand}<div class="co-sect">Leverage</div><div class="co-stats co-stats-12">`);
         add('ev', 'ENTERPRISE VALUE', `${val(c.ev)}${c.evApprox ? ` <em class="co-approx" title="${esc(c.evApprox)}">≈</em>` : ''}`, c.evApprox ? `Market cap ${c.evApprox === 'neither debt nor cash is tagged' ? '— this company tags neither line' : 'adjusted for what is tagged'}.` : 'Market cap + debt − cash');
         add('currentRatio', 'CURRENT RATIO', c.currentRatio != null ? c.currentRatio.toFixed(2) : '—', 'Current assets ÷ current liabilities');
         add('debtEquity', 'DEBT / EQUITY', c.debtEquity != null ? c.debtEquity.toFixed(2) : (c.debtNA ? '<em class="co-approx" title="' + esc(c.debtNA) + '">n/d</em>' : '—'), c.debtNA || 'Debt ÷ shareholders\u2019 equity');
@@ -11515,17 +11529,6 @@ async function renderCompanyPageBody(el, c, all) {
           : '';
         return `<div class="co-sect">Valuation</div><div class="co-stats co-stats-12">${tiles.join('')}</div>${note}`;
       })()
-    + (c.peHistory ? (() => {
-        const h = c.peHistory;
-        const span = Math.max(0.1, h.max - h.min);
-        const at = c.pe != null ? Math.max(0, Math.min(100, ((c.pe - h.min) / span) * 100)) : null;
-        return `<div class="co-band" title="Price at each fiscal year end ÷ that year's EPS. Current P/E is market cap ÷ trailing earnings.">
-          <span class="co-band-k">P/E vs ITS OWN 5 YEARS</span>
-          <span class="co-band-track">${at != null ? `<i style="left:${at.toFixed(1)}%"></i>` : ''}</span>
-          <span class="co-band-n">${h.min}–${h.max} · median ${h.median}${h.percentile != null && c.pe != null ? ` · ${h.percentile}th percentile` : ''}</span>
-        </div>`;
-      })() : '')
-    + (!c.peHistory && c.pe == null ? `<div class="co-band"><span class="co-band-k">P/E vs ITS OWN 5 YEARS</span><span class="co-band-n">no band — the company lost money in most of the last five years, so a P/E range does not exist</span></div>` : '')
     + (c.ticker ? `<div class="co-chartwrap">
         <div class="co-ranges">
           <span class="co-cmp-l">COMPARE</span><input class="co-cmp" id="co-cmp" placeholder="company name, e.g. jpmorgan" value="${esc(cmpCode(coCompare))}" autocomplete="off">
