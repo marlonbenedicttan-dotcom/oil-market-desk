@@ -59,20 +59,23 @@ for (const [label, file, maxH] of DATASETS) {
 // and how many lines are still behind it. South Africa rewrote its file nightly for days while every
 // quote stayed on the same session, and Australia ships ~20% of the ASX a session behind every day —
 // both passed the timestamp check above.
+// `maxBehind` is the share of lines allowed to have no bar for the modal session. ASX microcaps
+// frequently do not trade at all, so ~20–28% of the market has no bar every day; the guard has always
+// allowed 35% there. A universal 10% made Australia red every single morning.
 const PRICE_MARKETS = [
   ['US prices', 'companies.json'],
   ['Japan prices', 'japan.json'],
   ['Korea prices', 'korea.json'],
   ['Taiwan prices', 'taiwan.json'],
   ['Hong Kong prices', 'hongkong.json'],
-  ['Australia prices', 'australia.json'],
+  ['Australia prices', 'australia.json', 0.35],
   ['India prices', 'india.json'],
   ['Indonesia prices', 'indonesia.json'],
   ['Brazil prices', 'brazil.json'],
   ['South Africa prices', 'southafrica.json'],
 ];
 const today = new Date(now).toISOString().slice(0, 10);
-for (const [label, file] of PRICE_MARKETS) {
+for (const [label, file, maxBehind = 0.10] of PRICE_MARKETS) {
   try {
     const d = JSON.parse(readFileSync(join(ROOT, 'data', file), 'utf8'));
     const s = sessionStats(Array.isArray(d.companies) ? d.companies : []);
@@ -91,7 +94,7 @@ for (const [label, file] of PRICE_MARKETS) {
     // Holidays are not modelled, so a shut market can read one session old; a fresh build with that
     // one-session lag is still allowed. A lag plus a much newer build is not: the build should have
     // carried the missing session.
-    const ours = lag <= 1 && !staleGap && s.behindShare <= 0.10;
+    const ours = lag <= 1 && !staleGap && s.behindShare <= maxBehind;
     const source = s.noCloseShare > 0.50;
     add(label, ours,
       `session ${s.session} · ${lag} session${lag === 1 ? '' : 's'} old · ${s.behind} missed (${(s.behindShare * 100).toFixed(1)}%)`
