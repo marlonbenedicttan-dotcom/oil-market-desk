@@ -47,6 +47,16 @@ const LIMIT = Number(arg('limit', 0)) || 0;
 const CODES = (arg('codes', '') || '').split(',').map((s) => pad(s)).filter(Boolean);
 const YEARS = Number(arg('years', 5)) || 5;
 const SKIP_PRICES = flag('skip-prices');
+// The local session close, in UTC. A cache is only reusable once its last bar reaches the latest
+// completed session; a 6h-old file that still ends on Friday is stale.
+const CLOSE_HOUR_UTC = 15;
+function lastExpectedSession(now = Date.now()) {
+  const d = new Date(now);
+  if (d.getUTCHours() < CLOSE_HOUR_UTC) d.setUTCDate(d.getUTCDate() - 1);
+  while (d.getUTCDay() === 0 || d.getUTCDay() === 6) d.setUTCDate(d.getUTCDate() - 1);
+  return iso(d);
+}
+const EXPECTED_SESSION = lastExpectedSession();
 const SKIP_FIN = flag('skip-fin');
 const PRICES_ONLY = flag('prices-only');
 const TTL_DAY = 6 * 3600e3;
@@ -126,8 +136,11 @@ async function yahooSeries(symbol, range = `${YEARS}y`) {
   if (existsSync(f)) {
     try {
       const hit = JSON.parse(readFileSync(f, 'utf8'));
-      if (hit.fetched && Date.now() - Date.parse(hit.fetched) < 6 * 3600e3) {
-        const s = hit.text ? JSON.parse(hit.text) : null;
+      const cached = hit.text ? JSON.parse(hit.text) : null;
+      const last = cached && cached.length ? cached[cached.length - 1].d : null;
+      const covers = !EXPECTED_SESSION || (last && last >= EXPECTED_SESSION);
+      if (hit.fetched && Date.now() - Date.parse(hit.fetched) < 6 * 3600e3 && covers) {
+        const s = cached;
         if (s && (!s.length || s[0].v !== undefined)) { s.lastBar = hit.lastBar || null; return s; }
       }
     } catch { /* refetch */ }
