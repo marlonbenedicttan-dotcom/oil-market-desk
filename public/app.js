@@ -9472,6 +9472,17 @@ async function pollQuotes() {
         else if (el.dataset.qkind === 'homerow') patchQuoteHomeRow(el, ref, q);
       }
     }
+    // Screener filter bar: keep the committed base date and mark that the rows now carry live quotes.
+    if (Object.keys(qs).length && !document.querySelector('.co-live-badge')) {
+      const asof = document.querySelector('.co-asof');
+      if (asof) {
+        const badge = document.createElement('span');
+        badge.className = 'co-live-badge';
+        badge.textContent = 'LIVE';
+        badge.title = 'Prices and price-derived ratios are updating from Yahoo quotes';
+        asof.after(badge);
+      }
+    }
   } catch { /* the committed close stays on screen */ }
   finally {
     quotePollBusy = false;

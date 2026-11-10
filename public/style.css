@@ -1313,6 +1313,8 @@ button.deal-sec-tile:hover { background: #10151b; }
 
 /* The session the prices belong to, at the end of every filter bar. */
 .co-asof { font-size: 10px; letter-spacing: .3px; color: #6b7a89; margin-left: auto; white-space: nowrap; }
+.co-live-badge { display: inline-flex; align-items: center; gap: 5px; font-size: 9px; letter-spacing: 1px; color: var(--green); white-space: nowrap; }
+.co-live-badge::before { content: ''; width: 5px; height: 5px; border-radius: 50%; background: var(--green); box-shadow: 0 0 6px var(--green); }
 @media (max-width: 720px) {
   /* Search and the FILTERS button share one row; the chips wrap underneath. */
   #co-search { flex: 1 1 auto; min-width: 0; max-width: none; }
