@@ -148,6 +148,12 @@ test('a restatement keeps both figures and the amended one wins', () => {
     assert.ok(Object.keys(changes).length > 0, `${c.ticker}: restatement with no change recorded`);
     assert.ok(c.restatement.filed, `${c.ticker}: restatement without a filing date`);
     for (const [f, v] of Object.entries(changes)) {
+      // An amendment parsed at the wrong scope (a quarter or a segment instead of annual revenue) is
+      // recorded but not applied; apply-restatements.mjs names the reason here.
+      if (c.restatement.rejected && c.restatement.rejected[f]) {
+        assert.ok(c.restatement.rejected[f].reason, `${c.ticker}: rejected ${f} without a reason`);
+        continue;
+      }
       // A later 10-Q supersedes the amended annual figure; the restatement still lives in the record.
       const end = c[f + 'End'];
       if (end && c.restatement.period && end > c.restatement.period) continue;

@@ -11,7 +11,7 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const FILE = join(ROOT, 'data', 'companies.json');
 
 const data = JSON.parse(readFileSync(FILE, 'utf8'));
-let applied = 0, changed = 0;
+let applied = 0, changed = 0, annotated = 0;
 for (const c of data.companies) {
   const changes = c.restatement && c.restatement.changes;
   if (!changes) continue;
@@ -21,10 +21,23 @@ for (const c of data.companies) {
     // would undo the newer book value and leave P/B/ROE computed from a different equity.
     const endKey = field + 'End';
     if (c[endKey] && c.restatement.period && c[endKey] > c.restatement.period) continue;
+    let now = v && v.now;
+    // A 10-K/A corrects a number; it does not replace annual revenue with one quarter or one segment
+    // of itself. The amendment parser occasionally lands on a quarterly tag, which produced CC's
+    // $5.8B -> $1.3B, WRLD's $565M -> $176M and TMP's $579M -> $76M "restatements". Reject the scope
+    // mismatch and annotate the record; the field keeps whatever the last rebuild wrote from the facts.
+    if (field === 'revenue' && now != null && v.was > 0 && (now / v.was < 0.5 || now / v.was > 2)) {
+      c.restatement.rejected = {
+        ...(c.restatement.rejected || {}),
+        [field]: { was: v.was, now, reason: 'amended value is a different scope (quarter/segment), not annual revenue' },
+      };
+      annotated++;
+      console.log(`  ${c.ticker}: rejected revenue restatement ${v.was} -> ${now}`);
+      continue;
+    }
     // The amendment is sometimes parsed in thousands or millions while the original field is dollars
     // (Visteon's 213 was millions; Sezzle's 133,130 was thousands). Put it on the original's scale
     // when that lands within 3× of the value it replaces; never invent a factor for a genuine collapse.
-    let now = v && v.now;
     if (now != null && v.was != null && Math.abs(v.was) > 0 && Math.abs(now) > 0) {
       const ratio = Math.abs(v.was) / Math.abs(now);
       if (ratio > 100) {
@@ -45,8 +58,8 @@ for (const c of data.companies) {
     }
   }
 }
-if (changed) {
+if (changed || annotated) {
   writeFileSync(FILE + '.tmp', JSON.stringify(data));
   renameSync(FILE + '.tmp', FILE);
 }
-console.log(`${applied} recorded restatements · ${changed} values restored`);
+console.log(`${applied} recorded restatements · ${changed} values restored · ${annotated} rejected as a different scope`);

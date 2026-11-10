@@ -104,6 +104,17 @@ for (const c of todo) {
   const changes = {};
   for (const f of ['revenue', 'netIncome', 'assets', 'equity']) {
     if (found[f] == null || c[f] == null) continue;
+    // A 10-K/A corrects a number; it does not replace annual revenue with one quarter or one segment
+    // of itself. The amendment parser occasionally lands on a quarterly tag, which produced CC's
+    // $5.8B -> $1.3B and TMP's $579M -> $76M "restatements". Reject that scope mismatch here; the
+    // company keeps its original figure and a human can review the filing.
+    if (f === 'revenue' && c[f] > 0) {
+      const ratio = found[f] / c[f];
+      if (ratio < 0.5 || ratio > 2) {
+        console.log(`  ${c.ticker}: skipped revenue ${c[f]} -> ${found[f]} (${ratio.toFixed(2)}x, different scope)`);
+        continue;
+      }
+    }
     const diff = Math.abs(found[f] - c[f]) / Math.max(Math.abs(found[f]), Math.abs(c[f]));
     if (diff > 0.005) changes[f] = { was: c[f], now: found[f] };
   }
