@@ -445,6 +445,32 @@ if (!SKIP_FIN) {
   }
 }
 
+// A throttled statement pass must not collapse the market. A company the run could not rebuild keeps
+// its previous record (reports, shares, history) so the totals, sector table and list are computed over
+// a complete set. The carry happens here, before those aggregates — appending rows after the build is
+// what made the old guard's patch inconsistent.
+{
+  const prevDoc = readJson(OUT) || {};
+  const prevBy = new Map(((prevDoc.companies) || []).map((c) => [c.code, c]));
+  let carried = 0;
+  for (const c of universe) {
+    if (c.shares > 0) continue;
+    const p = prevBy.get(c.code);
+    if (!p || !p.reports || !(p.shares > 0)) continue;
+    c.ttm = p.reports.ttm || null;
+    c.latest = p.reports.latest || {};
+    c.annual = p.reports.annual || [];
+    c.quarters = p.quarters || [];
+    c.ttmEnd = p.reports.ttmEnd || null;
+    c.latestEnd = p.reports.latestEnd || null;
+    c.reportCurrency = p.reportCurrency || c.reportCurrency || 'HKD';
+    c.shares = p.shares;
+    c.carried = true;
+    carried++;
+  }
+  if (carried) console.log(`  ${carried} companies carried forward from the previous dataset (throttled statement pass)`);
+}
+
 // --- current shares (vendor statistics page) ------------------------------------------------------
 // The statement's diluted count is a period weighted average; a placement or buyback after the
 // period end would leave the cap (and P/E, P/B) stale. This side file is written by
@@ -620,6 +646,7 @@ const audit = {
   quoted: quoted.length,
   commonStocks: companies.length,
   considered: universe.length,
+  carried: universe.filter((c) => c.carried).length,
   withStatements: cleaned.length,
   withoutStatements: dropped.length,
   stale: stale.length,

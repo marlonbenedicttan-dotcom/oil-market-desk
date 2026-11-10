@@ -37,11 +37,9 @@ const MARKETS = {
     file: 'data/hongkong.json',
     details: 'data/hongkong-companies',
     // The HKEX report carries ~1,900 main-board companies and the incomplete 2026-11-03 page lost 7.7%.
-    // 2% was too tight for the opposite case: a throttled statement pass rebuilds ~1,860 of 1,918, and
-    // refusing that published nothing for days. 4.5% tolerates the throttle, not a collapsed report.
+    // A throttled statement pass rebuilds ~96% of the market; the build carries the rest from the
+    // previous dataset before computing totals, so this floor only rejects a real collapse.
     minCompanies: 0.955, minPriced: 0.955,
-    // Lines the statement pass could not rebuild keep their previous record (see restoreMissing),
-    // so a normal build carries ~3–8% on an older session; 15% is a real loss of coverage.
     maxBehind: 0.15, maxJump: 0.06,
   },
   in: {
@@ -144,7 +142,8 @@ function run(id) {
     `${rows.length} now · ${was.length} in HEAD · floor ${Math.floor(was.length * spec.minCompanies)} (${Math.round(spec.minCompanies * 100)}%)`,
   );
   const minPriced = spec.minPriced || 0.98;
-  check('priced companies', priced(rows) >= priced(was) * minPriced, `${priced(rows)} now · ${priced(was)} in HEAD · floor ${Math.floor(priced(was) * minPriced)}`);
+  check('priced companies', priced(rows) >= priced(was) * minPriced,
+    `${priced(rows)} now · ${priced(was)} in HEAD · floor ${Math.floor(priced(was) * minPriced)} (${Math.round(minPriced * 100)}%)`);
   check(
     'companies with a P/E (statement coverage)',
     withPe(rows) >= withPe(was) * 0.85,
