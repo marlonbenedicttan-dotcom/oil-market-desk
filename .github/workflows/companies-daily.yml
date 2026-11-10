@@ -96,6 +96,12 @@ jobs:
       # The source only ever shows the last few years of bars. Keep the sessions that scrolled off.
       - name: Keep every traded session
         run: node scripts/merge-series.mjs us jp kr
+
+      # build-korea stamps its chart store, then the Korea description pass and merge-history rewrite
+      # korea.json; merge-series also restores sessions that scrolled off the vendor. Rebuild last so
+      # the store carries every kept session and its source stamp matches the committed data.
+      - name: Rebuild the chart stores after the final merge
+        run: node scripts/build-chart-store.mjs us jp kr
       - name: Calendar events
         run: node scripts/build-events.mjs
       - name: Re-apply recorded restatements
@@ -117,6 +123,14 @@ jobs:
         run: |
           node scripts/build-regime-seed.mjs
           node scripts/build-risk-seed.mjs
+      - name: Test the data before publishing
+        run: |
+          # A bot push does not trigger the test workflow. Gate the data here so a refresh that
+          # breaks the suite cannot land and turn the next human push red.
+          npm run check:boot
+          npm test
+          # The API test rewrites the deals store; it is not part of the data commit.
+          git checkout -- data/deals-store.json 2>/dev/null || true
       - name: Commit if changed
         run: |
           git config user.name 'github-actions[bot]'

@@ -51,6 +51,14 @@ jobs:
         id: imf
         continue-on-error: true
         run: node scripts/fetch-macro.mjs
+      - name: Test the data before publishing
+        run: |
+          # A bot push does not trigger the test workflow. Gate the data here so a refresh that
+          # breaks the suite cannot land and turn the next human push red.
+          npm run check:boot
+          npm test
+          # The API test rewrites the deals store; it is not part of the data commit.
+          git checkout -- data/deals-store.json 2>/dev/null || true
       - name: Commit if changed
         run: |
           git config user.name 'github-actions[bot]'
