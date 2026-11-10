@@ -5191,7 +5191,7 @@ function jpDividendLadder(c) {
         </div>`).join('')}
         ${d.payoutRatio != null ? `<div class="jp-div-cell"><span class="jp-div-k">PAYOUT</span><span class="jp-div-v">${(d.payoutRatio * 100).toFixed(0)}%</span></div>` : ''}
       </div>
-      <div class="jp-div-note">${d.nextYear != null && d.perShare != null ? `Next-year forecast ${d.growthPct >= 0 ? 'up' : 'down'} ${Math.abs(d.growthPct).toFixed(1)}% versus this year. ` : ''}“f” = company forecast, not a consensus. Interim and year-end are the periods the company reports; a quarterly payer shows Q1–Q3.</div>
+      <div class="jp-div-note">${forecast.length ? `Current forecast: ${forecast.map((p) => `${esc(p.label)} ¥${p.value}`).join(' · ')}. ` : ''}${d.nextYear != null && d.perShare != null ? `Next-year forecast ${d.growthPct >= 0 ? 'up' : 'down'} ${Math.abs(d.growthPct).toFixed(1)}% versus this year. ` : ''}“f” = company forecast, not a consensus. Interim and year-end are the periods the company reports; a quarterly payer shows Q1–Q3.</div>
     </div>`;
 }
 
