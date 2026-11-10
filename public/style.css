@@ -1146,8 +1146,17 @@ button.deal-sec-tile:hover { background: #10151b; }
 .co-sub { font-size: 10px; color: var(--dim); letter-spacing: .5px; text-transform: uppercase; margin-top: 2px; }
 /* Four tiles to a row (two on a phone), and the last row is never short: the tiles stretch to fill
    whatever is left, so there is no empty cell to frame and no shade to explain. */
+/* Section captions: the grid answers five questions, not twenty-three equal cards. */
+/* Section caption. Named .co-sect, not .co-band: .co-band is the valuation range strip further down,
+   and sharing the name made every caption inherit its border-bottom — the extra rule under each one. */
+.co-sect { padding: 13px 12px 3px; font-size: 10px; font-weight: 700; letter-spacing: 1.8px;
+  color: #c9d4df; text-transform: uppercase; }
+.co-sect::before { content: ''; display: inline-block; width: 2px; height: 9px; background: var(--amber);
+  margin-right: 8px; vertical-align: -1px; }
+.co-v.na { color: var(--dim); font-weight: 600; }
 .co-stats { display: flex; flex-wrap: wrap; gap: 1px; background: var(--line); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
 .co-stat { flex: 1 1 20%; min-width: 0; background: #0c0f13; padding: 10px 12px; }
+.co-sect + .co-stats { border-top: 0; }
 .co-k { display: block; font-size: 8.5px; letter-spacing: 1px; color: var(--dim); text-transform: uppercase; }
 .co-v { display: block; font-size: 18px; font-weight: 800; margin-top: 3px; font-variant-numeric: tabular-nums; }
 .co-v.pos { color: var(--green); } .co-v.neg { color: var(--red); }
