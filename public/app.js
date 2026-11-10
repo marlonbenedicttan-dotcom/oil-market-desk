@@ -5624,8 +5624,22 @@ function coMatrixInner() {
   const latestPeriod = periods.length ? periods[periods.length - 1].date : null;
   const latestQ = Math.max(...Object.keys(groups.get(years[0])).map(Number));
   const prevYear = (yi) => (years[yi + 1] != null ? years[yi + 1] : null);
+  // A fiscal Q4 is not calendar Q4. Read the month that quarter normally ends in from the actual
+  // period dates and put it on the row label: Apple Q4 · Sep, Microsoft Q4 · Jun, Walmart Q4 · Jan.
+  const monthName = (m) => ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][m - 1] || '';
+  const rowMonth = (q) => {
+    const counts = {};
+    for (const y of years) {
+      const d = groups.get(y)?.[q]?.date;
+      if (!d) continue;
+      const m = Number(String(d).slice(5, 7));
+      if (m) counts[m] = (counts[m] || 0) + 1;
+    }
+    const best = Object.entries(counts).sort((a, b) => b[1] - a[1])[0];
+    return best ? monthName(Number(best[0])) : '';
+  };
   const table = `<div class="co-matrix-scroll" id="co-matrix-scroll"><table class="co-matrix-table"><thead><tr><th>Period</th>${years.map((y) => `<th><span>${y}</span><small>${complete(y) ? esc(endLabel(y)) : `through ${esc(endLabel(y))}`}</small>${complete(y) ? '' : '<em class="qpartial">partial</em>'}</th>`).join('')}</tr></thead><tbody>`
-    + labels.map((label, idx) => `<tr><td>${label}</td>${years.map((y, yi) => {
+    + labels.map((label, idx) => `<tr><td>${label}${rowMonth(idx + 1) ? `<small class="qmonth">${rowMonth(idx + 1)}</small>` : ''}</td>${years.map((y, yi) => {
       const g = groups.get(y)[idx + 1];
       const v = g?.[metric];
       const pv = years[yi + 1] != null ? groups.get(years[yi + 1])[idx + 1]?.[metric] : null;
