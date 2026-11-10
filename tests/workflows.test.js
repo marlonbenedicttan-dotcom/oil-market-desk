@@ -87,10 +87,17 @@ test('the Brazil commit stages every artifact the build writes', () => {
   assert.match(y, /brazil-themes\.json|data\/brazil\*/, 'the themes artifact is not staged');
 });
 
-test('every market workflow carries forward companies a partial source omitted', () => {
-  for (const [file, id] of [['hongkong-daily.yml', 'hk'], ['australia-daily.yml', 'au'], ['india-daily.yml', 'in'], ['indonesia-daily.yml', 'id'], ['brazil-daily.yml', 'br'], ['south-africa-daily.yml', 'za']]) {
+test('every market carries forward companies a partial source omitted', () => {
+  // Hong Kong, India, Indonesia, Brazil and South Africa do it after the build, before the guard.
+  for (const [file, id] of [['hongkong-daily.yml', 'hk'], ['india-daily.yml', 'in'], ['indonesia-daily.yml', 'id'], ['brazil-daily.yml', 'br'], ['south-africa-daily.yml', 'za']]) {
     assert.match(wf(file), new RegExp(`merge-market-refresh\\.mjs ${id}`), `${file} would publish a shrunken market`);
   }
+  // Australia carries inside the build, before the totals and list are computed: a post-build append
+  // made the market cap and chart series disagree and failed the full audit.
+  assert.match(readFileSync(join(ROOT, 'scripts', 'build-australia.mjs'), 'utf8'), /carried forward from the previous dataset/,
+    'Australia lost its in-build carry');
+  assert.doesNotMatch(wf('australia-daily.yml'), /merge-market-refresh\.mjs au/,
+    'Australia reintroduced a post-build append');
 });
 
 test('Render runs native Node and waits for the checks before deploying', () => {
