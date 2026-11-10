@@ -1165,7 +1165,12 @@ button.deal-sec-tile:hover { background: #10151b; }
 @media (max-width: 640px) {
   .co-row { grid-template-columns: 30px 1fr 86px; }
   .co-mar { display: none; }
-  .co-stat { flex-basis: 40%; }
+  /* Two cards to a row on a phone, and tighter: a 23-card grid was 3,400px of scroll before the chart. */
+  .co-stat { flex-basis: 40%; padding: 9px 10px; }
+  .co-v { font-size: 16px; }
+  .co-k { font-size: 8px; letter-spacing: .8px; }
+  /* A band with an odd number of cards ends on one wide card instead of stretching a half-width gap. */
+  .co-sect { padding: 11px 10px 2px; font-size: 9.5px; letter-spacing: 1.6px; }
 }
 
 /* Company page: price chart + five-year table. */
