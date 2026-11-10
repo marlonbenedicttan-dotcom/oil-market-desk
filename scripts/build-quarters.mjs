@@ -171,7 +171,9 @@ let built = 0;
 let skipped = 0;
 for (const c of todo) {
   const lastQuarter = (c.quarters || []).slice(-1)[0]?.end || null;
-  const stale = STALE && c.lastFiling?.period && (!lastQuarter || c.lastFiling.period > lastQuarter);
+  // A quarter feed behind the latest filing is stale whether or not the caller passed --stale.
+  // Refreshing only on the flag let JCI sit on a 2016 revenue tag for years.
+  const stale = STALE || (c.lastFiling?.period && (!lastQuarter || c.lastFiling.period > lastQuarter));
   let rev = newestSeries(await Promise.all(REVENUE.map(async (tag) => ({ tag, rows: quarterRows(await conceptUnits(c.cik, tag, stale)) }))));
   // The per-concept endpoint is empty for some CIKs; fall back to the full index, caching the series
   // so a rebuild does not re-download a 15 MB document.
@@ -215,7 +217,7 @@ for (const c of todo) {
   };
   const mergeRevenue = (cands) => mergeRaw(cands.filter(({ tag }) => legitRevenue(tag)));
   let revMap = mergeRevenue(revCandidates);
-  if (revMap.size < 4) {
+  if (revMap.size < 4 || stale) {
     const broad = await factsRevenue(c.cik, stale);
     if (broad) {
       const extra = Object.entries(broad).map(([tag, rows]) => ({ tag, rows }));
