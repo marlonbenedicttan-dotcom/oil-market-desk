@@ -577,9 +577,13 @@ const covered = universe.filter((c) => !c.noPrev && hasStatements(c) && hasCap(c
 const dropped = universe.filter((c) => !c.throttled && !c.broken && !c.stale && !c.noPrev && !hasStatements(c)).map((c) => ({ code: c.code, name: c.name }));
 const noCap = universe.filter((c) => !c.throttled && !c.broken && !c.stale && !c.noPrev && hasStatements(c) && !hasCap(c)).map((c) => ({ code: c.code, name: c.name }));
 const noPrice = universe.filter((c) => !c.throttled && !c.broken && !c.stale && !c.noPrev && hasStatements(c) && hasCap(c) && !(c.price > 0)).map((c) => ({ code: c.code, name: c.name }));
+// A new line in the exchange list has no cached statements in a --skip-fin rebuild. It must not vanish
+// silently: the test that guards the foreign-secondary lens reads this list.
+const noPrev = universe.filter((c) => c.noPrev).map((c) => ({ code: c.code, name: c.name }));
 if (dropped.length) console.log(`  ${dropped.length} listed companies without a statement page`);
 if (noCap.length) console.log(`  ${noCap.length} companies without a market cap — excluded rather than estimated`);
 if (noPrice.length) console.log(`  ${noPrice.length} companies without a price`);
+if (noPrev.length) console.log(`  ${noPrev.length} new listings without cached statements — kept on the next full run`);
 if (throttled.length) console.log(`  ${throttled.length} companies throttled this run — rerun to fill them`);
 
 // --- current shares --------------------------------------------------------------------------------
@@ -766,6 +770,8 @@ const audit = {
   noCap,
   withoutPrice: noPrice.length,
   noPrice: noPrice.slice(0, 40),
+  noPrev: noPrev.length,
+  noPrevCodes: noPrev.slice(0, 40),
   throttled: throttled.length,
   broken: broken.length,
   brokenCodes: broken.map((c) => ({ code: c.code, name: c.name })),

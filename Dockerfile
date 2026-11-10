@@ -22,5 +22,8 @@ COPY --from=client /build/app.min.js ./public/app.min.js
 COPY --from=client /build/style.min.css ./public/style.min.css
 COPY data ./data
 COPY scripts ./scripts
+# A missing named export or a bad top-level import builds fine and dies on the first request. Boot the
+# server here, with the warmers off, so that class of commit fails the build instead of the deploy.
+RUN npm run check:boot
 EXPOSE 7860
 CMD ["node", "server.js"]

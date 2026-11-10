@@ -18,6 +18,9 @@ doc that matches your task:
 **Environment**
 - Node lives at `~/.local/node/bin` — run `export PATH="$HOME/.local/node/bin:$PATH"` first.
 - `npm start` → http://localhost:4173 · `npm test` → must stay green.
+- `npm run check:boot` boots the server once with the warmers off. The Docker build and the pre-push
+  hook run it, so a missing export or a bad import cannot reach Render. Enable the hook with
+  `npm run prepare` (sets `core.hooksPath=.githooks`) once per clone.
 - Google Chrome is installed: you can verify layout and behaviour **headlessly**
   (Chrome `--headless=new` + the DevTools protocol) at **390×844** and **1440×900**. That is how the
   mobile/desktop checks here were done — use it instead of guessing.

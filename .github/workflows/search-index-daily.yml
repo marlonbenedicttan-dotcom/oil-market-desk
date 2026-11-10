@@ -46,7 +46,7 @@ jobs:
             git commit -m "chore: rebuild global search index ($(date -u +%Y-%m-%d))"
             pushed=0
             for i in 1 2 3 4 5; do
-              if git pull --rebase -X theirs origin "${{ github.ref_name }}" && git push origin "HEAD:${{ github.ref_name }}"; then pushed=1; break; fi
+              if git pull --rebase --autostash -X theirs origin "${{ github.ref_name }}" && git push origin "HEAD:${{ github.ref_name }}"; then pushed=1; break; fi
               echo "push rejected (attempt $i) — rebasing and retrying"; sleep $((i * 5))
             done
             [ "$pushed" = "1" ] || { echo 'could not push after 5 attempts'; exit 1; }

@@ -17,15 +17,16 @@ const MARKET = process.env.MARKET_URL || 'https://oil-market-desk.onrender.com';
 const DAY = 864e5;
 const now = Date.now();
 
-// Hours a dataset may lag before it counts as stale. Each is two refreshes of its own cadence: the
-// market files rebuild daily and the valuation history weekly. Hong Kong and Australia get 84h because
-// their jobs skip the weekend: a Friday build read on Monday afternoon is 72h old, and a holiday Monday
-// makes it later still. The two upstream snapshots are checked below on content, not on age.
+// Hours a dataset may lag before it counts as stale. Each limit is the longest scheduled gap plus a
+// session: companies-daily runs Tue–Sat 08:00 UTC, so Saturday→Tuesday is 96h; Taiwan runs Mon–Fri
+// (72h) and the Hong Kong/Australia/India/Indonesia/Brazil/South Africa jobs run Mon–Fri (72h). A flat
+// 36h was reporting every scheduled weekend gap as a stopped job. The dedicated check still catches a
+// genuinely missed run: a Tuesday failure leaves Wednesday >108h old.
 const DATASETS = [
-  ['US prices & fundamentals', 'companies.json', 36],
-  ['Japan', 'japan.json', 36],
-  ['Korea', 'korea.json', 36],
-  ['Taiwan', 'taiwan.json', 36],
+  ['US prices & fundamentals', 'companies.json', 108],
+  ['Japan', 'japan.json', 108],
+  ['Korea', 'korea.json', 108],
+  ['Taiwan', 'taiwan.json', 84],
   ['Hong Kong', 'hongkong.json', 84],
   ['Australia', 'australia.json', 84],
   ['India', 'india.json', 84],
@@ -33,7 +34,7 @@ const DATASETS = [
   ['Brazil', 'brazil.json', 84],
   ['South Africa', 'southafrica.json', 84],
   ['US filing tracker', 'filings-state.json', 36],
-  ['Calendar events', 'events.json', 48],
+  ['Calendar events', 'events.json', 108],
   ['Valuation history', 'valuation.json', 24 * 10],
 ];
 

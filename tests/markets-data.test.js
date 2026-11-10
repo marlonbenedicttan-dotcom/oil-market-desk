@@ -71,7 +71,10 @@ test('prices are current and not a half-finished refresh', () => {
     const [modal, modalCount] = ranked[0];
     const spread = ranked.map(([d, n]) => `${d}×${n}`).join(' ');
     const age = (Date.now() - Date.parse(modal)) / 864e5;
-    assert.ok(age <= 4, `${label}: built on ${modal}, ${age.toFixed(1)} days old — ${spread}`);
+    // The refresh runs Tue–Sat (companies-daily). A Friday close read on Tuesday morning is ~4.2 days
+    // old, so a 4-day gate failed every Tuesday before the 08:00 UTC run. Five days still catches a
+    // refresh that has actually stopped; the stricter calendar check lives in scripts/check-freshness.
+    assert.ok(age <= 5, `${label}: built on ${modal}, ${age.toFixed(1)} days old — ${spread}`);
     assert.ok(modalCount / days.length >= 0.5, `${label}: no session dominates — ${spread}`);
     // One day apart is the rollover. Further back is a straggler, and a real cohort of them means the
     // refresh stopped halfway.

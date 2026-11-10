@@ -7,6 +7,17 @@ services:
     plan: free             # free tier (sleeps after ~15 min idle, wakes on visit in 20-30s)
                            # → keep it awake: scripts/keepalive.sh, or a free uptime monitor hitting /health
     autoDeploy: true
+    # Deploy churn. A push burst (several agent commits in a few minutes) makes Render start a
+    # deploy per commit; with the workspace's Overlapping Deploy Policy set to Override the older
+    # ones are cancelled and the dashboard fills with "failed" deploys while the site is fine. Set
+    # Workspace Settings → Overlapping Deploy Policy → Wait. It is a workspace setting, not a
+    # blueprint field, so it cannot live here. Docs, tests and workflow files do not change the
+    # running service, so they no longer trigger a build at all.
+    buildFilter:
+      ignoredPaths:
+        - "**/*.md"
+        - "tests/**"
+        - ".github/**"
     # /health is deliberately public even with AUTH_USER/AUTH_PASS set: Render probes this path to
     # decide a deploy is live, and a 401 from a password-protected "/" would mark every deploy failed.
     healthCheckPath: /health

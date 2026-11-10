@@ -66,14 +66,19 @@ jobs:
       # filling the statement cache is exactly what the script asks a human to do; do it here.
       - name: Refuse a collapsed build
         run: |
+          # The exchange posts the quotation report in stages. Re-read it after 5 and then 20 minutes;
+          # a single 5-minute retry still read a half-written report on 2026-11-09 and failed the job.
           if node scripts/audit-market-refresh.mjs hk; then exit 0; fi
-          echo '::warning::collapsed build — waiting 5 minutes and rebuilding once'
-          sleep 300
-          rm -f "data/cache/hkex/daily-$(date -u +%F).json"
-          npm run refresh:hongkong
-          node scripts/merge-history.mjs hk
-          node scripts/merge-series.mjs hk
-          node scripts/audit-market-refresh.mjs hk
+          for wait in 300 1200; do
+            echo "::warning::collapsed build — waiting ${wait}s and rebuilding"
+            sleep "$wait"
+            rm -f "data/cache/hkex/daily-$(date -u +%F).json"
+            npm run refresh:hongkong
+            node scripts/merge-history.mjs hk
+            node scripts/merge-series.mjs hk
+            if node scripts/audit-market-refresh.mjs hk; then exit 0; fi
+          done
+          exit 1
       - name: Audit the dataset
         run: npm run audit:hongkong
       - name: Commit if changed
@@ -88,7 +93,7 @@ jobs:
             # Another push (a human commit, or the US/Taiwan job) can land while this runs.
             pushed=0
             for i in 1 2 3 4 5; do
-              if git pull --rebase -X theirs origin main && git push; then pushed=1; break; fi
+              if git pull --rebase --autostash -X theirs origin main && git push; then pushed=1; break; fi
               echo "push rejected (attempt $i) — rebasing and retrying"; sleep $((i * 5))
             done
             [ "$pushed" = "1" ] || { echo 'could not push after 5 attempts'; exit 1; }

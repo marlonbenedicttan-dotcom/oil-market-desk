@@ -118,7 +118,7 @@ jobs:
             # onto it and retry instead of failing the whole run on a non-fast-forward.
             pushed=0
             for i in 1 2 3 4 5; do
-              if git pull --rebase -X theirs origin main && git push; then pushed=1; break; fi
+              if git pull --rebase --autostash -X theirs origin main && git push; then pushed=1; break; fi
               echo "push rejected (attempt $i) — rebasing and retrying"; sleep $((i * 5))
             done
             [ "$pushed" = "1" ] || { echo 'could not push after 5 attempts'; exit 1; }

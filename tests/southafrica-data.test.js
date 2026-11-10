@@ -25,7 +25,10 @@ test('foreign-secondary lines are flagged and sourced, the exclusions are out', 
   const primary = za.companies.filter((c) => !c.foreignSecondary);
   const secondary = za.companies.filter((c) => c.foreignSecondary);
   assert.ok(secondary.length >= 20, `only ${secondary.length} secondary lines`);
-  for (const code of ['CFR', 'PRX', 'ANH', 'ANG', 'BTI', 'GLN', 'N91', 'BYI', 'CNP', 'MCZ', 'EPS']) {
+  // EPS (Eastern Platinum) is in the exchange snapshot's secondary map, but the vendor serves no
+  // current statement page for its TSX line, so the build drops it instead of inventing a ratio.
+  // The count assertion below still requires the rest of the foreign-secondary lens.
+  for (const code of ['CFR', 'PRX', 'ANH', 'ANG', 'BTI', 'GLN', 'N91', 'BYI', 'CNP', 'MCZ']) {
     assert.ok(secondary.some((c) => c.code === code), `${code} is missing from the secondary lens`);
   }
   for (const c of secondary) {

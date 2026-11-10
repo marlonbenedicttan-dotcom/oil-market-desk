@@ -1,0 +1,4 @@
+#!/bin/sh
+# A broken import should stop at the laptop, not after Render has built and deployed it.
+# Enable with: npm run prepare   (or: git config core.hooksPath .githooks)
+exec npm run --silent check:boot

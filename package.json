@@ -5,6 +5,8 @@
   "type": "module",
   "scripts": {
     "start": "node --env-file-if-exists=.env server.js",
+    "check:boot": "node scripts/boot-check.mjs",
+    "prepare": "git config core.hooksPath .githooks || true",
     "test": "node --test",
     "search:build": "node scripts/build-search-index.mjs",
     "build:japan": "node scripts/build-japan.mjs",
@@ -24,6 +26,7 @@
     "companies:align": "node scripts/align-periods.mjs",
     "companies:deep": "node scripts/audit-deep.mjs",
     "audit:universe": "node scripts/audit-universe.mjs",
+    "audit:matrix": "node scripts/audit-matrix.mjs",
     "audit:freshness": "node scripts/audit-freshness.mjs",
     "audit:deals": "node scripts/audit-deals.mjs",
     "audit:markets": "node scripts/audit-markets.mjs",
