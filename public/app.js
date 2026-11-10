@@ -6085,6 +6085,10 @@ function renderJapanPageBody(c) {
         ${cell(`P/E · ${c.peBasis || 'FY'}`, c.pe != null ? `${c.pe.toFixed(2)}×${c.sectorMedian && c.sectorMedian.pe ? ` <em class="co-approx" title="Median across ${c.sectorMedian.count} companies in ${esc(c.sector)}">sector ${c.sectorMedian.pe.toFixed(1)}×</em>` : ''}` : '—', c.peBasis === 'TTM' ? 'Trailing twelve months, computed by JPX from disclosed earnings' : 'Market cap ÷ fiscal-year net profit')}
         ${cell('P/B', c.pb != null ? `${c.pb.toFixed(2)}×${c.sectorMedian && c.sectorMedian.pb ? ` <em class="co-approx" title="Median across ${c.sectorMedian.count} companies in ${esc(c.sector)}">sector ${c.sectorMedian.pb.toFixed(1)}×</em>` : ''}` : '—', 'Market cap ÷ shareholders\u2019 equity attributable to the parent')}
       </div>`
+    + (c.bands && (c.bands.pe || c.bands.pb) ? `<div class="jp-bands">
+        ${jpBand('P/E', c.pe, c.bands.pe, '×')}
+        ${jpBand('P/B', c.pb, c.bands.pb, '×')}
+      </div>` : '')
     + `<div class="co-sect">Profitability</div><div class="co-stats co-stats-12">
                 ${cell('RETURN ON EQUITY', c.roe != null ? `${c.roe.toFixed(1)}%` : '—', 'Trailing twelve months, from JPX', c.roe >= 0 ? 'pos' : 'neg')}
         ${cell('FORWARD P/E', c.forwardPe != null ? `${c.forwardPe.toFixed(1)}×` : '—', 'Market cap ÷ the company\u2019s own full-year profit forecast — guidance, not consensus')}
@@ -6097,11 +6101,6 @@ function renderJapanPageBody(c) {
         ${cell('ORDINARY PROFIT', c.odp != null ? yen(c.odp) : '—', c.odp != null ? 'Operating profit plus non-operating items — the line Japanese GAAP filers report; IFRS filers do not have it' : 'IFRS filers do not report ordinary profit', c.odp != null ? (c.odp >= 0 ? 'pos' : 'neg') : 'na')}
         ${cell('NET PROFIT', yen(c.np), 'Fiscal year, attributable to owners of the parent', c.np >= 0 ? 'pos' : 'neg')}
       </div>`
-    + jpDividendLadder(c)
-    + (c.bands && (c.bands.pe || c.bands.pb) ? `<div class="jp-bands">
-        ${jpBand('P/E', c.pe, c.bands.pe, '×')}
-        ${jpBand('P/B', c.pb, c.bands.pb, '×')}
-      </div>` : '')
     + `<div class="co-sect">Balance sheet</div><div class="co-stats co-stats-12">
         ${cell('TOTAL ASSETS', yen(c.ta), 'As reported — banks carry their loan book here')}
         ${cell('SHAREHOLDERS\u2019 EQUITY', yen(c.eqLatest), `Attributable to the parent${c.eqLatestPeriod ? `, as of ${c.eqLatestPeriod}` : ''}`)}
@@ -6144,6 +6143,7 @@ function renderJapanPageBody(c) {
           return cell(epsGrowthLabel(c), e.v, e.t, e.cls);
         })()}
       </div>`
+    + jpDividendLadder(c)
     + `<div class="co-ranges">
         <span class="co-cmp-l">COMPARE</span><input class="co-cmp" id="jp-cmp" placeholder="company name, e.g. toyota" value="${esc(cmpCode(jpCompare))}" autocomplete="off">
         <button class="co-cmp-clear${jpCompare ? '' : ' hidden'}" id="jp-cmp-clear" data-cmpclear="jp" type="button" title="Clear comparison" aria-label="Clear comparison">×</button>
