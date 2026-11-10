@@ -3,7 +3,7 @@
 //   node scripts/build-taiwan.mjs                      full run (all listed companies, five years)
 //   node scripts/build-taiwan.mjs --limit=20 --days=400  smoke test
 //   node scripts/build-taiwan.mjs --codes=2330,2454     named companies
-//   node scripts/build-taiwan.mjs --skip-prices         reuse the cached daily files
+//   node scripts/build-taiwan.mjs --skip-prices         reuse a cached series only if it covers the latest TWSE session
 //
 // Sources:
 //   - TWSE OpenAPI: company master, daily all-stock prices, official P/E / P/B / yield.
@@ -20,7 +20,7 @@ import https from 'node:https';
 import { join } from 'node:path';
 import {
   ROOT, TWSE, UA, SA_CACHE, TW_CACHE, readJson, writeJson, getCached, sleep,
-  parseDayCsv, parseSaTable, rowOf, sectorOf, periodFromTitle,
+  parseDayCsv, parseSaTable, rowOf, sectorOf, periodFromTitle, rocToIso,
 } from './twse.mjs';
 import { deriveTaiwan } from './derive-taiwan.mjs';
 
@@ -43,6 +43,7 @@ const DAYS = Number(arg('days', 0)) || YEARS * 365;
 const SKIP_PRICES = flag('skip-prices');
 const SKIP_FIN = flag('skip-fin');
 const FRESH = flag('fresh');
+let OFFICIAL_DATE = null;   // the session the exchange's own all-stock file carries
 const TTL_DAY = 6 * 3600e3;
 const TTL_FIN = 7 * DAY;
 const TTL_Q = Number(arg('quarter-cache-days', 1)) * DAY || DAY;
@@ -87,12 +88,22 @@ console.log(`  ${masterBy.size} listed common stocks`);
 // The TWSE's all-stock file only serves the latest session (older dates are blocked by its WAF), so
 // the universe comes from the official latest close and the history from Yahoo, one request per code.
 const dayAll = JSON.parse(await getCached(TWSE.dayAll, join(TW_CACHE, 'day-all.json'), { ttlMs: 3600e3, fresh: FRESH }));
+// The exchange's file carries its own ROC session date; iso(Date.now()) is not the session. A manual
+// build before the exchange posts the new file used to stamp today's date on yesterday's close.
+const officialDate = rocToIso(dayAll[0] && dayAll[0].Date) || iso(Date.now());
+OFFICIAL_DATE = officialDate;
 const closeBy = new Map(dayAll.map((d) => [d.Code, Number(d.ClosingPrice)]));
+const changeBy = new Map(dayAll.map((d) => [d.Code, Number(d.Change)]));
 const priced = [];
 for (const [code, m] of masterBy) {
   const px = closeBy.get(code);
   if (!(px > 0)) continue;
-  priced.push({ ...m, price: px, priceDate: iso(Date.now()), marketCap: px * m.shares });
+  const ch = changeBy.get(code);
+  priced.push({
+    ...m, price: px, priceDate: officialDate,
+    officialPrice: px, officialDate, officialChange: Number.isFinite(ch) ? ch : null,
+    marketCap: px * m.shares,
+  });
 }
 priced.sort((a, b) => b.marketCap - a.marketCap);
 let universe = CODES.length ? priced.filter((c) => CODES.includes(c.code)) : (LIMIT ? priced.slice(0, LIMIT) : priced);
@@ -141,10 +152,12 @@ async function yahooPrice(code) {
   if (existsSync(f)) {
     try {
       const hit = JSON.parse(readFileSync(f, 'utf8'));
-      if (hit.fetched && Date.now() - Date.parse(hit.fetched) < 6 * 3600e3) {
-        const s = hit.text ? JSON.parse(hit.text) : null;
-        if (s) return s;
-      }
+      const s = hit.text ? JSON.parse(hit.text) : null;
+      const last = s && s.length ? s[s.length - 1].d : null;
+      // A cache that predates the exchange's own session is stale however recently it was written:
+      // the Yahoo series sat on 2 Nov for days while TWSE had 9 Nov, and --skip-prices kept it alive.
+      const covers = !OFFICIAL_DATE || (last && last >= OFFICIAL_DATE);
+      if (hit.fetched && Date.now() - Date.parse(hit.fetched) < 6 * 3600e3 && covers) return s;
     } catch { /* refetch */ }
   }
   const url = `https://query2.finance.yahoo.com/v8/finance/chart/${code}.TW?range=${YEARS}y&interval=1d`;
@@ -213,47 +226,40 @@ async function priceSeries(code) {
   if (fm && fm.length > 1) return { s: fm, source: 'finmind' };
   return { s: y.length ? y : (await finmindPrice(code)), source: y.length ? 'yahoo' : 'finmind' };
 }
-if (!SKIP_PRICES) {
-  console.log(`prices… ${universe.length} codes, ${YEARS}y daily (Yahoo, FinMind fallback)`);
-  let done = 0;
-  await pool(universe, 2, async (c) => {
-    const got = await priceSeries(c.code);
-    if (got.s.length) {
-      // Never chart grey-market or pre-listing prices: the exchange master's listing date is the start.
-      const start = listedIso(c.listed);
-      const base = start ? got.s.filter((p) => p.d >= start) : got.s;
-      const clean = sanitizeSeries(base.length > 1 ? base : got.s);
-      c.series = clean.s;
-      c.priceSource = got.source;
-      c.priceAdjusted = clean.adjustments || 0;
-    }
-    if (++done % 100 === 0) console.log(`  ${done}/${universe.length} codes`);
-    await sleep(180);
-  });
-} else {
-  for (const c of universe) {
-    try {
-      const f = join(YH_CACHE, `${c.code}.json`);
-      if (existsSync(f)) {
-        const s = JSON.parse(JSON.parse(readFileSync(f, 'utf8')).text);
-        if (s && s.length > 1) {
-          const start = listedIso(c.listed);
-          const base = start ? s.filter((p) => p.d >= start) : s;
-          const clean = sanitizeSeries(base.length > 1 ? base : s);
-          c.series = clean.s; c.priceSource = 'yahoo'; c.priceAdjusted = clean.adjustments || 0;
-          continue;
-        }
-      }
-    } catch { /* fall through */ }
-    const fm = cachedFinmind(c.code);
-    if (fm && fm.length > 1) { c.series = fm; c.priceSource = 'finmind'; }
+// `--skip-prices` still reuses a cached series, but only when it covers the exchange's session. A stale
+// cache is refetched (Yahoo then FinMind); if both fail, the official close below is the fallback.
+console.log(`prices… ${universe.length} codes, ${YEARS}y daily (Yahoo, FinMind fallback)`);
+let done = 0;
+await pool(universe, 2, async (c) => {
+  const got = await priceSeries(c.code);
+  if (got.s.length) {
+    // Never chart grey-market or pre-listing prices: the exchange master's listing date is the start.
+    const start = listedIso(c.listed);
+    const base = start ? got.s.filter((p) => p.d >= start) : got.s;
+    const clean = sanitizeSeries(base.length > 1 ? base : got.s);
+    c.series = clean.s;
+    c.priceSource = got.source;
+    c.priceAdjusted = clean.adjustments || 0;
   }
-}
+  if (++done % 100 === 0) console.log(`  ${done}/${universe.length} codes`);
+  await sleep(180);
+});
 for (const c of universe) {
-  if (!c.series || !c.series.length) c.series = [{ d: c.priceDate, c: c.price }];
+  if (!c.series || !c.series.length) c.series = [{ d: c.officialDate || c.priceDate, c: c.officialPrice || c.price }];
   const last = c.series[c.series.length - 1];
-  c.price = last.c;
-  c.priceDate = last.d;
+  const offPx = c.officialPrice, offDate = c.officialDate;
+  if (offPx > 0 && offDate && (!last || last.d < offDate)) {
+    // The exchange has a session the cached Yahoo series does not. Append it when the move is plausible
+    // (Taiwan's ±10% limit makes a >25% gap a split, not a daily move) and publish the exchange close.
+    const lastPx = last && last.c > 0 ? last.c : null;
+    const ratio = lastPx ? offPx / lastPx : 1;
+    if (!lastPx || (ratio > 0.75 && ratio < 1.25)) c.series.push({ d: offDate, c: offPx });
+    c.price = offPx; c.priceDate = offDate; c.priceSource = 'twse';
+  } else if (offPx > 0 && offDate && last && last.d === offDate) {
+    last.c = offPx; c.price = offPx; c.priceDate = offDate; c.priceSource = 'twse';
+  } else {
+    c.price = last.c; c.priceDate = last.d;
+  }
   c.marketCap = c.price * c.shares;
 }
 console.log(`  ${universe.filter((c) => c.series.length > 1).length} codes with a history`);
@@ -265,7 +271,12 @@ for (const c of universe) {
   const last = s[s.length - 1], prev = prevOf(s, s.length - 1);
   const six = pointOnOrBefore(s, iso(Date.parse(last.d) - 182 * DAY));
   const jan = s.find((p) => p.d >= `${last.d.slice(0, 4)}-01-01`);
-  c.chg1d = prev ? +(((last.c / prev.c) - 1) * 100).toFixed(2) : null;
+  // The exchange's Change is the official one-day move. Use it when the headline came from TWSE; the
+  // cached series may have a multi-day hole, and its previous point would mislabel that as one day.
+  const officialPrev = c.priceSource === 'twse' && c.officialChange != null ? c.price - c.officialChange : null;
+  c.chg1d = officialPrev > 0
+    ? +((c.officialChange / officialPrev) * 100).toFixed(2)
+    : (prev ? +(((last.c / prev.c) - 1) * 100).toFixed(2) : null);
   c.chg6m = six ? +(((last.c / six.c) - 1) * 100).toFixed(2) : null;
   c.chgYtd = jan ? +(((last.c / jan.c) - 1) * 100).toFixed(2) : null;
   const ye = {};
