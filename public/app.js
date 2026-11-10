@@ -9472,18 +9472,27 @@ async function pollQuotes() {
         else if (el.dataset.qkind === 'homerow') patchQuoteHomeRow(el, ref, q);
       }
     }
-    // Screener filter bar: keep the committed base date and mark that the rows now carry live quotes.
-    if (Object.keys(qs).length && !document.querySelector('.co-live-badge')) {
-      const asof = document.querySelector('.co-asof');
-      if (asof) {
-        // The date in the bar is the committed base, not the quote time. Say "base" once a live badge
-        // sits beside it, so "prices as of 06 Nov" cannot be read as the live price's date.
-        asof.textContent = asof.textContent.replace(/^prices as of /i, 'base ').replace(/^as of /i, 'base ');
-        const badge = document.createElement('span');
-        badge.className = 'co-live-badge';
-        badge.textContent = 'LIVE';
-        badge.title = 'Prices and price-derived ratios are updating from Yahoo quotes';
-        asof.after(badge);
+    // Screener filter bar: keep the committed base date and mark whether the rows are streaming or
+    // showing the last session's close. A closed market must not wear a LIVE badge.
+    if (Object.keys(qs).length) {
+      const fresh = Object.values(qs).some((q) => q.time && Date.now() - Date.parse(q.time) < 120000);
+      let badge = document.querySelector('.co-live-badge');
+      if (!badge) {
+        const asof = document.querySelector('.co-asof');
+        if (asof) {
+          // The date in the bar is the committed base, not the quote time. Say "base" once a badge
+          // sits beside it, so "prices as of 06 Nov" cannot be read as the live price's date.
+          asof.textContent = asof.textContent.replace(/^prices as of /i, 'base ').replace(/^as of /i, 'base ');
+          badge = document.createElement('span');
+          badge.className = 'co-live-badge';
+          asof.after(badge);
+        }
+      }
+      if (badge) {
+        badge.textContent = fresh ? 'LIVE' : 'EOD';
+        badge.title = fresh
+          ? 'Prices and price-derived ratios are updating from Yahoo quotes'
+          : 'The market is closed; these are the last session’s quotes';
       }
     }
   } catch { /* the committed close stays on screen */ }
