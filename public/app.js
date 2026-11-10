@@ -9476,6 +9476,9 @@ async function pollQuotes() {
     if (Object.keys(qs).length && !document.querySelector('.co-live-badge')) {
       const asof = document.querySelector('.co-asof');
       if (asof) {
+        // The date in the bar is the committed base, not the quote time. Say "base" once a live badge
+        // sits beside it, so "prices as of 06 Nov" cannot be read as the live price's date.
+        asof.textContent = asof.textContent.replace(/^prices as of /i, 'base ').replace(/^as of /i, 'base ');
         const badge = document.createElement('span');
         badge.className = 'co-live-badge';
         badge.textContent = 'LIVE';
