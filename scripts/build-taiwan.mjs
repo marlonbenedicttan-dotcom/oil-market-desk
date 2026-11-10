@@ -271,9 +271,13 @@ for (const c of universe) {
   const last = s[s.length - 1], prev = prevOf(s, s.length - 1);
   const six = pointOnOrBefore(s, iso(Date.parse(last.d) - 182 * DAY));
   const jan = s.find((p) => p.d >= `${last.d.slice(0, 4)}-01-01`);
-  // The exchange's Change is the official one-day move. Use it when the headline came from TWSE; the
-  // cached series may have a multi-day hole, and its previous point would mislabel that as one day.
-  const officialPrev = c.priceSource === 'twse' && c.officialChange != null ? c.price - c.officialChange : null;
+  // The exchange's Change is the official one-day move. Use it when the series has no previous session
+  // to compare with (the cached bar was stale and we appended the official point). If the series does
+  // carry the previous session, trust its own close: TWSE printed Change 0 for 1538 while the series
+  // and the exchange close both said 7.96 -> 7.24.
+  const gapDays = prev ? (Date.parse(last.d) - Date.parse(prev.d)) / DAY : null;
+  const useOfficial = c.priceSource === 'twse' && c.officialChange != null && (!prev || gapDays > 4);
+  const officialPrev = useOfficial ? c.price - c.officialChange : null;
   c.chg1d = officialPrev > 0
     ? +((c.officialChange / officialPrev) * 100).toFixed(2)
     : (prev ? +(((last.c / prev.c) - 1) * 100).toFixed(2) : null);
