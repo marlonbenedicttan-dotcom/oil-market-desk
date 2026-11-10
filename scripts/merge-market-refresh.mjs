@@ -61,6 +61,11 @@ for (const id of ids) {
   for (const c of missing) nowRows.push({ ...c, carried: true, carriedAt: today });
   now.companies = nowRows;
   if (now.market && typeof now.market.companies === 'number') now.market.companies = nowRows.length;
+  // A carried company adds its cap to the market. The audit compares the published total with the
+  // sum of the rows, so leaving the build's pre-carry total makes a valid carry fail (HK 10 Nov).
+  if (now.market && typeof now.market.totalCap === 'number') {
+    now.market.totalCap = nowRows.reduce((sum, c) => sum + (c.marketCap || 0), 0);
+  }
   writeJson(DATA(spec.file), now);
 
   // Detail pages: the builder deletes the directory before writing, so restore the omitted codes.
