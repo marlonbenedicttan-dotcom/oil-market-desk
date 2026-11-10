@@ -212,6 +212,7 @@ async function yahooSeries(symbol, range = '6mo', interval = '1d') {
 const LIVE_QUOTE_TTL_OPEN = 10_000;
 const LIVE_QUOTE_TTL_CLOSED = 5 * 60_000;
 const liveQuotes = new Map();                 // ref -> { v, t }
+let liveQuoteCooldown = 0;
 
 function httpsJson(url, timeout = 6000) {
   return new Promise((resolve, reject) => {
@@ -241,6 +242,11 @@ async function fetchSparkQuotes(symbols) {
 
 async function getLiveQuotes(refs) {
   const out = {};
+  // A 429 means we are the problem: serve the last good quote and stop calling Yahoo for a minute.
+  if (Date.now() < liveQuoteCooldown) {
+    for (const ref of refs) { const hit = liveQuotes.get(ref); if (hit) out[ref] = hit.v; }
+    return out;
+  }
   const want = new Map();                     // Yahoo symbol -> refs
   for (const ref of refs) {
     const parsed = parseRef(ref);
@@ -257,6 +263,9 @@ async function getLiveQuotes(refs) {
   const batches = chunk([...want.keys()], 20);
   const fetched = await Promise.allSettled(batches.map((batch) => fetchSparkQuotes(batch)));
   fetched.forEach((result, i) => {
+    if (result.status === 'rejected' && /429|5\d\d/.test(String(result.reason && result.reason.message || ''))) {
+      liveQuoteCooldown = Date.now() + 60_000;
+    }
     const batch = batches[i];
     const quotes = result.status === 'fulfilled' ? result.value : {};
     for (const symbol of batch) {
