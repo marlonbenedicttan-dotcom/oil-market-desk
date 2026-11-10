@@ -4451,3 +4451,21 @@ list projection and the workflow wiring.
 Higher-tier J-Quants endpoints (`/fins/dividend`, `/fins/details`, margin/short, EDINET, derivatives,
 minute/tick) return **403 on this Light plan** and are deliberately not shown as empty panels.
 The bulk API is available but is a backend download optimisation, not a Japan-section control.
+
+## TTM was two different numbers (2026-11-11)
+
+The profile tile and the matrix TTM could disagree because they read different sources. The matrix's
+top TTM used the last four quarter columns for Korea / India / Indonesia / Brazil / South Africa,
+while the profile tile read `reports.ttm` (the vendor's trailing column); on Indonesia they differed
+for the same quarter-end. Fixed structurally:
+
+- `coMatrixTopTtm` now uses the **same `reports.ttm` figure as the profile tile** for those markets;
+  the matrix no longer creates a second TTM.
+- The matrix's cumulative-quarter heuristic checks the vendor TTM before rewriting a quarter:
+  CSRA's genuine Q3 2026 jump (raw four-quarter sum = vendor TTM) was being turned into a 42.8B
+  "cumulative" quarter; it stays 174.4B.
+- The matrix TTM row now carries its as-of date, so a vendor TTM and a quarter table cannot silently
+  refer to different periods.
+- A cross-market test asserts matrix TTM == profile tile for every company; when the visible quarters
+  do not sum to the vendor's trailing figure, the matrix note says so rather than showing a second
+  official-looking number. `npm test` passes.
