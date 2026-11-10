@@ -130,6 +130,17 @@ test('no region builds a period after today and every grouped cell carries its d
         }
       }
       assert.ok(m.n === 2 || m.n === 4, `${market}/${c.code}: a known period width`);
+      for (const [y, g] of m.groups) {
+        const qs = Object.keys(g).map(Number).sort((a, b) => a - b);
+        for (let i = 0; i < qs.length; i++) {
+          assert.ok(Number.isInteger(qs[i]) && qs[i] >= 1 && qs[i] <= m.n,
+            `${market}/${c.code}: quarter ${qs[i]} is inside 1..${m.n}`);
+          if (i && g[qs[i]].date && g[qs[i - 1]].date) {
+            assert.ok(String(g[qs[i]].date) > String(g[qs[i - 1]].date),
+              `${market}/${c.code}: FY${y} Q${qs[i]} is after Q${qs[i - 1]}`);
+          }
+        }
+      }
     }
   }
   assert.ok(checked > 10000, `the matrix model covers every region (${checked} companies)`);
@@ -149,4 +160,61 @@ test('a ten-year history keeps every year for horizontal scrolling', () => {
   const m = api.coMatrixBuild({ ticker: 'LONG', quarters, series }, { market: 'us' });
   assert.equal(m.years.length, 10);
   assert.deepEqual(m.years, [2025, 2024, 2023, 2022, 2021, 2020, 2019, 2018, 2017, 2016]);
+});
+
+test('a Q4 tagged with the annual total is rebuilt from the annual record', () => {
+  // DINO's 2024 10-K put the full-year revenue in the fourth-quarter context: Q4 printed as
+  // $28.58B while Q1–Q3 were $22.08B. The annual record is the reliable side of that pair.
+  const c = company('DINO');
+  const m = api.coMatrixBuild(c, { market: 'us' });
+  const ann = c.series.find((x) => Number(x.fy) === 2024).revenue;
+  const q4 = m.groups.get(2024)[4].revenue;
+  assert.ok(q4 < ann * 0.6, `Q4 should be a quarter, not the year (got ${q4} vs ${ann})`);
+  assert.ok(Math.abs(sumGroup(m, 2024) - ann) / ann < 0.01, 'the repaired quarters reconcile with the annual');
+  assert.ok(m.repairs.repaired.size > 0, 'the repair is reported');
+});
+
+test('an irregular four-period window does not move the fiscal year end', () => {
+  // Cardinal Health reports to June. Its quarter feed skips two quarters in 2026, so four
+  // entries spanning 15 months once matched the FY2026 total and moved the year-end to September.
+  const c = company('CAH');
+  const m = api.coMatrixBuild(c, { market: 'us' });
+  assert.equal(m.grouping, 'annual');
+  assert.equal(m.groups.get(2026)[1].date, '2025-09-30');
+  assert.equal(m.groups.get(2026)[2].date, '2025-12-31');
+  assert.equal(m.groups.get(2026)[3], undefined);
+  assert.equal(m.groups.get(2026)[4], undefined);
+  assert.equal(m.groups.get(2027)[1].date, '2026-09-30');
+});
+
+test('an early-month quarter stays in its own quarter (no Q2.67)', () => {
+  const c = company('PEP');
+  const m = api.coMatrixBuild(c, { market: 'us' });
+  for (const [, g] of m.groups) {
+    for (const q of Object.keys(g)) assert.ok(Number.isInteger(Number(q)), `quarter ${q} is an integer`);
+  }
+  assert.equal(m.groups.get(2026)[3].date, '2026-09-05');
+});
+
+test('a fiscal-year change gets its own labelled column, not a lost quarter', () => {
+  const c = JSON.parse(readFileSync(join(here, '..', 'data', 'japan-companies', '2871.json'), 'utf8'));
+  const m = api.coMatrixBuild(c, { market: 'jp' });
+  const split = Object.keys(m.yearLabels || {});
+  assert.ok(split.length >= 2, 'both ends of the split year are labelled');
+  assert.match(m.yearLabels['2026'], /Mar/);
+  assert.match(m.yearLabels['2026.12'], /Dec/);
+  assert.equal(m.groups.get(2026)[1].date, '2025-06-30');
+  assert.equal(m.groups.get(2026.12)[1].date, '2026-06-30');
+});
+
+test('an annual-only feed does not invent a half-year matrix', () => {
+  const c = {
+    ticker: 'ANNUAL',
+    quarters: [
+      { end: '2024-12-31', revenue: 100 },
+      { end: '2025-12-31', revenue: 110 },
+    ],
+    series: [{ fy: 2024, revenue: 100 }, { fy: 2025, revenue: 110 }],
+  };
+  assert.equal(api.coMatrixBuild(c, { market: 'us' }), null);
 });

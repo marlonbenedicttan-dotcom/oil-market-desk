@@ -1,7 +1,7 @@
 {
- "generated": "2026-11-07T17:54:20.282Z",
+ "generated": "2026-11-10T04:24:27.144Z",
  "companies": 1506,
- "total": 83,
+ "total": 86,
  "causes": {
   "EV/EBITDA above 100 (check D&A)": [
    {
@@ -119,24 +119,12 @@
     "detail": "545.3"
    },
    {
-    "ticker": "ED",
-    "detail": "327.3"
-   },
-   {
     "ticker": "PANW",
     "detail": "836.7"
    },
    {
-    "ticker": "DD",
-    "detail": "353.1"
-   },
-   {
     "ticker": "AIT",
     "detail": "1033.7"
-   },
-   {
-    "ticker": "DDOG",
-    "detail": "364"
    },
    {
     "ticker": "CHE",
@@ -291,6 +279,40 @@
     "detail": "Form 10 filed, no 10-K"
    }
   ],
+  "equity exceeds assets": [
+   {
+    "ticker": "GOOGL",
+    "detail": "677.5B > 595.3B"
+   },
+   {
+    "ticker": "NVDA",
+    "detail": "229.0B > 206.8B"
+   },
+   {
+    "ticker": "DVN",
+    "detail": "41.7B > 31.6B"
+   },
+   {
+    "ticker": "PLTR",
+    "detail": "9.8B > 8.9B"
+   },
+   {
+    "ticker": "WAT",
+    "detail": "15.2B > 5.1B"
+   },
+   {
+    "ticker": "RDDT",
+    "detail": "3.6B > 3.2B"
+   },
+   {
+    "ticker": "TPL",
+    "detail": "1.8B > 1.6B"
+   },
+   {
+    "ticker": "GOOG",
+    "detail": "677.5B > 595.3B"
+   }
+  ],
   "revenue implausibly small vs assets": [
    {
     "ticker": "STWD",
@@ -339,18 +361,6 @@
    {
     "ticker": "APA",
     "detail": ""
-   }
-  ],
-  "P/B above 100 (check equity)": [
-   {
-    "ticker": "LYV",
-    "detail": "152.2"
-   }
-  ],
-  "revenue looks like a component (profit > revenue)": [
-   {
-    "ticker": "TMP",
-    "detail": "0.08B vs NI 0.16B"
    }
   ]
  }

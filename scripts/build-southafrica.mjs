@@ -51,7 +51,7 @@ const SKIP_FIN = flag('skip-fin');
 const PRICES_ONLY = flag('prices-only');
 const TTL_DAY = 6 * 3600e3;
 const TTL_FIN = 7 * DAY;
-const TTL_Q = 1 * DAY;
+const TTL_Q = Number(arg('quarter-cache-days', 1)) * DAY || DAY;
 const PACE = Number(arg('pace', 150)) || 150;
 
 async function pool(items, limit, fn) {
@@ -369,7 +369,7 @@ function quartersOf(html) {
   const rev = rowOf(t, ['Revenue', 'Total Revenue', 'Operating Revenue']);
   const op = rowOf(t, ['Operating Income']);
   const ni = rowOf(t, ['Net Income to Common', 'Net Income']);
-  const cols = t.cols.filter((c) => /^\d{4}-\d{2}-\d{2}$/.test(c.id)).slice(0, 8).reverse();
+  const cols = t.cols.filter((c) => /^\d{4}-\d{2}-\d{2}$/.test(c.id)).slice(0, 20).reverse();
   return cols.map((c) => ({
     d: c.id, revenue: scale(rev && rev.values[c.id]), operatingProfit: scale(op && op.values[c.id]), netIncome: scale(ni && ni.values[c.id]),
   }));

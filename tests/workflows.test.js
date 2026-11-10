@@ -87,6 +87,20 @@ test('the Brazil commit stages every artifact the build writes', () => {
   assert.match(y, /brazil-themes\.json|data\/brazil\*/, 'the themes artifact is not staged');
 });
 
+test('every market workflow carries forward companies a partial source omitted', () => {
+  for (const [file, id] of [['hongkong-daily.yml', 'hk'], ['australia-daily.yml', 'au'], ['india-daily.yml', 'in'], ['indonesia-daily.yml', 'id'], ['brazil-daily.yml', 'br'], ['south-africa-daily.yml', 'za']]) {
+    assert.match(wf(file), new RegExp(`merge-market-refresh\\.mjs ${id}`), `${file} would publish a shrunken market`);
+  }
+});
+
+test('Render runs native Node and waits for the checks before deploying', () => {
+  const r = readFileSync(join(ROOT, 'render.yaml'), 'utf8');
+  assert.match(r, /^\s*runtime: node$/m, 'Render is not on the native Node runtime');
+  assert.match(r, /^\s*startCommand: "node server\.js"$/m, 'Render lost its start command');
+  assert.match(r, /^\s*autoDeployTrigger: checksPass$/m, 'Render would deploy a commit whose tests failed');
+  assert.doesNotMatch(r, /env:\s*docker/, 'Render still builds the Docker image');
+});
+
 test('the global search index is rebuilt and committed after the market refreshes', () => {
   const y = wf('search-index-daily.yml');
   assert.match(y, /build-search-index\.mjs/, 'the search index build is missing');

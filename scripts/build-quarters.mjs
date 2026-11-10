@@ -33,7 +33,7 @@ const REV_WHITELIST = new Set([
   'RevenueFromContractWithCustomerIncludingAssessedTax', 'SalesRevenueNet', 'SalesRevenueGoodsNet',
   'RegulatedAndUnregulatedOperatingRevenue', 'OperatingRevenues',
 ]);
-const JUNK = /commission|brokerage|segment|product|service|liability|adjustment|gain|loss|interestincome|fee|premium|rental|relatedparty|deferred|costof|^other|proceeds|fairvalue|comprehensive|disposal|newaccounting/i;
+const JUNK = /commission|brokerage|segment|product|service|liability|adjustment|gain|loss|interestincome|fee|premium|rental|relatedparty|deferred|costof|^other|proceeds|fairvalue|comprehensive|disposal|newaccounting|equitymethod|summarizedfinancial/i;
 const isRevenue = (t) => /revenue|sales/i.test(t) && !JUNK.test(t);
 const legitRevenue = (t) => REV_WHITELIST.has(t) || isRevenue(t);
 
@@ -77,6 +77,16 @@ function quarterRows(usd) {
     const k = `${e.start}|${e.end}`;
     const cur = cum.get(k);
     if (!cur || String(e.filed) > String(cur.filed)) cum.set(k, e);
+  }
+  // A 10-K sometimes tags the fourth-quarter context with the full-year value (DINO, NiSource,
+  // AZZ in 2024–25). The quarter then printed as 3–4× a normal one. Drop that impossible row and
+  // let the cumulative differencing below rebuild Q4 = FY − 9M.
+  const annualByEnd = new Map();
+  for (const e of cum.values()) if (dur(e) >= 330 && dur(e) <= 400) annualByEnd.set(e.end, e);
+  for (const [end, e] of [...byEnd]) {
+    const annual = annualByEnd.get(end);
+    if (!annual || e.val == null || annual.val == null) continue;
+    if (Math.abs(annual.val - e.val) <= Math.max(1, Math.abs(e.val) * 1e-6)) byEnd.delete(end);
   }
   const byStart = new Map();
   for (const e of cum.values()) {

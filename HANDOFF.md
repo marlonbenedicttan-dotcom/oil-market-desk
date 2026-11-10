@@ -4365,3 +4365,63 @@ Measured with headless Chrome against the live site (cache disabled; mobile = 39
   466 KB. Desktop: FCP 0.55–0.67 s, LCP 0.68–0.83 s, CLS 0.060, 466 KB. Repeat visit: FCP 0.42 s,
   LCP 0.50 s, boot 0.49 s, CLS 0, 0 KB transferred (service-worker + immutable cache).
 - **Tests:** 537 pass. AU/HK company charts 1Y/5Y verified again on production after the changes.
+
+## Matrix audit: no fractional quarters, repaired Q4s, split fiscal years (2026-11-10)
+
+The quarterly matrix was drawing several classes of visibly wrong rows. The fixes are structural,
+not one-off patches for the named companies:
+
+- **A Q4 tagged with the annual total** (DINO, NiSource, AZZ) printed a quarter 3–4× a normal one.
+  The matrix now detects `Q4 ≈ annual` with Q1–Q3 present, rebuilds Q4 as `annual − Q1−Q3`, and
+  reports the repair. `build-quarters.mjs` also drops the impossible 90-day row before it derives
+  Q4 from the cumulative FY − 9M, so the next rebuild does not recreate it.
+- **Fractional quarters** (FedEx Q2.67, MRZ Q0.33) came from dividing an off-grid month by three.
+  Quarter numbers are now computed from the month after the fiscal year end with inclusive
+  quarter-end buckets; a 52/53-week period that closes on the 1st–7th stays in the quarter it
+  belongs to. Every grouped quarter is an integer in 1..n.
+- **An irregular four-period window** moved Cardinal Health's June year-end to September because the
+  feed skipped two quarters and four entries spanning 15 months still summed near the annual. Window
+  matching now requires the expected 9-month (quarterly) or 6-month (half-year) span.
+- **Fiscal-year changes** (Japan 2871/4331) merged the old and new FY2026 Q1 and lost one. When two
+  fiscal-year ends share a calendar year, the matrix keys and labels them by month (`2026 · Mar`,
+  `2026 · Dec`) instead of one numeric year.
+- **Mixed-frequency feeds** (Hong Kong 0522) were read as half-year because the older gaps outvoted
+  the recent quarterly tail. `coMatrixDetectN` uses the last three gaps and only calls a feed annual
+  when every gap is annual-sized.
+- **Annual-only feeds** no longer print a fake half-year matrix; they return no model and the page
+  says the quarterly split is unavailable.
+- **Duplicate/collision/outlier notes:** 52/53-week duplicates (later filing wins), two periods on
+  one quarter, three-times-median quarters, repaired annual quarters, unreconciled annual records
+  and blank cells are stated in the matrix note instead of being silent.
+
+System: `npm run audit:matrix` / `scripts/audit-matrix.mjs` runs the real model over all 12,700+
+company pages and fails on future periods, fractional/out-of-range quarters, reversed cells and
+hard collisions; warnings cover calendar fallbacks, duplicates, outliers, unreconciled annuals and
+annual-only feeds. `tests/matrix.test.js` adds named regressions for Apple/Cardinal Health/Pepsi/
+DINO/Japan-2871 and an all-region integer/order check.
+
+Known remaining, separate from the matrix code: 52/53-week duplicate period ends (the later filing is
+shown with a note), five US companies that fall back to calendar columns because their annual revenue
+definition differs from the quarterly feed, and the odd one-off quarter that the outlier note calls out.
+
+### 2024 history backfilled and the refresh pipeline made permanent (2026-11-10)
+
+- **Every stockanalysis builder keeps 20 periods, not 8.** India, Indonesia, Taiwan, Brazil, Australia,
+  Hong Kong and South Africa now hold the 2024 quarters the vendor pages already carried. A
+  `--quarter-cache-days=N` flag lets a repair run reuse the warm pages; the daily default stays 1 day.
+- **Korea fetches three years of interims**, so 2024 Q1/H1/Q3 are present (2024 Q4 is the annual report).
+  Korea went from **0 to 1,396** companies with 2024 quarters; India 737/744, Indonesia 802/810,
+  Taiwan 1,084/1,084, Brazil 311/314, South Africa 225/225.
+- **India defaults to the NIFTY Total Market.** A bare `build-india.mjs` used to silently rebuild the
+  NIFTY 500 (744 → 494 companies); the default is now `--universe=total`.
+- **`merge-market-refresh.mjs` carries the last good company, detail page and chart series** when a
+  partial source (HKEX staged report, throttled Yahoo crawl) omits a code. The market cannot shrink,
+  and the fresh data for the codes that did arrive still publishes. Wired into all six market
+  workflows before the audit.
+- **A refresh that cannot publish is deferred, not failed.** The gate restores `data/` from HEAD,
+  prints a warning and exits 0; the next run retries. A red run no longer appears for a source-wide
+  holiday/publication lag.
+- **Render runs native Node** (no Docker build, no `npx esbuild` network fetch, no server boot inside
+  the image) and deploys only when GitHub checks pass (`autoDeployTrigger: checksPass`). One-time
+  workspace setting still recommended: **Overlapping Deploy Policy → Wait**.
+- Verified: `npm test` **575 pass**; matrix audit **0 critical** over 12,735 matrices.

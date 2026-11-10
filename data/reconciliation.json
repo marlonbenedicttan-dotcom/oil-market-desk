@@ -1,14 +1,14 @@
 {
- "generated": "2026-11-10T03:59:18.882Z",
+ "generated": "2026-11-10T04:29:06.927Z",
  "summary": {
   "usable": 1482,
-  "match": 1043,
+  "match": 1042,
   "close": 282,
   "diverge": 146,
-  "diverge-immaterial": 3,
+  "diverge-immaterial": 4,
   "definition": 8,
-  "period-mismatch": 6,
-  "no-nasdaq-data": 18
+  "period-mismatch": 8,
+  "no-nasdaq-data": 16
  },
  "companies": [
   {
@@ -4004,8 +4004,8 @@
   {
    "ticker": "JBL",
    "sector": "Technology",
-   "period": "8/31/2026",
-   "sameYear": true,
+   "period": "8/31/2025",
+   "sameYear": false,
    "our": {
     "revenue": 35954000000,
     "netIncome": 1042000000,
@@ -4016,25 +4016,25 @@
     "shares": 105595267
    },
    "nasdaq": {
-    "revenue": 35954000000,
-    "netIncome": 1042000000,
-    "assets": 27435000000,
-    "equity": 1613000000
+    "revenue": 29802000000,
+    "netIncome": 657000000,
+    "assets": 18543000000,
+    "equity": 1513000000
    },
    "diff": {
-    "revenue": 0,
-    "netIncome": 0,
-    "assets": 0,
-    "equity": 0
+    "revenue": 0.17110752628358458,
+    "netIncome": 0.3694817658349328,
+    "assets": 0.32411153635866596,
+    "equity": 0.06199628022318661
    },
    "abs": {
     "revenue": 35954000000,
     "netIncome": 1042000000,
-    "assets": 0,
-    "equity": 0
+    "assets": 8892000000,
+    "equity": 100000000
    },
-   "worst": 0,
-   "status": "match"
+   "worst": null,
+   "status": "period-mismatch"
   },
   {
    "ticker": "SLB",
@@ -7334,8 +7334,8 @@
   {
    "ticker": "AZO",
    "sector": "Consumer",
-   "period": "8/29/2026",
-   "sameYear": true,
+   "period": "8/30/2025",
+   "sameYear": false,
    "our": {
     "revenue": 20338555000,
     "netIncome": 2572777000,
@@ -7346,25 +7346,25 @@
     "shares": 16567821
    },
    "nasdaq": {
-    "revenue": 20338555000,
-    "netIncome": 2572777000,
-    "assets": 21630510000,
-    "equity": -2502470000
+    "revenue": 18938717000,
+    "netIncome": 2498247000,
+    "assets": 19355324000,
+    "equity": -3414313000
    },
    "diff": {
-    "revenue": 0,
-    "netIncome": 0,
-    "assets": 0,
-    "equity": 0
+    "revenue": 0.06882681685104965,
+    "netIncome": 0.02896869802551873,
+    "assets": 0.10518411262610082,
+    "equity": 0.26706485316372575
    },
    "abs": {
     "revenue": 20338555000,
     "netIncome": 2572777000,
-    "assets": 0,
-    "equity": 0
+    "assets": 2275186000,
+    "equity": 911843000
    },
-   "worst": 0,
-   "status": "match"
+   "worst": null,
+   "status": "period-mismatch"
   },
   {
    "ticker": "CVNA",
@@ -21757,7 +21757,38 @@
   },
   {
    "ticker": "ROKU",
-   "status": "no-nasdaq-data"
+   "sector": "Telecom",
+   "period": "12/31/2025",
+   "sameYear": true,
+   "our": {
+    "revenue": 4737251000,
+    "netIncome": 88361000,
+    "assets": 4433483000,
+    "equity": 2657945000,
+    "marketCap": 23933744207,
+    "price": 160.52,
+    "shares": 150912000
+   },
+   "nasdaq": {
+    "revenue": 4737251000,
+    "netIncome": 88361000,
+    "assets": 4433483000,
+    "equity": 2657945000
+   },
+   "diff": {
+    "revenue": 0,
+    "netIncome": 0,
+    "assets": 0,
+    "equity": 0
+   },
+   "abs": {
+    "revenue": 4737251000,
+    "netIncome": 88361000,
+    "assets": 0,
+    "equity": 0
+   },
+   "worst": 0,
+   "status": "match"
   },
   {
    "ticker": "TKO",
@@ -52058,7 +52089,32 @@
   },
   {
    "ticker": "MSGR",
-   "status": "no-nasdaq-data"
+   "sector": "Consumer",
+   "period": "6/30/2026",
+   "sameYear": true,
+   "our": {
+    "equity": 22965000,
+    "marketCap": 2919320659,
+    "price": 241.16,
+    "shares": 12105327
+   },
+   "nasdaq": {
+    "revenue": 1153822000,
+    "netIncome": 7759000,
+    "assets": 1537652000,
+    "equity": -263296000
+   },
+   "diff": {
+    "revenue": null,
+    "netIncome": null,
+    "assets": null,
+    "equity": 1.0872212263004375
+   },
+   "abs": {
+    "equity": 286261000
+   },
+   "worst": 1.0872212263004375,
+   "status": "diverge-immaterial"
   },
   {
    "ticker": "PFBC",

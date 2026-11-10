@@ -48,7 +48,9 @@ const flag = (k) => process.argv.includes(`--${k}`);
 
 const LIMIT = Number(arg('limit', 0)) || 0;
 const SAMPLE = Number(arg('sample', 0)) || 0;
-const UNIVERSE = arg('universe', 'nifty500');
+// The full NIFTY Total Market is the product universe. NIFTY 500 is a subset; defaulting to it
+// silently shrank the India market from 744 to 494 when someone ran the builder without a flag.
+const UNIVERSE = arg('universe', 'total');
 const UNI = {
   nifty500: { label: 'NIFTY 500', file: 'ind_nifty500list.csv', cache: 'ind_nifty500list.json' },
   microcap: { label: 'NIFTY Microcap 250', file: 'ind_niftymicrocap250_list.csv', cache: 'ind_niftymicrocap250_list.json' },
@@ -64,7 +66,7 @@ const PRICES_ONLY = flag('prices-only');
 
 const TTL_DAY = 6 * 3600e3;
 const TTL_FIN = 7 * DAY;
-const TTL_Q = 1 * DAY;
+const TTL_Q = Number(arg('quarter-cache-days', 1)) * DAY || DAY;
 // stockanalysis is one host for the whole crawl. `--pace` is the pause after each company.
 const PACE = Number(arg('pace', 150)) || 150;
 
@@ -374,7 +376,7 @@ function quartersOf(html) {
   const rev = rowOf(t, ['Revenue', 'Total Revenue', 'Operating Revenue']);
   const op = rowOf(t, ['Operating Income']);
   const ni = rowOf(t, ['Net Income to Common', 'Net Income']);
-  const cols = t.cols.filter((c) => /^\d{4}-\d{2}-\d{2}$/.test(c.id)).slice(0, 8).reverse();
+  const cols = t.cols.filter((c) => /^\d{4}-\d{2}-\d{2}$/.test(c.id)).slice(0, 20).reverse();
   return cols.map((c) => ({
     d: c.id, revenue: scale(rev && rev.values[c.id]), operatingProfit: scale(op && op.values[c.id]), netIncome: scale(ni && ni.values[c.id]),
   }));

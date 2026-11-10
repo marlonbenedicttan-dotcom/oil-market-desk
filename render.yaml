@@ -3,10 +3,18 @@
 services:
   - type: web
     name: oil-market-desk
-    env: docker
+    # Native Node, not Docker: Render checks out the repo and runs `node server.js`. There is no
+    # build step, no `npx esbuild` network fetch and no server boot inside the image build. The client
+    # is served from public/ as source; the data is committed. This removes the whole class of
+    # "build green, deploy red" failures. The Dockerfile is kept for local/other hosts.
+    runtime: node
     plan: free             # free tier (sleeps after ~15 min idle, wakes on visit in 20-30s)
                            # → keep it awake: scripts/keepalive.sh, or a free uptime monitor hitting /health
-    autoDeploy: true
+    buildCommand: "true"   # no build: data and client are committed
+    startCommand: "node server.js"
+    # Deploy only when the branch's GitHub checks pass. A broken commit never reaches production, and
+    # the test workflow (which includes the boot check) becomes the deploy gate.
+    autoDeployTrigger: checksPass
     # Deploy churn. A push burst (several agent commits in a few minutes) makes Render start a
     # deploy per commit; with the workspace's Overlapping Deploy Policy set to Override the older
     # ones are cancelled and the dashboard fills with "failed" deploys while the site is fine. Set

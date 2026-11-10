@@ -279,13 +279,12 @@ const collected = await pool(withPrices, 2, async (c) => {
     const end = (rows.find((r) => r.thstrm_dt) || {}).thstrm_dt || `${y}-12-31`;
     reports.push({ report: 'annual', end: end.slice(0, 10).replace(/\./g, '-'), ...m });
   }
-  // Two years of interims. The current year alone cannot make a TTM: before Q3 is filed there are only
-  // two quarters, and a P/E fell back to the fiscal year. The prior year's Q1/H1/Q3 give Q3 and Q4 (the
-  // annual report is Q4) and the four most recent standalone quarters close the window.
-  // Quarterly filings carry the period NAME but no date field (thstrm_dt is null), so the end date is
-  // derived from the report code: Q1 ends 31 March, H1 30 June, Q3 30 September.
+  // Three years of interims. Two years cannot make a 2024 matrix in 2026; the 2024 Q1/H1/Q3
+  // give the 2024 quarters (Q4 is the annual report), and the latest four standalone quarters
+  // still close the TTM window. Quarterly filings carry the period NAME but no date field
+  // (thstrm_dt is null), so the end date is derived from the report code.
   const QUARTER_END = { q1: '03-31', h1: '06-30', q3: '09-30' };
-  for (const y of [thisYear - 1, thisYear]) {
+  for (const y of [thisYear - 2, thisYear - 1, thisYear]) {
     for (const [k, code] of [['q1', REPORTS.q1], ['h1', REPORTS.h1], ['q3', REPORTS.q3]]) {
       const rows = await statements(c.corp, y, code);
       if (!rows.length) continue;
