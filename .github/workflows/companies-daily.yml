@@ -25,9 +25,9 @@ jobs:
       # A stalled SEC/Nasdaq socket must fail a request, not hold the whole refresh open.
       NODE_OPTIONS: '--import=./scripts/fetch-timeout.mjs'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
-          fetch-depth: 0          # a rebase needs history, not just the tip
+          fetch-depth: 1          # shallow: the rebase fetches the new tip itself
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
