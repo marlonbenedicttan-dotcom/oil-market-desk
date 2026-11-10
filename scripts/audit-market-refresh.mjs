@@ -183,14 +183,18 @@ function run(id) {
   // lines move to the new session, the ones whose Yahoo request failed stay behind.
   const nowPrices = sessionStats(rows);
   const wasPrices = sessionStats(was);
-  const jump = nowPrices.behindShare - wasPrices.behindShare;
+  // The first build after bar dates were introduced has nothing comparable in HEAD: it carries close
+  // dates only, so its "behind" count measures something else and the jump would be an artefact.
+  const comparable = was.some((c) => c && c.priceBar);
+  const jump = comparable ? nowPrices.behindShare - wasPrices.behindShare : 0;
   const partial = nowPrices.behindShare > spec.maxBehind || jump > spec.maxJump;
   check(
     'companies with a bar for the latest session',
     !partial,
     `${nowPrices.onSession}/${nowPrices.total} on ${nowPrices.session} · ${(nowPrices.behindShare * 100).toFixed(1)}% missed`
       + ` · ${(nowPrices.noCloseShare * 100).toFixed(1)}% no close yet`
-      + ` (limit ${(spec.maxBehind * 100).toFixed(0)}%, +${(spec.maxJump * 100).toFixed(0)}pt on HEAD's ${(wasPrices.behindShare * 100).toFixed(1)}%)`,
+      + ` (limit ${(spec.maxBehind * 100).toFixed(0)}%, `
+      + (comparable ? `+${(spec.maxJump * 100).toFixed(0)}pt on HEAD's ${(wasPrices.behindShare * 100).toFixed(1)}%)` : 'first build with bar dates)'),
   );
   check(
     'total market cap',
