@@ -23,6 +23,10 @@ jobs:
       NODE_OPTIONS: '--import=./scripts/fetch-timeout.mjs'
     steps:
       - uses: actions/checkout@v5
+        env:
+          # The job-level preload cannot be resolved until the repo exists; checkout itself runs
+          # before that and would fail with ERR_MODULE_NOT_FOUND.
+          NODE_OPTIONS: ''
         with:
           fetch-depth: 1          # shallow: the rebase fetches the new tip itself
       - uses: actions/setup-node@v4

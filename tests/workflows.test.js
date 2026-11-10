@@ -101,6 +101,13 @@ test('Render runs native Node and waits for the checks before deploying', () => 
   assert.doesNotMatch(r, /env:\s*docker/, 'Render still builds the Docker image');
 });
 
+test('checkout does not preload a repo script before the repo exists', () => {
+  for (const f of ['companies-daily.yml', 'companies-weekly.yml']) {
+    const y = wf(f);
+    assert.match(y, /actions\/checkout@v5[\s\S]{0,300}?NODE_OPTIONS: ''/, `${f} would fail in checkout with ERR_MODULE_NOT_FOUND`);
+  }
+});
+
 test('the global search index is rebuilt and committed after the market refreshes', () => {
   const y = wf('search-index-daily.yml');
   assert.match(y, /build-search-index\.mjs/, 'the search index build is missing');
