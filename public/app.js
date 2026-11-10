@@ -5353,8 +5353,10 @@ function renderJapanScreener(all, d) {
 function jpBand(label, current, b, unit) {
   if (!b || current == null) return '';
   const span = b.max - b.min || 1;
-  const pos = Math.max(0, Math.min(100, ((current - b.min) / span) * 100));
-  const med = Math.max(0, Math.min(100, ((b.median - b.min) / span) * 100));
+  // Inset the usable range: a dot on an exact end spills half its width over the track's edge.
+  const mark = (v) => 2 + Math.max(0, Math.min(100, ((v - b.min) / span) * 100)) * 0.96;
+  const pos = mark(current);
+  const med = mark(b.median);
   return `<div class="jp-band">
       <span class="jp-band-k">${label}</span>
       <span class="jp-band-v">${current.toFixed(2)}${unit}</span>
@@ -11453,9 +11455,12 @@ async function renderCompanyPageBody(el, c, all) {
               const h = c.peHistory;
               const span = Math.max(0.1, h.max - h.min);
               const at = c.pe != null ? Math.max(0, Math.min(100, ((c.pe - h.min) / span) * 100)) : null;
+              // 2%..98% of the track: at an exact end the marker touches the edge and reads as a tick
+              // against the figure beside it rather than a position on the bar.
+              const mark = at == null ? null : 2 + at * 0.96;
               return `<div class="co-band" title="Price at each fiscal year end ÷ that year's EPS. Current P/E is market cap ÷ trailing earnings.">
           <span class="co-band-k">P/E vs ITS OWN 5 YEARS</span>
-          <span class="co-band-track">${at != null ? `<i style="left:${at.toFixed(1)}%"></i>` : ''}</span>
+          <span class="co-band-track">${mark != null ? `<i style="left:${mark.toFixed(1)}%"></i>` : ''}</span>
           <span class="co-band-n">${h.min}–${h.max} · median ${h.median}${h.percentile != null && c.pe != null ? ` · ${h.percentile}th percentile` : ''}</span>
         </div>`;
             })()
