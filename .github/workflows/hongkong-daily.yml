@@ -91,7 +91,18 @@ jobs:
           git checkout -- data/ || true
           exit 0
       - name: Audit the dataset
-        run: npm run audit:hongkong
+        run: |
+          if npm run audit:hongkong; then exit 0; fi
+          # A Yahoo cache can be six hours old while HKEX has already posted today's close, leaving
+          # the company price and its series on different sessions. Clear that cache and rebuild once.
+          echo "::warning::Hong Kong audit failed — clearing the Yahoo price cache and rebuilding once"
+          rm -rf data/cache/hkex/yahoo
+          npm run refresh:hongkong
+          node scripts/merge-history.mjs hk
+          node scripts/merge-series.mjs hk
+          node scripts/merge-market-refresh.mjs hk
+          node scripts/build-chart-store.mjs hk
+          npm run audit:hongkong
       - name: Rebuild the chart store after the final merge
         run: node scripts/build-chart-store.mjs hk
 

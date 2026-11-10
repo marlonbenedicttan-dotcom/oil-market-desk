@@ -4,9 +4,8 @@ name: companies-daily
 # new 10-K or 10-Q. Render auto-deploys on the resulting commit.
 on:
   schedule:
-    # 08:00 UTC Tue–Sat: after the Tokyo (06:00) and Seoul (06:30) closes, so Japan and Korea publish
-    # the same-day close; the prior US session has long settled and its historical close is available.
-    # The old 01:10 slot ran at 10:10 JST, before the Tokyo close, so Japan always shipped yesterday.
+    # 08:00 UTC Tue–Sat: after the Seoul (06:30) close, so Korea publishes the same-day close; the prior
+    # US session has long settled. Japan has its own 07:10 UTC job after the Tokyo close.
     - cron: '0 8 * * 2-6'
   workflow_dispatch: {}
 
@@ -58,23 +57,6 @@ jobs:
           node scripts/build-sector-valuation.mjs
           node scripts/build-price-changes.mjs
           node scripts/build-us-charts.mjs
-      - name: Japan (J-Quants, optional)
-        env:
-          JQUANTS_API_KEY: ${{ secrets.JQUANTS_API_KEY }}
-        run: |
-          if [ -z "$JQUANTS_API_KEY" ]; then echo 'no J-Quants key — skipping Japan'; exit 0; fi
-          node scripts/build-japan.mjs --days=1900
-          # Light-plan extras: weekly investor flows, the exchange calendar and the dividend ladder.
-          # Non-fatal — a missing flow panel must not discard the price rebuild.
-          node scripts/build-japan-flows.mjs || echo 'Japan flows/calendar unavailable — keeping the previous panel'
-          # A newly listed company has no profile yet. Fill it the same night, capped so a throttled
-          # source can never hold up the market — the tail lands on the next run. A normal day is a
-          # no-op: the fetcher skips every company that already has a profile.
-          node scripts/fetch-japan-profiles.mjs --limit=25 || echo 'new-listing profiles: source unavailable, retry tomorrow'
-          node scripts/attach-japan-descriptions.mjs
-          # The description pass runs after build-japan wrote the per-company detail files. Rebuild
-          # them (only changed companies are rewritten) so a new listing's page is not one day behind.
-          node scripts/build-company-details.mjs jp
       - name: Korea (DART, optional)
         env:
           DART_API_KEY: ${{ secrets.DART_API_KEY }}
@@ -95,16 +77,16 @@ jobs:
       # The vendor shows a rolling five-year table. Merge what is already committed so a fiscal year
       # that scrolls off the page stays on the company page — the record grows instead of following.
       - name: Keep every filed period
-        run: node scripts/merge-history.mjs jp kr
+        run: node scripts/merge-history.mjs kr
       # The source only ever shows the last few years of bars. Keep the sessions that scrolled off.
       - name: Keep every traded session
-        run: node scripts/merge-series.mjs us jp kr
+        run: node scripts/merge-series.mjs us kr
 
       # build-korea stamps its chart store, then the Korea description pass and merge-history rewrite
       # korea.json; merge-series also restores sessions that scrolled off the vendor. Rebuild last so
       # the store carries every kept session and its source stamp matches the committed data.
       - name: Rebuild the chart stores after the final merge
-        run: node scripts/build-chart-store.mjs us jp kr
+        run: node scripts/build-chart-store.mjs us kr
       - name: Calendar events
         run: node scripts/build-events.mjs
       - name: Re-apply recorded restatements
@@ -138,7 +120,7 @@ jobs:
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email 'github-actions[bot]@users.noreply.github.com'
-          git add data/companies.json data/us-profiles.json data/japan.json data/japan-list.json data/japan-series.json data/japan-companies data/japan-profiles.json data/korea.json data/korea-list.json data/korea-universe.json data/korea-companies data/korea-profiles.json data/valuation.json data/events.json data/reconciliation.json data/invariants.json data/filings-state.json data/filings-changed.json data/snapshot.json data/us-charts.json data/audit-markets.json data/charts data/regime-seed.json data/risk-seed.json 2>/dev/null || true
+          git add data/companies.json data/us-profiles.json data/korea.json data/korea-list.json data/korea-universe.json data/korea-companies data/korea-profiles.json data/valuation.json data/events.json data/reconciliation.json data/invariants.json data/filings-state.json data/filings-changed.json data/snapshot.json data/us-charts.json data/audit-markets.json data/charts data/regime-seed.json data/risk-seed.json 2>/dev/null || true
           if git diff --staged --quiet; then
             echo 'no data change'
           else

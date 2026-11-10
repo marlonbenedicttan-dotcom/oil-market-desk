@@ -14,12 +14,14 @@ const wf = (f) => readFileSync(join(ROOT, '.github', 'workflows', f), 'utf8');
 
 test('every market workflow still keeps the history it accumulates', () => {
   const cd = wf('companies-daily.yml');
-  assert.match(cd, /merge-history\.mjs jp kr/, 'companies-daily no longer keeps Japanese/Korean periods');
+  assert.match(cd, /merge-history\.mjs kr/, 'companies-daily no longer keeps Korean periods');
   assert.match(cd, /merge-history\.mjs us/, 'companies-daily no longer keeps US quarters');
   assert.match(wf('companies-weekly.yml'), /merge-history\.mjs us/, 'companies-weekly no longer keeps US quarters');
-  assert.match(cd, /merge-series\.mjs us jp kr/, 'companies-daily no longer keeps US/Japan/Korea sessions');
+  assert.match(cd, /merge-series\.mjs us kr/, 'companies-daily no longer keeps US/Korea sessions');
+  assert.match(wf('japan-daily.yml'), /merge-history\.mjs jp/, 'japan-daily no longer keeps Japanese periods');
+  assert.match(wf('japan-daily.yml'), /merge-series\.mjs jp/, 'japan-daily no longer keeps Japanese sessions');
 
-  for (const [file, id] of [['taiwan-daily.yml', 'tw'], ['hongkong-daily.yml', 'hk'], ['australia-daily.yml', 'au'], ['india-daily.yml', 'in'], ['indonesia-daily.yml', 'id'], ['brazil-daily.yml', 'br'], ['south-africa-daily.yml', 'za']]) {
+  for (const [file, id] of [['japan-daily.yml', 'jp'], ['taiwan-daily.yml', 'tw'], ['hongkong-daily.yml', 'hk'], ['australia-daily.yml', 'au'], ['india-daily.yml', 'in'], ['indonesia-daily.yml', 'id'], ['brazil-daily.yml', 'br'], ['south-africa-daily.yml', 'za']]) {
     const y = wf(file);
     assert.match(y, new RegExp(`merge-history\\.mjs ${id}`), `${file} no longer keeps filed periods`);
     assert.match(y, new RegExp(`merge-series\\.mjs ${id}`), `${file} no longer keeps traded sessions`);
@@ -35,14 +37,14 @@ test('the all-markets audit covers Indonesia, Brazil and South Africa deep, and 
 });
 
 test('the new-listing profile fetchers are still wired and capped', () => {
-  const cd = wf('companies-daily.yml');
-  assert.match(cd, /fetch-japan-profiles\.mjs --limit=25/, 'Japan new listings would never get a profile');
-  assert.match(cd, /fetch-korea-descriptions\.mjs --only-missing --limit=25/, 'Korea new listings would never get a description');
+  assert.match(wf('japan-daily.yml'), /fetch-japan-profiles\.mjs --limit=25/, 'Japan new listings would never get a profile');
+  assert.match(wf('companies-daily.yml'), /fetch-korea-descriptions\.mjs --only-missing --limit=25/, 'Korea new listings would never get a description');
 });
 
 test('every market workflow still audits before it commits', () => {
   const audit = {
     'companies-daily.yml': /audit-markets\.mjs/,
+    'japan-daily.yml': /audit-markets\.mjs|audit-calculations\.mjs/,
     'taiwan-daily.yml': /audit-taiwan\.mjs/,
     'hongkong-daily.yml': /audit:hongkong|audit-hongkong\.mjs/,
     'australia-daily.yml': /audit:australia|audit-australia\.mjs/,
@@ -117,7 +119,7 @@ test('checkout does not preload a repo script before the repo exists', () => {
 
 
 test('Japan refreshes its flows, calendar and dividend ladder', () => {
-  assert.match(wf('companies-daily.yml'), /build-japan-flows\.mjs/, 'the Japan flow/calendar step is missing');
+  assert.match(wf('japan-daily.yml'), /build-japan-flows\.mjs/, 'the Japan flow/calendar step is missing');
   assert.match(readFileSync(join(ROOT, 'package.json'), 'utf8'), /build-japan-flows\.mjs/, 'npm run build:japan no longer includes the extra Japan pass');
 });
 test('the global search index is rebuilt and committed after the market refreshes', () => {

@@ -1,0 +1,97 @@
+name: japan-daily
+
+# Tokyo closes at 06:00 UTC (15:00 JST). Run at 07:10 UTC, after the close and before companies-daily,
+# so Japan is current without waiting for the US/Korea job — and a Japan source failure cannot block
+# the US or Korea refresh.
+on:
+  schedule:
+    - cron: '10 7 * * 2-6'
+  workflow_dispatch: {}
+
+concurrency:
+  group: japan-refresh
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      # A stalled J-Quants socket must fail a request, not hold the whole refresh open.
+      NODE_OPTIONS: '--import=./scripts/fetch-timeout.mjs'
+    steps:
+      - uses: actions/checkout@v5
+        env:
+          # The job-level preload cannot be resolved until the repo exists; checkout runs first.
+          NODE_OPTIONS: ''
+        with:
+          fetch-depth: 1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Cache J-Quants responses
+        uses: actions/cache@v4
+        with:
+          path: data/cache/jquants
+          key: jquants-cache-${{ github.run_id }}
+          restore-keys: jquants-cache-
+      - name: Japan prices, statements, flows and dividends
+        env:
+          JQUANTS_API_KEY: ${{ secrets.JQUANTS_API_KEY }}
+        run: |
+          if [ -z "$JQUANTS_API_KEY" ]; then echo 'no J-Quants key — cannot refresh Japan'; exit 1; fi
+          node scripts/build-japan.mjs --days=1900
+          # Light-plan extras: weekly investor flows, the exchange calendar and the dividend ladder.
+          # Non-fatal — a missing flow panel must not discard the price rebuild.
+          node scripts/build-japan-flows.mjs || echo 'Japan flows/calendar unavailable — keeping the previous panel'
+          # A newly listed company has no profile yet. Fill it the same night, capped, never fatal.
+          node scripts/fetch-japan-profiles.mjs --limit=25 || echo 'new-listing profiles: source unavailable, retry tomorrow'
+          node scripts/attach-japan-descriptions.mjs
+          # The description pass runs after build-japan wrote the per-company detail files. Rebuild
+          # them (only changed companies are rewritten) so a new listing's page is not a day behind.
+          node scripts/build-company-details.mjs jp
+      # The vendor shows a rolling five-year table. Merge what is already committed so a fiscal year
+      # that scrolls off the page stays on the company page — the record grows instead of following.
+      - name: Keep every filed period
+        run: node scripts/merge-history.mjs jp
+      # The source only ever shows the last few years of bars. Keep the sessions that scrolled off.
+      - name: Keep every traded session
+        run: node scripts/merge-series.mjs jp
+      - name: Refresh the calendar and company pages after the merge
+        run: |
+          node scripts/build-events.mjs
+          node scripts/build-company-details.mjs jp
+      - name: Audit the dataset
+        continue-on-error: true
+        run: |
+          node scripts/audit-calculations.mjs
+          node scripts/audit-markets.mjs
+      - name: Rebuild the chart store after the final merge
+        run: node scripts/build-chart-store.mjs jp
+      - name: Test the data before publishing
+        run: |
+          # A bot push does not trigger the test workflow. Gate the data here so a refresh that
+          # breaks the suite cannot land and turn the next human push red.
+          npm run check:boot
+          npm test
+          # The API test rewrites the deals store; it is not part of the data commit.
+          git checkout -- data/deals-store.json 2>/dev/null || true
+      - name: Commit if changed
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add data/japan.json data/japan-list.json data/japan-series.json data/japan-profiles.json data/japan-companies data/events.json data/charts
+          if git diff --staged --quiet; then
+            echo 'no data change'
+          else
+            git commit -m "chore: daily Japan refresh ($(date -u +%Y-%m-%d))"
+            pushed=0
+            for i in 1 2 3 4 5; do
+              if git pull --rebase --autostash -X theirs origin main && git push; then pushed=1; break; fi
+              echo "push rejected (attempt $i) — rebasing and retrying"; sleep $((i * 5))
+            done
+            [ "$pushed" = "1" ] || { echo 'could not push after 5 attempts'; exit 1; }
+          fi
