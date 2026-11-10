@@ -218,3 +218,20 @@ test('an annual-only feed does not invent a half-year matrix', () => {
   };
   assert.equal(api.coMatrixBuild(c, { market: 'us' }), null);
 });
+
+test('the matrix TTM source matches the profile TTM tile', () => {
+  const msft = company('MSFT');
+  const us = api.coMatrixBuild(msft, { market: 'us' });
+  assert.ok(us.topTtm, 'US has a trailing tile');
+  assert.equal(us.topTtm.netIncome, msft.netIncomeTTM);
+  const bhp = JSON.parse(readFileSync(join(here, '..', 'data', 'australia-companies', 'BHP.json'), 'utf8'));
+  const au = api.coMatrixBuild(bhp, { market: 'au' });
+  assert.equal(au.topTtm.netIncome, bhp.reports.ttm.netIncome);
+  const tsm = JSON.parse(readFileSync(join(here, '..', 'data', 'taiwan-companies', '2330.json'), 'utf8'));
+  const tw = api.coMatrixBuild(tsm, { market: 'tw' });
+  assert.equal(tw.topTtm.netIncome, tsm.reports.ttm.netIncome);
+  const toyota = JSON.parse(readFileSync(join(here, '..', 'data', 'japan-companies', '7203.json'), 'utf8'));
+  assert.equal(api.coMatrixBuild(toyota, { market: 'jp' }).topTtm, null, 'Japan top tile is the fiscal year');
+  const samsung = JSON.parse(readFileSync(join(here, '..', 'data', 'korea-companies', '005930.json'), 'utf8'));
+  assert.equal(api.coMatrixBuild(samsung, { market: 'kr' }).topTtm, null, 'Korea FY P/E top tile is the fiscal year');
+});

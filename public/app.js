@@ -5447,6 +5447,45 @@ function coMatrixAnnualMap(c) {
   }
   return m;
 }
+// The TTM figure the company page prints in its top tile. The matrix TTM row must use the same
+// source, or the page shows two different trailing profits. The top tile is a fiscal year for
+// Japan (c.np) and for any market whose P/E basis is FY; in that case there is no TTM tile to match.
+function coMatrixTopTtm(c, market) {
+  const q4 = (c.quarters || []).slice(-4);
+  const sum4 = (field) => (q4.length === 4 && q4.every((x) => x[field] != null)
+    ? q4.reduce((a, x) => a + x[field], 0) : null);
+  const end4 = q4.length === 4 ? (q4[3].end || q4[3].d || null) : null;
+  if (market === 'tw' || market === 'hk' || market === 'au') {
+    const ttm = c.reports && c.reports.ttm;
+    if (ttm && ttm.netIncome != null) {
+      return { netIncome: ttm.netIncome, revenue: ttm.revenue, basis: 'TTM', end: (c.reports && c.reports.ttmEnd) || null };
+    }
+    return null;
+  }
+  if (market === 'us') {
+    // The US profile tile prints c.netIncomeTTM whenever it exists, even when it is a fiscal-year
+    // fallback; mirror that exactly so the matrix and the tile never show two different figures.
+    if (c.netIncomeTTM == null && c.revenueTTM == null) return null;
+    return {
+      netIncome: c.netIncomeTTM, revenue: c.revenueTTM, basis: 'TTM',
+      end: c.netIncomeTTMAsOf || c.revenueTTMEnd || end4,
+    };
+  }
+  // Japan's profile tile is the fiscal year (c.np), so there is no top TTM to match.
+  if (market === 'jp') return null;
+  // Korea / India / Indonesia / Brazil / South Africa: the profile tile reads reports.ttm (the
+  // vendor's trailing column), so the matrix must use that exact figure. Summing the last four
+  // quarters here created a second TTM whenever the vendor's trailing column differed.
+  const pt = c.reports && c.reports.ttm;
+  if (pt && (pt.netIncome != null || pt.revenue != null)) {
+    return { netIncome: pt.netIncome, revenue: pt.revenue, basis: 'TTM', end: (c.reports && c.reports.ttmEnd) || null };
+  }
+  if (c.peBasis !== 'TTM') return null;
+  const netIncome = sum4('netIncome');
+  const revenue = sum4('revenue');
+  if (netIncome == null && revenue == null) return null;
+  return { netIncome, revenue, basis: 'TTM', end: end4 };
+}
 // A fiscal-year window is only usable when it covers the periods it claims. Four quarters span
 // about nine months; two half-years about six. Without this check a window that skips a missing
 // quarter (four entries spread over fifteen months) can still sum close to the annual figure and
@@ -5849,6 +5888,18 @@ function coMatrixBuild(c, opts = {}) {
           if (!expected || Math.abs(raw - expected) / expected > 0.25) continue;
           const corrected = raw - ytd, rd = corrected / sameQ;
           if (corrected <= 0 || rd < 0.5 || rd > 1.5) continue;
+          // Before rewriting a real quarter as cumulative, ask the vendor TTM. CSRA's Q3 2026 is a
+          // genuine jump (raw sum 360.9B = vendor TTM) but the jump heuristic called it cumulative
+          // and turned it into 42.8B. If the vendor's trailing figure agrees with the raw sum, the
+          // quarter is real; only correct when the corrected sum is the closer one.
+          const vendorTtm = metric === 'revenue'
+            ? (c.reports?.ttm?.revenue ?? c.revenueTTM)
+            : (c.reports?.ttm?.netIncome ?? c.netIncomeTTM);
+          if (vendorTtm != null) {
+            const rawTtm = periods.slice(-n).reduce((s, p) => s + (p[metric] || 0), 0);
+            const correctedTtm = rawTtm - raw + corrected;
+            if (Math.abs(correctedTtm - vendorTtm) >= Math.abs(rawTtm - vendorTtm)) continue;
+          }
           latestGroup[q][metric] = corrected;
           for (const p of periods) if (p.fyN === latestFy && p.qN === q) p[metric] = corrected;
           outlierNote = `${metric === 'revenue' ? 'Revenue' : 'Net profit'} for ${labels[q - 1]} ${latestFy} was reported cumulatively; converted to a period value.`;
@@ -5866,7 +5917,7 @@ function coMatrixBuild(c, opts = {}) {
     .sort((a, b) => b - a)
     .slice(0, 20);
   if (!years.length) return null;
-  return { periods, groups, years, n, labels, grouping, basis, outlierNote, repairs, yearLabels, quality };
+  return { periods, groups, years, n, labels, grouping, basis, outlierNote, repairs, yearLabels, quality, topTtm: coMatrixTopTtm(c, market) };
 }
 function coMatrixInner() {
   const store = coMatrixStore;
@@ -5874,7 +5925,7 @@ function coMatrixInner() {
   const { c, opts } = store;
   const model = coMatrixBuild(c, opts);
   if (!model) return '<div class="macro-note">Quarterly or half-year periods are not available for this company.</div>';
-  const { periods, groups, years, n, labels, grouping, basis, outlierNote, repairs, yearLabels, quality } = model;
+  const { periods, groups, years, n, labels, grouping, basis, outlierNote, repairs, yearLabels, quality, topTtm } = model;
   const metric = coMatrixMetric === 'profit' ? 'netIncome' : 'revenue';
   const money = opts.money || ((v) => String(v));
   const pctOf = (v, prev) => (v != null && prev != null && v > 0 && prev > 0 ? (v / prev - 1) * 100 : null);
@@ -5899,10 +5950,10 @@ function coMatrixInner() {
   }
   const vals = (y) => Array.from({ length: n }, (_, i) => groups.get(y)[i + 1]?.[metric]).filter((v) => v != null);
   const complete = (y) => vals(y).length >= n;
-  // Do not annualise a partial year: multiplying one quarter by four is an estimate, not the
-  // company's result. A complete year is the sum of its n periods.
-  const annualised = (y) => { const a = vals(y); return a.length === n ? a.reduce((x, z) => x + z, 0) : null; };
-  const ttm = (y) => {
+  // A complete fiscal year is the sum of its n periods. A partial year is not annualised: multiplying
+  // one quarter by four is an estimate, not the company's result.
+  const fyTotal = (y) => { const a = vals(y); return a.length === n ? a.reduce((x, z) => x + z, 0) : null; };
+  const ttmSum = (y) => {
     if (y === years[0]) {
       const last = periods.slice(-n);
       // A trailing-twelve-month sum needs n contiguous periods. If the newest n entries span more
@@ -5913,6 +5964,9 @@ function coMatrixInner() {
     const a = vals(y);
     return a.length === n ? a.reduce((x, z) => x + z, 0) : null;
   };
+  // The latest TTM row is the same figure as the profile's top tile when that tile is trailing.
+  // Older columns stay the sum of that fiscal year's periods (the TTM at that year end).
+  const ttm = (y) => (y === years[0] && topTtm && topTtm[metric] != null ? topTtm[metric] : ttmSum(y));
   const groupEnd = (y) => {
     const ds = Object.keys(groups.get(y)).map((q) => groups.get(y)[q]?.date).filter(Boolean).sort();
     return ds[ds.length - 1] || null;
@@ -5944,7 +5998,7 @@ function coMatrixInner() {
       const pct = pctOf(v, pv);
       return `<td title="${g && g.date ? `${label} FY${esc(yearLabel(y))} · period ending ${esc(dealDateY(g.date))}` : `${label} FY${esc(yearLabel(y))}`}"><span>${v == null ? '—' : money(v)}</span>${pct != null ? `<em class="qchg ${pct >= 0 ? 'pos' : 'neg'}">${pct >= 0 ? '+' : ''}${pct.toFixed(1)}%</em>` : ''}${g && g.date ? `<small class="qdate">${esc(dealDateY(g.date))}</small>` : ''}</td>`;
     }).join('')}</tr>`).join('')
-    + `<tr class="total"><td>Annualised</td>${years.map((y, yi) => cell(annualised(y), prevYear(yi) ? annualised(prevYear(yi)) : null)).join('')}</tr>`
+    + `<tr class="total"><td>FY total</td>${years.map((y, yi) => cell(fyTotal(y), prevYear(yi) ? fyTotal(prevYear(yi)) : null)).join('')}</tr>`
     + `<tr class="total ttm"><td>TTM (${labels[latestQ - 1]})</td>${years.map((y, yi) => cell(ttm(y), prevYear(yi) ? ttm(prevYear(yi)) : null)).join('')}</tr>`
     + '</tbody></table></div>';
   const list = `<div class="co-matrix-scroll"><table class="co-matrix-table co-matrix-list"><thead><tr><th>PERIOD</th><th>REVENUE</th><th>NET PROFIT</th></tr></thead><tbody>`
@@ -5978,7 +6032,21 @@ function coMatrixInner() {
     fixes.unreconciled && fixes.unreconciled.size ? `The annual record does not reconcile with the quarters for ${[...fixes.unreconciled].join(', ')}; the quarters are shown as filed.` : '',
     blankCells ? `${blankCells} cell${blankCells === 1 ? '' : 's'} are blank because the feed does not carry that period — they are not zero.` : '',
   ].filter(Boolean).join(' ');
-  const note = `${n === 2 ? 'Half-year' : 'Quarterly'} reporting detected from the period spacing. ${basisNote} The column subline is the fiscal year end for a complete year (the latest reported period for a partial year); each cell carries its actual period end date, so Q4 2026 is the quarter ending in the month shown, not calendar Q4. Annualised is shown only for a complete year; TTM is the trailing ${n} periods. Newest year first; scroll the table sideways for older years. Change is year-on-year (green up, red down); a change from a loss is left blank.${latestPeriod ? ` Latest reported period: ${dealDateY(latestPeriod)}.` : ''}${stale ? ' That period is more than 15 months old; the feed may be stale.' : ''} ${qualityNote} The fiscal-year record above uses the annual filing; the matrix uses the quarterly feed, which can differ.`;
+  const am = coMatrixAnnualMap(c);
+  const fyComplete = years.find((y) => complete(y));
+  const annualRecord = fyComplete != null ? am.get(fyComplete) : null;
+  const annualValue = annualRecord ? annualRecord[metric] : null;
+  const fySum = fyComplete != null ? fyTotal(fyComplete) : null;
+  const filingNote = annualValue != null && fySum != null && Math.abs(fySum - annualValue) / Math.abs(annualValue) > 0.05
+    ? `Annual filing FY${yearLabel(fyComplete)}: ${money(annualValue)}; the displayed periods sum to ${money(fySum)}.`
+    : '';
+  const latestSum = ttmSum(years[0]);
+  const ttmNote = topTtm && topTtm[metric] != null
+    ? (latestSum != null && Math.abs(latestSum - topTtm[metric]) / Math.abs(topTtm[metric]) > 0.02
+      ? `The profile TTM tile shows ${money(topTtm[metric])} to ${dealDateY(topTtm.end)}; the displayed quarters sum to ${money(latestSum)}.`
+      : `The profile TTM tile uses the same ${money(topTtm[metric])} trailing figure to ${dealDateY(topTtm.end)}.${c.ttmFromFY ? ' That tile is a fiscal-year fallback, not a true trailing figure.' : ''}`)
+    : `The profile tile is the fiscal year, not a trailing figure; the TTM row is the trailing ${n} quarters.`;
+  const note = `${n === 2 ? 'Half-year' : 'Quarterly'} reporting detected from the period spacing. ${basisNote} The column subline is the fiscal year end for a complete year (the latest reported period for a partial year); each cell carries its actual period end date, so Q4 2026 is the quarter ending in the month shown, not calendar Q4. FY total is the sum of the displayed periods and is shown only for a complete year; TTM is the trailing ${n} periods. ${filingNote} ${ttmNote} Newest year first; scroll the table sideways for older years. Change is year-on-year (green up, red down); a change from a loss is left blank.${latestPeriod ? ` Latest reported period: ${dealDateY(latestPeriod)}.` : ''}${stale ? ' That period is more than 15 months old; the feed may be stale.' : ''} ${qualityNote} The fiscal-year record above uses the annual filing; the matrix uses the quarterly feed, which can differ.`;
   return `<div class="co-matrix-head"><span class="t">${n === 2 ? 'HALF-YEAR' : 'QUARTERLY'} RESULTS</span><span class="s">${years.length} fiscal years · ${esc(opts.ccy || '')}${latestPeriod ? ` · latest ${dealDateY(latestPeriod)}` : ''}</span><div class="co-matrix-ctls"><button type="button" data-comnav="-1" aria-label="Scroll to newer years" title="Newer years">‹</button><button type="button" data-comnav="1" aria-label="Scroll to older years" title="Older years">›</button><span class="co-matrix-sep"></span>${metricBtns}<span class="co-matrix-sep"></span><button type="button" data-comaview="matrix" class="${coMatrixView === 'matrix' ? 'on' : ''}">MATRIX</button><button type="button" data-comaview="list" class="${coMatrixView === 'list' ? 'on' : ''}">LIST</button></div></div>`
     + `<div class="co-matrix-body">${coMatrixView === 'list' ? list : table}</div>`
     + `<div class="co-matrix-note">${note}</div>`;
