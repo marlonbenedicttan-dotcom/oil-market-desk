@@ -6074,6 +6074,7 @@ function renderJapanPageBody(c) {
         <span class="co-price-c ${c.chg6m >= 0 ? 'pos' : 'neg'}">${c.chg6m == null ? '' : `${chg(c.chg6m)} 6M`}</span>
         <span class="co-price-c ${c.chgYtd >= 0 ? 'pos' : 'neg'}">${c.chgYtd == null ? '' : `${chg(c.chgYtd)} ${c.chgYtdBasis === 'YTD' ? 'YTD' : 'since ' + String(c.chgYtdBasis || '').slice(6)}`}</span>
         <span class="dimtext">${c.priceDate ? `as of ${c.priceDate}` : ''}</span>
+        ${c.liquidity && c.liquidity.avg ? `<span class="dimtext" title="Average over the last ${c.liquidity.days || 30} sessions — what actually changes hands, not what is listed">avg daily value ${yen(c.liquidity.avg)}</span>` : ''}
         ${japanData && japanData.topix && japanData.topix.chgYtd != null ? `<span class="dimtext" title="TOPIX, the exchange's own index">TOPIX ${japanData.topix.chgYtd >= 0 ? '+' : ''}${japanData.topix.chgYtd.toFixed(1)}% YTD</span>` : ''}
         ${c.vsTopix && c.vsTopix.ytd != null ? `<span class="dimtext ${c.vsTopix.ytd >= 0 ? 'pos' : 'neg'}" title="Percentage points above or below TOPIX over the same window">${c.vsTopix.ytd >= 0 ? '+' : ''}${c.vsTopix.ytd.toFixed(1)}pp vs TOPIX</span>` : ''}
       </div>`
@@ -6092,9 +6093,9 @@ function renderJapanPageBody(c) {
       </div>`
     + `<div class="co-sect">Results</div><div class="co-stats co-stats-12">
                 ${cell('NET SALES', yen(c.sales), 'Fiscal year, as reported')}
-        ${cell(c.op != null ? 'OPERATING PROFIT' : 'ORDINARY PROFIT', yen(c.op != null ? c.op : c.odp), c.op != null ? 'Fiscal year, as reported' : 'Banks report ordinary profit instead of operating profit', (c.op != null ? c.op : c.odp) >= 0 ? 'pos' : 'neg')}
+        ${cell('OPERATING PROFIT', c.op != null ? yen(c.op) : '—', c.op != null ? 'Fiscal year, as reported' : 'Banks report ordinary profit instead of an operating-profit line', c.op != null ? (c.op >= 0 ? 'pos' : 'neg') : 'na')}
+        ${cell('ORDINARY PROFIT', c.odp != null ? yen(c.odp) : '—', c.odp != null ? 'Operating profit plus non-operating items — the line Japanese GAAP filers report; IFRS filers do not have it' : 'IFRS filers do not report ordinary profit', c.odp != null ? (c.odp >= 0 ? 'pos' : 'neg') : 'na')}
         ${cell('NET PROFIT', yen(c.np), 'Fiscal year, attributable to owners of the parent', c.np >= 0 ? 'pos' : 'neg')}
-        ${cell('CASH AFTER INVESTING', yen(c.fcf), 'Operating cash flow + investing cash flow — capex sits inside investing and is not broken out in the summary')}
       </div>`
     + jpDividendLadder(c)
     + (c.bands && (c.bands.pe || c.bands.pb) ? `<div class="jp-bands">
@@ -6102,17 +6103,13 @@ function renderJapanPageBody(c) {
         ${jpBand('P/B', c.pb, c.bands.pb, '×')}
       </div>` : '')
     + `<div class="co-sect">Balance sheet</div><div class="co-stats co-stats-12">
-        ${c.odp != null
-          ? cell('ORDINARY PROFIT', yen(c.odp), 'Operating profit plus non-operating items — the line Japanese GAAP filers report; IFRS filers do not have it', c.odp >= 0 ? 'pos' : 'neg')
-          : cell('TOTAL ASSETS', yen(c.ta), 'As reported — banks carry their loan book here')}
+        ${cell('TOTAL ASSETS', yen(c.ta), 'As reported — banks carry their loan book here')}
         ${cell('SHAREHOLDERS\u2019 EQUITY', yen(c.eqLatest), `Attributable to the parent${c.eqLatestPeriod ? `, as of ${c.eqLatestPeriod}` : ''}`)}
         ${cell('EQUITY RATIO', c.eqAr != null ? `${(c.eqAr * 100).toFixed(1)}%` : '—', 'Equity ÷ total assets, as reported')}
         ${cell('PAYOUT RATIO', d && d.payoutRatio != null ? `${(d.payoutRatio * 100).toFixed(0)}%` : '—', 'Dividends ÷ net profit for the fiscal year')}
       </div>`
-    + `<div class="co-stats co-stats-12">
-      </div>`
-    + `<div class="co-sect">Cash</div><div class="co-stats co-stats-12">
-                ${cell('DAILY TRADED VALUE', c.liquidity ? yen(c.liquidity.avg) : '—', `Average over the last ${(c.liquidity && c.liquidity.days) || 30} sessions — what actually changes hands, not what is listed`)}
+    + `<div class="co-sect">Cash flow</div><div class="co-stats co-stats-12">
+        ${cell('CASH AFTER INVESTING', yen(c.fcf), 'Operating cash flow + investing cash flow — capex sits inside investing and is not broken out in the summary')}
         ${cell('CASH', yen(c.cash), 'Cash and equivalents, as reported')}
         ${cell('OPERATING CASH FLOW', yen(c.cfo), 'Fiscal year, as reported')}
         ${cell('FINANCING CASH FLOW', yen(c.cff), 'Dividends, buybacks and borrowings, net')}
@@ -7225,8 +7222,6 @@ async function renderTaiwanPage(stub) {
         ${cell('NET MARGIN', c.netMargin != null ? `${c.netMargin.toFixed(1)}%` : '—', 'Net profit ÷ revenue', c.netMargin >= 0 ? 'pos' : 'neg')}
         ${cell('DIVIDEND YIELD', c.dividendYield != null ? `${c.dividendYield.toFixed(2)}%` : '—', 'TWSE official dividend yield')}
       </div>`
-    + `<div class="co-stats co-stats-12">
-      </div>`
     + (() => {
         const fig = statementFigures(c, 'tw');
         const when = periodLabel(fig.flows.basis, fig.flows.end);
@@ -7992,8 +7987,6 @@ async function renderAustraliaPage(stub) {
         ${stat('fcfMargin', 'FCF MARGIN', c.fcfMargin != null ? `${c.fcfMargin.toFixed(1)}%` : '—', 'Free cash flow ÷ revenue', sign(c.fcfMargin))}
         ${stat('cashConversion', 'CASH CONVERSION', c.cashConversion != null ? `${c.cashConversion.toFixed(2)}×` : '—', 'Free cash flow ÷ net profit — below 1 means profit is not turning into cash')}
       </div>`
-    + `<div class="co-stats co-stats-12">
-      </div>`
     + (() => {
         const cashWhen = periodLabel(fig.cash.basis, fig.cash.end);
         const cashBasis = tileBasis(fig.cash.basis, fig.cash.end);
@@ -8365,8 +8358,6 @@ async function renderIndiaPage(stub) {
         ${stat('fcfYield', 'FCF YIELD', c.fcfYield != null ? `${c.fcfYield.toFixed(2)}%` : '—', 'Free cash flow ÷ market cap', sign(c.fcfYield))}
         ${stat('fcfMargin', 'FCF MARGIN', c.fcfMargin != null ? `${c.fcfMargin.toFixed(1)}%` : '—', 'Free cash flow ÷ revenue', sign(c.fcfMargin))}
         ${stat('cashConversion', 'CASH CONVERSION', c.cashConversion != null ? `${c.cashConversion.toFixed(2)}×` : '—', 'Free cash flow ÷ net profit — below 1 means profit is not turning into cash')}
-      </div>`
-    + `<div class="co-stats co-stats-12">
       </div>`
     + (() => {
         const cashWhen = periodLabel(fig.cash.basis, fig.cash.end);
@@ -8775,8 +8766,6 @@ async function renderIndonesiaPage(stub) {
         ${stat('fcfYield', 'FCF YIELD', c.fcfYield != null ? `${c.fcfYield.toFixed(2)}%` : '—', 'Free cash flow ÷ market cap', sign(c.fcfYield))}
         ${stat('fcfMargin', 'FCF MARGIN', c.fcfMargin != null ? `${c.fcfMargin.toFixed(1)}%` : '—', 'Free cash flow ÷ revenue', sign(c.fcfMargin))}
         ${stat('cashConversion', 'CASH CONVERSION', c.cashConversion != null ? `${c.cashConversion.toFixed(2)}×` : '—', 'Free cash flow ÷ net profit — below 1 means profit is not turning into cash')}
-      </div>`
-    + `<div class="co-stats co-stats-12">
       </div>`
     + (() => {
         const cashWhen = periodLabel(fig.cash.basis, fig.cash.end);
@@ -9990,8 +9979,6 @@ async function renderSouthAfricaPage(stub) {
         ${stat('fcfYield', 'FCF YIELD', c.fcfYield != null ? `${c.fcfYield.toFixed(2)}%` : '—', 'Free cash flow ÷ market cap', sign(c.fcfYield))}
         ${stat('fcfMargin', 'FCF MARGIN', c.fcfMargin != null ? `${c.fcfMargin.toFixed(1)}%` : '—', 'Free cash flow ÷ revenue', sign(c.fcfMargin))}
         ${stat('cashConversion', 'CASH CONVERSION', c.cashConversion != null ? `${c.cashConversion.toFixed(2)}×` : '—', 'Free cash flow ÷ net profit — below 1 means profit is not turning into cash')}
-      </div>`
-    + `<div class="co-stats co-stats-12">
       </div>`
     + (() => {
         const cashWhen = periodLabel(fig.cash.basis, fig.cash.end);
