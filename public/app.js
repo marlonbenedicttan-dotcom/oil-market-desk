@@ -5113,11 +5113,95 @@ async function renderJapan(token = takeToken()) {
 }
 
 // Whole-market view, computed from the constituent set rather than an index file.
+// --- Japan flows / calendar / dividend ladder -------------------------------------------------
+// The J-Quants investor-type endpoint is section-level (TSE Prime), not per company. It answers
+// "who is buying the Japanese market", never "who bought this stock"; label it that way.
+const jpFlowMoney = (v) => (v == null ? '—' : `${v >= 0 ? '+' : '−'}${yen(Math.abs(v))}`);
+const jpFlowWord = (v) => (v == null ? '—' : v >= 0 ? `bought ${yen(v)}` : `sold ${yen(-v)}`);
+const jpFlowPct = (v, total) => (v == null || !total ? '' : `${(v / total) * 100 >= 0 ? '+' : ''}${((v / total) * 100).toFixed(1)}% of turnover`);
+
+function jpFlowPanel(flow) {
+  if (!flow || !Array.isArray(flow.weeks) || !flow.weeks.length) return '';
+  const w = flow.w4 || {};
+  const total = w.total || 0;
+  const cell = (label, key, note = '') => `<div class="jp-flow-cell">
+      <span class="jp-flow-k">${label}</span>
+      <span class="jp-flow-v ${(w[key] || 0) >= 0 ? 'pos' : 'neg'}">${jpFlowMoney(w[key])}</span>
+      <span class="jp-flow-s">${jpFlowPct(w[key], total) || note || 'net flow'}</span>
+    </div>`;
+  const bars = flow.weeks.slice(-13);
+  const max = Math.max(1, ...bars.map((x) => Math.abs(x.foreign || 0)));
+  return `<div class="jp-flow">
+      <div class="jp-flow-head"><span class="ph-t">WHO IS BUYING · TSE PRIME</span>
+        <span class="dimtext">4 weeks to ${esc(dealDateY(flow.updated))} · weekly JPX trading by investor type</span></div>
+      <div class="jp-flow-grid">
+        ${cell('FOREIGN', 'foreign')}
+        ${cell('INDIVIDUALS', 'individual')}
+        ${cell('INVESTMENT TRUSTS', 'invTrust')}
+        ${cell('BROKERAGE', 'brokerage')}
+        ${cell('PROPRIETARY', 'proprietary')}
+      </div>
+      <div class="jp-flow-strip" title="Foreign net buying, last ${bars.length} weeks">
+        ${bars.map((x) => `<i class="${(x.foreign || 0) >= 0 ? 'pos' : 'neg'}" style="height:${Math.max(2, Math.round((Math.abs(x.foreign || 0) / max) * 100))}%"></i>`).join('')}
+      </div>
+      <div class="jp-flow-read">Foreigners ${jpFlowWord(w.foreign)} over four weeks; individuals ${jpFlowWord(w.individual)}; investment trusts ${jpFlowWord(w.invTrust)}. Turnover ${yen(total)}.</div>
+    </div>`;
+}
+
+function jpCalendarLine(cal) {
+  if (!cal) return '';
+  const next = cal.nextSession;
+  const holiday = cal.holidays && cal.holidays[0];
+  return `<div class="jp-cal">
+      ${cal.today ? `<span>${cal.today.open ? 'MARKET OPEN TODAY' : 'MARKET CLOSED TODAY'}</span>` : ''}
+      ${next ? `<span>NEXT SESSION <b>${esc(dealDateY(next.d))}${next.halfDay ? ' · HALF DAY' : ''}</b></span>` : ''}
+      ${holiday ? `<span>NEXT HOLIDAY <b>${esc(dealDateY(holiday.d))}</b></span>` : ''}
+    </div>`;
+}
+
+function jpFlowContext(flow) {
+  if (!flow || !flow.w4) return '';
+  const w = flow.w4;
+  return `TSE Prime flow (4 weeks to ${esc(dealDateY(flow.updated))}): foreigners ${jpFlowWord(w.foreign)}, individuals ${jpFlowWord(w.individual)}, investment trusts ${jpFlowWord(w.invTrust)}. This is the whole Prime market, not a stock-specific flow.`;
+}
+
+function jpFlowMini(flow) {
+  if (!flow || !flow.w4) return '';
+  return `<div class="jp-flow-mini">TSE PRIME · 4W FOREIGN <b class="${(flow.w4.foreign || 0) >= 0 ? 'pos' : 'neg'}">${jpFlowMoney(flow.w4.foreign)}</b> · INDIVIDUALS <b class="${(flow.w4.individual || 0) >= 0 ? 'pos' : 'neg'}">${jpFlowMoney(flow.w4.individual)}</b></div>`;
+}
+
+function jpDividendLadder(c) {
+  const d = c.dividend;
+  if (!d) return '';
+  const periods = Array.isArray(d.periods) ? d.periods : [];
+  const forecast = Array.isArray(d.forecastPeriods) ? d.forecastPeriods : [];
+  if (!periods.length && !forecast.length && d.perShare == null && d.nextYear == null && d.forecast == null) return '';
+  const items = [];
+  for (const p of periods) items.push([p.label, p.value, 'reported']);
+  if (d.perShare != null) items.push(['FY total', d.perShare, 'reported']);
+  if (d.forecast != null) items.push(['Forecast', d.forecast, 'guidance']);
+  if (d.nextYear != null) items.push(['Next year', d.nextYear, 'guidance']);
+  const shown = items.slice(0, 8);
+  return `<div class="jp-div">
+      <div class="jp-div-head"><span class="ph-t">DIVIDEND LADDER</span><span class="dimtext">per share · JPY</span></div>
+      <div class="jp-div-grid">
+        ${shown.map(([label, value, kind]) => `<div class="jp-div-cell">
+          <span class="jp-div-k">${esc(label)}${kind === 'guidance' ? ' <em>f</em>' : ''}</span>
+          <span class="jp-div-v">${yen(value)}</span>
+        </div>`).join('')}
+        ${d.payoutRatio != null ? `<div class="jp-div-cell"><span class="jp-div-k">PAYOUT</span><span class="jp-div-v">${(d.payoutRatio * 100).toFixed(0)}%</span></div>` : ''}
+      </div>
+      <div class="jp-div-note">${d.nextYear != null && d.perShare != null ? `Next-year forecast ${d.growthPct >= 0 ? 'up' : 'down'} ${Math.abs(d.growthPct).toFixed(1)}% versus this year. ` : ''}“f” = company forecast, not a consensus. Interim and year-end are the periods the company reports; a quarterly payer shows Q1–Q3.</div>
+    </div>`;
+}
+
 function renderJapanMarket(all, d) {
   const el = $('co-body'); if (!el) return;
   syncCoTools();
   const m = d.market || {};
   const t = d.topix || {};
+  const flow = d.flow;
+  const cal = d.calendar;
   const cell = (k, val, title, cls = '') => `<div class="co-stat" title="${esc(title)}"><span class="co-k">${k}</span><span class="co-v ${cls}">${val}</span></div>`;
   const chg = (x) => (x == null ? '—' : `${x >= 0 ? '+' : ''}${x.toFixed(1)}%`);
   const sectors = (m.sectors || []);
@@ -5128,6 +5212,7 @@ function renderJapanMarket(all, d) {
     + `<div class="jp-market-head"><span class="ph-t">TOPIX</span><span class="jp-market-lvl">${t.level != null ? t.level.toFixed(2) : '—'}</span>
         <span class="${(t.chg1d || 0) >= 0 ? 'pos' : 'neg'}">${chg(t.chg1d)} today</span>
         <span class="dimtext">official index · whole market</span></div>`
+    + jpCalendarLine(cal)
     + `<div class="co-stats co-stats-12">
         ${cell('PRIME MARKET CAP', yen(m.totalCap), 'Sum of every Prime constituent we hold, ex-treasury')}
         ${cell('COMPANIES', String(m.companies || all.length), 'Prime issues with a market cap')}
@@ -5139,6 +5224,7 @@ function renderJapanMarket(all, d) {
         ${cell('UP THIS YEAR', m.upYtd != null ? `${m.upYtd}` : '—', 'Companies with a positive year-to-date return')}
       </div>`
     + breadth
+    + jpFlowPanel(flow)
     + (t.series && t.series.length > 1 ? '<div class="co-rets" id="jp-mkt-rets"></div><div class="co-chartwrap"><canvas id="jp-mkt-chart"></canvas></div>' : '')
     + `<div class="co-hrow jp-mkt-hrow"><span>SECTOR</span><span>N</span><span>CAP</span><span>P/E</span><span>P/B</span><span>ROE</span><span>YIELD</span><span>YTD</span></div>`
     + sectors.map((s) => `<div class="jp-mkt-row">
@@ -5236,6 +5322,7 @@ function renderJapanScreener(all, d) {
     });
   }
   el.innerHTML = jpViewsBar()
+    + jpFlowMini(d.flow)
     + `<div class="co-hrow"><span>#</span><span></span><span>COMPANY</span><span>MARKET CAP</span><span>P/E</span><span>ROE</span></div>`
     + (rows.length ? '' : `<div class="macro-note">No company matches those filters.</div>`)
     + `<div id="jp-rows"></div>`;
@@ -6005,6 +6092,7 @@ function renderJapanPageBody(c) {
         ${cell('NET PROFIT', yen(c.np), 'Fiscal year, attributable to owners of the parent', c.np >= 0 ? 'pos' : 'neg')}
         ${cell('CASH AFTER INVESTING', yen(c.fcf), 'Operating cash flow + investing cash flow — capex sits inside investing and is not broken out in the summary')}
       </div>`
+    + jpDividendLadder(c)
     + (c.bands && (c.bands.pe || c.bands.pb) ? `<div class="jp-bands">
         ${jpBand('P/E', c.pe, c.bands.pe, '×')}
         ${jpBand('P/B', c.pb, c.bands.pb, '×')}
@@ -6064,9 +6152,11 @@ function renderJapanPageBody(c) {
     + jpHistoryHtml(c)
     + jpPeersHtml(c)
     + `<div class="macro-note">
+        ${jpFlowContext(japanData && japanData.flow)}
         Fiscal year ending ${esc(c.period || '—')} · statement figures from the company's summary of financial statements (J-Quants); P/E, P/B and ROE from JPX's own valuation file.
         ${pbOurs != null && v.status === 'disputed' ? `Our P/B from the filing is ${pbOurs.toFixed(2)}× against JPX's ${c.pb.toFixed(2)}×.` : ''}
         ${c.guidance ? `Guidance for FY ${esc(c.guidance.fy || '—')}: sales ${yen(c.guidance.sales)}, operating profit ${yen(c.guidance.op)}, net profit ${yen(c.guidance.np)}.` : 'No company forecast on file.'}
+        ${c.guidance && c.guidance.next ? ` Next-year company forecast: sales ${yen(c.guidance.next.sales)}, operating profit ${yen(c.guidance.next.op)}, EPS ${c.guidance.next.eps != null ? `¥${c.guidance.next.eps}` : '—'}.` : ''}
         ${c.guidanceVsDelivered ? ` FY ${esc(c.guidanceVsDelivered.fy)}: the company guided ${yen(c.guidanceVsDelivered.forecast)} and delivered ${yen(c.guidanceVsDelivered.actual)} (${c.guidanceVsDelivered.deltaPct >= 0 ? '+' : ''}${c.guidanceVsDelivered.deltaPct}%).` : ''}
         ${c.revisions ? ` This year the forecast moved ${c.revisions.moves} time${c.revisions.moves > 1 ? 's' : ''} — ${c.revisions.up} up, ${c.revisions.down} down — from ${yen(c.revisions.first)} to ${yen(c.revisions.last)} (${c.revisions.deltaPct >= 0 ? '+' : ''}${c.revisions.deltaPct}%).` : ''}
         ${c.earnings ? ` Next results: ${esc(c.earnings.date)} (${esc(c.earnings.quarter || 'scheduled')}).` : ''}

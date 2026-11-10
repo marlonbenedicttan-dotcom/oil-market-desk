@@ -115,6 +115,11 @@ test('checkout does not preload a repo script before the repo exists', () => {
   }
 });
 
+
+test('Japan refreshes its flows, calendar and dividend ladder', () => {
+  assert.match(wf('companies-daily.yml'), /build-japan-flows\.mjs/, 'the Japan flow/calendar step is missing');
+  assert.match(readFileSync(join(ROOT, 'package.json'), 'utf8'), /build-japan-flows\.mjs/, 'npm run build:japan no longer includes the extra Japan pass');
+});
 test('the global search index is rebuilt and committed after the market refreshes', () => {
   const y = wf('search-index-daily.yml');
   assert.match(y, /build-search-index\.mjs/, 'the search index build is missing');

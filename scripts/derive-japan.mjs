@@ -171,6 +171,21 @@ export function deriveJapan({ ranked, fins, series, val = new Map(), nextByCode 
     const divTotal = last ? num(last.DivTotalAnn) : null;
     const payout = last ? num(last.PayoutRatioAnn) : null;
     const fDivAnn = g ? num(g.FDivAnn) : null;
+    // Japanese companies usually pay an interim and a year-end dividend; some pay quarterly. Keep
+    // every period the annual row carries, plus the current forecast and next year's forecast.
+    const divPeriods = last ? [
+      ['Q1', num(last.Div1Q)], ['Interim', num(last.Div2Q)],
+      ['Q3', num(last.Div3Q)], ['Year-end', num(last.DivFY)],
+    ].filter(([, v]) => v != null) : [];
+    const fDivPeriods = g ? [
+      ['Q1', num(g.FDiv1Q)], ['Interim', num(g.FDiv2Q)],
+      ['Q3', num(g.FDiv3Q)], ['Year-end', num(g.FDivFY)],
+    ].filter(([, v]) => v != null) : [];
+    const nextDiv = num(last?.NxFDivAnn ?? g?.NxFDivAnn);
+    const nextDivPeriods = last ? [
+      ['Q1', num(last.NxFDiv1Q)], ['Interim', num(last.NxFDiv2Q)],
+      ['Q3', num(last.NxFDiv3Q)], ['Year-end', num(last.NxFDivFY)],
+    ].filter(([, v]) => v != null) : [];
 
     // JPX ratios where present, otherwise our own fiscal-year derivation.
     const pe = jpx?.PER != null ? round(jpx.PER, 2) : round(guard(cap && np > 0 ? cap / np : null, 0, 500), 2);
@@ -280,14 +295,23 @@ export function deriveJapan({ ranked, fins, series, val = new Map(), nextByCode 
       fcfYield: cap && fcf ? round((fcf / cap) * 100, 2) : null,
       fcfBasis: fcf == null ? null : 'CFO+CFI',
       shares,
-      dividend: divAnn != null ? {
+      dividend: divAnn != null || divPeriods.length || nextDiv != null ? {
         perShare: divAnn, total: divTotal, payoutRatio: payout, forecast: fDivAnn,
-        yield: price ? round((divAnn / price) * 100, 2) : null,
+        yield: price && divAnn ? round((divAnn / price) * 100, 2) : null,
         forecastYield: price && fDivAnn ? round((fDivAnn / price) * 100, 2) : null,
+        periods: divPeriods.map(([label, value]) => ({ label, value })),
+        forecastPeriods: fDivPeriods.map(([label, value]) => ({ label, value })),
+        nextYear: nextDiv,
+        nextYearPeriods: nextDivPeriods.map(([label, value]) => ({ label, value })),
+        nextYearYield: price && nextDiv ? round((nextDiv / price) * 100, 2) : null,
+        growthPct: divAnn && nextDiv ? round(((nextDiv / divAnn) - 1) * 100, 1) : null,
       } : null,
       guidance: g ? {
         fy: g.CurFYEn || null,
         sales: num(g.FSales), op: num(g.FOP), np: gNp, eps: num(g.FEPS),
+        next: num(g.FNCSales) != null || num(g.FNCOP) != null || num(g.FNCNP) != null || num(g.FNCEPS) != null ? {
+          sales: num(g.FNCSales), op: num(g.FNCOP), np: num(g.FNCNP), eps: num(g.FNCEPS),
+        } : null,
         basis: 'company guidance, not consensus',
       } : null,
       jpx: jpx ? {

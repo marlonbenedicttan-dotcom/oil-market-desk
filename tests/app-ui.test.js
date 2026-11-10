@@ -169,6 +169,7 @@ function loadApp() {
     hkBalanceSheetFinancial,
     liveRef, liveChg, setMetricText, LIVE_BASE, patchQuoteHomeRow,
     drawMarketIndexChart,
+    jpFlowPanel, jpFlowContext, jpFlowMini, jpCalendarLine, jpDividendLadder,
     coWindowsFor,
     coWindow,
     coSlice,
@@ -642,6 +643,26 @@ test('the US market page paints before the index quote arrives', () => {
 
 // --- formatting helpers ------------------------------------------------------------------------
 
+
+test('the Japan flow, calendar and dividend helpers render cleanly', () => {
+  const { ui } = loadApp();
+  const flow = {
+    updated: '2026-10-30',
+    w4: { foreign: 1.34e12, individual: -1.85e11, invTrust: -2.06e11, brokerage: 7.62e11, proprietary: -7.23e11, total: 3.65e14 },
+    weeks: [{ d: '2026-10-30', foreign: 1.34e12 }],
+  };
+  const panel = ui.jpFlowPanel(flow);
+  assert.match(panel, /WHO IS BUYING/);
+  assert.match(panel, /FOREIGN/);
+  assert.match(panel, /Foreigners bought/);
+  assert.match(ui.jpCalendarLine({ today: { d: '2026-11-10', open: false }, nextSession: { d: '2026-11-11', halfDay: false }, holidays: [{ d: '2026-11-23' }] }), /NEXT SESSION/);
+  assert.match(ui.jpFlowContext(flow), /whole Prime market/);
+  assert.match(ui.jpFlowMini(flow), /4W FOREIGN/);
+  const ladder = ui.jpDividendLadder({ dividend: { perShare: 95, periods: [{ label: 'Interim', value: 45 }, { label: 'Year-end', value: 50 }], nextYear: 100, growthPct: 5.3, payoutRatio: 0.32 } });
+  assert.match(ladder, /DIVIDEND LADDER/);
+  assert.match(ladder, /Interim/);
+  assert.match(ladder, /Next year/);
+});
 test('esc escapes external text, including quotes and angle brackets', () => {
   const { ui } = loadApp();
   assert.equal(ui.esc(`<img src=x onerror="alert('x')">`), '&lt;img src=x onerror=&quot;alert(&#39;x&#39;)&quot;&gt;');

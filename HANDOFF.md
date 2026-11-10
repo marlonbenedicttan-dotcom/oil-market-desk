@@ -4425,3 +4425,29 @@ definition differs from the quarterly feed, and the odd one-off quarter that the
   the image) and deploys only when GitHub checks pass (`autoDeployTrigger: checksPass`). One-time
   workspace setting still recommended: **Overlapping Deploy Policy → Wait**.
 - Verified: `npm test` **575 pass**; matrix audit **0 critical** over 12,735 matrices.
+
+## Japan: who is buying, the exchange calendar, and the dividend ladder (2026-11-10)
+
+J-Quants Light had more than prices and summaries. The Japan section now uses three of the
+untapped datasets, all verified against the live key:
+
+- **TSE Prime investor-type flows** (`/v2/equities/investor-types`, weekly): a **WHO IS BUYING** panel
+  on the market view with 4-week net foreign / individual / investment-trust / brokerage /
+  proprietary flows, a 13-week foreign-flow strip and a plain-English read. The endpoint is
+  **section-level, not per issue**, so the company page shows the same figure as *market context*
+  and says so; there is no fake stock-level flow.
+- **Trading calendar** (`/v2/markets/calendar`): next session, half-days and the next weekday
+  holiday in the Japan header. Weekends are filtered out of "next holiday"; after the 15:00 JST
+  close the next session rolls forward.
+- **Dividend ladder** from the cached `fins/summary`: interim, year-end, FY total, current forecast,
+  next-year forecast and payout, on the company page. `Div1Q/2Q/3Q/DivFY`, `FDiv...` and `NxFDiv...`
+  are now mapped in `derive-japan` as well.
+
+`scripts/build-japan-flows.mjs` fetches the two Light endpoints, enriches the cached dividend
+ladder, and rewrites `data/japan-list.json`; `npm run build:japan` and the daily Japan step run it
+(non-fatal — a missing flow panel never discards the price rebuild). Tests cover the helpers, the
+list projection and the workflow wiring.
+
+Higher-tier J-Quants endpoints (`/fins/dividend`, `/fins/details`, margin/short, EDINET, derivatives,
+minute/tick) return **403 on this Light plan** and are deliberately not shown as empty panels.
+The bulk API is available but is a backend download optimisation, not a Japan-section control.

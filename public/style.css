@@ -1450,6 +1450,38 @@ button.deal-sec-tile:hover { background: #10151b; }
 .jp-breadth { display: flex; align-items: center; gap: 10px; padding: 0 12px 12px; font-size: 10px; }
 .jp-breadth i { flex: 1; height: 4px; background: #7a2e2e; border-radius: 2px; overflow: hidden; }
 .jp-breadth i i { display: block; height: 100%; background: #2e7a4e; }
+/* Japan investor flows, exchange calendar and dividend ladder */
+.jp-flow { margin: 0 0 12px; background: var(--panel); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.jp-flow-head { display: flex; align-items: baseline; flex-wrap: wrap; gap: 10px; padding: 10px 12px 5px; }
+.jp-flow-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 1px; background: var(--line); }
+.jp-flow-cell { display: flex; flex-direction: column; gap: 3px; padding: 9px 12px; background: #0c0f13; }
+.jp-flow-k { font-size: 8px; letter-spacing: 1px; color: var(--dim); }
+.jp-flow-v { font: 700 14px/1.1 var(--mono); }
+.jp-flow-s { font-size: 8px; color: #586674; }
+.jp-flow-strip { display: flex; align-items: flex-end; gap: 3px; height: 42px; padding: 8px 12px 0; }
+.jp-flow-strip i { flex: 1; min-height: 2px; border-radius: 1px 1px 0 0; opacity: .8; }
+.jp-flow-strip i.pos { background: var(--green); }
+.jp-flow-strip i.neg { background: var(--red); }
+.jp-flow-read { padding: 7px 12px 10px; font-size: 9.5px; line-height: 1.5; color: #8b98a5; }
+.jp-cal { display: flex; flex-wrap: wrap; gap: 18px; padding: 0 12px 10px; font-size: 9px; letter-spacing: .4px; color: var(--dim); }
+.jp-cal b { color: var(--text); font-weight: 600; }
+.jp-flow-mini { padding: 5px 12px 9px; font-size: 9px; letter-spacing: .4px; color: #586674; }
+.jp-flow-mini b { font-weight: 700; }
+.jp-div { margin: 0 0 12px; background: var(--panel); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.jp-div-head { display: flex; align-items: baseline; gap: 10px; padding: 10px 12px 5px; }
+.jp-div-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 1px; background: var(--line); }
+.jp-div-cell { display: flex; flex-direction: column; gap: 3px; padding: 9px 12px; background: #0c0f13; }
+.jp-div-k { font-size: 8px; letter-spacing: .8px; color: var(--dim); }
+.jp-div-k em { font-style: normal; color: var(--amber, #d9a441); }
+.jp-div-v { font: 700 13px/1.1 var(--mono); color: var(--text); }
+.jp-div-note { padding: 7px 12px 10px; font-size: 8.5px; line-height: 1.55; color: #586674; }
+@media (max-width: 640px) {
+  .jp-flow-grid { grid-template-columns: repeat(2, 1fr); }
+  .jp-flow-head, .jp-div-head { padding: 9px 8px 4px; }
+  .jp-flow-cell, .jp-div-cell { padding: 7px 8px; }
+  .jp-cal { gap: 10px; padding: 0 8px 8px; }
+}
+
 .jp-mkt-hrow, .jp-mkt-row { display: grid; grid-template-columns: 1.6fr 42px 92px 62px 62px 62px 62px 66px; gap: 8px;
   align-items: center; padding: 7px 12px; font-size: 10px; font-variant-numeric: tabular-nums; }
 .jp-mkt-hrow { font-size: 8px; letter-spacing: 1px; color: #5b6773; border-bottom: 1px solid var(--line); }

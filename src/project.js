@@ -286,6 +286,7 @@ export const projectJp = (c) => ({  code: c.code, ticker: c.ticker, name: c.name
 export const japanList = (jp) => ({
   updated: jp.updated, universe: jp.universe, currency: jp.currency, fx: jp.fx, market: jp.market,
   topix: jp.topix || null, themes: jp.themes || [],
+  flow: jp.flow || null, calendar: jp.calendar || null,
   companies: (jp.companies || []).map(projectJp),
 });
 

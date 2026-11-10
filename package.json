@@ -9,7 +9,7 @@
     "prepare": "git config core.hooksPath .githooks || true",
     "test": "node --test",
     "search:build": "node scripts/build-search-index.mjs",
-    "build:japan": "node scripts/build-japan.mjs",
+    "build:japan": "node scripts/build-japan.mjs && node scripts/build-japan-flows.mjs",
     "build:korea": "node scripts/refresh-korea-shares.mjs && node scripts/refresh-korea-quarters.mjs && node scripts/build-korea.mjs",
     "rederive:korea": "node scripts/rederive-korea.mjs",
     "build:taiwan": "node scripts/build-taiwan.mjs && node scripts/fetch-taiwan-profiles.mjs && node scripts/build-taiwan.mjs --skip-prices --skip-fin",

@@ -35,3 +35,11 @@ test('the list ships the fields search and peers read', () => {
     assert.ok('nameJa' in c && 'sector' in c && 'marketCap' in c);
   }
 });
+
+test('the Japan list carries market flows and the exchange calendar', () => {
+  assert.ok(list.flow && list.flow.section === 'TSEPrime', 'the TSE Prime investor-flow panel is missing');
+  assert.ok(Array.isArray(list.flow.weeks) && list.flow.weeks.length >= 4, 'the flow history is too short');
+  assert.ok(list.flow.w4 && Number.isFinite(list.flow.w4.foreign), 'the four-week foreign flow is missing');
+  assert.ok(list.calendar && list.calendar.nextSession, 'the exchange calendar is missing');
+  assert.match(list.calendar.nextSession.d, /^\d{4}-\d{2}-\d{2}$/);
+});

@@ -64,6 +64,9 @@ jobs:
         run: |
           if [ -z "$JQUANTS_API_KEY" ]; then echo 'no J-Quants key — skipping Japan'; exit 0; fi
           node scripts/build-japan.mjs --days=1900
+          # Light-plan extras: weekly investor flows, the exchange calendar and the dividend ladder.
+          # Non-fatal — a missing flow panel must not discard the price rebuild.
+          node scripts/build-japan-flows.mjs || echo 'Japan flows/calendar unavailable — keeping the previous panel'
           # A newly listed company has no profile yet. Fill it the same night, capped so a throttled
           # source can never hold up the market — the tail lands on the next run. A normal day is a
           # no-op: the fetcher skips every company that already has a profile.

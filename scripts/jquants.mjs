@@ -62,6 +62,10 @@ export function makeClient(opts = {}) {
     finsByCode: (code) => all('/fins/summary', { code }),
     finsByDate: (date) => all('/fins/summary', { date }),
     earningsCalendar: () => all('/equities/earnings-calendar'),
+    // Section-level weekly flows (TSEPrime / TSEStandard / TSEGrowth). The endpoint is not per issue.
+    investorTypes: (params) => all('/equities/investor-types', params),
+    // HolDiv: 0 closed, 1 full session, 2 TSE half-day, 3 closed with OSE holiday trading.
+    calendar: (from, to) => all('/markets/calendar', { from, to }),
   };
 }
 
