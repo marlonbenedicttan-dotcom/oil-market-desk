@@ -94,3 +94,23 @@ export function sessionsBehind(from, to) {
   }
   return n;
 }
+
+/**
+ * How much older the price session is than the file that carries it, in hours.
+ *
+ * A build can be recent while the prices are not: a fundamentals-only pass, or a price fetch that
+ * failed after the file was written. The session date is a calendar date at 00:00 UTC; an after-close
+ * build can sit 20–30h after that, so the caller should allow a generous gap.
+ */
+export function buildGapHours(session, updated, now = Date.now()) {
+  const s = session ? Date.parse(`${session}T00:00:00Z`) : NaN;
+  const u = updated ? Date.parse(updated) : NaN;
+  if (!Number.isFinite(s) || !Number.isFinite(u)) return null;
+  return (now - s) / 36e5 - (now - u) / 36e5;
+}
+
+/** True when a fresh build did not bring a fresh price session. */
+export function buildGapStale(session, updated, now = Date.now(), maxGapH = 60) {
+  const gap = buildGapHours(session, updated, now);
+  return gap != null && gap > maxGapH;
+}

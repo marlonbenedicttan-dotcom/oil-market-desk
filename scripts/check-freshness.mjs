@@ -1,9 +1,10 @@
 // Fail loudly if anything the site serves stopped updating.
 //
 // A scheduled workflow that quietly stops is worse than one that crashes: the site keeps serving numbers
-// that look current. This checks every dataset on its own cadence — a price file is late after two days,
-// an annual IMF snapshot is not — and it also asks the live site whether the commodity feeds are current,
-// because those are fetched at request time and never appear in the repository.
+// that look current. This checks every dataset on its own cadence — a price session is late after one
+// missed trading day, an annual IMF snapshot is not — and it reads the price dates themselves, because a
+// build can rewrite `updated` without bringing a new quote. It also asks the live site whether the
+// commodity feeds are current, because those are fetched at request time and never appear in the repo.
 //
 //   node scripts/check-freshness.mjs
 //   MAX_AGE_HOURS=12 node scripts/check-freshness.mjs      # tighten the three market files
@@ -11,7 +12,7 @@
 import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { sessionStats, sessionsBehind } from './price-freshness.mjs';
+import { sessionStats, sessionsBehind, buildGapStale, buildGapHours } from './price-freshness.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const MARKET = process.env.MARKET_URL || 'https://oil-market-desk.onrender.com';
@@ -24,9 +25,9 @@ const now = Date.now();
 // 36h was reporting every scheduled weekend gap as a stopped job. The dedicated check still catches a
 // genuinely missed run: a Tuesday failure leaves Wednesday >108h old.
 const DATASETS = [
-  ['US prices & fundamentals', 'companies.json', 108],
-  ['Japan', 'japan.json', 108],
-  ['Korea', 'korea.json', 108],
+  ['US prices & fundamentals', 'companies.json', 72],
+  ['Japan', 'japan.json', 72],
+  ['Korea', 'korea.json', 72],
   ['Taiwan', 'taiwan.json', 84],
   ['Hong Kong', 'hongkong.json', 84],
   ['Australia', 'australia.json', 84],
@@ -35,7 +36,7 @@ const DATASETS = [
   ['Brazil', 'brazil.json', 84],
   ['South Africa', 'southafrica.json', 84],
   ['US filing tracker', 'filings-state.json', 36],
-  ['Calendar events', 'events.json', 108],
+  ['Calendar events', 'events.json', 72],
   ['Valuation history', 'valuation.json', 24 * 10],
 ];
 
@@ -77,16 +78,26 @@ for (const [label, file] of PRICE_MARKETS) {
     const s = sessionStats(Array.isArray(d.companies) ? d.companies : []);
     if (!s.session) { add(label, false, 'no priced company'); continue; }
     const lag = sessionsBehind(s.session, today);
+    const buildH = Number.isFinite(Date.parse(d.updated)) ? (now - Date.parse(d.updated)) / 36e5 : null;
+    // A build can run every night and still carry yesterday's (or last week's) prices. That is what
+    // happened when a fundamentals-only pass rewrote `updated`: the file looked fresh while every
+    // quote was days old. Compare the session age with the build age; more than 60h apart means the
+    // build did not bring a new session.
+    const staleGap = buildGapStale(s.session, d.updated, now);
     // Two different lags, two different owners:
     //   missed    — we have no bar for the session: a partial fetch, and ours to fix.
     //   no close  — the source sent the bar but not the close: nothing a retry can do. Those rows are
     //               reported but skipped, so a lagging exchange cannot paint the whole monitor red.
-    // Holidays are not modelled, so a shut market reads a session old; three is the failure line.
-    const ours = lag <= 3 && s.behindShare <= 0.10;
+    // Holidays are not modelled, so a shut market can read one session old; a fresh build with that
+    // one-session lag is still allowed. A lag plus a much newer build is not: the build should have
+    // carried the missing session.
+    const ours = lag <= 1 && !staleGap && s.behindShare <= 0.10;
     const source = s.noCloseShare > 0.50;
     add(label, ours,
       `session ${s.session} · ${lag} session${lag === 1 ? '' : 's'} old · ${s.behind} missed (${(s.behindShare * 100).toFixed(1)}%)`
-        + ` · ${s.noClose} no close yet (${(s.noCloseShare * 100).toFixed(1)}%)`,
+        + ` · ${s.noClose} no close yet (${(s.noCloseShare * 100).toFixed(1)}%)`
+        + (buildH == null ? ' · no build timestamp' : ` · build ${buildH.toFixed(1)}h old`)
+        + (staleGap ? ` · prices ${buildGapHours(s.session, d.updated, now).toFixed(0)}h older than the build` : ''),
       ours && source ? 'skip' : 'data');
   } catch (e) { add(label, false, `unreadable: ${e.message}`); }
 }
