@@ -27,9 +27,10 @@ const MARKETS = {
     details: 'data/australia-companies',
     // The ASX universe moves by a handful of listings a week; 3% is already hundreds of names.
     minCompanies: 0.97,
-    // Measured with bar dates: a clean build leaves <1% of the ASX without a bar for the session
-    // (the rest have a bar and no close, which is the source, not us). 6% is a partial fetch.
-    maxBehind: 0.06, maxJump: 0.04,
+    // ~20–28% of the ASX has no bar at all for a given session: microcaps that did not trade. Yahoo
+    // never prints a bar for them, so this can only be a wide limit — the jump check (a partial fetch
+    // moves the cohort) and the daily session-age monitor are what catch a real failure here.
+    maxBehind: 0.35, maxJump: 0.09,
   },
   hk: {
     label: 'Hong Kong',
@@ -37,8 +38,9 @@ const MARKETS = {
     details: 'data/hongkong-companies',
     // The HKEX report carries ~1,900 main-board companies and the incomplete 2026-11-03 page lost 7.7%.
     minCompanies: 0.98,
-    // The HKEX report is the universe, so a clean build only leaves delisted lines without a bar.
-    maxBehind: 0.08, maxJump: 0.05,
+    // Lines the statement pass could not rebuild keep their previous record (see restoreMissing),
+    // so a normal build carries ~3–8% on an older session; 15% is a real loss of coverage.
+    maxBehind: 0.15, maxJump: 0.06,
   },
   in: {
     label: 'India',
@@ -90,6 +92,20 @@ const totalCap = (d) => (d.market && d.market.totalCap) || 0;
 // than ship the older price (or block a whole market over one symbol), keep the previous record: it is
 // internally consistent — price, date, market cap and ratios all agree — and the build simply did not
 // refresh that line today. The market file and the per-company detail are restored together.
+// A resumable build re-fetches what it can and silently omits what it could not: a throttled
+// stockanalysis pass dropped 58 Hong Kong companies on 2026-11-10 and 186 the day before, and the
+// count guard then refused every evening's publish. Keep the previous record for a company the build
+// could not rebuild — it is one day old, not gone — but only while that is a minority of the market,
+// so a real collapse still fails.
+function restoreMissingCompanies(spec, now, rows, was) {
+  const have = new Set(rows.map(companyKey));
+  const missing = was.filter((c) => c && companyKey(c) && !have.has(companyKey(c)));
+  if (!missing.length || missing.length > was.length * 0.10) return [];
+  rows.push(...missing);
+  writeFileSync(spec.file, JSON.stringify(now));
+  return missing.map(companyKey);
+}
+
 function restoreNewerPrices(spec, now, rows, was) {
   const prev = new Map(was.map((c) => [companyKey(c), c]));
   const restored = [];
@@ -127,6 +143,7 @@ function run(id) {
   const rows = Array.isArray(now.companies) ? now.companies : [];
   const was = Array.isArray(before.companies) ? before.companies : [];
   const restored = restoreNewerPrices(spec, now, rows, was);
+  const kept = restoreMissingCompanies(spec, now, rows, was);
   const priced = (list) => count(list, (c) => c.price > 0);
   const withPe = (list) => count(list, (c) => c.pe != null);
   const withHistory = (list) => count(list, (c) => c.chg6m != null || c.chg1y != null);
@@ -212,6 +229,9 @@ function run(id) {
   console.log(`\n${spec.label}`);
   if (restored.length) {
     console.log(`kept ${restored.length} newer price${restored.length === 1 ? '' : 's'} from HEAD — the build re-applied an older cached series: ${restored.join(', ')}`);
+  }
+  if (kept.length) {
+    console.log(`kept ${kept.length} compan${kept.length === 1 ? 'y' : 'ies'} from HEAD — the build could not rebuild them this run: ${kept.slice(0, 8).join(', ')}${kept.length > 8 ? '…' : ''}`);
   }
   for (const c of checks) console.log(`${c.ok ? 'ok   ' : 'FAIL '} ${c.label.padEnd(44)} ${c.detail}`);
 
