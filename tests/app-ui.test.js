@@ -167,6 +167,7 @@ function loadApp() {
     renderUsMarket,
     renderHongKongMarket,
     hkBalanceSheetFinancial,
+    liveRef, liveChg, setMetricText, LIVE_BASE, patchQuoteHomeRow,
     drawMarketIndexChart,
     coWindowsFor,
     coWindow,
@@ -576,6 +577,47 @@ test('a short stat strip fills its last row instead of leaving a hole', () => {
   assert.match(tile, /flex: 1 1 20%/, 'tiles grow to fill the row, so the last row is never short');
   assert.match(css, /\.co-stat \{ flex-basis: 40%/, 'two tiles per row on a phone');
   assert.doesNotMatch(app, /co-stat-void/, 'no filler tiles are rendered');
+});
+
+test('a live quote scales the price-derived numbers off the committed close', () => {
+  const { ui } = loadApp();
+  const base = { price: 100, marketCap: 1000, pe: 20, chgYtd: 10 };
+  assert.equal(ui.liveRef('us', 'aapl', base), 'data-qref="us:AAPL"');
+  assert.equal(ui.LIVE_BASE.get('us:AAPL'), base, 'the base is kept for every later tick');
+
+  // +10% price: a 10% YTD return becomes 21%, and P/E scales by 1.1.
+  assert.ok(Math.abs(ui.liveChg(10, 1.1) - 21) < 0.001);
+  assert.equal(ui.liveChg(null, 1.1), null);
+
+  const ratio = { textContent: '10.00×' };
+  ui.setMetricText(ratio, 12.345, '×');
+  assert.equal(ratio.textContent, '12.35×', 'keeps the page’s two-decimal multiple');
+  const oneDp = { textContent: '10.0' };
+  ui.setMetricText(oneDp, 12.345, '');
+  assert.equal(oneDp.textContent, '12.3', 'keeps the page’s one-decimal multiple');
+  const pct = { textContent: '5.0%' };
+  ui.setMetricText(pct, 5.555, '%');
+  assert.equal(pct.textContent, '5.6%');
+  const annotated = { textContent: '9.70× sector 10.1×' };
+  ui.setMetricText(annotated, 9.94, '×');
+  assert.equal(annotated.textContent, '9.94× sector 10.1×', 'keeps the sector annotation');
+});
+
+test('a live quote patches a home-screener row by column', () => {
+  const { ui } = loadApp();
+  const cell = () => ({ textContent: '', classList: { remove() {}, add() {} } });
+  const cells = Array.from({ length: 9 }, cell);
+  const row = { children: cells };
+  const base = { price: 100, marketCap: 1000, pe: 20, pb: 2, chg6m: 5, chgYtd: 10, priceAsOf: '2026-11-06' };
+  ui.LIVE_BASE.set('us:AAPL', base);
+  ui.patchQuoteHomeRow(row, 'us:AAPL', { price: 110, chg1d: 10, time: '2026-11-09T21:00:00.000Z' });
+  assert.equal(cells[1].textContent, '$110.00');
+  assert.equal(cells[2].textContent, '+10.0%');
+  assert.ok(Math.abs(parseFloat(cells[3].textContent) - 15.5) < 0.01, '6M scales with the price');
+  assert.ok(Math.abs(parseFloat(cells[4].textContent) - 21) < 0.01, 'YTD scales with the price');
+  assert.equal(cells[5].textContent, '22.0×');
+  assert.equal(cells[6].textContent, '2.20×');
+  assert.equal(cells[8].textContent, '$1100');
 });
 
 test('an out-of-range window falls back to one the series actually covers', () => {

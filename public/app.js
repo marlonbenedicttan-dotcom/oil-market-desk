@@ -181,6 +181,17 @@ async function jget(url, ttl = 180000) {
   jfly.set(url, p);
   return p;
 }
+
+// The DOM carries only a ref (`us:AAPL`); the committed record stays here so a row does not need a
+// dozen data-* attributes. A quote never replaces this base: it is the denominator for every
+// price-derived number (market cap, P/E, P/B, yields and the cumulative returns).
+const LIVE_BASE = new Map();
+function liveRef(market, code, base) {
+  if (!market || code == null || code === '') return '';
+  const ref = `${market}:${String(code).toUpperCase()}`;
+  if (base) LIVE_BASE.set(ref, base);
+  return `data-qref="${esc(ref)}"`;
+}
 // The current selection identity — every loader captures it and drops its result if the user
 // switched away while it was waiting. This is what stops "I clicked oil but it still shows corn".
 const segKey = () => currentMarket + '|' + (currentComponent || '');
@@ -2957,7 +2968,7 @@ function renderCompanyScreen(el) {
   const usPages = Math.max(1, Math.ceil(rows.length / usPer));
   if (usPage > usPages) coScreen.page = usPages;
   const usShown = rows.slice(((coScreen.page || 1) - 1) * usPer, (coScreen.page || 1) * usPer);
-  const body = usShown.map((c) => `<tr data-cocik="${esc(c.cik)}" title="${esc(c.name)}">
+  const body = usShown.map((c) => `<tr data-cocik="${esc(c.cik)}" ${liveRef('us', c.ticker, c)} data-qkind="homerow" title="${esc(c.name)}">
       <td class="sc-name">${esc(c.name)}<span class="sc-tick">${esc(c.ticker)}${c.sector ? ' · ' + esc(c.sector) : ''}</span></td>
       <td class="num">${c.price != null ? '$' + c.price.toFixed(2) : '—'}</td>
       ${pct(fxRet(c.chg1d, 'USD', 'd1'))}${pct(fxRet(c.chg6m, 'USD', 'm6'))}${pct(fxRet(c.chgYtd, 'USD', 'ytd'))}
@@ -4541,6 +4552,8 @@ $('macro-links')?.addEventListener('click', (e) => { const el = e.target.closest
   // Any request resets the host's idle timer; a tab left open keeps the instance from sleeping, which
   // is what makes the next visit wait 20-30s on the boot screen.
   setInterval(() => { fetch('/health', { cache: 'no-store' }).catch(() => {}); }, 5 * 60e3);
+  // Live equity quotes: only the refs currently in the DOM, every 30s while the tab is visible.
+  startQuotePolling();
 })();
 
 // ---------------------------------------------------------------------------
@@ -5230,7 +5243,7 @@ function renderJapanScreener(all, d) {
   // append over the next frames, so a tab switch feels instant and every row still ends up there.
   const host = document.getElementById('jp-rows');
   const noteHtml = `<div class="macro-note">${rows.length === all.length ? `all ${all.length}` : `${rows.length} of ${all.length}`} companies · ${esc(d.universe || '')} · P/E and ROE are trailing twelve months, from JPX · forward P/E uses the company's own guidance · market cap excludes treasury shares · FX ${d.fx && d.fx.rate ? d.fx.rate.toFixed(2) : '—'} JPY per USD.</div>`;
-  const rowHtml = (c, i) => `<button class="co-row" data-jp="${esc(c.code)}">
+  const rowHtml = (c, i) => `<button class="co-row" data-jp="${esc(c.code)}" ${liveRef('jp', c.ticker || c.code, c)} data-qkind="row">
         <span class="co-rank">${i + 1}</span>
         ${jpMono(c)}
         <span class="co-id"><b>${esc(c.name)}</b>
@@ -5312,8 +5325,27 @@ function coMatrixDetectN(c, periods) {
     const a = new Date(dates[i - 1] + 'T00:00:00Z'), b = new Date(dates[i] + 'T00:00:00Z');
     if (isFinite(a) && isFinite(b)) gaps.push((b - a) / (864e5 * 30.44));
   }
-  gaps.sort((a, b) => a - b);
-  return gaps[Math.floor(gaps.length / 2)] > 4.5 ? 2 : 4;
+  if (!gaps.length) return 4;
+  // The effective cadence is the one the company is reporting *now*, not the median over its
+  // whole history: a feed that switched from half-year to quarterly (or merely has a quarterly
+  // tail) was being read as half-year because the older gaps outvoted the recent ones.
+  const recent = gaps.slice(-3);
+  const ordered = [...recent].sort((a, b) => a - b);
+  const median = ordered[Math.floor(ordered.length / 2)];
+  // One period a year is an annual feed. A Q1–Q4 matrix would invent the missing quarters.
+  // But a feed with a 12-month hole between half-year periods is still a half-year feed; only
+  // call it annual when every gap is annual-sized.
+  if (median > 9) {
+    const shorter = gaps.filter((g) => g <= 7.5);
+    if (!shorter.length) return 0;
+    const quarterly = shorter.filter((g) => g >= 2 && g <= 4.5).length;
+    return quarterly >= 2 ? 4 : 2;
+  }
+  if (median > 4.5) {
+    const quarterly = recent.filter((g) => g >= 2 && g <= 4.5).length;
+    return quarterly >= 2 ? 4 : 2;
+  }
+  return 4;
 }
 function coMatrixAnnualMap(c) {
   const m = new Map();
@@ -5326,6 +5358,101 @@ function coMatrixAnnualMap(c) {
   }
   return m;
 }
+// A fiscal-year window is only usable when it covers the periods it claims. Four quarters span
+// about nine months; two half-years about six. Without this check a window that skips a missing
+// quarter (four entries spread over fifteen months) can still sum close to the annual figure and
+// lock the matrix to the wrong fiscal year end — Cardinal Health's FY2026 matched a window from
+// June 2025 to September 2026 and moved its June year-end to September.
+function coMatrixWindowSpan(win, n) {
+  if (!win || win.length !== n) return false;
+  const months = (Date.parse(win[win.length - 1].date) - Date.parse(win[0].date)) / (864e5 * 30.44);
+  const expected = (n - 1) * (n === 2 ? 6 : 3);
+  const tolerance = n === 2 ? 2.5 : 2.0;
+  return Math.abs(months - expected) <= tolerance;
+}
+// Snap a fiscal year-end month to the grid the periods actually report on. A 52/53-week filer
+// can end in the first days of the next month (FedEx ends 31 May / 1 June); if the inferred month
+// sits between two grid months, the quarter arithmetic returns fractions such as Q2.67 and the
+// row disappears. Choose the grid month with the smallest distance to every recent period end,
+// breaking ties toward the inferred month.
+function coMatrixSnapEndMonth(endMonth, periods, n) {
+  if (!endMonth) return endMonth;
+  const months = periods.slice(-16).map((p) => Number(String(p.date).slice(5, 7))).filter(Boolean);
+  if (!months.length) return endMonth;
+  const dim = 12, step = n === 2 ? 6 : 3;
+  const dist = (a, b) => { const d = Math.abs(a - b) % dim; return Math.min(d, dim - d); };
+  let best = endMonth, bestScore = Infinity, bestTie = Infinity;
+  for (let M = 1; M <= dim; M++) {
+    let score = 0;
+    for (const m of months) {
+      let md = dim;
+      for (let k = 0; k < (n === 2 ? 2 : 4); k++) {
+        const grid = ((M - 1 + k * step) % dim) + 1;
+        md = Math.min(md, dist(m, grid));
+      }
+      score += md;
+    }
+    const tie = dist(M, endMonth);
+    if (score < bestScore || (score === bestScore && tie < bestTie)) { best = M; bestScore = score; bestTie = tie; }
+  }
+  return best;
+}
+// Quarter number from the period's month, measured from the month after the fiscal year end.
+// Bucket boundaries are inclusive at the start of the quarter-end month, so a 52/53-week period
+// that closes on the 1st–5th stays in the quarter it belongs to instead of producing Q2.67.
+function coMatrixQuarterIndex(m, endMonth, n) {
+  const start = (endMonth % 12) + 1;
+  const elapsed = (m - start + 12) % 12;
+  if (n === 2) return elapsed > 6 ? 2 : 1;
+  return Math.max(1, Math.min(4, Math.ceil(elapsed / 3)));
+}
+// A quarter cannot equal the full year when the other quarters are present. Some 10-K filings tag
+// the fourth-quarter column with the annual total (DINO, NiSource, AZZ); the feed then printed a Q4
+// that was three to four times a normal quarter. Rebuild it from the annual record instead.
+function coMatrixYear(fy) {
+  return typeof fy === 'number' ? Math.trunc(fy) : Number(String(fy).slice(0, 4));
+}
+function coMatrixRepairAnnuals(groups, am, n, periods) {
+  const repaired = new Set(), annualOnly = new Set(), unreconciled = new Set();
+  if (n !== 4) return { repaired, annualOnly, unreconciled };
+  for (const [fy, g] of groups) {
+    if (!Number.isInteger(fy)) continue;
+    const a = am.get(coMatrixYear(fy));
+    if (!a) continue;
+    for (const metric of ['revenue', 'netIncome']) {
+      const annual = a[metric];
+      if (annual == null) continue;
+      const all = [1, 2, 3, 4].map((q) => g[q]?.[metric]).filter((v) => v != null);
+      // A positive quarter cannot exceed the positive annual total. When it does, the annual
+      // series and the period feed are different concepts (TMP reports combined bank revenue
+      // quarterly but a narrower annual line); the matrix can still show the periods, but the
+      // reconciliation note must say it is not comparable.
+      if (metric === 'revenue' && annual > 0 && all.length && Math.max(...all) > annual * 1.2) {
+        unreconciled.add(`revenue ${coMatrixYear(fy)}`);
+        continue;
+      }
+      if (!g[4] || g[4][metric] == null) continue;
+      const q4 = g[4][metric];
+      const others = [1, 2, 3].map((q) => g[q]?.[metric]).filter((v) => v != null);
+      const diff = Math.abs(q4 - annual) / Math.max(Math.abs(annual), 1);
+      if (diff > 0.01) continue;
+      if (others.length < 2) { annualOnly.add(coMatrixYear(fy)); continue; }
+      const sum = others.reduce((x, y) => x + y, 0);
+      const sorted = [...others].sort((x, y) => x - y);
+      const median = sorted[Math.floor(sorted.length / 2)];
+      const corrected = annual - sum;
+      if (corrected > 0 && median > 0 && corrected / median > 0.2 && corrected / median < 5) {
+        g[4][metric] = corrected;
+        g[4].repaired = true;
+        for (const p of periods) if (String(p.fyN) === String(fy) && p.qN === 4) p[metric] = corrected;
+        repaired.add(`${metric === 'revenue' ? 'revenue' : 'net profit'} ${coMatrixYear(fy)}`);
+      } else {
+        unreconciled.add(`${metric === 'revenue' ? 'revenue' : 'net profit'} ${coMatrixYear(fy)}`);
+      }
+    }
+  }
+  return { repaired, annualOnly, unreconciled };
+}
 // Decide how the feed presents its periods from the complete fiscal years:
 //   period      — the n periods sum to the annual
 //   cumulative  — the last period equals the annual and the first is a fraction of it
@@ -5333,7 +5460,8 @@ function coMatrixAnnualMap(c) {
 function coMatrixBasis(g, am) {
   let period = 0, cumulative = 0, ttm = 0;
   for (const [fy, grp] of g.groups) {
-    const a = am.get(fy); if (!a || !a.revenue) continue;
+    if (!Number.isInteger(fy)) continue;
+    const a = am.get(coMatrixYear(fy)); if (!a || !a.revenue) continue;
     const qs = Object.keys(grp).map(Number).sort((x, y) => x - y);
     if (qs.length !== g.n) continue;
     const vals = qs.map((q) => grp[q].revenue).filter((v) => v != null);
@@ -5352,25 +5480,56 @@ function coMatrixBasis(g, am) {
 function coMatrixBuild(c, opts = {}) {
   const periods = coMatrixPeriods(c);
   if (periods.length < 2) return null;
-  const n = coMatrixDetectN(c, periods);
+  const explicit = periods.some((p) => p.fy && p.q);
+  let n = coMatrixDetectN(c, periods);
+  // A labelled Q3/Q4 is a quarterly report even when the gaps say otherwise; the labels are the
+  // company's own and must win over an inferred cadence.
+  const explicitQ = explicit ? Math.max(0, ...periods.map((p) => Number(String(p.q).replace(/\D/g, '')) || 0)) : 0;
+  if (!n && explicit) n = 4;
+  if (explicit && explicitQ >= 3) n = 4;
+  if (!n) return null;
   const labels = n === 2 ? ['H1', 'H2'] : ['Q1', 'Q2', 'Q3', 'Q4'];
   const groups = new Map();
+  const yearLabels = {};
   let grouping = 'fiscal';
-  const explicit = periods.some((p) => p.fy && p.q);
   if (explicit) {
     grouping = 'reported';
+    // A company can change its fiscal year end (Japan's 2871 moved from March to December in
+    // 2026). Keying only by the year merged the old FY2026 Q1 with the new FY2026 Q1 and dropped
+    // one of them. Keep the full fiscal-year end when two end months share a calendar year, and
+    // label the columns with the month so the split is visible.
+    const fyMonthByYear = new Map();
+    let fiscalChange = false;
     for (const p of periods) {
-      const fy = Number(String(p.fy).slice(0, 4));
+      const fyDate = String(p.fy).slice(0, 10);
+      const fyYear = Number(fyDate.slice(0, 4));
+      const fyMonth = Number(fyDate.slice(5, 7)) || 12;
       const q = Number(String(p.q).replace(/\D/g, ''));
-      if (!fy || !q) continue;
+      if (!fyYear || !q) continue;
+      const known = fyMonthByYear.get(fyYear);
+      let fy = fyYear;
+      if (known != null && known !== fyMonth) { fy = fyYear + fyMonth / 100; fiscalChange = true; }
+      else if (known == null) fyMonthByYear.set(fyYear, fyMonth);
       if (!groups.has(fy)) groups.set(fy, {});
-      groups.get(fy)[q] = { revenue: p.revenue, netIncome: p.netIncome };
+      groups.get(fy)[q] = { revenue: p.revenue, netIncome: p.netIncome, date: p.date };
       p.fyN = fy; p.qN = q;
+    }
+    if (fiscalChange) {
+      const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      for (const [year, month] of fyMonthByYear) {
+        const keys = [...groups.keys()].filter((k) => coMatrixYear(k) === year);
+        if (keys.length < 2) continue;
+        for (const k of keys) {
+          const m = Number.isInteger(k) ? month : Math.round((k - year) * 100);
+          yearLabels[k] = `${year} · ${MONTHS[m - 1] || month}`;
+        }
+      }
     }
   } else if ((c.history || []).some((h) => h.y)) {
     grouping = 'history';
     const lastY = c.history.map((h) => String(h.y)).sort().pop();
-    const endMonth = Number(lastY.slice(5, 7)) || 12;
+    let endMonth = Number(lastY.slice(5, 7)) || 12;
+    endMonth = coMatrixSnapEndMonth(endMonth, periods, n);
     for (const p of periods) {
       const d = new Date(p.date + 'T00:00:00Z');
       let m = d.getUTCMonth() + 1, y = d.getUTCFullYear();
@@ -5381,15 +5540,8 @@ function coMatrixBuild(c, opts = {}) {
         m = endMonth;
         if (m === 12) y -= 1;
       }
-      let q, fy;
-      if (n === 2) {
-        q = m === endMonth ? 2 : 1;
-        fy = m === endMonth ? y : (m > endMonth ? y + 1 : y);
-      } else {
-        q = ((m - endMonth + 12) % 12) / 3 + 1;
-        q = q === 1 ? 4 : q - 1;
-        fy = m > endMonth ? y + 1 : y;
-      }
+      const q = coMatrixQuarterIndex(m, endMonth, n);
+      const fy = m > endMonth ? y + 1 : y;
       if (!groups.has(fy)) groups.set(fy, {});
       groups.get(fy)[q] = { revenue: p.revenue, netIncome: p.netIncome };
       p.fyN = fy; p.qN = q;
@@ -5408,6 +5560,7 @@ function coMatrixBuild(c, opts = {}) {
       for (let i = n - 1; i < periods.length; i++) {
         const win = periods.slice(i - n + 1, i + 1);
         if (win.length !== n) continue;
+        if (!coMatrixWindowSpan(win, n)) continue;
         // Only compare windows that end in the annual record's own year (or the next year for a
         // January fiscal year). Without this, a coincidental revenue match in 2012 can win the
         // FY2025 window and shift every column label by more than a decade.
@@ -5436,8 +5589,28 @@ function coMatrixBuild(c, opts = {}) {
         latestEndYear = ey;
       }
     }
+    // No annual window matched (the feed is missing the fourth quarter, or its revenue concept
+    // differs from the annual one). A regular quarterly tail still tells us the fiscal calendar:
+    // a 10-K's latest period is the year end; a 10-Q's latest period is Q3 (or earlier), so the
+    // next 3-month grid point is the year end. This is an inference, not a filing fact, and the
+    // note says so.
+    let estimatedFy = false;
+    if (!endMonth && n === 4 && periods.length >= 3) {
+      const last = periods[periods.length - 1].date;
+      const lastMonth = Number(String(last).slice(5, 7));
+      const prev = periods[periods.length - 2].date;
+      const prev2 = periods[periods.length - 3].date;
+      const gap = (a, b) => (Date.parse(b) - Date.parse(a)) / (864e5 * 30.44);
+      const regular = lastMonth && gap(prev2, prev) >= 2.5 && gap(prev2, prev) <= 3.5
+        && gap(prev, last) >= 2.5 && gap(prev, last) <= 3.5;
+      const form = String(c.lastFiling?.form || '');
+      const filingMonth = Number(String(c.lastFiling?.period || '').slice(5, 7));
+      if (/^10-K/i.test(form)) { endMonth = filingMonth || lastMonth; estimatedFy = true; }
+      else if (/^10-Q/i.test(form) && regular) { endMonth = ((lastMonth + 3 - 1) % 12) + 1; estimatedFy = true; }
+    }
+    endMonth = coMatrixSnapEndMonth(endMonth, periods, n);
     if (endMonth) {
-      grouping = 'annual';
+      grouping = estimatedFy ? 'estimated' : 'annual';
       // Assign the fiscal year and the quarter from the period's own month, not from its rank in
       // the year. Ranking shifts every later cell when a quarter is missing; the month is stable.
       // A 52/53-week calendar is handled by moving a period in the first days of the next month
@@ -5448,17 +5621,15 @@ function coMatrixBuild(c, opts = {}) {
         const d = new Date(p.date + 'T00:00:00Z');
         let m = d.getUTCMonth() + 1;
         let y = d.getUTCFullYear();
-        if (d.getUTCDate() <= 5) {
-          if (m === 1) { m = 12; y -= 1; } else m -= 1;
+        // Only a 52/53-week YEAR END belongs in the previous month. A period that closes on the
+        // 1st–7th of the month after the fiscal month is the year end; every other early-month
+        // period (Pepsi's September 5) stays in its own quarter.
+        if (m === (endMonth % 12) + 1 && d.getUTCDate() <= 7) {
+          m = endMonth;
+          if (d.getUTCMonth() === 0) y -= 1;
         }
         const fy = (m > endMonth ? y + 1 : y) - fyOffset;
-        let q;
-        if (n === 2) {
-          q = m === endMonth ? 2 : 1;
-        } else {
-          q = ((m - endMonth + 12) % 12) / 3 + 1;
-          q = q === 1 ? 4 : q - 1;
-        }
+        const q = coMatrixQuarterIndex(m, endMonth, n);
         if (!groups.has(fy)) groups.set(fy, {});
         groups.get(fy)[q] = { revenue: p.revenue, netIncome: p.netIncome, date: p.date };
         p.fyN = fy; p.qN = q;
@@ -5471,6 +5642,7 @@ function coMatrixBuild(c, opts = {}) {
         for (let i = n - 1; i < periods.length; i++) {
           const win = periods.slice(i - n + 1, i + 1);
           if (win.length !== n) continue;
+          if (!coMatrixWindowSpan(win, n)) continue;
           const sum = win.reduce((s, p) => s + (p.revenue || 0), 0);
           if (!sum || a.revenue == null) continue;
           const diff = Math.abs(sum - a.revenue) / Math.abs(a.revenue);
@@ -5510,7 +5682,38 @@ function coMatrixBuild(c, opts = {}) {
     const v = groups.get(p.fyN)?.[p.qN];
     if (v) v.date = p.date;
   }
+  // A 52/53-week filer can put two period ends in the same fiscal quarter (FedEx Sep 30 and
+  // Nov 30, Best Buy Apr 30 and May 28). The later filing wins, but say so instead of silently
+  // dropping a period; a far-apart collision is usually a fiscal-year change or a mislabelled
+  // vendor period and deserves a visible note.
+  const quality = { duplicates: 0, collisions: [] };
+  const cellSeen = new Map();
+  for (const p of periods) {
+    if (p.fyN == null || p.qN == null) continue;
+    const key = `${p.fyN}/${p.qN}`;
+    if (cellSeen.has(key)) {
+      const prev = cellSeen.get(key);
+      const days = Math.abs(Date.parse(p.date) - Date.parse(prev.date)) / 864e5;
+      if (days > 21) quality.collisions.push(`${labels[p.qN - 1]} ${coMatrixYear(p.fyN)}: ${prev.date} → ${p.date}`);
+      else quality.duplicates++;
+    } else cellSeen.set(key, p);
+  }
+  // A quarter more than three times the other quarters in its own year is not a normal quarter: it
+  // is usually a cumulative/YTD figure that slipped into the period feed, or a one-off gain. Flag
+  // it rather than hide a real one-off; the cell remains the reported number.
+  quality.outliers = [];
+  if (n === 4) {
+    for (const [fy, g] of groups) {
+      const vals = [1, 2, 3, 4].map((q) => g[q]?.revenue).filter((v) => v != null && v > 0);
+      if (vals.length < 3) continue;
+      const sorted = [...vals].sort((a, b) => a - b);
+      const median = sorted[Math.floor(sorted.length / 2)];
+      const max = sorted[sorted.length - 1];
+      if (median > 0 && max / median > 3) quality.outliers.push(`FY${coMatrixYear(fy)} ${(max / median).toFixed(1)}×`);
+    }
+  }
   const am = coMatrixAnnualMap(c);
+  const repairs = coMatrixRepairAnnuals(groups, am, n, periods);
   const market = opts.market || '';
   // An explicit period basis means the feed carried as-reported periods, not a TTM window. Trust it
   // even when a restatement keeps the periods from summing exactly to the annual record: falling back
@@ -5539,7 +5742,7 @@ function coMatrixBuild(c, opts = {}) {
     const latestFy = Math.max(...groups.keys());
     const latestGroup = groups.get(latestFy);
     const latestQs = Object.keys(latestGroup).map(Number).sort((a, b) => a - b);
-    const annual = am.get(latestFy);
+    const annual = am.get(coMatrixYear(latestFy));
     const complete = latestQs.length >= n && annual != null;
     if (!complete) {
       for (const metric of ['revenue', 'netIncome']) {
@@ -5564,15 +5767,17 @@ function coMatrixBuild(c, opts = {}) {
       }
     }
   }
-  // Keep every fiscal year that has at least one reported period. The table scrolls horizontally,
-  // so ten or twenty years are usable; a hard three-year cut would hide history the feed holds.
+  // Keep every fiscal year that has at least one reported period. A year whose only period is the
+  // annual total (no quarterly split) is not a quarter column; the annual record above already
+  // shows it, and a fake Q4 would be worse than a gap.
   const years = [...groups.keys()]
+    .filter((y) => !repairs.annualOnly.has(coMatrixYear(y)))
     .filter((y) => Object.keys(groups.get(y)).some((q) => groups.get(y)[q]
       && (groups.get(y)[q].revenue != null || groups.get(y)[q].netIncome != null)))
     .sort((a, b) => b - a)
     .slice(0, 20);
   if (!years.length) return null;
-  return { periods, groups, years, n, labels, grouping, basis, outlierNote };
+  return { periods, groups, years, n, labels, grouping, basis, outlierNote, repairs, yearLabels, quality };
 }
 function coMatrixInner() {
   const store = coMatrixStore;
@@ -5580,7 +5785,7 @@ function coMatrixInner() {
   const { c, opts } = store;
   const model = coMatrixBuild(c, opts);
   if (!model) return '<div class="macro-note">Quarterly or half-year periods are not available for this company.</div>';
-  const { periods, groups, years, n, labels, grouping, basis, outlierNote } = model;
+  const { periods, groups, years, n, labels, grouping, basis, outlierNote, repairs, yearLabels, quality } = model;
   const metric = coMatrixMetric === 'profit' ? 'netIncome' : 'revenue';
   const money = opts.money || ((v) => String(v));
   const pctOf = (v, prev) => (v != null && prev != null && v > 0 && prev > 0 ? (v / prev - 1) * 100 : null);
@@ -5610,8 +5815,11 @@ function coMatrixInner() {
   const annualised = (y) => { const a = vals(y); return a.length === n ? a.reduce((x, z) => x + z, 0) : null; };
   const ttm = (y) => {
     if (y === years[0]) {
-      const last = periods.slice(-n).map((p) => p[metric]);
-      return last.length === n && last.every((v) => v != null) ? last.reduce((a, b) => a + b, 0) : null;
+      const last = periods.slice(-n);
+      // A trailing-twelve-month sum needs n contiguous periods. If the newest n entries span more
+      // than a year because a quarter is missing, the number would be a multi-year total; blank it.
+      if (last.length !== n || !coMatrixWindowSpan(last, n) || last.some((p) => p[metric] == null)) return null;
+      return last.reduce((a, b) => a + b[metric], 0);
     }
     const a = vals(y);
     return a.length === n ? a.reduce((x, z) => x + z, 0) : null;
@@ -5627,6 +5835,7 @@ function coMatrixInner() {
   // A fiscal Q4 is not calendar Q4. Read the month that quarter normally ends in from the actual
   // period dates and put it on the row label: Apple Q4 · Sep, Microsoft Q4 · Jun, Walmart Q4 · Jan.
   const monthName = (m) => ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][m - 1] || '';
+  const yearLabel = (y) => (yearLabels && yearLabels[y]) || String(y);
   const rowMonth = (q) => {
     const counts = {};
     for (const y of years) {
@@ -5638,13 +5847,13 @@ function coMatrixInner() {
     const best = Object.entries(counts).sort((a, b) => b[1] - a[1])[0];
     return best ? monthName(Number(best[0])) : '';
   };
-  const table = `<div class="co-matrix-scroll" id="co-matrix-scroll"><table class="co-matrix-table"><thead><tr><th>Period</th>${years.map((y) => `<th><span>${y}</span><small>${complete(y) ? esc(endLabel(y)) : `through ${esc(endLabel(y))}`}</small>${complete(y) ? '' : '<em class="qpartial">partial</em>'}</th>`).join('')}</tr></thead><tbody>`
+  const table = `<div class="co-matrix-scroll" id="co-matrix-scroll"><table class="co-matrix-table"><thead><tr><th>Period</th>${years.map((y) => `<th><span>${esc(yearLabel(y))}</span><small>${complete(y) ? esc(endLabel(y)) : `through ${esc(endLabel(y))}`}</small>${complete(y) ? '' : '<em class="qpartial">partial</em>'}</th>`).join('')}</tr></thead><tbody>`
     + labels.map((label, idx) => `<tr><td>${label}${rowMonth(idx + 1) ? `<small class="qmonth">${rowMonth(idx + 1)}</small>` : ''}</td>${years.map((y, yi) => {
       const g = groups.get(y)[idx + 1];
       const v = g?.[metric];
       const pv = years[yi + 1] != null ? groups.get(years[yi + 1])[idx + 1]?.[metric] : null;
       const pct = pctOf(v, pv);
-      return `<td title="${g && g.date ? `${label} FY${y} · period ending ${esc(dealDateY(g.date))}` : `${label} FY${y}`}"><span>${v == null ? '—' : money(v)}</span>${pct != null ? `<em class="qchg ${pct >= 0 ? 'pos' : 'neg'}">${pct >= 0 ? '+' : ''}${pct.toFixed(1)}%</em>` : ''}${g && g.date ? `<small class="qdate">${esc(dealDateY(g.date))}</small>` : ''}</td>`;
+      return `<td title="${g && g.date ? `${label} FY${esc(yearLabel(y))} · period ending ${esc(dealDateY(g.date))}` : `${label} FY${esc(yearLabel(y))}`}"><span>${v == null ? '—' : money(v)}</span>${pct != null ? `<em class="qchg ${pct >= 0 ? 'pos' : 'neg'}">${pct >= 0 ? '+' : ''}${pct.toFixed(1)}%</em>` : ''}${g && g.date ? `<small class="qdate">${esc(dealDateY(g.date))}</small>` : ''}</td>`;
     }).join('')}</tr>`).join('')
     + `<tr class="total"><td>Annualised</td>${years.map((y, yi) => cell(annualised(y), prevYear(yi) ? annualised(prevYear(yi)) : null)).join('')}</tr>`
     + `<tr class="total ttm"><td>TTM (${labels[latestQ - 1]})</td>${years.map((y, yi) => cell(ttm(y), prevYear(yi) ? ttm(prevYear(yi)) : null)).join('')}</tr>`
@@ -5660,11 +5869,27 @@ function coMatrixInner() {
         ? 'Fiscal years could not be matched to the annual history, so the columns are calendar years.'
         : grouping === 'reported'
           ? 'Period labels are the company’s own.'
-          : grouping === 'annual'
-            ? 'Fiscal years are matched to the annual series; the subline is each year’s end.'
-            : 'Fiscal periods are derived from the annual history.';
+          : grouping === 'estimated'
+            ? 'The fiscal year end was inferred from the latest reported period; the annual window was incomplete.'
+            : grouping === 'annual'
+              ? 'Fiscal years are matched to the annual series; the subline is each year’s end.'
+              : 'Fiscal periods are derived from the annual history.';
   const stale = latestPeriod && (Date.now() - Date.parse(latestPeriod)) / 864e5 > 450;
-  const note = `${n === 2 ? 'Half-year' : 'Quarterly'} reporting detected from the period spacing. ${basisNote} The column subline is the fiscal year end for a complete year (the latest reported period for a partial year); each cell carries its actual period end date, so Q4 2026 is the quarter ending in the month shown, not calendar Q4. Annualised is shown only for a complete year; TTM is the trailing ${n} periods. Scroll the table sideways for older years. Change is year-on-year (green up, red down); a change from a loss is left blank.${latestPeriod ? ` Latest reported period: ${dealDateY(latestPeriod)}.` : ''}${stale ? ' That period is more than 15 months old; the feed may be stale.' : ''} The fiscal-year record above uses the annual filing; the matrix uses the quarterly feed, which can differ.`;
+  const fixes = repairs || {};
+  const blankCells = years.reduce((nBlank, y) => nBlank + Array.from({ length: n }, (_, i) => groups.get(y)[i + 1]?.[metric]).filter((v) => v == null).length, 0);
+  const qualityNote = [
+    quality && quality.duplicates ? `${quality.duplicates} repeated period${quality.duplicates === 1 ? '' : 's'} on the same fiscal quarter were de-duplicated; the later filing is shown.` : '',
+    quality && quality.collisions && quality.collisions.length ? `${quality.collisions.length} period${quality.collisions.length === 1 ? '' : 's'} landed on the same fiscal quarter with dates more than three weeks apart; the later filing is shown. This usually means a fiscal-year change or a 52/53-week calendar.${quality.collisions.length <= 3 ? ` (${quality.collisions.join('; ')})` : ''}` : '',
+    quality && quality.outliers && quality.outliers.length ? (() => {
+      const severe = quality.outliers.filter((x) => Number(String(x).split(' ').pop().replace('×', '')) > 10);
+      return severe.length ? `${severe.length} quarter${severe.length === 1 ? '' : 's'} ${severe.length === 1 ? 'is' : 'are'} more than ten times the other quarters in the same year (${severe.slice(0, 3).join(', ')}); check for a cumulative figure.` : '';
+    })() : '',
+    fixes.repaired && fixes.repaired.size ? `A period tagged equal to the annual total was rebuilt from the annual record (${[...fixes.repaired].join(', ')}).` : '',
+    fixes.annualOnly && fixes.annualOnly.size ? `No quarterly split is available for ${[...fixes.annualOnly].join(', ')}; those years are omitted rather than shown as a fake Q4.` : '',
+    fixes.unreconciled && fixes.unreconciled.size ? `The annual record does not reconcile with the quarters for ${[...fixes.unreconciled].join(', ')}; the quarters are shown as filed.` : '',
+    blankCells ? `${blankCells} cell${blankCells === 1 ? '' : 's'} are blank because the feed does not carry that period — they are not zero.` : '',
+  ].filter(Boolean).join(' ');
+  const note = `${n === 2 ? 'Half-year' : 'Quarterly'} reporting detected from the period spacing. ${basisNote} The column subline is the fiscal year end for a complete year (the latest reported period for a partial year); each cell carries its actual period end date, so Q4 2026 is the quarter ending in the month shown, not calendar Q4. Annualised is shown only for a complete year; TTM is the trailing ${n} periods. Scroll the table sideways for older years. Change is year-on-year (green up, red down); a change from a loss is left blank.${latestPeriod ? ` Latest reported period: ${dealDateY(latestPeriod)}.` : ''}${stale ? ' That period is more than 15 months old; the feed may be stale.' : ''} ${qualityNote} The fiscal-year record above uses the annual filing; the matrix uses the quarterly feed, which can differ.`;
   return `<div class="co-matrix-head"><span class="t">${n === 2 ? 'HALF-YEAR' : 'QUARTERLY'} RESULTS</span><span class="s">${years.length} fiscal years · ${esc(opts.ccy || '')}${latestPeriod ? ` · latest ${dealDateY(latestPeriod)}` : ''}</span><div class="co-matrix-ctls"><button type="button" data-comnav="-1" aria-label="Scroll to older years" title="Older years">‹</button><button type="button" data-comnav="1" aria-label="Scroll to newer years" title="Newer years">›</button><span class="co-matrix-sep"></span>${metricBtns}<span class="co-matrix-sep"></span><button type="button" data-comaview="matrix" class="${coMatrixView === 'matrix' ? 'on' : ''}">MATRIX</button><button type="button" data-comaview="list" class="${coMatrixView === 'list' ? 'on' : ''}">LIST</button></div></div>`
     + `<div class="co-matrix-body">${coMatrixView === 'list' ? list : table}</div>`
     + `<div class="co-matrix-note">${note}</div>`;
@@ -5756,7 +5981,7 @@ function renderJapanPageBody(c) {
         ${c.brands && c.brands.length ? `<div class="jp-brands">${c.brands.map((b) => `<span>${esc(b)}</span>`).join('')}</div>` : ''}</div>
         <button class="co-star ${starred ? 'on' : ''}" data-jpstar="${esc(c.code)}" title="${starred ? 'Unpin from watchlist' : 'Pin to watchlist'}">${starred ? '★' : '☆'}</button>
       </div>`
-    + `<div class="co-price">
+    + `<div class="co-price" ${liveRef('jp', c.ticker || c.code, c)} data-qkind="company">
         <span class="co-price-v">${yen(c.price)}</span>
         <span class="co-price-c ${c.chg1d >= 0 ? 'pos' : 'neg'}">${c.chg1d == null ? '' : `${chg(c.chg1d)} today`}</span>
         <span class="co-price-c ${c.chg6m >= 0 ? 'pos' : 'neg'}">${c.chg6m == null ? '' : `${chg(c.chg6m)} 6M`}</span>
@@ -6516,7 +6741,7 @@ function renderKoreaScreener(all, d) {
   const max = Math.max(...all.map((c) => c.marketCap || 0), 1);
   el.innerHTML = krViewsBar()
     + `<div class="co-hrow"><span>#</span><span></span><span>COMPANY</span><span>MARKET CAP</span><span>P/E</span><span>ROE</span></div>`
-    + shown.map((c, i) => `<button class="co-row" data-kr="${esc(c.code)}">
+    + shown.map((c, i) => `<button class="co-row" data-kr="${esc(c.code)}" ${liveRef('kr', c.ticker || c.code, c)} data-qkind="row">
         <span class="co-rank">${(page - 1) * krPer + i + 1}</span>
         ${krMono(c)}
         <span class="co-id"><b>${esc(krName(c))}</b>
@@ -6552,7 +6777,7 @@ async function renderKoreaPage(stub) {
         <div class="co-sub">${esc(c.ticker)} · KOSPI${c.name ? ' · ' + esc(c.name) : ''}</div>
         ${c.description ? `<div class="co-desc">${esc(c.description)}</div>` : ''}
         ${c.brands && c.brands.length ? `<div class="jp-brands">${c.brands.map((b) => `<span>${esc(b)}</span>`).join('')}</div>` : ''}</div></div>`
-    + `<div class="co-price"><span class="co-price-v">${wonPx(c.price)}</span>
+    + `<div class="co-price" ${liveRef('kr', c.ticker || c.code, c)} data-qkind="company"><span class="co-price-v">${wonPx(c.price)}</span>
         <span class="co-price-c ${c.chg1d >= 0 ? 'pos' : 'neg'}">${chg(c.chg1d)} today</span>
         <span class="co-price-c ${c.chg6m >= 0 ? 'pos' : 'neg'}">${chg(c.chg6m)} 6M</span>
         <span class="co-price-c ${c.chgYtd >= 0 ? 'pos' : 'neg'}">${chg(c.chgYtd)} YTD</span>
@@ -6843,7 +7068,7 @@ function renderTaiwanScreener(all, d) {
   const shown = sorted.slice((page - 1) * twPer, page * twPer);
   el.innerHTML = twViewsBar()
     + `<div class="co-hrow"><span>#</span><span></span><span>COMPANY</span><span>MARKET CAP</span><span>P/E</span><span>ROE</span></div>`
-    + shown.map((c, i) => `<button class="co-row" data-tw="${esc(c.code)}">
+    + shown.map((c, i) => `<button class="co-row" data-tw="${esc(c.code)}" ${liveRef('tw', c.ticker || c.code, c)} data-qkind="row">
         <span class="co-rank">${(page - 1) * twPer + i + 1}</span>
         ${twMono(c)}
         <span class="co-id"><b>${esc(twName(c))}</b>
@@ -6879,7 +7104,7 @@ async function renderTaiwanPage(stub) {
         <div class="co-sub">${esc(c.ticker)} · TWSE${c.name && c.name !== twName(c) ? ' · ' + esc(c.name) : ''}</div>
         ${c.description ? `<div class="co-desc">${esc(c.description)}</div>` : ''}
         ${c.brands && c.brands.length ? `<div class="jp-brands">${c.brands.map((b) => `<span>${esc(b)}</span>`).join('')}</div>` : ''}</div></div>`
-    + `<div class="co-price"><span class="co-price-v">${twPx(c.price)}</span>
+    + `<div class="co-price" ${liveRef('tw', c.ticker || c.code, c)} data-qkind="company"><span class="co-price-v">${twPx(c.price)}</span>
         <span class="co-price-c ${c.chg1d >= 0 ? 'pos' : 'neg'}">${chg(c.chg1d)} today</span>
         <span class="co-price-c ${c.chg6m >= 0 ? 'pos' : 'neg'}">${chg(c.chg6m)} 6M</span>
         <span class="co-price-c ${c.chgYtd >= 0 ? 'pos' : 'neg'}">${chg(c.chgYtd)} YTD</span>
@@ -7224,7 +7449,7 @@ function renderHongKongScreener(all, d) {
   const shown = sorted.slice((page - 1) * hkPer, page * hkPer);
   el.innerHTML = hkViewsBar()
     + `<div class="co-hrow"><span>#</span><span></span><span>COMPANY</span><span>MARKET CAP</span><span>P/E</span><span>ROE</span></div>`
-    + shown.map((c, i) => `<button class="co-row" data-hk="${esc(c.code)}">
+    + shown.map((c, i) => `<button class="co-row" data-hk="${esc(c.code)}" ${liveRef('hk', c.ticker || c.code, c)} data-qkind="row">
         <span class="co-rank">${(page - 1) * hkPer + i + 1}</span>
         ${hkMono(c)}
         <span class="co-id"><b>${esc(hkName(c))}</b>
@@ -7266,7 +7491,7 @@ async function renderHongKongPage(stub) {
         <div class="co-sub">${esc(c.ticker)} · HKEX main board${c.name && c.name !== hkName(c) ? ' · ' + esc(c.name) : ''}${c.industry ? ' · ' + esc(c.industry) : ''}</div>
         ${c.description ? `<div class="co-desc">${esc(c.description)}</div>` : ''}
         ${c.brands && c.brands.length ? `<div class="jp-brands">${c.brands.map((b) => `<span>${esc(b)}</span>`).join('')}</div>` : ''}</div></div>`
-    + `<div class="co-price"><span class="co-price-v">${hkPx(c.price)}</span>
+    + `<div class="co-price" ${liveRef('hk', c.ticker || c.code, c)} data-qkind="company"><span class="co-price-v">${hkPx(c.price)}</span>
         <span class="co-price-c ${c.chg1d >= 0 ? 'pos' : 'neg'}">${chg(c.chg1d)} today</span>
         <span class="co-price-c ${c.chg6m >= 0 ? 'pos' : 'neg'}">${chg(c.chg6m)} 6M</span>
         <span class="co-price-c ${c.chgYtd >= 0 ? 'pos' : 'neg'}">${chg(c.chgYtd)} YTD</span>
@@ -7572,7 +7797,7 @@ function renderAustraliaScreener(all, d) {
   const shown = sorted.slice((page - 1) * auPer, page * auPer);
   el.innerHTML = auViewsBar()
     + `<div class="co-hrow"><span>#</span><span></span><span>COMPANY</span><span>MARKET CAP</span><span>P/E</span><span>ROE</span></div>`
-    + shown.map((c, i) => `<button class="co-row" data-au="${esc(c.code)}">
+    + shown.map((c, i) => `<button class="co-row" data-au="${esc(c.code)}" ${liveRef('au', c.ticker || c.code, c)} data-qkind="row">
         <span class="co-rank">${(page - 1) * auPer + i + 1}</span>
         ${auMono(c)}
         <span class="co-id"><b>${esc(auName(c))}</b>
@@ -7621,7 +7846,7 @@ async function renderAustraliaPage(stub) {
         <div class="co-sub">${esc(c.ticker)} · ASX-listed${c.crossListing ? ' · US statements' : ''}${c.name && c.name !== auName(c) ? ' · ' + esc(c.name) : ''}${c.industry ? ' · ' + esc(c.industry) : ''}</div>
         ${c.description ? `<div class="co-desc">${esc(c.description)}</div>` : ''}
         ${c.brands && c.brands.length ? `<div class="jp-brands">${c.brands.map((b) => `<span>${esc(b)}</span>`).join('')}</div>` : ''}</div></div>`
-    + `<div class="co-price"><span class="co-price-v">${auPx(c.price)}</span>
+    + `<div class="co-price" ${liveRef('au', c.ticker || c.code, c)} data-qkind="company"><span class="co-price-v">${auPx(c.price)}</span>
         <span class="co-price-c ${c.chg1d >= 0 ? 'pos' : 'neg'}">${chg(c.chg1d)} today</span>
         <span class="co-price-c ${c.chg6m >= 0 ? 'pos' : 'neg'}">${chg(c.chg6m)} 6M</span>
         <span class="co-price-c ${c.chgYtd >= 0 ? 'pos' : 'neg'}">${chg(c.chgYtd)} YTD</span>
@@ -7936,7 +8161,7 @@ function renderIndiaScreener(all, d) {
   const shown = sorted.slice((page - 1) * inPer, page * inPer);
   el.innerHTML = inViewsBar()
     + `<div class="co-hrow"><span>#</span><span></span><span>COMPANY</span><span>MARKET CAP</span><span>P/E</span><span>ROE</span></div>`
-    + shown.map((c, i) => `<button class="co-row" data-in="${esc(c.code)}">
+    + shown.map((c, i) => `<button class="co-row" data-in="${esc(c.code)}" ${liveRef('in', c.ticker || c.code, c)} data-qkind="row">
         <span class="co-rank">${(page - 1) * inPer + i + 1}</span>
         ${inMono(c)}
         <span class="co-id"><b>${esc(inName(c))}</b>
@@ -7985,7 +8210,7 @@ async function renderIndiaPage(stub) {
         <div class="co-sub">${esc(c.ticker)} · NSE-listed${c.crossListing ? ' · US statements' : ''}${c.name && c.name !== inName(c) ? ' · ' + esc(c.name) : ''}${c.industry ? ' · ' + esc(c.industry) : ''}</div>
         ${c.description ? `<div class="co-desc">${esc(c.description)}</div>` : ''}
         ${c.brands && c.brands.length ? `<div class="jp-brands">${c.brands.map((b) => `<span>${esc(b)}</span>`).join('')}</div>` : ''}</div></div>`
-    + `<div class="co-price"><span class="co-price-v">${inPx(c.price)}</span>
+    + `<div class="co-price" ${liveRef('in', c.ticker || c.code, c)} data-qkind="company"><span class="co-price-v">${inPx(c.price)}</span>
         <span class="co-price-c ${c.chg1d >= 0 ? 'pos' : 'neg'}">${chg(c.chg1d)} today</span>
         <span class="co-price-c ${c.chg6m >= 0 ? 'pos' : 'neg'}">${chg(c.chg6m)} 6M</span>
         <span class="co-price-c ${c.chgYtd >= 0 ? 'pos' : 'neg'}">${chg(c.chgYtd)} YTD</span>
@@ -8334,7 +8559,7 @@ function renderIndonesiaScreener(all, d) {
   const shown = sorted.slice((page - 1) * idPer, page * idPer);
   el.innerHTML = idViewsBar()
     + `<div class="co-hrow"><span>#</span><span></span><span>COMPANY</span><span>MARKET CAP</span><span>P/E</span><span>ROE</span></div>`
-    + shown.map((c, i) => `<button class="co-row" data-id="${esc(c.code)}">
+    + shown.map((c, i) => `<button class="co-row" data-id="${esc(c.code)}" ${liveRef('id', c.ticker || c.code, c)} data-qkind="row">
         <span class="co-rank">${(page - 1) * idPer + i + 1}</span>
         ${idMono(c)}
         <span class="co-id"><b>${esc(idName(c))}</b>
@@ -8387,7 +8612,7 @@ async function renderIndonesiaPage(stub) {
         <div class="co-sub">${esc(c.ticker)} · IDX-listed${c.name && c.name !== idName(c) ? ' · ' + esc(c.name) : ''}${c.industry ? ' · ' + esc(c.industry) : ''}</div>
         ${c.description ? `<div class="co-desc">${esc(c.description)}</div>` : ''}
         ${c.brands && c.brands.length ? `<div class="jp-brands">${c.brands.map((b) => `<span>${esc(b)}</span>`).join('')}</div>` : ''}</div></div>`
-    + `<div class="co-price"><span class="co-price-v">${idPx(c.price)}</span>
+    + `<div class="co-price" ${liveRef('id', c.ticker || c.code, c)} data-qkind="company"><span class="co-price-v">${idPx(c.price)}</span>
         <span class="co-price-c ${c.chg1d >= 0 ? 'pos' : 'neg'}">${chg(c.chg1d)} today</span>
         <span class="co-price-c ${c.chg6m >= 0 ? 'pos' : 'neg'}">${chg(c.chg6m)} 6M</span>
         <span class="co-price-c ${c.chgYtd >= 0 ? 'pos' : 'neg'}">${chg(c.chgYtd)} YTD</span>
@@ -8803,7 +9028,7 @@ function renderBrazilScreener(all, d) {
   const shown = sorted.slice((page - 1) * brPer, page * brPer);
   el.innerHTML = brViewsBar()
     + `<div class="co-hrow"><span>#</span><span></span><span>COMPANY</span><span>MARKET CAP</span><span>P/E</span><span>ROE</span></div>`
-    + shown.map((c, i) => `<button class="co-row" data-br="${esc(c.code)}">
+    + shown.map((c, i) => `<button class="co-row" data-br="${esc(c.code)}" ${liveRef('br', c.ticker || c.code, c)} data-qkind="row">
         <span class="co-rank">${(page - 1) * brPer + i + 1}</span>
         ${brMono(c)}
         <span class="co-id"><b>${esc(brName(c))}${c.bdr ? '<span class="bdr-tag">BDR</span>' : ''}</b>
@@ -8855,7 +9080,7 @@ async function renderBrazilPage(stub) {
         <div class="co-sub">${esc(c.ticker)} · ${esc(c.shareClass || '')} · B3-listed${c.name && c.name !== brName(c) ? ' · ' + esc(c.name) : ''}${c.industry ? ' · ' + esc(c.industry) : ''}</div>
         ${c.description ? `<div class="co-desc">${esc(c.description)}</div>` : ''}
         ${c.brands && c.brands.length ? `<div class="jp-brands">${c.brands.map((b) => `<span>${esc(b)}</span>`).join('')}</div>` : ''}</div></div>`
-    + `<div class="co-price"><span class="co-price-v">${brPx(c.price)}</span>
+    + `<div class="co-price" ${liveRef('br', c.ticker || c.code, c)} data-qkind="company"><span class="co-price-v">${brPx(c.price)}</span>
         <span class="co-price-c ${c.chg1d >= 0 ? 'pos' : 'neg'}">${chg(c.chg1d)} today</span>
         <span class="co-price-c ${c.chg6m >= 0 ? 'pos' : 'neg'}">${chg(c.chg6m)} 6M</span>
         <span class="co-price-c ${c.chgYtd >= 0 ? 'pos' : 'neg'}">${chg(c.chgYtd)} YTD</span>
@@ -9038,6 +9263,241 @@ const zaMoney = (v) => {
   return `R ${Math.round(v).toLocaleString('en-US')}`;
 };
 const zaPx = (v) => (v == null || !Number.isFinite(v) ? '—' : `R ${Number(v).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`);
+
+// --- live equity quotes ---------------------------------------------------------------------------
+// A quote is an overlay on the committed close: the server fetches only the refs on screen, the client
+// patches the price and every price-derived number in place. Nothing here writes a file, and a failed
+// quote leaves the committed value untouched.
+const LIVE_PRICE = {
+  us: (v) => `$${Number(v).toFixed(2)}`,
+  jp: yen,
+  kr: wonPx,
+  tw: twPx,
+  hk: hkPx,
+  au: auPx,
+  in: inPx,
+  id: idPx,
+  br: brPx,
+  za: zaPx,
+};
+const LIVE_MONEY = {
+  us: coMoney,
+  jp: yen,
+  kr: won,
+  tw: twMoney,
+  hk: hkMoney,
+  au: auMoney,
+  in: inMoney,
+  id: idMoney,
+  br: brMoney,
+  za: zaMoney,
+};
+const liveChg = (baseChg, ratio) => (baseChg == null || ratio == null ? null : (((1 + baseChg / 100) * ratio) - 1) * 100);
+const livePct = (v) => `${v >= 0 ? '+' : ''}${v.toFixed(1)}%`;
+
+function setValueText(el, text) {
+  if (!el) return;
+  // Keep child annotations such as the ≠ on a disputed P/B: replace the number's own text node and
+  // leave the <em> beside it alone. Setting textContent would destroy those markers.
+  const kids = el.childNodes ? [...el.childNodes] : [];
+  const node = kids.find((n) => n.nodeType === 3 && n.textContent.trim());
+  if (node && el.children && el.children.length) { node.textContent = `${String(text).trimEnd()} `; return; }
+  el.textContent = text;
+}
+
+function setPctText(el, v, fallbackSuffix) {
+  if (!el || v == null || !Number.isFinite(v)) return;
+  const old = el.textContent || '';
+  const suffix = (old.match(/(YTD|SINCE .*|since .*|today|6M)$/i) || [])[1] || fallbackSuffix || '';
+  const dp = (old.match(/\.(\d+)/) || [])[1]?.length || 1;
+  el.textContent = `${v >= 0 ? '+' : ''}${v.toFixed(dp)}%${suffix ? ' ' + suffix : ''}`;
+  el.classList.remove('pos', 'neg');
+  el.classList.add(v >= 0 ? 'pos' : 'neg');
+}
+
+function setMetricText(el, v, suffix = '') {
+  if (!el) return;
+  if (v == null || !Number.isFinite(v)) { setValueText(el, '—'); return; }
+  const old = el.textContent || '';
+  const num = old.match(/-?\d+(?:\.\d+)?/);
+  const dp = num && num[0].includes('.') ? num[0].split('.')[1].length : (suffix === '×' ? 2 : 1);
+  // Keep any annotation the page put after the number, e.g. Japan's "9.70× sector 10.1×".
+  const after = old.match(/-?\d+(?:\.\d+)?(?:%|×)?([^\d]*.*)$/);
+  // A child <em> (a dispute/approx marker) is already preserved by setValueText; only append text
+  // annotations from a tile that has no child nodes, or the marker would duplicate on every poll.
+  const tail = el.children && el.children.length ? '' : (after ? after[1] : '');
+  setValueText(el, `${v.toFixed(dp)}${suffix}${tail}`);
+}
+
+function staleQuote(c, q) {
+  const baseDay = c.priceDate || c.priceAsOf;
+  const qDay = q && q.time ? String(q.time).slice(0, 10) : null;
+  return !!(baseDay && qDay && qDay < baseDay);
+}
+
+function patchQuoteRow(el, ref, q) {
+  const c = LIVE_BASE.get(ref);
+  if (!c || !(c.price > 0) || !(q.price > 0) || staleQuote(c, q)) return;
+  const market = ref.slice(0, ref.indexOf(':'));
+  const r = q.price / c.price;
+  const px = el.querySelector('.co-px');
+  if (px) px.textContent = LIVE_PRICE[market](q.price);
+  const ems = [...el.querySelectorAll('em')].filter((e) => /%/.test(e.textContent || ''));
+  if (ems[0] && q.chg1d != null) setPctText(ems[0], q.chg1d);
+  if (ems[1] && c.chgYtd != null) setPctText(ems[1], liveChg(c.chgYtd, r));
+  const cap = el.querySelector('.co-cap');
+  if (cap && c.marketCap != null) {
+    const v = c.marketCap * r;
+    const text = [...cap.childNodes].find((n) => n.nodeType === 3 && n.textContent.trim());
+    if (text) text.textContent = LIVE_MONEY[market](v);
+    const fill = cap.querySelector('.co-bar > i');
+    if (fill) {
+      const w = parseFloat(fill.style.width) || 0;
+      fill.style.width = `${Math.min(100, Math.max(2, w * r))}%`;
+    }
+  }
+  const pe = el.querySelector('.co-pe');
+  if (pe && c.pe != null) setMetricText(pe, c.pe * r, /×/.test(pe.textContent || '') ? '×' : '');
+}
+
+function patchQuoteCompany(el, ref, q) {
+  const c = LIVE_BASE.get(ref);
+  if (!c || !(c.price > 0) || !(q.price > 0) || staleQuote(c, q)) return;
+  const market = ref.slice(0, ref.indexOf(':'));
+  const r = q.price / c.price;
+  const pv = el.querySelector('.co-price-v');
+  if (pv) pv.textContent = LIVE_PRICE[market](q.price);
+  const pcs = el.querySelectorAll('.co-price-c');
+  if (pcs[0] && q.chg1d != null) setPctText(pcs[0], q.chg1d, 'today');
+  if (pcs[1] && c.chg6m != null) setPctText(pcs[1], liveChg(c.chg6m, r), '6M');
+  if (pcs[2] && c.chgYtd != null) setPctText(pcs[2], liveChg(c.chgYtd, r));
+  const asof = el.querySelector('.dimtext');
+  if (asof && q.time) {
+    const t = new Date(q.time);
+    const day = String(q.time).slice(0, 10);
+    const today = new Date().toISOString().slice(0, 10);
+    const age = Date.now() - Date.parse(q.time);
+    const time = t.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+    const when = age < 120000
+      ? `live ${time}`
+      : day === today ? `last ${time}`
+        : `close ${t.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' })}`;
+    asof.textContent = `${when}${q.currency ? ' · ' + q.currency : ''}`;
+  }
+  const page = el.closest('#co-body') || document.getElementById('co-body');
+  if (!page) return;
+  const peSuffix = (v) => (/×/.test(v.textContent || '') ? '×' : '');
+  for (const tile of page.querySelectorAll('.co-stat')) {
+    const kEl = tile.querySelector('.co-k');
+    const vEl = tile.querySelector('.co-v');
+    if (!kEl || !vEl) continue;
+    const k = (kEl.textContent || '').trim();
+    if (k === 'MARKET CAP') { if (c.marketCap != null) setValueText(vEl, LIVE_MONEY[market](c.marketCap * r)); }
+    else if (k === 'MARKET CAP · USD') { if (c.marketCapUsd != null) setValueText(vEl, `$${(c.marketCapUsd * r / 1e9).toFixed(1)}B`); }
+    else if (k.startsWith('P/E')) { if (c.pe != null) setMetricText(vEl, c.pe * r, peSuffix(vEl)); }
+    else if (k === 'P/B') { if (c.pb != null) setMetricText(vEl, c.pb * r, peSuffix(vEl)); }
+    else if (k === 'P / TANGIBLE BOOK') { if (c.ptbv != null) setMetricText(vEl, c.ptbv * r, peSuffix(vEl)); }
+    else if (k === 'DIVIDEND YIELD') { if (c.dividendYield != null) setMetricText(vEl, c.dividendYield / r, '%'); }
+    else if (k === 'FCF YIELD') { if (c.fcfYield != null) setMetricText(vEl, c.fcfYield / r, '%'); }
+    else if (k === 'ENTERPRISE VALUE') {
+      if (c.ev != null && c.marketCap != null) setValueText(vEl, LIVE_MONEY[market](c.ev + (c.marketCap * r - c.marketCap)));
+    } else if (k.startsWith('EV / EBITDA')) {
+      if (c.ev > 0 && c.evEbitda > 0 && c.marketCap != null) {
+        const ebitda = c.ev / c.evEbitda;
+        setMetricText(vEl, (c.ev + (c.marketCap * r - c.marketCap)) / ebitda, peSuffix(vEl));
+      }
+    } else if (k === 'EBIT YIELD') {
+      if (c.ev > 0 && c.evEbitda > 0 && c.ebitYield != null) {
+        const ebit = (c.ebitYield / 100) * c.ev;
+        setMetricText(vEl, (ebit / (c.ev + c.marketCap * r - c.marketCap)) * 100, '%');
+      }
+    } else if (k === 'SHAREHOLDER YIELD') {
+      // Dividend and buyback yields both divide by the live cap, so the combined yield scales by 1/r.
+      if (c.shareholderYield != null) setMetricText(vEl, c.shareholderYield / r, '%');
+    }
+  }
+}
+
+function patchQuoteHomeRow(el, ref, q) {
+  const c = LIVE_BASE.get(ref);
+  if (!c || !(c.price > 0) || !(q.price > 0) || staleQuote(c, q)) return;
+  const market = ref.slice(0, ref.indexOf(':'));
+  const r = q.price / c.price;
+  const cells = el.children;
+  const pctCell = (td, v) => {
+    if (!td) return;
+    if (v == null || !Number.isFinite(v)) { td.textContent = '—'; return; }
+    td.textContent = livePct(v);
+    td.classList.remove('pos', 'neg');
+    td.classList.add(v >= 0 ? 'pos' : 'neg');
+  };
+  if (cells[1]) cells[1].textContent = LIVE_PRICE[market](q.price);
+  pctCell(cells[2], q.chg1d);
+  pctCell(cells[3], liveChg(c.chg6m, r));
+  pctCell(cells[4], liveChg(c.chgYtd, r));
+  if (cells[5] && c.pe != null) cells[5].textContent = `${(c.pe * r).toFixed(1)}×`;
+  if (cells[6] && c.pb != null) cells[6].textContent = `${(c.pb * r).toFixed(2)}×`;
+  if (cells[8] && c.marketCap != null) cells[8].textContent = LIVE_MONEY[market](c.marketCap * r);
+}
+
+let quotePollBusy = false;
+let quoteObserver = null;
+let quoteQueued = null;
+function scheduleQuotePoll(delay = 350) {
+  if (quoteQueued) clearTimeout(quoteQueued);
+  quoteQueued = setTimeout(() => { quoteQueued = null; pollQuotes(); }, delay);
+}
+async function pollQuotes() {
+  if (quotePollBusy || document.visibilityState === 'hidden') return;
+  const els = [...document.querySelectorAll('[data-qref]')].filter((e) => e.getClientRects().length);
+  const refs = [...new Set(els.map((e) => e.dataset.qref).filter(Boolean))];
+  if (!refs.length) return;
+  quotePollBusy = true;
+  try {
+    const d = await jget('/api/quotes?refs=' + encodeURIComponent(refs.slice(0, 60).join(',')), 0);
+    const qs = (d && d.quotes) || {};
+    const byRef = new Map();
+    for (const el of els) {
+      const r = el.dataset.qref;
+      if (!byRef.has(r)) byRef.set(r, []);
+      byRef.get(r).push(el);
+    }
+    // Patch with the observer disconnected: textContent writes are childList mutations and would
+    // otherwise schedule the next poll immediately.
+    try { quoteObserver?.disconnect(); } catch {}
+    for (const [ref, q] of Object.entries(qs)) {
+      for (const el of byRef.get(ref) || []) {
+        if (el.dataset.qkind === 'row') patchQuoteRow(el, ref, q);
+        else if (el.dataset.qkind === 'company') patchQuoteCompany(el, ref, q);
+        else if (el.dataset.qkind === 'homerow') patchQuoteHomeRow(el, ref, q);
+      }
+    }
+  } catch { /* the committed close stays on screen */ }
+  finally {
+    quotePollBusy = false;
+    if (quoteObserver) {
+      try { quoteObserver.observe(document.body, { childList: true, subtree: true }); } catch {}
+    }
+  }
+}
+function startQuotePolling() {
+  if (window.__quoteTimer) return;
+  window.__quoteTimer = setInterval(pollQuotes, 15000);
+  setTimeout(pollQuotes, 2000);
+  // A screen change inserts new [data-qref] rows: refresh them at once instead of waiting for the
+  // next 15s tick. Text-only mutations (the patches) are filtered by requiring a quote ref.
+  if (typeof MutationObserver === 'function') {
+    quoteObserver = new MutationObserver((records) => {
+      for (const m of records) {
+        for (const n of m.addedNodes) {
+          if (n.nodeType !== 1) continue;
+          if (n.matches?.('[data-qref]') || n.querySelector?.('[data-qref]')) { scheduleQuotePoll(); return; }
+        }
+      }
+    });
+    try { quoteObserver.observe(document.body, { childList: true, subtree: true }); } catch {}
+  }
+}
 const zaMono = (c) => coMono({ ticker: String(c.nameEn || c.name || '?').replace(/[^A-Za-z]/g, '').slice(0, 2) || 'ID', name: c.nameEn || c.name });
 const zaViewsBar = () => '';
 
@@ -9274,7 +9734,7 @@ function renderSouthAfricaScreener(all, d) {
   const shown = sorted.slice((page - 1) * zaPer, page * zaPer);
   el.innerHTML = zaViewsBar()
     + `<div class="co-hrow"><span>#</span><span></span><span>COMPANY</span><span>MARKET CAP</span><span>P/E</span><span>ROE</span></div>`
-    + shown.map((c, i) => `<button class="co-row" data-za="${esc(c.code)}">
+    + shown.map((c, i) => `<button class="co-row" data-za="${esc(c.code)}" ${liveRef('za', c.ticker || c.code, c)} data-qkind="row">
         <span class="co-rank">${(page - 1) * zaPer + i + 1}</span>
         ${zaMono(c)}
         <span class="co-id"><b>${esc(zaName(c))}${c.foreignSecondary ? '<span class="bdr-tag">JSE 2ND</span>' : ''}</b>
@@ -9326,7 +9786,7 @@ async function renderSouthAfricaPage(stub) {
         <div class="co-sub">${esc(c.ticker)} · ${esc(c.shareClass || '')} · JSE-listed${c.name && c.name !== zaName(c) ? ' · ' + esc(c.name) : ''}${c.industry ? ' · ' + esc(c.industry) : ''}</div>
         ${c.description ? `<div class="co-desc">${esc(c.description)}</div>` : ''}
         ${c.brands && c.brands.length ? `<div class="jp-brands">${c.brands.map((b) => `<span>${esc(b)}</span>`).join('')}</div>` : ''}</div></div>`
-    + `<div class="co-price"><span class="co-price-v">${zaPx(c.price)}</span>
+    + `<div class="co-price" ${liveRef('za', c.ticker || c.code, c)} data-qkind="company"><span class="co-price-v">${zaPx(c.price)}</span>
         <span class="co-price-c ${c.chg1d >= 0 ? 'pos' : 'neg'}">${chg(c.chg1d)} today</span>
         <span class="co-price-c ${c.chg6m >= 0 ? 'pos' : 'neg'}">${chg(c.chg6m)} 6M</span>
         <span class="co-price-c ${c.chgYtd >= 0 ? 'pos' : 'neg'}">${chg(c.chgYtd)} YTD</span>
@@ -10125,6 +10585,10 @@ document.addEventListener('click', (e) => {
 });
 
 function renderCompanies() {
+  // A company page's ref lives on the page container only while that page is mounted. Clearing it on
+  // every route change keeps a stale symbol out of the next screen's quote batch.
+  const bodyEl = $('co-body');
+  if (bodyEl) { delete bodyEl.dataset.qref; delete bodyEl.dataset.qkind; }
   // A new company starts without the previous company's benchmark. Same-company re-renders (a watch
   // star, a range change) keep it.
   if (coCik !== coOpenCik) { coCompare = ''; coOpenCik = coCik; }
@@ -10260,7 +10724,7 @@ function renderCompanies() {
     + (rows.length ? '' : `<div class="macro-note">No company matches “${esc(coQuery.trim())}”. Try a ticker (AAPL) or a sector name.</div>`)
     + shown.map((c, i) => {
       const m = c.roe != null ? c.roe : null;
-      return `<button class="co-row" data-cik="${esc(c.cik)}">
+      return `<button class="co-row" data-cik="${esc(c.cik)}" ${liveRef('us', c.ticker, c)} data-qkind="row">
         <span class="co-rank">${(page - 1) * usListPer + i + 1}</span>
         ${coMono(c)}
         <span class="co-id"><b>${esc(c.name)}</b>
@@ -10788,7 +11252,7 @@ async function renderCompanyPageBody(el, c, all) {
         ${c.brands && c.brands.length ? `<div class="jp-brands">${c.brands.map((b) => `<span>${esc(b)}</span>`).join('')}</div>` : ''}</div>
         <button class="co-star ${watchlist().includes(c.ticker) ? 'on' : ''}" data-coticker="${esc(c.ticker || '')}" title="${watchlist().includes(c.ticker) ? 'Unpin from watchlist' : 'Pin to watchlist'}">${watchlist().includes(c.ticker) ? '★' : '☆'}</button>
       </div>
-      <div class="co-price">
+      <div class="co-price" ${liveRef('us', c.ticker, c)} data-qkind="company">
         <span class="co-price-v">${c.price != null ? '$' + c.price.toFixed(2) : '—'}</span>
         <span class="co-price-c ${c.chg1d >= 0 ? 'pos' : 'neg'}">${c.chg1d != null ? `${c.chg1d >= 0 ? '+' : ''}${c.chg1d.toFixed(2)}% today` : ''}</span>
         <span class="co-price-c ${c.chg6m >= 0 ? 'pos' : 'neg'}">${c.chg6m != null ? `${c.chg6m >= 0 ? '+' : ''}${c.chg6m.toFixed(1)}% 6M` : ''}</span>

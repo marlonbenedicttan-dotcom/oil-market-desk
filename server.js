@@ -1,6 +1,7 @@
 // Marlon's Watchtower — paper vs physical spreads across energy benchmarks.
 // Zero runtime dependencies: Node's built-in HTTP, fetch and WebSocket.
 import http from 'node:http';
+import https from 'node:https';
 import fs from 'node:fs';
 import path from 'node:path';
 import zlib from 'node:zlib';
@@ -11,6 +12,7 @@ import { fileURLToPath } from 'node:url';
 import { projectUs, projectJp, japanList, koreaList, taiwanList, hongkongList, australiaList, indiaList, indonesiaList, brazilList, southafricaList, US_LIST_FIELDS } from './src/project.js';
 import { sliceRange, seriesFromLine } from './src/charts.js';
 import { searchEntries, prepareEntries } from './src/search.js';
+import { parseRef, yahooSymbol, normalizeQuote, chunk } from './src/quotes.js';
 import { growthRates, fromJapanHistory } from './src/growth.js';
 import { REGIME_BOARD, keepLastGood, buildRegimeRow } from './src/regime.js';
 import { RISK_SERIES, keepLastSeries, latestDate } from './src/risk.js';
@@ -198,6 +200,78 @@ async function yahooSeries(symbol, range = '6mo', interval = '1d') {
   // legacy/alt symbols — e.g. CPO=F (palm) reports a Mar-2024 price while its daily bars are current.
   const lastKey = Object.keys(series).sort().pop();
   return { symbol, price: lastKey ? series[lastKey] : (meta.regularMarketPrice ?? null), series };
+}
+
+// ---------------------------------------------------------------------------
+// Live equity quotes
+// ---------------------------------------------------------------------------
+// The committed close is the base; this is an overlay. Yahoo's spark endpoint takes up to 20 symbols
+// and returns each one's last price, previous close, quote time and currency — enough to move price,
+// the 1D change and every price-derived ratio without touching the daily files. Only the symbols on
+// screen are fetched, so a page costs three calls, not fifteen hundred.
+const LIVE_QUOTE_TTL_OPEN = 10_000;
+const LIVE_QUOTE_TTL_CLOSED = 5 * 60_000;
+const liveQuotes = new Map();                 // ref -> { v, t }
+
+function httpsJson(url, timeout = 6000) {
+  return new Promise((resolve, reject) => {
+    const req = https.get(url, { headers: { ...UA, Accept: 'application/json' }, timeout }, (res) => {
+      if (res.statusCode !== 200) { res.resume(); return reject(new Error(`yahoo -> ${res.statusCode}`)); }
+      let body = '';
+      res.setEncoding('utf8');
+      res.on('data', (d) => { body += d; });
+      res.on('end', () => { try { resolve(JSON.parse(body)); } catch (e) { reject(e); } });
+    });
+    req.on('timeout', () => req.destroy(new Error('yahoo timeout')));
+    req.on('error', reject);
+  });
+}
+
+async function fetchSparkQuotes(symbols) {
+  const url = `https://query1.finance.yahoo.com/v7/finance/spark?symbols=${encodeURIComponent(symbols.join(','))}&range=1d&interval=5m`;
+  const j = await httpsJson(url);
+  const out = {};
+  for (const row of (j && j.spark && j.spark.result) || []) {
+    const meta = row.response && row.response[0] && row.response[0].meta;
+    const q = normalizeQuote(meta);
+    if (q) out[String(row.symbol).toUpperCase()] = q;
+  }
+  return out;
+}
+
+async function getLiveQuotes(refs) {
+  const out = {};
+  const want = new Map();                     // Yahoo symbol -> refs
+  for (const ref of refs) {
+    const parsed = parseRef(ref);
+    if (!parsed || !parsed.symbol) continue;
+    const hit = liveQuotes.get(ref);
+    const fresh = hit && hit.v && hit.v.time && Date.now() - Date.parse(hit.v.time) < 10 * 60e3;
+    if (hit && Date.now() - hit.t < (fresh ? LIVE_QUOTE_TTL_OPEN : LIVE_QUOTE_TTL_CLOSED)) {
+      out[ref] = hit.v;
+      continue;
+    }
+    if (!want.has(parsed.symbol)) want.set(parsed.symbol, []);
+    want.get(parsed.symbol).push(ref);
+  }
+  const batches = chunk([...want.keys()], 20);
+  const fetched = await Promise.allSettled(batches.map((batch) => fetchSparkQuotes(batch)));
+  fetched.forEach((result, i) => {
+    const batch = batches[i];
+    const quotes = result.status === 'fulfilled' ? result.value : {};
+    for (const symbol of batch) {
+      const q = quotes[symbol];
+      for (const ref of want.get(symbol) || []) {
+        if (q) { liveQuotes.set(ref, { v: q, t: Date.now() }); out[ref] = q; }
+        else { const old = liveQuotes.get(ref); if (old) out[ref] = old.v; }
+      }
+    }
+  });
+  if (liveQuotes.size > 6000) {
+    const cut = Date.now() - 30 * 60e3;
+    for (const [k, v] of liveQuotes) if (v.t < cut) liveQuotes.delete(k);
+  }
+  return out;
 }
 
 const fredWarned = new Set();
@@ -5724,6 +5798,15 @@ const server = http.createServer(async (req, res) => {
     if (req.method !== 'GET' && req.method !== 'HEAD' && !notifyTest && !rulesPost && !subPost) {
       res.writeHead(405, { 'content-type': 'text/plain', allow: 'GET, HEAD' });
       return res.end('method not allowed');
+    }
+    if (url.pathname === '/api/quotes') {
+      // A screen asks for what it is showing: at most 60 refs, server-side chunked into Yahoo's
+      // 20-symbol batches. Nothing is cached by the browser or an intermediary.
+      const refs = [...new Set(String(url.searchParams.get('refs') || '')
+        .split(',').map((s) => s.trim()).filter(Boolean))].slice(0, 60);
+      const quotes = await getLiveQuotes(refs);
+      res.writeHead(200, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' });
+      return res.end(JSON.stringify({ t: Date.now(), quotes }));
     }
     if (url.pathname === '/api/market') return sendJSONCached(res, 200, await getMarket().catch((e) => { console.error('[market]', e.message); return { updated: new Date().toISOString(), benchmarks: [], spreads: {}, quality: { flags: [], curveAvailable: false }, notes: [] }; }));
     if (url.pathname === '/api/history') return sendJSONCached(res, 200, await getHistory().catch((e) => { console.error('[history]', e.message); return { dates: [], series: {}, basis: {}, spreads: {}, deltas: {} }; }));
