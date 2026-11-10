@@ -5978,8 +5978,8 @@ function coMatrixInner() {
     fixes.unreconciled && fixes.unreconciled.size ? `The annual record does not reconcile with the quarters for ${[...fixes.unreconciled].join(', ')}; the quarters are shown as filed.` : '',
     blankCells ? `${blankCells} cell${blankCells === 1 ? '' : 's'} are blank because the feed does not carry that period — they are not zero.` : '',
   ].filter(Boolean).join(' ');
-  const note = `${n === 2 ? 'Half-year' : 'Quarterly'} reporting detected from the period spacing. ${basisNote} The column subline is the fiscal year end for a complete year (the latest reported period for a partial year); each cell carries its actual period end date, so Q4 2026 is the quarter ending in the month shown, not calendar Q4. Annualised is shown only for a complete year; TTM is the trailing ${n} periods. Scroll the table sideways for older years. Change is year-on-year (green up, red down); a change from a loss is left blank.${latestPeriod ? ` Latest reported period: ${dealDateY(latestPeriod)}.` : ''}${stale ? ' That period is more than 15 months old; the feed may be stale.' : ''} ${qualityNote} The fiscal-year record above uses the annual filing; the matrix uses the quarterly feed, which can differ.`;
-  return `<div class="co-matrix-head"><span class="t">${n === 2 ? 'HALF-YEAR' : 'QUARTERLY'} RESULTS</span><span class="s">${years.length} fiscal years · ${esc(opts.ccy || '')}${latestPeriod ? ` · latest ${dealDateY(latestPeriod)}` : ''}</span><div class="co-matrix-ctls"><button type="button" data-comnav="-1" aria-label="Scroll to older years" title="Older years">‹</button><button type="button" data-comnav="1" aria-label="Scroll to newer years" title="Newer years">›</button><span class="co-matrix-sep"></span>${metricBtns}<span class="co-matrix-sep"></span><button type="button" data-comaview="matrix" class="${coMatrixView === 'matrix' ? 'on' : ''}">MATRIX</button><button type="button" data-comaview="list" class="${coMatrixView === 'list' ? 'on' : ''}">LIST</button></div></div>`
+  const note = `${n === 2 ? 'Half-year' : 'Quarterly'} reporting detected from the period spacing. ${basisNote} The column subline is the fiscal year end for a complete year (the latest reported period for a partial year); each cell carries its actual period end date, so Q4 2026 is the quarter ending in the month shown, not calendar Q4. Annualised is shown only for a complete year; TTM is the trailing ${n} periods. Newest year first; scroll the table sideways for older years. Change is year-on-year (green up, red down); a change from a loss is left blank.${latestPeriod ? ` Latest reported period: ${dealDateY(latestPeriod)}.` : ''}${stale ? ' That period is more than 15 months old; the feed may be stale.' : ''} ${qualityNote} The fiscal-year record above uses the annual filing; the matrix uses the quarterly feed, which can differ.`;
+  return `<div class="co-matrix-head"><span class="t">${n === 2 ? 'HALF-YEAR' : 'QUARTERLY'} RESULTS</span><span class="s">${years.length} fiscal years · ${esc(opts.ccy || '')}${latestPeriod ? ` · latest ${dealDateY(latestPeriod)}` : ''}</span><div class="co-matrix-ctls"><button type="button" data-comnav="-1" aria-label="Scroll to newer years" title="Newer years">‹</button><button type="button" data-comnav="1" aria-label="Scroll to older years" title="Older years">›</button><span class="co-matrix-sep"></span>${metricBtns}<span class="co-matrix-sep"></span><button type="button" data-comaview="matrix" class="${coMatrixView === 'matrix' ? 'on' : ''}">MATRIX</button><button type="button" data-comaview="list" class="${coMatrixView === 'list' ? 'on' : ''}">LIST</button></div></div>`
     + `<div class="co-matrix-body">${coMatrixView === 'list' ? list : table}</div>`
     + `<div class="co-matrix-note">${note}</div>`;
 }
@@ -5991,11 +5991,13 @@ function coMatrixRender() {
   const left = old ? old.scrollLeft : null;
   box.innerHTML = coMatrixInner();
   const next = $('co-matrix-scroll');
-  if (next) next.scrollLeft = left != null ? left : next.scrollWidth;
+  if (next) next.scrollLeft = left != null ? left : 0;
 }
+// Columns run newest first (years are sorted descending), so the newest year is already at the left
+// edge. Scrolling to scrollWidth showed the oldest columns and forced a swipe back for the latest.
 function coMatrixScrollLatest() {
   const box = $('co-matrix-scroll');
-  if (box) box.scrollLeft = box.scrollWidth;
+  if (box) box.scrollLeft = 0;
 }
 function periodMatrixHtml(c, opts = {}) {
   coMatrixStore = { c, opts };
