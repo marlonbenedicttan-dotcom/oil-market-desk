@@ -18,7 +18,7 @@
 
 import { readFileSync, writeFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
-import { companyKey, priceDateOf, sessionStats } from './price-freshness.mjs';
+import { barDateOf, companyKey, priceDateOf, sessionStats } from './price-freshness.mjs';
 
 const MARKETS = {
   au: {
@@ -27,9 +27,9 @@ const MARKETS = {
     details: 'data/australia-companies',
     // The ASX universe moves by a handful of listings a week; 3% is already hundreds of names.
     minCompanies: 0.97,
-    // Measured over the ten days to 2026-11-09: 19.6%–27.9% of lines sit on an older session every
-    // day (a chronic fetch problem, see the warn line). 35% is a collapse, +7pt is a new failure.
-    maxBehind: 0.35, maxJump: 0.07,
+    // Measured with bar dates: a clean build leaves <1% of the ASX without a bar for the session
+    // (the rest have a bar and no close, which is the source, not us). 6% is a partial fetch.
+    maxBehind: 0.06, maxJump: 0.04,
   },
   hk: {
     label: 'Hong Kong',
@@ -37,8 +37,8 @@ const MARKETS = {
     details: 'data/hongkong-companies',
     // The HKEX report carries ~1,900 main-board companies and the incomplete 2026-11-03 page lost 7.7%.
     minCompanies: 0.98,
-    // 0%–9.1% observed; anything above a fifth of the board, or +5pt on one build, is a fetch failure.
-    maxBehind: 0.20, maxJump: 0.05,
+    // The HKEX report is the universe, so a clean build only leaves delisted lines without a bar.
+    maxBehind: 0.08, maxJump: 0.05,
   },
   in: {
     label: 'India',
@@ -47,7 +47,7 @@ const MARKETS = {
     // The Total Market index is reconstituted twice a year; a handful of names change, not fifty.
     minCompanies: 0.95,
     // India has published 0% behind on every build so far — there is no slack to give it.
-    maxBehind: 0.05, maxJump: 0.03,
+    maxBehind: 0.03, maxJump: 0.03,
   },
   id: {
     label: 'Indonesia',
@@ -55,8 +55,8 @@ const MARKETS = {
     details: 'data/indonesia-companies',
     // The IDX list moves by a handful of listings a month; a 3% drop means a throttled crawl, not delistings.
     minCompanies: 0.97,
-    // 0% on a clean run; the 2026-11-09 build left 3.7% behind, which is the case this catches.
-    maxBehind: 0.10, maxJump: 0.03,
+    // 0% on a clean run; the 2026-11-09 build left 3.7% with no bar, which is what this catches.
+    maxBehind: 0.10, maxJump: 0.05,
   },
   br: {
     label: 'Brazil',
@@ -186,9 +186,10 @@ function run(id) {
   const jump = nowPrices.behindShare - wasPrices.behindShare;
   const partial = nowPrices.behindShare > spec.maxBehind || jump > spec.maxJump;
   check(
-    'companies on the latest price session',
+    'companies with a bar for the latest session',
     !partial,
-    `${nowPrices.onSession}/${nowPrices.total} on ${nowPrices.session} · ${(nowPrices.behindShare * 100).toFixed(1)}% behind`
+    `${nowPrices.onSession}/${nowPrices.total} on ${nowPrices.session} · ${(nowPrices.behindShare * 100).toFixed(1)}% missed`
+      + ` · ${(nowPrices.noCloseShare * 100).toFixed(1)}% no close yet`
       + ` (limit ${(spec.maxBehind * 100).toFixed(0)}%, +${(spec.maxJump * 100).toFixed(0)}pt on HEAD's ${(wasPrices.behindShare * 100).toFixed(1)}%)`,
   );
   check(
@@ -212,13 +213,19 @@ function run(id) {
 
   // Below the failure line but still wrong: a fifth of the ASX sitting on an older session every day is
   // how this problem hid for so long. Say it out loud on every build so it cannot become background.
-  if (nowPrices.behindShare > 0.05) {
-    const stragglers = rows.filter((c) => priceDateOf(c) && priceDateOf(c) < nowPrices.session);
+  if (nowPrices.behindShare > 0.02) {
+    const stragglers = rows.filter((c) => barDateOf(c) && barDateOf(c) < nowPrices.session);
     const byDate = {};
-    for (const c of stragglers) byDate[priceDateOf(c)] = (byDate[priceDateOf(c)] || 0) + 1;
-    console.log(`warn  ${Math.round(nowPrices.behindShare * 100)}% of ${spec.label} lines still behind ${nowPrices.session}`
-      + ` — a partial price fetch is publishing (${Object.entries(byDate).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([d, n]) => `${d}:${n}`).join(' ')})`);
-    console.log(`      e.g. ${stragglers.slice(0, 8).map((c) => `${companyKey(c)} ${priceDateOf(c)}`).join(', ')}`);
+    for (const c of stragglers) byDate[barDateOf(c)] = (byDate[barDateOf(c)] || 0) + 1;
+    console.log(`warn  ${Math.round(nowPrices.behindShare * 100)}% of ${spec.label} lines have no bar for ${nowPrices.session}`
+      + ` — the fetch missed them (${Object.entries(byDate).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([d, n]) => `${d}:${n}`).join(' ')})`);
+    console.log(`      e.g. ${stragglers.slice(0, 8).map((c) => `${companyKey(c)} ${barDateOf(c)}`).join(', ')}`);
+  }
+  // Different problem, different owner: the exchange or Yahoo has not published a close for the session
+  // the bar belongs to. No amount of retrying fixes it; the source has to catch up.
+  if (nowPrices.noCloseShare > 0.10) {
+    console.log(`warn  ${Math.round(nowPrices.noCloseShare * 100)}% of ${spec.label} lines have a bar for ${nowPrices.session}`
+      + ` but no close yet — the source has not published this session (last usable close ${nowPrices.close})`);
   }
 
   if (checks.some((c) => !c.ok)) {

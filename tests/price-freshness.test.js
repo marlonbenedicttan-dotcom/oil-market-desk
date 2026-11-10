@@ -1,7 +1,7 @@
 // Price freshness — the session a market is on, how many lines are behind it, and how old that is.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { priceDateOf, companyKey, sessionStats, sessionsBehind } from '../scripts/price-freshness.mjs';
+import { priceDateOf, barDateOf, companyKey, sessionStats, sessionsBehind } from '../scripts/price-freshness.mjs';
 
 const c = (priceDate, extra = {}) => ({ code: priceDate, price: 1, priceDate, ...extra });
 
@@ -71,4 +71,27 @@ test('the company key survives every market spelling', () => {
   assert.equal(companyKey({ ticker: 'AAPL' }), 'AAPL');
   assert.equal(companyKey({ cik: 320193 }), '320193');
   assert.equal(companyKey({}), '');
+});
+
+test('a bar with no close is the source lagging, not a missed refresh', () => {
+  // The Austraian case: Yahoo printed 2026-11-09 for this line but left the close null. We did fetch
+  // the session, so the guard must not call it a failed refresh — it is a close the source owes us.
+  const s = sessionStats([
+    { code: 'A', priceDate: '2026-11-06', priceBar: '2026-11-09' },
+    { code: 'B', priceDate: '2026-11-09', priceBar: '2026-11-09' },
+    { code: 'C', priceDate: '2026-11-06', priceBar: '2026-11-06' },
+  ]);
+  assert.equal(s.session, '2026-11-09');
+  assert.equal(s.behind, 1, 'only C has no bar for the session');
+  assert.equal(s.noClose, 1, 'A has the bar without a close');
+  assert.equal(s.behindShare, 1 / 3);
+  assert.equal(s.noCloseShare, 1 / 3);
+});
+
+test('a build without bar dates still measures against the close date', () => {
+  const s = sessionStats([{ code: 'A', priceDate: '2026-11-06' }, { code: 'B', priceDate: '2026-11-09' }]);
+  assert.equal(s.session, '2026-11-09');
+  assert.equal(s.behind, 1);
+  assert.equal(barDateOf({ priceBar: '2026-11-09', priceDate: '2026-11-06' }), '2026-11-09');
+  assert.equal(barDateOf({ priceDate: '2026-11-06' }), '2026-11-06');
 });

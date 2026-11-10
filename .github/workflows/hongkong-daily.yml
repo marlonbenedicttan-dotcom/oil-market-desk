@@ -11,6 +11,10 @@ name: hongkong-daily
 on:
   schedule:
     - cron: '10 12 * * 1-5'   # 20:10 HKT, Mon–Fri
+    # The exchange occasionally posts the quotation report incomplete (on 2026-11-03 it omitted 147
+    # live companies) and replaces it later in the evening. A failed build publishes nothing, and the
+    # only recovery used to be a manual re-run: this second attempt four hours later is that re-run.
+    - cron: '10 16 * * 1-5'   # 00:10 HKT, Tue–Sat
   workflow_dispatch: {}
 
 concurrency:

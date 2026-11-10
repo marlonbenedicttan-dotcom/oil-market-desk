@@ -124,7 +124,7 @@ async function yahooSeries(symbol, range = `${YEARS}y`) {
       if (hit.fetched && Date.now() - Date.parse(hit.fetched) < 6 * 3600e3) {
         const s = hit.text ? JSON.parse(hit.text) : null;
         // A cache from before the volume pass has no `v`; refetch it so the liquidity flag is real.
-        if (s && (!s.length || s[0].v !== undefined)) return s;
+        if (s && (!s.length || s[0].v !== undefined)) { s.lastBar = hit.lastBar || null; return s; }
       }
     } catch { /* refetch */ }
   }
@@ -143,9 +143,14 @@ async function yahooSeries(symbol, range = `${YEARS}y`) {
       const q = res.indicators.quote[0] || {};
       const closes = q.close || [];
       const vols = q.volume || [];
-      const s = ts.map((t, i) => ({ d: iso(t * 1000), c: closes[i], v: vols[i] })).filter((p) => p.c != null && p.c > 0);
+      const raw = ts.map((t, i) => ({ d: iso(t * 1000), c: closes[i], v: vols[i] }));
+      const s = raw.filter((p) => p.c != null && p.c > 0);
       if (!s.length) return [];
-      writeFileSync(f, JSON.stringify({ fetched: new Date().toISOString(), text: JSON.stringify(s) }));
+      // The newest bar the source printed, even while its close is still null. It separates "no
+      // close published yet" (the source lags a session) from "we never fetched this session"
+      // (our failure) — the freshness guard must not confuse the two.
+      s.lastBar = raw.length ? raw[raw.length - 1].d : null;
+      writeFileSync(f, JSON.stringify({ fetched: new Date().toISOString(), text: JSON.stringify(s), lastBar: s.lastBar }));
       return s;
     } catch { await sleep(800); }
   }
@@ -189,6 +194,7 @@ if (!SKIP_PRICES) {
       c.series = clean.s;
       c.priceSource = 'yahoo';
       c.priceAdjusted = clean.adjustments || 0;
+      c.priceBar = raw.lastBar || null;
     }
     if (++done % 100 === 0) console.log(`  ${done}/${universe.length} symbols`);
     await sleep(120);
@@ -198,10 +204,11 @@ if (!SKIP_PRICES) {
     try {
       const f = join(YH_CACHE, `${yaSymbol(c.code).replace(/[^\w.-]/g, '_')}.json`);
       if (existsSync(f)) {
-        const s = JSON.parse(JSON.parse(readFileSync(f, 'utf8')).text);
+        const hit = JSON.parse(readFileSync(f, 'utf8'));
+        const s = hit.text ? JSON.parse(hit.text) : null;
         if (s && s.length > 1) {
           const clean = sanitizeSeries(s);
-          c.series = clean.s; c.priceSource = 'yahoo'; c.priceAdjusted = clean.adjustments || 0;
+          c.series = clean.s; c.priceSource = 'yahoo'; c.priceAdjusted = clean.adjustments || 0; c.priceBar = hit.lastBar || null;
         }
       }
     } catch { /* fall through */ }
@@ -214,6 +221,7 @@ for (const c of universe) {
   if (!(last && last.c > 0)) continue;
   c.price = +last.c.toFixed(3);
   c.priceDate = last.d;
+  c.priceBar = c.priceBar || last.d;
 }
 console.log(`  ${universe.filter((c) => c.series && c.series.length > 1).length} symbols with a history · ${universe.filter((c) => c.price > 0).length} priced`);
 if (PRICES_ONLY) { console.log('prices cached — stopping (--prices-only)'); process.exit(0); }

@@ -77,11 +77,17 @@ for (const [label, file] of PRICE_MARKETS) {
     const s = sessionStats(Array.isArray(d.companies) ? d.companies : []);
     if (!s.session) { add(label, false, 'no priced company'); continue; }
     const lag = sessionsBehind(s.session, today);
+    // Two different lags, two different owners:
+    //   missed    — we have no bar for the session: a partial fetch, and ours to fix.
+    //   no close  — the source sent the bar but not the close: nothing a retry can do. Those rows are
+    //               reported but skipped, so a lagging exchange cannot paint the whole monitor red.
     // Holidays are not modelled, so a shut market reads a session old; three is the failure line.
-    // A tenth of the board on an older session is a partial fetch, not a quiet trading day.
-    const ok = lag <= 3 && s.behindShare <= 0.10;
-    add(label, ok,
-      `session ${s.session} · ${lag} session${lag === 1 ? '' : 's'} old · ${s.behind} of ${s.total} behind (${(s.behindShare * 100).toFixed(1)}%)`);
+    const ours = lag <= 3 && s.behindShare <= 0.10;
+    const source = s.noCloseShare > 0.50;
+    add(label, ours,
+      `session ${s.session} · ${lag} session${lag === 1 ? '' : 's'} old · ${s.behind} missed (${(s.behindShare * 100).toFixed(1)}%)`
+        + ` · ${s.noClose} no close yet (${(s.noCloseShare * 100).toFixed(1)}%)`,
+      ours && source ? 'skip' : 'data');
   } catch (e) { add(label, false, `unreadable: ${e.message}`); }
 }
 

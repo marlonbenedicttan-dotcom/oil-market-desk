@@ -4,49 +4,75 @@
 // The old monitor only asked when the FILE was written. A job that runs every night, keeps yesterday's
 // quotes and rewrites the file passes that test forever — South Africa did exactly that, and a partial
 // fetch in Australia or Indonesia was invisible for the same reason. What matters is the date on the
-// prices themselves: the session most companies are on, and how many are behind it.
+// prices themselves, and there are two different dates to look at:
+//
+//   priceDate  the session of the last usable close — what the page shows.
+//   priceBar   the newest session the source sent a bar for, even if its close is still null.
+//
+// They differ whenever the exchange (or Yahoo) has not published a close yet. That is not our failure:
+// illiquid ASX lines have a bar and no close most days, and the JSE/B3 feeds lag a session. Only a
+// company with no bar for the session was missed by our fetch. Conflating the two made ~24% of the ASX
+// look like a broken refresh every single day.
 
-/** Every market spells it differently in one file or another. */
+/** The session of the last usable close — the number the dashboard shows. */
 export const priceDateOf = (c) => (c && (c.priceDate || c.priceAsOf)) || null;
+
+/** The newest session the source sent anything for, close or not. */
+export const barDateOf = (c) => (c && (c.priceBar || c.priceDate || c.priceAsOf)) || null;
 
 /** The company key used to line a build up against the previous one. */
 export const companyKey = (c) => String((c && (c.code ?? c.ticker ?? c.cik)) ?? '');
 
+const modal = (dates) => {
+  const counts = new Map();
+  for (const d of dates) counts.set(d, (counts.get(d) || 0) + 1);
+  let best = null;
+  let n = -1;
+  for (const [d, k] of counts) {
+    // Most common wins; on a tie the later date wins — a market moving forward, never back.
+    if (k > n || (k === n && d > best)) { best = d; n = k; }
+  }
+  return best;
+};
+
 /**
  * Distribution of price dates across a market.
  *
- * `session` is the most common date — the session the market actually published. (A max would be
+ * `session` is the most common bar date — the session the market actually published. (A max would be
  * fooled by one bad print: a single Sunday quote made a whole market look current.) `behind` counts
- * the lines still on an older date, which is how a partial fetch shows up.
+ * the lines with no bar for that session, which is how a partial fetch shows up. `noClose` counts the
+ * lines that have the bar but not a close — the source, not us.
  */
-export function sessionStats(companies, field = null) {
-  const dated = [];
+export function sessionStats(companies) {
+  const bars = [];
+  const closes = [];
   for (const c of Array.isArray(companies) ? companies : []) {
-    const d = field ? c[field] : priceDateOf(c);
-    if (d) dated.push(d);
+    const b = barDateOf(c);
+    if (!b) continue;
+    bars.push(b);
+    closes.push(priceDateOf(c) || b);
   }
-  if (!dated.length) return { session: null, total: 0, onSession: 0, behind: 0, behindShare: 0, oldest: null, dates: new Map() };
-
-  const dates = new Map();
-  for (const d of dated) dates.set(d, (dates.get(d) || 0) + 1);
-
-  // Most common wins; on a tie the later date is the session (a market moving forward, not back).
-  let session = null;
-  let best = -1;
-  for (const [d, n] of dates) {
-    if (n > best || (n === best && d > session)) { session = d; best = n; }
+  if (!bars.length) {
+    return { session: null, close: null, total: 0, onSession: 0, behind: 0, behindShare: 0, noClose: 0, noCloseShare: 0, ahead: 0, oldest: null, dates: new Map() };
   }
-  const behind = dated.filter((d) => d < session).length;
-  const ahead = dated.filter((d) => d > session).length;
+  const session = modal(bars);
+  const close = modal(closes);
+  const behind = bars.filter((d) => d < session).length;
+  const ahead = bars.filter((d) => d > session).length;
+  // Only lines that DID get the session's bar: the ones behind it have no close because we never asked.
+  const noClose = bars.filter((b, i) => b >= session && closes[i] < session).length;
   return {
     session,
-    total: dated.length,
-    onSession: dated.length - behind - ahead,
+    close,
+    total: bars.length,
+    onSession: bars.length - behind - ahead,
     behind,
+    behindShare: behind / bars.length,
+    noClose,
+    noCloseShare: noClose / bars.length,
     ahead,
-    behindShare: behind / dated.length,
-    oldest: [...dates.keys()].sort()[0],
-    dates,
+    oldest: [...bars].sort()[0],
+    dates: new Map([[session, bars.length - behind - ahead]]),
   };
 }
 

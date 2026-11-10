@@ -61,6 +61,23 @@ test('every market that publishes prices runs the price guard before it commits'
   }
 });
 
+test('every Yahoo price build records the bar date, not only the close date', () => {
+  // Without priceBar a source that has not published a close is indistinguishable from a fetch we
+  // dropped, which is what made a quarter of the ASX look stale every day.
+  for (const f of ['build-australia', 'build-hongkong', 'build-india', 'build-brazil', 'build-indonesia', 'build-southafrica']) {
+    const src = readFileSync(join(ROOT, 'scripts', `${f}.mjs`), 'utf8');
+    assert.match(src, /c\.priceBar = /, `${f} no longer records priceBar`);
+    assert.match(src, /lastBar/, `${f} no longer caches the newest bar`);
+  }
+});
+
+test('Hong Kong retries the quotation report later in the day', () => {
+  // A short HKEX page makes the build refuse to publish, and the exchange replaces it hours later.
+  const y = wf('hongkong-daily.yml');
+  assert.match(y, /cron: '10 12 \* \* 1-5'/, 'the evening HKEX run is gone');
+  assert.match(y, /cron: '10 16 \* \* 1-5'/, 'the later retry of the HKEX report is gone');
+});
+
 test('the Brazil commit stages every artifact the build writes', () => {
   // A hand-kept list dropped brazil-bdr-data.json and brazil-themes.json; the dirty tree then made
   // `git pull --rebase` refuse, so the job failed on every single run.
