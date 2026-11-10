@@ -23,7 +23,7 @@ const seriesRevenue = (c, fy) => (c.series || []).find((x) => Number(x.fy) === f
 test('a US quarter is labelled by the fiscal year that contains it, matching the annual table', () => {
   const c = company('NVDA');
   const m = api.coMatrixBuild(c, { market: 'us' });
-  assert.deepEqual(m.years, [2026, 2025, 2024]);
+  assert.deepEqual(m.years.slice(0, 3), [2026, 2025, 2024]);
   assert.equal(m.groups.get(2025)[1].date, '2025-04-27');
   assert.ok(Math.abs(sumGroup(m, 2025) - seriesRevenue(c, 2025)) / seriesRevenue(c, 2025) < 0.005);
 });
@@ -133,4 +133,20 @@ test('no region builds a period after today and every grouped cell carries its d
     }
   }
   assert.ok(checked > 10000, `the matrix model covers every region (${checked} companies)`);
+});
+
+
+test('a ten-year history keeps every year for horizontal scrolling', () => {
+  const quarters = [];
+  const series = [];
+  for (let y = 2016; y <= 2025; y++) {
+    const total = 400 + (y - 2016) * 40;
+    series.push({ fy: y, revenue: total, netIncome: total / 10 });
+    for (let q = 1; q <= 4; q++) {
+      quarters.push({ end: `${y}-${String(q * 3).padStart(2, '0')}-30`, revenue: total / 4, netIncome: total / 40 });
+    }
+  }
+  const m = api.coMatrixBuild({ ticker: 'LONG', quarters, series }, { market: 'us' });
+  assert.equal(m.years.length, 10);
+  assert.deepEqual(m.years, [2025, 2024, 2023, 2022, 2021, 2020, 2019, 2018, 2017, 2016]);
 });

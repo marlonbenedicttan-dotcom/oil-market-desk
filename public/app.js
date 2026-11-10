@@ -5564,7 +5564,13 @@ function coMatrixBuild(c, opts = {}) {
       }
     }
   }
-  const years = [...groups.keys()].sort((a, b) => b - a).slice(0, 3);
+  // Keep every fiscal year that has at least one reported period. The table scrolls horizontally,
+  // so ten or twenty years are usable; a hard three-year cut would hide history the feed holds.
+  const years = [...groups.keys()]
+    .filter((y) => Object.keys(groups.get(y)).some((q) => groups.get(y)[q]
+      && (groups.get(y)[q].revenue != null || groups.get(y)[q].netIncome != null)))
+    .sort((a, b) => b - a)
+    .slice(0, 20);
   if (!years.length) return null;
   return { periods, groups, years, n, labels, grouping, basis, outlierNote };
 }
@@ -5618,7 +5624,7 @@ function coMatrixInner() {
   const latestPeriod = periods.length ? periods[periods.length - 1].date : null;
   const latestQ = Math.max(...Object.keys(groups.get(years[0])).map(Number));
   const prevYear = (yi) => (years[yi + 1] != null ? years[yi + 1] : null);
-  const table = `<div class="co-matrix-scroll"><table class="co-matrix-table"><thead><tr><th>Period</th>${years.map((y) => `<th><span>${y}</span><small>${complete(y) ? esc(endLabel(y)) : `through ${esc(endLabel(y))}`}</small>${complete(y) ? '' : '<em class="qpartial">partial</em>'}</th>`).join('')}</tr></thead><tbody>`
+  const table = `<div class="co-matrix-scroll" id="co-matrix-scroll"><table class="co-matrix-table"><thead><tr><th>Period</th>${years.map((y) => `<th><span>${y}</span><small>${complete(y) ? esc(endLabel(y)) : `through ${esc(endLabel(y))}`}</small>${complete(y) ? '' : '<em class="qpartial">partial</em>'}</th>`).join('')}</tr></thead><tbody>`
     + labels.map((label, idx) => `<tr><td>${label}</td>${years.map((y, yi) => {
       const g = groups.get(y)[idx + 1];
       const v = g?.[metric];
@@ -5644,29 +5650,51 @@ function coMatrixInner() {
             ? 'Fiscal years are matched to the annual series; the subline is each year’s end.'
             : 'Fiscal periods are derived from the annual history.';
   const stale = latestPeriod && (Date.now() - Date.parse(latestPeriod)) / 864e5 > 450;
-  const note = `${n === 2 ? 'Half-year' : 'Quarterly'} reporting detected from the period spacing. ${basisNote} The column subline is the fiscal year end for a complete year (the latest reported period for a partial year); each cell carries its actual period end date, so Q4 2026 is the quarter ending in the month shown, not calendar Q4. Annualised is shown only for a complete year; TTM is the trailing ${n} periods. Change is year-on-year (green up, red down); a change from a loss is left blank.${latestPeriod ? ` Latest reported period: ${dealDateY(latestPeriod)}.` : ''}${stale ? ' That period is more than 15 months old; the feed may be stale.' : ''} The fiscal-year record above uses the annual filing; the matrix uses the quarterly feed, which can differ.`;
-  return `<div class="co-matrix-head"><span class="t">${n === 2 ? 'HALF-YEAR' : 'QUARTERLY'} RESULTS</span><span class="s">${years.length} fiscal years · ${esc(opts.ccy || '')}${latestPeriod ? ` · latest ${dealDateY(latestPeriod)}` : ''}</span><div class="co-matrix-ctls">${metricBtns}<span class="co-matrix-sep"></span><button type="button" data-comaview="matrix" class="${coMatrixView === 'matrix' ? 'on' : ''}">MATRIX</button><button type="button" data-comaview="list" class="${coMatrixView === 'list' ? 'on' : ''}">LIST</button></div></div>`
+  const note = `${n === 2 ? 'Half-year' : 'Quarterly'} reporting detected from the period spacing. ${basisNote} The column subline is the fiscal year end for a complete year (the latest reported period for a partial year); each cell carries its actual period end date, so Q4 2026 is the quarter ending in the month shown, not calendar Q4. Annualised is shown only for a complete year; TTM is the trailing ${n} periods. Scroll the table sideways for older years. Change is year-on-year (green up, red down); a change from a loss is left blank.${latestPeriod ? ` Latest reported period: ${dealDateY(latestPeriod)}.` : ''}${stale ? ' That period is more than 15 months old; the feed may be stale.' : ''} The fiscal-year record above uses the annual filing; the matrix uses the quarterly feed, which can differ.`;
+  return `<div class="co-matrix-head"><span class="t">${n === 2 ? 'HALF-YEAR' : 'QUARTERLY'} RESULTS</span><span class="s">${years.length} fiscal years · ${esc(opts.ccy || '')}${latestPeriod ? ` · latest ${dealDateY(latestPeriod)}` : ''}</span><div class="co-matrix-ctls"><button type="button" data-comnav="-1" aria-label="Scroll to older years" title="Older years">‹</button><button type="button" data-comnav="1" aria-label="Scroll to newer years" title="Newer years">›</button><span class="co-matrix-sep"></span>${metricBtns}<span class="co-matrix-sep"></span><button type="button" data-comaview="matrix" class="${coMatrixView === 'matrix' ? 'on' : ''}">MATRIX</button><button type="button" data-comaview="list" class="${coMatrixView === 'list' ? 'on' : ''}">LIST</button></div></div>`
     + `<div class="co-matrix-body">${coMatrixView === 'list' ? list : table}</div>`
     + `<div class="co-matrix-note">${note}</div>`;
 }
 
+function coMatrixRender() {
+  const box = $('co-matrix');
+  if (!box) return;
+  const old = $('co-matrix-scroll');
+  const left = old ? old.scrollLeft : null;
+  box.innerHTML = coMatrixInner();
+  const next = $('co-matrix-scroll');
+  if (next) next.scrollLeft = left != null ? left : next.scrollWidth;
+}
+function coMatrixScrollLatest() {
+  const box = $('co-matrix-scroll');
+  if (box) box.scrollLeft = box.scrollWidth;
+}
 function periodMatrixHtml(c, opts = {}) {
   coMatrixStore = { c, opts };
   coMatrixMetric = 'revenue';
   coMatrixView = 'matrix';
+  // Start on the most recent years. The wrapper is inserted after this string is returned, so wait
+  // one frame; if the table fits, scrollWidth === clientWidth and this is a no-op.
+  setTimeout(coMatrixScrollLatest, 0);
   return `<section class="co-matrix" id="co-matrix">${coMatrixInner()}</section>`;
 }
 document.addEventListener('click', (e) => {
   const metric = e.target.closest('[data-cometric]');
   if (metric) {
     coMatrixMetric = metric.dataset.cometric;
-    const box = $('co-matrix'); if (box) box.innerHTML = coMatrixInner();
+    coMatrixRender();
     return;
   }
   const view = e.target.closest('[data-comaview]');
   if (view) {
     coMatrixView = view.dataset.comaview;
-    const box = $('co-matrix'); if (box) box.innerHTML = coMatrixInner();
+    coMatrixRender();
+    return;
+  }
+  const nav = e.target.closest('[data-comnav]');
+  if (nav) {
+    const box = $('co-matrix-scroll');
+    if (box) box.scrollBy({ left: Number(nav.dataset.comnav) * Math.max(260, box.clientWidth * 0.8), behavior: 'smooth' });
   }
 });
 
