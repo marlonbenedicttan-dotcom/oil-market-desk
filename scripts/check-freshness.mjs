@@ -11,6 +11,7 @@
 import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { sessionStats, sessionsBehind } from './price-freshness.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const MARKET = process.env.MARKET_URL || 'https://oil-market-desk.onrender.com';
@@ -50,6 +51,37 @@ for (const [label, file, maxH] of DATASETS) {
     if (!Number.isFinite(t)) { add(label, false, 'no updated timestamp'); continue; }
     const h = (now - t) / 36e5;
     add(label, h <= limit, `${new Date(t).toISOString().slice(0, 16).replace('T', ' ')}Z · ${h.toFixed(1)}h old · limit ${limit}h`);
+  } catch (e) { add(label, false, `unreadable: ${e.message}`); }
+}
+
+// `updated` only proves the job ran. These ask the prices themselves: which session the market is on,
+// and how many lines are still behind it. South Africa rewrote its file nightly for days while every
+// quote stayed on the same session, and Australia ships ~20% of the ASX a session behind every day —
+// both passed the timestamp check above.
+const PRICE_MARKETS = [
+  ['US prices', 'companies.json'],
+  ['Japan prices', 'japan.json'],
+  ['Korea prices', 'korea.json'],
+  ['Taiwan prices', 'taiwan.json'],
+  ['Hong Kong prices', 'hongkong.json'],
+  ['Australia prices', 'australia.json'],
+  ['India prices', 'india.json'],
+  ['Indonesia prices', 'indonesia.json'],
+  ['Brazil prices', 'brazil.json'],
+  ['South Africa prices', 'southafrica.json'],
+];
+const today = new Date(now).toISOString().slice(0, 10);
+for (const [label, file] of PRICE_MARKETS) {
+  try {
+    const d = JSON.parse(readFileSync(join(ROOT, 'data', file), 'utf8'));
+    const s = sessionStats(Array.isArray(d.companies) ? d.companies : []);
+    if (!s.session) { add(label, false, 'no priced company'); continue; }
+    const lag = sessionsBehind(s.session, today);
+    // Holidays are not modelled, so a shut market reads a session old; three is the failure line.
+    // A tenth of the board on an older session is a partial fetch, not a quiet trading day.
+    const ok = lag <= 3 && s.behindShare <= 0.10;
+    add(label, ok,
+      `session ${s.session} · ${lag} session${lag === 1 ? '' : 's'} old · ${s.behind} of ${s.total} behind (${(s.behindShare * 100).toFixed(1)}%)`);
   } catch (e) { add(label, false, `unreadable: ${e.message}`); }
 }
 

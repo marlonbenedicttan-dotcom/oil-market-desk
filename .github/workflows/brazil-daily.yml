@@ -60,7 +60,10 @@ jobs:
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email 'github-actions[bot]@users.noreply.github.com'
-          git add data/brazil.json data/brazil-list.json data/brazil-series data/brazil-companies data/brazil-profiles.json data/brazil-shares.json data/brazil-brands.json data/brazil-universe.json data/charts
+          # Every brazil* artifact the build writes, not a hand-kept list: brazil-bdr-data.json and
+          # brazil-themes.json were missing, so `git pull --rebase` refused with "unstaged changes"
+          # and this job failed on every run it ever had.
+          git add data/brazil*.json data/brazil-series data/brazil-companies data/charts
           if git diff --staged --quiet; then
             echo 'no data change'
           else

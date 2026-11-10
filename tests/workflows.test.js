@@ -54,6 +54,22 @@ test('every market workflow still audits before it commits', () => {
   for (const [file, re] of Object.entries(audit)) assert.match(wf(file), re, `${file} lost its audit`);
 });
 
+test('every market that publishes prices runs the price guard before it commits', () => {
+  // The guard is what notices a partial price fetch (companies present, quotes on an older session).
+  for (const file of ['australia-daily.yml', 'hongkong-daily.yml', 'india-daily.yml', 'indonesia-daily.yml', 'brazil-daily.yml', 'south-africa-daily.yml']) {
+    assert.match(wf(file), /audit-market-refresh\.mjs/, `${file} no longer runs the refresh guard`);
+  }
+});
+
+test('the Brazil commit stages every artifact the build writes', () => {
+  // A hand-kept list dropped brazil-bdr-data.json and brazil-themes.json; the dirty tree then made
+  // `git pull --rebase` refuse, so the job failed on every single run.
+  const y = wf('brazil-daily.yml');
+  assert.match(y, /git add data\/brazil\*/, 'Brazil went back to a hand-kept add list');
+  assert.match(y, /brazil-bdr-data\.json|data\/brazil\*/, 'the BDR artifact is not staged');
+  assert.match(y, /brazil-themes\.json|data\/brazil\*/, 'the themes artifact is not staged');
+});
+
 test('the global search index is rebuilt and committed after the market refreshes', () => {
   const y = wf('search-index-daily.yml');
   assert.match(y, /build-search-index\.mjs/, 'the search index build is missing');
