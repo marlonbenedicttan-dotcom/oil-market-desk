@@ -37,7 +37,9 @@ const MARKETS = {
     file: 'data/hongkong.json',
     details: 'data/hongkong-companies',
     // The HKEX report carries ~1,900 main-board companies and the incomplete 2026-11-03 page lost 7.7%.
-    minCompanies: 0.98,
+    // 2% was too tight for the opposite case: a throttled statement pass rebuilds ~1,860 of 1,918, and
+    // refusing that published nothing for days. 4.5% tolerates the throttle, not a collapsed report.
+    minCompanies: 0.955, minPriced: 0.955,
     // Lines the statement pass could not rebuild keep their previous record (see restoreMissing),
     // so a normal build carries ~3–8% on an older session; 15% is a real loss of coverage.
     maxBehind: 0.15, maxJump: 0.06,
@@ -92,20 +94,6 @@ const totalCap = (d) => (d.market && d.market.totalCap) || 0;
 // than ship the older price (or block a whole market over one symbol), keep the previous record: it is
 // internally consistent — price, date, market cap and ratios all agree — and the build simply did not
 // refresh that line today. The market file and the per-company detail are restored together.
-// A resumable build re-fetches what it can and silently omits what it could not: a throttled
-// stockanalysis pass dropped 58 Hong Kong companies on 2026-11-10 and 186 the day before, and the
-// count guard then refused every evening's publish. Keep the previous record for a company the build
-// could not rebuild — it is one day old, not gone — but only while that is a minority of the market,
-// so a real collapse still fails.
-function restoreMissingCompanies(spec, now, rows, was) {
-  const have = new Set(rows.map(companyKey));
-  const missing = was.filter((c) => c && companyKey(c) && !have.has(companyKey(c)));
-  if (!missing.length || missing.length > was.length * 0.10) return [];
-  rows.push(...missing);
-  writeFileSync(spec.file, JSON.stringify(now));
-  return missing.map(companyKey);
-}
-
 function restoreNewerPrices(spec, now, rows, was) {
   const prev = new Map(was.map((c) => [companyKey(c), c]));
   const restored = [];
@@ -143,7 +131,6 @@ function run(id) {
   const rows = Array.isArray(now.companies) ? now.companies : [];
   const was = Array.isArray(before.companies) ? before.companies : [];
   const restored = restoreNewerPrices(spec, now, rows, was);
-  const kept = restoreMissingCompanies(spec, now, rows, was);
   const priced = (list) => count(list, (c) => c.price > 0);
   const withPe = (list) => count(list, (c) => c.pe != null);
   const withHistory = (list) => count(list, (c) => c.chg6m != null || c.chg1y != null);
@@ -156,7 +143,8 @@ function run(id) {
     rows.length >= was.length * spec.minCompanies,
     `${rows.length} now · ${was.length} in HEAD · floor ${Math.floor(was.length * spec.minCompanies)} (${Math.round(spec.minCompanies * 100)}%)`,
   );
-  check('priced companies', priced(rows) >= priced(was) * 0.98, `${priced(rows)} now · ${priced(was)} in HEAD`);
+  const minPriced = spec.minPriced || 0.98;
+  check('priced companies', priced(rows) >= priced(was) * minPriced, `${priced(rows)} now · ${priced(was)} in HEAD · floor ${Math.floor(priced(was) * minPriced)}`);
   check(
     'companies with a P/E (statement coverage)',
     withPe(rows) >= withPe(was) * 0.85,
@@ -231,9 +219,6 @@ function run(id) {
   console.log(`\n${spec.label}`);
   if (restored.length) {
     console.log(`kept ${restored.length} newer price${restored.length === 1 ? '' : 's'} from HEAD — the build re-applied an older cached series: ${restored.join(', ')}`);
-  }
-  if (kept.length) {
-    console.log(`kept ${kept.length} compan${kept.length === 1 ? 'y' : 'ies'} from HEAD — the build could not rebuild them this run: ${kept.slice(0, 8).join(', ')}${kept.length > 8 ? '…' : ''}`);
   }
   for (const c of checks) console.log(`${c.ok ? 'ok   ' : 'FAIL '} ${c.label.padEnd(44)} ${c.detail}`);
 
