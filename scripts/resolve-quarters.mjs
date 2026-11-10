@@ -181,13 +181,17 @@ async function worker() {
         if (Math.abs(cand) < Math.abs(r.val) * 3) { op = cand; opBasis = 'derived'; }
       }
       const revenue = r ? r.val : null;
+      // A revenue line that is a rounding artefact against a full operating loss (CYTK, ROIV) is a
+      // scope/units mismatch, not a −2,000% margin. Withhold the operating line rather than publish it.
+      const rawMargin = revenue && op != null ? +((op / revenue) * 100).toFixed(1) : null;
+      const saneOp = rawMargin == null || Math.abs(rawMargin) <= 1000;
       return {
         end,
         revenue,
-        operatingIncome: op,
-        opBasis,
+        operatingIncome: saneOp ? op : null,
+        opBasis: saneOp ? opBasis : null,
         netIncome: n ? n.val : null,
-        margin: revenue && op != null ? +((op / revenue) * 100).toFixed(1) : null,
+        margin: saneOp ? rawMargin : null,
         netMargin: revenue && n ? +((n.val / revenue) * 100).toFixed(1) : null,
       };
     });
