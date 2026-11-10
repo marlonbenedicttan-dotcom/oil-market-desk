@@ -108,7 +108,15 @@ function restoreNewerPrices(spec, now, rows, was) {
       writeFileSync(file, execFileSync('git', ['show', `HEAD:${file}`], { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 }));
     } catch { /* no detail file for this code */ }
   }
-  if (restored.length) writeFileSync(spec.file, JSON.stringify(now));
+  if (restored.length) {
+    // Restoring a record replaces its market cap, so the market total must be recomputed with the
+    // same rows. Leaving the build's old total makes the market audit fail after a perfectly valid
+    // carry (Hong Kong and Indonesia both hit this on 2026-11-10).
+    if (now.market && typeof now.market.totalCap === 'number') {
+      now.market.totalCap = rows.reduce((sum, c) => sum + (c.marketCap || 0), 0);
+    }
+    writeFileSync(spec.file, JSON.stringify(now));
+  }
   return restored;
 }
 
