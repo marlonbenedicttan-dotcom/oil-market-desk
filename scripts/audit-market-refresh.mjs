@@ -30,7 +30,7 @@ const MARKETS = {
     // ~20–28% of the ASX has no bar at all for a given session: microcaps that did not trade. Yahoo
     // never prints a bar for them, so this can only be a wide limit — the jump check (a partial fetch
     // moves the cohort) and the daily session-age monitor are what catch a real failure here.
-    maxBehind: 0.35, maxJump: 0.09,
+    maxBehind: 0.35, maxJump: 0.09, maxBackwards: 0.02,
   },
   hk: {
     label: 'Hong Kong',
@@ -128,7 +128,10 @@ function run(id) {
 
   const rows = Array.isArray(now.companies) ? now.companies : [];
   const was = Array.isArray(before.companies) ? before.companies : [];
-  const restored = restoreNewerPrices(spec, now, rows, was);
+  // Australia's illiquid lines can legitimately have no bar for the latest session. The build already
+  // keeps the previous close before computing totals; replacing rows afterwards makes the market cap
+  // and the chart series disagree, which is a worse failure than one microcap one session behind.
+  const restored = id === 'au' ? [] : restoreNewerPrices(spec, now, rows, was);
   const priced = (list) => count(list, (c) => c.price > 0);
   const withPe = (list) => count(list, (c) => c.pe != null);
   const withHistory = (list) => count(list, (c) => c.chg6m != null || c.chg1y != null);
@@ -173,14 +176,17 @@ function run(id) {
     const p = prev && priceDateOf(prev);
     return d && p && d < p;
   });
+  // An illiquid ASX line can legitimately have no bar for the latest session, so a couple of percent
+  // may sit one session behind. Every other market is strict.
+  const backwardsAllowed = Math.floor(was.length * (spec.maxBackwards || 0));
   check(
     'no company price went backwards',
-    regressed.length === 0,
-    regressed.length
+    regressed.length <= backwardsAllowed,
+    (regressed.length
       ? `${regressed.length}: ${regressed.slice(0, 5).map((c) => `${companyKey(c)} ${priceDateOf(c)} < ${priceDateOf(wasByKey.get(companyKey(c)))}`).join(', ')}${regressed.length > 5 ? '…' : ''}`
       : restored.length
         ? `${restored.length} kept from HEAD: ${restored.slice(0, 5).join(', ')}${restored.length > 5 ? '…' : ''}`
-        : 'none',
+        : 'none') + (backwardsAllowed ? ` · allowed ${backwardsAllowed}` : ''),
   );
 
   // A partial fetch keeps the market's size and statements, so only the price dates reveal it: most

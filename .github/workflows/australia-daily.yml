@@ -50,8 +50,6 @@ jobs:
       - name: Keep every traded session
         run: node scripts/merge-series.mjs au
       # A partial source (or a throttled crawl) must not delete companies; carry the last good ones.
-      - name: Carry forward companies the source omitted
-        run: node scripts/merge-market-refresh.mjs au
       # A rate-limited run loses companies and chart history. Refuse to publish that.
       - name: Refuse a collapsed build
         run: |

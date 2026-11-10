@@ -3,7 +3,7 @@
 //   node scripts/build-australia.mjs                         full run (all listed companies, five years)
 //   node scripts/build-australia.mjs --limit=30              smoke test
 //   node scripts/build-australia.mjs --codes=BHP,CBA,PLS     named companies
-//   node scripts/build-australia.mjs --skip-prices           reuse the cached daily files
+//   node scripts/build-australia.mjs --skip-prices           reuse a cached series only if it covers the latest ASX session
 //   node scripts/build-australia.mjs --skip-fin              reuse the statements already in the file
 //
 // Sources:
@@ -64,6 +64,17 @@ const TTL_Q = Number(arg('quarter-cache-days', 1)) * DAY || DAY;
 // A stockanalysis build is a long crawl of one host. `--pace=N` is the pause after each company; a
 // blocked host is handled inside stockanalysis.mjs (three push-backs → a 90 s quiet period).
 const PACE = Number(arg('pace', 150)) || 150;
+// The ASX session closes at 06:00 UTC. A cache whose last bar predates that session is stale even when
+// its file was written minutes ago: the 10 Nov build reused 8 Nov bars for 103 lines and the guard then
+// swapped in newer HEAD prices after the totals, which is what failed the full audit.
+const ASX_CLOSE_HOUR_UTC = 6;
+function lastExpectedSession(now = Date.now()) {
+  const d = new Date(now);
+  if (d.getUTCHours() < ASX_CLOSE_HOUR_UTC) d.setUTCDate(d.getUTCDate() - 1);
+  while (d.getUTCDay() === 0 || d.getUTCDay() === 6) d.setUTCDate(d.getUTCDate() - 1);
+  return iso(d);
+}
+const EXPECTED_SESSION = lastExpectedSession();
 
 async function pool(items, limit, fn) {
   const out = new Array(items.length);
@@ -115,8 +126,10 @@ async function yahooSeries(symbol, range = `${YEARS}y`) {
   if (existsSync(f)) {
     try {
       const hit = JSON.parse(readFileSync(f, 'utf8'));
-      if (hit.fetched && Date.now() - Date.parse(hit.fetched) < 6 * 3600e3) {
-        const s = hit.text ? JSON.parse(hit.text) : null;
+      const s = hit.text ? JSON.parse(hit.text) : null;
+      const last = s && s.length ? s[s.length - 1].d : null;
+      const covers = !EXPECTED_SESSION || (last && last >= EXPECTED_SESSION);
+      if (hit.fetched && Date.now() - Date.parse(hit.fetched) < 6 * 3600e3 && covers) {
         // A cache hit must carry the bar date too, or the freshness guard falls back to the close.
         if (s) { s.lastBar = hit.lastBar || null; return s; }
       }
@@ -169,37 +182,23 @@ function sanitizeSeries(series) {
   return { s, adjustments: fixed };
 }
 
-if (!SKIP_PRICES) {
-  console.log(`prices… ${universe.length} codes, ${YEARS}y daily (Yahoo)`);
-  let done = 0;
-  const workers = Number(arg('price-workers', 3)) || 3;
-  await pool(universe, workers, async (c) => {
-    const raw = await yahooSeries(yaSymbol(c.code));
-    if (raw.length > 1) {
-      const clean = sanitizeSeries(raw);
-      c.series = clean.s;
-      c.priceSource = 'yahoo';
-      c.priceAdjusted = clean.adjustments || 0;
-      c.priceBar = raw.lastBar || null;
-    }
-    if (++done % 100 === 0) console.log(`  ${done}/${universe.length} codes`);
-    await sleep(120);
-  });
-} else {
-  for (const c of universe) {
-    try {
-      const f = join(YH_CACHE, `${yaSymbol(c.code)}.json`);
-      if (existsSync(f)) {
-        const hit = JSON.parse(readFileSync(f, 'utf8'));
-        const s = hit.text ? JSON.parse(hit.text) : null;
-        if (s && s.length > 1) {
-          const clean = sanitizeSeries(s);
-          c.series = clean.s; c.priceSource = 'yahoo'; c.priceAdjusted = clean.adjustments || 0; c.priceBar = hit.lastBar || null;
-        }
-      }
-    } catch { /* fall through */ }
+// The pool always runs. A current cache is an instant hit; a stale one is refetched, so --skip-prices
+// can no longer keep an older session alive and force the guard to patch prices after the totals.
+console.log(`prices… ${universe.length} codes, ${YEARS}y daily (Yahoo)`);
+let done = 0;
+const workers = Number(arg('price-workers', 3)) || 3;
+await pool(universe, workers, async (c) => {
+  const raw = await yahooSeries(yaSymbol(c.code));
+  if (raw.length > 1) {
+    const clean = sanitizeSeries(raw);
+    c.series = clean.s;
+    c.priceSource = 'yahoo';
+    c.priceAdjusted = clean.adjustments || 0;
+    c.priceBar = raw.lastBar || null;
   }
-}
+  if (++done % 100 === 0) console.log(`  ${done}/${universe.length} codes`);
+  await sleep(120);
+});
 for (const c of universe) {
   if (!c.series || !c.series.length) continue;
   const last = c.series[c.series.length - 1];
@@ -208,6 +207,31 @@ for (const c of universe) {
   c.priceBar = c.priceBar || last.d;
 }
 console.log(`  ${universe.filter((c) => c.series && c.series.length > 1).length} codes with a history · ${universe.filter((c) => c.price > 0).length} priced`);
+
+// Some ASX microcaps do not trade every session, so Yahoo's latest bar can be older than the last
+// price we already published. Use the previous close when it is newer and the move is plausible; do it
+// here, before the totals, so the guard never has to replace rows after the market aggregates are built.
+{
+  const prevDoc = readJson(OUT) || {};
+  const prevBy = new Map((prevDoc.companies || []).map((c) => [c.code, c]));
+  let kept = 0;
+  for (const c of universe) {
+    const p = prevBy.get(c.code);
+    if (!p || !(p.price > 0) || !p.priceDate || !(p.priceDate > (c.priceDate || ''))) continue;
+    const last = c.series && c.series.length ? c.series[c.series.length - 1] : null;
+    const ratio = last && last.c > 0 ? p.price / last.c : 1;
+    if (last && !(ratio > 0.6 && ratio < 1.6)) continue;
+    if (!c.series) c.series = [];
+    c.series.push({ d: p.priceDate, c: p.price });
+    c.price = p.price;
+    c.priceDate = p.priceDate;
+    c.priceBar = p.priceDate;
+    c.priceSource = 'previous';
+    kept++;
+  }
+  if (kept) console.log(`  ${kept} prices kept from the previous dataset (no newer Yahoo bar)`);
+}
+
 // A useful two-phase run on a throttled day: warm every Yahoo series now, run the statements later.
 if (PRICES_ONLY) { console.log('prices cached — stopping (--prices-only)'); process.exit(0); }
 
@@ -517,6 +541,35 @@ if (!SKIP_FIN) {
   }
 }
 
+// A throttled statement pass must not collapse the market. A company the run could not rebuild keeps
+// its previous record (reports, shares, history) so the totals, sector table and list are computed over
+// a complete set. This must happen before derive and before the aggregates — appending rows afterwards
+// is what made the old post-build merge fail the full audit.
+{
+  const prevDoc = readJson(OUT) || {};
+  const prevBy = new Map((prevDoc.companies || []).map((c) => [c.code, c]));
+  let carried = 0;
+  for (const c of universe) {
+    if (c.shares > 0) continue;
+    const p = prevBy.get(c.code);
+    if (!p || !p.reports || !(p.shares > 0)) continue;
+    c.ttm = p.reports.ttm || null;
+    c.latest = p.reports.latest || {};
+    c.annual = p.reports.annual || [];
+    c.quarters = p.quarters || [];
+    c.ttmEnd = p.reports.ttmEnd || null;
+    c.latestEnd = p.reports.latestEnd || null;
+    c.reportCurrency = p.reportCurrency || c.reportCurrency || 'AUD';
+    c.shares = p.shares;
+    c.crossListing = p.crossListing || null;
+    c.periodBasis = p.periodBasis || null;
+    c.sharesBasis = p.sharesBasis || null;
+    c.carried = true;
+    carried++;
+  }
+  if (carried) console.log(`  ${carried} companies carried forward from the previous dataset (throttled statement pass)`);
+}
+
 // --- current shares (vendor statistics page) ------------------------------------------------------
 // The statement's diluted count is a period weighted average; a placement or buyback after the
 // period end would leave the cap (and P/E, P/B) stale. This side file is written by
@@ -707,6 +760,7 @@ const audit = {
   excluded: excluded.slice(0, 40),
   companies: companies.length,
   considered: universe.length,
+  carried: universe.filter((c) => c.carried).length,
   withStatements: cleaned.length,
   withoutStatements: dropped.length,
   stale: stale.length,

@@ -156,6 +156,7 @@ for (const id of ids) {
 
   const prevBy = new Map((before.companies || []).map((c) => [codeOf(c), c]));
   const gained = [];
+  let growthChangedAny = 0;
   for (const c of now.companies || []) {
     const p = prevBy.get(codeOf(c));
     if (!p) continue;
@@ -186,8 +187,12 @@ for (const id of ids) {
           // income over the current share count (derive-taiwan.mjs). The other markets publish EPS
           // as filed. Handing them c.shares as a fallback would invent a rate their builder never
           // computes — 9973 read 69% "EPS CAGR" off two reported years and net income before them.
-          const growth = id === 'tw' ? growthFromAnnuals(annuals, c.shares) : growthFromAnnuals(annuals);
-          Object.assign(c, growth, { marginDelta: marginDeltaFromAnnuals(annuals) });
+          // The shared listing builder (HK/AU/IN/ID/BR/ZA) defines growth on the last five fiscal
+          // years. Use the same window here, or a merge that adds a sixth year silently changes the
+          // published CAGR from a four-year to a five-year rate.
+          const window = id === 'tw' ? annuals : annuals.slice(-5);
+          const growth = id === 'tw' ? growthFromAnnuals(window, c.shares) : growthFromAnnuals(window);
+          Object.assign(c, growth, { marginDelta: marginDeltaFromAnnuals(window) });
         }
       }
       if (!DRY && spec.detail) {
@@ -195,14 +200,41 @@ for (const id of ids) {
         if (existsSync(detail)) writeFileSync(detail, JSON.stringify(c));
       }
     }
+
+    // Normalise growth for every company, not only the ones that gained an older period. The build and
+    // the merge must agree on the window: the listing builder uses the last five fiscal years, while a
+    // merge that appends a sixth year used to leave the published CAGR on a different span.
+    const growthSnapshot = (x) => JSON.stringify({
+      r: x.revenueCagr, e: x.epsCagr, y: x.cagrYears, rn: x.cagrNA, en: x.epsCagrNA, ch: x.epsChange, md: x.marginDelta,
+    });
+    const beforeGrowth = growthSnapshot(c);
+    if (id === 'us' && Array.isArray(c.series)) {
+      Object.assign(c, growthFromUsSeries(c.series, c.shares));
+    } else if (id === 'jp' && Array.isArray(c.history)) {
+      Object.assign(c, growthRates(fromJapanHistory(c.history)));
+    } else {
+      const annuals = annualsFor(id, c);
+      if (Array.isArray(annuals) && annuals.length) {
+        const window = id === 'tw' ? annuals : annuals.slice(-5);
+        const growth = id === 'tw' ? growthFromAnnuals(window, c.shares) : growthFromAnnuals(window);
+        Object.assign(c, growth, { marginDelta: marginDeltaFromAnnuals(window) });
+      }
+    }
+    if (growthSnapshot(c) !== beforeGrowth) {
+      growthChangedAny++;
+      if (!DRY && spec.detail) {
+        const detail = join(ROOT, 'data', spec.detail, `${codeOf(c)}.json`);
+        if (existsSync(detail)) writeFileSync(detail, JSON.stringify(c));
+      }
+    }
   }
 
-  if (!gained.length) {
+  if (!gained.length && !growthChangedAny) {
     console.log(`${id}: complete — every period already committed is present`);
     continue;
   }
-  totalChanged += gained.length;
-  console.log(`${id}: ${gained.length} companies gained history · ${gained.slice(0, 6).join(' ')}${gained.length > 6 ? ' …' : ''}`);
+  totalChanged += gained.length + growthChangedAny;
+  console.log(`${id}: ${gained.length} companies gained history${growthChangedAny ? ` · ${growthChangedAny} growth tables refreshed` : ''}${gained.length ? ` · ${gained.slice(0, 6).join(' ')}${gained.length > 6 ? ' …' : ''}` : ''}`);
   if (!DRY) {
     writeFileSync(`${file}.tmp`, JSON.stringify(now));
     renameSync(`${file}.tmp`, file);
