@@ -35,9 +35,11 @@ jobs:
       - name: Cache J-Quants responses
         uses: actions/cache@v4
         with:
-          path: data/cache/jquants
-          key: jquants-cache-${{ github.run_id }}
-          restore-keys: jquants-cache-
+          # The J-Quants cache lives inside the shared data/cache archive that companies-daily fills;
+          # restoring that archive keeps the first Japan-only run from re-fetching 1,500 companies cold.
+          path: data/cache
+          key: sec-cache-${{ github.run_id }}
+          restore-keys: sec-cache-
       - name: Japan prices, statements, flows and dividends
         env:
           JQUANTS_API_KEY: ${{ secrets.JQUANTS_API_KEY }}
