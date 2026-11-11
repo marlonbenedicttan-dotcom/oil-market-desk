@@ -2770,7 +2770,9 @@ function renderHomeIdeas(d) {
 let screenRows = null, screenSort = { key: 'absd1', dir: -1 }, fxBase = 'USD', fxRows = null;
 let fxWin = null;  // currency moves for the screener's "returns in" base, so a yen return can be a dollar return
 // The home screener covers two universes: instruments and companies.
-let screenMode = (() => { try { return localStorage.getItem('oilbasis.screenMode') === 'companies' ? 'companies' : 'commodities'; } catch { return 'commodities'; } })();
+// The HOME screener now opens on the cross-market company screener; the old instrument screener is
+// still one click away. A versioned key makes existing readers see the new default once.
+let screenMode = (() => { try { return localStorage.getItem('oilbasis.screenMode.v2') === 'commodities' ? 'commodities' : 'companies'; } catch { return 'companies'; } })();
 let coScreen = { sort: 'marketCap', dir: -1, q: '', sector: 'all', page: 1, per: 50 };
 let screenSegs = [];                  // the segment list from /api/screen
 let screenSeg = 'all';                // segment filter
@@ -3268,10 +3270,19 @@ function renderIndiaScreen(el) {
 }
 
 function renderScreen(full) {  const el = $('screen'); if (!el) return;
-  // The currency control applies to the company tables too: their returns are converted, not relabelled.
+  // The currency control is an instrument-return control; the global company screener is in USD.
   const curCtl = document.querySelector('#p-screen .controls');
-  if (curCtl) curCtl.classList.remove('hidden');
-  if (screenMode === 'companies') return renderCompanyScreen(el);
+  if (curCtl) curCtl.classList.toggle('hidden', screenMode === 'companies');
+  const title = document.querySelector('#p-screen .ph-t');
+  if (title) title.textContent = screenMode === 'companies' ? 'SCREENER — every company, every market' : 'SCREENER — every instrument, ranked';
+  if (screenMode === 'companies') {
+    el.innerHTML = hmScreenerShell();
+    hmSectorsLoaded = false;
+    hmSyncFilterUi();
+    hmBindFilters();
+    hmLoadScreener();
+    return;
+  }
   if (!screenRows || !screenRows.length) { el.innerHTML = stError('Couldn’t load the screener — retrying.'); return; }
   if (full || !$('sc-table')) {
     el.innerHTML = '<div class="sc-bar">' + screenModeHtml() + scBarHtml() + '</div><div class="sc-wrap" id="sc-table"></div><div class="sc-note dimtext" id="sc-note"></div>';
@@ -3326,7 +3337,7 @@ $('screen')?.addEventListener('click', (e) => {
   const mode = e.target.closest('[data-screen-mode]');
   if (mode) {
     screenMode = mode.dataset.screenMode;
-    try { localStorage.setItem('oilbasis.screenMode', screenMode); } catch {}
+    try { localStorage.setItem('oilbasis.screenMode.v2', screenMode); } catch {}
     renderScreen(true);
     return;
   }
@@ -10722,13 +10733,97 @@ async function gbLoadScreener() {
 
 function gbRenderScreener() {
   const rows = gbScrRows;
-  const head = `<tr><th>COMPANY</th><th>MARKET</th><th>SECTOR</th><th data-gb-sort="cap" class="${gbScrSort === 'cap' ? 'on' : ''}">MKT CAP</th><th data-gb-sort="pe" class="${gbScrSort === 'pe' ? 'on' : ''}">P/E</th><th data-gb-sort="roe" class="${gbScrSort === 'roe' ? 'on' : ''}">ROE</th><th data-gb-sort="ytd" class="${gbScrSort === 'ytd' ? 'on' : ''}">YTD</th></tr>`;
-  const body = rows.map((r) => `<tr data-gb-company="${esc(r.m)}:${esc(r.id)}"><td>${esc(r.t)} <span class="dim">${esc(r.n)}</span></td><td>${GB_FLAG[r.m] || ''} ${esc(String(r.m).toUpperCase())}</td><td>${esc(r.s)}</td><td style="text-align:right">${gbCap(r.cap)}</td><td style="text-align:right">${r.pe == null ? '—' : r.pe.toFixed(1) + '×'}</td><td style="text-align:right">${r.roe == null ? '—' : r.roe.toFixed(1) + '%'}</td><td style="text-align:right" class="${cls(r.ytd)}">${r.ytd == null ? '—' : pctf(r.ytd)}</td></tr>`).join('');
+  const head = `<tr><th class="gb-c-company">COMPANY</th><th class="gb-c-market">MARKET</th><th class="gb-c-sector">SECTOR</th><th class="num ${gbScrSort === 'cap' ? 'on' : ''}" data-gb-sort="cap">MKT CAP</th><th class="num ${gbScrSort === 'pe' ? 'on' : ''}" data-gb-sort="pe">P/E</th><th class="num ${gbScrSort === 'roe' ? 'on' : ''}" data-gb-sort="roe">ROE</th><th class="num ${gbScrSort === 'ytd' ? 'on' : ''}" data-gb-sort="ytd">YTD</th></tr>`;
+  const body = rows.map((r) => `<tr data-gb-company="${esc(r.m)}:${esc(r.id)}"><td class="gb-c-company"><span class="gb-co" title="${esc(r.n)}">${esc(r.t)} <span class="dim">${esc(r.n)}</span></span></td><td class="gb-c-market">${GB_FLAG[r.m] || ''} ${esc(String(r.m).toUpperCase())}</td><td class="gb-c-sector"><span class="gb-sec" title="${esc(r.s)}">${esc(r.s)}</span></td><td class="num">${gbCap(r.cap)}</td><td class="num">${r.pe == null ? '—' : r.pe.toFixed(1) + '×'}</td><td class="num">${r.roe == null ? '—' : r.roe.toFixed(1) + '%'}</td><td class="num ${cls(r.ytd)}">${r.ytd == null ? '—' : pctf(r.ytd)}</td></tr>`).join('');
   const table = $('gb-scr-table'); if (table) table.innerHTML = `<table class="gb-table"><thead>${head}</thead><tbody>${body}</tbody></table>`;
   const count = $('gb-scr-count'); if (count) count.textContent = `${gbScrTotal.toLocaleString()} companies`;
   const note = $('gb-scr-note'); if (note) note.textContent = `showing ${rows.length} of ${gbScrTotal.toLocaleString()}`;
   const more = $('gb-scr-more');
   if (more) more.innerHTML = rows.length < gbScrTotal && gbScrLimit < 200 ? '<button type="button" class="gb-more" data-gb-more="1">SHOW MORE</button>' : '';
+}
+
+// The HOME screener's COMPANIES mode uses the same global company set as the GLOBAL board, with its
+// own controls/state. Keeping it separate from the GLOBAL instance avoids duplicate DOM ids while
+// giving the home screen the cross-market screener instead of the old market-by-market table.
+let hmScr = { market: 'all', sector: 'all', peMax: 0, roeMin: '', capMin: 0, ytdMin: '', q: '' };
+let hmScrRows = [], hmScrTotal = 0, hmScrSort = 'cap', hmScrLimit = 50, hmScrSeq = 0, hmSectorsLoaded = false, hmQTimer = 0;
+const HM_MARKETS = [
+  ['us', 'United States'], ['jp', 'Japan'], ['kr', 'Korea'], ['tw', 'Taiwan'], ['hk', 'Hong Kong'],
+  ['au', 'Australia'], ['in', 'India'], ['id', 'Indonesia'], ['br', 'Brazil'], ['za', 'South Africa'],
+];
+function hmScreenerShell() {
+  return `<div class="hm-screen">
+    <div class="sc-bar">${screenModeHtml()}</div>
+    <div class="gb-filters">
+      <select id="hm-f-market"><option value="all">All markets</option>${HM_MARKETS.map(([id, label]) => `<option value="${id}">${GB_FLAG[id] || ''} ${esc(label)}</option>`).join('')}</select>
+      <select id="hm-f-sector"><option value="all">All sectors</option></select>
+      <select id="hm-f-pe"><option value="0">P/E any</option><option value="10">P/E &lt; 10</option><option value="15">P/E &lt; 15</option><option value="20">P/E &lt; 20</option><option value="30">P/E &lt; 30</option></select>
+      <select id="hm-f-roe"><option value="">ROE any</option><option value="10">ROE &gt; 10%</option><option value="15">ROE &gt; 15%</option><option value="20">ROE &gt; 20%</option></select>
+      <select id="hm-f-cap"><option value="0">Cap any</option><option value="1e10">Cap &gt; $10B</option><option value="5e10">Cap &gt; $50B</option><option value="1e11">Cap &gt; $100B</option></select>
+      <select id="hm-f-ytd"><option value="">YTD any</option><option value="0">YTD &gt; 0%</option><option value="10">YTD &gt; 10%</option><option value="25">YTD &gt; 25%</option></select>
+      <input id="hm-f-q" type="search" placeholder="Filter by name or ticker…">
+    </div>
+    <div class="gb-scroll" id="hm-scr-table"></div>
+    <div class="gb-note"><span id="hm-scr-count"></span><span id="hm-scr-note"></span><span id="hm-scr-more"></span></div>
+  </div>`;
+}
+function hmSyncFilterUi() {
+  const set = (id, v) => { const el = $(id); if (el) el.value = v; };
+  set('hm-f-market', hmScr.market);
+  set('hm-f-sector', hmScr.sector);
+  set('hm-f-pe', String(hmScr.peMax || 0));
+  set('hm-f-roe', hmScr.roeMin === '' ? '' : String(hmScr.roeMin));
+  set('hm-f-cap', String(hmScr.capMin || 0));
+  set('hm-f-ytd', hmScr.ytdMin === '' ? '' : String(hmScr.ytdMin));
+  set('hm-f-q', hmScr.q);
+}
+async function hmLoadScreener() {
+  const seq = ++hmScrSeq;
+  const p = new URLSearchParams({
+    market: hmScr.market, sector: hmScr.sector,
+    peMax: String(hmScr.peMax || 0),
+    roeMin: hmScr.roeMin === '' ? '' : String(hmScr.roeMin),
+    capMin: String(hmScr.capMin || 0),
+    ytdMin: hmScr.ytdMin === '' ? '' : String(hmScr.ytdMin),
+    q: hmScr.q, sort: hmScrSort, limit: String(hmScrLimit), offset: '0',
+  });
+  const d = await jget('/api/global-companies?' + p.toString(), 120000).catch(() => null);
+  if (seq !== hmScrSeq || !d) return;
+  if (!hmSectorsLoaded && Array.isArray(d.sectors)) {
+    const sel = $('hm-f-sector');
+    if (sel) sel.innerHTML = '<option value="all">All sectors</option>' + d.sectors.map((s) => `<option value="${esc(s)}">${esc(s)}</option>`).join('');
+    hmSectorsLoaded = true;
+    hmSyncFilterUi();
+  }
+  hmScrRows = d.rows || []; hmScrTotal = d.total || 0;
+  hmRenderScreener();
+}
+function hmRenderScreener() {
+  const rows = hmScrRows;
+  const head = `<tr><th class="gb-c-company">COMPANY</th><th class="gb-c-market">MARKET</th><th class="gb-c-sector">SECTOR</th><th class="num ${hmScrSort === 'cap' ? 'on' : ''}" data-hm-sort="cap">MKT CAP</th><th class="num ${hmScrSort === 'pe' ? 'on' : ''}" data-hm-sort="pe">P/E</th><th class="num ${hmScrSort === 'roe' ? 'on' : ''}" data-hm-sort="roe">ROE</th><th class="num ${hmScrSort === 'ytd' ? 'on' : ''}" data-hm-sort="ytd">YTD</th></tr>`;
+  const body = rows.map((r) => `<tr data-gb-company="${esc(r.m)}:${esc(r.id)}"><td class="gb-c-company"><span class="gb-co" title="${esc(r.n)}">${esc(r.t)} <span class="dim">${esc(r.n)}</span></span></td><td class="gb-c-market">${GB_FLAG[r.m] || ''} ${esc(String(r.m).toUpperCase())}</td><td class="gb-c-sector"><span class="gb-sec" title="${esc(r.s)}">${esc(r.s)}</span></td><td class="num">${gbCap(r.cap)}</td><td class="num">${r.pe == null ? '—' : r.pe.toFixed(1) + '×'}</td><td class="num">${r.roe == null ? '—' : r.roe.toFixed(1) + '%'}</td><td class="num ${cls(r.ytd)}">${r.ytd == null ? '—' : pctf(r.ytd)}</td></tr>`).join('');
+  const table = $('hm-scr-table'); if (table) table.innerHTML = `<table class="gb-table"><thead>${head}</thead><tbody>${body}</tbody></table>`;
+  const count = $('hm-scr-count'); if (count) count.textContent = `${hmScrTotal.toLocaleString()} companies`;
+  const note = $('hm-scr-note'); if (note) note.textContent = `showing ${rows.length} of ${hmScrTotal.toLocaleString()}`;
+  const more = $('hm-scr-more');
+  if (more) more.innerHTML = rows.length < hmScrTotal && hmScrLimit < 200 ? '<button type="button" class="gb-more" data-hm-more="1">SHOW MORE</button>' : '';
+}
+function hmBindFilters() {
+  const read = () => {
+    hmScr = {
+      market: $('hm-f-market')?.value || 'all',
+      sector: $('hm-f-sector')?.value || 'all',
+      peMax: Number($('hm-f-pe')?.value) || 0,
+      roeMin: $('hm-f-roe')?.value || '',
+      capMin: Number($('hm-f-cap')?.value) || 0,
+      ytdMin: $('hm-f-ytd')?.value || '',
+      q: $('hm-f-q')?.value.trim() || '',
+    };
+    hmScrLimit = 50;
+    hmLoadScreener();
+  };
+  ['hm-f-market', 'hm-f-sector', 'hm-f-pe', 'hm-f-roe', 'hm-f-cap', 'hm-f-ytd'].forEach((id) => $(id)?.addEventListener('change', read));
+  $('hm-f-q')?.addEventListener('input', () => { clearTimeout(hmQTimer); hmQTimer = setTimeout(read, 300); });
 }
 
 async function gbLoadTop() {
@@ -10847,6 +10942,18 @@ async function renderGlobalBoard(token) {
 
 addEventListener('resize', () => { clearTimeout(gbFitTimer); gbFitTimer = setTimeout(gbFitSplit, 150); }, { passive: true });
 
+document.addEventListener('click', (e) => {
+  const hmSort = e.target.closest('[data-hm-sort]');
+  if (hmSort) { hmScrSort = hmSort.dataset.hmSort; hmScrLimit = 50; hmLoadScreener(); return; }
+  const hmMore = e.target.closest('[data-hm-more]');
+  if (hmMore) { hmScrLimit = Math.min(200, hmScrLimit + 50); hmLoadScreener(); return; }
+});
+document.addEventListener('click', (e) => {
+  const hmSort = e.target.closest('[data-hm-sort]');
+  if (hmSort) { hmScrSort = hmSort.dataset.hmSort; hmScrLimit = 50; hmLoadScreener(); return; }
+  const hmMore = e.target.closest('[data-hm-more]');
+  if (hmMore) { hmScrLimit = Math.min(200, hmScrLimit + 50); hmLoadScreener(); return; }
+});
 document.addEventListener('click', (e) => {
   const gsz = e.target.closest('[data-gb-size]');
   if (gsz) {

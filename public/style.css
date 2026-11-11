@@ -2579,6 +2579,14 @@ body.gs-search-open { overflow: hidden; }
 .gb-table th { text-align:right; font-size:7.5px; letter-spacing:.8px; color:#5b6773; font-weight:400; padding:7px 10px; border-bottom:1px solid var(--line); white-space:nowrap; cursor:pointer; }
 .gb-table th:first-child, .gb-table td:first-child { text-align:left; }
 .gb-table th.on { color:var(--amber); }
+.gb-table th.gb-c-company, .gb-table td.gb-c-company,
+.gb-table th.gb-c-market, .gb-table td.gb-c-market,
+.gb-table th.gb-c-sector, .gb-table td.gb-c-sector { text-align:left; }
+.gb-table th.num, .gb-table td.num { text-align:right; }
+.gb-table .gb-co { display:block; max-width:280px; overflow:hidden; text-overflow:ellipsis; }
+.gb-table .gb-sec { display:block; max-width:150px; overflow:hidden; text-overflow:ellipsis; }
+.gb-table td.pos { color:var(--green); }
+.gb-table td.neg { color:var(--red); }
 .gb-table td { padding:6px 10px; border-bottom:1px solid #151b21; color:#c9d4df; white-space:nowrap; }
 .gb-table tr:last-child td { border-bottom:0; }
 .gb-table tbody tr { cursor:pointer; }
@@ -2727,6 +2735,8 @@ body.gs-search-open { overflow: hidden; }
   .gb-stat .v { font-size: 16px; }
   .gb-stat .b { font-size: 8px; }
   .gb-table th { font-size: 8.5px; }
+  .gb-table .gb-co { max-width: 180px; }
+  .gb-table .gb-sec { max-width: 110px; }
   .gb-table td { font-size: 10.5px; }
   .co-table:not(.co-qtr) .co-tr {
     grid-template-columns: 40px repeat(4, minmax(0, 1fr));
@@ -2755,6 +2765,8 @@ body.gs-search-open { overflow: hidden; }
   .gb-table th, .gb-table td { padding: 6px 5px; font-size: 10.5px; }
   .gb-table td:first-child { overflow: hidden; text-overflow: ellipsis; }
   .gb-table th { font-size: 8.5px; }
+  .gb-table .gb-co { max-width: 180px; }
+  .gb-table .gb-sec { max-width: 110px; }
 }
 
 /* Desktop: let the ten market rows fill the height the map card sets, so the table does not leave
