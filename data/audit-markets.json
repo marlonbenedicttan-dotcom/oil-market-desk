@@ -1,5 +1,5 @@
 {
- "checked": "2026-11-10T12:44:36.927Z",
+ "checked": "2026-11-11T01:50:09.239Z",
  "markets": {
   "us": {
    "name": "US",
@@ -108,13 +108,13 @@
     {
      "check": "P/B vs the filing’s equity",
      "severity": "warn",
-     "count": 0,
+     "count": 21,
      "detail": "JPX values equity at a later filing date"
     },
     {
      "check": "P/B vs the filing’s equity",
      "severity": "fail",
-     "count": 0,
+     "count": 2,
      "detail": "More than a filing-date difference"
     },
     {
@@ -148,9 +148,13 @@
      "detail": "JPX ROE is trailing; NP is the fiscal year"
     }
    ],
-   "fail": 0,
-   "warn": 22,
+   "fail": 2,
+   "warn": 43,
    "examples": {
+    "P/B vs the filing’s equity": [
+     "36590 (-26.0%)",
+     "57260 (43.9%)"
+    ],
     "ROE sign disagrees with the fiscal-year profit": [
      "45020 (ROE 0.6% vs NP $-152.39B)",
      "67230 (ROE 23.6% vs NP $-51.76B)",
@@ -184,13 +188,13 @@
     {
      "check": "market cap vs Naver",
      "severity": "warn",
-     "count": 0,
+     "count": 89,
      "detail": "A split or a stale print since the cap was read"
     },
     {
      "check": "market cap vs Naver",
      "severity": "fail",
-     "count": 0,
+     "count": 2,
      "detail": "More than a rounding difference"
     },
     {
@@ -230,25 +234,29 @@
      "detail": "A split or consolidation since the last annual report"
     }
    ],
-   "fail": 0,
-   "warn": 236,
+   "fail": 2,
+   "warn": 325,
    "examples": {
+    "market cap vs Naver": [
+     "480370 (28.5%)",
+     "090370 (17.6%)"
+    ],
     "share count differs from the filing": [
+     "068270 (filing 218,613,124 → listed 233,707,042)",
      "032830 (filing 179,574,779 → listed 200,000,000)",
-     "068270 (filing 218,613,124 → listed 232,072,861)",
-     "034730 (filing 55,086,352 → listed 72,502,629)",
-     "000810 (filing 39,828,296 → listed 44,647,421)",
-     "010120 (filing 29,738,491 → listed 150,000,000)",
-     "006800 (filing 436,049,860 → listed 543,020,785)",
-     "005830 (filing 60,643,469 → listed 65,500,292)",
-     "267250 (filing 70,668,430 → listed 78,992,913)"
+     "034730 (filing 55,086,352 → listed 72,661,202)",
+     "000810 (filing 39,828,296 → listed 44,647,496)",
+     "005490 (filing 75,620,779 → listed 79,675,182)",
+     "010120 (filing 29,738,491 → listed 151,036,269)",
+     "006800 (filing 436,049,860 → listed 544,271,264)",
+     "005830 (filing 60,643,469 → listed 65,268,047)"
     ]
    },
    "coverage": {
     "companies": 725,
     "marketCap": 725,
-    "pe": 545,
-    "peTTM": 458,
+    "pe": 544,
+    "peTTM": 457,
     "peFY": 87,
     "pb": 721,
     "roe": 721,
@@ -256,6 +264,6 @@
    }
   }
  },
- "failures": 0,
- "warnings": 296
+ "failures": 4,
+ "warnings": 406
 }
