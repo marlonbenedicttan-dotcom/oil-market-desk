@@ -1,5 +1,5 @@
 {
- "generated": "2026-11-11T15:04:01.004Z",
+ "generated": "2026-11-11T15:14:24.262Z",
  "companies": 1506,
  "incompleteQuarters": 45,
  "incompleteByReason": {
@@ -570,6 +570,10 @@
  },
  "derivedQ4Companies": 9,
  "derivedQ4Rows": 26,
+ "ifrsPilot": {
+  "scanned": 28,
+  "withIfrs": 27
+ },
  "lists": {
   "incompleteQuarters": [
    {

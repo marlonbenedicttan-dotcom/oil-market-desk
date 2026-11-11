@@ -1,0 +1,552 @@
+{
+ "generated": "2026-11-11T15:14:07.250Z",
+ "note": "IFRS pilot only; not merged into the verified US-GAAP universe.",
+ "companies": [
+  {
+   "ticker": "SAP",
+   "name": "SAP SE",
+   "exchange": "NYSE",
+   "cik": 1000184,
+   "filing": {
+    "form": "20-F",
+    "date": "2026-02-26",
+    "period": "2025-12-31",
+    "acc": "0001104659-26-020058"
+   },
+   "tags": {
+    "revenue": 28205000000,
+    "profit": 4876000000,
+    "assets": 51090000000,
+    "equity": 30704000000
+   },
+   "currency": "EUR",
+   "status": "ifrs"
+  },
+  {
+   "ticker": "SHEL",
+   "name": "Shell plc",
+   "exchange": "NYSE",
+   "cik": 1306965,
+   "filing": {
+    "form": "20-F",
+    "date": "2026-03-12",
+    "period": "2025-12-31",
+    "acc": "0001628280-26-017024"
+   },
+   "tags": {
+    "revenue": 266886000000,
+    "profit": 18119000000,
+    "assets": 370350000000,
+    "equity": 175319000000
+   },
+   "currency": "USD",
+   "status": "ifrs"
+  },
+  {
+   "ticker": "AZN",
+   "name": "ASTRAZENECA PLC",
+   "exchange": "NYSE",
+   "cik": 901832,
+   "filing": {
+    "form": "20-F",
+    "date": "2026-02-24",
+    "period": "2025-12-31",
+    "acc": "0001104659-26-019130"
+   },
+   "tags": {
+    "revenue": 58739000000,
+    "profit": 10233000000,
+    "assets": 114074000000,
+    "equity": 48719000000
+   },
+   "currency": "USD",
+   "status": "ifrs"
+  },
+  {
+   "ticker": "NVS",
+   "name": "NOVARTIS AG",
+   "exchange": "NYSE",
+   "cik": 1114448,
+   "filing": {
+    "form": "20-F",
+    "date": "2026-02-04",
+    "period": "2025-12-31",
+    "acc": "0001114448-26-000004"
+   },
+   "tags": {
+    "revenue": null,
+    "profit": 13967000000,
+    "assets": 110949000000,
+    "equity": 46549000000
+   },
+   "currency": null,
+   "status": "ifrs"
+  },
+  {
+   "ticker": "UL",
+   "name": "UNILEVER PLC",
+   "exchange": "NYSE",
+   "cik": 217410,
+   "filing": {
+    "form": "20-F",
+    "date": "2026-03-12",
+    "period": "2025-12-31",
+    "acc": "0000217410-26-000007"
+   },
+   "tags": {
+    "revenue": 50503000000,
+    "profit": 10011000000,
+    "assets": 70471000000,
+    "equity": 17587000000
+   },
+   "currency": "EUR",
+   "status": "ifrs"
+  },
+  {
+   "ticker": "DEO",
+   "name": "DIAGEO PLC",
+   "exchange": "NYSE",
+   "cik": 835403,
+   "filing": {
+    "form": "20-F",
+    "date": "2026-08-18",
+    "period": "2026-06-30",
+    "acc": "0001628280-26-057529"
+   },
+   "tags": {
+    "revenue": 27964000000,
+    "profit": 2538000000,
+    "assets": 50272000000,
+    "equity": 13694000000
+   },
+   "currency": "GBP",
+   "status": "ifrs"
+  },
+  {
+   "ticker": "BP",
+   "name": "BP PLC",
+   "exchange": "NYSE",
+   "cik": 313807,
+   "filing": {
+    "form": "20-F",
+    "date": "2026-03-06",
+    "period": "2025-12-31",
+    "acc": "0000313807-26-000006"
+   },
+   "tags": {
+    "revenue": 192549000000,
+    "profit": 1295000000,
+    "assets": 278526000000,
+    "equity": 74000000000
+   },
+   "currency": "USD",
+   "status": "ifrs"
+  },
+  {
+   "ticker": "HSBC",
+   "name": "HSBC HOLDINGS PLC",
+   "exchange": "NYSE",
+   "cik": 1089113,
+   "filing": {
+    "form": "20-F",
+    "date": "2026-02-26",
+    "period": "2025-12-31",
+    "acc": "0001089113-26-000010"
+   },
+   "tags": {
+    "revenue": null,
+    "profit": 23131000000,
+    "assets": 3233034000000,
+    "equity": 205666000000
+   },
+   "currency": null,
+   "status": "ifrs"
+  },
+  {
+   "ticker": "RY",
+   "name": "ROYAL BANK OF CANADA",
+   "exchange": "NYSE",
+   "cik": 1000275,
+   "filing": {
+    "form": "40-F",
+    "date": "2025-12-03",
+    "period": "2025-10-31",
+    "acc": "0001193125-25-305927"
+   },
+   "tags": {
+    "revenue": null,
+    "profit": null,
+    "assets": null,
+    "equity": null
+   },
+   "currency": null,
+   "status": "ifrs"
+  },
+  {
+   "ticker": "TD",
+   "name": "TORONTO DOMINION BANK",
+   "exchange": "NYSE",
+   "cik": 947263,
+   "filing": {
+    "form": "40-F",
+    "date": "2025-12-04",
+    "period": "2025-10-31",
+    "acc": "0001562762-25-000289"
+   },
+   "tags": {
+    "revenue": null,
+    "profit": null,
+    "assets": null,
+    "equity": null
+   },
+   "currency": null,
+   "status": "ifrs"
+  },
+  {
+   "ticker": "BNS",
+   "name": "BANK OF NOVA SCOTIA",
+   "exchange": "NYSE",
+   "cik": 9631,
+   "filing": {
+    "form": "40-F",
+    "date": "2025-12-02",
+    "period": "2025-10-31",
+    "acc": "0001193125-25-304643"
+   },
+   "tags": {
+    "revenue": null,
+    "profit": null,
+    "assets": null,
+    "equity": null
+   },
+   "currency": null,
+   "status": "ifrs"
+  },
+  {
+   "ticker": "CNI",
+   "name": "CANADIAN NATIONAL RAILWAY CO",
+   "exchange": "NYSE",
+   "cik": 16868,
+   "filing": {
+    "form": "40-F",
+    "date": "2026-02-04",
+    "period": "2025-12-31",
+    "acc": "0001104659-26-010352"
+   },
+   "tags": {
+    "revenue": null,
+    "profit": null,
+    "assets": null,
+    "equity": null
+   },
+   "currency": null,
+   "status": "ifrs"
+  },
+  {
+   "ticker": "CP",
+   "status": "not-20F/40F"
+  },
+  {
+   "ticker": "SHOP",
+   "name": "SHOPIFY INC.",
+   "exchange": "Nasdaq",
+   "cik": 1594805,
+   "filing": {
+    "form": "40-F",
+    "date": "2024-02-13",
+    "period": "2023-12-31",
+    "acc": "0001594805-24-000007"
+   },
+   "tags": {
+    "revenue": null,
+    "profit": null,
+    "assets": null,
+    "equity": null
+   },
+   "currency": null,
+   "status": "ifrs"
+  },
+  {
+   "ticker": "TM",
+   "name": "TOYOTA MOTOR CORP/",
+   "exchange": "NYSE",
+   "cik": 1094517,
+   "filing": {
+    "form": "20-F",
+    "date": "2026-06-10",
+    "period": "2026-03-31",
+    "acc": "0001193125-26-264811"
+   },
+   "tags": {
+    "revenue": null,
+    "profit": null,
+    "assets": null,
+    "equity": null
+   },
+   "currency": null,
+   "status": "ifrs"
+  },
+  {
+   "ticker": "HMC",
+   "name": "HONDA MOTOR CO LTD",
+   "exchange": "NYSE",
+   "cik": 715153,
+   "filing": {
+    "form": "20-F",
+    "date": "2026-06-18",
+    "period": "2026-03-31",
+    "acc": "0001193125-26-274991"
+   },
+   "tags": {
+    "revenue": null,
+    "profit": null,
+    "assets": null,
+    "equity": null
+   },
+   "currency": null,
+   "status": "ifrs"
+  },
+  {
+   "ticker": "MUFG",
+   "name": "MITSUBISHI UFJ FINANCIAL GROUP INC",
+   "exchange": "NYSE",
+   "cik": 67088,
+   "filing": {
+    "form": "20-F",
+    "date": "2026-07-06",
+    "period": "2026-03-31",
+    "acc": "0001628280-26-047095"
+   },
+   "tags": {
+    "revenue": null,
+    "profit": null,
+    "assets": null,
+    "equity": null
+   },
+   "currency": null,
+   "status": "ifrs"
+  },
+  {
+   "ticker": "SONY",
+   "name": "Sony Group Corp",
+   "exchange": "NYSE",
+   "cik": 313838,
+   "filing": {
+    "form": "20-F",
+    "date": "2026-06-18",
+    "period": "2026-03-31",
+    "acc": "0001193125-26-274893"
+   },
+   "tags": {
+    "revenue": null,
+    "profit": null,
+    "assets": null,
+    "equity": null
+   },
+   "currency": null,
+   "status": "ifrs"
+  },
+  {
+   "ticker": "RIO",
+   "name": "RIO TINTO PLC",
+   "exchange": "NYSE",
+   "cik": 863064,
+   "filing": {
+    "form": "20-F",
+    "date": "2026-02-19",
+    "period": "2025-12-31",
+    "acc": "0001628280-26-009531"
+   },
+   "tags": {
+    "revenue": 57638000000,
+    "profit": 10249000000,
+    "assets": 128102000000,
+    "equity": 67024000000
+   },
+   "currency": "USD",
+   "status": "ifrs"
+  },
+  {
+   "ticker": "BHP",
+   "name": "BHP Group Ltd",
+   "exchange": "NYSE",
+   "cik": 811809,
+   "filing": {
+    "form": "20-F",
+    "date": "2026-08-18",
+    "period": "2026-06-30",
+    "acc": "0001193125-26-354647"
+   },
+   "tags": {
+    "revenue": 51262000000,
+    "profit": 11143000000,
+    "assets": 108790000000,
+    "equity": 52218000000
+   },
+   "currency": "USD",
+   "status": "ifrs"
+  },
+  {
+   "ticker": "VOD",
+   "name": "VODAFONE GROUP PUBLIC LTD CO",
+   "exchange": "Nasdaq",
+   "cik": 839923,
+   "filing": {
+    "form": "20-F",
+    "date": "2026-05-22",
+    "period": "2026-03-31",
+    "acc": "0001193125-26-235425"
+   },
+   "tags": {
+    "revenue": 37448000000,
+    "profit": 2439000000,
+    "assets": 128859000000,
+    "equity": 56609000000
+   },
+   "currency": "EUR",
+   "status": "ifrs"
+  },
+  {
+   "ticker": "NGG",
+   "name": "NATIONAL GRID PLC",
+   "exchange": "NYSE",
+   "cik": 1004315,
+   "filing": {
+    "form": "20-F",
+    "date": "2026-06-03",
+    "period": "2026-03-31",
+    "acc": "0001004315-26-000006"
+   },
+   "tags": {
+    "revenue": 18378000000,
+    "profit": 2905000000,
+    "assets": 103760000000,
+    "equity": 37218000000
+   },
+   "currency": "GBP",
+   "status": "ifrs"
+  },
+  {
+   "ticker": "PUK",
+   "name": "PRUDENTIAL PLC",
+   "exchange": "NYSE",
+   "cik": 1116578,
+   "filing": {
+    "form": "20-F",
+    "date": "2026-03-26",
+    "period": "2025-12-31",
+    "acc": "0001628280-26-021178"
+   },
+   "tags": {
+    "revenue": 11491000000,
+    "profit": 4119000000,
+    "assets": 212195000000,
+    "equity": 21360000000
+   },
+   "currency": "GBP",
+   "status": "ifrs"
+  },
+  {
+   "ticker": "HDB",
+   "name": "HDFC BANK LTD",
+   "exchange": "NYSE",
+   "cik": 1144967,
+   "filing": {
+    "form": "20-F",
+    "date": "2026-07-29",
+    "period": "2026-03-31",
+    "acc": "0001193125-26-322004"
+   },
+   "tags": {
+    "revenue": null,
+    "profit": null,
+    "assets": null,
+    "equity": null
+   },
+   "currency": null,
+   "status": "ifrs"
+  },
+  {
+   "ticker": "INFY",
+   "name": "Infosys Ltd",
+   "exchange": "NYSE",
+   "cik": 1067491,
+   "filing": {
+    "form": "20-F",
+    "date": "2026-06-15",
+    "period": "2026-03-31",
+    "acc": "0001193125-26-270520"
+   },
+   "tags": {
+    "revenue": 10939000000,
+    "profit": 3162000000,
+    "assets": 17419000000,
+    "equity": 11255000000
+   },
+   "currency": "USD",
+   "status": "ifrs"
+  },
+  {
+   "ticker": "TSM",
+   "name": "TAIWAN SEMICONDUCTOR MANUFACTURING CO LTD",
+   "exchange": "NYSE",
+   "cik": 1046179,
+   "filing": {
+    "form": "20-F",
+    "date": "2026-04-16",
+    "period": "2025-12-31",
+    "acc": "0001628280-26-025362"
+   },
+   "tags": {
+    "revenue": 88268000000,
+    "profit": 35301100000,
+    "assets": 204079400000,
+    "equity": 130505400000
+   },
+   "currency": "TWD",
+   "status": "ifrs"
+  },
+  {
+   "ticker": "ASML",
+   "name": "ASML HOLDING NV",
+   "exchange": "Nasdaq",
+   "cik": 937966,
+   "filing": {
+    "form": "20-F",
+    "date": "2026-02-25",
+    "period": "2025-12-31",
+    "acc": "0001628280-26-011378"
+   },
+   "tags": {
+    "revenue": null,
+    "profit": null,
+    "assets": null,
+    "equity": null
+   },
+   "currency": null,
+   "status": "ifrs"
+  },
+  {
+   "ticker": "STLA",
+   "name": "Stellantis N.V.",
+   "exchange": "NYSE",
+   "cik": 1605484,
+   "filing": {
+    "form": "20-F",
+    "date": "2026-02-26",
+    "period": "2025-12-31",
+    "acc": "0001605484-26-000021"
+   },
+   "tags": {
+    "revenue": 153508000000,
+    "profit": -22332000000,
+    "assets": 195153000000,
+    "equity": 54001000000
+   },
+   "currency": "EUR",
+   "status": "ifrs"
+  }
+ ],
+ "ifrs": 27,
+ "scanned": 28
+}

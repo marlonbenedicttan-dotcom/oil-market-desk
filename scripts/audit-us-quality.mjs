@@ -1,6 +1,6 @@
 // US data-quality ledger. Counts are evidence, not thresholds: every list is written to
 // data/us-quality.json so the repair queue is inspectable.
-import { readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -47,6 +47,12 @@ for (const c of data.companies) {
   byStatus[s] = (byStatus[s] || 0) + 1;
 }
 
+let ifrsPilot = null;
+try {
+  const p = JSON.parse(readFileSync(join(ROOT, 'data', 'us-ifrs-pilot.json'), 'utf8'));
+  ifrsPilot = { scanned: p.scanned, withIfrs: p.ifrs };
+} catch { /* pilot not built */ }
+
 const out = {
   generated: new Date().toISOString(),
   companies: data.companies.length,
@@ -65,6 +71,7 @@ const out = {
   verification: byStatus,
   derivedQ4Companies: data.companies.filter((c) => c.quartersSource?.derivedQ4?.length).length,
   derivedQ4Rows: data.companies.reduce((a, c) => a + (c.quartersSource?.derivedQ4?.length || 0), 0),
+  ifrsPilot,
   lists: { incompleteQuarters: list(short), stale: list(stale), noDebtNonFinancial: list(noDebt.filter((c) => !isFin(c))) },
 };
 writeFileSync(join(ROOT, 'data', 'us-quality.json'), JSON.stringify(out, null, 1));
