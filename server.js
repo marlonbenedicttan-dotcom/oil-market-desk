@@ -6139,6 +6139,13 @@ const server = http.createServer(async (req, res) => {
         valuation: valuation ? { ...valuation.index, sectors: valuation.sectors || {} } : null,
       });
     }
+    if (url.pathname === '/api/us-quality') {
+      try {
+        return sendJSONCached(res, 200, JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'us-quality.json'), 'utf8')));
+      } catch {
+        return sendJSON(res, 200, { error: 'US quality ledger has not been generated yet' });
+      }
+    }
     if (url.pathname.startsWith('/api/company/')) {
       const cik = decodeURIComponent(url.pathname.slice('/api/company/'.length));
       const c = (COMPANIES.companies || []).find((x) => String(x.cik) === cik || x.ticker === cik);

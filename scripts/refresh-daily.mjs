@@ -73,6 +73,7 @@ step('debt and shares', ['scripts/refresh-us-debt-shares.mjs']);
 // Custom/dimensional debt (Ford Credit, GM Financial) is absent from companyfacts; read a capped
 // batch of filing instances each day so the tail fills without a 1,500-document crawl.
 step('instance debt', ['scripts/refresh-us-instance-debt.mjs', '--limit=25']);
+step('instance balance', ['scripts/refresh-us-instance-balance.mjs', '--limit=25']);
 step('ratios', ['scripts/derive-companies.mjs']);
 step('second source', ['scripts/reconcile-nasdaq.mjs']);
 // The second source can move a cap; recompute P/E, P/B and ROE against the final cap before the audit.
@@ -81,6 +82,7 @@ step('verdicts', ['scripts/arbitrate.mjs']);
 step('single-source verification', ['scripts/verify-filing-index.mjs']);
 step('series sync', ['scripts/sync-series.mjs']);
 step('stale US facts', ['scripts/refresh-us-stale.mjs']);
+step('quality ledger', ['scripts/audit-us-quality.mjs']);
 step('audit', ['scripts/audit-calculations.mjs']);
 
 console.log('\ndaily refresh complete');
