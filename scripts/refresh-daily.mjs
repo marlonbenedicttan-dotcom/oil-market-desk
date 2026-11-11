@@ -7,7 +7,7 @@
 //   node scripts/refresh-daily.mjs --skip-prices
 
 import { execFileSync } from 'node:child_process';
-import { readFileSync, existsSync } from 'node:fs';
+import { readFileSync, existsSync, unlinkSync, readdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -32,12 +32,25 @@ if (!SKIP_PRICES) {
 step('new filings', ['scripts/detect-new-filings.mjs']);
 
 let changed = [];
+let changedCiks = [];
 try {
   const j = JSON.parse(readFileSync(join(ROOT, 'data', 'filings-changed.json'), 'utf8'));
   changed = (j.tickers || []).filter(Boolean);
+  changedCiks = (j.details || []).map((d) => d.cik).filter(Boolean);
 } catch { /* none */ }
 
 if (changed.length) {
+  // A new accession invalidates every per-CIK cache. Without this, align-periods and the equity pass
+  // can keep serving the old filing while only resolve-quarters refetches its own cache.
+  for (const cik of changedCiks) {
+    for (const rel of [`facts/${cik}.json`, `facts-broad/${cik}.json`]) {
+      try { unlinkSync(join(ROOT, 'data', 'cache', rel)); } catch { /* absent */ }
+    }
+    try {
+      const dir = join(ROOT, 'data', 'cache', 'concepts');
+      for (const f of readdirSync(dir)) if (f.startsWith(`${cik}_`)) unlinkSync(join(dir, f));
+    } catch { /* absent */ }
+  }
   const only = `--only=${changed.join(',')}`;
   console.log(`\n${changed.length} companies filed something new: ${changed.slice(0, 12).join(' ')}${changed.length > 12 ? ' …' : ''}`);
   step('earnings', ['scripts/ttm-earnings.mjs', only]);
@@ -56,6 +69,7 @@ if (changed.length) {
 // either has been refreshed, or the page shows a trailing profit the quarters below do not add up to.
 step('ttm vs quarters', ['scripts/reconcile-ttm.mjs']);
 step('equity instants', ['scripts/refresh-us-equity.mjs']);
+step('debt and shares', ['scripts/refresh-us-debt-shares.mjs']);
 step('ratios', ['scripts/derive-companies.mjs']);
 step('second source', ['scripts/reconcile-nasdaq.mjs']);
 // The second source can move a cap; recompute P/E, P/B and ROE against the final cap before the audit.

@@ -178,6 +178,37 @@ async function worker() {
         c.equity = val; c.equityEnd = e.end; c.equityTag = tag; changed++;
       }
     }
+
+    // Debt and cash are the other half of enterprise value. The old frames pass picked one tag from
+    // a single calendar frame, which left Ford on a $291M component instead of its total debt. Read
+    // the latest filing's components and blank the figure when the filing has no current total.
+    if (!c.debtEnd || c.debtEnd < targetEnd) {
+      const getAt = async (tag) => at(await concept(c.cik, tag, targetEnd), target);
+      const [ltd, ltdn, dc, st, cp] = await Promise.all([
+        getAt('LongTermDebt'), getAt('LongTermDebtNoncurrent'), getAt('DebtCurrent'),
+        getAt('ShortTermBorrowings'), getAt('CommercialPaper'),
+      ]);
+      let debt = null, debtEnd = null;
+      if (ltdn && dc) { debt = ltdn.val + dc.val; debtEnd = [ltdn.end, dc.end].sort().at(-1); }
+      else if (ltd) { debt = ltd.val; debtEnd = ltd.end; }
+      else if (ltdn) { debt = ltdn.val + (st?.val || 0) + (cp?.val || 0); debtEnd = ltdn.end; }
+      else if (dc) { debt = dc.val; debtEnd = dc.end; }
+      else if (st || cp) { debt = (st?.val || 0) + (cp?.val || 0); debtEnd = (st || cp).end; }
+      if (debt == null || debt < 0) {
+        c.debt = null;
+        c.debtEnd = targetEnd;
+        c.debtNA = 'no current total-debt tag in the latest filing';
+      } else {
+        c.debt = +debt;
+        c.debtEnd = debtEnd || targetEnd;
+        delete c.debtNA;
+      }
+      changed++;
+    }
+    if (!c.cashEnd || c.cashEnd < targetEnd) {
+      const cash = at(await concept(c.cik, 'CashAndCashEquivalentsAtCarryingValue', targetEnd), target);
+      if (cash) { c.cash = cash.val; c.cashEnd = cash.end; changed++; }
+    }
   }
 }
 await Promise.all([worker(), worker()]);

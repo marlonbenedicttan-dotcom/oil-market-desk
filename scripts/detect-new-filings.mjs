@@ -1,8 +1,9 @@
 // Detect new annual or quarterly filings since the last refresh.
 //
 // The daily job does not need to re-read 500 filing indexes; it needs to know which companies filed
-// something new. This compares the latest 10-K/10-Q accession for each CIK with the stored state and
-// writes the list of tickers that changed.
+// something new. This compares the latest fundamental accession for each CIK with the stored state
+// and writes the list of tickers that changed. Amendments (10-K/A, 10-Q/A), foreign private issuers
+// (20-F, 40-F) and interim foreign reports (6-K) are included.
 //
 //   node scripts/detect-new-filings.mjs
 //   node scripts/detect-new-filings.mjs --all     # report every company (first run)
@@ -42,11 +43,12 @@ async function worker() {
       const r = j?.filings?.recent;
       if (!r) { failed++; continue; }
       let latest = null;
+      const FUNDAMENTAL = new Set(['10-K', '10-K/A', '10-Q', '10-Q/A', '20-F', '20-F/A', '40-F', '40-F/A', '6-K', '6-K/A']);
       for (let k = 0; k < (r.form || []).length; k++) {
         const form = r.form[k];
-        if (form !== '10-K' && form !== '10-Q') continue;
+        if (!FUNDAMENTAL.has(form)) continue;
         const date = r.filingDate[k];
-        if (!latest || date > latest.date) latest = { acc: r.accessionNumber[k], form, date };
+        if (!latest || date > latest.date) latest = { acc: r.accessionNumber[k], form, date, period: r.reportDate?.[k] || null };
       }
       checked++;
       if (!latest) continue;

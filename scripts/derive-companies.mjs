@@ -143,14 +143,16 @@ for (const c of data.companies) {
   if (c.marketCap != null) {
     const debtKnown = c.debt != null;
     const cashKnown = c.cash != null;
-    c.ev = c.marketCap + (debtKnown ? c.debt : 0) - (cashKnown ? c.cash : 0);
+    // Enterprise value is only a measurement when both bridge items exist. A market-cap-minus-cash
+    // number with a missing debt total is not "approximate"; it is wrong by the whole debt balance
+    // (Ford: $291M was showing against a $292B balance sheet). Leave it blank and say why.
+    if (debtKnown && cashKnown) c.ev = c.marketCap + c.debt - c.cash;
+    else c.ev = null;
     c.evParts = { debt: debtKnown, cash: cashKnown };
-  // Some filers (Berkshire is the obvious one) tag no debt total at all. Say so rather than printing a
-  // dash that looks like a computation failure.
-  if (!debtKnown) c.debtNA = 'this company does not tag a debt total in its XBRL filings';
+    if (!debtKnown) c.debtNA = 'this company does not tag a debt total in its XBRL filings';
     c.evApprox = !debtKnown && !cashKnown ? 'neither debt nor cash is tagged'
-      : !debtKnown ? 'debt is not tagged — EV excludes it'
-      : !cashKnown ? 'cash is not tagged — EV excludes it'
+      : !debtKnown ? 'debt is not tagged — EV is not shown'
+      : !cashKnown ? 'cash is not tagged — EV is not shown'
       : null;
   } else { c.ev = null; }
   // Operating income from a decade ago is not operating income. KLA's tag last filed in 2014, which
