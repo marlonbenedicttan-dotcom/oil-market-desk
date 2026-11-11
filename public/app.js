@@ -2623,16 +2623,33 @@ function renderBrief(b) {
   }).join('');
   const fillMoves = secondary.length < 2 ? (b.rows || []).slice(0, 2 - secondary.length) : [];
   const miniMoves = fillMoves.map((x) => `<div class="brief-mini"><span class="tag">${esc(x.tag || 'MOVE')}</span><h4>${esc(x.label)}</h4><p>${x.why ? `${esc(x.why.title)} — ${esc(x.why.source || '')}` : 'No wire reason found.'}</p><span class="age">${pctf(x.d1)} today</span></div>`).join('');
-  const readBits = [];
-  if (b.hero) readBits.push(`${b.hero.label} ${pctf(b.hero.d1)}`);
-  for (const x of (b.rows || []).slice(0, 2)) if (x.d1 != null) readBits.push(`${x.label} ${pctf(x.d1)}`);
-  const idxMoves = (b.macro || []).filter((x) => x.kind === 'index' && x.d1 != null).sort((x, y) => x.d1 - y.d1).slice(0, 3);
-  const read = idxMoves.length
-    ? `${idxMoves.every((x) => x.d1 < 0) ? 'Risk-off' : idxMoves.every((x) => x.d1 > 0) ? 'Risk-on' : 'Index moves'}: ${idxMoves.map((x) => `${x.label} ${pctf(x.d1)}`).join(' · ')}.`
-    : (readBits.length ? `Today's tape: ${readBits.join(' · ')}.` : '');
-  const tape = (b.rows || []).slice(0, 6).map((x) => `<div class="brief-tape-row"><span>${esc(x.label)}</span><b class="${cls(x.d1)}">${pctf(x.d1)}</b></div>`).join('');
+  // A country name alone is ambiguous: "Japan +1.2%" could be the Nikkei or USD/JPY. Carry the
+  // asset class and instrument from the server so the tape reads "FX · USD/JPY" or
+  // "EQUITY · Japan" regardless of which markets happen to rank today.
+  const tapeSeen = new Set();
+  const tapeItems = [];
+  const addTape = (x) => {
+    if (!x || x.d1 == null || x.kind === 'deal') return;
+    const assetClass = x.assetClass || (x.kind === 'fx' ? 'FX' : x.kind === 'index' ? 'Equity' : x.kind === 'bench' ? 'Commodity' : null);
+    if (!assetClass) return;
+    const instrument = x.instrument || x.sym || (x.kind === 'fx' ? `${x.label} FX` : x.kind === 'index' ? `${x.label} equities` : x.label);
+    const key = `${assetClass}:${instrument}`;
+    if (tapeSeen.has(key)) return;
+    tapeSeen.add(key);
+    tapeItems.push({ assetClass, instrument, d1: x.d1 });
+  };
+  if (b.hero) addTape(b.hero);
+  for (const x of (b.rows || [])) addTape(x);
+  if (!tapeItems.length) for (const x of (b.macro || [])) addTape(x);
+  const idxMoves = (b.macro || []).filter((x) => x.kind === 'index' && x.d1 != null);
+  const risk = idxMoves.length
+    ? (idxMoves.every((x) => x.d1 < 0) ? 'Risk-off' : idxMoves.every((x) => x.d1 > 0) ? 'Risk-on' : 'Mixed tape')
+    : 'Tape';
+  const tapeHtml = tapeItems.slice(0, 4).map((x) => `<span class="tape-item"><em class="tape-tag ${x.assetClass.toLowerCase()}">${esc(x.assetClass)}</em><span class="tape-name">${esc(x.instrument)}</span><b class="${cls(x.d1)}">${pctf(x.d1)}</b></span>`).join('');
+  const read = tapeItems.length ? `<span class="tape-risk">${risk}</span><span class="tape-list">${tapeHtml}</span>` : '';
+  const tape = (b.rows || []).slice(0, 6).map((x) => `<div class="brief-tape-row"><span>${esc(x.instrument || x.label)}</span><b class="${cls(x.d1)}">${pctf(x.d1)}</b></div>`).join('');
   const more = (mini || miniMoves ? `<div class="brief-mini-grid">${mini}${miniMoves}</div>` : '')
-    + (read ? `<div class="brief-read"><span class="k">THE READ</span><p>${read}</p></div>` : '')
+    + (read ? `<div class="brief-read"><span class="k">TODAY'S TAPE</span><p>${read}</p></div>` : '')
     + (tape ? `<div class="brief-tape"><span class="k">TAPE</span>${tape}</div>` : '')
     + (ctx ? `<div class="brief-foot"><span class="k">CONTEXT</span>${ctx}</div>` : '');
   el.innerHTML = leadHtml || heroHtml || '<div class="macro-note">No ranked story today — the tape is below.</div>';

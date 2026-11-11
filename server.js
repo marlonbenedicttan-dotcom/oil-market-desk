@@ -5331,7 +5331,10 @@ async function buildBrief() {
     let hero = null;
     if (heroRaw) {
       hero = { kind: heroRaw.kind, id: heroRaw.id, label: heroRaw.label, tag: heroRaw.tag || (heroRaw.kind === 'bench' ? (heroRaw.group || 'COMMODITY') : (heroRaw.kind === 'fx' ? 'FX' : 'INDEX')),
-        sym: heroRaw.sym || null, d1: heroRaw.d1, y1: heroRaw.y1 ?? null, m1: heroRaw.m1 ?? null,
+        sym: heroRaw.sym || null,
+        assetClass: heroRaw.kind === 'bench' ? 'Commodity' : (heroRaw.kind === 'fx' ? 'FX' : 'Equity'),
+        instrument: heroRaw.kind === 'bench' ? heroRaw.label : (heroRaw.kind === 'fx' ? (heroRaw.sym || `${heroRaw.label} FX`) : `${heroRaw.label} equities`),
+        d1: heroRaw.d1, y1: heroRaw.y1 ?? null, m1: heroRaw.m1 ?? null,
         score: heroRaw.score ?? null, sigma: heroRaw.sigma ?? null, flat: heroRaw.flat ?? null,
         route: heroRaw.route || null, why: heroRaw.why || null, facts: heroRaw.facts || [], srcKind: heroRaw.srcKind || 'bench' };
       hero.spark = heroRaw.spark || null;
@@ -5370,6 +5373,9 @@ async function buildBrief() {
     const moveRows = mix.filter((x) => x !== heroRaw).slice(0, 5).map((x) => ({
       kind: x.kind === 'bench' ? 'bench' : (x.kind === 'fx' ? 'fx' : 'index'),
       id: x.id, label: x.label, tag: x.tag || (x.kind === 'fx' ? 'FX' : 'Index'),
+      sym: x.sym || null,
+      assetClass: x.kind === 'bench' ? 'Commodity' : (x.kind === 'fx' ? 'FX' : 'Equity'),
+      instrument: x.kind === 'bench' ? x.label : (x.kind === 'fx' ? (x.sym || `${x.label} FX`) : `${x.label} equities`),
       d1: x.d1, m1: x.m1 ?? null, y1: x.y1 ?? null, score: x.score ?? null,
       sigma: x.sigma ?? null, flat: x.flat ?? null, roll: x.roll || null,
       spark: x.spark || null, why: x.why || null, facts: x.facts || [], route: x.route || null,
