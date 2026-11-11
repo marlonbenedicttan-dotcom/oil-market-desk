@@ -51,16 +51,29 @@ for (const c of data.companies || []) {
     const mi = latest(g.MinorityInterest?.units?.USD);
     if (mi && mi.end === best.end) best = { val: best.val - mi.val, end: best.end, tag: `${best.tag} less MinorityInterest` };
   }
-  if (!(best.val > 0)) { skipped++; continue; }
   // The assets guard only makes sense when assets are at least as new as this equity instant.
-  const assetsFresh = c.assetsEnd && best.end <= c.assetsEnd;
-  if (assetsFresh && c.assets && (best.val > c.assets * 1.02 || best.val < -c.assets)) { skipped++; continue; }
-  if (c.equityEnd && best.end < c.equityEnd) { skipped++; continue; }
-  if (c.equity !== best.val) changed++;
-  c.equity = best.val;
-  c.equityEnd = best.end;
-  c.equityTag = best.tag;
-  c.equityForm = best.form || null;
+  // Equity can be negative (Starbucks has bought back more than its book value); that is a real
+  // balance-sheet fact, not a bad print. The assets guard only rejects a value that cannot be equity.
+  if (c.equityEnd && best.end < c.equityEnd) { /* keep the newer existing equity */ }
+  else if (c.assets && (best.val > c.assets * 1.02 || best.val < -c.assets)) skipped++;
+  else {
+    if (c.equity !== best.val) changed++;
+    c.equity = best.val;
+    c.equityEnd = best.end;
+    c.equityTag = best.tag;
+    c.equityForm = best.form || null;
+  }
+
+  // The annual balance pass aligned assets to the last 10-K; the latest 10-Q carries a newer instant.
+  const asset = latest(g.Assets?.units?.USD);
+  if (asset && (!c.assetsEnd || asset.end > c.assetsEnd)) {
+    if (!(asset.val > 0)) { /* impossible; leave the old value */ }
+    else { c.assets = asset.val; c.assetsEnd = asset.end; c.assetsTag = 'Assets'; }
+  }
+  const ca = latest(g.AssetsCurrent?.units?.USD);
+  if (ca && ca.val > 0) c.currentAssets = ca.val;
+  const cl = latest(g.LiabilitiesCurrent?.units?.USD);
+  if (cl && cl.val > 0) c.currentLiabilities = cl.val;
 }
 
 console.log(`US equity: ${changed} values updated · ${skipped} skipped`);

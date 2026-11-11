@@ -288,7 +288,10 @@ for (const c of data.companies) {
   Object.assign(c, growthFromUsSeries(c.series, c.shares));
   // Trailing EPS: the per-share tag is missing for a quarter of the index, but net income ÷ shares is
   // the same number and both inputs exist. Marked so the page can say it was derived.
-  if (c.epsTTM == null && c.netIncomeTTM != null && c.shares > 0) {
+  if (c.epsTTMBasis === 'net income ÷ shares' && c.netIncomeTTM != null && c.shares > 0) {
+    // A derived EPS must follow the trailing profit when reconcile-ttm adopts a newer quarter window.
+    c.epsTTM = +(c.netIncomeTTM / c.shares).toFixed(2);
+  } else if (c.epsTTM == null && c.netIncomeTTM != null && c.shares > 0) {
     c.epsTTM = +(c.netIncomeTTM / c.shares).toFixed(2);
     c.epsTTMBasis = 'net income ÷ shares';
   }

@@ -4508,5 +4508,12 @@ age, and a status:
 - **unknown** — no statement period
 
 `/health` now returns a `freshness` block with the totals and per-market counts. Current snapshot:
-10,490 companies, 10,462 fresh, 1 repair, 10 stale, 1 inactive, 16 unknown. The Japan queue was
-repaired after fixing duplicate same-date filings (a blank vendor row was winning over the real row).
+10,490 companies, 10,460 fresh, 3 repair, 10 stale, 1 inactive, 16 unknown. The Japan queue was
+repaired after fixing duplicate same-date filings (a blank vendor row was winning over the real row);
+the remaining three are Korean names whose DART cache has a newer report.
+
+## Known follow-up — Costco fiscal Q4 (2026-11-11)
+COST's period matrix currently shows Q1–Q3 for each fiscal year; the fiscal Q4 period is missing from
+the quarterly feed. The TTM headline is correct, but the matrix's Q4 cell and full-year total are
+incomplete. The resolver needs to derive the fiscal Q4 (annual minus the nine-month YTD) or read the
+annual Q4 row when the feed only carries Q1–Q3.

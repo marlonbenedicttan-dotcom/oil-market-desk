@@ -25,10 +25,27 @@ mkdirSync(CACHE, { recursive: true });
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 let last = 0;
 
-async function concept(cik, tag) {
+const latestInstant = (doc) => {
+  const usd = Array.isArray(doc?.units?.USD) ? doc.units.USD : [];
+  return usd.filter((e) => !e.start && e.end).map((e) => e.end).sort().at(-1) || null;
+};
+const latestFacts = (doc) => {
+  const g = doc?.facts?.['us-gaap'] || {};
+  let end = null;
+  for (const body of Object.values(g)) {
+    for (const e of body?.units?.USD || []) {
+      if (!e.start && e.end && (!end || e.end > end)) end = e.end;
+    }
+  }
+  return end;
+};
+async function concept(cik, tag, minEnd = null) {
   const file = join(CACHE, `${cik}_${tag}.json`);
   if (existsSync(file)) {
-    try { return JSON.parse(readFileSync(file, 'utf8')); } catch { /* refetch */ }
+    try {
+      const hit = JSON.parse(readFileSync(file, 'utf8'));
+      if (!minEnd || (latestInstant(hit) || '') >= minEnd) return hit;
+    } catch { /* refetch */ }
   }
   for (let i = 0; i < 3; i++) {
     const wait = Math.max(0, 240 - (Date.now() - last));
@@ -91,10 +108,13 @@ const slimFacts = (j) => {
   return { facts: { 'us-gaap': out } };
 };
 
-async function factsDoc(cik) {
+async function factsDoc(cik, minEnd = null) {
   const file = join(FACTS, `${cik}.json`);
   if (existsSync(file)) {
-    try { return JSON.parse(readFileSync(file, 'utf8')); } catch { /* refetch */ }
+    try {
+      const hit = JSON.parse(readFileSync(file, 'utf8'));
+      if (!minEnd || (latestFacts(hit) || '') >= minEnd) return hit;
+    } catch { /* refetch */ }
   }
   try {
     const res = await fetch(`https://data.sec.gov/api/xbrl/companyfacts/CIK${String(cik).padStart(10, '0')}.json`, {
@@ -123,11 +143,15 @@ const queue = todo.slice();
 async function worker() {
   while (queue.length) {
     const c = queue.shift();
-    const target = Date.parse(c.netIncomeEnd);
-    let a = at(await concept(c.cik, 'Assets'), target);
-    let e = at(await concept(c.cik, 'StockholdersEquity'), target);
+    // Align to the newest filing, not the last annual report: a 10-Q carries a newer balance-sheet
+    // instant, and the old target left assets/equity a quarter or more behind (Starbucks, Ford).
+    const target = Date.parse(c.lastFiling?.period || c.netIncomeEnd);
+    if (!Number.isFinite(target)) { done++; continue; }
+    const targetEnd = new Date(target).toISOString().slice(0, 10);
+    let a = at(await concept(c.cik, 'Assets', targetEnd), target);
+    let e = at(await concept(c.cik, 'StockholdersEquity', targetEnd), target);
     if (!a || !e) {
-      const facts = await factsDoc(c.cik);
+      const facts = await factsDoc(c.cik, targetEnd);
       a = a || atFacts(facts, 'Assets', target);
       e = e || atFacts(facts, 'StockholdersEquity', target)
         || atFacts(facts, 'StockholdersEquityIncludingPortionAttributableToNoncontrollingInterest', target);
@@ -142,8 +166,8 @@ async function worker() {
     if (e) {
       // Some filers report the *total* equity under the parent tag at quarter-end. If the value equals
       // the including-NCI figure, subtract the minority interest so the denominator matches the cap.
-      const incl = atFacts(await factsDoc(c.cik), 'StockholdersEquityIncludingPortionAttributableToNoncontrollingInterest', target);
-      const mi = atFacts(await factsDoc(c.cik), 'MinorityInterest', target);
+      const incl = atFacts(await factsDoc(c.cik, targetEnd), 'StockholdersEquityIncludingPortionAttributableToNoncontrollingInterest', target);
+      const mi = atFacts(await factsDoc(c.cik, targetEnd), 'MinorityInterest', target);
       let val = e.val;
       let tag = 'StockholdersEquity';
       if (incl && mi && Math.abs(val - incl.val) / Math.max(Math.abs(val), Math.abs(incl.val)) < 0.01) {
