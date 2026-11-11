@@ -124,7 +124,7 @@ function annualMap(facts, tags) {
   return out;
 }
 
-function addMissingFiscalQ4(clean, annualRevMap, annualNiMap, med) {
+function addMissingFiscalQ4(clean, annualRevMap, annualNiMap, annualOpMap, med) {
   const annualEnds = [...new Set([...annualRevMap.keys(), ...annualNiMap.keys()])].sort();
   const added = [];
   for (let i = 1; i < annualEnds.length; i++) {
@@ -135,18 +135,23 @@ function addMissingFiscalQ4(clean, annualRevMap, annualNiMap, med) {
     const span = (Date.parse(end) - Date.parse(win[0].end)) / (864e5 * 30.44);
     // Q1–Q3 of a 12-month year cover about nine months; a stray window is not a fiscal Q4.
     if (span < 7 || span > 12) continue;
-    const ar = annualRevMap.get(end), an = annualNiMap.get(end);
-    if (!ar && !an) continue;
+    const ar = annualRevMap.get(end), an = annualNiMap.get(end), ao = annualOpMap.get(end);
+    if (!ar && !an && !ao) continue;
     const revs = win.map((q) => q.revenue);
     const nis = win.map((q) => q.netIncome);
+    const ops = win.map((q) => q.operatingIncome);
     let revenue = ar && revs.every((v) => v != null) ? ar.val - revs.reduce((a, b) => a + b, 0) : null;
     let netIncome = an && nis.every((v) => v != null) ? an.val - nis.reduce((a, b) => a + b, 0) : null;
+    let operatingIncome = ao && ops.every((v) => v != null) ? ao.val - ops.reduce((a, b) => a + b, 0) : null;
     // A negative or wildly different revenue line is a tagging mismatch, not a quarter.
     if (revenue != null && (!(revenue > 0) || (med && (revenue > med * 4 || revenue < med / 4)))) revenue = null;
-    if (revenue == null && netIncome == null) continue;
+    if (revenue == null && netIncome == null && operatingIncome == null) continue;
+    const rawMargin = revenue && operatingIncome != null ? +((operatingIncome / revenue) * 100).toFixed(1) : null;
+    if (rawMargin != null && Math.abs(rawMargin) > 1000) operatingIncome = null;
     const q = {
-      end, revenue, operatingIncome: null, opBasis: null, netIncome,
-      margin: null, netMargin: revenue && netIncome != null ? +((netIncome / revenue) * 100).toFixed(1) : null,
+      end, revenue, operatingIncome, opBasis: operatingIncome == null ? null : 'annual-derived', netIncome,
+      margin: operatingIncome == null ? null : rawMargin,
+      netMargin: revenue && netIncome != null ? +((netIncome / revenue) * 100).toFixed(1) : null,
       derived: 'annual-q4',
     };
     clean.push(q);
@@ -263,7 +268,8 @@ async function worker() {
     // is never a discrete tag. Derive it from the annual total and add it to the same table.
     const annualRevMap = annualMap(facts, revTags.filter((t) => REV_WHITELIST.has(t)));
     const annualNiMap = annualMap(facts, niTags);
-    const derivedQ4 = addMissingFiscalQ4(clean, annualRevMap, annualNiMap, med);
+    const annualOpMap = annualMap(facts, opTags.filter((t) => t === 'OperatingIncomeLoss'));
+    const derivedQ4 = addMissingFiscalQ4(clean, annualRevMap, annualNiMap, annualOpMap, med);
 
     c.quarters = clean;
     c.quartersSource = {

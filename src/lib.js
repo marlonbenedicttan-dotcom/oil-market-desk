@@ -1271,8 +1271,14 @@ export function explainRows(rows, clusters, { exposures = {}, groups = {}, direc
 
 export function quartersContiguous(q) {
   if (!Array.isArray(q) || q.length < 2) return true;
+  // 52/53-week retailers have a 16-week fiscal Q4 (Costco: Q3 May → Q4 Aug is ~112 days); the first
+  // three gaps stay at 12 weeks. Allow that one wider final gap without accepting a missing quarter
+  // elsewhere.
   return q.every((x, i) => i === 0
-    || (() => { const d = (Date.parse(x.end) - Date.parse(q[i - 1].end)) / TTM_DAY; return d >= 80 && d <= 100; })());
+    || (() => {
+      const d = (Date.parse(x.end) - Date.parse(q[i - 1].end)) / TTM_DAY;
+      return d >= 80 && d <= (i === q.length - 1 ? 125 : 100);
+    })());
 }
 
 /** Reconcile `netIncomeTTM` with the last four quarters in place. Returns what changed. */
@@ -1312,6 +1318,15 @@ export function reconcileTtm(rows) {
     } else {
       c.ttmFromQuarters = false;
       c.ttmQuarterGap = false;
+      // The annual fallback and the four complete quarters agree. Adopt the quarter table anyway so
+      // the page stops calling a fully reconstructed TTM a fiscal-year fallback (Costco after Q4).
+      if (complete && samePeriod && diff <= 0.02) {
+        c.netIncomeTTM = sum;
+        c.netIncomeTTMAsOf = lastEnd;
+        c.ttmFromFY = false;
+        c.ttmRejected = null;
+        c.ttmFromQuarters = true;
+      }
       stat.held++;
     }
   }
