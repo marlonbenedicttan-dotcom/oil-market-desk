@@ -103,6 +103,59 @@ function periodMap(facts, tags) {
   return discrete;
 }
 
+// Annual totals are the source for a fiscal Q4 that the quarterly feed does not tag. A 10-K gives
+// one 12-month figure; the three 10-Q periods give Q1–Q3. The missing Q4 is annual − those three.
+function annualMap(facts, tags) {
+  const out = new Map();
+  const best = new Map(); // end -> candidate
+  tags.forEach((tag, rank) => {
+    for (const [start, end, val, form, filed] of facts[tag] || []) {
+      if (val == null) continue;
+      const d = (Date.parse(end) - Date.parse(start)) / DAY;
+      if (d < 300 || d > 400) continue;
+      const rankScore = rank + (form === '10-K' ? 0 : 0.5);
+      const cur = best.get(end);
+      if (!cur || rankScore < cur.rank || (rankScore === cur.rank && String(filed) > String(cur.filed))) {
+        best.set(end, { val, tag, rank: rankScore, filed });
+      }
+    }
+  });
+  for (const [end, v] of best) out.set(end, v);
+  return out;
+}
+
+function addMissingFiscalQ4(clean, annualRevMap, annualNiMap, med) {
+  const annualEnds = [...new Set([...annualRevMap.keys(), ...annualNiMap.keys()])].sort();
+  const added = [];
+  for (let i = 1; i < annualEnds.length; i++) {
+    const end = annualEnds[i], prev = annualEnds[i - 1];
+    if (clean.some((q) => q.end === end)) continue;
+    const win = clean.filter((q) => q.end > prev && q.end < end);
+    if (win.length !== 3) continue;
+    const span = (Date.parse(end) - Date.parse(win[0].end)) / (864e5 * 30.44);
+    // Q1–Q3 of a 12-month year cover about nine months; a stray window is not a fiscal Q4.
+    if (span < 7 || span > 12) continue;
+    const ar = annualRevMap.get(end), an = annualNiMap.get(end);
+    if (!ar && !an) continue;
+    const revs = win.map((q) => q.revenue);
+    const nis = win.map((q) => q.netIncome);
+    let revenue = ar && revs.every((v) => v != null) ? ar.val - revs.reduce((a, b) => a + b, 0) : null;
+    let netIncome = an && nis.every((v) => v != null) ? an.val - nis.reduce((a, b) => a + b, 0) : null;
+    // A negative or wildly different revenue line is a tagging mismatch, not a quarter.
+    if (revenue != null && (!(revenue > 0) || (med && (revenue > med * 4 || revenue < med / 4)))) revenue = null;
+    if (revenue == null && netIncome == null) continue;
+    const q = {
+      end, revenue, operatingIncome: null, opBasis: null, netIncome,
+      margin: null, netMargin: revenue && netIncome != null ? +((netIncome / revenue) * 100).toFixed(1) : null,
+      derived: 'annual-q4',
+    };
+    clean.push(q);
+    added.push(end);
+  }
+  if (added.length) clean.sort((a, b) => a.end.localeCompare(b.end));
+  return added;
+}
+
 // "RevenueFromContractWithCustomerExcludingAssessedTax" is a revenue tag, so a bare /tax/ exclusion
 // threw away the single most common revenue concept in the whole index.
 // A total revenue line, not a slice of one. "BrokerageCommissionsRevenue" and
@@ -206,6 +259,11 @@ async function worker() {
       return false;
     });
     const clean = quarters.map((q) => (suspect.includes(q) ? { ...q, revenue: null, margin: null, netMargin: null } : q));
+    // Costco and other 52/53-week retailers file Q1–Q3 as 10-Qs and the year as a 10-K; the fiscal Q4
+    // is never a discrete tag. Derive it from the annual total and add it to the same table.
+    const annualRevMap = annualMap(facts, revTags.filter((t) => REV_WHITELIST.has(t)));
+    const annualNiMap = annualMap(facts, niTags);
+    const derivedQ4 = addMissingFiscalQ4(clean, annualRevMap, annualNiMap, med);
 
     c.quarters = clean;
     c.quartersSource = {
@@ -215,6 +273,7 @@ async function worker() {
     };
     const filled = clean.filter((q) => q.revenue != null).length;
     if (filled < 8) incomplete++;
+    if (derivedQ4.length) c.quartersSource.derivedQ4 = derivedQ4;
     done++;
     if (done % 50 === 0) console.log(`  ${done}/${todo.length} · ${incomplete} with fewer than 8 revenue quarters`);
     await sleep(140);

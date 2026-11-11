@@ -4512,8 +4512,10 @@ age, and a status:
 repaired after fixing duplicate same-date filings (a blank vendor row was winning over the real row);
 the remaining three are Korean names whose DART cache has a newer report.
 
-## Known follow-up — Costco fiscal Q4 (2026-11-11)
-COST's period matrix currently shows Q1–Q3 for each fiscal year; the fiscal Q4 period is missing from
-the quarterly feed. The TTM headline is correct, but the matrix's Q4 cell and full-year total are
-incomplete. The resolver needs to derive the fiscal Q4 (annual minus the nine-month YTD) or read the
-annual Q4 row when the feed only carries Q1–Q3.
+## Fiscal Q4 derivation (2026-11-11)
+Some 52/53-week retailers — Costco, PepsiCo, AutoZone, Domino's, Rush Enterprises, GEF, Onto and
+STAAR — file Q1–Q3 as 10-Qs and only the full year as a 10-K, so the quarterly feed has no discrete
+Q4 tag. `resolve-quarters` now reconstructs the missing fiscal Q4 from the 10-K annual total minus the
+three filed quarters, provided the three periods span roughly nine months and the derived revenue is
+not an outlier. The derived row is marked `derived: 'annual-q4'` and recorded in
+`quartersSource.derivedQ4`; it feeds the matrix and the TTM reconciliation like a filed quarter.
