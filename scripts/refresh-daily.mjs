@@ -77,6 +77,7 @@ step('ratios after second source', ['scripts/derive-companies.mjs']);
 step('verdicts', ['scripts/arbitrate.mjs']);
 step('single-source verification', ['scripts/verify-filing-index.mjs']);
 step('series sync', ['scripts/sync-series.mjs']);
+step('stale US facts', ['scripts/refresh-us-stale.mjs']);
 step('audit', ['scripts/audit-calculations.mjs']);
 
 console.log('\ndaily refresh complete');
