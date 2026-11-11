@@ -74,6 +74,7 @@ step('debt and shares', ['scripts/refresh-us-debt-shares.mjs']);
 // batch of filing instances each day so the tail fills without a 1,500-document crawl.
 step('instance debt', ['scripts/refresh-us-instance-debt.mjs', '--limit=25']);
 step('instance balance', ['scripts/refresh-us-instance-balance.mjs', '--limit=25']);
+step('instance income', ['scripts/refresh-us-instance-income.mjs', '--limit=25']);
 step('ratios', ['scripts/derive-companies.mjs']);
 step('second source', ['scripts/reconcile-nasdaq.mjs']);
 // The second source can move a cap; recompute P/E, P/B and ROE against the final cap before the audit.
