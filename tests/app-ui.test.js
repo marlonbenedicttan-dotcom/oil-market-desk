@@ -772,3 +772,20 @@ test('the local quick index ranks exact names, brands and codes without a reques
   assert.equal(ui.gsQuickSearch('aapl').results[0].ticker, 'AAPL');
   assert.equal(ui.gsQuickSearch('nothing-here-xyz').total, 0);
 });
+
+test('net profit is a result, not a profitability ratio', () => {
+  const src = fs.readFileSync(APP, 'utf8');
+  for (const fn of ['renderAustraliaPage', 'renderIndiaPage', 'renderIndonesiaPage', 'renderBrazilPage', 'renderSouthAfricaPage']) {
+    const start = src.indexOf(`async function ${fn}`);
+    assert.ok(start > 0, `${fn} is missing`);
+    const end = src.indexOf('\nasync function ', start + 1);
+    const body = src.slice(start, end > 0 ? end : start + 30000);
+    const prof = body.indexOf('>Profitability<');
+    const res = body.indexOf('>Results<');
+    assert.ok(prof > 0 && res > 0, `${fn} lost a section`);
+    const profEnd = body.indexOf('<div class="co-sect"', prof + 1);
+    const resEnd = body.indexOf('<div class="co-sect"', res + 1);
+    assert.doesNotMatch(body.slice(prof, profEnd), /NET PROFIT/, `${fn} still puts net profit in Profitability`);
+    assert.match(body.slice(res, resEnd), /NET PROFIT/, `${fn} lost net profit from Results`);
+  }
+});

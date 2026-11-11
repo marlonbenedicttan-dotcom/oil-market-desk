@@ -8068,7 +8068,6 @@ async function renderAustraliaPage(stub) {
 </div>`
     + `<div class="co-sect">Profitability</div><div class="co-stats co-stats-12">
                 ${cell('RETURN ON EQUITY', c.roe != null ? `${c.roe.toFixed(1)}%` : '—', 'Profit ÷ common equity (excludes minorities), same currency on both sides', sign(c.roe))}
-        ${cell(`NET PROFIT · ${basis}`, cur(fig.flows.net), `${when}, attributable to owners of the parent — ${ccy} millions${c.ttmFromFY ? ' · fiscal year, because the source has no trailing page for this issuer' : ''}`, sign(fig.flows.net))}
         ${cell('NET MARGIN', c.netMargin != null ? `${c.netMargin.toFixed(1)}%` : '—', 'Net profit ÷ revenue', sign(c.netMargin))}
         ${stat('opMargin', 'OPERATING MARGIN', c.opMargin != null ? `${c.opMargin.toFixed(1)}%` : '—', 'Operating profit ÷ revenue', sign(c.opMargin))}
       </div>`
@@ -8088,6 +8087,7 @@ async function renderAustraliaPage(stub) {
         return `<div class="co-sect">Results</div><div class="co-stats co-stats-12">
         ${cell(`REVENUE · ${basis}`, cur(fig.flows.revenue), `${when}, as reported — ${ccy} millions`)}
         ${stat('operatingProfit', `OPERATING PROFIT · ${basis}`, cur(fig.flows.op), fig.flows.op == null ? 'This issuer does not report an operating-profit line (common for banks)' : `${when}, as reported`, sign(fig.flows.op))}
+        ${cell(`NET PROFIT · ${basis}`, cur(fig.flows.net), `${when}, attributable to owners of the parent — ${ccy} millions${c.ttmComputed === '2 half-years' ? ' · trailing twelve months is the sum of the latest two half-year filings' : c.ttmComputed ? ' · trailing twelve months from the vendor’s rolling view' : c.ttmFromFY ? ' · fiscal year, because the source has no trailing page for this issuer' : ''}`, sign(fig.flows.net))}
         ${cell('EPS · DILUTED', eps != null ? Number(eps).toFixed(2) : '—', `Per share, ${ccy}, the same period as the net profit above${epsInfo.basis ? ` (${epsInfo.basis})` : ''}${c.bdr ? ' · global EPS, not per BDR' : ''}${c.foreignSecondary ? ' · global company EPS, not the JSE line' : ''}`)}
         ${stat('fcf', `FREE CASH FLOW · ${cashBasis}`, cur(fcf), `${cashWhen}: operating cash flow − capital expenditure`)}
 </div>`
@@ -8440,7 +8440,6 @@ async function renderIndiaPage(stub) {
 </div>`
     + `<div class="co-sect">Profitability</div><div class="co-stats co-stats-12">
                 ${cell('RETURN ON EQUITY', c.roe != null ? `${c.roe.toFixed(1)}%` : '—', 'Profit ÷ common equity (excludes minorities), same currency on both sides', sign(c.roe))}
-        ${cell(`NET PROFIT · ${basis}`, cur(fig.flows.net), `${when}, attributable to owners of the parent — ${ccy} millions${c.ttmFromFY ? ' · fiscal year, because the source has no trailing page for this issuer' : ''}`, sign(fig.flows.net))}
         ${cell('NET MARGIN', c.netMargin != null ? `${c.netMargin.toFixed(1)}%` : '—', 'Net profit ÷ revenue', sign(c.netMargin))}
         ${stat('opMargin', 'OPERATING MARGIN', c.opMargin != null ? `${c.opMargin.toFixed(1)}%` : '—', 'Operating profit ÷ revenue', sign(c.opMargin))}
       </div>`
@@ -8460,6 +8459,7 @@ async function renderIndiaPage(stub) {
         return `<div class="co-sect">Results</div><div class="co-stats co-stats-12">
         ${cell(`REVENUE · ${basis}`, cur(fig.flows.revenue), `${when}, as reported — ${ccy} millions`)}
         ${stat('operatingProfit', `OPERATING PROFIT · ${basis}`, cur(fig.flows.op), fig.flows.op == null ? 'This issuer does not report an operating-profit line (common for banks)' : `${when}, as reported`, sign(fig.flows.op))}
+        ${cell(`NET PROFIT · ${basis}`, cur(fig.flows.net), `${when}, attributable to owners of the parent — ${ccy} millions${c.ttmComputed === '2 half-years' ? ' · trailing twelve months is the sum of the latest two half-year filings' : c.ttmComputed ? ' · trailing twelve months from the vendor’s rolling view' : c.ttmFromFY ? ' · fiscal year, because the source has no trailing page for this issuer' : ''}`, sign(fig.flows.net))}
         ${cell('EPS · DILUTED', eps != null ? Number(eps).toFixed(2) : '—', `Per share, ${ccy}, the same period as the net profit above${epsInfo.basis ? ` (${epsInfo.basis})` : ''}${c.bdr ? ' · global EPS, not per BDR' : ''}${c.foreignSecondary ? ' · global company EPS, not the JSE line' : ''}`)}
         ${stat('fcf', `FREE CASH FLOW · ${cashBasis}`, cur(fcf), `${cashWhen}: operating cash flow − capital expenditure`)}
 </div>`
@@ -8850,7 +8850,6 @@ async function renderIndonesiaPage(stub) {
 </div>`
     + `<div class="co-sect">Profitability</div><div class="co-stats co-stats-12">
                 ${cell('RETURN ON EQUITY', c.roe != null ? `${c.roe.toFixed(1)}%` : '—', 'Profit ÷ common equity (excludes minorities), same currency on both sides', sign(c.roe))}
-        ${cell(`NET PROFIT · ${basis}`, cur(fig.flows.net), `${when}, attributable to owners of the parent — ${ccy} millions${c.ttmFromFY ? ' · fiscal year, because the source has no trailing page for this issuer' : ''}`, sign(fig.flows.net))}
         ${cell('NET MARGIN', c.netMargin != null ? `${c.netMargin.toFixed(1)}%` : '—', 'Net profit ÷ revenue', sign(c.netMargin))}
         ${stat('opMargin', 'OPERATING MARGIN', c.opMargin != null ? `${c.opMargin.toFixed(1)}%` : '—', 'Operating profit ÷ revenue', sign(c.opMargin))}
         ${cell('DIVIDEND YIELD', c.dividendYield != null ? `${c.dividendYield.toFixed(2)}%` : '—', c.dividendYield != null ? (c.dividendYieldBasis === 'vendor' ? 'Vendor dividend yield (converted at the payment-date FX)' : `Latest annual dividend per share, converted to IDR at the current rate${c.dividendYieldBasis ? ` (${c.dividendYieldBasis})` : ''}`) : 'No dividend declared or published by the vendor')}
@@ -8868,6 +8867,7 @@ async function renderIndonesiaPage(stub) {
         return `<div class="co-sect">Results</div><div class="co-stats co-stats-12">
         ${cell(`REVENUE · ${basis}`, cur(fig.flows.revenue), `${when}, as reported — ${ccy} millions`)}
         ${stat('operatingProfit', `OPERATING PROFIT · ${basis}`, cur(fig.flows.op), fig.flows.op == null ? 'This issuer does not report an operating-profit line (common for banks)' : `${when}, as reported`, sign(fig.flows.op))}
+        ${cell(`NET PROFIT · ${basis}`, cur(fig.flows.net), `${when}, attributable to owners of the parent — ${ccy} millions${c.ttmComputed === '2 half-years' ? ' · trailing twelve months is the sum of the latest two half-year filings' : c.ttmComputed ? ' · trailing twelve months from the vendor’s rolling view' : c.ttmFromFY ? ' · fiscal year, because the source has no trailing page for this issuer' : ''}`, sign(fig.flows.net))}
         ${cell('EPS · DILUTED', eps != null ? Number(eps).toFixed(2) : '—', `Per share, ${ccy}, the same period as the net profit above${epsInfo.basis ? ` (${epsInfo.basis})` : ''}${c.bdr ? ' · global EPS, not per BDR' : ''}${c.foreignSecondary ? ' · global company EPS, not the JSE line' : ''}`)}
         ${stat('fcf', `FREE CASH FLOW · ${cashBasis}`, cur(fcf), `${cashWhen}: operating cash flow − capital expenditure`)}
 </div>`
@@ -9324,7 +9324,6 @@ async function renderBrazilPage(stub) {
       </div>`
     + `<div class="co-sect">Profitability</div><div class="co-stats co-stats-12">
         ${cell('RETURN ON EQUITY', c.roe != null ? `${c.roe.toFixed(1)}%` : '—', 'Profit ÷ common equity (excludes minorities), same currency on both sides', sign(c.roe))}
-        ${cell(`NET PROFIT · ${basis}`, cur(fig.flows.net), `${when}, attributable to owners of the parent — ${ccy} millions${c.ttmFromFY ? ' · fiscal year, because the source has no trailing page for this issuer' : ''}`, sign(fig.flows.net))}
         ${cell('NET MARGIN', c.netMargin != null ? `${c.netMargin.toFixed(1)}%` : '—', 'Net profit ÷ revenue', sign(c.netMargin))}
         ${stat('opMargin', 'OPERATING MARGIN', c.opMargin != null ? `${c.opMargin.toFixed(1)}%` : '—', 'Operating profit ÷ revenue', sign(c.opMargin))}
       </div>`
@@ -9344,6 +9343,7 @@ async function renderBrazilPage(stub) {
         return `<div class="co-sect">Results</div><div class="co-stats co-stats-12">
         ${cell(`REVENUE · ${basis}`, cur(fig.flows.revenue), `${when}, as reported — ${ccy} millions`)}
         ${stat('operatingProfit', `OPERATING PROFIT · ${basis}`, cur(fig.flows.op), fig.flows.op == null ? 'This issuer does not report an operating-profit line (common for banks)' : `${when}, as reported`, sign(fig.flows.op))}
+        ${cell(`NET PROFIT · ${basis}`, cur(fig.flows.net), `${when}, attributable to owners of the parent — ${ccy} millions${c.ttmComputed === '2 half-years' ? ' · trailing twelve months is the sum of the latest two half-year filings' : c.ttmComputed ? ' · trailing twelve months from the vendor’s rolling view' : c.ttmFromFY ? ' · fiscal year, because the source has no trailing page for this issuer' : ''}`, sign(fig.flows.net))}
         ${cell('EPS · DILUTED', eps != null ? Number(eps).toFixed(2) : '—', `Per share, ${ccy}, the same period as the net profit above${epsInfo.basis ? ` (${epsInfo.basis})` : ''}${c.bdr ? ' · global EPS, not per BDR' : ''}${c.foreignSecondary ? ' · global company EPS, not the JSE line' : ''}`)}
         ${stat('fcf', `FREE CASH FLOW · ${cashBasis}`, cur(fcf), `${cashWhen}: operating cash flow − capital expenditure`)}
       </div>`
@@ -10061,7 +10061,6 @@ async function renderSouthAfricaPage(stub) {
 </div>`
     + `<div class="co-sect">Profitability</div><div class="co-stats co-stats-12">
                 ${cell('RETURN ON EQUITY', c.roe != null ? `${c.roe.toFixed(1)}%` : '—', 'Profit ÷ common equity (excludes minorities), same currency on both sides', sign(c.roe))}
-        ${cell(`NET PROFIT · ${basis}`, cur(fig.flows.net), `${when}, attributable to owners of the parent — ${ccy} millions${c.ttmComputed === '2 half-years' ? ' · trailing twelve months is the sum of the latest two half-year filings' : c.ttmComputed ? ' · trailing twelve months from the vendor\u2019s rolling view' : c.ttmFromFY ? ' · fiscal year, because the source has no trailing page for this issuer' : ''}`, sign(fig.flows.net))}
         ${cell('NET MARGIN', c.netMargin != null ? `${c.netMargin.toFixed(1)}%` : '—', 'Net profit ÷ revenue', sign(c.netMargin))}
         ${stat('opMargin', 'OPERATING MARGIN', c.opMargin != null ? `${c.opMargin.toFixed(1)}%` : '—', 'Operating profit ÷ revenue', sign(c.opMargin))}
       </div>`
@@ -10081,6 +10080,7 @@ async function renderSouthAfricaPage(stub) {
         return `<div class="co-sect">Results</div><div class="co-stats co-stats-12">
         ${cell(`REVENUE · ${basis}`, cur(fig.flows.revenue), `${when}, as reported — ${ccy} millions`)}
         ${stat('operatingProfit', `OPERATING PROFIT · ${basis}`, cur(fig.flows.op), fig.flows.op == null ? 'This issuer does not report an operating-profit line (common for banks)' : `${when}, as reported`, sign(fig.flows.op))}
+        ${cell(`NET PROFIT · ${basis}`, cur(fig.flows.net), `${when}, attributable to owners of the parent — ${ccy} millions${c.ttmComputed === '2 half-years' ? ' · trailing twelve months is the sum of the latest two half-year filings' : c.ttmComputed ? ' · trailing twelve months from the vendor’s rolling view' : c.ttmFromFY ? ' · fiscal year, because the source has no trailing page for this issuer' : ''}`, sign(fig.flows.net))}
         ${cell('EPS · DILUTED', eps != null ? Number(eps).toFixed(2) : '—', `Per share, ${ccy}, the same period as the net profit above${epsInfo.basis ? ` (${epsInfo.basis})` : ''}${c.bdr ? ' · global EPS, not per BDR' : ''}${c.foreignSecondary ? ' · global company EPS, not the JSE line' : ''}`)}
         ${stat('fcf', `FREE CASH FLOW · ${cashBasis}`, cur(fcf), `${cashWhen}: operating cash flow − capital expenditure`)}
 </div>`
