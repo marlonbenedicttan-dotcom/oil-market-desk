@@ -25,6 +25,10 @@ const TOLERANCE = 0.05;
 // filled), so the consolidated field is preferred but never required.
 const pickFig = (r, cons, nonCons) => (r ? (num(r[cons]) ?? num(r[nonCons])) : null);
 
+// A vendor can return a blank placeholder and the real filing as two rows with the same DiscDate.
+// Keeping the first row left the real quarter out (and made the company look months stale).
+const fillScore = (r) => r ? [r.Sales, r.NCSales, r.OP, r.NCOP, r.NP, r.NCNP].filter((v) => num(v) != null).length : -1;
+
 // One row per fiscal year. An amended filing repeats the year, which otherwise prints the same fiscal
 // year twice in the five-year table and can leave an older revision as "latest". Keep the newest filing.
 const fiscalYears = (rows) => {
@@ -36,7 +40,9 @@ const fiscalYears = (rows) => {
     const key = r.CurFYEn || r.CurPerEn;
     if (!key) continue;
     const prev = byYear.get(key);
-    if (!prev || String(r.DiscDate || '') > String(prev.DiscDate || '')) byYear.set(key, r);
+    const disc = String(r.DiscDate || '');
+    const prevDisc = String(prev?.DiscDate || '');
+    if (!prev || disc > prevDisc || (disc === prevDisc && fillScore(r) > fillScore(prev))) byYear.set(key, r);
   }
   return [...byYear.values()].sort((a, b) => String(a.CurPerEn).localeCompare(String(b.CurPerEn)));
 };
@@ -59,7 +65,9 @@ export function buildQuarters(rows) {
     if (!r.CurFYEn || !['1Q', '2Q', '3Q', 'FY'].includes(r.CurPerType)) continue;
     const rec = byFy.get(r.CurFYEn) || {};
     const prev = rec[r.CurPerType];
-    if (!prev || String(r.DiscDate) > String(prev.DiscDate)) rec[r.CurPerType] = r;
+    const disc = String(r.DiscDate || '');
+    const prevDisc = String(prev?.DiscDate || '');
+    if (!prev || disc > prevDisc || (disc === prevDisc && fillScore(r) > fillScore(prev))) rec[r.CurPerType] = r;
     byFy.set(r.CurFYEn, rec);
   }
   const out = [];

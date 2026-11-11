@@ -114,6 +114,19 @@ test('P/B rebuilt from the filing is cross-checked against the exchange', () => 
 });
 
 
+test('a duplicate filing with the real figures wins over a blank row on the same date', async () => {
+  const { buildQuarters } = await import('../scripts/derive-japan.mjs');
+  const rows = [
+    { CurPerType: '1Q', CurPerEn: '2026-06-30', CurFYEn: '2027-03-31', DiscDate: '2026-08-07', Sales: '18529000000', NP: '466000000' },
+    { CurPerType: '2Q', CurPerEn: '2026-09-30', CurFYEn: '2027-03-31', DiscDate: '2026-11-09' },
+    { CurPerType: '2Q', CurPerEn: '2026-09-30', CurFYEn: '2027-03-31', DiscDate: '2026-11-09', Sales: '39746000000', NP: '1517000000' },
+  ];
+  const q = buildQuarters(rows);
+  assert.equal(q.at(-1).d, '2026-09-30');
+  assert.equal(q.at(-1).q, 'Q2');
+  assert.equal(q.at(-1).np, 1051000000);
+});
+
 test('an insurer with no quarterly sales still gets its profit quarters', async () => {
   const { buildQuarters } = await import('../scripts/derive-japan.mjs');
   const rows = [

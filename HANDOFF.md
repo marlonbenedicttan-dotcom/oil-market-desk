@@ -4508,5 +4508,5 @@ age, and a status:
 - **unknown** — no statement period
 
 `/health` now returns a `freshness` block with the totals and per-market counts. Current snapshot:
-10,490 companies, 10,456 fresh, 7 repair, 10 stale, 1 inactive, 16 unknown. The seven repair entries
-are the measurable gap between the vendor cache and the published detail, not a silent assumption.
+10,490 companies, 10,462 fresh, 1 repair, 10 stale, 1 inactive, 16 unknown. The Japan queue was
+repaired after fixing duplicate same-date filings (a blank vendor row was winning over the real row).
