@@ -231,7 +231,9 @@ test('the matrix TTM source matches the profile TTM tile', () => {
   const tw = api.coMatrixBuild(tsm, { market: 'tw' });
   assert.equal(tw.topTtm.netIncome, tsm.reports.ttm.netIncome);
   const toyota = JSON.parse(readFileSync(join(here, '..', 'data', 'japan-companies', '7203.json'), 'utf8'));
-  assert.equal(api.coMatrixBuild(toyota, { market: 'jp' }).topTtm, null, 'Japan top tile is the fiscal year');
+  const jp = api.coMatrixBuild(toyota, { market: 'jp' });
+  assert.equal(jp.topTtm && jp.topTtm.basis, 'JPX', 'Japan TTM uses the JPX PER denominator');
+  assert.ok(Math.abs(jp.topTtm.netIncome - toyota.jpx.marketCap / toyota.jpx.per) < 1, 'Japan TTM is the JPX P/E denominator');
   const samsung = JSON.parse(readFileSync(join(here, '..', 'data', 'korea-companies', '005930.json'), 'utf8'));
   assert.equal(api.coMatrixBuild(samsung, { market: 'kr' }).topTtm, null, 'Korea FY P/E top tile is the fiscal year');
 });

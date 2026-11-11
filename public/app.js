@@ -5471,8 +5471,19 @@ function coMatrixTopTtm(c, market) {
       end: c.netIncomeTTMAsOf || c.revenueTTMEnd || end4,
     };
   }
-  // Japan's profile tile is the fiscal year (c.np), so there is no top TTM to match.
-  if (market === 'jp') return null;
+  // Japan's P/E is JPX's official TTM PER. Use its denominator (market cap ÷ PER) as the TTM
+  // net profit, so the matrix and the P/E agree. JPX does not publish a TTM revenue, so revenue
+  // stays the trailing four quarters from the feed.
+  if (market === 'jp') {
+    const jpx = c.jpx || {};
+    if (c.peBasis === 'TTM' && jpx.marketCap > 0 && jpx.per > 0) {
+      return { netIncome: jpx.marketCap / jpx.per, revenue: null, basis: 'JPX', end: end4 };
+    }
+    if (c.peBasis === 'TTM' && c.eps != null && c.shares > 0) {
+      return { netIncome: c.eps * c.shares, revenue: null, basis: 'JPX', end: end4 };
+    }
+    return null;
+  }
   // Korea / India / Indonesia / Brazil / South Africa: the profile tile reads reports.ttm (the
   // vendor's trailing column), so the matrix must use that exact figure. Summing the last four
   // quarters here created a second TTM whenever the vendor's trailing column differed.
@@ -6041,11 +6052,15 @@ function coMatrixInner() {
     ? `Annual filing FY${yearLabel(fyComplete)}: ${money(annualValue)}; the displayed periods sum to ${money(fySum)}.`
     : '';
   const latestSum = ttmSum(years[0]);
-  const ttmNote = topTtm && topTtm[metric] != null
-    ? (latestSum != null && Math.abs(latestSum - topTtm[metric]) / Math.abs(topTtm[metric]) > 0.02
-      ? `The profile TTM tile shows ${money(topTtm[metric])} to ${dealDateY(topTtm.end)}; the displayed quarters sum to ${money(latestSum)}.`
-      : `The profile TTM tile uses the same ${money(topTtm[metric])} trailing figure to ${dealDateY(topTtm.end)}.${c.ttmFromFY ? ' That tile is a fiscal-year fallback, not a true trailing figure.' : ''}`)
-    : `The profile tile is the fiscal year, not a trailing figure; the TTM row is the trailing ${n} quarters.`;
+  const ttmNote = topTtm && topTtm.basis === 'JPX'
+    ? (metric === 'profit'
+      ? `Net profit TTM is JPX's TTM (market cap ÷ JPX P/E) to ${dealDateY(topTtm.end)}; the profile net-profit tile above is the fiscal year.`
+      : `Revenue TTM is the trailing ${n} quarters; JPX publishes a TTM P/E, not TTM revenue.`)
+    : topTtm && topTtm[metric] != null
+      ? (latestSum != null && Math.abs(latestSum - topTtm[metric]) / Math.abs(topTtm[metric]) > 0.02
+        ? `The profile TTM tile shows ${money(topTtm[metric])} to ${dealDateY(topTtm.end)}; the displayed quarters sum to ${money(latestSum)}.`
+        : `The profile TTM tile uses the same ${money(topTtm[metric])} trailing figure to ${dealDateY(topTtm.end)}.${c.ttmFromFY ? ' That tile is a fiscal-year fallback, not a true trailing figure.' : ''}`)
+      : `The profile tile is the fiscal year, not a trailing figure; the TTM row is the trailing ${n} quarters.`;
   const note = `${n === 2 ? 'Half-year' : 'Quarterly'} reporting detected from the period spacing. ${basisNote} The column subline is the fiscal year end for a complete year (the latest reported period for a partial year); each cell carries its actual period end date, so Q4 2026 is the quarter ending in the month shown, not calendar Q4. FY total is the sum of the displayed periods and is shown only for a complete year; TTM is the trailing ${n} periods. ${filingNote} ${ttmNote} Newest year first; scroll the table sideways for older years. Change is year-on-year (green up, red down); a change from a loss is left blank.${latestPeriod ? ` Latest reported period: ${dealDateY(latestPeriod)}.` : ''}${stale ? ' That period is more than 15 months old; the feed may be stale.' : ''} ${qualityNote} The fiscal-year record above uses the annual filing; the matrix uses the quarterly feed, which can differ.`;
   return `<div class="co-matrix-head"><span class="t">${n === 2 ? 'HALF-YEAR' : 'QUARTERLY'} RESULTS</span><span class="s">${years.length} fiscal years · ${esc(opts.ccy || '')}${latestPeriod ? ` · latest ${dealDateY(latestPeriod)}` : ''}</span><div class="co-matrix-ctls"><button type="button" data-comnav="-1" aria-label="Scroll to newer years" title="Newer years">‹</button><button type="button" data-comnav="1" aria-label="Scroll to older years" title="Older years">›</button><span class="co-matrix-sep"></span>${metricBtns}<span class="co-matrix-sep"></span><button type="button" data-comaview="matrix" class="${coMatrixView === 'matrix' ? 'on' : ''}">MATRIX</button><button type="button" data-comaview="list" class="${coMatrixView === 'list' ? 'on' : ''}">LIST</button></div></div>`
     + `<div class="co-matrix-body">${coMatrixView === 'list' ? list : table}</div>`
