@@ -70,6 +70,9 @@ if (changed.length) {
 step('ttm vs quarters', ['scripts/reconcile-ttm.mjs']);
 step('equity instants', ['scripts/refresh-us-equity.mjs']);
 step('debt and shares', ['scripts/refresh-us-debt-shares.mjs']);
+// Custom/dimensional debt (Ford Credit, GM Financial) is absent from companyfacts; read a capped
+// batch of filing instances each day so the tail fills without a 1,500-document crawl.
+step('instance debt', ['scripts/refresh-us-instance-debt.mjs', '--limit=25']);
 step('ratios', ['scripts/derive-companies.mjs']);
 step('second source', ['scripts/reconcile-nasdaq.mjs']);
 // The second source can move a cap; recompute P/E, P/B and ROE against the final cap before the audit.

@@ -55,6 +55,7 @@ const run = (script, args = []) => {
 run('resolve-quarters.mjs', [only, '--fetch']);
 run('align-periods.mjs', [only]);
 run('refresh-us-debt-shares.mjs');
+run('refresh-us-instance-debt.mjs', ['--limit=25']);
 run('reconcile-ttm.mjs');
 run('apply-restatements.mjs');
 run('derive-companies.mjs');
