@@ -118,6 +118,25 @@ test('checkout does not preload a repo script before the repo exists', () => {
 });
 
 
+test('data failures defer while code failures block', () => {
+  // The guarantee is deliberate and must survive workflow edits: a source/data problem keeps the
+  // previous dataset and exits green; only code tests (and real infrastructure failures) go red.
+  const refreshes = [
+    'australia-daily.yml', 'brazil-daily.yml', 'companies-daily.yml', 'companies-weekly.yml',
+    'filings-watch.yml', 'hongkong-daily.yml', 'india-daily.yml', 'indonesia-daily.yml',
+    'japan-daily.yml', 'macro-snapshot.yml', 'south-africa-daily.yml', 'taiwan-daily.yml',
+  ];
+  for (const file of refreshes) {
+    assert.match(wf(file), /if ! npm run test:data; then[\s\S]{0,400}git checkout -- data\/[\s\S]{0,200}exit 0/,
+      `${file} would turn a data-test failure into a red run`);
+  }
+  const t = wf('test.yml');
+  assert.match(t, /npm run test:code/, 'code tests are no longer blocking');
+  assert.match(t, /npm run test:data\s*\n\s*continue-on-error: true/, 'data tests are no longer advisory');
+  assert.match(wf('data-freshness.yml'), /continue-on-error: true/, 'the freshness monitor can fail the run');
+  assert.match(wf('markets-audit-daily.yml'), /continue-on-error: true/, 'the all-markets monitor can fail the run');
+});
+
 test('Japan refreshes its flows, calendar and dividend ladder', () => {
   assert.match(wf('japan-daily.yml'), /build-japan-flows\.mjs/, 'the Japan flow/calendar step is missing');
   assert.match(readFileSync(join(ROOT, 'package.json'), 'utf8'), /build-japan-flows\.mjs/, 'npm run build:japan no longer includes the extra Japan pass');
