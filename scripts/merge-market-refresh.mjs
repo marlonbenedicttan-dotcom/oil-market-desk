@@ -56,6 +56,14 @@ for (const id of ids) {
   const have = new Set(nowRows.map((c) => c.code));
   const missing = wasRows.filter((c) => c.code && !have.has(c.code));
   if (!missing.length) { console.log(`${spec.label}: no companies missing (${nowRows.length})`); continue; }
+  // A refresh with at least as many companies is not partial: the missing codes were replaced by new
+  // listings or delisted. Carrying them anyway adds stale rows after the build, and the market totals,
+  // sector table and audit counters no longer describe the same set. Only carry when the source
+  // actually shrank — the case this step exists for.
+  if (nowRows.length >= wasRows.length) {
+    console.log(`${spec.label}: ${missing.length} code(s) missing but the refresh is not smaller (${nowRows.length} vs ${wasRows.length}) — not carrying stale codes`);
+    continue;
+  }
 
   // Records: keep the last good company record. It is internally consistent (price, date, cap, ratios).
   for (const c of missing) nowRows.push({ ...c, carried: true, carriedAt: today });

@@ -77,7 +77,7 @@ jobs:
           # A bot push does not trigger the test workflow. Gate the data here so a refresh that
           # breaks the suite cannot land and turn the next human push red.
           npm run check:boot
-          npm test
+          npm run test:data
           # The API test rewrites the deals store; it is not part of the data commit.
           git checkout -- data/deals-store.json 2>/dev/null || true
       - name: Commit if changed

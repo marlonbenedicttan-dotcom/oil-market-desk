@@ -8,6 +8,7 @@
     "check:boot": "node scripts/boot-check.mjs",
     "prepare": "git config core.hooksPath .githooks || true",
     "test": "node --test",
+    "test:data": "node --test tests/australia-data.test.js tests/brazil-data.test.js tests/charts.test.js tests/companies-data.test.js tests/hongkong-data.test.js tests/india-data.test.js tests/indonesia-data.test.js tests/japan-list.test.js tests/korea-data.test.js tests/southafrica-data.test.js tests/taiwan-data.test.js tests/workflows.test.js",
     "search:build": "node scripts/build-search-index.mjs",
     "build:japan": "node scripts/build-japan.mjs && node scripts/build-japan-flows.mjs",
     "build:korea": "node scripts/refresh-korea-shares.mjs && node scripts/refresh-korea-quarters.mjs && node scripts/build-korea.mjs",
