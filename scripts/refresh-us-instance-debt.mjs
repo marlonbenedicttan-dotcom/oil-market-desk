@@ -103,7 +103,7 @@ function parseInstance(xml) {
 
 const candidates = data.companies.filter((c) => c.cik && c.lastFiling?.url && (!onlySet || onlySet.has(String(c.ticker || '').toUpperCase()))
   && (/^10-[KQ]/.test(c.lastFiling.form || ''))
-  && (onlySet || (c.debt == null && (c.assets || 0) > 5e9)));
+  && (onlySet || (c.debt == null && (c.assets || 0) > 5e9) || (c.debtEnd && c.lastFiling.period > c.debtEnd)));
 const todo = LIMIT ? candidates.slice(0, LIMIT) : candidates;
 console.log(`${todo.length} candidates`);
 

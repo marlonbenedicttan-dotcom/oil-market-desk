@@ -1,5 +1,5 @@
 {
- "generated": "2026-11-11T14:35:03.990Z",
+ "generated": "2026-11-11T15:04:01.004Z",
  "companies": 1506,
  "incompleteQuarters": 45,
  "incompleteByReason": {
@@ -64,7 +64,7 @@
    "ttm": "2026-09-30",
    "assets": "2026-09-30",
    "equity": "2026-09-30",
-   "debt": 3409859000,
+   "debt": 3531780000,
    "debtNA": null
   },
   {
@@ -280,7 +280,7 @@
    "ttm": "2026-09-30",
    "assets": "2026-09-30",
    "equity": "2026-09-30",
-   "debt": 1855051000,
+   "debt": 1855489000,
    "debtNA": null
   },
   {
@@ -548,13 +548,13 @@
    "debtNA": null
   }
  ],
- "stale": 57,
+ "stale": 27,
  "staleByField": {
   "quarter": 2,
   "ttm": 14,
   "assets": 5,
   "equity": 10,
-  "debt": 41
+  "debt": 5
  },
  "noDebt": {
   "total": 204,
@@ -629,7 +629,7 @@
     "ttm": "2026-09-30",
     "assets": "2026-09-30",
     "equity": "2026-09-30",
-    "debt": 3409859000,
+    "debt": 3531780000,
     "debtNA": null
    },
    {
@@ -845,7 +845,7 @@
     "ttm": "2026-09-30",
     "assets": "2026-09-30",
     "equity": "2026-09-30",
-    "debt": 1855051000,
+    "debt": 1855489000,
     "debtNA": null
    },
    {
@@ -1115,18 +1115,6 @@
   ],
   "stale": [
    {
-    "ticker": "XOM",
-    "name": "Exxon Mobil Corporation",
-    "form": "10-Q",
-    "filing": "2026-06-30",
-    "quarter": "2026-06-30",
-    "ttm": "2026-06-30",
-    "assets": "2026-06-30",
-    "equity": "2026-06-30",
-    "debt": 14531000000,
-    "debtNA": null
-   },
-   {
     "ticker": "CAH",
     "name": "CARDINAL HEALTH INC",
     "form": "10-Q",
@@ -1175,18 +1163,6 @@
     "debtNA": null
    },
    {
-    "ticker": "DUK",
-    "name": "Duke Energy CORP",
-    "form": "10-Q",
-    "filing": "2026-09-30",
-    "quarter": "2026-09-30",
-    "ttm": "2026-09-30",
-    "assets": "2026-09-30",
-    "equity": "2026-09-30",
-    "debt": 82850000000,
-    "debtNA": null
-   },
-   {
     "ticker": "FERG",
     "name": "Ferguson Enterprises Inc. /DE/",
     "form": "10-Q",
@@ -1207,7 +1183,7 @@
     "ttm": "2026-09-30",
     "assets": "2026-09-30",
     "equity": "2026-03-31",
-    "debt": 1673000000,
+    "debt": 69498000000,
     "debtNA": null
    },
    {
@@ -1223,78 +1199,6 @@
     "debtNA": null
    },
    {
-    "ticker": "NEE",
-    "name": "NEXTERA ENERGY INC",
-    "form": "10-Q",
-    "filing": "2026-09-30",
-    "quarter": "2026-09-30",
-    "ttm": "2026-09-30",
-    "assets": "2026-09-30",
-    "equity": "2026-09-30",
-    "debt": 99308000000,
-    "debtNA": null
-   },
-   {
-    "ticker": "CEG",
-    "name": "Constellation Energy Corp",
-    "form": "10-Q",
-    "filing": "2026-09-30",
-    "quarter": "2026-09-30",
-    "ttm": "2026-09-30",
-    "assets": "2026-09-30",
-    "equity": "2026-09-30",
-    "debt": 24337000000,
-    "debtNA": null
-   },
-   {
-    "ticker": "PCG",
-    "name": "PG&E Corp",
-    "form": "10-Q",
-    "filing": "2026-09-30",
-    "quarter": "2026-09-30",
-    "ttm": "2026-09-30",
-    "assets": "2026-09-30",
-    "equity": "2026-09-30",
-    "debt": 63143000000,
-    "debtNA": null
-   },
-   {
-    "ticker": "EXC",
-    "name": "EXELON CORP",
-    "form": "10-Q",
-    "filing": "2026-09-30",
-    "quarter": "2026-09-30",
-    "ttm": "2026-09-30",
-    "assets": "2026-09-30",
-    "equity": "2026-09-30",
-    "debt": 48524000000,
-    "debtNA": null
-   },
-   {
-    "ticker": "AEP",
-    "name": "AMERICAN ELECTRIC POWER CO INC",
-    "form": "10-Q",
-    "filing": "2026-09-30",
-    "quarter": "2026-09-30",
-    "ttm": "2026-09-30",
-    "assets": "2026-09-30",
-    "equity": "2026-09-30",
-    "debt": 49554000000,
-    "debtNA": null
-   },
-   {
-    "ticker": "D",
-    "name": "DOMINION ENERGY, INC",
-    "form": "10-Q",
-    "filing": "2026-09-30",
-    "quarter": "2026-09-30",
-    "ttm": "2026-09-30",
-    "assets": "2026-09-30",
-    "equity": "2026-09-30",
-    "debt": 3098000000,
-    "debtNA": null
-   },
-   {
     "ticker": "ACM",
     "name": "AECOM",
     "form": "10-Q",
@@ -1303,7 +1207,7 @@
     "ttm": "2026-06-30",
     "assets": "2026-06-30",
     "equity": "2026-06-30",
-    "debt": 62800000,
+    "debt": 2714788000,
     "debtNA": null
    },
    {
@@ -1319,18 +1223,6 @@
     "debtNA": null
    },
    {
-    "ticker": "FE",
-    "name": "FIRSTENERGY CORP",
-    "form": "10-Q",
-    "filing": "2026-09-30",
-    "quarter": "2026-09-30",
-    "ttm": "2026-09-30",
-    "assets": "2026-09-30",
-    "equity": "2026-09-30",
-    "debt": 1305000000,
-    "debtNA": null
-   },
-   {
     "ticker": "VTRS",
     "name": "Viatris Inc",
     "form": "10-Q",
@@ -1343,42 +1235,6 @@
     "debtNA": null
    },
    {
-    "ticker": "SRE",
-    "name": "SEMPRA",
-    "form": "10-Q",
-    "filing": "2026-09-30",
-    "quarter": "2026-09-30",
-    "ttm": "2026-09-30",
-    "assets": "2026-09-30",
-    "equity": "2026-09-30",
-    "debt": 3708000000,
-    "debtNA": null
-   },
-   {
-    "ticker": "ES",
-    "name": "EVERSOURCE ENERGY",
-    "form": "10-Q",
-    "filing": "2026-09-30",
-    "quarter": "2026-09-30",
-    "ttm": "2026-09-30",
-    "assets": "2026-09-30",
-    "equity": "2026-09-30",
-    "debt": 26608990000,
-    "debtNA": null
-   },
-   {
-    "ticker": "ETR",
-    "name": "ENTERGY CORP /DE/",
-    "form": "10-Q",
-    "filing": "2026-09-30",
-    "quarter": "2026-09-30",
-    "ttm": "2026-09-30",
-    "assets": "2026-09-30",
-    "equity": "2026-09-30",
-    "debt": 32676089000,
-    "debtNA": null
-   },
-   {
     "ticker": "PEG",
     "name": "PUBLIC SERVICE ENTERPRISE GROUP INC",
     "form": "10-Q",
@@ -1387,31 +1243,7 @@
     "ttm": "2026-09-30",
     "assets": "2026-09-30",
     "equity": "2026-06-30",
-    "debt": 23591000000,
-    "debtNA": null
-   },
-   {
-    "ticker": "WMB",
-    "name": "WILLIAMS COMPANIES, INC.",
-    "form": "10-Q",
-    "filing": "2026-09-30",
-    "quarter": "2026-09-30",
-    "ttm": "2026-09-30",
-    "assets": "2026-09-30",
-    "equity": "2026-09-30",
-    "debt": 475000000,
-    "debtNA": null
-   },
-   {
-    "ticker": "CNP",
-    "name": "CENTERPOINT ENERGY INC",
-    "form": "10-Q",
-    "filing": "2026-09-30",
-    "quarter": "2026-09-30",
-    "ttm": "2026-09-30",
-    "assets": "2026-09-30",
-    "equity": "2026-09-30",
-    "debt": 22476000000,
+    "debt": 24559000000,
     "debtNA": null
    },
    {
@@ -1423,19 +1255,7 @@
     "ttm": "2026-09-30",
     "assets": "2026-09-30",
     "equity": "2026-03-31",
-    "debt": 19244000000,
-    "debtNA": null
-   },
-   {
-    "ticker": "AEE",
-    "name": "AMEREN CORP",
-    "form": "10-Q",
-    "filing": "2026-09-30",
-    "quarter": "2026-09-30",
-    "ttm": "2026-09-30",
-    "assets": "2026-09-30",
-    "equity": "2026-09-30",
-    "debt": 20284000000,
+    "debt": 20211000000,
     "debtNA": null
    },
    {
@@ -1451,18 +1271,6 @@
     "debtNA": null
    },
    {
-    "ticker": "PLD",
-    "name": "Prologis, Inc.",
-    "form": "10-Q",
-    "filing": "2026-09-30",
-    "quarter": "2026-09-30",
-    "ttm": "2026-09-30",
-    "assets": "2026-09-30",
-    "equity": "2026-09-30",
-    "debt": 34669592000,
-    "debtNA": null
-   },
-   {
     "ticker": "AAP",
     "name": "ADVANCE AUTO PARTS INC",
     "form": "10-Q",
@@ -1472,42 +1280,6 @@
     "assets": "2026-10-10",
     "equity": "2026-10-10",
     "debt": 3039000000,
-    "debtNA": null
-   },
-   {
-    "ticker": "CMS",
-    "name": "CMS ENERGY CORP",
-    "form": "10-Q",
-    "filing": "2026-09-30",
-    "quarter": "2026-09-30",
-    "ttm": "2026-09-30",
-    "assets": "2026-09-30",
-    "equity": "2026-09-30",
-    "debt": 18172000000,
-    "debtNA": null
-   },
-   {
-    "ticker": "EVRG",
-    "name": "Evergy, Inc.",
-    "form": "10-Q",
-    "filing": "2026-09-30",
-    "quarter": "2026-09-30",
-    "ttm": "2026-09-30",
-    "assets": "2026-09-30",
-    "equity": "2026-09-30",
-    "debt": 15107300000,
-    "debtNA": null
-   },
-   {
-    "ticker": "SWX",
-    "name": "Southwest Gas Holdings, Inc.",
-    "form": "10-Q",
-    "filing": "2026-09-30",
-    "quarter": "2026-09-30",
-    "ttm": "2026-09-30",
-    "assets": "2026-09-30",
-    "equity": "2026-09-30",
-    "debt": 3409859000,
     "debtNA": null
    },
    {
@@ -1559,18 +1331,6 @@
     "debtNA": null
    },
    {
-    "ticker": "OGE",
-    "name": "OGE ENERGY CORP.",
-    "form": "10-Q",
-    "filing": "2026-09-30",
-    "quarter": "2026-09-30",
-    "ttm": "2026-09-30",
-    "assets": "2026-09-30",
-    "equity": "2026-09-30",
-    "debt": 5862000000,
-    "debtNA": null
-   },
-   {
     "ticker": "CNK",
     "name": "Cinemark Holdings, Inc.",
     "form": "10-Q",
@@ -1580,18 +1340,6 @@
     "assets": "2022-09-30",
     "equity": "2022-09-30",
     "debt": 2476250000,
-    "debtNA": null
-   },
-   {
-    "ticker": "SR",
-    "name": "SPIRE INC",
-    "form": "10-Q",
-    "filing": "2026-06-30",
-    "quarter": "2026-06-30",
-    "ttm": "2026-06-30",
-    "assets": "2026-06-30",
-    "equity": "2026-06-30",
-    "debt": 7717000000,
     "debtNA": null
    },
    {
@@ -1615,67 +1363,7 @@
     "ttm": "2026-09-30",
     "assets": "2026-09-30",
     "equity": "2026-06-30",
-    "debt": 3264380000,
-    "debtNA": null
-   },
-   {
-    "ticker": "TXNM",
-    "name": "TXNM ENERGY INC",
-    "form": "10-Q",
-    "filing": "2026-09-30",
-    "quarter": "2026-09-30",
-    "ttm": "2026-09-30",
-    "assets": "2026-09-30",
-    "equity": "2026-09-30",
-    "debt": 5375631000,
-    "debtNA": null
-   },
-   {
-    "ticker": "ESS",
-    "name": "ESSEX PROPERTY TRUST, INC.",
-    "form": "10-Q",
-    "filing": "2026-09-30",
-    "quarter": "2026-09-30",
-    "ttm": "2026-09-30",
-    "assets": "2026-09-30",
-    "equity": "2026-09-30",
-    "debt": 6386526000,
-    "debtNA": null
-   },
-   {
-    "ticker": "VNO",
-    "name": "VORNADO REALTY TRUST",
-    "form": "10-Q",
-    "filing": "2026-09-30",
-    "quarter": "2026-09-30",
-    "ttm": "2026-09-30",
-    "assets": "2026-09-30",
-    "equity": "2026-09-30",
-    "debt": 2599970000,
-    "debtNA": null
-   },
-   {
-    "ticker": "REG",
-    "name": "REGENCY CENTERS CORP",
-    "form": "10-Q",
-    "filing": "2026-09-30",
-    "quarter": "2026-09-30",
-    "ttm": "2026-09-30",
-    "assets": "2026-09-30",
-    "equity": "2026-09-30",
-    "debt": 5003934000,
-    "debtNA": null
-   },
-   {
-    "ticker": "NWN",
-    "name": "Northwest Natural Holding Co",
-    "form": "10-Q",
-    "filing": "2026-09-30",
-    "quarter": "2026-09-30",
-    "ttm": "2026-09-30",
-    "assets": "2026-09-30",
-    "equity": "2026-09-30",
-    "debt": 2502400000,
+    "debt": 3501139000,
     "debtNA": null
    },
    {
@@ -1699,31 +1387,7 @@
     "ttm": "2026-07-26",
     "assets": "2026-07-26",
     "equity": "2026-04-26",
-    "debt": 491982000,
-    "debtNA": null
-   },
-   {
-    "ticker": "MPT",
-    "name": "MEDICAL PROPERTIES TRUST INC",
-    "form": "10-Q",
-    "filing": "2026-09-30",
-    "quarter": "2026-09-30",
-    "ttm": "2026-09-30",
-    "assets": "2026-09-30",
-    "equity": "2026-09-30",
-    "debt": 9662659000,
-    "debtNA": null
-   },
-   {
-    "ticker": "AWR",
-    "name": "AMERICAN STATES WATER CO",
-    "form": "10-Q",
-    "filing": "2026-09-30",
-    "quarter": "2026-09-30",
-    "ttm": "2026-09-30",
-    "assets": "2026-09-30",
-    "equity": "2026-09-30",
-    "debt": 717735000,
+    "debt": 492730000,
     "debtNA": null
    },
    {
@@ -1739,18 +1403,6 @@
     "debtNA": "this company does not tag a debt total in its XBRL filings"
    },
    {
-    "ticker": "RYN",
-    "name": "RAYONIER INC",
-    "form": "10-Q",
-    "filing": "2026-09-30",
-    "quarter": "2026-09-30",
-    "ttm": "2026-09-30",
-    "assets": "2026-09-30",
-    "equity": "2026-09-30",
-    "debt": 1855051000,
-    "debtNA": null
-   },
-   {
     "ticker": "UE",
     "name": "Urban Edge Properties",
     "form": "10-Q",
@@ -1763,18 +1415,6 @@
     "debtNA": null
    },
    {
-    "ticker": "DTE",
-    "name": "DTE Energy Co",
-    "form": "10-Q",
-    "filing": "2026-09-30",
-    "quarter": "2026-09-30",
-    "ttm": "2026-09-30",
-    "assets": "2026-09-30",
-    "equity": "2026-09-30",
-    "debt": 0,
-    "debtNA": null
-   },
-   {
     "ticker": "MGEE",
     "name": "MGE Energy, Inc.",
     "form": "10-Q",
@@ -1783,7 +1423,7 @@
     "ttm": "2025-12-31",
     "assets": "2026-09-30",
     "equity": "2026-09-30",
-    "debt": 913854000,
+    "debt": 883401000,
     "debtNA": null
    },
    {
