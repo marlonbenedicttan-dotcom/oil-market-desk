@@ -54,6 +54,24 @@ const listFiles = {
   au: 'australia-list.json', in: 'india-list.json', id: 'indonesia-list.json', br: 'brazil-list.json',
   za: 'southafrica-list.json',
 };
+// The compact list artifacts carry the native sector but not the industry. The detail files do, and
+// the global screener needs the industry to tell an automaker from a general consumer company.
+const DETAIL_DIR = {
+  jp: 'japan-companies', kr: 'korea-companies', tw: 'taiwan-companies', hk: 'hongkong-companies',
+  au: 'australia-companies', in: 'india-companies', id: 'indonesia-companies', br: 'brazil-companies',
+  za: 'southafrica-companies',
+};
+const industryCache = new Map();
+function detailIndustry(market, code) {
+  const dir = DETAIL_DIR[market];
+  if (!dir || !code) return null;
+  const key = `${market}:${code}`;
+  if (industryCache.has(key)) return industryCache.get(key);
+  let value = null;
+  try { value = JSON.parse(readFileSync(DATA(`${dir}/${code}.json`), 'utf8')).industry || null; } catch { /* missing detail */ }
+  industryCache.set(key, value);
+  return value;
+}
 
 const fxRate = (list) => (Number(list.fx?.rate) > 0 ? Number(list.fx.rate) : 1);
 const capUsdOf = (c, fx) => (Number(c.marketCapUsd) > 0 ? Number(c.marketCapUsd) : (Number(c.marketCap) > 0 ? Number(c.marketCap) / fx : 0));
@@ -99,7 +117,7 @@ function usEntries(companies) {
     entries.push({
       market: 'us', id: cik, ticker: c.ticker, code: c.ticker, name: c.name, nameEn: c.name, nameLocal: null,
       aliases: baseAliases(c), issuerKey: `us:${cik}`,
-      sector: c.sector || null, industry: c.industry || null,
+      sector: c.sector || null, industry: c.industry || null, sic: c.sic || null,
       exchange: 'US', currency: 'USD',
       capLocal: c.marketCap ?? null, capUsd: round(c.marketCap),
       price: c.price ?? null, priceDate: c.priceAsOf || null, pe: c.pe ?? null, roe: c.roe ?? null,
@@ -136,7 +154,7 @@ function marketEntries(market, list) {
       name: c.name || c.nameFull || c.code, nameEn: c.nameEn || c.nameFull || c.name,
       nameLocal: c.nameJa || (c.nameEn && c.name !== c.nameEn && /[^\x00-\x7F]/.test(c.name) ? c.name : null),
       aliases: baseAliases(c), issuerKey,
-      sector: c.sector || null, industry: c.industry || null,
+      sector: c.sector || null, industry: c.industry || detailIndustry(market, c.code) || null,
       exchange: MARKETS[market].exchange, currency: MARKETS[market].currency,
       capLocal: c.marketCap ?? null, capUsd: round(capUsd),
       price: c.price ?? null, priceDate: c.priceDate || null, pe: c.pe ?? null, roe: c.roe ?? null,

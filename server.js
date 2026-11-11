@@ -1109,6 +1109,64 @@ function normalizeCompanyEps(c) {
   return c;
 }
 
+// The GLOBAL screener must not expose each exchange's native sector vocabulary: "Automobiles" is a
+// Taiwan label, "Transportation Equipment" is Japan's, "Vehicles & Parts" is Korea's, and Hong Kong /
+// Indonesia / Brazil / South Africa only carry the coarse GICS sector. That made a sector filter look
+// like it was missing every other market. Fold the native label and the industry into one global
+// vocabulary so a reader can screen automobiles across all ten markets.
+const GLOBAL_SECTOR_LABELS = {
+  autos: 'Automobiles',
+  banks: 'Banks',
+  insurance: 'Insurance',
+  capital: 'Capital markets',
+  tech: 'Technology',
+  semis: 'Semiconductors',
+  pharma: 'Pharmaceuticals & biotech',
+  medtech: 'Healthcare equipment',
+  consumer: 'Consumer',
+  retail: 'Retail',
+  industrials: 'Industrials',
+  materials: 'Materials',
+  energy: 'Energy',
+  utilities: 'Utilities',
+  realestate: 'Real estate',
+  telecom: 'Telecom',
+  media: 'Media',
+};
+function globalSectorOf(e) {
+  const industry = String(e.industry || '').toLowerCase();
+  const sector = String(e.sector || '').toLowerCase();
+  const hay = `${industry} ${sector}`;
+  // A US filer has a four-digit SIC, which is more precise than its industry string (Trane is tagged
+  // "Auto Parts:O.E.M." but is HVAC). Use the SIC before the keyword rules.
+  if (e.market === 'us' && e.sic) {
+    const b = usBucket(e);
+    if (b === 'autos') return 'Automobiles';
+    if (b) return GLOBAL_SECTOR_LABELS[b] || e.sector || 'Other';
+  }
+  // Specific industries first: the coarse GICS sector alone cannot separate an automaker from a
+  // general consumer company, or a bank from an insurer.
+  if (/auto manufacturing|auto parts|automotive|auto & truck dealership|auto dealer|auto & home supply|automobile|motor vehicle|vehicle manufacturing|dealership|tyre|tire manufacturing|vehicles & parts|transportation equipment/.test(hay)) return 'Automobiles';
+  if (/bank|savings|credit union|thrift/.test(industry)) return 'Banks';
+  if (/insurance|insurer|reinsurance|property & casualty|life insurance/.test(industry)) return 'Insurance';
+  if (/semiconductor|chip|integrated circuit|memory/.test(industry)) return 'Semiconductors';
+  if (/pharma|drug|biotech|biologic|therapeutic/.test(industry)) return 'Pharmaceuticals & biotech';
+  const bucket = e.market === 'us' ? usBucket(e) : (PEER_BUCKET[e.market] || {})[e.sector];
+  const label = GLOBAL_SECTOR_LABELS[bucket];
+  if (label) return label;
+  // Native labels the bucket maps do not cover (Japan's Fishery/Agriculture, Taiwan's Electrical
+  // Cable, …). Fold them into the nearest global sector rather than showing a one-market label.
+  if (/construction|engineering|machinery|electrical cable|industrial|transport|logistics|shipbuilding|precision/.test(hay)) return 'Industrials';
+  if (/fishery|agricultur|forest|paper|material|chemical|steel|metal|mining|cement|glass/.test(hay)) return 'Materials';
+  if (/food|beverage|retail|consumer|textile|apparel|leisure|hotel|restaurant|education/.test(hay)) return 'Consumer';
+  if (/media|telecom|communication/.test(hay)) return 'Media';
+  if (/real estate|property|reit/.test(hay)) return 'Real estate';
+  if (/health|medical|pharma|biotech|drug/.test(hay)) return 'Healthcare';
+  if (/technology|semiconductor|electronic|software|computer|internet/.test(hay)) return 'Technology';
+  if (/bank|financial|insurance/.test(hay)) return 'Banks';
+  return e.sector || 'Other';
+}
+
 function globalRows() {
   if (GLOBAL_ROWS_CACHE.rows && Date.now() - GLOBAL_ROWS_CACHE.at < 5 * 60e3) return GLOBAL_ROWS_CACHE.rows;
   const rows = [];
@@ -1116,7 +1174,7 @@ function globalRows() {
     if (e.securityType === 'BDR') continue;
     rows.push({
       m: e.market, id: e.id, t: e.ticker || e.code, n: e.nameEn || e.name || e.ticker,
-      s: e.sector || 'Other', cap: e.capUsd || 0,
+      s: globalSectorOf(e), native: e.sector || null, cap: e.capUsd || 0,
       pe: e.pe == null ? null : e.pe, roe: e.roe == null ? null : e.roe, ytd: e.ytd == null ? null : e.ytd,
     });
   }
@@ -2342,6 +2400,7 @@ function usBucket(c) {
     if (sic >= 6300 && sic <= 6411) return 'insurance';
     if ((sic >= 6200 && sic <= 6299) || (sic >= 6700 && sic <= 6799)) return 'capital';
     if (sic >= 3711 && sic <= 3716) return 'autos';
+    if ((sic >= 5500 && sic <= 5599) || sic === 5013 || sic === 3751) return 'autos';
     if (sic >= 1300 && sic <= 1389) return 'energy';
     if (sic >= 2900 && sic <= 2999) return 'energy';
     if (sic >= 2800 && sic <= 2899) return 'materials';
@@ -6037,7 +6096,7 @@ const server = http.createServer(async (req, res) => {
       const all = globalRows();
       const rows = all.filter((r) =>
         (market === 'all' || r.m === market)
-        && (sector === 'all' || r.s === sector)
+        && (sector === 'all' || r.s === sector || r.native === sector)
         && (!peMax || (r.pe != null && r.pe > 0 && r.pe < peMax))
         && (!peMin || (r.pe != null && r.pe >= peMin))
         && (ytdMax == null || (r.ytd != null && r.ytd <= ytdMax))

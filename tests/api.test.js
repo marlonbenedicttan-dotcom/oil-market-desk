@@ -1169,3 +1169,18 @@ test('/api/search-quick serves the local-first index', async () => {
   assert.equal(String(nubank.ticker), 'ROXO34');
   assert.ok(d.markets.us && d.markets.jp && d.markets.za, 'market metadata is present');
 });
+
+test('the global screener maps native sectors to one cross-market vocabulary', async () => {
+  const d = await (await fetch(`http://localhost:${PORT}/api/global-companies?sector=Automobiles&limit=400`)).json();
+  assert.ok(d.total > 100, `Automobiles has companies (got ${d.total})`);
+  const markets = new Set(d.rows.map((r) => r.m));
+  for (const m of ['us', 'jp', 'kr', 'tw', 'hk', 'au', 'in', 'id', 'br', 'za']) {
+    assert.ok(markets.has(m), `Automobiles includes ${m}`);
+  }
+  assert.ok(d.sectors.includes('Automobiles'), 'the dropdown lists the global label');
+  assert.ok(d.sectors.includes('Banks'), 'banks is a global label');
+  assert.ok(!d.sectors.includes('Vehicles & Parts'), 'a native Korean label is not exposed');
+  // A saved native filter still works: the API accepts the native label as well as the global one.
+  const native = await (await fetch(`http://localhost:${PORT}/api/global-companies?sector=Transportation%20Equipment&limit=10`)).json();
+  assert.ok(native.total > 0, 'the native Japanese label still filters');
+});
