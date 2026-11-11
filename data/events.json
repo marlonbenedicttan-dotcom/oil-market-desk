@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-10T12:44:34.249Z",
+ "updated": "2026-11-11T01:07:48.041Z",
  "events": [
   {
    "date": "2026-10-13",
@@ -195,8 +195,8 @@
    "date": "2026-10-26",
    "kind": "deal",
    "ticker": null,
-   "label": "DoorDash → Instacart",
-   "detail": "announced · $17000m",
+   "label": "Brazil's Itau → AI startup NeoSpace",
+   "detail": "announced · $589m",
    "basis": "confirmed",
    "weight": 0,
    "days": -16
@@ -205,8 +205,8 @@
    "date": "2026-10-26",
    "kind": "deal",
    "ticker": null,
-   "label": "Brazil's Itau → AI startup NeoSpace",
-   "detail": "announced · $589m",
+   "label": "DoorDash → Instacart",
+   "detail": "announced · $17000m",
    "basis": "confirmed",
    "weight": 0,
    "days": -16
@@ -343,6 +343,16 @@
    "days": -5
   },
   {
+   "date": "2026-11-06",
+   "kind": "deal",
+   "ticker": null,
+   "label": "Japan protests Russian → Japan Tobacco subsidiaries in Russia",
+   "detail": "announced",
+   "basis": "confirmed",
+   "weight": 0,
+   "days": -5
+  },
+  {
    "date": "2026-11-09",
    "kind": "deal",
    "ticker": null,
@@ -351,83 +361,6 @@
    "basis": "confirmed",
    "weight": 0,
    "days": -2
-  },
-  {
-   "date": "2026-11-11",
-   "kind": "earnings",
-   "ticker": "NUE",
-   "name": "NUCOR CORP",
-   "label": "NUE · quarterly report expected",
-   "detail": "period ends 2026-10-03 · filed 39 days after quarter end, historically",
-   "basis": "expected",
-   "weight": 0.08242,
-   "days": 0
-  },
-  {
-   "date": "2026-11-11",
-   "kind": "earnings",
-   "ticker": "REZI",
-   "name": "RESIDEO TECHNOLOGIES, INC.",
-   "label": "REZI · quarterly report expected",
-   "detail": "period ends 2026-10-03 · filed 39 days after quarter end, historically",
-   "basis": "expected",
-   "weight": 0.004346,
-   "days": 0
-  },
-  {
-   "date": "2026-11-11",
-   "kind": "earnings",
-   "ticker": "GO",
-   "name": "Grocery Outlet Holding Corp.",
-   "label": "GO · quarterly report expected",
-   "detail": "period ends 2026-10-03 · filed 39 days after quarter end, historically",
-   "basis": "expected",
-   "weight": 0.001529,
-   "days": 0
-  },
-  {
-   "date": "2026-11-11",
-   "kind": "earnings",
-   "ticker": "ENS",
-   "name": "EnerSys",
-   "label": "ENS · quarterly report expected",
-   "detail": "period ends 2026-10-04 · filed 38 days after quarter end, historically",
-   "basis": "expected",
-   "weight": 0.009164,
-   "days": 0
-  },
-  {
-   "date": "2026-11-11",
-   "kind": "earnings",
-   "ticker": "HHH",
-   "name": "THE HOWARD HUGHES CORPORATION",
-   "label": "HHH · quarterly report expected",
-   "detail": "period ends 2026-09-29 · filed 43 days after quarter end, historically",
-   "basis": "expected",
-   "weight": 0.0035,
-   "days": 0
-  },
-  {
-   "date": "2026-11-11",
-   "kind": "earnings",
-   "ticker": "KAI",
-   "name": "KADANT INC",
-   "label": "KAI · quarterly report expected",
-   "detail": "period ends 2026-10-03 · filed 39 days after quarter end, historically",
-   "basis": "expected",
-   "weight": 0.005428,
-   "days": 0
-  },
-  {
-   "date": "2026-11-11",
-   "kind": "earnings",
-   "ticker": "LQDA",
-   "name": "Liquidia Corp",
-   "label": "LQDA · quarterly report expected",
-   "detail": "period ends 2026-09-29 · filed 43 days after quarter end, historically",
-   "basis": "expected",
-   "weight": 0.006031,
-   "days": 0
   },
   {
    "date": "2026-11-12",
@@ -16807,6 +16740,83 @@
    "basis": "expected",
    "weight": 0.010577,
    "days": 90
+  },
+  {
+   "date": "2027-02-10",
+   "kind": "earnings",
+   "ticker": "NUE",
+   "name": "NUCOR CORP",
+   "label": "NUE · quarterly report expected",
+   "detail": "period ends 2027-01-02 · filed 39 days after quarter end, historically",
+   "basis": "expected",
+   "weight": 0.08242,
+   "days": 91
+  },
+  {
+   "date": "2027-02-10",
+   "kind": "earnings",
+   "ticker": "REZI",
+   "name": "RESIDEO TECHNOLOGIES, INC.",
+   "label": "REZI · quarterly report expected",
+   "detail": "period ends 2027-01-02 · filed 39 days after quarter end, historically",
+   "basis": "expected",
+   "weight": 0.004346,
+   "days": 91
+  },
+  {
+   "date": "2027-02-10",
+   "kind": "earnings",
+   "ticker": "GO",
+   "name": "Grocery Outlet Holding Corp.",
+   "label": "GO · quarterly report expected",
+   "detail": "period ends 2027-01-02 · filed 39 days after quarter end, historically",
+   "basis": "expected",
+   "weight": 0.001529,
+   "days": 91
+  },
+  {
+   "date": "2027-02-10",
+   "kind": "earnings",
+   "ticker": "ENS",
+   "name": "EnerSys",
+   "label": "ENS · quarterly report expected",
+   "detail": "period ends 2027-01-03 · filed 38 days after quarter end, historically",
+   "basis": "expected",
+   "weight": 0.009164,
+   "days": 91
+  },
+  {
+   "date": "2027-02-10",
+   "kind": "earnings",
+   "ticker": "HHH",
+   "name": "THE HOWARD HUGHES CORPORATION",
+   "label": "HHH · quarterly report expected",
+   "detail": "period ends 2026-12-29 · filed 43 days after quarter end, historically",
+   "basis": "expected",
+   "weight": 0.0035,
+   "days": 91
+  },
+  {
+   "date": "2027-02-10",
+   "kind": "earnings",
+   "ticker": "KAI",
+   "name": "KADANT INC",
+   "label": "KAI · quarterly report expected",
+   "detail": "period ends 2027-01-02 · filed 39 days after quarter end, historically",
+   "basis": "expected",
+   "weight": 0.005428,
+   "days": 91
+  },
+  {
+   "date": "2027-02-10",
+   "kind": "earnings",
+   "ticker": "LQDA",
+   "name": "Liquidia Corp",
+   "label": "LQDA · quarterly report expected",
+   "detail": "period ends 2026-12-29 · filed 43 days after quarter end, historically",
+   "basis": "expected",
+   "weight": 0.006031,
+   "days": 91
   },
   {
    "date": "2027-02-15",
