@@ -11504,6 +11504,7 @@ async function renderCompanyPageBody(el, c, all) {
       ? `✓ VERIFIED · ${ver.checked} FIELDS RE-DERIVED FROM THE FILING INDEX`
       : ver.status === 'verified' ? `✓ CROSS-CHECKED · ${ver.checked} FIELDS VS NASDAQ`
     : ver.status === 'definition' ? 'REVENUE BASIS DIFFERS FROM NASDAQ (BANK DEFINITION)'
+      : ver.status === 'period-lag' ? 'LATEST FILING IS NEWER THAN THE SECOND SOURCE — COMPARED WHERE PERIODS MATCH'
       : ver.status === 'disputed' ? `${Object.keys(vfields).length} FIELD${Object.keys(vfields).length > 1 ? 'S DIFFER' : ' DIFFERS'} FROM NASDAQ — BOTH VALUES SHOWN`
         : 'NOT CROSS-CHECKED';
   const vcls = ver.status === 'verified' ? ' ok' : ver.status === 'definition' ? '' : ver.status === 'disputed' ? ' bad' : '';

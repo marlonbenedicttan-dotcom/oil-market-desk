@@ -37,11 +37,26 @@ for (const c of data.companies) {
     continue;
   }
   const disputes = {};
+  const periodLag = {};
   let checked = 0;
+  const fieldEnd = {
+    assets: c.assetsEnd,
+    equity: c.equityEnd,
+    netIncome: c.netIncomeEnd,
+    revenue: c.netIncomeEnd,
+  };
   for (const f of FIELDS) {
     const ours = c[f];
     const theirs = r.nasdaq?.[f];
     if (ours == null || theirs == null) continue;
+    // The second source publishes annual columns. Our balance sheet is now aligned to the latest
+    // 10-Q, so comparing it with an older annual column is a period difference, not a dispute.
+    const pe = fieldEnd[f] ? Date.parse(fieldEnd[f]) : null;
+    const rp = r.period ? Date.parse(r.period) : null;
+    if (Number.isFinite(pe) && Number.isFinite(rp) && Math.abs(pe - rp) > 120 * 86400000) {
+      periodLag[f] = { ours: fieldEnd[f], secondSource: r.period };
+      continue;
+    }
     checked++;
     const diff = Math.abs(ours - theirs) / Math.max(Math.abs(ours), Math.abs(theirs));
     if (diff > TOL && Math.abs(ours - theirs) > FLOOR) {
@@ -58,12 +73,15 @@ for (const c of data.companies) {
   const prefOnly = n === 1 && disputes.netIncome && disputes.netIncome.alt > disputes.netIncome.ours
     && /AvailableToCommon/i.test(c.netIncomeTag || '');
   const definitional = n > 0 && ((c.sector === 'Financials' && Object.keys(disputes).every((k) => k === 'revenue')) || prefOnly);
+  const lag = Object.keys(periodLag).length;
   c.verification = {
-    status: n === 0 ? 'verified' : definitional ? 'definition' : 'disputed',
+    status: n > 0 ? (definitional ? 'definition' : 'disputed') : lag ? 'period-lag' : 'verified',
     checked,
     fields: disputes,
+    ...(lag ? { periodLag } : {}),
   };
-  if (n === 0) verified++;
+  if (n === 0 && !lag) verified++;
+  else if (n === 0) { /* period-lag: compared only where the dates match */ }
   else if (definitional) { /* counted separately */ }
   else disputed++;
 }
