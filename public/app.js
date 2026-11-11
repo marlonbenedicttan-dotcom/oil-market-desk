@@ -6145,6 +6145,7 @@ function renderJapanPageBody(c) {
       : 'NOT CROSS-CHECKED';
   const vcls = v.status === 'verified' ? ' ok' : v.status === 'disputed' ? ' bad' : '';
   const d = c.dividend;
+  const fyTag = c.period ? `FY${String(c.period).slice(0, 4)}` : 'FY';
   const cell = (k, val, title, cls = '') => `<div class="co-stat" title="${esc(title)}"><span class="co-k">${k}</span><span class="co-v ${cls}">${val}</span></div>`;
   const chg = (x) => (x == null ? '' : `${x >= 0 ? '+' : ''}${x.toFixed(1)}%`);
   const pbOurs = v.fields && v.fields.equity ? v.fields.equity.ours : null;
@@ -6186,10 +6187,10 @@ function renderJapanPageBody(c) {
         ${cell('DIVIDEND YIELD', d && d.yield != null ? `${d.yield.toFixed(2)}%` : '—', d && d.perShare != null ? `¥${d.perShare} per share for the fiscal year${d.forecast ? `, forecast ¥${d.forecast}` : ''}` : 'No dividend disclosed')}
       </div>`
     + `<div class="co-sect">Results</div><div class="co-stats co-stats-12">
-                ${cell('NET SALES', yen(c.sales), 'Fiscal year, as reported')}
-        ${cell('OPERATING PROFIT', c.op != null ? yen(c.op) : '—', c.op != null ? 'Fiscal year, as reported' : 'Banks report ordinary profit instead of an operating-profit line', c.op != null ? (c.op >= 0 ? 'pos' : 'neg') : 'na')}
-        ${cell('ORDINARY PROFIT', c.odp != null ? yen(c.odp) : '—', c.odp != null ? 'Operating profit plus non-operating items — the line Japanese GAAP filers report; IFRS filers do not have it' : 'IFRS filers do not report ordinary profit', c.odp != null ? (c.odp >= 0 ? 'pos' : 'neg') : 'na')}
-        ${cell('NET PROFIT', yen(c.np), 'Fiscal year, attributable to owners of the parent', c.np >= 0 ? 'pos' : 'neg')}
+                ${cell(`NET SALES · ${fyTag}`, yen(c.sales), 'Fiscal year, as reported')}
+        ${cell(`OPERATING PROFIT · ${fyTag}`, c.op != null ? yen(c.op) : '—', c.op != null ? 'Fiscal year, as reported' : 'Banks report ordinary profit instead of an operating-profit line', c.op != null ? (c.op >= 0 ? 'pos' : 'neg') : 'na')}
+        ${cell(`ORDINARY PROFIT · ${fyTag}`, c.odp != null ? yen(c.odp) : '—', c.odp != null ? 'Operating profit plus non-operating items — the line Japanese GAAP filers report; IFRS filers do not have it' : 'IFRS filers do not report ordinary profit', c.odp != null ? (c.odp >= 0 ? 'pos' : 'neg') : 'na')}
+        ${cell(`NET PROFIT · ${fyTag}`, yen(c.np), 'Fiscal year, attributable to owners of the parent', c.np >= 0 ? 'pos' : 'neg')}
       </div>`
     + `<div class="co-sect">Balance sheet</div><div class="co-stats co-stats-12">
         ${cell('TOTAL ASSETS', yen(c.ta), 'As reported — banks carry their loan book here')}
@@ -11490,7 +11491,7 @@ async function renderCompanyPageBody(el, c, all) {
   // The page shows the same earnings basis as the P/E above it: trailing when we have it, else the
   // fiscal year. The five-year table below stays on reported fiscal years.
   const ni = c.netIncomeTTM != null ? c.netIncomeTTM : c.netIncome;
-  const niTag = c.netIncomeTTM != null ? 'TTM' : 'FY';
+  const niTag = c.netIncomeTTM != null ? 'TTM' : `FY${c.fyNetIncome || c.fiscal || ''}`;
   const m = c.revenue && ni != null && !c.marginNA ? (ni / c.revenue) * 100 : null;
   const roe = c.equity && ni != null ? (ni / c.equity) * 100 : null;
   const ver = c.verification || {};
