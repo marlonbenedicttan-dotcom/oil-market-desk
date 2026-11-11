@@ -21,9 +21,11 @@ jobs:
         with:
           node-version: '22'
       - name: How old is the data?
+        id: freshness
+        continue-on-error: true
         run: node scripts/check-freshness.mjs
       - name: Open an issue if stale
-        if: failure()
+        if: steps.freshness.outcome == 'failure'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -35,10 +37,13 @@ jobs:
               --body "One or more datasets are past their cadence. The check reads the price session itself, not just the file timestamp: market files are limited to 72h (US/Japan/Korea/calendar) or 84h (Taiwan/Hong Kong/Australia/India/Indonesia/Brazil/South Africa), and a fresh build carrying a session more than 60h older is also stale. Macro and valuation snapshots have their own cadence; live commodity feeds are checked against their source lag. Check companies-daily (actions/workflows/companies-daily.yml), japan-daily (actions/workflows/japan-daily.yml), taiwan-daily (actions/workflows/taiwan-daily.yml), hongkong-daily (actions/workflows/hongkong-daily.yml), australia-daily (actions/workflows/australia-daily.yml), filings-watch (actions/workflows/filings-watch.yml) and macro-snapshot (actions/workflows/macro-snapshot.yml). The site may be serving numbers that look current but are not."
           fi
       - name: Close the issue when fresh again
-        if: success()
+        if: steps.freshness.outcome == 'success'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           for n in $(gh issue list --repo "${{ github.repository }}" --state open --search "Data refresh is stale in:title" --json number -q '.[].number'); do
             gh issue close "$n" --repo "${{ github.repository }}" --comment "Data is fresh again."
           done
+      - name: Keep the job green; the issue is the alert
+        if: steps.freshness.outcome == 'failure'
+        run: echo 'Data is stale; the open issue is the durable alert.'

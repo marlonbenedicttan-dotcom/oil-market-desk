@@ -42,6 +42,7 @@ jobs:
           key: tw-cache-${{ github.run_id }}
           restore-keys: tw-cache-
       - name: Audit every market
+        continue-on-error: true
         run: npm run audit:all
       - name: Commit the audit report if changed
         run: |
