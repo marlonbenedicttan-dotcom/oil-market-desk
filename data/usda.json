@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-03T17:35:44.116Z",
+ "updated": "2026-11-11T00:59:40.221Z",
  "source": "USDA PSD (FAS) — US balance",
  "metric": "stocks-to-use = ending stocks / (domestic consumption + exports), by market year",
  "commodities": {
@@ -8,7 +8,7 @@
    "label": "Corn",
    "marketYear": 2026,
    "yearLabel": "2026/27",
-   "stocksToUse": 0.1134,
+   "stocksToUse": 0.1082,
    "history": [
     {
      "year": 1997,
@@ -128,7 +128,7 @@
     },
     {
      "year": 2026,
-     "stocksToUse": 0.1134
+     "stocksToUse": 0.1082
     }
    ]
   },
@@ -137,7 +137,7 @@
    "label": "Wheat",
    "marketYear": 2026,
    "yearLabel": "2026/27",
-   "stocksToUse": 0.398,
+   "stocksToUse": 0.4002,
    "history": [
     {
      "year": 1997,
@@ -257,7 +257,7 @@
     },
     {
      "year": 2026,
-     "stocksToUse": 0.398
+     "stocksToUse": 0.4002
     }
    ]
   },
@@ -266,7 +266,7 @@
    "label": "Soybeans",
    "marketYear": 2026,
    "yearLabel": "2026/27",
-   "stocksToUse": 0.0687,
+   "stocksToUse": 0.065,
    "history": [
     {
      "year": 1997,
@@ -386,7 +386,7 @@
     },
     {
      "year": 2026,
-     "stocksToUse": 0.0687
+     "stocksToUse": 0.065
     }
    ]
   },
@@ -395,7 +395,7 @@
    "label": "Soybean meal",
    "marketYear": 2026,
    "yearLabel": "2026/27",
-   "stocksToUse": 0.0067,
+   "stocksToUse": 0.006,
    "history": [
     {
      "year": 1997,
@@ -511,11 +511,11 @@
     },
     {
      "year": 2025,
-     "stocksToUse": 0.007
+     "stocksToUse": 0.0052
     },
     {
      "year": 2026,
-     "stocksToUse": 0.0067
+     "stocksToUse": 0.006
     }
    ]
   },
@@ -524,7 +524,7 @@
    "label": "Soybean oil",
    "marketYear": 2026,
    "yearLabel": "2026/27",
-   "stocksToUse": 0.0536,
+   "stocksToUse": 0.0508,
    "history": [
     {
      "year": 1997,
@@ -640,11 +640,11 @@
     },
     {
      "year": 2025,
-     "stocksToUse": 0.0529
+     "stocksToUse": 0.0464
     },
     {
      "year": 2026,
-     "stocksToUse": 0.0536
+     "stocksToUse": 0.0508
     }
    ]
   },
