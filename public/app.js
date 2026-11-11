@@ -4569,9 +4569,6 @@ $('macro-links')?.addEventListener('click', (e) => { const el = e.target.closest
   }
   routingReady = true;
   setTimeout(() => loadExtraSlow().catch(() => {}), 300);   // the slow, below-the-fold feeds
-  // COMPANIES is a separate tab, so it is not part of the loading gate — but its payloads can load
-  // quietly once the first screen is settled, which makes the tab open instantly.
-  setTimeout(() => { try { warmMarkets(0); } catch {} }, 2500);
   loadAnalogue();
   whenNear('#p-headlines', loadHeadlines);
   setInterval(() => { if (headlinesLoaded) loadHeadlines(); }, 600000);   // refresh the live headline board
@@ -12571,6 +12568,12 @@ function gsQuery(s) {
 function gsLoadQuick() {
   if (gsQuick) return Promise.resolve(gsQuick);
   if (gsQuickPromise) return gsQuickPromise;
+  // The local-first index is 0.9 MB compressed. On a phone or a metered/slow link the server search
+  // already answers keystrokes, so do not spend that download here.
+  const conn = (typeof navigator !== 'undefined' && navigator.connection) || {};
+  if (conn.saveData || /^(slow-2g|2g|3g)$/.test(conn.effectiveType || '') || (typeof window !== 'undefined' && window.innerWidth < 760)) {
+    return Promise.resolve(null);
+  }
   gsQuickPromise = jget('/api/search-quick', 900000)
     .then((d) => {
       if (d && Array.isArray(d.entries)) {
