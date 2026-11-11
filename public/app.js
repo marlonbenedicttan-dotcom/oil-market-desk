@@ -11590,6 +11590,7 @@ async function renderCompanyPageBody(el, c, all) {
             : `us-gaap:${c.revenueTag || 'Revenues'} · fiscal year ${c.fyRevenue || '—'}${c.revenueSource === 'nasdaq' ? ' · exchange total revenue' : ''}`);
         add(null, `NET INCOME · ${niTag}`, `${val(ni)}${dsp('netIncome')}`, `us-gaap:${c.netIncomeTag || 'NetIncomeLoss'} · ${niTag}${c.netIncomeEnd ? ' · period ' + c.netIncomeEnd : ''}`, ni >= 0 ? 'pos' : 'neg');
         add(null, 'TOTAL ASSETS', `${val(c.assets)}${dsp('assets')}`, `us-gaap:Assets · ${c.assetsEnd || ''}`);
+        add(null, 'SHAREHOLDERS\u2019 EQUITY', `${val(c.equity)}${dsp('equity')}`, `Latest balance-sheet equity attributable to the parent${c.equityEnd ? ` at ${c.equityEnd}` : ''}${c.equityTag ? ` · ${c.equityTag}` : ''}`, (c.equity || 0) >= 0 ? 'pos' : 'neg');
         add('assetTurnover', 'ASSET TURNOVER', c.assetTurnover != null ? c.assetTurnover.toFixed(2) + '×' : '—', 'Revenue ÷ assets — how hard the asset base works');
         sect('Cash &amp; return');
         if (c.sector === 'Financials') {
