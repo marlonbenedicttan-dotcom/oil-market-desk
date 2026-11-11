@@ -28,6 +28,8 @@ const UA = { 'User-Agent': 'Mozilla/5.0 (oil-basis)' };
 // startup — it only changes on a commit, which redeploys us. Absent -> per-source fallback.
 const MACRO_SNAPSHOT = (() => { try { return JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'macro.json'), 'utf8')); } catch { return null; } })();
 const USDA_SNAPSHOT = (() => { try { return JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'usda.json'), 'utf8')); } catch { return null; } })();
+// Per-company freshness ledger, written by the scheduled ledger job. Absent until the first run.
+const REFRESH_LEDGER = (() => { try { return JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'refresh-ledger.json'), 'utf8')); } catch { return null; } })();
 
 // ---------------------------------------------------------------------------
 // Benchmark registry
@@ -5778,7 +5780,24 @@ const server = http.createServer(async (req, res) => {
   }
   const url = new URL(req.url, `http://${req.headers.host}`);
   // Health check (no auth) for uptime monitors.
-  if (url.pathname === '/health') { res.writeHead(200, { 'content-type': 'application/json' }); return res.end(JSON.stringify({ ok: true, uptime: Math.round(process.uptime()), version: BUILD, rssMB: Math.round(process.memoryUsage().rss / 1048576), warm: process.env.WARM || 'on', idx: [!!SEARCH_INDEX, !!PEER_INDEX] })); }
+  if (url.pathname === '/health') {
+    res.writeHead(200, { 'content-type': 'application/json' });
+    return res.end(JSON.stringify({
+      ok: true,
+      uptime: Math.round(process.uptime()),
+      version: BUILD,
+      rssMB: Math.round(process.memoryUsage().rss / 1048576),
+      warm: process.env.WARM || 'on',
+      idx: [!!SEARCH_INDEX, !!PEER_INDEX],
+      freshness: REFRESH_LEDGER ? {
+        updated: REFRESH_LEDGER.updated,
+        totals: REFRESH_LEDGER.totals,
+        markets: Object.fromEntries(Object.entries(REFRESH_LEDGER.markets || {}).map(([k, v]) => [k, {
+          companies: v.companies, fresh: v.fresh, repair: v.repair, stale: v.stale, inactive: v.inactive, unknown: v.unknown,
+        }])),
+      } : null,
+    }));
+  }
   // The API is the expensive surface, and the one a scraper or a runaway tab hammers. Local traffic
   // is exempt: the test suite makes far more calls than a person ever will.
   if (url.pathname.startsWith('/api/')) {

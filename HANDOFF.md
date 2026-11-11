@@ -4493,3 +4493,20 @@ that hid insurer quarters is fixed:
 - Remaining repair path: targeted refresh of the few stale codes (some are suspended/delisted and the
   source has nothing newer), and tag arbitration for US restatements. The audit lists the exact codes
   in `data/data-quality.json`.
+
+## Per-company freshness ledger and repair queue (2026-11-11)
+
+`npm run ledger:refresh` writes `data/refresh-ledger.json` and `data/refresh-queue.json` and the
+all-markets daily job commits them. For every covered company it records the published period, the
+newest source period where a source adapter exists (J-Quants for Japan, DART for Korea), the quote
+age, and a status:
+
+- **fresh** — published period is current
+- **repair** — source has a newer period; queued for the next targeted rebuild
+- **stale** — no source comparison is available and the published period is >450 days old
+- **inactive** — no recent quote (suspended/delisted), so stale would be misleading
+- **unknown** — no statement period
+
+`/health` now returns a `freshness` block with the totals and per-market counts. Current snapshot:
+10,490 companies, 10,456 fresh, 7 repair, 10 stale, 1 inactive, 16 unknown. The seven repair entries
+are the measurable gap between the vendor cache and the published detail, not a silent assumption.

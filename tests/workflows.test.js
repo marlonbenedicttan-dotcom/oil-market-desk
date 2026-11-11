@@ -137,6 +137,13 @@ test('data failures defer while code failures block', () => {
   assert.match(wf('markets-audit-daily.yml'), /continue-on-error: true/, 'the all-markets monitor can fail the run');
 });
 
+test('the all-markets job writes the per-company freshness ledger', () => {
+  const y = wf('markets-audit-daily.yml');
+  assert.match(y, /ledger:refresh/, 'the freshness ledger is no longer built');
+  assert.match(y, /data\/refresh-ledger\.json/, 'the ledger is not committed');
+  assert.match(y, /data\/refresh-queue\.json/, 'the repair queue is not committed');
+});
+
 test('Japan refreshes its flows, calendar and dividend ladder', () => {
   assert.match(wf('japan-daily.yml'), /build-japan-flows\.mjs/, 'the Japan flow/calendar step is missing');
   assert.match(readFileSync(join(ROOT, 'package.json'), 'utf8'), /build-japan-flows\.mjs/, 'npm run build:japan no longer includes the extra Japan pass');

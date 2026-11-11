@@ -44,11 +44,14 @@ jobs:
       - name: Audit every market
         continue-on-error: true
         run: npm run audit:all
+      - name: Build the per-company freshness ledger
+        continue-on-error: true
+        run: npm run ledger:refresh
       - name: Commit the audit report if changed
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email 'github-actions[bot]@users.noreply.github.com'
-          git add data/audit-all-markets.json data/audit-markets.json
+          git add data/audit-all-markets.json data/audit-markets.json data/refresh-ledger.json data/refresh-queue.json
           if git diff --staged --quiet; then
             echo 'no audit report change'
           else
