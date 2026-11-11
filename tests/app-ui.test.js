@@ -789,3 +789,23 @@ test('net profit is a result, not a profitability ratio', () => {
     assert.match(body.slice(res, resEnd), /NET PROFIT/, `${fn} lost net profit from Results`);
   }
 });
+
+test('cash-flow amounts live in Cash flow, not Results', () => {
+  const src = fs.readFileSync(APP, 'utf8');
+  const pages = ['renderAustraliaPage', 'renderIndiaPage', 'renderIndonesiaPage', 'renderBrazilPage', 'renderSouthAfricaPage', 'renderTaiwanPage', 'renderKoreaPage', 'renderHongKongPage'];
+  for (const fn of pages) {
+    const start = src.indexOf(`async function ${fn}`);
+    assert.ok(start > 0, `${fn} is missing`);
+    const end = src.indexOf('\nasync function ', start + 1);
+    const body = src.slice(start, end > 0 ? end : start + 30000);
+    const resultsAt = body.indexOf('>Results<');
+    const cashAt = body.indexOf('>Cash flow');
+    assert.ok(resultsAt > 0 && cashAt > 0, `${fn} lost Results or Cash flow`);
+    const resultsEnd = body.indexOf('<div class="co-sect"', resultsAt + 1);
+    const cashEnd = body.indexOf('<div class="co-sect"', cashAt + 1);
+    const results = body.slice(resultsAt, resultsEnd);
+    const cash = body.slice(cashAt, cashEnd);
+    assert.doesNotMatch(results, /FREE CASH FLOW|CASH AFTER INVESTING/, `${fn} still puts a cash-flow amount in Results`);
+    assert.match(cash, /FREE CASH FLOW|CASH AFTER INVESTING/, `${fn} has no free-cash-flow amount in Cash flow`);
+  }
+});

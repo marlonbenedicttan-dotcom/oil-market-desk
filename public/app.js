@@ -6991,13 +6991,15 @@ async function renderKoreaPage(stub) {
         ${cell(`REVENUE · ${tileBasis(fig.flows.basis, fig.flows.end)}`, won(fig.flows.revenue), `${when}, as reported (DART)`)}
         ${cell(`OPERATING PROFIT · ${tileBasis(fig.flows.basis, fig.flows.end)}`, won(fig.flows.op), `${when}, as reported (DART)`, cls(fig.flows.op))}
         ${cell(`NET PROFIT · ${tileBasis(fig.flows.basis, fig.flows.end)}`, won(fig.flows.net), `${when}, attributable to owners of the parent (DART)`, cls(fig.flows.net))}
-        ${cell(`CASH AFTER INVESTING · ${tileBasis(fig.cash.basis, fig.cash.end)}`, won(fcf), `${cashWhen}: operating cash flow + investing cash flow (CFO+CFI) — capex is not broken out by DART`)}
 </div>`
     + `<div class="co-sect">Balance sheet</div><div class="co-stats co-stats-12">
                 ${cell('TOTAL ASSETS', won(fig.balance.assets), `${bsWhen}, as reported (DART)`)}
         ${cell('LIABILITIES', won(fig.balance.liabilities), `${bsWhen}: total assets less shareholders\u2019 equity (DART)`)}
         ${cell('SHAREHOLDERS\u2019 EQUITY', won(fig.balance.equity), `${bsWhen}, attributable to owners of the parent (DART)`)}
+</div>`
+    + `<div class="co-sect">Cash flow</div><div class="co-stats co-stats-12">
         ${cell(`OPERATING CASH FLOW · ${tileBasis(fig.cash.basis, fig.cash.end)}`, won(fig.cash.cfo), `${cashWhen}, as reported (DART)`)}
+        ${cell(`CASH AFTER INVESTING · ${tileBasis(fig.cash.basis, fig.cash.end)}`, won(fcf), `${cashWhen}: operating cash flow + investing cash flow (CFO+CFI) — capex is not broken out by DART`)}
 </div>`
     + `<div class="co-sect">Growth</div><div class="co-stats co-stats-12">
                             ${cell(`REVENUE CAGR${c.cagrYears ? ' · ' + c.cagrYears + 'Y' : ''}`, c.revenueCagr != null ? `${c.revenueCagr.toFixed(1)}%` : '—', c.cagrNA ? `No growth rate: ${c.cagrNA}.` : `Compound annual revenue growth over ${c.cagrYears} fiscal years`, c.revenueCagr >= 0 ? 'pos' : 'neg')}
@@ -7324,13 +7326,15 @@ async function renderTaiwanPage(stub) {
         ${cell(`REVENUE · ${tileBasis(fig.flows.basis, fig.flows.end)}`, twMoney(fig.flows.revenue), `${when}, as reported (stockanalysis.com)`)}
         ${cell(`OPERATING PROFIT · ${tileBasis(fig.flows.basis, fig.flows.end)}`, twMoney(fig.flows.op), `${when}, as reported (stockanalysis.com)`, cls(fig.flows.op))}
         ${cell(`NET PROFIT · ${tileBasis(fig.flows.basis, fig.flows.end)}`, twMoney(fig.flows.net), `${when}, attributable to owners of the parent (stockanalysis.com)`, cls(fig.flows.net))}
-        ${cell(`FREE CASH FLOW · ${tileBasis(fig.cash.basis, fig.cash.end)}`, twMoney(fcf), `${cashWhen}: operating cash flow + investing cash flow — capex sits inside investing (stockanalysis.com)`)}
 </div>`
     + `<div class="co-sect">Balance sheet</div><div class="co-stats co-stats-12">
                 ${cell('TOTAL ASSETS', twMoney(fig.balance.assets), `${bsWhen}, as reported (stockanalysis.com)`)}
         ${cell('LIABILITIES', twMoney(fig.balance.liabilities), `${bsWhen}: total assets less shareholders\u2019 equity (stockanalysis.com)`)}
         ${cell('SHAREHOLDERS\u2019 EQUITY', twMoney(fig.balance.equity), `${bsWhen}, attributable to owners of the parent (stockanalysis.com)`)}
+</div>`
+    + `<div class="co-sect">Cash flow</div><div class="co-stats co-stats-12">
         ${cell(`OPERATING CASH FLOW · ${tileBasis(fig.cash.basis, fig.cash.end)}`, twMoney(fig.cash.cfo), `${cashWhen}, as reported (stockanalysis.com)`)}
+        ${cell(`FREE CASH FLOW · ${tileBasis(fig.cash.basis, fig.cash.end)}`, twMoney(fcf), `${cashWhen}: operating cash flow + investing cash flow — capex sits inside investing (stockanalysis.com)`)}
 </div>`
     + `<div class="co-sect">Growth</div><div class="co-stats co-stats-12">
                             ${cell(`REVENUE CAGR${c.cagrYears ? ' · ' + c.cagrYears + 'Y' : ''}`, c.revenueCagr != null ? `${c.revenueCagr.toFixed(1)}%` : '—', c.cagrNA ? `No growth rate: ${c.cagrNA}.` : `Compound annual revenue growth over ${c.cagrYears} fiscal years`, c.revenueCagr != null ? (c.revenueCagr >= 0 ? 'pos' : 'neg') : '')}
@@ -7729,14 +7733,16 @@ async function renderHongKongPage(stub) {
         ${cell(`NET PROFIT · ${tileBasis(fig.flows.basis, fig.flows.end)}`, cur(fig.flows.net), `${when}, attributable to owners of the parent — ${ccy} millions`, sign(fig.flows.net))}
         ${cell('EPS · DILUTED', eps != null ? Number(eps).toFixed(2) : '—', `Per share, ${ccy}, the same period as the net profit above${epsInfo.basis ? ` (${epsInfo.basis})` : ''}${c.bdr ? ' · global EPS, not per BDR' : ''}${c.foreignSecondary ? ' · global company EPS, not the JSE line' : ''}`)}
 </div>`
-    + `<div class="co-sect">Cash &amp; balance sheet</div><div class="co-stats co-stats-12">
-                ${finCell(`FREE CASH FLOW · ${tileBasis(fig.cash.basis, fig.cash.end)}`, cur(fcf), `${cashWhen}: operating cash flow − capital expenditure`)}
+    + `<div class="co-sect">Balance sheet</div><div class="co-stats co-stats-12">
         ${cell('TOTAL ASSETS', cur(fig.balance.assets), `${bsWhen} — ${ccy} millions`)}
         ${cell('LIABILITIES', cur(fig.balance.liabilities), `${bsWhen}: total assets less shareholders\u2019 equity`)}
         ${cell('SHAREHOLDERS\u2019 EQUITY', cur(fig.balance.equity), `${bsWhen}, attributable to owners of the parent`)}
 </div>`
-    + `<div class="co-sect">Cash &amp; growth</div><div class="co-stats co-stats-12">
-                ${finCell(`OPERATING CASH FLOW · ${tileBasis(fig.cash.basis, fig.cash.end)}`, cur(fig.cash.cfo), `${cashWhen}, as reported — ${ccy} millions`)}
+    + `<div class="co-sect">Cash flow</div><div class="co-stats co-stats-12">
+        ${finCell(`OPERATING CASH FLOW · ${tileBasis(fig.cash.basis, fig.cash.end)}`, cur(fig.cash.cfo), `${cashWhen}, as reported — ${ccy} millions`)}
+        ${finCell(`FREE CASH FLOW · ${tileBasis(fig.cash.basis, fig.cash.end)}`, cur(fcf), `${cashWhen}: operating cash flow − capital expenditure`)}
+</div>`
+    + `<div class="co-sect">Growth</div><div class="co-stats co-stats-12">
         ${cell(`REVENUE CAGR${c.cagrYears ? ' · ' + c.cagrYears + 'Y' : ''}`, c.revenueCagr != null ? `${c.revenueCagr.toFixed(1)}%` : '—', c.cagrNA ? `No growth rate: ${c.cagrNA}.` : `Compound annual revenue growth over ${c.cagrYears} fiscal years`, c.revenueCagr >= 0 ? 'pos' : 'neg')}
         ${(() => {
           const e = c.epsCagr != null
@@ -8045,6 +8051,9 @@ async function renderAustraliaPage(stub) {
   const fig = statementFigures(c, 'au');
   const when = periodLabel(fig.flows.basis, fig.flows.end);
   const basis = tileBasis(fig.flows.basis, fig.flows.end);
+  const cashWhen = periodLabel(fig.cash.basis, fig.cash.end);
+  const cashBasis = tileBasis(fig.cash.basis, fig.cash.end);
+  const fcf = c.fcf;
   const na = new Set(c.naRatios || []);
   const stat = (key, label, value, title, cls = '') => (key && na.has(key)
     ? cell(label, '—', `${title} — not reported for this statement type (banks and financials)`, 'na')
@@ -8071,7 +8080,9 @@ async function renderAustraliaPage(stub) {
         ${cell('NET MARGIN', c.netMargin != null ? `${c.netMargin.toFixed(1)}%` : '—', 'Net profit ÷ revenue', sign(c.netMargin))}
         ${stat('opMargin', 'OPERATING MARGIN', c.opMargin != null ? `${c.opMargin.toFixed(1)}%` : '—', 'Operating profit ÷ revenue', sign(c.opMargin))}
       </div>`
-    + `<div class="co-sect">Cash &amp; yield</div><div class="co-stats co-stats-12">
+    + `<div class="co-sect">Cash flow &amp; yield</div><div class="co-stats co-stats-12">
+        ${stat('operatingCashFlow', `OPERATING CASH FLOW · ${cashBasis}`, cur(fig.cash.cfo), `${cashWhen}, as reported — ${ccy} millions`)}
+        ${stat('fcf', `FREE CASH FLOW · ${cashBasis}`, cur(fcf), `${cashWhen}: operating cash flow − capital expenditure`)}
                 ${cell('DIVIDEND YIELD', c.dividendYield != null ? `${c.dividendYield.toFixed(2)}%` : '—', c.dividendYieldBasis === 'vendor' ? 'Vendor dividend yield (converted at the payment-date FX)' : `Latest annual dividend per share, converted to AUD at the current rate${c.dividendYieldBasis ? ` (${c.dividendYieldBasis})` : ''}`)}
         ${stat('fcfYield', 'FCF YIELD', c.fcfYield != null ? `${c.fcfYield.toFixed(2)}%` : '—', 'Free cash flow ÷ market cap', sign(c.fcfYield))}
         ${stat('fcfMargin', 'FCF MARGIN', c.fcfMargin != null ? `${c.fcfMargin.toFixed(1)}%` : '—', 'Free cash flow ÷ revenue', sign(c.fcfMargin))}
@@ -8089,13 +8100,11 @@ async function renderAustraliaPage(stub) {
         ${stat('operatingProfit', `OPERATING PROFIT · ${basis}`, cur(fig.flows.op), fig.flows.op == null ? 'This issuer does not report an operating-profit line (common for banks)' : `${when}, as reported`, sign(fig.flows.op))}
         ${cell(`NET PROFIT · ${basis}`, cur(fig.flows.net), `${when}, attributable to owners of the parent — ${ccy} millions${c.ttmComputed === '2 half-years' ? ' · trailing twelve months is the sum of the latest two half-year filings' : c.ttmComputed ? ' · trailing twelve months from the vendor’s rolling view' : c.ttmFromFY ? ' · fiscal year, because the source has no trailing page for this issuer' : ''}`, sign(fig.flows.net))}
         ${cell('EPS · DILUTED', eps != null ? Number(eps).toFixed(2) : '—', `Per share, ${ccy}, the same period as the net profit above${epsInfo.basis ? ` (${epsInfo.basis})` : ''}${c.bdr ? ' · global EPS, not per BDR' : ''}${c.foreignSecondary ? ' · global company EPS, not the JSE line' : ''}`)}
-        ${stat('fcf', `FREE CASH FLOW · ${cashBasis}`, cur(fcf), `${cashWhen}: operating cash flow − capital expenditure`)}
 </div>`
     + `<div class="co-sect">Balance sheet</div><div class="co-stats co-stats-12">
                 ${cell('TOTAL ASSETS', cur(fig.balance.assets), `${bsWhen} — ${ccy} millions`)}
         ${cell('LIABILITIES', cur(fig.balance.liabilities), `${bsWhen}: total assets less shareholders\u2019 equity`)}
         ${cell('SHAREHOLDERS\u2019 EQUITY', cur(fig.balance.equity), `${bsWhen}, attributable to owners of the parent`)}
-        ${stat('operatingCashFlow', `OPERATING CASH FLOW · ${cashBasis}`, cur(fig.cash.cfo), `${cashWhen}, as reported — ${ccy} millions`)}
 </div>`
     + `<div class="co-sect">Growth</div><div class="co-stats co-stats-12">
                             ${cell(`REVENUE CAGR${c.cagrYears ? ' · ' + c.cagrYears + 'Y' : ''}`, c.revenueCagr != null ? `${c.revenueCagr.toFixed(1)}%` : '—', c.cagrNA ? `No growth rate: ${c.cagrNA}.` : `Compound annual revenue growth over ${c.cagrYears} fiscal years`, sign(c.revenueCagr))}
@@ -8417,6 +8426,9 @@ async function renderIndiaPage(stub) {
   const fig = statementFigures(c, 'au');
   const when = periodLabel(fig.flows.basis, fig.flows.end);
   const basis = tileBasis(fig.flows.basis, fig.flows.end);
+  const cashWhen = periodLabel(fig.cash.basis, fig.cash.end);
+  const cashBasis = tileBasis(fig.cash.basis, fig.cash.end);
+  const fcf = c.fcf;
   const na = new Set(c.naRatios || []);
   const stat = (key, label, value, title, cls = '') => (key && na.has(key)
     ? cell(label, '—', `${title} — not reported for this statement type (banks and financials)`, 'na')
@@ -8443,7 +8455,9 @@ async function renderIndiaPage(stub) {
         ${cell('NET MARGIN', c.netMargin != null ? `${c.netMargin.toFixed(1)}%` : '—', 'Net profit ÷ revenue', sign(c.netMargin))}
         ${stat('opMargin', 'OPERATING MARGIN', c.opMargin != null ? `${c.opMargin.toFixed(1)}%` : '—', 'Operating profit ÷ revenue', sign(c.opMargin))}
       </div>`
-    + `<div class="co-sect">Cash &amp; yield</div><div class="co-stats co-stats-12">
+    + `<div class="co-sect">Cash flow &amp; yield</div><div class="co-stats co-stats-12">
+        ${stat('operatingCashFlow', `OPERATING CASH FLOW · ${cashBasis}`, cur(fig.cash.cfo), `${cashWhen}, as reported — ${ccy} millions`)}
+        ${stat('fcf', `FREE CASH FLOW · ${cashBasis}`, cur(fcf), `${cashWhen}: operating cash flow − capital expenditure`)}
                 ${cell('DIVIDEND YIELD', c.dividendYield != null ? `${c.dividendYield.toFixed(2)}%` : '—', c.dividendYieldBasis === 'vendor' ? 'Vendor dividend yield (converted at the payment-date FX)' : `Latest annual dividend per share, converted to INR at the current rate${c.dividendYieldBasis ? ` (${c.dividendYieldBasis})` : ''}`)}
         ${stat('fcfYield', 'FCF YIELD', c.fcfYield != null ? `${c.fcfYield.toFixed(2)}%` : '—', 'Free cash flow ÷ market cap', sign(c.fcfYield))}
         ${stat('fcfMargin', 'FCF MARGIN', c.fcfMargin != null ? `${c.fcfMargin.toFixed(1)}%` : '—', 'Free cash flow ÷ revenue', sign(c.fcfMargin))}
@@ -8461,13 +8475,11 @@ async function renderIndiaPage(stub) {
         ${stat('operatingProfit', `OPERATING PROFIT · ${basis}`, cur(fig.flows.op), fig.flows.op == null ? 'This issuer does not report an operating-profit line (common for banks)' : `${when}, as reported`, sign(fig.flows.op))}
         ${cell(`NET PROFIT · ${basis}`, cur(fig.flows.net), `${when}, attributable to owners of the parent — ${ccy} millions${c.ttmComputed === '2 half-years' ? ' · trailing twelve months is the sum of the latest two half-year filings' : c.ttmComputed ? ' · trailing twelve months from the vendor’s rolling view' : c.ttmFromFY ? ' · fiscal year, because the source has no trailing page for this issuer' : ''}`, sign(fig.flows.net))}
         ${cell('EPS · DILUTED', eps != null ? Number(eps).toFixed(2) : '—', `Per share, ${ccy}, the same period as the net profit above${epsInfo.basis ? ` (${epsInfo.basis})` : ''}${c.bdr ? ' · global EPS, not per BDR' : ''}${c.foreignSecondary ? ' · global company EPS, not the JSE line' : ''}`)}
-        ${stat('fcf', `FREE CASH FLOW · ${cashBasis}`, cur(fcf), `${cashWhen}: operating cash flow − capital expenditure`)}
 </div>`
     + `<div class="co-sect">Balance sheet</div><div class="co-stats co-stats-12">
                 ${cell('TOTAL ASSETS', cur(fig.balance.assets), `${bsWhen} — ${ccy} millions`)}
         ${cell('LIABILITIES', cur(fig.balance.liabilities), `${bsWhen}: total assets less shareholders\u2019 equity`)}
         ${cell('SHAREHOLDERS\u2019 EQUITY', cur(fig.balance.equity), `${bsWhen}, attributable to owners of the parent`)}
-        ${stat('operatingCashFlow', `OPERATING CASH FLOW · ${cashBasis}`, cur(fig.cash.cfo), `${cashWhen}, as reported — ${ccy} millions`)}
 </div>`
     + `<div class="co-sect">Growth</div><div class="co-stats co-stats-12">
                             ${cell(`REVENUE CAGR${c.cagrYears ? ' · ' + c.cagrYears + 'Y' : ''}`, c.revenueCagr != null ? `${c.revenueCagr.toFixed(1)}%` : '—', c.cagrNA ? `No growth rate: ${c.cagrNA}.` : `Compound annual revenue growth over ${c.cagrYears} fiscal years`, sign(c.revenueCagr))}
@@ -8825,6 +8837,9 @@ async function renderIndonesiaPage(stub) {
   const fig = statementFigures(c, 'au');
   const when = periodLabel(fig.flows.basis, fig.flows.end);
   const basis = tileBasis(fig.flows.basis, fig.flows.end);
+  const cashWhen = periodLabel(fig.cash.basis, fig.cash.end);
+  const cashBasis = tileBasis(fig.cash.basis, fig.cash.end);
+  const fcf = c.fcf;
   const na = new Set(c.naRatios || []);
   const stat = (key, label, value, title, cls = '') => (key && na.has(key)
     ? cell(label, '—', `${title} — not reported for this statement type (banks and financials)`, 'na')
@@ -8869,13 +8884,15 @@ async function renderIndonesiaPage(stub) {
         ${stat('operatingProfit', `OPERATING PROFIT · ${basis}`, cur(fig.flows.op), fig.flows.op == null ? 'This issuer does not report an operating-profit line (common for banks)' : `${when}, as reported`, sign(fig.flows.op))}
         ${cell(`NET PROFIT · ${basis}`, cur(fig.flows.net), `${when}, attributable to owners of the parent — ${ccy} millions${c.ttmComputed === '2 half-years' ? ' · trailing twelve months is the sum of the latest two half-year filings' : c.ttmComputed ? ' · trailing twelve months from the vendor’s rolling view' : c.ttmFromFY ? ' · fiscal year, because the source has no trailing page for this issuer' : ''}`, sign(fig.flows.net))}
         ${cell('EPS · DILUTED', eps != null ? Number(eps).toFixed(2) : '—', `Per share, ${ccy}, the same period as the net profit above${epsInfo.basis ? ` (${epsInfo.basis})` : ''}${c.bdr ? ' · global EPS, not per BDR' : ''}${c.foreignSecondary ? ' · global company EPS, not the JSE line' : ''}`)}
-        ${stat('fcf', `FREE CASH FLOW · ${cashBasis}`, cur(fcf), `${cashWhen}: operating cash flow − capital expenditure`)}
 </div>`
     + `<div class="co-sect">Balance sheet</div><div class="co-stats co-stats-12">
                 ${cell('TOTAL ASSETS', cur(fig.balance.assets), `${bsWhen} — ${ccy} millions`)}
         ${cell('LIABILITIES', cur(fig.balance.liabilities), `${bsWhen}: total assets less shareholders\u2019 equity`)}
         ${cell('SHAREHOLDERS\u2019 EQUITY', cur(fig.balance.equity), `${bsWhen}, attributable to owners of the parent`)}
+</div>`
+    + `<div class="co-sect">Cash flow</div><div class="co-stats co-stats-12">
         ${stat('operatingCashFlow', `OPERATING CASH FLOW · ${cashBasis}`, cur(fig.cash.cfo), `${cashWhen}, as reported — ${ccy} millions`)}
+        ${stat('fcf', `FREE CASH FLOW · ${cashBasis}`, cur(fcf), `${cashWhen}: operating cash flow − capital expenditure`)}
 </div>`
     + `<div class="co-sect">Growth</div><div class="co-stats co-stats-12">
                             ${cell(`REVENUE CAGR${c.cagrYears ? ' · ' + c.cagrYears + 'Y' : ''}`, c.revenueCagr != null ? `${c.revenueCagr.toFixed(1)}%` : '—', c.cagrNA ? `No growth rate: ${c.cagrNA}.` : `Compound annual revenue growth over ${c.cagrYears} fiscal years`, sign(c.revenueCagr))}
@@ -9299,6 +9316,9 @@ async function renderBrazilPage(stub) {
   const fig = statementFigures(c, 'au');
   const when = periodLabel(fig.flows.basis, fig.flows.end);
   const basis = tileBasis(fig.flows.basis, fig.flows.end);
+  const cashWhen = periodLabel(fig.cash.basis, fig.cash.end);
+  const cashBasis = tileBasis(fig.cash.basis, fig.cash.end);
+  const fcf = c.fcf;
   const na = new Set(c.naRatios || []);
   const stat = (key, label, value, title, cls = '') => (key && na.has(key)
     ? cell(label, '—', `${title} — not reported for this statement type (banks and financials)`, 'na')
@@ -9327,7 +9347,9 @@ async function renderBrazilPage(stub) {
         ${cell('NET MARGIN', c.netMargin != null ? `${c.netMargin.toFixed(1)}%` : '—', 'Net profit ÷ revenue', sign(c.netMargin))}
         ${stat('opMargin', 'OPERATING MARGIN', c.opMargin != null ? `${c.opMargin.toFixed(1)}%` : '—', 'Operating profit ÷ revenue', sign(c.opMargin))}
       </div>`
-    + `<div class="co-sect">Cash &amp; yield</div><div class="co-stats co-stats-12">
+    + `<div class="co-sect">Cash flow &amp; yield</div><div class="co-stats co-stats-12">
+        ${stat('operatingCashFlow', `OPERATING CASH FLOW · ${cashBasis}`, cur(fig.cash.cfo), `${cashWhen}, as reported — ${ccy} millions`)}
+        ${stat('fcf', `FREE CASH FLOW · ${cashBasis}`, cur(fcf), `${cashWhen}: operating cash flow − capital expenditure`)}
         ${cell('DIVIDEND YIELD', c.dividendYield != null ? `${c.dividendYield.toFixed(2)}%` : '—', c.dividendYield != null ? (c.bdr ? 'Underlying company dividend yield (global; the BDR line tracks it)' : c.dividendYieldBasis === 'vendor' ? 'Vendor dividend yield (converted at the payment-date FX)' : `Latest annual dividend per share, converted to BRL at the current rate${c.dividendYieldBasis ? ` (${c.dividendYieldBasis})` : ''}`) : 'No dividend declared or published by the vendor')}
         ${stat('fcfYield', 'FCF YIELD', c.fcfYield != null ? `${c.fcfYield.toFixed(2)}%` : '—', 'Free cash flow ÷ market cap', sign(c.fcfYield))}
         ${stat('fcfMargin', 'FCF MARGIN', c.fcfMargin != null ? `${c.fcfMargin.toFixed(1)}%` : '—', 'Free cash flow ÷ revenue', sign(c.fcfMargin))}
@@ -9345,13 +9367,11 @@ async function renderBrazilPage(stub) {
         ${stat('operatingProfit', `OPERATING PROFIT · ${basis}`, cur(fig.flows.op), fig.flows.op == null ? 'This issuer does not report an operating-profit line (common for banks)' : `${when}, as reported`, sign(fig.flows.op))}
         ${cell(`NET PROFIT · ${basis}`, cur(fig.flows.net), `${when}, attributable to owners of the parent — ${ccy} millions${c.ttmComputed === '2 half-years' ? ' · trailing twelve months is the sum of the latest two half-year filings' : c.ttmComputed ? ' · trailing twelve months from the vendor’s rolling view' : c.ttmFromFY ? ' · fiscal year, because the source has no trailing page for this issuer' : ''}`, sign(fig.flows.net))}
         ${cell('EPS · DILUTED', eps != null ? Number(eps).toFixed(2) : '—', `Per share, ${ccy}, the same period as the net profit above${epsInfo.basis ? ` (${epsInfo.basis})` : ''}${c.bdr ? ' · global EPS, not per BDR' : ''}${c.foreignSecondary ? ' · global company EPS, not the JSE line' : ''}`)}
-        ${stat('fcf', `FREE CASH FLOW · ${cashBasis}`, cur(fcf), `${cashWhen}: operating cash flow − capital expenditure`)}
       </div>`
       + `<div class="co-sect">Balance sheet</div><div class="co-stats co-stats-12">
         ${cell('TOTAL ASSETS', cur(fig.balance.assets), `${bsWhen} — ${ccy} millions`)}
         ${cell('LIABILITIES', cur(fig.balance.liabilities), `${bsWhen}: total assets less shareholders\u2019 equity`)}
         ${cell('SHAREHOLDERS\u2019 EQUITY', cur(fig.balance.equity), `${bsWhen}, attributable to owners of the parent`)}
-        ${stat('operatingCashFlow', `OPERATING CASH FLOW · ${cashBasis}`, cur(fig.cash.cfo), `${cashWhen}, as reported — ${ccy} millions`)}
       </div>`
       + `<div class="co-sect">Growth</div><div class="co-stats co-stats-12">
         ${cell(`REVENUE CAGR${c.cagrYears ? ' · ' + c.cagrYears + 'Y' : ''}`, c.revenueCagr != null ? `${c.revenueCagr.toFixed(1)}%` : '—', c.cagrNA ? `No growth rate: ${c.cagrNA}.` : `Compound annual revenue growth over ${c.cagrYears} fiscal years`, sign(c.revenueCagr))}
@@ -10036,6 +10056,9 @@ async function renderSouthAfricaPage(stub) {
   const fig = statementFigures(c, 'au');
   const when = periodLabel(fig.flows.basis, fig.flows.end);
   const basis = tileBasis(fig.flows.basis, fig.flows.end);
+  const cashWhen = periodLabel(fig.cash.basis, fig.cash.end);
+  const cashBasis = tileBasis(fig.cash.basis, fig.cash.end);
+  const fcf = c.fcf;
   const na = new Set(c.naRatios || []);
   const stat = (key, label, value, title, cls = '') => (key && na.has(key)
     ? cell(label, '—', `${title} — not reported for this statement type (banks and financials)`, 'na')
@@ -10064,7 +10087,9 @@ async function renderSouthAfricaPage(stub) {
         ${cell('NET MARGIN', c.netMargin != null ? `${c.netMargin.toFixed(1)}%` : '—', 'Net profit ÷ revenue', sign(c.netMargin))}
         ${stat('opMargin', 'OPERATING MARGIN', c.opMargin != null ? `${c.opMargin.toFixed(1)}%` : '—', 'Operating profit ÷ revenue', sign(c.opMargin))}
       </div>`
-    + `<div class="co-sect">Cash &amp; yield</div><div class="co-stats co-stats-12">
+    + `<div class="co-sect">Cash flow &amp; yield</div><div class="co-stats co-stats-12">
+        ${stat('operatingCashFlow', `OPERATING CASH FLOW · ${cashBasis}`, cur(fig.cash.cfo), `${cashWhen}, as reported — ${ccy} millions`)}
+        ${stat('fcf', `FREE CASH FLOW · ${cashBasis}`, cur(fcf), `${cashWhen}: operating cash flow − capital expenditure`)}
                 ${cell('DIVIDEND YIELD', c.dividendYield != null ? `${c.dividendYield.toFixed(2)}%` : '—', c.dividendYield != null ? (c.foreignSecondary ? 'Underlying company dividend yield (global; the JSE line tracks it)' : c.dividendYieldBasis === 'vendor' ? 'Vendor dividend yield (converted at the payment-date FX)' : `Latest annual dividend per share, converted to ZAR at the current rate${c.dividendYieldBasis ? ` (${c.dividendYieldBasis})` : ''}`) : 'No dividend declared or published by the vendor')}
         ${stat('fcfYield', 'FCF YIELD', c.fcfYield != null ? `${c.fcfYield.toFixed(2)}%` : '—', 'Free cash flow ÷ market cap', sign(c.fcfYield))}
         ${stat('fcfMargin', 'FCF MARGIN', c.fcfMargin != null ? `${c.fcfMargin.toFixed(1)}%` : '—', 'Free cash flow ÷ revenue', sign(c.fcfMargin))}
@@ -10082,13 +10107,11 @@ async function renderSouthAfricaPage(stub) {
         ${stat('operatingProfit', `OPERATING PROFIT · ${basis}`, cur(fig.flows.op), fig.flows.op == null ? 'This issuer does not report an operating-profit line (common for banks)' : `${when}, as reported`, sign(fig.flows.op))}
         ${cell(`NET PROFIT · ${basis}`, cur(fig.flows.net), `${when}, attributable to owners of the parent — ${ccy} millions${c.ttmComputed === '2 half-years' ? ' · trailing twelve months is the sum of the latest two half-year filings' : c.ttmComputed ? ' · trailing twelve months from the vendor’s rolling view' : c.ttmFromFY ? ' · fiscal year, because the source has no trailing page for this issuer' : ''}`, sign(fig.flows.net))}
         ${cell('EPS · DILUTED', eps != null ? Number(eps).toFixed(2) : '—', `Per share, ${ccy}, the same period as the net profit above${epsInfo.basis ? ` (${epsInfo.basis})` : ''}${c.bdr ? ' · global EPS, not per BDR' : ''}${c.foreignSecondary ? ' · global company EPS, not the JSE line' : ''}`)}
-        ${stat('fcf', `FREE CASH FLOW · ${cashBasis}`, cur(fcf), `${cashWhen}: operating cash flow − capital expenditure`)}
 </div>`
     + `<div class="co-sect">Balance sheet</div><div class="co-stats co-stats-12">
                 ${cell('TOTAL ASSETS', cur(fig.balance.assets), `${bsWhen} — ${ccy} millions`)}
         ${cell('LIABILITIES', cur(fig.balance.liabilities), `${bsWhen}: total assets less shareholders\u2019 equity`)}
         ${cell('SHAREHOLDERS\u2019 EQUITY', cur(fig.balance.equity), `${bsWhen}, attributable to owners of the parent`)}
-        ${stat('operatingCashFlow', `OPERATING CASH FLOW · ${cashBasis}`, cur(fig.cash.cfo), `${cashWhen}, as reported — ${ccy} millions`)}
 </div>`
     + `<div class="co-sect">Growth</div><div class="co-stats co-stats-12">
                             ${cell(`REVENUE CAGR${c.cagrYears ? ' · ' + c.cagrYears + 'Y' : ''}`, c.revenueCagr != null ? `${c.revenueCagr.toFixed(1)}%` : '—', c.cagrNA ? `No growth rate: ${c.cagrNA}.` : `Compound annual revenue growth over ${c.cagrYears} fiscal years`, sign(c.revenueCagr))}
@@ -11589,7 +11612,7 @@ async function renderCompanyPageBody(el, c, all) {
           c.revenueTTM != null
             ? `Last four quarters to ${c.revenueTTMEnd}. The fiscal-year figure is ${val(c.revenue)} (FY${c.fyRevenue || '—'}).`
             : `us-gaap:${c.revenueTag || 'Revenues'} · fiscal year ${c.fyRevenue || '—'}${c.revenueSource === 'nasdaq' ? ' · exchange total revenue' : ''}`);
-        add(null, `NET INCOME · ${niTag}`, `${val(ni)}${dsp('netIncome')}`, `us-gaap:${c.netIncomeTag || 'NetIncomeLoss'} · ${niTag}${c.netIncomeEnd ? ' · period ' + c.netIncomeEnd : ''}`, ni >= 0 ? 'pos' : 'neg');
+        add(null, `NET PROFIT · ${niTag}`, `${val(ni)}${dsp('netIncome')}`, `us-gaap:${c.netIncomeTag || 'NetIncomeLoss'} · ${niTag}${c.netIncomeEnd ? ' · period ' + c.netIncomeEnd : ''}`, ni >= 0 ? 'pos' : 'neg');
         add(null, 'TOTAL ASSETS', `${val(c.assets)}${dsp('assets')}`, `us-gaap:Assets · ${c.assetsEnd || ''}`);
         add(null, 'SHAREHOLDERS\u2019 EQUITY', `${val(c.equity)}${dsp('equity')}`, `Latest balance-sheet equity attributable to the parent${c.equityEnd ? ` at ${c.equityEnd}` : ''}${c.equityTag ? ` · ${c.equityTag}` : ''}`, (c.equity || 0) >= 0 ? 'pos' : 'neg');
         add('assetTurnover', 'ASSET TURNOVER', c.assetTurnover != null ? c.assetTurnover.toFixed(2) + '×' : '—', 'Revenue ÷ assets — how hard the asset base works');
@@ -11648,7 +11671,7 @@ async function renderCompanyPageBody(el, c, all) {
       })()
     + (series.length ? `<div class="gtitle">FISCAL-YEAR RECORD · ${series.length}</div>
       <div class="jp-q-scroll"><div class="co-table">
-        <div class="co-tr co-th"><span>FY</span><span>REVENUE</span><span>NET INCOME</span><span>MARGIN</span><span>ASSETS</span><span>EQUITY</span><span>EPS</span></div>
+        <div class="co-tr co-th"><span>FY</span><span>REVENUE</span><span>NET PROFIT</span><span>MARGIN</span><span>ASSETS</span><span>EQUITY</span><span>EPS</span></div>
         ${series.map((s) => {
           const mg = s.revenue && s.netIncome != null ? (s.netIncome / s.revenue) * 100 : null;
           return `<div class="co-tr"><span>${s.fy}</span><span>${val(s.revenue)}</span><span class="${s.netIncome >= 0 ? 'pos' : 'neg'}">${val(s.netIncome)}</span><span>${mg == null ? '—' : mg.toFixed(1) + '%'}</span><span>${val(s.assets)}</span><span>${val(s.equity)}</span><span>${s.eps != null ? '$' + s.eps.toFixed(2) : '—'}</span></div>`;
