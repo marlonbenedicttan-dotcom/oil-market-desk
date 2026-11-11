@@ -6001,6 +6001,8 @@ function coMatrixInner() {
     const best = Object.entries(counts).sort((a, b) => b[1] - a[1])[0];
     return best ? monthName(Number(best[0])) : '';
   };
+  const ttmSource = topTtm ? (topTtm.basis === 'JPX' ? 'JPX' : 'profile') : 'quarters';
+  const ttmEnd = topTtm && topTtm.end ? topTtm.end : latestPeriod;
   const table = `<div class="co-matrix-scroll" id="co-matrix-scroll"><table class="co-matrix-table"><thead><tr><th>Period</th>${years.map((y) => `<th><span>${esc(yearLabel(y))}</span><small>${complete(y) ? esc(endLabel(y)) : `through ${esc(endLabel(y))}`}</small>${complete(y) ? '' : '<em class="qpartial">partial</em>'}</th>`).join('')}</tr></thead><tbody>`
     + labels.map((label, idx) => `<tr><td>${label}${rowMonth(idx + 1) ? `<small class="qmonth">${rowMonth(idx + 1)}</small>` : ''}</td>${years.map((y, yi) => {
       const g = groups.get(y)[idx + 1];
@@ -6009,8 +6011,8 @@ function coMatrixInner() {
       const pct = pctOf(v, pv);
       return `<td title="${g && g.date ? `${label} FY${esc(yearLabel(y))} · period ending ${esc(dealDateY(g.date))}` : `${label} FY${esc(yearLabel(y))}`}"><span>${v == null ? '—' : money(v)}</span>${pct != null ? `<em class="qchg ${pct >= 0 ? 'pos' : 'neg'}">${pct >= 0 ? '+' : ''}${pct.toFixed(1)}%</em>` : ''}${g && g.date ? `<small class="qdate">${esc(dealDateY(g.date))}</small>` : ''}</td>`;
     }).join('')}</tr>`).join('')
-    + `<tr class="total"><td>FY total</td>${years.map((y, yi) => cell(fyTotal(y), prevYear(yi) ? fyTotal(prevYear(yi)) : null)).join('')}</tr>`
-    + `<tr class="total ttm"><td>TTM (${labels[latestQ - 1]})</td>${years.map((y, yi) => cell(ttm(y), prevYear(yi) ? ttm(prevYear(yi)) : null)).join('')}</tr>`
+    + `<tr class="total"><td>FY total<small class="qmonth">sum of periods</small></td>${years.map((y, yi) => cell(fyTotal(y), prevYear(yi) ? fyTotal(prevYear(yi)) : null)).join('')}</tr>`
+    + `<tr class="total ttm"><td>TTM<small class="qmonth">to ${esc(dealDateY(ttmEnd))} · ${ttmSource}</small></td>${years.map((y, yi) => cell(ttm(y), prevYear(yi) ? ttm(prevYear(yi)) : null)).join('')}</tr>`
     + '</tbody></table></div>';
   const list = `<div class="co-matrix-scroll"><table class="co-matrix-table co-matrix-list"><thead><tr><th>PERIOD</th><th>REVENUE</th><th>NET PROFIT</th></tr></thead><tbody>`
     + [...periods].reverse().map((p) => `<tr><td>${esc(dealDateY(p.date))}${p.q ? ` <em>${esc(p.q)}</em>` : ''}</td><td>${p.revenue == null ? '—' : money(p.revenue)}</td><td>${p.netIncome == null ? '—' : money(p.netIncome)}</td></tr>`).join('')
@@ -6062,7 +6064,8 @@ function coMatrixInner() {
         : `The profile TTM tile uses the same ${money(topTtm[metric])} trailing figure to ${dealDateY(topTtm.end)}.${c.ttmFromFY ? ' That tile is a fiscal-year fallback, not a true trailing figure.' : ''}`)
       : `The profile tile is the fiscal year, not a trailing figure; the TTM row is the trailing ${n} quarters.`;
   const note = `${n === 2 ? 'Half-year' : 'Quarterly'} reporting detected from the period spacing. ${basisNote} The column subline is the fiscal year end for a complete year (the latest reported period for a partial year); each cell carries its actual period end date, so Q4 2026 is the quarter ending in the month shown, not calendar Q4. FY total is the sum of the displayed periods and is shown only for a complete year; TTM is the trailing ${n} periods. ${filingNote} ${ttmNote} Newest year first; scroll the table sideways for older years. Change is year-on-year (green up, red down); a change from a loss is left blank.${latestPeriod ? ` Latest reported period: ${dealDateY(latestPeriod)}.` : ''}${stale ? ' That period is more than 15 months old; the feed may be stale.' : ''} ${qualityNote} The fiscal-year record above uses the annual filing; the matrix uses the quarterly feed, which can differ.`;
-  return `<div class="co-matrix-head"><span class="t">${n === 2 ? 'HALF-YEAR' : 'QUARTERLY'} RESULTS</span><span class="s">${years.length} fiscal years · ${esc(opts.ccy || '')}${latestPeriod ? ` · latest ${dealDateY(latestPeriod)}` : ''}</span><div class="co-matrix-ctls"><button type="button" data-comnav="-1" aria-label="Scroll to newer years" title="Newer years">‹</button><button type="button" data-comnav="1" aria-label="Scroll to older years" title="Older years">›</button><span class="co-matrix-sep"></span>${metricBtns}<span class="co-matrix-sep"></span><button type="button" data-comaview="matrix" class="${coMatrixView === 'matrix' ? 'on' : ''}">MATRIX</button><button type="button" data-comaview="list" class="${coMatrixView === 'list' ? 'on' : ''}">LIST</button></div></div>`
+  return `<div class="co-matrix-head"><span class="t">${n === 2 ? 'HALF-YEAR' : 'QUARTERLY'} RESULTS · ${metric === 'revenue' ? 'REVENUE' : 'NET PROFIT'}</span><span class="s">${years.length} fiscal years · ${esc(opts.ccy || '')}${latestPeriod ? ` · latest ${dealDateY(latestPeriod)}` : ''}</span><div class="co-matrix-ctls"><button type="button" data-comnav="-1" aria-label="Scroll to newer years" title="Newer years">‹</button><button type="button" data-comnav="1" aria-label="Scroll to older years" title="Older years">›</button><span class="co-matrix-sep"></span>${metricBtns}<span class="co-matrix-sep"></span><button type="button" data-comaview="matrix" class="${coMatrixView === 'matrix' ? 'on' : ''}">MATRIX</button><button type="button" data-comaview="list" class="${coMatrixView === 'list' ? 'on' : ''}">LIST</button></div></div>`
+    + `<div class="co-matrix-legend"><span><b>Q1–Q4</b> fiscal periods</span><span><b>FY total</b> sum of the fiscal year</span><span><b>TTM</b> ${ttmSource === 'JPX' ? 'JPX trailing figure' : `trailing ${n === 2 ? '2 half-years' : '4 quarters'} · ${ttmSource}`}</span></div>`
     + `<div class="co-matrix-body">${coMatrixView === 'list' ? list : table}</div>`
     + `<div class="co-matrix-note">${note}</div>`;
 }

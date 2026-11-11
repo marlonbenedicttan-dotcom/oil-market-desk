@@ -2769,6 +2769,9 @@ body.gs-search-open { overflow: hidden; }
 .co-matrix-ctls button { background: #0c0f13; border: 1px solid var(--line2); color: var(--dim); font: 600 8px/1 var(--mono); letter-spacing: .6px; padding: 4px 6px; cursor: pointer; }
 .co-matrix-ctls button.on { color: #080a0e; background: var(--amber); border-color: var(--amber); }
 .co-matrix-sep { width: 1px; align-self: stretch; background: var(--line2); margin: 0 2px; }
+.co-matrix-legend { display: flex; flex-wrap: wrap; gap: 12px; padding: 0 12px 8px; font-size: 8px; line-height: 1.5; color: #586674; }
+.co-matrix-legend span { white-space: nowrap; }
+.co-matrix-legend b { color: #8b98a6; font-weight: 600; }
 .co-matrix-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: thin; }
 .co-matrix-table { width: max-content; min-width: 100%; border-collapse: collapse; font-size: 11px; font-variant-numeric: tabular-nums; }
 .co-matrix-table th { text-align: right; font-size: 8px; letter-spacing: .9px; color: #5b6773; font-weight: 400; padding: 8px 12px; border-bottom: 1px solid var(--line); white-space: nowrap; }
@@ -2791,6 +2794,7 @@ body.gs-search-open { overflow: hidden; }
 .co-matrix-note { padding: 9px 12px; border-top: 1px solid var(--line); font-size: 8.5px; line-height: 1.6; color: #586674; }
 @media (max-width: 760px) {
   .co-matrix-head { padding: 10px 8px 4px; }
+  .co-matrix-legend { padding: 0 8px 6px; gap: 7px; font-size: 7.5px; }
   .co-matrix-ctls { width: 100%; margin-left: 0; }
   .co-matrix-table { min-width: 100%; width: max-content; }
   .co-matrix-table th, .co-matrix-table td { padding: 6px 5px; font-size: 9.5px; }
