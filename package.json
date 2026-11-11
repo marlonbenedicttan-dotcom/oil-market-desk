@@ -27,6 +27,7 @@
     "companies:deep": "node scripts/audit-deep.mjs",
     "audit:universe": "node scripts/audit-universe.mjs",
     "audit:matrix": "node scripts/audit-matrix.mjs",
+    "audit:quality": "node scripts/audit-data-quality.mjs",
     "audit:freshness": "node scripts/audit-freshness.mjs",
     "audit:deals": "node scripts/audit-deals.mjs",
     "audit:markets": "node scripts/audit-markets.mjs",

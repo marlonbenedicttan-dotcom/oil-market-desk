@@ -4469,3 +4469,27 @@ for the same quarter-end. Fixed structurally:
 - A cross-market test asserts matrix TTM == profile tile for every company; when the visible quarters
   do not sum to the vendor's trailing figure, the matrix note says so rather than showing a second
   official-looking number. `npm test` passes.
+
+## Underlying data quality: stale feeds and tag mismatches (2026-11-11)
+
+The formulas are not the issue; the feeds are. A new audit separates the two and a Japan build bug
+that hid insurer quarters is fixed:
+
+- `npm run audit:quality` / `scripts/audit-data-quality.mjs` writes `data/data-quality.json` and reports
+  per market: **stale** (latest period >450 days old while the quote is current), **gap** (missing
+  period in the latest window), **annual** (fiscal-year quarters vs the annual record), **tag**
+  (quarterly revenue implausibly small/large against annual) and **ttm** (the tile vs the visible
+  quarters). The daily companies workflow runs it non-fatally and commits the report.
+- The matrix already labels stale periods, partial years and annual-vs-feed differences; the audit is
+  the machine-readable version for the next repair.
+- **Japan:** `buildQuarters` required a quarterly sales line, so insurers/banks that publish profit but
+  leave sales blank were dropped and their pages sat years behind (Lifenet 7157, Sompo 8630). It now
+  emits a period when sales **or** operating profit **or** net profit exists; the cache-only rebuild
+  then restores those quarters. Test added.
+- Current audit snapshot: stale companies **US 0 · Japan 4 · Korea 2 · Taiwan 0 · Hong Kong 0 ·
+  Australia 4 · India 0 · Indonesia 1 · Brazil 0 · South Africa 1**; 1,124 company-level notes in total.
+  The larger counts are tag/annual/TTM definition differences (banks, insurers, REITs, half-year
+  filers); they are labelled, not hidden.
+- Remaining repair path: targeted refresh of the few stale codes (some are suspended/delisted and the
+  source has nothing newer), and tag arbitration for US restatements. The audit lists the exact codes
+  in `data/data-quality.json`.

@@ -78,7 +78,9 @@ export function buildQuarters(rows) {
       q1: rec['1Q']?.CurPerEn, q2: rec['2Q']?.CurPerEn, q3: rec['3Q']?.CurPerEn, q4: rec.FY?.CurPerEn,
     };
     for (const k of ['q1', 'q2', 'q3', 'q4']) {
-      if (!dates[k] || sales[k] == null) continue;
+      // Japanese financials often leave the quarterly sales line blank while reporting profit.
+      // Gating on sales alone dropped every such period and left the company page years behind.
+      if (!dates[k] || (sales[k] == null && op[k] == null && np[k] == null)) continue;
       out.push({ d: dates[k], fy: fyEnd, q: k.toUpperCase(), sales: sales[k], op: op[k], np: np[k] });
     }
   }

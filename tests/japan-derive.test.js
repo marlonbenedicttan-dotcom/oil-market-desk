@@ -113,6 +113,19 @@ test('P/B rebuilt from the filing is cross-checked against the exchange', () => 
   assert.ok(v.fields.equity.ours > v.fields.equity.alt);
 });
 
+
+test('an insurer with no quarterly sales still gets its profit quarters', async () => {
+  const { buildQuarters } = await import('../scripts/derive-japan.mjs');
+  const rows = [
+    { CurPerType: '1Q', CurPerEn: '2025-06-30', CurFYEn: '2026-03-31', DiscDate: '2025-08-13', NP: '2100000000' },
+    { CurPerType: '2Q', CurPerEn: '2025-09-30', CurFYEn: '2026-03-31', DiscDate: '2025-11-13', NP: '4400000000' },
+    { CurPerType: '3Q', CurPerEn: '2025-12-31', CurFYEn: '2026-03-31', DiscDate: '2026-02-12', NP: '6200000000' },
+    { CurPerType: 'FY', CurPerEn: '2026-03-31', CurFYEn: '2026-03-31', DiscDate: '2026-05-13', NP: '8000000000' },
+  ];
+  const q = buildQuarters(rows);
+  assert.deepEqual(q.map((x) => [x.q, x.np]), [['Q1', 2100000000], ['Q2', 2300000000], ['Q3', 1800000000], ['Q4', 1800000000]]);
+  assert.ok(q.every((x) => x.sales == null), 'sales stays blank rather than becoming zero');
+});
 test('cumulative year-to-date figures become standalone quarters', async () => {
   const { buildQuarters } = await import('../scripts/derive-japan.mjs');
   const rows = [
