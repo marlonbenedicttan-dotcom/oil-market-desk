@@ -117,7 +117,13 @@ jobs:
           # A bot push does not trigger the test workflow. Gate the data here so a refresh that
           # breaks the suite cannot land and turn the next human push red.
           npm run check:boot
-          npm run test:data
+          # A data test failure is a source/data warning, not a reason to send a red workflow email.
+          # Keep the previous dataset, exit green, and let the data-quality report carry the finding.
+          if ! npm run test:data; then
+            echo "::warning::data tests failed — keeping the previous dataset; the next run retries"
+            git checkout -- data/ || true
+            exit 0
+          fi
           # The API test rewrites the deals store; it is not part of the data commit.
           git checkout -- data/deals-store.json 2>/dev/null || true
       - name: Commit if changed

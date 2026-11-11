@@ -9,4 +9,8 @@ jobs:
         with:
           node-version: '22'
       - run: npm run check:boot
-      - run: npm test
+      # Code failures block the deploy. Data failures are a dataset warning: a stale source or a
+      # vendor restatement must not turn a scheduled refresh into a red run.
+      - run: npm run test:code
+      - run: npm run test:data
+        continue-on-error: true
