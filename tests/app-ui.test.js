@@ -174,6 +174,7 @@ function loadApp() {
     coWindow,
     coSlice,
     coFitRange,
+    mergeLongSeries,
     charts,
     gsQuickSearch,
     setGsQuick: (v) => { gsQuick = v; },
@@ -200,8 +201,16 @@ test('a small listing keeps the long window when it has at least a year of price
   assert.equal(ui.coFitRange({ dates, closes }, '5y'), '5y', '5Y must not drop to 1Y');
   assert.equal(ui.coFitRange({ dates, closes }, '10y'), '10y', '10Y keeps the requested window and labels the actual coverage');
   assert.equal(ui.coFitRange({ dates: ['2020-01-01', '2026-01-01'], closes }, '10y'), '10y');
-  assert.equal(ui.coFitRange({ dates: ['2026-01-01', '2026-06-30'], closes }, '5y'), 'ytd');
-  assert.equal(ui.coFitRange({ dates: ['2026-10-01', '2026-11-10'], closes }, '5y'), 'ytd');
+  assert.equal(ui.coFitRange({ dates: ['2026-01-01', '2026-06-30'], closes }, '5y'), '5y');
+  assert.equal(ui.coFitRange({ dates: ['2026-10-01', '2026-11-10'], closes }, '5y'), '5y');
+  const sparse = ui.coSlice({ dates: ['2026-09-01', '2026-11-01'], closes: [100, 101] }, '1m');
+  assert.equal(sparse.dates.length, 2, 'a sparse line still draws its last two points');
+  const merged = ui.mergeLongSeries([
+    { dates: ['2020-01-01', '2026-11-06'], closes: [10, 20] },
+    { dates: ['2025-01-01', '2026-11-11'], closes: [15, 21] },
+  ]);
+  assert.equal(merged.dates.join(','), '2020-01-01,2025-01-01,2026-11-06,2026-11-11');
+  assert.equal(merged.closes.at(-1), 21, 'the newest source wins on a shared date');
 });
 
 test('the segment picker fills in even when markets arrive after the first render', () => {

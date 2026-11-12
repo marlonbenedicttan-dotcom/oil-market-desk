@@ -11271,19 +11271,34 @@ const coLongCache = new Map();
 const coLongPending = new Map();
 // Why a ref has no long series: a network/server failure is retryable, an empty answer is not.
 const coLongError = new Map();
+// Different source paths can return different resolutions for the same company (the ten-year
+// fallback is monthly, the five-year path is weekly, and a recent listing may only have a short
+// daily line). Keep the union: the chart needs both the oldest history and the newest close.
+function mergeLongSeries(parts) {
+  const byDate = new Map();
+  for (const ch of parts) {
+    const dates = (ch && ch.dates) || [], closes = (ch && ch.closes) || [];
+    for (let i = 0; i < dates.length; i++) if (closes[i] != null) byDate.set(dates[i], closes[i]);
+  }
+  const dates = [...byDate.keys()].sort();
+  return { dates, closes: dates.map((d) => byDate.get(d)) };
+}
 async function coLong(ref) {
   const k = String(ref || '').toUpperCase();
   if (coLongCache.has(k)) return coLongCache.get(k);
   if (coLongPending.has(k)) return coLongPending.get(k);
   const p = (async () => {
-    // One request drives every window on the page. The server returns whatever history it has; a
-    // recent listing simply gets a shorter series and the range strip adapts to it.
+    // Fetch all three source windows once. A company whose ten-year response is a sparse monthly
+    // line must not hide the denser five-year line; a recent listing must not lose its newest close
+    // just because the ten-year response stopped a few days earlier.
     let errored = false;
-    for (const r of ['10y', '5y', '1y']) {
-      try {
-        const ch = await seriesFor(ref, r);
-        if (ch && ch.dates && ch.closes && ch.closes.length >= 2) { coLongError.delete(k); coLongCache.set(k, ch); return ch; }
-      } catch { errored = true; /* try the shorter range */ }
+    const results = await Promise.all(['10y', '5y', '1y'].map(async (r) => {
+      try { return await seriesFor(ref, r); } catch { errored = true; return null; }
+    }));
+    const parts = results.filter((ch) => ch && ch.dates && ch.closes && ch.closes.length >= 2);
+    if (parts.length) {
+      const merged = mergeLongSeries(parts);
+      if (merged.dates.length >= 2) { coLongError.delete(k); coLongCache.set(k, merged); return merged; }
     }
     // Do NOT remember a failed fetch as "this company has no history". The free instance can answer
     // 502 while it is waking; caching that null made a second 5Y click do nothing at all. A genuinely
@@ -11331,19 +11346,10 @@ function coWindowsFor(dates) {
 // A recent listing has no ten-year window. Fall back to the longest window the series does cover,
 // so the chart draws instead of saying "no history" when the history simply starts later.
 function coFitRange(ch, range) {
-  const dates = (ch && ch.dates) || [];
-  if (dates.length < 2) return range;
-  const wins = coWindowsFor(dates);
-  if (wins.includes(range)) return range;
-  const span = (Date.parse(dates[dates.length - 1]) - Date.parse(dates[0])) / 864e5;
-  // A small/new listing can have four years but not five. The old fallback picked the longest
-  // *fully covered* window, so clicking 5Y on a 4.4-year line dropped the reader into 1Y and hid
-  // three years of history. Keep the requested long window whenever the series reaches a year; the
-  // chart simply draws all the history it has.
-  if (range === '5y' && span >= 365) return '5y';
-  if (range === '10y' && span >= 365) return '10y';
-  // The longest window the series does cover, not 1Y, for genuinely short histories.
-  return wins[wins.length - 1] || '1y';
+  // Keep the window the reader clicked for every company. `coSlice` returns the history that exists;
+  // `coRangeLabel` states how much that is ("1Y · 0.5y"). The old fallback silently changed the
+  // selected chip, which made 5Y and 1Y look broken on small/new listings.
+  return (ch && ch.dates && ch.dates.length >= 2) ? range : range;
 }
 function coRangeLabel(ch, range) {
   const w = CO_WIN.find((x) => x[0] === range);
@@ -11351,7 +11357,9 @@ function coRangeLabel(ch, range) {
   if (!w || dates.length < 2) return range.toUpperCase();
   const span = (Date.parse(dates[dates.length - 1]) - Date.parse(dates[0])) / 864e5;
   if (span >= w[2] * 0.9) return range.toUpperCase();
-  return `${range.toUpperCase()} · ${Math.max(0.1, span / 365).toFixed(1)}y`;
+  return span >= 365
+    ? `${range.toUpperCase()} · ${(span / 365).toFixed(1)}y`
+    : `${range.toUpperCase()} · ${Math.max(1, Math.round(span))}d`;
 }
 function coMarkRange(attr, range) {
   document.querySelectorAll(`[data-${attr}]`).forEach((b) => b.classList.toggle('on', b.dataset[attr] === range));
@@ -11367,6 +11375,9 @@ function coSlice(ch, range) {
     : new Date(Date.parse(last) - w[2] * 864e5).toISOString().slice(0, 10);
   let i = dates.findIndex((d) => d >= from);
   if (i < 0) i = 0;
+  // A sparse or very new line can have only one point inside a short window. Draw the last two
+  // available points rather than a blank chart; the label reports the actual span.
+  if (dates.length - i < 2) i = Math.max(0, dates.length - 2);
   return { dates: dates.slice(i), closes: closes.slice(i) };
 }
 // Shared by all three markets: the US uses data-corange, Japan data-jprange, Korea data-krrange, so the

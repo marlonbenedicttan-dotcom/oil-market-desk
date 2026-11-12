@@ -4524,11 +4524,14 @@ not an outlier. The derived row is marked `derived: 'annual-q4'` and recorded in
 
 The 5Y chip was silently degrading to 1Y for companies with four to five years of prices (Quants
 Research 9552: 4.37 years). `coFitRange` used only fully covered windows, so 5Y failed the 90% test and
-the fallback chose 1Y. It now keeps 5Y once a line spans a year, keeps 10Y when it spans ten years,
-falls 10Y back to 5Y otherwise, and labels partial coverage as `5Y · 4.4y` instead of implying five
-full years. The same rule is used by all ten market chart pages.
+the fallback chose 1Y. It now keeps the window the reader clicked for every company; `coSlice` draws
+the history that exists (and at least the last two points for sparse lines), while the chart label
+states the actual coverage (`5Y · 4.4y`, `1Y · 6mo`). The ten-year, five-year and one-year source
+responses are merged, so a sparse monthly ten-year line cannot hide a denser weekly five-year line or
+a newer one-year close. The same rule is used by all ten market chart pages.
 
 `npm run audit:charts` / `scripts/audit-company-charts.mjs` audits every company against the chart
 store. Current result: 10,598 companies, 10,481 charted, **0 hidden long windows**, 117 without a
 local chart (US names still use the live Yahoo fallback; the HK/Korea misses are lines with no price
-history). The all-markets daily job writes `data/audit-company-charts.json`.
+history and show an explicit no-history message). The all-markets daily job writes
+`data/audit-company-charts.json`.
