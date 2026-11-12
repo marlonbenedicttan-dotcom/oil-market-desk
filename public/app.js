@@ -4082,6 +4082,12 @@ function gsRouteOpenCompany(market, id) {
   else if (market === 'id') idSel = String(id);
   else if (market === 'br') brSel = String(id);
   else if (market === 'za') zaSel = String(id);
+  // A company can be opened from HOME or from the global board. Both need the COMPANIES pane
+  // visible, not just the company HTML painted into a hidden tab.
+  document.querySelector('[data-tab="deals"]')?.click();
+  // Opening the tab starts the US list fetch. Let that finish and render the selected company
+  // instead of painting the "couldn't load" state for the half second before it lands.
+  if (market === 'us' && !companiesData) return;
   renderCompanies();
 }
 function gsRouteOpenMarket(market, view) {
@@ -4510,7 +4516,7 @@ $('home-watch')?.addEventListener('click', (e) => {
   const tile = e.target.closest('.tile[data-id]');
   if (tile) { goToInstrument(tile.dataset.id); return; }
   const co = e.target.closest('.tile[data-cik]');
-  if (co) { coCik = co.dataset.cik; document.querySelector('[data-tab="deals"]')?.click(); renderCompanies(); window.scrollTo({ top: 0, behavior: 'smooth' }); }
+  if (co) { gsRouteOpenCompany('us', co.dataset.cik); window.scrollTo({ top: 0, behavior: 'smooth' }); }
 });
 $('macro-fx')?.addEventListener('click', (e) => { const el = e.target.closest('[data-metric]'); if (el) pickMetric(el.dataset.metric, '1y'); });
 $('macro-links')?.addEventListener('click', (e) => { const el = e.target.closest('[data-metric]'); if (el) pickMetric(el.dataset.metric, '1y'); });
