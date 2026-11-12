@@ -308,7 +308,7 @@ function toggleWatch(id) {
 function coStar(ref) {
   const on = isWatched(ref);
   const label = on ? 'WATCHING' : 'WATCH';
-  return `<button type="button" class="co-star ${on ? 'on' : ''}" data-costar="${esc(ref)}" title="${on ? 'Unpin from watchlist' : 'Pin to watchlist'}" aria-label="${on ? 'Unpin from watchlist' : 'Pin to watchlist'}" aria-pressed="${on}"><span class="co-star-i" aria-hidden="true">${on ? '★' : '☆'}</span><span class="co-star-t">${label}</span></button>`;
+  return `<button type="button" class="co-star ${on ? 'on' : ''}" data-costar="${esc(ref)}" title="${on ? 'Unpin from watchlist' : 'Pin to watchlist'}" aria-label="${on ? 'Unpin from watchlist' : 'Pin to watchlist'}" aria-pressed="${on}"><svg class="co-star-i" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 2.5l2.95 5.98 6.6.96-4.78 4.66 1.13 6.57L12 17.56 6.1 20.67l1.13-6.57L2.45 9.44l6.6-.96L12 2.5z"/></svg><span class="co-star-t">${label}</span></button>`;
 }
 // Remember the user's view across visits (tab, segment, range, compare, macro) — feels like the
 // app "knows" you, with zero new UI.
