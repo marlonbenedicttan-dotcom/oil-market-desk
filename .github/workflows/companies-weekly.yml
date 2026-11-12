@@ -93,9 +93,9 @@ jobs:
           node scripts/attach-us-brands.mjs
           node scripts/attach-us-themes.mjs
           node scripts/merge-history.mjs us
-          node scripts/audit-calculations.mjs
-          node scripts/audit-deep.mjs
-          node scripts/audit-universe.mjs
+          bash scripts/ci-audit.sh node scripts/audit-calculations.mjs
+          bash scripts/ci-audit.sh node scripts/audit-deep.mjs
+          bash scripts/ci-audit.sh node scripts/audit-universe.mjs
       - name: Korea (DART, optional)
         env:
           DART_API_KEY: ${{ secrets.DART_API_KEY }}

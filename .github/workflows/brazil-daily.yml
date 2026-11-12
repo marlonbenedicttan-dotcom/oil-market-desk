@@ -60,9 +60,9 @@ jobs:
           git checkout -- data/ || true
           exit 0
       - name: Audit the dataset
-        run: npm run audit:brazil
+        run: bash scripts/ci-audit.sh npm run audit:brazil
       - name: Deep audit every number
-        run: npm run audit:brazil:deep
+        run: bash scripts/ci-audit.sh npm run audit:brazil:deep
       - name: Rebuild the chart store after the final merge
         run: node scripts/build-chart-store.mjs br
 

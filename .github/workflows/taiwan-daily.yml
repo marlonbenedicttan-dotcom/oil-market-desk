@@ -48,9 +48,9 @@ jobs:
         run: node scripts/merge-series.mjs tw
       # A rate-limited run can return one-point series for most codes. Refuse to publish that.
       - name: Refuse a collapsed build
-        run: node scripts/audit-taiwan-refresh.mjs
+        run: bash scripts/ci-audit.sh node scripts/audit-taiwan-refresh.mjs
       - name: Audit the dataset
-        run: node scripts/audit-taiwan.mjs
+        run: bash scripts/ci-audit.sh node scripts/audit-taiwan.mjs
       - name: Rebuild the chart store after the final merge
         run: node scripts/build-chart-store.mjs tw
 

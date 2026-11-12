@@ -58,7 +58,7 @@ jobs:
           git checkout -- data/ || true
           exit 0
       - name: Audit the dataset
-        run: npm run audit:australia
+        run: bash scripts/ci-audit.sh npm run audit:australia
       - name: Rebuild the chart store after the final merge
         run: node scripts/build-chart-store.mjs au
 

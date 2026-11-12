@@ -64,11 +64,11 @@ jobs:
           git checkout -- data/ || true
           exit 0
       - name: Audit the dataset
-        run: npm run audit:indonesia
+        run: bash scripts/ci-audit.sh npm run audit:indonesia
       # Recompute every published ratio from its own inputs; catches engine drift the headline audit
       # does not reach (margins, FCF, growth, dividends, returns, the list projection, HSC counters).
       - name: Deep audit every number
-        run: npm run audit:indonesia:deep
+        run: bash scripts/ci-audit.sh npm run audit:indonesia:deep
       - name: Rebuild the chart store after the final merge
         run: node scripts/build-chart-store.mjs id
 
