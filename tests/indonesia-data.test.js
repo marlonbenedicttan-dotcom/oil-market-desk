@@ -153,16 +153,26 @@ t('the IDX High Shareholding Concentration list is applied and dated', () => {
   const hsc = ind.audit || {};
   const flagged = ind.companies.filter((c) => c.hsc);
   assert.equal(flagged.length, hsc.hsc, 'HSC flag count does not match audit.hsc');
-  assert.equal(hsc.hsc, hsc.hscTotal, 'every HSC name is in the market');
-  assert.ok(flagged.length >= 40, `only ${flagged.length} HSC companies`);
+  assert.equal(hsc.hsc + hsc.hscPruned.length + hsc.hscMissing.length, hsc.hscTotal,
+    'covered HSC names plus pruned plus missing must equal the published list');
+  assert.ok(flagged.length >= 300, `only ${flagged.length} HSC companies`);
   assert.ok(flagged.every((c) => c.hsc.asOf), 'an HSC flag has no as-of date');
-  assert.deepEqual(hsc.hscMissing, [], 'HSC codes are missing from the market');
-  assert.deepEqual(hsc.hscPruned, [], 'an HSC name is pruned');
+  assert.ok(Array.isArray(hsc.hscMissing), 'HSC missing list is disclosed');
+  assert.ok(Array.isArray(hsc.hscPruned), 'HSC pruned list is disclosed');
+  const prune = read('indonesia-prune.json').entries || {};
+  for (const code of hsc.hscPruned) assert.ok(prune[code], `${code} is in HSC pruned but not in the prune file`);
+  for (const code of hsc.hscMissing) {
+    assert.ok(!ind.companies.some((c) => c.code === code), `${code} is in HSC missing but still in the market`);
+  }
   assert.ok(list.companies.some((c) => c.hsc), 'the list projection does not carry the HSC flag');
-  // The published list is 82 names; every one must be in the market and flagged.
+  // The published list is 383 names. Every name in the covered market must be flagged; the
+  // pruned and uncovered names must be disclosed instead.
   const snap = read('indonesia-hsc.json');
+  const outside = new Set([...hsc.hscPruned, ...hsc.hscMissing]);
+  assert.equal(Object.keys(snap.entries).length, hsc.hscTotal, 'the pinned list matches audit.hscTotal');
   for (const code of Object.keys(snap.entries)) {
     const c = ind.companies.find((x) => x.code === code);
+    if (outside.has(code)) { assert.ok(!c || !c.hsc, `${code} is outside the market but flagged`); continue; }
     assert.ok(c && c.hsc, `${code} is on the HSC list but not flagged`);
   }
 });

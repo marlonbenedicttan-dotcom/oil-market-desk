@@ -1,338 +1,1926 @@
 {
-  "updated": "2026-11-07",
-  "asOf": "2026-10-22",
-  "source": "IDX (Bursa Efek Indonesia) — High Shareholding Concentration list, data as of 22 October 2026",
-  "url": "https://stocksetup.kontan.co.id/news/update-82-saham-hsc-bei-per-27-oktober-2026-ada-tfco-dan-film-masuk-ke-daftar",
-  "mirror": "https://koranindopos.com/bei-rilis-daftar-terbaru-82-saham-berstatus-high-shareholding-concentration-hsc/",
-  "note": "IDX's High Shareholding Concentration (HSC) list: ownership is concentrated enough that the actively traded free float is thin, so the price is sensitive to small volumes and the stock is excluded from the main indices (LQ45 / IDX30 / IDX80) and, from 2 November 2026, from the IHSG. IDX reviews the list quarterly; this is the 82-name list as of 22 October 2026 (Kontan/IDX). The exchange's own page is a Cloudflare challenge on this network, so the list is pinned here and must be replaced on the next quarterly review. All 82 names are in the published market (none is pruned). The audit warns when this snapshot is more than 120 days old.",
-  "entries": {
-    "MPRO": {
-      "rank": 1,
-      "name": "PT Maha Properti Indonesia Tbk"
-    },
-    "DCII": {
-      "rank": 2,
-      "name": "PT DCI Indonesia Tbk"
-    },
-    "BBSI": {
-      "rank": 3,
-      "name": "PT Krom Bank Indonesia Tbk"
-    },
-    "PGUN": {
-      "rank": 4,
-      "name": "PT Pradiksi Gunatama Tbk"
-    },
-    "POLU": {
-      "rank": 5,
-      "name": "PT Golden Flower Tbk"
-    },
-    "SOHO": {
-      "rank": 6,
-      "name": "PT Soho Global Health Tbk"
-    },
-    "BNLI": {
-      "rank": 7,
-      "name": "PT Bank Permata Tbk"
-    },
-    "YUPI": {
-      "rank": 8,
-      "name": "PT Yupi Indo Jelly Gum Tbk"
-    },
-    "ROCK": {
-      "rank": 9,
-      "name": "PT Rockfields Properti Indonesia Tbk"
-    },
-    "PRAY": {
-      "rank": 10,
-      "name": "PT Famon Awal Bros Sedaya Tbk"
-    },
-    "BTPN": {
-      "rank": 11,
-      "name": "PT Bank SMBC Indonesia Tbk"
-    },
-    "FAPA": {
-      "rank": 12,
-      "name": "PT FAP Agri Tbk"
-    },
-    "IFSH": {
-      "rank": 13,
-      "name": "PT Ifishdeco Tbk"
-    },
-    "SMAR": {
-      "rank": 14,
-      "name": "PT Sinar Mas Agro Resources and Technology Tbk"
-    },
-    "MLPT": {
-      "rank": 15,
-      "name": "PT Multipolar Technology Tbk"
-    },
-    "CMNT": {
-      "rank": 16,
-      "name": "PT Cemindo Gemilang Tbk"
-    },
-    "GEMS": {
-      "rank": 17,
-      "name": "PT Golden Energy Mines Tbk"
-    },
-    "LIFE": {
-      "rank": 18,
-      "name": "PT MSIG Life Insurance Indonesia Tbk"
-    },
-    "BNII": {
-      "rank": 19,
-      "name": "PT Bank Maybank Indonesia Tbk"
-    },
-    "ELPI": {
-      "rank": 20,
-      "name": "PT Pelayaran Nasional Ekalya Purnamasari Tbk"
-    },
-    "MCOL": {
-      "rank": 21,
-      "name": "PT Prima Andalan Mandiri Tbk"
-    },
-    "BYAN": {
-      "rank": 22,
-      "name": "PT Bayan Resources Tbk"
-    },
-    "KING": {
-      "rank": 23,
-      "name": "PT Hoffmen Cleanindo Tbk"
-    },
-    "SOTS": {
-      "rank": 24,
-      "name": "PT Satria Mega Kencana Tbk"
-    },
-    "DNET": {
-      "rank": 25,
-      "name": "PT Indoritel Makmur Internasional Tbk"
-    },
-    "RISE": {
-      "rank": 26,
-      "name": "PT Jaya Sukses Makmur Sentosa Tbk"
-    },
-    "AGII": {
-      "rank": 27,
-      "name": "PT Samator Indo Gas Tbk"
-    },
-    "ALII": {
-      "rank": 28,
-      "name": "PT Ancara Logistics Indonesia Tbk"
-    },
-    "DGWG": {
-      "rank": 29,
-      "name": "PT Delta Giri Wacana Tbk"
-    },
-    "BREN": {
-      "rank": 30,
-      "name": "PT Barito Renewables Energy Tbk"
-    },
-    "SRAJ": {
-      "rank": 31,
-      "name": "PT Sejahteraraya Anugrahjaya Tbk"
-    },
-    "MKPI": {
-      "rank": 32,
-      "name": "PT Metropolitan Kentjana Tbk"
-    },
-    "SILO": {
-      "rank": 33,
-      "name": "PT Siloam International Hospitals Tbk"
-    },
-    "HATM": {
-      "rank": 34,
-      "name": "PT Habco Trans Maritima Tbk"
-    },
-    "TBIG": {
-      "rank": 35,
-      "name": "PT Tower Bersama Infrastructure Tbk"
-    },
-    "WBSA": {
-      "rank": 36,
-      "name": "PT BSA Logistics Indonesia Tbk"
-    },
-    "DSSA": {
-      "rank": 37,
-      "name": "PT Dian Swastatika Sentosa Tbk"
-    },
-    "MEGA": {
-      "rank": 38,
-      "name": "PT Bank Mega Tbk"
-    },
-    "MORA": {
-      "rank": 39,
-      "name": "PT Ekamas Mora Republik Tbk"
-    },
-    "RLCO": {
-      "rank": 40,
-      "name": "PT Abadi Lestari Indonesia Tbk"
-    },
-    "KONI": {
-      "rank": 41,
-      "name": "PT Perdana Bangun Pusaka Tbk"
-    },
-    "FITT": {
-      "rank": 42,
-      "name": "PT Hotel Fitra International Tbk"
-    },
-    "STTP": {
-      "rank": 43,
-      "name": "PT Siantar Top Tbk"
-    },
-    "BINA": {
-      "rank": 44,
-      "name": "PT Bank Ina Perdana Tbk"
-    },
-    "SATU": {
-      "rank": 45,
-      "name": "PT Kota Satu Properti Tbk"
-    },
-    "TCPI": {
-      "rank": 46,
-      "name": "PT Transcoal Pacific Tbk"
-    },
-    "BELI": {
-      "rank": 47,
-      "name": "PT Global Digital Niaga Tbk"
-    },
-    "MGRO": {
-      "rank": 48,
-      "name": "PT Mahkota Group Tbk"
-    },
-    "SSMS": {
-      "rank": 49,
-      "name": "PT Sawit Sumbermas Sarana Tbk"
-    },
-    "BBHI": {
-      "rank": 50,
-      "name": "PT Allo Bank Indonesia Tbk"
-    },
-    "CMNP": {
-      "rank": 51,
-      "name": "PT Citra Marga Nusaphala Persada Tbk"
-    },
-    "AGAR": {
-      "rank": 52,
-      "name": "PT Asia Sejahtera Mina Tbk"
-    },
-    "ALKA": {
-      "rank": 53,
-      "name": "PT Alakasa Industrindo Tbk"
-    },
-    "BKDP": {
-      "rank": 54,
-      "name": "PT Bukit Darmo Property Tbk"
-    },
-    "BAJA": {
-      "rank": 55,
-      "name": "PT Saranacentral Bajatama Tbk"
-    },
-    "MDIA": {
-      "rank": 56,
-      "name": "PT Intermedia Capital Tbk"
-    },
-    "BDKR": {
-      "rank": 57,
-      "name": "PT Berdikari Pondasi Perkasa Tbk"
-    },
-    "SAFE": {
-      "rank": 58,
-      "name": "PT Steady Safe Tbk"
-    },
-    "NICK": {
-      "rank": 59,
-      "name": "PT Charnic Capital Tbk"
-    },
-    "MSJA": {
-      "rank": 60,
-      "name": "PT Multi Spunindo Jaya Tbk"
-    },
-    "BIKE": {
-      "rank": 61,
-      "name": "PT Bhineka Inovasi Ketahanan Energi Tbk"
-    },
-    "INDO": {
-      "rank": 62,
-      "name": "PT Royalindo Investa Wijaya Tbk"
-    },
-    "BSWD": {
-      "rank": 63,
-      "name": "PT Bank of India Indonesia Tbk"
-    },
-    "PSAB": {
-      "rank": 64,
-      "name": "PT J Resources Asia Pasifik Tbk"
-    },
-    "SMMT": {
-      "rank": 65,
-      "name": "PT Golden Eagle Energy Tbk"
-    },
-    "CITA": {
-      "rank": 66,
-      "name": "PT Cita Mineral Investindo Tbk"
-    },
-    "BMAS": {
-      "rank": 67,
-      "name": "PT Bank Kasikorn Indonesia Tbk"
-    },
-    "MTEL": {
-      "rank": 68,
-      "name": "PT Dayamitra Telekomunikasi Tbk"
-    },
-    "ADES": {
-      "rank": 69,
-      "name": "PT Akasha Wira International Tbk"
-    },
-    "SAME": {
-      "rank": 70,
-      "name": "PT Sarana Meditama Metropolitan Tbk"
-    },
-    "BBMD": {
-      "rank": 71,
-      "name": "PT Bank Mestika Dharma Tbk"
-    },
-    "SHIP": {
-      "rank": 72,
-      "name": "PT Sillo Maritime Perdana Tbk"
-    },
-    "BALI": {
-      "rank": 73,
-      "name": "PT Bali Towerindo Sentra Tbk"
-    },
-    "INPP": {
-      "rank": 74,
-      "name": "PT Indonesian Paradise Property Tbk"
-    },
-    "EPMT": {
-      "rank": 75,
-      "name": "PT Enseval Putera Megatrading Tbk"
-    },
-    "DUTI": {
-      "rank": 76,
-      "name": "PT Duta Pertiwi Tbk"
-    },
-    "MAYA": {
-      "rank": 77,
-      "name": "PT Bank Mayapada Internasional Tbk"
-    },
-    "CLAY": {
-      "rank": 78,
-      "name": "PT Citra Putra Realty Tbk"
-    },
-    "TMAS": {
-      "rank": 79,
-      "name": "PT Temas Tbk"
-    },
-    "DMND": {
-      "rank": 80,
-      "name": "PT Diamond Food Indonesia Tbk"
-    },
-    "FILM": {
-      "rank": 81,
-      "name": "PT MD Entertainment Tbk"
-    },
-    "TFCO": {
-      "rank": 82,
-      "name": "PT Tifico Fiber Indonesia Tbk"
-    }
+ "updated": "2026-11-12",
+ "asOf": "2026-11-11",
+ "effective": "2026-11-13",
+ "source": "IDX (Bursa Efek Indonesia) / KSEI, High Shareholding Concentration list, Peng-HSC-00088/BEI.WAS/11-2026, announced 11 November 2026, effective 13 November 2026",
+ "url": "https://investasi.kontan.co.id/news/ini-daftar-lengkap-383-saham-yang-masuk-daftar-hsc",
+ "mirror": "https://finance.detik.com/bursa-dan-valas/d-8749154/daftar-lengkap-383-saham-hsc-yang-didepak-dari-perhitungan-ihsg",
+ "note": "IDX's High Shareholding Concentration (HSC) list. New methodology from November 2026: a stock is HSC when 10 shareholders or fewer hold at least 92.5% of the total shares, with no market-cap or price-impact-ratio threshold. 383 names, 300 of them new, effective 13 November 2026, the second trading day after the 11 November announcement. HSC stocks are excluded from the IHSG and the main indices. Two names (FILM 90.754%, SATU 91.288%) are published below 92.5% with footnotes and are included as published. The exchange page is a Cloudflare challenge on this network, so the list is pinned here and must be replaced on the next review.",
+ "entries": {
+  "ABDA": {
+   "rank": 1,
+   "name": "PT Asuransi Bina Dana Arta Tbk",
+   "pct": 99.948
+  },
+  "ACST": {
+   "rank": 2,
+   "name": "PT Acset Indonusa Tbk",
+   "pct": 93.547
+  },
+  "ADCP": {
+   "rank": 3,
+   "name": "PT Adhi Commuter Properti Tbk",
+   "pct": 93.797
+  },
+  "ADES": {
+   "rank": 4,
+   "name": "PT Akasha Wira International Tbk",
+   "pct": 95.105
+  },
+  "ADMF": {
+   "rank": 5,
+   "name": "PT Adira Dinamika Multi Finance Tbk",
+   "pct": 92.744
+  },
+  "ADMG": {
+   "rank": 6,
+   "name": "PT Polychem Indonesia Tbk",
+   "pct": 92.877
+  },
+  "AGAR": {
+   "rank": 7,
+   "name": "PT Asia Sejahtera Mina Tbk",
+   "pct": 98.304
+  },
+  "AGII": {
+   "rank": 8,
+   "name": "PT Samator Indo Gas Tbk",
+   "pct": 98.58
+  },
+  "AGRS": {
+   "rank": 9,
+   "name": "PT Bank IBK Indonesia Tbk",
+   "pct": 96.716
+  },
+  "AKPI": {
+   "rank": 10,
+   "name": "PT Argha Karya Prima Ind. Tbk",
+   "pct": 94.023
+  },
+  "AKSI": {
+   "rank": 11,
+   "name": "PT Mineral Sumberdaya Mandiri Tbk",
+   "pct": 97.81
+  },
+  "ALII": {
+   "rank": 12,
+   "name": "PT Ancara Logistics Indonesia Tbk",
+   "pct": 97.71
+  },
+  "ALKA": {
+   "rank": 13,
+   "name": "PT Alakasa Industrindo Tbk",
+   "pct": 97.79
+  },
+  "ALMI": {
+   "rank": 14,
+   "name": "PT Alumindo Light Metal Industry Tbk",
+   "pct": 99.225
+  },
+  "AMAG": {
+   "rank": 15,
+   "name": "PT Asuransi Multi Artha Guna Tbk",
+   "pct": 98.867
+  },
+  "AMAN": {
+   "rank": 16,
+   "name": "PT Makmur Berkah Amanda Tbk",
+   "pct": 99.105
+  },
+  "AMAR": {
+   "rank": 17,
+   "name": "PT Bank Amar Indonesia Tbk",
+   "pct": 97.604
+  },
+  "AMFG": {
+   "rank": 18,
+   "name": "PT Asahimas Flat Glass Tbk",
+   "pct": 94.971
+  },
+  "AMOR": {
+   "rank": 19,
+   "name": "PT Ashmore Asset Management Indonesia Tbk",
+   "pct": 95.075
+  },
+  "ANJT": {
+   "rank": 20,
+   "name": "PT Austindo Nusantara Jaya Tbk",
+   "pct": 99.132
+  },
+  "APII": {
+   "rank": 21,
+   "name": "PT Arita Prima Indonesia Tbk",
+   "pct": 97.67
+  },
+  "APLI": {
+   "rank": 22,
+   "name": "PT Asiaplast Industries Tbk",
+   "pct": 97.223
+  },
+  "AREA": {
+   "rank": 23,
+   "name": "PT Dunia Virtual Online Tbk",
+   "pct": 97.088
+  },
+  "ARGO": {
+   "rank": 24,
+   "name": "PT Argo Pantes Tbk",
+   "pct": 99.599
+  },
+  "ARTA": {
+   "rank": 25,
+   "name": "PT Arthavest Tbk",
+   "pct": 99.845
+  },
+  "ASBI": {
+   "rank": 26,
+   "name": "PT Asuransi Bintang Tbk",
+   "pct": 96.657
+  },
+  "ASDM": {
+   "rank": 27,
+   "name": "PT Asuransi Dayin Mitra Tbk",
+   "pct": 96.669
+  },
+  "ASRM": {
+   "rank": 28,
+   "name": "PT Asuransi Ramayana Tbk",
+   "pct": 96.47
+  },
+  "AWAN": {
+   "rank": 29,
+   "name": "PT Era Digital Media Tbk",
+   "pct": 95.082
+  },
+  "AXIO": {
+   "rank": 30,
+   "name": "PT Tera Data Indonusa Tbk",
+   "pct": 97.153
+  },
+  "BABY": {
+   "rank": 31,
+   "name": "PT Multitrend Indo Tbk",
+   "pct": 96.953
+  },
+  "BAJA": {
+   "rank": 32,
+   "name": "PT Saranacentral Bajatama Tbk",
+   "pct": 95.706
+  },
+  "BALI": {
+   "rank": 33,
+   "name": "PT Bali Towerindo Sentra Tbk",
+   "pct": 93.431
+  },
+  "BATA": {
+   "rank": 34,
+   "name": "PT Sepatu Bata Tbk",
+   "pct": 97.146
+  },
+  "BATR": {
+   "rank": 35,
+   "name": "PT Benteng Api Technic Tbk",
+   "pct": 93.151
+  },
+  "BBHI": {
+   "rank": 36,
+   "name": "PT Allo Bank Indonesia Tbk",
+   "pct": 94.976
+  },
+  "BBLD": {
+   "rank": 37,
+   "name": "PT Buana Finance Tbk",
+   "pct": 96.629
+  },
+  "BBMD": {
+   "rank": 38,
+   "name": "PT Bank Mestika Dharma Tbk",
+   "pct": 99.258
+  },
+  "BBRM": {
+   "rank": 39,
+   "name": "PT Pelayaran Nasional Bina Buana Raya Tbk",
+   "pct": 95.148
+  },
+  "BBSI": {
+   "rank": 40,
+   "name": "PT Krom Bank Indonesia Tbk",
+   "pct": 99.94
+  },
+  "BBSS": {
+   "rank": 41,
+   "name": "PT Bumi Benowo Sukses Sejahtera Tbk",
+   "pct": 94.028
+  },
+  "BCIC": {
+   "rank": 42,
+   "name": "PT Bank JTrust Indonesia Tbk",
+   "pct": 98.739
+  },
+  "BDKR": {
+   "rank": 43,
+   "name": "PT Berdikari Pondasi Perkasa Tbk",
+   "pct": 92.553
+  },
+  "BDMN": {
+   "rank": 44,
+   "name": "PT Bank Danamon Indonesia Tbk",
+   "pct": 96.113
+  },
+  "BELI": {
+   "rank": 45,
+   "name": "PT Global Digital Niaga Tbk",
+   "pct": 93.834
+  },
+  "BESS": {
+   "rank": 46,
+   "name": "PT Batulicin Nusantara Maritim Tbk",
+   "pct": 98.742
+  },
+  "BIKA": {
+   "rank": 47,
+   "name": "PT Binakarya Jaya Abadi Tbk",
+   "pct": 94.915
+  },
+  "BIKE": {
+   "rank": 48,
+   "name": "PT Bhineka Inovasi Ketahanan Energi Tbk",
+   "pct": 93.085
+  },
+  "BIMA": {
+   "rank": 49,
+   "name": "PT Primarindo Asia Infrastructure Tbk",
+   "pct": 93.809
+  },
+  "BINA": {
+   "rank": 50,
+   "name": "PT Bank Ina Perdana Tbk",
+   "pct": 94.113
+  },
+  "BINO": {
+   "rank": 51,
+   "name": "PT Perma Plasindo Tbk",
+   "pct": 96.168
+  },
+  "BKDP": {
+   "rank": 52,
+   "name": "PT Bukit Darmo Property Tbk",
+   "pct": 95.68
+  },
+  "BKSW": {
+   "rank": 53,
+   "name": "PT Bank QNB Indonesia Tbk",
+   "pct": 97.249
+  },
+  "BLES": {
+   "rank": 54,
+   "name": "PT Superior Prima Sukses Tbk",
+   "pct": 97.149
+  },
+  "BLOG": {
+   "rank": 55,
+   "name": "PT Trimitra Trans Persada Tbk",
+   "pct": 93.193
+  },
+  "BLTZ": {
+   "rank": 56,
+   "name": "PT Graha Layar Prima Tbk",
+   "pct": 99.971
+  },
+  "BLUE": {
+   "rank": 57,
+   "name": "PT Berkah Prima Perkasa Tbk",
+   "pct": 94.457
+  },
+  "BMAS": {
+   "rank": 58,
+   "name": "PT Bank Kasikorn Indonesia Tbk",
+   "pct": 99.916
+  },
+  "BNBA": {
+   "rank": 59,
+   "name": "PT Bank Bumi Arta Tbk",
+   "pct": 94.895
+  },
+  "BNGA": {
+   "rank": 60,
+   "name": "PT Bank CIMB Niaga Tbk",
+   "pct": 94.691
+  },
+  "BNII": {
+   "rank": 61,
+   "name": "PT Bank Maybank Indonesia Tbk",
+   "pct": 99.137
+  },
+  "BNLI": {
+   "rank": 62,
+   "name": "PT Bank Permata Tbk",
+   "pct": 99.917
+  },
+  "BOAT": {
+   "rank": 63,
+   "name": "PT port Marine Services Tbk",
+   "pct": 92.786
+  },
+  "BOBA": {
+   "rank": 64,
+   "name": "PT Formosa Ingredient Factory Tbk",
+   "pct": 95.256
+  },
+  "BOLT": {
+   "rank": 65,
+   "name": "PT Garuda Metalindo Tbk",
+   "pct": 99.781
+  },
+  "BPFI": {
+   "rank": 66,
+   "name": "PT Woori Finance Indonesia Tbk",
+   "pct": 99.23
+  },
+  "BPII": {
+   "rank": 67,
+   "name": "PT Batavia Prosperindo Internasional Tbk",
+   "pct": 99.985
+  },
+  "BPTR": {
+   "rank": 68,
+   "name": "PT Batavia Prosperindo Trans Tbk",
+   "pct": 95.977
+  },
+  "BRAM": {
+   "rank": 69,
+   "name": "PT Indo Kordsa Tbk",
+   "pct": 99.65
+  },
+  "BREN": {
+   "rank": 70,
+   "name": "PT Barito Renewables Energy Tbk",
+   "pct": 96.693
+  },
+  "BRIS": {
+   "rank": 71,
+   "name": "PT Bank Syariah Indonesia (Persero) Tbk",
+   "pct": 93.024
+  },
+  "BRNA": {
+   "rank": 72,
+   "name": "PT Berlina Tbk",
+   "pct": 93.984
+  },
+  "BSSR": {
+   "rank": 73,
+   "name": "PT Baramulti Suksessarana Tbk",
+   "pct": 94.169
+  },
+  "BSWD": {
+   "rank": 74,
+   "name": "PT Bank of India Indonesia Tbk",
+   "pct": 99.948
+  },
+  "BTON": {
+   "rank": 75,
+   "name": "PT Betonjaya Manunggal Tbk",
+   "pct": 98.877
+  },
+  "BTPN": {
+   "rank": 76,
+   "name": "PT Bank SMBC Indonesia Tbk",
+   "pct": 99.779
+  },
+  "BUAH": {
+   "rank": 77,
+   "name": "PT Segar Kumala Indonesia Tbk",
+   "pct": 95.349
+  },
+  "BUDI": {
+   "rank": 78,
+   "name": "PT Budi Starch & Sweetener Tbk",
+   "pct": 96.661
+  },
+  "BUKK": {
+   "rank": 79,
+   "name": "PT Bukaka Teknik Utama Tbk",
+   "pct": 97.664
+  },
+  "BYAN": {
+   "rank": 80,
+   "name": "PT Bayan Resources Tbk",
+   "pct": 96.5
+  },
+  "CAKK": {
+   "rank": 81,
+   "name": "PT Cahayaputra Asa Keramik Tbk",
+   "pct": 94.334
+  },
+  "CAMP": {
+   "rank": 82,
+   "name": "PT Campina Ice Cream Industry Tbk",
+   "pct": 96.625
+  },
+  "CANI": {
+   "rank": 83,
+   "name": "PT Capitol Nusantara Indonesia Tbk",
+   "pct": 95.59
+  },
+  "CASH": {
+   "rank": 84,
+   "name": "PT Cashlez Worldwide Indonesia Tbk",
+   "pct": 93.254
+  },
+  "CASS": {
+   "rank": 85,
+   "name": "PT Cahaya Aero Services Tbk",
+   "pct": 95.653
+  },
+  "CBPE": {
+   "rank": 86,
+   "name": "PT Citra Buana Prasida Tbk",
+   "pct": 99.495
+  },
+  "CBUT": {
+   "rank": 87,
+   "name": "PT Citra Borneo Utama Tbk",
+   "pct": 99.47
+  },
+  "CCSI": {
+   "rank": 88,
+   "name": "PT Communication Cable Systems Indonesia Tbk",
+   "pct": 93.457
+  },
+  "CDIA": {
+   "rank": 89,
+   "name": "PT Chandra Daya Investasi Tbk",
+   "pct": 94.304
+  },
+  "CEKA": {
+   "rank": 90,
+   "name": "PT Wilmar Cahaya Indonesia Tbk",
+   "pct": 96.764
+  },
+  "CENT": {
+   "rank": 91,
+   "name": "PT Centratama Telekomunikasi Indonesia Tbk",
+   "pct": 96.905
+  },
+  "CITA": {
+   "rank": 92,
+   "name": "PT Cita Mineral Investindo Tbk",
+   "pct": 99.16
+  },
+  "CITY": {
+   "rank": 93,
+   "name": "PT Natura City Developments Tbk",
+   "pct": 98.773
+  },
+  "CLAY": {
+   "rank": 94,
+   "name": "PT Citra Putra Realty Tbk",
+   "pct": 99.89
+  },
+  "CLEO": {
+   "rank": 95,
+   "name": "PT Sariguna Primatirta Tbk",
+   "pct": 92.552
+  },
+  "CMNP": {
+   "rank": 96,
+   "name": "PT Citra Marga Nusaphala Persada Tbk",
+   "pct": 98.0
+  },
+  "CMNT": {
+   "rank": 97,
+   "name": "PT Cemindo Gemilang Tbk",
+   "pct": 99.297
+  },
+  "CMPP": {
+   "rank": 98,
+   "name": "PT AirAsia Indonesia Tbk",
+   "pct": 98.475
+  },
+  "CNMA": {
+   "rank": 99,
+   "name": "PT Nusantara Sejahtera Raya Tbk",
+   "pct": 95.614
+  },
+  "CRAB": {
+   "rank": 100,
+   "name": "PT Toba Surimi Industries Tbk",
+   "pct": 98.767
+  },
+  "CRSN": {
+   "rank": 101,
+   "name": "PT Carsurin Tbk",
+   "pct": 97.416
+  },
+  "CSAP": {
+   "rank": 102,
+   "name": "PT Catur Sentosa Adiprana Tbk",
+   "pct": 98.262
+  },
+  "CSRA": {
+   "rank": 103,
+   "name": "PT Cisadane Sawit Raya Tbk",
+   "pct": 93.705
+  },
+  "CTBN": {
+   "rank": 104,
+   "name": "PT Citra Tubindo Tbk",
+   "pct": 99.679
+  },
+  "DAAZ": {
+   "rank": 105,
+   "name": "PT Daaz Bara Lestari Tbk",
+   "pct": 96.577
+  },
+  "DART": {
+   "rank": 106,
+   "name": "PT Duta Anggada Realty Tbk",
+   "pct": 97.763
+  },
+  "DAYA": {
+   "rank": 107,
+   "name": "PT Duta Intidaya Tbk",
+   "pct": 99.748
+  },
+  "DCII": {
+   "rank": 108,
+   "name": "PT DCI Indonesia Tbk",
+   "pct": 99.96
+  },
+  "DEPO": {
+   "rank": 109,
+   "name": "PT Caturkarda Depo Bangunan Tbk",
+   "pct": 98.583
+  },
+  "DGWG": {
+   "rank": 110,
+   "name": "PT Delta Giri Wacana Tbk",
+   "pct": 95.685
+  },
+  "DLTA": {
+   "rank": 111,
+   "name": "PT Delta Djakarta Tbk",
+   "pct": 92.72
+  },
+  "DMND": {
+   "rank": 112,
+   "name": "PT Diamond Food Indonesia Tbk",
+   "pct": 99.863
+  },
+  "DNAR": {
+   "rank": 113,
+   "name": "PT Bank Oke Indonesia Tbk",
+   "pct": 98.307
+  },
+  "DNET": {
+   "rank": 114,
+   "name": "PT Indoritel Makmur Internasional Tbk",
+   "pct": 98.057
+  },
+  "DSSA": {
+   "rank": 115,
+   "name": "PT Dian Swastatika Sentosa Tbk",
+   "pct": 93.221
+  },
+  "DUTI": {
+   "rank": 116,
+   "name": "PT Duta Pertiwi Tbk",
+   "pct": 99.879
+  },
+  "DVLA": {
+   "rank": 117,
+   "name": "PT Darya-Varia Laboratoria Tbk",
+   "pct": 98.325
+  },
+  "DWGL": {
+   "rank": 118,
+   "name": "PT Dwi Guna Laksana Tbk",
+   "pct": 96.481
+  },
+  "ECII": {
+   "rank": 119,
+   "name": "PT Electronic City Indonesia Tbk",
+   "pct": 94.631
+  },
+  "EDGE": {
+   "rank": 120,
+   "name": "PT Indointernet Tbk",
+   "pct": 99.993
+  },
+  "EKAD": {
+   "rank": 121,
+   "name": "PT Ekadharma International Tbk",
+   "pct": 96.181
+  },
+  "ELPI": {
+   "rank": 122,
+   "name": "PT Pelayaran Nasional Ekalya Purnamasari Tbk",
+   "pct": 98.605
+  },
+  "EMDE": {
+   "rank": 123,
+   "name": "PT Megapolitan Developments Tbk",
+   "pct": 93.201
+  },
+  "ENAK": {
+   "rank": 124,
+   "name": "PT Champ Resto Indonesia Tbk",
+   "pct": 97.636
+  },
+  "EPMT": {
+   "rank": 125,
+   "name": "PT Enseval Putera Megatrading Tbk",
+   "pct": 99.016
+  },
+  "ERTX": {
+   "rank": 126,
+   "name": "PT Eratex Djaja Tbk",
+   "pct": 94.732
+  },
+  "ESTA": {
+   "rank": 127,
+   "name": "PT Esta Multi Usaha Tbk",
+   "pct": 96.88
+  },
+  "ESTI": {
+   "rank": 128,
+   "name": "PT Ever Shine Textile Industry Tbk",
+   "pct": 94.833
+  },
+  "ETWA": {
+   "rank": 129,
+   "name": "PT Eterindo Wahanatama Tbk",
+   "pct": 95.255
+  },
+  "FAPA": {
+   "rank": 130,
+   "name": "PT FAP Agri Tbk",
+   "pct": 99.724
+  },
+  "FAST": {
+   "rank": 131,
+   "name": "PT Fast Food Indonesia Tbk",
+   "pct": 93.528
+  },
+  "FASW": {
+   "rank": 132,
+   "name": "PT Fajar Surya Wisesa Tbk",
+   "pct": 99.988
+  },
+  "FILM": {
+   "rank": 133,
+   "name": "PT MD Entertainment Tbk",
+   "pct": 90.754
+  },
+  "FISH": {
+   "rank": 134,
+   "name": "PT FKS Multi Agro Tbk",
+   "pct": 99.679
+  },
+  "FITT": {
+   "rank": 135,
+   "name": "PT Fortune Resources Investment Tbk",
+   "pct": 94.654
+  },
+  "FMII": {
+   "rank": 136,
+   "name": "PT Fortune Mate Indonesia Tbk",
+   "pct": 99.186
+  },
+  "FOOD": {
+   "rank": 137,
+   "name": "PT Sentra Food Indonesia Tbk",
+   "pct": 96.399
+  },
+  "FORE": {
+   "rank": 138,
+   "name": "PT Fore Kopi Indonesia Tbk",
+   "pct": 98.17
+  },
+  "FORU": {
+   "rank": 139,
+   "name": "PT Fortune Indonesia Tbk",
+   "pct": 97.88
+  },
+  "FPNI": {
+   "rank": 140,
+   "name": "PT Lotte Chemical Titan Tbk",
+   "pct": 94.387
+  },
+  "GDST": {
+   "rank": 141,
+   "name": "PT Gunawan Dianjaya Steel Tbk",
+   "pct": 97.622
+  },
+  "GDYR": {
+   "rank": 142,
+   "name": "PT Goodyear Indonesia Tbk",
+   "pct": 98.373
+  },
+  "GEMS": {
+   "rank": 143,
+   "name": "PT Golden Energy Mines Tbk",
+   "pct": 99.239
+  },
+  "GGRP": {
+   "rank": 144,
+   "name": "PT Gunung Raja Paksi Tbk",
+   "pct": 97.362
+  },
+  "GHON": {
+   "rank": 145,
+   "name": "PT Gihon Telekomunikasi Indonesia Tbk",
+   "pct": 99.361
+  },
+  "GIAA": {
+   "rank": 146,
+   "name": "PT Garuda Indonesia (Persero) Tbk",
+   "pct": 96.049
+  },
+  "GLOB": {
+   "rank": 147,
+   "name": "PT Globe Kita Terang Tbk",
+   "pct": 99.306
+  },
+  "GMFI": {
+   "rank": 148,
+   "name": "PT Garuda Maintenance Facility Aero Asia Tbk",
+   "pct": 95.394
+  },
+  "GMTD": {
+   "rank": 149,
+   "name": "PT Gowa Makassar Tourism Development Tbk",
+   "pct": 99.49
+  },
+  "GOLD": {
+   "rank": 150,
+   "name": "PT Visi Telekomunikasi Infrastruktur Tbk",
+   "pct": 98.539
+  },
+  "GOLF": {
+   "rank": 151,
+   "name": "PT Intra GolfLink Resorts Tbk",
+   "pct": 97.959
+  },
+  "GRIA": {
+   "rank": 152,
+   "name": "PT Ingria Pratama Capitalindo Tbk",
+   "pct": 94.162
+  },
+  "GSMF": {
+   "rank": 153,
+   "name": "PT Equity Development Investment Tbk",
+   "pct": 99.155
+  },
+  "GTBO": {
+   "rank": 154,
+   "name": "PT Garda Tujuh Buana Tbk",
+   "pct": 97.85
+  },
+  "GTRA": {
+   "rank": 155,
+   "name": "PT Grahaprima Suksesmandiri Tbk",
+   "pct": 95.323
+  },
+  "GUNA": {
+   "rank": 156,
+   "name": "PT Gunanusa Eramandiri Tbk",
+   "pct": 96.68
+  },
+  "GWSA": {
+   "rank": 157,
+   "name": "PT Greenwood Sejahtera Tbk",
+   "pct": 96.301
+  },
+  "HALO": {
+   "rank": 158,
+   "name": "PT Haloni Jane Tbk",
+   "pct": 92.735
+  },
+  "HATM": {
+   "rank": 159,
+   "name": "PT Habco Trans Maritima Tbk",
+   "pct": 96.567
+  },
+  "HDFA": {
+   "rank": 160,
+   "name": "PT Radana Bhaskara Finance Tbk",
+   "pct": 98.892
+  },
+  "HERO": {
+   "rank": 161,
+   "name": "PT DFI Retail Nusantara Tbk",
+   "pct": 99.101
+  },
+  "HITS": {
+   "rank": 162,
+   "name": "PT Humpuss Intermoda Transportasi Tbk",
+   "pct": 99.988
+  },
+  "HMSP": {
+   "rank": 163,
+   "name": "PT HM Sampoerna Tbk",
+   "pct": 94.865
+  },
+  "HOMI": {
+   "rank": 164,
+   "name": "PT Grand House Mulia Tbk",
+   "pct": 94.087
+  },
+  "HOTL": {
+   "rank": 165,
+   "name": "PT Saraswati Griya Lestari Tbk",
+   "pct": 94.382
+  },
+  "HYGN": {
+   "rank": 166,
+   "name": "PT Ecocare Indo Pasifik Tbk",
+   "pct": 94.287
+  },
+  "IBST": {
+   "rank": 167,
+   "name": "PT Inti Bangun Sejahtera Tbk",
+   "pct": 99.992
+  },
+  "IDPR": {
+   "rank": 168,
+   "name": "PT Indonesia Pondasi Raya Tbk",
+   "pct": 97.381
+  },
+  "IFII": {
+   "rank": 169,
+   "name": "PT Indonesia Fibreboard Industry Tbk",
+   "pct": 99.498
+  },
+  "IFSH": {
+   "rank": 170,
+   "name": "PT Ifishdeco Tbk",
+   "pct": 99.699
+  },
+  "IGAR": {
+   "rank": 171,
+   "name": "PT Champion Pacific Indonesia Tbk",
+   "pct": 94.948
+  },
+  "IKBI": {
+   "rank": 172,
+   "name": "PT Sumi Indo Kabel Tbk",
+   "pct": 97.527
+  },
+  "IKPM": {
+   "rank": 173,
+   "name": "PT Ikapharmindo Putramas Tbk",
+   "pct": 95.639
+  },
+  "IMAS": {
+   "rank": 174,
+   "name": "PT Indomobil Sukses Internasional Tbk",
+   "pct": 95.484
+  },
+  "IMJS": {
+   "rank": 175,
+   "name": "PT Indomobil Multi Jasa Tbk",
+   "pct": 94.879
+  },
+  "INAF": {
+   "rank": 176,
+   "name": "PT Indofarma Tbk",
+   "pct": 97.072
+  },
+  "INDO": {
+   "rank": 177,
+   "name": "PT Royalindo Investa Wijaya Tbk",
+   "pct": 94.469
+  },
+  "INDR": {
+   "rank": 178,
+   "name": "PT Indo-Rama Synthetics Tbk",
+   "pct": 96.416
+  },
+  "INDS": {
+   "rank": 179,
+   "name": "PT Indospring Tbk",
+   "pct": 96.834
+  },
+  "INPP": {
+   "rank": 180,
+   "name": "PT Indonesian Paradise Property Tbk",
+   "pct": 98.723
+  },
+  "INRU": {
+   "rank": 181,
+   "name": "PT Toba Pulp Lestari Tbk",
+   "pct": 99.487
+  },
+  "INTD": {
+   "rank": 182,
+   "name": "PT Inter-Delta Tbk",
+   "pct": 96.225
+  },
+  "IPAC": {
+   "rank": 183,
+   "name": "PT Era Graharealty Tbk",
+   "pct": 99.221
+  },
+  "IPCM": {
+   "rank": 184,
+   "name": "PT Jasa Armada Indonesia Tbk",
+   "pct": 95.208
+  },
+  "IPOL": {
+   "rank": 185,
+   "name": "PT Indopoly Swakarsa Industry Tbk",
+   "pct": 93.62
+  },
+  "JARR": {
+   "rank": 186,
+   "name": "PT Jhonlin Agro Raya Tbk",
+   "pct": 98.02
+  },
+  "JAWA": {
+   "rank": 187,
+   "name": "PT Jaya Agra Wattie Tbk",
+   "pct": 98.99
+  },
+  "JECC": {
+   "rank": 188,
+   "name": "PT Jembo Cable Company Tbk",
+   "pct": 98.886
+  },
+  "JRPT": {
+   "rank": 189,
+   "name": "PT Jaya Real Property Tbk",
+   "pct": 94.93
+  },
+  "JSPT": {
+   "rank": 190,
+   "name": "PT Jakarta Setiabudi Internasional Tbk",
+   "pct": 99.809
+  },
+  "KAEF": {
+   "rank": 191,
+   "name": "PT Kimia Farma (Persero) Tbk",
+   "pct": 95.687
+  },
+  "KBLM": {
+   "rank": 192,
+   "name": "PT Kabelindo Murni Tbk",
+   "pct": 96.537
+  },
+  "KDSI": {
+   "rank": 193,
+   "name": "PT Kedawung Setia Industrial Tbk",
+   "pct": 97.482
+  },
+  "KEJU": {
+   "rank": 194,
+   "name": "PT Mulia Boga Raya Tbk",
+   "pct": 97.006
+  },
+  "KIAS": {
+   "rank": 195,
+   "name": "PT Keramika Indonesia Assosiasi Tbk",
+   "pct": 97.32
+  },
+  "KING": {
+   "rank": 196,
+   "name": "PT Hoffmen Cleanindo Tbk",
+   "pct": 98.022
+  },
+  "KINO": {
+   "rank": 197,
+   "name": "PT Kino Indonesia Tbk",
+   "pct": 98.388
+  },
+  "KLIN": {
+   "rank": 198,
+   "name": "PT Klinko Karya Imaji Tbk",
+   "pct": 96.258
+  },
+  "KMTR": {
+   "rank": 199,
+   "name": "PT Kirana Megatara Tbk",
+   "pct": 99.583
+  },
+  "KOBX": {
+   "rank": 200,
+   "name": "PT Kobexindo Tractors Tbk",
+   "pct": 95.853
+  },
+  "KOIN": {
+   "rank": 201,
+   "name": "PT Kokoh Inti Arebama Tbk",
+   "pct": 98.244
+  },
+  "KONI": {
+   "rank": 202,
+   "name": "PT Perdana Bangun Pusaka Tbk",
+   "pct": 95.079
+  },
+  "KOPI": {
+   "rank": 203,
+   "name": "PT Mitra Energi Persada Tbk",
+   "pct": 93.769
+  },
+  "KSIX": {
+   "rank": 204,
+   "name": "PT Kentanix Supra International Tbk",
+   "pct": 98.864
+  },
+  "LFLO": {
+   "rank": 205,
+   "name": "PT Imago Mulia Persada Tbk",
+   "pct": 99.393
+  },
+  "LIFE": {
+   "rank": 206,
+   "name": "PT MSIG Life Insurance Indonesia Tbk",
+   "pct": 99.15
+  },
+  "LINK": {
+   "rank": 207,
+   "name": "PT Link Net Tbk",
+   "pct": 99.698
+  },
+  "LION": {
+   "rank": 208,
+   "name": "PT Lion Metal Works Tbk",
+   "pct": 97.024
+  },
+  "LMPI": {
+   "rank": 209,
+   "name": "PT Langgeng Makmur Industri Tbk",
+   "pct": 98.44
+  },
+  "LPCK": {
+   "rank": 210,
+   "name": "PT Lippo Cikarang Tbk",
+   "pct": 93.464
+  },
+  "LPGI": {
+   "rank": 211,
+   "name": "PT Lippo General Insurance Tbk",
+   "pct": 99.278
+  },
+  "LRNA": {
+   "rank": 212,
+   "name": "PT Eka Sari Lorena Transport Tbk",
+   "pct": 95.043
+  },
+  "MAPB": {
+   "rank": 213,
+   "name": "PT Map Boga Adiperkasa Tbk",
+   "pct": 99.761
+  },
+  "MAPI": {
+   "rank": 214,
+   "name": "PT Mitra Adiperkasa Tbk",
+   "pct": 96.758
+  },
+  "MASB": {
+   "rank": 215,
+   "name": "PT Bank Multiarta Sentosa Tbk",
+   "pct": 96.908
+  },
+  "MAYA": {
+   "rank": 216,
+   "name": "PT Bank Mayapada Internasional Tbk",
+   "pct": 96.715
+  },
+  "MBAP": {
+   "rank": 217,
+   "name": "PT Mitrabara Adiperdana Tbk",
+   "pct": 96.984
+  },
+  "MBSS": {
+   "rank": 218,
+   "name": "PT Mitrabahtera Segara Sejati Tbk",
+   "pct": 96.775
+  },
+  "MCOL": {
+   "rank": 219,
+   "name": "PT Prima Andalan Mandiri Tbk",
+   "pct": 98.648
+  },
+  "MCOR": {
+   "rank": 220,
+   "name": "PT Bank China Construction Bank Indonesia Tbk",
+   "pct": 92.962
+  },
+  "MDIA": {
+   "rank": 221,
+   "name": "PT Intermedia Capital Tbk",
+   "pct": 94.28
+  },
+  "MDKI": {
+   "rank": 222,
+   "name": "PT Emdeki Utama Tbk",
+   "pct": 92.801
+  },
+  "MDLA": {
+   "rank": 223,
+   "name": "PT Medela Potentia Tbk",
+   "pct": 94.944
+  },
+  "MEGA": {
+   "rank": 224,
+   "name": "PT Bank Mega Tbk",
+   "pct": 95.683
+  },
+  "MERK": {
+   "rank": 225,
+   "name": "PT Merck Tbk",
+   "pct": 95.766
+  },
+  "META": {
+   "rank": 226,
+   "name": "PT Nusantara Infrastructure Tbk",
+   "pct": 99.638
+  },
+  "MFMI": {
+   "rank": 227,
+   "name": "PT Multifiling Mitra Indonesia Tbk",
+   "pct": 99.757
+  },
+  "MGNA": {
+   "rank": 228,
+   "name": "PT Magna Investama Mandiri Tbk",
+   "pct": 93.696
+  },
+  "MGRO": {
+   "rank": 229,
+   "name": "PT Mahkota Group Tbk",
+   "pct": 93.139
+  },
+  "MINE": {
+   "rank": 230,
+   "name": "PT Sinar Terang Mandiri Tbk",
+   "pct": 96.491
+  },
+  "MKAP": {
+   "rank": 231,
+   "name": "PT Multikarya Asia Pasifik Raya Tbk",
+   "pct": 95.604
+  },
+  "MKNT": {
+   "rank": 232,
+   "name": "PT Mitra Komunikasi Nusantara Tbk",
+   "pct": 99.647
+  },
+  "MKPI": {
+   "rank": 233,
+   "name": "PT Metropolitan Kentjana Tbk",
+   "pct": 97.733
+  },
+  "MKTR": {
+   "rank": 234,
+   "name": "PT Menthobi Karyatama Raya Tbk",
+   "pct": 98.284
+  },
+  "MLBI": {
+   "rank": 235,
+   "name": "PT Multi Bintang Indonesia Tbk",
+   "pct": 95.511
+  },
+  "MLIA": {
+   "rank": 236,
+   "name": "PT Mulia Industrindo Tbk",
+   "pct": 94.528
+  },
+  "MLPT": {
+   "rank": 237,
+   "name": "PT Multipolar Technology Tbk",
+   "pct": 99.406
+  },
+  "MMLP": {
+   "rank": 238,
+   "name": "PT Mega Manunggal Property Tbk",
+   "pct": 95.418
+  },
+  "MOLI": {
+   "rank": 239,
+   "name": "PT Madusari Murni Indah Tbk",
+   "pct": 92.996
+  },
+  "MORA": {
+   "rank": 240,
+   "name": "PT Ekamas Mora Republik Tbk",
+   "pct": 95.652
+  },
+  "MPRO": {
+   "rank": 241,
+   "name": "PT Maha Properti Indonesia Tbk",
+   "pct": 99.993
+  },
+  "MPXL": {
+   "rank": 242,
+   "name": "PT MPX Logistics International Tbk",
+   "pct": 93.378
+  },
+  "MSJA": {
+   "rank": 243,
+   "name": "PT Multi Spunindo Jaya Tbk",
+   "pct": 98.674
+  },
+  "MSTI": {
+   "rank": 244,
+   "name": "PT Mastersystem Infotama Tbk",
+   "pct": 93.048
+  },
+  "MTEL": {
+   "rank": 245,
+   "name": "PT Dayamitra Telekomunikasi Tbk",
+   "pct": 95.602
+  },
+  "MTMH": {
+   "rank": 246,
+   "name": "PT Murni Sadar Tbk",
+   "pct": 98.184
+  },
+  "MTSM": {
+   "rank": 247,
+   "name": "PT Metro Realty Tbk",
+   "pct": 97.377
+  },
+  "MTWI": {
+   "rank": 248,
+   "name": "PT Malacca Trust Wuwungan Insurance Tbk",
+   "pct": 99.245
+  },
+  "MYOH": {
+   "rank": 249,
+   "name": "PT Samindo Resources Tbk",
+   "pct": 93.225
+  },
+  "MYTX": {
+   "rank": 250,
+   "name": "PT Asia Pacific Investama Tbk",
+   "pct": 98.289
+  },
+  "NCKL": {
+   "rank": 251,
+   "name": "PT Trimegah Bangun Persada Tbk",
+   "pct": 92.665
+  },
+  "NELY": {
+   "rank": 252,
+   "name": "PT Pelayaran Nelly Dwi Putri Tbk",
+   "pct": 94.832
+  },
+  "NEST": {
+   "rank": 253,
+   "name": "PT Esta Indonesia Tbk",
+   "pct": 96.393
+  },
+  "NETV": {
+   "rank": 254,
+   "name": "PT MDTV Media Technologies Tbk",
+   "pct": 96.309
+  },
+  "NICE": {
+   "rank": 255,
+   "name": "PT Adhi Kartiko Pratama Tbk",
+   "pct": 96.796
+  },
+  "NICK": {
+   "rank": 256,
+   "name": "PT Charnic Capital Tbk",
+   "pct": 99.245
+  },
+  "NISP": {
+   "rank": 257,
+   "name": "PT Bank OCBC NISP Tbk",
+   "pct": 92.931
+  },
+  "NOBU": {
+   "rank": 258,
+   "name": "PT Bank Nationalnobu Tbk",
+   "pct": 93.292
+  },
+  "NZIA": {
+   "rank": 259,
+   "name": "PT Nusantara Almazia Tbk",
+   "pct": 94.274
+  },
+  "OCAP": {
+   "rank": 260,
+   "name": "PT ONIX CAPITAL Tbk",
+   "pct": 99.998
+  },
+  "OMED": {
+   "rank": 261,
+   "name": "PT Jayamas Medica Industri Tbk",
+   "pct": 98.546
+  },
+  "OMRE": {
+   "rank": 262,
+   "name": "PT Indonesia Prima Property Tbk",
+   "pct": 97.897
+  },
+  "PALM": {
+   "rank": 263,
+   "name": "PT Provident Investasi Bersama Tbk",
+   "pct": 98.293
+  },
+  "PANI": {
+   "rank": 264,
+   "name": "PT Pantai Indah Kapuk Dua Tbk",
+   "pct": 95.057
+  },
+  "PANR": {
+   "rank": 265,
+   "name": "PT Panorama Sentrawisata Tbk",
+   "pct": 94.011
+  },
+  "PBID": {
+   "rank": 266,
+   "name": "PT Panca Budi Idaman Tbk",
+   "pct": 92.686
+  },
+  "PBSA": {
+   "rank": 267,
+   "name": "PT Paramita Bangun Sarana Tbk",
+   "pct": 94.223
+  },
+  "PDES": {
+   "rank": 268,
+   "name": "PT Destinasi Tirta Nusantara Tbk",
+   "pct": 96.791
+  },
+  "PDPP": {
+   "rank": 269,
+   "name": "PT Primadaya Plastisindo Tbk",
+   "pct": 94.672
+  },
+  "PEVE": {
+   "rank": 270,
+   "name": "PT Penta Valent Tbk",
+   "pct": 93.947
+  },
+  "PGEO": {
+   "rank": 271,
+   "name": "PT Pertamina Geothermal Energy Tbk",
+   "pct": 95.225
+  },
+  "PGUN": {
+   "rank": 272,
+   "name": "PT Pradiksi Gunatama Tbk",
+   "pct": 99.956
+  },
+  "PJAA": {
+   "rank": 273,
+   "name": "PT Pembangunan Jaya Ancol Tbk",
+   "pct": 95.258
+  },
+  "PLIN": {
+   "rank": 274,
+   "name": "PT Plaza Indonesia Realty Tbk",
+   "pct": 99.803
+  },
+  "PMJS": {
+   "rank": 275,
+   "name": "PT Putra Mandiri Jembar Tbk",
+   "pct": 99.212
+  },
+  "PMUI": {
+   "rank": 276,
+   "name": "PT Prima Multi Usaha Indonesia Tbk",
+   "pct": 95.069
+  },
+  "PNBS": {
+   "rank": 277,
+   "name": "PT Bank Panin Dubai Syariah Tbk",
+   "pct": 93.667
+  },
+  "PNGO": {
+   "rank": 278,
+   "name": "PT AEP Pinago Plantations Tbk",
+   "pct": 99.883
+  },
+  "PNSE": {
+   "rank": 279,
+   "name": "PT Pudjiadi & Sons Tbk",
+   "pct": 96.485
+  },
+  "POLI": {
+   "rank": 280,
+   "name": "PT Pollux Hotels Group Tbk",
+   "pct": 99.774
+  },
+  "POLL": {
+   "rank": 281,
+   "name": "PT Pollux Properties Indonesia Tbk",
+   "pct": 99.333
+  },
+  "POLU": {
+   "rank": 282,
+   "name": "PT Golden Flower Tbk",
+   "pct": 99.934
+  },
+  "PORT": {
+   "rank": 283,
+   "name": "PT Nusantara Pelabuhan Handal Tbk",
+   "pct": 99.808
+  },
+  "PRAY": {
+   "rank": 284,
+   "name": "PT Famon Awal Bros Sedaya Tbk",
+   "pct": 99.837
+  },
+  "PSAB": {
+   "rank": 285,
+   "name": "PT J RESOURCES ASIA PASIFIK Tbk",
+   "pct": 95.816
+  },
+  "PSAT": {
+   "rank": 286,
+   "name": "PT Pancaran Samudera Transport Tbk",
+   "pct": 96.705
+  },
+  "PSDN": {
+   "rank": 287,
+   "name": "PT Prasidha Aneka Niaga Tbk",
+   "pct": 93.638
+  },
+  "PSGO": {
+   "rank": 288,
+   "name": "PT Palma Serasih Tbk",
+   "pct": 99.389
+  },
+  "PSSI": {
+   "rank": 289,
+   "name": "PT IMC Pelita Logistik Tbk",
+   "pct": 97.982
+  },
+  "PTIS": {
+   "rank": 290,
+   "name": "PT Indo Straits Tbk",
+   "pct": 92.865
+  },
+  "PTMR": {
+   "rank": 291,
+   "name": "PT Master Print Tbk",
+   "pct": 95.696
+  },
+  "PTPW": {
+   "rank": 292,
+   "name": "PT Pratama Widya Tbk",
+   "pct": 99.914
+  },
+  "PTSN": {
+   "rank": 293,
+   "name": "PT Sat Nusapersada Tbk",
+   "pct": 97.673
+  },
+  "RAAM": {
+   "rank": 294,
+   "name": "PT Tripar Multivision Plus Tbk",
+   "pct": 92.875
+  },
+  "RANC": {
+   "rank": 295,
+   "name": "PT Supra Boga Lestari Tbk",
+   "pct": 98.087
+  },
+  "RDTX": {
+   "rank": 296,
+   "name": "PT Roda Vivatex Tbk",
+   "pct": 95.561
+  },
+  "RELI": {
+   "rank": 297,
+   "name": "PT Reliance Sekuritas Indonesia Tbk",
+   "pct": 99.507
+  },
+  "RISE": {
+   "rank": 298,
+   "name": "PT Jaya Sukses Makmur Sentosa Tbk",
+   "pct": 97.227
+  },
+  "RLCO": {
+   "rank": 299,
+   "name": "PT Abadi Lestari Indonesia Tbk",
+   "pct": 96.145
+  },
+  "ROCK": {
+   "rank": 300,
+   "name": "PT Rockfields Properti Indonesia Tbk",
+   "pct": 98.913
+  },
+  "RODA": {
+   "rank": 301,
+   "name": "PT Pikko Land Development Tbk",
+   "pct": 92.829
+  },
+  "RONY": {
+   "rank": 302,
+   "name": "PT Aracord Nusantara Group Tbk",
+   "pct": 98.761
+  },
+  "ROTI": {
+   "rank": 303,
+   "name": "PT Nippon Indosari Corpindo Tbk",
+   "pct": 97.048
+  },
+  "RSCH": {
+   "rank": 304,
+   "name": "PT Charlie Hospital Semarang Tbk",
+   "pct": 92.531
+  },
+  "RSGK": {
+   "rank": 305,
+   "name": "PT Kedoya Adyaraya Tbk",
+   "pct": 98.464
+  },
+  "SAFE": {
+   "rank": 306,
+   "name": "PT Steady Safe Tbk",
+   "pct": 97.814
+  },
+  "SAME": {
+   "rank": 307,
+   "name": "PT Sarana Meditama Metropolitan Tbk",
+   "pct": 94.939
+  },
+  "SAMF": {
+   "rank": 308,
+   "name": "PT Saraswanti Anugerah Makmur Tbk",
+   "pct": 98.698
+  },
+  "SAPX": {
+   "rank": 309,
+   "name": "PT Satria Antaran Prima Tbk",
+   "pct": 95.866
+  },
+  "SATU": {
+   "rank": 310,
+   "name": "PT Kota Satu Properti Tbk",
+   "pct": 91.288
+  },
+  "SCCO": {
+   "rank": 311,
+   "name": "PT Supreme Cable Manufacturing & Commerce Tbk",
+   "pct": 95.488
+  },
+  "SCNP": {
+   "rank": 312,
+   "name": "PT Selaras Citra Nusantara Perkasa Tbk",
+   "pct": 98.812
+  },
+  "SCPI": {
+   "rank": 313,
+   "name": "PT Organon Pharma Indonesia Tbk",
+   "pct": 99.988
+  },
+  "SDPC": {
+   "rank": 314,
+   "name": "PT Millennium Pharmacon International Tbk",
+   "pct": 94.178
+  },
+  "SDRA": {
+   "rank": 315,
+   "name": "PT Bank Woori Saudara Indonesia 1906 Tbk",
+   "pct": 99.066
+  },
+  "SGRO": {
+   "rank": 316,
+   "name": "PT Prime Agri Resources Tbk",
+   "pct": 99.065
+  },
+  "SHID": {
+   "rank": 317,
+   "name": "PT Hotel Sahid Jaya Tbk",
+   "pct": 99.352
+  },
+  "SHIP": {
+   "rank": 318,
+   "name": "PT Sillo Maritime Perdana Tbk",
+   "pct": 98.297
+  },
+  "SILO": {
+   "rank": 319,
+   "name": "PT Siloam International Hospitals Tbk",
+   "pct": 96.782
+  },
+  "SIPD": {
+   "rank": 320,
+   "name": "PT Sreeya Sewu Indonesia Tbk",
+   "pct": 97.888
+  },
+  "SKBM": {
+   "rank": 321,
+   "name": "PT Sekar Bumi Tbk",
+   "pct": 96.065
+  },
+  "SKLT": {
+   "rank": 322,
+   "name": "PT Sekar Laut Tbk",
+   "pct": 96.914
+  },
+  "SKRN": {
+   "rank": 323,
+   "name": "PT Superkrane Mitra Utama Tbk",
+   "pct": 98.877
+  },
+  "SMAR": {
+   "rank": 324,
+   "name": "PT Sinar Mas Agro Resources and Technology Tbk",
+   "pct": 99.56
+  },
+  "SMCB": {
+   "rank": 325,
+   "name": "PT Solusi Bangun Indonesia Tbk",
+   "pct": 99.291
+  },
+  "SMDM": {
+   "rank": 326,
+   "name": "PT Suryamas Dutamakmur Tbk",
+   "pct": 99.484
+  },
+  "SMIL": {
+   "rank": 327,
+   "name": "PT Sarana Mitra Luas Tbk",
+   "pct": 93.036
+  },
+  "SMKL": {
+   "rank": 328,
+   "name": "PT Satyamitra Kemas Lestari Tbk",
+   "pct": 93.287
+  },
+  "SMMT": {
+   "rank": 329,
+   "name": "PT Golden Eagle Energy Tbk",
+   "pct": 96.875
+  },
+  "SOHO": {
+   "rank": 330,
+   "name": "PT Soho Global Health Tbk",
+   "pct": 99.93
+  },
+  "SONA": {
+   "rank": 331,
+   "name": "PT Sona Topas Tourism Industry Tbk",
+   "pct": 99.42
+  },
+  "SOSS": {
+   "rank": 332,
+   "name": "PT ALSOK Indonesia Services Tbk",
+   "pct": 99.846
+  },
+  "SOTS": {
+   "rank": 333,
+   "name": "PT Satria Mega Kencana Tbk",
+   "pct": 98.355
+  },
+  "SRAJ": {
+   "rank": 334,
+   "name": "PT Sejahteraraya Anugrahjaya Tbk",
+   "pct": 98.834
+  },
+  "SRTG": {
+   "rank": 335,
+   "name": "PT Saratoga Investama Sedaya Tbk",
+   "pct": 92.706
+  },
+  "SSMS": {
+   "rank": 336,
+   "name": "PT Sawit Sumbermas Sarana Tbk",
+   "pct": 95.824
+  },
+  "SSTM": {
+   "rank": 337,
+   "name": "PT Sunson Textile Manufacturer Tbk",
+   "pct": 97.426
+  },
+  "STAA": {
+   "rank": 338,
+   "name": "PT Sumber Tani Agung Resources Tbk",
+   "pct": 96.824
+  },
+  "STTP": {
+   "rank": 339,
+   "name": "PT Siantar Top Tbk",
+   "pct": 94.947
+  },
+  "SUNI": {
+   "rank": 340,
+   "name": "PT Sunindo Pratama Tbk",
+   "pct": 97.167
+  },
+  "SUPA": {
+   "rank": 341,
+   "name": "PT Super Bank Indonesia Tbk",
+   "pct": 93.734
+  },
+  "SUPR": {
+   "rank": 342,
+   "name": "PT Solusi Tunas Pratama Tbk",
+   "pct": 99.979
+  },
+  "SURE": {
+   "rank": 343,
+   "name": "PT Super Energy Tbk",
+   "pct": 99.91
+  },
+  "SWID": {
+   "rank": 344,
+   "name": "PT Saraswanti Indoland Development Tbk",
+   "pct": 97.998
+  },
+  "TALF": {
+   "rank": 345,
+   "name": "PT Tunas Alfin Tbk",
+   "pct": 99.285
+  },
+  "TAMU": {
+   "rank": 346,
+   "name": "PT Pelayaran Tamarin Samudra Tbk",
+   "pct": 95.82
+  },
+  "TBIG": {
+   "rank": 347,
+   "name": "PT Tower Bersama Infrastructure Tbk",
+   "pct": 96.635
+  },
+  "TBMS": {
+   "rank": 348,
+   "name": "PT Tembaga Mulia Semanan Tbk",
+   "pct": 97.745
+  },
+  "TCID": {
+   "rank": 349,
+   "name": "PT Mandom Indonesia Tbk",
+   "pct": 96.115
+  },
+  "TCPI": {
+   "rank": 350,
+   "name": "PT Transcoal Pacific Tbk",
+   "pct": 97.553
+  },
+  "TFCO": {
+   "rank": 351,
+   "name": "PT Tifico Fiber Indonesia Tbk",
+   "pct": 99.698
+  },
+  "TGKA": {
+   "rank": 352,
+   "name": "PT Tigaraksa Satria Tbk",
+   "pct": 99.533
+  },
+  "TIFA": {
+   "rank": 353,
+   "name": "PT KDB Tifa Finance Tbk",
+   "pct": 99.773
+  },
+  "TIRA": {
+   "rank": 354,
+   "name": "PT Tira Austenite Tbk",
+   "pct": 94.404
+  },
+  "TKIM": {
+   "rank": 355,
+   "name": "PT Pabrik Kertas Tjiwi Kimia Tbk",
+   "pct": 92.626
+  },
+  "TLDN": {
+   "rank": 356,
+   "name": "PT Teladan Prima Agro Tbk",
+   "pct": 98.779
+  },
+  "TMAS": {
+   "rank": 357,
+   "name": "PT Temas Tbk",
+   "pct": 95.3
+  },
+  "TOTO": {
+   "rank": 358,
+   "name": "PT Surya Toto Indonesia Tbk",
+   "pct": 96.482
+  },
+  "TRGU": {
+   "rank": 359,
+   "name": "PT Cerestar Indonesia Tbk",
+   "pct": 96.809
+  },
+  "TRIO": {
+   "rank": 360,
+   "name": "PT Trikomsel Oke Tbk",
+   "pct": 99.853
+  },
+  "TRIS": {
+   "rank": 361,
+   "name": "PT Trisula International Tbk",
+   "pct": 96.703
+  },
+  "TRJA": {
+   "rank": 362,
+   "name": "PT Transkon Jaya Tbk",
+   "pct": 93.341
+  },
+  "TRUS": {
+   "rank": 363,
+   "name": "PT Trust Finance Indonesia Tbk",
+   "pct": 98.18
+  },
+  "TSPC": {
+   "rank": 364,
+   "name": "PT Tempo Scan Pacific Tbk",
+   "pct": 94.096
+  },
+  "TYRE": {
+   "rank": 365,
+   "name": "PT King Tire Indonesia Tbk",
+   "pct": 96.824
+  },
+  "UANG": {
+   "rank": 366,
+   "name": "PT Pakuan Tbk",
+   "pct": 96.192
+  },
+  "UFOE": {
+   "rank": 367,
+   "name": "PT Damai Sejahtera Abadi Tbk",
+   "pct": 95.48
+  },
+  "URBN": {
+   "rank": 368,
+   "name": "PT Urban Jakarta Propertindo Tbk",
+   "pct": 97.302
+  },
+  "VAST": {
+   "rank": 369,
+   "name": "PT Vastland Indonesia Tbk",
+   "pct": 96.411
+  },
+  "VERN": {
+   "rank": 370,
+   "name": "PT Verona Indah Pictures Tbk",
+   "pct": 96.816
+  },
+  "VICI": {
+   "rank": 371,
+   "name": "PT Victoria Care Indonesia Tbk",
+   "pct": 93.385
+  },
+  "VINS": {
+   "rank": 372,
+   "name": "PT Victoria Insurance Tbk",
+   "pct": 97.803
+  },
+  "VOKS": {
+   "rank": 373,
+   "name": "PT Voksel Electric Tbk",
+   "pct": 99.434
+  },
+  "VRNA": {
+   "rank": 374,
+   "name": "PT Mizuho Leasing Indonesia Tbk",
+   "pct": 98.785
+  },
+  "WBSA": {
+   "rank": 375,
+   "name": "PT BSA Logistics Indonesia Tbk",
+   "pct": 94.612
+  },
+  "WICO": {
+   "rank": 376,
+   "name": "PT Wicaksana Overseas International Tbk",
+   "pct": 99.515
+  },
+  "WIKA": {
+   "rank": 377,
+   "name": "PT Wijaya Karya (Persero) Tbk",
+   "pct": 93.416
+  },
+  "WOMF": {
+   "rank": 378,
+   "name": "PT Wahana Ottomitra Multiartha Tbk",
+   "pct": 97.616
+  },
+  "YPAS": {
+   "rank": 379,
+   "name": "PT Yanaprima Hastapersada Tbk",
+   "pct": 99.598
+  },
+  "YUPI": {
+   "rank": 380,
+   "name": "PT Yupi Indo Jelly Gum Tbk",
+   "pct": 99.909
+  },
+  "ZBRA": {
+   "rank": 381,
+   "name": "PT Dosni Roha Indonesia Tbk",
+   "pct": 94.221
+  },
+  "ZONE": {
+   "rank": 382,
+   "name": "PT Mega Perintis Tbk",
+   "pct": 99.176
+  },
+  "ZYRX": {
+   "rank": 383,
+   "name": "PT Zyrexindo Mandiri Buana Tbk",
+   "pct": 92.75
   }
+ }
 }

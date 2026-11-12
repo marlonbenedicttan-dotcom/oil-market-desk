@@ -150,7 +150,7 @@ if (!Array.isArray(idx.series) || idx.series.length < 100) warn.push('index seri
 // --- HSC ------------------------------------------------------------------------------------------
 const hsc = ind.audit || {};
 const flagged = ind.companies.filter((c) => c.hsc).length;
-say('HSC flagged', `${flagged} companies · list as of ${hsc.hscAsOf || '—'}${hsc.hscAgeDays != null ? ` (${hsc.hscAgeDays} days)` : ''}`);
+say('HSC flagged', `${flagged} companies · list as of ${hsc.hscAsOf || '—'}${hsc.hscAgeDays != null ? ` (${Math.max(0, hsc.hscAgeDays)} days)` : ''}`);
 if (flagged !== (hsc.hsc ?? flagged)) fails.push('HSC flag count does not match audit.hsc');
 if (!hsc.hscAsOf) warn.push('no HSC snapshot applied — the IDX concentration warning is missing');
 const badHsc = ind.companies.filter((c) => c.hsc && !c.hsc.asOf);

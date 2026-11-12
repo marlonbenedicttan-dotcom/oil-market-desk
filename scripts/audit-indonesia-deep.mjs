@@ -314,16 +314,21 @@ const prunedPresent = prunedCodes.filter((code) => byCode.has(code));
 if (prunedPresent.length) fail('prune.present', `still in the market: ${prunedPresent.join(', ')}`);
 const hscCodes = Object.keys(hscFile.entries || {});
 const hscFlagged = d.companies.filter((c) => c.hsc);
-close('hsc.count', hscFlagged.length, hscCodes.length, 0);
+const hscPruned = d.audit.hscPruned || [];
+const hscMissing = hscCodes.filter((code) => !byCode.has(code) && !hscPruned.includes(code));
+// The new 383-name list includes companies outside the reviewed 810-name market: pruned names and
+// names the vendor does not cover. They are disclosed, not silently dropped, so count only the
+// covered names against the flags.
+close('hsc.count', hscFlagged.length, hscCodes.length - hscPruned.length - hscMissing.length, 0);
 close('audit.hsc', d.audit.hsc, hscFlagged.length, 0);
 close('audit.hscTotal', d.audit.hscTotal, hscCodes.length, 0);
-if ((d.audit.hscPruned || []).length) fail('hsc.pruned', d.audit.hscPruned.join(', '));
+const sameSet = (a, b) => JSON.stringify([...a].sort()) === JSON.stringify([...b].sort());
+if (!sameSet(hscPruned, d.audit.hscPruned || [])) fail('hsc.pruned.disclosed', 'the audit pruned list does not match the build');
+if (!sameSet(hscMissing, d.audit.hscMissing || [])) fail('hsc.missing.disclosed', `the audit missing list does not match the build: ${hscMissing.join(', ')}`);
 close('audit.noRecentTrading', d.audit.noRecentTrading, d.companies.filter((c) => c.noRecentTrading).length, 0);
 close('audit.shortHistory', d.audit.shortHistory, d.companies.filter((c) => c.shortHistory).length, 0);
 close('audit.ttmStale', d.audit.ttmStale, d.companies.filter((c) => c.ttmStale).length, 0);
 close('audit.thinTrading', d.audit.thinTrading, d.companies.filter((c) => c.thinTrading).length, 0);
-const hscMissing = hscCodes.filter((code) => !byCode.has(code));
-if (hscMissing.length) fail('hsc.missing', hscMissing.join(', '));
 for (const t of d.themes || []) {
   for (const code of t.tickers || []) if (!byCode.has(code)) fail('theme', `${t.id}: ${code} not in the market`);
 }

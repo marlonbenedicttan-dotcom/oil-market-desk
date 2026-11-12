@@ -8689,7 +8689,11 @@ function renderIndonesiaMarket(all, d) {
         const hscList = all.filter((c) => c.hsc);
         if (!hscList.length) return '';
         const asOf = (hscList[0].hsc && hscList[0].hsc.asOf) || (d.audit && d.audit.hscAsOf);
-        return `<div class="hsc-warn" title="IDX High Shareholding Concentration (HSC)">⚠ <b>${hscList.length} companies</b> are on IDX's High Shareholding Concentration list${asOf ? ` (as of ${esc(asOf)})` : ''}. Ownership is concentrated enough that the traded free float is thin — a small volume can move the price, and these stocks are excluded from LQ45 / IDX30 / IDX80 (and, since 2 Nov 2026, the IHSG). Use the <b>HSC FLAGGED</b> preset in the screener to list them.</div>`;
+        const total = (d.audit && d.audit.hscTotal) || hscList.length;
+        const pruned = (d.audit && d.audit.hscPruned) || [];
+        const missing = (d.audit && d.audit.hscMissing) || [];
+        const outside = pruned.length + missing.length;
+        return `<div class="hsc-warn" title="IDX High Shareholding Concentration (HSC)">⚠ <b>${total} companies</b> are on IDX's High Shareholding Concentration list${asOf ? ` (as of ${esc(asOf)})` : ''}. <b>${hscList.length}</b> are in the covered market${outside ? `, ${outside} are outside it (${pruned.length} pruned by review, ${missing.length} not covered)` : ''}. Ownership is concentrated enough that the traded free float is thin, so a small volume can move the price. These stocks are excluded from LQ45 / IDX30 / IDX80 and, from 13 Nov 2026, the IHSG. Use the <b>HSC FLAGGED</b> preset in the screener to list the covered names.</div>`;
       })()
     + (() => {
         const nt = all.filter((c) => c.noRecentTrading);
@@ -8871,7 +8875,7 @@ async function renderIndonesiaPage(stub) {
     : cell(label, value, title, cls));
   const sign = (v) => (v == null ? '' : v >= 0 ? 'pos' : 'neg');
   el.innerHTML = `<div class="ma-crumb"><button class="ma-back" data-idback="1"><span class="ma-back-i" aria-hidden="true">←</span>COMPANIES</button> <span>${esc(c.ticker)}</span><span class="mb-tag">INDONESIA</span></div>`
-    + (c.hsc ? `<div class="hsc-banner" title="${esc(c.hsc.source || 'IDX High Shareholding Concentration')}">⚠ <b>HIGH SHAREHOLDING CONCENTRATION</b> — on IDX's HSC list${c.hsc.asOf ? ` as of ${esc(c.hsc.asOf)}` : ''}. Ownership is concentrated enough that the traded free float is thin: a small volume can move the price, and the stock is excluded from LQ45 / IDX30 / IDX80 (and, since 2 Nov 2026, the IHSG). This is a supervisory flag, not a valuation.</div>` : '')
+    + (c.hsc ? `<div class="hsc-banner" title="${esc(c.hsc.source || 'IDX High Shareholding Concentration')}">⚠ <b>HIGH SHAREHOLDING CONCENTRATION</b>. On IDX's HSC list${c.hsc.asOf ? ` as of ${esc(c.hsc.asOf)}` : ''}. Ownership is concentrated enough that the traded free float is thin, so a small volume can move the price. The stock is excluded from LQ45 / IDX30 / IDX80 and, from 13 Nov 2026, the IHSG. This is a supervisory flag, not a valuation.</div>` : '')
     + idQualityBanners(c)
     + `<div class="co-head">${idMono(c)}<div><div class="co-name">${esc(idName(c))}</div>
         <div class="co-sub">${esc(c.ticker)} · IDX-listed${c.name && c.name !== idName(c) ? ' · ' + esc(c.name) : ''}${c.industry ? ' · ' + esc(c.industry) : ''}</div>

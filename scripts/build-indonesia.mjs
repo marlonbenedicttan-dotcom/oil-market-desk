@@ -680,7 +680,7 @@ for (const c of out) {
 }
 const hscMissing = Object.keys(hscEntries).filter((code) => !hscKnown.has(code) && !prunedEntries[code]);
 const hscPruned = Object.keys(hscEntries).filter((code) => prunedEntries[code]);
-const hscAgeDays = HSC.asOf ? Math.round((Date.parse(SESSION_DATE) - Date.parse(HSC.asOf)) / DAY) : null;
+const hscAgeDays = HSC.asOf ? Math.max(0, Math.round((Date.parse(SESSION_DATE) - Date.parse(HSC.asOf)) / DAY)) : null;
 if (hscCount) console.log(`  ${hscCount} companies on IDX's High Shareholding Concentration list (as of ${HSC.asOf})`);
 if (hscPruned.length) console.log(`  ${hscPruned.length} HSC codes are pruned by decision: ${hscPruned.join(', ')}`);
 if (hscMissing.length) console.log(`  ${hscMissing.length} HSC codes are not in the built market: ${hscMissing.join(', ')}`);
