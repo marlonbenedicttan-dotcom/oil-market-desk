@@ -1,5 +1,5 @@
 {
- "checked": "2026-11-11T07:15:27.153Z",
+ "checked": "2026-11-12T02:37:59.139Z",
  "markets": {
   "us": {
    "name": "US",
@@ -83,8 +83,8 @@
    "coverage": {
     "companies": 1506,
     "marketCap": 1506,
-    "pe": 1325,
-    "pb": 1440,
+    "pe": 1326,
+    "pb": 1428,
     "ttm": 1483,
     "quarters8": 1491
    }
@@ -108,7 +108,7 @@
     {
      "check": "P/B vs the filing’s equity",
      "severity": "warn",
-     "count": 21,
+     "count": 22,
      "detail": "JPX values equity at a later filing date"
     },
     {
@@ -149,7 +149,7 @@
     }
    ],
    "fail": 2,
-   "warn": 43,
+   "warn": 44,
    "examples": {
     "P/B vs the filing’s equity": [
      "36590 (-26.0%)",
@@ -188,19 +188,13 @@
     {
      "check": "market cap vs Naver",
      "severity": "warn",
-     "count": 1,
-     "detail": "No Naver cap feed on disk — the independent cross-check was skipped"
-    },
-    {
-     "check": "market cap vs Naver",
-     "severity": "warn",
-     "count": 0,
+     "count": 150,
      "detail": "A split or a stale print since the cap was read"
     },
     {
      "check": "market cap vs Naver",
      "severity": "fail",
-     "count": 0,
+     "count": 2,
      "detail": "More than a rounding difference"
     },
     {
@@ -240,11 +234,12 @@
      "detail": "A split or consolidation since the last annual report"
     }
    ],
-   "fail": 0,
-   "warn": 237,
+   "fail": 2,
+   "warn": 386,
    "examples": {
     "market cap vs Naver": [
-     "—"
+     "180640 (17.2%)",
+     "004540 (16.7%)"
     ],
     "share count differs from the filing": [
      "068270 (filing 218,613,124 → listed 233,707,042)",
@@ -265,10 +260,10 @@
     "peFY": 87,
     "pb": 721,
     "roe": 721,
-    "naverMatched": 0
+    "naverMatched": 725
    }
   }
  },
- "failures": 2,
- "warnings": 318
+ "failures": 4,
+ "warnings": 468
 }
