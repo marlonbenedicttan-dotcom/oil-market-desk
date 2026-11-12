@@ -288,7 +288,28 @@ function crackSpreads(m) {
 }
 
 function watchlist() { try { return JSON.parse(localStorage.getItem('oilbasis.watch') || '[]'); } catch { return []; } }
-function toggleWatch(id) { const w = watchlist(); const i = w.indexOf(id); if (i >= 0) w.splice(i, 1); else w.push(id); localStorage.setItem('oilbasis.watch', JSON.stringify(w)); }
+function isWatched(ref) {
+  const w = watchlist();
+  return w.includes(ref) || (String(ref).startsWith('us:') && w.includes(String(ref).slice(3)));
+}
+function toggleWatch(id) {
+  const w = watchlist();
+  const i = w.indexOf(id);
+  // Older builds stored a US company by its bare ticker. Treat that as the same pin so the star
+  // toggles off cleanly instead of adding a second copy under the new market-prefixed ref.
+  const legacy = String(id).startsWith('us:') ? String(id).slice(3) : null;
+  const j = legacy ? w.indexOf(legacy) : -1;
+  if (i >= 0 || j >= 0) {
+    if (i >= 0) w.splice(i, 1);
+    if (j >= 0) w.splice(j, 1);
+  } else w.push(id);
+  localStorage.setItem('oilbasis.watch', JSON.stringify(w));
+}
+function coStar(ref) {
+  const on = isWatched(ref);
+  const label = on ? 'WATCHING' : 'WATCH';
+  return `<button type="button" class="co-star ${on ? 'on' : ''}" data-costar="${esc(ref)}" title="${on ? 'Unpin from watchlist' : 'Pin to watchlist'}" aria-label="${on ? 'Unpin from watchlist' : 'Pin to watchlist'}" aria-pressed="${on}"><span class="co-star-i" aria-hidden="true">${on ? '★' : '☆'}</span><span class="co-star-t">${label}</span></button>`;
+}
 // Remember the user's view across visits (tab, segment, range, compare, macro) — feels like the
 // app "knows" you, with zero new UI.
 const saveStr = (k, v) => { try { localStorage.setItem('oilbasis.' + k, v); } catch {} };
@@ -408,29 +429,69 @@ function companyTile(c) {
   const chg = (v) => (v == null ? '' : `<em class="${v >= 0 ? 'pos' : 'neg'}">${v >= 0 ? '+' : ''}${v.toFixed(1)}%</em>`);
   return `<div class="tile" data-cik="${esc(c.cik)}" title="${esc(c.name)} — open the company page">
     <span class="t-name">${esc(c.ticker || c.name)}</span>
-    <span class="star on" data-star="${esc(c.ticker)}" title="Unpin from watchlist">★</span>
+    <span class="star on" data-star="us:${esc(c.ticker || c.cik)}" title="Unpin from watchlist">★</span>
     <span class="t-px">${c.price != null ? '$' + c.price.toFixed(2) : '—'}</span>
     <span class="t-foot">${chg(c.chg1d)} today · ${chg(c.chg6m)} 6M · ${chg(c.chgYtd)} YTD</span>
   </div>`;
 }
+
+// The same compact tile for every non-US market. The star and the tile both use the market-prefixed
+// company ref, so a Korean code cannot collide with a ticker somewhere else.
+function marketCompanyTile(c, market) {
+  const chg = (v) => (v == null ? '' : `<em class="${v >= 0 ? 'pos' : 'neg'}">${v >= 0 ? '+' : ''}${v.toFixed(1)}%</em>`);
+  const px = LIVE_PRICE[market] || ((v) => (v == null ? '—' : String(v)));
+  const name = c.nameEn || c.name || c.ticker || c.code;
+  const short = name.length > 20 ? name.slice(0, 19) + '…' : name;
+  const code = c.code || c.ticker;
+  return `<div class="tile" data-gb-company="${esc(market)}:${esc(code)}" title="${esc(name)} — open the company page">
+    <span class="t-name">${esc(c.ticker || code)} · ${esc(short)}</span>
+    <span class="star on" data-star="${esc(market)}:${esc(code)}" title="Unpin from watchlist">★</span>
+    <span class="t-px">${px(c.price)}</span>
+    <span class="t-foot">${chg(c.chg1d)} today · ${chg(c.chg6m)} 6M · ${chg(c.chgYtd)} YTD</span>
+  </div>`;
+}
+
+// Every market's company list, behind one resolver. The market data is already loaded on its own
+// page; a watchlist ref that arrives before the list is fetched asks the loader once and repaints.
+const CO_WATCH = {
+  us: { data: () => companiesData, load: async () => { if (!companiesData) { try { companiesData = await jget('/api/companies', 300000); } catch {} } return companiesData; }, find: (id) => (companiesData?.companies || []).find((c) => String(c.ticker) === String(id) || String(c.cik) === String(id)) },
+  jp: { data: () => japanData, load: loadJapan, find: (id) => (japanData?.companies || []).find((c) => String(c.code) === String(id)) },
+  kr: { data: () => koreaData, load: loadKorea, find: (id) => (koreaData?.companies || []).find((c) => String(c.code) === String(id)) },
+  tw: { data: () => taiwanData, load: loadTaiwan, find: (id) => (taiwanData?.companies || []).find((c) => String(c.code) === String(id)) },
+  hk: { data: () => hkData, load: loadHongKong, find: (id) => (hkData?.companies || []).find((c) => String(c.code) === String(id)) },
+  au: { data: () => auData, load: loadAustralia, find: (id) => (auData?.companies || []).find((c) => String(c.code) === String(id)) },
+  in: { data: () => inData, load: loadIndia, find: (id) => (inData?.companies || []).find((c) => String(c.code) === String(id)) },
+  id: { data: () => idData, load: loadIndonesia, find: (id) => (idData?.companies || []).find((c) => String(c.code) === String(id)) },
+  br: { data: () => brData, load: loadBrazil, find: (id) => (brData?.companies || []).find((c) => String(c.code) === String(id)) },
+  za: { data: () => zaData, load: loadSouthAfrica, find: (id) => (zaData?.companies || []).find((c) => String(c.code) === String(id)) },
+};
 
 // Home: the pinned instruments AND companies, in one board.
 function renderWatchlist() {
   const el = $('home-watch');
   if (!el) return;
   const ids = watchlist();
+  const seen = new Set();
   const tiles = ids.map((id) => {
-    const b = data?.benchmarks?.find((x) => x.id === id);
+    const s = String(id);
+    const b = data?.benchmarks?.find((x) => x.id === s);
     if (b) return tileHtml(b);
-    if (String(id).startsWith('jp:')) {
-      const code = String(id).slice(3);
-      const j = japanData?.companies?.find((x) => x.code === code);
-      if (j) return japanTile(j);
-      if (!japanData) loadJapan().then(() => renderWatchlist());
+    // A bare ref is an old US ticker; everything new is market:code.
+    const [market, ...rest] = s.includes(':') ? s.split(':') : ['us', s];
+    const code = rest.join(':');
+    const spec = CO_WATCH[market];
+    if (!spec) return null;
+    const d = spec.data();
+    if (!d) {
+      spec.load().then(() => { if (spec.data()) renderWatchlist(); });
       return null;
     }
-    const c = companiesData?.companies?.find((x) => x.ticker === id);
-    return c ? companyTile(c) : null;
+    const c = spec.find(code);
+    if (!c) return null;
+    const key = `${market}:${c.ticker || c.code || code}`;
+    if (seen.has(key)) return null;
+    seen.add(key);
+    return market === 'us' ? companyTile(c) : marketCompanyTile(c, market);
   }).filter(Boolean);
   if (tiles.length) { el.innerHTML = `<div class="tiles">${tiles.join('')}</div>`; return; }
   // An empty board should still be useful: show three liquid instruments to pin, not a blank panel.
@@ -6182,7 +6243,7 @@ function renderJapanPageBody(c) {
         <div class="co-sub">${esc(c.ticker)}${c.sector ? ' · ' + esc(c.sector) : ''}${c.size ? ' · ' + esc(c.size) : ''}${c.nameJa ? ' · ' + esc(c.nameJa) : ''}</div>
         ${c.description ? `<div class="co-desc">${esc(c.description)}${c.descSource === 'generated' ? ' <em class="co-approx" title="Written from the filing data, not a company profile">generated</em>' : ''}</div>` : ''}
         ${c.brands && c.brands.length ? `<div class="jp-brands">${c.brands.map((b) => `<span>${esc(b)}</span>`).join('')}</div>` : ''}</div>
-        <button class="co-star ${starred ? 'on' : ''}" data-jpstar="${esc(c.code)}" title="${starred ? 'Unpin from watchlist' : 'Pin to watchlist'}">${starred ? '★' : '☆'}</button>
+        ${coStar('jp:' + c.code)}
       </div>`
     + `<div class="co-price" ${liveRef('jp', c.ticker || c.code, c)} data-qkind="company">
         <span class="co-price-v">${yen(c.price)}</span>
@@ -6446,7 +6507,7 @@ async function drawJpPrice(c, range = jpRange) {
       return;
     }
   }
-  mountChart('jp-chart', { labels: ch.dates, datasets: [line(`${c.ticker} · JPY · ${range.toUpperCase()}`, ch.closes, CT.c1)] }, baseOptions({ dp: 0, dateAxis: true }));
+  mountChart('jp-chart', { labels: ch.dates, datasets: [line(`${c.ticker} · JPY · ${coRangeLabel(full, range)}`, ch.closes, CT.c1)] }, baseOptions({ dp: 0, dateAxis: true }));
 }
 
 function drawJpQuarters(c) {
@@ -6987,7 +7048,7 @@ async function renderKoreaPage(stub) {
     + `<div class="co-head">${krMono(c)}<div><div class="co-name">${esc(krName(c))}</div>
         <div class="co-sub">${esc(c.ticker)} · KOSPI${c.name ? ' · ' + esc(c.name) : ''}</div>
         ${c.description ? `<div class="co-desc">${esc(c.description)}</div>` : ''}
-        ${c.brands && c.brands.length ? `<div class="jp-brands">${c.brands.map((b) => `<span>${esc(b)}</span>`).join('')}</div>` : ''}</div></div>`
+        ${c.brands && c.brands.length ? `<div class="jp-brands">${c.brands.map((b) => `<span>${esc(b)}</span>`).join('')}</div>` : ''}</div>${coStar('kr:' + c.code)}</div>`
     + `<div class="co-price" ${liveRef('kr', c.ticker || c.code, c)} data-qkind="company"><span class="co-price-v">${wonPx(c.price)}</span>
         <span class="co-price-c ${c.chg1d >= 0 ? 'pos' : 'neg'}">${chg(c.chg1d)} today</span>
         <span class="co-price-c ${c.chg6m >= 0 ? 'pos' : 'neg'}">${chg(c.chg6m)} 6M</span>
@@ -7094,7 +7155,7 @@ async function drawKrChart(c, range = krRange) {
       return;
     }
   }
-  mountChart('kr-chart', { labels: ch.dates, datasets: [line(`${c.ticker} · KRW · ${range.toUpperCase()}`, ch.closes, CT.c1)] }, baseOptions({ dp: 0, dateAxis: true, log: range === '5y' }));
+  mountChart('kr-chart', { labels: ch.dates, datasets: [line(`${c.ticker} · KRW · ${coRangeLabel(full, range)}`, ch.closes, CT.c1)] }, baseOptions({ dp: 0, dateAxis: true, log: range === '5y' }));
 }
 
 // --- Taiwan: TWSE-listed common stocks -------------------------------------------------------
@@ -7322,7 +7383,7 @@ async function renderTaiwanPage(stub) {
     + `<div class="co-head">${twMono(c)}<div><div class="co-name">${esc(twName(c))}</div>
         <div class="co-sub">${esc(c.ticker)} · TWSE${c.name && c.name !== twName(c) ? ' · ' + esc(c.name) : ''}</div>
         ${c.description ? `<div class="co-desc">${esc(c.description)}</div>` : ''}
-        ${c.brands && c.brands.length ? `<div class="jp-brands">${c.brands.map((b) => `<span>${esc(b)}</span>`).join('')}</div>` : ''}</div></div>`
+        ${c.brands && c.brands.length ? `<div class="jp-brands">${c.brands.map((b) => `<span>${esc(b)}</span>`).join('')}</div>` : ''}</div>${coStar('tw:' + c.code)}</div>`
     + `<div class="co-price" ${liveRef('tw', c.ticker || c.code, c)} data-qkind="company"><span class="co-price-v">${twPx(c.price)}</span>
         <span class="co-price-c ${c.chg1d >= 0 ? 'pos' : 'neg'}">${chg(c.chg1d)} today</span>
         <span class="co-price-c ${c.chg6m >= 0 ? 'pos' : 'neg'}">${chg(c.chg6m)} 6M</span>
@@ -7432,7 +7493,7 @@ async function drawTwChart(c, range = twRange) {
       return;
     }
   }
-  mountChart('tw-chart', { labels: ch.dates, datasets: [line(`${c.ticker} · TWD · ${range.toUpperCase()}`, ch.closes, CT.c1)] }, baseOptions({ dp: 0, dateAxis: true, log: range === '5y' }));
+  mountChart('tw-chart', { labels: ch.dates, datasets: [line(`${c.ticker} · TWD · ${coRangeLabel(full, range)}`, ch.closes, CT.c1)] }, baseOptions({ dp: 0, dateAxis: true, log: range === '5y' }));
 }
 
 
@@ -7720,7 +7781,7 @@ async function renderHongKongPage(stub) {
     + `<div class="co-head">${hkMono(c)}<div><div class="co-name">${esc(hkName(c))}</div>
         <div class="co-sub">${esc(c.ticker)} · HKEX main board${c.name && c.name !== hkName(c) ? ' · ' + esc(c.name) : ''}${c.industry ? ' · ' + esc(c.industry) : ''}</div>
         ${c.description ? `<div class="co-desc">${esc(c.description)}</div>` : ''}
-        ${c.brands && c.brands.length ? `<div class="jp-brands">${c.brands.map((b) => `<span>${esc(b)}</span>`).join('')}</div>` : ''}</div></div>`
+        ${c.brands && c.brands.length ? `<div class="jp-brands">${c.brands.map((b) => `<span>${esc(b)}</span>`).join('')}</div>` : ''}</div>${coStar('hk:' + c.code)}</div>`
     + `<div class="co-price" ${liveRef('hk', c.ticker || c.code, c)} data-qkind="company"><span class="co-price-v">${hkPx(c.price)}</span>
         <span class="co-price-c ${c.chg1d >= 0 ? 'pos' : 'neg'}">${chg(c.chg1d)} today</span>
         <span class="co-price-c ${c.chg6m >= 0 ? 'pos' : 'neg'}">${chg(c.chg6m)} 6M</span>
@@ -7838,7 +7899,7 @@ async function drawHkChart(c, range = hkRange) {
       return;
     }
   }
-  mountChart('hk-chart', { labels: ch.dates, datasets: [line(`${c.ticker} · HKD · ${range.toUpperCase()}`, ch.closes, CT.c1)] }, baseOptions({ dp: 0, dateAxis: true, log: range === '5y' }));
+  mountChart('hk-chart', { labels: ch.dates, datasets: [line(`${c.ticker} · HKD · ${coRangeLabel(full, range)}`, ch.closes, CT.c1)] }, baseOptions({ dp: 0, dateAxis: true, log: range === '5y' }));
 }
 
 // --- Australia: ASX-listed companies -------------------------------------------------------------
@@ -8088,7 +8149,7 @@ async function renderAustraliaPage(stub) {
     + `<div class="co-head">${auMono(c)}<div><div class="co-name">${esc(auName(c))}</div>
         <div class="co-sub">${esc(c.ticker)} · ASX-listed${c.crossListing ? ' · US statements' : ''}${c.name && c.name !== auName(c) ? ' · ' + esc(c.name) : ''}${c.industry ? ' · ' + esc(c.industry) : ''}</div>
         ${c.description ? `<div class="co-desc">${esc(c.description)}</div>` : ''}
-        ${c.brands && c.brands.length ? `<div class="jp-brands">${c.brands.map((b) => `<span>${esc(b)}</span>`).join('')}</div>` : ''}</div></div>`
+        ${c.brands && c.brands.length ? `<div class="jp-brands">${c.brands.map((b) => `<span>${esc(b)}</span>`).join('')}</div>` : ''}</div>${coStar('au:' + c.code)}</div>`
     + `<div class="co-price" ${liveRef('au', c.ticker || c.code, c)} data-qkind="company"><span class="co-price-v">${auPx(c.price)}</span>
         <span class="co-price-c ${c.chg1d >= 0 ? 'pos' : 'neg'}">${chg(c.chg1d)} today</span>
         <span class="co-price-c ${c.chg6m >= 0 ? 'pos' : 'neg'}">${chg(c.chg6m)} 6M</span>
@@ -8202,7 +8263,7 @@ async function drawAuChart(c, range = auRange) {
       return;
     }
   }
-  mountChart('au-chart', { labels: ch.dates, datasets: [line(`${c.ticker} · AUD · ${range.toUpperCase()}`, ch.closes, CT.c1)] }, baseOptions({ dp: 0, dateAxis: true, log: range === '5y' }));
+  mountChart('au-chart', { labels: ch.dates, datasets: [line(`${c.ticker} · AUD · ${coRangeLabel(full, range)}`, ch.closes, CT.c1)] }, baseOptions({ dp: 0, dateAxis: true, log: range === '5y' }));
 }
 
 
@@ -8463,7 +8524,7 @@ async function renderIndiaPage(stub) {
     + `<div class="co-head">${inMono(c)}<div><div class="co-name">${esc(inName(c))}</div>
         <div class="co-sub">${esc(c.ticker)} · NSE-listed${c.crossListing ? ' · US statements' : ''}${c.name && c.name !== inName(c) ? ' · ' + esc(c.name) : ''}${c.industry ? ' · ' + esc(c.industry) : ''}</div>
         ${c.description ? `<div class="co-desc">${esc(c.description)}</div>` : ''}
-        ${c.brands && c.brands.length ? `<div class="jp-brands">${c.brands.map((b) => `<span>${esc(b)}</span>`).join('')}</div>` : ''}</div></div>`
+        ${c.brands && c.brands.length ? `<div class="jp-brands">${c.brands.map((b) => `<span>${esc(b)}</span>`).join('')}</div>` : ''}</div>${coStar('in:' + c.code)}</div>`
     + `<div class="co-price" ${liveRef('in', c.ticker || c.code, c)} data-qkind="company"><span class="co-price-v">${inPx(c.price)}</span>
         <span class="co-price-c ${c.chg1d >= 0 ? 'pos' : 'neg'}">${chg(c.chg1d)} today</span>
         <span class="co-price-c ${c.chg6m >= 0 ? 'pos' : 'neg'}">${chg(c.chg6m)} 6M</span>
@@ -8577,7 +8638,7 @@ async function drawInChart(c, range = inRange) {
       return;
     }
   }
-  mountChart('in-chart', { labels: ch.dates, datasets: [line(`${c.ticker} · INR · ${range.toUpperCase()}`, ch.closes, CT.c1)] }, baseOptions({ dp: 0, dateAxis: true, log: range === '5y' || range === '10y' }));
+  mountChart('in-chart', { labels: ch.dates, datasets: [line(`${c.ticker} · INR · ${coRangeLabel(full, range)}`, ch.closes, CT.c1)] }, baseOptions({ dp: 0, dateAxis: true, log: range === '5y' || range === '10y' }));
 }
 
 
@@ -8880,7 +8941,7 @@ async function renderIndonesiaPage(stub) {
     + `<div class="co-head">${idMono(c)}<div><div class="co-name">${esc(idName(c))}</div>
         <div class="co-sub">${esc(c.ticker)} · IDX-listed${c.name && c.name !== idName(c) ? ' · ' + esc(c.name) : ''}${c.industry ? ' · ' + esc(c.industry) : ''}</div>
         ${c.description ? `<div class="co-desc">${esc(c.description)}</div>` : ''}
-        ${c.brands && c.brands.length ? `<div class="jp-brands">${c.brands.map((b) => `<span>${esc(b)}</span>`).join('')}</div>` : ''}</div></div>`
+        ${c.brands && c.brands.length ? `<div class="jp-brands">${c.brands.map((b) => `<span>${esc(b)}</span>`).join('')}</div>` : ''}</div>${coStar('id:' + c.code)}</div>`
     + `<div class="co-price" ${liveRef('id', c.ticker || c.code, c)} data-qkind="company"><span class="co-price-v">${idPx(c.price)}</span>
         <span class="co-price-c ${c.chg1d >= 0 ? 'pos' : 'neg'}">${chg(c.chg1d)} today</span>
         <span class="co-price-c ${c.chg6m >= 0 ? 'pos' : 'neg'}">${chg(c.chg6m)} 6M</span>
@@ -8994,7 +9055,7 @@ async function drawIdChart(c, range = idRange) {
       return;
     }
   }
-  mountChart('id-chart', { labels: ch.dates, datasets: [line(`${c.ticker} · IDR · ${range.toUpperCase()}`, ch.closes, CT.c1)] }, baseOptions({ dp: 0, dateAxis: true, log: range === '5y' || range === '10y' }));
+  mountChart('id-chart', { labels: ch.dates, datasets: [line(`${c.ticker} · IDR · ${coRangeLabel(full, range)}`, ch.closes, CT.c1)] }, baseOptions({ dp: 0, dateAxis: true, log: range === '5y' || range === '10y' }));
 }
 
 // Indonesia in the home screener, the same shape as India's.
@@ -9359,7 +9420,7 @@ async function renderBrazilPage(stub) {
     + `<div class="co-head">${brMono(c)}<div><div class="co-name">${esc(brName(c))}</div>
         <div class="co-sub">${esc(c.ticker)} · ${esc(c.shareClass || '')} · B3-listed${c.name && c.name !== brName(c) ? ' · ' + esc(c.name) : ''}${c.industry ? ' · ' + esc(c.industry) : ''}</div>
         ${c.description ? `<div class="co-desc">${esc(c.description)}</div>` : ''}
-        ${c.brands && c.brands.length ? `<div class="jp-brands">${c.brands.map((b) => `<span>${esc(b)}</span>`).join('')}</div>` : ''}</div></div>`
+        ${c.brands && c.brands.length ? `<div class="jp-brands">${c.brands.map((b) => `<span>${esc(b)}</span>`).join('')}</div>` : ''}</div>${coStar('br:' + c.code)}</div>`
     + `<div class="co-price" ${liveRef('br', c.ticker || c.code, c)} data-qkind="company"><span class="co-price-v">${brPx(c.price)}</span>
         <span class="co-price-c ${c.chg1d >= 0 ? 'pos' : 'neg'}">${chg(c.chg1d)} today</span>
         <span class="co-price-c ${c.chg6m >= 0 ? 'pos' : 'neg'}">${chg(c.chg6m)} 6M</span>
@@ -9473,7 +9534,7 @@ async function drawBrChart(c, range = brRange) {
       return;
     }
   }
-  mountChart('br-chart', { labels: ch.dates, datasets: [line(`${c.ticker} · BRL · ${range.toUpperCase()}`, ch.closes, CT.c1)] }, baseOptions({ dp: 0, dateAxis: true, log: range === '5y' || range === '10y' }));
+  mountChart('br-chart', { labels: ch.dates, datasets: [line(`${c.ticker} · BRL · ${coRangeLabel(full, range)}`, ch.closes, CT.c1)] }, baseOptions({ dp: 0, dateAxis: true, log: range === '5y' || range === '10y' }));
 }
 
 // Brazil in the home screener, the same shape as India's.
@@ -10099,7 +10160,7 @@ async function renderSouthAfricaPage(stub) {
     + `<div class="co-head">${zaMono(c)}<div><div class="co-name">${esc(zaName(c))}</div>
         <div class="co-sub">${esc(c.ticker)} · ${esc(c.shareClass || '')} · JSE-listed${c.name && c.name !== zaName(c) ? ' · ' + esc(c.name) : ''}${c.industry ? ' · ' + esc(c.industry) : ''}</div>
         ${c.description ? `<div class="co-desc">${esc(c.description)}</div>` : ''}
-        ${c.brands && c.brands.length ? `<div class="jp-brands">${c.brands.map((b) => `<span>${esc(b)}</span>`).join('')}</div>` : ''}</div></div>`
+        ${c.brands && c.brands.length ? `<div class="jp-brands">${c.brands.map((b) => `<span>${esc(b)}</span>`).join('')}</div>` : ''}</div>${coStar('za:' + c.code)}</div>`
     + `<div class="co-price" ${liveRef('za', c.ticker || c.code, c)} data-qkind="company"><span class="co-price-v">${zaPx(c.price)}</span>
         <span class="co-price-c ${c.chg1d >= 0 ? 'pos' : 'neg'}">${chg(c.chg1d)} today</span>
         <span class="co-price-c ${c.chg6m >= 0 ? 'pos' : 'neg'}">${chg(c.chg6m)} 6M</span>
@@ -10214,7 +10275,7 @@ async function drawZaChart(c, range = zaRange) {
       return;
     }
   }
-  mountChart('za-chart', { labels: ch.dates, datasets: [line(`${c.ticker} · ZAR · ${range.toUpperCase()}`, ch.closes, CT.c1)] }, baseOptions({ dp: 0, dateAxis: true, log: range === '5y' || range === '10y' }));
+  mountChart('za-chart', { labels: ch.dates, datasets: [line(`${c.ticker} · ZAR · ${coRangeLabel(full, range)}`, ch.closes, CT.c1)] }, baseOptions({ dp: 0, dateAxis: true, log: range === '5y' || range === '10y' }));
 }
 
 // South Africa in the home screener, the same shape as India's.
@@ -11270,11 +11331,27 @@ function coWindowsFor(dates) {
 // A recent listing has no ten-year window. Fall back to the longest window the series does cover,
 // so the chart draws instead of saying "no history" when the history simply starts later.
 function coFitRange(ch, range) {
-  const wins = coWindowsFor((ch && ch.dates) || []);
+  const dates = (ch && ch.dates) || [];
+  if (dates.length < 2) return range;
+  const wins = coWindowsFor(dates);
   if (wins.includes(range)) return range;
-  // The longest window the series does cover, not 1Y: asking for 10Y with five years of data should
-  // draw five years, not jump the reader back to a single year.
+  const span = (Date.parse(dates[dates.length - 1]) - Date.parse(dates[0])) / 864e5;
+  // A small/new listing can have four years but not five. The old fallback picked the longest
+  // *fully covered* window, so clicking 5Y on a 4.4-year line dropped the reader into 1Y and hid
+  // three years of history. Keep the requested long window whenever the series reaches a year; the
+  // chart simply draws all the history it has.
+  if (range === '5y' && span >= 365) return '5y';
+  if (range === '10y' && span >= 365) return '10y';
+  // The longest window the series does cover, not 1Y, for genuinely short histories.
   return wins[wins.length - 1] || '1y';
+}
+function coRangeLabel(ch, range) {
+  const w = CO_WIN.find((x) => x[0] === range);
+  const dates = (ch && ch.dates) || [];
+  if (!w || dates.length < 2) return range.toUpperCase();
+  const span = (Date.parse(dates[dates.length - 1]) - Date.parse(dates[0])) / 864e5;
+  if (span >= w[2] * 0.9) return range.toUpperCase();
+  return `${range.toUpperCase()} · ${Math.max(0.1, span / 365).toFixed(1)}y`;
 }
 function coMarkRange(attr, range) {
   document.querySelectorAll(`[data-${attr}]`).forEach((b) => b.classList.toggle('on', b.dataset[attr] === range));
@@ -11310,7 +11387,7 @@ function paintReturns(stripId, bigId, ch, range, keys, attr) {
   if (big) {
     const r = coWindow(ch, range);
     big.innerHTML = r
-      ? `<b class="${r.pct >= 0 ? 'pos' : 'neg'}">${r.pct >= 0 ? '+' : ''}${r.pct.toFixed(1)}%</b><span>${range.toUpperCase()}</span><em>${r.from.toFixed(2)} &rarr; ${r.to.toFixed(2)}</em>`
+      ? `<b class="${r.pct >= 0 ? 'pos' : 'neg'}">${r.pct >= 0 ? '+' : ''}${r.pct.toFixed(1)}%</b><span>${coRangeLabel(ch, range)}</span><em>${r.from.toFixed(2)} &rarr; ${r.to.toFixed(2)}</em>`
       : '';
   }
 }
@@ -11371,14 +11448,14 @@ async function loadCoChart(ticker, range, compare) {
     if (wrap0) wrap0.removeAttribute('data-empty');
     paintCoReturns(full, range);
     if (!compare) {
-      mountChart('co-chart', { labels: ch.dates, datasets: [line(`${ticker} · ${range.toUpperCase()}`, ch.closes, CT.c1)] }, baseOptions({ dp: 2, dateAxis: true, log: range === '5y' || range === '10y' }));
+      mountChart('co-chart', { labels: ch.dates, datasets: [line(`${ticker} · ${coRangeLabel(full, range)}`, ch.closes, CT.c1)] }, baseOptions({ dp: 2, dateAxis: true, log: range === '5y' || range === '10y' }));
       return;
     }
     // The comparison comes from the same cached long series, so changing the window costs no request.
     const c2long = await coLong(compare).catch(() => null);
     const c2 = c2long ? coSlice(c2long, range) : null;
     if (!c2 || !c2.dates || c2.dates.length < 2) {
-      mountChart('co-chart', { labels: ch.dates, datasets: [line(`${ticker} · ${range.toUpperCase()}`, ch.closes, CT.c1)] }, baseOptions({ dp: 2, dateAxis: true, log: range === '5y' || range === '10y' }));
+      mountChart('co-chart', { labels: ch.dates, datasets: [line(`${ticker} · ${coRangeLabel(full, range)}`, ch.closes, CT.c1)] }, baseOptions({ dp: 2, dateAxis: true, log: range === '5y' || range === '10y' }));
       return;
     }
     // Align on the union of dates, forward-filling each series, then rebase both to 100.
@@ -11667,7 +11744,7 @@ async function renderCompanyPageBody(el, c, all) {
         <div class="co-sub">${esc(c.ticker || '')}${c.sector ? ' · ' + esc(c.sector) : ''}${c.industry ? ' · ' + esc(c.industry) : ''}${c.state ? ' · ' + esc(c.state) : ''}</div>
         ${c.description ? `<div class="co-desc">${esc(coDesc(c.description))}</div>` : ''}
         ${c.brands && c.brands.length ? `<div class="jp-brands">${c.brands.map((b) => `<span>${esc(b)}</span>`).join('')}</div>` : ''}</div>
-        <button class="co-star ${watchlist().includes(c.ticker) ? 'on' : ''}" data-coticker="${esc(c.ticker || '')}" title="${watchlist().includes(c.ticker) ? 'Unpin from watchlist' : 'Pin to watchlist'}">${watchlist().includes(c.ticker) ? '★' : '☆'}</button>
+        ${coStar('us:' + (c.ticker || c.cik))}
       </div>
       <div class="co-price" ${liveRef('us', c.ticker, c)} data-qkind="company">
         <span class="co-price-v">${c.price != null ? '$' + c.price.toFixed(2) : '—'}</span>
@@ -12271,6 +12348,13 @@ document.addEventListener('click', (e) => {
     document.querySelectorAll('[data-jprange]').forEach((b) => b.classList.toggle('on', b.dataset.jprange === jpRange));
     const cur = ((japanData && japanData.companies) || []).find((x) => x.code === jpSel);
     if (cur) drawJpPrice(cur, jpRange);
+    return;
+  }
+  const coStarBtn = e.target.closest('[data-costar]');
+  if (coStarBtn) {
+    toggleWatch(coStarBtn.dataset.costar);
+    renderCompanies();
+    renderWatchlist();
     return;
   }
   const jstar = e.target.closest('[data-jpstar]');

@@ -173,6 +173,7 @@ function loadApp() {
     coWindowsFor,
     coWindow,
     coSlice,
+    coFitRange,
     charts,
     gsQuickSearch,
     setGsQuick: (v) => { gsQuick = v; },
@@ -191,6 +192,17 @@ const SEGMENTS = [
 ];
 
 // --- the segment picker (shipped regression) ---------------------------------------------------
+
+test('a small listing keeps the long window when it has at least a year of prices', () => {
+  const { ui } = loadApp();
+  const dates = ['2022-06-29', '2026-11-10'];   // 4.37 years: enough for four, not five
+  const closes = [100, 200];
+  assert.equal(ui.coFitRange({ dates, closes }, '5y'), '5y', '5Y must not drop to 1Y');
+  assert.equal(ui.coFitRange({ dates, closes }, '10y'), '10y', '10Y keeps the requested window and labels the actual coverage');
+  assert.equal(ui.coFitRange({ dates: ['2020-01-01', '2026-01-01'], closes }, '10y'), '10y');
+  assert.equal(ui.coFitRange({ dates: ['2026-01-01', '2026-06-30'], closes }, '5y'), 'ytd');
+  assert.equal(ui.coFitRange({ dates: ['2026-10-01', '2026-11-10'], closes }, '5y'), 'ytd');
+});
 
 test('the segment picker fills in even when markets arrive after the first render', () => {
   const { ui, document } = loadApp();

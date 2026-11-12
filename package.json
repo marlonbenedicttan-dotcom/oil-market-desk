@@ -78,7 +78,8 @@
     "audit:southafrica:deep": "node scripts/audit-southafrica-deep.mjs",
     "build:za": "node scripts/build-southafrica.mjs && node scripts/fetch-southafrica-profiles.mjs && node scripts/build-southafrica.mjs --skip-prices --skip-fin",
     "test:code": "node scripts/run-tests.mjs code",
-    "ledger:refresh": "node scripts/build-refresh-ledger.mjs"
+    "ledger:refresh": "node scripts/build-refresh-ledger.mjs",
+    "audit:charts": "node scripts/audit-company-charts.mjs"
   },
   "engines": {
     "node": ">=22"

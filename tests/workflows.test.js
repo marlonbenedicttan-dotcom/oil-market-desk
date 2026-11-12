@@ -142,6 +142,8 @@ test('the all-markets job writes the per-company freshness ledger', () => {
   assert.match(y, /ledger:refresh/, 'the freshness ledger is no longer built');
   assert.match(y, /data\/refresh-ledger\.json/, 'the ledger is not committed');
   assert.match(y, /data\/refresh-queue\.json/, 'the repair queue is not committed');
+  assert.match(y, /audit:charts/, 'the company chart audit is no longer built');
+  assert.match(y, /data\/audit-company-charts\.json/, 'the chart audit report is not committed');
 });
 
 test('Japan refreshes its flows, calendar and dividend ladder', () => {
