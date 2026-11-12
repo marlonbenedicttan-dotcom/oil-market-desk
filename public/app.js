@@ -5231,7 +5231,7 @@ function renderJapanMarket(all, d) {
   const chg = (x) => (x == null ? '—' : `${x >= 0 ? '+' : ''}${x.toFixed(1)}%`);
   const sectors = (m.sectors || []);
   const breadth = m.advancing != null && m.declining != null
-    ? `<div class="jp-breadth"><span class="pos">${m.advancing} up</span><i><i style="width:${Math.round((m.advancing / Math.max(1, m.advancing + m.declining)) * 100)}%"></i></i><span class="neg">${m.declining} down</span></div>` : '';
+    ? `<div class="jp-breadth"><span class="jp-breadth-l">TODAY</span><span class="pos">${m.advancing} up</span><i><i style="width:${Math.round((m.advancing / Math.max(1, m.advancing + m.declining)) * 100)}%"></i></i><span class="neg">${m.declining} down</span></div>` : '';
 
   el.innerHTML = jpViewsBar()
     + `<div class="jp-market-head"><span class="ph-t">TOPIX</span><span class="jp-market-lvl">${t.level != null ? t.level.toFixed(2) : '—'}</span>
@@ -6849,7 +6849,7 @@ function renderKoreaMarket(all, d) {
   const m = d.market || {}; const idx = d.index || {};
   const cell = (k, v, t, cls = '') => `<div class="co-stat" title="${esc(t)}"><span class="co-k">${k}</span><span class="co-v ${cls}">${v}</span></div>`;
   const chg = (x) => (x == null ? '—' : `${x >= 0 ? '+' : ''}${x.toFixed(1)}%`);
-  const breadth = m.advancing != null ? `<div class="jp-breadth"><span class="pos">${m.advancing} up</span><i><i style="width:${Math.round((m.advancing / Math.max(1, m.advancing + m.declining)) * 100)}%"></i></i><span class="neg">${m.declining} down</span></div>` : '';
+  const breadth = m.advancing != null ? `<div class="jp-breadth"><span class="jp-breadth-l">TODAY</span><span class="pos">${m.advancing} up</span><i><i style="width:${Math.round((m.advancing / Math.max(1, m.advancing + m.declining)) * 100)}%"></i></i><span class="neg">${m.declining} down</span></div>` : '';
   el.innerHTML = krViewsBar()
     + `<div class="jp-market-head"><span class="ph-t">KOSPI</span>
         ${idx.level != null ? `<span class="jp-market-lvl">${idx.level.toLocaleString('en-US', { maximumFractionDigits: 2 })}</span>` : '<span class="dimtext">index unavailable</span>'}
@@ -7181,7 +7181,7 @@ function renderTaiwanMarket(all, d) {
   const m = d.market || {}; const idx = d.index || {};
   const cell = (k, v, t, cls = '') => `<div class="co-stat" title="${esc(t)}"><span class="co-k">${k}</span><span class="co-v ${cls}">${v}</span></div>`;
   const chg = (x) => (x == null ? '—' : `${x >= 0 ? '+' : ''}${x.toFixed(1)}%`);
-  const breadth = m.advancing != null ? `<div class="jp-breadth"><span class="pos">${m.advancing} up</span><i><i style="width:${Math.round((m.advancing / Math.max(1, m.advancing + m.declining)) * 100)}%"></i></i><span class="neg">${m.declining} down</span></div>` : '';
+  const breadth = m.advancing != null ? `<div class="jp-breadth"><span class="jp-breadth-l">TODAY</span><span class="pos">${m.advancing} up</span><i><i style="width:${Math.round((m.advancing / Math.max(1, m.advancing + m.declining)) * 100)}%"></i></i><span class="neg">${m.declining} down</span></div>` : '';
   el.innerHTML = twViewsBar()
     + `<div class="jp-market-head"><span class="ph-t">TAIEX</span>
         ${idx.level != null ? `<span class="jp-market-lvl">${idx.level.toLocaleString('en-US', { maximumFractionDigits: 2 })}</span>` : '<span class="dimtext">index unavailable</span>'}
@@ -7566,7 +7566,7 @@ function renderHongKongMarket(all, d) {
   const foreign = members.filter((c) => c.reportCurrency && c.reportCurrency !== 'HKD').length;
   const cell = (k, v, t, cls = '') => `<div class="co-stat" title="${esc(t)}"><span class="co-k">${k}</span><span class="co-v ${cls}">${v}</span></div>`;
   const chg = (x) => (x == null ? '—' : `${x >= 0 ? '+' : ''}${x.toFixed(1)}%`);
-  const breadth = `<div class="jp-breadth"><span class="pos">${advancing} up</span><i><i style="width:${Math.round((advancing / Math.max(1, advancing + declining)) * 100)}%"></i></i><span class="neg">${declining} down</span></div>`;
+  const breadth = `<div class="jp-breadth"><span class="jp-breadth-l">TODAY</span><span class="pos">${advancing} up</span><i><i style="width:${Math.round((advancing / Math.max(1, advancing + declining)) * 100)}%"></i></i><span class="neg">${declining} down</span></div>`;
   el.innerHTML = hkViewsBar()
     + `<div class="jp-market-head"><span class="ph-t">HANG SENG</span>
         ${idx.level != null ? `<span class="jp-market-lvl">${idx.level.toLocaleString('en-US', { maximumFractionDigits: 2 })}</span>` : '<span class="dimtext">index unavailable</span>'}
@@ -7927,7 +7927,7 @@ function renderAustraliaMarket(all, d) {
   const m = d.market || {}; const idx = d.index || {};
   const cell = (k, v, t, cls = '') => `<div class="co-stat" title="${esc(t)}"><span class="co-k">${k}</span><span class="co-v ${cls}">${v}</span></div>`;
   const chg = (x) => (x == null ? '—' : `${x >= 0 ? '+' : ''}${x.toFixed(1)}%`);
-  const breadth = m.advancing != null ? `<div class="jp-breadth"><span class="pos">${m.advancing} up</span><i><i style="width:${Math.round((m.advancing / Math.max(1, m.advancing + m.declining)) * 100)}%"></i></i><span class="neg">${m.declining} down</span></div>` : '';
+  const breadth = m.advancing != null ? `<div class="jp-breadth"><span class="jp-breadth-l">TODAY</span><span class="pos">${m.advancing} up</span><i><i style="width:${Math.round((m.advancing / Math.max(1, m.advancing + m.declining)) * 100)}%"></i></i><span class="neg">${m.declining} down</span></div>` : '';
   const foreign = m.foreignReporters != null ? `${m.foreignReporters} report outside AUD` : 'AUD reporters';
   el.innerHTML = auViewsBar()
     + `<div class="jp-market-head"><span class="ph-t">S&amp;P/ASX 200</span>
@@ -8300,7 +8300,7 @@ function renderIndiaMarket(all, d) {
   const indexBar = `<div class="jp-presets" id="in-index-tabs">${IN_INDEXES.map((x) => `<button type="button" data-inindex="${x.id}" class="${x.id === inIndex ? 'on' : ''}">${x.label}</button>`).join('')}</div>`;
   const cell = (k, v, t, cls = '') => `<div class="co-stat" title="${esc(t)}"><span class="co-k">${k}</span><span class="co-v ${cls}">${v}</span></div>`;
   const chg = (x) => (x == null ? '—' : `${x >= 0 ? '+' : ''}${x.toFixed(1)}%`);
-  const breadth = m.advancing != null ? `<div class="jp-breadth"><span class="pos">${m.advancing} up</span><i><i style="width:${Math.round((m.advancing / Math.max(1, m.advancing + m.declining)) * 100)}%"></i></i><span class="neg">${m.declining} down</span></div>` : '';
+  const breadth = m.advancing != null ? `<div class="jp-breadth"><span class="jp-breadth-l">TODAY</span><span class="pos">${m.advancing} up</span><i><i style="width:${Math.round((m.advancing / Math.max(1, m.advancing + m.declining)) * 100)}%"></i></i><span class="neg">${m.declining} down</span></div>` : '';
   const foreign = m.foreignReporters != null ? `${m.foreignReporters} report outside INR` : 'INR reporters';
   el.innerHTML = inViewsBar()
     + indexBar
@@ -8667,7 +8667,7 @@ function renderIndonesiaMarket(all, d) {
   const m = d.market || {}; const idx = d.index || {};
   const cell = (k, v, t, cls = '') => `<div class="co-stat" title="${esc(t)}"><span class="co-k">${k}</span><span class="co-v ${cls}">${v}</span></div>`;
   const chg = (x) => (x == null ? '—' : `${x >= 0 ? '+' : ''}${x.toFixed(1)}%`);
-  const breadth = m.advancing != null ? `<div class="jp-breadth"><span class="pos">${m.advancing} up</span><i><i style="width:${Math.round((m.advancing / Math.max(1, m.advancing + m.declining)) * 100)}%"></i></i><span class="neg">${m.declining} down</span></div>` : '';
+  const breadth = m.advancing != null ? `<div class="jp-breadth"><span class="jp-breadth-l">TODAY</span><span class="pos">${m.advancing} up</span><i><i style="width:${Math.round((m.advancing / Math.max(1, m.advancing + m.declining)) * 100)}%"></i></i><span class="neg">${m.declining} down</span></div>` : '';
   const foreign = m.foreignReporters != null ? `${m.foreignReporters} report outside IDR` : 'IDR reporters';
   el.innerHTML = idViewsBar()
     + `<div class="jp-market-head"><span class="ph-t">IDX COMPOSITE</span>
@@ -9149,7 +9149,7 @@ function renderBrazilMarket(all, d) {
   const m = d.market || {}; const idx = d.index || {};
   const cell = (k, v, t, cls = '') => `<div class="co-stat" title="${esc(t)}"><span class="co-k">${k}</span><span class="co-v ${cls}">${v}</span></div>`;
   const chg = (x) => (x == null ? '—' : `${x >= 0 ? '+' : ''}${x.toFixed(1)}%`);
-  const breadth = m.advancing != null ? `<div class="jp-breadth"><span class="pos">${m.advancing} up</span><i><i style="width:${Math.round((m.advancing / Math.max(1, m.advancing + m.declining)) * 100)}%"></i></i><span class="neg">${m.declining} down</span></div>` : '';
+  const breadth = m.advancing != null ? `<div class="jp-breadth"><span class="jp-breadth-l">TODAY</span><span class="pos">${m.advancing} up</span><i><i style="width:${Math.round((m.advancing / Math.max(1, m.advancing + m.declining)) * 100)}%"></i></i><span class="neg">${m.declining} down</span></div>` : '';
   const foreign = m.foreignReporters != null ? `${m.foreignReporters} report outside BRL` : 'BRL reporters';
   el.innerHTML = brViewsBar()
     + `<div class="jp-market-head"><span class="ph-t">IBOVESPA</span>
@@ -9889,7 +9889,7 @@ function renderSouthAfricaMarket(all, d) {
   const m = d.market || {}; const idx = d.index || {};
   const cell = (k, v, t, cls = '') => `<div class="co-stat" title="${esc(t)}"><span class="co-k">${k}</span><span class="co-v ${cls}">${v}</span></div>`;
   const chg = (x) => (x == null ? '—' : `${x >= 0 ? '+' : ''}${x.toFixed(1)}%`);
-  const breadth = m.advancing != null ? `<div class="jp-breadth"><span class="pos">${m.advancing} up</span><i><i style="width:${Math.round((m.advancing / Math.max(1, m.advancing + m.declining)) * 100)}%"></i></i><span class="neg">${m.declining} down</span></div>` : '';
+  const breadth = m.advancing != null ? `<div class="jp-breadth"><span class="jp-breadth-l">TODAY</span><span class="pos">${m.advancing} up</span><i><i style="width:${Math.round((m.advancing / Math.max(1, m.advancing + m.declining)) * 100)}%"></i></i><span class="neg">${m.declining} down</span></div>` : '';
   const foreign = m.foreignReporters != null ? `${m.foreignReporters} report outside ZAR` : 'ZAR reporters';
   el.innerHTML = zaViewsBar()
     + `<div class="jp-market-head"><span class="ph-t">JSE ALL SHARE</span>
@@ -11445,7 +11445,7 @@ async function renderUsMarket(el, all, token = renderSeq) {
   })).sort((a, b) => b.cap - a.cap);
   const cell = (k, val, title, cls = '') => `<div class="co-stat" title="${esc(title)}"><span class="co-k">${k}</span><span class="co-v ${cls}">${val}</span></div>`;
   const chg = (x) => (x == null ? '—' : `${x >= 0 ? '+' : ''}${x.toFixed(1)}%`);
-  const breadth = adv + dec ? `<div class="jp-breadth"><span class="pos">${adv} up</span><i><i style="width:${Math.round((adv / Math.max(1, adv + dec)) * 100)}%"></i></i><span class="neg">${dec} down</span></div>` : '';
+  const breadth = adv + dec ? `<div class="jp-breadth"><span class="jp-breadth-l">TODAY</span><span class="pos">${adv} up</span><i><i style="width:${Math.round((adv / Math.max(1, adv + dec)) * 100)}%"></i></i><span class="neg">${dec} down</span></div>` : '';
   // The index pill reads the same series the chart below draws, never a different benchmark.
   // It fills when the series lands, so a slow Yahoo call cannot hold the page.
   const uniName = cohort.label;

@@ -1462,6 +1462,7 @@ button.deal-sec-tile:hover { background: #10151b; }
 .jp-market-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 14px; padding: 14px 12px 10px; }
 .jp-market-lvl { font-size: 20px; font-weight: 600; font-variant-numeric: tabular-nums; }
 .jp-breadth { display: flex; align-items: center; gap: 10px; padding: 0 12px 12px; font-size: 10px; }
+.jp-breadth-l { font-size: 7.5px; letter-spacing: .8px; color: #5b6773; }
 .jp-breadth i { flex: 1; height: 4px; background: #7a2e2e; border-radius: 2px; overflow: hidden; }
 .jp-breadth i i { display: block; height: 100%; background: #2e7a4e; }
 /* Japan investor flows, exchange calendar and dividend ladder */
