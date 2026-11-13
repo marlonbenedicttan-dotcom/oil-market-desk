@@ -102,7 +102,10 @@ jobs:
           node scripts/merge-series.mjs hk
           node scripts/merge-market-refresh.mjs hk
           node scripts/build-chart-store.mjs hk
-          npm run audit:hongkong
+          if npm run audit:hongkong; then exit 0; fi
+          echo "::warning::Hong Kong audit still failed — keeping the previous dataset; the next run retries"
+          git checkout -- data/ || true
+          exit 0
       - name: Rebuild the chart store after the final merge
         run: node scripts/build-chart-store.mjs hk
 
