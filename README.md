@@ -149,6 +149,8 @@ The app is a long-running Node process — use a container host (Render, Railway
 
 **Render (easiest):** push to GitHub → **New → Blueprint** → pick the repo (it reads `render.yaml`) → add `EIA_API_KEY` (and any other secrets) in the dashboard.
 
+**Keep one service.** Applying the Blueprint over an existing service can create a duplicate such as `oil-market-desk-mew2`. Two services deploy the same repo, double the memory and alert noise, and can leave the public URL on an older commit. Keep the service behind the public URL, delete the duplicate, and confirm the kept service has GitHub auto-deploy enabled.
+
 **Docker (any host):**
 ```sh
 docker build -t watchtower .

@@ -6818,3 +6818,21 @@ server.listen(PORT, async () => {
   }, 1200);
 
 });
+
+// Render sends SIGTERM when it replaces an instance. Close the listener and exit 0 so a normal
+// deploy does not look like a crash; force the exit if a keep-alive socket refuses to drain.
+const shutdown = (signal) => {
+  console.log(`[shutdown] ${signal}`);
+  server.close(() => process.exit(0));
+  setTimeout(() => process.exit(0), 8000).unref();
+};
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on('SIGINT', () => shutdown('SIGINT'));
+// Background feeds are allowed to fail without taking the whole desk down. Log the stack so the
+// next Render alert has a cause attached to it.
+process.on('unhandledRejection', (reason) => {
+  console.error('[unhandledRejection]', reason && reason.stack ? reason.stack : reason);
+});
+process.on('exit', (code) => {
+  console.log(`[exit] code=${code} uptime=${Math.round(process.uptime())}s rssMB=${Math.round(process.memoryUsage().rss / 1048576)}`);
+});
