@@ -51,8 +51,15 @@ const api = makeDartClient();
 console.log('corp codes…');
 let book = readJson(join(CACHE, 'corp.json'));
 if (!book || Date.parse(book.fetched) < Date.now() - 7 * DAY) {
-  book = { fetched: new Date().toISOString(), rows: await api.corpCodes() };
-  writeJson(join(CACHE, 'corp.json'), book);
+  try {
+    book = { fetched: new Date().toISOString(), rows: await api.corpCodes() };
+    writeJson(join(CACHE, 'corp.json'), book);
+  } catch (e) {
+    // DART is allowed to be slow or down. A stale filer list is still a usable filer list; failing
+    // here used to take down the whole weekly rebuild even though every later step had its data.
+    if (!book || !Array.isArray(book.rows) || !book.rows.length) throw e;
+    console.warn(`corp list unavailable (${e.message}) — using the cached list`);
+  }
 }
 // A committed universe means CI does not have to rescan 4,000 filers — that scan is what tripped
 // DART's rate limiter.

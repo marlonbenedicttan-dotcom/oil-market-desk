@@ -58,6 +58,7 @@ jobs:
           node scripts/build-price-changes.mjs
           node scripts/build-us-charts.mjs
       - name: Korea (DART, optional)
+        continue-on-error: true
         env:
           DART_API_KEY: ${{ secrets.DART_API_KEY }}
         run: |

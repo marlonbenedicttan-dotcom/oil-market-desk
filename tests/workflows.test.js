@@ -118,6 +118,13 @@ test('checkout does not preload a repo script before the repo exists', () => {
 });
 
 
+test('a DART outage cannot fail the company rebuilds', () => {
+  for (const f of ['companies-daily.yml', 'companies-weekly.yml']) {
+    assert.match(wf(f), /- name: Korea \(DART, optional\)\n\s+continue-on-error: true/,
+      `${f} would fail the whole run on a DART timeout`);
+  }
+});
+
 test('data failures defer while code failures block', () => {
   // The guarantee is deliberate and must survive workflow edits: a source/data problem keeps the
   // previous dataset and exits green; only code tests (and real infrastructure failures) go red.

@@ -97,6 +97,7 @@ jobs:
           bash scripts/ci-audit.sh node scripts/audit-deep.mjs
           bash scripts/ci-audit.sh node scripts/audit-universe.mjs
       - name: Korea (DART, optional)
+        continue-on-error: true
         env:
           DART_API_KEY: ${{ secrets.DART_API_KEY }}
         run: |
