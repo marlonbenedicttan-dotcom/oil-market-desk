@@ -113,7 +113,7 @@ test('Render runs native Node and waits for the checks before deploying', () => 
 test('checkout does not preload a repo script before the repo exists', () => {
   for (const f of ['companies-daily.yml', 'companies-weekly.yml']) {
     const y = wf(f);
-    assert.match(y, /actions\/checkout@v5[\s\S]{0,300}?NODE_OPTIONS: ''/, `${f} would fail in checkout with ERR_MODULE_NOT_FOUND`);
+    assert.match(y, /actions\/checkout@[0-9a-f]{40}(?: # v5)?[\s\S]{0,300}?NODE_OPTIONS: ''/, `${f} would fail in checkout with ERR_MODULE_NOT_FOUND`);
   }
 });
 

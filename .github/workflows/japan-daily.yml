@@ -23,17 +23,17 @@ jobs:
       # A stalled J-Quants socket must fail a request, not hold the whole refresh open.
       NODE_OPTIONS: '--import=./scripts/fetch-timeout.mjs'
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         env:
           # The job-level preload cannot be resolved until the repo exists; checkout runs first.
           NODE_OPTIONS: ''
         with:
           fetch-depth: 1
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: '22'
       - name: Cache J-Quants responses
-        uses: actions/cache@v4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           # The J-Quants cache lives inside the shared data/cache archive that companies-daily fills;
           # restoring that archive keeps the first Japan-only run from re-fetching 1,500 companies cold.

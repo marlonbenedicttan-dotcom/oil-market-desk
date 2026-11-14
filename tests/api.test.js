@@ -43,6 +43,42 @@ test('serves the dashboard', async () => {
   assert.doesNotMatch(html, /href="\/api\/digest"/);
 });
 
+test('serves security headers and the disclosure files', async () => {
+  const r = await fetch(`http://localhost:${PORT}/`);
+  assert.match(r.headers.get('content-security-policy') || '', /frame-ancestors 'none'/);
+  assert.equal(r.headers.get('x-frame-options'), 'DENY');
+  assert.equal(r.headers.get('x-content-type-options'), 'nosniff');
+  assert.equal(r.headers.get('x-permitted-cross-domain-policies'), 'none');
+
+  const robots = await fetch(`http://localhost:${PORT}/robots.txt`);
+  assert.equal(robots.status, 200);
+  assert.match(await robots.text(), /GPTBot/);
+
+  const disclosure = await fetch(`http://localhost:${PORT}/.well-known/security.txt`);
+  assert.equal(disclosure.status, 200);
+  assert.match(await disclosure.text(), /^Contact: mailto:/m);
+
+  const policy = await fetch(`http://localhost:${PORT}/security.html`);
+  assert.equal(policy.status, 200);
+  assert.match(await policy.text(), /REPORT A VULNERABILITY/);
+});
+
+test('POST routes reject cross-origin and non-JSON bodies', async () => {
+  const cross = await fetch(`http://localhost:${PORT}/api/subscribe`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', origin: 'https://evil.example' },
+    body: JSON.stringify({ target: 'https://ntfy.sh/example' }),
+  });
+  assert.equal(cross.status, 403);
+
+  const form = await fetch(`http://localhost:${PORT}/api/subscribe`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/x-www-form-urlencoded', origin: `http://localhost:${PORT}` },
+    body: 'target=https://ntfy.sh/example',
+  });
+  assert.equal(form.status, 403);
+});
+
 test('/api/relvalue returns a curated spread with its own percentile, and nothing for an unknown segment', async () => {
   const d = await (await fetch(`http://localhost:${PORT}/api/relvalue?segment=crude`)).json();
   assert.equal(d.segment, 'crude');

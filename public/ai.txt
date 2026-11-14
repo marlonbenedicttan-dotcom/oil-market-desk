@@ -1,0 +1,10 @@
+# ai.txt — a request to AI crawlers and model trainers.
+# This file is advisory. It is not a technical access control.
+
+User-Agent: *
+Disallow: /
+
+# Do not use this site, its data or its code to train, fine-tune or evaluate
+# a machine-learning model without written permission.
+
+Contact: mailto:marlonbenedicttan@gmail.com

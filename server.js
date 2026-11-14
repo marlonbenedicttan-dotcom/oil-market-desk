@@ -5679,7 +5679,7 @@ const getCalendarFull = () => cachedSWR('calendar-full', 30 * 60e3, async () => 
 // ---------------------------------------------------------------------------
 // HTTP server
 // ---------------------------------------------------------------------------
-const MIME = { '.html': 'text/html', '.css': 'text/css', '.js': 'text/javascript', '.json': 'application/json', '.svg': 'image/svg+xml', '.ico': 'image/x-icon', '.png': 'image/png', '.webmanifest': 'application/manifest+json' };
+const MIME = { '.html': 'text/html', '.css': 'text/css', '.js': 'text/javascript', '.json': 'application/json', '.svg': 'image/svg+xml', '.ico': 'image/x-icon', '.png': 'image/png', '.txt': 'text/plain; charset=utf-8', '.xml': 'application/xml', '.webmanifest': 'application/manifest+json' };
 // Build stamp — Render sets RENDER_GIT_COMMIT on every deploy, so "am I on the new build?" is answerable.
 const BUILD = (process.env.RENDER_GIT_COMMIT || process.env.GIT_SHA || '').slice(0, 7) || 'dev';
 // On-the-fly compression with the built-in zlib (no deps). Static files are compressed once per
@@ -5786,6 +5786,8 @@ const SECURITY_HEADERS = {
   'Cross-Origin-Opener-Policy': 'same-origin',
   'Cross-Origin-Resource-Policy': 'same-origin',
   'Permissions-Policy': 'geolocation=(), microphone=(), camera=(), payment=(), usb=()',
+  'X-Permitted-Cross-Domain-Policies': 'none',
+  'X-Download-Options': 'noopen',
   'Content-Security-Policy': CSP,
 };
 const sendHtml = (res, code, html) => { res.writeHead(code, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-cache' }); res.end(html); };
@@ -5804,6 +5806,13 @@ let rateChecks = 0;
 // prepend a fake address to X-Forwarded-For, but the proxy appends the real one last. Loopback is
 // exempt so local development and the test suite never rate-limit themselves.
 const clientIp = (req) => {
+  // When Cloudflare is in front, a Transform Rule can add this shared header. Only then is
+  // CF-Connecting-IP trusted; without the secret a direct Render request could spoof it.
+  const proxySecret = process.env.TRUSTED_PROXY_SECRET;
+  if (proxySecret && req.headers['x-watchtower-proxy'] === proxySecret) {
+    const cf = String(req.headers['cf-connecting-ip'] || '').trim();
+    if (cf) return cf;
+  }
   const fwd = String(req.headers['x-forwarded-for'] || '').split(',').map((s) => s.trim()).filter(Boolean);
   return fwd.length ? fwd[fwd.length - 1] : String(req.socket.remoteAddress || 'unknown');
 };
@@ -5836,6 +5845,28 @@ const readJsonBody = (req, limit = 20000) => new Promise((resolve) => {
   req.on('end', () => { try { resolve(JSON.parse(raw || 'null')); } catch { resolve(null); } });
   req.on('error', () => resolve(null));
 });
+// Constant-time comparison for the optional login. A plain === leaks length and prefix timing.
+const safeEqual = (a, b) => {
+  const ab = Buffer.from(String(a));
+  const bb = Buffer.from(String(b));
+  return ab.length === bb.length && crypto.timingSafeEqual(ab, bb);
+};
+const sameOrigin = (req) => {
+  const origin = req.headers.origin;
+  if (!origin) return true;                       // curl / server-to-server has no Origin
+  try {
+    const originHost = new URL(origin).host;
+    const host = String(req.headers['x-forwarded-host'] || req.headers.host || '').split(',')[0].trim();
+    return Boolean(host) && (originHost === host || originHost === new URL(baseUrl(req)).host);
+  } catch { return false; }
+};
+const jsonPost = (req) => {
+  const ct = String(req.headers['content-type'] || '').toLowerCase();
+  return ct.startsWith('application/json') || (ct.startsWith('application/') && ct.includes('+json'));
+};
+// A cross-site HTML form can POST urlencoded/plain text, but not application/json without a CORS
+// preflight. Requiring both a JSON content type and a same-host Origin closes the CSRF gap.
+const safePost = (req) => jsonPost(req) && sameOrigin(req);
 const server = http.createServer(async (req, res) => {
   for (const k in SECURITY_HEADERS) res.setHeader(k, SECURITY_HEADERS[k]);
   // HSTS only where TLS actually terminated: sending it from plain http would be a lie, and it is
@@ -5866,6 +5897,7 @@ const server = http.createServer(async (req, res) => {
   // The API is the expensive surface, and the one a scraper or a runaway tab hammers. Local traffic
   // is exempt: the test suite makes far more calls than a person ever will.
   if (url.pathname.startsWith('/api/')) {
+    res.setHeader('X-Robots-Tag', 'noindex, nofollow');
     const ip = clientIp(req);
     const wait = isLoopback(ip) ? 0 : takeToken(ip);
     if (wait) {
@@ -5877,10 +5909,13 @@ const server = http.createServer(async (req, res) => {
   // The subscription surface stays PUBLIC by design: visitors have no login, and the confirm /
   // unsubscribe links are clicked from a mail client. Those routes protect themselves with a
   // per-destination double opt-in, a host allowlist and per-IP rate limits instead.
-  const PUBLIC_PATHS = new Set(['/api/subscribe', '/api/confirm', '/api/unsubscribe']);
+  const PUBLIC_PATHS = new Set([
+    '/api/subscribe', '/api/confirm', '/api/unsubscribe',
+    '/robots.txt', '/ai.txt', '/security.html', '/terms.html', '/.well-known/security.txt', '/favicon-32.png',
+  ]);
   if (process.env.AUTH_USER && process.env.AUTH_PASS && !PUBLIC_PATHS.has(url.pathname)) {
     const hdr = req.headers.authorization || '';
-    const ok = hdr.startsWith('Basic ') && Buffer.from(hdr.slice(6), 'base64').toString('utf8') === `${process.env.AUTH_USER}:${process.env.AUTH_PASS}`;
+    const ok = hdr.startsWith('Basic ') && safeEqual(Buffer.from(hdr.slice(6), 'base64').toString('utf8'), `${process.env.AUTH_USER}:${process.env.AUTH_PASS}`);
     if (!ok) { res.writeHead(401, { 'www-authenticate': 'Basic realm="oil-market-desk"' }); return res.end('Authentication required'); }
   }
   try {
@@ -5891,6 +5926,9 @@ const server = http.createServer(async (req, res) => {
     if (req.method !== 'GET' && req.method !== 'HEAD' && !notifyTest && !rulesPost && !subPost) {
       res.writeHead(405, { 'content-type': 'text/plain', allow: 'GET, HEAD' });
       return res.end('method not allowed');
+    }
+    if ((notifyTest || rulesPost || subPost) && !safePost(req)) {
+      return sendJSON(res, 403, { error: 'POST must be same-origin JSON' });
     }
     if (url.pathname === '/api/quotes') {
       // A screen asks for what it is showing: at most 60 refs, server-side chunked into Yahoo's
@@ -6563,7 +6601,7 @@ const server = http.createServer(async (req, res) => {
       if (kind === 'email' && emailReach() !== 'anyone' && target.toLowerCase() !== String(process.env.DIGEST_TO || '').toLowerCase()) {
         return sendJSON(res, 503, { error: 'This site can’t email new addresses yet (it has no verified sending domain) — please subscribe with a chat channel instead: an ntfy.sh topic takes a minute and needs no account.' });
       }
-      const ip = String(req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket.remoteAddress || '?';
+      const ip = clientIp(req);
       const now = Date.now();
       const hits = (subHits.get(ip) || []).filter((t) => now - t < 3600e3);
       if (hits.length >= SUB_PER_IP_PER_HOUR) return sendJSON(res, 429, { error: 'Too many sign-ups from this network — please try again later.' });

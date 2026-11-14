@@ -72,3 +72,7 @@ services:
         sync: false
       - key: AUTH_PASS
         sync: false
+      # Optional Cloudflare trust. Set the same random value in a Cloudflare Transform Rule that
+      # adds X-Watchtower-Proxy. Only then does the app trust CF-Connecting-IP for rate limiting.
+      - key: TRUSTED_PROXY_SECRET
+        sync: false

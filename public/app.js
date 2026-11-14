@@ -144,7 +144,7 @@ function renderMethodology(data) {
   }
   if (caveats) html += `<div class="m-sec"><h4>THINGS TO FLAG</h4><ul class="m-rules">${caveats}</ul></div>`;
   el.innerHTML = `<details class="fold" id="methodology"><summary>DATA &amp; METHODOLOGY</summary><div class="note-body">${html}</div></details>`
-    + '<div class="foot-line dimtext">Marlon\'s Watchtower · built and maintained by <b>Marlon Benedict Tan</b> · data © the respective sources · not investment advice.</div>';
+    + '<div class="foot-line dimtext">Marlon\'s Watchtower · built and maintained by <b>Marlon Benedict Tan</b> · data © the respective sources · not investment advice · <a href="/security.html">SECURITY</a> · <a href="/terms.html">TERMS</a></div>';
 }
 // The host sleeps when idle, so a first request can hang for 20-30s. The beacon just says 'waking the
 // server…' and the failsafe waits longer — no plan/pricing chatter on the loading screen.

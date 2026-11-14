@@ -135,6 +135,12 @@ The server runs an alert engine (every 5 min) and a daily digest (`DIGEST_HOUR`,
 
 Server-side alert rules (`/api/rules`) are site-wide, so they require the optional login: set **both** `AUTH_USER` and `AUTH_PASS`.
 
+## Security
+
+The public site ships a strict CSP, HSTS, frame denial, COOP/CORP, per-IP API rate limiting, same-origin JSON checks on POST routes, constant-time basic-auth comparison, and an optional whole-site login. See `SECURITY.md` for reporting and `docs/security-hardening.md` for the account, GitHub, Render and Cloudflare checklist.
+
+The repository is public. If code copying is the concern, make it private. The deployed frontend JavaScript is still downloadable by any visitor; the server source is not.
+
 ## Deploy it
 
 The app is a long-running Node process — use a container host (Render, Railway, Fly.io), not a serverless platform.
@@ -178,4 +184,4 @@ workers/keepalive/ Cloudflare Worker cron (optional)
 
 ## License
 
-MIT
+Proprietary. All rights reserved. See `LICENSE`.
