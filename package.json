@@ -6,6 +6,7 @@
   "scripts": {
     "start": "node --env-file-if-exists=.env server.js",
     "check:boot": "node scripts/boot-check.mjs",
+    "check:secrets": "node scripts/check-secrets.mjs",
     "prepare": "git config core.hooksPath .githooks || true",
     "test": "node --test",
     "test:data": "node scripts/run-tests.mjs data",

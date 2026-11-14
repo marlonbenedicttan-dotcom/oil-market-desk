@@ -118,6 +118,10 @@ test('checkout does not preload a repo script before the repo exists', () => {
 });
 
 
+test('the public repo is scanned for pasted keys before tests', () => {
+  assert.match(wf('test.yml'), /npm run check:secrets/, 'the test workflow no longer scans tracked files for secrets');
+});
+
 test('a DART outage cannot fail the company rebuilds', () => {
   for (const f of ['companies-daily.yml', 'companies-weekly.yml']) {
     assert.match(wf(f), /- name: Korea \(DART, optional\)\n\s+continue-on-error: true/,

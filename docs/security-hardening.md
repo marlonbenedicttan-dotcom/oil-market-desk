@@ -13,6 +13,18 @@ This is the practical checklist for Marlon's Watchtower. The code controls are i
 
 A compromised GitHub or Render account can change the deployed code without touching a single line of this repository. This is the highest-value control.
 
+## 1a. Secrets
+
+- [ ] Keep local keys in `.env`. It is ignored, and `.env.*` is ignored too; `.env.example` contains placeholders only.
+- [ ] Keep CI keys in GitHub Actions secrets. The workflows reference `secrets.JQUANTS_API_KEY` and `secrets.DART_API_KEY`.
+- [ ] Keep runtime keys in Render environment variables, never in the repository.
+- [ ] Run `npm run check:secrets` before pushing. It scans tracked files and never prints the value.
+- [ ] The pre-commit hook blocks `.env`, private-key files and common key patterns. Enable it with `npm run prepare`.
+- [ ] Turn on GitHub secret scanning and push protection for the public repository.
+- [ ] If a key has ever appeared in a chat, issue, screenshot or log, rotate it at the provider.
+
+The paid J-Quants key belongs in two places only: your local `.env` and the GitHub Actions secret `JQUANTS_API_KEY`. The public repository contains the name, never the value.
+
 ## 2. GitHub repository
 
 - [ ] Make the repository private if code copying is the concern. The deployed frontend JavaScript is still public; the server source is not. Private-repo Actions minutes are metered, and the weekly rebuild is about 4.5 hours, so check the plan before switching.

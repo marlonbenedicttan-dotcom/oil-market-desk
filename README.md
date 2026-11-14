@@ -139,6 +139,8 @@ Server-side alert rules (`/api/rules`) are site-wide, so they require the option
 
 The public site ships a strict CSP, HSTS, frame denial, COOP/CORP, per-IP API rate limiting, same-origin JSON checks on POST routes, constant-time basic-auth comparison, and an optional whole-site login. See `SECURITY.md` for reporting and `docs/security-hardening.md` for the account, GitHub, Render and Cloudflare checklist.
 
+API keys stay out of the repository. Locally they live in `.env`; in CI they live in GitHub Actions secrets; in production they live in Render environment variables. `npm run check:secrets` scans every tracked file and the pre-commit hook blocks `.env` and common key patterns.
+
 The repository is public. If code copying is the concern, make it private. The deployed frontend JavaScript is still downloadable by any visitor; the server source is not.
 
 ## Deploy it

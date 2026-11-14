@@ -1,0 +1,23 @@
+#!/bin/sh
+# Block the two common ways a paid API key reaches a public repo:
+#   1. committing .env or a private key file
+#   2. pasting a key into a tracked source, config or doc file
+# Enable with: npm run prepare   (or: git config core.hooksPath .githooks)
+# A hook is a local guard, not a substitute for GitHub secret scanning.
+
+blocked=$(git diff --cached --name-only --diff-filter=ACM | grep -E '(^|/)\.env($|\.)|\.(pem|key|p12|pfx)$|(^|/)id_(rsa|ed25519)$' || true)
+if [ -n "$blocked" ]; then
+  echo "Refusing to commit secret material:"
+  echo "$blocked"
+  echo "Keep keys in .env locally and in GitHub/Render secrets."
+  exit 1
+fi
+
+added=$(git diff --cached -U0 --diff-filter=ACM -- . ':(exclude)data/**' ':(exclude)public/vendor/**' | grep -E '^\+' | grep -vE '^\+\+\+' || true)
+if printf '%s\n' "$added" | grep -Eq 're_[A-Za-z0-9]{20,}|ghp_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|sk-[A-Za-z0-9]{20,}|AKIA[0-9A-Z]{16}|AIza[0-9A-Za-z_-]{35}|BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY|(JQUANTS_API_KEY|DART_API_KEY|EIA_API_KEY|RESEND_API_KEY|SMTP_PASS)[[:space:]]*=[[:space:]]*[^.[:space:]]{8,}'; then
+  echo "Refusing to commit a possible API key or token."
+  echo "Use .env locally and GitHub/Render secrets. Placeholders such as KEY=... are fine."
+  exit 1
+fi
+
+exit 0
