@@ -1,13 +1,13 @@
 {
- "generated": "2026-11-14T01:43:44.491Z",
+ "generated": "2026-11-15T01:20:29.475Z",
  "summary": {
-  "usable": 1469,
+  "usable": 1467,
   "match": 117,
-  "close": 738,
+  "close": 736,
   "diverge": 562,
   "diverge-immaterial": 32,
   "definition": 20,
-  "period-mismatch": 19,
+  "period-mismatch": 21,
   "no-nasdaq-data": 18
  },
  "companies": [
@@ -10064,12 +10064,12 @@
    "ticker": "ADNT",
    "sector": "Consumer",
    "period": "9/30/2025",
-   "sameYear": true,
+   "sameYear": false,
    "our": {
     "revenue": 14535000000,
-    "netIncome": -281000000,
-    "assets": 8959000000,
-    "equity": 1729000000,
+    "netIncome": -17000000,
+    "assets": 8818000000,
+    "equity": 1634000000,
     "marketCap": 1261305808,
     "price": 16.355,
     "shares": null
@@ -10082,18 +10082,18 @@
    },
    "diff": {
     "revenue": 0,
-    "netIncome": 0,
-    "assets": 0.0005580980020091528,
-    "equity": 0.020951302378255945
+    "netIncome": 0.9395017793594306,
+    "assets": 0.015188742461469734,
+    "equity": 0.07474518686296716
    },
    "abs": {
     "revenue": 14535000000,
-    "netIncome": 281000000,
-    "assets": 5000000,
-    "equity": 37000000
+    "netIncome": 17000000,
+    "assets": 136000000,
+    "equity": 132000000
    },
-   "worst": 0.020951302378255945,
-   "status": "close"
+   "worst": null,
+   "status": "period-mismatch"
   },
   {
    "ticker": "BX",
@@ -32272,12 +32272,12 @@
    "ticker": "EPC",
    "sector": "Consumer",
    "period": "9/30/2025",
-   "sameYear": true,
+   "sameYear": false,
    "our": {
     "revenue": 2223500000,
-    "netIncome": 25400000,
-    "assets": 3535400000,
-    "equity": 1459900000,
+    "netIncome": -51700000,
+    "assets": 3548500000,
+    "equity": 1472000000,
     "marketCap": 1361005660,
     "price": 29.53,
     "shares": 46716605
@@ -32290,18 +32290,18 @@
    },
    "diff": {
     "revenue": 0,
-    "netIncome": 0,
-    "assets": 0.05880786944599739,
-    "equity": 0.060009014229605306
+    "netIncome": 1.4912959381044488,
+    "assets": 0.05532039506961638,
+    "equity": 0.05221814435644839
    },
    "abs": {
     "revenue": 2223500000,
-    "netIncome": 25400000,
-    "assets": 220900000,
-    "equity": 93200000
+    "netIncome": 51700000,
+    "assets": 207800000,
+    "equity": 81100000
    },
-   "worst": 0.060009014229605306,
-   "status": "close"
+   "worst": null,
+   "status": "period-mismatch"
   },
   {
    "ticker": "CRK",
@@ -46034,8 +46034,8 @@
    "our": {
     "revenue": 503524000,
     "netIncome": 33084000,
-    "assets": 498609000,
-    "equity": 411271000,
+    "assets": 532306000,
+    "equity": 431696000,
     "marketCap": 1045719258,
     "price": 146.41,
     "shares": 7133564
@@ -46049,16 +46049,16 @@
    "diff": {
     "revenue": 0,
     "netIncome": 0,
-    "assets": 0.004233827080117189,
-    "equity": 0.03923447070180003
+    "assets": 0.059321142350452556,
+    "equity": 0.08469154219636041
    },
    "abs": {
     "revenue": 503524000,
     "netIncome": 33084000,
-    "assets": 2120000,
-    "equity": 16136000
+    "assets": 31577000,
+    "equity": 36561000
    },
-   "worst": 0.03923447070180003,
+   "worst": 0.08469154219636041,
    "status": "close"
   },
   {
