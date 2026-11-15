@@ -8,8 +8,8 @@
   "display": "standalone",
   "display_override": ["standalone", "minimal-ui"],
   "orientation": "any",
-  "background_color": "#f2f0e8",
-  "theme_color": "#f2f0e8",
+  "background_color": "#111713",
+  "theme_color": "#111713",
   "icons": [
     { "src": "/icon.svg?v=4", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
     { "src": "/icon-512.png?v=4", "sizes": "512x512", "type": "image/png", "purpose": "any" },

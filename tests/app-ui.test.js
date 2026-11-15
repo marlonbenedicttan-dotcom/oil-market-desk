@@ -799,17 +799,17 @@ test('the local quick index ranks exact names, brands and codes without a reques
 
 test('the theme toggle switches the document and chart palette without a reload', () => {
   const { ui, document } = loadApp();
-  assert.equal(ui.getTheme(), 'light');
-  const lightLine = ui.CT.c1;
-  ui.applyTheme('dark');
   assert.equal(ui.getTheme(), 'dark');
-  assert.equal(document.documentElement.dataset.theme, 'dark');
-  assert.equal(document.documentElement.style.colorScheme, 'dark');
-  assert.notEqual(ui.CT.c1, lightLine);
-  assert.equal(ui.CT.tooltipBg, '#203028');
+  const darkLine = ui.CT.c1;
   ui.applyTheme('light');
+  assert.equal(ui.getTheme(), 'light');
   assert.equal(document.documentElement.dataset.theme, 'light');
-  assert.equal(ui.CT.c1, lightLine);
+  assert.equal(document.documentElement.style.colorScheme, 'light');
+  assert.notEqual(ui.CT.c1, darkLine);
+  assert.equal(ui.CT.tooltipBg, '#173d32');
+  ui.applyTheme('dark');
+  assert.equal(document.documentElement.dataset.theme, 'dark');
+  assert.equal(ui.CT.c1, darkLine);
 });
 
 test('net profit is a result, not a profitability ratio', () => {

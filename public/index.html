@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark" style="color-scheme:dark">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
@@ -16,16 +16,18 @@
   <meta name="twitter:title" content="Marlon's Watchtower" />
   <meta name="twitter:description" content="Energy, metals, agriculture & macro — what it means." />
   <link rel="manifest" href="/manifest.json?v=4" />
-  <meta name="theme-color" content="#f2f0e8" />
+  <meta name="theme-color" content="#111713" />
   <meta name="color-scheme" content="light dark" />
   <script>
     // Theme is resolved before first paint so the page never flashes the wrong palette.
-    // Light is the default; the toggle in the masthead persists the choice.
+    // Dark is the default; the toggle in the masthead persists the choice.
     (function () {
-      var theme = 'light';
-      try { if (localStorage.getItem('oilbasis.theme') === 'dark') theme = 'dark'; } catch (e) {}
+      var theme = 'dark';
+      try { if (localStorage.getItem('oilbasis.theme') === 'light') theme = 'light'; } catch (e) {}
       document.documentElement.dataset.theme = theme;
       document.documentElement.style.colorScheme = theme;
+      var meta = document.querySelector('meta[name="theme-color"]');
+      if (meta) meta.setAttribute('content', theme === 'dark' ? '#111713' : '#f2f0e8');
     })();
   </script>
   <!-- Home screen / standalone app (iOS reads these before the manifest) -->

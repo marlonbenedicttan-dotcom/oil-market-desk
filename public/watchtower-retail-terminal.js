@@ -1,7 +1,13 @@
 // Standalone concept interactions. No dependencies or network requests.
 const themeButton = document.getElementById('theme-toggle');
+try {
+  // A saved explicit choice wins; dark is the default for a new reader.
+  if (localStorage.getItem('oilbasis.theme') === 'light') document.documentElement.dataset.theme = 'light';
+  else document.documentElement.dataset.theme = 'dark';
+  document.documentElement.style.colorScheme = document.documentElement.dataset.theme;
+} catch {}
 function applyMockTheme(theme, persist = true) {
-  const next = theme === 'dark' ? 'dark' : 'light';
+  const next = theme === 'light' ? 'light' : 'dark';
   const dark = next === 'dark';
   document.documentElement.dataset.theme = next;
   document.documentElement.style.colorScheme = next;

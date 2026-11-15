@@ -1035,7 +1035,7 @@ const CHART_THEMES = {
     tooltipBg: '#203028', tooltipBorder: '#4b6154', tooltipTitle: '#f1efe5', tooltipBody: '#c6d0c5',
   },
 };
-let currentTheme = document.documentElement?.dataset?.theme === 'dark' ? 'dark' : 'light';
+let currentTheme = document.documentElement?.dataset?.theme === 'light' ? 'light' : 'dark';
 const CT = { ...CHART_THEMES[currentTheme] };
 const charts = {};   // canvas id -> Chart instance (re-render updates in place; no leaks)
 function applyTheme(theme, { persist = true } = {}) {
@@ -5097,7 +5097,7 @@ function coFilterBar({ presets = [], preset = null, presetAttr, selects = [], ex
     + selects.map((x) => sel(x.key, x.label, x.opts, x.cur, x.attr)).join('')
     + extra
     + (active ? `<button class="ma-reset" ${clearAttr}="${esc(clearValue)}">CLEAR ${active}</button>` : '')
-    + (asOf ? `<span class="co-asof dimtext">${esc(asOf)}</span>` : '');
+    + (asOf ? `<span class="co-fresh"><span class="co-asof dimtext">${esc(asOf)}</span></span>` : '');
 }
 let coPe = 'all', coMinMargin = 0, coGrowth = null, coPriced = false, coVerified = false, coView = 'list';
 let usListPage = 1, usListPer = 50;

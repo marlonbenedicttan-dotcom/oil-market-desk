@@ -4154,3 +4154,34 @@ body{padding-bottom:27px}
   .co-band-n{font-size:10px;line-height:1.5}
 }
 
+/* Global company rows: the monogram is a two-line anchor, not a frame over
+   name + sector text. Give both lines their own type and leading. */
+.gb-trow{align-items:start;gap:10px;grid-template-columns:28px minmax(0,1fr) 58px 46px 52px;min-height:56px;padding:10px 12px}
+.gb-trow .tk{width:28px;height:30px;margin-top:1px;font-size:8px;line-height:1}
+.gb-trow .n{font-size:12px;line-height:1.3;margin:0 0 4px;overflow-wrap:anywhere}
+.gb-trow .s{display:block;font-size:9px;line-height:1.35;color:var(--faint)}
+
+/* Company filter bars: search and presets behave as a coordinated toolbar.
+   CoFilterBar emits width:100% for narrow screens; desktop must not keep it. */
+@media (min-width:641px){
+  .co-tools{align-items:center}
+  #co-chips{flex:1 1 auto;align-items:center;gap:8px 10px;min-width:0}
+  #co-chips > .jp-presets{width:auto !important;flex:0 0 auto;padding:0 !important}
+  #co-chips > .co-sel{flex:0 0 auto;white-space:nowrap}
+  #co-chips > .co-asof{margin-left:auto}
+  #co-chips > .co-fresh{display:flex;align-items:center;gap:8px;margin-left:auto;white-space:nowrap;flex:0 0 auto}
+  #co-chips > .co-fresh > .co-asof{margin-left:0}
+  .co-sel select:focus{font-size:16px !important}
+  .co-sel select{font-size:12px}
+}
+@media (max-width:900px) and (min-width:641px){
+  #co-chips{align-items:flex-start;gap:9px 10px}
+  #co-chips > .jp-presets{flex-basis:100%}
+}
+@media (max-width:760px){
+  .gb-trow{grid-template-columns:24px minmax(0,1fr) 52px 44px;column-gap:12px}
+  .gb-trow .tk{width:24px;height:28px}
+  .gb-trow .n{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;line-height:1.3}
+  .gb-trow .s{font-size:9px}
+}
+
