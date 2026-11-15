@@ -51,7 +51,7 @@ for (const id of ids) {
   const now = readJson(DATA(spec.file));
   const before = gitShow(`data/${spec.file}`);
   if (!now || !before) { console.log(`${spec.label}: no current/previous market file — skip`); continue; }
-  const nowRows = Array.isArray(now.companies) ? now.companies : [];
+  let nowRows = Array.isArray(now.companies) ? now.companies : [];
   const wasRows = Array.isArray(before.companies) ? before.companies : [];
   const have = new Set(nowRows.map((c) => c.code));
   const missing = wasRows.filter((c) => c.code && !have.has(c.code));
@@ -67,6 +67,18 @@ for (const id of ids) {
 
   // Records: keep the last good company record. It is internally consistent (price, date, cap, ratios).
   for (const c of missing) nowRows.push({ ...c, carried: true, carriedAt: today });
+  // A carried record still carries yesterday's USD cap and ratios. Re-run the shared engine with the
+  // current FX snapshot so the deep audit (which recomputes every field) sees the same numbers.
+  const { deriveListing } = await import('./derive-listing.mjs');
+  const base = now.currency || nowRows.find((c) => c.currency)?.currency || 'ZAR';
+  const inputs = nowRows.map((c) => ({
+    ...c,
+    ttm: c.reports?.ttm,
+    latest: c.reports?.latest,
+    annual: c.reports?.annual,
+    quarters: c.reports?.quarters ?? c.quarters,
+  }));
+  nowRows = deriveListing({ companies: inputs, fx: now.fx, baseCurrency: base });
   now.companies = nowRows;
   if (now.market) {
     if (typeof now.market.companies === 'number') now.market.companies = nowRows.length;
