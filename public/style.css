@@ -4078,3 +4078,79 @@ body{padding-bottom:27px}
   .topbar .tab svg{display:none}
 }
 
+/* ============================================================================
+   MOBILE CONTENT HARMONY — phone composition, not desktop composition
+   ========================================================================== */
+@media (max-width:1050px){
+  /* DOM order on the phone must follow the editorial order. */
+  .home-brief-lead{order:1}
+  .home-brief-more{order:2}
+  .home-calendar{order:3}
+}
+@media (max-width:640px){
+  .home-brief-grid{row-gap:22px}
+  #p-brief-more{scroll-margin-top:calc(var(--topbar-h,44px) + 36px)}
+  .gtitle{margin:14px 0 9px}
+  .imp{padding:14px 0}
+  .imp-top{gap:6px 10px;font-size:10px;letter-spacing:.06em}
+  .imp-what{font-size:18px;line-height:1.23;margin-top:9px;letter-spacing:-.015em}
+  .imp-why{font-size:13px;line-height:1.6;margin-top:10px}
+  .imp-mkt{font-size:11px;line-height:1.65;margin-top:10px;gap:6px 9px}
+  .brief-mini{padding:18px 0}
+  .brief-mini+.brief-mini{border-left:0;border-top:1px solid var(--line);padding-left:0}
+  .brief-mini:first-child{padding-right:0}
+  .brief-mini .tag{font-size:9px;padding:3px 7px}
+  .brief-mini h4{font-size:18px;line-height:1.25;margin:10px 0 7px;letter-spacing:-.015em}
+  .brief-mini p{font-size:13px;line-height:1.6}
+  .brief-mini .age{font-size:10.5px;line-height:1.55}
+  .brief-read{padding:16px 0}
+  .brief-read p{font-size:12px;line-height:1.65}
+  .brief-read .k,.brief-tape .k,.brief-foot .k{font-size:9px}
+  .brief-tape{padding:14px 0}
+  .brief-tape-row{font-size:12px;line-height:1.5;padding:6px 0}
+  .brief-foot{font-size:11.5px;line-height:1.6}
+
+  /* Compact selects stay compact. On focus iOS gets 16px before its zoom test,
+     while text entry never permanently inflates the screener row. */
+  .gb-filters select,.gb-filters input,
+  .jp-filters select,.sc-f input,.sc-pager select,.crf-head select,
+  .co-tools .ma-search{
+    font-size:13px !important;letter-spacing:0;height:38px;min-height:38px;padding:7px 10px;
+  }
+  .gb-filters select:focus,.gb-filters input:focus,
+  .jp-filters select:focus,.sc-f input:focus,.sc-pager select:focus,
+  .crf-head select:focus,.co-tools .ma-search:focus{font-size:16px !important}
+  .gb-filters{padding:10px 0;gap:6px}
+  .co-tools{padding:10px 0}
+
+  /* Company identity: quiet breadcrumbs, generous name/sub-line rhythm, price
+     figures on aligned baselines instead of a cramped inline sentence. */
+  .ma-crumb{padding:10px 0;gap:12px}
+  .ma-back{
+    min-height:36px;padding:0 11px;background:transparent;border-color:var(--line2);
+    color:var(--accent);font-size:10px;letter-spacing:.07em
+  }
+  .ma-back-i{font-size:16px}
+  .ma-crumb > span{font-size:10.5px;letter-spacing:.025em}
+  #co-body > .co-head{padding:16px 0 14px;gap:10px}
+  #co-body > .co-head .co-name{
+    font-family:var(--serif);font-weight:500;font-size:29px;line-height:1.08;
+    letter-spacing:-.035em;white-space:normal
+  }
+  #co-body > .co-head .co-sub{margin-top:5px;font-size:10px;line-height:1.6;letter-spacing:.055em}
+  .co-desc{margin-top:12px;font-size:13px;line-height:1.65}
+  .jp-brands{gap:6px;margin-top:12px}
+  .jp-brands span{font-size:10px;line-height:1.2;padding:4px 8px;border-color:var(--line)}
+  .co-price{padding:14px 0;gap:9px 16px}
+  .co-price-v{font-size:24px;letter-spacing:-.025em}
+  .co-price-c{font-size:11.5px;line-height:1.45}
+  .co-price .dimtext{font-size:10.5px;line-height:1.5}
+  .co-verif{
+    display:block;margin:0 0 18px;padding:9px 10px;border-color:var(--line);
+    border-radius:0;font-size:10px;letter-spacing:.03em;line-height:1.5
+  }
+  .co-band{padding:12px 8px;gap:10px}
+  .co-band-k{font-size:9px}
+  .co-band-n{font-size:10px;line-height:1.5}
+}
+
