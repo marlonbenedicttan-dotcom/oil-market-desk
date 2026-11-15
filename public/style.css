@@ -3695,6 +3695,15 @@ input[type="search"],input[type="text"]{border-radius:var(--r,4px)}
   .topbar .tab.active::after{display:none}
 }
 @media (max-width:640px){
+  .topbar{height:auto;min-height:52px;padding:7px 10px 0;flex-wrap:wrap;gap:0 8px}
+  .brand{order:1;flex:1 1 auto;min-width:0}
+  .brand h1{font-size:11px;letter-spacing:.06em;max-width:210px}
+  .meta{order:2;gap:6px}
+  .topbar .tabs{order:3;flex:1 0 100%;margin:7px -10px 0;padding:0 10px;border:0;border-top:1px solid var(--line);border-radius:0;background:transparent;overflow-x:auto;scrollbar-width:none}
+  .topbar .tabs::-webkit-scrollbar{display:none}
+  .topbar .tab{border:0;border-bottom:2px solid transparent;border-radius:0;padding:10px 12px;min-height:40px;font-size:10px;letter-spacing:.04em;background:transparent}
+  .topbar .tab.active{color:var(--text);background:transparent;box-shadow:none;border-bottom-color:var(--accent)}
+  .topbar .tab.active::after{display:none}
   .wt-mark{width:17px;height:17px}
   .wt-pagehead h1{font-size:20px}
   .wt-pagehead .sub{font-size:11px}
