@@ -1,36 +1,6 @@
 {
- "updated": "2026-11-14T14:57:36.372Z",
+ "updated": "2026-11-15T08:36:28.222Z",
  "events": [
-  {
-   "date": "2026-10-16",
-   "kind": "deal",
-   "ticker": null,
-   "label": "Distribution Solutions Group, Inc → Allied Universal",
-   "detail": "terminated · $18000m",
-   "basis": "confirmed",
-   "weight": 0,
-   "days": -30
-  },
-  {
-   "date": "2026-10-16",
-   "kind": "deal",
-   "ticker": null,
-   "label": "COPART INC → ACV Auctions Inc",
-   "detail": "announced · $1800m",
-   "basis": "confirmed",
-   "weight": 0,
-   "days": -30
-  },
-  {
-   "date": "2026-10-16",
-   "kind": "deal",
-   "ticker": null,
-   "label": "DELUXE CORP → Celero Commerce",
-   "detail": "announced · $625m",
-   "basis": "confirmed",
-   "weight": 0,
-   "days": -30
-  },
   {
    "date": "2026-10-19",
    "kind": "deal",

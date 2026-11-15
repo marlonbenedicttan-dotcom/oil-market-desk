@@ -1,5 +1,5 @@
 {
- "checked": "2026-11-15T02:19:32.934Z",
+ "checked": "2026-11-15T08:36:30.688Z",
  "markets": {
   "us": {
    "name": "US",
@@ -8,7 +8,7 @@
     {
      "check": "market cap vs price × shares",
      "severity": "warn",
-     "count": 38,
+     "count": 73,
      "detail": "A share class Nasdaq capitalises but the filing does not count"
     },
     {
@@ -67,17 +67,17 @@
     }
    ],
    "fail": 0,
-   "warn": 38,
+   "warn": 73,
    "examples": {
     "market cap vs price × shares": [
-     "ACI (-8.5%)",
-     "THC (-8.4%)",
-     "CRBG (-9.0%)",
-     "ABG (-8.4%)",
-     "UHS (-8.6%)",
-     "SAH (-8.9%)",
-     "WDC (10.6%)",
-     "DXC (-9.0%)"
+     "NVDA (10.1%)",
+     "SYY (9.0%)",
+     "AAL (9.5%)",
+     "LEN (10.1%)",
+     "HIG (-8.4%)",
+     "MUSA (-8.5%)",
+     "FOXA (-8.2%)",
+     "TRGP (-8.1%)"
     ]
    },
    "coverage": {
@@ -177,19 +177,13 @@
   },
   "korea": {
    "name": "Korea",
-   "rows": 725,
+   "rows": 726,
    "checks": [
     {
      "check": "market cap vs price × shares",
      "severity": "fail",
      "count": 0,
      "detail": "The cap must reproduce from the published count"
-    },
-    {
-     "check": "market cap vs Naver",
-     "severity": "warn",
-     "count": 1,
-     "detail": "No Naver cap feed on disk — the independent cross-check was skipped"
     },
     {
      "check": "market cap vs Naver",
@@ -236,39 +230,36 @@
     {
      "check": "share count differs from the filing",
      "severity": "info",
-     "count": 236,
+     "count": 237,
      "detail": "A split or consolidation since the last annual report"
     }
    ],
    "fail": 0,
    "warn": 237,
    "examples": {
-    "market cap vs Naver": [
-     "—"
-    ],
     "share count differs from the filing": [
-     "068270 (filing 218,613,124 → listed 233,707,042)",
      "032830 (filing 179,574,779 → listed 200,000,000)",
-     "034730 (filing 55,086,352 → listed 72,661,202)",
-     "000810 (filing 39,828,296 → listed 44,647,496)",
-     "005490 (filing 75,620,779 → listed 79,675,182)",
-     "010120 (filing 29,738,491 → listed 151,036,269)",
-     "006800 (filing 436,049,860 → listed 544,271,264)",
-     "005830 (filing 60,643,469 → listed 65,268,047)"
+     "068270 (filing 218,613,124 → listed 232,073,068)",
+     "034730 (filing 55,086,352 → listed 72,502,761)",
+     "000810 (filing 39,828,296 → listed 44,647,538)",
+     "010120 (filing 29,738,491 → listed 150,000,000)",
+     "006800 (filing 436,049,860 → listed 543,023,256)",
+     "005830 (filing 60,643,469 → listed 65,500,306)",
+     "267250 (filing 70,668,430 → listed 78,992,806)"
     ]
    },
    "coverage": {
-    "companies": 725,
-    "marketCap": 725,
-    "pe": 544,
-    "peTTM": 457,
+    "companies": 726,
+    "marketCap": 726,
+    "pe": 531,
+    "peTTM": 444,
     "peFY": 87,
-    "pb": 721,
-    "roe": 721,
-    "naverMatched": 0
+    "pb": 722,
+    "roe": 722,
+    "naverMatched": 726
    }
   }
  },
  "failures": 2,
- "warnings": 333
+ "warnings": 368
 }
