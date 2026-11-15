@@ -12,12 +12,12 @@
   --line2: #9ca39a;
   --text: #18251f;
   --text-soft: #445049;
-  --dim: #70776f;
+  --dim: #565e56;
   --muted: #59645c;
-  --faint: #70776f;
-  --amber: #c94122;
+  --faint: #5f665e;
+  --amber: #b8391d;
   --amber2: #ed5b36;
-  --accent: #c94122;
+  --accent: #b8391d;
   --accent2: #ed5b36;
   --signal: #ed5b36;
   --accent-soft: rgba(237, 91, 54, .12);
@@ -3988,5 +3988,93 @@ body{padding-bottom:27px}
   #clock{display:none}
   .brand h1{font-size:14px}
   .meta{gap:4px}
+}
+
+/* ============================================================================
+   MOBILE READABILITY & TOUCH
+   A phone is not a narrow desktop. This layer gives every control a real touch
+   target, lifts micro-labels off the 7–8px floor, and turns the month grid into
+   a legible event map (dots) with the selected day's agenda in full below it.
+   ========================================================================== */
+@media (max-width:640px){
+  /* iOS Safari zooms the whole page when a focused field is under 16px. */
+  input, select, textarea,
+  .co-global-input, .co-tools .ma-search,
+  .macro-picker select, .comm-picker select,
+  .gb-filters select, .gb-filters input,
+  .jp-filters select, .sc-f input, .sc-pager select, .crf-head select { font-size:16px !important; }
+
+  /* Nameplate and section labels. */
+  .wt-deskline, .wt-deskline .edition, .wt-deskline-status{font-size:9px}
+  .brand-type small{font-size:8px;letter-spacing:.16em}
+  .wt-overline{font-size:9px}
+  .wt-pagehead .sub{font-size:11.5px;line-height:1.5}
+  .ph-t{font-size:10.5px;line-height:1.4}
+  .ph .dimtext,.dimtext{font-size:11px}
+
+  /* Section switchers need a finger-sized row, not a 28px text line. */
+  .jumpnav a{min-height:36px;padding:8px 3px;font-size:11px}
+  .macro-nav a{min-height:38px;padding:10px 9px;font-size:10px}
+  .comm-nav button{min-height:40px;font-size:9px}
+  .macro-tabs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));width:100%;gap:0;overflow:visible}
+  .macro-tabs button{min-width:0;padding:9px 2px;font-size:9px;letter-spacing:.02em;white-space:nowrap}
+
+  /* Header utilities: 30px was a mouse target. */
+  #refresh,#help-open,.theme-toggle{width:36px;height:36px;min-width:36px}
+  .theme-toggle svg{width:15px;height:15px}
+  .meta{gap:4px}
+
+  /* Data labels that carry meaning, not decoration. */
+  .bp-k,.mstat-l,.co-k{font-size:9.5px;letter-spacing:.08em}
+  .mstat-s,.bp-sub{font-size:10.5px}
+  .news-src,.cal-src{font-size:9px}
+  .t-chip,.ti-k,.bl-lbl,.gtitle{font-size:9.5px}
+  .imp-badge,.why-k,.tape-tag,.dstrip i,.jp-breadth-l{font-size:9px}
+  .gb-hero .k,.gb-stat .b,.gb-map-ctls .k,.gb-ctl button{font-size:9px}
+  .gb-table th,.sc-table th,.gtable th,.antable th,.jp-q-table th,.co-table th{font-size:9px}
+  .gb-table td,.sc-table td,.gtable td,.antable td,.jp-q-table td{font-size:11.5px}
+  .gb-pin .lbl,.gb-pin b{font-size:9px}
+
+  /* Companies controls: taller chips and a visible active state. */
+  .co-region button,.co-region-fixed{min-height:34px;font-size:10px}
+  .co-views button{min-height:36px;font-size:10.5px}
+  .jp-presets button{min-height:34px;font-size:10px;padding:7px 10px}
+  .co-ret,.co-ftoggle,.ma-chip{min-height:32px}
+  .co-tools .ma-search{min-height:42px}
+
+  /* Calendar: dots in the month grid, readable agenda for the selected day. */
+  .calendar-rail .cal-day{min-height:38px;padding:3px}
+  .calendar-rail .cal-dn{font-size:11px}
+  .calendar-rail .cal-dow{font-size:9px;padding:7px 0}
+  .calendar-rail .cal-ev{
+    width:6px;height:6px;min-width:6px;margin-top:3px;padding:0;border:0;
+    border-radius:50%;background:var(--signal);color:transparent !important;
+    font-size:0 !important;line-height:0;overflow:hidden;text-indent:-999px;
+  }
+  .calendar-rail .cal-more{display:none}
+  .calendar-rail .cal-dayh{font-size:10px;letter-spacing:.1em;padding:10px 8px 6px}
+  .calendar-rail .cal-row{grid-template-columns:1fr auto;gap:3px 10px;padding:9px 8px;font-size:12px}
+  .calendar-rail .cal-date{font-size:10.5px;font-weight:600}
+  .calendar-rail .cal-name{font-size:12.5px;line-height:1.4}
+  .calendar-rail .cal-note{font-size:11px;line-height:1.45}
+  .calendar-rail .cal-src{display:none}
+
+  /* A long verdict must never break mid-word in a narrow data row. */
+  .tag{white-space:nowrap}
+  #c-tight .ev{grid-template-columns:minmax(0,1fr) 58px auto;gap:8px}
+  #c-tight .ev .tag{justify-self:end}
+
+  /* Footer links are links, even when they are small. */
+  #notes a{display:inline-block;padding:7px 2px}
+}
+@media (max-width:380px){
+  /* Four section tabs must fit one 320px row without touching or overflowing. */
+  .topbar .tab{padding:9px 6px;gap:4px;font-size:9px;letter-spacing:.02em}
+  .topbar .tab svg{width:15px;height:15px}
+}
+@media (max-width:340px){
+  /* At the narrowest phone, labels beat squeezed icons. */
+  .topbar .tab{flex:1 1 0;justify-content:center;gap:0;padding:10px 2px;font-size:9.5px}
+  .topbar .tab svg{display:none}
 }
 
