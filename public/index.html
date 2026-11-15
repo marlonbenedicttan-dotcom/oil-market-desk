@@ -16,8 +16,18 @@
   <meta name="twitter:title" content="Marlon's Watchtower" />
   <meta name="twitter:description" content="Energy, metals, agriculture & macro — what it means." />
   <link rel="manifest" href="/manifest.json?v=3" />
-  <meta name="theme-color" content="#e8792e" />
-  <meta name="color-scheme" content="dark" />
+  <meta name="theme-color" content="#f2f0e8" />
+  <meta name="color-scheme" content="light dark" />
+  <script>
+    // Theme is resolved before first paint so the page never flashes the wrong palette.
+    // Light is the default; the toggle in the masthead persists the choice.
+    (function () {
+      var theme = 'light';
+      try { if (localStorage.getItem('oilbasis.theme') === 'dark') theme = 'dark'; } catch (e) {}
+      document.documentElement.dataset.theme = theme;
+      document.documentElement.style.colorScheme = theme;
+    })();
+  </script>
   <!-- Home screen / standalone app (iOS reads these before the manifest) -->
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="mobile-web-app-capable" content="yes" />
@@ -71,10 +81,20 @@
     }, 9000);
   </script>
   <noscript><div class="noscript-note">This desk needs JavaScript to run. Please enable it, or grab the raw data from <a href="/api/export.csv">the CSV export</a>.</div></noscript>
+  <div class="wt-deskline">
+    <div class="wt-deskline-in">
+      <span class="edition">Marlon's Watchtower</span>
+      <span class="wt-deskline-tag">Commodities · Macro · Companies</span>
+      <span class="wt-deskline-status"><i class="dot"></i>Independent market desk</span>
+    </div>
+  </div>
   <header class="topbar">
     <div class="brand">
-      <svg class="wt-mark" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M5 3h3v4h2V3h4v4h2V3h3v7l-2 2v6H7v-6L5 10V3Zm4 11v4h6v-4H9Z"/></svg>
-      <h1>MARLON'S WATCHTOWER</h1><span class="sub">COMMODITIES · MACRO · COMPANIES</span>
+      <span class="wt-mark" aria-hidden="true">
+        <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="square" stroke-linejoin="miter" focusable="false"><path d="M4 27h24M7 27V13l9-6 9 6v14M12 27v-8h8v8M16 3v4M11 15h10"/><path d="M16 11v2"/></svg>
+      </span>
+      <div class="brand-type"><small>Marlon's</small><h1>Watchtower</h1></div>
+      <span class="sub">THE DAILY MARKET DESK</span>
     </div>
     <nav class="tabs" id="tabs" role="tablist" aria-label="Sections">
       <button class="tab active" data-tab="home" id="tab-home" role="tab" aria-selected="true" aria-controls="pane-home"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg><span>HOME</span></button>
@@ -90,6 +110,11 @@
       <span id="fresh" class="fresh-dot" role="img" title="Data freshness" aria-label="Data freshness"></span>
       <span id="clock" class="clock">--:--:--</span>
       <span id="updated" class="dimtext">loading…</span>
+      <button type="button" id="theme-toggle" class="ghost theme-toggle" aria-label="Switch to dark mode" aria-pressed="false" title="Switch to dark mode">
+        <svg class="theme-ico-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.4M12 19.1v2.4M2.5 12h2.4M19.1 12h2.4M5.3 5.3l1.7 1.7M17 17l1.7 1.7M18.7 5.3 17 7M7 17l-1.7 1.7"/></svg>
+        <svg class="theme-ico-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true" focusable="false"><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5Z"/></svg>
+        <span class="theme-label">Dark</span>
+      </button>
       <button id="refresh" class="ghost" aria-label="Refresh data" title="Refresh data">↻</button>
       <button id="help-open" class="ghost" aria-label="Help and guide" title="Help and guide">?</button>
     </div>
@@ -149,7 +174,8 @@
     <div class="tabpane" data-pane="home" id="pane-home" role="tabpanel" aria-labelledby="tab-home">
       <div class="wt-pagehead">
         <div>
-          <h1>Overview</h1>
+          <div class="wt-overline">The daily watch · live desk</div>
+          <h1>The market, in perspective.</h1>
           <div class="sub">Commodities, macro and companies · one desk, every market</div>
         </div>
         <div class="wt-actions">

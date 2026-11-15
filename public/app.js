@@ -1023,8 +1023,77 @@ function tickerStart() {
 // same grid/axis/legend/tooltip and the same role colours. No new controls for
 // the reader — just consistency. Roles: c1 primary (futures), c2 secondary
 // (real/spot), c3 tertiary, c4 alt, accent.
-const CT = { text: '#8e9dad', grid: '#1b2530', ref: '#33414f', c1: '#7fa8c9', c2: '#e8792e', c3: '#55b985', c4: '#a58bc4', accent: '#e8792e' };
+const CHART_THEMES = {
+  light: {
+    text: '#59645c', grid: '#d8d8ce', ref: '#9ca39a', c1: '#285f78', c2: '#c94122',
+    c3: '#167059', c4: '#806a9a', accent: '#c94122', surface: '#e8e5da',
+    tooltipBg: '#173d32', tooltipBorder: '#173d32', tooltipTitle: '#fffef9', tooltipBody: '#dce6dd',
+  },
+  dark: {
+    text: '#a5b3a7', grid: '#2b3c32', ref: '#4b6154', c1: '#8fb3c8', c2: '#f28a68',
+    c3: '#72c6a2', c4: '#b7a2cc', accent: '#f28a68', surface: '#203028',
+    tooltipBg: '#203028', tooltipBorder: '#4b6154', tooltipTitle: '#f1efe5', tooltipBody: '#c6d0c5',
+  },
+};
+let currentTheme = document.documentElement?.dataset?.theme === 'dark' ? 'dark' : 'light';
+const CT = { ...CHART_THEMES[currentTheme] };
 const charts = {};   // canvas id -> Chart instance (re-render updates in place; no leaks)
+function applyTheme(theme, { persist = true } = {}) {
+  const next = theme === 'dark' ? 'dark' : 'light';
+  const previous = { ...CT };
+  currentTheme = next;
+  if (document.documentElement) {
+    document.documentElement.dataset.theme = next;
+    if (document.documentElement.style) document.documentElement.style.colorScheme = next;
+  }
+  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', next === 'dark' ? '#111713' : '#f2f0e8');
+  Object.assign(CT, CHART_THEMES[next]);
+  const btn = $('theme-toggle');
+  if (btn) {
+    const dark = next === 'dark';
+    btn.setAttribute('aria-pressed', String(dark));
+    btn.setAttribute('aria-label', dark ? 'Switch to light mode' : 'Switch to dark mode');
+    btn.title = dark ? 'Switch to light mode' : 'Switch to dark mode';
+    const label = btn.querySelector('.theme-label');
+    if (label) label.textContent = dark ? 'Light' : 'Dark';
+  }
+  if (persist) { try { localStorage.setItem('oilbasis.theme', next); } catch {} }
+
+  // Existing canvases hold primitive colours, not CSS variables. Re-map the chart
+  // roles and axis options in place so toggling never requires a data refresh.
+  const remap = {};
+  for (const key of ['text', 'grid', 'ref', 'c1', 'c2', 'c3', 'c4', 'accent', 'surface']) {
+    if (previous[key] !== CT[key]) {
+      remap[previous[key]] = CT[key];
+      remap[previous[key] + '22'] = CT[key] + '22';
+    }
+  }
+  for (const chart of Object.values(charts)) {
+    if (!chart || !chart.options) continue;
+    const opts = chart.options;
+    if (opts.plugins?.legend?.labels) opts.plugins.legend.labels.color = CT.text;
+    if (opts.plugins?.tooltip) {
+      Object.assign(opts.plugins.tooltip, {
+        backgroundColor: CT.tooltipBg, borderColor: CT.tooltipBorder,
+        titleColor: CT.tooltipTitle, bodyColor: CT.tooltipBody,
+      });
+    }
+    for (const scale of Object.values(opts.scales || {})) {
+      if (!scale) continue;
+      if (scale.ticks) scale.ticks.color = CT.text;
+      if (scale.grid && scale.grid.color) scale.grid.color = CT.grid;
+      if (scale.title) scale.title.color = CT.text;
+    }
+    for (const ds of chart.data?.datasets || []) {
+      for (const key of ['borderColor', 'backgroundColor', 'pointBackgroundColor', 'pointBorderColor']) {
+        if (typeof ds[key] === 'string' && remap[ds[key]]) ds[key] = remap[ds[key]];
+      }
+    }
+    chart.update('none');
+  }
+}
+$('theme-toggle')?.addEventListener('click', () => applyTheme(currentTheme === 'dark' ? 'light' : 'dark'));
+applyTheme(currentTheme, { persist: false });
 const fmtNum = (v, dp = 2) => {
   if (v == null || Number.isNaN(v)) return '—';
   const a = Math.abs(v);
@@ -1063,7 +1132,7 @@ function baseOptions({ dp = 2, unit = '', percentAxis = false, yTitle = '', y1Ti
       legend: { display: legend, labels: { color: CT.text, boxWidth: 10, usePointStyle: true, font: { family: 'monospace' }, filter: (item, data) => !(data.datasets[item.datasetIndex] && data.datasets[item.datasetIndex].$news) } },
       tooltip: {
         mode: 'index', intersect: false,
-        backgroundColor: '#111923', borderColor: '#334456', borderWidth: 1, titleColor: '#e9eef4', bodyColor: '#b9c7d6', padding: 8,
+        backgroundColor: CT.tooltipBg, borderColor: CT.tooltipBorder, borderWidth: 1, titleColor: CT.tooltipTitle, bodyColor: CT.tooltipBody, padding: 8,
         callbacks: {
           title: (it) => (it && it.length ? String(it[0].label) : ''),
           label: (ctx) => {
@@ -1277,7 +1346,7 @@ async function renderChart() {
       try {
         const sea = await getSeasonal(bench.id);
         if (sea && !sea.error) {
-          const band = (lb, arr) => ({ label: lb, data: arr, borderColor: '#3a4d63', borderWidth: 1, borderDash: [4, 4], pointRadius: 0, tension: 0.25, spanGaps: true, fill: false });
+          const band = (lb, arr) => ({ label: lb, data: arr, borderColor: CT.ref, borderWidth: 1, borderDash: [4, 4], pointRadius: 0, tension: 0.25, spanGaps: true, fill: false });
           datasets.push(band('5-yr low', labels.map((d) => (sea.low[d.slice(5)] ?? null))));
           datasets.push(band('5-yr high', labels.map((d) => (sea.high[d.slice(5)] ?? null))));
         }
@@ -6544,7 +6613,7 @@ function drawJpQuarters(c) {
   mountChart('jp-q-chart', {
     labels: q.map((x) => x.d),
     datasets: [
-      { type: 'bar', label: 'Net sales', data: q.map((x) => (x.sales == null ? null : x.sales / 1e9)), backgroundColor: '#1b2733', borderColor: '#2a3440', borderWidth: 1, yAxisID: 'y', order: 2 },
+      { type: 'bar', label: 'Net sales', data: q.map((x) => (x.sales == null ? null : x.sales / 1e9)), backgroundColor: CT.surface, borderColor: CT.ref, borderWidth: 1, yAxisID: 'y', order: 2 },
       { type: 'line', label: 'Operating profit', data: q.map((x) => (x.op == null ? null : x.op / 1e9)), borderColor: CT.c1, backgroundColor: 'transparent', tension: 0.25, pointRadius: 2, yAxisID: 'y1', order: 1 },
     ],
   }, baseOptions({ dp: 0, yTitle: '¥bn sales', y1Title: '¥bn profit', dateAxis: true }));

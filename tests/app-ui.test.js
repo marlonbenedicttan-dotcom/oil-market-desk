@@ -176,6 +176,9 @@ function loadApp() {
     coFitRange,
     mergeLongSeries,
     charts,
+    applyTheme,
+    CT,
+    getTheme: () => currentTheme,
     gsQuickSearch,
     setGsQuick: (v) => { gsQuick = v; },
   };`;
@@ -792,6 +795,21 @@ test('the local quick index ranks exact names, brands and codes without a reques
   assert.equal(ui.gsQuickSearch('nubank').results[0].market, 'br');
   assert.equal(ui.gsQuickSearch('aapl').results[0].ticker, 'AAPL');
   assert.equal(ui.gsQuickSearch('nothing-here-xyz').total, 0);
+});
+
+test('the theme toggle switches the document and chart palette without a reload', () => {
+  const { ui, document } = loadApp();
+  assert.equal(ui.getTheme(), 'light');
+  const lightLine = ui.CT.c1;
+  ui.applyTheme('dark');
+  assert.equal(ui.getTheme(), 'dark');
+  assert.equal(document.documentElement.dataset.theme, 'dark');
+  assert.equal(document.documentElement.style.colorScheme, 'dark');
+  assert.notEqual(ui.CT.c1, lightLine);
+  assert.equal(ui.CT.tooltipBg, '#203028');
+  ui.applyTheme('light');
+  assert.equal(document.documentElement.dataset.theme, 'light');
+  assert.equal(ui.CT.c1, lightLine);
 });
 
 test('net profit is a result, not a profitability ratio', () => {
