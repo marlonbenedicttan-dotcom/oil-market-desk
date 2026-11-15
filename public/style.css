@@ -3395,6 +3395,7 @@ input[type="search"],input[type="text"]{border-radius:var(--r,4px)}
 }
 .jumpnav a:hover,.jumpnav a:focus-visible{color:var(--muted);border-color:var(--line2);background:none}
 .home-brief-grid,.home-two{gap:30px;margin:0}
+#pane-home .home-brief-grid .panel,#pane-home .home-two .panel{border-top:0}
 .home-calendar{padding:0;overflow:hidden}
 .home-brief-lead,.home-brief-more,.home-two > .panel{min-width:0}
 .imp{padding:10px 0;border-bottom:1px solid var(--line)}
