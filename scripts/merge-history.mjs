@@ -129,6 +129,31 @@ const annualsFor = (id, c) => {
   if (id === 'tw' || id === 'hk' || id === 'au' || id === 'in' || id === 'id' || id === 'br') return (c.reports && c.reports.annual) || [];
   return null;
 };
+// Korea's build has its own fallback: DART's per-year ShOutFY is inconsistent, so a missing count is
+// replaced by net income ÷ EPS and then by the published share count. Mirror that here exactly; using
+// growthFromAnnuals() would read a different `shares` field and shift the EPS rate by a tenth.
+const growthFor = (id, c, annuals) => {
+  const window = id === 'tw' ? annuals : annuals.slice(-5);
+  if (id === 'kr') {
+    const sharesOf = (r) => {
+      if (r.sharesOutstanding > 0) return r.sharesOutstanding;
+      if (r.netIncome != null && r.eps && Math.sign(r.netIncome) === Math.sign(r.eps)) return r.netIncome / r.eps;
+      return c.shares > 0 ? c.shares : null;
+    };
+    const epsOf = (r) => {
+      if (r.eps != null) return r.eps;
+      if (r.netIncome != null && c.shares > 0) return +(r.netIncome / c.shares).toFixed(2);
+      return null;
+    };
+    return growthRates(window.map((r) => ({
+      year: Number(String(r.end).slice(0, 4)),
+      revenue: r.revenue,
+      eps: epsOf(r),
+      shares: sharesOf(r),
+    })));
+  }
+  return id === 'tw' ? growthFromAnnuals(window, c.shares) : growthFromAnnuals(window);
+};
 const getPath = (obj, path) => path.split('.').reduce((o, k) => (o == null ? o : o[k]), obj);
 const setPath = (obj, path, value) => {
   const parts = path.split('.');
@@ -184,14 +209,15 @@ for (const id of ids) {
         const annuals = annualsFor(id, c);
         if (Array.isArray(annuals) && annuals.length) {
           // Taiwan's vendor tables carry no per-year EPS, so its build synthesises one from net
-          // income over the current share count (derive-taiwan.mjs). The other markets publish EPS
+          // income over the current share count (derive-taiwan.mjs). Korea's build does the same
+          // when DART omits the per-year ShOutFY (derive-korea.mjs). The other markets publish EPS
           // as filed. Handing them c.shares as a fallback would invent a rate their builder never
           // computes — 9973 read 69% "EPS CAGR" off two reported years and net income before them.
           // The shared listing builder (HK/AU/IN/ID/BR/ZA) defines growth on the last five fiscal
           // years. Use the same window here, or a merge that adds a sixth year silently changes the
           // published CAGR from a four-year to a five-year rate.
           const window = id === 'tw' ? annuals : annuals.slice(-5);
-          const growth = id === 'tw' ? growthFromAnnuals(window, c.shares) : growthFromAnnuals(window);
+          const growth = growthFor(id, c, annuals);
           Object.assign(c, growth, { marginDelta: marginDeltaFromAnnuals(window) });
         }
       }
@@ -216,7 +242,7 @@ for (const id of ids) {
       const annuals = annualsFor(id, c);
       if (Array.isArray(annuals) && annuals.length) {
         const window = id === 'tw' ? annuals : annuals.slice(-5);
-        const growth = id === 'tw' ? growthFromAnnuals(window, c.shares) : growthFromAnnuals(window);
+        const growth = growthFor(id, c, annuals);
         Object.assign(c, growth, { marginDelta: marginDeltaFromAnnuals(window) });
       }
     }
