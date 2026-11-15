@@ -225,7 +225,7 @@
   .posItem .note{font-size:10px;color:var(--faint);margin-top:6px}
 
   /* ---------- boot ---------- */
-  .boot{position:fixed;inset:0;z-index:1000;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;transition:opacity .35s ease,visibility 0s linear .35s}
+  .boot{position:fixed;inset:0;z-index:1000;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;transition:opacity .35s ease,visibility 0s linear .35s;animation:bootout .35s ease 1.25s forwards}
   .boot.done{opacity:0;visibility:hidden}
   .boot .mark{width:27px;height:27px;color:var(--text)}
   .boot .word{font-size:11px;font-weight:650;letter-spacing:.18em;color:var(--text)}
@@ -233,6 +233,7 @@
   .boot .bar i{display:block;height:100%;width:0;background:var(--text);animation:boot 1s cubic-bezier(.3,.1,.2,1) forwards}
   .boot .msg{font-size:9.5px;letter-spacing:.05em;color:var(--faint)}
   @keyframes boot{to{width:100%}}
+  @keyframes bootout{to{opacity:0;visibility:hidden}}
   @media (prefers-reduced-motion:reduce){.boot .bar i{animation:none;width:100%}}
 
   /* ---------- responsive ---------- */
@@ -544,16 +545,6 @@
   <div class="right"><span class="ok">● FEEDS OK</span><span>v0.1 · mockup</span></div>
 </footer>
 
-<script>
-  const boot = document.getElementById('boot');
-  const done = () => boot.classList.add('done');
-  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
-  setTimeout(done, reduce ? 250 : 950);
-  boot.addEventListener('click', done);
-  document.querySelectorAll('.subnav button').forEach((b) => b.addEventListener('click', () => {
-    b.parentElement.querySelectorAll('button').forEach((x) => x.classList.remove('on'));
-    b.classList.add('on');
-  }));
-</script>
+<script src="/watchtower-retail-terminal.js" defer></script>
 </body>
 </html>
