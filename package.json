@@ -10,6 +10,7 @@
     "prepare": "git config core.hooksPath .githooks || true",
     "test": "node --test",
     "test:data": "node scripts/run-tests.mjs data",
+    "test:api": "node scripts/run-tests.mjs api",
     "search:build": "node scripts/build-search-index.mjs",
     "build:japan": "node scripts/build-japan.mjs && node scripts/build-japan-flows.mjs",
     "build:korea": "node scripts/refresh-korea-shares.mjs && node scripts/refresh-korea-quarters.mjs && node scripts/build-korea.mjs",

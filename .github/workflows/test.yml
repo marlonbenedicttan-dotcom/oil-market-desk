@@ -17,3 +17,7 @@ jobs:
       - run: npm run test:code
       - run: npm run test:data
         continue-on-error: true
+      # API tests start the server and can wait on an upstream feed. Keep them advisory and out of
+      # the market workflow's data gate, so a cold screen call cannot revert a fresh dataset.
+      - run: npm run test:api
+        continue-on-error: true

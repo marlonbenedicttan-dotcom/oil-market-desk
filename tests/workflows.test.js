@@ -118,6 +118,12 @@ test('checkout does not preload a repo script before the repo exists', () => {
 });
 
 
+test('API tests are advisory and outside the data gate', () => {
+  const t = wf('test.yml');
+  assert.match(t, /npm run test:api\s*\n\s*continue-on-error: true/,
+    'a slow API test can block the test workflow');
+});
+
 test('the Korea list artifact is rebuilt after the history merge', () => {
   const cd = wf('companies-daily.yml');
   assert.match(cd, /Keep every filed period[\s\S]*Rebuild the compact Korea list after the merge/,

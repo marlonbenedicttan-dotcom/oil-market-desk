@@ -11,14 +11,17 @@ import { fileURLToPath } from 'node:url';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const DATA = new Set([
-  'api.test.js', 'companies-data.test.js', 'markets-data.test.js', 'filters.test.js',
+  'companies-data.test.js', 'markets-data.test.js', 'filters.test.js',
   'japan-list.test.js', 'matrix.test.js',
   'australia-data.test.js', 'brazil-data.test.js', 'hongkong-data.test.js', 'india-data.test.js',
   'indonesia-data.test.js', 'korea-data.test.js', 'southafrica-data.test.js', 'taiwan-data.test.js',
 ]);
-const mode = process.argv[2] === 'data' ? 'data' : 'code';
+// API tests start a live server and can wait on an upstream feed. They are useful, but a cold
+// screen call must not decide whether a market refresh may publish its data.
+const API = new Set(['api.test.js']);
+const mode = ['data', 'api'].includes(process.argv[2]) ? process.argv[2] : 'code';
 const files = readdirSync(join(ROOT, 'tests')).filter((f) => f.endsWith('.test.js')).sort();
-const selected = files.filter((f) => (mode === 'data' ? DATA.has(f) : !DATA.has(f))).map((f) => join('tests', f));
+const selected = files.filter((f) => (mode === 'api' ? API.has(f) : API.has(f) ? false : mode === 'data' ? DATA.has(f) : !DATA.has(f))).map((f) => join('tests', f));
 if (!selected.length) { console.error('no tests selected'); process.exit(2); }
 const run = spawnSync(process.execPath, ['--test', ...selected], { cwd: ROOT, stdio: 'inherit' });
 process.exit(run.status ?? 1);
