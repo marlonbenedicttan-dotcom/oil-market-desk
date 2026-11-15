@@ -15,8 +15,8 @@
     --text:#f6f7f8;
     --muted:#a7b2be;
     --faint:#78838f;
-    --accent:#6f96bd;
-    --accent-soft:rgba(111,150,189,.14);
+    --accent:#e8792e;
+    --accent-soft:rgba(232,121,46,.15);
     --pos:#55b985;
     --neg:#dc6659;
     --sans:"Inter","SF Pro Text",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
@@ -24,6 +24,11 @@
     --serif:"Charter","Iowan Old Style","Palatino Linotype",Georgia,serif;
     --r:4px;
   }
+  /* Mockup palettes. Each one is a whole identity, not a tinted chrome. */
+  body[data-theme="nubank"]{--accent:#9a4fe0;--accent-soft:rgba(154,79,224,.16)}
+  body[data-theme="revolut"]{--accent:#3d6bff;--accent-soft:rgba(61,107,255,.16)}
+  body[data-theme="ft"]{--accent:#1f8a8c;--accent-soft:rgba(31,138,140,.16)}
+  body[data-theme="reuters"]{--accent:#e8792e;--accent-soft:rgba(232,121,46,.15)}
   *{box-sizing:border-box}
   html,body{background:var(--bg);overflow-x:clip}
   body{
@@ -52,7 +57,7 @@
   }
   .topbar-in{height:56px;display:flex;align-items:center;gap:18px}
   .brand{display:flex;align-items:center;gap:9px;min-width:0}
-  .mark{width:19px;height:19px;color:var(--text);flex:0 0 auto}
+  .mark{width:19px;height:19px;color:var(--accent);flex:0 0 auto}
   .brand b{font-size:13px;font-weight:650;letter-spacing:.085em;white-space:nowrap}
   .brand span{font-size:9px;letter-spacing:.11em;color:var(--faint);border-left:1px solid var(--line2);padding-left:9px;white-space:nowrap}
   .mainnav{display:none;align-items:stretch;height:54px;margin-left:8px}
@@ -61,7 +66,7 @@
     letter-spacing:.035em;color:var(--muted);border-bottom:2px solid transparent;
   }
   .mainnav a:hover{color:var(--text)}
-  .mainnav a.on{color:var(--text);background:none;border-bottom-color:var(--text)}
+  .mainnav a.on{color:var(--text);background:none;border-bottom-color:var(--accent)}
   .topRight{display:flex;align-items:center;gap:10px;margin-left:auto;min-width:0}
   .search{
     display:flex;align-items:center;gap:8px;width:380px;height:30px;padding:0 9px;
@@ -101,7 +106,7 @@
   .rail a svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:1.6;opacity:.85}
   .rail a:hover{color:var(--text);background:var(--surface)}
   .rail a.on{color:var(--text);background:var(--surface2);border-left-color:var(--accent)}
-  .rail a.on svg{color:var(--text);opacity:1}
+  .rail a.on svg{color:var(--accent);opacity:1}
   .railFoot{margin-top:26px;padding:12px 8px 0;border-top:1px solid var(--line);font-size:10.5px;color:var(--faint)}
   .railFoot .row{display:flex;align-items:center;gap:7px;margin-bottom:7px;color:var(--muted)}
   .railFoot .row .dot{width:5px;height:5px;box-shadow:none}
@@ -113,13 +118,13 @@
   .actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
   .btn{height:29px;padding:0 11px;border:1px solid var(--line2);background:transparent;color:var(--muted);border-radius:var(--r);font-size:11px;font-weight:600;letter-spacing:.02em}
   .btn:hover{color:var(--text);border-color:var(--faint)}
-  .btn.accent{color:var(--text);border-color:var(--line2)}
-  .btn.accent:hover{background:var(--surface2);border-color:var(--text)}
+  .btn.accent{color:var(--accent);border-color:var(--line2)}
+  .btn.accent:hover{background:var(--accent-soft);border-color:var(--accent)}
 
   /* ---------- KPI strip ---------- */
   .kpis{display:grid;grid-template-columns:1.8fr repeat(5,minmax(0,1fr));gap:1px;background:var(--line);border-top:1px solid var(--line);border-bottom:1px solid var(--line);margin:0}
   .kpi{background:var(--bg);padding:14px 16px;min-width:0}
-  .kpi.lead{background:var(--surface);box-shadow:inset 2px 0 0 var(--text)}
+  .kpi.lead{background:var(--surface);box-shadow:inset 2px 0 0 var(--accent)}
   .kpi .k{font-size:9.5px;font-weight:650;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .kpi .v{font:15px/1.2 var(--mono);margin-top:6px;font-variant-numeric:tabular-nums;white-space:nowrap}
   .kpi.lead .v{font-size:26px;color:var(--text)}
@@ -134,11 +139,11 @@
   .phead .t{font-size:10px;font-weight:650;letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
   .phead .s{font-size:10.5px;color:var(--faint)}
   .phead a{font-size:10.5px;color:var(--muted)}
-  .phead a:hover{color:var(--text);text-decoration:underline;text-underline-offset:2px}
+  .phead a:hover{color:var(--accent);text-decoration:underline;text-underline-offset:2px}
 
   /* ---------- brief ---------- */
   .brief{padding:20px 0 0}
-  .brief .kicker{display:flex;align-items:center;gap:8px;margin-bottom:9px;font-size:9px;font-weight:650;letter-spacing:.13em;color:var(--muted);text-transform:uppercase}
+  .brief .kicker{display:flex;align-items:center;gap:8px;margin-bottom:9px;font-size:9px;font-weight:650;letter-spacing:.13em;color:var(--accent);text-transform:uppercase}
   .brief .kicker span{color:var(--faint);font-weight:500;letter-spacing:.04em;text-transform:none}
   .brief h2{font-family:var(--serif);font-size:26px;line-height:1.18;font-weight:600;letter-spacing:-.015em;margin:0 0 12px;max-width:22ch}
   .brief .lede{font-size:12.5px;line-height:1.65;color:#c3ccd5;max-width:68ch;margin:0}
@@ -209,6 +214,11 @@
   .statusbar b{color:var(--muted);font-weight:500}
   .statusbar .right{margin-left:auto;display:flex;gap:18px;align-items:center}
   .statusbar .ok{color:var(--pos)}
+  .palette{display:flex;align-items:center;gap:6px}
+  .palette span{font-size:8px;letter-spacing:.1em;color:var(--faint)}
+  .palette button{width:10px;height:10px;padding:0;border-radius:50%;border:1px solid transparent;background:var(--sw);opacity:.55}
+  .palette button:hover{opacity:.85}
+  .palette button.on{opacity:1;box-shadow:0 0 0 1px var(--text)}
 
   /* ---------- positioning ---------- */
   .posPanel{margin-top:0}
@@ -227,10 +237,10 @@
   /* ---------- boot ---------- */
   .boot{position:fixed;inset:0;z-index:1000;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;transition:opacity .35s ease,visibility 0s linear .35s;animation:bootout .35s ease 1.25s forwards}
   .boot.done{opacity:0;visibility:hidden}
-  .boot .mark{width:27px;height:27px;color:var(--text)}
+  .boot .mark{width:27px;height:27px;color:var(--accent)}
   .boot .word{font-size:11px;font-weight:650;letter-spacing:.18em;color:var(--text)}
   .boot .bar{width:150px;height:2px;background:var(--surface3);overflow:hidden}
-  .boot .bar i{display:block;height:100%;width:0;background:var(--text);animation:boot 1s cubic-bezier(.3,.1,.2,1) forwards}
+  .boot .bar i{display:block;height:100%;width:0;background:var(--accent);animation:boot 1s cubic-bezier(.3,.1,.2,1) forwards}
   .boot .msg{font-size:9.5px;letter-spacing:.05em;color:var(--faint)}
   @keyframes boot{to{width:100%}}
   @keyframes bootout{to{opacity:0;visibility:hidden}}
@@ -295,7 +305,7 @@
   }
 </style>
 </head>
-<body>
+<body data-theme="reuters">
 
 <!-- Boot: quiet, under a second. Click to skip. -->
 <div class="boot" id="boot" role="status" aria-label="Loading Watchtower">
@@ -542,7 +552,16 @@
 <footer class="statusbar">
   <b>DELAYED 15 MIN</b><span>NY 10:03:42</span><span>LDN 15:03:42</span><span>TYO 23:03:42</span>
   <span>Sources: CME · ICE · EIA · CFTC</span>
-  <div class="right"><span class="ok">● FEEDS OK</span><span>v0.1 · mockup</span></div>
+  <div class="right">
+    <div class="palette" aria-label="Mockup palette">
+      <span>PALETTE</span>
+      <button type="button" data-palette="reuters" style="--sw:#e8792e" aria-label="Reuters orange" title="Reuters orange"></button>
+      <button type="button" data-palette="nubank" style="--sw:#9a4fe0" aria-label="Nubank violet" title="Nubank violet"></button>
+      <button type="button" data-palette="revolut" style="--sw:#3d6bff" aria-label="Revolut cobalt" title="Revolut cobalt"></button>
+      <button type="button" data-palette="ft" style="--sw:#1f8a8c" aria-label="FT teal" title="FT teal"></button>
+    </div>
+    <span class="ok">● FEEDS OK</span><span>v0.1 · mockup</span>
+  </div>
 </footer>
 
 <script src="/watchtower-retail-terminal.js" defer></script>
