@@ -118,6 +118,12 @@ test('checkout does not preload a repo script before the repo exists', () => {
 });
 
 
+test('the Korea list artifact is rebuilt after the history merge', () => {
+  const cd = wf('companies-daily.yml');
+  assert.match(cd, /Keep every filed period[\s\S]*Rebuild the compact Korea list after the merge/,
+    'companies-daily would publish a korea-list.json that predates the merged growth fields');
+});
+
 test('the public repo is scanned for pasted keys before tests', () => {
   assert.match(wf('test.yml'), /npm run check:secrets/, 'the test workflow no longer scans tracked files for secrets');
 });

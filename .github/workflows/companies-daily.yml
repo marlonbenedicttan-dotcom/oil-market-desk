@@ -83,6 +83,11 @@ jobs:
       - name: Keep every traded session
         run: node scripts/merge-series.mjs us kr
 
+      # merge-history can change Korea growth fields (marginDelta included), so the compact list
+      # artifact must be rebuilt after the merge. Building it inside the Korea step is too early.
+      - name: Rebuild the compact Korea list after the merge
+        run: node scripts/build-korea-list.mjs
+
       # build-korea stamps its chart store, then the Korea description pass and merge-history rewrite
       # korea.json; merge-series also restores sessions that scrolled off the vendor. Rebuild last so
       # the store carries every kept session and its source stamp matches the committed data.
