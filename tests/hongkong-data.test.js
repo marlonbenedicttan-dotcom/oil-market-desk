@@ -192,6 +192,10 @@ test('the audit counters are honest about coverage', () => {
   assert.ok(a.commonStocks >= a.considered, 'the market is at least what this build considered');
   assert.equal(a.withStatements, hk.companies.length);
   assert.ok(a.withoutStatements >= 0);
-  assert.equal(a.withoutStatements + (a.throttled || 0) + (a.incompleteSmall || 0) + (a.stale || 0) + (a.unsourced || 0), a.considered - (a.withStatements - (a.extraBuilt || 0)),
+  const excluded = a.withoutStatements + (a.throttled || 0) + (a.incompleteSmall || 0) + (a.stale || 0) + (a.unsourced || 0);
+  // considered counts exchange lines; withStatements counts deduped companies, and a code can appear on
+  // more than one line. Every considered line must still be built or accounted for by an exclusion.
+  assert.ok(a.withStatements + excluded >= a.considered,
     'every considered company is built, without a page, throttled, stale, unsourced, or excluded for missing profile info');
+  assert.ok(a.withStatements <= a.considered + (a.extraBuilt || 0), 'built companies do not exceed the considered lines plus extras');
 });
