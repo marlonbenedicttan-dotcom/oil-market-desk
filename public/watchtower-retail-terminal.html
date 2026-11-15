@@ -24,11 +24,6 @@
     --serif:"Charter","Iowan Old Style","Palatino Linotype",Georgia,serif;
     --r:4px;
   }
-  /* Mockup palettes. Each one is a whole identity, not a tinted chrome. */
-  body[data-theme="nubank"]{--accent:#9a4fe0;--accent-soft:rgba(154,79,224,.16)}
-  body[data-theme="revolut"]{--accent:#3d6bff;--accent-soft:rgba(61,107,255,.16)}
-  body[data-theme="ft"]{--accent:#1f8a8c;--accent-soft:rgba(31,138,140,.16)}
-  body[data-theme="reuters"]{--accent:#e8792e;--accent-soft:rgba(232,121,46,.15)}
   *{box-sizing:border-box}
   html,body{background:var(--bg);overflow-x:clip}
   body{
@@ -214,11 +209,6 @@
   .statusbar b{color:var(--muted);font-weight:500}
   .statusbar .right{margin-left:auto;display:flex;gap:18px;align-items:center}
   .statusbar .ok{color:var(--pos)}
-  .palette{display:flex;align-items:center;gap:6px}
-  .palette span{font-size:8px;letter-spacing:.1em;color:var(--faint)}
-  .palette button{width:10px;height:10px;padding:0;border-radius:50%;border:1px solid transparent;background:var(--sw);opacity:.55}
-  .palette button:hover{opacity:.85}
-  .palette button.on{opacity:1;box-shadow:0 0 0 1px var(--text)}
 
   /* ---------- positioning ---------- */
   .posPanel{margin-top:0}
@@ -305,7 +295,7 @@
   }
 </style>
 </head>
-<body data-theme="reuters">
+<body>
 
 <!-- Boot: quiet, under a second. Click to skip. -->
 <div class="boot" id="boot" role="status" aria-label="Loading Watchtower">
@@ -553,13 +543,6 @@
   <b>DELAYED 15 MIN</b><span>NY 10:03:42</span><span>LDN 15:03:42</span><span>TYO 23:03:42</span>
   <span>Sources: CME · ICE · EIA · CFTC</span>
   <div class="right">
-    <div class="palette" aria-label="Mockup palette">
-      <span>PALETTE</span>
-      <button type="button" data-palette="reuters" style="--sw:#e8792e" aria-label="Reuters orange" title="Reuters orange"></button>
-      <button type="button" data-palette="nubank" style="--sw:#9a4fe0" aria-label="Nubank violet" title="Nubank violet"></button>
-      <button type="button" data-palette="revolut" style="--sw:#3d6bff" aria-label="Revolut cobalt" title="Revolut cobalt"></button>
-      <button type="button" data-palette="ft" style="--sw:#1f8a8c" aria-label="FT teal" title="FT teal"></button>
-    </div>
     <span class="ok">● FEEDS OK</span><span>v0.1 · mockup</span>
   </div>
 </footer>
