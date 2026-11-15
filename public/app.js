@@ -1023,7 +1023,7 @@ function tickerStart() {
 // same grid/axis/legend/tooltip and the same role colours. No new controls for
 // the reader — just consistency. Roles: c1 primary (futures), c2 secondary
 // (real/spot), c3 tertiary, c4 alt, accent.
-const CT = { text: '#8e9dad', grid: '#1d2935', ref: '#334456', c1: '#6ea8d8', c2: '#d6a45f', c3: '#48b083', c4: '#9b8ac4', accent: '#d6a45f' };
+const CT = { text: '#8e9dad', grid: '#1b2530', ref: '#33414f', c1: '#7fa8c9', c2: '#e8792e', c3: '#55b985', c4: '#a58bc4', accent: '#e8792e' };
 const charts = {};   // canvas id -> Chart instance (re-render updates in place; no leaks)
 const fmtNum = (v, dp = 2) => {
   if (v == null || Number.isNaN(v)) return '—';
@@ -4270,6 +4270,11 @@ function syncCommodityTab() {
 function showTab(name) {
   saveStr('tab', name);
   document.querySelectorAll('.tab').forEach((t) => { const on = t.dataset.tab === name; t.classList.toggle('active', on); t.setAttribute('aria-selected', String(on)); });
+  document.querySelectorAll('.wt-rail [data-tab]').forEach((b) => {
+    const on = b.dataset.tab === name;
+    b.classList.toggle('on', on);
+    if (on) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current');
+  });
   document.querySelectorAll('.tabpane').forEach((p) => p.classList.toggle('hidden', p.dataset.pane !== name));
   if (name === 'commodities') {
     loadRelValue();
@@ -4488,6 +4493,16 @@ function goToInstrument(id, range = '6m') {
   loadMarketRead();
 }
 $('tabs').addEventListener('click', (e) => { const b = e.target.closest('.tab'); if (b) showTab(b.dataset.tab); });
+// The desktop rail is the primary section nav; the top tabs return only on narrow screens.
+document.querySelector('.wt-rail')?.addEventListener('click', (e) => {
+  const g = e.target.closest('[data-goto]');
+  if (!g) return;
+  e.preventDefault();
+  showTab('home');
+  const id = g.dataset.goto;
+  setTimeout(() => { const t = $(id); if (t) jumpToSection(t); }, 70);
+});
+$('wt-search')?.addEventListener('click', () => gsFocusSearch());
 // A data-tab button outside the masthead (the HOME idea cards) still switches the pane.
 document.addEventListener('click', (e) => {
   const b = e.target.closest('[data-tab]');
@@ -4526,7 +4541,11 @@ $('macro-links')?.addEventListener('click', (e) => { const el = e.target.closest
   document.querySelectorAll('details.fold-panel').forEach((d) => d.addEventListener('toggle', () => {
     if (!d.open) return;
   }));
-  const tick = () => { $('clock').textContent = new Date().toLocaleTimeString('en-GB'); };
+  const tick = () => {
+    $('clock').textContent = new Date().toLocaleTimeString('en-GB');
+    const z = (id, tz) => { const el = $(id); if (el) el.textContent = new Date().toLocaleTimeString('en-GB', { timeZone: tz, hour: '2-digit', minute: '2-digit' }); };
+    z('wt-ny', 'America/New_York'); z('wt-ldn', 'Europe/London'); z('wt-tyo', 'Asia/Tokyo');
+  };
   tick(); setInterval(tick, 1000);
   // Keep the sticky jump-nav pinned just under the (variable-height) top bar. Re-measure only when
   // the WIDTH changes: iOS Safari fires resize on every address-bar collapse, and re-reading
