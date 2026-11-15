@@ -67,30 +67,36 @@ for (const id of ids) {
 
   // Records: keep the last good company record. It is internally consistent (price, date, cap, ratios).
   for (const c of missing) nowRows.push({ ...c, carried: true, carriedAt: today });
-  // A carried record still carries yesterday's USD cap and ratios. Re-run the shared engine with the
-  // current FX snapshot so the deep audit (which recomputes every field) sees the same numbers.
-  const { deriveListing } = await import('./derive-listing.mjs');
-  const base = now.currency || nowRows.find((c) => c.currency)?.currency || 'ZAR';
-  const inputs = nowRows.map((c) => ({
-    ...c,
-    ttm: c.reports?.ttm,
-    latest: c.reports?.latest,
-    annual: c.reports?.annual,
-    quarters: c.reports?.quarters ?? c.quarters,
-  }));
-  nowRows = deriveListing({ companies: inputs, fx: now.fx, baseCurrency: base });
-  // The engine computes a raw margin and FCF for every reporter. The build withholds those fields for
-  // banks and financials afterwards; re-deriving must apply the same policy or the audit sees a bank
-  // carrying an operating margin and a financial carrying free cash flow.
-  for (const c of nowRows) {
-    if (c.bankLike) c.opMargin = null;
-    if (c.financial) {
-      c.fcf = null;
-      c.fcfYield = null;
-      c.fcfMargin = null;
-      c.cashConversion = null;
+  // A carried record still carries yesterday's USD cap and ratios. Re-run the shared engine on the
+  // carried rows only, at the current FX snapshot. Re-deriving the fresh rows would overwrite the
+  // build's TTM choices (two half-years versus a vendor trailing column) and fail their data tests.
+  const carried = nowRows.filter((c) => c.carried);
+  if (carried.length) {
+    const { deriveListing } = await import('./derive-listing.mjs');
+    const base = now.currency || nowRows.find((c) => c.currency)?.currency || 'ZAR';
+    const inputs = carried.map((c) => ({
+      ...c,
+      ttm: c.reports?.ttm,
+      latest: c.reports?.latest,
+      annual: c.reports?.annual,
+      quarters: c.reports?.quarters ?? c.quarters,
+    }));
+    const derived = new Map(deriveListing({ companies: inputs, fx: now.fx, baseCurrency: base }).map((c) => [c.code, c]));
+    nowRows = nowRows.map((c) => (c.carried ? (derived.get(c.code) || c) : c));
+    // The engine computes a raw margin and FCF for every reporter. The build withholds those fields
+    // for banks and financials afterwards; re-deriving must apply the same policy or the audit sees a
+    // bank carrying an operating margin and a financial carrying free cash flow.
+    for (const c of nowRows) {
+      if (!c.carried) continue;
+      if (c.bankLike) c.opMargin = null;
+      if (c.financial) {
+        c.fcf = null;
+        c.fcfYield = null;
+        c.fcfMargin = null;
+        c.cashConversion = null;
+      }
+      if (c.roe != null && Math.abs(c.roe) > 500) c.roe = null;
     }
-    if (c.roe != null && Math.abs(c.roe) > 500) c.roe = null;
   }
   now.companies = nowRows;
   if (now.market) {
