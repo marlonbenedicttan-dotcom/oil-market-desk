@@ -192,6 +192,6 @@ test('the audit counters are honest about coverage', () => {
   assert.ok(a.commonStocks >= a.considered, 'the market is at least what this build considered');
   assert.equal(a.withStatements, hk.companies.length);
   assert.ok(a.withoutStatements >= 0);
-  assert.equal(a.withoutStatements + (a.throttled || 0) + (a.incompleteSmall || 0) + (a.stale || 0) + (a.unsourced || 0), a.considered - a.withStatements,
+  assert.equal(a.withoutStatements + (a.throttled || 0) + (a.incompleteSmall || 0) + (a.stale || 0) + (a.unsourced || 0), a.considered - (a.withStatements - (a.extraBuilt || 0)),
     'every considered company is built, without a page, throttled, stale, unsourced, or excluded for missing profile info');
 });

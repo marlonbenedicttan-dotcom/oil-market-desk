@@ -642,10 +642,14 @@ const cleaned = out.map((c) => {
 
 // Audit counts: the ratios that came out blank, by reason. There is no exchange-published P/E for Hong
 // Kong to reconcile against (TWSE has one), so the audit is coverage, not a cross-check.
+const consideredCodes = new Set(universe.map((c) => c.code));
 const audit = {
   quoted: quoted.length,
   commonStocks: companies.length,
   considered: universe.length,
+  // SEC ADRs and other covered names can be built even though they are not in the HKEX main-board
+  // universe. Without this count the coverage counters look like they overlap.
+  extraBuilt: cleaned.filter((c) => !consideredCodes.has(c.code)).length,
   carried: universe.filter((c) => c.carried).length,
   withStatements: cleaned.length,
   withoutStatements: dropped.length,
