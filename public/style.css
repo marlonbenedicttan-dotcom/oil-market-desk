@@ -4184,4 +4184,17 @@ body{padding-bottom:27px}
   .gb-trow .n{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;line-height:1.3}
   .gb-trow .s{font-size:9px}
 }
+@media (max-width:640px){
+  /* Theme and top-company rows: identities need the full reading width. The
+     decorative badge is desktop-only; cap and valuation stay aligned right. */
+  .gb-trow{grid-template-columns:minmax(0,1fr) 54px 46px;min-height:48px;column-gap:10px}
+  .gb-trow .tk{display:none}
+  .gb-trow .n{margin-bottom:2px;line-height:1.35}
+  .gb-trow .s{margin-top:1px;line-height:1.35}
+  .gb-trow .num{align-self:start;padding-top:1px;line-height:1.35}
+}
+/* A fixed 320px viewport cut the sixth row in half after the row-height pass.
+   The card owns its height now; "SHOW ALL" opens every row without a clipped edge. */
+.gb-theme-list{max-height:none;overflow:visible}
+.gb-theme-list .gb-trow:last-child{border-bottom:0}
 
