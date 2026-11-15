@@ -106,6 +106,15 @@ for (const id of ids) {
     now.market.primary = nowRows.filter((c) => !c.foreignSecondary).length;
     now.market.secondary = nowRows.filter((c) => c.foreignSecondary).length;
     now.market.listed = nowRows.length;
+    // The audit block is written before the carry and still describes the smaller build.
+    if (now.audit) {
+      now.audit.companies = nowRows.length;
+      now.audit.withStatements = nowRows.length;
+      now.audit.primaryCount = now.market.primary;
+      now.audit.secondaryCount = now.market.secondary;
+      now.audit.secondary = nowRows.filter((c) => c.foreignSecondary)
+        .map((c) => ({ code: c.code, exchange: c.secondaryExchange, source: c.secondarySource }));
+    }
     // A carried company adds its cap to the market. The audit compares the published total with the
     // sum of the rows, so leaving the build's pre-carry total makes a valid carry fail (HK 10 Nov).
     if (typeof now.market.totalCap === 'number') {

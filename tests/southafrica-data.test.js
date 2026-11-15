@@ -100,7 +100,11 @@ test('a missing vendor TTM is built from the latest two half-years', () => {
   assert.ok(cfr, 'CFR is missing');
   assert.equal(cfr.peBasis, 'TTM');
   assert.equal(cfr.ttmComputed, '2 half-years');
-  assert.equal(cfr.netIncomeTTMAsOf, '2026-03-31');
+  const halves = (cfr.quarters || []).slice(-2);
+  assert.equal(halves.length, 2, 'CFR has two half-year columns');
+  // The trailing figure ends at the latest half, not at a fixed year-end: a new interim moves it.
+  assert.equal(cfr.netIncomeTTMAsOf, halves[1].d);
+  assert.ok(cfr.netIncomeTTMAsOf >= '2026-03-31', 'the trailing figure is at least the March 2026 year end');
   const computed = za.companies.filter((c) => c.ttmComputed === '2 half-years');
   assert.ok(computed.length > 100, `only ${computed.length} half-year trailing figures`);
   for (const c of computed) {
