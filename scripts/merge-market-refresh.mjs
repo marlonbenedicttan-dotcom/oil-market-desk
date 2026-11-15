@@ -68,11 +68,31 @@ for (const id of ids) {
   // Records: keep the last good company record. It is internally consistent (price, date, cap, ratios).
   for (const c of missing) nowRows.push({ ...c, carried: true, carriedAt: today });
   now.companies = nowRows;
-  if (now.market && typeof now.market.companies === 'number') now.market.companies = nowRows.length;
-  // A carried company adds its cap to the market. The audit compares the published total with the
-  // sum of the rows, so leaving the build's pre-carry total makes a valid carry fail (HK 10 Nov).
-  if (now.market && typeof now.market.totalCap === 'number') {
-    now.market.totalCap = nowRows.reduce((sum, c) => sum + (c.marketCap || 0), 0);
+  if (now.market) {
+    if (typeof now.market.companies === 'number') now.market.companies = nowRows.length;
+    // The audit checks these three against the rows. They were left at the pre-carry counts, so a
+    // valid carry made the market summary describe a smaller universe than the file.
+    now.market.primary = nowRows.filter((c) => !c.foreignSecondary).length;
+    now.market.secondary = nowRows.filter((c) => c.foreignSecondary).length;
+    now.market.listed = nowRows.length;
+    // A carried company adds its cap to the market. The audit compares the published total with the
+    // sum of the rows, so leaving the build's pre-carry total makes a valid carry fail (HK 10 Nov).
+    if (typeof now.market.totalCap === 'number') {
+      now.market.totalCap = nowRows.reduce((sum, c) => sum + (c.marketCap || 0), 0);
+    }
+    // Keep the sector partition in step too: the audit sums the counts and compares to the rows.
+    if (Array.isArray(now.market.sectors)) {
+      for (const c of missing) {
+        const name = c.sector || 'Other';
+        let row = now.market.sectors.find((s) => s.name === name);
+        if (!row) {
+          row = { name, count: 0, cap: 0, pe: null, pb: null, roe: null, yield: null, chgYtd: null };
+          now.market.sectors.push(row);
+        }
+        row.count += 1;
+        row.cap = (row.cap || 0) + (c.marketCap || 0);
+      }
+    }
   }
   writeJson(DATA(spec.file), now);
 

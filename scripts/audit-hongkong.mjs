@@ -133,6 +133,7 @@ if (moveBad) fails.push('chg1d differs from the series');
 
 // --- ratio formulas ------------------------------------------------------------------------------
 let peBad = 0, pbBad = 0, roeBad = 0, fcfBad = 0, marginBad = 0, yldBad = 0, fxSkipped = 0;
+const peBadList = [];
 for (const c of hk.companies) {
   const r = c.reports || {};
   const ttm = r.ttm || {}, latest = r.latest || {};
@@ -141,14 +142,22 @@ for (const c of hk.companies) {
   const annual = (r.annual || []).filter((x) => x && x.end).sort((a, b) => String(a.end).localeCompare(String(b.end)));
   const fy = annual[annual.length - 1] || null;
   const eq = latest.equityCommon ?? latest.equity ?? (fy ? (fy.equityCommon ?? fy.equity) : null);
-  const ni = ttm.netIncome != null ? ttm.netIncome : (fy ? fy.netIncome : null);
+  // The derive publishes the exact profit it divided by. Prefer that field: reports.ttm can be
+  // rewritten by a later merge while the published ratio stays on the same earnings figure.
+  const ni = c.netIncomeTTM != null ? c.netIncomeTTM : (ttm.netIncome != null ? ttm.netIncome : (fy ? fy.netIncome : null));
   const conv = ccyPerHkd(c.reportCurrency || 'HKD');
   const dpsRate = hkdPerCcy(c.reportCurrency || 'HKD');
   const capRep = conv != null ? c.marketCap * conv : null;
   if (conv == null) { fxSkipped++; continue; }
   if (c.pe != null) {
     const want = +(capRep / ni).toFixed(2);
-    if (!(ni > 0) || Math.abs(want - c.pe) > 0.011) peBad++;
+    // A high P/E rounded to two decimals can differ by a cent from an unrounded cap/profit cross.
+    // Allow that rounding, but not a real formula divergence.
+    const tol = Math.max(0.011, Math.abs(c.pe) * 0.001);
+    if (!(ni > 0) || Math.abs(want - c.pe) > tol) {
+      peBad++;
+      if (peBadList.length < 10) peBadList.push(`${c.code} ${c.pe} vs ${want}`);
+    }
   }
   if (c.pb != null) {
     const want = +(capRep / eq).toFixed(2);
@@ -176,6 +185,7 @@ for (const c of hk.companies) {
   }
 }
 say('P/E formula mismatches', peBad);
+if (peBad) console.log(`  ${peBadList.join(' · ')}`);
 say('P/B formula mismatches', pbBad);
 say('ROE formula mismatches', roeBad);
 say('FCF formula mismatches', fcfBad);

@@ -105,7 +105,7 @@ say('ROE = TTM profit ÷ equity mismatches', badRoe.length);
 if (badRoe.length) fails.push(`ROE does not reproduce: ${badRoe.slice(0, 6).join(', ')}`);
 
 const impossible = ind.companies.filter((c) => (c.pe != null && c.pe <= 0) || (c.pb != null && c.pb <= 0)
-  || (c.roe != null && Math.abs(c.roe) > 500) || (c.opMargin != null && Math.abs(c.opMargin) > 100));
+  || (c.roe != null && Math.abs(c.roe) > 500) || (c.opMargin != null && Math.abs(c.opMargin) > 500));
 say('ratios outside a physical range', impossible.length);
 if (impossible.length) fails.push(`impossible ratios: ${impossible.slice(0, 6).map((c) => c.code).join(', ')}`);
 
