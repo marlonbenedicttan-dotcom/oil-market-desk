@@ -79,6 +79,19 @@ for (const id of ids) {
     quarters: c.reports?.quarters ?? c.quarters,
   }));
   nowRows = deriveListing({ companies: inputs, fx: now.fx, baseCurrency: base });
+  // The engine computes a raw margin and FCF for every reporter. The build withholds those fields for
+  // banks and financials afterwards; re-deriving must apply the same policy or the audit sees a bank
+  // carrying an operating margin and a financial carrying free cash flow.
+  for (const c of nowRows) {
+    if (c.bankLike) c.opMargin = null;
+    if (c.financial) {
+      c.fcf = null;
+      c.fcfYield = null;
+      c.fcfMargin = null;
+      c.cashConversion = null;
+    }
+    if (c.roe != null && Math.abs(c.roe) > 500) c.roe = null;
+  }
   now.companies = nowRows;
   if (now.market) {
     if (typeof now.market.companies === 'number') now.market.companies = nowRows.length;
