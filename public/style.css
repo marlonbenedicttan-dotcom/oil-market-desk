@@ -3157,3 +3157,29 @@ main, .tabpane, .panel, .home-brief-grid, .home-two, .brief-cols,
 }
 .topbar .tab.active::after { display: none; }
 .topbar .tab.active svg { opacity: 1; }
+
+/* Colour correction: cool graphite + steel-blue accent. Warnings keep a warm gold, independent of
+   the interactive accent, so amber no longer bleeds into every border and selected chip. */
+:root {
+  --bg: #0b1016;
+  --panel: #121922;
+  --panel2: #18222d;
+  --line: #273442;
+  --line2: #3a4b5e;
+  --text: #e9eef4;
+  --dim: #9aa8b7;
+  --amber: #6ea8d8;
+  --amber2: #9cc4e4;
+  --blue: #6ea8d8;
+  --green: #48b083;
+  --red: #d66b6b;
+  --warn: #d6a45f;
+}
+.topbar { background: rgba(11, 16, 22, .96); }
+.fresh-dot.warn { background: var(--warn); box-shadow: none; }
+.quality-banner.warn, .quality-warn, .hsc-warn, .hsc-banner, .pair-shift.warn,
+.ma-status.s-rumour, .alert.med { color: var(--warn); border-color: #6b5632; }
+.alert.med { border-left-color: var(--warn); }
+.ma-chip.on { background: var(--amber); border-color: var(--amber); color: #071019; }
+.badge { background: var(--amber); color: #071019; }
+.brand .logo { color: var(--amber); }

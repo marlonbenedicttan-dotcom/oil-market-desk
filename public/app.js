@@ -1023,7 +1023,7 @@ function tickerStart() {
 // same grid/axis/legend/tooltip and the same role colours. No new controls for
 // the reader — just consistency. Roles: c1 primary (futures), c2 secondary
 // (real/spot), c3 tertiary, c4 alt, accent.
-const CT = { text: '#7c8a99', grid: '#151a20', ref: '#2a3440', c1: '#4aa3ff', c2: '#ff9e00', c3: '#00c853', c4: '#c06bff', accent: '#ffd54f' };
+const CT = { text: '#8e9dad', grid: '#1d2935', ref: '#334456', c1: '#6ea8d8', c2: '#d6a45f', c3: '#48b083', c4: '#9b8ac4', accent: '#d6a45f' };
 const charts = {};   // canvas id -> Chart instance (re-render updates in place; no leaks)
 const fmtNum = (v, dp = 2) => {
   if (v == null || Number.isNaN(v)) return '—';
@@ -1063,7 +1063,7 @@ function baseOptions({ dp = 2, unit = '', percentAxis = false, yTitle = '', y1Ti
       legend: { display: legend, labels: { color: CT.text, boxWidth: 10, usePointStyle: true, font: { family: 'monospace' }, filter: (item, data) => !(data.datasets[item.datasetIndex] && data.datasets[item.datasetIndex].$news) } },
       tooltip: {
         mode: 'index', intersect: false,
-        backgroundColor: '#0c0f13', borderColor: '#2a3440', borderWidth: 1, titleColor: '#e6edf3', bodyColor: '#c9d4df', padding: 8,
+        backgroundColor: '#111923', borderColor: '#334456', borderWidth: 1, titleColor: '#e9eef4', bodyColor: '#b9c7d6', padding: 8,
         callbacks: {
           title: (it) => (it && it.length ? String(it[0].label) : ''),
           label: (ctx) => {
@@ -1202,7 +1202,7 @@ const anchorLine = {
     if (chartAnchor == null) return;
     const x = c.scales.x.getPixelForValue(chartAnchor);
     const { top, bottom } = c.chartArea;
-    const g = c.ctx; g.save(); g.strokeStyle = '#ff9e00'; g.setLineDash([3, 3]); g.beginPath(); g.moveTo(x, top); g.lineTo(x, bottom); g.stroke(); g.restore();
+    const g = c.ctx; g.save(); g.strokeStyle = CT.c2; g.setLineDash([3, 3]); g.beginPath(); g.moveTo(x, top); g.lineTo(x, bottom); g.stroke(); g.restore();
   },
 };
 function buildMetricOptions(m) {
@@ -1228,9 +1228,9 @@ function buildMetricOptions(m) {
 function line(label, arr, color) { return { label, data: arr, borderColor: color, backgroundColor: color + '22', borderWidth: 2, pointRadius: 0, tension: 0.25, spanGaps: true, fill: false }; }
 function datasetsFor(metric, h, m) {
   const b = m.benchmarks.find((x) => x.id === metric);
-  if (b) { const s = h.series[metric]; const sets = []; if (b.paper != null) sets.push(line(`${b.label} futures`, s.paper, '#4aa3ff')); if (b.physical != null) sets.push(line(`${b.label} real`, s.physical, '#ff9e00')); return sets; }
+  if (b) { const s = h.series[metric]; const sets = []; if (b.paper != null) sets.push(line(`${b.label} futures`, s.paper, CT.c1)); if (b.physical != null) sets.push(line(`${b.label} real`, s.physical, CT.c2)); return sets; }
   if (metric.startsWith('basis:')) { const id = metric.slice(6); return [line(`${id} gap`, h.basis[id], '#00c853')]; }
-  if (metric.startsWith('spread:')) { const s = h.spreads[metric.slice(7)]; return [line('futures', s.paper, '#4aa3ff'), line('real', s.physical, '#ff9e00')]; }
+  if (metric.startsWith('spread:')) { const s = h.spreads[metric.slice(7)]; return [line('futures', s.paper, CT.c1), line('real', s.physical, CT.c2)]; }
   return [];
 }
 // (chart options now come from baseOptions() in the chart kit above.)
@@ -1240,8 +1240,8 @@ function seriesLines(r) {
   if (r.kind === 'fx') return has(r.series.paper) ? [line(r.label, r.series.paper, '#c06bff')] : [];
   if (r.kind === 'basis') return has(r.series.paper) ? [line(r.label, r.series.paper, '#00c853')] : [];
   const out = [];
-  if (has(r.series.paper)) out.push(line(`${r.label} futures`, r.series.paper, '#4aa3ff'));
-  if (has(r.series.physical)) out.push(line(`${r.label} real`, r.series.physical, '#ff9e00'));
+  if (has(r.series.paper)) out.push(line(`${r.label} futures`, r.series.paper, CT.c1));
+  if (has(r.series.physical)) out.push(line(`${r.label} real`, r.series.physical, CT.c2));
   return out;
 }
 function chartSummary(r, label) {

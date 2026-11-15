@@ -2,7 +2,7 @@
 // from cache and never revalidated; the shell itself stays network-first so a new deploy always shows.
 // A few read-only API snapshots are cached stale-while-revalidate: repeat visits paint the market
 // board and home summary immediately, then refresh in the background. Everything else stays live.
-const CACHE = 'oil-desk-v14';
+const CACHE = 'oil-desk-v15';
 const SHELL = ['/', '/style.css', '/app.js', '/icon.svg?v=3', '/manifest.json?v=3'];
 
 const isVersioned = (url) => ['v', 'ver', 'version'].some((k) => url.searchParams.has(k));
