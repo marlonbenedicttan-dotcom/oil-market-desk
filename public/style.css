@@ -843,7 +843,7 @@ canvas { display: block; }
   /* iOS composites a sticky element far better when it owns its own layer. Without this, Safari can
      keep the top bar and the horizontally-scrollable jump-nav on the main-thread paint path while
      the page scrolls. `translateZ(0)` is a no-op on desktop and does not change layout. */
-  .topbar, .jumpnav { -webkit-transform: translateZ(0); transform: translateZ(0); }
+  .topbar, .jumpnav, .comm-nav { -webkit-transform: translateZ(0); transform: translateZ(0); }
   .brand { flex: 1 1 auto; gap: 6px; min-width: 0; }
   .brand h1 { font-size: 11px; letter-spacing: .5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .brand .sub { display: none; }
@@ -2416,7 +2416,7 @@ body.gs-search-open { overflow: hidden; }
   #p-regime { display: none; }
 
   /* Screener: show the five columns that matter on a phone, inside a shorter scroll box. */
-  #p-screen .sc-wrap { max-height: 560px; overflow: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
+  #p-screen .sc-wrap { max-height: 560px; overflow: auto; overscroll-behavior: contain; }
   #p-screen .sc-table thead th { position: sticky; top: 0; z-index: 2; }
   #p-screen .sc-bar { padding: 8px 10px; gap: 6px 8px; }
   #p-screen .sc-bar .sc-f { flex: 1 1 100%; }
@@ -2637,7 +2637,7 @@ body.gs-search-open { overflow: hidden; }
   .gb-hero-main .big { font-size:30px; }
   .gb-desk { display:none; }
   .gb-mob { display:inline; }
-  .gb-map { overflow-x:auto; overflow-y:hidden; scrollbar-width:none; -webkit-overflow-scrolling:touch; }
+  .gb-map { overflow-x:auto; overflow-y:hidden; scrollbar-width:none; }
   .gb-map::-webkit-scrollbar { display:none; }
   .gb-map-inner { width:640px; height:269px; aspect-ratio:auto; }
   #gb-map-sub { display:none; }
@@ -2690,12 +2690,12 @@ body.gs-search-open { overflow: hidden; }
   #p-calendar { order: 3; }
 }
 @media (max-width: 640px) {
-  #home-watch .tiles { display: flex; overflow-x: auto; gap: 8px; padding: 8px 12px 10px; scroll-snap-type: x proximity; -webkit-overflow-scrolling: touch; }
+  #home-watch .tiles { display: flex; overflow-x: auto; gap: 8px; padding: 8px 12px 10px; scroll-snap-type: x proximity; touch-action: pan-x; }
   #home-watch .tile { flex: 0 0 158px; scroll-snap-align: start; }
 }
 
 @media (max-width: 640px) {
-  .home-ideas { display: flex; overflow-x: auto; gap: 8px; padding: 8px 12px 10px; scroll-snap-type: x proximity; -webkit-overflow-scrolling: touch; }
+  .home-ideas { display: flex; overflow-x: auto; gap: 8px; padding: 8px 12px 10px; scroll-snap-type: x proximity; touch-action: pan-x; }
   .home-idea { flex: 0 0 262px; scroll-snap-align: start; }
 }
 
@@ -2706,7 +2706,7 @@ body.gs-search-open { overflow: hidden; }
 }
 
 @media (max-width: 640px) {
-  .home-markets { display: flex; overflow-x: auto; gap: 8px; padding: 8px 12px 10px; scroll-snap-type: x proximity; -webkit-overflow-scrolling: touch; }
+  .home-markets { display: flex; overflow-x: auto; gap: 8px; padding: 8px 12px 10px; scroll-snap-type: x proximity; touch-action: pan-x; }
   .home-markets .home-mkt { flex: 0 0 172px; scroll-snap-align: start; }
 }
 
@@ -2719,9 +2719,9 @@ body.gs-search-open { overflow: hidden; }
 
 @media (max-width: 760px) {
   .gb-bubble { max-width: 30px; max-height: 30px; }
-  .gb-scroll { -webkit-overflow-scrolling: touch; }
-  .gb-table th:first-child, .gb-table td:first-child { position: sticky; left: 0; background: var(--panel); z-index: 1; }
-  .gb-table thead th:first-child { background: #0c0f13; z-index: 2; }
+  /* No sticky first column on phones: the screener table fits the viewport (measured 0-2px of
+     overflow at 320/360/390/430), so a sticky cell could never actually stick. It only made WebKit
+     re-raster 50 identical cells on every scroll frame. */
 }
 
 /* The phone layout turns markets / ideas / watchlist into one-row swipe strips, so the desktop
@@ -2806,7 +2806,7 @@ body.gs-search-open { overflow: hidden; }
 .co-matrix-legend { display: flex; flex-wrap: wrap; gap: 12px; padding: 0 12px 8px; font-size: 8px; line-height: 1.5; color: #586674; }
 .co-matrix-legend span { white-space: nowrap; }
 .co-matrix-legend b { color: #8b98a6; font-weight: 600; }
-.co-matrix-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: thin; }
+.co-matrix-scroll { overflow-x: auto; scrollbar-width: thin; }
 .co-matrix-table { width: max-content; min-width: 100%; border-collapse: collapse; font-size: 11px; font-variant-numeric: tabular-nums; }
 .co-matrix-table th { text-align: right; font-size: 8px; letter-spacing: .9px; color: #5b6773; font-weight: 400; padding: 8px 12px; border-bottom: 1px solid var(--line); white-space: nowrap; }
 .co-matrix-table th:first-child, .co-matrix-table td:first-child { text-align: left; position: sticky; left: 0; z-index: 2; background: var(--panel); box-shadow: 1px 0 0 var(--line); }
@@ -2854,3 +2854,306 @@ body.gs-search-open { overflow: hidden; }
 @media (max-width: 640px) {
   .co-region-fixed { min-height: 44px; font-size: 10px; padding: 0 13px; }
 }
+
+/* ---------- iPhone Safari: stop the page jumping under the thumb ----------
+   Desktop-first, phone-last: this block is the final word on the phone layouts.
+
+   1. iOS Safari ZOOMS the page whenever a focused control's font-size is under 16px, and does not
+      reliably zoom back out on blur. Every filter on the phone layouts (the HOME/COMPANIES screeners
+      and the commodity + macro selects) was 8.5-14px, so each tap zoomed to ~1.6x and relaid the page
+      out. 16px is the threshold.
+   2. `-webkit-tap-highlight-color` defaults to a translucent cyan flash on every tap. Replaced with
+      a deliberate :active state so presses still read as presses.
+   Measured at 390px after: controls 30 -> 35px tall, filter row 123 -> 180px, page +17px, and the
+   first HOME panel still starts at 351px — the growth is entirely below the fold, so no CLS/LCP move.
+   No horizontal overflow at 320 / 360 / 390 / 430. */
+:root { -webkit-tap-highlight-color: transparent; }
+
+@media (max-width: 640px) {
+  /* Safari's zoom threshold. The component selectors are listed so they beat the 9px rules above,
+     and so a future filter inherits 16px instead of re-introducing the zoom. */
+  input, select, textarea,
+  .gb-filters select, .gb-filters input,
+  .jp-filters select, .sc-f input, .sc-pager select, .crf-head select,
+  .co-global-input { font-size: 16px; }
+  /* ...without letting a 16px label push the row taller than it needs to be. */
+  .gb-filters select, .gb-filters input { padding: 5px 8px; }
+
+  /* Press feedback for the controls people actually touch. Colour only — no layout, no motion. */
+  .tab:active, .ghost:active, .tick-btn:active, .jumpnav a:active, .comm-nav button:active,
+  .co-region button:active, .co-region-fixed:active, .home-mkt:active, .gb-table tbody tr:active td,
+  .home-idea:active, .sc-table tbody tr:active td { background: #182029; }
+
+  /* Tap targets under 32px were the chart-marker chips (20px) and the onboarding CLOSE (29px). */
+  .chart-events a.ce { min-height: 32px; padding: 5px 8px; }
+  .onboard-close { min-height: 32px; padding: 6px 16px; }
+}
+
+/* ---------------------------------------------------------------------------
+   Professional pass: calm the terminal, make the data the loudest thing.
+   UI text uses the system sans stack; mono stays available for genuine code and
+   figures. The palette moves from pure-black/neon to graphite/bronze with
+   restrained status colours. These rules are deliberately last so they can be
+   removed or tuned without touching the component definitions above.
+   --------------------------------------------------------------------------- */
+:root {
+  --bg: #0e1115;
+  --panel: #151a21;
+  --panel2: #1b222b;
+  --line: #27303a;
+  --line2: #394553;
+  --text: #e8ebef;
+  --dim: #97a2ae;
+  --amber: #c29a63;
+  --amber2: #d8ba8d;
+  --blue: #7691ad;
+  --green: #4d9a79;
+  --red: #bf5b53;
+  --sans: "Inter", "SF Pro Text", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --radius: 8px;
+}
+
+html, body { overflow-x: clip; background: var(--bg); }
+body { font: 14px/1.55 var(--sans); letter-spacing: .005em; color: var(--text); }
+h1, h2, h3, h4, .brand h1 { font-family: var(--sans); }
+button, input, select, textarea { font-family: var(--sans); }
+button { letter-spacing: .015em; }
+a { text-underline-offset: 2px; }
+
+/* Header: a product bar, not a HUD. */
+.topbar {
+  background: rgba(14, 17, 21, .96);
+  border-bottom: 1px solid var(--line);
+  padding: 9px 18px;
+  gap: 18px;
+}
+.brand { gap: 9px; }
+.logo { color: var(--amber); font-size: 17px; }
+.brand h1 { font-size: 14px; font-weight: 650; letter-spacing: .085em; }
+.brand .sub { font-size: 10px; letter-spacing: .045em; color: var(--dim); }
+.clock { color: var(--text); font: 12px/1 var(--mono); letter-spacing: .02em; }
+.fresh-dot.ok, .fresh-dot.warn, .fresh-dot.stale { box-shadow: none; }
+.tabs { border-color: var(--line); background: transparent; border-radius: 6px; }
+.tab {
+  color: var(--dim);
+  border-right-color: transparent;
+  padding: 8px 13px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .04em;
+}
+.tab:hover { color: var(--text); }
+.tab.active {
+  color: var(--text);
+  background: transparent;
+  box-shadow: inset 0 -2px 0 var(--amber);
+}
+.tickerbar, .ticker, .tick-btn { background: var(--bg); }
+.tickerbar { border-bottom-color: var(--line); }
+.tk { font-size: 12px; }
+.tk b { color: var(--dim); font-weight: 600; letter-spacing: .015em; }
+
+/* Layout and surfaces. */
+main { max-width: 1280px; padding: 18px; gap: 16px; }
+.panel {
+  background: var(--panel);
+  border-color: var(--line);
+  border-radius: var(--radius);
+}
+.ph {
+  background: var(--panel2);
+  border-bottom-color: var(--line);
+  padding: 10px 14px;
+}
+.ph:first-child { border-radius: calc(var(--radius) - 1px) calc(var(--radius) - 1px) 0 0; }
+.ph-t { color: var(--text); font-size: 11px; font-weight: 600; letter-spacing: .1em; }
+.gtitle { color: var(--dim); font-size: 10px; letter-spacing: .1em; }
+.card, .tile, .alert, .jumpnav, .quality-banner, .quality-warn, .fold-panel {
+  border-color: var(--line);
+  border-radius: var(--radius);
+}
+.card { padding: 14px 15px; }
+.tile { padding: 10px 12px; background: var(--panel); }
+.tile:hover, .card.clickable:hover { border-color: var(--line2); }
+.t-name { color: var(--text); font-size: 12px; }
+.t-px { font-size: 14px; font-weight: 650; }
+.t-foot { color: var(--dim); }
+.row { border-bottom-color: var(--line); }
+
+/* Controls: one quiet system instead of four competing ones. */
+.ghost {
+  background: transparent;
+  border-color: var(--line2);
+  border-radius: 6px;
+  color: var(--dim);
+  min-height: 30px;
+  padding: 5px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .02em;
+}
+.ghost:hover { color: var(--text); border-color: var(--amber); }
+.ma-chip {
+  background: transparent;
+  border-color: var(--line2);
+  border-radius: 5px;
+  color: var(--dim);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .02em;
+  padding: 5px 9px;
+}
+.ma-chip:hover { color: var(--text); border-color: var(--line2); }
+.ma-chip.on {
+  background: var(--amber);
+  border-color: var(--amber);
+  color: #15120d;
+}
+.co-tgl {
+  background: transparent;
+  border-color: var(--line2);
+  border-radius: 6px;
+  color: var(--dim);
+  font-size: 11px;
+  font-weight: 600;
+}
+.co-tgl:hover { border-color: var(--line2); color: var(--text); }
+.co-tgl.on { background: var(--panel2); border-color: var(--amber); color: var(--text); }
+select { border-radius: 6px; background-color: var(--panel2); border-color: var(--line2); }
+.jumpnav { background: var(--bg); padding: 8px; }
+.jumpnav a { border-color: var(--line); border-radius: 5px; color: var(--dim); font-size: 11px; }
+.jumpnav a:hover, .jumpnav a:focus-visible { color: var(--text); border-color: var(--line2); }
+.alert { background: var(--panel2); }
+.badge { background: var(--amber); color: #15120d; }
+
+/* Boot: remove the radar theatre; leave a quiet wordmark and progress line. */
+.boot { background: var(--bg); gap: 16px; }
+.scope { display: none; }
+.boot-word { font: 650 13px/1.2 var(--sans); letter-spacing: .16em; color: var(--text); }
+.boot-bar { width: 180px; height: 2px; border: 0; background: var(--line); border-radius: 2px; overflow: hidden; }
+.boot-bar i { background: var(--amber); }
+.boot-status { color: var(--dim); font: 11px/1.4 var(--sans); letter-spacing: .02em; }
+
+/* First-run panel: no radar, no giant blocking ceremony. It remains available from Help. */
+.onboard { background: rgba(8, 10, 13, .68); padding: 24px; }
+.onboard-box {
+  background: var(--panel);
+  border-color: var(--line2);
+  border-radius: 12px;
+  max-width: 480px;
+  padding: 24px 26px;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, .35);
+}
+.onboard-box .tower { display: none; }
+.onboard-box h2 { font-size: 20px; font-weight: 650; letter-spacing: -.01em; }
+.onboard-lead { color: var(--dim); font-size: 14px; line-height: 1.6; }
+.onboard-close {
+  background: transparent;
+  border: 1px solid var(--line2);
+  border-radius: 6px;
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .04em;
+  padding: 8px 14px;
+}
+.onboard-close:hover { border-color: var(--amber); }
+
+/* Charts and figures keep the precision of mono where it helps, without making prose mono. */
+.chart-wrap { border-radius: 6px; }
+canvas { max-width: 100%; }
+.antable th, .jp-q-table th { letter-spacing: .06em; }
+.quality-banner, .quality-warn { padding: 10px 13px; }
+
+/* Mobile: one header row for identity/controls, a second scrollable nav row. */
+@media (max-width: 640px) {
+  .topbar {
+    flex-wrap: wrap;
+    align-items: center;
+    padding: 7px max(10px, env(safe-area-inset-left)) 0 max(10px, env(safe-area-inset-right));
+    gap: 0 8px;
+  }
+  .brand { order: 1; flex: 1 1 auto; min-width: 0; }
+  .brand h1 { font-size: 11px; letter-spacing: .06em; }
+  .meta { order: 2; flex: 0 0 auto; }
+  .tabs {
+    order: 3;
+    flex: 1 0 100%;
+    margin: 7px -10px 0;
+    padding: 0 10px;
+    border: 0;
+    border-top: 1px solid var(--line);
+    border-radius: 0;
+    background: transparent;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .tabs::-webkit-scrollbar { display: none; }
+  .tab {
+    border: 0;
+    border-bottom: 2px solid transparent;
+    border-radius: 0;
+    padding: 10px 12px;
+    min-height: 40px;
+    font-size: 10px;
+    letter-spacing: .04em;
+  }
+  .tab.active { box-shadow: none; border-bottom-color: var(--amber); }
+  .tickerbar { border-top: 1px solid var(--line); }
+  main { padding: 12px max(10px, env(safe-area-inset-left)) calc(12px + env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-right)); gap: 12px; }
+  .panel, .card, .tile, .jumpnav, .alert { border-radius: 6px; }
+  .ph { padding: 10px 12px; }
+  .onboard { padding: 16px; }
+  .onboard-box { max-width: calc(100vw - 32px); padding: 20px; }
+}
+
+/* Follow-up pass: specificity fixes for the masthead and hard stops for grid overflow. */
+main, .tabpane, .panel, .home-brief-grid, .home-two, .brief-cols,
+.home-brief-grid > *, .home-two > *, .brief-cols > *, .imp, .mvr, .home-bd {
+  min-width: 0;
+}
+.panel { max-width: 100%; }
+.imp-what, .imp-why, .imp-mkt, .brief-ctx, .home-bd .l { overflow-wrap: anywhere; }
+
+@media (max-width: 640px) {
+  .topbar { flex-wrap: wrap; align-items: center; padding: 7px 10px 0; gap: 0 8px; }
+  .topbar .brand { order: 1; flex: 1 1 auto; min-width: 0; }
+  .topbar .meta { order: 2; flex: 0 0 auto; gap: 5px; }
+  .topbar .meta .clock { font-size: 10px; margin-right: 2px; }
+  .topbar .tabs {
+    order: 3; flex: 1 0 100%; margin: 7px -10px 0; padding: 0 10px;
+    border: 0; border-top: 1px solid var(--line); border-radius: 0;
+    background: transparent; overflow-x: auto; scrollbar-width: none;
+  }
+  .topbar .tabs::-webkit-scrollbar { display: none; }
+  .topbar .tab {
+    border: 0; border-bottom: 2px solid transparent; border-radius: 0;
+    padding: 10px 12px; min-height: 40px; font-size: 10px; letter-spacing: .04em;
+    background: transparent;
+  }
+  .topbar .tab.active {
+    color: var(--text); background: transparent; box-shadow: none;
+    border-bottom-color: var(--amber);
+  }
+  .topbar .tab.active::after { display: none; }
+  .home-brief-grid, .home-two { grid-template-columns: minmax(0, 1fr); }
+  .home-brief-grid { grid-template-rows: auto; }
+  .home-brief-lead, .home-calendar, .home-brief-more { grid-column: 1; grid-row: auto; }
+  .home-status { flex-direction: column; align-items: flex-start; gap: 3px; }
+  .brief-tape { grid-template-columns: 1fr; }
+  .brief-mini-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 420px) {
+  .topbar .meta .clock { display: none; }
+  .brand h1 { max-width: 210px; }
+}
+
+/* Desktop masthead: an underline for the active section, not a filled amber block. */
+.topbar .tab.active {
+  background: transparent;
+  color: var(--text);
+  box-shadow: inset 0 -2px 0 var(--amber);
+}
+.topbar .tab.active::after { display: none; }
+.topbar .tab.active svg { opacity: 1; }

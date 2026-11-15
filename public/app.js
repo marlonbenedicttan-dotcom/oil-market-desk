@@ -4557,7 +4557,9 @@ $('macro-links')?.addEventListener('click', (e) => { const el = e.target.closest
   });
   const showOnboard = () => { seedBlips(); onboardEl?.classList.remove('hidden'); $('onboard-close')?.focus(); };
   const hideOnboard = () => { localStorage.setItem('oilbasis.seenOnboard', '1'); onboardEl?.classList.add('hidden'); };
-  if (!localStorage.getItem('oilbasis.seenOnboard')) showOnboard();
+  // First visit stays uninterrupted: the guide is one click away under Help, not a blocking modal.
+  // Keep the seen flag for people who opened it from Help.
+  // if (!localStorage.getItem('oilbasis.seenOnboard')) showOnboard();
   $('onboard-close')?.addEventListener('click', hideOnboard);
   $('help-open')?.addEventListener('click', showOnboard);
   onboardEl?.addEventListener('click', (e) => { if (e.target.id === 'onboarding') hideOnboard(); });
