@@ -2021,7 +2021,6 @@ button.deal-sec-tile:hover { background: var(--surface2); }
 }
 @media (max-width:700px) {
   .home-status { flex-direction:column; align-items:flex-start; gap:4px; }
-  .home-markets { padding:8px; gap:8px; }
   .home-mkt .lvl { font-size:18px; }
   .home-ideas { padding:8px; }
   .brief-tape { grid-template-columns:1fr; }
@@ -3881,9 +3880,8 @@ select:focus,input:focus,textarea:focus{outline:2px solid var(--signal);outline-
 .comm-nav button.active,.macro-tabs button.active,.co-views button.active{color:var(--accent);border-bottom-color:var(--signal);background:transparent}
 
 /* Home benchmark board: every market uses the same visual weight. */
-.home-markets{border:1px solid var(--text);background:var(--panel);gap:0;padding:0}
-.home-mkt{background:var(--panel);border:0;border-left:1px solid var(--line);padding:15px 14px}
-.home-mkt:first-child{border-left:0}
+.home-markets{border:1px solid var(--text);background:var(--line);gap:1px;padding:0}
+.home-mkt{background:var(--panel);border:0;padding:15px 14px}
 .home-mkt .lvl{font-family:var(--mono);font-variant-numeric:tabular-nums;letter-spacing:-.035em}
 .home-mkt:hover{background:var(--panel2)}
 .home-idea .n{font-family:var(--mono);letter-spacing:-.04em}
@@ -3963,8 +3961,6 @@ body{padding-bottom:27px}
   .wt-pagehead h1{font-size:29px}
   .comm-name,.macro-country-name{font-size:32px}
   .home-markets{border-color:var(--line2)}
-  .home-mkt{border-left:0;border-top:1px solid var(--line)}
-  .home-mkt:first-child{border-top:0}
 }
 @media (max-width:760px){
   .comm-nav{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:0;overflow:visible;padding:0}
