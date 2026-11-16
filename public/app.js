@@ -12086,16 +12086,15 @@ async function renderCompanyPageBody(el, c, all) {
           : '';
         return `<div class="co-sect">Valuation</div><div class="co-stats co-stats-12">${tiles.join('')}</div>${note}`;
       })()
-    + (c.ticker ? `<div class="co-chartwrap">
-        <div class="co-ranges">
-          <span class="co-cmp-l">COMPARE</span><input class="co-cmp" id="co-cmp" placeholder="company name, e.g. jpmorgan" value="${esc(cmpCode(coCompare))}" autocomplete="off">
-          <button class="co-cmp-clear${coCompare ? '' : ' hidden'}" id="us-cmp-clear" data-cmpclear="us" type="button" title="Clear comparison" aria-label="Clear comparison">×</button>
-          <div class="co-sugg" id="us-sugg"></div>
-          ${['1m', '3m', '6m', 'ytd', '1y', '5y', '10y'].map((r) => `<button class="ma-chip${coRange === r ? ' on' : ''}" data-corange="${r}">${r.toUpperCase()}</button>`).join('')}
-        </div>
-        <div class="co-rets" id="co-rets"></div>
-        <div class="co-canvas"><div class="co-big" id="co-big"></div><canvas id="co-chart"></canvas></div></div>
-        <div id="us-peers"></div>` : '')
+    + (c.ticker ? `<div class="co-ranges">
+        <span class="co-cmp-l">COMPARE</span><input class="co-cmp" id="co-cmp" placeholder="company name, e.g. jpmorgan" value="${esc(cmpCode(coCompare))}" autocomplete="off">
+        <button class="co-cmp-clear${coCompare ? '' : ' hidden'}" id="us-cmp-clear" data-cmpclear="us" type="button" title="Clear comparison" aria-label="Clear comparison">×</button>
+        <div class="co-sugg" id="us-sugg"></div>
+        ${['1m', '3m', '6m', 'ytd', '1y', '5y', '10y'].map((r) => `<button class="ma-chip${coRange === r ? ' on' : ''}" data-corange="${r}">${r.toUpperCase()}</button>`).join('')}
+      </div>
+      <div class="co-rets" id="co-rets"></div>
+      <div class="co-chartwrap"><div class="co-canvas"><div class="co-big" id="co-big"></div><canvas id="co-chart"></canvas></div></div>
+      <div id="us-peers"></div>` : '')
     + (() => {
         const lf = c.lastFiling;
         const link = lf?.url

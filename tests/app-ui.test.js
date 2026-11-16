@@ -813,6 +813,15 @@ test('all ten markets are reachable in the COMPANIES navigation', () => {
 });
 
 
+test('the US company chart controls stay outside the fixed-height chart frame', () => {
+  // On a phone the chart frame is 270px. Compare + the seven range chips + the return strip used
+  // to live inside it, wrapped to ~184px and left a 37px chart. They belong above the frame, as
+  // they already do in the other nine markets.
+  const app = fs.readFileSync(APP, 'utf8');
+  assert.doesNotMatch(app, /<div class="co-chartwrap">\s*<div class="co-ranges">/);
+  assert.match(app, /<div class="co-rets" id="co-rets"><\/div>\s*<div class="co-chartwrap"><div class="co-canvas">/);
+});
+
 test('each market loader fetches its own endpoint', () => {
   // Brazil shipped loading /api/southafrica: the B3 tab painted the JSE list, then every company
   // click asked the Brazil company route for a JSE code and failed. Guard the whole loader set.
