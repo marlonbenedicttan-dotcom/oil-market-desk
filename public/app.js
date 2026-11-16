@@ -4763,6 +4763,17 @@ function goToInstrument(id, range = '6m') {
 $('tabs').addEventListener('click', (e) => { const b = e.target.closest('.tab'); if (b) showTab(b.dataset.tab); });
 // The desktop rail is the primary section nav; the top tabs return only on narrow screens.
 document.querySelector('.wt-rail')?.addEventListener('click', (e) => {
+  // OVERVIEW is the page itself, so pressing it while already here means "back to the top". It used
+  // to do literally nothing: the pane was already visible, no scroll happened, and the section
+  // highlight (scroll-spy) put itself straight back on the section you were sitting in.
+  const homeBtn = e.target.closest('[data-tab="home"]');
+  const homePane = document.querySelector('.tabpane[data-pane="home"]');
+  if (homeBtn && homePane && !homePane.classList.contains('hidden')) {
+    e.stopPropagation();                 // we own this click; showTab('home') would only re-run the spy
+    jumpToken++;                         // cancel any jump still settling
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    return;
+  }
   const g = e.target.closest('[data-goto]');
   if (!g) return;
   e.preventDefault();
