@@ -3447,6 +3447,10 @@ input[type="search"],input[type="text"]{border-radius:var(--r,4px)}
      content stays exactly where it was; only the rule moves up into the middle. */
   #pane-home #p-brief-more{padding-top:8px}
   .home-brief-grid{row-gap:8px}
+  /* The vertical divider starts one row-gap below the horizontal rule; inset its bottom by the
+     same 8px so it does not run into the closing rule. */
+  .brief-mini + .brief-mini{border-left:0;position:relative}
+  .brief-mini + .brief-mini::before{content:'';position:absolute;left:0;top:0;bottom:8px;width:1px;background:var(--line);pointer-events:none}
 }
 .brief-mini-grid{border-bottom:1px solid var(--line)}
 .brief-mini{padding:14px 0}
