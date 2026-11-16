@@ -840,6 +840,14 @@ test('a reload on the Companies tab lands on HOME, but real deep links survive',
   assert.equal(ui.isBootDeepLink('#/deals/sector/energy'), true);
 });
 
+test('desktop market tabs grow to the search-box edge', () => {
+  const css = fs.readFileSync(path.join(here, '..', 'public', 'style.css'), 'utf8');
+  assert.match(css, /#co-region\s*\{\s*flex:\s*1 1 auto\s*\}/, 'the tab strip fills the row');
+  assert.match(css, /#co-region button\s*\{\s*flex:\s*1 0 auto/, 'the tabs share the extra width without shrinking');
+  assert.match(css, /#co-region::after\s*\{\s*display:\s*none\s*\}/, 'the scroll spacer must not leave a trailing gap');
+  assert.match(css, /\.co-nav\s*\{\s*padding:\s*12px 12px 0/, 'the tab row shares the search-box insets');
+});
+
 test('the brief divider belongs to the two-column block, not the lead story', () => {
   const css = fs.readFileSync(path.join(here, '..', 'public', 'style.css'), 'utf8');
   assert.match(css, /#pane-home #p-brief-more\s*\{\s*border-top:\s*1px solid var\(--line\)/, 'the two-card block owns a visible rule');

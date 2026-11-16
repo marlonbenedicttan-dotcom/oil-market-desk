@@ -1493,6 +1493,13 @@ button.deal-sec-tile:hover { background: var(--surface2); }
   white-space: nowrap; cursor: pointer; }
 .co-region button:hover { color: var(--text); }
 .co-region button.on { background: var(--mkt, var(--amber)); border-color: var(--mkt, var(--amber)); color: var(--on-accent); }
+/* Desktop: let the market tabs grow into the empty right side of the row, ending flush with the
+   search box above. They keep their natural width and scroll sideways when the row is too narrow. */
+@media (min-width:901px){
+  #co-region{flex:1 1 auto}
+  #co-region button{flex:1 0 auto;text-align:center}
+  #co-region::after{display:none}
+}
 .co-chart-tabs { display: flex; gap: 16px; padding: 10px 12px 0; }
 .co-chart-tabs button { background: none; border: 0; border-bottom: 2px solid transparent; color: var(--dim);
   font: inherit; font-size: 9px; letter-spacing: 1px; padding: 4px 1px; cursor: pointer; }
@@ -3627,7 +3634,7 @@ input[type="search"],input[type="text"]{border-radius:var(--r,4px)}
 .co-global-input::placeholder{color:var(--faint)}
 .co-global-kbd{background:var(--surface2);border-color:var(--line2)}
 .co-global-panel{background:var(--surface);border:1px solid var(--line2);border-radius:var(--r,4px)}
-.co-nav{padding:12px 0 0}
+.co-nav{padding:12px 12px 0}
 .co-navrow + .co-navrow{margin-top:8px;padding-top:8px;border-top:1px solid var(--line)}
 .co-region button,.co-region-fixed{
   background:transparent;border:1px solid var(--line);border-radius:3px;color:var(--faint);
