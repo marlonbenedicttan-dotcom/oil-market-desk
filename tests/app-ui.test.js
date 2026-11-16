@@ -842,7 +842,9 @@ test('a reload on the Companies tab lands on HOME, but real deep links survive',
 
 test('the brief divider belongs to the two-column block, not the lead story', () => {
   const css = fs.readFileSync(path.join(here, '..', 'public', 'style.css'), 'utf8');
-  assert.match(css, /#p-brief-more\s*\{\s*border-top:\s*1px solid var\(--line\)/, 'the two-card block owns the rule');
+  assert.match(css, /#pane-home #p-brief-more\s*\{\s*border-top:\s*1px solid var\(--line\)/, 'the two-card block owns a visible rule');
+  assert.match(css, /#pane-home #p-brief-more\s*\{\s*padding-top:\s*8px/, 'the rule sits in the middle of the gap');
+  assert.match(css, /\.home-brief-grid\s*\{\s*row-gap:\s*8px/, 'the gap is split around the rule');
   assert.match(css, /\.imp-list\s*\{\s*border-bottom:\s*0/, 'the lead story must not float its own rule above the gap');
 });
 

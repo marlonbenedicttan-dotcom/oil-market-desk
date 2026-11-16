@@ -3439,8 +3439,15 @@ input[type="search"],input[type="text"]{border-radius:var(--r,4px)}
 .imp-mkt{font-size:10px;color:var(--faint);margin-top:5px}
 /* The rule belongs to the two-column block below the top story. Sitting under the lead instead
    left it floating above the gap, disconnected from the vertical divider. */
-#p-brief-more{border-top:1px solid var(--line)}
-@media (min-width:901px){.home-brief-grid{row-gap:16px}}
+/* The generic `.panel { border-top:0 }` rule is more specific than `#p-brief-more`, which is why the
+   rule vanished. Qualify it with the pane so the two-card block owns a visible border. */
+#pane-home #p-brief-more{border-top:1px solid var(--line)}
+@media (min-width:901px){
+  /* Split the 16px gap around the rule: 8px above it, 8px of panel padding below it. The card
+     content stays exactly where it was; only the rule moves up into the middle. */
+  #pane-home #p-brief-more{padding-top:8px}
+  .home-brief-grid{row-gap:8px}
+}
 .brief-mini-grid{border-bottom:1px solid var(--line)}
 .brief-mini{padding:14px 0}
 .brief-mini + .brief-mini{border-left:1px solid var(--line);padding-left:18px}
