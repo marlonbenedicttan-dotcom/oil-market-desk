@@ -434,7 +434,7 @@ function tileHtml(b, withSignals = false) {
       if (row) sig = `<span class="t-sig">${tileSignals(row)}</span>`;
     }
   }
-  return `<div class="tile" data-id="${b.id}" title="${b.label} — click for the chart">
+  return `<div class="tile" data-id="${b.id}">
     <span class="t-name">${b.label}</span>
     <span class="star ${starred ? 'on' : ''}" data-star="${b.id}" title="Pin to watchlist">${starred ? '★' : '☆'}</span>
     <span class="t-px">${val == null ? '—' : Number(val).toFixed(b.dp)}</span>
@@ -475,7 +475,7 @@ async function loadSegmentScore() {
 // A pinned company: same tile grammar as an instrument, but it opens the company page.
 function companyTile(c) {
   const chg = (v) => (v == null ? '' : `<em class="${v >= 0 ? 'pos' : 'neg'}">${v >= 0 ? '+' : ''}${v.toFixed(1)}%</em>`);
-  return `<div class="tile" data-cik="${esc(c.cik)}" title="${esc(c.name)} — open the company page">
+  return `<div class="tile" data-cik="${esc(c.cik)}">
     <span class="t-name">${esc(c.ticker || c.name)}</span>
     <span class="star on" data-star="us:${esc(c.ticker || c.cik)}" title="Unpin from watchlist">★</span>
     <span class="t-px">${c.price != null ? '$' + c.price.toFixed(2) : '—'}</span>
@@ -491,7 +491,7 @@ function marketCompanyTile(c, market) {
   const name = c.nameEn || c.name || c.ticker || c.code;
   const short = name.length > 20 ? name.slice(0, 19) + '…' : name;
   const code = c.code || c.ticker;
-  return `<div class="tile" data-gb-company="${esc(market)}:${esc(code)}" title="${esc(name)} — open the company page">
+  return `<div class="tile" data-gb-company="${esc(market)}:${esc(code)}">
     <span class="t-name">${esc(c.ticker || code)} · ${esc(short)}</span>
     <span class="star on" data-star="${esc(market)}:${esc(code)}" title="Unpin from watchlist">★</span>
     <span class="t-px">${px(c.price)}</span>
@@ -2998,12 +2998,13 @@ function renderHomeMarkets(d) {
     const wa = total ? Math.round((adv / total) * 100) : 0;
     const wd = total ? 100 - wa : 0;
     const dp = Math.abs(m.level) >= 1000 ? 0 : 2;
-    return `<button class="home-mkt" type="button" data-region="${esc(m.id)}" title="${esc(m.label)} — open the market">`
+    return `<button class="home-mkt" type="button" data-region="${esc(m.id)}">`
       + `<span class="top"><span class="code">${esc(String(m.id).toUpperCase())}</span><span class="nm">${esc(m.index || '')}</span></span>`
       + `<span class="lvl">${fmtNum(m.level, dp)}</span>`
       + `<span class="rets"><em class="${cls(m.chg1d)}">${m.chg1d == null ? '—' : pctf(m.chg1d)}</em><span>YTD ${m.chgYtd == null ? '—' : `${m.chgYtd >= 0 ? '+' : ''}${m.chgYtd.toFixed(2)}%`}</span></span>`
       + `<span class="bar"><i style="width:${wa}%;background:var(--green)"></i><i style="width:${wd}%;background:var(--red)"></i></span>`
       + `<span class="foot"><span>${adv == null ? '—' : `${adv} / ${dec}`}</span><span>P/E ${m.pe == null ? '—' : m.pe.toFixed(1)}</span></span>`
+      + `<span class="sr-only">open the ${esc(m.label)} market</span>`
       + `</button>`;
   }).join('');
 }

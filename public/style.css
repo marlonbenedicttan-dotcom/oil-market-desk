@@ -4660,3 +4660,13 @@ body{padding-bottom:27px}
 .textsize-toggle:hover { border-color: var(--text); background: var(--panel); color: var(--text); }
 @media (max-width: 1199px) { .textsize-toggle .ts-label { display: none; } }
 @media (max-width: 900px) { .textsize-toggle { display: none; } }
+
+/* Visually hidden, still read out. Used where a card's visible text is data and the action
+   ("open the market") would otherwise only exist in a tooltip. */
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+
+/* The markets board leaned on the browser's native title tooltip: an OS-styled box that waits a
+   second, lands under the cursor and covers the breadth/P-E row of the card you are reading.
+   The card already names the market and its index, so the action is carried by the hover frame. */
+.home-mkt { position: relative; }
+.home-mkt:hover, .home-mkt:focus-visible { background: var(--panel2); box-shadow: inset 0 0 0 1px var(--signal); }
