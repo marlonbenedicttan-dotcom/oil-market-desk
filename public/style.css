@@ -393,7 +393,7 @@ footer li { margin-bottom: 2px; }
 .mvr-why.context { font-style: italic; }
 .brief-ctx { padding: 7px 12px; font-size: 10.5px; border-top: 1px solid var(--line); }
 /* IMPORTANT TODAY — event-first cards: what happened, the wire's stated reason, the market evidence. */
-.imp-list { border-bottom: 1px solid var(--line); }
+.imp-list { border-bottom: 0; }
 .imp { padding: 9px 12px 10px; border-bottom: 1px dotted var(--line); }
 .imp:last-child { border-bottom: 0; }
 .imp-top { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; font-size: 9px; letter-spacing: 1.1px; text-transform: uppercase; color: var(--dim); }
@@ -3437,6 +3437,10 @@ input[type="search"],input[type="text"]{border-radius:var(--r,4px)}
 .imp-why{font-size:11.5px;line-height:1.5;color:var(--muted);margin-top:4px}
 .why-k{color:var(--accent)}
 .imp-mkt{font-size:10px;color:var(--faint);margin-top:5px}
+/* The rule belongs to the two-column block below the top story. Sitting under the lead instead
+   left it floating above the gap, disconnected from the vertical divider. */
+#p-brief-more{border-top:1px solid var(--line)}
+@media (min-width:901px){.home-brief-grid{row-gap:16px}}
 .brief-mini-grid{border-bottom:1px solid var(--line)}
 .brief-mini{padding:14px 0}
 .brief-mini + .brief-mini{border-left:1px solid var(--line);padding-left:18px}

@@ -840,6 +840,12 @@ test('a reload on the Companies tab lands on HOME, but real deep links survive',
   assert.equal(ui.isBootDeepLink('#/deals/sector/energy'), true);
 });
 
+test('the brief divider belongs to the two-column block, not the lead story', () => {
+  const css = fs.readFileSync(path.join(here, '..', 'public', 'style.css'), 'utf8');
+  assert.match(css, /#p-brief-more\s*\{\s*border-top:\s*1px solid var\(--line\)/, 'the two-card block owns the rule');
+  assert.match(css, /\.imp-list\s*\{\s*border-bottom:\s*0/, 'the lead story must not float its own rule above the gap');
+});
+
 test('the US company chart controls stay outside the fixed-height chart frame', () => {
   // On a phone the chart frame is 270px. Compare + the seven range chips + the return strip used
   // to live inside it, wrapped to ~184px and left a 37px chart. They belong above the frame, as
