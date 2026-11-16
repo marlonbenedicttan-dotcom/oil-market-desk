@@ -4388,22 +4388,87 @@ function applyRoute(hash) {
 // Jump-nav chips stay plain anchors for accessibility, but we scroll them ourselves so they don't
 // overwrite the route hash in the address bar.
 //
-// A section can grow above the target after the first scroll (a slow macro chart or news feed lands,
-// and the rail reflows), which pushes the target back off-screen. Retry only while it is still
-// off-screen, so a jump that already landed stays put.
-function jumpToSection(t) {
-  if (!t) return;
-  const go = () => {
-    if (!t.getClientRects().length) return;
-    const r = t.getBoundingClientRect();
-    // Once the section is on screen, leave it alone: late retries must never fight a reader who has
-    // already started scrolling somewhere else. Only an off-screen target gets another attempt.
-    if (r.bottom > 0 && r.top < window.innerHeight) return;
-    t.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  };
-  go();
-  [700, 1600, 2800].forEach((ms) => setTimeout(go, ms));
+// One movement, and then it stays landed.
+//
+// The old version fired three extra smooth scrolls (700/1600/2800ms) whenever the target was merely
+// off-screen — so a slow panel landing above it started a second animation, and a reader who had
+// already scrolled got yanked back. It also measured the target before the panel existed: pressing
+// SCREENER from the top scrolled to 1662 (the old maximum scroll, because the 400-row screener had
+// not rendered yet), then the page doubled in height and the panel ended 630px below the fold.
+//
+// Now: glide once to where the target is, wait for that glide to finish, then pin it with instant
+// nudges while the page settles — never a second animation, and never after the reader takes over.
+let jumpToken = 0;
+let readerScrolledAt = 0;
+['wheel', 'touchstart', 'keydown'].forEach((evt) => addEventListener(evt, () => { readerScrolledAt = Date.now(); }, { passive: true }));
+function stickyOffset() {
+  const tb = document.querySelector('.topbar');
+  const jn = document.querySelector('.jumpnav');
+  const tbH = tb ? tb.getBoundingClientRect().height : 0;
+  const jnH = jn && jn.getClientRects().length ? jn.getBoundingClientRect().height : 0;
+  return Math.round(tbH + jnH + 10);
 }
+function jumpToSection(t) {
+  if (!t || !t.getClientRects().length) return;
+  const token = ++jumpToken;
+  const want = () => Math.max(0, Math.round(t.getBoundingClientRect().top + scrollY - stickyOffset()));
+  window.scrollTo({ top: want(), behavior: 'smooth' });
+  const t0 = performance.now();
+  let lastY = -1, still = 0, settling = false;
+  const tick = () => {
+    if (token !== jumpToken) return;                       // a newer jump owns the page
+    if (Date.now() - readerScrolledAt < 300) return;       // the reader is scrolling — leave them alone
+    const now = performance.now();
+    if (!settling) {
+      // Wait for the glide to stop before correcting, otherwise the correction cuts it short.
+      if (Math.abs(scrollY - lastY) < 1) still++; else still = 0;
+      lastY = scrollY;
+      if (still >= 3 || now - t0 > 900) settling = true;
+    } else {
+      const y = want();
+      if (Math.abs(y - scrollY) > 6) window.scrollTo({ top: y, behavior: 'auto' });
+      if (syncRailSpy) syncRailSpy();
+    }
+    if (now - t0 > 1800) return;                           // done settling
+    requestAnimationFrame(tick);
+  };
+  requestAnimationFrame(tick);
+}
+// Which rail section the reader is in. The rail mixes two controls — view switches and in-page
+// sections — and only the view buttons ever showed an active bar, so a section press had no
+// feedback at all. Exactly one rail item is active while HOME is on screen: the section you are
+// in, or OVERVIEW when you are above all of them.
+function syncRailSpy() {
+  const rail = document.querySelector('.wt-rail');
+  if (!rail || !rail.getClientRects().length) return;   // phones: the rail is display:none, nothing to sync
+  const links = [...document.querySelectorAll('.wt-rail [data-goto]')];
+  const homePane = document.querySelector('.tabpane[data-pane="home"]');
+  if (!links.length) return;
+  if (!homePane || homePane.classList.contains('hidden')) {
+    links.forEach((a) => { a.classList.remove('on'); a.removeAttribute('aria-current'); });
+    return;
+  }
+  const line = stickyOffset() + 4;
+  let best = null, bestTop = -Infinity;
+  for (const a of links) {
+    const t = document.getElementById(a.dataset.goto);
+    if (!t || !t.getClientRects().length) continue;
+    const top = t.getBoundingClientRect().top;
+    if (top <= line && top > bestTop) { best = a; bestTop = top; }
+  }
+  links.forEach((a) => {
+    const on = a === best;
+    a.classList.toggle('on', on);
+    if (on) a.setAttribute('aria-current', 'location'); else a.removeAttribute('aria-current');
+  });
+  const homeBtn = document.querySelector('.wt-rail [data-tab="home"]');
+  if (homeBtn) homeBtn.classList.toggle('on', !best);
+}
+let spyRAF = 0;
+addEventListener('scroll', () => {
+  if (spyRAF) return;
+  spyRAF = requestAnimationFrame(() => { spyRAF = 0; syncRailSpy(); });
+}, { passive: true });
 document.addEventListener('click', (e) => {
   const a = e.target.closest && e.target.closest('.jumpnav a[href^="#"]');
   if (!a) return;
@@ -4412,7 +4477,7 @@ document.addEventListener('click', (e) => {
   e.preventDefault();
   const pane = a.closest('.tabpane');
   if (pane) showTab(pane.dataset.pane);
-  setTimeout(() => jumpToSection(t), 40);
+  requestAnimationFrame(() => jumpToSection(t));
 });
 addEventListener('popstate', () => { if (!applyRoute(location.hash)) syncRoute(false); });
 addEventListener('hashchange', () => { if (routingReady && !applyRoute(location.hash)) syncRoute(false); });
@@ -4501,6 +4566,7 @@ function showTab(name) {
   if (data) renderTicker(data);
   syncJumpnavs();
   if (typeof syncToTop === 'function') syncToTop();   // tab switches change the page height, so re-test
+  syncRailSpy();              // the rail's section highlight only makes sense while HOME is on screen
   syncRoute(true);            // tab changes are the history steps (Back walks the tabs)
 }
 
@@ -4701,7 +4767,10 @@ document.querySelector('.wt-rail')?.addEventListener('click', (e) => {
   e.preventDefault();
   showTab('home');
   const id = g.dataset.goto;
-  setTimeout(() => { const t = $(id); if (t) jumpToSection(t); }, 70);
+  // Answer the press immediately: highlight the target section before the glide starts, so the
+  // control responds to the click instead of to the end of an animation.
+  document.querySelectorAll('.wt-rail [data-goto]').forEach((a) => a.classList.toggle('on', a === g));
+  requestAnimationFrame(() => { const t = $(id); if (t) jumpToSection(t); });
 });
 $('wt-search')?.addEventListener('click', () => gsFocusSearch());
 // A data-tab button outside the masthead (the HOME idea cards) still switches the pane.
