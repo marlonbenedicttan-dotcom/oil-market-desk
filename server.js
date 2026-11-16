@@ -5709,9 +5709,8 @@ const getCalendarFull = () => cachedSWR('calendar-full', 30 * 60e3, async () => 
       if (!c.earnings || !c.earnings.date || c.earnings.date < today) continue;
       companies.push({
         date: c.earnings.date, kind: 'earnings', market: 'JP', ticker: c.ticker, code: c.code,
-        name: c.name, label: `${c.ticker} · ${c.name} · results`,
-        detail: `TSE Prime · ${c.sector}`, basis: 'scheduled', weight: 0,
-        days: Math.round((Date.parse(c.earnings.date) - Date.now()) / 864e5),
+        label: `${c.ticker} · ${c.name} · results`,
+        detail: `TSE Prime · ${c.sector}`, basis: 'scheduled',
       });
     }
   } catch { /* no japan data yet */ }
@@ -6816,7 +6815,7 @@ server.listen(PORT, async () => {
     try { await buildBrief(); } catch {}
     // The boards a visitor can reach without waiting: the backdrop, the calendar, the macro tab's
     // default country and the currency strip. Each one was a cold second on first open.
-    try { await Promise.all([getRegime(), getCalendar(), getMacroTickers(), getMacroDash(), getCountry('us')]); } catch {}
+    try { await Promise.all([getRegime(), getCalendarFull(), getMacroTickers(), getMacroDash(), getCountry('us')]); } catch {}
     if (fullWarm) {
       // Positioning is the single heaviest warm step (~150 MB peak when all COT series are fetched at
       // once). Warm it one instrument at a time and stop before the ceiling.

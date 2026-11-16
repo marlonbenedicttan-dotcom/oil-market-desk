@@ -1153,6 +1153,58 @@ function applyTheme(theme, { persist = true } = {}) {
 }
 $('theme-toggle')?.addEventListener('click', () => applyTheme(currentTheme === 'dark' ? 'light' : 'dark'));
 applyTheme(currentTheme, { persist: false });
+
+// ---------------------------------------------------------------------------
+// Desktop reading size — Standard / Large / Larger.
+// The DOM scale lives in one CSS media block (min-width: 901px) expressed in rem,
+// so a single root font-size moves all of it. Phones never match that block, so
+// their scale is untouched whatever this is set to. Canvas labels cannot read CSS
+// variables, so charts get the matching px size here.
+// ---------------------------------------------------------------------------
+const TEXT_SIZES = ['standard', 'large', 'larger'];
+const TEXT_SIZE_LABEL = { standard: 'Standard', large: 'Large', larger: 'Larger' };
+const TEXT_SIZE_CHART = { standard: 12, large: 13, larger: 14 };
+let currentTextSize = (() => {
+  try { const v = localStorage.getItem('oilbasis.textsize'); return TEXT_SIZES.includes(v) ? v : 'large'; } catch { return 'large'; }
+})();
+const chartTextSize = () => TEXT_SIZE_CHART[currentTextSize] || 13;
+function applyTextSize(mode, { persist = true } = {}) {
+  if (!TEXT_SIZES.includes(mode)) mode = 'large';
+  currentTextSize = mode;
+  document.documentElement.dataset.textsize = mode;
+  const btn = $('textsize-toggle');
+  if (btn) {
+    const label = TEXT_SIZE_LABEL[mode];
+    const next = TEXT_SIZE_LABEL[TEXT_SIZES[(TEXT_SIZES.indexOf(mode) + 1) % TEXT_SIZES.length]];
+    btn.title = `Text size: ${label} — click for ${next}`;
+    btn.setAttribute('aria-label', `Text size: ${label}. Click for ${next}.`);
+    btn.dataset.size = mode;
+    const el = btn.querySelector('.ts-label'); if (el) el.textContent = label;
+  }
+  if (persist) { try { localStorage.setItem('oilbasis.textsize', mode); } catch {} }
+  // Existing canvases keep the size they were built with; re-map them in place so a
+  // toggle never needs a data refresh (same approach as the theme switch above).
+  const size = chartTextSize();
+  try {
+    for (const chart of Object.values(charts)) {
+      if (!chart || !chart.options) continue;
+      const o = chart.options;
+      if (o.plugins?.legend?.labels?.font) o.plugins.legend.labels.font.size = size;
+      if (o.plugins?.tooltip) { o.plugins.tooltip.titleFont = { size }; o.plugins.tooltip.bodyFont = { size }; }
+      for (const sc of Object.values(o.scales || {})) {
+        if (!sc) continue;
+        if (sc.ticks) sc.ticks.font = { ...(sc.ticks.font || {}), size };
+        if (sc.title) sc.title.font = { ...(sc.title.font || {}), size };
+      }
+      chart.update('none');
+    }
+  } catch {}
+}
+$('textsize-toggle')?.addEventListener('click', () => {
+  const i = TEXT_SIZES.indexOf(currentTextSize);
+  applyTextSize(TEXT_SIZES[(i + 1) % TEXT_SIZES.length]);
+});
+applyTextSize(currentTextSize, { persist: false });
 const fmtNum = (v, dp = 2) => {
   if (v == null || Number.isNaN(v)) return '—';
   const a = Math.abs(v);
@@ -1182,7 +1234,8 @@ function baseOptions({ dp = 2, unit = '', percentAxis = false, yTitle = '', y1Ti
   // Canvas labels do not inherit the page's CSS type scale. Give desktop charts the same one-step
   // bump as the DOM annotations; touch widths keep Chart.js's default size.
   const wide = typeof window !== 'undefined' && window.innerWidth >= 901;
-  const chartFont = wide ? { font: { size: 13 } } : {};
+  const cs = wide ? chartTextSize() : null;
+  const chartFont = wide ? { font: { size: cs } } : {};
   return {
     responsive: true, maintainAspectRatio: false,
     // Charts are a reading tool, not an entrance. A 200 ms animation per chart sounds small, but the
@@ -1192,11 +1245,11 @@ function baseOptions({ dp = 2, unit = '', percentAxis = false, yTitle = '', y1Ti
     animation: false,
     interaction: { mode: 'index', intersect: false },
     plugins: {
-      legend: { display: legend, labels: { color: CT.text, boxWidth: 10, usePointStyle: true, font: { family: 'monospace', ...(wide ? { size: 13 } : {}) }, filter: (item, data) => !(data.datasets[item.datasetIndex] && data.datasets[item.datasetIndex].$news) } },
+      legend: { display: legend, labels: { color: CT.text, boxWidth: 10, usePointStyle: true, font: { family: 'monospace', ...(wide ? { size: cs } : {}) }, filter: (item, data) => !(data.datasets[item.datasetIndex] && data.datasets[item.datasetIndex].$news) } },
       tooltip: {
         mode: 'index', intersect: false,
         backgroundColor: CT.tooltipBg, borderColor: CT.tooltipBorder, borderWidth: 1, titleColor: CT.tooltipTitle, bodyColor: CT.tooltipBody, padding: 8,
-        ...(wide ? { titleFont: { size: 13 }, bodyFont: { size: 13 } } : {}),
+        ...(wide ? { titleFont: { size: cs }, bodyFont: { size: cs } } : {}),
         callbacks: {
           title: (it) => (it && it.length ? String(it[0].label) : ''),
           label: (ctx) => {
@@ -1231,12 +1284,12 @@ function baseOptions({ dp = 2, unit = '', percentAxis = false, yTitle = '', y1Ti
       },
       y: {
         type: log ? 'logarithmic' : 'linear',
-        ...(yTitle ? { title: { display: true, text: yTitle, color: CT.text, ...(wide ? { font: { size: 13 } } : {}) } } : {}),
+        ...(yTitle ? { title: { display: true, text: yTitle, color: CT.text, ...(wide ? { font: { size: cs } } : {}) } } : {}),
         ticks: { color: CT.text, callback: tick, maxTicksLimit: 5, autoSkip: true, ...chartFont },
         ...(log ? { afterBuildTicks: (axis) => { const n = axis.ticks.length; if (n > 5) { const keep = Math.ceil(n / 5); axis.ticks = axis.ticks.filter((_, i) => i % keep === 0 || i === n - 1); } } } : {}),
         grid: { color: CT.grid },
       },
-      ...(y1Title ? { y1: { position: 'right', title: { display: true, text: y1Title, color: CT.text, ...(wide ? { font: { size: 13 } } : {}) }, ticks: { color: CT.text, ...chartFont }, grid: { drawOnChartArea: false } } } : {}),
+      ...(y1Title ? { y1: { position: 'right', title: { display: true, text: y1Title, color: CT.text, ...(wide ? { font: { size: cs } } : {}) }, ticks: { color: CT.text, ...chartFont }, grid: { drawOnChartArea: false } } } : {}),
     },
   };
 }
@@ -1793,7 +1846,11 @@ async function loadMarket() {
   renderCards(data); buildMetricOptions(data); buildBpOptions();
   renderSnapshot(); setCardsTitle(); renderTicker(data);
   renderWatchlist();
-  await renderChart();   // ← render AFTER data exists
+  // Paint the chart without blocking the caller. Boot used to `await` this, so one cold
+  // /api/range (a Yahoo series, 1–2 s) serialised the whole first screen behind it: the HOME
+  // brief, the calendar, the macro board and the commodity read all queued until the chart
+  // finished. `data` is already set above, so the chart has everything it needs.
+  renderChart().catch((e) => console.error('[chart]', e.message));
   buildCompareOptions();   // rebuild only if the instrument list changed — never resets the pair
   loadSeasonal();
   loadMarketRead();      // populate the adaptive Big Picture (hero line + panels)
@@ -4764,6 +4821,10 @@ $('macro-links')?.addEventListener('click', (e) => { const el = e.target.closest
   const mkP = getJSON('/api/markets').catch(() => []);
   const ctryP = getJSON('/api/countries').catch(() => null);
   countriesP = ctryP;   // shared with ensureCountries() so a slow boot can't lose the user's pick
+  // The calendar sits on HOME's first screen and needs nothing but its own endpoint, so it starts
+  // here with the config feeds instead of queueing behind the price/chart chain. It used to wait
+  // for `afterBoot`, which on a cold server meant several seconds of "Loading the calendar…".
+  loadCalendar();
   // History and prices do not depend on each other — run them together rather than back to back.
   const histP = loadHistory().catch(() => {});   // never fatal — degrades to an empty history
   const liveP = refreshLive();

@@ -4485,3 +4485,156 @@ body{padding-bottom:27px}
 @media (min-width: 901px) and (max-width: 1180px) {
   .gb-table th, .gb-table td { padding-left: 8px; padding-right: 8px; }
 }
+
+/* ============================================================================
+   DESKTOP TYPE RAMP — @media (min-width: 901px) only
+   Mobile is untouched: every rule here is scoped above the phone breakpoints and
+   those breakpoints still win at their widths. The breakpoint matches the desktop
+   chart-font step already in app.js (ticks/legend/tooltip at 13px), so type and
+   canvases move together instead of one breakpoint apart.
+   Three tiers, because the page holds three kinds of text:
+     READING  11.5–13.5 → 14–15px, looser leading (prose you actually read)
+     CHROME    7.5–11   → 9.3–11.8px, floor ≈9.3px (labels you scan)
+     DATA       15–21   → +1px only (numbers you compare; density is the point)
+   Tracking is pulled in ~20% where it was tuned for the smaller size, so a bigger
+   label still reads as a label instead of a wide-spaced rule.
+   Component rules in the layers above win on specificity, so the ones that set a
+   size inside a context (.calendar-rail, .brief-read, #c-tiles, .ph) are repeated
+   here with the same context rather than fought with !important.
+   ========================================================================== */
+@media (min-width: 901px) {
+  /* One knob for the whole ramp: 1rem = the reader's chosen base. Large (16px) is the
+     shipped default; Standard ≈ 7.5% under it, Larger ≈ 8% over. Mobile never sees this
+     ruleset, so phones keep their own scale whatever the attribute says. */
+  html { font-size: 16px; }
+  html[data-textsize="standard"] { font-size: 14.8px; }
+  html[data-textsize="larger"] { font-size: 17.3px; }
+  /* ---------- READING ---------- */
+  body { font-size: 0.925rem; line-height: 1.6; }
+  .brief-read, .sector-read { font-size: 0.925rem; line-height: 1.6; }
+  .imp-what { font-size: 0.9375rem; line-height: 1.5; }
+  .imp-why { font-size: 0.875rem; line-height: 1.55; }
+  .brief-mini p { font-size: 0.8438rem; line-height: 1.55; }
+  .home-idea p { font-size: 0.9062rem; line-height: 1.55; }
+  .news-item .news-t, .macro-rail .news-t { font-size: 0.9062rem; line-height: 1.45; }
+  .co-desc { max-width: 72ch; }
+  .comm-hero .comm-read { font-size: 0.875rem; line-height: 1.6; }
+  .comm-hero .comm-read.sub { font-size: 0.8125rem; }
+  #c-read .bl-sec p, #c-read .bl-sec li { font-size: 0.8625rem; line-height: 1.55; }
+  .rv-note { font-size: 0.8438rem; line-height: 1.5; }
+  .macro-note, .xa-chain { font-size: 0.8125rem; line-height: 1.55; }
+  .macro-read, p.macro-read { font-size: 0.875rem; }
+  .cal-name, .cal-row { font-size: 0.8125rem; }
+  .cal-rows .cal-note { font-size: 0.75rem; }
+  td, .m-tbl, .tbl { font-size: 0.8125rem; }
+
+  /* ---------- CHROME ---------- */
+  .dimtext { font-size: 0.7375rem; }
+  .ph .dimtext { font-size: 0.7125rem; }
+  .ph-t { font-size: 0.725rem; letter-spacing: .09em; }
+  .gtitle { font-size: 0.7rem; letter-spacing: .115em; }
+  .jumpnav a { font-size: 0.7125rem; }
+  .wt-rail button { font-size: 0.7375rem; }
+  .tk { font-size: 0.725rem; }
+  .clock { font-size: 0.7875rem; }
+
+  /* Calendar — the smallest text on the desk lived here (7.5px events). */
+  .calendar-rail .cal-dow { font-size: 0.6375rem; letter-spacing: .07em; }
+  .calendar-rail .cal-title { font-size: 0.6625rem; letter-spacing: .06em; }
+  .calendar-rail .cal-foot { font-size: 0.6375rem; }
+  .calendar-rail .cal-dn { font-size: 0.6625rem; }
+  .calendar-rail .cal-ev { font-size: 0.5875rem; line-height: 1.25; }
+  .calendar-rail .cal-more { font-size: 0.5625rem; }
+  .calendar-rail .cal-cc, .cal-cc { font-size: 0.5563rem; }
+  .calendar-rail .cal-dayh { font-size: 0.675rem; }
+  .cal-day, .calendar-rail .cal-day { min-height: 60px; }
+  .cal-date, .cal-src { font-size: 0.625rem; }
+
+  /* Brief / tape / section headers */
+  .imp-tag, .imp-date, .imp-k { font-size: 0.6625rem; }
+  .imp-badge, .tag, .tape-tag, .tape-risk, .brief-read .k, .brief-tape .k, .brief-foot .k { font-size: 0.5813rem; }
+  .brief-read .tape-tag { font-size: 0.5625rem; letter-spacing: .07em; }
+  .why-k { font-size: 0.5875rem; }
+  .fresh, .tile .t-foot .fresh { font-size: 0.5875rem; }
+  .gtheme, .gtheme-chip, .co-region-fixed { font-size: 0.6375rem; }
+  .rk, .ix { font-size: 0.6125rem; }
+  .home-idea .k { font-size: 0.6375rem; letter-spacing: .09em; }
+
+  /* Commodity hero */
+  .comm-kicker, .cs-lbl { font-size: 0.6375rem; letter-spacing: .1em; }
+  .cs-sd { font-size: 0.625rem; }
+  .comm-hero .bp-k { font-size: 0.65rem; letter-spacing: .09em; }
+  .comm-hero .bp-v { font-size: 1.375rem; }
+  .comm-hero .bp-v .bp-u { font-size: 0.675rem; }
+  .comm-hero .bp-tag { font-size: 0.6rem; }
+  .comm-hero .bp-comp { font-size: 0.675rem; }
+  .comm-hero .bp-comp-l { font-size: 0.6rem; }
+  .cd i { font-size: 0.6rem; letter-spacing: .07em; }
+  .cd b { font-size: 0.775rem; }
+  .cc-axis, .cc-tag, .cc-window { font-size: 0.6875rem; }
+
+  /* Tiles / cards / boards */
+  #c-tiles .t-name { font-size: 0.7875rem; }
+  #c-tiles .t-px { font-size: 1.125rem; }
+  #c-tiles .t-chip { font-size: 0.625rem; line-height: 1.4; }
+  #c-tiles .t-foot .dl i, .tile .t-foot .dl i, .mstat .dl i { font-size: 0.5875rem; }
+  #c-tiles .t-foot .dl b, .tile .t-foot .dl b { font-size: 0.7125rem; }
+  .ev { font-size: 0.8125rem; }
+  .ev-n { font-size: 0.725rem; }
+  .rb-k, .rb-l { font-size: 0.6625rem; }
+  .rb-v { font-size: 1.2812rem; }
+  .lvl { font-size: 1rem; }
+
+  /* Tables (screener / matrix / companies) */
+  .gb-table th, .sc-table th, .gtable th, .antable th, .jp-q-table th, .co-th { font-size: 0.625rem; letter-spacing: .06em; }
+  .gb-table td, .sc-table td, .gtable td, .antable td, .co-table td { font-size: 0.8rem; }
+  .gb-stat .k, .gb-stat .b, .gb-ctl .k, .gb-legend .k, .gb-mrow.head { font-size: 0.6rem; }
+
+  /* Remaining small labels: calendar tabs, tape chips, panel keys, pickers. */
+  .calendar-rail .cal-modes button { font-size: 0.6125rem; }
+  .brief-read .tape-risk { font-size: 0.6rem; letter-spacing: .09em; }
+  .brief-mini .age, .age { font-size: 0.6375rem; }
+  .linkbtn { font-size: 0.6125rem; letter-spacing: .06em; }
+  .bl-lbl, .bl-phys-k, .ti-k { font-size: 0.625rem; }
+  .comm-picker label { font-size: 0.625rem; letter-spacing: .09em; }
+  .home-bd .d { font-size: 0.6875rem; }
+  .t-name { font-size: 0.7875rem; }
+  #home-watch .t-px { font-size: 0.9688rem; }
+  .ctx-k, .xa-trig, .alert.none, .attr-lead { font-size: 0.8125rem; }
+  .m-tbl td, #analogue td { font-size: 0.8125rem; }
+
+  /* ---------- COMPANIES board ---------- */
+  .gb-mrow .rk { font-size: 0.5875rem; }
+  .gb-mrow .ix { font-size: 0.5625rem; }
+  .gb-hero-main .asof { font-size: 0.6rem; }
+  .gb-table-foot, .gb-note, .gb-more { font-size: 0.6375rem; }
+  .gb-stat .k, .gb-stat .b, .gb-ctl .k, .gb-legend .k, .gb-mrow.head, .gb-hero .k { font-size: 0.625rem; }
+  .gb-mrow .n, .gb-trow .n { font-size: 0.7375rem; }
+  .gb-trow .s, .gb-head .s { font-size: 0.6375rem; }
+  .gb-mrow .fl { font-size: 0.7875rem; }
+  .gb-mrow .num, .gb-trow .num, .gb-chip .num { font-size: 0.7875rem; }
+
+  /* ---------- MACRO ---------- */
+  .macro-kicker, .kpi-l, .mstat-l, .bb-l, .bb-s, .bb-sec { font-size: 0.6375rem; }
+  .mstat-s, .chip.up, .chip.down { font-size: 0.725rem; }
+  .news-src, .news-d { font-size: 0.6375rem; }
+  .macro-tabs button, .co-views button, .comm-nav button { font-size: 0.65rem; }
+  .mstat-v { font-size: 0.9688rem; }
+  .bb-v { font-size: 1.2812rem; }
+  .m-score p, .m-rules li { font-size: 0.8125rem; line-height: 1.55; }
+}
+
+/* ---------- Desktop reading-size control (Aa) ----------
+   Sits beside the theme toggle and cycles Standard → Large → Larger. It writes
+   data-textsize on <html>, which only the desktop ramp reads, so it is hidden where
+   that ramp does not exist: phones keep the scale they already had. */
+.textsize-toggle {
+  width: auto; min-width: 32px; height: 32px; padding: 0 8px;
+  border: 1px solid var(--line2); border-radius: 0; background: transparent; color: var(--muted);
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer;
+}
+.textsize-toggle .ts-a { font: 700 11px/1 var(--sans); letter-spacing: .01em; }
+.textsize-toggle .ts-label { font: 700 9px/1 var(--sans); letter-spacing: .06em; text-transform: uppercase; }
+.textsize-toggle:hover { border-color: var(--text); background: var(--panel); color: var(--text); }
+@media (max-width: 1199px) { .textsize-toggle .ts-label { display: none; } }
+@media (max-width: 900px) { .textsize-toggle { display: none; } }

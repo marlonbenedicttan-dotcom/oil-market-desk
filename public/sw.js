@@ -2,11 +2,19 @@
 // from cache and never revalidated; the shell itself stays network-first so a new deploy always shows.
 // A few read-only API snapshots are cached stale-while-revalidate: repeat visits paint the market
 // board and home summary immediately, then refresh in the background. Everything else stays live.
-const CACHE = 'oil-desk-v15';
-const SHELL = ['/', '/style.css', '/app.js', '/icon.svg?v=3', '/manifest.json?v=3'];
+const CACHE = 'oil-desk-v16';
+// Only the document shell is precached. app.js and style.css used to sit here at their UNVERSIONED
+// URLs, so install downloaded a second copy of both (~240 KB brotli) that the page never asked for —
+// it loads app.js?v=<hash> and style.css?v=<hash>, which are immutable and cached on first use below.
+// The old entries also pinned icon/manifest at ?v=3 while the page asks for ?v=4.
+const SHELL = ['/'];
 
 const isVersioned = (url) => ['v', 'ver', 'version'].some((k) => url.searchParams.has(k));
-const API_SWR = new Set(['/api/market', '/api/home', '/api/markets', '/api/regime', '/api/market-index']);
+const API_SWR = new Set(['/api/market', '/api/home', '/api/markets', '/api/regime', '/api/market-index',
+  // First-screen panels a returning reader sees immediately: the calendar, the day's brief and the
+  // daily history (deltas + sparklines). Each revalidates in the background, so the copy is never
+  // the one they are left with.
+  '/api/calendar', '/api/brief', '/api/history']);
 
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).catch(() => {}));
