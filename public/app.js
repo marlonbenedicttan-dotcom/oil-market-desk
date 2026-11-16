@@ -55,7 +55,6 @@ function headSource(b) {
     ? { source: b.paperSource, asOf: b.paperDate, lag: null }
     : { source: b.physicalSource, asOf: b.physicalDate, lag: b.spotLagDays };
 }
-function freshStrip(b) { const f = headSource(b); return freshBadge(f.source, f.asOf, f.lag); }
 
 let data, history, analytics;
 let nextRefresh = 60;
@@ -352,6 +351,49 @@ function tileSpark(arr, forceUp = null, fill = false) {
   const area = fill ? `<path d="${d}" fill="${col}" fill-opacity="0.09" stroke="none"/>` : '';
   return `<svg class="spark" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" aria-hidden="true">${area}<path d="${d}" fill="none" stroke="${col}" stroke-width="1.4" vector-effect="non-scaling-stroke"/></svg>`;
 }
+// The hero price line. It used to be the 34px tile spark, stretched to 560px: no axis, no
+// high/low, and a 700px hole to its right on a wide screen. This is the same 6-month series the
+// snapshot strip describes, so it gets the full width, its high and low marked, and the window.
+const ccDate = (iso) => {
+  if (!iso) return '';
+  const d = new Date(iso + 'T00:00:00Z');
+  return Number.isNaN(d.getTime()) ? '' : d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: '2-digit', timeZone: 'UTC' });
+};
+function heroChart(arr, dates, dp) {
+  const W = 1000, H = 100, PAD = 2;
+  const pts = [];
+  (arr || []).forEach((v, i) => { if (v != null) pts.push({ v, i }); });
+  if (pts.length < 5) return '<div class="cc-empty">No price history for this window yet.</div>';
+  const min = Math.min(...pts.map((p) => p.v));
+  const max = Math.max(...pts.map((p) => p.v));
+  const rng = max - min || 1;
+  const step = W / ((arr.length - 1) || 1);
+  const y = (v) => H - PAD - ((v - min) / rng) * (H - PAD * 2);
+  let line = '', area = '';
+  arr.forEach((v, i) => {
+    if (v == null) return;
+    const x = (i * step).toFixed(1), yy = y(v).toFixed(1);
+    line += (line ? ' L' : 'M') + x + ',' + yy;
+    area += (area ? ' L' : 'M') + x + ',' + yy;
+  });
+  const first = pts[0], last = pts[pts.length - 1];
+  area += ` L${(last.i * step).toFixed(1)},${H} L${(first.i * step).toFixed(1)},${H} Z`;
+  const up = last.v >= first.v;
+  const fmt = (v) => Number(v).toFixed(dp == null ? 2 : dp);
+  const span = dates && dates.length ? `${ccDate(dates[first.i])} – ${ccDate(dates[last.i])}` : '';
+  return `<div class="cc-plot ${up ? 'cc-up' : 'cc-down'}">
+      <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true">
+        <line class="cc-rule" x1="0" y1="${y(max).toFixed(1)}" x2="${W}" y2="${y(max).toFixed(1)}"/>
+        <line class="cc-rule" x1="0" y1="${y(min).toFixed(1)}" x2="${W}" y2="${y(min).toFixed(1)}"/>
+        <path class="cc-area" d="${area}"/>
+        <path class="cc-line" d="${line}"/>
+      </svg>
+      <span class="cc-tag" style="--y:${(y(max) / H).toFixed(4)}" title="6-month high">${fmt(max)}</span>
+      <span class="cc-tag" style="--y:${(y(min) / H).toFixed(4)}" title="6-month low">${fmt(min)}</span>
+      <span class="cc-now" style="--x:${((last.i * step) / W).toFixed(4)};--y:${(y(last.v) / H).toFixed(4)}" title="Latest ${fmt(last.v)}"></span>
+    </div>
+    <div class="cc-axis"><span>${span}</span><span class="cc-window">6M</span></div>`;
+}
 let segScore;   // the current segment's per-instrument scorecard: undefined = loading, null = failed
 function curveShort(shape) {
   if (!shape) return null;
@@ -409,8 +451,8 @@ function renderCards(m) {
   const w = watchlist();
   const watch = inSeg.filter((b) => w.includes(b.id));
   let html = '';
-  if (watch.length) html += `<div class="group"><div class="gtitle">WATCHLIST</div><div class="tiles">${watch.map((b) => tileHtml(b, true)).join('')}</div></div>`;
-  html += `<div class="tiles">${inSeg.map((b) => tileHtml(b, true)).join('')}</div>`;
+  if (watch.length) html += `<div class="group"><div class="gtitle">WATCHLIST</div><div class="tiles" data-n="${Math.min(watch.length, 6)}">${watch.map((b) => tileHtml(b, true)).join('')}</div></div>`;
+  html += `<div class="tiles" data-n="${Math.min(inSeg.length, 6)}">${inSeg.map((b) => tileHtml(b, true)).join('')}</div>`;
   $('cards').innerHTML = html;
 }
 function setCardsTitle() {
@@ -549,15 +591,20 @@ function renderSnapshot() {
   const n = (arr || []).filter((x) => x != null);
   const six = n.length > 1 ? ((n[n.length - 1] - n[0]) / n[0]) * 100 : null;
   const min = n.length ? Math.min(...n) : null, max = n.length ? Math.max(...n) : null;
-  const pos = val != null && min != null && max > min ? ((val - min) / (max - min)) * 100 : null;
+  // A live quote can sit a hair outside a history series that updates once a day; clamp so the
+  // range reads 0/100 or 100/100 instead of "−1/100".
+  const posRaw = val != null && min != null && max > min ? ((val - min) / (max - min)) * 100 : null;
+  const pos = posRaw == null ? null : Math.max(0, Math.min(100, posRaw));
   const vol = bpVol(arr);
+  // Five headline stats, in the same five cells on every segment. The sixth thing worth knowing
+  // — what the price is quoted on (futures only, or real vs futures) — is provenance, so it sits
+  // with the source, not in a numeric slot that read like a giant word.
   const cells = [
-    [`${b.label.toUpperCase()} PRICE`, val == null ? '—' : `${Number(val).toFixed(dp)} <span class="dimtext">${b.unit}</span>`, ''],
+    [`${b.label.toUpperCase()} PRICE`, val == null ? '—' : `${Number(val).toFixed(dp)} <span class="bp-u">${b.unit}</span>`, ''],
     ['TODAY', day == null ? '—' : pctf(day), cls(day)],
     ['PAST 6 MONTHS', six == null ? '—' : pctf(six), cls(six)],
     ['30-DAY JUMPINESS', vol == null ? '—' : vol.toFixed(1) + '%', ''],
-    ['IN 6-MONTH RANGE', pos == null ? '—' : `${pos.toFixed(0)}/100`, pctClass(pos)],
-    [b.physical != null ? 'REAL vs FUTURES' : 'SOURCE', b.physical != null ? signed(b.basis, dp) : 'futures only', cls(b.basis)],
+    ['IN 6-MONTH RANGE', pos == null ? '—' : `${pos.toFixed(0)}<span class="bp-u">/100</span>`, pctClass(pos)],
   ];
   const bits = [];
   if (day != null) bits.push(`${b.label} is ${day >= 0 ? 'up' : 'down'} <b>${Math.abs(day).toFixed(1)}%</b> today`);
@@ -567,19 +614,25 @@ function renderSnapshot() {
   if (b.basis != null) bits.push(`real barrels ${b.basis >= 0 ? 'above' : 'below'} futures by ${Math.abs(b.basis).toFixed(dp)}`);
   // components strip (only when a market bundles more than one instrument)
   const comps = (mk ? mk.components.map((c) => data.benchmarks.find((x) => x.id === c.id)) : []).filter(Boolean);
-  const compStrip = comps.length > 1 ? `<div class="bp-comps">${comps.map((c) => {
+  const compStrip = comps.length > 1 ? `<div class="bp-comps" title="Click a name to read that instrument's own stretch &amp; tightness">${comps.map((c) => {
     const a = c.paper != null ? history?.series?.[c.id]?.paper : history?.series?.[c.id]?.physical;
     const pc = pctOf(a); const v = c.paper != null ? c.paper : c.physical;
     return `<span class="bp-comp ${c.id === b.id ? 'active' : ''}" data-component="${c.id}" title="Read this instrument's own stretch &amp; tightness"><span class="bp-comp-l">${c.label.replace(/\s*\(.*\)/, '')}</span><b>${v == null ? '—' : Number(v).toFixed(c.dp)}</b> <em class="${cls(pc)}">${pc == null ? '' : pctf(pc)}</em></span>`;
-  }).join('')}</div>` : '';
+  }).join('')}</div>` : `<span class="cc-instrument">${esc(b.label)}</span>`;
   const spreadLine = (mk && mk.id === 'crude' && data.spreads?.brent_wti)
-    ? `<div class="read-line">Brent − WTI spread: <b>${signed(data.spreads.brent_wti.paper, 2)}</b> futures · <b>${signed(data.spreads.brent_wti.physical, 2)}</b> real barrels.</div>` : '';
-  el.innerHTML = `<div class="bp-head">${mk ? mk.label : b.label}${comps.length > 1 ? ` <span class="dimtext">· ${b.label.toUpperCase()}</span>` : ''}</div>`
-    + `<div class="bp-grid">${cells.map(([k, v, c]) => `<div class="bp-cell"><div class="bp-k">${k}</div><div class="bp-v ${c || ''}">${v}</div></div>`).join('')}</div>`
-    + `<div class="bp-deltas">${deltaStrip(headDeltas(b))}${freshStrip(b)}</div>`
-    + compStrip + (compStrip ? '<div class="dimtext" style="padding:0 12px 6px">click a name to read that instrument\'s own stretch &amp; tightness</div>' : '') + spreadLine
-    + `<div class="bp-spark">${tileSpark(arr)}</div>`
-    + `<div class="read-line">${bits.join(' · ')}.</div>`;
+    ? `<div class="comm-read sub">Brent − WTI spread: <b>${signed(data.spreads.brent_wti.paper, 2)}</b> futures · <b>${signed(data.spreads.brent_wti.physical, 2)}</b> real barrels.</div>` : '';
+  // One change row (1D…1Y) plus provenance — rather than five loose 8px stacks above a stranded
+  // source label, and a second copy of the source inside the strip.
+  const d = headDeltas(b);
+  const deltas = d ? `<div class="comm-deltas" title="change over 1 day · 1 week · 1 month · year-to-date · 1 year">${HORIZONS.map(([lab, k]) => `<span class="cd"><i>${lab}</i><b class="${cls(d[k])}">${d[k] == null ? '—' : pctf(d[k])}</b></span>`).join('')}</div>` : '';
+  const fs = headSource(b);
+  const prov = `<div class="comm-prov"><span>${esc(fs.source || 'live')}${fs.asOf ? ` · ${fs.asOf}` : ''}${fs.lag != null && fs.lag >= 1 ? ` · ${fs.lag}d old` : ''}</span><span class="bp-tag">${b.physical != null ? 'real vs futures' : 'futures only'}</span></div>`;
+  el.innerHTML = `<div class="bp-grid">${cells.map(([k, v, c]) => `<div class="bp-cell"><div class="bp-k">${k}</div><div class="bp-v ${c || ''}">${v}</div></div>`).join('')}</div>`
+    + `<div class="comm-meta">${deltas}${prov}</div>`
+    + `<div class="comm-chart-head">${compStrip}</div>`
+    + `<div class="comm-chart">${heroChart(arr, history?.dates, dp)}</div>`
+    + `<div class="comm-read">${bits.join(' · ')}.</div>`
+    + spreadLine;
 }
 
 // ---------------------------------------------------------------------------
@@ -1126,6 +1179,10 @@ const shortDate = (v) => {
 };
 function baseOptions({ dp = 2, unit = '', percentAxis = false, yTitle = '', y1Title = '', legend = true, log = false, anchorable = false, dateAxis = false } = {}) {
   const tick = (v) => (percentAxis ? v + '%' : fmtNum(v, dp) + unit);
+  // Canvas labels do not inherit the page's CSS type scale. Give desktop charts the same one-step
+  // bump as the DOM annotations; touch widths keep Chart.js's default size.
+  const wide = typeof window !== 'undefined' && window.innerWidth >= 901;
+  const chartFont = wide ? { font: { size: 13 } } : {};
   return {
     responsive: true, maintainAspectRatio: false,
     // Charts are a reading tool, not an entrance. A 200 ms animation per chart sounds small, but the
@@ -1135,10 +1192,11 @@ function baseOptions({ dp = 2, unit = '', percentAxis = false, yTitle = '', y1Ti
     animation: false,
     interaction: { mode: 'index', intersect: false },
     plugins: {
-      legend: { display: legend, labels: { color: CT.text, boxWidth: 10, usePointStyle: true, font: { family: 'monospace' }, filter: (item, data) => !(data.datasets[item.datasetIndex] && data.datasets[item.datasetIndex].$news) } },
+      legend: { display: legend, labels: { color: CT.text, boxWidth: 10, usePointStyle: true, font: { family: 'monospace', ...(wide ? { size: 13 } : {}) }, filter: (item, data) => !(data.datasets[item.datasetIndex] && data.datasets[item.datasetIndex].$news) } },
       tooltip: {
         mode: 'index', intersect: false,
         backgroundColor: CT.tooltipBg, borderColor: CT.tooltipBorder, borderWidth: 1, titleColor: CT.tooltipTitle, bodyColor: CT.tooltipBody, padding: 8,
+        ...(wide ? { titleFont: { size: 13 }, bodyFont: { size: 13 } } : {}),
         callbacks: {
           title: (it) => (it && it.length ? String(it[0].label) : ''),
           label: (ctx) => {
@@ -1167,17 +1225,18 @@ function baseOptions({ dp = 2, unit = '', percentAxis = false, yTitle = '', y1Ti
           color: CT.text, autoSkip: true, maxRotation: 0,
           maxTicksLimit: dateAxis ? (typeof window !== 'undefined' && window.innerWidth < 640 ? 4 : 6) : 7,
           callback: dateAxis ? function (value) { return shortDate(this.getLabelForValue(value)); } : undefined,
+          ...chartFont,
         },
         grid: { color: CT.grid },
       },
       y: {
         type: log ? 'logarithmic' : 'linear',
-        ...(yTitle ? { title: { display: true, text: yTitle, color: CT.text } } : {}),
-        ticks: { color: CT.text, callback: tick, maxTicksLimit: 5, autoSkip: true },
+        ...(yTitle ? { title: { display: true, text: yTitle, color: CT.text, ...(wide ? { font: { size: 13 } } : {}) } } : {}),
+        ticks: { color: CT.text, callback: tick, maxTicksLimit: 5, autoSkip: true, ...chartFont },
         ...(log ? { afterBuildTicks: (axis) => { const n = axis.ticks.length; if (n > 5) { const keep = Math.ceil(n / 5); axis.ticks = axis.ticks.filter((_, i) => i % keep === 0 || i === n - 1); } } } : {}),
         grid: { color: CT.grid },
       },
-      ...(y1Title ? { y1: { position: 'right', title: { display: true, text: y1Title, color: CT.text }, ticks: { color: CT.text }, grid: { drawOnChartArea: false } } } : {}),
+      ...(y1Title ? { y1: { position: 'right', title: { display: true, text: y1Title, color: CT.text, ...(wide ? { font: { size: 13 } } : {}) }, ticks: { color: CT.text, ...chartFont }, grid: { drawOnChartArea: false } } } : {}),
     },
   };
 }

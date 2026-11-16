@@ -4200,3 +4200,284 @@ body{padding-bottom:27px}
 .gb-theme-list{max-height:none;overflow:visible}
 .gb-theme-list .gb-trow:last-child{border-bottom:0}
 
+/* ============================================================================
+   COMMODITIES — ONE HERO GRAMMAR FOR EVERY SEGMENT
+   The overview used to be five different micro-rhythms stacked on top of each
+   other: a six-cell strip with hairline borders on every cell (so orphan cells
+   dangled at intermediate widths), a second strip of 8px labels stacked above
+   10px numbers that did not align with the cells above it, a stranded source
+   label, a 34px tile spark stretched into a 560px box with no axis, and a
+   read-line floating between two rules. Every segment now uses the same five
+   stats, the same change row, the same switcher, the same chart and the same
+   closing read — whether the segment bundles one instrument or six.
+   ========================================================================== */
+.comm-hero { padding: 16px 20px 14px; }
+.comm-hero::before { display: none; }
+.comm-hero .bp-snapshot { margin-top: 0; }
+.comm-hero-top { gap: 18px; align-items: flex-start; }
+.comm-hero-copy { flex: 1 1 auto; }
+.comm-kicker { font-size: 9.5px; letter-spacing: .13em; }
+.comm-name { margin: 4px 0 8px; font-size: clamp(24px, 2.6vw, 32px); letter-spacing: -.03em; }
+.comm-score { gap: 10px; min-height: 0; }
+.cs-score { font-size: 26px; letter-spacing: -.02em; }
+.cs-score em { font-size: 11px; }
+.cs-lbl { font-size: 9.5px; letter-spacing: .11em; color: var(--faint); }
+.comm-picker { margin-top: 2px; }
+.comm-picker label { font-size: 9px; letter-spacing: .12em; color: var(--faint); }
+.comm-picker select { min-width: 210px; height: 34px; font-size: 11.5px; }
+
+/* The strip: five equal stats in one frame. Hairlines come from the 1px grid gap,
+   so wrapped rows still close cleanly instead of leaving a borderless hole. */
+.comm-hero .bp-grid {
+  display: grid; grid-template-columns: 1.3fr 1fr 1fr 1fr 1fr;
+  gap: 1px; background: var(--line); border: 1px solid var(--line); margin: 14px 0 0;
+}
+.comm-hero .bp-cell { background: var(--panel); border: 0; padding: 10px 14px 11px; }
+.comm-hero .bp-k { font-size: 9px; line-height: 1.2; letter-spacing: .11em; color: var(--faint); }
+.comm-hero .bp-v { font-size: 21px; line-height: 1.15; margin-top: 5px; letter-spacing: -.01em; }
+.comm-hero .bp-v .bp-u { font-size: 10px; font-weight: 400; letter-spacing: 0; color: var(--faint); margin-left: 2px; }
+
+/* Change row + provenance: label and number read as one unit, and what the price
+   is quoted on lives with the source instead of owning a numeric cell. */
+.comm-hero .comm-meta {
+  display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap;
+  gap: 10px 24px; padding: 10px 2px; border-bottom: 1px solid var(--line);
+}
+.comm-deltas { display: flex; flex-wrap: wrap; gap: 4px 20px; }
+.cd { display: inline-flex; align-items: baseline; gap: 6px; }
+.cd i { font: 600 9px/1 var(--mono); font-style: normal; letter-spacing: .09em; color: var(--faint); }
+.cd b { font: 700 11.5px/1 var(--mono); font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
+.comm-prov { display: flex; align-items: center; gap: 8px; font: 400 10px/1 var(--mono); color: var(--faint); }
+.comm-prov .bp-tag { border: 1px solid var(--line); padding: 2px 6px; font-size: 9px; letter-spacing: .06em; color: var(--dim); white-space: nowrap; }
+
+/* Instrument switcher: present on every segment, so the band never collapses on
+   one-instrument markets and each market keeps the same vertical rhythm. */
+.comm-hero .comm-chart-head { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; padding: 12px 2px 8px; }
+.comm-hero .comm-chart-head .bp-comps { padding: 0; margin: 0; gap: 6px; }
+.comm-hero .bp-comp {
+  display: inline-flex; align-items: baseline; gap: 6px; padding: 5px 9px;
+  border: 1px solid var(--line); background: transparent; font-size: 10px; line-height: 1.1; color: var(--text-soft);
+}
+.comm-hero .bp-comp:hover, .comm-hero .bp-comp.active { border-color: var(--signal); background: var(--accent-soft); }
+.comm-hero .bp-comp-l { margin: 0; font-size: 9px; letter-spacing: .05em; text-transform: uppercase; color: var(--faint); }
+.comm-hero .bp-comp b { color: var(--text); font-variant-numeric: tabular-nums; }
+.comm-hero .bp-comp em { font-style: normal; font-size: 9.5px; }
+.cc-instrument { font: 600 10px/1 var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--dim); }
+
+/* The chart: full width, high/low marked, window named. 132px is enough to read a
+   shape without pretending to be the PRICE HISTORY panel below. */
+.comm-hero .comm-chart { padding: 0 2px; }
+.cc-plot { position: relative; height: 132px; }
+.cc-plot.cc-up { color: var(--green); }
+.cc-plot.cc-down { color: var(--red); }
+/* An SVG is a replaced element: with width/height auto it keeps its 10:1 viewBox
+   ratio and quietly renders at half the box, which pulled the line off its own
+   axis and left the latest-value dot floating. Size it explicitly. */
+.cc-plot svg { position: absolute; left: 0; top: 8px; width: calc(100% - 64px); height: calc(100% - 16px); overflow: visible; }
+.cc-line { fill: none; stroke: currentColor; stroke-width: 1.6; vector-effect: non-scaling-stroke; stroke-linejoin: round; stroke-linecap: round; }
+.cc-area { fill: currentColor; opacity: .09; stroke: none; }
+.cc-rule { stroke: var(--line); stroke-width: 1; stroke-dasharray: 2 4; vector-effect: non-scaling-stroke; }
+.cc-tag {
+  position: absolute; right: 0; top: calc(8px + (100% - 16px) * var(--y)); transform: translateY(-50%);
+  width: 60px; text-align: right; font: 600 9.5px/1 var(--mono); color: var(--faint);
+  font-variant-numeric: tabular-nums; letter-spacing: -.01em;
+}
+.cc-now {
+  position: absolute; left: calc((100% - 64px) * var(--x)); top: calc(8px + (100% - 16px) * var(--y));
+  width: 7px; height: 7px; margin: -3.5px 0 0 -3.5px; border-radius: 50%;
+  background: currentColor; box-shadow: 0 0 0 3px var(--panel);
+}
+.cc-axis { display: flex; align-items: center; justify-content: space-between; padding: 6px 0 0; font: 400 9.5px/1.3 var(--mono); color: var(--faint); letter-spacing: .03em; }
+.cc-window { letter-spacing: .1em; color: var(--dim); }
+.cc-empty { padding: 18px 0; font: 400 11px/1.4 var(--mono); color: var(--faint); }
+
+/* Closing read: one quote-calm sentence, separated by a single rule. The old
+   version also carried its own bottom border, which doubled the section rule. */
+.comm-hero .comm-read { margin-top: 11px; padding: 11px 2px 0; border-top: 1px solid var(--line); font: 400 12.5px/1.6 var(--sans); color: var(--text-soft); }
+.comm-hero .comm-read b { color: var(--text); font-weight: 650; }
+.comm-hero .comm-read.sub { margin-top: 0; padding: 6px 2px 0; border-top: 0; font-size: 11.5px; color: var(--dim); }
+.comm-hero .read-line { border-bottom: 0; }
+
+@media (max-width: 1120px) {
+  .comm-hero .bp-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .comm-hero .bp-cell:last-child { grid-column: span 2; }
+}
+@media (max-width: 720px) {
+  .comm-hero { padding: 13px 14px 12px; }
+  .comm-hero .bp-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); margin-top: 12px; }
+  .comm-hero .bp-cell { padding: 9px 11px 10px; }
+  .comm-hero .bp-v { font-size: 18px; }
+  .comm-hero .bp-cell:last-child { grid-column: span 2; }
+  .comm-hero .comm-meta { gap: 8px 14px; padding: 9px 0; }
+  .comm-deltas { gap: 4px 10px; }
+  .cd { gap: 4px; }
+  .comm-hero .bp-comp { padding: 4px 7px; font-size: 9.5px; }
+  .comm-hero .bp-comp-l { font-size: 8.5px; }
+  .cc-plot { height: 108px; }
+  .cc-plot svg { width: calc(100% - 52px); }
+  .cc-tag { width: 50px; font-size: 9px; }
+  .cc-now { left: calc((100% - 52px) * var(--x)); }
+}
+
+/* ---------- Instrument tiles: sized by how many the segment actually has ---------- */
+#c-tiles #cards { padding: 14px 0 2px; }
+#c-tiles .tiles { gap: 10px; background: transparent; border: 0; }
+#c-tiles .tiles[data-n="1"] { grid-template-columns: minmax(0, 340px); }
+#c-tiles .tiles[data-n="2"] { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+#c-tiles .tiles[data-n="3"] { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+#c-tiles .tiles[data-n="4"] { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+#c-tiles .tiles[data-n="5"], #c-tiles .tiles[data-n="6"] { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+#c-tiles .tile { padding: 11px 13px 10px; row-gap: 2px; }
+#c-tiles .t-name { font-size: 11.5px; letter-spacing: .02em; }
+#c-tiles .t-px { font-size: 17px; line-height: 1.15; margin-top: 3px; }
+#c-tiles .tile .spark { height: 36px; margin: 6px 0 2px; opacity: .9; }
+#c-tiles .t-sig { min-height: 34px; align-content: flex-start; gap: 4px; margin-top: 6px; }
+#c-tiles .t-chip { font-size: 8.5px; line-height: 1.45; padding: 1px 5px; }
+#c-tiles .t-foot { margin-top: 6px; padding-top: 7px; border-top: 1px solid var(--line); }
+#c-tiles .t-foot .dstrip { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 0; margin: 0; }
+#c-tiles .t-foot .dl { align-items: flex-start; min-width: 0; }
+#c-tiles .t-foot .dl i { font-size: 8px; letter-spacing: .04em; color: var(--faint); }
+#c-tiles .t-foot .dl b { font-size: 10px; }
+#c-tiles .t-foot .fresh { display: block; margin-top: 5px; font-size: 8.5px; letter-spacing: .02em; color: var(--faint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+@media (max-width: 1180px) {
+  #c-tiles .tiles[data-n="4"], #c-tiles .tiles[data-n="5"], #c-tiles .tiles[data-n="6"] { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 820px) {
+  #c-tiles .tiles[data-n="1"] { grid-template-columns: minmax(0, 1fr); }
+  #c-tiles .tiles[data-n="2"], #c-tiles .tiles[data-n="3"] { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 640px) {
+  #c-tiles .tiles[data-n] { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  #c-tiles .tiles[data-n="1"] { grid-template-columns: minmax(0, 1fr); }
+  #c-tiles .t-sig { min-height: 0; }
+}
+
+/* ============================================================================
+   DESKTOP TYPE SCALE — Phase 1
+   The dense terminal look is right, but on a wide monitor the 7.5–10px
+   annotation tier reads as footnotes while the 26–34px display type dominates.
+   Lift the small/medium tiers one step on desktop only; touch layouts and the
+   display numbers stay exactly as they are.
+   ========================================================================== */
+@media (min-width: 901px) {
+  /* Page and section labels */
+  .wt-overline { font-size: 10px; }
+  .wt-pagehead .sub { font-size: 12px; }
+  .wt-btn { font-size: 11px; }
+  .ph-t { font-size: 11px; }
+  .gtitle { font-size: 10.5px; }
+  .macro-note, .co-note, #co-note { font-size: 11.5px; line-height: 1.5; }
+  .dimtext, .ph .dimtext, .co-price .dimtext { font-size: 11px; }
+  #updated { font-size: 11px; }
+  footer, #notes { font-size: 11px; }
+  .home-status { font-size: 11.5px; }
+
+  /* Home idea cards */
+  .home-idea .k { font-size: 10px; }
+  .home-idea p { font-size: 13px; }
+  .home-idea .ex { font-size: 10px; }
+  .home-idea .n small { font-size: 10px; }
+
+  /* Global board: headings, market table, sectors, ideas, company rows */
+  .gb-head .t { font-size: 10.5px; }
+  .gb-head .s { font-size: 9.5px; }
+  .gb-mtabs button { font-size: 10px; }
+  .gb-mrow { font-size: 11px; }
+  .gb-mrow.head { font-size: 9.5px; }
+  .gb-mrow .rk { font-size: 9px; }
+  .gb-mrow .n { font-size: 11px; }
+  .gb-mrow .ix { font-size: 9px; }
+  .gb-srow { font-size: 11px; }
+  .gb-idea .k { font-size: 9.5px; }
+  .gb-idea .n small { font-size: 10px; }
+  .gb-idea p { font-size: 11px; }
+  .gb-idea .go { font-size: 9.5px; }
+  .gb-tip-open { font-size: 9.5px; }
+  .gb-trow { font-size: 11px; }
+  .gb-trow .tk { font-size: 8px; }
+  .gb-trow .n { font-size: 11px; }
+  .gb-trow .s { font-size: 9.5px; }
+
+  /* Filters, tables and pagination */
+  .gb-filters select, .gb-filters input { font-size: 10.5px; }
+  .gb-table { font-size: 12px; }
+  .gb-table th, .sc-table th, .gtable th, .antable th, .jp-q-table th { font-size: 9.5px; letter-spacing: .07em; }
+  .gb-table td, .sc-table td, .gtable td, .antable td, .jp-q-table td { font-size: 12px; }
+  .gb-table td:first-child, .sc-table td:first-child, .gtable td:first-child, .antable td:first-child, .jp-q-table td:first-child { font-size: 12.5px; }
+  .co-tr { font-size: 11.5px; }
+  .co-th { font-size: 9.5px; }
+  .gb-table-foot, .gb-note, .gb-more { font-size: 9.5px; }
+  .sc-f { font-size: 11px; }
+  .sc-note { font-size: 11px; }
+
+  /* Company page */
+  .co-k { font-size: 10px; }
+  .co-sect { font-size: 10.5px; }
+  .co-desc { font-size: 13px; }
+  .co-price-c { font-size: 12px; }
+  .co-tick { font-size: 10px; }
+  .co-pe { font-size: 11.5px; }
+  .co-peers-l { font-size: 9.5px; }
+  .co-peers-s { font-size: 11px; }
+  .ma-chip, .co-ranges .ma-chip { font-size: 9.5px; }
+  .co-ret span { font-size: 10px; }
+  .co-ret b { font-size: 13px; }
+  .co-cmp { font-size: 11px; }
+
+  /* Commodity read and news */
+  .cc-instrument { font-size: 11px; }
+  .cc-axis, .cc-tag { font-size: 10.5px; }
+  .bp-k, .comm-hero .bp-k { font-size: 10px; }
+  .read-line { font-size: 12.5px; }
+  .rv-l { font-size: 12px; }
+  .rv-meta { font-size: 11.5px; }
+  .rv-note { font-size: 12px; }
+  .news-src { font-size: 11px; }
+  .news-t { font-size: 13.5px; }
+
+  /* Shell, home tiles and calendar: the remaining visible annotation tier */
+  .wt-deskline { font-size: 10px; }
+  .brand-type small, .brand .sub { font-size: 9px; }
+  .wt-eyebrow { font-size: 10px; }
+  .wt-rail a { font-size: 12px; }
+  .wt-railFoot { font-size: 11px; }
+  .wt-search { font-size: 12px; }
+  .clock { font-size: 12px; }
+  .tab { font-size: 12px; }
+  .home-mkt .code { font-size: 10px; }
+  .home-mkt .nm { font-size: 11px; }
+  .home-mkt .rets { font-size: 11.5px; }
+  .home-mkt .foot { font-size: 10px; }
+  .cal-dow { font-size: 9px; }
+  .cal-title { font-size: 10px; }
+  .cal-ev { font-size: 8.5px; }
+  .cal-src { font-size: 10px; }
+  .cal-day, .calendar-rail .cal-day { min-height: 52px; }
+  .calendar-rail .cal-dayh { font-size: 10px; }
+  .calendar-rail .cal-dn { font-size: 9.5px; }
+
+  /* Macro KPI strips */
+  .dl i { font-size: 9px; }
+  .dl b { font-size: 10.5px; }
+  .rb-l, .rb-u { font-size: 11px; }
+  .rb-src { font-size: 10px; }
+  .mstat-l { font-size: 10px; }
+  .mstat-s { font-size: 11px; }
+  .mstat .dl i { font-size: 9px; }
+  .mstat .dl b { font-size: 10.5px; }
+  .imp-top { font-size: 10px; }
+  .imp-why { font-size: 12.5px; }
+  .imp-mkt { font-size: 11px; }
+
+  /* Commodity tiles */
+  #c-tiles .t-chip { font-size: 9.5px; }
+  #c-tiles .t-foot .dl i { font-size: 9px; }
+  #c-tiles .t-foot .dl b { font-size: 11px; }
+  #c-tiles .t-foot .fresh { font-size: 9.5px; }
+}
+
+/* The larger table type needs 13px more width at the narrow end of desktop. Reclaim it from cell
+   padding instead of shrinking the type back; 1024–1180 keeps the full seven-column screener. */
+@media (min-width: 901px) and (max-width: 1180px) {
+  .gb-table th, .gb-table td { padding-left: 8px; padding-right: 8px; }
+}
