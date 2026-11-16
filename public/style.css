@@ -4667,3 +4667,21 @@ body{padding-bottom:27px}
    The card already names the market and its index, so the action is carried by the hover frame. */
 .home-mkt { position: relative; }
 .home-mkt:hover, .home-mkt:focus-visible { background: var(--panel2); box-shadow: inset 0 0 0 1px var(--signal); }
+
+/* The market tabs are a row of boxes, and they read as a grid: every market the same width, across
+   the whole row, ending flush with the search box. Sized by label, GLOBAL was the narrowest box and
+   UNITED STATES the widest, so the row looked ragged. Equal columns need room for the longest label
+   ("UNITED STATES"), so they only switch on where every name still fits on one line; below that the
+   row keeps its content-width boxes and scrolls sideways, so no market is ever clipped. */
+@media (min-width: 1300px) {
+  .co-region-wrap { display: grid; grid-template-columns: repeat(11, minmax(0, 1fr)); gap: 4px; align-items: stretch; }
+  .co-region-wrap > .co-region {
+    display: grid; grid-template-columns: repeat(10, minmax(0, 1fr)); grid-column: span 10; gap: 4px;
+    overflow: visible; -webkit-mask-image: none; mask-image: none;
+  }
+  .co-region-wrap > .co-region::after { display: none; }
+  .co-nav .co-region-wrap button {
+    min-width: 0; padding: 0 4px; text-align: center;
+    font-size: 9.5px; overflow: hidden; text-overflow: ellipsis;
+  }
+}
