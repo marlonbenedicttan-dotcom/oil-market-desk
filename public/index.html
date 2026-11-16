@@ -30,7 +30,7 @@
       if (meta) meta.setAttribute('content', theme === 'dark' ? '#111713' : '#f2f0e8');
       // Desktop reading size. Resolved before first paint like the theme; phones ignore it
       // entirely because the ramp only exists inside a min-width media query.
-      var size = 'large';
+      var size = 'larger';
       try { var s = localStorage.getItem('oilbasis.textsize'); if (s === 'standard' || s === 'larger' || s === 'large') size = s; } catch (e) {}
       document.documentElement.dataset.textsize = size;
     })();
@@ -118,8 +118,8 @@
       <span id="fresh" class="fresh-dot" role="img" title="Data freshness" aria-label="Data freshness"></span>
       <span id="clock" class="clock">--:--:--</span>
       <span id="updated" class="dimtext">loading…</span>
-      <button type="button" id="textsize-toggle" class="ghost textsize-toggle" aria-label="Text size: Large — click to change" title="Text size: Large">
-        <span class="ts-a" aria-hidden="true">Aa</span><span class="ts-label">Large</span>
+      <button type="button" id="textsize-toggle" class="ghost textsize-toggle" aria-label="Text size: Larger — click to change" title="Text size: Larger">
+        <span class="ts-a" aria-hidden="true">Aa</span><span class="ts-label">Larger</span>
       </button>
       <button type="button" id="theme-toggle" class="ghost theme-toggle" aria-label="Switch to dark mode" aria-pressed="false" title="Switch to dark mode">
         <svg class="theme-ico-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.4M12 19.1v2.4M2.5 12h2.4M19.1 12h2.4M5.3 5.3l1.7 1.7M17 17l1.7 1.7M18.7 5.3 17 7M7 17l-1.7 1.7"/></svg>

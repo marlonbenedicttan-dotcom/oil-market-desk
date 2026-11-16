@@ -1165,11 +1165,11 @@ const TEXT_SIZES = ['standard', 'large', 'larger'];
 const TEXT_SIZE_LABEL = { standard: 'Standard', large: 'Large', larger: 'Larger' };
 const TEXT_SIZE_CHART = { standard: 12, large: 13, larger: 14 };
 let currentTextSize = (() => {
-  try { const v = localStorage.getItem('oilbasis.textsize'); return TEXT_SIZES.includes(v) ? v : 'large'; } catch { return 'large'; }
+  try { const v = localStorage.getItem('oilbasis.textsize'); return TEXT_SIZES.includes(v) ? v : 'larger'; } catch { return 'larger'; }
 })();
 const chartTextSize = () => TEXT_SIZE_CHART[currentTextSize] || 13;
 function applyTextSize(mode, { persist = true } = {}) {
-  if (!TEXT_SIZES.includes(mode)) mode = 'large';
+  if (!TEXT_SIZES.includes(mode)) mode = 'larger';
   currentTextSize = mode;
   document.documentElement.dataset.textsize = mode;
   const btn = $('textsize-toggle');

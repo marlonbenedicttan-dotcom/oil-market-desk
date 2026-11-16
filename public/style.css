@@ -4510,12 +4510,13 @@ body{padding-bottom:27px}
    here with the same context rather than fought with !important.
    ========================================================================== */
 @media (min-width: 901px) {
-  /* One knob for the whole ramp: 1rem = the reader's chosen base. Large (16px) is the
-     shipped default; Standard ≈ 7.5% under it, Larger ≈ 8% over. Mobile never sees this
-     ruleset, so phones keep their own scale whatever the attribute says. */
-  html { font-size: 16px; }
+  /* One knob for the whole ramp: 1rem = the reader's chosen base. Larger (17.3px) is the
+     desktop default; Large is 8% under it, Standard 14% under. The bare html rule carries
+     the default too, so a reader with JS off still gets the intended size. Mobile never
+     matches this ruleset, so phones keep their own scale whatever the attribute says. */
+  html { font-size: 17.3px; }
   html[data-textsize="standard"] { font-size: 14.8px; }
-  html[data-textsize="larger"] { font-size: 17.3px; }
+  html[data-textsize="large"] { font-size: 16px; }
   /* ---------- READING ---------- */
   body { font-size: 0.925rem; line-height: 1.6; }
   .brief-read, .sector-read { font-size: 0.925rem; line-height: 1.6; }
@@ -4550,9 +4551,12 @@ body{padding-bottom:27px}
   .calendar-rail .cal-title { font-size: 0.6625rem; letter-spacing: .06em; }
   .calendar-rail .cal-foot { font-size: 0.6375rem; }
   .calendar-rail .cal-dn { font-size: 0.6625rem; }
-  .calendar-rail .cal-ev { font-size: 0.5875rem; line-height: 1.25; }
-  .calendar-rail .cal-more { font-size: 0.5625rem; }
-  .calendar-rail .cal-cc, .cal-cc { font-size: 0.5563rem; }
+  /* The month grid is the one place where bigger type costs characters: a ~45px cell
+     holds "US oil s…" at 9.4px and "US o…" at 10.2px. Cap the chips at Large so the
+     Aa control grows the reading text without turning the calendar into ellipses. */
+  .calendar-rail .cal-ev { font-size: min(0.5875rem, 9.6px); line-height: 1.25; }
+  .calendar-rail .cal-more { font-size: min(0.5625rem, 9.6px); }
+  .calendar-rail .cal-cc, .cal-cc { font-size: min(0.5563rem, 9px); }
   .calendar-rail .cal-dayh { font-size: 0.675rem; }
   .cal-day, .calendar-rail .cal-day { min-height: 60px; }
   .cal-date, .cal-src { font-size: 0.625rem; }
