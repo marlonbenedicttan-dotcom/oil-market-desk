@@ -2891,10 +2891,10 @@ function renderHomeIdeas(d) {
   if (!ideas) { el.innerHTML = stError('Couldn’t load the idea screens — retrying.'); return; }
   const n = (x) => Number(x || 0).toLocaleString();
   el.innerHTML = [
-    { k: 'CHEAP VS ITS OWN HISTORY', n: ideas.cheap, unit: 'names', p: 'P/E in the bottom 20% of its own five-year range. A valuation signal, not a recommendation.', ex: 'across 10 markets' },
-    { k: 'NEW FILINGS', n: ideas.filings, unit: 'US names this week', p: 'New 10-K / 10-Q filings with updated revenue, earnings and balance sheet.', ex: 'US filings tracker' },
-    { k: 'QUALITY AT A REASONABLE PRICE', n: ideas.quality, unit: 'names', p: 'ROE ≥ 15% and P/E ≤ 20. Quality without a premium multiple.', ex: 'across 10 markets' },
-  ].map((x) => `<div class="home-idea"><span class="k">${x.k}</span><span class="n">${n(x.n)}<small>${x.unit}</small></span><p>${x.p}</p><span class="ex">${x.ex} · <button type="button" class="linkbtn" data-tab="deals">Open COMPANIES →</button></span></div>`).join('');
+    { id: 'cheap', k: 'CHEAP VS ITS OWN HISTORY', n: ideas.cheap, unit: 'names', p: 'P/E in the bottom 20% of its own five-year range. A valuation signal, not a recommendation.', ex: 'across 10 markets' },
+    { id: 'filings', k: 'NEW FILINGS', n: ideas.filings, unit: 'US names this week', p: 'New 10-K / 10-Q filings with updated revenue, earnings and balance sheet.', ex: 'US filings tracker' },
+    { id: 'quality', k: 'QUALITY AT A REASONABLE PRICE', n: ideas.quality, unit: 'names', p: 'ROE ≥ 15% and P/E ≤ 20. Quality without a premium multiple.', ex: 'across 10 markets' },
+  ].map((x) => `<button type="button" class="home-idea" data-hm-idea="${x.id}"><span class="k">${x.k}</span><span class="n">${n(x.n)}<small>${x.unit}</small></span><p>${x.p}</p><span class="ex">${x.ex} · <span class="linkbtn">OPEN IN SCREENER →</span></span></button>`).join('');
 }
 // Screener — every instrument in one sortable table (assembled server-side at /api/screen).
 let screenRows = null, screenSort = { key: 'absd1', dir: -1 }, fxBase = 'USD', fxRows = null;
@@ -10541,8 +10541,15 @@ const GMARKET_COLORS = { us:'#4f8cff', jp:'#e05252', kr:'#2fb5a8', tw:'#d4a017',
 const GB_FLAG = { us: '🇺🇸', jp: '🇯🇵', kr: '🇰🇷', tw: '🇹🇼', hk: '🇭🇰', au: '🇦🇺', in: '🇮🇳', id: '🇮🇩', br: '🇧🇷', za: '🇿🇦' };
 // Brighter than the old muted set: the mix bar and the map have to read at a glance on a dark panel.
 const GB_COLORS = { us: '#5aa2ff', jp: '#ff5c5c', kr: '#2fd4c4', tw: '#ffc233', hk: '#ff6b5e', au: '#8fd14f', in: '#ff9b52', id: '#ff4d6d', br: '#3ddc84', za: '#ffd54a' };
-let gbMSort = 'cap', gbTopTab = 'cap', gbScrSort = 'cap', gbScrLimit = 50;
+let gbMSort = 'cap', gbTopTab = 'cap', gbScrSort = 'cap', gbScrLimit = 50, gbScrPage = 1;
 let gbScr = { market: 'all', sector: 'all', peMax: 0, roeMin: '', capMin: 0, ytdMin: '', q: '' };
+const gbPagerHtml = (total, page, per, attr) => {
+  const pages = Math.max(1, Math.ceil(total / per));
+  const p = Math.min(Math.max(1, page), pages);
+  return `<button type="button" class="gb-more" data-${attr}="${p - 1}" ${p <= 1 ? 'disabled' : ''}>← PREV PAGE</button>`
+    + `<span>PAGE ${p} OF ${pages}</span>`
+    + `<button type="button" class="gb-more" data-${attr}="${p + 1}" ${p >= pages ? 'disabled' : ''}>NEXT PAGE →</button>`;
+};
 let gbScrRows = [], gbScrTotal = 0, gbSectorsLoaded = false, gbThemeAll = false, gbQTimer = 0, gbScrSeq = 0, gbFitTimer = 0;
 
 // The map card's height is set by the map's aspect ratio; the markets card is capped to the same
@@ -10864,7 +10871,7 @@ function gbScreenerShell(home) {
       <input id="gb-f-q" type="search" placeholder="Filter by name or ticker…">
     </div>
     <div class="gb-scroll" id="gb-scr-table"></div>
-    <div class="gb-note"><span id="gb-scr-note"></span><span id="gb-scr-more"></span></div>
+    <div class="gb-note"><span id="gb-scr-note"></span><span class="gb-pagination" id="gb-scr-more"></span></div>
   </section>`;
 }
 
@@ -10876,7 +10883,7 @@ async function gbLoadScreener() {
     roeMin: gbScr.roeMin === '' ? '' : String(gbScr.roeMin),
     capMin: String(gbScr.capMin || 0),
     ytdMin: gbScr.ytdMin === '' ? '' : String(gbScr.ytdMin),
-    q: gbScr.q, sort: gbScrSort, limit: String(gbScrLimit), offset: '0',
+    q: gbScr.q, sort: gbScrSort, limit: String(gbScrLimit), offset: String((gbScrPage - 1) * gbScrLimit),
   });
   const d = await jget('/api/global-companies?' + p.toString(), 120000).catch(() => null);
   if (seq !== gbScrSeq || !d) return;
@@ -10886,6 +10893,8 @@ async function gbLoadScreener() {
     gbSectorsLoaded = true;
   }
   gbScrRows = d.rows || []; gbScrTotal = d.total || 0;
+  const pages = Math.max(1, Math.ceil(gbScrTotal / gbScrLimit));
+  if (gbScrPage > pages) { gbScrPage = pages; return gbLoadScreener(); }
   gbRenderScreener();
 }
 
@@ -10895,16 +10904,17 @@ function gbRenderScreener() {
   const body = rows.map((r) => `<tr data-gb-company="${esc(r.m)}:${esc(r.id)}"><td class="gb-c-company"><span class="gb-co" title="${esc(r.n)}">${esc(r.t)} <span class="dim">${esc(r.n)}</span></span></td><td class="gb-c-market">${GB_FLAG[r.m] || ''} ${esc(String(r.m).toUpperCase())}</td><td class="gb-c-sector"><span class="gb-sec" title="${esc(r.s)}">${esc(r.s)}</span></td><td class="num">${gbCap(r.cap)}</td><td class="num">${r.pe == null ? '—' : r.pe.toFixed(1) + '×'}</td><td class="num">${r.roe == null ? '—' : r.roe.toFixed(1) + '%'}</td><td class="num ${cls(r.ytd)}">${r.ytd == null ? '—' : pctf(r.ytd)}</td></tr>`).join('');
   const table = $('gb-scr-table'); if (table) table.innerHTML = `<table class="gb-table"><thead>${head}</thead><tbody>${body}</tbody></table>`;
   const count = $('gb-scr-count'); if (count) count.textContent = `${gbScrTotal.toLocaleString()} companies`;
-  const note = $('gb-scr-note'); if (note) note.textContent = `showing ${rows.length} of ${gbScrTotal.toLocaleString()}`;
+  const offset = (gbScrPage - 1) * gbScrLimit;
+  const note = $('gb-scr-note'); if (note) note.textContent = `${rows.length ? offset + 1 : 0}–${offset + rows.length} of ${gbScrTotal.toLocaleString()}`;
   const more = $('gb-scr-more');
-  if (more) more.innerHTML = rows.length < gbScrTotal && gbScrLimit < 200 ? '<button type="button" class="gb-more" data-gb-more="1">SHOW MORE</button>' : '';
+  if (more) more.innerHTML = gbPagerHtml(gbScrTotal, gbScrPage, gbScrLimit, 'gbpage');
 }
 
 // The HOME screener's COMPANIES mode uses the same global company set as the GLOBAL board, with its
 // own controls/state. Keeping it separate from the GLOBAL instance avoids duplicate DOM ids while
 // giving the home screen the cross-market screener instead of the old market-by-market table.
 let hmScr = { market: 'all', sector: 'all', peMax: 0, roeMin: '', capMin: 0, ytdMin: '', q: '' };
-let hmScrRows = [], hmScrTotal = 0, hmScrSort = 'cap', hmScrLimit = 50, hmScrSeq = 0, hmSectorsLoaded = false, hmQTimer = 0;
+let hmScrRows = [], hmScrTotal = 0, hmScrSort = 'cap', hmScrLimit = 50, hmScrPage = 1, hmScrSeq = 0, hmSectorsLoaded = false, hmQTimer = 0;
 const HM_MARKETS = [
   ['us', 'United States'], ['jp', 'Japan'], ['kr', 'Korea'], ['tw', 'Taiwan'], ['hk', 'Hong Kong'],
   ['au', 'Australia'], ['in', 'India'], ['id', 'Indonesia'], ['br', 'Brazil'], ['za', 'South Africa'],
@@ -10922,7 +10932,7 @@ function hmScreenerShell() {
       <input id="hm-f-q" type="search" placeholder="Filter by name or ticker…">
     </div>
     <div class="gb-scroll" id="hm-scr-table"></div>
-    <div class="gb-note"><span id="hm-scr-count"></span><span id="hm-scr-note"></span><span id="hm-scr-more"></span></div>
+    <div class="gb-note"><span id="hm-scr-count"></span><span id="hm-scr-note"></span><span class="gb-pagination" id="hm-scr-more"></span></div>
   </div>`;
 }
 function hmSyncFilterUi() {
@@ -10943,7 +10953,7 @@ async function hmLoadScreener() {
     roeMin: hmScr.roeMin === '' ? '' : String(hmScr.roeMin),
     capMin: String(hmScr.capMin || 0),
     ytdMin: hmScr.ytdMin === '' ? '' : String(hmScr.ytdMin),
-    q: hmScr.q, sort: hmScrSort, limit: String(hmScrLimit), offset: '0',
+    q: hmScr.q, sort: hmScrSort, limit: String(hmScrLimit), offset: String((hmScrPage - 1) * hmScrLimit),
   });
   const d = await jget('/api/global-companies?' + p.toString(), 120000).catch(() => null);
   if (seq !== hmScrSeq || !d) return;
@@ -10954,6 +10964,8 @@ async function hmLoadScreener() {
     hmSyncFilterUi();
   }
   hmScrRows = d.rows || []; hmScrTotal = d.total || 0;
+  const pages = Math.max(1, Math.ceil(hmScrTotal / hmScrLimit));
+  if (hmScrPage > pages) { hmScrPage = pages; return hmLoadScreener(); }
   hmRenderScreener();
 }
 function hmRenderScreener() {
@@ -10962,9 +10974,10 @@ function hmRenderScreener() {
   const body = rows.map((r) => `<tr data-gb-company="${esc(r.m)}:${esc(r.id)}"><td class="gb-c-company"><span class="gb-co" title="${esc(r.n)}">${esc(r.t)} <span class="dim">${esc(r.n)}</span></span></td><td class="gb-c-market">${GB_FLAG[r.m] || ''} ${esc(String(r.m).toUpperCase())}</td><td class="gb-c-sector"><span class="gb-sec" title="${esc(r.s)}">${esc(r.s)}</span></td><td class="num">${gbCap(r.cap)}</td><td class="num">${r.pe == null ? '—' : r.pe.toFixed(1) + '×'}</td><td class="num">${r.roe == null ? '—' : r.roe.toFixed(1) + '%'}</td><td class="num ${cls(r.ytd)}">${r.ytd == null ? '—' : pctf(r.ytd)}</td></tr>`).join('');
   const table = $('hm-scr-table'); if (table) table.innerHTML = `<table class="gb-table"><thead>${head}</thead><tbody>${body}</tbody></table>`;
   const count = $('hm-scr-count'); if (count) count.textContent = `${hmScrTotal.toLocaleString()} companies`;
-  const note = $('hm-scr-note'); if (note) note.textContent = `showing ${rows.length} of ${hmScrTotal.toLocaleString()}`;
+  const offset = (hmScrPage - 1) * hmScrLimit;
+  const note = $('hm-scr-note'); if (note) note.textContent = `${rows.length ? offset + 1 : 0}–${offset + rows.length} of ${hmScrTotal.toLocaleString()}`;
   const more = $('hm-scr-more');
-  if (more) more.innerHTML = rows.length < hmScrTotal && hmScrLimit < 200 ? '<button type="button" class="gb-more" data-hm-more="1">SHOW MORE</button>' : '';
+  if (more) more.innerHTML = gbPagerHtml(hmScrTotal, hmScrPage, hmScrLimit, 'hmpage');
 }
 function hmBindFilters() {
   const read = () => {
@@ -10977,7 +10990,7 @@ function hmBindFilters() {
       ytdMin: $('hm-f-ytd')?.value || '',
       q: $('hm-f-q')?.value.trim() || '',
     };
-    hmScrLimit = 50;
+    hmScrLimit = 50; hmScrPage = 1;
     hmLoadScreener();
   };
   ['hm-f-market', 'hm-f-sector', 'hm-f-pe', 'hm-f-roe', 'hm-f-cap', 'hm-f-ytd'].forEach((id) => $(id)?.addEventListener('change', read));
@@ -11046,7 +11059,7 @@ function gbBindFilters() {
       ytdMin: $('gb-f-ytd')?.value || '',
       q: $('gb-f-q')?.value.trim() || '',
     };
-    gbScrLimit = 50;
+    gbScrLimit = 50; gbScrPage = 1;
     gbLoadScreener();
   };
   ['gb-f-market', 'gb-f-sector', 'gb-f-pe', 'gb-f-roe', 'gb-f-cap', 'gb-f-ytd'].forEach((id) => $(id)?.addEventListener('change', read));
@@ -11055,13 +11068,25 @@ function gbBindFilters() {
 
 function gbApplyIdea(kind) {
   gbScr = { market: 'all', sector: 'all', peMax: 0, roeMin: '', capMin: 0, ytdMin: '', q: '' };
-  gbScrLimit = 50;
+  gbScrLimit = 50; gbScrPage = 1;
   if (kind === 'cheap') { gbScr.peMax = 15; gbScrSort = 'pe'; }
   else if (kind === 'quality') { gbScr.roeMin = '15'; gbScr.peMax = 20; gbScrSort = 'roe'; }
   else if (kind === 'filings') { gbScr.market = 'us'; gbScrSort = 'cap'; }
   gbSyncFilterUi();
   gbLoadScreener();
   document.getElementById('gb-screener')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function hmApplyIdea(kind) {
+  hmScr = { market: 'all', sector: 'all', peMax: 0, roeMin: '', capMin: 0, ytdMin: '', q: '' };
+  hmScrLimit = 50; hmScrPage = 1;
+  if (kind === 'cheap') { hmScr.peMax = 15; hmScrSort = 'pe'; }
+  else if (kind === 'quality') { hmScr.roeMin = '15'; hmScr.peMax = 20; hmScrSort = 'roe'; }
+  else if (kind === 'filings') { hmScr.market = 'us'; hmScrSort = 'cap'; }
+  screenMode = 'companies';
+  try { localStorage.setItem('oilbasis.screenMode.v2', screenMode); } catch {}
+  renderScreen(true);
+  document.getElementById('p-screen')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 async function renderGlobalBoard(token) {
@@ -11076,7 +11101,7 @@ async function renderGlobalBoard(token) {
   if (!home || !Array.isArray(home.markets) || !home.markets.length) { el.innerHTML = stError('Couldn’t load the global board — retrying.'); return; }
   globalBoardData = home; globalThemesData = themes; gbIndexData = mi;
   gbScr = { market: 'all', sector: 'all', peMax: 0, roeMin: '', capMin: 0, ytdMin: '', q: '' };
-  gbScrLimit = 50; gbScrSort = 'cap'; gbSectorsLoaded = false;
+  gbScrLimit = 50; gbScrPage = 1; gbScrSort = 'cap'; gbSectorsLoaded = false;
   if (themes && themes.themes && !themes.themes.some((t) => t.id === globalThemeSel)) globalThemeSel = themes.themes[0]?.id || 'ai';
   const sub = $('deals-sub');
   if (sub) sub.textContent = `${home.markets.length} markets · ${Number(home.companies || 0).toLocaleString()} companies · global board`;
@@ -11102,15 +11127,11 @@ addEventListener('resize', () => { clearTimeout(gbFitTimer); gbFitTimer = setTim
 
 document.addEventListener('click', (e) => {
   const hmSort = e.target.closest('[data-hm-sort]');
-  if (hmSort) { hmScrSort = hmSort.dataset.hmSort; hmScrLimit = 50; hmLoadScreener(); return; }
-  const hmMore = e.target.closest('[data-hm-more]');
-  if (hmMore) { hmScrLimit = Math.min(200, hmScrLimit + 50); hmLoadScreener(); return; }
-});
-document.addEventListener('click', (e) => {
-  const hmSort = e.target.closest('[data-hm-sort]');
-  if (hmSort) { hmScrSort = hmSort.dataset.hmSort; hmScrLimit = 50; hmLoadScreener(); return; }
-  const hmMore = e.target.closest('[data-hm-more]');
-  if (hmMore) { hmScrLimit = Math.min(200, hmScrLimit + 50); hmLoadScreener(); return; }
+  if (hmSort) { hmScrSort = hmSort.dataset.hmSort; hmScrPage = 1; hmLoadScreener(); return; }
+  const hmPage = e.target.closest('[data-hmpage]');
+  if (hmPage) { hmScrPage = Math.max(1, Number(hmPage.dataset.hmpage)); hmLoadScreener(); return; }
+  const hmIdea = e.target.closest('[data-hm-idea]');
+  if (hmIdea) { hmApplyIdea(hmIdea.dataset.hmIdea); return; }
 });
 document.addEventListener('click', (e) => {
   const gsz = e.target.closest('[data-gb-size]');
@@ -11139,7 +11160,7 @@ document.addEventListener('click', (e) => {
     return;
   }
   const sort = e.target.closest('[data-gb-sort]');
-  if (sort) { gbScrSort = sort.dataset.gbSort; gbScrLimit = 50; gbLoadScreener(); return; }
+  if (sort) { gbScrSort = sort.dataset.gbSort; gbScrPage = 1; gbLoadScreener(); return; }
   const top = e.target.closest('[data-gb-top]');
   if (top) {
     gbTopTab = top.dataset.gbTop;
@@ -11147,8 +11168,8 @@ document.addEventListener('click', (e) => {
     gbLoadTop();
     return;
   }
-  const more = e.target.closest('[data-gb-more]');
-  if (more) { gbScrLimit = Math.min(200, gbScrLimit + 50); gbLoadScreener(); return; }
+  const page = e.target.closest('[data-gbpage]');
+  if (page) { gbScrPage = Math.max(1, Number(page.dataset.gbpage)); gbLoadScreener(); return; }
   const themeAll = e.target.closest('[data-gb-themeall]');
   if (themeAll) { gbThemeAll = !gbThemeAll; gbTheme(); return; }
   const idea = e.target.closest('[data-gb-idea]');

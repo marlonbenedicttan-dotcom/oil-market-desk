@@ -181,6 +181,10 @@ function loadApp() {
     getTheme: () => currentTheme,
     gsQuickSearch,
     setGsQuick: (v) => { gsQuick = v; },
+    renderHomeIdeas,
+    hmApplyIdea,
+    gbPagerHtml,
+    getHomeIdeaState: () => ({ mode: screenMode, filters: { ...hmScr }, sort: hmScrSort, page: hmScrPage }),
   };`;
   const ctx = makeContext();
   vm.createContext(ctx);
@@ -701,6 +705,36 @@ test('pctf and cls keep the sign and the empty state', () => {
   assert.equal(ui.cls(0.1), 'pos');
   assert.equal(ui.cls(-0.1), 'neg');
   assert.equal(ui.cls(null), '');
+});
+
+test('home idea cards open their own company screen instead of a stale company page', () => {
+  const { ui, document } = loadApp();
+  ui.renderHomeIdeas({ ideas: { cheap: 12, filings: 3, quality: 8 } });
+  const html = document.getElementById('home-ideas').innerHTML;
+  assert.match(html, /<button[^>]+class="home-idea"[^>]+data-hm-idea="cheap"/);
+  assert.match(html, /data-hm-idea="quality"/);
+  assert.doesNotMatch(html, /data-tab="deals"/, 'an idea must not reopen the last selected company');
+
+  ui.hmApplyIdea('quality');
+  const state = ui.getHomeIdeaState();
+  assert.equal(state.mode, 'companies');
+  assert.equal(state.page, 1);
+  assert.equal(state.sort, 'roe');
+  assert.equal(state.filters.roeMin, '15');
+  assert.equal(state.filters.peMax, 20);
+});
+
+test('global and home screeners use bounded previous and next pages', () => {
+  const { ui } = loadApp();
+  const first = ui.gbPagerHtml(125, 1, 50, 'hmpage');
+  assert.match(first, /PAGE 1 OF 3/);
+  assert.match(first, /data-hmpage="0" disabled/);
+  assert.match(first, /data-hmpage="2"/);
+  assert.match(first, /NEXT PAGE/);
+  assert.doesNotMatch(first, /SHOW MORE/);
+  const last = ui.gbPagerHtml(125, 3, 50, 'gbpage');
+  assert.match(last, /data-gbpage="2"/);
+  assert.match(last, /data-gbpage="4" disabled/);
 });
 
 test('property and REIT EPS growth is labelled statutory', () => {

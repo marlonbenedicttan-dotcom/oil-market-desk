@@ -1390,6 +1390,8 @@ button.deal-sec-tile:hover { background: var(--surface2); }
 }
 
 /* The session the prices belong to, at the end of every filter bar. */
+.co-fresh { display:inline-flex; align-items:center; gap:8px; margin-left:auto; white-space:nowrap; }
+.co-fresh .co-asof { margin-left:0; }
 .co-asof { font-size: 10px; letter-spacing: .3px; color: var(--faint); margin-left: auto; white-space: nowrap; }
 .co-live-badge { display: inline-flex; align-items: center; gap: 5px; font-size: 9px; letter-spacing: 1px; color: var(--green); white-space: nowrap; }
 .co-live-badge::before { content: ''; width: 5px; height: 5px; border-radius: 50%; background: var(--green); box-shadow: 0 0 6px var(--green); }
@@ -1950,7 +1952,7 @@ button.deal-sec-tile:hover { background: var(--surface2); }
 .home-mkt .bar i { display:block; height:100%; }
 .home-mkt .foot { display:flex; justify-content:space-between; margin-top:7px; font-size:9px; color:var(--dim); }
 .home-ideas { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; padding:12px; }
-.home-idea { background:var(--panel2); border:1px solid var(--line); padding:14px 15px; display:flex; flex-direction:column; min-height:145px; }
+.home-idea { background:var(--panel2); border:1px solid var(--line); padding:14px 15px; display:flex; flex-direction:column; min-height:145px; color:inherit; font:inherit; text-align:left; cursor:pointer; }
 .home-idea .k { font-size:9px; letter-spacing:1.2px; color:var(--amber); }
 .home-idea .n { font-size:28px; line-height:1; margin:9px 0 6px; font-variant-numeric:tabular-nums; }
 .home-idea .n small { font-size:9px; color:var(--dim); margin-left:5px; letter-spacing:.3px; }
@@ -2670,6 +2672,8 @@ body.gs-search-open { overflow: hidden; }
 .gb-table tbody tr:hover td { background:var(--surface2); }
 .gb-note { display:flex; justify-content:space-between; gap:10px; padding:8px 12px; border-top:1px solid var(--line); font-size:8px; color:var(--faint); flex-wrap:wrap; }
 .gb-more { background:none; border:1px solid var(--line2); color:var(--amber); font:inherit; font-size:8px; letter-spacing:.8px; padding:4px 8px; cursor:pointer; }
+.gb-more:disabled { opacity:.35; cursor:default; }
+.gb-pagination { display:inline-flex; align-items:center; gap:8px; flex-wrap:wrap; }
 .gb-ttabs { display:flex; gap:2px; padding:8px 12px 0; border-bottom:1px solid var(--line); }
 .gb-ttabs button { background:none; border:0; border-bottom:2px solid transparent; color:var(--dim); font:600 8.5px/1 var(--sans); letter-spacing:.8px; padding:7px 8px; cursor:pointer; }
 .gb-ttabs button.on { color:var(--amber); border-bottom-color:var(--amber); }
@@ -3463,8 +3467,7 @@ input[type="search"],input[type="text"]{border-radius:var(--r,4px)}
 .home-idea .ex a,.linkbtn{color:var(--accent)}
 .linkbtn{font-size:9px;letter-spacing:.08em}
 @media (min-width:901px){
-  .home-mkt:first-child{background:var(--surface);box-shadow:inset 2px 0 0 var(--accent)}
-  .home-mkt:first-child .lvl{font-size:26px;margin-top:8px}
+  .home-mkt .lvl{margin-top:8px}
 }
 @media (min-width:1051px){
   .home-brief-grid{grid-template-columns:minmax(0,1.35fr) minmax(300px,.65fr)}
@@ -3733,8 +3736,6 @@ input[type="search"],input[type="text"]{border-radius:var(--r,4px)}
   .wt-btn{height:32px}
   .home-markets{gap:1px;padding:0}
   .home-mkt{background:var(--bg);border:0;padding:12px}
-  .home-mkt:first-child{background:var(--surface);box-shadow:inset 2px 0 0 var(--accent)}
-  .home-mkt:first-child .lvl{font-size:22px}
   .home-ideas{padding:8px 0 0}
   .home-idea{padding:12px 0 0;border-top:1px solid var(--line2)}
   .home-status{padding:9px 0}
@@ -3848,17 +3849,12 @@ select:focus,input:focus,textarea:focus{outline:2px solid var(--signal);outline-
 .comm-nav button,.macro-tabs button,.co-views button{border-radius:0;color:var(--faint)}
 .comm-nav button.active,.macro-tabs button.active,.co-views button.active{color:var(--accent);border-bottom-color:var(--signal);background:transparent}
 
-/* Home benchmark board: the forest lead tile is the nameplate repeated in data. */
+/* Home benchmark board: every market uses the same visual weight. */
 .home-markets{border:1px solid var(--text);background:var(--panel);gap:0;padding:0}
 .home-mkt{background:var(--panel);border:0;border-left:1px solid var(--line);padding:15px 14px}
-.home-mkt:first-child{border-left:0;background:var(--forest);box-shadow:none;color:var(--forest-ink)}
-.home-mkt:first-child .code,.home-mkt:first-child .foot,.home-mkt:first-child .rets span{color:var(--forest-muted)}
-.home-mkt:first-child .nm{color:var(--forest-signal)}
-.home-mkt:first-child .lvl{color:var(--forest-ink);font-size:30px;letter-spacing:-.05em}
-.home-mkt:first-child .rets em.pos{color:#8ed0b4}
-.home-mkt:first-child .rets em.neg{color:#f4a48f}
+.home-mkt:first-child{border-left:0}
 .home-mkt .lvl{font-family:var(--mono);font-variant-numeric:tabular-nums;letter-spacing:-.035em}
-.home-mkt:not(:first-child):hover{background:var(--panel2)}
+.home-mkt:hover{background:var(--panel2)}
 .home-idea .n{font-family:var(--mono);letter-spacing:-.04em}
 .home-idea .k,.co-k,.mstat-l{color:var(--faint)}
 .imp-what,.brief-mini h4,.home-brief-lead h3,.home-brief-more h4{
@@ -3914,7 +3910,7 @@ body{padding-bottom:27px}
 :root[data-theme="dark"] .topbar{background:var(--bg);border-bottom-color:var(--line2)}
 :root[data-theme="dark"] .wt-rail .on{background:var(--surface2)}
 :root[data-theme="dark"] .home-markets{border-color:var(--line2)}
-:root[data-theme="dark"] .home-mkt:first-child{background:var(--forest)}
+:root[data-theme="dark"] .home-mkt{background:var(--panel)}
 :root[data-theme="dark"] .panel{border-top-color:var(--line)}
 :root[data-theme="dark"] .ph-t{color:var(--text)}
 :root[data-theme="dark"] .wt-btn.accent{background:var(--forest-light);border-color:var(--forest-light)}
@@ -3926,7 +3922,6 @@ body{padding-bottom:27px}
   .wt-search{width:220px}
   .brand .sub{display:none}
   main{padding-left:26px}
-  .home-mkt:first-child .lvl{font-size:25px}
 }
 @media (max-width:900px){
   body{padding-bottom:0}
@@ -3978,8 +3973,6 @@ body{padding-bottom:27px}
   .macro-pulse{grid-template-columns:repeat(2,minmax(0,1fr))}
   .mstat{padding:12px}
   .home-mkt{padding:13px 12px}
-  .home-mkt:first-child{background:var(--forest);box-shadow:none}
-  .home-mkt:first-child .lvl{font-size:27px}
   .ph{align-items:flex-start;gap:8px;flex-wrap:wrap}
   .ph-t{line-height:1.35}
   .co-tools{flex-wrap:wrap}
