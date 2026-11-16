@@ -4248,6 +4248,13 @@ function gsRouteOpenSearch(q) {
   if (!q) gsBoard(); else gsOnInput();
 }
 
+// A cold load only restores a REAL sub-route. The bare Companies tab (#/deals) used to satisfy the
+// old (companies|deals) regex, so reloading on the global board reopened it (with the saved region)
+// instead of landing on HOME. Company pages, search, and M&A sector routes are still deep links.
+function isBootDeepLink(hash) {
+  const parts = String(hash || '').replace(/^#\/?/, '').split('/').filter(Boolean);
+  return parts.length > 1 && (parts[0] === 'companies' || parts[0] === 'deals');
+}
 function currentRoute() {
   const tab = document.querySelector('.tab.active')?.dataset.tab || 'home';
   if (tab === 'commodities') {
@@ -4783,9 +4790,9 @@ $('macro-links')?.addEventListener('click', (e) => { const el = e.target.closest
   // Always land on a segment (first visit included) so the read actually loads.
   selectMarket(savedSeg && markets.some((m) => m.id === savedSeg) ? savedSeg : (markets[0] && markets[0].id) || 'crude');
   restoreCompare();
-  // A pasted company/search route is a deep link and must survive the boot. Other tabs still start on
-  // HOME on a cold load (the old behaviour); in-app navigation updates the hash and Back/Forward work.
-  if (bootRoute && /^#\/(companies|deals)(\/|$)/.test(bootRoute)) {
+  // A pasted company/search (or M&A sub-route) is a deep link and must survive the boot. The bare
+  // Companies tab is not: reloading #/deals now lands on HOME instead of reopening the global board.
+  if (isBootDeepLink(bootRoute)) {
     if (!applyRoute(bootRoute)) { showTab('home'); syncRoute(false); }
     else { try { window.history.replaceState(null, '', bootRoute); } catch {} }
   } else {

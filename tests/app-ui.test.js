@@ -185,6 +185,7 @@ function loadApp() {
     renderHomeIdeas,
     hmApplyIdea,
     gbPagerHtml,
+    isBootDeepLink,
     getHomeIdeaState: () => ({ mode: screenMode, filters: { ...hmScr }, sort: hmScrSort, page: hmScrPage }),
   };`;
   const ctx = makeContext();
@@ -812,6 +813,20 @@ test('all ten markets are reachable in the COMPANIES navigation', () => {
   assert.match(app, /function scrollActiveIntoView/, 'the active market must be scrolled into view');
 });
 
+
+test('a reload on the Companies tab lands on HOME, but real deep links survive', () => {
+  const { ui } = loadApp();
+  // The bare tab route is not a deep link: reloading the global board must not reopen it.
+  assert.equal(ui.isBootDeepLink('#/deals'), false);
+  assert.equal(ui.isBootDeepLink('#/deals/'), false);
+  assert.equal(ui.isBootDeepLink('#/companies'), false);
+  assert.equal(ui.isBootDeepLink('#/home'), false);
+  assert.equal(ui.isBootDeepLink('#/commodities/crude'), false);
+  // Real sub-routes still survive a cold load or a pasted link.
+  assert.equal(ui.isBootDeepLink('#/companies/us/company/320193'), true);
+  assert.equal(ui.isBootDeepLink('#/companies/search/apple'), true);
+  assert.equal(ui.isBootDeepLink('#/deals/sector/energy'), true);
+});
 
 test('the US company chart controls stay outside the fixed-height chart frame', () => {
   // On a phone the chart frame is 270px. Compare + the seven range chips + the return strip used
