@@ -49,6 +49,32 @@ export function pctOver(arr, n) {
   return base ? ((last - base) / base) * 100 : null;
 }
 
+// % change over a CALENDAR window (days), not a fixed number of observations. anchor='after' starts
+// at the first observation at/after the window opens — the same way a range chart is cut — so the
+// READ's 1M/3M/6M/1Y prose matches both the chart and the delta strip. A 252-point window is not a
+// year on a series with holidays/gaps (the live daily feed can carry >252 points for 365 days).
+export function pctOverDays(dates, values, days, anchor = 'before') {
+  const at = [];
+  for (let i = 0; i < dates.length; i++) if (values[i] != null) at.push(i);
+  if (at.length < 2) return null;
+  const lastI = at[at.length - 1];
+  const last = values[lastI];
+  const t = new Date(dates[lastI] + 'T00:00:00Z');
+  if (Number.isNaN(t.getTime())) return null;
+  t.setUTCDate(t.getUTCDate() - days);
+  const target = t.toISOString().slice(0, 10);
+  let baseI = null;
+  // anchor='after' is the chart-window rule: start at the first observation at/after the window
+  // opens (fall back to the last one before it when the series has no later point).
+  if (anchor === 'after') {
+    for (const i of at) { if (i === lastI) break; if (dates[i] >= target) { baseI = i; break; } }
+  }
+  if (baseI == null) for (const i of at) { if (i === lastI) break; if (dates[i] <= target) baseI = i; }
+  if (baseI == null) baseI = at[0];
+  const base = values[baseI];
+  return base ? ((last - base) / base) * 100 : null;
+}
+
 export const percentile = (arr, v) => { const xs = arr.filter((x) => x != null); return xs.length ? (xs.filter((x) => x <= v).length / xs.length) * 100 : null; };
 
 // The last present value of a series. Used to pick a price that cannot be a stale meta quote
@@ -134,7 +160,7 @@ export function backAdjust(values, rollGaps) {
 // and parallel to values; nulls are skipped. A horizon with no earlier point, or a
 // zero base, → null (never faked). Rounded to 2 dp. Lets every price show its move
 // over all the usual windows at once, not just today.
-export function horizonDeltas(dates, values) {
+export function horizonDeltas(dates, values, anchor = 'before') {
   const at = [];
   for (let i = 0; i < dates.length; i++) if (values[i] != null) at.push(i);
   const flat = { d1: null, w1: null, m1: null, ytd: null, y1: null };
@@ -142,16 +168,21 @@ export function horizonDeltas(dates, values) {
   const lastI = at[at.length - 1];
   const last = values[lastI];
   const lastDate = dates[lastI];
-  // The latest observation on or before a target date (the base for that window).
-  const baseBefore = (iso) => { let bi = null; for (const i of at) { if (i === lastI) break; if (dates[i] <= iso) bi = i; } return bi; };
+  // The base for a window. 'before' = latest observation on/before the target date (the delta
+  // strip's long-standing rule). 'after' = first observation at/after it, matching the window a
+  // range chart actually plots; falls back to 'before' when there is no later point.
+  const baseAt = (iso) => {
+    if (anchor === 'after') for (const i of at) { if (i === lastI) break; if (dates[i] >= iso) return i; }
+    let bi = null; for (const i of at) { if (i === lastI) break; if (dates[i] <= iso) bi = i; } return bi;
+  };
   const back = (days) => { const t = new Date(lastDate + 'T00:00:00Z'); t.setUTCDate(t.getUTCDate() - days); return t.toISOString().slice(0, 10); };
   const pct = (i) => { const b = i == null ? null : values[i]; return b ? +(((last - b) / b) * 100).toFixed(2) : null; };
   return {
     d1: pct(at[at.length - 2]),
-    w1: pct(baseBefore(back(7))),
-    m1: pct(baseBefore(back(30))),
-    ytd: pct(baseBefore(lastDate.slice(0, 4) + '-01-01')),
-    y1: pct(baseBefore(back(365))),
+    w1: pct(baseAt(back(7))),
+    m1: pct(baseAt(back(30))),
+    ytd: pct(baseAt(lastDate.slice(0, 4) + '-01-01')),
+    y1: pct(baseAt(back(365))),
   };
 }
 

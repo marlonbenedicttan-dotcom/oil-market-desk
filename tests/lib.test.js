@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { sgn, inBox, haversineNm, isoWeek, monthly, pctOver, percentile, lastNonNull, escHtml, webhookPayload, realizedVol, computeCracks, computeCrush, computeSteel, backAdjust, pearson, logReturns, horizonDeltas, horizonDeltasAbs, curveTightness, inventoryTightness, weightedScore, seasonalGrade, seasonalAhead, contractMonthsBetween, signedPosition, signedMove, stretchScore, sdLabel, attributeMoves, newsContextOk, looksLikeProperNoun, NON_MARKET_CTX, METHODOLOGY, positioningFlag, positioningRead, positioningDivergence, maxDrawdown, drawdownNow, realizedVolTerm, volPercentile, corrMatrix, fxAdjust, parseOcc, drawdownWord, volWord, volTrend, volVsOwnWord, corrWord, corrShift, focusRows, topPairs, pairGroups, bestDiversifier, riskRead, mergePeriods, mergeSeriesPoints } from '../src/lib.js';
+import { sgn, inBox, haversineNm, isoWeek, monthly, pctOver, pctOverDays, percentile, lastNonNull, escHtml, webhookPayload, realizedVol, computeCracks, computeCrush, computeSteel, backAdjust, pearson, logReturns, horizonDeltas, horizonDeltasAbs, curveTightness, inventoryTightness, weightedScore, seasonalGrade, seasonalAhead, contractMonthsBetween, signedPosition, signedMove, stretchScore, sdLabel, attributeMoves, newsContextOk, looksLikeProperNoun, NON_MARKET_CTX, METHODOLOGY, positioningFlag, positioningRead, positioningDivergence, maxDrawdown, drawdownNow, realizedVolTerm, volPercentile, corrMatrix, fxAdjust, parseOcc, drawdownWord, volWord, volTrend, volVsOwnWord, corrWord, corrShift, focusRows, topPairs, pairGroups, bestDiversifier, riskRead, mergePeriods, mergeSeriesPoints } from '../src/lib.js';
 
 test('sgn formats with sign', () => {
   assert.equal(sgn(4.39), '+4.39');
@@ -96,6 +96,16 @@ test('horizonDeltas computes 1D/1W/1M/YTD/1Y moves from a dated series', () => {
   assert.equal(d.m1, 7.95);   // 95 vs 88 (latest point ≤ 30 days back)
   assert.equal(d.ytd, 18.75); // 95 vs 80 (year-to-date base)
   assert.equal(d.y1, 53.23);  // 95 vs 62 (latest point ≤ 1 year back)
+});
+
+test('pctOverDays uses calendar windows and can anchor on the first point inside the window', () => {
+  const dates = ['2025-01-01', '2025-06-01', '2025-12-31', '2026-01-02', '2026-06-15'];
+  const values = [100, 80, 90, 92, 110];
+  assert.equal(pctOverDays(dates, values, 365, 'before'), 37.5);   // 110 vs 80 (last point before the anniversary)
+  assert.ok(Math.abs(pctOverDays(dates, values, 365, 'after') - 22.2222) < 0.001); // 110 vs 90 (first point after it)
+  const d = horizonDeltas(dates, values, 'after');
+  assert.equal(d.y1, 22.22);
+  assert.equal(horizonDeltas(dates, values).y1, 37.5);
 });
 
 test('horizonDeltas never fakes a window it cannot compute', () => {

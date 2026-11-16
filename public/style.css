@@ -2040,7 +2040,10 @@ button.deal-sec-tile:hover { background: var(--surface2); }
   .topbar .meta { font-size:9px; gap:8px; margin-left:auto; }
 }
 @media (max-width:700px) {
-  #pane-home > .jumpnav { flex-wrap:wrap; overflow:visible; gap:6px; }
+  /* Eight items used to wrap 7 + 1, leaving "Headlines" alone on a second row. A 4 × 2 grid is a
+     deliberate two-row nav at phone widths (the base rule is a horizontal scroll). */
+  #pane-home > .jumpnav { display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); overflow:visible; gap:6px; }
+  #pane-home > .jumpnav a { text-align:center; padding:6px 3px; font-size:10px; letter-spacing:.3px; }
 }
 @media (max-width:1000px) {
   .topbar .brand .sub { display:none; }
@@ -2650,6 +2653,10 @@ body.gs-search-open { overflow: hidden; }
 .gb-srow .sv { text-align:right; color:var(--text); font-variant-numeric:tabular-nums; }
 
 .gb-filters { display:flex; gap:6px; flex-wrap:wrap; padding:10px 12px; border-bottom:1px solid var(--line); }
+.gb-activefilters { display:flex; gap:6px; flex-wrap:wrap; padding:0 12px 9px; }
+.gb-activefilters[hidden] { display:none; }
+.gb-afchip { display:inline-flex; align-items:center; gap:6px; border:1px solid var(--amber); color:var(--amber); font-size:8px; letter-spacing:.6px; padding:3px 6px; }
+.gb-afchip button { background:none; border:0; color:inherit; cursor:pointer; font:inherit; font-size:11px; line-height:1; padding:0 1px; }
 .gb-filters select, .gb-filters input { background:var(--surface); border:1px solid var(--line); color:var(--text); font:inherit; font-size:9px; letter-spacing:.5px; padding:6px 8px; min-height:30px; }
 .gb-filters input { flex:1 1 160px; min-width:120px; }
 .gb-filters select { max-width:160px; }
@@ -2670,6 +2677,8 @@ body.gs-search-open { overflow: hidden; }
 .gb-table tr:last-child td { border-bottom:0; }
 .gb-table tbody tr { cursor:pointer; }
 .gb-table tbody tr:hover td { background:var(--surface2); }
+.gb-table tbody tr:focus-visible, .gb-table th:focus-visible,
+.gb-trow:focus-visible, .gb-mrow:focus-visible { outline:1px solid var(--amber); outline-offset:-1px; }
 .gb-note { display:flex; justify-content:space-between; gap:10px; padding:8px 12px; border-top:1px solid var(--line); font-size:8px; color:var(--faint); flex-wrap:wrap; }
 .gb-more { background:none; border:1px solid var(--line2); color:var(--amber); font:inherit; font-size:8px; letter-spacing:.8px; padding:4px 8px; cursor:pointer; }
 .gb-more:disabled { opacity:.35; cursor:default; }

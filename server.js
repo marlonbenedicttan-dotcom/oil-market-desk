@@ -16,7 +16,7 @@ import { parseRef, yahooSymbol, normalizeQuote, chunk } from './src/quotes.js';
 import { growthRates, fromJapanHistory } from './src/growth.js';
 import { REGIME_BOARD, keepLastGood, buildRegimeRow } from './src/regime.js';
 import { RISK_SERIES, keepLastSeries, latestDate } from './src/risk.js';
-import { sgn, businessDaysSince, horizonDeltas, horizonDeltasAbs, isoWeek, monthly, pctOver, percentile, lastNonNull, escHtml, webhookPayload, realizedVol, computeCracks, computeCrush, computeSteel, buildRelValueRow, relValueZone, ordinal, alignPriceToRows, inventoryBands, backAdjust, pearson, logReturns, frontExpiry, curveTightness, inventoryTightness, weightedScore, seasonalGrade, seasonalAhead, contractMonthsBetween, signedPosition, signedMove, stretchScore, sdLabel, attributeMoves, newsContextOk, METHODOLOGY, positioningFlag, positioningRead, positioningDivergence, maxDrawdown, drawdownNow, realizedVolTerm, volPercentile, volVsOwnWord, corrMatrix, fxAdjust, parseOcc, drawdownWord, volWord, volTrend, corrShift, pairGroups, topPairs, bestDiversifier, riskRead, priorityOf, rankByPriority, clusterEvents, scoreEvents, selectEvents, explainRows } from './src/lib.js';
+import { sgn, businessDaysSince, horizonDeltas, horizonDeltasAbs, isoWeek, monthly, pctOver, pctOverDays, percentile, lastNonNull, escHtml, webhookPayload, realizedVol, computeCracks, computeCrush, computeSteel, buildRelValueRow, relValueZone, ordinal, alignPriceToRows, inventoryBands, backAdjust, pearson, logReturns, frontExpiry, curveTightness, inventoryTightness, weightedScore, seasonalGrade, seasonalAhead, contractMonthsBetween, signedPosition, signedMove, stretchScore, sdLabel, attributeMoves, newsContextOk, METHODOLOGY, positioningFlag, positioningRead, positioningDivergence, maxDrawdown, drawdownNow, realizedVolTerm, volPercentile, volVsOwnWord, corrMatrix, fxAdjust, parseOcc, drawdownWord, volWord, volTrend, corrShift, pairGroups, topPairs, bestDiversifier, riskRead, priorityOf, rankByPriority, clusterEvents, scoreEvents, selectEvents, explainRows } from './src/lib.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC = path.join(__dirname, 'public');
@@ -541,7 +541,8 @@ async function buildMarket() {
 function mapDeltas(map) {
   const dates = Object.keys(map || {}).sort();
   if (dates.length < 2) return null;
-  return { asOf: dates[dates.length - 1], ...horizonDeltas(dates, dates.map((d) => map[d])) };
+  // 'after' keeps the strip's 1W/1M/1Y on the same window as the range charts and the READ prose.
+  return { asOf: dates[dates.length - 1], ...horizonDeltas(dates, dates.map((d) => map[d]), 'after') };
 }
 const getHistory = () => cachedSWR('history', 120_000, buildHistory, 30 * 60_000);
 async function buildHistory() {
@@ -559,7 +560,19 @@ async function buildHistory() {
     Object.keys(maps[b.id].paper).forEach((d) => allDates.add(d));
     Object.keys(maps[b.id].physical).forEach((d) => allDates.add(d));
   }
-  const dates = [...allDates].sort().slice(-120);
+  // Keep the real six-month window, by DATE. The old `.slice(-120)` started ~5.5 months back, so the
+  // 6M chart (the default range) and the hero's "PAST 6 MONTHS" both understated the move. Filtering
+  // to 183 calendar days is ~131 points — only a few KB more — and matches /api/range?range=6m.
+  const all = [...allDates].sort();
+  let dates = all;
+  const lastDate = all[all.length - 1];
+  if (lastDate) {
+    const cut = new Date(lastDate + 'T00:00:00Z');
+    cut.setUTCDate(cut.getUTCDate() - 183);
+    const cutISO = cut.toISOString().slice(0, 10);
+    dates = all.filter((d) => d >= cutISO);
+    if (dates.length < 2) dates = all.slice(-120);
+  }
   const at = (o, d) => (o[d] != null ? o[d] : null);
 
   const series = {};
@@ -579,8 +592,8 @@ async function buildHistory() {
     };
   }
 
-  // Multi-horizon deltas, per instrument, from the FULL maps (the chart arrays are
-  // trimmed to 120 points, too short to reach a year back).
+  // Multi-horizon deltas, per instrument, from the FULL maps (the chart arrays only carry the
+  // six-month window, too short to reach a year back).
   const deltas = {};
   for (const b of list) deltas[b.id] = { paper: mapDeltas(maps[b.id].paper), physical: mapDeltas(maps[b.id].physical) };
 
@@ -1167,15 +1180,50 @@ function globalSectorOf(e) {
   return e.sector || 'Other';
 }
 
+// The search index is deliberately small: it carries the display fields, not each company's
+// five-year P/E percentile or this week's filing flag. Join those back from the same committed
+// lists the company pages use, keyed by market + ticker/code/CIK. Cached with the rows so the
+// screener and the HOME idea counts can use one definition and therefore agree exactly.
+let GLOBAL_EXTRAS_CACHE = { at: 0, pePct: null, filings: null };
+function globalCompanyExtras() {
+  if (GLOBAL_EXTRAS_CACHE.pePct && Date.now() - GLOBAL_EXTRAS_CACHE.at < 5 * 60e3) return GLOBAL_EXTRAS_CACHE;
+  const pePct = new Map();
+  const add = (market, c) => {
+    const p = c && (c.bands && c.bands.pe ? c.bands.pe.percentile : (c.peHistory ? c.peHistory.percentile : null));
+    if (p == null) return;
+    for (const k of [c.ticker, c.code, c.cik]) if (k != null && k !== '') pePct.set(`${market}:${k}`, p);
+  };
+  try { for (const c of (COMPANIES.companies || [])) add('us', c); } catch { /* no US list yet */ }
+  const lists = {
+    jp: readJapanList(), kr: readKoreaList(), tw: readTaiwanList(), hk: readHongKongList(),
+    au: readAustraliaList(), in: readIndiaList(), id: readIndonesiaList(), br: readBrazilList(), za: readSouthAfricaList(),
+  };
+  for (const [market, list] of Object.entries(lists)) {
+    for (const c of (list && list.companies) || []) add(market, c);
+  }
+  let filings = new Set();
+  try {
+    filings = new Set((JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'filings-changed.json'), 'utf8')).tickers || [])
+      .map((t) => String(t).toUpperCase()));
+  } catch { /* no filing refresh yet */ }
+  GLOBAL_EXTRAS_CACHE = { at: Date.now(), pePct, filings };
+  return GLOBAL_EXTRAS_CACHE;
+}
+
 function globalRows() {
   if (GLOBAL_ROWS_CACHE.rows && Date.now() - GLOBAL_ROWS_CACHE.at < 5 * 60e3) return GLOBAL_ROWS_CACHE.rows;
+  const extras = globalCompanyExtras();
   const rows = [];
   for (const e of (globalSearchIndex().entries || [])) {
     if (e.securityType === 'BDR') continue;
+    const key = [e.ticker, e.code, e.id].find((k) => k != null && k !== '');
+    const ticker = String(e.ticker || e.code || '').toUpperCase();
     rows.push({
       m: e.market, id: e.id, t: e.ticker || e.code, n: e.nameEn || e.name || e.ticker,
       s: globalSectorOf(e), native: e.sector || null, cap: e.capUsd || 0,
       pe: e.pe == null ? null : e.pe, roe: e.roe == null ? null : e.roe, ytd: e.ytd == null ? null : e.ytd,
+      pePct: key == null ? null : (extras.pePct.get(`${e.market}:${key}`) ?? null),
+      filing: e.market === 'us' && extras.filings.has(ticker),
     });
   }
   GLOBAL_ROWS_CACHE = { at: Date.now(), rows };
@@ -1874,20 +1922,13 @@ function homeSummary() {
     const m = (list && list.market) || {};
     add(id, label, idx, m.companies ?? (list && list.companies ? list.companies.length : 0), m.advancing ?? null, m.declining ?? null, m.medianPe ?? null);
   }
-  // The same rules used on the company pages: a P/E percentile is the valuation signal; quality is
-  // high ROE without a premium multiple. Counted across every market, one share class per company.
-  let cheap = 0, quality = 0, total = 0;
-  const scan = (rows) => {
-    for (const c of rows || []) {
-      if (c.shareClass === true) continue;
-      total++;
-      const p = c.bands && c.bands.pe ? c.bands.pe.percentile : (c.peHistory ? c.peHistory.percentile : null);
-      if (p != null && p <= 20 && c.pe > 0) cheap++;
-      if (c.roe >= 15 && c.pe > 0 && c.pe <= 20) quality++;
-    }
-  };
-  scan(us);
-  for (const l of Object.values(lists)) scan(l.companies);
+  // The same rules the screener applies: a P/E percentile is the valuation signal; quality is high
+  // ROE without a premium multiple. Counted over the exact `globalRows()` set, so the card number
+  // and the screener total after clicking it can never drift apart.
+  const cheap = grow.filter((r) => r.pe != null && r.pe > 0 && r.pePct != null && r.pePct <= 20).length;
+  const quality = grow.filter((r) => r.roe != null && r.roe >= 15 && r.pe != null && r.pe > 0 && r.pe < 20).length;
+  const filings = grow.filter((r) => r.m === 'us' && r.filing === true).length;
+  const total = grow.length;
   // Global top companies by USD market cap, one class per issuer. Used on the global board.
   const allRows = [];
   const collect = (rows, market, rate) => {
@@ -1904,8 +1945,6 @@ function homeSummary() {
   for (const [id, list] of Object.entries(lists)) collect(list.companies, id, list.fx && list.fx.rate);
   allRows.sort((a, b) => b.capUsd - a.capUsd);
   const top = allRows.slice(0, 12);
-  let filings = 0;
-  try { filings = (JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'filings-changed.json'), 'utf8')).tickers || []).length; } catch { /* none */ }
   const pricesAsOf = Object.values(mi.markets || {})
     .map((g) => g && g.indices && g.indices[g.default] && g.indices[g.default].date)
     .filter(Boolean).sort().pop() || mi.updated || null;
@@ -3538,7 +3577,8 @@ async function getMarketRead(id, componentId) {
       })(),
       getFundamentals(id, sel).catch(() => null),
     ]);
-    const values = Object.keys(priceMap).sort().map((d) => priceMap[d]);
+    const pdates = Object.keys(priceMap).sort();
+    const values = pdates.map((d) => priceMap[d]);
     const last = [...values].reverse().find((v) => v != null) ?? null;
     let prev = null; for (let i = values.length - 2; i >= 0; i--) if (values[i] != null) { prev = values[i]; break; }
     const dayPct = last != null && prev ? ((last - prev) / prev) * 100 : null;
@@ -3559,7 +3599,10 @@ async function getMarketRead(id, componentId) {
       id, label: primary.label, segment: m.label, group: m.group, primary: sel, unit: primary.unit, dp: primary.dp,
       hasBasis: m.hasBasis, hasInventories: m.hasInventories,
       price: last, dayPct,
-      perf: { m1: pctOver(values, 21), m3: pctOver(values, 63), m6: pctOver(values, 126), y1: pctOver(values, 252) },
+      // Calendar windows, not observation counts: the READ's "over the last year" must agree with
+      // the 1Y delta beside the price (365 calendar days) and with /api/range. A 252-point window
+      // reads ~50% when the true 1Y move is ~47% on a holiday-heavy daily series.
+      perf: { m1: pctOverDays(pdates, values, 30, 'after'), m3: pctOverDays(pdates, values, 91, 'after'), m6: pctOverDays(pdates, values, 183, 'after'), y1: pctOverDays(pdates, values, 365, 'after') },
       range: { pos: last != null ? percentile(values, last) : null },
       vol: { v30: vol30, pctile: volPctile },
       curve, macro, basis, inventory, usda,
@@ -6126,6 +6169,9 @@ const server = http.createServer(async (req, res) => {
       const sector = p.get('sector') || 'all';
       const peMax = Number(p.get('peMax')) || 0;
       const peMin = Number(p.get('peMin')) || 0;
+      const pePctRaw = p.get('pePctMax');
+      const pePctMax = pePctRaw == null || pePctRaw === '' ? null : Number(pePctRaw);
+      const filingsOnly = p.get('filings') === '1' || p.get('filings') === 'true';
       const ytdMaxRaw = p.get('ytdMax');
       const ytdMax = ytdMaxRaw == null || ytdMaxRaw === '' ? null : Number(ytdMaxRaw);
       const roeRaw = p.get('roeMin');
@@ -6143,6 +6189,8 @@ const server = http.createServer(async (req, res) => {
         && (sector === 'all' || r.s === sector || r.native === sector)
         && (!peMax || (r.pe != null && r.pe > 0 && r.pe < peMax))
         && (!peMin || (r.pe != null && r.pe >= peMin))
+        && (pePctMax == null || !Number.isFinite(pePctMax) || (r.pe != null && r.pe > 0 && r.pePct != null && r.pePct <= pePctMax))
+        && (!filingsOnly || r.filing === true)
         && (ytdMax == null || (r.ytd != null && r.ytd <= ytdMax))
         && (roeMin == null || (r.roe != null && r.roe >= roeMin))
         && (!capMin || r.cap >= capMin)

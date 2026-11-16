@@ -14,6 +14,12 @@ const epsGrowthNote = (c) => isPropertyCompany(c)
 // user-typed rule notes — before interpolating it into innerHTML. Server-side prose deliberately
 // contains <b> tags, so only genuinely external strings are escaped, never the prose fields.
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+// External links come from third-party feeds. Escape them like any other text AND refuse anything
+// that is not http(s), so a javascript:/data: URL cannot become a click target.
+const safeHref = (u) => {
+  const s = String(u == null ? '' : u).trim();
+  return /^https?:\/\//i.test(s) ? esc(s) : '#';
+};
 const GAL = 42;
 const ago = (iso) => { if (!iso) return ''; const s = Math.round((Date.now() - new Date(iso)) / 1000); return s < 60 ? `${s}s ago` : s < 3600 ? `${Math.round(s / 60)}m ago` : `${Math.round(s / 3600)}h ago`; };
 
@@ -757,7 +763,7 @@ function attrBlock(at) {
   if (!at || at.error) return '';
   if (at.drivers && at.drivers.length) {
     const lead = at.y1 == null ? 'Past-year news drivers:' : `Over the past year it is <b>${pctf(at.y1)}</b> — the news most consistent with that move:`;
-    const items = at.drivers.map((d) => { const s = d.sample || {}; return `<li><b>${d.kind}</b> <span class="dimtext">(${d.count} headline${d.count > 1 ? 's' : ''})</span> — <a href="${s.url}" target="_blank" rel="noopener noreferrer">${s.title || ''}</a> <span class="dimtext">${s.source || ''}${s.date ? ' · ' + String(s.date).slice(0, 10) : ''}</span></li>`; }).join('');
+    const items = at.drivers.map((d) => { const s = d.sample || {}; return `<li><b>${esc(d.kind)}</b> <span class="dimtext">(${esc(d.count)} headline${d.count > 1 ? 's' : ''})</span> — <a href="${safeHref(s.url)}" target="_blank" rel="noopener noreferrer">${esc(s.title || '')}</a> <span class="dimtext">${esc(s.source || '')}${s.date ? ' · ' + esc(String(s.date).slice(0, 10)) : ''}</span></li>`; }).join('');
     return `<div class="attr"><div class="attr-lead">${lead}</div><ul class="attr-list">${items}</ul><div class="dimtext attr-caveat">News-implied, not a verdict — links open at the source.</div></div>`;
   }
   return at.divergence
@@ -781,7 +787,7 @@ function renderNews(n, elId = 'news', subId = 'news-sub') {
   const lbl = (n && n.label) || '';
   if (sub) sub.textContent = lbl + ' · tier-1 wire · refreshes daily';
   if (!items.length) { el.innerHTML = stEmpty(elId === 'macro-news' ? 'No tier-1 wire coverage on this country right now.' : 'No recent tier-1 headlines for this segment.'); return; }
-  el.innerHTML = items.map((it) => `<a class="news-item" href="${esc(it.url)}" target="_blank" rel="noopener noreferrer"><span class="news-src">${esc(it.source || 'wire')}</span><span class="news-t">${it.kind ? `<em class="news-k">${esc(it.kind)}</em> ` : ''}${esc(it.title)}</span><span class="news-d dimtext">${ago(it.date)}</span></a>`).join('')
+  el.innerHTML = items.map((it) => `<a class="news-item" href="${safeHref(it.url)}" target="_blank" rel="noopener noreferrer"><span class="news-src">${esc(it.source || 'wire')}</span><span class="news-t">${it.kind ? `<em class="news-k">${esc(it.kind)}</em> ` : ''}${esc(it.title)}</span><span class="news-d dimtext">${ago(it.date)}</span></a>`).join('')
     + '<div class="dimtext" style="padding:6px 12px;font-size:10px">Headlines via Google News · © the respective publishers · links open at the source.</div>';
 }
 function selectMarket(id) {
@@ -2893,7 +2899,7 @@ function renderHomeIdeas(d) {
   el.innerHTML = [
     { id: 'cheap', k: 'CHEAP VS ITS OWN HISTORY', n: ideas.cheap, unit: 'names', p: 'P/E in the bottom 20% of its own five-year range. A valuation signal, not a recommendation.', ex: 'across 10 markets' },
     { id: 'filings', k: 'NEW FILINGS', n: ideas.filings, unit: 'US names this week', p: 'New 10-K / 10-Q filings with updated revenue, earnings and balance sheet.', ex: 'US filings tracker' },
-    { id: 'quality', k: 'QUALITY AT A REASONABLE PRICE', n: ideas.quality, unit: 'names', p: 'ROE ≥ 15% and P/E ≤ 20. Quality without a premium multiple.', ex: 'across 10 markets' },
+    { id: 'quality', k: 'QUALITY AT A REASONABLE PRICE', n: ideas.quality, unit: 'names', p: 'ROE ≥ 15% and P/E under 20. Quality without a premium multiple.', ex: 'across 10 markets' },
   ].map((x) => `<button type="button" class="home-idea" data-hm-idea="${x.id}"><span class="k">${x.k}</span><span class="n">${n(x.n)}<small>${x.unit}</small></span><p>${x.p}</p><span class="ex">${x.ex} · <span class="linkbtn">OPEN IN SCREENER →</span></span></button>`).join('');
 }
 // Screener — every instrument in one sortable table (assembled server-side at /api/screen).
@@ -3797,15 +3803,18 @@ function renderCalendar() {
   for (let day = 1; day <= dim; day++) { const k = `${mk}-${String(day).padStart(2, '0')}`; cells.push({ day, k, ev: byDate[k] || [] }); }
   while (cells.length % 7) cells.push(null);
   const CAL_MAX = 2;
-  const tipOf = (e) => esc(`${e.cc ? e.cc + ' · ' : ''}${e.name}${e.time ? ' · ' + e.time : ''}${e.note ? ' · ' + e.note : ''}`);
+  // Corporate events are a mix of earnings (name + ticker) and deals (label, often no ticker).
+  // Fall back through every label the feed provides so a cell is never blank/'undefined'.
+  const labelOf = (e) => e.name || e.label || e.ticker || (e.kind === 'deal' ? 'Corporate deal' : 'Company event');
+  const tipOf = (e) => esc(`${e.cc ? e.cc + ' · ' : ''}${labelOf(e)}${e.time ? ' · ' + e.time : ''}${e.note || e.detail ? ' · ' + (e.note || e.detail) : ''}`);
   const grid = cells.map((c) => {
     if (!c) return '<div class="cal-day pad"></div>';
     const shown = c.ev.slice(0, CAL_MAX), more = c.ev.length - shown.length;
     const cos = c.ev.filter((e) => e.company);
     return `<div class="cal-day${c.k === today ? ' today' : ''}${c.ev.length ? ' has' : ''}${c.k === calSel ? ' sel' : ''}" data-date="${c.k}" role="button" tabindex="0" aria-label="${c.k}${c.ev.length ? ' — ' + c.ev.length + ' release' + (c.ev.length > 1 ? 's' : '') : ', nothing scheduled'}">`
       + `<span class="cal-dn">${c.day}</span>`
-      + shown.map((e) => `<span class="cal-ev" title="${tipOf(e)}">${e.cc ? `<em class="cal-cc">${esc(e.cc)}</em>` : ''}${esc(e.name)}</span>`).join('')
-      + (cos.length ? `<span class="cal-cos" title="${esc(cos.map((e) => e.label).join(' · '))}">${esc(cos.slice(0, 3).map((e) => e.ticker).join(' '))}${cos.length > 3 ? ` +${cos.length - 3}` : ''}</span>` : '')
+      + shown.map((e) => `<span class="cal-ev" title="${tipOf(e)}">${e.cc ? `<em class="cal-cc">${esc(e.cc)}</em>` : ''}${esc(labelOf(e))}</span>`).join('')
+      + (cos.length ? `<span class="cal-cos" title="${esc(cos.map(labelOf).join(' · '))}">${esc(cos.slice(0, 3).map((e) => e.ticker || (e.kind === 'deal' ? 'DEAL' : 'FILED')).join(' '))}${cos.length > 3 ? ` +${cos.length - 3}` : ''}</span>` : '')
       + (more > 0 ? `<span class="cal-more">+${more}</span>` : '')
       + '</div>';
   }).join('');
@@ -3814,7 +3823,7 @@ function renderCalendar() {
   const md = `${MONTH_NAMES[d0.getUTCMonth()].slice(0, 3)} ${d0.getUTCDate()}`;
   const dayLabel = calSel === today ? `TODAY · ${md}` : `${CAL_DOW[(d0.getUTCDay() + 6) % 7].toUpperCase()} · ${md}`;
   const row = (e) => (e.company
-    ? `<div class="cal-row cal-crow" ${e.market === 'JP' ? `data-caljp="${esc(e.code || '')}"` : `data-calco="${esc(e.ticker || '')}"`}><span class="cal-date">${esc(e.basis === 'expected' ? 'EST' : 'FILED')}</span><span class="cal-name">${esc(e.label)}</span><span class="cal-src">${esc(e.kind === 'earnings' ? 'company' : e.kind)}</span><span class="cal-note dimtext">${esc(e.detail || '')}</span></div>`
+    ? `<div class="cal-row cal-crow" ${e.market === 'JP' ? `data-caljp="${esc(e.code || '')}"` : `data-calco="${esc(e.ticker || '')}"`}><span class="cal-date">${esc(e.basis === 'expected' ? 'EST' : 'FILED')}</span><span class="cal-name">${esc(e.label || labelOf(e))}</span><span class="cal-src">${esc(e.kind === 'earnings' ? 'company' : e.kind)}</span><span class="cal-note dimtext">${esc(e.detail || '')}</span></div>`
     : `<div class="cal-row"><span class="cal-date">${esc(e.time || '—')}</span><span class="cal-name">${e.cc ? `<em class="cal-cc">${esc(e.cc)}</em>` : ''}${esc(e.name)}</span><span class="cal-src">${esc(e.source || '')}</span>${e.note ? `<span class="cal-note dimtext">${esc(e.note)}</span>` : ''}</div>`);
   const modes = [['macro', 'MACRO'], ['companies', 'COMPANIES']];
   const selRows = (selEv.length ? selEv.map(row).join('') : `<div class="cal-foot dimtext">Nothing ${calMode === 'companies' ? 'from a company' : 'high-impact'} scheduled on this day.</div>`)
@@ -10542,7 +10551,7 @@ const GB_FLAG = { us: '🇺🇸', jp: '🇯🇵', kr: '🇰🇷', tw: '🇹🇼'
 // Brighter than the old muted set: the mix bar and the map have to read at a glance on a dark panel.
 const GB_COLORS = { us: '#5aa2ff', jp: '#ff5c5c', kr: '#2fd4c4', tw: '#ffc233', hk: '#ff6b5e', au: '#8fd14f', in: '#ff9b52', id: '#ff4d6d', br: '#3ddc84', za: '#ffd54a' };
 let gbMSort = 'cap', gbTopTab = 'cap', gbScrSort = 'cap', gbScrLimit = 50, gbScrPage = 1;
-let gbScr = { market: 'all', sector: 'all', peMax: 0, roeMin: '', capMin: 0, ytdMin: '', q: '' };
+let gbScr = { market: 'all', sector: 'all', peMax: 0, roeMin: '', capMin: 0, ytdMin: '', q: '', pePctMax: 0, filingsOnly: false };
 const gbPagerHtml = (total, page, per, attr) => {
   const pages = Math.max(1, Math.ceil(total / per));
   const p = Math.min(Math.max(1, page), pages);
@@ -10835,7 +10844,7 @@ function gbMarketsRows(home) {
   const head = `<div class="gb-mrow head"><span class="rk">#</span><span>MARKET</span><span class="num">CAP</span><span class="num">YTD</span><span class="num">P/E</span><span>BREADTH</span></div>`;
   return head + rows.map((m, i) => {
     const adv = m.adv || 0, dec = m.dec || 0, tot = adv + dec;
-    return `<div class="gb-mrow" data-gb-market="${esc(m.id)}"><span class="rk">${i + 1}</span><span class="nm"><span class="fl">${GB_FLAG[m.id] || ''}</span><span class="n">${esc(m.label)} <span class="ix">${esc(m.index || '')}</span></span></span><span class="num">${gbCap(m.capUsd)}</span><span class="num ${cls(m.chgYtd)}">${m.chgYtd == null ? '—' : pctf(m.chgYtd)}</span><span class="num">${m.pe == null ? '—' : m.pe.toFixed(1) + '×'}</span><span class="bar" title="${adv.toLocaleString()} up · ${dec.toLocaleString()} down"><i style="width:${tot ? (adv / tot * 100).toFixed(0) : 0}%;background:#00e676"></i><i style="width:${tot ? (dec / tot * 100).toFixed(0) : 0}%;background:#ff5252"></i></span></div>`;
+    return `<div class="gb-mrow" tabindex="0" role="button" data-gb-market="${esc(m.id)}"><span class="rk">${i + 1}</span><span class="nm"><span class="fl">${GB_FLAG[m.id] || ''}</span><span class="n">${esc(m.label)} <span class="ix">${esc(m.index || '')}</span></span></span><span class="num">${gbCap(m.capUsd)}</span><span class="num ${cls(m.chgYtd)}">${m.chgYtd == null ? '—' : pctf(m.chgYtd)}</span><span class="num">${m.pe == null ? '—' : m.pe.toFixed(1) + '×'}</span><span class="bar" title="${adv.toLocaleString()} up · ${dec.toLocaleString()} down"><i style="width:${tot ? (adv / tot * 100).toFixed(0) : 0}%;background:#00e676"></i><i style="width:${tot ? (dec / tot * 100).toFixed(0) : 0}%;background:#ff5252"></i></span></div>`;
   }).join('');
 }
 
@@ -10851,9 +10860,12 @@ function gbMarkets(home) {
 function gbSectors(home) {
   const list = home.sectors || [];
   const max = list[0] ? list[0].cap : 1;
-  const total = list.reduce((a, s) => a + s.cap, 0) || 1;
+  // The label promises a share of TOTAL market cap, so divide by every sector's cap — not by the
+  // sum of the top eight. The old denominator made the listed column sum to ~100% while the header
+  // claimed it was a share of the entire market (Technology read 34% instead of ~27%).
+  const total = home.totalCapUsd || list.reduce((a, s) => a + s.cap, 0) || 1;
   return `<section class="gb-card">
-    <div class="gb-head"><span class="t">SECTOR ALLOCATION</span><span class="s">share of total market cap</span></div>
+    <div class="gb-head"><span class="t">SECTOR ALLOCATION</span><span class="s">top 8 · share of total market cap</span></div>
     <div class="gb-sectors">${list.map((s) => `<div class="gb-srow"><span class="sn">${esc(s.name)}</span><span class="sb"><i style="width:${(s.cap / max * 100).toFixed(1)}%"></i></span><span class="sv">${gbCap(s.cap)} <span class="dim">${(s.cap / total * 100).toFixed(0)}%</span></span></div>`).join('')}</div>
   </section>`;
 }
@@ -10862,14 +10874,15 @@ function gbScreenerShell(home) {
   return `<section class="gb-card" id="gb-screener">
     <div class="gb-head"><span class="t">GLOBAL SCREENER</span><span class="s" id="gb-scr-count"></span></div>
     <div class="gb-filters">
-      <select id="gb-f-market"><option value="all">All markets</option>${home.markets.map((m) => `<option value="${esc(m.id)}">${GB_FLAG[m.id] || ''} ${esc(m.label)}</option>`).join('')}</select>
-      <select id="gb-f-sector"><option value="all">All sectors</option></select>
-      <select id="gb-f-pe"><option value="0">P/E any</option><option value="10">P/E &lt; 10</option><option value="15">P/E &lt; 15</option><option value="20">P/E &lt; 20</option><option value="30">P/E &lt; 30</option></select>
-      <select id="gb-f-roe"><option value="">ROE any</option><option value="10">ROE &gt; 10%</option><option value="15">ROE &gt; 15%</option><option value="20">ROE &gt; 20%</option></select>
-      <select id="gb-f-cap"><option value="0">Cap any</option><option value="1e10">Cap &gt; $10B</option><option value="5e10">Cap &gt; $50B</option><option value="1e11">Cap &gt; $100B</option></select>
-      <select id="gb-f-ytd"><option value="">YTD any</option><option value="0">YTD &gt; 0%</option><option value="10">YTD &gt; 10%</option><option value="25">YTD &gt; 25%</option></select>
-      <input id="gb-f-q" type="search" placeholder="Filter by name or ticker…">
+      <select id="gb-f-market" aria-label="Filter by market"><option value="all">All markets</option>${home.markets.map((m) => `<option value="${esc(m.id)}">${GB_FLAG[m.id] || ''} ${esc(m.label)}</option>`).join('')}</select>
+      <select id="gb-f-sector" aria-label="Filter by sector"><option value="all">All sectors</option></select>
+      <select id="gb-f-pe" aria-label="Filter by trailing P/E"><option value="0">P/E any</option><option value="10">P/E &lt; 10</option><option value="15">P/E &lt; 15</option><option value="20">P/E &lt; 20</option><option value="30">P/E &lt; 30</option></select>
+      <select id="gb-f-roe" aria-label="Filter by return on equity"><option value="">ROE any</option><option value="10">ROE &gt; 10%</option><option value="15">ROE &gt; 15%</option><option value="20">ROE &gt; 20%</option></select>
+      <select id="gb-f-cap" aria-label="Filter by market capitalisation"><option value="0">Cap any</option><option value="1e10">Cap &gt; $10B</option><option value="5e10">Cap &gt; $50B</option><option value="1e11">Cap &gt; $100B</option></select>
+      <select id="gb-f-ytd" aria-label="Filter by year-to-date return"><option value="">YTD any</option><option value="0">YTD &gt; 0%</option><option value="10">YTD &gt; 10%</option><option value="25">YTD &gt; 25%</option></select>
+      <input id="gb-f-q" type="search" aria-label="Filter by company name or ticker" placeholder="Filter by name or ticker…">
     </div>
+    <div class="gb-activefilters" id="gb-activefilters" aria-live="polite"></div>
     <div class="gb-scroll" id="gb-scr-table"></div>
     <div class="gb-note"><span id="gb-scr-note"></span><span class="gb-pagination" id="gb-scr-more"></span></div>
   </section>`;
@@ -10885,6 +10898,8 @@ async function gbLoadScreener() {
     ytdMin: gbScr.ytdMin === '' ? '' : String(gbScr.ytdMin),
     q: gbScr.q, sort: gbScrSort, limit: String(gbScrLimit), offset: String((gbScrPage - 1) * gbScrLimit),
   });
+  if (gbScr.pePctMax) p.set('pePctMax', String(gbScr.pePctMax));
+  if (gbScr.filingsOnly) p.set('filings', '1');
   const d = await jget('/api/global-companies?' + p.toString(), 120000).catch(() => null);
   if (seq !== gbScrSeq || !d) return;
   if (!gbSectorsLoaded && Array.isArray(d.sectors)) {
@@ -10900,9 +10915,15 @@ async function gbLoadScreener() {
 
 function gbRenderScreener() {
   const rows = gbScrRows;
-  const head = `<tr><th class="gb-c-company">COMPANY</th><th class="gb-c-market">MARKET</th><th class="gb-c-sector">SECTOR</th><th class="num ${gbScrSort === 'cap' ? 'on' : ''}" data-gb-sort="cap">MKT CAP</th><th class="num ${gbScrSort === 'pe' ? 'on' : ''}" data-gb-sort="pe">P/E</th><th class="num ${gbScrSort === 'roe' ? 'on' : ''}" data-gb-sort="roe">ROE</th><th class="num ${gbScrSort === 'ytd' ? 'on' : ''}" data-gb-sort="ytd">YTD</th></tr>`;
-  const body = rows.map((r) => `<tr data-gb-company="${esc(r.m)}:${esc(r.id)}"><td class="gb-c-company"><span class="gb-co" title="${esc(r.n)}">${esc(r.t)} <span class="dim">${esc(r.n)}</span></span></td><td class="gb-c-market">${GB_FLAG[r.m] || ''} ${esc(String(r.m).toUpperCase())}</td><td class="gb-c-sector"><span class="gb-sec" title="${esc(r.s)}">${esc(r.s)}</span></td><td class="num">${gbCap(r.cap)}</td><td class="num">${r.pe == null ? '—' : r.pe.toFixed(1) + '×'}</td><td class="num">${r.roe == null ? '—' : r.roe.toFixed(1) + '%'}</td><td class="num ${cls(r.ytd)}">${r.ytd == null ? '—' : pctf(r.ytd)}</td></tr>`).join('');
-  const table = $('gb-scr-table'); if (table) table.innerHTML = `<table class="gb-table"><thead>${head}</thead><tbody>${body}</tbody></table>`;
+  const sortable = (key, label) => `<th class="num ${gbScrSort === key ? 'on' : ''}" data-gb-sort="${key}" tabindex="0" aria-sort="${gbScrSort === key ? 'descending' : 'none'}">${label}</th>`;
+  const head = `<tr><th class="gb-c-company">COMPANY</th><th class="gb-c-market">MARKET</th><th class="gb-c-sector">SECTOR</th>${sortable('cap', 'MKT CAP')}${sortable('pe', 'P/E')}${sortable('roe', 'ROE')}${sortable('ytd', 'YTD')}</tr>`;
+  const body = rows.map((r) => `<tr data-gb-company="${esc(r.m)}:${esc(r.id)}" tabindex="0" aria-label="Open ${esc(r.t)} ${esc(r.n)}"><td class="gb-c-company"><span class="gb-co" title="${esc(r.n)}">${esc(r.t)} <span class="dim">${esc(r.n)}</span></span></td><td class="gb-c-market">${GB_FLAG[r.m] || ''} ${esc(String(r.m).toUpperCase())}</td><td class="gb-c-sector"><span class="gb-sec" title="${esc(r.s)}">${esc(r.s)}</span></td><td class="num">${gbCap(r.cap)}</td><td class="num">${r.pe == null ? '—' : r.pe.toFixed(1) + '×'}</td><td class="num">${r.roe == null ? '—' : r.roe.toFixed(1) + '%'}</td><td class="num ${cls(r.ytd)}">${r.ytd == null ? '—' : pctf(r.ytd)}</td></tr>`).join('');
+  const table = $('gb-scr-table');
+  if (table) {
+    table.innerHTML = rows.length
+      ? `<table class="gb-table"><thead>${head}</thead><tbody>${body}</tbody></table>`
+      : stEmpty(`${gbScr.filingsOnly ? 'No new US filings this week.' : gbScr.pePctMax ? 'No companies are in the bottom 20% of their own P/E history right now.' : 'No companies match these filters.'} <button type="button" class="gb-more" data-gb-clearall="1">CLEAR FILTERS</button>`);
+  }
   const count = $('gb-scr-count'); if (count) count.textContent = `${gbScrTotal.toLocaleString()} companies`;
   const offset = (gbScrPage - 1) * gbScrLimit;
   const note = $('gb-scr-note'); if (note) note.textContent = `${rows.length ? offset + 1 : 0}–${offset + rows.length} of ${gbScrTotal.toLocaleString()}`;
@@ -10913,7 +10934,7 @@ function gbRenderScreener() {
 // The HOME screener's COMPANIES mode uses the same global company set as the GLOBAL board, with its
 // own controls/state. Keeping it separate from the GLOBAL instance avoids duplicate DOM ids while
 // giving the home screen the cross-market screener instead of the old market-by-market table.
-let hmScr = { market: 'all', sector: 'all', peMax: 0, roeMin: '', capMin: 0, ytdMin: '', q: '' };
+let hmScr = { market: 'all', sector: 'all', peMax: 0, roeMin: '', capMin: 0, ytdMin: '', q: '', pePctMax: 0, filingsOnly: false };
 let hmScrRows = [], hmScrTotal = 0, hmScrSort = 'cap', hmScrLimit = 50, hmScrPage = 1, hmScrSeq = 0, hmSectorsLoaded = false, hmQTimer = 0;
 const HM_MARKETS = [
   ['us', 'United States'], ['jp', 'Japan'], ['kr', 'Korea'], ['tw', 'Taiwan'], ['hk', 'Hong Kong'],
@@ -10923,14 +10944,15 @@ function hmScreenerShell() {
   return `<div class="hm-screen">
     <div class="sc-bar">${screenModeHtml()}</div>
     <div class="gb-filters">
-      <select id="hm-f-market"><option value="all">All markets</option>${HM_MARKETS.map(([id, label]) => `<option value="${id}">${GB_FLAG[id] || ''} ${esc(label)}</option>`).join('')}</select>
-      <select id="hm-f-sector"><option value="all">All sectors</option></select>
-      <select id="hm-f-pe"><option value="0">P/E any</option><option value="10">P/E &lt; 10</option><option value="15">P/E &lt; 15</option><option value="20">P/E &lt; 20</option><option value="30">P/E &lt; 30</option></select>
-      <select id="hm-f-roe"><option value="">ROE any</option><option value="10">ROE &gt; 10%</option><option value="15">ROE &gt; 15%</option><option value="20">ROE &gt; 20%</option></select>
-      <select id="hm-f-cap"><option value="0">Cap any</option><option value="1e10">Cap &gt; $10B</option><option value="5e10">Cap &gt; $50B</option><option value="1e11">Cap &gt; $100B</option></select>
-      <select id="hm-f-ytd"><option value="">YTD any</option><option value="0">YTD &gt; 0%</option><option value="10">YTD &gt; 10%</option><option value="25">YTD &gt; 25%</option></select>
-      <input id="hm-f-q" type="search" placeholder="Filter by name or ticker…">
+      <select id="hm-f-market" aria-label="Filter by market"><option value="all">All markets</option>${HM_MARKETS.map(([id, label]) => `<option value="${id}">${GB_FLAG[id] || ''} ${esc(label)}</option>`).join('')}</select>
+      <select id="hm-f-sector" aria-label="Filter by sector"><option value="all">All sectors</option></select>
+      <select id="hm-f-pe" aria-label="Filter by trailing P/E"><option value="0">P/E any</option><option value="10">P/E &lt; 10</option><option value="15">P/E &lt; 15</option><option value="20">P/E &lt; 20</option><option value="30">P/E &lt; 30</option></select>
+      <select id="hm-f-roe" aria-label="Filter by return on equity"><option value="">ROE any</option><option value="10">ROE &gt; 10%</option><option value="15">ROE &gt; 15%</option><option value="20">ROE &gt; 20%</option></select>
+      <select id="hm-f-cap" aria-label="Filter by market capitalisation"><option value="0">Cap any</option><option value="1e10">Cap &gt; $10B</option><option value="5e10">Cap &gt; $50B</option><option value="1e11">Cap &gt; $100B</option></select>
+      <select id="hm-f-ytd" aria-label="Filter by year-to-date return"><option value="">YTD any</option><option value="0">YTD &gt; 0%</option><option value="10">YTD &gt; 10%</option><option value="25">YTD &gt; 25%</option></select>
+      <input id="hm-f-q" type="search" aria-label="Filter by company name or ticker" placeholder="Filter by name or ticker…">
     </div>
+    <div class="gb-activefilters" id="hm-activefilters" aria-live="polite"></div>
     <div class="gb-scroll" id="hm-scr-table"></div>
     <div class="gb-note"><span id="hm-scr-count"></span><span id="hm-scr-note"></span><span class="gb-pagination" id="hm-scr-more"></span></div>
   </div>`;
@@ -10944,6 +10966,18 @@ function hmSyncFilterUi() {
   set('hm-f-cap', String(hmScr.capMin || 0));
   set('hm-f-ytd', hmScr.ytdMin === '' ? '' : String(hmScr.ytdMin));
   set('hm-f-q', hmScr.q);
+  hmSyncActiveFilters();
+}
+function hmActiveFilterChips() {
+  const chips = [];
+  if (hmScr.pePctMax) chips.push(`<span class="gb-afchip">P/E bottom ${esc(hmScr.pePctMax)}% vs own history <button type="button" data-hm-clear="pePct" aria-label="Clear the P/E percentile filter">×</button></span>`);
+  if (hmScr.filingsOnly) chips.push('<span class="gb-afchip">New US filings this week <button type="button" data-hm-clear="filings" aria-label="Clear the new-filings filter">×</button></span>');
+  return chips.join('');
+}
+function hmSyncActiveFilters() {
+  const el = $('hm-activefilters'); if (!el) return;
+  el.innerHTML = hmActiveFilterChips();
+  el.hidden = !el.innerHTML;
 }
 async function hmLoadScreener() {
   const seq = ++hmScrSeq;
@@ -10955,6 +10989,8 @@ async function hmLoadScreener() {
     ytdMin: hmScr.ytdMin === '' ? '' : String(hmScr.ytdMin),
     q: hmScr.q, sort: hmScrSort, limit: String(hmScrLimit), offset: String((hmScrPage - 1) * hmScrLimit),
   });
+  if (hmScr.pePctMax) p.set('pePctMax', String(hmScr.pePctMax));
+  if (hmScr.filingsOnly) p.set('filings', '1');
   const d = await jget('/api/global-companies?' + p.toString(), 120000).catch(() => null);
   if (seq !== hmScrSeq || !d) return;
   if (!hmSectorsLoaded && Array.isArray(d.sectors)) {
@@ -10970,9 +11006,15 @@ async function hmLoadScreener() {
 }
 function hmRenderScreener() {
   const rows = hmScrRows;
-  const head = `<tr><th class="gb-c-company">COMPANY</th><th class="gb-c-market">MARKET</th><th class="gb-c-sector">SECTOR</th><th class="num ${hmScrSort === 'cap' ? 'on' : ''}" data-hm-sort="cap">MKT CAP</th><th class="num ${hmScrSort === 'pe' ? 'on' : ''}" data-hm-sort="pe">P/E</th><th class="num ${hmScrSort === 'roe' ? 'on' : ''}" data-hm-sort="roe">ROE</th><th class="num ${hmScrSort === 'ytd' ? 'on' : ''}" data-hm-sort="ytd">YTD</th></tr>`;
-  const body = rows.map((r) => `<tr data-gb-company="${esc(r.m)}:${esc(r.id)}"><td class="gb-c-company"><span class="gb-co" title="${esc(r.n)}">${esc(r.t)} <span class="dim">${esc(r.n)}</span></span></td><td class="gb-c-market">${GB_FLAG[r.m] || ''} ${esc(String(r.m).toUpperCase())}</td><td class="gb-c-sector"><span class="gb-sec" title="${esc(r.s)}">${esc(r.s)}</span></td><td class="num">${gbCap(r.cap)}</td><td class="num">${r.pe == null ? '—' : r.pe.toFixed(1) + '×'}</td><td class="num">${r.roe == null ? '—' : r.roe.toFixed(1) + '%'}</td><td class="num ${cls(r.ytd)}">${r.ytd == null ? '—' : pctf(r.ytd)}</td></tr>`).join('');
-  const table = $('hm-scr-table'); if (table) table.innerHTML = `<table class="gb-table"><thead>${head}</thead><tbody>${body}</tbody></table>`;
+  const sortable = (key, label) => `<th class="num ${hmScrSort === key ? 'on' : ''}" data-hm-sort="${key}" tabindex="0" aria-sort="${hmScrSort === key ? 'descending' : 'none'}">${label}</th>`;
+  const head = `<tr><th class="gb-c-company">COMPANY</th><th class="gb-c-market">MARKET</th><th class="gb-c-sector">SECTOR</th>${sortable('cap', 'MKT CAP')}${sortable('pe', 'P/E')}${sortable('roe', 'ROE')}${sortable('ytd', 'YTD')}</tr>`;
+  const body = rows.map((r) => `<tr data-gb-company="${esc(r.m)}:${esc(r.id)}" tabindex="0" aria-label="Open ${esc(r.t)} ${esc(r.n)}"><td class="gb-c-company"><span class="gb-co" title="${esc(r.n)}">${esc(r.t)} <span class="dim">${esc(r.n)}</span></span></td><td class="gb-c-market">${GB_FLAG[r.m] || ''} ${esc(String(r.m).toUpperCase())}</td><td class="gb-c-sector"><span class="gb-sec" title="${esc(r.s)}">${esc(r.s)}</span></td><td class="num">${gbCap(r.cap)}</td><td class="num">${r.pe == null ? '—' : r.pe.toFixed(1) + '×'}</td><td class="num">${r.roe == null ? '—' : r.roe.toFixed(1) + '%'}</td><td class="num ${cls(r.ytd)}">${r.ytd == null ? '—' : pctf(r.ytd)}</td></tr>`).join('');
+  const table = $('hm-scr-table');
+  if (table) {
+    table.innerHTML = rows.length
+      ? `<table class="gb-table"><thead>${head}</thead><tbody>${body}</tbody></table>`
+      : stEmpty(`${hmScr.filingsOnly ? 'No new US filings this week.' : hmScr.pePctMax ? 'No companies are in the bottom 20% of their own P/E history right now.' : 'No companies match these filters.'} <button type="button" class="gb-more" data-hm-clearall="1">CLEAR FILTERS</button>`);
+  }
   const count = $('hm-scr-count'); if (count) count.textContent = `${hmScrTotal.toLocaleString()} companies`;
   const offset = (hmScrPage - 1) * hmScrLimit;
   const note = $('hm-scr-note'); if (note) note.textContent = `${rows.length ? offset + 1 : 0}–${offset + rows.length} of ${hmScrTotal.toLocaleString()}`;
@@ -10989,8 +11031,11 @@ function hmBindFilters() {
       capMin: Number($('hm-f-cap')?.value) || 0,
       ytdMin: $('hm-f-ytd')?.value || '',
       q: $('hm-f-q')?.value.trim() || '',
+      pePctMax: 0,       // changing a control drops the idea-card preset (it has no native control)
+      filingsOnly: false,
     };
     hmScrLimit = 50; hmScrPage = 1;
+    hmSyncActiveFilters();
     hmLoadScreener();
   };
   ['hm-f-market', 'hm-f-sector', 'hm-f-pe', 'hm-f-roe', 'hm-f-cap', 'hm-f-ytd'].forEach((id) => $(id)?.addEventListener('change', read));
@@ -11007,7 +11052,7 @@ async function gbLoadTop() {
   const d = await jget('/api/global-companies?' + p.toString(), 120000).catch(() => null);
   if (!d) return;
   const el = $('gb-top'); if (!el) return;
-  el.innerHTML = (d.rows || []).map((r) => `<div class="gb-trow" data-gb-company="${esc(r.m)}:${esc(r.id)}"><span class="tk">${esc(String(r.t).slice(0, 2))}</span><span><span class="n">${esc(r.n)}</span><span class="s">${esc(r.s)} · ${esc(String(r.m).toUpperCase())}</span></span><span class="num">${gbCap(r.cap)}</span><span class="num">${r.pe == null ? '—' : r.pe.toFixed(1) + '×'}</span><span class="num ${cls(r.ytd)}">${r.ytd == null ? '—' : pctf(r.ytd)}</span></div>`).join('');
+  el.innerHTML = (d.rows || []).map((r) => `<div class="gb-trow" tabindex="0" role="button" data-gb-company="${esc(r.m)}:${esc(r.id)}"><span class="tk">${esc(String(r.t).slice(0, 2))}</span><span><span class="n">${esc(r.n)}</span><span class="s">${esc(r.s)} · ${esc(String(r.m).toUpperCase())}</span></span><span class="num">${gbCap(r.cap)}</span><span class="num">${r.pe == null ? '—' : r.pe.toFixed(1) + '×'}</span><span class="num ${cls(r.ytd)}">${r.ytd == null ? '—' : pctf(r.ytd)}</span></div>`).join('');
 }
 
 function gbTheme() {
@@ -11022,7 +11067,7 @@ function gbTheme() {
   const members = t.members || [];
   const shown = gbThemeAll ? members : members.slice(0, 6);
   body.innerHTML = `<div class="gmix-legend">${(t.mix || []).map((x) => `<span><i style="background:${GB_COLORS[x.market] || 'var(--dim)'}"></i>${esc(String(x.market).toUpperCase())} ${x.pct}%</span>`).join('')}</div>`
-    + `<div class="gb-theme-list">${shown.map((m) => `<div class="gb-trow" data-gb-company="${esc(m.market)}:${esc(m.id || m.ticker)}"><span class="tk">${esc(String(m.ticker).slice(0, 2))}</span><span><span class="n">${esc(m.name)}</span><span class="s">${esc(m.sector || '')} · ${esc(String(m.market).toUpperCase())}</span></span><span class="num">${gbCap(m.capUsd)}</span><span class="num">${m.pe == null ? '—' : m.pe.toFixed(1) + '×'}</span><span class="num ${cls(m.chgYtd)}">${m.chgYtd == null ? '—' : pctf(m.chgYtd)}</span></div>`).join('')}</div>`
+    + `<div class="gb-theme-list">${shown.map((m) => `<div class="gb-trow" tabindex="0" role="button" data-gb-company="${esc(m.market)}:${esc(m.id || m.ticker)}"><span class="tk">${esc(String(m.ticker).slice(0, 2))}</span><span><span class="n">${esc(m.name)}</span><span class="s">${esc(m.sector || '')} · ${esc(String(m.market).toUpperCase())}</span></span><span class="num">${gbCap(m.capUsd)}</span><span class="num">${m.pe == null ? '—' : m.pe.toFixed(1) + '×'}</span><span class="num ${cls(m.chgYtd)}">${m.chgYtd == null ? '—' : pctf(m.chgYtd)}</span></div>`).join('')}</div>`
     + (members.length > 6 ? `<div class="gb-note"><span>showing ${shown.length} of ${members.length}</span><button type="button" class="gb-more" data-gb-themeall="1">${gbThemeAll ? 'SHOW LESS' : 'SHOW ALL'}</button></div>` : '');
 }
 
@@ -11031,7 +11076,7 @@ function gbIdeas(home) {
   const cards = [
     { id: 'cheap', k: 'CHEAP VS ITS OWN HISTORY', n: ideas.cheap, u: 'names', p: 'P/E in the bottom 20% of its own five-year range, across all ten markets.' },
     { id: 'filings', k: 'NEW FILINGS · US', n: ideas.filings, u: 'names this week', p: 'New 10-K / 10-Q filings with updated revenue, earnings and balance sheet.' },
-    { id: 'quality', k: 'QUALITY AT A REASONABLE PRICE', n: ideas.quality, u: 'names', p: 'ROE ≥ 15% and P/E ≤ 20, across all ten markets.' },
+    { id: 'quality', k: 'QUALITY AT A REASONABLE PRICE', n: ideas.quality, u: 'names', p: 'ROE ≥ 15% and P/E under 20, across all ten markets.' },
   ];
   return `<div class="gb-ideas">${cards.map((c) => `<button type="button" class="gb-idea" data-gb-idea="${c.id}"><span class="k">${c.k}</span><span class="n">${Number(c.n || 0).toLocaleString()}<small>${c.u}</small></span><p>${c.p}</p><span class="go">OPEN IN SCREENER →</span></button>`).join('')}</div>`;
 }
@@ -11046,6 +11091,18 @@ function gbSyncFilterUi() {
   set('gb-f-ytd', gbScr.ytdMin === '' ? '' : String(gbScr.ytdMin));
   set('gb-f-q', gbScr.q);
   document.querySelectorAll('[data-gb-sort]').forEach((b) => b.classList.toggle('on', b.dataset.gbSort === gbScrSort));
+  gbSyncActiveFilters();
+}
+function gbActiveFilterChips() {
+  const chips = [];
+  if (gbScr.pePctMax) chips.push(`<span class="gb-afchip">P/E bottom ${esc(gbScr.pePctMax)}% vs own history <button type="button" data-gb-clear="pePct" aria-label="Clear the P/E percentile filter">×</button></span>`);
+  if (gbScr.filingsOnly) chips.push('<span class="gb-afchip">New US filings this week <button type="button" data-gb-clear="filings" aria-label="Clear the new-filings filter">×</button></span>');
+  return chips.join('');
+}
+function gbSyncActiveFilters() {
+  const el = $('gb-activefilters'); if (!el) return;
+  el.innerHTML = gbActiveFilterChips();
+  el.hidden = !el.innerHTML;
 }
 
 function gbBindFilters() {
@@ -11058,8 +11115,11 @@ function gbBindFilters() {
       capMin: Number($('gb-f-cap')?.value) || 0,
       ytdMin: $('gb-f-ytd')?.value || '',
       q: $('gb-f-q')?.value.trim() || '',
+      pePctMax: 0,       // changing a control drops the idea-card preset (it has no native control)
+      filingsOnly: false,
     };
     gbScrLimit = 50; gbScrPage = 1;
+    gbSyncActiveFilters();
     gbLoadScreener();
   };
   ['gb-f-market', 'gb-f-sector', 'gb-f-pe', 'gb-f-roe', 'gb-f-cap', 'gb-f-ytd'].forEach((id) => $(id)?.addEventListener('change', read));
@@ -11067,26 +11127,56 @@ function gbBindFilters() {
 }
 
 function gbApplyIdea(kind) {
-  gbScr = { market: 'all', sector: 'all', peMax: 0, roeMin: '', capMin: 0, ytdMin: '', q: '' };
+  gbScr = { market: 'all', sector: 'all', peMax: 0, roeMin: '', capMin: 0, ytdMin: '', q: '', pePctMax: 0, filingsOnly: false };
   gbScrLimit = 50; gbScrPage = 1;
-  if (kind === 'cheap') { gbScr.peMax = 15; gbScrSort = 'pe'; }
+  if (kind === 'cheap') { gbScr.pePctMax = 20; gbScrSort = 'pe'; }
   else if (kind === 'quality') { gbScr.roeMin = '15'; gbScr.peMax = 20; gbScrSort = 'roe'; }
-  else if (kind === 'filings') { gbScr.market = 'us'; gbScrSort = 'cap'; }
+  else if (kind === 'filings') { gbScr.filingsOnly = true; gbScr.market = 'us'; gbScrSort = 'cap'; }
   gbSyncFilterUi();
+  gbSyncActiveFilters();
   gbLoadScreener();
   document.getElementById('gb-screener')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 function hmApplyIdea(kind) {
-  hmScr = { market: 'all', sector: 'all', peMax: 0, roeMin: '', capMin: 0, ytdMin: '', q: '' };
+  hmScr = { market: 'all', sector: 'all', peMax: 0, roeMin: '', capMin: 0, ytdMin: '', q: '', pePctMax: 0, filingsOnly: false };
   hmScrLimit = 50; hmScrPage = 1;
-  if (kind === 'cheap') { hmScr.peMax = 15; hmScrSort = 'pe'; }
+  if (kind === 'cheap') { hmScr.pePctMax = 20; hmScrSort = 'pe'; }
   else if (kind === 'quality') { hmScr.roeMin = '15'; hmScr.peMax = 20; hmScrSort = 'roe'; }
-  else if (kind === 'filings') { hmScr.market = 'us'; hmScrSort = 'cap'; }
+  else if (kind === 'filings') { hmScr.filingsOnly = true; hmScr.market = 'us'; hmScrSort = 'cap'; }
   screenMode = 'companies';
   try { localStorage.setItem('oilbasis.screenMode.v2', screenMode); } catch {}
   renderScreen(true);
   document.getElementById('p-screen')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function gbClearAll() {
+  gbScr = { market: 'all', sector: 'all', peMax: 0, roeMin: '', capMin: 0, ytdMin: '', q: '', pePctMax: 0, filingsOnly: false };
+  gbScrLimit = 50; gbScrPage = 1; gbScrSort = 'cap';
+  gbSyncFilterUi();
+  gbSyncActiveFilters();
+  gbLoadScreener();
+}
+function gbClearPreset(which) {
+  if (which === 'pePct') gbScr.pePctMax = 0;
+  if (which === 'filings') gbScr.filingsOnly = false;
+  gbScrPage = 1;
+  gbSyncActiveFilters();
+  gbLoadScreener();
+}
+function hmClearAll() {
+  hmScr = { market: 'all', sector: 'all', peMax: 0, roeMin: '', capMin: 0, ytdMin: '', q: '', pePctMax: 0, filingsOnly: false };
+  hmScrLimit = 50; hmScrPage = 1; hmScrSort = 'cap';
+  hmSyncFilterUi();
+  hmSyncActiveFilters();
+  hmLoadScreener();
+}
+function hmClearPreset(which) {
+  if (which === 'pePct') hmScr.pePctMax = 0;
+  if (which === 'filings') hmScr.filingsOnly = false;
+  hmScrPage = 1;
+  hmSyncActiveFilters();
+  hmLoadScreener();
 }
 
 async function renderGlobalBoard(token) {
@@ -11100,7 +11190,7 @@ async function renderGlobalBoard(token) {
   if (stale(token)) return;
   if (!home || !Array.isArray(home.markets) || !home.markets.length) { el.innerHTML = stError('Couldn’t load the global board — retrying.'); return; }
   globalBoardData = home; globalThemesData = themes; gbIndexData = mi;
-  gbScr = { market: 'all', sector: 'all', peMax: 0, roeMin: '', capMin: 0, ytdMin: '', q: '' };
+  gbScr = { market: 'all', sector: 'all', peMax: 0, roeMin: '', capMin: 0, ytdMin: '', q: '', pePctMax: 0, filingsOnly: false };
   gbScrLimit = 50; gbScrPage = 1; gbScrSort = 'cap'; gbSectorsLoaded = false;
   if (themes && themes.themes && !themes.themes.some((t) => t.id === globalThemeSel)) globalThemeSel = themes.themes[0]?.id || 'ai';
   const sub = $('deals-sub');
@@ -11126,6 +11216,10 @@ async function renderGlobalBoard(token) {
 addEventListener('resize', () => { clearTimeout(gbFitTimer); gbFitTimer = setTimeout(gbFitSplit, 150); }, { passive: true });
 
 document.addEventListener('click', (e) => {
+  const hmClear = e.target.closest('[data-hm-clearall]');
+  if (hmClear) { hmClearAll(); return; }
+  const hmClearX = e.target.closest('[data-hm-clear]');
+  if (hmClearX) { hmClearPreset(hmClearX.dataset.hmClear); return; }
   const hmSort = e.target.closest('[data-hm-sort]');
   if (hmSort) { hmScrSort = hmSort.dataset.hmSort; hmScrPage = 1; hmLoadScreener(); return; }
   const hmPage = e.target.closest('[data-hmpage]');
@@ -11133,7 +11227,21 @@ document.addEventListener('click', (e) => {
   const hmIdea = e.target.closest('[data-hm-idea]');
   if (hmIdea) { hmApplyIdea(hmIdea.dataset.hmIdea); return; }
 });
+// Rows and sort headers are click targets, so they must also be keyboard targets. The click
+// handlers above stay the single implementation; Enter/Space simply forwards to them.
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'Enter' && e.key !== ' ') return;
+  if (/^(INPUT|SELECT|BUTTON|A|TEXTAREA)$/.test(e.target.tagName)) return;
+  const t = e.target.closest('[data-gb-company][tabindex], [data-gb-sort][tabindex], [data-hm-sort][tabindex], [data-gb-market][tabindex]');
+  if (!t) return;
+  e.preventDefault();
+  t.click();
+});
 document.addEventListener('click', (e) => {
+  const gbClear = e.target.closest('[data-gb-clearall]');
+  if (gbClear) { gbClearAll(); return; }
+  const gbClearX = e.target.closest('[data-gb-clear]');
+  if (gbClearX) { gbClearPreset(gbClearX.dataset.gbClear); return; }
   const gsz = e.target.closest('[data-gb-size]');
   if (gsz) {
     gbSizeMetric = gsz.dataset.gbSize;

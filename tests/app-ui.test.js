@@ -143,7 +143,8 @@ function loadApp() {
   const source = fs.readFileSync(APP, 'utf8');
   // `const`/`function` declarations are script-scoped, so hand the ones under test back explicitly.
   const exported = `\n;globalThis.__ui = {
-    esc, pctf, cls, ago, deltaStrip, renderRisk, renderRelValue, tileSignals, curveShort, renderInventories,
+    esc, safeHref, attrBlock, gbSectors, gbScreenerShell, hmScreenerShell,
+    pctf, cls, ago, deltaStrip, renderRisk, renderRelValue, tileSignals, curveShort, renderInventories,
     isPropertyCompany, epsGrowthLabel, epsGrowthNote,
     buildBpOptions, renderTicker, markReady, hideBoot, BOOT_CORE, bootReady,
     setMarkets: (v) => { markets = v; },
@@ -722,6 +723,52 @@ test('home idea cards open their own company screen instead of a stale company p
   assert.equal(state.sort, 'roe');
   assert.equal(state.filters.roeMin, '15');
   assert.equal(state.filters.peMax, 20);
+
+  // The cheap card is a percentile screen, not an absolute P/E < 15 screen. The screener must
+  // apply the same filter (and show a chip explaining it), not a different one.
+  ui.hmApplyIdea('cheap');
+  const cheap = ui.getHomeIdeaState();
+  assert.equal(cheap.filters.pePctMax, 20);
+  assert.equal(cheap.filters.peMax, 0);
+  ui.hmApplyIdea('filings');
+  const filings = ui.getHomeIdeaState();
+  assert.equal(filings.filters.filingsOnly, true);
+  assert.equal(filings.filters.market, 'us');
+});
+
+test('idea/screener presets are explained and the shell is labelled for assistive tech', () => {
+  const { ui } = loadApp();
+  const shell = ui.gbScreenerShell({ markets: [{ id: 'us', label: 'United States' }] });
+  assert.match(shell, /id="gb-activefilters"/);
+  for (const id of ['gb-f-market', 'gb-f-sector', 'gb-f-pe', 'gb-f-roe', 'gb-f-cap', 'gb-f-ytd', 'gb-f-q']) {
+    assert.match(shell, new RegExp(`id="${id}"[^>]*aria-label=`, 'i'), `${id} needs an accessible name`);
+  }
+  const hm = ui.hmScreenerShell();
+  assert.match(hm, /id="hm-activefilters"/);
+  assert.match(hm, /id="hm-f-q"[^>]*aria-label=/);
+});
+
+test('sector allocation divides by total market cap, not by the top-eight subtotal', () => {
+  const { ui } = loadApp();
+  const html = ui.gbSectors({ sectors: [{ name: 'Technology', cap: 34 }, { name: 'Energy', cap: 6 }], totalCapUsd: 100 });
+  assert.match(html, /Technology/);
+  assert.match(html, /34%/, 'Technology is 34% of the whole market');
+  assert.match(html, /top 8 · share of total market cap/);
+});
+
+test('external news is escaped and non-http links are refused', () => {
+  const { ui } = loadApp();
+  assert.equal(ui.safeHref('javascript:alert(1)'), '#');
+  const html = ui.attrBlock({
+    y1: 12.3,
+    drivers: [{ kind: 'OPEC <b>x</b>', count: 1, sample: {
+      url: 'javascript:alert(1)', title: '<img src=x onerror=alert(1)>', source: '<script>x</script>', date: '2026-01-02',
+    } }],
+  });
+  assert.doesNotMatch(html, /<img src=x/);
+  assert.doesNotMatch(html, /<script>/);
+  assert.match(html, /&lt;img src=x/);
+  assert.match(html, /href="#"/);
 });
 
 test('global and home screeners use bounded previous and next pages', () => {

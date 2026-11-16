@@ -601,6 +601,32 @@ test('/api/history carries 1D/1W/1M/YTD/1Y deltas per instrument', async () => {
   assert.equal(h.deltas.gold.physical, null); // metals have no free spot series
 });
 
+test('/api/home idea counts and the screener use the same universe', async () => {
+  const home = await (await fetch(`http://localhost:${PORT}/api/home`)).json();
+  const total = await (await fetch(`http://localhost:${PORT}/api/global-companies?limit=1`)).json();
+  assert.equal(total.total, home.companies, 'the home header count is the screener universe');
+  const cheap = await (await fetch(`http://localhost:${PORT}/api/global-companies?limit=1&pePctMax=20`)).json();
+  assert.equal(cheap.total, home.ideas.cheap, 'the cheap card opens exactly its own count');
+  const quality = await (await fetch(`http://localhost:${PORT}/api/global-companies?limit=1&roeMin=15&peMax=20`)).json();
+  assert.equal(quality.total, home.ideas.quality, 'the quality card opens exactly its own count');
+  const filings = await (await fetch(`http://localhost:${PORT}/api/global-companies?limit=1&filings=1`)).json();
+  assert.equal(filings.total, home.ideas.filings, 'the filings card opens exactly its own count');
+});
+
+test('the 6M history window matches /api/range and the READ prose', async () => {
+  const h = await (await fetch(`http://localhost:${PORT}/api/history`)).json();
+  assert.ok(h.dates.length > 100, 'six months of daily points, not the old 120-point trim');
+  const days = (Date.parse(h.dates[h.dates.length - 1]) - Date.parse(h.dates[0])) / 864e5;
+  assert.ok(days >= 175 && days <= 190, `the window is six months (got ${days.toFixed(1)} days)`);
+  const vals = h.series.wti.paper.filter((v) => v != null);
+  const six = ((vals[vals.length - 1] / vals[0]) - 1) * 100;
+  const range = await (await fetch(`http://localhost:${PORT}/api/range?id=wti&range=6m`)).json();
+  assert.ok(Math.abs(six - range.summary.paper) < 0.5, `history ${six.toFixed(2)}% vs range ${range.summary.paper.toFixed(2)}%`);
+  const read = await (await fetch(`http://localhost:${PORT}/api/marketread?id=crude`)).json();
+  assert.ok(Math.abs(read.perf.m6 - six) < 0.5, `READ ${read.perf.m6.toFixed(2)}% vs history ${six.toFixed(2)}%`);
+  assert.ok(Math.abs(read.perf.y1 - h.deltas.wti.paper.y1) < 0.2, 'the READ 1Y and the delta strip agree');
+});
+
 test('unknown chart metric → 404', async () => {
   const r = await fetch(`http://localhost:${PORT}/api/range?id=nope&range=1y`);
   assert.equal(r.status, 404);
