@@ -6501,8 +6501,8 @@ function renderJapanPageBody(c) {
     + `<div class="co-rets" id="jp-rets"></div>`
               + `<div class="co-chartwrap"><div class="co-big" id="jp-big"></div><canvas id="jp-chart"></canvas></div>`
     + '<div id="jp-peers-x"></div>'
-    + periodMatrixHtml(c, { market: 'jp', money: yen, ccy: 'JPY' })
     + jpHistoryHtml(c)
+    + periodMatrixHtml(c, { market: 'jp', money: yen, ccy: 'JPY' })
     + jpPeersHtml(c)
     + `<div class="macro-note">
         ${jpFlowContext(japanData && japanData.flow)}

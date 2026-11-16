@@ -814,6 +814,18 @@ test('all ten markets are reachable in the COMPANIES navigation', () => {
 });
 
 
+test('Japan puts the fiscal-year record before the quarterly matrix, like every other market', () => {
+  const app = fs.readFileSync(APP, 'utf8');
+  const start = app.indexOf('function renderJapanPageBody');
+  const end = app.indexOf('function jpHistoryHtml');
+  assert.ok(start > 0 && end > start);
+  const body = app.slice(start, end);
+  const fiscal = body.indexOf('+ jpHistoryHtml(c)');
+  const quarterly = body.indexOf("+ periodMatrixHtml(c, { market: 'jp'");
+  assert.ok(fiscal > 0 && quarterly > 0, 'both sections are rendered');
+  assert.ok(fiscal < quarterly, 'the fiscal-year record must come first');
+});
+
 test('a reload on the Companies tab lands on HOME, but real deep links survive', () => {
   const { ui } = loadApp();
   // The bare tab route is not a deep link: reloading the global board must not reopen it.
