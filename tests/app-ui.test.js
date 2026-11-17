@@ -186,6 +186,10 @@ function loadApp() {
     hmApplyIdea,
     gbPagerHtml,
     isBootDeepLink,
+    loadBrief,
+    getBriefPayload: () => briefPayload,
+    setBriefBusy: (v) => { briefBusy = v; },
+    setBriefPayload: (v) => { briefPayload = v; },
     getHomeIdeaState: () => ({ mode: screenMode, filters: { ...hmScr }, sort: hmScrSort, page: hmScrPage }),
   };`;
   const ctx = makeContext();
@@ -981,4 +985,89 @@ test('cash-flow amounts live in Cash flow, not Results', () => {
     assert.doesNotMatch(results, /FREE CASH FLOW|CASH AFTER INVESTING/, `${fn} still puts a cash-flow amount in Results`);
     assert.match(cash, /FREE CASH FLOW|CASH AFTER INVESTING/, `${fn} has no free-cash-flow amount in Cash flow`);
   }
+});
+
+// --- the daily brief (shipped regression) ------------------------------------------------------
+// "Sometimes the brief is broken on load and I have to reload." /api/brief is the only
+// above-the-fold JSON with real work behind it (event pool + wire matching), and fetch has no
+// deadline: a stalled request left "Reading the day…" in a card as tall as the calendar until the
+// page was reloaded. The loader now bounds each attempt, retries, keeps the copy already on screen,
+// and schedules one late retry so the desk heals without the reader doing anything.
+
+const BRIEF_OK = { updated: '2026-11-17T00:00:00Z', events: [], rows: [], macro: [], happened: [], hero: null };
+const LATE_RETRY = 30000;
+
+function briefCtx() {
+  const app = loadApp();
+  // The page's own boot starts a brief request with the harness' never-resolving fetch; take the
+  // loader back so the test drives it.
+  app.ui.setBriefBusy(false);
+  app.ui.setBriefPayload(null);
+  const timers = [];
+  app.window.setTimeout = (fn, ms = 0) => { timers.push({ fn, ms }); return timers.length; };
+  app.window.clearTimeout = () => {};
+  const step = async () => { for (let i = 0; i < 8; i++) await new Promise((r) => setImmediate(r)); };
+  // Run the short backoffs, leave the 30-second late retry queued.
+  const drain = async () => {
+    let guard = 0;
+    for (;;) {
+      const i = timers.findIndex((t) => t.ms < LATE_RETRY);
+      if (i < 0 || guard++ > 20) return;
+      const [t] = timers.splice(i, 1);
+      t.fn();
+      await step();
+    }
+  };
+  return { ...app, timers, step, drain };
+}
+
+test('the brief retries a stalled request instead of waiting for a reload', async () => {
+  const { ui, window, document, step, drain } = briefCtx();
+  let calls = 0;
+  window.fetch = async () => {
+    calls += 1;
+    if (calls <= 2) throw new Error('the host was asleep');
+    return { ok: true, json: async () => BRIEF_OK };
+  };
+  const done = ui.loadBrief();
+  await step();
+  await drain();
+  await done;
+  assert.equal(calls, 3, 'two stalls are retried without the reader reloading');
+  assert.match(document.getElementById('home-brief').innerHTML, /No ranked story today/);
+  assert.deepEqual(ui.getBriefPayload(), BRIEF_OK);
+});
+
+test('a failed refresh never blanks the brief already on screen', async () => {
+  const { ui, window, document, step, drain } = briefCtx();
+  let fail = false;
+  window.fetch = async () => {
+    if (fail) throw new Error('offline');
+    return { ok: true, json: async () => BRIEF_OK };
+  };
+  const first = ui.loadBrief();
+  await step();
+  await drain();
+  await first;
+  const painted = document.getElementById('home-brief').innerHTML;
+  assert.match(painted, /No ranked story today/);
+
+  fail = true;
+  const second = ui.loadBrief();
+  await step();
+  await drain();
+  await second;
+  assert.equal(document.getElementById('home-brief').innerHTML, painted, 'the reader keeps the copy they were reading');
+});
+
+test('a brief that never answers asks for one more go by itself', async () => {
+  const { ui, window, timers, step, drain } = briefCtx();
+  let calls = 0;
+  window.fetch = async () => { calls += 1; throw new Error('dead'); };
+  const done = ui.loadBrief();
+  await step();
+  await drain();
+  await done;
+  assert.equal(calls, 3, 'three bounded attempts, not an endless spinner');
+  assert.equal(timers.filter((t) => t.ms >= LATE_RETRY).length, 1, 'and one late retry is queued instead of asking for a reload');
 });

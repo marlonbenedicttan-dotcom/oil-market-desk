@@ -162,9 +162,18 @@ function noteColdStart() {
   const st = document.getElementById('boot-status');
   if (st) st.textContent = 'waking the server…';
 }
-async function getJSON(url) {
+// `ms` is an optional deadline. fetch has none of its own: a request that stalls (a host waking up,
+// a phone handing over between networks) never rejects, so the panel awaiting it sits on its loading
+// line until the reader reloads the page. Callers that must not hang pass a ceiling and retry.
+async function getJSON(url, ms = 0) {
   const t0 = Date.now();
-  const r = await fetch(url);
+  let timer = 0;
+  const ctrl = ms ? new AbortController() : null;
+  if (ctrl) timer = setTimeout(() => ctrl.abort(), ms);
+  let r;
+  try {
+    r = await fetch(url, ctrl ? { signal: ctrl.signal } : undefined);
+  } finally { if (timer) clearTimeout(timer); }
   if (!r.ok) throw new Error(`${url} -> HTTP ${r.status}`);
   // The first response tells us whether the instance was asleep (or the network was slow).
   if (!coldTold && Date.now() - BOOT_T0 > 2500 && t0 - BOOT_T0 < 1500) noteColdStart();
@@ -2907,11 +2916,42 @@ function renderBrief(b) {
   el.innerHTML = leadHtml || heroHtml || '<div class="macro-note">No ranked story today — the tape is below.</div>';
   if (moreEl) moreEl.innerHTML = more || '<div class="macro-note">No further context on the tape today.</div>';
 }
+// The brief is the largest text on HOME and the one panel a reader cannot scroll past: an empty one
+// reads as a broken page. Its endpoint is also the only above-the-fold JSON with real work behind it
+// (event pool + wire matching), and on a woken host the first request can stall for many seconds.
+// So: a deadline on every attempt (a stalled fetch never rejects on its own), three attempts with a
+// short backoff, a late retry so it heals without a reload, and a failed refresh keeps the copy that
+// is already on screen instead of blanking it.
+const briefSkeleton = () => '<div class="brief-skel" aria-hidden="true"><i class="k"></i><i class="t"></i><i class="t s"></i><i class="w"></i></div>'
+  + `<div class="state loading"><i class="spin"></i><span>Reading the day\u2026</span></div>`;
+let briefPayload = null;
+let briefLateRetry = 0;
+let briefBusy = false;
 async function loadBrief() {
-  const el = $('home-brief');
-  if (el && !el.innerHTML) el.innerHTML = stLoading('Reading the day…');
-  try { renderBrief(await getJSON('/api/brief')); } catch { renderBrief(null); }
-  markReady('brief');
+  if (briefBusy) return;                 // the 10-minute refresh and the late retry must not race
+  briefBusy = true;
+  try {
+    const el = $('home-brief');
+    if (el && !el.innerHTML) el.innerHTML = briefSkeleton();
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        const b = await getJSON('/api/brief', 12000);
+        if (!b || b.error) throw new Error((b && b.error) || 'empty brief');
+        briefPayload = b;
+        clearTimeout(briefLateRetry);
+        renderBrief(b);
+        markReady('brief');
+        return;
+      } catch {
+        if (attempt < 2) await new Promise((r) => setTimeout(r, 900 * (attempt + 1)));
+      }
+    }
+    if (el && !briefPayload) el.innerHTML = stError('Couldn\u2019t load today\u2019s brief \u2014 retrying.');
+    markReady('brief');
+    // One more go, unasked: the reader should not have to reload the page for the desk to recover.
+    clearTimeout(briefLateRetry);
+    briefLateRetry = setTimeout(loadBrief, 30000);
+  } finally { briefBusy = false; }
 }
 // Live important headlines (hero board).
 // Cross-asset regime board — the backdrop that sets the day's tone (dollar, volatility, rates,
