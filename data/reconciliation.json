@@ -1,9 +1,9 @@
 {
- "generated": "2026-11-17T04:02:36.760Z",
+ "generated": "2026-11-18T03:15:08.499Z",
  "summary": {
   "usable": 1467,
-  "match": 117,
-  "close": 736,
+  "match": 116,
+  "close": 737,
   "diverge": 562,
   "diverge-immaterial": 32,
   "definition": 20,
@@ -1349,8 +1349,8 @@
    "our": {
     "revenue": 94425000000,
     "netIncome": 12404000000,
-    "assets": 204740000000,
-    "equity": 110032000000,
+    "assets": 206138000000,
+    "equity": 111600000000,
     "marketCap": 206218216706,
     "price": 118.97,
     "shares": 1771519851
@@ -1364,16 +1364,16 @@
    "diff": {
     "revenue": 0,
     "netIncome": 0,
-    "assets": 0.03529354303018462,
-    "equity": 0.001481387232805002
+    "assets": 0.04183605157709884,
+    "equity": 0.015510752688172043
    },
    "abs": {
     "revenue": 94425000000,
     "netIncome": 12404000000,
-    "assets": 7226000000,
-    "equity": 163000000
+    "assets": 8624000000,
+    "equity": 1731000000
    },
-   "worst": 0.03529354303018462,
+   "worst": 0.04183605157709884,
    "status": "close"
   },
   {
@@ -2329,8 +2329,8 @@
    "our": {
     "revenue": 63325000000,
     "netIncome": 13267000000,
-    "assets": 129637000000,
-    "equity": 50285000000,
+    "assets": 129458000000,
+    "equity": 51607000000,
     "marketCap": 387595715485,
     "price": 95.64,
     "shares": 3949893042
@@ -2344,17 +2344,17 @@
    "diff": {
     "revenue": 0,
     "netIncome": 0,
-    "assets": 0,
-    "equity": 0
+    "assets": 0.001380778635728997,
+    "equity": 0.02561667990776445
    },
    "abs": {
     "revenue": 63325000000,
     "netIncome": 13267000000,
-    "assets": 0,
-    "equity": 0
+    "assets": 179000000,
+    "equity": 1322000000
    },
-   "worst": 0,
-   "status": "match"
+   "worst": 0.02561667990776445,
+   "status": "close"
   },
   {
    "ticker": "PFE",

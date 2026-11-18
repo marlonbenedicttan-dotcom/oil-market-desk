@@ -1,5 +1,5 @@
 {
- "checked": "2026-11-17T04:04:31.175Z",
+ "checked": "2026-11-18T03:16:37.399Z",
  "markets": {
   "us": {
    "name": "US",
@@ -108,13 +108,13 @@
     {
      "check": "P/B vs the filing’s equity",
      "severity": "warn",
-     "count": 30,
+     "count": 0,
      "detail": "JPX values equity at a later filing date"
     },
     {
      "check": "P/B vs the filing’s equity",
      "severity": "fail",
-     "count": 2,
+     "count": 0,
      "detail": "More than a filing-date difference"
     },
     {
@@ -144,17 +144,13 @@
     {
      "check": "ROE sign disagrees with the fiscal-year profit",
      "severity": "warn",
-     "count": 28,
+     "count": 30,
      "detail": "JPX ROE is trailing; NP is the fiscal year"
     }
    ],
-   "fail": 2,
-   "warn": 58,
+   "fail": 0,
+   "warn": 30,
    "examples": {
-    "P/B vs the filing’s equity": [
-     "95520 (40.0%)",
-     "64640 (-26.2%)"
-    ],
     "ROE sign disagrees with the fiscal-year profit": [
      "45020 (ROE 0.6% vs NP $-152.39B)",
      "67230 (ROE 23.6% vs NP $-51.76B)",
@@ -169,10 +165,10 @@
    "coverage": {
     "companies": 1545,
     "marketCap": 1545,
-    "pe": 1486,
-    "pb": 1540,
+    "pe": 1487,
+    "pb": 1541,
     "roe": 1535,
-    "jpxRatio": 1456
+    "jpxRatio": 1457
    }
   },
   "korea": {
@@ -260,6 +256,6 @@
    }
   }
  },
- "failures": 2,
- "warnings": 368
+ "failures": 0,
+ "warnings": 340
 }
