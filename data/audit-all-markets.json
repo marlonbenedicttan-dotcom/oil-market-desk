@@ -1,7 +1,7 @@
 {
-  "checked": "2026-11-15T02:04:22.404Z",
+  "checked": "2026-11-18T03:48:55.404Z",
   "ok": false,
-  "durationMs": 1092019,
+  "durationMs": 1120539,
   "steps": [
     {
       "market": "US",
@@ -10,7 +10,7 @@
       "status": 0,
       "signal": null,
       "ok": true,
-      "ms": 223
+      "ms": 196
     },
     {
       "market": "US",
@@ -19,7 +19,7 @@
       "status": 0,
       "signal": null,
       "ok": true,
-      "ms": 222
+      "ms": 196
     },
     {
       "market": "US",
@@ -28,7 +28,7 @@
       "status": 0,
       "signal": null,
       "ok": true,
-      "ms": 212
+      "ms": 188
     },
     {
       "market": "US",
@@ -37,7 +37,7 @@
       "status": 0,
       "signal": null,
       "ok": true,
-      "ms": 206
+      "ms": 194
     },
     {
       "market": "US",
@@ -46,7 +46,7 @@
       "status": 0,
       "signal": null,
       "ok": true,
-      "ms": 44
+      "ms": 38
     },
     {
       "market": "US",
@@ -55,7 +55,7 @@
       "status": 0,
       "signal": null,
       "ok": true,
-      "ms": 208
+      "ms": 188
     },
     {
       "market": "US",
@@ -64,7 +64,7 @@
       "status": 0,
       "signal": null,
       "ok": true,
-      "ms": 908039
+      "ms": 920567
     },
     {
       "market": "US",
@@ -73,7 +73,7 @@
       "status": 0,
       "signal": null,
       "ok": true,
-      "ms": 400
+      "ms": 368
     },
     {
       "market": "US",
@@ -82,16 +82,16 @@
       "status": 0,
       "signal": null,
       "ok": true,
-      "ms": 299
+      "ms": 267
     },
     {
       "market": "US / JP / KR",
       "script": "audit-markets.mjs",
       "args": [],
-      "status": 1,
+      "status": 0,
       "signal": null,
-      "ok": false,
-      "ms": 753
+      "ok": true,
+      "ms": 701
     },
     {
       "market": "TW",
@@ -100,7 +100,7 @@
       "status": 0,
       "signal": null,
       "ok": true,
-      "ms": 99125
+      "ms": 104662
     },
     {
       "market": "TW",
@@ -109,7 +109,7 @@
       "status": 0,
       "signal": null,
       "ok": true,
-      "ms": 202
+      "ms": 176
     },
     {
       "market": "HK",
@@ -118,7 +118,7 @@
       "status": 0,
       "signal": null,
       "ok": true,
-      "ms": 26784
+      "ms": 35271
     },
     {
       "market": "HK",
@@ -129,7 +129,7 @@
       "status": 0,
       "signal": null,
       "ok": true,
-      "ms": 335
+      "ms": 302
     },
     {
       "market": "AU",
@@ -138,7 +138,7 @@
       "status": 0,
       "signal": null,
       "ok": true,
-      "ms": 49984
+      "ms": 52938
     },
     {
       "market": "AU",
@@ -149,7 +149,7 @@
       "status": 0,
       "signal": null,
       "ok": true,
-      "ms": 274
+      "ms": 249
     },
     {
       "market": "IN",
@@ -158,7 +158,7 @@
       "status": 0,
       "signal": null,
       "ok": true,
-      "ms": 102
+      "ms": 91
     },
     {
       "market": "IN",
@@ -169,7 +169,7 @@
       "status": 0,
       "signal": null,
       "ok": true,
-      "ms": 206
+      "ms": 178
     },
     {
       "market": "ID",
@@ -178,7 +178,7 @@
       "status": 0,
       "signal": null,
       "ok": true,
-      "ms": 155
+      "ms": 148
     },
     {
       "market": "ID",
@@ -187,7 +187,7 @@
       "status": 0,
       "signal": null,
       "ok": true,
-      "ms": 463
+      "ms": 454
     },
     {
       "market": "ID",
@@ -198,7 +198,7 @@
       "status": 0,
       "signal": null,
       "ok": true,
-      "ms": 201
+      "ms": 180
     },
     {
       "market": "BR",
@@ -207,7 +207,7 @@
       "status": 0,
       "signal": null,
       "ok": true,
-      "ms": 67
+      "ms": 62
     },
     {
       "market": "BR",
@@ -216,7 +216,7 @@
       "status": 0,
       "signal": null,
       "ok": true,
-      "ms": 199
+      "ms": 195
     },
     {
       "market": "BR",
@@ -227,7 +227,7 @@
       "status": 0,
       "signal": null,
       "ok": true,
-      "ms": 102
+      "ms": 90
     },
     {
       "market": "ZA",
@@ -236,7 +236,7 @@
       "status": 0,
       "signal": null,
       "ok": true,
-      "ms": 60
+      "ms": 56
     },
     {
       "market": "ZA",
@@ -245,7 +245,7 @@
       "status": 0,
       "signal": null,
       "ok": true,
-      "ms": 91
+      "ms": 83
     },
     {
       "market": "ZA",
@@ -256,7 +256,7 @@
       "status": 0,
       "signal": null,
       "ok": true,
-      "ms": 98
+      "ms": 88
     },
     {
       "market": "ALL",
@@ -265,11 +265,10 @@
       "status": 1,
       "signal": null,
       "ok": false,
-      "ms": 2960
+      "ms": 2410
     }
   ],
   "failures": [
-    "US / JP / KR · audit-markets.mjs exited 1",
     "ALL · check-freshness.mjs exited 1"
   ]
 }

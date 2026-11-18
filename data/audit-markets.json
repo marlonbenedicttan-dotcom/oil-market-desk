@@ -1,5 +1,5 @@
 {
- "checked": "2026-11-18T03:16:37.399Z",
+ "checked": "2026-11-18T04:04:18.229Z",
  "markets": {
   "us": {
    "name": "US",
@@ -184,6 +184,12 @@
     {
      "check": "market cap vs Naver",
      "severity": "warn",
+     "count": 1,
+     "detail": "No Naver cap feed on disk — the independent cross-check was skipped"
+    },
+    {
+     "check": "market cap vs Naver",
+     "severity": "warn",
      "count": 0,
      "detail": "A split or a stale print since the cap was read"
     },
@@ -231,8 +237,11 @@
     }
    ],
    "fail": 0,
-   "warn": 237,
+   "warn": 238,
    "examples": {
+    "market cap vs Naver": [
+     "—"
+    ],
     "share count differs from the filing": [
      "032830 (filing 179,574,779 → listed 200,000,000)",
      "068270 (filing 218,613,124 → listed 232,073,068)",
@@ -252,10 +261,10 @@
     "peFY": 87,
     "pb": 722,
     "roe": 722,
-    "naverMatched": 726
+    "naverMatched": 0
    }
   }
  },
  "failures": 0,
- "warnings": 340
+ "warnings": 341
 }
