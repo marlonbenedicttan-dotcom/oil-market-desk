@@ -1,13 +1,13 @@
 {
- "generated": "2026-11-18T17:21:37.305Z",
+ "generated": "2026-11-19T02:48:06.274Z",
  "summary": {
-  "usable": 1467,
+  "usable": 1466,
   "match": 116,
   "close": 737,
-  "diverge": 562,
+  "diverge": 561,
   "diverge-immaterial": 32,
   "definition": 20,
-  "period-mismatch": 21,
+  "period-mismatch": 22,
   "no-nasdaq-data": 18
  },
  "companies": [
@@ -4145,12 +4145,12 @@
    "ticker": "DHI",
    "sector": "Consumer",
    "period": "9/30/2025",
-   "sameYear": true,
+   "sameYear": false,
    "our": {
     "revenue": 34250400000,
-    "netIncome": 3585200000,
-    "assets": 36511300000,
-    "equity": 23819500000,
+    "netIncome": 2889400000,
+    "assets": 34818300000,
+    "equity": 23109500000,
     "marketCap": 40625210525,
     "price": 143.52,
     "shares": 289703395
@@ -4163,18 +4163,18 @@
    },
    "diff": {
     "revenue": 0,
-    "netIncome": 0,
-    "assets": 0.028487071125925398,
-    "equity": 0.015332528606389312
+    "netIncome": 0.19407564431551935,
+    "assets": 0.01840648187825616,
+    "equity": 0.04468301474965276
    },
    "abs": {
     "revenue": 34250400000,
-    "netIncome": 3585200000,
-    "assets": 1040100000,
-    "equity": 370900000
+    "netIncome": 2889400000,
+    "assets": 652900000,
+    "equity": 1080900000
    },
-   "worst": 0.028487071125925398,
-   "status": "close"
+   "worst": null,
+   "status": "period-mismatch"
   },
   {
    "ticker": "LEN",
@@ -9193,8 +9193,8 @@
    "our": {
     "revenue": 16139622000,
     "netIncome": 561774000,
-    "assets": 12026900000,
-    "equity": 2193260000,
+    "assets": 12153891000,
+    "equity": 2298209000,
     "marketCap": 10612307206,
     "price": 80.53,
     "shares": 129288624
@@ -9208,17 +9208,17 @@
    "diff": {
     "revenue": 0,
     "netIncome": 0,
-    "assets": 0.014208644430125976,
-    "equity": 0.12008582258411352
+    "assets": 0.0037997585131254287,
+    "equity": 0.0779813237989171
    },
    "abs": {
     "revenue": 16139622000,
     "netIncome": 561774000,
-    "assets": 173349000,
-    "equity": 299324000
+    "assets": 46358000,
+    "equity": 194375000
    },
-   "worst": 0.12008582258411352,
-   "status": "diverge"
+   "worst": 0.0779813237989171,
+   "status": "close"
   },
   {
    "ticker": "URI",
