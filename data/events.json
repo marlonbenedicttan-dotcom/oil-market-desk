@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-19T16:41:25.560Z",
+ "updated": "2026-11-19T17:52:59.197Z",
  "events": [
   {
    "date": "2026-10-21",
@@ -1086,17 +1086,6 @@
    "detail": "period ends 2026-10-31 · filed 40 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.011003,
-   "days": 20
-  },
-  {
-   "date": "2026-12-10",
-   "kind": "earnings",
-   "ticker": "PANW",
-   "name": "Palo Alto Networks Inc",
-   "label": "PANW · Q1 report expected",
-   "detail": "period ends 2026-10-30 · filed 41 days after quarter end, historically",
-   "basis": "expected",
-   "weight": 0.370245,
    "days": 20
   },
   {
@@ -2510,17 +2499,6 @@
   {
    "date": "2027-01-21",
    "kind": "earnings",
-   "ticker": "HZO",
-   "name": "MARINEMAX INC",
-   "label": "HZO · quarterly report expected",
-   "detail": "period ends 2026-12-29 · filed 23 days after quarter end, historically",
-   "basis": "expected",
-   "weight": 0.001382,
-   "days": 62
-  },
-  {
-   "date": "2027-01-21",
-   "kind": "earnings",
    "ticker": "BE",
    "name": "Bloom Energy Corp",
    "label": "BE · quarterly report expected",
@@ -3066,17 +3044,6 @@
    "detail": "period ends 2026-12-30 · filed 26 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.001598,
-   "days": 66
-  },
-  {
-   "date": "2027-01-25",
-   "kind": "earnings",
-   "ticker": "SANM",
-   "name": "SANMINA CORP",
-   "label": "SANM · quarterly report expected",
-   "detail": "period ends 2026-12-26 · filed 30 days after quarter end, historically",
-   "basis": "expected",
-   "weight": 0.010333,
    "days": 66
   },
   {
@@ -4490,17 +4457,6 @@
   {
    "date": "2027-01-27",
    "kind": "earnings",
-   "ticker": "GEF",
-   "name": "GREIF, INC",
-   "label": "GEF · quarterly report expected",
-   "detail": "period ends 2026-12-29 · filed 29 days after quarter end, historically",
-   "basis": "expected",
-   "weight": 0.002102,
-   "days": 68
-  },
-  {
-   "date": "2027-01-27",
-   "kind": "earnings",
    "ticker": "DBD",
    "name": "DIEBOLD NIXDORF, Inc",
    "label": "DBD · quarterly report expected",
@@ -4738,17 +4694,6 @@
    "detail": "period ends 2026-12-30 · filed 28 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.021122,
-   "days": 68
-  },
-  {
-   "date": "2027-01-27",
-   "kind": "earnings",
-   "ticker": "SONO",
-   "name": "Sonos Inc",
-   "label": "SONO · quarterly report expected",
-   "detail": "period ends 2026-12-26 · filed 32 days after quarter end, historically",
-   "basis": "expected",
-   "weight": 0.003124,
    "days": 68
   },
   {
@@ -5475,17 +5420,6 @@
    "detail": "period ends 2027-01-01 · filed 27 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.152948,
-   "days": 69
-  },
-  {
-   "date": "2027-01-28",
-   "kind": "earnings",
-   "ticker": "APD",
-   "name": "Air Products & Chemicals, Inc.",
-   "label": "APD · quarterly report expected",
-   "detail": "period ends 2026-12-29 · filed 30 days after quarter end, historically",
-   "basis": "expected",
-   "weight": 0.103521,
    "days": 69
   },
   {
@@ -6393,17 +6327,6 @@
   {
    "date": "2027-01-28",
    "kind": "earnings",
-   "ticker": "DLB",
-   "name": "Dolby Laboratories, Inc.",
-   "label": "DLB · quarterly report expected",
-   "detail": "period ends 2026-12-25 · filed 34 days after quarter end, historically",
-   "basis": "expected",
-   "weight": 0.005868,
-   "days": 69
-  },
-  {
-   "date": "2027-01-28",
-   "kind": "earnings",
    "ticker": "EXTR",
    "name": "EXTREME NETWORKS INC",
    "label": "EXTR · quarterly report expected",
@@ -7213,17 +7136,6 @@
    "detail": "period ends 2027-01-01 · filed 28 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.039201,
-   "days": 70
-  },
-  {
-   "date": "2027-01-29",
-   "kind": "earnings",
-   "ticker": "TTEK",
-   "name": "TETRA TECH INC",
-   "label": "TTEK · quarterly report expected",
-   "detail": "period ends 2026-12-27 · filed 33 days after quarter end, historically",
-   "basis": "expected",
-   "weight": 0.016948,
    "days": 70
   },
   {
@@ -8945,17 +8857,6 @@
   {
    "date": "2027-02-02",
    "kind": "earnings",
-   "ticker": "ENR",
-   "name": "ENERGIZER HOLDINGS, INC.",
-   "label": "ENR · quarterly report expected",
-   "detail": "period ends 2026-12-29 · filed 35 days after quarter end, historically",
-   "basis": "expected",
-   "weight": 0.002169,
-   "days": 74
-  },
-  {
-   "date": "2027-02-02",
-   "kind": "earnings",
    "ticker": "HNI",
    "name": "HNI CORP",
    "label": "HNI · quarterly report expected",
@@ -9198,17 +9099,6 @@
   {
    "date": "2027-02-02",
    "kind": "earnings",
-   "ticker": "POWL",
-   "name": "POWELL INDUSTRIES INC",
-   "label": "POWL · quarterly report expected",
-   "detail": "period ends 2026-12-29 · filed 35 days after quarter end, historically",
-   "basis": "expected",
-   "weight": 0.006315,
-   "days": 74
-  },
-  {
-   "date": "2027-02-02",
-   "kind": "earnings",
    "ticker": "AESI",
    "name": "Atlas Energy Solutions Inc.",
    "label": "AESI · quarterly report expected",
@@ -9413,17 +9303,6 @@
    "detail": "period ends 2026-12-30 · filed 34 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.002056,
-   "days": 74
-  },
-  {
-   "date": "2027-02-02",
-   "kind": "earnings",
-   "ticker": "WAFD",
-   "name": "WAFD INC",
-   "label": "WAFD · quarterly report expected",
-   "detail": "period ends 2026-12-29 · filed 35 days after quarter end, historically",
-   "basis": "expected",
-   "weight": 0.0034,
    "days": 74
   },
   {
@@ -10023,17 +9902,6 @@
   {
    "date": "2027-02-03",
    "kind": "earnings",
-   "ticker": "WMG",
-   "name": "Warner Music Group Corp.",
-   "label": "WMG · quarterly report expected",
-   "detail": "period ends 2026-12-29 · filed 36 days after quarter end, historically",
-   "basis": "expected",
-   "weight": 0.006832,
-   "days": 75
-  },
-  {
-   "date": "2027-02-03",
-   "kind": "earnings",
    "ticker": "SN",
    "name": "SharkNinja, Inc.",
    "label": "SN · quarterly report expected",
@@ -10216,17 +10084,6 @@
    "detail": "period ends 2026-12-30 · filed 35 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.014241,
-   "days": 75
-  },
-  {
-   "date": "2027-02-03",
-   "kind": "earnings",
-   "ticker": "ATO",
-   "name": "ATMOS ENERGY CORP",
-   "label": "ATO · quarterly report expected",
-   "detail": "period ends 2026-12-29 · filed 36 days after quarter end, historically",
-   "basis": "expected",
-   "weight": 0.039731,
    "days": 75
   },
   {
@@ -10634,28 +10491,6 @@
    "detail": "period ends 2026-12-30 · filed 35 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.003464,
-   "days": 75
-  },
-  {
-   "date": "2027-02-03",
-   "kind": "earnings",
-   "ticker": "GFF",
-   "name": "GRIFFON CORP",
-   "label": "GFF · quarterly report expected",
-   "detail": "period ends 2026-12-29 · filed 36 days after quarter end, historically",
-   "basis": "expected",
-   "weight": 0.007431,
-   "days": 75
-  },
-  {
-   "date": "2027-02-03",
-   "kind": "earnings",
-   "ticker": "SR",
-   "name": "SPIRE INC",
-   "label": "SR · quarterly report expected",
-   "detail": "period ends 2026-12-29 · filed 36 days after quarter end, historically",
-   "basis": "expected",
-   "weight": 0.007183,
    "days": 75
   },
   {
@@ -12443,17 +12278,6 @@
   {
    "date": "2027-02-04",
    "kind": "earnings",
-   "ticker": "FFIV",
-   "name": "F5, INC.",
-   "label": "FFIV · quarterly report expected",
-   "detail": "period ends 2026-12-29 · filed 37 days after quarter end, historically",
-   "basis": "expected",
-   "weight": 0.023785,
-   "days": 76
-  },
-  {
-   "date": "2027-02-04",
-   "kind": "earnings",
    "ticker": "VNT",
    "name": "Vontier Corp",
    "label": "VNT · quarterly report expected",
@@ -13048,17 +12872,6 @@
   {
    "date": "2027-02-04",
    "kind": "earnings",
-   "ticker": "MWA",
-   "name": "Mueller Water Products, Inc.",
-   "label": "MWA · quarterly report expected",
-   "detail": "period ends 2026-12-29 · filed 37 days after quarter end, historically",
-   "basis": "expected",
-   "weight": 0.007399,
-   "days": 76
-  },
-  {
-   "date": "2027-02-04",
-   "kind": "earnings",
    "ticker": "LFST",
    "name": "LifeStance Health Group, Inc.",
    "label": "LFST · quarterly report expected",
@@ -13637,17 +13450,6 @@
    "detail": "period ends 2026-12-30 · filed 36 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.015528,
-   "days": 76
-  },
-  {
-   "date": "2027-02-04",
-   "kind": "earnings",
-   "ticker": "KLIC",
-   "name": "KULICKE & SOFFA INDUSTRIES INC",
-   "label": "KLIC · quarterly report expected",
-   "detail": "period ends 2027-01-02 · filed 33 days after quarter end, historically",
-   "basis": "expected",
-   "weight": 0.005496,
    "days": 76
   },
   {
@@ -16238,17 +16040,6 @@
   {
    "date": "2027-02-09",
    "kind": "earnings",
-   "ticker": "ACM",
-   "name": "AECOM",
-   "label": "ACM · quarterly report expected",
-   "detail": "period ends 2027-01-01 · filed 39 days after quarter end, historically",
-   "basis": "expected",
-   "weight": 0.013838,
-   "days": 81
-  },
-  {
-   "date": "2027-02-09",
-   "kind": "earnings",
    "ticker": "AMTM",
    "name": "Amentum Holdings, Inc.",
    "label": "AMTM · quarterly report expected",
@@ -16643,6 +16434,28 @@
    "days": 87
   },
   {
+   "date": "2027-02-15",
+   "kind": "earnings",
+   "ticker": "ATO",
+   "name": "ATMOS ENERGY CORP",
+   "label": "ATO · Q1 report expected",
+   "detail": "period ends 2026-12-30 · filed 47 days after quarter end, historically",
+   "basis": "expected",
+   "weight": 0.039731,
+   "days": 87
+  },
+  {
+   "date": "2027-02-15",
+   "kind": "earnings",
+   "ticker": "HZO",
+   "name": "MARINEMAX INC",
+   "label": "HZO · Q1 report expected",
+   "detail": "period ends 2026-12-30 · filed 47 days after quarter end, historically",
+   "basis": "expected",
+   "weight": 0.001382,
+   "days": 87
+  },
+  {
    "date": "2027-02-16",
    "kind": "earnings",
    "ticker": "DIS",
@@ -16667,12 +16480,100 @@
   {
    "date": "2027-02-16",
    "kind": "earnings",
+   "ticker": "SANM",
+   "name": "SANMINA CORP",
+   "label": "SANM · Q1 report expected",
+   "detail": "period ends 2027-01-02 · filed 45 days after quarter end, historically",
+   "basis": "expected",
+   "weight": 0.010333,
+   "days": 88
+  },
+  {
+   "date": "2027-02-16",
+   "kind": "earnings",
+   "ticker": "TTEK",
+   "name": "TETRA TECH INC",
+   "label": "TTEK · Q1 report expected",
+   "detail": "period ends 2026-12-27 · filed 51 days after quarter end, historically",
+   "basis": "expected",
+   "weight": 0.016948,
+   "days": 88
+  },
+  {
+   "date": "2027-02-16",
+   "kind": "earnings",
+   "ticker": "FFIV",
+   "name": "F5, INC.",
+   "label": "FFIV · Q1 report expected",
+   "detail": "period ends 2026-12-30 · filed 48 days after quarter end, historically",
+   "basis": "expected",
+   "weight": 0.023785,
+   "days": 88
+  },
+  {
+   "date": "2027-02-16",
+   "kind": "earnings",
+   "ticker": "ENR",
+   "name": "ENERGIZER HOLDINGS, INC.",
+   "label": "ENR · Q1 report expected",
+   "detail": "period ends 2026-12-30 · filed 48 days after quarter end, historically",
+   "basis": "expected",
+   "weight": 0.002169,
+   "days": 88
+  },
+  {
+   "date": "2027-02-16",
+   "kind": "earnings",
+   "ticker": "GFF",
+   "name": "GRIFFON CORP",
+   "label": "GFF · Q1 report expected",
+   "detail": "period ends 2026-12-30 · filed 48 days after quarter end, historically",
+   "basis": "expected",
+   "weight": 0.007431,
+   "days": 88
+  },
+  {
+   "date": "2027-02-16",
+   "kind": "earnings",
+   "ticker": "SR",
+   "name": "SPIRE INC",
+   "label": "SR · Q1 report expected",
+   "detail": "period ends 2026-12-30 · filed 48 days after quarter end, historically",
+   "basis": "expected",
+   "weight": 0.007183,
+   "days": 88
+  },
+  {
+   "date": "2027-02-16",
+   "kind": "earnings",
    "ticker": "LZB",
    "name": "LA-Z-BOY INC",
    "label": "LZB · quarterly report expected",
    "detail": "period ends 2027-01-23 · filed 24 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.002287,
+   "days": 88
+  },
+  {
+   "date": "2027-02-16",
+   "kind": "earnings",
+   "ticker": "DLB",
+   "name": "Dolby Laboratories, Inc.",
+   "label": "DLB · Q1 report expected",
+   "detail": "period ends 2026-12-25 · filed 53 days after quarter end, historically",
+   "basis": "expected",
+   "weight": 0.005868,
+   "days": 88
+  },
+  {
+   "date": "2027-02-16",
+   "kind": "earnings",
+   "ticker": "POWL",
+   "name": "POWELL INDUSTRIES INC",
+   "label": "POWL · Q1 report expected",
+   "detail": "period ends 2026-12-30 · filed 48 days after quarter end, historically",
+   "basis": "expected",
+   "weight": 0.006315,
    "days": 88
   },
   {
@@ -16700,12 +16601,67 @@
   {
    "date": "2027-02-17",
    "kind": "earnings",
+   "ticker": "ACM",
+   "name": "AECOM",
+   "label": "ACM · Q1 report expected",
+   "detail": "period ends 2027-01-01 · filed 47 days after quarter end, historically",
+   "basis": "expected",
+   "weight": 0.013838,
+   "days": 89
+  },
+  {
+   "date": "2027-02-17",
+   "kind": "earnings",
    "ticker": "ADI",
    "name": "ANALOG DEVICES INC",
    "label": "ADI · quarterly report expected",
    "detail": "period ends 2027-01-30 · filed 18 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.257213,
+   "days": 89
+  },
+  {
+   "date": "2027-02-17",
+   "kind": "earnings",
+   "ticker": "GEF",
+   "name": "GREIF, INC",
+   "label": "GEF · Q1 report expected",
+   "detail": "period ends 2026-12-30 · filed 49 days after quarter end, historically",
+   "basis": "expected",
+   "weight": 0.002102,
+   "days": 89
+  },
+  {
+   "date": "2027-02-17",
+   "kind": "earnings",
+   "ticker": "SONO",
+   "name": "Sonos Inc",
+   "label": "SONO · Q1 report expected",
+   "detail": "period ends 2027-01-02 · filed 46 days after quarter end, historically",
+   "basis": "expected",
+   "weight": 0.003124,
+   "days": 89
+  },
+  {
+   "date": "2027-02-17",
+   "kind": "earnings",
+   "ticker": "MWA",
+   "name": "Mueller Water Products, Inc.",
+   "label": "MWA · Q1 report expected",
+   "detail": "period ends 2026-12-30 · filed 49 days after quarter end, historically",
+   "basis": "expected",
+   "weight": 0.007399,
+   "days": 89
+  },
+  {
+   "date": "2027-02-17",
+   "kind": "earnings",
+   "ticker": "WAFD",
+   "name": "WAFD INC",
+   "label": "WAFD · Q1 report expected",
+   "detail": "period ends 2026-12-30 · filed 49 days after quarter end, historically",
+   "basis": "expected",
+   "weight": 0.0034,
    "days": 89
   },
   {
@@ -16722,12 +16678,56 @@
   {
    "date": "2027-02-18",
    "kind": "earnings",
+   "ticker": "APD",
+   "name": "Air Products & Chemicals, Inc.",
+   "label": "APD · Q1 report expected",
+   "detail": "period ends 2026-12-30 · filed 50 days after quarter end, historically",
+   "basis": "expected",
+   "weight": 0.103521,
+   "days": 90
+  },
+  {
+   "date": "2027-02-18",
+   "kind": "earnings",
+   "ticker": "PANW",
+   "name": "Palo Alto Networks Inc",
+   "label": "PANW · quarterly report expected",
+   "detail": "period ends 2027-01-30 · filed 19 days after quarter end, historically",
+   "basis": "expected",
+   "weight": 0.370245,
+   "days": 90
+  },
+  {
+   "date": "2027-02-18",
+   "kind": "earnings",
+   "ticker": "WMG",
+   "name": "Warner Music Group Corp.",
+   "label": "WMG · Q1 report expected",
+   "detail": "period ends 2026-12-30 · filed 50 days after quarter end, historically",
+   "basis": "expected",
+   "weight": 0.006832,
+   "days": 90
+  },
+  {
+   "date": "2027-02-18",
+   "kind": "earnings",
    "ticker": "NDSN",
    "name": "NORDSON CORP",
    "label": "NDSN · quarterly report expected",
    "detail": "period ends 2027-01-29 · filed 20 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.024277,
+   "days": 90
+  },
+  {
+   "date": "2027-02-18",
+   "kind": "earnings",
+   "ticker": "KLIC",
+   "name": "KULICKE & SOFFA INDUSTRIES INC",
+   "label": "KLIC · Q1 report expected",
+   "detail": "period ends 2027-01-02 · filed 47 days after quarter end, historically",
+   "basis": "expected",
+   "weight": 0.005496,
    "days": 90
   }
  ]

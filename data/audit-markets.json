@@ -1,5 +1,5 @@
 {
- "checked": "2026-11-19T04:00:07.178Z",
+ "checked": "2026-11-19T17:53:00.964Z",
  "markets": {
   "us": {
    "name": "US",
@@ -8,7 +8,7 @@
     {
      "check": "market cap vs price × shares",
      "severity": "warn",
-     "count": 47,
+     "count": 57,
      "detail": "A share class Nasdaq capitalises but the filing does not count"
     },
     {
@@ -67,17 +67,17 @@
     }
    ],
    "fail": 0,
-   "warn": 47,
+   "warn": 57,
    "examples": {
     "market cap vs price × shares": [
-     "HUM (-8.3%)",
-     "TJX (9.2%)",
-     "UAL (-8.9%)",
-     "ADBE (-8.8%)",
-     "CTSH (-9.0%)",
-     "DKS (8.3%)",
-     "LDOS (8.2%)",
-     "AFL (-8.7%)"
+     "GM (-8.0%)",
+     "PSX (8.9%)",
+     "INTC (8.3%)",
+     "ABG (-9.0%)",
+     "LDOS (8.6%)",
+     "AFL (-8.3%)",
+     "BALL (-8.1%)",
+     "STX (8.7%)"
     ]
    },
    "coverage": {
@@ -184,12 +184,6 @@
     {
      "check": "market cap vs Naver",
      "severity": "warn",
-     "count": 1,
-     "detail": "No Naver cap feed on disk — the independent cross-check was skipped"
-    },
-    {
-     "check": "market cap vs Naver",
-     "severity": "warn",
      "count": 0,
      "detail": "A split or a stale print since the cap was read"
     },
@@ -237,20 +231,17 @@
     }
    ],
    "fail": 0,
-   "warn": 238,
+   "warn": 237,
    "examples": {
-    "market cap vs Naver": [
-     "—"
-    ],
     "share count differs from the filing": [
      "032830 (filing 179,574,779 → listed 200,000,000)",
-     "068270 (filing 218,613,124 → listed 232,129,157)",
-     "034730 (filing 55,086,352 → listed 72,502,736)",
-     "000810 (filing 39,828,296 → listed 44,647,398)",
+     "068270 (filing 218,613,124 → listed 232,129,138)",
+     "034730 (filing 55,086,352 → listed 72,502,610)",
+     "000810 (filing 39,828,296 → listed 44,647,538)",
      "010120 (filing 29,738,491 → listed 150,000,000)",
-     "006800 (filing 436,049,860 → listed 543,022,113)",
-     "005830 (filing 60,643,469 → listed 65,500,297)",
-     "267250 (filing 70,668,430 → listed 78,993,289)"
+     "005830 (filing 60,643,469 → listed 65,500,296)",
+     "006800 (filing 436,049,860 → listed 543,019,704)",
+     "267250 (filing 70,668,430 → listed 78,993,255)"
     ]
    },
    "coverage": {
@@ -261,10 +252,10 @@
     "peFY": 92,
     "pb": 724,
     "roe": 723,
-    "naverMatched": 0
+    "naverMatched": 728
    }
   }
  },
  "failures": 0,
- "warnings": 315
+ "warnings": 324
 }
