@@ -18,6 +18,7 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const FILE = join(ROOT, 'data', 'off-index.json');
 const DRY = process.argv.includes('--dry');
 const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36';
+const SEC_UA = process.env.SEC_UA || 'MarlonWatchtower/1.0 (marlonbenedicttan@gmail.com)';
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 // Curated facts. `listedAt`, `ipoPrice` and `why` do not come from a price feed: they come from the
@@ -25,23 +26,38 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const BASE = [
   {
     ticker: 'SPCX', cik: '1181412', name: 'SpaceX', legalName: 'Space Exploration Technologies Corp.',
-    listedAt: '2026-06-12', ipoPrice: 135,
+    listedAt: '2026-06-12', ipoPrice: 135, exchange: 'NASDAQ',
     why: 'Listed 12 Jun 2026 · not an index constituent yet',
   },
   {
     ticker: 'ANT', cik: '2130357', name: 'Anthropic', legalName: 'Anthropic, PBC',
-    listedAt: '2026-11-19', ipoPrice: 83,
+    listedAt: '2026-11-19', ipoPrice: 83, exchange: 'NASDAQ',
     why: 'Listed 19 Nov 2026 · not an index constituent yet',
   },
   {
     ticker: 'CBRS', cik: '2021728', name: 'Cerebras Systems', legalName: 'Cerebras Systems Inc.',
-    listedAt: '2026-05-14', ipoPrice: 185,
+    listedAt: '2026-05-14', ipoPrice: 185, exchange: 'NASDAQ',
     why: 'Listed 14 May 2026 · not an index constituent yet',
   },
   {
     ticker: 'CRWV', cik: '1769628', name: 'CoreWeave', legalName: 'CoreWeave, Inc.',
-    listedAt: '2025-03-28', ipoPrice: 40,
+    listedAt: '2025-03-28', ipoPrice: 40, exchange: 'NASDAQ',
     why: 'Listed 28 Mar 2025 · not an index constituent yet',
+  },
+  {
+    ticker: 'CRCL', cik: '1876042', name: 'Circle Internet Group', legalName: 'Circle Internet Group, Inc.',
+    listedAt: '2025-06-05', ipoPrice: 31, exchange: 'NYSE',
+    why: 'Listed 05 Jun 2025 · not an index constituent yet',
+  },
+  {
+    ticker: 'CHYM', cik: '1795586', name: 'Chime Financial', legalName: 'Chime Financial, Inc.',
+    listedAt: '2025-06-12', ipoPrice: 27, exchange: 'NASDAQ',
+    why: 'Listed 12 Jun 2025 · not an index constituent yet',
+  },
+  {
+    ticker: 'FIG', cik: '1579878', name: 'Figma', legalName: 'Figma, Inc.',
+    listedAt: '2025-07-31', ipoPrice: 33, exchange: 'NYSE',
+    why: 'Listed 31 Jul 2025 · not an index constituent yet',
   },
 ];
 
@@ -114,6 +130,13 @@ const out = [];
 
 for (const base of BASE) {
   const q = await quote(base.ticker);
+  // The vendor's range lags an intraday move (a stock can print below yesterday's low before the
+  // range updates), so widen it to the price we are about to store. Then the file is always
+  // internally true: the price sits inside the range printed beside it.
+  if (q && q.price) {
+    if (q.wk52Low != null) q.wk52Low = Math.min(q.wk52Low, q.price);
+    if (q.wk52High != null) q.wk52High = Math.max(q.wk52High, q.price);
+  }
   if (!q || !q.price) {
     // Never drop a name because a vendor blinked: keep yesterday's row and say so.
     const kept = prevBy.get(base.ticker);
@@ -132,7 +155,7 @@ for (const base of BASE) {
   out.push({
     ...base,
     market: 'us',
-    exchange: 'NASDAQ',
+    currency: 'USD',
     price: q.price,
     priceDate: new Date().toISOString().slice(0, 10),
     prevClose: q.prevClose,

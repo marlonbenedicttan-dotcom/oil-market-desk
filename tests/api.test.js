@@ -1286,7 +1286,7 @@ test('off-index names rank by market cap and stay out of the index totals', asyn
   const ranked = await (await fetch(`http://localhost:${PORT}/api/global-companies?sort=cap&limit=200`)).json();
   const offRows = ranked.rows.filter((r) => r.off);
   assert.ok(offRows.length >= 1, 'they appear in the default (all) screener');
-  assert.ok(offRows.every((r) => r.t && r.cap > 0 && r.why), 'a row carries its ticker, cap and the reason it is off-index');
+  assert.ok(offRows.every((r) => r.t && r.cap > 0 && r.why && r.listedAt), 'a row carries its ticker, cap, listing date and the reason it is off-index');
   // Ranked by cap: the page is descending, so the neighbours must not be smaller.
   const i = ranked.rows.findIndex((r) => r.off);
   assert.ok(i < 0 || i === ranked.rows.length - 1 || ranked.rows[i].cap >= ranked.rows[i + 1].cap,

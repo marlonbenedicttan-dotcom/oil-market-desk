@@ -10799,7 +10799,7 @@ const GB_FLAG = { us: '🇺🇸', jp: '🇯🇵', kr: '🇰🇷', tw: '🇹🇼'
 // Brighter than the old muted set: the mix bar and the map have to read at a glance on a dark panel.
 const GB_COLORS = { us: '#5aa2ff', jp: '#ff5c5c', kr: '#2fd4c4', tw: '#ffc233', hk: '#ff6b5e', au: '#8fd14f', in: '#ff9b52', id: '#ff4d6d', br: '#3ddc84', za: '#ffd54a' };
 let gbMSort = 'cap', gbTopTab = 'cap', gbScrSort = 'cap', gbScrLimit = 50, gbScrPage = 1;
-let gbScr = { market: 'all', sector: 'all', peMax: 0, roeMin: '', capMin: 0, ytdMin: '', q: '', pePctMax: 0, filingsOnly: false };
+let gbScr = { market: 'all', sector: 'all', peMax: 0, roeMin: '', capMin: 0, ytdMin: '', q: '', pePctMax: 0, filingsOnly: false, universe: 'all' };
 const gbPagerHtml = (total, page, per, attr) => {
   const pages = Math.max(1, Math.ceil(total / per));
   const p = Math.min(Math.max(1, page), pages);
@@ -11122,6 +11122,7 @@ function gbScreenerShell(home) {
   return `<section class="gb-card" id="gb-screener">
     <div class="gb-head"><span class="t">GLOBAL SCREENER</span><span class="s" id="gb-scr-count"></span></div>
     <div class="gb-filters">
+      <select id="gb-f-universe" aria-label="Filter by universe"><option value="all">All companies</option><option value="index">Index members only</option><option value="off">Off-index only</option></select>
       <select id="gb-f-market" aria-label="Filter by market"><option value="all">All markets</option>${home.markets.map((m) => `<option value="${esc(m.id)}">${GB_FLAG[m.id] || ''} ${esc(m.label)}</option>`).join('')}</select>
       <select id="gb-f-sector" aria-label="Filter by sector"><option value="all">All sectors</option></select>
       <select id="gb-f-pe" aria-label="Filter by trailing P/E"><option value="0">P/E any</option><option value="10">P/E &lt; 10</option><option value="15">P/E &lt; 15</option><option value="20">P/E &lt; 20</option><option value="30">P/E &lt; 30</option></select>
@@ -11139,6 +11140,7 @@ function gbScreenerShell(home) {
 async function gbLoadScreener() {
   const seq = ++gbScrSeq;
   const p = new URLSearchParams({
+    universe: gbScr.universe || 'all',
     market: gbScr.market, sector: gbScr.sector,
     peMax: String(gbScr.peMax || 0),
     roeMin: gbScr.roeMin === '' ? '' : String(gbScr.roeMin),
@@ -11187,7 +11189,7 @@ function gbRenderScreener() {
 // The HOME screener's COMPANIES mode uses the same global company set as the GLOBAL board, with its
 // own controls/state. Keeping it separate from the GLOBAL instance avoids duplicate DOM ids while
 // giving the home screen the cross-market screener instead of the old market-by-market table.
-let hmScr = { market: 'all', sector: 'all', peMax: 0, roeMin: '', capMin: 0, ytdMin: '', q: '', pePctMax: 0, filingsOnly: false };
+let hmScr = { market: 'all', sector: 'all', peMax: 0, roeMin: '', capMin: 0, ytdMin: '', q: '', pePctMax: 0, filingsOnly: false, universe: 'all' };
 let hmScrOff = 0, hmScrRows = [], hmScrTotal = 0, hmScrSort = 'cap', hmScrLimit = 50, hmScrPage = 1, hmScrSeq = 0, hmSectorsLoaded = false, hmQTimer = 0;
 const HM_MARKETS = [
   ['us', 'United States'], ['jp', 'Japan'], ['kr', 'Korea'], ['tw', 'Taiwan'], ['hk', 'Hong Kong'],
@@ -11197,6 +11199,7 @@ function hmScreenerShell() {
   return `<div class="hm-screen">
     <div class="sc-bar">${screenModeHtml()}</div>
     <div class="gb-filters">
+      <select id="hm-f-universe" aria-label="Filter by universe"><option value="all">All companies</option><option value="index">Index members only</option><option value="off">Off-index only</option></select>
       <select id="hm-f-market" aria-label="Filter by market"><option value="all">All markets</option>${HM_MARKETS.map(([id, label]) => `<option value="${id}">${GB_FLAG[id] || ''} ${esc(label)}</option>`).join('')}</select>
       <select id="hm-f-sector" aria-label="Filter by sector"><option value="all">All sectors</option></select>
       <select id="hm-f-pe" aria-label="Filter by trailing P/E"><option value="0">P/E any</option><option value="10">P/E &lt; 10</option><option value="15">P/E &lt; 15</option><option value="20">P/E &lt; 20</option><option value="30">P/E &lt; 30</option></select>
@@ -11212,6 +11215,7 @@ function hmScreenerShell() {
 }
 function hmSyncFilterUi() {
   const set = (id, v) => { const el = $(id); if (el) el.value = v; };
+  set('hm-f-universe', hmScr.universe || 'all');
   set('hm-f-market', hmScr.market);
   set('hm-f-sector', hmScr.sector);
   set('hm-f-pe', String(hmScr.peMax || 0));
@@ -11235,6 +11239,7 @@ function hmSyncActiveFilters() {
 async function hmLoadScreener() {
   const seq = ++hmScrSeq;
   const p = new URLSearchParams({
+    universe: hmScr.universe || 'all',
     market: hmScr.market, sector: hmScr.sector,
     peMax: String(hmScr.peMax || 0),
     roeMin: hmScr.roeMin === '' ? '' : String(hmScr.roeMin),
@@ -11277,6 +11282,7 @@ function hmRenderScreener() {
 function hmBindFilters() {
   const read = () => {
     hmScr = {
+      universe: $('hm-f-universe')?.value || 'all',
       market: $('hm-f-market')?.value || 'all',
       sector: $('hm-f-sector')?.value || 'all',
       peMax: Number($('hm-f-pe')?.value) || 0,
@@ -11291,7 +11297,7 @@ function hmBindFilters() {
     hmSyncActiveFilters();
     hmLoadScreener();
   };
-  ['hm-f-market', 'hm-f-sector', 'hm-f-pe', 'hm-f-roe', 'hm-f-cap', 'hm-f-ytd'].forEach((id) => $(id)?.addEventListener('change', read));
+  ['hm-f-universe', 'hm-f-market', 'hm-f-sector', 'hm-f-pe', 'hm-f-roe', 'hm-f-cap', 'hm-f-ytd'].forEach((id) => $(id)?.addEventListener('change', read));
   $('hm-f-q')?.addEventListener('input', () => { clearTimeout(hmQTimer); hmQTimer = setTimeout(read, 300); });
 }
 
@@ -11305,7 +11311,7 @@ async function gbLoadTop() {
   const d = await jget('/api/global-companies?' + p.toString(), 120000).catch(() => null);
   if (!d) return;
   const el = $('gb-top'); if (!el) return;
-  el.innerHTML = (d.rows || []).map((r) => `<div class="gb-trow" tabindex="0" role="button" data-gb-company="${esc(r.m)}:${esc(r.id)}"><span class="tk">${esc(String(r.t).slice(0, 2))}</span><span><span class="n">${esc(r.n)}</span><span class="s">${esc(r.s)} · ${esc(String(r.m).toUpperCase())}</span></span><span class="num">${gbCap(r.cap)}</span><span class="num">${r.pe == null ? '—' : r.pe.toFixed(1) + '×'}</span><span class="num ${cls(r.ytd)}">${r.ytd == null ? '—' : pctf(r.ytd)}</span></div>`).join('');
+  el.innerHTML = (d.rows || []).map((r) => `<div class="gb-trow" tabindex="0" role="button" data-gb-company="${esc(r.m)}:${esc(r.id)}"><span class="tk">${esc(String(r.t).slice(0, 2))}</span><span><span class="n">${esc(r.n)}${offTag(r)}</span><span class="s">${esc(r.s)} · ${esc(String(r.m).toUpperCase())}</span></span><span class="num">${gbCap(r.cap)}</span><span class="num">${r.pe == null ? '—' : r.pe.toFixed(1) + '×'}</span><span class="num ${cls(r.ytd)}">${r.ytd == null ? '—' : pctf(r.ytd)}</span></div>`).join('');
 }
 
 function gbTheme() {
@@ -11336,6 +11342,7 @@ function gbIdeas(home) {
 
 function gbSyncFilterUi() {
   const set = (id, v) => { const el = $(id); if (el) el.value = v; };
+  set('gb-f-universe', gbScr.universe || 'all');
   set('gb-f-market', gbScr.market);
   set('gb-f-sector', gbScr.sector);
   set('gb-f-pe', String(gbScr.peMax || 0));
@@ -11361,6 +11368,7 @@ function gbSyncActiveFilters() {
 function gbBindFilters() {
   const read = () => {
     gbScr = {
+      universe: $('gb-f-universe')?.value || 'all',
       market: $('gb-f-market')?.value || 'all',
       sector: $('gb-f-sector')?.value || 'all',
       peMax: Number($('gb-f-pe')?.value) || 0,
@@ -11375,12 +11383,12 @@ function gbBindFilters() {
     gbSyncActiveFilters();
     gbLoadScreener();
   };
-  ['gb-f-market', 'gb-f-sector', 'gb-f-pe', 'gb-f-roe', 'gb-f-cap', 'gb-f-ytd'].forEach((id) => $(id)?.addEventListener('change', read));
+  ['gb-f-universe', 'gb-f-market', 'gb-f-sector', 'gb-f-pe', 'gb-f-roe', 'gb-f-cap', 'gb-f-ytd'].forEach((id) => $(id)?.addEventListener('change', read));
   $('gb-f-q')?.addEventListener('input', () => { clearTimeout(gbQTimer); gbQTimer = setTimeout(read, 300); });
 }
 
 function gbApplyIdea(kind) {
-  gbScr = { market: 'all', sector: 'all', peMax: 0, roeMin: '', capMin: 0, ytdMin: '', q: '', pePctMax: 0, filingsOnly: false };
+  gbScr = { market: 'all', sector: 'all', peMax: 0, roeMin: '', capMin: 0, ytdMin: '', q: '', pePctMax: 0, filingsOnly: false, universe: 'all' };
   gbScrLimit = 50; gbScrPage = 1;
   if (kind === 'cheap') { gbScr.pePctMax = 20; gbScrSort = 'pe'; }
   else if (kind === 'quality') { gbScr.roeMin = '15'; gbScr.peMax = 20; gbScrSort = 'roe'; }
@@ -11404,7 +11412,7 @@ function hmApplyIdea(kind) {
 }
 
 function gbClearAll() {
-  gbScr = { market: 'all', sector: 'all', peMax: 0, roeMin: '', capMin: 0, ytdMin: '', q: '', pePctMax: 0, filingsOnly: false };
+  gbScr = { market: 'all', sector: 'all', peMax: 0, roeMin: '', capMin: 0, ytdMin: '', q: '', pePctMax: 0, filingsOnly: false, universe: 'all' };
   gbScrLimit = 50; gbScrPage = 1; gbScrSort = 'cap';
   gbSyncFilterUi();
   gbSyncActiveFilters();
@@ -11443,7 +11451,7 @@ async function renderGlobalBoard(token) {
   if (stale(token)) return;
   if (!home || !Array.isArray(home.markets) || !home.markets.length) { el.innerHTML = stError('Couldn’t load the global board — retrying.'); return; }
   globalBoardData = home; globalThemesData = themes; gbIndexData = mi;
-  gbScr = { market: 'all', sector: 'all', peMax: 0, roeMin: '', capMin: 0, ytdMin: '', q: '', pePctMax: 0, filingsOnly: false };
+  gbScr = { market: 'all', sector: 'all', peMax: 0, roeMin: '', capMin: 0, ytdMin: '', q: '', pePctMax: 0, filingsOnly: false, universe: 'all' };
   gbScrLimit = 50; gbScrPage = 1; gbScrSort = 'cap'; gbSectorsLoaded = false;
   if (themes && themes.themes && !themes.themes.some((t) => t.id === globalThemeSel)) globalThemeSel = themes.themes[0]?.id || 'ai';
   const sub = $('deals-sub');

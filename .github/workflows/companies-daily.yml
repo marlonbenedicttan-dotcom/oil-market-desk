@@ -93,6 +93,17 @@ jobs:
       # the store carries every kept session and its source stamp matches the committed data.
       - name: Rebuild the chart stores after the final merge
         run: node scripts/build-chart-store.mjs us kr
+      # The listed-but-not-index names (SpaceX, Anthropic, Circle, …). Refresh from Nasdaq, then audit
+      # the file against EDGAR + the tape; a failed audit keeps the previous file rather than
+      # publishing a number nothing can stand behind.
+      - name: Refresh and audit the off-index names
+        run: |
+          cp data/off-index.json /tmp/off-index.prev.json 2>/dev/null || true
+          node scripts/refresh-off-index.mjs
+          if ! node scripts/audit-off-index.mjs; then
+            echo "::warning::off-index refresh failed its audit — keeping the previous file"
+            cp /tmp/off-index.prev.json data/off-index.json 2>/dev/null || true
+          fi
       - name: Calendar events
         run: node scripts/build-events.mjs
       - name: Re-apply recorded restatements
@@ -135,7 +146,7 @@ jobs:
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email 'github-actions[bot]@users.noreply.github.com'
-          git add data/companies.json data/us-profiles.json data/korea.json data/korea-list.json data/korea-universe.json data/korea-companies data/korea-profiles.json data/valuation.json data/events.json data/reconciliation.json data/invariants.json data/filings-state.json data/filings-changed.json data/snapshot.json data/us-charts.json data/audit-markets.json data/data-quality.json data/charts data/regime-seed.json data/risk-seed.json 2>/dev/null || true
+          git add data/off-index.json data/companies.json data/us-profiles.json data/korea.json data/korea-list.json data/korea-universe.json data/korea-companies data/korea-profiles.json data/valuation.json data/events.json data/reconciliation.json data/invariants.json data/filings-state.json data/filings-changed.json data/snapshot.json data/us-charts.json data/audit-markets.json data/data-quality.json data/charts data/regime-seed.json data/risk-seed.json 2>/dev/null || true
           if git diff --staged --quiet; then
             echo 'no data change'
           else
