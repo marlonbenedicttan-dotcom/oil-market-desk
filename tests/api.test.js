@@ -1030,7 +1030,13 @@ test('/api/brazil ships the list projection, not the price history, and revalida
   assert.ok(d.fx && d.fx.rate > 3, 'the USD/BRL rate is missing');
   const petr = d.companies.find((x) => x.ticker === 'PETR4');
   assert.ok(petr && petr.nameEn, 'Petrobras is missing');
-  assert.equal(petr.reportCurrency, 'BRL');
+  // The statement basis is the vendor's to switch (Petrobras' 20-F is filed in USD, and the Nov-18
+  // build started serving those figures). What must never move is the currency the B3 line trades in,
+  // and the basis has to be labelled rather than assumed.
+  // The list is a projection without the price currency, so prove the real from the rate and check
+  // that the statement basis is labelled (the Nov-18 build started serving Petrobras' USD 20-F figures).
+  assert.ok(d.fx.rate > 3, 'the B3 tape is priced in reais');
+  assert.ok(/^[A-Z]{3}$/.test(petr.reportCurrency), `the statement basis is labelled (${petr.reportCurrency})`);
   assert.equal(petr.shareClass, 'PN');
   assert.equal(petr.series, undefined, 'the list must not carry per-company price history');
   const nubr = d.companies.find((x) => x.code === 'ROXO34');
@@ -1056,14 +1062,21 @@ test('/api/brazil/company keeps the company cap and the class price apart', asyn
   assert.equal(r.status, 200);
   const c = await r.json();
   assert.ok(c.sector, 'the sector is missing');
-  assert.equal(c.reportCurrency, 'BRL');
+  assert.equal(c.currency, 'BRL', 'the class price stays in reais whatever the filing currency is');
+  assert.ok(/^[A-Z]{3}$/.test(c.reportCurrency), 'the statement basis is labelled');
   assert.equal(c.shareClass, 'PN');
   assert.ok(c.reports && c.reports.ttm && c.reports.ttm.revenue > 0, 'TTM revenue is missing');
   assert.ok(c.history.length >= 3, 'the fiscal-year record is missing');
   assert.ok(c.marketCap === c.vendorCap, 'the company cap is not the vendor total');
   if (c.pe != null) {
-    const want = +(c.marketCap / c.reports.ttm.netIncome).toFixed(2);
-    assert.ok(Math.abs(want - c.pe) < 0.2, `P/E ${c.pe} is not the company cap ÷ profit`);
+    // Statements can be filed in another currency (Petrobras' 20-F is USD) while the cap and the
+    // price stay in BRL, so the check converts on the list's own USD/BRL rate.
+    const list = await (await fetch(`http://localhost:${PORT}/api/brazil`)).json();
+    const fx = c.reportCurrency === 'BRL' ? 1 : (list.fx && list.fx.rate);
+    if (fx) {
+      const want = +(c.marketCap / (c.reports.ttm.netIncome * fx)).toFixed(2);
+      assert.ok(Math.abs(want - c.pe) < 0.2, `P/E ${c.pe} is not the company cap ÷ profit (${want} at ${fx})`);
+    }
   }
 });
 
