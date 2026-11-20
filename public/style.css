@@ -4678,6 +4678,15 @@ body{padding-bottom:27px}
 .home-mkt { position: relative; }
 .home-mkt:hover, .home-mkt:focus-visible { background: var(--panel2); box-shadow: inset 0 0 0 1px var(--signal); }
 
+/* The screener ranks off-index names (listed, not index members) beside the index members by market
+   cap; this tag is the only thing that tells the two universes apart in a row. */
+.gb-off {
+  display: inline-block; margin-left: 6px; padding: 0 4px;
+  border: 1px solid var(--line2); color: var(--amber);
+  font: 600 7px/1.6 var(--sans); font-style: normal; letter-spacing: .08em; vertical-align: 1px;
+  white-space: nowrap;
+}
+
 /* The market tabs are a row of boxes, and they read as a grid: every market the same width, across
    the whole row, ending flush with the search box. Sized by label, GLOBAL was the narrowest box and
    UNITED STATES the widest, so the row looked ragged. Equal columns need room for the longest label

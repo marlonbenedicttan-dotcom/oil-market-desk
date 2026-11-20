@@ -10807,7 +10807,7 @@ const gbPagerHtml = (total, page, per, attr) => {
     + `<span>PAGE ${p} OF ${pages}</span>`
     + `<button type="button" class="gb-more" data-${attr}="${p + 1}" ${p >= pages ? 'disabled' : ''}>NEXT PAGE →</button>`;
 };
-let gbScrRows = [], gbScrTotal = 0, gbSectorsLoaded = false, gbThemeAll = false, gbQTimer = 0, gbScrSeq = 0, gbFitTimer = 0;
+let gbScrOff = 0, gbScrRows = [], gbScrTotal = 0, gbSectorsLoaded = false, gbThemeAll = false, gbQTimer = 0, gbScrSeq = 0, gbFitTimer = 0;
 
 // The map card's height is set by the map's aspect ratio; the markets card is capped to the same
 // height so the two columns end together and the map still fills its border.
@@ -11155,24 +11155,29 @@ async function gbLoadScreener() {
     if (sel) sel.innerHTML = '<option value="all">All sectors</option>' + d.sectors.map((s) => `<option value="${esc(s)}">${esc(s)}</option>`).join('');
     gbSectorsLoaded = true;
   }
-  gbScrRows = d.rows || []; gbScrTotal = d.total || 0;
+  gbScrRows = d.rows || []; gbScrTotal = d.total || 0; gbScrOff = d.offCount || 0;
   const pages = Math.max(1, Math.ceil(gbScrTotal / gbScrLimit));
   if (gbScrPage > pages) { gbScrPage = pages; return gbLoadScreener(); }
   gbRenderScreener();
 }
 
+// The screener ranks off-index names beside index members (they are ranked by market cap like
+// everyone else); this tag is what keeps the two universes honest at a glance.
+const offTag = (r) => (r && r.off
+  ? `<em class="gb-off" title="${esc(r.why || 'Listed, not an index constituent yet')}">OFF-INDEX</em>`
+  : '');
 function gbRenderScreener() {
   const rows = gbScrRows;
   const sortable = (key, label) => `<th class="num ${gbScrSort === key ? 'on' : ''}" data-gb-sort="${key}" tabindex="0" aria-sort="${gbScrSort === key ? 'descending' : 'none'}">${label}</th>`;
   const head = `<tr><th class="gb-c-company">COMPANY</th><th class="gb-c-market">MARKET</th><th class="gb-c-sector">SECTOR</th>${sortable('cap', 'MKT CAP')}${sortable('pe', 'P/E')}${sortable('roe', 'ROE')}${sortable('ytd', 'YTD')}</tr>`;
-  const body = rows.map((r) => `<tr data-gb-company="${esc(r.m)}:${esc(r.id)}" tabindex="0" aria-label="Open ${esc(r.t)} ${esc(r.n)}"><td class="gb-c-company"><span class="gb-co" title="${esc(r.n)}">${esc(r.t)} <span class="dim">${esc(r.n)}</span></span></td><td class="gb-c-market">${GB_FLAG[r.m] || ''} ${esc(String(r.m).toUpperCase())}</td><td class="gb-c-sector"><span class="gb-sec" title="${esc(r.s)}">${esc(r.s)}</span></td><td class="num">${gbCap(r.cap)}</td><td class="num">${r.pe == null ? '—' : r.pe.toFixed(1) + '×'}</td><td class="num">${r.roe == null ? '—' : r.roe.toFixed(1) + '%'}</td><td class="num ${cls(r.ytd)}">${r.ytd == null ? '—' : pctf(r.ytd)}</td></tr>`).join('');
+  const body = rows.map((r) => `<tr data-gb-company="${esc(r.m)}:${esc(r.id)}" tabindex="0" aria-label="Open ${esc(r.t)} ${esc(r.n)}"><td class="gb-c-company"><span class="gb-co" title="${esc(r.n)}">${esc(r.t)} <span class="dim">${esc(r.n)}</span>${offTag(r)}</span></td><td class="gb-c-market">${GB_FLAG[r.m] || ''} ${esc(String(r.m).toUpperCase())}</td><td class="gb-c-sector"><span class="gb-sec" title="${esc(r.s)}">${esc(r.s)}</span></td><td class="num">${gbCap(r.cap)}</td><td class="num">${r.pe == null ? '—' : r.pe.toFixed(1) + '×'}</td><td class="num">${r.roe == null ? '—' : r.roe.toFixed(1) + '%'}</td><td class="num ${cls(r.ytd)}">${r.ytd == null ? '—' : pctf(r.ytd)}</td></tr>`).join('');
   const table = $('gb-scr-table');
   if (table) {
     table.innerHTML = rows.length
       ? `<table class="gb-table"><thead>${head}</thead><tbody>${body}</tbody></table>`
       : stEmpty(`${gbScr.filingsOnly ? 'No new US filings this week.' : gbScr.pePctMax ? 'No companies are in the bottom 20% of their own P/E history right now.' : 'No companies match these filters.'} <button type="button" class="gb-more" data-gb-clearall="1">CLEAR FILTERS</button>`);
   }
-  const count = $('gb-scr-count'); if (count) count.textContent = `${gbScrTotal.toLocaleString()} companies`;
+  const count = $('gb-scr-count'); if (count) count.textContent = `${gbScrTotal.toLocaleString()} companies${gbScrOff ? ` · ${gbScrOff} off-index` : ''}`;
   const offset = (gbScrPage - 1) * gbScrLimit;
   const note = $('gb-scr-note'); if (note) note.textContent = `${rows.length ? offset + 1 : 0}–${offset + rows.length} of ${gbScrTotal.toLocaleString()}`;
   const more = $('gb-scr-more');
@@ -11183,7 +11188,7 @@ function gbRenderScreener() {
 // own controls/state. Keeping it separate from the GLOBAL instance avoids duplicate DOM ids while
 // giving the home screen the cross-market screener instead of the old market-by-market table.
 let hmScr = { market: 'all', sector: 'all', peMax: 0, roeMin: '', capMin: 0, ytdMin: '', q: '', pePctMax: 0, filingsOnly: false };
-let hmScrRows = [], hmScrTotal = 0, hmScrSort = 'cap', hmScrLimit = 50, hmScrPage = 1, hmScrSeq = 0, hmSectorsLoaded = false, hmQTimer = 0;
+let hmScrOff = 0, hmScrRows = [], hmScrTotal = 0, hmScrSort = 'cap', hmScrLimit = 50, hmScrPage = 1, hmScrSeq = 0, hmSectorsLoaded = false, hmQTimer = 0;
 const HM_MARKETS = [
   ['us', 'United States'], ['jp', 'Japan'], ['kr', 'Korea'], ['tw', 'Taiwan'], ['hk', 'Hong Kong'],
   ['au', 'Australia'], ['in', 'India'], ['id', 'Indonesia'], ['br', 'Brazil'], ['za', 'South Africa'],
@@ -11247,7 +11252,7 @@ async function hmLoadScreener() {
     hmSectorsLoaded = true;
     hmSyncFilterUi();
   }
-  hmScrRows = d.rows || []; hmScrTotal = d.total || 0;
+  hmScrRows = d.rows || []; hmScrTotal = d.total || 0; hmScrOff = d.offCount || 0;
   const pages = Math.max(1, Math.ceil(hmScrTotal / hmScrLimit));
   if (hmScrPage > pages) { hmScrPage = pages; return hmLoadScreener(); }
   hmRenderScreener();
@@ -11256,14 +11261,14 @@ function hmRenderScreener() {
   const rows = hmScrRows;
   const sortable = (key, label) => `<th class="num ${hmScrSort === key ? 'on' : ''}" data-hm-sort="${key}" tabindex="0" aria-sort="${hmScrSort === key ? 'descending' : 'none'}">${label}</th>`;
   const head = `<tr><th class="gb-c-company">COMPANY</th><th class="gb-c-market">MARKET</th><th class="gb-c-sector">SECTOR</th>${sortable('cap', 'MKT CAP')}${sortable('pe', 'P/E')}${sortable('roe', 'ROE')}${sortable('ytd', 'YTD')}</tr>`;
-  const body = rows.map((r) => `<tr data-gb-company="${esc(r.m)}:${esc(r.id)}" tabindex="0" aria-label="Open ${esc(r.t)} ${esc(r.n)}"><td class="gb-c-company"><span class="gb-co" title="${esc(r.n)}">${esc(r.t)} <span class="dim">${esc(r.n)}</span></span></td><td class="gb-c-market">${GB_FLAG[r.m] || ''} ${esc(String(r.m).toUpperCase())}</td><td class="gb-c-sector"><span class="gb-sec" title="${esc(r.s)}">${esc(r.s)}</span></td><td class="num">${gbCap(r.cap)}</td><td class="num">${r.pe == null ? '—' : r.pe.toFixed(1) + '×'}</td><td class="num">${r.roe == null ? '—' : r.roe.toFixed(1) + '%'}</td><td class="num ${cls(r.ytd)}">${r.ytd == null ? '—' : pctf(r.ytd)}</td></tr>`).join('');
+  const body = rows.map((r) => `<tr data-gb-company="${esc(r.m)}:${esc(r.id)}" tabindex="0" aria-label="Open ${esc(r.t)} ${esc(r.n)}"><td class="gb-c-company"><span class="gb-co" title="${esc(r.n)}">${esc(r.t)} <span class="dim">${esc(r.n)}</span>${offTag(r)}</span></td><td class="gb-c-market">${GB_FLAG[r.m] || ''} ${esc(String(r.m).toUpperCase())}</td><td class="gb-c-sector"><span class="gb-sec" title="${esc(r.s)}">${esc(r.s)}</span></td><td class="num">${gbCap(r.cap)}</td><td class="num">${r.pe == null ? '—' : r.pe.toFixed(1) + '×'}</td><td class="num">${r.roe == null ? '—' : r.roe.toFixed(1) + '%'}</td><td class="num ${cls(r.ytd)}">${r.ytd == null ? '—' : pctf(r.ytd)}</td></tr>`).join('');
   const table = $('hm-scr-table');
   if (table) {
     table.innerHTML = rows.length
       ? `<table class="gb-table"><thead>${head}</thead><tbody>${body}</tbody></table>`
       : stEmpty(`${hmScr.filingsOnly ? 'No new US filings this week.' : hmScr.pePctMax ? 'No companies are in the bottom 20% of their own P/E history right now.' : 'No companies match these filters.'} <button type="button" class="gb-more" data-hm-clearall="1">CLEAR FILTERS</button>`);
   }
-  const count = $('hm-scr-count'); if (count) count.textContent = `${hmScrTotal.toLocaleString()} companies`;
+  const count = $('hm-scr-count'); if (count) count.textContent = `${hmScrTotal.toLocaleString()} companies${hmScrOff ? ` · ${hmScrOff} off-index` : ''}`;
   const offset = (hmScrPage - 1) * hmScrLimit;
   const note = $('hm-scr-note'); if (note) note.textContent = `${rows.length ? offset + 1 : 0}–${offset + rows.length} of ${hmScrTotal.toLocaleString()}`;
   const more = $('hm-scr-more');
@@ -12182,21 +12187,59 @@ function renderUsMag7(el, all, themes = usThemesList()) {
 const coDetailCache = new Map();
 async function renderCompanyPage(el, all) {
   const stub = all.find((x) => String(x.cik) === String(coCik));
-  if (!stub) { coCik = null; return renderCompanies(); }
-  prefetchCoLong(stub.ticker);
-  prefetchPeers('us:' + stub.ticker);
-  const key = String(stub.cik);
+  const key = String(coCik || '');
+  // An off-index name (SpaceX, Anthropic, …) is listed but not in the index universe, so it has no
+  // row in `all`; the API knows it and the page renders from that instead of bouncing back.
   let full = coDetailCache.get(key);
   if (!full) {
-    el.innerHTML = stLoading('Reading the filing…');
+    el.innerHTML = stLoading(stub ? 'Reading the filing\u2026' : 'Reading the quote\u2026');
     try { full = await jget(`/api/company/${encodeURIComponent(key)}`, 1800000); } catch { full = null; }
     if (full) coDetailCache.set(key, full);
   }
-  if (!full) { el.innerHTML = stError('Couldn\u2019t load this company \u2014 retrying.'); return; }
+  if (!full) { coCik = null; return renderCompanies(); }
+  if (stub) { prefetchCoLong(stub.ticker); prefetchPeers('us:' + stub.ticker); }
   return renderCompanyPageBody(el, full, all);
 }
 
+// A listed company that is not an index member has no filing-derived ratios yet, so the honest page is
+// the quote, the listing facts and the price — with the absence labelled. Rendering it through the
+// filing page filled eight tiles with dashes and claimed the company "lost money in most of the last
+// five years", which is a statement about the index dataset, not about this company.
+function renderOffIndexPage(el, c) {
+  const pct = (v) => (v == null ? '—' : `${v >= 0 ? '+' : ''}${Number(v).toFixed(2)}%`);
+  const pcls = (v) => (v == null ? '' : v >= 0 ? 'pos' : 'neg');
+  const range52 = c.wk52Low != null && c.wk52High != null ? `$${c.wk52Low.toFixed(2)} – $${c.wk52High.toFixed(2)}` : '—';
+  const tile = (k, v, sub, cl) => `<div class="co-stat"><span class="co-k">${k}</span><div class="co-v ${cl || ''}">${v}</div>${sub ? `<div class="dimtext">${sub}</div>` : ''}</div>`;
+  el.innerHTML = `<div class="ma-crumb"><button class="ma-back" data-coback="1"><span class="ma-back-i" aria-hidden="true">←</span>COMPANIES</button> <span>${esc(c.ticker)}</span><span class="mb-tag">OFF-INDEX</span></div>`
+    + `<div class="co-head">
+        ${coMono(c)}
+        <div><div class="co-name">${esc(c.name)}</div>
+        <div class="co-sub">${esc(c.ticker)} · ${esc(c.sector || '')}${c.industry ? ' · ' + esc(c.industry) : ''} · NASDAQ</div>
+        ${c.why ? `<div class="co-desc">${esc(c.why)}</div>` : ''}</div>
+      </div>
+      <div class="co-price">
+        <span class="co-price-v">${c.price != null ? '$' + c.price.toFixed(2) : '—'}</span>
+        <span class="co-price-c ${pcls(c.chg1d)}">${c.chg1d != null ? `${c.chg1d >= 0 ? '+' : ''}${c.chg1d.toFixed(2)}% today` : ''}</span>
+        <span class="co-price-c ${pcls(c.vsIpo)}">${c.vsIpo != null ? `${pct(c.vsIpo)} vs IPO` : ''}</span>
+        <span class="dimtext">${c.priceDate ? `as of ${dealDateY(c.priceDate)}` : ''} · USD</span>
+      </div>
+      <div class="co-verif">LISTED ${esc(String(c.listedAt || '').toUpperCase())} · NOT AN INDEX CONSTITUENT YET — NO FILING-DERIVED RATIOS</div>`
+    + `<div class="co-sect">LISTING</div><div class="co-stats">${[
+        tile('MARKET CAP', coMoney(c.marketCap), 'Nasdaq quote × shares outstanding'),
+        tile('VS IPO', pct(c.vsIpo), `IPO price $${c.ipoPrice != null ? c.ipoPrice : '—'}`, pcls(c.vsIpo)),
+        tile('52-WEEK RANGE', range52),
+        tile('LISTED', dealDateY(c.listedAt)),
+      ].join('')}</div>`
+    + `<div class="co-ranges">${['1m', '3m', '6m', 'ytd', '1y', '5y', '10y'].map((r) => `<button class="ma-chip${coRange === r ? ' on' : ''}" data-corange="${r}">${r.toUpperCase()}</button>`).join('')}</div>
+      <div class="co-rets" id="co-rets"></div>
+      <div class="co-chartwrap"><div class="co-canvas"><div class="co-big" id="co-big"></div><canvas id="co-chart"></canvas></div></div>`
+    + `<div class="macro-note">Listed ${dealDateY(c.listedAt)}; not a constituent of the indexes this desk covers, so it appears in the screener tagged OFF-INDEX and stays out of the index totals. Price and market cap are Nasdaq quote data; listing date and IPO price come from the 424B4. <a href="https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=${encodeURIComponent(c.cik || c.ticker)}&type=10-Q" target="_blank" rel="noopener noreferrer">filings ↗</a></div>`;
+  coTicker = c.ticker || null;
+  if (coTicker) loadCoChart(coTicker, coRange, '');
+}
+
 async function renderCompanyPageBody(el, c, all) {
+  if (c.offIndex) return renderOffIndexPage(el, c);
   // The page shows the same earnings basis as the P/E above it: trailing when we have it, else the
   // fiscal year. The five-year table below stays on reported fiscal years.
   const ni = c.netIncomeTTM != null ? c.netIncomeTTM : c.netIncome;
@@ -12220,7 +12263,7 @@ async function renderCompanyPageBody(el, c, all) {
   const series = (c.series || []).slice().sort((a, b) => a.fy - b.fy);
   const val = (v) => coMoney(v);
 
-  const tierLabel = { sp500: 'S&P 500', sp400: 'S&P 400', sp600: 'S&P 600' }[c.spTier] || usIndexLabel();
+  const tierLabel = { sp500: 'S&P 500', sp400: 'S&P 400', sp600: 'S&P 600', off: 'OFF-INDEX' }[c.spTier] || usIndexLabel();
   el.innerHTML = `<div class="ma-crumb"><button class="ma-back" data-coback="1"><span class="ma-back-i" aria-hidden="true">←</span>COMPANIES</button> <span>${esc(c.ticker || c.name)}</span><span class="mb-tag">${esc(tierLabel)}</span></div>`
     + `<div class="co-head">
         ${coMono(c)}

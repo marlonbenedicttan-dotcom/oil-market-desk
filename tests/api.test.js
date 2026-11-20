@@ -604,7 +604,8 @@ test('/api/history carries 1D/1W/1M/YTD/1Y deltas per instrument', async () => {
 test('/api/home idea counts and the screener use the same universe', async () => {
   const home = await (await fetch(`http://localhost:${PORT}/api/home`)).json();
   const total = await (await fetch(`http://localhost:${PORT}/api/global-companies?limit=1`)).json();
-  assert.equal(total.total, home.companies, 'the home header count is the screener universe');
+  assert.equal(total.total, home.companies + home.offIndex.count,
+    'the screener is the index universe plus the listed names that are not members yet');
   const cheap = await (await fetch(`http://localhost:${PORT}/api/global-companies?limit=1&pePctMax=20`)).json();
   assert.equal(cheap.total, home.ideas.cheap, 'the cheap card opens exactly its own count');
   const quality = await (await fetch(`http://localhost:${PORT}/api/global-companies?limit=1&roeMin=15&peMax=20`)).json();
@@ -618,10 +619,25 @@ test('the 6M history window matches /api/range and the READ prose', async () => 
   assert.ok(h.dates.length > 100, 'six months of daily points, not the old 120-point trim');
   const days = (Date.parse(h.dates[h.dates.length - 1]) - Date.parse(h.dates[0])) / 864e5;
   assert.ok(days >= 175 && days <= 190, `the window is six months (got ${days.toFixed(1)} days)`);
+  // The two windows are requested from the same vendor but with different flags: /api/history anchors
+  // six calendar months back, /api/range asks for Yahoo's own 6mo window, so the first bar can be a
+  // trading day earlier (and one day of oil is worth >1%). The real claim is that they are the same
+  // series, so compare point for point where they overlap instead of comparing two window returns.
+  const range = await (await fetch(`http://localhost:${PORT}/api/range?id=wti&range=6m`)).json();
+  const hBy = new Map(h.dates.map((d, i) => [d, h.series.wti.paper[i]]));
+  const live = h.dates[h.dates.length - 1];   // the newest bar is a live print and moves between calls
+  let shared = 0;
+  for (let i = 0; i < range.dates.length; i++) {
+    if (range.dates[i] === live) continue;
+    const hv = hBy.get(range.dates[i]);
+    const rv = range.series.paper[i];
+    if (hv == null || rv == null) continue;
+    assert.ok(Math.abs(hv - rv) < 0.01, `history and /api/range disagree on ${range.dates[i]}`);
+    shared++;
+  }
+  assert.ok(shared > 100, `the two windows share one series (${shared} points)`);
   const vals = h.series.wti.paper.filter((v) => v != null);
   const six = ((vals[vals.length - 1] / vals[0]) - 1) * 100;
-  const range = await (await fetch(`http://localhost:${PORT}/api/range?id=wti&range=6m`)).json();
-  assert.ok(Math.abs(six - range.summary.paper) < 0.5, `history ${six.toFixed(2)}% vs range ${range.summary.paper.toFixed(2)}%`);
   const read = await (await fetch(`http://localhost:${PORT}/api/marketread?id=crude`)).json();
   assert.ok(Math.abs(read.perf.m6 - six) < 0.5, `READ ${read.perf.m6.toFixed(2)}% vs history ${six.toFixed(2)}%`);
   assert.ok(Math.abs(read.perf.y1 - h.deltas.wti.paper.y1) < 0.2, 'the READ 1Y and the delta strip agree');
@@ -1245,4 +1261,32 @@ test('the global screener maps native sectors to one cross-market vocabulary', a
   // A saved native filter still works: the API accepts the native label as well as the global one.
   const native = await (await fetch(`http://localhost:${PORT}/api/global-companies?sector=Transportation%20Equipment&limit=10`)).json();
   assert.ok(native.total > 0, 'the native Japanese label still filters');
+});
+
+test('off-index names rank by market cap and stay out of the index totals', async () => {
+  const home = await (await fetch(`http://localhost:${PORT}/api/home`)).json();
+  assert.ok(home.offIndex.count >= 1, 'the off-index file is loaded');
+  assert.ok(home.offIndex.capUsd > 0);
+  assert.equal(home.companies, (await (await fetch(`http://localhost:${PORT}/api/global-companies?universe=index&limit=1`)).json()).total,
+    'the index universe is unchanged by the extra names');
+
+  const ranked = await (await fetch(`http://localhost:${PORT}/api/global-companies?sort=cap&limit=200`)).json();
+  const offRows = ranked.rows.filter((r) => r.off);
+  assert.ok(offRows.length >= 1, 'they appear in the default (all) screener');
+  assert.ok(offRows.every((r) => r.t && r.cap > 0 && r.why), 'a row carries its ticker, cap and the reason it is off-index');
+  // Ranked by cap: the page is descending, so the neighbours must not be smaller.
+  const i = ranked.rows.findIndex((r) => r.off);
+  assert.ok(i < 0 || i === ranked.rows.length - 1 || ranked.rows[i].cap >= ranked.rows[i + 1].cap,
+    'an off-index row is ranked by market cap, not appended to the page');
+
+  const off = await (await fetch(`http://localhost:${PORT}/api/global-companies?universe=off&limit=200`)).json();
+  assert.equal(off.total, home.offIndex.count, 'the off-index filter returns exactly the file');
+
+  const one = offRows[0];
+  const co = await (await fetch(`http://localhost:${PORT}/api/company/${encodeURIComponent(one.t)}`)).json();
+  assert.equal(co.offIndex, true, 'the screener row opens a page');
+  assert.equal(co.noFilings, true);
+  assert.equal(co.spTier, 'off');
+  const chart = await (await fetch(`http://localhost:${PORT}/api/company-chart?ticker=${encodeURIComponent(one.t)}&range=1y`)).json();
+  assert.ok(Array.isArray(chart.dates), 'the page has a price series');
 });

@@ -1226,8 +1226,54 @@ function globalRows() {
       filing: e.market === 'us' && extras.filings.has(ticker),
     });
   }
+  // Listed but not index members: they belong in the screener (ranked by cap like everyone else) and
+  // never in an index total. See scripts/refresh-off-index.mjs.
+  rows.push(...offIndexRows());
   GLOBAL_ROWS_CACHE = { at: Date.now(), rows };
   return rows;
+}
+
+// Off-index coverage — the large caps that are public but are not constituents of any of the ten
+// index universes this desk builds from (SpaceX, Anthropic, Cerebras, CoreWeave, …). The file is
+// refreshed by scripts/refresh-off-index.mjs; every figure in it is a real quote or a null.
+const OFF_INDEX_FILE = path.join(__dirname, 'data', 'off-index.json');
+let OFF_INDEX_CACHE = { at: 0, data: null };
+function offIndexData() {
+  try {
+    const st = fs.statSync(OFF_INDEX_FILE);
+    if (OFF_INDEX_CACHE.data && OFF_INDEX_CACHE.at === st.mtimeMs) return OFF_INDEX_CACHE.data;
+    OFF_INDEX_CACHE = { at: st.mtimeMs, data: JSON.parse(fs.readFileSync(OFF_INDEX_FILE, 'utf8')) };
+  } catch { OFF_INDEX_CACHE = { at: 0, data: { companies: [] } }; }
+  return OFF_INDEX_CACHE.data;
+}
+function offIndexRows() {
+  return (offIndexData().companies || []).map((c) => ({
+    m: 'us', id: c.ticker, t: c.ticker, n: c.name,
+    s: c.sector || 'Other', native: c.nasdaqSector || null,
+    cap: c.capUsd || 0,
+    pe: c.pe == null ? null : c.pe, roe: c.roe == null ? null : c.roe,
+    ytd: c.ytd == null ? null : c.ytd, pePct: null, filing: false,
+    off: true, listedAt: c.listedAt || null, vsIpo: c.vsIpo == null ? null : c.vsIpo,
+    why: c.why || null,
+  }));
+}
+// The same companies as search entries, in the shape the global quick index uses, so ⌘K finds them.
+function offIndexSearchEntries() {
+  return (offIndexData().companies || []).map((c) => {
+    const name = c.name || c.ticker;
+    return {
+      market: 'us', id: c.ticker, ticker: c.ticker, code: c.ticker,
+      name, nameEn: c.legalName || name, nameLocal: null,
+      sector: c.sector || 'Other', industry: c.industry || null,
+      exchange: 'NASDAQ', currency: 'USD',
+      capLocal: c.capUsd || 0, capUsd: c.capUsd || 0,
+      price: c.price ?? null, priceDate: c.priceDate || null,
+      pe: c.pe == null ? null : c.pe, roe: c.roe == null ? null : c.roe, ytd: c.ytd == null ? null : c.ytd,
+      securityType: 'common', primary: true, noFilings: true, offIndex: true,
+      codes: [c.ticker], listedAt: c.listedAt || null,
+      hay: `${name} ${c.legalName || ''} ${c.ticker}`.toLowerCase().replace(/\s+/g, ' ').trim(),
+    };
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -1892,8 +1938,11 @@ function homeSummary() {
   const usAdv = us.filter((c) => (c.chg1d || 0) > 0).length;
   const usDec = us.filter((c) => (c.chg1d || 0) < 0).length;
   const usPe = median(us.map((c) => (c.pe > 0 && c.pe < 500 ? c.pe : null)));
-  // Global totals and the sector split, from the same row set the screener uses.
-  const grow = globalRows();
+  // Global totals and the sector split, from the same row set the screener uses — index members only.
+  // Off-index names are listed in the screener but kept out of these aggregates on purpose: a company
+  // that listed this week has no full-year return, no index weight and no place in a median P/E.
+  const grow = globalRows().filter((r) => !r.off);
+  const offRows = globalRows().filter((r) => r.off);
   const capByMarket = {};
   let totalCapUsd = 0;
   for (const r of grow) { capByMarket[r.m] = (capByMarket[r.m] || 0) + r.cap; totalCapUsd += r.cap; }
@@ -1962,6 +2011,14 @@ function homeSummary() {
     worst: out.slice().sort((a, b) => (a.chgYtd ?? 1e9) - (b.chgYtd ?? 1e9))[0] || null,
     top,
     ideas: { cheap, quality, filings },
+    // Shown beside the index coverage, never inside it: these are listed companies that are not index
+    // constituents yet, so their combined cap is reported as its own figure.
+    offIndex: {
+      count: offRows.length,
+      capUsd: offRows.reduce((a, r) => a + (r.cap || 0), 0),
+      updated: offIndexData().updated || null,
+      companies: offRows.map((r) => ({ ticker: r.t, name: r.n, capUsd: r.cap, vsIpo: r.vsIpo, listedAt: r.listedAt, why: r.why })),
+    },
   };
   HOME_CACHE = { at: Date.now(), data };
   return data;
@@ -6110,6 +6167,23 @@ const server = http.createServer(async (req, res) => {
       if (!/^[A-Za-z0-9.\-^]{1,12}$/.test(ticker)) return sendJSON(res, 400, { error: 'bad ticker' });
       const stored = storeChart('us', ticker, range);
       if (stored) return sendChartJSON(res, 200, { ticker, range, dates: stored.dates, closes: stored.closes });
+      // A listed-but-not-index name has no line in the chart store; its series travels with the
+      // off-index file, so the company page still draws the whole life of the listing.
+      const off = (offIndexData().companies || []).find((c) => String(c.ticker).toUpperCase() === ticker.toUpperCase());
+      if (off && Array.isArray(off.series) && off.series.length > 1) {
+        const last = off.series[off.series.length - 1][0];
+        const back = (days) => new Date(Date.parse(last) - days * 86400000).toISOString().slice(0, 10);
+        const from = range === '1m' ? back(31)
+          : range === '3m' ? back(92)
+            : range === '6m' ? back(190)
+              : range === 'ytd' ? `${last.slice(0, 4)}-01-01`
+                : range === '1y' ? back(366)
+                  : range === '5y' ? back(1826)
+                    : range === '10y' ? back(3653)
+                      : '1900-01-01';
+        const rows = off.series.filter(([d]) => d >= from);
+        return sendChartJSON(res, 200, { ticker, range, dates: rows.map((r) => r[0]), closes: rows.map((r) => r[1]) });
+      }
       // Served from the committed series, not from a live Yahoo call: Yahoo rate-limits this host, which
       // left the one-month and six-month charts with a single point for every company.
       const local = usCharts()[ticker];
@@ -6136,7 +6210,9 @@ const server = http.createServer(async (req, res) => {
       return sendChartJSON(res, 200, out);
     }
     if (url.pathname === '/api/search-quick') {
-      return sendJSONCached(res, 200, globalSearchQuick(), 'public, max-age=300, stale-while-revalidate=3600');
+      const q = globalSearchQuick();
+      const merged = { ...q, entries: (q.entries || []).concat(offIndexSearchEntries()) };
+      return sendJSONCached(res, 200, merged, 'public, max-age=300, stale-while-revalidate=3600');
     }
     if (url.pathname === '/api/global-search') {
       const q = String(url.searchParams.get('q') || '').slice(0, 80);
@@ -6146,7 +6222,7 @@ const server = http.createServer(async (req, res) => {
       let out = GLOBAL_SEARCH_CACHE.get(key);
       if (!out) {
         const idx = globalSearchIndex();
-        out = { ...searchEntries(idx.entries, q, { market, limit }), markets: idx.markets };
+        out = { ...searchEntries(idx.entries.concat(offIndexSearchEntries()), q, { market, limit }), markets: idx.markets };
         if (GLOBAL_SEARCH_CACHE.size > 240) GLOBAL_SEARCH_CACHE.clear();
         GLOBAL_SEARCH_CACHE.set(key, out);
       }
@@ -6180,11 +6256,15 @@ const server = http.createServer(async (req, res) => {
       const ytdMin = ytdRaw == null || ytdRaw === '' ? null : Number(ytdRaw);
       const q = String(p.get('q') || '').trim().toLowerCase();
       const sort = p.get('sort') || 'cap';
+      // all (default) | index | off. Off-index names are listed companies outside the index universes;
+      // they rank by market cap beside the members, tagged, unless the reader filters them out.
+      const universe = String(p.get('universe') || 'all');
       const limit = Math.max(1, Math.min(200, Number(p.get('limit')) || 50));
       const offset = Math.max(0, Number(p.get('offset')) || 0);
       const all = globalRows();
       const rows = all.filter((r) =>
-        (market === 'all' || r.m === market)
+        (universe === 'all' || (universe === 'off') === !!r.off)
+        && (market === 'all' || r.m === market)
         && (sector === 'all' || r.s === sector || r.native === sector)
         && (!peMax || (r.pe != null && r.pe > 0 && r.pe < peMax))
         && (!peMin || (r.pe != null && r.pe >= peMin))
@@ -6209,6 +6289,7 @@ const server = http.createServer(async (req, res) => {
         rows: rows.slice(offset, offset + limit),
         sectors: [...new Set(all.map((r) => r.s))].sort(),
         markets: [...new Set(all.map((r) => r.m))],
+        offCount: rows.filter((r) => r.off).length,
       });
     }
     if (url.pathname === '/api/home') {
@@ -6240,8 +6321,22 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname.startsWith('/api/company/')) {
       const cik = decodeURIComponent(url.pathname.slice('/api/company/'.length));
       const c = (COMPANIES.companies || []).find((x) => String(x.cik) === cik || x.ticker === cik);
-      if (!c) return sendJSON(res, 404, { error: 'not found' });
-      return sendJSONCached(res, 200, normalizeCompanyEps(c));
+      if (c) return sendJSONCached(res, 200, normalizeCompanyEps(c));
+      // A listed-but-not-index member: the screener row opens here too, from the off-index file.
+      const off = (offIndexData().companies || []).find((x) => String(x.ticker).toLowerCase() === String(cik).toLowerCase());
+      if (!off) return sendJSON(res, 404, { error: 'not found' });
+      return sendJSONCached(res, 200, {
+        ...off,
+        cik: off.cik ? String(off.cik) : off.ticker,
+        ticker: off.ticker,
+        name: off.legalName || off.name,
+        marketCap: off.capUsd,
+        spTier: 'off',
+        noFilings: true,
+        noFilingsReason: `listed ${off.listedAt} — no annual report in EDGAR yet`,
+        offIndex: true,
+        series: [],
+      });
     }
     if (url.pathname === '/api/japan') {
       const jp = readJapanList();

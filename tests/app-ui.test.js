@@ -187,6 +187,7 @@ function loadApp() {
     gbPagerHtml,
     isBootDeepLink,
     loadBrief,
+    offTag,
     getBriefPayload: () => briefPayload,
     setBriefBusy: (v) => { briefBusy = v; },
     setBriefPayload: (v) => { briefPayload = v; },
@@ -1070,4 +1071,12 @@ test('a brief that never answers asks for one more go by itself', async () => {
   await done;
   assert.equal(calls, 3, 'three bounded attempts, not an endless spinner');
   assert.equal(timers.filter((t) => t.ms >= LATE_RETRY).length, 1, 'and one late retry is queued instead of asking for a reload');
+});
+
+test('an off-index screener row is tagged, an index member is not', () => {
+  const { ui } = loadApp();
+  assert.match(ui.offTag({ off: true, why: 'Listed 19 Nov 2026 · not an index constituent yet' }), /class="gb-off"/);
+  assert.match(ui.offTag({ off: true }), /OFF-INDEX/);
+  assert.equal(ui.offTag({ off: false, t: 'AAPL' }), '', 'an index member carries no tag');
+  assert.equal(ui.offTag(null), '');
 });
