@@ -1,13 +1,13 @@
 {
- "generated": "2026-11-19T17:26:45.749Z",
+ "generated": "2026-11-20T02:30:17.235Z",
  "summary": {
-  "usable": 1453,
-  "match": 115,
-  "close": 731,
-  "diverge": 555,
-  "diverge-immaterial": 32,
+  "usable": 1443,
+  "match": 114,
+  "close": 728,
+  "diverge": 550,
+  "diverge-immaterial": 31,
   "definition": 20,
-  "period-mismatch": 35,
+  "period-mismatch": 45,
   "no-nasdaq-data": 18
  },
  "companies": [
@@ -7024,8 +7024,8 @@
    "our": {
     "revenue": 21448000000,
     "netIncome": 4566000000,
-    "assets": 36786000000,
-    "equity": 18992000000,
+    "assets": 35698000000,
+    "equity": 18235000000,
     "marketCap": 82543855680,
     "price": 313.24,
     "shares": 279936000
@@ -7039,17 +7039,17 @@
    "diff": {
     "revenue": 0,
     "netIncome": 0,
-    "assets": 0,
-    "equity": 0
+    "assets": 0.02957646930897624,
+    "equity": 0.03985888795282224
    },
    "abs": {
     "revenue": 21448000000,
     "netIncome": 4566000000,
-    "assets": 0,
-    "equity": 0
+    "assets": 1088000000,
+    "equity": 757000000
    },
-   "worst": 0,
-   "status": "match"
+   "worst": 0.03985888795282224,
+   "status": "close"
   },
   {
    "ticker": "LHX",
@@ -15315,12 +15315,12 @@
    "ticker": "POST",
    "sector": "Consumer",
    "period": "9/30/2025",
-   "sameYear": true,
+   "sameYear": false,
    "our": {
     "revenue": 8158100000,
-    "netIncome": 335700000,
-    "assets": 12852700000,
-    "equity": 3078000000,
+    "netIncome": 316600000,
+    "assets": 12907200000,
+    "equity": 3085800000,
     "marketCap": 3469510619,
     "price": 80.81,
     "shares": 42934174
@@ -15333,18 +15333,18 @@
    },
    "diff": {
     "revenue": 0,
-    "netIncome": 0,
-    "assets": 0.04994677862866267,
-    "equity": 0.17987796754682794
+    "netIncome": 0.056896038129282095,
+    "assets": 0.045918216492711626,
+    "equity": 0.1777996855932429
    },
    "abs": {
     "revenue": 8158100000,
-    "netIncome": 335700000,
-    "assets": 675700000,
-    "equity": 675100000
+    "netIncome": 316600000,
+    "assets": 621200000,
+    "equity": 667300000
    },
-   "worst": 0.17987796754682794,
-   "status": "diverge"
+   "worst": null,
+   "status": "period-mismatch"
   },
   {
    "ticker": "XPO",
@@ -16474,8 +16474,8 @@
    "our": {
     "revenue": 7291000000,
     "netIncome": 649000000,
-    "assets": 5156000000,
-    "equity": -1056000000,
+    "assets": 5089000000,
+    "equity": -1111000000,
     "marketCap": 3827228041,
     "price": 18.66,
     "shares": 216582099
@@ -16489,28 +16489,28 @@
    "diff": {
     "revenue": 0,
     "netIncome": 0,
-    "assets": 0.01687354538401862,
-    "equity": 0.1756440281030445
+    "assets": 0.003930045195519749,
+    "equity": 0.1327088212334114
    },
    "abs": {
     "revenue": 7291000000,
     "netIncome": 649000000,
-    "assets": 87000000,
-    "equity": 225000000
+    "assets": 20000000,
+    "equity": 170000000
    },
-   "worst": 0.1756440281030445,
+   "worst": 0.1327088212334114,
    "status": "diverge"
   },
   {
    "ticker": "UGI",
    "sector": "Utilities",
    "period": "9/30/2025",
-   "sameYear": true,
+   "sameYear": false,
    "our": {
     "revenue": 7287000000,
-    "netIncome": 678000000,
-    "assets": 15631000000,
-    "equity": 5213000000,
+    "netIncome": 692000000,
+    "assets": 15934000000,
+    "equity": 5154000000,
     "marketCap": 7426888232,
     "price": 38.05,
     "shares": 214636337
@@ -16523,18 +16523,18 @@
    },
    "diff": {
     "revenue": 0,
-    "netIncome": 0,
-    "assets": 0.010811848250271896,
-    "equity": 0.08363706119317092
+    "netIncome": 0.02023121387283237,
+    "assets": 0.029622191540102923,
+    "equity": 0.07314707023670936
    },
    "abs": {
     "revenue": 7287000000,
-    "netIncome": 678000000,
-    "assets": 169000000,
-    "equity": 436000000
+    "netIncome": 692000000,
+    "assets": 472000000,
+    "equity": 377000000
    },
-   "worst": 0.08363706119317092,
-   "status": "close"
+   "worst": null,
+   "status": "period-mismatch"
   },
   {
    "ticker": "SAIC",
@@ -19970,12 +19970,12 @@
    "ticker": "MMS",
    "sector": "Consumer",
    "period": "9/30/2025",
-   "sameYear": true,
+   "sameYear": false,
    "our": {
     "revenue": 5431276000,
-    "netIncome": 319034000,
-    "assets": 4366779000,
-    "equity": 1740551000,
+    "netIncome": 392604000,
+    "assets": 4518610000,
+    "equity": 1830225000,
     "marketCap": 3245657728,
     "price": 65.26,
     "shares": 54548576
@@ -19988,18 +19988,18 @@
    },
    "diff": {
     "revenue": 0,
-    "netIncome": 0,
-    "assets": 0.06804557775880117,
-    "equity": 0.038215484636761575
+    "netIncome": 0.18738983810659088,
+    "assets": 0.09936042278488297,
+    "equity": 0.08533923424715541
    },
    "abs": {
     "revenue": 5431276000,
-    "netIncome": 319034000,
-    "assets": 297140000,
-    "equity": 66516000
+    "netIncome": 392604000,
+    "assets": 448971000,
+    "equity": 156190000
    },
-   "worst": 0.06804557775880117,
-   "status": "close"
+   "worst": null,
+   "status": "period-mismatch"
   },
   {
    "ticker": "TEX",
@@ -23901,12 +23901,12 @@
    "ticker": "PLXS",
    "sector": "Technology",
    "period": "9/27/2025",
-   "sameYear": true,
+   "sameYear": false,
    "our": {
     "revenue": 4032966000,
-    "netIncome": 172885000,
-    "assets": 3633597000,
-    "equity": 1528752000,
+    "netIncome": 202490000,
+    "assets": 3933937000,
+    "equity": 1573108000,
     "marketCap": 5533242273,
     "price": 211.22,
     "shares": 26786466
@@ -23919,18 +23919,18 @@
    },
    "diff": {
     "revenue": 0,
-    "netIncome": 0,
-    "assets": 0.13663788251696596,
-    "equity": 0.04851277381812093
+    "netIncome": 0.1462047508518939,
+    "assets": 0.20255204900332668,
+    "equity": 0.07534129888094142
    },
    "abs": {
     "revenue": 4032966000,
-    "netIncome": 172885000,
-    "assets": 496487000,
-    "equity": 74164000
+    "netIncome": 202490000,
+    "assets": 796827000,
+    "equity": 118520000
    },
-   "worst": 0.13663788251696596,
-   "status": "diverge"
+   "worst": null,
+   "status": "period-mismatch"
   },
   {
    "ticker": "MTD",
@@ -25024,12 +25024,12 @@
    "ticker": "HP",
    "sector": "Energy",
    "period": "9/30/2025",
-   "sameYear": true,
+   "sameYear": false,
    "our": {
     "revenue": 3746013000,
-    "netIncome": -163695000,
-    "assets": 6286774000,
-    "equity": 2574091000,
+    "netIncome": -571251000,
+    "assets": 5656285000,
+    "equity": 2086835000,
     "marketCap": 3346955268,
     "price": 35.15,
     "shares": 99849488
@@ -25042,18 +25042,18 @@
    },
    "diff": {
     "revenue": 0,
-    "netIncome": 0,
-    "assets": 0.062478432649769496,
-    "equity": 0.055306647484760295
+    "netIncome": 0.713444702941439,
+    "assets": 0.1565007460774638,
+    "equity": 0.23412996964903718
    },
    "abs": {
     "revenue": 3746013000,
-    "netIncome": 163695000,
-    "assets": 418964000,
-    "equity": 150699000
+    "netIncome": 571251000,
+    "assets": 1049453000,
+    "equity": 637955000
    },
-   "worst": 0.062478432649769496,
-   "status": "close"
+   "worst": null,
+   "status": "period-mismatch"
   },
   {
    "ticker": "CART",
@@ -25619,12 +25619,12 @@
    "ticker": "WWD",
    "sector": "Energy",
    "period": "9/30/2025",
-   "sameYear": true,
+   "sameYear": false,
    "our": {
     "revenue": 3567064000,
-    "netIncome": 442111000,
-    "assets": 5196401000,
-    "equity": 2473794000,
+    "netIncome": 579996000,
+    "assets": 5340654000,
+    "equity": 2440275000,
     "marketCap": 19416036991,
     "price": 319.07,
     "shares": 59615869
@@ -25637,18 +25637,18 @@
    },
    "diff": {
     "revenue": 0,
-    "netIncome": 0,
-    "assets": 0.10897118986775654,
-    "equity": 0.03608025280647135
+    "netIncome": 0.23773439816826322,
+    "assets": 0.1330382009394355,
+    "equity": 0.04914101130381587
    },
    "abs": {
     "revenue": 3567064000,
-    "netIncome": 442111000,
-    "assets": 566258000,
-    "equity": 92596000
+    "netIncome": 579996000,
+    "assets": 710511000,
+    "equity": 126115000
    },
-   "worst": 0.10897118986775654,
-   "status": "diverge"
+   "worst": null,
+   "status": "period-mismatch"
   },
   {
    "ticker": "NXT",
@@ -35387,12 +35387,12 @@
    "ticker": "VVV",
    "sector": "Industrials",
    "period": "9/30/2025",
-   "sameYear": true,
+   "sameYear": false,
    "our": {
     "revenue": 1710300000,
-    "netIncome": 210700000,
-    "assets": 3481600000,
-    "equity": 416700000,
+    "netIncome": 85900000,
+    "assets": 3606000000,
+    "equity": 427200000,
     "marketCap": 4798525181,
     "price": 33.37,
     "shares": 143797578
@@ -35405,18 +35405,18 @@
    },
    "diff": {
     "revenue": 0,
-    "netIncome": 0,
-    "assets": 0.23299632352941177,
-    "equity": 0.18766498680105592
+    "netIncome": 0.5923113431419079,
+    "assets": 0.25945646145313367,
+    "equity": 0.2076310861423221
    },
    "abs": {
     "revenue": 1710300000,
-    "netIncome": 210700000,
-    "assets": 811200000,
-    "equity": 78200000
+    "netIncome": 85900000,
+    "assets": 935600000,
+    "equity": 88700000
    },
-   "worst": 0.23299632352941177,
-   "status": "diverge"
+   "worst": null,
+   "status": "period-mismatch"
   },
   {
    "ticker": "LGIH",
@@ -38152,12 +38152,12 @@
    "ticker": "NJR",
    "sector": "Utilities",
    "period": "9/30/2025",
-   "sameYear": true,
+   "sameYear": false,
    "our": {
     "revenue": 2036412000,
-    "netIncome": 335627000,
-    "assets": 8024458000,
-    "equity": 2643460000,
+    "netIncome": 368355000,
+    "assets": 8213793000,
+    "equity": 2623384000,
     "marketCap": 5530510397,
     "price": 56.12,
     "shares": 100845185
@@ -38170,18 +38170,18 @@
    },
    "diff": {
     "revenue": 0,
-    "netIncome": 0,
-    "assets": 0.05554057358141821,
-    "equity": 0.09525167772540534
+    "netIncome": 0.08884907222652061,
+    "assets": 0.07731117645647997,
+    "equity": 0.08832790014729068
    },
    "abs": {
     "revenue": 2036412000,
-    "netIncome": 335627000,
-    "assets": 445683000,
-    "equity": 251794000
+    "netIncome": 368355000,
+    "assets": 635018000,
+    "equity": 231718000
    },
-   "worst": 0.09525167772540534,
-   "status": "close"
+   "worst": null,
+   "status": "period-mismatch"
   },
   {
    "ticker": "DLB",
@@ -45331,12 +45331,12 @@
    "ticker": "AZTA",
    "sector": "Technology",
    "period": "9/30/2025",
-   "sameYear": true,
+   "sameYear": false,
    "our": {
     "revenue": 593821000,
-    "netIncome": -55763000,
-    "assets": 1876211000,
-    "equity": 1510129000,
+    "netIncome": -166985000,
+    "assets": 1708383000,
+    "equity": 1397221000,
     "marketCap": 2082212919,
     "price": 48.69,
     "shares": 46237411
@@ -45349,18 +45349,18 @@
    },
    "diff": {
     "revenue": 0,
-    "netIncome": 0,
-    "assets": 0.08903311448633752,
-    "equity": 0.12556963403293367
+    "netIncome": 0.6660598257328503,
+    "assets": 0.1705195520256052,
+    "equity": 0.1909482763612444
    },
    "abs": {
     "revenue": 593821000,
-    "netIncome": 55763000,
-    "assets": 183371000,
-    "equity": 216857000
+    "netIncome": 166985000,
+    "assets": 351199000,
+    "equity": 329765000
    },
-   "worst": 0.12556963403293367,
-   "status": "diverge"
+   "worst": null,
+   "status": "period-mismatch"
   },
   {
    "ticker": "KN",
@@ -46311,12 +46311,12 @@
    "ticker": "LQDT",
    "sector": "Consumer",
    "period": "9/30/2025",
-   "sameYear": true,
+   "sameYear": false,
    "our": {
     "revenue": 476669000,
-    "netIncome": 28093000,
-    "assets": 420092000,
-    "equity": 235852000,
+    "netIncome": 37298000,
+    "assets": 416387000,
+    "equity": 249010000,
     "marketCap": 1137024417,
     "price": 43.97,
     "shares": 25859095
@@ -46329,18 +46329,18 @@
    },
    "diff": {
     "revenue": 0,
-    "netIncome": 0,
-    "assets": 0.10709796901631072,
-    "equity": 0.13826467445686277
+    "netIncome": 0.24679607485656066,
+    "assets": 0.09915295146102064,
+    "equity": 0.18379984739568692
    },
    "abs": {
     "revenue": 476669000,
-    "netIncome": 28093000,
-    "assets": 44991000,
-    "equity": 32610000
+    "netIncome": 37298000,
+    "assets": 41286000,
+    "equity": 45768000
    },
-   "worst": 0.13826467445686277,
-   "status": "diverge-immaterial"
+   "worst": null,
+   "status": "period-mismatch"
   },
   {
    "ticker": "CTRE",
