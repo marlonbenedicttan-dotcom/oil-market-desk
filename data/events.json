@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-20T16:09:50.551Z",
+ "updated": "2026-11-20T17:57:30.414Z",
  "events": [
   {
    "date": "2026-10-22",
@@ -7259,17 +7259,6 @@
    "detail": "period ends 2026-12-30 · filed 30 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.049859,
-   "days": 69
-  },
-  {
-   "date": "2027-01-29",
-   "kind": "earnings",
-   "ticker": "IESC",
-   "name": "IES Holdings, Inc.",
-   "label": "IESC · quarterly report expected",
-   "detail": "period ends 2026-12-29 · filed 31 days after quarter end, historically",
-   "basis": "expected",
-   "weight": 0.003669,
    "days": 69
   },
   {
@@ -16709,6 +16698,17 @@
    "basis": "expected",
    "weight": 0.001786,
    "days": 89
+  },
+  {
+   "date": "2027-02-19",
+   "kind": "earnings",
+   "ticker": "IESC",
+   "name": "IES Holdings, Inc.",
+   "label": "IESC · Q1 report expected",
+   "detail": "period ends 2026-12-30 · filed 51 days after quarter end, historically",
+   "basis": "expected",
+   "weight": 0.003669,
+   "days": 90
   }
  ]
 }
