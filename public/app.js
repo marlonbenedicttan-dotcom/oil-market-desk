@@ -12267,20 +12267,10 @@ function renderOffIndexPage(el, c) {
           tile('ROE', '—', 'needs a full year of earnings'),
         ];
         const qs = ((c.financials || {}).quarters) || [];
-        // Quarterly as filed: the period end is the label, because a January fiscal year makes "Q3"
-        // ambiguous. Year-on-year only where the same quarter a year earlier is in the record.
-        const yoy = (q) => {
-          const prior = qs.find((x) => Math.abs((Date.parse(q.end) - Date.parse(x.end)) / 864e5 - 365) < 12);
-          return prior && prior.revenue > 0 ? +(((q.revenue / prior.revenue) - 1) * 100).toFixed(1) : null;
-        };
-        const rows = qs.slice().reverse().map((q) => {
-          const y = yoy(q);
-          return `<div class="co-tr"><span>${esc(dealDateY(q.end))}</span><span>${moneyS(q.revenue)}</span><span class="${q.netIncome == null ? '' : q.netIncome >= 0 ? 'pos' : 'neg'}">${moneyS(q.netIncome)}</span><span>${q.eps == null ? '—' : (q.eps < 0 ? '−$' : '$') + Math.abs(q.eps).toFixed(2)}</span><span class="${y == null ? '' : y >= 0 ? 'pos' : 'neg'}">${y == null ? '—' : (y >= 0 ? '+' : '') + y.toFixed(1) + '%'}</span></div>`;
-        }).join('');
+        // The same component the index members use (quarterly matrix, REVENUE / NET PROFIT toggle,
+        // MATRIX / LIST, YoY inside each cell) so the page reads like every other company page.
         return `<div class="co-sect">RESULTS</div><div class="co-stats ${ttm ? 'co-stats-12' : ''}">${tiles.join('')}</div>`
-          + (rows ? `<div class="gtitle">QUARTERLY RESULTS · ${qs.length}</div><div class="jp-q-scroll"><div class="co-table">
-              <div class="co-tr co-th"><span>PERIOD END</span><span>REVENUE</span><span>NET PROFIT</span><span>EPS</span><span>REV YOY</span></div>
-              ${rows}</div></div><div class="macro-note" style="padding:6px 12px 0">EPS is shown where the filing tags the quarter; a quarter derived from the year to date leaves it blank rather than subtracting per-share figures.</div>` : '');
+          + (qs.length >= 2 ? periodMatrixHtml({ ...c, quarters: qs }, { market: 'us', money: coMoney, ccy: 'USD' }) : '');
       })()
     + `<div class="co-ranges">${['1m', '3m', '6m', 'ytd', '1y', '5y', '10y'].map((r) => `<button class="ma-chip${coRange === r ? ' on' : ''}" data-corange="${r}">${r.toUpperCase()}</button>`).join('')}</div>
       <div class="co-rets" id="co-rets"></div>

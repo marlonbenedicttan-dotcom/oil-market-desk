@@ -278,11 +278,23 @@ async function filings(cik, capUsd) {
   const reportedEnds = [...rq.reported.keys(), ...nq.reported.keys()];
   const derivedEnds = [...rq.derived.keys(), ...nq.derived.keys()].filter((e) => !reportedEnds.some((r) => near(r, e)));
   const ends = [...new Set(reportedEnds.concat(derivedEnds))].sort();
+  // Fiscal label for each quarter (fy end + Q1..Q4), taken from the reported 10-K's own period end,
+  // so the matrix on the page groups and labels periods exactly as the index members' does. A
+  // January year-end company (Figma) is the reason this has to be computed, not assumed.
+  const fyEndMonth = fy ? Number(String(fy.end).slice(5, 7)) : 12;
+  const fiscalOf = (end) => {
+    const m = Number(String(end).slice(5, 7));
+    const y = Number(String(end).slice(0, 4));
+    if (fyEndMonth === 12) return { fy: y, q: Math.ceil(m / 3) };
+    const q = Math.floor((((m - fyEndMonth + 12) % 12) - 1) / 3) + 1;
+    return { fy: m > fyEndMonth ? y + 1 : y, q: Math.max(1, Math.min(4, q)) };
+  };
   out.quarters = ends.map((end) => {
     const rv = pick(rq, end);
     const nv = pick(nq, end);
     const ev = eq.reported.get(end) || null;
-    return { end, revenue: rv ? rv.val : null, netIncome: nv ? nv.val : null, eps: ev ? ev.val : null };
+    const f = fiscalOf(end);
+    return { end, fy: f.fy, q: f.q, revenue: rv ? rv.val : null, netIncome: nv ? nv.val : null, eps: ev ? ev.val : null };
   }).filter((q) => q.revenue != null || q.netIncome != null).slice(-8);
   out.fy = fy ? { end: fy.end, revenue: fy.val, netIncome: fyNi ? fyNi.val : null } : null;
   out.latest = ytd ? { start: ytd.start, end: ytd.end, revenue: ytd.val, netIncome: ytdNi ? ytdNi.val : null } : null;
