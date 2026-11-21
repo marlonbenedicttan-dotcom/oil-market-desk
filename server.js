@@ -2031,6 +2031,7 @@ const GLOBAL_THEME_DEFS = [
   {
     id: 'ai', label: 'AI & SEMICONDUCTORS',
     maps: { us: 'ai', jp: 'ai', kr: 'semis', tw: 'semis', hk: 'semis' },
+    off: ['ANT', 'CBRS', 'CRWV'],
     extras: {
       us: ['NVDA', 'AVGO', 'AMD', 'MU', 'AMAT', 'LRCX', 'KLAC'],
       tw: ['2330', '2454', '2317', '3711'],
@@ -2039,9 +2040,12 @@ const GLOBAL_THEME_DEFS = [
       hk: ['0981', '1347'],
     },
   },
-  { id: 'defence', label: 'DEFENCE', maps: { us: 'defence', jp: 'defence', kr: 'defence', in: 'psu-capex' } },
+  // `off` is the off-index universe (data/off-index.json): a theme can hold a name that is listed
+  // but not yet an index constituent. They are tagged in the panel like they are in the screener.
+  { id: 'defence', label: 'DEFENCE', maps: { us: 'defence', jp: 'defence', kr: 'defence', in: 'psu-capex' }, off: ['SPCX'] },
   { id: 'energy', label: 'ENERGY & POWER', maps: { us: 'energy-us', hk: 'energy', au: 'energy', in: 'energy', id: 'coal', br: 'oil', za: 'energy' } },
-  { id: 'banks', label: 'BANKS & FINANCIALS', maps: { us: 'financials', jp: 'banks-jp', kr: 'banks', tw: 'financials', hk: 'banks', au: 'banks', in: 'banks', id: 'banks', br: 'banks', za: 'banks' } },
+  { id: 'banks', label: 'BANKS & FINANCIALS', maps: { us: 'financials', jp: 'banks-jp', kr: 'banks', tw: 'financials', hk: 'banks', au: 'banks', in: 'banks', id: 'banks', br: 'banks', za: 'banks' }, off: ['CRCL', 'CHYM'] },
+  { id: 'software', label: 'SOFTWARE & PLATFORMS', maps: { us: 'software', hk: 'platforms', in: 'it-services' }, off: ['FIG'] },
   { id: 'mining', label: 'METALS & MINING', maps: { au: 'materials', br: 'mining', za: 'mining', id: 'nickel' } },
 ];
 let GLOBAL_THEME_CACHE = { at: 0, data: null };
@@ -2072,6 +2076,7 @@ function globalThemes() {
       if (c.code) lookup[id].set(String(c.code), c);
     }
   }
+  const offAll = new Map((offIndexData().companies || []).map((c) => [String(c.ticker).toUpperCase(), c]));
   const themes = GLOBAL_THEME_DEFS.map((def) => {
     const seen = new Set();
     const members = [];
@@ -2094,6 +2099,20 @@ function globalThemes() {
         });
       }
     }
+    // A listed-but-not-index name the theme claims. Same row shape as the rest, flagged so the panel
+    // can label it (and so the theme totals are never mistaken for index membership).
+    for (const ticker of def.off || []) {
+      const c = offAll.get(String(ticker).toUpperCase());
+      if (!c) continue;
+      const id = `us:${c.ticker}`;
+      if (seen.has(id)) continue;
+      seen.add(id);
+      members.push({
+        market: 'us', ticker: c.ticker, name: c.legalName || c.name, id: c.cik || c.ticker,
+        capUsd: c.capUsd || 0, pe: c.pe == null ? null : c.pe, chgYtd: c.ytd == null ? null : c.ytd,
+        sector: c.sector || c.industry || null, off: true,
+      });
+    }
     members.sort((a, b) => (b.capUsd || 0) - (a.capUsd || 0));
     // Keep the theme genuinely global: every mapped market gets a seat before the remaining slots go
     // to the largest names. Otherwise the US mega-caps crowd out Japan, Hong Kong and the smaller
@@ -2111,7 +2130,15 @@ function globalThemes() {
       const id = `${m.market}:${m.ticker}`;
       if (!chosenIds.has(id)) { chosen.push(m); chosenIds.add(id); }
     }
-    const topMembers = chosen.slice(0, 12).sort((a, b) => (b.capUsd || 0) - (a.capUsd || 0));
+    // An off-index name is the reason the theme claims it, so it is never crowded out of the shown
+    // list by twelve index members: it rides along (bounded by how many the theme names) and keeps
+    // its place by market cap like every other row.
+    for (const m of members) {
+      if (!m.off) continue;
+      const id = `${m.market}:${m.ticker}`;
+      if (!chosenIds.has(id)) { chosen.push(m); chosenIds.add(id); }
+    }
+    const topMembers = chosen.sort((a, b) => (b.capUsd || 0) - (a.capUsd || 0));
     const capByMarket = {};
     for (const m of topMembers) capByMarket[m.market] = (capByMarket[m.market] || 0) + (m.capUsd || 0);
     const topTotal = topMembers.reduce((a, m) => a + (m.capUsd || 0), 0);

@@ -11326,7 +11326,7 @@ function gbTheme() {
   const members = t.members || [];
   const shown = gbThemeAll ? members : members.slice(0, 6);
   body.innerHTML = `<div class="gmix-legend">${(t.mix || []).map((x) => `<span><i style="background:${GB_COLORS[x.market] || 'var(--dim)'}"></i>${esc(String(x.market).toUpperCase())} ${x.pct}%</span>`).join('')}</div>`
-    + `<div class="gb-theme-list">${shown.map((m) => `<div class="gb-trow" tabindex="0" role="button" data-gb-company="${esc(m.market)}:${esc(m.id || m.ticker)}"><span class="tk">${esc(String(m.ticker).slice(0, 2))}</span><span><span class="n">${esc(m.name)}</span><span class="s">${esc(m.sector || '')} · ${esc(String(m.market).toUpperCase())}</span></span><span class="num">${gbCap(m.capUsd)}</span><span class="num">${m.pe == null ? '—' : m.pe.toFixed(1) + '×'}</span><span class="num ${cls(m.chgYtd)}">${m.chgYtd == null ? '—' : pctf(m.chgYtd)}</span></div>`).join('')}</div>`
+    + `<div class="gb-theme-list">${shown.map((m) => `<div class="gb-trow" tabindex="0" role="button" data-gb-company="${esc(m.market)}:${esc(m.id || m.ticker)}"><span class="tk">${esc(String(m.ticker).slice(0, 2))}</span><span><span class="n">${esc(m.name)}${offTag(m)}</span><span class="s">${esc(m.sector || '')} · ${esc(String(m.market).toUpperCase())}</span></span><span class="num">${gbCap(m.capUsd)}</span><span class="num">${m.pe == null ? '—' : m.pe.toFixed(1) + '×'}</span><span class="num ${cls(m.chgYtd)}">${m.chgYtd == null ? '—' : pctf(m.chgYtd)}</span></div>`).join('')}</div>`
     + (members.length > 6 ? `<div class="gb-note"><span>showing ${shown.length} of ${members.length}</span><button type="button" class="gb-more" data-gb-themeall="1">${gbThemeAll ? 'SHOW LESS' : 'SHOW ALL'}</button></div>` : '');
 }
 

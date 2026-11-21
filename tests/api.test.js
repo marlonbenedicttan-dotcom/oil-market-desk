@@ -1303,3 +1303,24 @@ test('off-index names rank by market cap and stay out of the index totals', asyn
   const chart = await (await fetch(`http://localhost:${PORT}/api/company-chart?ticker=${encodeURIComponent(one.t)}&range=1y`)).json();
   assert.ok(Array.isArray(chart.dates), 'the page has a price series');
 });
+
+test('every off-index name sits in its global theme, tagged', async () => {
+  const themes = await (await fetch(`http://localhost:${PORT}/api/global-themes`)).json();
+  const home = await (await fetch(`http://localhost:${PORT}/api/home`)).json();
+  const inTheme = new Map();
+  for (const t of themes.themes) {
+    for (const m of t.members || []) {
+      if (!m.off) continue;
+      if (!inTheme.has(m.ticker)) inTheme.set(m.ticker, []);
+      inTheme.get(m.ticker).push(t.id);
+    }
+  }
+  for (const c of home.offIndex.companies) {
+    assert.ok(inTheme.has(c.ticker), `${c.ticker} must appear in a global theme`);
+  }
+  // The named homes: the AI names in AI, SpaceX in defence, the fintechs in banks, Figma in software.
+  assert.ok(inTheme.get('ANT')?.includes('ai'), 'Anthropic is in AI');
+  assert.ok(inTheme.get('SPCX')?.includes('defence'), 'SpaceX is in defence');
+  assert.ok(inTheme.get('CRCL')?.includes('banks'), 'Circle is in banks');
+  assert.ok(inTheme.get('FIG')?.includes('software'), 'Figma is in software');
+});
