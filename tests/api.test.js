@@ -1364,6 +1364,7 @@ test('the search aliases land on the off-index names', async () => {
   const cases = [
     ['claude', 'ANT'], ['anthropic', 'ANT'], ['sonnet', 'ANT'],
     ['x', 'SPCX'], ['starlink', 'SPCX'], ['starship', 'SPCX'],
+    ['twitter', 'SPCX'], ['grok', 'SPCX'], ['xai', 'SPCX'], ['spacexai', 'SPCX'],
     ['usdc', 'CRCL'], ['cctp', 'CRCL'],
     ['figjam', 'FIG'], ['spotme', 'CHYM'], ['wafer scale', 'CBRS'], ['coreweave', 'CRWV'],
   ];

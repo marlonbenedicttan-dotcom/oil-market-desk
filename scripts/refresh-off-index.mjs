@@ -26,8 +26,10 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const BASE = [
   {
     ticker: 'SPCX', cik: '1181412', name: 'SpaceX', legalName: 'Space Exploration Technologies Corp.',
-    brands: ['SpaceX', 'Starlink', 'Starshield', 'Starship', 'Falcon 9', 'Dragon', 'Raptor'],
-    aliases: ['x', 'spacex', 'starlink', 'starship', 'falcon'],
+    // xAI acquired X (Twitter) in March 2025 and SpaceX acquired xAI in February 2026, so X, Twitter
+    // and Grok are SpaceX divisions now — and the combined company rebranded as SpaceXAI in July 2026.
+    brands: ['Starlink', 'X', 'Twitter', 'Grok', 'Starship', 'Falcon 9', 'Dragon'],
+    aliases: ['x', 'spacex', 'spacexai', 'starlink', 'starship', 'falcon', 'twitter', 'tweet', 'grok', 'xai'],
     listedAt: '2026-06-12', ipoPrice: 135, exchange: 'NASDAQ',
     why: 'Listed 12 Jun 2026 · not an index constituent yet',
   },
