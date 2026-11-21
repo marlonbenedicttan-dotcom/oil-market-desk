@@ -52,7 +52,9 @@ const doc = JSON.parse(readFileSync(FILE, 'utf8'));
 const companies = doc.companies || [];
 const today = new Date().toISOString().slice(0, 10);
 const failures = [];
+const warnings = [];
 const fixes = [];
+const warn = (ticker, label) => { warnings.push(`${ticker}: ${label}`); };
 const check = (ticker, ok, label, detail) => {
   if (!ok) failures.push(`${ticker}: ${label}${detail ? ' — ' + detail : ''}`);
   return ok;
@@ -127,9 +129,18 @@ for (const c of companies) {
   }
 
   // ---- Nasdaq quote + history ---------------------------------------------------------------
-  const info = await getJSON(`https://api.nasdaq.com/api/quote/${t}/info?assetclass=stocks`);
-  const sum = await getJSON(`https://api.nasdaq.com/api/quote/${t}/summary?assetclass=stocks`);
-  const hist = await getJSON(`https://api.nasdaq.com/api/quote/${t}/historical?assetclass=stocks&fromdate=${c.listedAt}&todate=${today}&limit=9999`);
+  // Nasdaq throttles a burst; give each call a few spaced attempts before calling the vendor dead.
+  const q = async (url) => {
+    for (let i = 0; i < 4; i++) {
+      const j = await getJSON(url);
+      if (j && j.data) return j;
+      await sleep(4000);
+    }
+    return null;
+  };
+  const info = await q(`https://api.nasdaq.com/api/quote/${t}/info?assetclass=stocks`);
+  const sum = await q(`https://api.nasdaq.com/api/quote/${t}/summary?assetclass=stocks`);
+  const hist = await q(`https://api.nasdaq.com/api/quote/${t}/historical?assetclass=stocks&fromdate=${c.listedAt}&todate=${today}&limit=9999`);
   await sleep(200);
   const live = num(info?.data?.primaryData?.lastSalePrice);
   const vendorCap = num(sum?.data?.summaryData?.MarketCap?.value);
@@ -141,9 +152,12 @@ for (const c of companies) {
     .filter(([d, v]) => d && v != null)
     .sort((a, b) => (a[0] < b[0] ? -1 : 1));
 
-  check(t, live != null, 'Nasdaq returns a price');
-  check(t, vendorCap != null && vendorCap > 0, 'Nasdaq returns a market cap');
-  check(t, bars.length > 0, 'Nasdaq returns a price history');
+  // A throttled vendor is not a data error: the refresh that wrote the file could not have written it
+  // without the same numbers. Say so and skip the vendor checks rather than failing the run; when the
+  // vendor answers, every check below is strict.
+  if (live == null) warn(t, 'Nasdaq did not answer the quote — vendor checks skipped');
+  if (vendorCap == null) warn(t, 'Nasdaq did not answer the market cap — cap band skipped');
+  if (!bars.length) warn(t, 'Nasdaq did not answer the price history — tape checks skipped');
 
   if (bars.length) {
     check(t, bars[0][0] === c.listedAt, 'listing date is the first trading day', `file ${c.listedAt} vs tape ${bars[0][0]}`);
@@ -273,6 +287,9 @@ for (const c of companies) {
   const shortDate = new Date(c.listedAt + 'T00:00:00Z').toLocaleDateString('en-GB', { day: '2-digit', month: 'short', timeZone: 'UTC' });
   check(t, String(c.why || '').includes(shortDate), 'the reason line carries the listing date', c.why);
   check(t, !!c.cik, 'CIK stored');
+  // A page with no profile is a page that cannot introduce the company.
+  check(t, (c.description || '').length >= 120, 'a company description is present', `${(c.description || '').length} chars`);
+  check(t, ['stockanalysis.com', 'nasdaq'].includes(c.descriptionSource), 'description is sourced', c.descriptionSource);
 
   if (FIX) {
     row.price = live ?? row.price;
@@ -294,6 +311,7 @@ if (FIX && fixes.length) {
   console.log(`rewrote ${FILE} from the sources`);
 }
 
-console.log(`\n${companies.length} companies · ${failures.length ? failures.length + ' check(s) failed' : 'all checks passed'}`);
+console.log(`\n${companies.length} companies · ${failures.length ? failures.length + ' check(s) failed' : 'all checks passed'}${warnings.length ? ` · ${warnings.length} warning(s)` : ''}`);
 for (const f of failures) console.log('  ✖ ' + f);
+for (const w of warnings) console.log('  ! ' + w);
 process.exit(failures.length ? 1 : 0);

@@ -12230,7 +12230,7 @@ function renderOffIndexPage(el, c) {
         ${coMono(c)}
         <div><div class="co-name">${esc(c.name)}</div>
         <div class="co-sub">${esc(c.ticker)} · ${esc(c.sector || '')}${c.industry ? ' · ' + esc(c.industry) : ''} · ${esc(c.exchange || 'US')}</div>
-        ${c.why ? `<div class="co-desc">${esc(c.why)}</div>` : ''}</div>
+        ${c.description ? `<div class="co-desc">${esc(coDesc(c.description))}</div>` : (c.why ? `<div class="co-desc">${esc(c.why)}</div>` : '')}</div>
       </div>
       <div class="co-price">
         <span class="co-price-v">${c.price != null ? '$' + c.price.toFixed(2) : '—'}</span>

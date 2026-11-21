@@ -322,17 +322,47 @@ async function filings(cik, capUsd) {
   return out;
 }
 
+// A written profile. The index members are described from stockanalysis.com's company page (not the
+// 10-K's legal "Item 1" text, and not Nasdaq's marketing blurb), so a new listing gets the same
+// treatment; when that page does not exist yet, the vendor's own description is labelled as such
+// rather than leaving the page blank.
+async function profile(ticker) {
+  try {
+    const res = await fetch(`https://stockanalysis.com/stocks/${String(ticker).toLowerCase()}/company/`, {
+      headers: { 'User-Agent': UA }, redirect: 'follow',
+    });
+    if (res.ok) {
+      const html = await res.text();
+      const box = /mb-5">([\s\S]*?)<\/div>/.exec(html);
+      if (box) {
+        const paras = [...box[1].matchAll(/<p>([\s\S]*?)<\/p>/g)].map((m) => m[1].replace(/<[^>]+>/g, ' '));
+        const text = paras.join(' ')
+          .replace(/&amp;/g, '&').replace(/&#39;/g, "'").replace(/&quot;/g, '"').replace(/&nbsp;/g, ' ')
+          .replace(/\s+/g, ' ').trim();
+        if (text.length > 120) return { description: text, descriptionSource: 'stockanalysis.com' };
+      }
+    }
+  } catch { /* fall through to the vendor blurb */ }
+  const d = await getJSON(`https://api.nasdaq.com/api/company/${encodeURIComponent(ticker)}/company-profile?assetclass=stocks`);
+  const text = (((d || {}).CompanyDescription || {}).value || '').replace(/\s+/g, ' ').trim();
+  return text.length > 80 ? { description: text, descriptionSource: 'nasdaq' } : { description: null, descriptionSource: null };
+}
+
 const prev = existsSync(FILE) ? JSON.parse(readFileSync(FILE, 'utf8')) : { companies: [] };
 const prevBy = new Map((prev.companies || []).map((c) => [c.ticker, c]));
 const out = [];
 
 for (const base of BASE) {
   const q = await quote(base.ticker);
+  await sleep(400);   // Nasdaq throttles a burst of seven names; space the calls out
+  // The profile does not depend on the quote, so it is fetched before the guard: a throttled Nasdaq
+  // call must not also cost the reader their description.
+  const prof = await profile(base.ticker);
   if (!q || !q.price || !q.cap || !q.sector) {
     // Never write a half row because a vendor blinked: without a price, a cap and a sector the row
-    // would claim a $0 company. Keep the previous one and say so.
+    // would claim a $0 company. Keep the previous one (with the fresh profile) and say so.
     const kept = prevBy.get(base.ticker);
-    if (kept) out.push(kept);
+    if (kept) out.push({ ...kept, ...prof });
     console.warn(`${base.ticker}: incomplete quote (${Object.entries({ price: q && q.price, cap: q && q.cap, sector: q && q.sector }).filter(([, v]) => !v).map(([k]) => k).join(',')}) — kept the previous row`);
     continue;
   }
@@ -383,12 +413,14 @@ for (const base of BASE) {
   });
   const fin = await filings(base.cik, capUsd);
   const row = out[out.length - 1] || {};
+  row.description = prof.description;
+  row.descriptionSource = prof.descriptionSource;
   row.financials = fin;
   row.pe = fin.pe == null ? null : fin.pe;
   row.roe = fin.roe == null ? null : fin.roe;
   row.netMargin = fin.netMargin == null ? null : fin.netMargin;
   row.revenueCagr = fin.revenueCagr == null ? null : fin.revenueCagr;
-  console.log(`${base.ticker.padEnd(5)} $${price} · ${(capUsd / 1e9).toFixed(0)}B · ${series.length} closes · vs IPO ${(((price / base.ipoPrice) - 1) * 100).toFixed(1)}% · ${fin.basis || 'no annual report'}${fin.pe ? ' · P/E ' + fin.pe : ''}${fin.latestFiling ? ' · ' + fin.latestFiling.form + ' ' + fin.latestFiling.filed : ''}`);
+  console.log(`${base.ticker.padEnd(5)} $${price} · ${(capUsd / 1e9).toFixed(0)}B · ${series.length} closes · vs IPO ${(((price / base.ipoPrice) - 1) * 100).toFixed(1)}% · ${fin.basis || 'no annual report'}${fin.pe ? ' · P/E ' + fin.pe : ''}${fin.latestFiling ? ' · ' + fin.latestFiling.form + ' ' + fin.latestFiling.filed : ''} · ${prof.description ? prof.description.length + ' chars' : 'no profile'}`);
 }
 
 const payload = {

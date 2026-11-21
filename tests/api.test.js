@@ -1344,6 +1344,8 @@ test('the US screener carries the off-index names with their filings', async () 
 
   const co = await (await fetch(`http://localhost:${PORT}/api/company/${crcl.cik}`)).json();
   assert.ok(co.financials && co.financials.ttm, 'the company page gets the same financials');
+  assert.ok((co.description || '').length > 120, 'and a written company profile');
+  assert.ok(['stockanalysis.com', 'nasdaq'].includes(co.descriptionSource), 'the profile names its source');
   assert.match(co.financials.latestFiling.url, /^https:\/\/www\.sec\.gov\/Archives\//, 'and a link to the filing');
 
   // Quarterly results: a 10-Q filer shows its quarters, and the current year's add up to the YTD the
