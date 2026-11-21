@@ -12224,6 +12224,7 @@ function renderOffIndexPage(el, c) {
   const pcls = (v) => (v == null ? '' : v >= 0 ? 'pos' : 'neg');
   const range52 = c.wk52Low != null && c.wk52High != null ? `$${c.wk52Low.toFixed(2)} – $${c.wk52High.toFixed(2)}` : '—';
   const tile = (k, v, sub, cl) => `<div class="co-stat"><span class="co-k">${k}</span><div class="co-v ${cl || ''}">${v}</div>${sub ? `<div class="dimtext">${sub}</div>` : ''}</div>`;
+  const moneyS = (v) => (v == null ? '—' : (v < 0 ? '−' : '') + coMoney(Math.abs(v)));
   el.innerHTML = `<div class="ma-crumb"><button class="ma-back" data-coback="1"><span class="ma-back-i" aria-hidden="true">←</span>COMPANIES</button> <span>${esc(c.ticker)}</span><span class="mb-tag">OFF-INDEX</span></div>`
     + `<div class="co-head">
         ${coMono(c)}
@@ -12256,16 +12257,30 @@ function renderOffIndexPage(el, c) {
         const tiles = ttm ? [
           tile('P/E · TTM', c.pe == null ? '—' : c.pe.toFixed(1) + '×', c.pe == null ? 'no trailing profit' : 'market cap ÷ trailing profit'),
           tile('REVENUE · TTM', coMoney(ttm.revenue), basis),
-          tile('NET INCOME · TTM', coMoney(ttm.netIncome), '', nicls),
+          tile('NET INCOME · TTM', moneyS(ttm.netIncome), '', nicls),
           tile('ROE · TTM', c.roe == null ? '—' : c.roe.toFixed(1) + '%', 'net income ÷ equity'),
           tile('NET MARGIN', c.netMargin == null ? '—' : c.netMargin.toFixed(1) + '%', 'net income ÷ revenue'),
         ] : [
           tile('REVENUE · PERIOD', coMoney(latest.revenue), basis),
-          tile('NET INCOME · PERIOD', coMoney(latest.netIncome), '', nicls),
+          tile('NET INCOME · PERIOD', moneyS(latest.netIncome), '', nicls),
           tile('P/E', '—', 'needs a full year of earnings'),
           tile('ROE', '—', 'needs a full year of earnings'),
         ];
-        return `<div class="co-sect">RESULTS</div><div class="co-stats ${ttm ? 'co-stats-12' : ''}">${tiles.join('')}</div>`;
+        const qs = ((c.financials || {}).quarters) || [];
+        // Quarterly as filed: the period end is the label, because a January fiscal year makes "Q3"
+        // ambiguous. Year-on-year only where the same quarter a year earlier is in the record.
+        const yoy = (q) => {
+          const prior = qs.find((x) => Math.abs((Date.parse(q.end) - Date.parse(x.end)) / 864e5 - 365) < 12);
+          return prior && prior.revenue > 0 ? +(((q.revenue / prior.revenue) - 1) * 100).toFixed(1) : null;
+        };
+        const rows = qs.slice().reverse().map((q) => {
+          const y = yoy(q);
+          return `<div class="co-tr"><span>${esc(dealDateY(q.end))}</span><span>${moneyS(q.revenue)}</span><span class="${q.netIncome == null ? '' : q.netIncome >= 0 ? 'pos' : 'neg'}">${moneyS(q.netIncome)}</span><span>${q.eps == null ? '—' : (q.eps < 0 ? '−$' : '$') + Math.abs(q.eps).toFixed(2)}</span><span class="${y == null ? '' : y >= 0 ? 'pos' : 'neg'}">${y == null ? '—' : (y >= 0 ? '+' : '') + y.toFixed(1) + '%'}</span></div>`;
+        }).join('');
+        return `<div class="co-sect">RESULTS</div><div class="co-stats ${ttm ? 'co-stats-12' : ''}">${tiles.join('')}</div>`
+          + (rows ? `<div class="gtitle">QUARTERLY RESULTS · ${qs.length}</div><div class="jp-q-scroll"><div class="co-table">
+              <div class="co-tr co-th"><span>PERIOD END</span><span>REVENUE</span><span>NET PROFIT</span><span>EPS</span><span>REV YOY</span></div>
+              ${rows}</div></div><div class="macro-note" style="padding:6px 12px 0">EPS is shown where the filing tags the quarter; a quarter derived from the year to date leaves it blank rather than subtracting per-share figures.</div>` : '');
       })()
     + `<div class="co-ranges">${['1m', '3m', '6m', 'ytd', '1y', '5y', '10y'].map((r) => `<button class="ma-chip${coRange === r ? ' on' : ''}" data-corange="${r}">${r.toUpperCase()}</button>`).join('')}</div>
       <div class="co-rets" id="co-rets"></div>

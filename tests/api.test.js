@@ -1345,6 +1345,17 @@ test('the US screener carries the off-index names with their filings', async () 
   const co = await (await fetch(`http://localhost:${PORT}/api/company/${crcl.cik}`)).json();
   assert.ok(co.financials && co.financials.ttm, 'the company page gets the same financials');
   assert.match(co.financials.latestFiling.url, /^https:\/\/www\.sec\.gov\/Archives\//, 'and a link to the filing');
+
+  // Quarterly results: a 10-Q filer shows its quarters, and the current year's add up to the YTD the
+  // same filing reports — the check that catches a bad derivation.
+  const spcxPage = await (await fetch(`http://localhost:${PORT}/api/company/${spcx.cik}`)).json();
+  const qs = spcxPage.financials.quarters || [];
+  assert.ok(qs.length >= 3, 'SpaceX has quarterly results even without a 10-K');
+  assert.equal(new Set(qs.map((q) => q.end)).size, qs.length, 'no duplicate quarters');
+  const ytd = spcxPage.financials.latest;
+  const sum = qs.filter((q) => q.revenue != null && q.end >= ytd.start && q.end <= ytd.end)
+    .reduce((a, q) => a + q.revenue, 0);
+  assert.ok(Math.abs(sum - ytd.revenue) / ytd.revenue < 0.01, 'the quarters add up to the year to date');
 });
 
 test('the search aliases land on the off-index names', async () => {

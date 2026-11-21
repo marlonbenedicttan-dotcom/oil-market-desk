@@ -208,6 +208,22 @@ for (const c of companies) {
     const age = (Date.parse(today) - Date.parse(c.listedAt)) / 864e5;
     check(t, age < 120, 'a company older than four months has a filing on EDGAR', `listed ${c.listedAt}`);
   }
+  // Quarters: unique, ordered, and the current year's add up to the year to date the same filing
+  // reports. That is the check that catches a bad subtraction.
+  if (Array.isArray(fin.quarters) && fin.quarters.length) {
+    const ends = fin.quarters.map((q) => q.end);
+    check(t, new Set(ends).size === ends.length, 'no duplicate quarter ends');
+    check(t, ends.every((d, i) => i === 0 || d > ends[i - 1]), 'quarters are in date order');
+    check(t, fin.quarters.every((q) => q.revenue == null || q.revenue > 0), 'quarterly revenue is positive');
+    if (fin.latest && fin.quarters.some((q) => q.revenue != null)) {
+      const sum = fin.quarters
+        .filter((q) => q.revenue != null && q.end >= fin.latest.start && q.end <= fin.latest.end)
+        .reduce((a, q) => a + q.revenue, 0);
+      check(t, Math.abs(sum - fin.latest.revenue) / fin.latest.revenue < 0.01, 'the year’s quarters add up to its year to date',
+        `${Math.round(sum)} vs ${fin.latest.revenue}`);
+    }
+  }
+
   if (fin.ttm) {
     check(t, fin.ttm.end === (fin.latest && fin.latest.end), 'TTM ends on the latest filed period');
     check(t, fin.fy && fin.latest && fin.prior, 'a TTM shows its working (FY + YTD − prior YTD)');

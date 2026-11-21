@@ -206,6 +206,40 @@ async function filings(cik, capUsd) {
     break;
   }
 
+  // Quarterly figures: the filings are cumulative (Q1, H1, 9M, FY), so a quarter is the step between
+  // two consecutive periods inside the same fiscal year. The deltas are kept only when the step is
+  // genuinely a quarter long, and EPS follows the same periods.
+  // Quarterly figures. A filing reports cumulative periods (Q1, H1, 9M, FY) and sometimes the
+  // standalone quarter as well. A quarter is either tagged as one, or the step between two periods
+  // that share a start (YTD progression) or an end (YTD minus the quarter inside it). Deltas are kept
+  // only when the step is genuinely a quarter long, and EPS uses tagged quarters only — diluted EPS
+  // is not additive across quarters, so subtracting it would invent a number.
+  const quarterParts = (rows) => {
+    const reported = new Map();
+    const derived = new Map();
+    const facts = rows.filter((r) => SEC_DAY(r.start, r.end) <= 380);
+    for (const r of facts) {
+      const d = SEC_DAY(r.start, r.end);
+      if (d < 60 || d > 110) continue;
+      const prev = reported.get(r.end);
+      if (!prev || (r.filed || '') > (prev.filed || '')) reported.set(r.end, r);
+    }
+    for (const a of facts) {
+      for (const b of facts) {
+        if (a === b) continue;
+        let from, to, val;
+        if (a.start === b.start && a.end < b.end) { from = a.end; to = b.end; val = b.val - a.val; }
+        else if (a.end === b.end && a.start < b.start) {
+          // The YTD minus the quarter inside it is the earlier part of the year: it ends the day
+          // before that quarter starts, not on its start date.
+          from = a.start; to = new Date(Date.parse(b.start) - 864e5).toISOString().slice(0, 10); val = a.val - b.val;
+        } else continue;
+        if (SEC_DAY(from, to) < 60 || SEC_DAY(from, to) > 110) continue;
+        if (!derived.has(to)) derived.set(to, { start: from, end: to, val });
+      }
+    }
+    return { reported, derived };
+  };
   const revAll = dedupePeriods(conceptRows(gaap, CONCEPTS.revenue));
   const niAll = dedupePeriods(conceptRows(gaap, CONCEPTS.netIncome));
   const equityRows = conceptRows(gaap, CONCEPTS.equity, true).sort((a, b) => (a.end < b.end ? 1 : -1));
@@ -234,6 +268,22 @@ async function filings(cik, capUsd) {
   const ttmRev = fy && ytd && prev && ytd.end > fy.end ? fy.val + ytd.val - prev.val : (fy && ytd && ytd.end <= fy.end ? fy.val : null);
   const ttmNi = fyNi && ytdNi && prevNi && ytdNi.end > fyNi.end ? fyNi.val + ytdNi.val - prevNi.val : (fyNi && ytdNi && ytdNi.end <= fyNi.end ? fyNi.val : null);
 
+  const epsRows = dedupePeriods(conceptRows(gaap, ['EarningsPerShareDiluted', 'EarningsPerShareBasicAndDiluted']));
+  const rq = quarterParts(rev);
+  const nq = quarterParts(niAll);
+  const eq = quarterParts(epsRows);
+  const pick = (parts, end) => parts.reported.get(end) || parts.derived.get(end) || null;
+  // A derived quarter can land a day or two from the tagged one; the tagged quarter wins.
+  const near = (a, b) => Math.abs((Date.parse(a) - Date.parse(b)) / 864e5) <= 6;
+  const reportedEnds = [...rq.reported.keys(), ...nq.reported.keys()];
+  const derivedEnds = [...rq.derived.keys(), ...nq.derived.keys()].filter((e) => !reportedEnds.some((r) => near(r, e)));
+  const ends = [...new Set(reportedEnds.concat(derivedEnds))].sort();
+  out.quarters = ends.map((end) => {
+    const rv = pick(rq, end);
+    const nv = pick(nq, end);
+    const ev = eq.reported.get(end) || null;
+    return { end, revenue: rv ? rv.val : null, netIncome: nv ? nv.val : null, eps: ev ? ev.val : null };
+  }).filter((q) => q.revenue != null || q.netIncome != null).slice(-8);
   out.fy = fy ? { end: fy.end, revenue: fy.val, netIncome: fyNi ? fyNi.val : null } : null;
   out.latest = ytd ? { start: ytd.start, end: ytd.end, revenue: ytd.val, netIncome: ytdNi ? ytdNi.val : null } : null;
   // The prior-year comparable is stored too, so the TTM can be re-derived by an auditor (and by this
@@ -266,11 +316,12 @@ const out = [];
 
 for (const base of BASE) {
   const q = await quote(base.ticker);
-  if (!q || !q.price) {
-    // Never drop a name because a vendor blinked: keep yesterday's row and say so.
+  if (!q || !q.price || !q.cap || !q.sector) {
+    // Never write a half row because a vendor blinked: without a price, a cap and a sector the row
+    // would claim a $0 company. Keep the previous one and say so.
     const kept = prevBy.get(base.ticker);
     if (kept) out.push(kept);
-    console.warn(`${base.ticker}: no quote — kept the previous row`);
+    console.warn(`${base.ticker}: incomplete quote (${Object.entries({ price: q && q.price, cap: q && q.cap, sector: q && q.sector }).filter(([, v]) => !v).map(([k]) => k).join(',')}) — kept the previous row`);
     continue;
   }
   // From the listing date (capped at three years), so the company page can draw a chart over the whole
@@ -325,7 +376,7 @@ for (const base of BASE) {
   row.roe = fin.roe == null ? null : fin.roe;
   row.netMargin = fin.netMargin == null ? null : fin.netMargin;
   row.revenueCagr = fin.revenueCagr == null ? null : fin.revenueCagr;
-  console.log(`${base.ticker.padEnd(5)} $${q.price} · ${(capUsd / 1e9).toFixed(0)}B · ${series.length} closes · vs IPO ${(((price / base.ipoPrice) - 1) * 100).toFixed(1)}% · ${fin.basis || 'no annual report'}${fin.pe ? ' · P/E ' + fin.pe : ''}${fin.latestFiling ? ' · ' + fin.latestFiling.form + ' ' + fin.latestFiling.filed : ''}`);
+  console.log(`${base.ticker.padEnd(5)} $${price} · ${(capUsd / 1e9).toFixed(0)}B · ${series.length} closes · vs IPO ${(((price / base.ipoPrice) - 1) * 100).toFixed(1)}% · ${fin.basis || 'no annual report'}${fin.pe ? ' · P/E ' + fin.pe : ''}${fin.latestFiling ? ' · ' + fin.latestFiling.form + ' ' + fin.latestFiling.filed : ''}`);
 }
 
 const payload = {
