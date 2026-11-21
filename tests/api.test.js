@@ -1361,7 +1361,12 @@ test('the US screener carries the off-index names with their filings', async () 
 });
 
 test('the search aliases land on the off-index names', async () => {
-  const cases = [['claude', 'ANT'], ['anthropic', 'ANT'], ['x', 'SPCX'], ['starlink', 'SPCX'], ['usdc', 'CRCL'], ['figjam', 'FIG']];
+  const cases = [
+    ['claude', 'ANT'], ['anthropic', 'ANT'], ['sonnet', 'ANT'],
+    ['x', 'SPCX'], ['starlink', 'SPCX'], ['starship', 'SPCX'],
+    ['usdc', 'CRCL'], ['cctp', 'CRCL'],
+    ['figjam', 'FIG'], ['spotme', 'CHYM'], ['wafer scale', 'CBRS'], ['coreweave', 'CRWV'],
+  ];
   for (const [q, want] of cases) {
     const d = await (await fetch(`http://localhost:${PORT}/api/global-search?q=${encodeURIComponent(q)}`)).json();
     assert.equal(d.results[0]?.ticker, want, `"${q}" should find ${want}`);

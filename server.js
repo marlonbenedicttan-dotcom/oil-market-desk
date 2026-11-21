@@ -1270,11 +1270,12 @@ function offIndexSearchEntries() {
       price: c.price ?? null, priceDate: c.priceDate || null,
       pe: c.pe == null ? null : c.pe, roe: c.roe == null ? null : c.roe, ytd: c.ytd == null ? null : c.ytd,
       securityType: 'common', primary: true, noFilings: !(c.financials && c.financials.ttm), offIndex: true,
-      aliases: c.aliases || [],
+      aliases: [...(c.aliases || []), ...(c.brands || [])],
       // Aliases are codes too: "claude" and a bare "x" must land on Anthropic and SpaceX by exact
-      // match rather than by a substring sweep over every name.
-      codes: [c.ticker, ...(c.aliases || [])], listedAt: c.listedAt || null,
-      hay: `${name} ${c.legalName || ''} ${c.ticker} ${(c.aliases || []).join(' ')}`.toLowerCase().replace(/\s+/g, ' ').trim(),
+      // match rather than by a substring sweep over every name. Brands are searchable the same way
+      // (Starlink, USDC, SpotMe, FigJam, Sonnet …).
+      codes: [c.ticker, ...(c.aliases || []), ...(c.brands || [])], listedAt: c.listedAt || null,
+      hay: `${name} ${c.legalName || ''} ${c.ticker} ${(c.aliases || []).join(' ')} ${(c.brands || []).join(' ')}`.toLowerCase().replace(/\s+/g, ' ').trim(),
     };
   });
 }
@@ -6345,7 +6346,7 @@ const server = http.createServer(async (req, res) => {
         revenueCagr: c.revenueCagr == null ? null : c.revenueCagr,
         netMargin: c.netMargin == null ? null : c.netMargin,
         offIndex: true, listedAt: c.listedAt || null, vsIpo: c.vsIpo ?? null, why: c.why || null,
-        aliases: c.aliases || [], noFilings: !c.financials?.ttm,
+        aliases: c.aliases || [], brands: c.brands || [], noFilings: !c.financials?.ttm,
       }));
       return sendListJSON(res, 200, {
         updated: COMPANIES.updated || null,

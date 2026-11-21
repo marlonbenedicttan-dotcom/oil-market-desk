@@ -26,43 +26,50 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const BASE = [
   {
     ticker: 'SPCX', cik: '1181412', name: 'SpaceX', legalName: 'Space Exploration Technologies Corp.',
+    brands: ['SpaceX', 'Starlink', 'Starshield', 'Starship', 'Falcon 9', 'Dragon', 'Raptor'],
     aliases: ['x', 'spacex', 'starlink', 'starship', 'falcon'],
     listedAt: '2026-06-12', ipoPrice: 135, exchange: 'NASDAQ',
     why: 'Listed 12 Jun 2026 · not an index constituent yet',
   },
   {
     ticker: 'ANT', cik: '2130357', name: 'Anthropic', legalName: 'Anthropic, PBC',
-    aliases: ['claude', 'anthropic', 'claude ai', 'claude code'],
+    brands: ['Claude', 'Claude Code', 'Claude API', 'Claude Pro', 'Claude Max', 'Claude Sonnet', 'Claude Opus', 'Claude Haiku'],
+    aliases: ['claude', 'anthropic', 'claude ai', 'claude code', 'sonnet', 'opus', 'haiku'],
     listedAt: '2026-11-19', ipoPrice: 83, exchange: 'NASDAQ',
     why: 'Listed 19 Nov 2026 · not an index constituent yet',
   },
   {
     ticker: 'CBRS', cik: '2021728', name: 'Cerebras Systems', legalName: 'Cerebras Systems Inc.',
-    aliases: ['cerebras', 'cerebras systems', 'wafer scale'],
+    brands: ['Cerebras', 'Cerebras Inference', 'Wafer-Scale Engine', 'WSE', 'Condor Galaxy'],
+    aliases: ['cerebras', 'cerebras systems', 'wafer scale', 'wse'],
     listedAt: '2026-05-14', ipoPrice: 185, exchange: 'NASDAQ',
     why: 'Listed 14 May 2026 · not an index constituent yet',
   },
   {
     ticker: 'CRWV', cik: '1769628', name: 'CoreWeave', legalName: 'CoreWeave, Inc.',
+    brands: ['CoreWeave', 'CoreWeave Cloud', 'CoreWeave Kubernetes Service', 'CKS'],
     aliases: ['coreweave', 'core weave'],
     listedAt: '2025-03-28', ipoPrice: 40, exchange: 'NASDAQ',
     why: 'Listed 28 Mar 2025 · not an index constituent yet',
   },
   {
     ticker: 'CRCL', cik: '1876042', name: 'Circle Internet Group', legalName: 'Circle Internet Group, Inc.',
-    aliases: ['circle', 'usdc', 'circle internet'],
+    brands: ['Circle', 'USDC', 'EURC', 'Circle Payments Network', 'CCTP'],
+    aliases: ['circle', 'usdc', 'eurc', 'circle internet', 'cctp'],
     listedAt: '2025-06-05', ipoPrice: 31, exchange: 'NYSE',
     why: 'Listed 05 Jun 2025 · not an index constituent yet',
   },
   {
     ticker: 'CHYM', cik: '1795586', name: 'Chime Financial', legalName: 'Chime Financial, Inc.',
-    aliases: ['chime', 'chime financial'],
+    brands: ['Chime', 'SpotMe', 'MyPay', 'Chime Card'],
+    aliases: ['chime', 'chime financial', 'spotme', 'mypay'],
     listedAt: '2025-06-12', ipoPrice: 27, exchange: 'NASDAQ',
     why: 'Listed 12 Jun 2025 · not an index constituent yet',
   },
   {
     ticker: 'FIG', cik: '1579878', name: 'Figma', legalName: 'Figma, Inc.',
-    aliases: ['figma', 'figjam'],
+    brands: ['Figma', 'FigJam', 'Figma Slides', 'Figma Make', 'Dev Mode'],
+    aliases: ['figma', 'figjam', 'figma slides', 'dev mode'],
     listedAt: '2025-07-31', ipoPrice: 33, exchange: 'NYSE',
     why: 'Listed 31 Jul 2025 · not an index constituent yet',
   },
@@ -362,7 +369,14 @@ for (const base of BASE) {
     // Never write a half row because a vendor blinked: without a price, a cap and a sector the row
     // would claim a $0 company. Keep the previous one (with the fresh profile) and say so.
     const kept = prevBy.get(base.ticker);
-    if (kept) out.push({ ...kept, ...prof });
+    // Curated facts (listing, brands, aliases) live in this file, not in the last dataset, so they are
+    // re-applied even when the quote is missing.
+    const curated = {
+      ticker: base.ticker, cik: base.cik, name: base.name, legalName: base.legalName,
+      listedAt: base.listedAt, ipoPrice: base.ipoPrice, exchange: base.exchange, why: base.why,
+      brands: base.brands || [], aliases: base.aliases || [],
+    };
+    if (kept) out.push({ ...kept, ...curated, ...prof });
     console.warn(`${base.ticker}: incomplete quote (${Object.entries({ price: q && q.price, cap: q && q.cap, sector: q && q.sector }).filter(([, v]) => !v).map(([k]) => k).join(',')}) — kept the previous row`);
     continue;
   }
