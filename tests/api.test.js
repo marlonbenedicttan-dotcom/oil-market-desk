@@ -1324,3 +1324,33 @@ test('every off-index name sits in its global theme, tagged', async () => {
   assert.ok(inTheme.get('CRCL')?.includes('banks'), 'Circle is in banks');
   assert.ok(inTheme.get('FIG')?.includes('software'), 'Figma is in software');
 });
+
+test('the US screener carries the off-index names with their filings', async () => {
+  const d = await (await fetch(`http://localhost:${PORT}/api/companies`)).json();
+  const off = d.offIndex || [];
+  assert.ok(off.length >= 7, 'the off-index names ship with the US list');
+  const spcx = off.find((c) => c.ticker === 'SPCX');
+  assert.ok(spcx, 'SpaceX is in the US screener payload');
+  assert.ok(spcx.marketCap > 1e12 && spcx.cik && spcx.sector, 'a row carries cap, CIK and sector');
+  assert.equal(spcx.offIndex, true);
+  assert.equal(d.companies.some((c) => c.ticker === 'SPCX'), false, 'the index list itself is unchanged');
+
+  // A name with a 10-K + 10-Q has a TTM and ratios; one that listed this year has its period only.
+  const crcl = off.find((c) => c.ticker === 'CRCL');
+  assert.ok(crcl.pe > 0, 'Circle has a trailing P/E from its filings');
+  assert.ok(crcl.revenue > 0 && crcl.netIncome != null, 'and revenue and profit');
+  const ant = off.find((c) => c.ticker === 'ANT');
+  assert.ok(ant && ant.pe == null, 'Anthropic has no annual report yet, so no P/E');
+
+  const co = await (await fetch(`http://localhost:${PORT}/api/company/${crcl.cik}`)).json();
+  assert.ok(co.financials && co.financials.ttm, 'the company page gets the same financials');
+  assert.match(co.financials.latestFiling.url, /^https:\/\/www\.sec\.gov\/Archives\//, 'and a link to the filing');
+});
+
+test('the search aliases land on the off-index names', async () => {
+  const cases = [['claude', 'ANT'], ['anthropic', 'ANT'], ['x', 'SPCX'], ['starlink', 'SPCX'], ['usdc', 'CRCL'], ['figjam', 'FIG']];
+  for (const [q, want] of cases) {
+    const d = await (await fetch(`http://localhost:${PORT}/api/global-search?q=${encodeURIComponent(q)}`)).json();
+    assert.equal(d.results[0]?.ticker, want, `"${q}" should find ${want}`);
+  }
+});

@@ -5397,6 +5397,9 @@ const CO_ALIAS = {
   google: 'GOOGL', alphabet: 'GOOGL', youtube: 'GOOGL', facebook: 'META', instagram: 'META', whatsapp: 'META',
   berkshire: 'BRK-B', jpmorgan: 'JPM', 'jp morgan': 'JPM', exxon: 'XOM', 'johnson & johnson': 'JNJ', jnj: 'JNJ',
   procter: 'PG', 'coca cola': 'KO', cocacola: 'KO', 'home depot': 'HD', 'bank of america': 'BAC', 'wells fargo': 'WFC',
+  // Listed, not index members: what people actually type.
+  claude: 'ANT', anthropic: 'ANT', 'claude ai': 'ANT', x: 'SPCX', spacex: 'SPCX', starlink: 'SPCX', starship: 'SPCX',
+  coreweave: 'CRWV', cerebras: 'CBRS', 'wafer scale': 'CBRS', circle: 'CRCL', usdc: 'CRCL', chime: 'CHYM', figma: 'FIG', figjam: 'FIG',
   goldman: 'GS', 'morgan stanley': 'MS', 'at&t': 'T', att: 'T', 't mobile': 'TMUS', 'eli lilly': 'LLY',
   unitedhealth: 'UNH', 'united health': 'UNH', 'general motors': 'GM', 'ford': 'F', 'boeing': 'BA',
 };
@@ -11590,7 +11593,8 @@ function renderCompanies() {
       : usView === 'themes' ? 'curated theme lists'
         : 'breadth, sectors and the index';
     const uniName = companiesData.universe?.name || 'S&P 500';
-    sub.textContent = `${all.length} securities · ${cos} companies · ${uniName} · ${what}`;
+    const offN = (companiesData.offIndex || []).length;
+    sub.textContent = `${all.length} securities · ${cos} companies · ${uniName}${offN ? ` · ${offN} off-index` : ''} · ${what}`;
   }
 
   if (coCik) return renderCompanyPage(el, all);
@@ -11598,7 +11602,7 @@ function renderCompanies() {
   if (usView === 'themes') return renderUsThemes(el, all);
 
   const q = coQuery.trim().toLowerCase();
-  const rows = all.filter((c) => {
+  const rows = all.concat(companiesData.offIndex || []).filter((c) => {
     // Warrants, units, rights and preferreds are separate securities, not the company's common stock.
     if (/\b(warrant|unit|right|preferred)\b/i.test(c.name)) return false;
     // A second share class is the same company — Alphabet listed twice reads as a duplicate, not a choice.
@@ -11621,9 +11625,11 @@ function renderCompanies() {
     // matched nothing until it was pointed at a number that is actually computed.
     if (coGrowth != null) { if (c.revenueCagr == null || c.revenueCagr < coGrowth) return false; }
     if (q) {
-      const hay = `${c.name} ${c.ticker || ''} ${c.industry || ''} ${c.indexName || ''} ${(c.brands || []).join(' ')}`.toLowerCase();
       const alias = CO_ALIAS[q];
-      if (!hay.includes(q) && (!alias || c.ticker !== alias)) return false;
+      // An alias is a direct hit: "x" means SpaceX, not every name with an x in it.
+      if (alias) return c.ticker === alias;
+      const hay = `${c.name} ${c.ticker || ''} ${c.industry || ''} ${c.indexName || ''} ${(c.aliases || []).join(' ')} ${(c.brands || []).join(' ')}`.toLowerCase();
+      if (!hay.includes(q)) return false;
     }
     return true;
   });
@@ -11697,7 +11703,7 @@ function renderCompanies() {
             ${c.price != null ? `<span class="co-px">$${c.price.toFixed(2)}</span>` : ''}
             ${c.chg1d != null ? `<em class="${c.chg1d >= 0 ? 'pos' : 'neg'}">${c.chg1d >= 0 ? '+' : ''}${c.chg1d.toFixed(1)}%</em>` : ''}
             ${c.chgYtd != null ? `<em class="${c.chgYtd >= 0 ? 'pos' : 'neg'}">${c.chgYtd >= 0 ? '+' : ''}${c.chgYtd.toFixed(1)}% YTD</em>` : ''}
-            ${c.shareClass ? '<em class="co-cl">2ND CLASS</em>' : c.noFilings ? '<em class="co-cl">NO FILINGS</em>' : ''}
+            ${c.offIndex ? '<em class="co-cl gb-off">OFF-INDEX</em>' : c.shareClass ? '<em class="co-cl">2ND CLASS</em>' : c.noFilings ? '<em class="co-cl">NO FILINGS</em>' : ''}
           </span></span>
         <span class="co-cap">${coMoney(c.marketCap)}<i class="co-bar"><i style="width:${Math.max(2, ((c.marketCap || 0) / max) * 100)}%"></i></i></span>
         <span class="co-pe" title="${c.pe != null ? 'trailing P/E: price ÷ latest FY diluted EPS' : 'no positive trailing EPS'}">${c.pe != null ? c.pe.toFixed(1) : '—'}</span>
@@ -12222,7 +12228,7 @@ function renderOffIndexPage(el, c) {
     + `<div class="co-head">
         ${coMono(c)}
         <div><div class="co-name">${esc(c.name)}</div>
-        <div class="co-sub">${esc(c.ticker)} · ${esc(c.sector || '')}${c.industry ? ' · ' + esc(c.industry) : ''} · NASDAQ</div>
+        <div class="co-sub">${esc(c.ticker)} · ${esc(c.sector || '')}${c.industry ? ' · ' + esc(c.industry) : ''} · ${esc(c.exchange || 'US')}</div>
         ${c.why ? `<div class="co-desc">${esc(c.why)}</div>` : ''}</div>
       </div>
       <div class="co-price">
@@ -12231,17 +12237,46 @@ function renderOffIndexPage(el, c) {
         <span class="co-price-c ${pcls(c.vsIpo)}">${c.vsIpo != null ? `${pct(c.vsIpo)} vs IPO` : ''}</span>
         <span class="dimtext">${c.priceDate ? `as of ${dealDateY(c.priceDate)}` : ''} · USD</span>
       </div>
-      <div class="co-verif">LISTED ${esc(String(c.listedAt || '').toUpperCase())} · NOT AN INDEX CONSTITUENT YET — NO FILING-DERIVED RATIOS</div>`
+      <div class="co-verif">LISTED ${esc(dealDateY(c.listedAt).toUpperCase())} · NOT AN INDEX CONSTITUENT YET${c.financials?.ttm ? ' · GAAP, AS FILED' : ' — NO ANNUAL REPORT YET'}</div>`
     + `<div class="co-sect">LISTING</div><div class="co-stats">${[
         tile('MARKET CAP', coMoney(c.marketCap), 'Nasdaq quote × shares outstanding'),
         tile('VS IPO', pct(c.vsIpo), `IPO price $${c.ipoPrice != null ? c.ipoPrice : '—'}`, pcls(c.vsIpo)),
         tile('52-WEEK RANGE', range52),
         tile('LISTED', dealDateY(c.listedAt)),
       ].join('')}</div>`
+    + (() => {
+        const f = c.financials || {};
+        const ttm = f.ttm || null;
+        const latest = f.latest || null;
+        if (!ttm && !latest) return '';
+        const basis = ttm ? `TTM to ${dealDateY(ttm.end)}`
+          : `${dealDateY(latest.start)} – ${dealDateY(latest.end)} · no annual report yet`;
+        const ni = (ttm || latest).netIncome;
+        const nicls = ni == null ? '' : ni >= 0 ? 'pos' : 'neg';
+        const tiles = ttm ? [
+          tile('P/E · TTM', c.pe == null ? '—' : c.pe.toFixed(1) + '×', c.pe == null ? 'no trailing profit' : 'market cap ÷ trailing profit'),
+          tile('REVENUE · TTM', coMoney(ttm.revenue), basis),
+          tile('NET INCOME · TTM', coMoney(ttm.netIncome), '', nicls),
+          tile('ROE · TTM', c.roe == null ? '—' : c.roe.toFixed(1) + '%', 'net income ÷ equity'),
+          tile('NET MARGIN', c.netMargin == null ? '—' : c.netMargin.toFixed(1) + '%', 'net income ÷ revenue'),
+        ] : [
+          tile('REVENUE · PERIOD', coMoney(latest.revenue), basis),
+          tile('NET INCOME · PERIOD', coMoney(latest.netIncome), '', nicls),
+          tile('P/E', '—', 'needs a full year of earnings'),
+          tile('ROE', '—', 'needs a full year of earnings'),
+        ];
+        return `<div class="co-sect">RESULTS</div><div class="co-stats ${ttm ? 'co-stats-12' : ''}">${tiles.join('')}</div>`;
+      })()
     + `<div class="co-ranges">${['1m', '3m', '6m', 'ytd', '1y', '5y', '10y'].map((r) => `<button class="ma-chip${coRange === r ? ' on' : ''}" data-corange="${r}">${r.toUpperCase()}</button>`).join('')}</div>
       <div class="co-rets" id="co-rets"></div>
       <div class="co-chartwrap"><div class="co-canvas"><div class="co-big" id="co-big"></div><canvas id="co-chart"></canvas></div></div>`
-    + `<div class="macro-note">Listed ${dealDateY(c.listedAt)}; not a constituent of the indexes this desk covers, so it appears in the screener tagged OFF-INDEX and stays out of the index totals. Price and market cap are Nasdaq quote data; listing date and IPO price come from the 424B4. <a href="https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=${encodeURIComponent(c.cik || c.ticker)}&type=10-Q" target="_blank" rel="noopener noreferrer">filings ↗</a></div>`;
+    + (() => {
+        const lf = c.financials && c.financials.latestFiling;
+        const link = lf && lf.url
+          ? `<a href="${esc(lf.url)}" target="_blank" rel="noopener noreferrer">${esc(lf.form)}${lf.period ? ' · period ' + dealDateY(lf.period) : ''}${lf.filed ? ' · filed ' + dealDateY(lf.filed) : ''} ↗</a>`
+          : `<a href="https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=${encodeURIComponent(c.cik || c.ticker)}&type=10-Q" target="_blank" rel="noopener noreferrer">filings ↗</a>`;
+        return `<div class="macro-note">Listed ${dealDateY(c.listedAt)}; not a constituent of the indexes this desk covers, so it appears in the screener tagged OFF-INDEX and stays out of the index totals. Price and market cap are Nasdaq quote data; listing date and IPO price come from the 424B4${c.financials?.ttm ? '; revenue, profit and ratios are the filed XBRL, no estimates' : ''}. Latest filing: ${link}</div>`;
+      })();
   coTicker = c.ticker || null;
   if (coTicker) loadCoChart(coTicker, coRange, '');
 }

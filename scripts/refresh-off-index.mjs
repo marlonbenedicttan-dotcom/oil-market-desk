@@ -26,36 +26,43 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const BASE = [
   {
     ticker: 'SPCX', cik: '1181412', name: 'SpaceX', legalName: 'Space Exploration Technologies Corp.',
+    aliases: ['x', 'spacex', 'starlink', 'starship', 'falcon'],
     listedAt: '2026-06-12', ipoPrice: 135, exchange: 'NASDAQ',
     why: 'Listed 12 Jun 2026 · not an index constituent yet',
   },
   {
     ticker: 'ANT', cik: '2130357', name: 'Anthropic', legalName: 'Anthropic, PBC',
+    aliases: ['claude', 'anthropic', 'claude ai', 'claude code'],
     listedAt: '2026-11-19', ipoPrice: 83, exchange: 'NASDAQ',
     why: 'Listed 19 Nov 2026 · not an index constituent yet',
   },
   {
     ticker: 'CBRS', cik: '2021728', name: 'Cerebras Systems', legalName: 'Cerebras Systems Inc.',
+    aliases: ['cerebras', 'cerebras systems', 'wafer scale'],
     listedAt: '2026-05-14', ipoPrice: 185, exchange: 'NASDAQ',
     why: 'Listed 14 May 2026 · not an index constituent yet',
   },
   {
     ticker: 'CRWV', cik: '1769628', name: 'CoreWeave', legalName: 'CoreWeave, Inc.',
+    aliases: ['coreweave', 'core weave'],
     listedAt: '2025-03-28', ipoPrice: 40, exchange: 'NASDAQ',
     why: 'Listed 28 Mar 2025 · not an index constituent yet',
   },
   {
     ticker: 'CRCL', cik: '1876042', name: 'Circle Internet Group', legalName: 'Circle Internet Group, Inc.',
+    aliases: ['circle', 'usdc', 'circle internet'],
     listedAt: '2025-06-05', ipoPrice: 31, exchange: 'NYSE',
     why: 'Listed 05 Jun 2025 · not an index constituent yet',
   },
   {
     ticker: 'CHYM', cik: '1795586', name: 'Chime Financial', legalName: 'Chime Financial, Inc.',
+    aliases: ['chime', 'chime financial'],
     listedAt: '2025-06-12', ipoPrice: 27, exchange: 'NASDAQ',
     why: 'Listed 12 Jun 2025 · not an index constituent yet',
   },
   {
     ticker: 'FIG', cik: '1579878', name: 'Figma', legalName: 'Figma, Inc.',
+    aliases: ['figma', 'figjam'],
     listedAt: '2025-07-31', ipoPrice: 33, exchange: 'NYSE',
     why: 'Listed 31 Jul 2025 · not an index constituent yet',
   },
@@ -72,7 +79,19 @@ const NASDAQ_SECTOR = {
 const sectorOf = (s) => NASDAQ_SECTOR[s] || 'Other';
 const num = (v) => Number(String(v == null ? '' : v).replace(/[$,%\s,]/g, '')) || null;
 
-async function getJSON(url, tries = 3) {
+// EDGAR payloads are the document itself (no `data` envelope), unlike the Nasdaq ones.
+async function getRawJSON(url, headers = UA, tries = 3) {
+  for (let i = 0; i < tries; i++) {
+    try {
+      const res = await fetch(url, { headers: { ...headers, Accept: 'application/json, text/plain, */*' } });
+      if (res.ok) return await res.json();
+    } catch { /* retry */ }
+    await sleep(700 * (i + 1));
+  }
+  return null;
+}
+
+async function getJSON(url, headers = UA, tries = 3) {
   for (let i = 0; i < tries; i++) {
     try {
       const res = await fetch(url, { headers: { 'User-Agent': UA, Accept: 'application/json, text/plain, */*' } });
@@ -124,19 +143,129 @@ async function history(ticker, from) {
     .sort((a, b) => (a[0] < b[0] ? -1 : 1));
 }
 
+// ---------------------------------------------------------------------------------------------
+// Filings — the same EDGAR XBRL the index members are built from. A TTM is only produced when the
+// arithmetic closes (last 10-K + the current year to date − the same period a year earlier); when
+// there is no annual report yet the latest 10-Q is shown on its own, labelled by its period, and the
+// ratios that need a year of earnings stay null rather than becoming a number that means nothing.
+// ---------------------------------------------------------------------------------------------
+const SEC_DAY = (a, b) => Math.round((Date.parse(b) - Date.parse(a)) / 864e5);
+const CONCEPTS = {
+  revenue: ['Revenues', 'RevenueFromContractWithCustomerExcludingAssessedTax', 'RevenueFromContractWithCustomerIncludingAssessedTax', 'SalesRevenueNet'],
+  netIncome: ['NetIncomeLoss', 'ProfitLoss'],
+  equity: ['StockholdersEquity', 'StockholdersEquityIncludingPortionAttributableToNoncontrollingInterest'],
+  assets: ['Assets'],
+};
+
+function conceptRows(gaap, names, instant = false) {
+  const out = [];
+  for (const n of names) {
+    const f = gaap[n];
+    if (!f) continue;
+    const unit = Object.keys(f.units).find((u) => u === 'USD') || Object.keys(f.units)[0];
+    for (const r of f.units[unit] || []) {
+      if (r.form !== '10-K' && r.form !== '10-Q') continue;
+      if (instant ? r.start : !r.start) continue;
+      out.push({ ...r, concept: n });
+    }
+  }
+  return out;
+}
+const dedupePeriods = (rows) => {
+  const m = new Map();
+  for (const r of rows) {
+    const k = `${r.start || ''}|${r.end}`;
+    const prev = m.get(k);
+    if (!prev || (r.filed || '') > (prev.filed || '')) m.set(k, r);
+  }
+  return [...m.values()];
+};
+const fiscalYearOf = (rows) => rows
+  .filter((r) => r.form === '10-K' && SEC_DAY(r.start, r.end) >= 340 && SEC_DAY(r.start, r.end) <= 380)
+  .sort((a, b) => (a.end < b.end ? 1 : -1))[0] || null;
+const shiftYear = (d) => { const x = new Date(d + 'T00:00:00Z'); x.setUTCFullYear(x.getUTCFullYear() - 1); return x.toISOString().slice(0, 10); };
+
+async function filings(cik, capUsd) {
+  const id = String(cik).padStart(10, '0');
+  const cf = await getRawJSON(`https://data.sec.gov/api/xbrl/companyfacts/CIK${id}.json`, { 'User-Agent': SEC_UA });
+  await sleep(250);
+  const gaap = cf?.facts?.['us-gaap'] || {};
+  const out = { basis: null, ttm: null, latest: null, fy: null, equity: null, assets: null, latestFiling: null, revenueCagr: null };
+
+  // Latest 10-K / 10-Q metadata (form, period, filed, link) — this is what "a new filing shows up" means.
+  const sub = await getRawJSON(`https://data.sec.gov/submissions/CIK${id}.json`, { 'User-Agent': SEC_UA });
+  await sleep(250);
+  const rec = sub?.filings?.recent || {};
+  for (let i = 0; i < (rec.form || []).length; i++) {
+    if (!/^10-[KQ]$/.test(rec.form[i])) continue;
+    const acc = String(rec.accessionNumber?.[i] || '').replace(/-/g, '');
+    out.latestFiling = {
+      form: rec.form[i], filed: rec.filingDate?.[i] || null, period: rec.reportDate?.[i] || null,
+      url: acc && rec.primaryDocument?.[i] ? `https://www.sec.gov/Archives/edgar/data/${id}/${acc}/${rec.primaryDocument[i]}` : null,
+    };
+    break;
+  }
+
+  const revAll = dedupePeriods(conceptRows(gaap, CONCEPTS.revenue));
+  const niAll = dedupePeriods(conceptRows(gaap, CONCEPTS.netIncome));
+  const equityRows = conceptRows(gaap, CONCEPTS.equity, true).sort((a, b) => (a.end < b.end ? 1 : -1));
+  const assetRows = conceptRows(gaap, CONCEPTS.assets, true).sort((a, b) => (a.end < b.end ? 1 : -1));
+  out.equity = equityRows[0] ? equityRows[0].val : null;
+  out.assets = assetRows[0] ? assetRows[0].val : null;
+  if (!revAll.length || !niAll.length) return out;
+
+  // The primary revenue line is the concept with the largest annual figure; mixing concepts within
+  // one company double-counts (a component line next to the total).
+  const byConcept = {};
+  for (const r of revAll) (byConcept[r.concept] = byConcept[r.concept] || []).push(r);
+  const best = Object.entries(byConcept).map(([c, rows]) => {
+    const fy = fiscalYearOf(rows);
+    return { rows, size: fy ? fy.val : Math.max(...rows.map((r) => r.val)) };
+  }).sort((a, b) => b.size - a.size)[0];
+  const rev = dedupePeriods(best.rows);
+  const end = rev.reduce((a, r) => (!a || r.end > a ? r.end : a), null);
+  const longestTo = (rows, e) => rows.filter((r) => r.end === e).sort((a, b) => (a.start < b.start ? -1 : 1))[0] || null;
+  const ytd = longestTo(rev, end);
+  const ytdNi = longestTo(niAll, end);
+  const fy = fiscalYearOf(rev);
+  const fyNi = fiscalYearOf(niAll);
+  const prev = ytd ? rev.find((r) => r.start === shiftYear(ytd.start) && r.end === shiftYear(ytd.end)) : null;
+  const prevNi = ytdNi ? niAll.find((r) => r.start === shiftYear(ytdNi.start) && r.end === shiftYear(ytdNi.end)) : null;
+  const ttmRev = fy && ytd && prev && ytd.end > fy.end ? fy.val + ytd.val - prev.val : (fy && ytd && ytd.end <= fy.end ? fy.val : null);
+  const ttmNi = fyNi && ytdNi && prevNi && ytdNi.end > fyNi.end ? fyNi.val + ytdNi.val - prevNi.val : (fyNi && ytdNi && ytdNi.end <= fyNi.end ? fyNi.val : null);
+
+  out.fy = fy ? { end: fy.end, revenue: fy.val, netIncome: fyNi ? fyNi.val : null } : null;
+  out.latest = ytd ? { start: ytd.start, end: ytd.end, revenue: ytd.val, netIncome: ytdNi ? ytdNi.val : null } : null;
+  // The prior-year comparable is stored too, so the TTM can be re-derived by an auditor (and by this
+  // desk's own audit script) instead of being a number only the build understands.
+  out.prior = prev ? { start: prev.start, end: prev.end, revenue: prev.val, netIncome: prevNi ? prevNi.val : null } : null;
+  if (ttmRev != null) {
+    out.basis = 'TTM';
+    out.ttm = { end, revenue: ttmRev, netIncome: ttmNi, equity: out.equity, assets: out.assets };
+  }
+  const years = [...new Set(rev.filter((r) => r.form === '10-K').map((r) => r.end))].sort()
+    .map((e) => rev.find((r) => r.end === e && r.form === '10-K')).filter((r) => r && r.val > 0);
+  if (years.length >= 3) {
+    const a = years[0], b = years[years.length - 1];
+    const n = SEC_DAY(a.end, b.end) / 365.25;
+    if (n >= 2 && n <= 6) out.revenueCagr = +((Math.pow(b.val / a.val, 1 / n) - 1) * 100).toFixed(1);
+  }
+  // Ratios only where the inputs exist: no TTM earnings means no P/E, no ROE and no margin.
+  if (out.ttm && capUsd) {
+    const ni = out.ttm.netIncome;
+    out.pe = ni != null && ni > 0 ? +(capUsd / ni).toFixed(1) : null;
+    out.roe = ni != null && out.equity > 0 ? +((ni / out.equity) * 100).toFixed(1) : null;
+    out.netMargin = ni != null && out.ttm.revenue > 0 ? +((ni / out.ttm.revenue) * 100).toFixed(1) : null;
+  }
+  return out;
+}
+
 const prev = existsSync(FILE) ? JSON.parse(readFileSync(FILE, 'utf8')) : { companies: [] };
 const prevBy = new Map((prev.companies || []).map((c) => [c.ticker, c]));
 const out = [];
 
 for (const base of BASE) {
   const q = await quote(base.ticker);
-  // The vendor's range lags an intraday move (a stock can print below yesterday's low before the
-  // range updates), so widen it to the price we are about to store. Then the file is always
-  // internally true: the price sits inside the range printed beside it.
-  if (q && q.price) {
-    if (q.wk52Low != null) q.wk52Low = Math.min(q.wk52Low, q.price);
-    if (q.wk52High != null) q.wk52High = Math.max(q.wk52High, q.price);
-  }
   if (!q || !q.price) {
     // Never drop a name because a vendor blinked: keep yesterday's row and say so.
     const kept = prevBy.get(base.ticker);
@@ -150,32 +279,53 @@ for (const base of BASE) {
   const from = base.listedAt < floor ? floor : base.listedAt;
   const series = await history(base.ticker, from);
   const firstClose = series.length ? series[0][1] : null;
+  // Everything is quoted off the tape's own last close, not a live intraday tick: the price, the
+  // market cap, the 52-week range and the return all describe the same session, so the file can be
+  // audited at any hour and the row cannot disagree with its own series. The index pages work the
+  // same way (a dated close), and the page labels it "as of".
+  const lastBar = series.length ? series[series.length - 1] : null;
+  const prevBar = series.length > 1 ? series[series.length - 2] : null;
+  const price = lastBar ? lastBar[1] : q.price;
+  const priceDate = lastBar ? lastBar[0] : new Date().toISOString().slice(0, 10);
+  // The vendor's cap is live; scale it to the close we store so cap = price × shares exactly.
+  const shares = q.price && q.cap ? q.cap / q.price : null;
+  const capUsd = shares && price ? Math.round(price * shares) : q.cap;
+  const wkLow = q.wk52Low == null ? null : Math.min(q.wk52Low, price);
+  const wkHigh = q.wk52High == null ? null : Math.max(q.wk52High, price);
   const year = new Date().getUTCFullYear();
   const priorYearEnd = [...series].reverse().find(([d]) => d < `${year}-01-01`);
   out.push({
     ...base,
     market: 'us',
     currency: 'USD',
-    price: q.price,
-    priceDate: new Date().toISOString().slice(0, 10),
-    prevClose: q.prevClose,
-    chg1d: q.chg1d,
-    capUsd: q.cap,
+    price,
+    priceDate,
+    prevClose: prevBar ? prevBar[1] : q.prevClose,
+    chg1d: prevBar ? +(((price / prevBar[1]) - 1) * 100).toFixed(2) : q.chg1d,
+    capUsd,
+    shares: shares ? Math.round(shares) : null,
     sector: sectorOf(q.sector),
     nasdaqSector: q.sector,
     industry: q.industry,
-    wk52Low: q.wk52Low,
-    wk52High: q.wk52High,
+    wk52Low: wkLow,
+    wk52High: wkHigh,
     firstClose,
     // A loss-making company has no trailing P/E, and a company that listed this year has no full-year
     // return. Both stay null rather than becoming a number that means nothing.
     pe: null,
     roe: null,
-    ytd: priorYearEnd ? +(((q.price / priorYearEnd[1]) - 1) * 100).toFixed(2) : null,
-    vsIpo: base.ipoPrice ? +(((q.price / base.ipoPrice) - 1) * 100).toFixed(2) : null,
+    ytd: priorYearEnd ? +(((price / priorYearEnd[1]) - 1) * 100).toFixed(2) : null,
+    vsIpo: base.ipoPrice ? +(((price / base.ipoPrice) - 1) * 100).toFixed(2) : null,
     series,
   });
-  console.log(`${base.ticker.padEnd(5)} $${q.price} · ${(q.cap / 1e9).toFixed(0)}B · ${series.length} closes · vs IPO ${(((q.price / base.ipoPrice) - 1) * 100).toFixed(1)}%`);
+  const fin = await filings(base.cik, capUsd);
+  const row = out[out.length - 1] || {};
+  row.financials = fin;
+  row.pe = fin.pe == null ? null : fin.pe;
+  row.roe = fin.roe == null ? null : fin.roe;
+  row.netMargin = fin.netMargin == null ? null : fin.netMargin;
+  row.revenueCagr = fin.revenueCagr == null ? null : fin.revenueCagr;
+  console.log(`${base.ticker.padEnd(5)} $${q.price} · ${(capUsd / 1e9).toFixed(0)}B · ${series.length} closes · vs IPO ${(((price / base.ipoPrice) - 1) * 100).toFixed(1)}% · ${fin.basis || 'no annual report'}${fin.pe ? ' · P/E ' + fin.pe : ''}${fin.latestFiling ? ' · ' + fin.latestFiling.form + ' ' + fin.latestFiling.filed : ''}`);
 }
 
 const payload = {

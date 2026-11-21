@@ -1254,7 +1254,7 @@ function offIndexRows() {
     pe: c.pe == null ? null : c.pe, roe: c.roe == null ? null : c.roe,
     ytd: c.ytd == null ? null : c.ytd, pePct: null, filing: false,
     off: true, listedAt: c.listedAt || null, vsIpo: c.vsIpo == null ? null : c.vsIpo,
-    why: c.why || null,
+    why: c.why || null, listed: !!c.financials?.ttm,
   }));
 }
 // The same companies as search entries, in the shape the global quick index uses, so ⌘K finds them.
@@ -1269,9 +1269,12 @@ function offIndexSearchEntries() {
       capLocal: c.capUsd || 0, capUsd: c.capUsd || 0,
       price: c.price ?? null, priceDate: c.priceDate || null,
       pe: c.pe == null ? null : c.pe, roe: c.roe == null ? null : c.roe, ytd: c.ytd == null ? null : c.ytd,
-      securityType: 'common', primary: true, noFilings: true, offIndex: true,
-      codes: [c.ticker], listedAt: c.listedAt || null,
-      hay: `${name} ${c.legalName || ''} ${c.ticker}`.toLowerCase().replace(/\s+/g, ' ').trim(),
+      securityType: 'common', primary: true, noFilings: !(c.financials && c.financials.ttm), offIndex: true,
+      aliases: c.aliases || [],
+      // Aliases are codes too: "claude" and a bare "x" must land on Anthropic and SpaceX by exact
+      // match rather than by a substring sweep over every name.
+      codes: [c.ticker, ...(c.aliases || [])], listedAt: c.listedAt || null,
+      hay: `${name} ${c.legalName || ''} ${c.ticker} ${(c.aliases || []).join(' ')}`.toLowerCase().replace(/\s+/g, ' ').trim(),
     };
   });
 }
@@ -6329,10 +6332,26 @@ const server = http.createServer(async (req, res) => {
       let valuation = null;
       try { valuation = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'valuation.json'), 'utf8')); } catch { /* none yet */ }
       const list = (COMPANIES.companies || []).map(projectUs);
+      // Listed, not index members: the screener shows them beside the members, the MARKET view and
+      // every aggregate read `companies` only.
+      const off = (offIndexData().companies || []).map((c) => ({
+        cik: String(c.cik || c.ticker), ticker: c.ticker, name: c.legalName || c.name,
+        sector: c.sector || null, industry: c.industry || null,
+        marketCap: c.capUsd || null, price: c.price ?? null, priceAsOf: c.priceDate || null,
+        chg1d: c.chg1d ?? null, chgYtd: c.ytd ?? null,
+        pe: c.pe == null ? null : c.pe, roe: c.roe == null ? null : c.roe,
+        revenue: c.financials?.ttm?.revenue ?? c.financials?.latest?.revenue ?? null,
+        netIncome: c.financials?.ttm?.netIncome ?? c.financials?.latest?.netIncome ?? null,
+        revenueCagr: c.revenueCagr == null ? null : c.revenueCagr,
+        netMargin: c.netMargin == null ? null : c.netMargin,
+        offIndex: true, listedAt: c.listedAt || null, vsIpo: c.vsIpo ?? null, why: c.why || null,
+        aliases: c.aliases || [], noFilings: !c.financials?.ttm,
+      }));
       return sendListJSON(res, 200, {
         updated: COMPANIES.updated || null,
         count: list.length,
         companies: list,
+        offIndex: off,
         universe: COMPANIES.universe || null,
         themes: COMPANIES.themes || [],
         valuation: valuation ? { ...valuation.index, sectors: valuation.sectors || {} } : null,
@@ -6350,7 +6369,9 @@ const server = http.createServer(async (req, res) => {
       const c = (COMPANIES.companies || []).find((x) => String(x.cik) === cik || x.ticker === cik);
       if (c) return sendJSONCached(res, 200, normalizeCompanyEps(c));
       // A listed-but-not-index member: the screener row opens here too, from the off-index file.
-      const off = (offIndexData().companies || []).find((x) => String(x.ticker).toLowerCase() === String(cik).toLowerCase());
+      // The screener row opens by CIK, the search result by ticker — accept both.
+      const key = String(cik).toLowerCase();
+      const off = (offIndexData().companies || []).find((x) => String(x.ticker).toLowerCase() === key || String(x.cik) === key);
       if (!off) return sendJSON(res, 404, { error: 'not found' });
       return sendJSONCached(res, 200, {
         ...off,

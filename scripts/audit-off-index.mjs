@@ -149,9 +149,13 @@ for (const c of companies) {
     check(t, bars[0][0] === c.listedAt, 'listing date is the first trading day', `file ${c.listedAt} vs tape ${bars[0][0]}`);
     check(t, Math.abs(bars[0][1] - Number(c.firstClose)) < 0.005, 'first close matches the tape', `file ${c.firstClose} vs ${bars[0][1]}`);
     const seller = bars[bars.length - 1];
-    check(t, seller[0] === c.priceDate || Date.parse(today) - Date.parse(seller[0]) < 4 * 864e5,
-      'series is current', `last bar ${seller[0]} vs priceDate ${c.priceDate}`);
-    check(t, Math.abs(seller[1] - Number(c.prevClose)) < 0.02, 'last close is the quote’s previous close', `${seller[1]} vs ${c.prevClose}`);
+    check(t, seller[0] === c.priceDate, 'price date is the last trading day in the file', `tape ${seller[0]} vs file ${c.priceDate}`);
+    // The row is quoted off the tape's close, so the price and the previous close must be the last two
+    // bars — not a live tick that moves after the file was written.
+    check(t, Math.abs(seller[1] - Number(c.price)) < 0.005, 'price is the last close on the tape', `${seller[1]} vs ${c.price}`);
+    if (bars.length > 1) {
+      check(t, Math.abs(bars[bars.length - 2][1] - Number(c.prevClose)) < 0.005, 'previous close is the bar before it', `${bars[bars.length - 2][1]} vs ${c.prevClose}`);
+    }
     // The file's series must be the tape, not a hand-made copy of it.
     const same = bars.length === (c.series || []).length && bars.every(([d, v], i) => d === c.series[i][0] && Math.abs(v - c.series[i][1]) < 0.005);
     check(t, same, 'stored series is point-for-point the tape', `${bars.length} tape bars vs ${(c.series || []).length} stored`);
@@ -159,11 +163,19 @@ for (const c of companies) {
     check(t, (c.series || []).every(([, v]) => v > 0), 'every close is positive');
   }
 
-  if (live != null) {
-    check(t, Math.abs(live - Number(c.price)) / live < 0.005, 'price is the current quote', `file ${c.price} vs ${live}`);
-  }
-  if (vendorCap != null && c.capUsd) {
-    check(t, Math.abs(vendorCap - Number(c.capUsd)) / vendorCap < 0.02, 'market cap is the current vendor cap', `file ${c.capUsd} vs ${vendorCap}`);
+  // The cap has to be the stored close × the stored share count, so it can never disagree with the
+  // price printed beside it. The vendor's own cap is checked as a band, not to the cent: Nasdaq's
+  // summary cap can lag its own live price by a session.
+  if (c.capUsd && c.shares) {
+    const want = Number(c.price) * Number(c.shares);
+    check(t, Math.abs(want - Number(c.capUsd)) / want < 0.001, 'market cap is price × shares',
+      `file ${c.capUsd} vs ${Math.round(want)}`);
+    if (vendorCap) {
+      check(t, Math.abs(vendorCap - Number(c.capUsd)) / vendorCap < 0.15, 'market cap is within reach of the vendor cap',
+        `file ${c.capUsd} vs ${vendorCap}`);
+    }
+  } else {
+    check(t, false, 'market cap and share count are stored');
   }
   check(t, c.priceDate === today || Date.parse(today) - Date.parse(c.priceDate) < 4 * 864e5, 'price date is fresh', `priceDate ${c.priceDate}`);
   if (vendorSector) {
@@ -175,6 +187,54 @@ for (const c of companies) {
   check(t, c.currency === 'USD', 'quotes in USD', c.currency);
 
   // ---- arithmetic ----------------------------------------------------------------------------
+  // ---- filings and ratios ------------------------------------------------------------------
+  const fin = c.financials || {};
+  if (fin.latestFiling) {
+    const sub = await getJSON(`https://data.sec.gov/submissions/CIK${String(c.cik).padStart(10, '0')}.json`, SEC);
+    await sleep(200);
+    const rec = (sub && sub.filings && sub.filings.recent) || {};
+    let newest = null;
+    for (let i = 0; i < (rec.form || []).length; i++) {
+      if (/^10-[KQ]$/.test(rec.form[i])) { newest = { form: rec.form[i], filed: rec.filingDate[i] }; break; }
+    }
+    check(t, !!newest, 'EDGAR reports a 10-K or 10-Q');
+    if (newest) {
+      check(t, fin.latestFiling.form === newest.form && fin.latestFiling.filed === newest.filed,
+        'latest filing is EDGAR’s newest 10-K/10-Q', `${fin.latestFiling.form} ${fin.latestFiling.filed} vs ${newest.form} ${newest.filed}`);
+      check(t, /^https:\/\/www\.sec\.gov\/Archives\//.test(fin.latestFiling.url || ''), 'filing link points at EDGAR');
+    }
+  } else {
+    // A company with no 10-K/10-Q on EDGAR is only acceptable while it is genuinely brand new.
+    const age = (Date.parse(today) - Date.parse(c.listedAt)) / 864e5;
+    check(t, age < 120, 'a company older than four months has a filing on EDGAR', `listed ${c.listedAt}`);
+  }
+  if (fin.ttm) {
+    check(t, fin.ttm.end === (fin.latest && fin.latest.end), 'TTM ends on the latest filed period');
+    check(t, fin.fy && fin.latest && fin.prior, 'a TTM shows its working (FY + YTD − prior YTD)');
+    if (fin.fy && fin.latest && fin.prior) {
+      const wantRev = fin.fy.revenue + fin.latest.revenue - fin.prior.revenue;
+      check(t, Math.abs(wantRev - fin.ttm.revenue) < 1, 'TTM revenue recomputes',
+        `${fin.ttm.revenue} vs ${wantRev}`);
+      if (fin.fy.netIncome != null && fin.latest.netIncome != null && fin.prior.netIncome != null) {
+        const wantNi = fin.fy.netIncome + fin.latest.netIncome - fin.prior.netIncome;
+        check(t, Math.abs(wantNi - fin.ttm.netIncome) < 1, 'TTM net income recomputes', `${fin.ttm.netIncome} vs ${wantNi}`);
+      }
+    }
+    if (c.pe != null) {
+      check(t, Math.abs(c.pe - (c.capUsd / fin.ttm.netIncome)) / c.pe < 0.02, 'P/E is market cap ÷ trailing profit', `${c.pe}`);
+    } else {
+      check(t, !(fin.ttm.netIncome > 0), 'no P/E without a positive trailing profit', `net income ${fin.ttm.netIncome}`);
+    }
+    if (c.roe != null) {
+      check(t, Math.abs(c.roe - (fin.ttm.netIncome / fin.ttm.equity) * 100) < 0.2, 'ROE is profit ÷ equity', `${c.roe}`);
+    }
+  } else {
+    check(t, c.pe == null && c.roe == null, 'no TTM means no P/E and no ROE', `pe ${c.pe} roe ${c.roe}`);
+    // A brand-new listing has no XBRL financials at all yet; one with a 10-Q but no 10-K shows its
+    // period instead of a TTM.
+    if (fin.latestFiling) check(t, !!fin.latest, 'a company with a 10-Q shows its latest period');
+  }
+
   if (c.ipoPrice && c.price) {
     const want = +(((c.price / c.ipoPrice) - 1) * 100).toFixed(2);
     check(t, Math.abs(want - Number(c.vsIpo)) < 0.02, 'vs IPO recomputes', `${c.vsIpo} vs ${want}`);

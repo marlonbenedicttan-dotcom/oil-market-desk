@@ -37,6 +37,18 @@ jobs:
         env:
           SEC_UA: 'MarlonWatchtower/1.0 (marlonbenedicttan@gmail.com)'
         run: node scripts/refresh-daily.mjs --skip-prices
+      # The listed-but-not-index names file with the same EDGAR, so their 10-K/10-Q must land here too
+      # — same evening, same commit, same auto-deploy as an index member's.
+      - name: Refresh the off-index names' filings
+        env:
+          SEC_UA: 'MarlonWatchtower/1.0 (marlonbenedicttan@gmail.com)'
+        run: |
+          cp data/off-index.json /tmp/off-index.prev.json 2>/dev/null || true
+          node scripts/refresh-off-index.mjs
+          if ! node scripts/audit-off-index.mjs; then
+            echo "::warning::off-index refresh failed its audit — keeping the previous file"
+            cp /tmp/off-index.prev.json data/off-index.json 2>/dev/null || true
+          fi
       - name: Audit before publishing
         continue-on-error: true
         run: |
@@ -60,7 +72,7 @@ jobs:
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email 'github-actions[bot]@users.noreply.github.com'
-          git add data/companies.json data/reconciliation.json data/invariants.json data/filings-state.json data/filings-changed.json data/snapshot.json data/audit-markets.json 2>/dev/null || true
+          git add data/off-index.json data/companies.json data/reconciliation.json data/invariants.json data/filings-state.json data/filings-changed.json data/snapshot.json data/audit-markets.json 2>/dev/null || true
           if git diff --staged --quiet; then
             echo 'no data change'
           else
