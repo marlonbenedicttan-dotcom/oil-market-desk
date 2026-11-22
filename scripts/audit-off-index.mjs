@@ -6,6 +6,7 @@
 //   price, market cap, sector, 52-week range              Nasdaq quote (info + summary)
 //   IPO price                                             the 424B4 cover, from EDGAR
 //   vs IPO, YTD, series arithmetic                        recomputed here
+//   TTM, quarters, annual record, ratios                  recomputed from the row's own arithmetic
 //
 //   node scripts/audit-off-index.mjs
 //   node scripts/audit-off-index.mjs --fix     # rewrite the derived fields from the sources
@@ -66,6 +67,7 @@ const byTicker = new Map(Object.values(secTickers || {}).map((r) => [String(r.ti
 
 for (const c of companies) {
   const t = c.ticker;
+  const preIpo = c.status === 'pre-ipo';
   const row = { ...c };
 
   // ---- SEC identity -------------------------------------------------------------------------
@@ -76,7 +78,7 @@ for (const c of companies) {
     const sub = await getJSON(`https://data.sec.gov/submissions/CIK${String(c.cik).padStart(10, '0')}.json`, SEC);
     await sleep(200);
     if (sub) {
-      check(t, (sub.tickers || []).map((x) => x.toUpperCase()).includes(t), 'SEC lists the ticker', (sub.tickers || []).join(','));
+      if (!preIpo) check(t, (sub.tickers || []).map((x) => x.toUpperCase()).includes(t), 'SEC lists the ticker', (sub.tickers || []).join(','));
       check(t, !!sub.name, 'SEC legal name present');
       const secEx = String((sub.exchanges || [])[0] || '').toUpperCase();
       // A listing so new that EDGAR has not filled the exchange in is not a mismatch.
@@ -95,6 +97,7 @@ for (const c of companies) {
       }
       let offer = null;
       let offerForm = null;
+      if (!preIpo) {
       for (const f of files) {
         const e = f.entries || {};
         const forms = e.form || [];
@@ -108,12 +111,16 @@ for (const c of companies) {
           const html = await getText(`https://www.sec.gov/Archives/edgar/data/${c.cik}/${acc}/${doc0}`);
           await sleep(250);
           const text = html.replace(/<[^>]+>/g, ' ').replace(/&nbsp;|&#160;/g, ' ').replace(/\s+/g, ' ');
+          // The cover price is the dedicated "initial public offering price" sentence. A naive
+          // "$X per share" sweep picks the underwriting discount or a table line first (Bending
+          // Spoons $34.44, Klarna $35.89), so the cover sentence wins before any fallback.
+          const cover = /initial public offering price (?:is|of)\s*\$([0-9]{1,3}(?:\.[0-9]{2})?)/i.exec(text);
+          const perShare = /\$([0-9]{1,3}\.[0-9]{2})\s*per\s+(?:ordinary |common )?share/i.exec(text);
+          const table = /price to public[^$]{0,200}\$([0-9]{1,3}\.[0-9]{2})/i.exec(text);
           const cands = [...text.matchAll(/\$([0-9]{2,3}\.[0-9]{2})\s*(?:per share)?/g)]
             .map((m) => m[1])
             .filter((v) => Number(v) >= 5 && Number(v) <= 500);
-          // The cover price is the value the document repeats around "per share" / "public offering price".
-          const near = [...text.matchAll(/\$([0-9]{2,3}\.[0-9]{2})\s*per share/gi)].map((m) => m[1]);
-          offer = (near[0] || cands[0]) ? Number(near[0] || cands[0]) : null;
+          offer = Number((cover && cover[1]) || (perShare && perShare[1]) || (table && table[1]) || cands[0]) || null;
           offerForm = `${e.form[i]} ${filed}`;
           break;
         }
@@ -125,10 +132,21 @@ for (const c of companies) {
       } else {
         failures.push(`${t}: no 424B4 found to verify the IPO price (recorded $${c.ipoPrice})`);
       }
+      }
     }
   }
 
+  // ---- pre-IPO: no tape yet ---------------------------------------------------------------
+  if (preIpo) {
+    check(t, c.listedAt == null && c.price == null && c.capUsd == null, 'a pre-IPO row has no quote yet');
+    check(t, c.financials && c.financials.preIpo === true, 'the pre-IPO flag is set');
+    check(t, c.financials?.latestFiling?.form === 'S-1/A', 'the S-1/A is recorded', c.financials?.latestFiling?.form);
+    check(t, /^https:\/\/www\.sec\.gov\/Archives\//.test(c.financials?.latestFiling?.url || ''), 'S-1 link points at EDGAR');
+    check(t, /not trading yet/i.test(String(c.why || '')), 'the reason says it is not trading yet', c.why);
+  }
+
   // ---- Nasdaq quote + history ---------------------------------------------------------------
+  if (!preIpo) {
   // Nasdaq throttles a burst; give each call a few spaced attempts before calling the vendor dead.
   const q = async (url) => {
     for (let i = 0; i < 4; i++) {
@@ -195,6 +213,7 @@ for (const c of companies) {
     check(t, c.nasdaqSector === vendorSector, 'vendor sector matches', `${c.nasdaqSector} vs ${vendorSector}`);
     check(t, c.sector === (NASDAQ_SECTOR[vendorSector] || 'Other'), 'sector bucket follows the vendor', `${c.sector}`);
   }
+  }
   check(t, SECTORS.includes(c.sector), 'sector is one of the desk’s buckets', c.sector);
   check(t, !!c.industry, 'industry present');
   check(t, c.currency === 'USD', 'quotes in USD', c.currency);
@@ -202,22 +221,34 @@ for (const c of companies) {
   // ---- arithmetic ----------------------------------------------------------------------------
   // ---- filings and ratios ------------------------------------------------------------------
   const fin = c.financials || {};
-  if (fin.latestFiling) {
+  if (preIpo) {
+    // The S-1/A metadata is checked above; the page still has a latest interim period and a TTM.
+    check(t, !!fin.latest, 'a pre-IPO page shows its latest period');
+  } else if (fin.latestFiling) {
     const sub = await getJSON(`https://data.sec.gov/submissions/CIK${String(c.cik).padStart(10, '0')}.json`, SEC);
     await sleep(200);
     const rec = (sub && sub.filings && sub.filings.recent) || {};
-    let newest = null;
+    // Domestic issuers file 10-K/10-Q; a foreign private issuer files 20-F and 6-K. A 6-K is often
+    // an announcement, so the newest financial report is the one whose report date is a period end.
+    let newest = null, fallback = null;
     for (let i = 0; i < (rec.form || []).length; i++) {
-      if (/^10-[KQ]$/.test(rec.form[i])) { newest = { form: rec.form[i], filed: rec.filingDate[i] }; break; }
+      const form = rec.form[i];
+      if (!/^(10-[KQ]|20-F|6-K)$/.test(form)) continue;
+      const filed = rec.filingDate[i];
+      const period = rec.reportDate[i];
+      if (form !== '6-K') { newest = { form, filed }; break; }
+      if (period && filed && Math.abs(Date.parse(period) - Date.parse(filed)) > 7 * 864e5) { newest = { form, filed }; break; }
+      if (!fallback) fallback = { form, filed };
     }
-    check(t, !!newest, 'EDGAR reports a 10-K or 10-Q');
+    if (!newest) newest = fallback;
+    check(t, !!newest, 'EDGAR reports a periodic filing');
     if (newest) {
       check(t, fin.latestFiling.form === newest.form && fin.latestFiling.filed === newest.filed,
-        'latest filing is EDGAR’s newest 10-K/10-Q', `${fin.latestFiling.form} ${fin.latestFiling.filed} vs ${newest.form} ${newest.filed}`);
+        'latest filing is EDGAR’s newest periodic filing', `${fin.latestFiling.form} ${fin.latestFiling.filed} vs ${newest.form} ${newest.filed}`);
       check(t, /^https:\/\/www\.sec\.gov\/Archives\//.test(fin.latestFiling.url || ''), 'filing link points at EDGAR');
     }
   } else {
-    // A company with no 10-K/10-Q on EDGAR is only acceptable while it is genuinely brand new.
+    // A company with no periodic filing on EDGAR is only acceptable while it is genuinely brand new.
     const age = (Date.parse(today) - Date.parse(c.listedAt)) / 864e5;
     check(t, age < 120, 'a company older than four months has a filing on EDGAR', `listed ${c.listedAt}`);
   }
@@ -249,9 +280,25 @@ for (const c of companies) {
         check(t, Math.abs(wantNi - fin.ttm.netIncome) < 1, 'TTM net income recomputes', `${fin.ttm.netIncome} vs ${wantNi}`);
       }
     }
+    // The trailing figure and the last four periods must be the same arithmetic, or the page shows a
+    // matrix whose newest four quarters do not add up to the TTM tile above it. The tolerance is five
+    // million dollars or 1%: pre-IPO periods come from the vendor rounded to the million, and a
+    // fiscal-year alignment can move a period by a rounding difference.
+    if (Array.isArray(fin.quarters) && fin.quarters.length >= 4) {
+      const close = (a, b) => Math.abs(a - b) <= Math.max(5e6, Math.abs(b) * 0.01);
+      const last4 = fin.quarters.slice(-4);
+      if (last4.every((q) => q.revenue != null) && fin.ttm.revenue != null) {
+        const sum = last4.reduce((a, q) => a + q.revenue, 0);
+        check(t, close(sum, fin.ttm.revenue), 'TTM revenue is the last four quarters', `${sum} vs ${fin.ttm.revenue}`);
+      }
+      if (last4.every((q) => q.netIncome != null) && fin.ttm.netIncome != null) {
+        const sum = last4.reduce((a, q) => a + q.netIncome, 0);
+        check(t, close(sum, fin.ttm.netIncome), 'TTM net income is the last four quarters', `${sum} vs ${fin.ttm.netIncome}`);
+      }
+    }
     if (c.pe != null) {
       check(t, Math.abs(c.pe - (c.capUsd / fin.ttm.netIncome)) / c.pe < 0.02, 'P/E is market cap ÷ trailing profit', `${c.pe}`);
-    } else {
+    } else if (!preIpo) {
       check(t, !(fin.ttm.netIncome > 0), 'no P/E without a positive trailing profit', `net income ${fin.ttm.netIncome}`);
     }
     if (c.roe != null) {
@@ -264,13 +311,13 @@ for (const c of companies) {
     if (fin.latestFiling) check(t, !!fin.latest, 'a company with a 10-Q shows its latest period');
   }
 
-  if (c.ipoPrice && c.price) {
+  if (!preIpo && c.ipoPrice && c.price) {
     const want = +(((c.price / c.ipoPrice) - 1) * 100).toFixed(2);
     check(t, Math.abs(want - Number(c.vsIpo)) < 0.02, 'vs IPO recomputes', `${c.vsIpo} vs ${want}`);
   }
-  if (c.listedAt && c.listedAt.slice(0, 4) === today.slice(0, 4)) {
+  if (!preIpo && c.listedAt && c.listedAt.slice(0, 4) === today.slice(0, 4)) {
     check(t, c.ytd == null, 'no YTD for a company listed this year', `ytd ${c.ytd}`);
-  } else if (c.ytd != null) {
+  } else if (!preIpo && c.ytd != null) {
     // The prior-year close has to be the last bar before January of this year.
     const py = [...(c.series || [])].reverse().find(([d]) => d < `${today.slice(0, 4)}-01-01`);
     if (py) {
@@ -278,20 +325,24 @@ for (const c of companies) {
       check(t, Math.abs(want - Number(c.ytd)) < 0.02, 'YTD recomputes from the prior-year close', `${c.ytd} vs ${want}`);
     }
   }
-  if (c.wk52Low != null && c.wk52High != null && c.price != null) {
+  if (!preIpo && c.wk52Low != null && c.wk52High != null && c.price != null) {
     check(t, c.price >= c.wk52Low && c.price <= c.wk52High, 'price sits inside the 52-week range', `${c.wk52Low}–${c.wk52High}`);
   }
   // The listing facts the reader sees must agree with each other.
-  const nice = new Date(c.listedAt + 'T00:00:00Z').toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'UTC' })
-    .replace(/ (\d{4})$/, ' $1');
-  const shortDate = new Date(c.listedAt + 'T00:00:00Z').toLocaleDateString('en-GB', { day: '2-digit', month: 'short', timeZone: 'UTC' });
-  check(t, String(c.why || '').includes(shortDate), 'the reason line carries the listing date', c.why);
+  if (preIpo) {
+    check(t, /not trading yet/i.test(String(c.why || '')), 'the reason says it is not trading yet', c.why);
+  } else {
+    const LISTED_MONTH = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const listedDay = new Date(c.listedAt + 'T00:00:00Z');
+    const shortDate = `${String(listedDay.getUTCDate()).padStart(2, '0')} ${LISTED_MONTH[listedDay.getUTCMonth()]}`;
+    check(t, String(c.why || '').includes(shortDate), 'the reason line carries the listing date', c.why);
+  }
   check(t, !!c.cik, 'CIK stored');
   // A page with no profile is a page that cannot introduce the company.
   check(t, (c.description || '').length >= 120, 'a company description is present', `${(c.description || '').length} chars`);
-  check(t, ['stockanalysis.com', 'nasdaq'].includes(c.descriptionSource), 'description is sourced', c.descriptionSource);
+  check(t, ['stockanalysis.com', 'nasdaq', 'sec-s1'].includes(c.descriptionSource), 'description is sourced', c.descriptionSource);
 
-  if (FIX) {
+  if (FIX && !preIpo) {
     row.price = live ?? row.price;
     row.priceDate = today;
     row.capUsd = vendorCap ?? row.capUsd;
@@ -301,7 +352,9 @@ for (const c of companies) {
     row.vsIpo = row.ipoPrice ? +(((row.price / row.ipoPrice) - 1) * 100).toFixed(2) : null;
     fixes.push(row);
   }
-  console.log(`${failures.some((f) => f.startsWith(t + ':')) ? '✖' : '✓'} ${t.padEnd(5)} $${String(c.price).padEnd(8)} ${(Number(c.capUsd) / 1e9).toFixed(1).padStart(6)}B  ${c.exchange.padEnd(7)} since ${c.listedAt}  ${c.name}`);
+  const ok = !failures.some((f) => f.startsWith(t + ':'));
+  if (preIpo) console.log(`${ok ? '✓' : '✖'} ${t.padEnd(5)} PRE-IPO · S-1/A filed ${c.financials?.latestFiling?.filed || '—'}  ${c.name}`);
+  else console.log(`${ok ? '✓' : '✖'} ${t.padEnd(5)} $${String(c.price).padEnd(8)} ${(Number(c.capUsd) / 1e9).toFixed(1).padStart(6)}B  ${c.exchange.padEnd(7)} since ${c.listedAt}  ${c.name}`);
 }
 
 if (FIX && fixes.length) {

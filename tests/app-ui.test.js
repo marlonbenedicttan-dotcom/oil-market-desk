@@ -166,6 +166,7 @@ function loadApp() {
     CMP_SPREADS,
     setCompanies: (v) => { companiesData = v; },
     renderUsMarket,
+    renderUsThemes,
     renderHongKongMarket,
     hkBalanceSheetFinancial,
     liveRef, liveChg, setMetricText, LIVE_BASE, patchQuoteHomeRow,
@@ -188,6 +189,7 @@ function loadApp() {
     isBootDeepLink,
     loadBrief,
     offTag,
+    renderOffIndexPage,
     getBriefPayload: () => briefPayload,
     setBriefBusy: (v) => { briefBusy = v; },
     setBriefPayload: (v) => { briefPayload = v; },
@@ -653,7 +655,7 @@ test('a live quote patches a home-screener row by column', () => {
   assert.ok(Math.abs(parseFloat(cells[4].textContent) - 21) < 0.01, 'YTD scales with the price');
   assert.equal(cells[5].textContent, '22.0×');
   assert.equal(cells[6].textContent, '2.20×');
-  assert.equal(cells[8].textContent, '$1100');
+  assert.equal(cells[8].textContent, '$1K');
 });
 
 test('an out-of-range window falls back to one the series actually covers', () => {
@@ -1077,6 +1079,106 @@ test('an off-index screener row is tagged, an index member is not', () => {
   const { ui } = loadApp();
   assert.match(ui.offTag({ off: true, why: 'Listed 19 Nov 2026 · not an index constituent yet' }), /class="gb-off"/);
   assert.match(ui.offTag({ off: true }), /OFF-INDEX/);
+  assert.match(ui.offTag({ off: true, preIpo: true, why: 'IPO filed' }), /PRE-IPO/);
   assert.equal(ui.offTag({ off: false, t: 'AAPL' }), '', 'an index member carries no tag');
   assert.equal(ui.offTag(null), '');
+});
+
+test('a US theme shows the off-index names it claims, tagged', () => {
+  const { ui, document } = loadApp();
+  const aapl = { cik: '1', ticker: 'AAPL', name: 'Apple Inc.', marketCap: 3e12, pe: 30, revenue: 4e11, netIncome: 1e11, roe: 100, chgYtd: 10 };
+  const spcx = { cik: '2', ticker: 'SPCX', name: 'Space Exploration Technologies Corp.', marketCap: 1.7e12, pe: null, revenue: 3.2e10, netIncome: -2.7e9, roe: null, chgYtd: null, why: 'Listed 12 Jun 2026 · not an index constituent yet' };
+  ui.setCompanies({
+    companies: [aapl], offIndex: [spcx],
+    themes: [{ id: 'ai', label: 'AI & SEMICONDUCTORS', tickers: ['AAPL'], off: ['SPCX'], note: '' }],
+  });
+  ui.renderUsThemes(document.getElementById('co-body'), [aapl]);
+  const html = document.getElementById('co-body').innerHTML;
+  assert.match(html, /SPCX/);
+  assert.match(html, /OFF-INDEX/);
+  assert.match(html, /Space Exploration Technologies/);
+});
+
+test('an off-index page with a TTM shows the annual record and a meaningful ROE', () => {
+  const { ui, document } = loadApp();
+  const el = document.getElementById('co-body');
+  const q = [
+    { end: '2025-03-31', fy: 2025, q: 1, revenue: 4.067e9, netIncome: -0.528e9, eps: -0.18 },
+    { end: '2025-06-30', fy: 2025, q: 2, revenue: 4.071e9, netIncome: -1.008e9, eps: -0.34 },
+    { end: '2025-09-30', fy: 2025, q: 3, revenue: 5.576e9, netIncome: -1.054e9, eps: -0.36 },
+    { end: '2025-12-31', fy: 2025, q: 4, revenue: 4.96e9, netIncome: -2.347e9, eps: null },
+    { end: '2026-03-31', fy: 2026, q: 1, revenue: 4.694e9, netIncome: -4.276e9, eps: -1.27 },
+    { end: '2026-06-30', fy: 2026, q: 2, revenue: 7.814e9, netIncome: -0.541e9, eps: -0.09 },
+    { end: '2026-09-30', fy: 2026, q: 3, revenue: 14.575e9, netIncome: 4.404e9, eps: 0.35 },
+  ];
+  ui.renderOffIndexPage(el, {
+    ticker: 'SPCX', name: 'SpaceX', price: 127.79, chg1d: -7.69, chg6m: null, ytd: null, vsIpo: -5.34,
+    marketCap: 1735e9, ipoPrice: 135, listedAt: '2026-06-12', priceDate: '2026-11-20',
+    cik: '1181412', sector: 'Technology', industry: 'Computer Software', exchange: 'NASDAQ',
+    pe: null, roe: -1583, netMargin: -342.7, revenueCagr: 955.8,
+    financials: {
+      ttm: { end: '2026-09-30', revenue: 35.282e9, netIncome: -120.896e9, equity: 7.637e9, assets: 154.32e9 },
+      fy: { end: '2025-12-31', revenue: 4.585e9, netIncome: -41.965e9 },
+      latest: { start: '2026-01-01', end: '2026-09-30', revenue: 33.242e9, netIncome: -104.039e9 },
+      quarters: q,
+      annual: [
+        { end: '2023-12-31', revenue: 41e6, netIncome: -1.531e9 },
+        { end: '2024-12-31', revenue: 386e6, netIncome: -8.309e9 },
+        { end: '2025-12-31', revenue: 4.585e9, netIncome: -41.965e9 },
+      ],
+      source: 'stockanalysis.com (S-1/prospectus)',
+      latestFiling: null,
+    },
+  });
+  const html = el.innerHTML;
+  assert.match(html, /REVENUE · TTM/);
+  assert.match(html, /NET INCOME · TTM/);
+  assert.match(html, /REVENUE CAGR/);
+  assert.match(html, /QUARTERLY RESULTS/);
+  const chartAt = html.indexOf('id="co-chart"');
+  const noteAt = html.indexOf('Latest filing:');
+  const fyAt = html.indexOf('FISCAL-YEAR RECORD');
+  const qAt = html.indexOf('QUARTERLY RESULTS');
+  assert.ok(chartAt > -1 && chartAt < noteAt && noteAt < fyAt && fyAt < qAt,
+    'the US order is chart → filing note → fiscal-year record → quarterly matrix');
+  assert.match(html, /n\/m/, 'an extreme ROE is labelled not meaningful');
+  assert.doesNotMatch(html, /-1583\.0%/);
+});
+
+test('a pre-IPO page shows S-1 financials without inventing a quote', () => {
+  const { ui, document } = loadApp();
+  const el = document.getElementById('co-body');
+  ui.renderOffIndexPage(el, {
+    status: 'pre-ipo', preIpo: true, ticker: 'OURA', name: 'Oura', price: null, marketCap: null,
+    listedAt: null, ipoPrice: null, exchange: 'NASDAQ', priceRange: [40, 44],
+    why: 'IPO filed 21 Sep 2026 · not trading yet', sector: 'Consumer', industry: 'Wearable Technology',
+    pe: null, roe: null, netMargin: 4.2, revenueGrowth: 123.2, revenueCagr: null,
+    financials: {
+      ttm: { end: '2026-09-30', revenue: 1424793000, netIncome: 59207000, equity: -1617734000, assets: 1063188000 },
+      latest: { start: '2026-01-01', end: '2026-09-30', revenue: 1214506000, netIncome: 60768000 },
+      fy: { end: '2025-12-31', revenue: 907856000, netIncome: 12000 },
+      assets: 1063188000, equity: -1617734000, periodBasis: 'quarter',
+      source: 'SEC S-1/A (pre-IPO)',
+      latestFiling: { form: 'S-1/A', filed: '2026-09-21', url: 'https://www.sec.gov/Archives/x' },
+      quarters: [
+        { end: '2025-03-31', fy: 2025, q: 1, revenue: 232595000, netIncome: 12567000 },
+        { end: '2025-06-30', fy: 2025, q: 2, revenue: 234290000, netIncome: 3007000 },
+        { end: '2025-09-30', fy: 2025, q: 3, revenue: 230684000, netIncome: -14001000 },
+        { end: '2025-12-31', fy: 2025, q: 4, revenue: 210287000, netIncome: -1561000 },
+      ],
+      annual: [
+        { end: '2024-12-31', revenue: 406751000, netIncome: 3649000 },
+        { end: '2025-12-31', revenue: 907856000, netIncome: 12000 },
+      ],
+    },
+  });
+  const html = el.innerHTML;
+  assert.match(html, /PRE-IPO/);
+  assert.match(html, /NOT TRADING YET/);
+  assert.match(html, /EXPECTED PRICE RANGE/);
+  assert.match(html, /REVENUE GROWTH/);
+  assert.ok(html.indexOf('FISCAL-YEAR RECORD') > -1, 'the annual record is shown');
+  assert.ok(html.indexOf('FISCAL-YEAR RECORD') < html.indexOf('QUARTERLY RESULTS'), 'the annual record comes before the quarterly matrix, like the US template');
+  assert.doesNotMatch(html, /vs IPO/, 'a pre-IPO page does not compare against an IPO price');
+  assert.doesNotMatch(html, /id="co-chart"/, 'and it does not draw a price chart');
 });

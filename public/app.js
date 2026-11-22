@@ -5380,6 +5380,7 @@ const coMoney = (v) => (v == null ? '—'
   : Math.abs(v) >= 1e12 ? `$${(v / 1e12).toFixed(2)}T`
   : Math.abs(v) >= 1e9 ? `$${(v / 1e9).toFixed(1)}B`
   : Math.abs(v) >= 1e6 ? `$${(v / 1e6).toFixed(0)}M`
+  : Math.abs(v) >= 1e3 ? `$${(v / 1e3).toFixed(0)}K`
   : `$${Math.round(v)}`);
 // A statement figure can be in a different currency from the listing. Compact it the same way, with
 // the currency code in front, so a USD reporter reads "USD 58.8B" rather than 58,760,000,000.
@@ -11169,13 +11170,15 @@ async function gbLoadScreener() {
 // The screener ranks off-index names beside index members (they are ranked by market cap like
 // everyone else); this tag is what keeps the two universes honest at a glance.
 const offTag = (r) => (r && r.off
-  ? `<em class="gb-off" title="${esc(r.why || 'Listed, not an index constituent yet')}">OFF-INDEX</em>`
+  ? r.preIpo
+    ? `<em class="gb-off" title="${esc(r.why || 'IPO filed, not trading yet')}">PRE-IPO</em>`
+    : `<em class="gb-off" title="${esc(r.why || 'Listed, not an index constituent yet')}">OFF-INDEX</em>`
   : '');
 function gbRenderScreener() {
   const rows = gbScrRows;
   const sortable = (key, label) => `<th class="num ${gbScrSort === key ? 'on' : ''}" data-gb-sort="${key}" tabindex="0" aria-sort="${gbScrSort === key ? 'descending' : 'none'}">${label}</th>`;
   const head = `<tr><th class="gb-c-company">COMPANY</th><th class="gb-c-market">MARKET</th><th class="gb-c-sector">SECTOR</th>${sortable('cap', 'MKT CAP')}${sortable('pe', 'P/E')}${sortable('roe', 'ROE')}${sortable('ytd', 'YTD')}</tr>`;
-  const body = rows.map((r) => `<tr data-gb-company="${esc(r.m)}:${esc(r.id)}" tabindex="0" aria-label="Open ${esc(r.t)} ${esc(r.n)}"><td class="gb-c-company"><span class="gb-co" title="${esc(r.n)}">${esc(r.t)} <span class="dim">${esc(r.n)}</span>${offTag(r)}</span></td><td class="gb-c-market">${GB_FLAG[r.m] || ''} ${esc(String(r.m).toUpperCase())}</td><td class="gb-c-sector"><span class="gb-sec" title="${esc(r.s)}">${esc(r.s)}</span></td><td class="num">${gbCap(r.cap)}</td><td class="num">${r.pe == null ? '—' : r.pe.toFixed(1) + '×'}</td><td class="num">${r.roe == null ? '—' : r.roe.toFixed(1) + '%'}</td><td class="num ${cls(r.ytd)}">${r.ytd == null ? '—' : pctf(r.ytd)}</td></tr>`).join('');
+  const body = rows.map((r) => `<tr data-gb-company="${esc(r.m)}:${esc(r.id)}" tabindex="0" aria-label="Open ${esc(r.t)} ${esc(r.n)}"><td class="gb-c-company"><span class="gb-co" title="${esc(r.n)}">${esc(r.t)} <span class="dim">${esc(r.n)}</span>${offTag(r)}</span></td><td class="gb-c-market">${GB_FLAG[r.m] || ''} ${esc(String(r.m).toUpperCase())}</td><td class="gb-c-sector"><span class="gb-sec" title="${esc(r.s)}">${esc(r.s)}</span></td><td class="num">${r.preIpo ? '—' : gbCap(r.cap)}</td><td class="num">${r.pe == null ? '—' : r.pe.toFixed(1) + '×'}</td><td class="num">${r.roe == null ? '—' : r.roe.toFixed(1) + '%'}</td><td class="num ${cls(r.ytd)}">${r.ytd == null ? '—' : pctf(r.ytd)}</td></tr>`).join('');
   const table = $('gb-scr-table');
   if (table) {
     table.innerHTML = rows.length
@@ -11269,7 +11272,7 @@ function hmRenderScreener() {
   const rows = hmScrRows;
   const sortable = (key, label) => `<th class="num ${hmScrSort === key ? 'on' : ''}" data-hm-sort="${key}" tabindex="0" aria-sort="${hmScrSort === key ? 'descending' : 'none'}">${label}</th>`;
   const head = `<tr><th class="gb-c-company">COMPANY</th><th class="gb-c-market">MARKET</th><th class="gb-c-sector">SECTOR</th>${sortable('cap', 'MKT CAP')}${sortable('pe', 'P/E')}${sortable('roe', 'ROE')}${sortable('ytd', 'YTD')}</tr>`;
-  const body = rows.map((r) => `<tr data-gb-company="${esc(r.m)}:${esc(r.id)}" tabindex="0" aria-label="Open ${esc(r.t)} ${esc(r.n)}"><td class="gb-c-company"><span class="gb-co" title="${esc(r.n)}">${esc(r.t)} <span class="dim">${esc(r.n)}</span>${offTag(r)}</span></td><td class="gb-c-market">${GB_FLAG[r.m] || ''} ${esc(String(r.m).toUpperCase())}</td><td class="gb-c-sector"><span class="gb-sec" title="${esc(r.s)}">${esc(r.s)}</span></td><td class="num">${gbCap(r.cap)}</td><td class="num">${r.pe == null ? '—' : r.pe.toFixed(1) + '×'}</td><td class="num">${r.roe == null ? '—' : r.roe.toFixed(1) + '%'}</td><td class="num ${cls(r.ytd)}">${r.ytd == null ? '—' : pctf(r.ytd)}</td></tr>`).join('');
+  const body = rows.map((r) => `<tr data-gb-company="${esc(r.m)}:${esc(r.id)}" tabindex="0" aria-label="Open ${esc(r.t)} ${esc(r.n)}"><td class="gb-c-company"><span class="gb-co" title="${esc(r.n)}">${esc(r.t)} <span class="dim">${esc(r.n)}</span>${offTag(r)}</span></td><td class="gb-c-market">${GB_FLAG[r.m] || ''} ${esc(String(r.m).toUpperCase())}</td><td class="gb-c-sector"><span class="gb-sec" title="${esc(r.s)}">${esc(r.s)}</span></td><td class="num">${r.preIpo ? '—' : gbCap(r.cap)}</td><td class="num">${r.pe == null ? '—' : r.pe.toFixed(1) + '×'}</td><td class="num">${r.roe == null ? '—' : r.roe.toFixed(1) + '%'}</td><td class="num ${cls(r.ytd)}">${r.ytd == null ? '—' : pctf(r.ytd)}</td></tr>`).join('');
   const table = $('hm-scr-table');
   if (table) {
     table.innerHTML = rows.length
@@ -11314,7 +11317,7 @@ async function gbLoadTop() {
   const d = await jget('/api/global-companies?' + p.toString(), 120000).catch(() => null);
   if (!d) return;
   const el = $('gb-top'); if (!el) return;
-  el.innerHTML = (d.rows || []).map((r) => `<div class="gb-trow" tabindex="0" role="button" data-gb-company="${esc(r.m)}:${esc(r.id)}"><span class="tk">${esc(String(r.t).slice(0, 2))}</span><span><span class="n">${esc(r.n)}${offTag(r)}</span><span class="s">${esc(r.s)} · ${esc(String(r.m).toUpperCase())}</span></span><span class="num">${gbCap(r.cap)}</span><span class="num">${r.pe == null ? '—' : r.pe.toFixed(1) + '×'}</span><span class="num ${cls(r.ytd)}">${r.ytd == null ? '—' : pctf(r.ytd)}</span></div>`).join('');
+  el.innerHTML = (d.rows || []).map((r) => `<div class="gb-trow" tabindex="0" role="button" data-gb-company="${esc(r.m)}:${esc(r.id)}"><span class="tk">${esc(String(r.t).slice(0, 2))}</span><span><span class="n">${esc(r.n)}${offTag(r)}</span><span class="s">${esc(r.s)} · ${esc(String(r.m).toUpperCase())}</span></span><span class="num">${r.preIpo ? '—' : gbCap(r.cap)}</span><span class="num">${r.pe == null ? '—' : r.pe.toFixed(1) + '×'}</span><span class="num ${cls(r.ytd)}">${r.ytd == null ? '—' : pctf(r.ytd)}</span></div>`).join('');
 }
 
 function gbTheme() {
@@ -12150,8 +12153,15 @@ function renderUsThemes(el, all) {
   if (!themes.length) { el.innerHTML = usViewsBar() + '<div class="macro-note">No themes loaded.</div>'; return; }
   const active = themes.find((t) => t.id === usTheme) || themes[0];
   if (active.mag7) return renderUsMag7(el, all, themes);   // weight-led table, kept as it was
-  const set = new Set(active.tickers || []);
-  const rows = all.filter((c) => set.has(c.ticker)).sort((a, b) => (b.marketCap || 0) - (a.marketCap || 0));
+  // A theme can claim a listed-but-not-index name (SpaceX in AI/defence, Oura in healthcare, …).
+  // Those rows live in offIndex, not in the index list, so merge them before filtering the theme.
+  const pool = new Map();
+  for (const c of all) pool.set(c.ticker, c);
+  for (const c of (companiesData.offIndex || [])) {
+    if (!pool.has(c.ticker)) pool.set(c.ticker, { ...c, off: true, offIndex: true });
+  }
+  const set = new Set([...(active.tickers || []), ...(active.off || [])]);
+  const rows = [...pool.values()].filter((c) => set.has(c.ticker)).sort((a, b) => (b.marketCap || 0) - (a.marketCap || 0));
   const chg = (x) => (x == null ? '—' : `${x >= 0 ? '+' : ''}${x.toFixed(1)}%`);
   el.innerHTML = usViewsBar()
     + usPresetsHtml(themes, active.id)
@@ -12159,7 +12169,7 @@ function renderUsThemes(el, all) {
     + `<div class="co-hrow jp-bank-hrow"><span>#</span><span>COMPANY</span><span>CAP</span><span>P/E</span><span>MARGIN</span><span>ROE</span><span>YIELD</span><span>YTD</span></div>`
     + rows.map((c, i) => `<button class="jp-bank-row" data-cik="${esc(c.cik)}">
         <span>${i + 1}</span>
-        <span><b>${esc(c.name)}</b><span class="co-tick">${esc(c.ticker)}</span></span>
+        <span><b>${esc(c.name)}</b><span class="co-tick">${esc(c.ticker)}</span>${offTag(c)}</span>
         <span>${coMoney(c.marketCap)}</span>
         <span>${c.pe != null ? c.pe.toFixed(1) : '—'}</span>
         <span>${coMargin(c) != null ? coMargin(c).toFixed(1) + '%' : '—'}</span>
@@ -12167,7 +12177,7 @@ function renderUsThemes(el, all) {
         <span>${c.dividendYield != null ? c.dividendYield.toFixed(2) + '%' : '—'}</span>
         <span class="${(c.chgYtd || 0) >= 0 ? 'pos' : 'neg'}">${chg(c.chgYtd)}</span>
       </button>`).join('')
-    + `<div class="macro-note">${esc(active.note || '')} Screens for buybacks, quality and cash sit in the screener's presets.</div>`;
+    + `<div class="macro-note">${esc(active.note || '')} Screens for buybacks, quality and cash sit in the screener's presets. Off-index names are tagged and stay out of the index totals.</div>`;
 }
 
 // The seven companies that decide the index's direction.
@@ -12225,29 +12235,67 @@ function renderOffIndexPage(el, c) {
   const range52 = c.wk52Low != null && c.wk52High != null ? `$${c.wk52Low.toFixed(2)} – $${c.wk52High.toFixed(2)}` : '—';
   const tile = (k, v, sub, cl) => `<div class="co-stat"><span class="co-k">${k}</span><div class="co-v ${cl || ''}">${v}</div>${sub ? `<div class="dimtext">${sub}</div>` : ''}</div>`;
   const moneyS = (v) => (v == null ? '—' : (v < 0 ? '−' : '') + coMoney(Math.abs(v)));
-  el.innerHTML = `<div class="ma-crumb"><button class="ma-back" data-coback="1"><span class="ma-back-i" aria-hidden="true">←</span>COMPANIES</button> <span>${esc(c.ticker)}</span><span class="mb-tag">OFF-INDEX</span></div>`
+  const f = c.financials || {};
+  const preIpo = c.status === 'pre-ipo' || c.preIpo === true;
+  const finSource = String(f.source || '');
+  const finLabel = f.ttm
+    ? (finSource === 'SEC XBRL' ? ' · GAAP, AS FILED'
+      : finSource.includes('S-1') ? ' · GAAP, FROM THE PROSPECTUS'
+        : finSource.startsWith('stockanalysis.com') ? ' · GAAP, FROM THE FILINGS'
+          : ' · GAAP · SEC + PROSPECTUS')
+    : (f.latest ? ' · PERIOD REPORTED' : ' — NO FINANCIALS YET');
+  const rangeText = c.priceRange && c.priceRange.length === 2
+    ? `$${Number(c.priceRange[0]).toFixed(2)} – $${Number(c.priceRange[1]).toFixed(2)}` : 'TBD';
+  const filedOn = f.latestFiling && f.latestFiling.filed ? dealDateY(f.latestFiling.filed) : '—';
+  const priceBlock = preIpo
+    ? `<div class="co-price"><span class="co-price-v">NOT TRADING YET</span><span class="dimtext">IPO filed · ${esc(c.exchange || '')}</span></div>`
+    : `<div class="co-price">
+        <span class="co-price-v">${c.price != null ? '$' + c.price.toFixed(2) : '—'}</span>
+        <span class="co-price-c ${pcls(c.chg1d)}">${c.chg1d != null ? `${c.chg1d >= 0 ? '+' : ''}${c.chg1d.toFixed(2)}% today` : ''}</span>
+        <span class="co-price-c ${pcls(c.chg6m)}">${c.chg6m != null ? `${c.chg6m >= 0 ? '+' : ''}${c.chg6m.toFixed(1)}% 6M` : ''}</span>
+        <span class="co-price-c ${pcls(c.ytd)}">${c.ytd != null ? `${c.ytd >= 0 ? '+' : ''}${c.ytd.toFixed(1)}% YTD` : ''}</span>
+        <span class="co-price-c ${pcls(c.vsIpo)}">${c.vsIpo != null ? `${pct(c.vsIpo)} vs IPO` : ''}</span>
+        <span class="dimtext">${c.priceDate ? `as of ${dealDateY(c.priceDate)}` : ''} · USD</span>
+      </div>`;
+  const statusLine = preIpo
+    ? `IPO FILED · PRE-IPO${finLabel}`
+    : `LISTED ${esc(dealDateY(c.listedAt).toUpperCase())} · NOT AN INDEX CONSTITUENT YET${finLabel}`;
+  const listingTiles = preIpo ? [
+    tile('STATUS', 'IPO FILED', 'Not trading yet'),
+    tile('EXPECTED PRICE RANGE', rangeText, 'From the S-1/A cover'),
+    tile('EXCHANGE', esc(c.exchange || '—'), 'Intended listing'),
+    tile('S-1 FILED', filedOn, f.latestFiling?.form || 'S-1/A'),
+  ] : [
+    tile('MARKET CAP', coMoney(c.marketCap), 'Nasdaq quote × shares outstanding'),
+    tile('VS IPO', pct(c.vsIpo), `IPO price $${c.ipoPrice != null ? c.ipoPrice : '—'}`, pcls(c.vsIpo)),
+    tile('52-WEEK RANGE', range52),
+    tile('LISTED', dealDateY(c.listedAt)),
+  ];
+  // The US template puts the fiscal-year record and then the quarterly matrix after the chart and
+  // the filing note. Keep the same order here so an off-index page reads like an index page.
+  const fyRows = (f.annual || []).slice(-5);
+  const fyRecordHtml = fyRows.length ? `<div class="gtitle">FISCAL-YEAR RECORD · ${fyRows.length}</div>
+    <div class="jp-q-scroll"><div class="co-table">
+      <div class="co-tr co-th"><span>FY</span><span>REVENUE</span><span>NET PROFIT</span><span>MARGIN</span><span>EPS</span></div>
+      ${fyRows.map((s) => {
+        const mg = s.revenue && s.netIncome != null ? (s.netIncome / s.revenue) * 100 : null;
+        const ncls = s.netIncome == null ? '' : s.netIncome >= 0 ? 'pos' : 'neg';
+        return `<div class="co-tr"><span>${String(s.end).slice(0, 4)}</span><span>${coMoney(s.revenue)}</span><span class="${ncls}">${moneyS(s.netIncome)}</span><span>${mg == null ? '—' : mg.toFixed(1) + '%'}</span><span>${s.eps != null ? '$' + Number(s.eps).toFixed(2) : '—'}</span></div>`;
+      }).join('')}
+    </div></div>` : '';
+  let matrixHtml = '';
+  el.innerHTML = `<div class="ma-crumb"><button class="ma-back" data-coback="1"><span class="ma-back-i" aria-hidden="true">←</span>COMPANIES</button> <span>${esc(c.ticker)}</span><span class="mb-tag">${preIpo ? 'PRE-IPO' : 'OFF-INDEX'}</span></div>`
     + `<div class="co-head">
         ${coMono(c)}
         <div><div class="co-name">${esc(c.name)}</div>
         <div class="co-sub">${esc(c.ticker)} · ${esc(c.sector || '')}${c.industry ? ' · ' + esc(c.industry) : ''} · ${esc(c.exchange || 'US')}</div>
         ${c.description ? `<div class="co-desc">${esc(coDesc(c.description))}</div>` : (c.why ? `<div class="co-desc">${esc(c.why)}</div>` : '')}
         ${c.brands && c.brands.length ? `<div class="jp-brands">${c.brands.map((b) => `<span>${esc(b)}</span>`).join('')}</div>` : ''}</div>
-      </div>
-      <div class="co-price">
-        <span class="co-price-v">${c.price != null ? '$' + c.price.toFixed(2) : '—'}</span>
-        <span class="co-price-c ${pcls(c.chg1d)}">${c.chg1d != null ? `${c.chg1d >= 0 ? '+' : ''}${c.chg1d.toFixed(2)}% today` : ''}</span>
-        <span class="co-price-c ${pcls(c.vsIpo)}">${c.vsIpo != null ? `${pct(c.vsIpo)} vs IPO` : ''}</span>
-        <span class="dimtext">${c.priceDate ? `as of ${dealDateY(c.priceDate)}` : ''} · USD</span>
-      </div>
-      <div class="co-verif">LISTED ${esc(dealDateY(c.listedAt).toUpperCase())} · NOT AN INDEX CONSTITUENT YET${c.financials?.ttm ? ' · GAAP, AS FILED' : ' — NO ANNUAL REPORT YET'}</div>`
-    + `<div class="co-sect">LISTING</div><div class="co-stats">${[
-        tile('MARKET CAP', coMoney(c.marketCap), 'Nasdaq quote × shares outstanding'),
-        tile('VS IPO', pct(c.vsIpo), `IPO price $${c.ipoPrice != null ? c.ipoPrice : '—'}`, pcls(c.vsIpo)),
-        tile('52-WEEK RANGE', range52),
-        tile('LISTED', dealDateY(c.listedAt)),
-      ].join('')}</div>`
+      </div>`
+    + priceBlock
+    + `<div class="co-verif">${statusLine}</div>`
+    + `<div class="co-sect">LISTING</div><div class="co-stats">${listingTiles.join('')}</div>`
     + (() => {
-        const f = c.financials || {};
         const ttm = f.ttm || null;
         const latest = f.latest || null;
         if (!ttm && !latest) return '';
@@ -12255,35 +12303,70 @@ function renderOffIndexPage(el, c) {
           : `${dealDateY(latest.start)} – ${dealDateY(latest.end)} · no annual report yet`;
         const ni = (ttm || latest).netIncome;
         const nicls = ni == null ? '' : ni >= 0 ? 'pos' : 'neg';
+        const fy = f.fy || null;
+        const fyLabel = fy && fy.end ? `FY${String(fy.end).slice(0, 4)}` : 'FY';
+        const annualNote = fy && fy.end ? `FY${String(fy.end).slice(0, 4)} annual` : 'no annual report yet';
+        // A loss larger than the equity base is arithmetically a ROE, but not a meaningful one; the
+        // number stays in the file for the audit, while the page says so instead of printing −1,583%.
+        const roeExtreme = c.roe != null && Math.abs(c.roe) > 300;
+        const growthValue = c.revenueCagr != null ? c.revenueCagr : c.revenueGrowth;
+        const growthLabel = c.revenueCagr != null ? 'REVENUE CAGR' : 'REVENUE GROWTH';
+        const growthNote = c.revenueCagr != null ? 'last three fiscal years' : (c.revenueGrowth != null ? 'year over year' : 'no comparable annual pair');
         const tiles = ttm ? [
-          tile('P/E · TTM', c.pe == null ? '—' : c.pe.toFixed(1) + '×', c.pe == null ? 'no trailing profit' : 'market cap ÷ trailing profit'),
+          tile('P/E · TTM', c.pe == null ? '—' : c.pe.toFixed(1) + '×', c.pe == null ? (preIpo ? 'no market price yet' : 'no trailing profit') : 'market cap ÷ trailing profit'),
           tile('REVENUE · TTM', coMoney(ttm.revenue), basis),
           tile('NET INCOME · TTM', moneyS(ttm.netIncome), '', nicls),
-          tile('ROE · TTM', c.roe == null ? '—' : c.roe.toFixed(1) + '%', 'net income ÷ equity'),
+          tile('ROE · TTM', c.roe == null ? '—' : roeExtreme ? 'n/m' : c.roe.toFixed(1) + '%',
+            roeExtreme ? `trailing loss is ${(Math.abs(c.roe) / 100).toFixed(1)}× equity` : (f.equity < 0 ? 'negative equity' : 'net income ÷ equity')),
           tile('NET MARGIN', c.netMargin == null ? '—' : c.netMargin.toFixed(1) + '%', 'net income ÷ revenue'),
+          tile(growthLabel, growthValue == null ? '—' : growthValue.toFixed(1) + '%', growthNote),
+          tile(`REVENUE · ${fyLabel}`, fy && fy.revenue != null ? coMoney(fy.revenue) : '—', annualNote),
+          tile(`NET INCOME · ${fyLabel}`, fy && fy.netIncome != null ? moneyS(fy.netIncome) : '—', annualNote, fy && fy.netIncome < 0 ? 'neg' : ''),
+          tile('TOTAL ASSETS', (ttm && ttm.assets != null) || f.assets != null ? coMoney(ttm && ttm.assets != null ? ttm.assets : f.assets) : '—', f.balanceEnd ? `as of ${dealDateY(f.balanceEnd)}` : 'latest balance sheet'),
+          tile('SHAREHOLDERS’ EQUITY', (ttm && ttm.equity != null) || f.equity != null ? moneyS(ttm && ttm.equity != null ? ttm.equity : f.equity) : '—', f.balanceEnd ? `as of ${dealDateY(f.balanceEnd)}` : 'latest balance sheet', ((ttm && ttm.equity != null ? ttm.equity : f.equity) || 0) >= 0 ? 'pos' : 'neg'),
         ] : [
           tile('REVENUE · PERIOD', coMoney(latest.revenue), basis),
           tile('NET INCOME · PERIOD', moneyS(latest.netIncome), '', nicls),
           tile('P/E', '—', 'needs a full year of earnings'),
           tile('ROE', '—', 'needs a full year of earnings'),
+          tile('TOTAL ASSETS', f.assets != null ? coMoney(f.assets) : '—', 'latest balance sheet'),
+          tile('SHAREHOLDERS’ EQUITY', f.equity != null ? moneyS(f.equity) : '—', 'latest balance sheet'),
         ];
         const qs = ((c.financials || {}).quarters) || [];
         // The same component the index members use (quarterly matrix, REVENUE / NET PROFIT toggle,
-        // MATRIX / LIST, YoY inside each cell) so the page reads like every other company page.
-        return `<div class="co-sect">RESULTS</div><div class="co-stats ${ttm ? 'co-stats-12' : ''}">${tiles.join('')}</div>`
-          + (qs.length >= 2 ? periodMatrixHtml({ ...c, quarters: qs }, { market: 'us', money: coMoney, ccy: 'USD' }) : '');
+        // MATRIX / LIST, YoY inside each cell) so the page reads like every other company page. The
+        // annual record is passed too, so a complete fiscal year can be reconciled to its filing.
+        const history = (f.annual || []).map((a) => ({ y: a.end, s: a.revenue, n: a.netIncome }));
+        matrixHtml = qs.length >= 2 ? periodMatrixHtml({
+          ...c, quarters: qs, history,
+          periodBasis: f.periodBasis || c.periodBasis || null,
+          netIncomeTTM: ttm ? ttm.netIncome : null,
+          revenueTTM: ttm ? ttm.revenue : null,
+          netIncomeTTMAsOf: ttm ? ttm.end : null,
+          revenueTTMEnd: ttm ? ttm.end : null,
+        }, { market: 'us', money: coMoney, ccy: 'USD' }) : '';
+        return `<div class="co-sect">RESULTS</div><div class="co-stats co-stats-12">${tiles.join('')}</div>`;
       })()
-    + `<div class="co-ranges">${['1m', '3m', '6m', 'ytd', '1y', '5y', '10y'].map((r) => `<button class="ma-chip${coRange === r ? ' on' : ''}" data-corange="${r}">${r.toUpperCase()}</button>`).join('')}</div>
+    + (preIpo ? `<div class="macro-note">No price chart yet — the IPO has not priced.</div>`
+      : `<div class="co-ranges">${['1m', '3m', '6m', 'ytd', '1y', '5y', '10y'].map((r) => `<button class="ma-chip${coRange === r ? ' on' : ''}" data-corange="${r}">${r.toUpperCase()}</button>`).join('')}</div>
       <div class="co-rets" id="co-rets"></div>
-      <div class="co-chartwrap"><div class="co-canvas"><div class="co-big" id="co-big"></div><canvas id="co-chart"></canvas></div></div>`
+      <div class="co-chartwrap"><div class="co-canvas"><div class="co-big" id="co-big"></div><canvas id="co-chart"></canvas></div></div>`)
     + (() => {
         const lf = c.financials && c.financials.latestFiling;
         const link = lf && lf.url
           ? `<a href="${esc(lf.url)}" target="_blank" rel="noopener noreferrer">${esc(lf.form)}${lf.period ? ' · period ' + dealDateY(lf.period) : ''}${lf.filed ? ' · filed ' + dealDateY(lf.filed) : ''} ↗</a>`
           : `<a href="https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=${encodeURIComponent(c.cik || c.ticker)}&type=10-Q" target="_blank" rel="noopener noreferrer">filings ↗</a>`;
-        return `<div class="macro-note">Listed ${dealDateY(c.listedAt)}; not a constituent of the indexes this desk covers, so it appears in the screener tagged OFF-INDEX and stays out of the index totals. Price and market cap are Nasdaq quote data; listing date and IPO price come from the 424B4${c.financials?.ttm ? '; revenue, profit and ratios are the filed XBRL, no estimates' : ''}. Latest filing: ${link}</div>`;
-      })();
-  coTicker = c.ticker || null;
+        const sourceNote = c.financials?.source ? ` Figures: ${esc(c.financials.source)}.` : '';
+        const derived = ((f.quarters || []).filter((q) => q.derived)).map((q) => dealDateY(q.end));
+        const derivedNote = derived.length ? ` Derived from the annual record less the reported periods: ${derived.join(', ')}.` : '';
+        const noteLead = preIpo
+          ? `IPO filed${lf && lf.filed ? ' ' + dealDateY(lf.filed) : ''}; not trading yet, so there is no price or market cap.`
+          : `Listed ${dealDateY(c.listedAt)}; not a constituent of the indexes this desk covers, so it appears in the screener tagged OFF-INDEX and stays out of the index totals. Price and market cap are Nasdaq quote data; listing date and IPO price come from the 424B4.`;
+        return `<div class="macro-note">${noteLead}${c.financials?.ttm ? ' Revenue, profit and ratios are filed GAAP, no estimates.' : ''}${sourceNote}${derivedNote} Latest filing: ${link}</div>`;
+      })()
+    + fyRecordHtml
+    + matrixHtml;
+  coTicker = preIpo ? null : (c.ticker || null);
   if (coTicker) loadCoChart(coTicker, coRange, '');
 }
 

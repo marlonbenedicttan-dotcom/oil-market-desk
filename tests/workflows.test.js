@@ -41,6 +41,14 @@ test('the new-listing profile fetchers are still wired and capped', () => {
   assert.match(wf('companies-daily.yml'), /fetch-korea-descriptions\.mjs --only-missing --limit=25/, 'Korea new listings would never get a description');
 });
 
+test('both daily workflows refresh and audit the off-index names', () => {
+  for (const file of ['companies-daily.yml', 'filings-watch.yml']) {
+    const y = wf(file);
+    assert.match(y, /refresh-off-index\.mjs/, `${file} no longer refreshes the off-index names`);
+    assert.match(y, /audit-off-index\.mjs/, `${file} no longer audits the off-index names`);
+  }
+});
+
 test('every market workflow still audits before it commits', () => {
   const audit = {
     'companies-daily.yml': /audit-markets\.mjs/,

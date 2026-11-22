@@ -1253,7 +1253,7 @@ function offIndexRows() {
     cap: c.capUsd || 0,
     pe: c.pe == null ? null : c.pe, roe: c.roe == null ? null : c.roe,
     ytd: c.ytd == null ? null : c.ytd, pePct: null, filing: false,
-    off: true, listedAt: c.listedAt || null, vsIpo: c.vsIpo == null ? null : c.vsIpo,
+    off: true, preIpo: c.status === 'pre-ipo', listedAt: c.listedAt || null, vsIpo: c.vsIpo == null ? null : c.vsIpo,
     why: c.why || null, listed: !!c.financials?.ttm,
   }));
 }
@@ -1270,6 +1270,7 @@ function offIndexSearchEntries() {
       price: c.price ?? null, priceDate: c.priceDate || null,
       pe: c.pe == null ? null : c.pe, roe: c.roe == null ? null : c.roe, ytd: c.ytd == null ? null : c.ytd,
       securityType: 'common', primary: true, noFilings: !(c.financials && c.financials.ttm), offIndex: true,
+      preIpo: c.status === 'pre-ipo', status: c.status || 'listed',
       aliases: [...(c.aliases || []), ...(c.brands || [])],
       // Aliases are codes too: "claude" and a bare "x" must land on Anthropic and SpaceX by exact
       // match rather than by a substring sweep over every name. Brands are searchable the same way
@@ -2031,11 +2032,23 @@ function homeSummary() {
 // A global theme is the union of the same idea across the ten local theme registers. The local files
 // name the same concept differently (us:ai, kr:semis, tw:ai-hardware, …); the map is deliberately
 // explicit so a rename in one market does not silently lose its members from the global lens.
+// Off-index names that belong in a US theme. The US theme file is generated from the S&P 1500, so
+// these are carried separately and merged into the theme payload; the page tags them and keeps them
+// out of the index totals.
+const US_OFF_THEMES = {
+  ai: ['SPCX', 'ANT', 'CBRS', 'CRWV', 'NSCL'],
+  defence: ['SPCX'],
+  power: ['CRWV', 'NSCL'],
+  software: ['ANT', 'FIG', 'BSP', 'NTSK'],
+  healthcare: ['OURA'],
+  financials: ['CRCL', 'CHYM', 'KLAR', 'FIGR'],
+};
+
 const GLOBAL_THEME_DEFS = [
   {
     id: 'ai', label: 'AI & SEMICONDUCTORS',
     maps: { us: 'ai', jp: 'ai', kr: 'semis', tw: 'semis', hk: 'semis' },
-    off: ['ANT', 'CBRS', 'CRWV'],
+    off: ['SPCX', 'ANT', 'CBRS', 'CRWV', 'NSCL'],
     extras: {
       us: ['NVDA', 'AVGO', 'AMD', 'MU', 'AMAT', 'LRCX', 'KLAC'],
       tw: ['2330', '2454', '2317', '3711'],
@@ -2048,8 +2061,9 @@ const GLOBAL_THEME_DEFS = [
   // but not yet an index constituent. They are tagged in the panel like they are in the screener.
   { id: 'defence', label: 'DEFENCE', maps: { us: 'defence', jp: 'defence', kr: 'defence', in: 'psu-capex' }, off: ['SPCX'] },
   { id: 'energy', label: 'ENERGY & POWER', maps: { us: 'energy-us', hk: 'energy', au: 'energy', in: 'energy', id: 'coal', br: 'oil', za: 'energy' } },
-  { id: 'banks', label: 'BANKS & FINANCIALS', maps: { us: 'financials', jp: 'banks-jp', kr: 'banks', tw: 'financials', hk: 'banks', au: 'banks', in: 'banks', id: 'banks', br: 'banks', za: 'banks' }, off: ['CRCL', 'CHYM'] },
-  { id: 'software', label: 'SOFTWARE & PLATFORMS', maps: { us: 'software', hk: 'platforms', in: 'it-services' }, off: ['FIG'] },
+  { id: 'banks', label: 'BANKS & FINANCIALS', maps: { us: 'financials', jp: 'banks-jp', kr: 'banks', tw: 'financials', hk: 'banks', au: 'banks', in: 'banks', id: 'banks', br: 'banks', za: 'banks' }, off: ['CRCL', 'CHYM', 'KLAR', 'FIGR'] },
+  { id: 'software', label: 'SOFTWARE & PLATFORMS', maps: { us: 'software', hk: 'platforms', in: 'it-services' }, off: ['ANT', 'FIG', 'BSP', 'NTSK'] },
+  { id: 'health', label: 'HEALTH & WELLNESS', maps: { us: 'healthcare', hk: 'healthcare', au: 'healthcare', za: 'healthcare' }, off: ['OURA'] },
   { id: 'mining', label: 'METALS & MINING', maps: { au: 'materials', br: 'mining', za: 'mining', id: 'nickel' } },
 ];
 let GLOBAL_THEME_CACHE = { at: 0, data: null };
@@ -6345,8 +6359,9 @@ const server = http.createServer(async (req, res) => {
         netIncome: c.financials?.ttm?.netIncome ?? c.financials?.latest?.netIncome ?? null,
         revenueCagr: c.revenueCagr == null ? null : c.revenueCagr,
         netMargin: c.netMargin == null ? null : c.netMargin,
-        offIndex: true, listedAt: c.listedAt || null, vsIpo: c.vsIpo ?? null, why: c.why || null,
-        aliases: c.aliases || [], brands: c.brands || [], noFilings: !c.financials?.ttm,
+        offIndex: true, preIpo: c.status === 'pre-ipo', status: c.status || 'listed',
+        listedAt: c.listedAt || null, vsIpo: c.vsIpo ?? null, why: c.why || null,
+        aliases: c.aliases || [], brands: c.brands || [], noFilings: !c.financials?.latestFiling,
       }));
       return sendListJSON(res, 200, {
         updated: COMPANIES.updated || null,
@@ -6354,7 +6369,7 @@ const server = http.createServer(async (req, res) => {
         companies: list,
         offIndex: off,
         universe: COMPANIES.universe || null,
-        themes: COMPANIES.themes || [],
+        themes: (COMPANIES.themes || []).map((t) => ({ ...t, off: US_OFF_THEMES[t.id] || [] })),
         valuation: valuation ? { ...valuation.index, sectors: valuation.sectors || {} } : null,
       });
     }
@@ -6379,10 +6394,11 @@ const server = http.createServer(async (req, res) => {
         cik: off.cik ? String(off.cik) : off.ticker,
         ticker: off.ticker,
         name: off.legalName || off.name,
-        marketCap: off.capUsd,
+        marketCap: off.capUsd || null,
         spTier: 'off',
-        noFilings: true,
-        noFilingsReason: `listed ${off.listedAt} — no annual report in EDGAR yet`,
+        preIpo: off.status === 'pre-ipo', status: off.status || 'listed',
+        noFilings: off.status === 'pre-ipo' ? false : !off.financials?.latestFiling,
+        noFilingsReason: off.status === 'pre-ipo' || off.financials?.latestFiling ? null : `listed ${off.listedAt} — no periodic filing in EDGAR yet`,
         offIndex: true,
         series: [],
       });

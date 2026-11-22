@@ -1286,7 +1286,7 @@ test('off-index names rank by market cap and stay out of the index totals', asyn
   const ranked = await (await fetch(`http://localhost:${PORT}/api/global-companies?sort=cap&limit=200`)).json();
   const offRows = ranked.rows.filter((r) => r.off);
   assert.ok(offRows.length >= 1, 'they appear in the default (all) screener');
-  assert.ok(offRows.every((r) => r.t && r.cap > 0 && r.why && r.listedAt), 'a row carries its ticker, cap, listing date and the reason it is off-index');
+  assert.ok(offRows.every((r) => r.t && (r.cap > 0 || r.preIpo) && r.why && (r.listedAt || r.preIpo)), 'a row carries its ticker, cap, listing date and the reason it is off-index');
   // Ranked by cap: the page is descending, so the neighbours must not be smaller.
   const i = ranked.rows.findIndex((r) => r.off);
   assert.ok(i < 0 || i === ranked.rows.length - 1 || ranked.rows[i].cap >= ranked.rows[i + 1].cap,
@@ -1298,7 +1298,7 @@ test('off-index names rank by market cap and stay out of the index totals', asyn
   const one = offRows[0];
   const co = await (await fetch(`http://localhost:${PORT}/api/company/${encodeURIComponent(one.t)}`)).json();
   assert.equal(co.offIndex, true, 'the screener row opens a page');
-  assert.equal(co.noFilings, true);
+  assert.equal(co.noFilings, !co.financials.latestFiling, 'the page reflects whether EDGAR has a periodic filing');
   assert.equal(co.spTier, 'off');
   const chart = await (await fetch(`http://localhost:${PORT}/api/company-chart?ticker=${encodeURIComponent(one.t)}&range=1y`)).json();
   assert.ok(Array.isArray(chart.dates), 'the page has a price series');
@@ -1323,6 +1323,12 @@ test('every off-index name sits in its global theme, tagged', async () => {
   assert.ok(inTheme.get('SPCX')?.includes('defence'), 'SpaceX is in defence');
   assert.ok(inTheme.get('CRCL')?.includes('banks'), 'Circle is in banks');
   assert.ok(inTheme.get('FIG')?.includes('software'), 'Figma is in software');
+  assert.ok(inTheme.get('KLAR')?.includes('banks'), 'Klarna is in banks');
+  assert.ok(inTheme.get('FIGR')?.includes('banks'), 'Figure is in banks');
+  assert.ok(inTheme.get('BSP')?.includes('software'), 'Bending Spoons is in software');
+  assert.ok(inTheme.get('NTSK')?.includes('software'), 'Netskope is in software');
+  assert.ok(inTheme.get('OURA')?.includes('health'), 'Oura is in health');
+  assert.ok(inTheme.get('NSCL')?.includes('ai'), 'Nscale is in AI');
 });
 
 test('the US screener carries the off-index names with their filings', async () => {
@@ -1353,11 +1359,57 @@ test('the US screener carries the off-index names with their filings', async () 
   const spcxPage = await (await fetch(`http://localhost:${PORT}/api/company/${spcx.cik}`)).json();
   const qs = spcxPage.financials.quarters || [];
   assert.ok(qs.length >= 3, 'SpaceX has quarterly results even without a 10-K');
+  assert.ok(spcxPage.financials.ttm?.revenue > 0, 'and a trailing twelve months from the S-1 year plus the 10-Q');
+  assert.ok(qs.some((q) => q.end === '2025-12-31'), 'the Q4 EDGAR does not carry is derived from the annual record');
   assert.equal(new Set(qs.map((q) => q.end)).size, qs.length, 'no duplicate quarters');
   const ytd = spcxPage.financials.latest;
   const sum = qs.filter((q) => q.revenue != null && q.end >= ytd.start && q.end <= ytd.end)
     .reduce((a, q) => a + q.revenue, 0);
   assert.ok(Math.abs(sum - ytd.revenue) / ytd.revenue < 0.01, 'the quarters add up to the year to date');
+
+  // Anthropic listed four days ago: no 10-Q yet, but the prospectus carries the history.
+  const antPage = await (await fetch(`http://localhost:${PORT}/api/company/${ant.cik}`)).json();
+  assert.ok(antPage.financials.ttm?.revenue > 0, 'Anthropic gets a TTM from the S-1 periods');
+  assert.ok((antPage.financials.quarters || []).length >= 4, 'and its pre-IPO quarters');
+  assert.ok((antPage.financials.annual || []).length >= 2, 'and the annual record behind them');
+
+  // The newer arrivals use the same structure: a TTM, an annual record and a matrix.
+  for (const ticker of ['BSP', 'KLAR', 'FIGR', 'NTSK']) {
+    const row = off.find((c) => c.ticker === ticker);
+    assert.ok(row, `${ticker} is in the off-index payload`);
+    const page = await (await fetch(`http://localhost:${PORT}/api/company/${row.cik}`)).json();
+    assert.ok(page.financials.ttm?.revenue > 0, `${ticker} has a trailing revenue`);
+    assert.ok((page.financials.annual || []).length >= 3, `${ticker} has its annual record`);
+    assert.ok((page.financials.quarters || []).length >= 4, `${ticker} has its quarters`);
+    assert.ok((page.financials.source || '').length > 0, `${ticker} names its statement source`);
+  }
+
+  // Filed but not trading: the S-1 financials travel with the row and there is no fake quote.
+  for (const ticker of ['OURA', 'NSCL']) {
+    const row = off.find((c) => c.ticker === ticker);
+    assert.ok(row && row.preIpo, `${ticker} is a pre-IPO off-index row`);
+    const page = await (await fetch(`http://localhost:${PORT}/api/company/${row.cik}`)).json();
+    assert.equal(page.preIpo, true);
+    assert.equal(page.price, null);
+    assert.equal(page.marketCap, null);
+    assert.ok(page.financials.ttm?.revenue > 0, `${ticker} has an S-1 TTM`);
+    assert.ok((page.financials.quarters || []).length >= 3, `${ticker} has its S-1 periods`);
+  }
+});
+
+test('the US theme payload carries the off-index members it claims', async () => {
+  const d = await (await fetch(`http://localhost:${PORT}/api/companies`)).json();
+  const byId = new Map((d.themes || []).map((t) => [t.id, t]));
+  assert.ok(byId.get('ai').off.includes('SPCX'), 'SpaceX is in the US AI theme');
+  assert.ok(byId.get('ai').off.includes('ANT'), 'Anthropic is in the US AI theme');
+  assert.ok(byId.get('ai').off.includes('CBRS'), 'Cerebras is in the US AI theme');
+  assert.ok(byId.get('ai').off.includes('CRWV'), 'CoreWeave is in the US AI theme');
+  assert.ok(byId.get('ai').off.includes('NSCL'), 'Nscale is in the US AI theme');
+  assert.ok(byId.get('software').off.includes('BSP'), 'Bending Spoons is in the US software theme');
+  assert.ok(byId.get('software').off.includes('NTSK'), 'Netskope is in the US software theme');
+  assert.ok(byId.get('financials').off.includes('KLAR'), 'Klarna is in the US financials theme');
+  assert.ok(byId.get('healthcare').off.includes('OURA'), 'Oura is in the US healthcare theme');
+  assert.ok(byId.get('power').off.includes('NSCL'), 'Nscale is in the US power theme');
 });
 
 test('the search aliases land on the off-index names', async () => {
@@ -1367,6 +1419,12 @@ test('the search aliases land on the off-index names', async () => {
     ['twitter', 'SPCX'], ['grok', 'SPCX'], ['xai', 'SPCX'], ['spacexai', 'SPCX'],
     ['usdc', 'CRCL'], ['cctp', 'CRCL'],
     ['figjam', 'FIG'], ['spotme', 'CHYM'], ['wafer scale', 'CBRS'], ['coreweave', 'CRWV'],
+    ['bending spoons', 'BSP'], ['bsp', 'BSP'], ['evernote', 'BSP'],
+    ['klarna', 'KLAR'], ['bnpl', 'KLAR'],
+    ['figure', 'FIGR'], ['provenance', 'FIGR'],
+    ['netskope', 'NTSK'], ['sase', 'NTSK'],
+    ['oura', 'OURA'], ['smart ring', 'OURA'],
+    ['nscale', 'NSCL'], ['gpu cloud', 'NSCL'],
   ];
   for (const [q, want] of cases) {
     const d = await (await fetch(`http://localhost:${PORT}/api/global-search?q=${encodeURIComponent(q)}`)).json();
