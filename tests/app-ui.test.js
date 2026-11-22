@@ -98,6 +98,17 @@ function makeDocument() {
   };
 }
 
+// A real-enough storage for the watchlist tests; a fresh context gets a fresh store.
+function memoryStore() {
+  const m = new Map();
+  return {
+    getItem: (k) => (m.has(k) ? m.get(k) : null),
+    setItem: (k, v) => { m.set(String(k), String(v)); },
+    removeItem: (k) => { m.delete(k); },
+    clear: () => m.clear(),
+  };
+}
+
 // Every browser global app.js touches must exist, even if it is inert.
 function makeContext() {
   const document = makeDocument();
@@ -108,8 +119,8 @@ function makeContext() {
     window: null,
     navigator: { userAgent: 'node-test', connection: {}, language: 'en' },
     location: { hash: '', pathname: '/', search: '', href: 'http://localhost/' },
-    localStorage: { getItem: () => null, setItem() {}, removeItem() {} },
-    sessionStorage: { getItem: () => null, setItem() {}, removeItem() {} },
+    localStorage: memoryStore(),
+    sessionStorage: memoryStore(),
     matchMedia: () => ({ matches: false, addEventListener() {}, removeEventListener() {} }),
     requestAnimationFrame: () => 1,
     cancelAnimationFrame() {},
@@ -190,6 +201,7 @@ function loadApp() {
     loadBrief,
     offTag,
     renderOffIndexPage,
+    watchlist, toggleWatch, renderWatchlist, CO_WATCH,
     getBriefPayload: () => briefPayload,
     setBriefBusy: (v) => { briefBusy = v; },
     setBriefPayload: (v) => { briefPayload = v; },
@@ -1135,6 +1147,8 @@ test('an off-index page with a TTM shows the annual record and a meaningful ROE'
   assert.match(html, /NET INCOME · TTM/);
   assert.match(html, /REVENUE CAGR/);
   assert.match(html, /QUARTERLY RESULTS/);
+  assert.match(html, /data-costar="us:SPCX"/, 'the off-index page carries the same watchlist star as a US page');
+  assert.match(html, /co-star-t">WATCH/, 'and it starts unpinned');
   const chartAt = html.indexOf('id="co-chart"');
   const noteAt = html.indexOf('Latest filing:');
   const fyAt = html.indexOf('FISCAL-YEAR RECORD');
@@ -1143,6 +1157,26 @@ test('an off-index page with a TTM shows the annual record and a meaningful ROE'
     'the US order is chart → filing note → fiscal-year record → quarterly matrix');
   assert.match(html, /n\/m/, 'an extreme ROE is labelled not meaningful');
   assert.doesNotMatch(html, /-1583\.0%/);
+});
+
+test('an off-index name can be pinned and renders in the home watchlist', () => {
+  const { ui, document } = loadApp();
+  const spcx = {
+    cik: '1181412', ticker: 'SPCX', name: 'Space Exploration Technologies Corp.',
+    price: 127.79, chg1d: -7.69, chg6m: null, chgYtd: null, marketCap: 1.7e12,
+    pe: null, roe: null, offIndex: true,
+  };
+  ui.setCompanies({ companies: [], offIndex: [spcx], themes: [] });
+  assert.equal(ui.CO_WATCH.us.find('SPCX')?.ticker, 'SPCX', 'the US resolver finds the off-index row');
+  ui.toggleWatch('us:SPCX');
+  assert.equal(ui.watchlist().join(','), 'us:SPCX');
+  ui.renderWatchlist();
+  const html = document.getElementById('home-watch').innerHTML;
+  assert.match(html, /SPCX/);
+  assert.match(html, /data-star="us:SPCX"/);
+  assert.match(html, /data-cik="1181412"/);
+  ui.toggleWatch('us:SPCX');
+  assert.equal(ui.watchlist().length, 0, 'clicking the star again unpins it');
 });
 
 test('a pre-IPO page shows S-1 financials without inventing a quote', () => {

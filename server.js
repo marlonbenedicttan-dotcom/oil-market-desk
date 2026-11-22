@@ -6354,7 +6354,7 @@ const server = http.createServer(async (req, res) => {
         cik: String(c.cik || c.ticker), ticker: c.ticker, name: c.legalName || c.name,
         sector: c.sector || null, industry: c.industry || null,
         marketCap: c.capUsd || null, price: c.price ?? null, priceAsOf: c.priceDate || null,
-        chg1d: c.chg1d ?? null, chgYtd: c.ytd ?? null,
+        chg1d: c.chg1d ?? null, chg6m: c.chg6m ?? null, chgYtd: c.ytd ?? null,
         pe: c.pe == null ? null : c.pe, roe: c.roe == null ? null : c.roe,
         revenue: c.financials?.ttm?.revenue ?? c.financials?.latest?.revenue ?? null,
         netIncome: c.financials?.ttm?.netIncome ?? c.financials?.latest?.netIncome ?? null,

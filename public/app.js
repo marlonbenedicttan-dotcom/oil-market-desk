@@ -511,7 +511,7 @@ function marketCompanyTile(c, market) {
 // Every market's company list, behind one resolver. The market data is already loaded on its own
 // page; a watchlist ref that arrives before the list is fetched asks the loader once and repaints.
 const CO_WATCH = {
-  us: { data: () => companiesData, load: async () => { if (!companiesData) { try { companiesData = await jget('/api/companies', 300000); } catch {} } return companiesData; }, find: (id) => (companiesData?.companies || []).find((c) => String(c.ticker) === String(id) || String(c.cik) === String(id)) },
+  us: { data: () => companiesData, load: async () => { if (!companiesData) { try { companiesData = await jget('/api/companies', 300000); } catch {} } return companiesData; }, find: (id) => (companiesData?.companies || []).find((c) => String(c.ticker) === String(id) || String(c.cik) === String(id)) || (companiesData?.offIndex || []).find((c) => String(c.ticker) === String(id) || String(c.cik) === String(id)) },
   jp: { data: () => japanData, load: loadJapan, find: (id) => (japanData?.companies || []).find((c) => String(c.code) === String(id)) },
   kr: { data: () => koreaData, load: loadKorea, find: (id) => (koreaData?.companies || []).find((c) => String(c.code) === String(id)) },
   tw: { data: () => taiwanData, load: loadTaiwan, find: (id) => (taiwanData?.companies || []).find((c) => String(c.code) === String(id)) },
@@ -12293,6 +12293,7 @@ function renderOffIndexPage(el, c) {
         <div class="co-sub">${esc(c.ticker)} · ${esc(c.sector || '')}${c.industry ? ' · ' + esc(c.industry) : ''} · ${esc(c.exchange || 'US')}</div>
         ${c.description ? `<div class="co-desc">${esc(coDesc(c.description))}</div>` : (c.why ? `<div class="co-desc">${esc(c.why)}</div>` : '')}
         ${c.brands && c.brands.length ? `<div class="jp-brands">${c.brands.map((b) => `<span>${esc(b)}</span>`).join('')}</div>` : ''}</div>
+        ${coStar('us:' + (c.ticker || c.cik))}
       </div>`
     + priceBlock
     + `<div class="co-verif">${statusLine}</div>`

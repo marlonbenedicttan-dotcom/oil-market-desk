@@ -1338,6 +1338,7 @@ test('the US screener carries the off-index names with their filings', async () 
   const spcx = off.find((c) => c.ticker === 'SPCX');
   assert.ok(spcx, 'SpaceX is in the US screener payload');
   assert.ok(spcx.marketCap > 1e12 && spcx.cik && spcx.sector, 'a row carries cap, CIK and sector');
+  assert.ok('chg6m' in spcx, 'the watchlist tile gets the 6M change');
   assert.equal(spcx.offIndex, true);
   assert.equal(d.companies.some((c) => c.ticker === 'SPCX'), false, 'the index list itself is unchanged');
 
