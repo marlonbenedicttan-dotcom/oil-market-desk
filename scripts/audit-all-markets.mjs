@@ -27,6 +27,7 @@ const STEPS = [
   // beyond the baseline tolerance (see companies-daily). Refresh the baseline deliberately with
   // `node scripts/check-snapshot.mjs --update`; the all-markets scheduled audit must not go red on it.
   ['US', 'audit-themes.mjs'],
+  ['US', 'audit-off-index.mjs'],
   // US / Japan / Korea cross-market source check
   ['US / JP / KR', 'audit-markets.mjs'],
   // Taiwan
