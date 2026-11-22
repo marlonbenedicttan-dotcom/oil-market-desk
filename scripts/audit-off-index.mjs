@@ -64,6 +64,8 @@ const check = (ticker, ok, label, detail) => {
 // SEC ticker → CIK, one fetch for all of them.
 const secTickers = await getJSON('https://www.sec.gov/files/company_tickers.json', SEC);
 const byTicker = new Map(Object.values(secTickers || {}).map((r) => [String(r.ticker).toUpperCase(), r]));
+const secMapOk = byTicker.size > 0;
+if (!secMapOk) warn('SEC', 'company_tickers did not answer — ticker-map checks skipped');
 
 for (const c of companies) {
   const t = c.ticker;
@@ -72,12 +74,15 @@ for (const c of companies) {
 
   // ---- SEC identity -------------------------------------------------------------------------
   const sec = byTicker.get(t);
-  check(t, !!sec, 'ticker is in SEC company_tickers');
-  if (sec) {
-    check(t, String(sec.cik_str) === String(c.cik), 'CIK matches the SEC record', `${c.cik} vs ${sec.cik_str}`);
-    const sub = await getJSON(`https://data.sec.gov/submissions/CIK${String(c.cik).padStart(10, '0')}.json`, SEC);
-    await sleep(200);
-    if (sub) {
+  if (secMapOk) {
+    check(t, !!sec, 'ticker is in SEC company_tickers');
+    if (sec) check(t, String(sec.cik_str) === String(c.cik), 'CIK matches the SEC record', `${c.cik} vs ${sec.cik_str}`);
+  }
+  // The per-company submissions endpoint is the identity source that still works when the bulk
+  // ticker map is throttled; fetch it by CIK rather than only inside the ticker-map branch.
+  const sub = await getJSON(`https://data.sec.gov/submissions/CIK${String(c.cik).padStart(10, '0')}.json`, SEC);
+  await sleep(200);
+  if (sub) {
       if (!preIpo) check(t, (sub.tickers || []).map((x) => x.toUpperCase()).includes(t), 'SEC lists the ticker', (sub.tickers || []).join(','));
       check(t, !!sub.name, 'SEC legal name present');
       const secEx = String((sub.exchanges || [])[0] || '').toUpperCase();
@@ -97,7 +102,7 @@ for (const c of companies) {
       }
       let offer = null;
       let offerForm = null;
-      if (!preIpo) {
+      if (!preIpo && c.ipoBasis !== 'first-close') {
       for (const f of files) {
         const e = f.entries || {};
         const forms = e.form || [];
@@ -134,7 +139,6 @@ for (const c of companies) {
       }
       }
     }
-  }
 
   // ---- pre-IPO: no tape yet ---------------------------------------------------------------
   if (preIpo) {
@@ -143,6 +147,11 @@ for (const c of companies) {
     check(t, c.financials?.latestFiling?.form === 'S-1/A', 'the S-1/A is recorded', c.financials?.latestFiling?.form);
     check(t, /^https:\/\/www\.sec\.gov\/Archives\//.test(c.financials?.latestFiling?.url || ''), 'S-1 link points at EDGAR');
     check(t, /not trading yet/i.test(String(c.why || '')), 'the reason says it is not trading yet', c.why);
+  }
+
+  if (!preIpo && c.ipoBasis === 'first-close') {
+    check(t, c.ipoPrice != null && c.firstClose != null && Math.abs(Number(c.ipoPrice) - Number(c.firstClose)) < 0.005,
+      'a direct listing uses its first close as the reference', `ipoPrice ${c.ipoPrice} vs firstClose ${c.firstClose}`);
   }
 
   // ---- Nasdaq quote + history ---------------------------------------------------------------
@@ -272,11 +281,16 @@ for (const c of companies) {
     check(t, fin.ttm.end === (fin.latest && fin.latest.end), 'TTM ends on the latest filed period');
     check(t, fin.fy && fin.latest && fin.prior, 'a TTM shows its working (FY + YTD − prior YTD)');
     if (fin.fy && fin.latest && fin.prior) {
-      const wantRev = fin.fy.revenue + fin.latest.revenue - fin.prior.revenue;
+      // A 10-K is its own trailing year; only a later interim filing needs FY + YTD − prior YTD.
+      const wantRev = fin.latest.end > fin.fy.end
+        ? fin.fy.revenue + fin.latest.revenue - fin.prior.revenue
+        : fin.fy.revenue;
       check(t, Math.abs(wantRev - fin.ttm.revenue) < 1, 'TTM revenue recomputes',
         `${fin.ttm.revenue} vs ${wantRev}`);
       if (fin.fy.netIncome != null && fin.latest.netIncome != null && fin.prior.netIncome != null) {
-        const wantNi = fin.fy.netIncome + fin.latest.netIncome - fin.prior.netIncome;
+        const wantNi = fin.latest.end > fin.fy.end
+          ? fin.fy.netIncome + fin.latest.netIncome - fin.prior.netIncome
+          : fin.fy.netIncome;
         check(t, Math.abs(wantNi - fin.ttm.netIncome) < 1, 'TTM net income recomputes', `${fin.ttm.netIncome} vs ${wantNi}`);
       }
     }

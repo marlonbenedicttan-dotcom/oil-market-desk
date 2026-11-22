@@ -107,6 +107,97 @@ const BASE = [
     why: 'Listed 18 Sep 2025 · not an index constituent yet',
   },
   {
+    ticker: 'SNOW', cik: '1640147', name: 'Snowflake', legalName: 'Snowflake Inc.',
+    brands: ['Snowflake', 'AI Data Cloud', 'Snowpark', 'Snowflake Cortex', 'Snowflake Marketplace'],
+    aliases: ['snowflake', 'snow', 'ai data cloud', 'snowpark', 'cortex'],
+    listedAt: '2020-09-16', ipoPrice: 120, exchange: 'NYSE', ipoBasis: 'ipo',
+    why: 'Listed 16 Sep 2020 · not an index constituent',
+  },
+  {
+    ticker: 'NET', cik: '1477333', name: 'Cloudflare', legalName: 'Cloudflare, Inc.',
+    brands: ['Cloudflare', 'Cloudflare Workers', 'Cloudflare One', 'Cloudflare Zero Trust', 'Cloudflare CDN', 'R2'],
+    aliases: ['cloudflare', 'cloudflare workers', 'zero trust', 'cdn', 'r2'],
+    listedAt: '2019-09-13', ipoPrice: 15, exchange: 'NYSE', ipoBasis: 'ipo',
+    why: 'Listed 13 Sep 2019 · not an index constituent',
+  },
+  {
+    ticker: 'RBLX', cik: '1315098', name: 'Roblox', legalName: 'Roblox Corporation',
+    brands: ['Roblox', 'Roblox Studio', 'Roblox Client', 'Roblox Cloud', 'Robux'],
+    aliases: ['roblox', 'roblox studio', 'robux'],
+    listedAt: '2021-03-10', ipoPrice: null, exchange: 'NYSE', ipoBasis: 'first-close',
+    why: 'Direct listing 10 Mar 2021 · not an index constituent',
+  },
+  {
+    ticker: 'ALAB', cik: '1736297', name: 'Astera Labs', legalName: 'Astera Labs, Inc.',
+    brands: ['Astera Labs', 'COSMOS', 'Aries', 'Taurus', 'Leo', 'Scorpio'],
+    aliases: ['astera', 'astera labs', 'cosmos', 'aries', 'taurus', 'leo', 'scorpio'],
+    listedAt: '2024-03-20', ipoPrice: 36, exchange: 'NASDAQ', ipoBasis: 'ipo',
+    why: 'Listed 20 Mar 2024 · not an index constituent',
+  },
+  {
+    ticker: 'RBRK', cik: '1943896', name: 'Rubrik', legalName: 'Rubrik, Inc.',
+    brands: ['Rubrik', 'Rubrik Security Cloud', 'RUBY', 'SentryAI', 'Rubrik Cloud'],
+    aliases: ['rubrik', 'ruby', 'sentryai', 'data security'],
+    listedAt: '2024-04-25', ipoPrice: 32, exchange: 'NYSE', ipoBasis: 'ipo',
+    why: 'Listed 25 Apr 2024 · not an index constituent',
+  },
+  {
+    ticker: 'ZS', cik: '1713683', name: 'Zscaler', legalName: 'Zscaler, Inc.',
+    brands: ['Zscaler', 'Zscaler Internet Access', 'Zscaler Private Access', 'Zero Trust SASE', 'Zscaler Digital Experience'],
+    aliases: ['zscaler', 'zia', 'zpa', 'zero trust'],
+    listedAt: '2018-03-16', ipoPrice: 16, exchange: 'NASDAQ', ipoBasis: 'ipo',
+    why: 'Listed 16 Mar 2018 · not an index constituent',
+  },
+  {
+    ticker: 'MDB', cik: '1441816', name: 'MongoDB', legalName: 'MongoDB, Inc.',
+    brands: ['MongoDB', 'MongoDB Atlas', 'MongoDB Enterprise Advanced', 'MongoDB Community Server'],
+    aliases: ['mongodb', 'mongo', 'atlas'],
+    listedAt: '2017-10-19', ipoPrice: 24, exchange: 'NASDAQ', ipoBasis: 'ipo',
+    why: 'Listed 19 Oct 2017 · not an index constituent',
+  },
+  {
+    ticker: 'AFRM', cik: '1820953', name: 'Affirm', legalName: 'Affirm Holdings, Inc.',
+    brands: ['Affirm', 'Affirm Card', 'Pay in 4', 'Affirm Savings'],
+    aliases: ['affirm', 'pay over time', 'affirm card'],
+    listedAt: '2021-01-13', ipoPrice: 49, exchange: 'NASDAQ', ipoBasis: 'ipo',
+    why: 'Listed 13 Jan 2021 · not an index constituent',
+  },
+  {
+    ticker: 'MDLN', cik: '2046386', name: 'Medline', legalName: 'Medline Inc.',
+    brands: ['Medline', 'Medline Brand', 'Medline Supply Chain Solutions'],
+    aliases: ['medline', 'medline industries', 'med-surg'],
+    listedAt: '2025-12-17', ipoPrice: 29, exchange: 'NASDAQ', ipoBasis: 'ipo',
+    why: 'Listed 17 Dec 2025 · not an index constituent',
+  },
+  {
+    ticker: 'VG', cik: '2007855', name: 'Venture Global', legalName: 'Venture Global, Inc.',
+    brands: ['Venture Global', 'Calcasieu Pass', 'Plaquemines LNG', 'CP2 LNG'],
+    aliases: ['venture global', 'lng', 'calcasieu', 'plaquemines', 'cp2'],
+    listedAt: '2025-01-24', ipoPrice: 25, exchange: 'NYSE', ipoBasis: 'ipo',
+    why: 'Listed 24 Jan 2025 · not an index constituent',
+  },
+  {
+    ticker: 'RKT', cik: '1805284', name: 'Rocket Companies', legalName: 'Rocket Companies, Inc.',
+    brands: ['Rocket Mortgage', 'Rocket Companies', 'Redfin', 'Rocket Money', 'Rocket Loans', 'Rocket Close'],
+    aliases: ['rocket', 'rocket mortgage', 'redfin', 'rocket money', 'rocket loans'],
+    listedAt: '2020-08-06', ipoPrice: 18, exchange: 'NYSE', ipoBasis: 'ipo',
+    why: 'Listed 06 Aug 2020 · not an index constituent',
+  },
+  {
+    ticker: 'IOT', cik: '1642896', name: 'Samsara', legalName: 'Samsara Inc.',
+    brands: ['Samsara', 'Connected Operations Platform', 'Samsara Vehicle Telematics', 'Samsara Video Safety'],
+    aliases: ['samsara', 'iot', 'telematics', 'fleet'],
+    listedAt: '2021-12-15', ipoPrice: 23, exchange: 'NYSE', ipoBasis: 'ipo',
+    why: 'Listed 15 Dec 2021 · not an index constituent',
+  },
+  {
+    ticker: 'U', cik: '1810806', name: 'Unity', legalName: 'Unity Software Inc.',
+    brands: ['Unity', 'Unity Engine', 'Unity Create', 'Unity Grow', 'Unity Ads', 'Unity Asset Store'],
+    aliases: ['unity', 'unity engine', 'unity ads', 'asset store'],
+    listedAt: '2020-09-18', ipoPrice: 52, exchange: 'NYSE', ipoBasis: 'ipo',
+    why: 'Listed 18 Sep 2020 · not an index constituent',
+  },
+  {
     ticker: 'OURA', cik: '2133022', name: 'Oura', legalName: 'Oura Inc.', preIpo: true,
     brands: ['Oura Ring', 'Oura Ring 4', 'Oura App', 'Oura Membership', 'Oura Advisor'],
     aliases: ['oura', 'oura ring', 'smart ring', 'oura app', 'oura membership'],
@@ -388,6 +479,20 @@ const fiscalYearOf = (rows) => rows
   .filter((r) => r.form === '10-K' && SEC_DAY(r.start, r.end) >= 340 && SEC_DAY(r.start, r.end) <= 380)
   .sort((a, b) => (a.end < b.end ? 1 : -1))[0] || null;
 const shiftYear = (d) => { const x = new Date(d + 'T00:00:00Z'); x.setUTCFullYear(x.getUTCFullYear() - 1); return x.toISOString().slice(0, 10); };
+// Fiscal quarter label from the period end and the fiscal-year end month. A 52/53-week filer can
+// close a few days after the month end, and a January year-end quarter that ends on 1 February is
+// still Q4 — a naive month comparison puts it in the next year. The previous fiscal-year end is the
+// anchor, and rounding absorbs the 52/53-week drift.
+function fiscalPeriod(end, fyEndMonth) {
+  const d = new Date(end + 'T00:00:00Z');
+  const y = d.getUTCFullYear();
+  const lastOf = (yy, mm) => new Date(Date.UTC(yy, mm, 0));
+  let fyEnd = lastOf(y, fyEndMonth);
+  if (fyEnd.getTime() < d.getTime() - 10 * 864e5) fyEnd = lastOf(y + 1, fyEndMonth);
+  const prevEnd = lastOf(fyEnd.getUTCFullYear() - 1, fyEndMonth);
+  const months = (d.getTime() - prevEnd.getTime()) / (30.44 * 864e5);
+  return { fy: fyEnd.getUTCFullYear(), q: Math.max(1, Math.min(4, Math.round(months / 3))) };
+}
 
 async function filings(cik, capUsd) {
   const id = String(cik).padStart(10, '0');
@@ -498,13 +603,7 @@ async function filings(cik, capUsd) {
   // so the matrix on the page groups and labels periods exactly as the index members' does. A
   // January year-end company (Figma) is the reason this has to be computed, not assumed.
   const fyEndMonth = fy ? Number(String(fy.end).slice(5, 7)) : 12;
-  const fiscalOf = (end) => {
-    const m = Number(String(end).slice(5, 7));
-    const y = Number(String(end).slice(0, 4));
-    if (fyEndMonth === 12) return { fy: y, q: Math.ceil(m / 3) };
-    const q = Math.floor((((m - fyEndMonth + 12) % 12) - 1) / 3) + 1;
-    return { fy: m > fyEndMonth ? y + 1 : y, q: Math.max(1, Math.min(4, q)) };
-  };
+  const fiscalOf = (end) => fiscalPeriod(end, fyEndMonth);
   out.quarters = ends.map((end) => {
     const rv = pick(rq, end);
     const nv = pick(nq, end);
@@ -573,13 +672,7 @@ function mergeFinancials(sec, vendor, capUsd) {
   // The fiscal-year end is the 10-K's own month when there is one, otherwise the latest annual column.
   const fyEndMonth = sec.fy?.end ? Number(String(sec.fy.end).slice(5, 7))
     : annuals.length ? Number(String(annuals[annuals.length - 1].end).slice(5, 7)) : 12;
-  const fiscalOf = (end) => {
-    const m = Number(String(end).slice(5, 7));
-    const y = Number(String(end).slice(0, 4));
-    if (fyEndMonth === 12) return { fy: y, q: Math.ceil(m / 3) };
-    const q = Math.floor((((m - fyEndMonth + 12) % 12) - 1) / 3) + 1;
-    return { fy: m > fyEndMonth ? y + 1 : y, q: Math.max(1, Math.min(4, q)) };
-  };
+  const fiscalOf = (end) => fiscalPeriod(end, fyEndMonth);
   const fyStart = (fy) => (fyEndMonth === 12
     ? `${fy}-01-01`
     : `${fy - 1}-${String(fyEndMonth + 1).padStart(2, '0')}-01`);
@@ -691,14 +784,21 @@ function mergeFinancials(sec, vendor, capUsd) {
   out.latest = latest;
   // The same period a year earlier is what turns the year to date into a trailing twelve months.
   let prior = sec.prior ? { ...sec.prior, source: 'sec' } : null;
-  if (!prior && latest && lastEnd) {
-    const f = fiscalOf(lastEnd);
-    const same = quarters.filter((q) => fiscalOf(q.end).fy === f.fy - 1 && fiscalOf(q.end).q <= f.q);
-    if (same.length === f.q) {
+  if (!prior && latest) {
+    const priorStart = shiftYear(latest.start);
+    const priorEnd = shiftYear(latest.end);
+    // A 52/53-week filer can land a day or two either side of the calendar anniversary. The lower
+    // bound is strict: a quarter ending exactly on the fiscal-year boundary belongs to the prior
+    // year, not to the year-to-date window that starts there.
+    const inWindow = (d, start, end) => Date.parse(d) > Date.parse(start) + 7 * 864e5
+      && Date.parse(d) <= Date.parse(end) + 7 * 864e5;
+    const latestQs = quarters.filter((q) => inWindow(q.end, latest.start, latest.end));
+    const priorQs = quarters.filter((q) => inWindow(q.end, priorStart, priorEnd));
+    if (latestQs.length && priorQs.length === latestQs.length) {
       prior = {
-        start: fyStart(f.fy - 1), end: shiftYear(latest.end),
-        revenue: same.every((q) => q.revenue != null) ? same.reduce((s, q) => s + q.revenue, 0) : null,
-        netIncome: same.every((q) => q.netIncome != null) ? same.reduce((s, q) => s + q.netIncome, 0) : null,
+        start: priorStart, end: priorEnd,
+        revenue: priorQs.every((q) => q.revenue != null) ? priorQs.reduce((s, q) => s + q.revenue, 0) : null,
+        netIncome: priorQs.every((q) => q.netIncome != null) ? priorQs.reduce((s, q) => s + q.netIncome, 0) : null,
         source: 'vendor',
       };
     }
@@ -758,7 +858,9 @@ function mergeFinancials(sec, vendor, capUsd) {
   const hasSecXbrl = !!(sec.quarters?.length || sec.annual?.length || sec.fy || sec.latest);
   out.source = hasSecXbrl
     ? (usedVendor ? 'SEC XBRL + stockanalysis.com' : 'SEC XBRL')
-    : (sec.latestFiling ? 'stockanalysis.com (6-K/F-1, USD)' : 'stockanalysis.com (S-1/prospectus)');
+    : (sec.latestFiling
+      ? (/^(6-K|20-F)$/.test(sec.latestFiling.form) ? 'stockanalysis.com (6-K/F-1, USD)' : 'stockanalysis.com (filings, USD)')
+      : 'stockanalysis.com (S-1/prospectus)');
   out.quartersSource = out.source;
   return out;
 }
@@ -896,7 +998,9 @@ for (const entry of BASE) {
 
   const curated = {
     ticker: base.ticker, cik: base.cik, name: base.name, legalName: base.legalName,
-    listedAt: base.listedAt, ipoPrice: base.ipoPrice, exchange: base.exchange, why: base.why,
+    listedAt: base.listedAt, ipoPrice: base.ipoPrice ?? kept?.ipoPrice ?? null,
+    ipoBasis: base.ipoBasis || kept?.ipoBasis || 'ipo',
+    exchange: base.exchange, why: base.why,
     brands: base.brands || [], aliases: base.aliases || [],
   };
   let row;
@@ -911,16 +1015,18 @@ for (const entry of BASE) {
     row = { ...kept, ...curated, ...prof };
     console.warn(`${base.ticker}: incomplete quote (${Object.entries({ price: q && q.price, cap: q && q.cap, sector: q && q.sector }).filter(([, v]) => !v).map(([k]) => k).join(',')}) — kept the previous row`);
   } else {
-    // From the listing date (capped at three years), so the company page can draw a chart over the whole
-    // life of the listing and `firstClose` really is the first close, not the first close in a window.
-    const floor = new Date(Date.now() - 3 * 365 * 864e5).toISOString().slice(0, 10);
-    const from = base.listedAt < floor ? floor : base.listedAt;
-    const fresh = await history(base.ticker, from);
+    // From the listing date, so the company page can draw the whole life of the listing and
+    // `firstClose` really is the first close, not the first close in a three-year window. The
+    // established large caps added here predate that window; a direct listing has no IPO price, so
+    // its first close is the reference instead.
+    const fresh = await history(base.ticker, base.listedAt);
     // A failed history call is not a reason to lose yesterday's chart: keep the last good series and
     // quote the row off its final close so the price and the tape cannot disagree.
     const series = fresh.length ? fresh : (kept?.series || []);
     const lastBar = series.length ? series[series.length - 1] : null;
     const prevBar = series.length > 1 ? series[series.length - 2] : null;
+    const firstClose = series.length ? series[0][1] : null;
+    const ipoPrice = base.ipoBasis === 'first-close' ? firstClose : base.ipoPrice;
     const price = lastBar ? lastBar[1] : q.price;
     const priceDate = lastBar ? lastBar[0] : new Date().toISOString().slice(0, 10);
     // The vendor's cap is live; scale it to the close we store so cap = price × shares exactly.
@@ -952,13 +1058,15 @@ for (const entry of BASE) {
       industry: q.industry || base.industry || null,
       wk52Low: wkLow,
       wk52High: wkHigh,
-      firstClose: series.length ? series[0][1] : null,
+      firstClose,
+      ipoPrice,
+      ipoBasis: base.ipoBasis || 'ipo',
       // A loss-making company has no trailing P/E, and a company that listed this year has no full-year
       // return. Both stay null rather than becoming a number that means nothing.
       pe: null,
       roe: null,
       ytd: priorYearEnd ? +(((price / priorYearEnd[1]) - 1) * 100).toFixed(2) : null,
-      vsIpo: base.ipoPrice ? +(((price / base.ipoPrice) - 1) * 100).toFixed(2) : null,
+      vsIpo: ipoPrice ? +(((price / ipoPrice) - 1) * 100).toFixed(2) : null,
       series,
     };
   }

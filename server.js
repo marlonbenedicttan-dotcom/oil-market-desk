@@ -2036,19 +2036,20 @@ function homeSummary() {
 // these are carried separately and merged into the theme payload; the page tags them and keeps them
 // out of the index totals.
 const US_OFF_THEMES = {
-  ai: ['SPCX', 'ANT', 'CBRS', 'CRWV', 'NSCL'],
+  ai: ['SPCX', 'ANT', 'CBRS', 'CRWV', 'NSCL', 'SNOW', 'NET', 'ALAB', 'MDB'],
   defence: ['SPCX'],
   power: ['CRWV', 'NSCL'],
-  software: ['ANT', 'FIG', 'BSP', 'NTSK'],
-  healthcare: ['OURA'],
-  financials: ['CRCL', 'CHYM', 'KLAR', 'FIGR'],
+  software: ['ANT', 'FIG', 'BSP', 'NTSK', 'SNOW', 'NET', 'RBLX', 'RBRK', 'ZS', 'MDB', 'IOT', 'U'],
+  healthcare: ['OURA', 'MDLN'],
+  financials: ['CRCL', 'CHYM', 'KLAR', 'FIGR', 'AFRM', 'RKT'],
+  'energy-us': ['VG'],
 };
 
 const GLOBAL_THEME_DEFS = [
   {
     id: 'ai', label: 'AI & SEMICONDUCTORS',
     maps: { us: 'ai', jp: 'ai', kr: 'semis', tw: 'semis', hk: 'semis' },
-    off: ['SPCX', 'ANT', 'CBRS', 'CRWV', 'NSCL'],
+    off: ['SPCX', 'ANT', 'CBRS', 'CRWV', 'NSCL', 'SNOW', 'NET', 'ALAB', 'MDB'],
     extras: {
       us: ['NVDA', 'AVGO', 'AMD', 'MU', 'AMAT', 'LRCX', 'KLAC'],
       tw: ['2330', '2454', '2317', '3711'],
@@ -2060,10 +2061,10 @@ const GLOBAL_THEME_DEFS = [
   // `off` is the off-index universe (data/off-index.json): a theme can hold a name that is listed
   // but not yet an index constituent. They are tagged in the panel like they are in the screener.
   { id: 'defence', label: 'DEFENCE', maps: { us: 'defence', jp: 'defence', kr: 'defence', in: 'psu-capex' }, off: ['SPCX'] },
-  { id: 'energy', label: 'ENERGY & POWER', maps: { us: 'energy-us', hk: 'energy', au: 'energy', in: 'energy', id: 'coal', br: 'oil', za: 'energy' } },
-  { id: 'banks', label: 'BANKS & FINANCIALS', maps: { us: 'financials', jp: 'banks-jp', kr: 'banks', tw: 'financials', hk: 'banks', au: 'banks', in: 'banks', id: 'banks', br: 'banks', za: 'banks' }, off: ['CRCL', 'CHYM', 'KLAR', 'FIGR'] },
-  { id: 'software', label: 'SOFTWARE & PLATFORMS', maps: { us: 'software', hk: 'platforms', in: 'it-services' }, off: ['ANT', 'FIG', 'BSP', 'NTSK'] },
-  { id: 'health', label: 'HEALTH & WELLNESS', maps: { us: 'healthcare', hk: 'healthcare', au: 'healthcare', za: 'healthcare' }, off: ['OURA'] },
+  { id: 'energy', label: 'ENERGY & POWER', maps: { us: 'energy-us', hk: 'energy', au: 'energy', in: 'energy', id: 'coal', br: 'oil', za: 'energy' }, off: ['VG'] },
+  { id: 'banks', label: 'BANKS & FINANCIALS', maps: { us: 'financials', jp: 'banks-jp', kr: 'banks', tw: 'financials', hk: 'banks', au: 'banks', in: 'banks', id: 'banks', br: 'banks', za: 'banks' }, off: ['CRCL', 'CHYM', 'KLAR', 'FIGR', 'AFRM', 'RKT'] },
+  { id: 'software', label: 'SOFTWARE & PLATFORMS', maps: { us: 'software', hk: 'platforms', in: 'it-services' }, off: ['ANT', 'FIG', 'BSP', 'NTSK', 'SNOW', 'NET', 'RBLX', 'RBRK', 'ZS', 'MDB', 'IOT', 'U'] },
+  { id: 'health', label: 'HEALTH & WELLNESS', maps: { us: 'healthcare', hk: 'healthcare', au: 'healthcare', za: 'healthcare' }, off: ['OURA', 'MDLN'] },
   { id: 'mining', label: 'METALS & MINING', maps: { au: 'materials', br: 'mining', za: 'mining', id: 'nickel' } },
 ];
 let GLOBAL_THEME_CACHE = { at: 0, data: null };

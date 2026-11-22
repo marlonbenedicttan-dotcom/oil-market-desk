@@ -11394,7 +11394,7 @@ function gbBindFilters() {
 }
 
 function gbApplyIdea(kind) {
-  gbScr = { market: 'all', sector: 'all', peMax: 0, roeMin: '', capMin: 0, ytdMin: '', q: '', pePctMax: 0, filingsOnly: false, universe: 'all' };
+  gbScr = { market: 'all', sector: 'all', peMax: 0, roeMin: '', capMin: 0, ytdMin: '', q: '', pePctMax: 0, filingsOnly: false, universe: 'index' };
   gbScrLimit = 50; gbScrPage = 1;
   if (kind === 'cheap') { gbScr.pePctMax = 20; gbScrSort = 'pe'; }
   else if (kind === 'quality') { gbScr.roeMin = '15'; gbScr.peMax = 20; gbScrSort = 'roe'; }
@@ -11406,7 +11406,7 @@ function gbApplyIdea(kind) {
 }
 
 function hmApplyIdea(kind) {
-  hmScr = { market: 'all', sector: 'all', peMax: 0, roeMin: '', capMin: 0, ytdMin: '', q: '', pePctMax: 0, filingsOnly: false };
+  hmScr = { market: 'all', sector: 'all', peMax: 0, roeMin: '', capMin: 0, ytdMin: '', q: '', pePctMax: 0, filingsOnly: false, universe: 'index' };
   hmScrLimit = 50; hmScrPage = 1;
   if (kind === 'cheap') { hmScr.pePctMax = 20; hmScrSort = 'pe'; }
   else if (kind === 'quality') { hmScr.roeMin = '15'; hmScr.peMax = 20; hmScrSort = 'roe'; }
@@ -12259,7 +12259,9 @@ function renderOffIndexPage(el, c) {
       </div>`;
   const statusLine = preIpo
     ? `IPO FILED · PRE-IPO${finLabel}`
-    : `LISTED ${esc(dealDateY(c.listedAt).toUpperCase())} · NOT AN INDEX CONSTITUENT YET${finLabel}`;
+    : `LISTED ${esc(dealDateY(c.listedAt).toUpperCase())} · NOT AN INDEX CONSTITUENT${/yet/i.test(String(c.why || '')) ? ' YET' : ''}${finLabel}`;
+  const ipoLabel = c.ipoBasis === 'first-close' ? 'VS FIRST CLOSE' : 'VS IPO';
+  const ipoPriceLabel = c.ipoBasis === 'first-close' ? 'first close' : 'IPO price';
   const listingTiles = preIpo ? [
     tile('STATUS', 'IPO FILED', 'Not trading yet'),
     tile('EXPECTED PRICE RANGE', rangeText, 'From the S-1/A cover'),
@@ -12267,7 +12269,7 @@ function renderOffIndexPage(el, c) {
     tile('S-1 FILED', filedOn, f.latestFiling?.form || 'S-1/A'),
   ] : [
     tile('MARKET CAP', coMoney(c.marketCap), 'Nasdaq quote × shares outstanding'),
-    tile('VS IPO', pct(c.vsIpo), `IPO price $${c.ipoPrice != null ? c.ipoPrice : '—'}`, pcls(c.vsIpo)),
+    tile(ipoLabel, pct(c.vsIpo), `${ipoPriceLabel} $${c.ipoPrice != null ? c.ipoPrice : '—'}`, pcls(c.vsIpo)),
     tile('52-WEEK RANGE', range52),
     tile('LISTED', dealDateY(c.listedAt)),
   ];

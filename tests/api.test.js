@@ -606,11 +606,11 @@ test('/api/home idea counts and the screener use the same universe', async () =>
   const total = await (await fetch(`http://localhost:${PORT}/api/global-companies?limit=1`)).json();
   assert.equal(total.total, home.companies + home.offIndex.count,
     'the screener is the index universe plus the listed names that are not members yet');
-  const cheap = await (await fetch(`http://localhost:${PORT}/api/global-companies?limit=1&pePctMax=20`)).json();
+  const cheap = await (await fetch(`http://localhost:${PORT}/api/global-companies?limit=1&pePctMax=20&universe=index`)).json();
   assert.equal(cheap.total, home.ideas.cheap, 'the cheap card opens exactly its own count');
-  const quality = await (await fetch(`http://localhost:${PORT}/api/global-companies?limit=1&roeMin=15&peMax=20`)).json();
+  const quality = await (await fetch(`http://localhost:${PORT}/api/global-companies?limit=1&roeMin=15&peMax=20&universe=index`)).json();
   assert.equal(quality.total, home.ideas.quality, 'the quality card opens exactly its own count');
-  const filings = await (await fetch(`http://localhost:${PORT}/api/global-companies?limit=1&filings=1`)).json();
+  const filings = await (await fetch(`http://localhost:${PORT}/api/global-companies?limit=1&filings=1&universe=index`)).json();
   assert.equal(filings.total, home.ideas.filings, 'the filings card opens exactly its own count');
 });
 
@@ -1374,7 +1374,7 @@ test('the US screener carries the off-index names with their filings', async () 
   assert.ok((antPage.financials.annual || []).length >= 2, 'and the annual record behind them');
 
   // The newer arrivals use the same structure: a TTM, an annual record and a matrix.
-  for (const ticker of ['BSP', 'KLAR', 'FIGR', 'NTSK']) {
+  for (const ticker of ['BSP', 'KLAR', 'FIGR', 'NTSK', 'SNOW', 'NET', 'RBLX', 'ALAB', 'RBRK', 'ZS', 'MDB', 'AFRM', 'MDLN', 'VG', 'RKT', 'IOT', 'U']) {
     const row = off.find((c) => c.ticker === ticker);
     assert.ok(row, `${ticker} is in the off-index payload`);
     const page = await (await fetch(`http://localhost:${PORT}/api/company/${row.cik}`)).json();
@@ -1405,10 +1405,19 @@ test('the US theme payload carries the off-index members it claims', async () =>
   assert.ok(byId.get('ai').off.includes('CBRS'), 'Cerebras is in the US AI theme');
   assert.ok(byId.get('ai').off.includes('CRWV'), 'CoreWeave is in the US AI theme');
   assert.ok(byId.get('ai').off.includes('NSCL'), 'Nscale is in the US AI theme');
+  assert.ok(byId.get('ai').off.includes('SNOW'), 'Snowflake is in the US AI theme');
+  assert.ok(byId.get('ai').off.includes('NET'), 'Cloudflare is in the US AI theme');
+  assert.ok(byId.get('ai').off.includes('ALAB'), 'Astera Labs is in the US AI theme');
   assert.ok(byId.get('software').off.includes('BSP'), 'Bending Spoons is in the US software theme');
   assert.ok(byId.get('software').off.includes('NTSK'), 'Netskope is in the US software theme');
+  assert.ok(byId.get('software').off.includes('RBLX'), 'Roblox is in the US software theme');
+  assert.ok(byId.get('software').off.includes('ZS'), 'Zscaler is in the US software theme');
   assert.ok(byId.get('financials').off.includes('KLAR'), 'Klarna is in the US financials theme');
+  assert.ok(byId.get('financials').off.includes('AFRM'), 'Affirm is in the US financials theme');
+  assert.ok(byId.get('financials').off.includes('RKT'), 'Rocket Companies is in the US financials theme');
   assert.ok(byId.get('healthcare').off.includes('OURA'), 'Oura is in the US healthcare theme');
+  assert.ok(byId.get('healthcare').off.includes('MDLN'), 'Medline is in the US healthcare theme');
+  assert.ok(byId.get('energy-us').off.includes('VG'), 'Venture Global is in the US energy theme');
   assert.ok(byId.get('power').off.includes('NSCL'), 'Nscale is in the US power theme');
 });
 
@@ -1425,6 +1434,11 @@ test('the search aliases land on the off-index names', async () => {
     ['netskope', 'NTSK'], ['sase', 'NTSK'],
     ['oura', 'OURA'], ['smart ring', 'OURA'],
     ['nscale', 'NSCL'], ['gpu cloud', 'NSCL'],
+    ['snowflake', 'SNOW'], ['cloudflare', 'NET'], ['roblox', 'RBLX'],
+    ['astera', 'ALAB'], ['rubrik', 'RBRK'], ['zscaler', 'ZS'],
+    ['mongodb', 'MDB'], ['affirm', 'AFRM'], ['medline', 'MDLN'],
+    ['venture global', 'VG'], ['rocket mortgage', 'RKT'],
+    ['samsara', 'IOT'], ['unity', 'U'],
   ];
   for (const [q, want] of cases) {
     const d = await (await fetch(`http://localhost:${PORT}/api/global-search?q=${encodeURIComponent(q)}`)).json();
