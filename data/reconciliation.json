@@ -1,13 +1,13 @@
 {
- "generated": "2026-11-21T02:23:26.558Z",
+ "generated": "2026-11-22T01:28:24.113Z",
  "summary": {
-  "usable": 1442,
-  "match": 114,
-  "close": 728,
-  "diverge": 549,
+  "usable": 1437,
+  "match": 113,
+  "close": 725,
+  "diverge": 548,
   "diverge-immaterial": 31,
   "definition": 20,
-  "period-mismatch": 46,
+  "period-mismatch": 51,
   "no-nasdaq-data": 18
  },
  "companies": [
@@ -25129,12 +25129,12 @@
    "ticker": "CBT",
    "sector": "Industrials",
    "period": "9/30/2025",
-   "sameYear": true,
+   "sameYear": false,
    "our": {
     "revenue": 3713000000,
-    "netIncome": 326000000,
-    "assets": 3975000000,
-    "equity": 1605000000,
+    "netIncome": 210000000,
+    "assets": 4028000000,
+    "equity": 1635000000,
     "marketCap": 3722595605,
     "price": 72.83,
     "shares": 52221604
@@ -25147,18 +25147,18 @@
    },
    "diff": {
     "revenue": 0,
-    "netIncome": 0.015105740181268883,
-    "assets": 0.04025157232704402,
-    "equity": 0.03426791277258567
+    "netIncome": 0.36555891238670696,
+    "assets": 0.0528798411122145,
+    "equity": 0.05198776758409786
    },
    "abs": {
     "revenue": 3713000000,
-    "netIncome": 326000000,
-    "assets": 160000000,
-    "equity": 55000000
+    "netIncome": 210000000,
+    "assets": 213000000,
+    "equity": 85000000
    },
-   "worst": 0.04025157232704402,
-   "status": "close"
+   "worst": null,
+   "status": "period-mismatch"
   },
   {
    "ticker": "ST",
@@ -29364,12 +29364,12 @@
    "ticker": "PTC",
    "sector": "Technology",
    "period": "9/30/2025",
-   "sameYear": true,
+   "sameYear": false,
    "our": {
     "revenue": 2739226000,
-    "netIncome": 733997000,
-    "assets": 6513577000,
-    "equity": 3469743000,
+    "netIncome": 1033284000,
+    "assets": 6712556000,
+    "equity": 3412182000,
     "marketCap": 21185847460,
     "price": 195.63,
     "shares": 118996116
@@ -29382,18 +29382,18 @@
    },
    "diff": {
     "revenue": 0,
-    "netIncome": 0,
-    "assets": 0.015655479410237486,
-    "equity": 0.09316901837292017
+    "netIncome": 0.28964640892532934,
+    "assets": 0.014209788342920342,
+    "equity": 0.10821281214480367
    },
    "abs": {
     "revenue": 2739226000,
-    "netIncome": 733997000,
-    "assets": 103595000,
-    "equity": 356486000
+    "netIncome": 1033284000,
+    "assets": 95384000,
+    "equity": 414047000
    },
-   "worst": 0.09316901837292017,
-   "status": "close"
+   "worst": null,
+   "status": "period-mismatch"
   },
   {
    "ticker": "VSTS",
@@ -31884,12 +31884,12 @@
    "ticker": "NFG",
    "sector": "Utilities",
    "period": "9/30/2025",
-   "sameYear": true,
+   "sameYear": false,
    "our": {
     "revenue": 2277541000,
-    "netIncome": 518504000,
-    "assets": 10451767000,
-    "equity": 3923679000,
+    "netIncome": 665443000,
+    "assets": 11029314000,
+    "equity": 3988006000,
     "marketCap": 7044267512,
     "price": 74.14,
     "shares": 95026423
@@ -31902,18 +31902,18 @@
    },
    "diff": {
     "revenue": 0,
-    "netIncome": 0,
-    "assets": 0.1657770403798707,
-    "equity": 0.21130041473831065
+    "netIncome": 0.22081380373675882,
+    "assets": 0.209460896661388,
+    "equity": 0.2240222306586299
    },
    "abs": {
     "revenue": 2277541000,
-    "netIncome": 518504000,
-    "assets": 1732663000,
-    "equity": 829075000
+    "netIncome": 665443000,
+    "assets": 2310210000,
+    "equity": 893402000
    },
-   "worst": 0.21130041473831065,
-   "status": "diverge"
+   "worst": null,
+   "status": "period-mismatch"
   },
   {
    "ticker": "LAMR",
@@ -34582,12 +34582,12 @@
    "ticker": "ASH",
    "sector": "Consumer",
    "period": "9/30/2025",
-   "sameYear": true,
+   "sameYear": false,
    "our": {
     "revenue": 1824000000,
-    "netIncome": -845000000,
-    "assets": 4578000000,
-    "equity": 1870000000,
+    "netIncome": 4000000,
+    "assets": 4527000000,
+    "equity": 1848000000,
     "marketCap": 3377718971,
     "price": 74.12,
     "shares": 45762391
@@ -34600,18 +34600,18 @@
    },
    "diff": {
     "revenue": 0,
-    "netIncome": 0,
-    "assets": 0.0071567989590110605,
-    "equity": 0.017857142857142856
+    "netIncome": 1.004733727810651,
+    "assets": 0.018217306441119064,
+    "equity": 0.029411764705882353
    },
    "abs": {
     "revenue": 1824000000,
-    "netIncome": 845000000,
-    "assets": 33000000,
-    "equity": 34000000
+    "netIncome": 4000000,
+    "assets": 84000000,
+    "equity": 56000000
    },
-   "worst": 0.017857142857142856,
-   "status": "match"
+   "worst": null,
+   "status": "period-mismatch"
   },
   {
    "ticker": "BANC",
@@ -46906,12 +46906,12 @@
    "ticker": "DGII",
    "sector": "Telecom",
    "period": "9/30/2025",
-   "sameYear": true,
+   "sameYear": false,
    "our": {
     "revenue": 430221000,
-    "netIncome": 40804000,
-    "assets": 964351000,
-    "equity": 685153000,
+    "netIncome": 53692000,
+    "assets": 962464000,
+    "equity": 705224000,
     "marketCap": 2020358069,
     "price": 55.38,
     "shares": 39015927
@@ -46924,18 +46924,18 @@
    },
    "diff": {
     "revenue": 0,
-    "netIncome": 0,
-    "assets": 0.043246701667753754,
-    "equity": 0.07162779700300517
+    "netIncome": 0.2400357595172465,
+    "assets": 0.04137089802839379,
+    "equity": 0.09804969768470727
    },
    "abs": {
     "revenue": 430221000,
-    "netIncome": 40804000,
-    "assets": 41705000,
-    "equity": 49076000
+    "netIncome": 53692000,
+    "assets": 39818000,
+    "equity": 69147000
    },
-   "worst": 0.07162779700300517,
-   "status": "close"
+   "worst": null,
+   "status": "period-mismatch"
   },
   {
    "ticker": "AVPT",
