@@ -1,7 +1,7 @@
 {
-  "checked": "2026-11-21T03:24:10.264Z",
+  "checked": "2026-11-22T02:33:14.052Z",
   "ok": false,
-  "durationMs": 1022686,
+  "durationMs": 909859,
   "steps": [
     {
       "market": "US",
@@ -10,7 +10,7 @@
       "status": 0,
       "signal": null,
       "ok": true,
-      "ms": 159
+      "ms": 166
     },
     {
       "market": "US",
@@ -19,7 +19,7 @@
       "status": 0,
       "signal": null,
       "ok": true,
-      "ms": 156
+      "ms": 168
     },
     {
       "market": "US",
@@ -28,7 +28,7 @@
       "status": 0,
       "signal": null,
       "ok": true,
-      "ms": 152
+      "ms": 150
     },
     {
       "market": "US",
@@ -37,7 +37,7 @@
       "status": 0,
       "signal": null,
       "ok": true,
-      "ms": 148
+      "ms": 154
     },
     {
       "market": "US",
@@ -46,7 +46,7 @@
       "status": 0,
       "signal": null,
       "ok": true,
-      "ms": 32
+      "ms": 33
     },
     {
       "market": "US",
@@ -55,7 +55,7 @@
       "status": 0,
       "signal": null,
       "ok": true,
-      "ms": 150
+      "ms": 151
     },
     {
       "market": "US",
@@ -64,7 +64,7 @@
       "status": 0,
       "signal": null,
       "ok": true,
-      "ms": 877937
+      "ms": 763320
     },
     {
       "market": "US",
@@ -73,7 +73,7 @@
       "status": 0,
       "signal": null,
       "ok": true,
-      "ms": 258
+      "ms": 266
     },
     {
       "market": "US",
@@ -82,7 +82,7 @@
       "status": 0,
       "signal": null,
       "ok": true,
-      "ms": 218
+      "ms": 222
     },
     {
       "market": "US / JP / KR",
@@ -91,7 +91,7 @@
       "status": 0,
       "signal": null,
       "ok": true,
-      "ms": 906
+      "ms": 905
     },
     {
       "market": "TW",
@@ -100,7 +100,7 @@
       "status": 0,
       "signal": null,
       "ok": true,
-      "ms": 74965
+      "ms": 77834
     },
     {
       "market": "TW",
@@ -109,7 +109,7 @@
       "status": 0,
       "signal": null,
       "ok": true,
-      "ms": 152
+      "ms": 147
     },
     {
       "market": "HK",
@@ -118,7 +118,7 @@
       "status": 0,
       "signal": null,
       "ok": true,
-      "ms": 25495
+      "ms": 25143
     },
     {
       "market": "HK",
@@ -129,7 +129,7 @@
       "status": 0,
       "signal": null,
       "ok": true,
-      "ms": 272
+      "ms": 263
     },
     {
       "market": "AU",
@@ -138,7 +138,7 @@
       "status": 0,
       "signal": null,
       "ok": true,
-      "ms": 38356
+      "ms": 37717
     },
     {
       "market": "AU",
@@ -149,7 +149,7 @@
       "status": 0,
       "signal": null,
       "ok": true,
-      "ms": 218
+      "ms": 211
     },
     {
       "market": "IN",
@@ -169,7 +169,7 @@
       "status": 0,
       "signal": null,
       "ok": true,
-      "ms": 155
+      "ms": 151
     },
     {
       "market": "ID",
@@ -178,7 +178,7 @@
       "status": 0,
       "signal": null,
       "ok": true,
-      "ms": 116
+      "ms": 115
     },
     {
       "market": "ID",
@@ -187,7 +187,7 @@
       "status": 0,
       "signal": null,
       "ok": true,
-      "ms": 362
+      "ms": 347
     },
     {
       "market": "ID",
@@ -198,7 +198,7 @@
       "status": 0,
       "signal": null,
       "ok": true,
-      "ms": 151
+      "ms": 150
     },
     {
       "market": "BR",
@@ -207,7 +207,7 @@
       "status": 0,
       "signal": null,
       "ok": true,
-      "ms": 56
+      "ms": 58
     },
     {
       "market": "BR",
@@ -216,7 +216,7 @@
       "status": 0,
       "signal": null,
       "ok": true,
-      "ms": 156
+      "ms": 151
     },
     {
       "market": "BR",
@@ -227,7 +227,7 @@
       "status": 0,
       "signal": null,
       "ok": true,
-      "ms": 77
+      "ms": 79
     },
     {
       "market": "ZA",
@@ -245,7 +245,7 @@
       "status": 0,
       "signal": null,
       "ok": true,
-      "ms": 73
+      "ms": 71
     },
     {
       "market": "ZA",
@@ -256,7 +256,7 @@
       "status": 0,
       "signal": null,
       "ok": true,
-      "ms": 79
+      "ms": 76
     },
     {
       "market": "ALL",
@@ -265,7 +265,7 @@
       "status": 1,
       "signal": null,
       "ok": false,
-      "ms": 1762
+      "ms": 1683
     }
   ],
   "failures": [
