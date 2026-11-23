@@ -47,7 +47,55 @@ async function fetchIndicator(ind) {
   throw lastErr;
 }
 
-const [debt, gdp, cpi, unemp] = await Promise.all(Object.values(IND).map(fetchIndicator));
+// The DataMapper answers 503 for one indicator now and then (seen on NGDP_RPCH and GGXWDG_NGDP in
+// November 2026). One flaky series used to abort the whole snapshot and turn the daily run red even
+// though the other three had arrived. Now a miss falls back to the series already committed in
+// data/macro.json; only a total loss fails the run, which is the case worth an email.
+const prev = (() => {
+  try { return JSON.parse(fs.readFileSync('data/macro.json', 'utf8')); } catch { return null; }
+})();
+
+// Rebuild the raw {country: {year: value}} map an indicator would have returned, from the shape the file
+// stores. A WEO vintage is annual, so the committed copy is enough to stand in for a bad afternoon.
+function carriedMap(field) {
+  const out = {};
+  const pair = (p) => (p && p.year != null ? { [p.year]: p.value } : null);
+  for (const [id, code] of COUNTRIES) {
+    const e = prev?.countries?.[id];
+    if (!e) continue;
+    const s = field === 'debt' ? pair(e.debtToGdp)
+      : field === 'unemployment' ? pair(e.unemployment)
+        : field === 'gdp' ? Object.fromEntries((e.gdpGrowth || []).map((p) => [p.year, p.value]))
+          : Object.fromEntries((e.cpi || []).map((p) => [p.year, p.value]));
+    if (s && Object.keys(s).length) out[code] = s;
+  }
+  return out;
+}
+
+async function fetchAll() {
+  const results = await Promise.all(Object.entries(IND).map(async ([field, ind]) => {
+    try { return [field, await fetchIndicator(ind), false]; }
+    catch (e) {
+      const carry = carriedMap(field);
+      if (!Object.keys(carry).length) throw e;
+      console.warn(`warning: ${e.message} — carrying the committed ${field} series (${Object.keys(carry).length} countries)`);
+      return [field, carry, true];
+    }
+  }));
+  return {
+    maps: Object.fromEntries(results.map(([field, map]) => [field, map])),
+    carried: results.filter(([, , wasCarried]) => wasCarried).map(([field]) => field),
+  };
+}
+
+const { maps, carried } = await fetchAll();
+// Carrying every indicator means the DataMapper answered nothing at all: the file would ship as a
+// perfectly unchanged copy of itself and nobody would know the feed had stopped. That is the one case
+// worth failing the run (and sending the email).
+if (carried.length === Object.keys(IND).length) {
+  throw new Error('IMF DataMapper returned nothing for any indicator — every series would be carried');
+}
+const { debt, gdp, cpi, unemployment: unemp } = maps;
 const countries = {};
 for (const [id, code] of COUNTRIES) {
   const entry = {};
@@ -78,6 +126,9 @@ const payload = {
   maxYear: MAX_YEAR,
   countries,
   gaps,
+  // Only present when an indicator had to be carried, so a stale leg is visible in the file rather than
+  // living in the CI log. It is deliberately outside the unchanged check: carrying adds no new numbers.
+  ...(carried.length ? { carried } : {}),
 };
 
 // Write only when the numbers move. The IMF publishes a WEO vintage about twice a year, so nearly every
@@ -85,10 +136,13 @@ const payload = {
 // those commits is a Render deploy for a field nobody reads. Compare the data and leave the file alone.
 const unchanged = (() => {
   try {
-    const prev = JSON.parse(fs.readFileSync('data/macro.json', 'utf8'));
-    return JSON.stringify({
-      source: prev.source, maxYear: prev.maxYear, countries: prev.countries, gaps: prev.gaps ?? {},
-    }) === JSON.stringify(payload);
+    const before = JSON.parse(fs.readFileSync('data/macro.json', 'utf8'));
+    // Compare the numbers only: `updated` is a write timestamp and `carried` describes how this run went,
+    // so neither belongs in the "did anything move" test.
+    const numbers = (p) => JSON.stringify({
+      source: p.source, maxYear: p.maxYear, countries: p.countries, gaps: p.gaps ?? {},
+    });
+    return numbers(before) === numbers(payload);
   } catch { return false; }
 })();
 

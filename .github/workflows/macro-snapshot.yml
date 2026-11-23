@@ -45,6 +45,8 @@ jobs:
           node-version: '22'
       # USDA first: it is the snapshot with no other path to production, so it must not be blocked by
       # an IMF outage. The IMF step is allowed to fail on its own, and only re-fails the job at the end.
+      # A single 503'd indicator is carried from data/macro.json by the script, so only a total loss
+      # (every series missing) reaches that final step.
       - name: Fetch USDA PSD balance
         run: node scripts/fetch-usda.mjs
       - name: Fetch IMF WEO snapshot
@@ -82,8 +84,8 @@ jobs:
             done
             [ "$pushed" = "1" ] || { echo 'could not push after 5 attempts'; exit 1; }
           fi
-      - name: Fail if the IMF fetch failed
+      - name: Fail if the IMF fetch was a total loss
         if: steps.imf.outcome == 'failure'
         run: |
-          echo '::error::fetch-macro.mjs failed — data/macro.json was not refreshed (USDA still committed)'
+          echo '::error::fetch-macro.mjs failed — no IMF indicator could be fetched or carried, so data/macro.json was not refreshed (USDA still committed)'
           exit 1
