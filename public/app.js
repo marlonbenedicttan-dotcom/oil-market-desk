@@ -12225,6 +12225,129 @@ async function renderCompanyPage(el, all) {
   return renderCompanyPageBody(el, full, all);
 }
 
+// The fiscal-year record is the same table on every company page: seven columns, a dash where this
+// company's filings do not carry the line. An off-index name starts with revenue, profit and EPS only;
+// the asset and equity columns fill in if its annual filings are extracted further.
+function fiscalYearRecord(rows, { limit = 5 } = {}) {
+  const shown = (rows || []).slice(-limit);
+  if (!shown.length) return '';
+  return `<div class="gtitle">FISCAL-YEAR RECORD · ${shown.length}</div>
+    <div class="jp-q-scroll"><div class="co-table">
+      <div class="co-tr co-th"><span>FY</span><span>REVENUE</span><span>NET PROFIT</span><span>MARGIN</span><span>ASSETS</span><span>EQUITY</span><span>EPS</span></div>
+      ${shown.map((s) => {
+        const mg = s.revenue && s.netIncome != null ? (s.netIncome / s.revenue) * 100 : null;
+        const ncls = s.netIncome == null ? '' : s.netIncome >= 0 ? 'pos' : 'neg';
+        return `<div class="co-tr"><span>${esc(s.fy)}</span><span>${coMoney(s.revenue)}</span><span class="${ncls}">${coMoney(s.netIncome)}</span><span>${mg == null ? '—' : mg.toFixed(1) + '%'}</span><span>${coMoney(s.assets)}</span><span>${coMoney(s.equity)}</span><span>${s.eps != null ? '$' + Number(s.eps).toFixed(2) : '—'}</span></div>`;
+      }).join('')}
+    </div></div>`;
+}
+
+// An off-index name is the same company page, one dataset thinner: the filings arrive before the
+// balance-sheet and cash-flow detail this desk derives for index members. Map the record into the
+// vocabulary the US page reads, derive what the numbers on hand allow, and leave the rest null — so the
+// day refresh-off-index.mjs extracts debt, cash, EBITDA, capex or buybacks, the same tile fills itself
+// in with no UI change.
+function offIndexAsUs(c) {
+  const f = c.financials || {};
+  const ttm = f.ttm || null;
+  const fy = f.fy || null;
+  const annual = (f.annual || []).slice().sort((a, b) => String(a.end).localeCompare(String(b.end)));
+  const marketCap = c.capUsd ?? c.marketCap ?? null;
+  const revenueTTM = ttm ? ttm.revenue : null;
+  const netIncomeTTM = ttm ? ttm.netIncome : null;
+  const assets = (ttm && ttm.assets != null) ? ttm.assets : (f.assets ?? null);
+  const equity = (ttm && ttm.equity != null) ? ttm.equity : (f.equity ?? null);
+  // Not on file yet for a company that listed weeks ago; the tiles print a dash until they are.
+  const debt = c.debt ?? f.debt ?? null;
+  const cash = c.cash ?? f.cash ?? null;
+  const ebitda = c.ebitdaTTM ?? c.ebitda ?? null;
+  const ebit = c.ebitTTM ?? c.ebit ?? null;
+  const ocf = c.operatingCashFlow ?? null;
+  const capex = c.capex ?? null;
+  const currentAssets = c.currentAssets ?? null;
+  const currentLiabilities = c.currentLiabilities ?? null;
+  const dividends = c.dividendsPaid ?? null;
+  const buybacks = c.buybacks ?? null;
+
+  const latest = f.latest || null;
+  const ni = netIncomeTTM ?? (fy ? fy.netIncome : (latest ? latest.netIncome : null));
+  const rev = revenueTTM ?? (fy ? fy.revenue : (latest ? latest.revenue : null));
+  const margin = rev && ni != null ? (ni / rev) * 100 : (c.netMargin ?? null);
+  const roe = equity && ni != null ? (ni / equity) * 100 : (c.roe ?? null);
+  const ev = marketCap != null && (debt != null || cash != null) ? marketCap + (debt || 0) - (cash || 0) : null;
+  const capital = equity != null ? equity + (debt || 0) - (cash || 0) : null;
+  // A loss that dwarfs the equity base is arithmetically a ROE but not a meaningful one, and a
+  // negative equity base flips the sign of the ratio: label both rather than print a number.
+  const roeNA = roe == null ? null
+    : equity != null && equity < 0
+      ? 'shareholders\u2019 equity is negative, so a return on equity has no meaning'
+      : Math.abs(roe) > 300
+        ? `the trailing ${roe < 0 ? 'loss' : 'profit'} is ${Math.abs(roe / 100).toFixed(1)}× the equity base, so the ratio is not meaningful`
+        : null;
+
+  // EPS growth from the annual record. A CAGR only exists when both ends are a profit.
+  const epsRows = annual.filter((r) => r.eps != null);
+  let epsCagr = null; let epsChange = null; let epsCagrNA = null;
+  if (epsRows.length >= 2) {
+    const a = epsRows[0]; const b = epsRows[epsRows.length - 1];
+    const span = Math.max(1, Number(String(b.end).slice(0, 4)) - Number(String(a.end).slice(0, 4)));
+    if (a.eps > 0 && b.eps > 0) epsCagr = (Math.pow(b.eps / a.eps, 1 / span) - 1) * 100;
+    else epsChange = { from: Number(a.eps), to: Number(b.eps), fromFy: String(a.end).slice(0, 4), toFy: String(b.end).slice(0, 4) };
+  } else {
+    epsCagrNA = 'fewer than two fiscal years of earnings per share on file';
+  }
+
+  const fcf = ocf != null && capex != null ? ocf - capex : null;
+  return {
+    ...c,
+    marketCap,
+    pe: c.pe ?? null,
+    peBasis: ttm ? 'TTM' : null,
+    peNA: c.pe == null ? (c.preIpo || c.status === 'pre-ipo' ? 'no market price yet' : 'no trailing profit yet') : null,
+    pb: marketCap != null && equity ? marketCap / equity : null,
+    ev,
+    ebitdaTTM: ebitda,
+    evEbitda: ev != null && ebitda ? ev / ebitda : null,
+    currentRatio: currentAssets != null && currentLiabilities ? currentAssets / currentLiabilities : null,
+    debtEquity: debt != null && equity ? debt / equity : null,
+    netDebtEbitda: debt != null && ebitda ? (debt - (cash || 0)) / ebitda : null,
+    revenueTTM,
+    netIncomeTTM,
+    revenueTTMEnd: ttm ? ttm.end : null,
+    netIncomeTTMAsOf: ttm ? ttm.end : null,
+    netIncomeEnd: ttm ? ttm.end : (fy ? fy.end : null),
+    revenue: fy ? fy.revenue : (latest ? latest.revenue : null),
+    netIncome: fy ? fy.netIncome : (latest ? latest.netIncome : null),
+    fyRevenue: fy ? String(fy.end).slice(0, 4) : null,
+    assets,
+    equity,
+    assetsTag: false,
+    assetsEnd: f.balanceEnd || null,
+    equityEnd: f.balanceEnd || null,
+    assetTurnover: rev != null && assets ? rev / assets : null,
+    roic: ni != null && capital && (debt != null || cash != null) ? (ni / capital) * 100 : null,
+    ebitYield: ebit != null && ev ? (ebit / ev) * 100 : null,
+    fcf,
+    fcfTTM: fcf,
+    fcfYield: fcf != null && marketCap ? (fcf / marketCap) * 100 : null,
+    cashConversion: fcf != null && ni ? fcf / ni : null,
+    shareholderYield: (dividends != null || buybacks != null) && marketCap
+      ? (((dividends || 0) + (buybacks || 0)) / marketCap) * 100 : null,
+    operatingCashFlow: ocf,
+    capex,
+    revenueCagr: c.revenueCagr ?? null,
+    revenueGrowth: c.revenueGrowth ?? null,
+    cagrYears: c.growthYears ?? (annual.length >= 2 ? annual.length - 1 : null),
+    epsCagr,
+    epsChange,
+    epsCagrNA,
+    roe,
+    roeNA,
+    netMargin: margin,
+    naRatios: [],
+  };
+}
+
 // A listed company that is not an index member has no filing-derived ratios yet, so the honest page is
 // the quote, the listing facts and the price — with the absence labelled. Rendering it through the
 // filing page filled eight tiles with dashes and claimed the company "lost money in most of the last
@@ -12234,7 +12357,6 @@ function renderOffIndexPage(el, c) {
   const pcls = (v) => (v == null ? '' : v >= 0 ? 'pos' : 'neg');
   const range52 = c.wk52Low != null && c.wk52High != null ? `$${c.wk52Low.toFixed(2)} – $${c.wk52High.toFixed(2)}` : '—';
   const tile = (k, v, sub, cl) => `<div class="co-stat"><span class="co-k">${k}</span><div class="co-v ${cl || ''}">${v}</div>${sub ? `<div class="dimtext">${sub}</div>` : ''}</div>`;
-  const moneyS = (v) => (v == null ? '—' : (v < 0 ? '−' : '') + coMoney(Math.abs(v)));
   const f = c.financials || {};
   const preIpo = c.status === 'pre-ipo' || c.preIpo === true;
   const finSource = String(f.source || '');
@@ -12262,29 +12384,27 @@ function renderOffIndexPage(el, c) {
     : `LISTED ${esc(dealDateY(c.listedAt).toUpperCase())} · NOT AN INDEX CONSTITUENT${/yet/i.test(String(c.why || '')) ? ' YET' : ''}${finLabel}`;
   const ipoLabel = c.ipoBasis === 'first-close' ? 'VS FIRST CLOSE' : 'VS IPO';
   const ipoPriceLabel = c.ipoBasis === 'first-close' ? 'first close' : 'IPO price';
+  // Market cap now lives in VALUATION with the rest of the US template, so the listing strip carries
+  // the facts only an off-index name has: when it listed, versus what, its range, and its share count.
+  const sharesText = (v) => (v == null ? '—'
+    : v >= 1e9 ? `${(v / 1e9).toFixed(1)}B` : v >= 1e6 ? `${(v / 1e6).toFixed(0)}M` : Number(v).toLocaleString('en-US'));
   const listingTiles = preIpo ? [
     tile('STATUS', 'IPO FILED', 'Not trading yet'),
     tile('EXPECTED PRICE RANGE', rangeText, 'From the S-1/A cover'),
     tile('EXCHANGE', esc(c.exchange || '—'), 'Intended listing'),
     tile('S-1 FILED', filedOn, f.latestFiling?.form || 'S-1/A'),
   ] : [
-    tile('MARKET CAP', coMoney(c.marketCap), 'Nasdaq quote × shares outstanding'),
+    tile('SHARES OUT', sharesText(c.shares), 'Nasdaq share count × quote = market cap'),
     tile(ipoLabel, pct(c.vsIpo), `${ipoPriceLabel} $${c.ipoPrice != null ? c.ipoPrice : '—'}`, pcls(c.vsIpo)),
     tile('52-WEEK RANGE', range52),
     tile('LISTED', dealDateY(c.listedAt)),
   ];
   // The US template puts the fiscal-year record and then the quarterly matrix after the chart and
   // the filing note. Keep the same order here so an off-index page reads like an index page.
-  const fyRows = (f.annual || []).slice(-5);
-  const fyRecordHtml = fyRows.length ? `<div class="gtitle">FISCAL-YEAR RECORD · ${fyRows.length}</div>
-    <div class="jp-q-scroll"><div class="co-table">
-      <div class="co-tr co-th"><span>FY</span><span>REVENUE</span><span>NET PROFIT</span><span>MARGIN</span><span>EPS</span></div>
-      ${fyRows.map((s) => {
-        const mg = s.revenue && s.netIncome != null ? (s.netIncome / s.revenue) * 100 : null;
-        const ncls = s.netIncome == null ? '' : s.netIncome >= 0 ? 'pos' : 'neg';
-        return `<div class="co-tr"><span>${String(s.end).slice(0, 4)}</span><span>${coMoney(s.revenue)}</span><span class="${ncls}">${moneyS(s.netIncome)}</span><span>${mg == null ? '—' : mg.toFixed(1) + '%'}</span><span>${s.eps != null ? '$' + Number(s.eps).toFixed(2) : '—'}</span></div>`;
-      }).join('')}
-    </div></div>` : '';
+  const fyRecordHtml = fiscalYearRecord((f.annual || []).map((s) => ({
+    fy: String(s.end).slice(0, 4), revenue: s.revenue, netIncome: s.netIncome,
+    eps: s.eps, assets: s.assets, equity: s.equity,
+  })));
   let matrixHtml = '';
   el.innerHTML = `<div class="ma-crumb"><button class="ma-back" data-coback="1"><span class="ma-back-i" aria-hidden="true">←</span>COMPANIES</button> <span>${esc(c.ticker)}</span><span class="mb-tag">${preIpo ? 'PRE-IPO' : 'OFF-INDEX'}</span></div>`
     + `<div class="co-head">
@@ -12301,41 +12421,7 @@ function renderOffIndexPage(el, c) {
     + (() => {
         const ttm = f.ttm || null;
         const latest = f.latest || null;
-        if (!ttm && !latest) return '';
-        const basis = ttm ? `TTM to ${dealDateY(ttm.end)}`
-          : `${dealDateY(latest.start)} – ${dealDateY(latest.end)} · no annual report yet`;
-        const ni = (ttm || latest).netIncome;
-        const nicls = ni == null ? '' : ni >= 0 ? 'pos' : 'neg';
-        const fy = f.fy || null;
-        const fyLabel = fy && fy.end ? `FY${String(fy.end).slice(0, 4)}` : 'FY';
-        const annualNote = fy && fy.end ? `FY${String(fy.end).slice(0, 4)} annual` : 'no annual report yet';
-        // A loss larger than the equity base is arithmetically a ROE, but not a meaningful one; the
-        // number stays in the file for the audit, while the page says so instead of printing −1,583%.
-        const roeExtreme = c.roe != null && Math.abs(c.roe) > 300;
-        const growthValue = c.revenueCagr != null ? c.revenueCagr : c.revenueGrowth;
-        const growthLabel = c.revenueCagr != null ? 'REVENUE CAGR' : 'REVENUE GROWTH';
-        const growthNote = c.revenueCagr != null ? 'last three fiscal years' : (c.revenueGrowth != null ? 'year over year' : 'no comparable annual pair');
-        const tiles = ttm ? [
-          tile('P/E · TTM', c.pe == null ? '—' : c.pe.toFixed(1) + '×', c.pe == null ? (preIpo ? 'no market price yet' : 'no trailing profit') : 'market cap ÷ trailing profit'),
-          tile('REVENUE · TTM', coMoney(ttm.revenue), basis),
-          tile('NET INCOME · TTM', moneyS(ttm.netIncome), '', nicls),
-          tile('ROE · TTM', c.roe == null ? '—' : roeExtreme ? 'n/m' : c.roe.toFixed(1) + '%',
-            roeExtreme ? `trailing loss is ${(Math.abs(c.roe) / 100).toFixed(1)}× equity` : (f.equity < 0 ? 'negative equity' : 'net income ÷ equity')),
-          tile('NET MARGIN', c.netMargin == null ? '—' : c.netMargin.toFixed(1) + '%', 'net income ÷ revenue'),
-          tile(growthLabel, growthValue == null ? '—' : growthValue.toFixed(1) + '%', growthNote),
-          tile(`REVENUE · ${fyLabel}`, fy && fy.revenue != null ? coMoney(fy.revenue) : '—', annualNote),
-          tile(`NET INCOME · ${fyLabel}`, fy && fy.netIncome != null ? moneyS(fy.netIncome) : '—', annualNote, fy && fy.netIncome < 0 ? 'neg' : ''),
-          tile('TOTAL ASSETS', (ttm && ttm.assets != null) || f.assets != null ? coMoney(ttm && ttm.assets != null ? ttm.assets : f.assets) : '—', f.balanceEnd ? `as of ${dealDateY(f.balanceEnd)}` : 'latest balance sheet'),
-          tile('SHAREHOLDERS’ EQUITY', (ttm && ttm.equity != null) || f.equity != null ? moneyS(ttm && ttm.equity != null ? ttm.equity : f.equity) : '—', f.balanceEnd ? `as of ${dealDateY(f.balanceEnd)}` : 'latest balance sheet', ((ttm && ttm.equity != null ? ttm.equity : f.equity) || 0) >= 0 ? 'pos' : 'neg'),
-        ] : [
-          tile('REVENUE · PERIOD', coMoney(latest.revenue), basis),
-          tile('NET INCOME · PERIOD', moneyS(latest.netIncome), '', nicls),
-          tile('P/E', '—', 'needs a full year of earnings'),
-          tile('ROE', '—', 'needs a full year of earnings'),
-          tile('TOTAL ASSETS', f.assets != null ? coMoney(f.assets) : '—', 'latest balance sheet'),
-          tile('SHAREHOLDERS’ EQUITY', f.equity != null ? moneyS(f.equity) : '—', 'latest balance sheet'),
-        ];
-        const qs = ((c.financials || {}).quarters) || [];
+        const qs = f.quarters || [];
         // The same component the index members use (quarterly matrix, REVENUE / NET PROFIT toggle,
         // MATRIX / LIST, YoY inside each cell) so the page reads like every other company page. The
         // annual record is passed too, so a complete fiscal year can be reconciled to its filing.
@@ -12348,7 +12434,19 @@ function renderOffIndexPage(el, c) {
           netIncomeTTMAsOf: ttm ? ttm.end : null,
           revenueTTMEnd: ttm ? ttm.end : null,
         }, { market: 'us', money: coMoney, ccy: 'USD' }) : '';
-        return `<div class="co-sect">RESULTS</div><div class="co-stats co-stats-12">${tiles.join('')}</div>`;
+        if (!ttm && !latest) return '';
+        const us = offIndexAsUs(c);
+        // The same six sections every US company page shows. A company that listed last month has the
+        // income statement but not the balance-sheet or cash-flow detail, so those tiles print a dash
+        // and take their value from the record as soon as the refresh extracts it.
+        return fundamentalSections(us, {
+          niTag: ttm ? 'TTM' : 'PERIOD',
+          margin: us.netMargin,
+          roe: us.roe,
+          dsp: () => '',
+          peBandNote: 'no band — a P/E range needs five fiscal years of earnings, and this company has fewer on file',
+        })
+          + `<div class="macro-note">A dash is a number the filing does not carry yet, not a zero: it fills in on a later refresh.${preIpo ? '' : ' Market cap is the Nasdaq quote × shares outstanding.'}</div>`;
       })()
     + (preIpo ? `<div class="macro-note">No price chart yet — the IPO has not priced.</div>`
       : `<div class="co-ranges">${['1m', '3m', '6m', 'ytd', '1y', '5y', '10y'].map((r) => `<button class="ma-chip${coRange === r ? ' on' : ''}" data-corange="${r}">${r.toUpperCase()}</button>`).join('')}</div>
@@ -12371,6 +12469,117 @@ function renderOffIndexPage(el, c) {
     + matrixHtml;
   coTicker = preIpo ? null : (c.ticker || null);
   if (coTicker) loadCoChart(coTicker, coRange, '');
+}
+
+// One renderer for the six fundamental sections (valuation, leverage, profitability, results, cash &
+// return, growth), so an off-index page and an index page read the same way. Every tile is optional: a
+// value whose input is absent prints a dash instead of the tile disappearing, and a company that only
+// has an income statement today grows the ratio tiles as its filings are extracted.
+function fundamentalSections(c, ctx = {}) {
+  const val = (v) => coMoney(v);
+  const dsp = ctx.dsp || (() => '');
+  const margin = ctx.margin ?? null;
+  const roe = ctx.roe ?? null;
+  const niTag = ctx.niTag || 'TTM';
+  const na = new Set(c.naRatios || []);
+  const tiles = [];
+  const peBand = c.peHistory
+    ? (() => {
+        const h = c.peHistory;
+        const span = Math.max(0.1, h.max - h.min);
+        const at = c.pe != null ? Math.max(0, Math.min(100, ((c.pe - h.min) / span) * 100)) : null;
+        // 2%..98% of the track: at an exact end the marker touches the edge and reads as a tick
+        // against the figure beside it rather than a position on the bar.
+        const mark = at == null ? null : 2 + at * 0.96;
+        return `<div class="co-band" title="Price at each fiscal year end ÷ that year's EPS. Current P/E is market cap ÷ trailing earnings.">
+          <span class="co-band-k">P/E vs ITS OWN 5 YEARS</span>
+          <span class="co-band-track">${mark != null ? `<i style="left:${mark.toFixed(1)}%"></i>` : ''}</span>
+          <span class="co-band-n">${h.min}–${h.max} · median ${h.median}${h.percentile != null && c.pe != null ? ` · ${h.percentile}th percentile` : ''}</span>
+        </div>`;
+      })()
+    : (c.pe == null
+      ? `<div class="co-band"><span class="co-band-k">P/E vs ITS OWN 5 YEARS</span><span class="co-band-n">${esc(ctx.peBandNote || 'no band — the company lost money in most of the last five years, so a P/E range does not exist')}</span></div>`
+      : '');
+  const sect = (t) => tiles.push(`</div><div class="co-sect">${t}</div><div class="co-stats co-stats-12">`);
+  const add = (key, label, value, title, cls) => {
+    const missing = !!(key && na.has(key));
+    const tip = missing ? `${title || label} — not reported for this statement type (banks and financials)` : title;
+    tiles.push(`<div class="co-stat"${tip ? ` title="${esc(tip)}"` : ''}><span class="co-k">${label}</span><span class="co-v ${missing ? 'na' : (cls || '')}">${missing ? '—' : value}</span></div>`);
+  };
+  add(null, 'MARKET CAP', c.adrNA ? 'ADR' : val(c.marketCap));
+  add('pe', `P/E (TRAILING${c.peBasis ? ' · ' + c.peBasis : ''})`,
+    c.pe != null ? c.pe.toFixed(1) : (c.peNA ? '<em class="co-approx">n/a</em>' : '—'),
+    c.ttmRejected ? 'Quarterly data is inconsistent with the annual filing, so the fiscal year is used.'
+      : c.peNA ? 'No trailing profit: the last four quarters are a loss, so a trailing P/E does not exist.'
+        : 'Market cap ÷ trailing earnings.');
+  add('evEbitda', 'EV / EBITDA', c.evEbitda != null ? c.evEbitda.toFixed(1) : '—', 'Enterprise value ÷ operating income plus D&A');
+  add(null, 'P/B', `${c.pb != null ? c.pb.toFixed(1) : '—'}${dsp('equity')}`);
+  tiles.push(`</div>${peBand}<div class="co-sect">Leverage</div><div class="co-stats co-stats-12">`);
+  add('ev', 'ENTERPRISE VALUE', `${val(c.ev)}${c.evApprox ? ` <em class="co-approx" title="${esc(c.evApprox)}">≈</em>` : ''}`, c.evApprox ? `Market cap ${c.evApprox === 'neither debt nor cash is tagged' ? '— this company tags neither line' : 'adjusted for what is tagged'}.` : 'Market cap + debt − cash');
+  add('currentRatio', 'CURRENT RATIO', c.currentRatio != null ? c.currentRatio.toFixed(2) : '—', 'Current assets ÷ current liabilities');
+  add('debtEquity', 'DEBT / EQUITY', c.debtEquity != null ? c.debtEquity.toFixed(2) : (c.debtNA ? '<em class="co-approx" title="' + esc(c.debtNA) + '">n/d</em>' : '—'), c.debtNA || 'Debt ÷ shareholders\u2019 equity');
+  add('netDebtEbitda', `NET DEBT / EBITDA${c.netDebtEbitdaBasis ? ' · ' + c.netDebtEbitdaBasis : ''}`, c.netDebtEbitda != null ? c.netDebtEbitda.toFixed(1) + '×' : (c.debtNA ? '<em class="co-approx" title="' + esc(c.debtNA) + '">n/d</em>' : '—'), c.debtNA || '(Debt − cash) ÷ (operating income + D&A) — years of EBITDA to clear net debt');
+  sect('Profitability');
+  add(null, `NET MARGIN · ${niTag}`, margin == null ? (c.marginNA ? 'n/a' : '—') : `${margin.toFixed(1)}%`, 'Net income ÷ revenue', margin >= 0 ? 'pos' : 'neg');
+  add(null, 'RETURN ON EQUITY', roe == null ? '—' : (c.roeNA ? '<em class="co-approx" title="' + esc(c.roeNA) + '">n/m</em>' : `${roe.toFixed(1)}%`), c.roeNA || 'Net income ÷ shareholders\u2019 equity', roe == null || c.roeNA ? '' : roe >= 0 ? 'pos' : 'neg');
+  add('roic', `RETURN ON CAPITAL${c.roicBasis ? ' · ' + c.roicBasis : ''}`, c.roic != null ? c.roic.toFixed(1) + '%' : '—', 'Net income ÷ (equity + debt − cash) — approximate return on capital', c.roic == null ? '' : c.roic >= 0 ? 'pos' : 'neg');
+  add('ebitYield', 'EBIT YIELD', c.ebitYield != null ? c.ebitYield.toFixed(1) + '%' : '—', 'Operating income ÷ enterprise value — the cash-flow yield on the whole business', c.ebitYield == null ? '' : c.ebitYield >= 0 ? 'pos' : 'neg');
+  sect('Results');
+  // Revenue on the same trailing basis as the net income beside it. The fiscal-year figure is kept
+  // for companies whose quarters are incomplete, labelled with the year it belongs to.
+  const revBasis = c.revenueTTM != null ? 'TTM' : (c.fyRevenue ? `FY${c.fyRevenue}` : 'PERIOD');
+  add(null, `REVENUE · ${revBasis}`,
+    `${val(c.revenueTTM ?? c.revenue)}${dsp('revenue')}`,
+    c.revenueTTM != null
+      ? `Last four quarters to ${c.revenueTTMEnd}. The fiscal-year figure is ${val(c.revenue)} (FY${c.fyRevenue || '—'}).`
+      : `us-gaap:${c.revenueTag || 'Revenues'} · fiscal year ${c.fyRevenue || '—'}${c.revenueSource === 'nasdaq' ? ' · exchange total revenue' : ''}`);
+  add(null, `NET PROFIT · ${niTag}`, `${val(c.netIncomeTTM ?? c.netIncome)}${dsp('netIncome')}`, `us-gaap:${c.netIncomeTag || 'NetIncomeLoss'} · ${niTag}${c.netIncomeEnd ? ' · period ' + c.netIncomeEnd : ''}`, (c.netIncomeTTM ?? c.netIncome) >= 0 ? 'pos' : 'neg');
+  add(null, 'TOTAL ASSETS', `${val(c.assets)}${dsp('assets')}`, `${c.assetsTag === false ? 'Latest balance sheet' : `us-gaap:${c.assetsTag || 'Assets'}`}${c.assetsEnd ? ' · ' + c.assetsEnd : ''}`);
+  add(null, 'SHAREHOLDERS\u2019 EQUITY', `${val(c.equity)}${dsp('equity')}`, `Latest balance-sheet equity attributable to the parent${c.equityEnd ? ` at ${c.equityEnd}` : ''}${c.equityTag ? ` · ${c.equityTag}` : ''}`, (c.equity || 0) >= 0 ? 'pos' : 'neg');
+  add('assetTurnover', 'ASSET TURNOVER', c.assetTurnover != null ? c.assetTurnover.toFixed(2) + '×' : '—', 'Revenue ÷ assets — how hard the asset base works');
+  sect('Cash &amp; return');
+  if (c.sector === 'Financials') {
+    // A bank is valued on tangible book and runs on its spread; a blank tile is noise, but a
+    // missing one is a hole, so all four are always present.
+    add(null, 'P / TANGIBLE BOOK', c.ptbv != null ? c.ptbv.toFixed(2) + '×' : '—', 'Market cap ÷ (equity − goodwill − intangibles) — the multiple banks are valued on');
+    add(null, 'EFFICIENCY RATIO', c.efficiencyRatio != null ? c.efficiencyRatio.toFixed(0) + '%' : '—', 'Non-interest expense ÷ revenue — the cost of running the bank. Below 55% is strong.');
+    add(null, 'NET INTEREST MARGIN', c.nim != null ? c.nim.toFixed(2) + '%' : '—', 'Net interest income ÷ assets — the spread the bank earns');
+    add(null, 'SHAREHOLDER YIELD', c.shareholderYield != null ? c.shareholderYield.toFixed(1) + '%' : '—', 'Dividend yield + buybacks ÷ market cap', c.shareholderYield == null ? '' : c.shareholderYield >= 0 ? 'pos' : 'neg');
+  } else {
+    add('freeCashFlow', `FREE CASH FLOW${c.fcfBasis ? ' · ' + c.fcfBasis : ''}`, val(c.fcfTTM ?? c.fcf), `Operating cash flow ${coMoney(c.operatingCashFlow)} − capex ${coMoney(c.capex)}${c.capexOmitted ? ' (not reported)' : ''}`, (c.fcfTTM ?? c.fcf) == null ? '' : (c.fcfTTM ?? c.fcf) >= 0 ? 'pos' : 'neg');
+    add('fcfYield', 'FCF YIELD', c.fcfYield != null ? c.fcfYield.toFixed(1) + '%' : '—', 'Free cash flow ÷ market cap', c.fcfYield == null ? '' : c.fcfYield >= 0 ? 'pos' : 'neg');
+    add('cashConversion', 'CASH CONVERSION', c.cashConversion != null ? c.cashConversion.toFixed(2) + '×' : '—', 'Free cash flow ÷ net income — below 1 means profit is not turning into cash');
+    add(null, 'SHAREHOLDER YIELD', c.shareholderYield != null ? c.shareholderYield.toFixed(1) + '%' : '—', 'Dividend yield + buybacks ÷ market cap', c.shareholderYield == null ? '' : c.shareholderYield >= 0 ? 'pos' : 'neg');
+  }
+  sect('Growth');
+  // A company with one annual pair has a growth rate but no CAGR, so the label follows the data.
+  const hasCagr = c.revenueCagr != null;
+  const hasGrowth = c.revenueGrowth != null;
+  const growth = hasCagr
+    ? {
+        label: `REVENUE CAGR${c.cagrYears ? ' · ' + c.cagrYears + 'Y' : ''}`,
+        value: c.revenueCagr,
+        note: c.cagrNA ? `No growth rate: ${c.cagrNA}.` : `Compound annual growth of revenue over the ${c.cagrYears} fiscal years on file`,
+      }
+    : hasGrowth
+      ? { label: 'REVENUE GROWTH', value: c.revenueGrowth, note: 'Year over year — the newest annual pair on file' }
+      : { label: `REVENUE CAGR${c.cagrYears ? ' · ' + c.cagrYears + 'Y' : ''}`, value: null, note: c.cagrNA ? `No growth rate: ${c.cagrNA}.` : 'no comparable annual pair' };
+  add(null, growth.label, growth.value != null ? growth.value.toFixed(1) + '%' : '—', growth.note, growth.value == null ? '' : growth.value >= 0 ? 'pos' : 'neg');
+  // A CAGR does not exist when either end is a loss, so show the change itself rather than a dash.
+  const epsTile = c.epsCagr != null
+    ? { v: c.epsCagr.toFixed(1) + '%', cls: c.epsCagr >= 0 ? 'pos' : 'neg', t: `Compound annual growth of earnings per share over ${c.cagrYears} years.` }
+    : c.epsChange
+      ? (() => {
+          const money = (v) => `${v < 0 ? '−' : ''}$${Math.abs(v).toFixed(2)}`;
+          return { v: `${money(c.epsChange.from)} → ${money(c.epsChange.to)}`, cls: c.epsChange.to >= 0 ? 'pos' : 'neg', t: `No CAGR: ${c.epsCagrNA}. EPS went from ${money(c.epsChange.from)} in FY${c.epsChange.fromFy} to ${money(c.epsChange.to)} in FY${c.epsChange.toFy}.` };
+        })()
+      : { v: '—', cls: '', t: c.epsCagrNA ? `No EPS growth: ${c.epsCagrNA}.` : 'No EPS growth rate' };
+  epsTile.t += epsGrowthNote(c);
+  add(null, epsGrowthLabel(c), epsTile.v, epsTile.t, epsTile.cls);
+  const note = na.size
+    ? `<div class="macro-note" style="padding:6px 12px">Some ratios are shown as a dash: they do not exist for this kind of business (a bank has no current ratio, enterprise value or free cash flow).</div>`
+    : '';
+  return `<div class="co-sect">Valuation</div><div class="co-stats co-stats-12">${tiles.join('')}</div>${note}`;
 }
 
 async function renderCompanyPageBody(el, c, all) {
@@ -12422,96 +12631,7 @@ async function renderCompanyPageBody(el, c, all) {
         const link = r.url ? ` · <a href="${esc(r.url)}" target="_blank" rel="noopener noreferrer">amendment ↗</a>` : '';
         return `<div class="co-restate">RESTATED · ${esc(r.form)} filed ${dealDateY(r.filed)} · ${esc(parts.join(' · '))}${link}</div>`;
       })() : '')
-    + (() => {
-        // A bank has no current ratio, enterprise value or EBITDA. The card stays and greys out — the
-        // omission is explained on hover — because dropping it changed the grid's shape per company.
-        const na = new Set(c.naRatios || []);
-        const tiles = [];
-        const peBand = c.peHistory
-          ? (() => {
-              const h = c.peHistory;
-              const span = Math.max(0.1, h.max - h.min);
-              const at = c.pe != null ? Math.max(0, Math.min(100, ((c.pe - h.min) / span) * 100)) : null;
-              // 2%..98% of the track: at an exact end the marker touches the edge and reads as a tick
-              // against the figure beside it rather than a position on the bar.
-              const mark = at == null ? null : 2 + at * 0.96;
-              return `<div class="co-band" title="Price at each fiscal year end ÷ that year's EPS. Current P/E is market cap ÷ trailing earnings.">
-          <span class="co-band-k">P/E vs ITS OWN 5 YEARS</span>
-          <span class="co-band-track">${mark != null ? `<i style="left:${mark.toFixed(1)}%"></i>` : ''}</span>
-          <span class="co-band-n">${h.min}–${h.max} · median ${h.median}${h.percentile != null && c.pe != null ? ` · ${h.percentile}th percentile` : ''}</span>
-        </div>`;
-            })()
-          : (c.pe == null
-            ? `<div class="co-band"><span class="co-band-k">P/E vs ITS OWN 5 YEARS</span><span class="co-band-n">no band — the company lost money in most of the last five years, so a P/E range does not exist</span></div>`
-            : '');
-        const sect = (t) => tiles.push(`</div><div class="co-sect">${t}</div><div class="co-stats co-stats-12">`);
-        const add = (key, label, value, title, cls) => {
-          const missing = !!(key && na.has(key));
-          const tip = missing ? `${title || label} — not reported for this statement type (banks and financials)` : title;
-          tiles.push(`<div class="co-stat"${tip ? ` title="${esc(tip)}"` : ''}><span class="co-k">${label}</span><span class="co-v ${missing ? 'na' : (cls || '')}">${missing ? '—' : value}</span></div>`);
-        };
-        add(null, 'MARKET CAP', c.adrNA ? 'ADR' : val(c.marketCap));
-        add('pe', `P/E (TRAILING${c.peBasis ? ' · ' + c.peBasis : ''})`,
-          c.pe != null ? c.pe.toFixed(1) : (c.peNA ? '<em class="co-approx">n/a</em>' : '—'),
-          c.ttmRejected ? 'Quarterly data is inconsistent with the annual filing, so the fiscal year is used.'
-            : c.peNA ? 'No trailing profit: the last four quarters are a loss, so a trailing P/E does not exist.'
-            : 'Market cap ÷ trailing earnings.');
-        add('evEbitda', 'EV / EBITDA', c.evEbitda != null ? c.evEbitda.toFixed(1) : '—', 'Enterprise value ÷ operating income plus D&A');
-        add(null, 'P/B', `${c.pb != null ? c.pb.toFixed(1) : '—'}${dsp('equity')}`);
-        tiles.push(`</div>${peBand}<div class="co-sect">Leverage</div><div class="co-stats co-stats-12">`);
-        add('ev', 'ENTERPRISE VALUE', `${val(c.ev)}${c.evApprox ? ` <em class="co-approx" title="${esc(c.evApprox)}">≈</em>` : ''}`, c.evApprox ? `Market cap ${c.evApprox === 'neither debt nor cash is tagged' ? '— this company tags neither line' : 'adjusted for what is tagged'}.` : 'Market cap + debt − cash');
-        add('currentRatio', 'CURRENT RATIO', c.currentRatio != null ? c.currentRatio.toFixed(2) : '—', 'Current assets ÷ current liabilities');
-        add('debtEquity', 'DEBT / EQUITY', c.debtEquity != null ? c.debtEquity.toFixed(2) : (c.debtNA ? '<em class="co-approx" title="' + esc(c.debtNA) + '">n/d</em>' : '—'), c.debtNA || 'Debt ÷ shareholders\u2019 equity');
-        add('netDebtEbitda', `NET DEBT / EBITDA${c.netDebtEbitdaBasis ? ' · ' + c.netDebtEbitdaBasis : ''}`, c.netDebtEbitda != null ? c.netDebtEbitda.toFixed(1) + '×' : (c.debtNA ? '<em class="co-approx" title="' + esc(c.debtNA) + '">n/d</em>' : '—'), c.debtNA || '(Debt − cash) ÷ (operating income + D&A) — years of EBITDA to clear net debt');
-        sect('Profitability');
-        add(null, `NET MARGIN · ${niTag}`, m == null ? (c.marginNA ? 'n/a' : '—') : `${m.toFixed(1)}%`, 'Net income ÷ revenue', m >= 0 ? 'pos' : 'neg');
-        add(null, 'RETURN ON EQUITY', roe == null ? '—' : `${roe.toFixed(1)}%`, 'Net income ÷ shareholders\u2019 equity', roe >= 0 ? 'pos' : 'neg');
-        add('roic', `RETURN ON CAPITAL${c.roicBasis ? ' · ' + c.roicBasis : ''}`, c.roic != null ? c.roic.toFixed(1) + '%' : '—', 'Net income ÷ (equity + debt − cash) — approximate return on capital', c.roic >= 0 ? 'pos' : 'neg');
-        add('ebitYield', 'EBIT YIELD', c.ebitYield != null ? c.ebitYield.toFixed(1) + '%' : '—', 'Operating income ÷ enterprise value — the cash-flow yield on the whole business', c.ebitYield >= 0 ? 'pos' : 'neg');
-        sect('Results');
-        // Revenue on the same trailing basis as the net income beside it. The fiscal-year figure is kept
-        // for companies whose quarters are incomplete, labelled with the year it belongs to.
-        add(null, `REVENUE · ${c.revenueTTM != null ? 'TTM' : 'FY' + (c.fyRevenue || '')}`,
-          `${val(c.revenueTTM ?? c.revenue)}${dsp('revenue')}`,
-          c.revenueTTM != null
-            ? `Last four quarters to ${c.revenueTTMEnd}. The fiscal-year figure is ${val(c.revenue)} (FY${c.fyRevenue || '—'}).`
-            : `us-gaap:${c.revenueTag || 'Revenues'} · fiscal year ${c.fyRevenue || '—'}${c.revenueSource === 'nasdaq' ? ' · exchange total revenue' : ''}`);
-        add(null, `NET PROFIT · ${niTag}`, `${val(ni)}${dsp('netIncome')}`, `us-gaap:${c.netIncomeTag || 'NetIncomeLoss'} · ${niTag}${c.netIncomeEnd ? ' · period ' + c.netIncomeEnd : ''}`, ni >= 0 ? 'pos' : 'neg');
-        add(null, 'TOTAL ASSETS', `${val(c.assets)}${dsp('assets')}`, `us-gaap:Assets · ${c.assetsEnd || ''}`);
-        add(null, 'SHAREHOLDERS\u2019 EQUITY', `${val(c.equity)}${dsp('equity')}`, `Latest balance-sheet equity attributable to the parent${c.equityEnd ? ` at ${c.equityEnd}` : ''}${c.equityTag ? ` · ${c.equityTag}` : ''}`, (c.equity || 0) >= 0 ? 'pos' : 'neg');
-        add('assetTurnover', 'ASSET TURNOVER', c.assetTurnover != null ? c.assetTurnover.toFixed(2) + '×' : '—', 'Revenue ÷ assets — how hard the asset base works');
-        sect('Cash &amp; return');
-        if (c.sector === 'Financials') {
-          // A bank is valued on tangible book and runs on its spread; a blank tile is noise, but a
-          // missing one is a hole, so all four are always present.
-          add(null, 'P / TANGIBLE BOOK', c.ptbv != null ? c.ptbv.toFixed(2) + '×' : '—', 'Market cap ÷ (equity − goodwill − intangibles) — the multiple banks are valued on');
-          add(null, 'EFFICIENCY RATIO', c.efficiencyRatio != null ? c.efficiencyRatio.toFixed(0) + '%' : '—', 'Non-interest expense ÷ revenue — the cost of running the bank. Below 55% is strong.');
-          add(null, 'NET INTEREST MARGIN', c.nim != null ? c.nim.toFixed(2) + '%' : '—', 'Net interest income ÷ assets — the spread the bank earns');
-          add(null, 'SHAREHOLDER YIELD', c.shareholderYield != null ? c.shareholderYield.toFixed(1) + '%' : '—', 'Dividend yield + buybacks ÷ market cap', c.shareholderYield >= 0 ? 'pos' : 'neg');
-        } else {
-          add('freeCashFlow', `FREE CASH FLOW${c.fcfBasis ? ' · ' + c.fcfBasis : ''}`, val(c.fcfTTM ?? c.fcf), `Operating cash flow ${coMoney(c.operatingCashFlow)} − capex ${coMoney(c.capex)}${c.capexOmitted ? ' (not reported)' : ''}`, (c.fcfTTM ?? c.fcf) >= 0 ? 'pos' : 'neg');
-          add('fcfYield', 'FCF YIELD', c.fcfYield != null ? c.fcfYield.toFixed(1) + '%' : '—', 'Free cash flow ÷ market cap', c.fcfYield >= 0 ? 'pos' : 'neg');
-          add('cashConversion', 'CASH CONVERSION', c.cashConversion != null ? c.cashConversion.toFixed(2) + '×' : '—', 'Free cash flow ÷ net income — below 1 means profit is not turning into cash');
-          add(null, 'SHAREHOLDER YIELD', c.shareholderYield != null ? c.shareholderYield.toFixed(1) + '%' : '—', 'Dividend yield + buybacks ÷ market cap', c.shareholderYield >= 0 ? 'pos' : 'neg');
-        }
-        sect('Growth');
-        add(null, `REVENUE CAGR${c.cagrYears ? ' · ' + c.cagrYears + 'Y' : ''}`, c.revenueCagr != null ? c.revenueCagr.toFixed(1) + '%' : '—', c.cagrNA ? `No growth rate: ${c.cagrNA}.` : `Compound annual growth of revenue over the ${c.cagrYears} fiscal years on file`, c.revenueCagr >= 0 ? 'pos' : 'neg');
-        // A CAGR does not exist when either end is a loss, so show the change itself rather than a dash.
-        const epsTile = c.epsCagr != null
-          ? { v: c.epsCagr.toFixed(1) + '%', cls: c.epsCagr >= 0 ? 'pos' : 'neg', t: `Compound annual growth of earnings per share over ${c.cagrYears} years.` }
-          : c.epsChange
-            ? (() => {
-                const money = (v) => `${v < 0 ? '−' : ''}$${Math.abs(v).toFixed(2)}`;
-                return { v: `${money(c.epsChange.from)} → ${money(c.epsChange.to)}`, cls: c.epsChange.to >= 0 ? 'pos' : 'neg', t: `No CAGR: ${c.epsCagrNA}. EPS went from ${money(c.epsChange.from)} in FY${c.epsChange.fromFy} to ${money(c.epsChange.to)} in FY${c.epsChange.toFy}.` };
-              })()
-            : { v: '—', cls: '', t: c.epsCagrNA ? `No EPS growth: ${c.epsCagrNA}.` : 'No EPS growth rate' };
-        epsTile.t += epsGrowthNote(c);
-        add(null, epsGrowthLabel(c), epsTile.v, epsTile.t, epsTile.cls);
-        const note = na.size
-          ? `<div class="macro-note" style="padding:6px 12px">Some ratios are shown as a dash: they do not exist for this kind of business (a bank has no current ratio, enterprise value or free cash flow).</div>`
-          : '';
-        return `<div class="co-sect">Valuation</div><div class="co-stats co-stats-12">${tiles.join('')}</div>${note}`;
-      })()
+    + fundamentalSections(c, { niTag, margin: m, roe, dsp })
     + (c.ticker ? `<div class="co-ranges">
         <span class="co-cmp-l">COMPARE</span><input class="co-cmp" id="co-cmp" placeholder="company name, e.g. jpmorgan" value="${esc(cmpCode(coCompare))}" autocomplete="off">
         <button class="co-cmp-clear${coCompare ? '' : ' hidden'}" id="us-cmp-clear" data-cmpclear="us" type="button" title="Clear comparison" aria-label="Clear comparison">×</button>
@@ -12532,14 +12652,7 @@ async function renderCompanyPageBody(el, c, all) {
           : '';
         return `<div class="macro-note">GAAP, as filed — no estimates, no adjusted figures. Market cap is Nasdaq's quote data; P/E, P/B and EV/EBITDA are computed from it and the filing's own earnings, equity, debt and cash. ${lf ? 'Latest filing' : 'Latest annual report'}${stamp} · ${link}</div>`;
       })()
-    + (series.length ? `<div class="gtitle">FISCAL-YEAR RECORD · ${series.length}</div>
-      <div class="jp-q-scroll"><div class="co-table">
-        <div class="co-tr co-th"><span>FY</span><span>REVENUE</span><span>NET PROFIT</span><span>MARGIN</span><span>ASSETS</span><span>EQUITY</span><span>EPS</span></div>
-        ${series.map((s) => {
-          const mg = s.revenue && s.netIncome != null ? (s.netIncome / s.revenue) * 100 : null;
-          return `<div class="co-tr"><span>${s.fy}</span><span>${val(s.revenue)}</span><span class="${s.netIncome >= 0 ? 'pos' : 'neg'}">${val(s.netIncome)}</span><span>${mg == null ? '—' : mg.toFixed(1) + '%'}</span><span>${val(s.assets)}</span><span>${val(s.equity)}</span><span>${s.eps != null ? '$' + s.eps.toFixed(2) : '—'}</span></div>`;
-        }).join('')}
-      </div></div>` : '')
+    + fiscalYearRecord(series)
     + periodMatrixHtml(c, { market: 'us', money: coMoney, ccy: 'USD' })
     + (() => {
         const peers = all.filter((x) => x.sic && x.sic === c.sic && x.cik !== c.cik && x.marketCap).sort((a, b) => (b.marketCap || 0) - (a.marketCap || 0)).slice(0, 6);

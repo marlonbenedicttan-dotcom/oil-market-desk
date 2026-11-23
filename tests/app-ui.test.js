@@ -1144,7 +1144,7 @@ test('an off-index page with a TTM shows the annual record and a meaningful ROE'
   });
   const html = el.innerHTML;
   assert.match(html, /REVENUE · TTM/);
-  assert.match(html, /NET INCOME · TTM/);
+  assert.match(html, /NET PROFIT · TTM/);
   assert.match(html, /REVENUE CAGR/);
   assert.match(html, /QUARTERLY RESULTS/);
   assert.match(html, /data-costar="us:SPCX"/, 'the off-index page carries the same watchlist star as a US page');
@@ -1157,6 +1157,48 @@ test('an off-index page with a TTM shows the annual record and a meaningful ROE'
     'the US order is chart → filing note → fiscal-year record → quarterly matrix');
   assert.match(html, /n\/m/, 'an extreme ROE is labelled not meaningful');
   assert.doesNotMatch(html, /-1583\.0%/);
+});
+
+test('an off-index page fills the same six sections as an index page as its data lands', () => {
+  const { ui, document } = loadApp();
+  const el = document.getElementById('co-body');
+  const thin = {
+    ticker: 'TEST', cik: '9', name: 'Test Co', price: 10, chg1d: 1, vsIpo: 2, ipoPrice: 9,
+    listedAt: '2026-11-01', marketCap: 1e11, sector: 'Technology', exchange: 'NASDAQ',
+    financials: {
+      source: 'SEC XBRL',
+      ttm: { end: '2026-09-30', revenue: 5e9, netIncome: 5e8, equity: 4e9, assets: 8e9 },
+      fy: { end: '2025-12-31', revenue: 4e9, netIncome: 4e8 },
+      annual: [
+        { end: '2024-12-31', revenue: 3e9, netIncome: 3e8, eps: 0.3 },
+        { end: '2025-12-31', revenue: 4e9, netIncome: 4e8, eps: 0.4 },
+      ],
+      quarters: [],
+    },
+  };
+  ui.renderOffIndexPage(el, thin);
+  const a = el.innerHTML;
+  // The same six section headers a US index page renders, not a bespoke off-index layout.
+  for (const s of ['Valuation', 'Leverage', 'Profitability', 'Results', 'Cash &amp; return', 'Growth']) {
+    assert.ok(a.includes(`<div class="co-sect">${s}</div>`), `missing ${s}`);
+  }
+  assert.match(a, /ASSET TURNOVER[\s\S]{0,160}0\.63×/, 'derived from revenue ÷ assets');
+  const evBefore = a.slice(a.indexOf('ENTERPRISE VALUE'));
+  assert.match(evBefore.slice(0, 220), />—</, 'no debt or cash on file, so enterprise value is a dash');
+
+  // The same record once the balance sheet and cash-flow legs are extracted.
+  ui.renderOffIndexPage(el, {
+    ...thin,
+    debt: 6e9, cash: 2e9, ebitdaTTM: 1.5e9,
+    operatingCashFlow: 1.2e9, capex: 0.2e9,
+    currentAssets: 3e9, currentLiabilities: 2e9,
+  });
+  const b = el.innerHTML;
+  const evAfter = b.slice(b.indexOf('ENTERPRISE VALUE'));
+  assert.doesNotMatch(evAfter.slice(0, 220), />—</, 'enterprise value fills in without a UI change');
+  assert.match(b, /CURRENT RATIO[\s\S]{0,160}1\.50/);
+  assert.match(b, /EV \/ EBITDA[\s\S]{0,160}69\.3/, 'enterprise value ÷ EBITDA');
+  assert.match(b, /FREE CASH FLOW[\s\S]{0,200}\$1\.0B/);
 });
 
 test('an off-index name can be pinned and renders in the home watchlist', () => {
