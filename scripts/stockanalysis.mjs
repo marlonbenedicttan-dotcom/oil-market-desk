@@ -171,6 +171,30 @@ export const rowOf = (table, labels) => {
   return null;
 };
 
+// The statement tables are published in millions (US listings), so a vendor number is scaled to the
+// dollars EDGAR uses before it is compared with or added to a filing. Millions is also the fallback:
+// the page's own caption is the only thing that changes it.
+export const saScale = (html) => {
+  if (/in millions/i.test(html)) return 1e6;
+  if (/in thousands/i.test(html)) return 1e3;
+  return 1e6;
+};
+export const SA_PERIOD = /^\d{4}-\d{2}-\d{2}$/;
+export const saCols = (table) => table.cols.map((c) => c.id).filter((id) => SA_PERIOD.test(id));
+export function saRow(table, labels, scale = 1) {
+  const row = rowOf(table, labels);
+  if (!row) return {};
+  const out = {};
+  for (const [end, value] of Object.entries(row.values)) {
+    out[end] = value == null ? null : +(value * scale).toFixed(0);
+  }
+  return out;
+}
+export function saPerShare(table, labels) {
+  const row = rowOf(table, labels);
+  return row ? { ...row.values } : {};
+}
+
 // "Trailing twelve month period ending Sep 30, 2026" / "Sep 30, 2026" → "2026-09-30".
 export function periodFromTitle(title) {
   const m = /([A-Z][a-z]{2}) (\d{1,2}), (\d{4})/.exec(String(title || ''));

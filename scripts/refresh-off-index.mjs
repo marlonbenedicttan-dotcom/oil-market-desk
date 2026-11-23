@@ -15,7 +15,7 @@
 import { readFileSync, writeFileSync, renameSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { parseSaTable, rowOf } from './stockanalysis.mjs';
+import { parseSaTable, rowOf, saScale, saCols, saRow, saPerShare } from './stockanalysis.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const FILE = join(ROOT, 'data', 'off-index.json');
@@ -373,29 +373,6 @@ async function getHTML(url, tries = 3) {
   return null;
 }
 
-// The statement tables are published in millions (US listings), so a vendor number is scaled to the
-// dollars EDGAR uses before it is compared with or added to a filing. Millions is also the fallback:
-// the page's own caption is the only thing that changes it.
-function saScale(html) {
-  if (/in millions/i.test(html)) return 1e6;
-  if (/in thousands/i.test(html)) return 1e3;
-  return 1e6;
-}
-const SA_PERIOD = /^\d{4}-\d{2}-\d{2}$/;
-const saCols = (table) => table.cols.map((c) => c.id).filter((id) => SA_PERIOD.test(id));
-function saRow(table, labels, scale = 1) {
-  const row = rowOf(table, labels);
-  if (!row) return {};
-  const out = {};
-  for (const [end, value] of Object.entries(row.values)) {
-    out[end] = value == null ? null : +(value * scale).toFixed(0);
-  }
-  return out;
-}
-function saPerShare(table, labels) {
-  const row = rowOf(table, labels);
-  return row ? { ...row.values } : {};
-}
 
 async function vendorStatements(ticker) {
   const base = `https://stockanalysis.com/stocks/${String(ticker).toLowerCase()}/financials/`;
@@ -462,7 +439,11 @@ async function vendorStatements(ticker) {
   const bAssets = saRow(balance, ['Total Assets'], bScale);
   const bEquity = saRow(balance, ["Shareholders' Equity", 'Total Equity'], bScale);
   const bCash = saRow(balance, ['Cash & Equivalents', 'Cash and Cash Equivalents'], bScale);
-  const bDebt = saRow(balance, ['Total Debt'], bScale);
+  // Long-term debt is the desk's convention on the index pages, so the vendor fills the same line;
+  // Total Debt (which adds current maturities and leases) is only the fallback.
+  const bLtd = saRow(balance, ['Long-Term Debt'], bScale);
+  const hasValue = (row) => Object.values(row).some((v) => v != null);
+  const bDebt = hasValue(bLtd) ? bLtd : saRow(balance, ['Total Debt'], bScale);
   const bCa = saRow(balance, ['Total Current Assets'], bScale);
   const bCl = saRow(balance, ['Total Current Liabilities'], bScale);
   const balanceEnd = saCols(balance).find((end) => bAssets[end] != null || bEquity[end] != null) || null;
@@ -500,6 +481,9 @@ const CONCEPTS = {
   debtCurrent: ['DebtCurrent', 'LongTermDebtCurrent', 'ShortTermBorrowings', 'NotesPayableCurrent', 'LinesOfCreditCurrent'],
   debtNoncurrent: ['LongTermDebtNoncurrent', 'LongTermDebtAndCapitalLeaseObligationsNoncurrent'],
   debtTotal: ['LongTermDebt', 'DebtAndCapitalLeaseObligations', 'DebtLongtermAndShorttermCombinedAmount'],
+  // The only borrowing line some filers tag: Cloudflare's convertible notes are 4.4B and no long-term
+  // debt concept is used at all, so without these the leverage tiles would read zero debt.
+  debtStandalone: ['ConvertibleDebtNoncurrent', 'ConvertibleNotesPayable', 'ConvertibleDebtCurrent', 'SeniorNotes', 'NotesPayable'],
   // Cash-flow and operating lines for FREE CASH FLOW, EBITDA and the yields. All are durations, so the
   // same FY + YTD − prior YTD arithmetic that produces the revenue TTM produces these.
   operatingIncome: ['OperatingIncomeLoss'],
@@ -621,31 +605,48 @@ async function filings(cik, capUsd) {
   };
   const revAll = dedupePeriods(conceptRows(gaap, CONCEPTS.revenue));
   const niAll = dedupePeriods(conceptRows(gaap, CONCEPTS.netIncome));
-  const equityRows = conceptRows(gaap, CONCEPTS.equity, true).sort((a, b) => (a.end < b.end ? 1 : -1));
-  const assetRows = conceptRows(gaap, CONCEPTS.assets, true).sort((a, b) => (a.end < b.end ? 1 : -1));
-  out.equity = equityRows[0] ? equityRows[0].val : null;
-  out.assets = assetRows[0] ? assetRows[0].val : null;
-  out.balanceEnd = equityRows[0]?.end || assetRows[0]?.end || null;
-
   // The leverage inputs, taken at the newest date the filer tagged. Every one is optional: they are
   // what an EV, a current ratio and a debt/equity need, and a company that has not filed a balance
   // sheet line at all gets a dash instead of a fabricated zero.
-  const instant = (names) => {
-    const rows = conceptRows(gaap, names, true).sort((a, b) => (a.end === b.end ? (a.filed < b.filed ? 1 : -1) : (a.end < b.end ? 1 : -1)));
-    return rows[0] || null;
-  };
+  //
+  // Precedence is by concept, then by date: the first concept in the list that the filer tags wins, at
+  // its newest end (latest filing for that end). That is why cash is the *unrestricted* line: Circle
+  // tags both, and the combined "cash and restricted cash" figure is 76B of customer stablecoin
+  // reserves, not 1.7B of the company's own money.
+  const latestOf = (name) => conceptRows(gaap, [name], true)
+    .sort((a, b) => (a.end === b.end ? (String(a.filed) < String(b.filed) ? 1 : -1) : (a.end < b.end ? 1 : -1)))[0] || null;
+  // The reference date is the newest balance-sheet fact anywhere in the statement, so a tag that was
+  // abandoned years ago (Cloudflare's LongTermDebtCurrent last used in 2019) cannot win just because it
+  // is first in the precedence list. Anything older than ~two quarters is treated as not reported.
+  const INSTANT_CONCEPTS = [...new Set([
+    ...CONCEPTS.assets, ...CONCEPTS.equity, ...CONCEPTS.cash, ...CONCEPTS.currentAssets,
+    ...CONCEPTS.currentLiabilities, ...CONCEPTS.debtCurrent, ...CONCEPTS.debtNoncurrent,
+    ...CONCEPTS.debtTotal, ...CONCEPTS.debtStandalone,
+  ])];
+  const asOf = INSTANT_CONCEPTS.map(latestOf).filter(Boolean).reduce((a, r) => (!a || r.end > a ? r.end : a), null);
+  const instant = (names) => names
+    .map(latestOf)
+    .find((r) => r && (!asOf || Date.parse(r.end) >= Date.parse(asOf) - 100 * 864e5)) || null;
+  const equityRow = instant(CONCEPTS.equity);
+  const assetRow = instant(CONCEPTS.assets);
+  out.equity = equityRow ? equityRow.val : null;
+  out.assets = assetRow ? assetRow.val : null;
+  // The balance date is the newest line actually kept, so a 10-Q that tags assets but not equity does
+  // not date the whole balance sheet to the older 10-K.
+  out.balanceEnd = [equityRow?.end, assetRow?.end].filter(Boolean).sort().pop() || null;
+
   const cashRow = instant(CONCEPTS.cash);
-  const curDebt = instant(CONCEPTS.debtCurrent);
-  const nonCurDebt = instant(CONCEPTS.debtNoncurrent);
-  const totDebt = instant(CONCEPTS.debtTotal);
   out.cash = cashRow ? cashRow.val : null;
   out.currentAssets = instant(CONCEPTS.currentAssets)?.val ?? null;
   out.currentLiabilities = instant(CONCEPTS.currentLiabilities)?.val ?? null;
-  // Current + non-current is the cleanest reading when both are tagged; a filer's own "LongTermDebt"
-  // total already includes current maturities, so it is used whole rather than added to.
-  out.debt = nonCurDebt ? nonCurDebt.val + (curDebt?.val || 0)
-    : totDebt ? totDebt.val
-      : curDebt ? curDebt.val : null;
+  // The desk's debt is the long-term borrowing line, in the same precedence the index pages use, so a
+  // company reads the same on either page. Current maturities are deliberately not added: the index
+  // convention does not add them, and summing a current line tagged a quarter earlier than the
+  // long-term one produced a total that belonged to two different dates.
+  out.debt = instant(CONCEPTS.debtNoncurrent)?.val
+    ?? instant(CONCEPTS.debtTotal)?.val
+    ?? instant(CONCEPTS.debtStandalone)?.val
+    ?? null;
   if (!revAll.length || !niAll.length) return out;
 
   // The primary revenue line is the concept with the largest annual figure; mixing concepts within
@@ -956,8 +957,12 @@ function mergeFinancials(sec, vendor, capUsd) {
   // Balance-sheet lines: EDGAR first; the vendor fills only a line EDGAR did not tag.
   if (out.assets == null && vendor?.assets != null) { out.assets = vendor.assets; usedVendor = true; }
   if (out.equity == null && vendor?.equity != null) { out.equity = vendor.equity; usedVendor = true; }
+  // A vendor balance line is only usable at the period it describes: filling a 2026 debt figure from a
+  // vendor column a year older is how a repaid revolver comes back as current debt.
+  const vendorAligned = vendor?.balanceEnd && (!out.balanceEnd
+    || Math.abs(Date.parse(vendor.balanceEnd) - Date.parse(out.balanceEnd)) <= 10 * 864e5);
   for (const k of ['cash', 'debt', 'currentAssets', 'currentLiabilities']) {
-    if (out[k] == null && vendor?.[k] != null) { out[k] = vendor[k]; usedVendor = true; }
+    if (out[k] == null && vendorAligned && vendor?.[k] != null) { out[k] = vendor[k]; usedVendor = true; }
   }
   if (out.balanceEnd == null && vendor?.balanceEnd) out.balanceEnd = vendor.balanceEnd;
 
@@ -1003,7 +1008,7 @@ function mergeFinancials(sec, vendor, capUsd) {
       const v = annualAtTtm ? annualAtTtm[key] : null;
       return v == null ? null : v;
     };
-    for (const [field, key] of [['ebitTTM', 'ebit'], ['ebitdaTTM', 'ebitda'], ['operatingCashFlow', 'ocf'], ['capex', 'capex']]) {
+    for (const [field, key] of [['ebitTTM', 'ebit'], ['daTTM', 'da'], ['ebitdaTTM', 'ebitda'], ['operatingCashFlow', 'ocf'], ['capex', 'capex']]) {
       if (out[field] == null) {
         const v = flow(key);
         if (v != null) { out[field] = v; vendorFlow = true; }

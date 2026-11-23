@@ -178,6 +178,7 @@ function loadApp() {
     setCompanies: (v) => { companiesData = v; },
     renderUsMarket,
     renderUsThemes,
+    offIndexAsUs,
     renderHongKongMarket,
     hkBalanceSheetFinancial,
     liveRef, liveChg, setMetricText, LIVE_BASE, patchQuoteHomeRow,
@@ -1199,6 +1200,69 @@ test('an off-index page fills the same six sections as an index page as its data
   assert.match(b, /CURRENT RATIO[\s\S]{0,160}1\.50/);
   assert.match(b, /EV \/ EBITDA[\s\S]{0,160}69\.3/, 'enterprise value ÷ EBITDA');
   assert.match(b, /FREE CASH FLOW[\s\S]{0,200}\$1\.0B/);
+});
+
+test('the off-index mapping derives every ratio from the filed lines', () => {
+  const { ui } = loadApp();
+  const rec = ui.offIndexAsUs({
+    ticker: 'X', cik: '1', name: 'X', price: 10, capUsd: 100e9, shares: 10e9,
+    sector: 'Technology', status: 'listed',
+    financials: {
+      source: 'SEC XBRL',
+      ttm: { end: '2026-09-30', revenue: 50e9, netIncome: 5e9, equity: 25e9, assets: 100e9 },
+      fy: { end: '2025-12-31', revenue: 40e9, netIncome: 4e9 },
+      annual: [
+        { end: '2024-12-31', revenue: 30e9, netIncome: 3e9, eps: 0.3 },
+        { end: '2025-12-31', revenue: 40e9, netIncome: 4e9, eps: 0.4 },
+      ],
+      quarters: [],
+      balanceEnd: '2026-09-30',
+    },
+    debt: 10e9, cash: 20e9, currentAssets: 30e9, currentLiabilities: 15e9,
+    ebitdaTTM: 8e9, ebitTTM: 6e9, operatingCashFlow: 7e9, capex: 2e9,
+    dividendsPaid: 1e9, buybacks: 1e9,
+  });
+  const near = (a, b) => assert.ok(Math.abs(a - b) < 1e-6, `${a} != ${b}`);
+  near(rec.marketCap, 100e9);
+  near(rec.ev, 90e9);                 // cap + debt − cash
+  near(rec.pb, 4);                    // cap / equity
+  near(rec.evEbitda, 11.25);          // EV / EBITDA
+  near(rec.currentRatio, 2);          // current assets / current liabilities
+  near(rec.debtEquity, 0.4);          // debt / equity
+  near(rec.netDebtEbitda, -1.25);     // (debt − cash) / EBITDA
+  near(rec.roic, 33.3333333333);      // profit / (equity + debt − cash)
+  near(rec.ebitYield, 6.6666666667);  // EBIT / EV
+  near(rec.assetTurnover, 0.5);       // revenue / assets
+  near(rec.fcf, 5e9);                 // operating cash flow − capex
+  near(rec.fcfYield, 5);              // FCF / cap
+  near(rec.cashConversion, 1);        // FCF / profit
+  near(rec.shareholderYield, 2);      // (dividends + buybacks) / cap
+  near(rec.roe, 20);                  // profit / equity
+  near(rec.netMargin, 10);            // profit / revenue
+  near(rec.epsCagr, 33.3333333333);   // 0.30 → 0.40 over one year
+});
+
+test('the off-index mapping refuses ratios that would read as meaningful', () => {
+  const { ui } = loadApp();
+  const base = {
+    ticker: 'Y', cik: '2', name: 'Y', capUsd: 10e9, sector: 'Technology',
+    financials: {
+      source: 'SEC XBRL', quarters: [],
+      ttm: { end: '2026-06-30', revenue: 1e9, netIncome: -5e9, equity: 1e9, assets: 2e9 },
+      balanceEnd: '2026-06-30',
+    },
+    debt: 1e9, cash: 1e9, ebitdaTTM: -1e9, ebitTTM: -1.2e9, operatingCashFlow: -1e9, capex: 0.5e9,
+  };
+  const r = ui.offIndexAsUs(base);
+  assert.equal(r.evEbitda, null, 'a negative EBITDA has no multiple');
+  assert.match(String(r.evEbitdaNA), /negative/);
+  assert.equal(r.netDebtEbitda, null, 'and no years-of-EBITDA reading');
+  assert.match(String(r.netDebtNA), /negative/);
+  assert.equal(r.roic, null, 'a loss several times the capital base is not a return');
+  assert.match(String(r.roicNA), /loss/);
+  assert.equal(r.cashConversion, null, 'no cash conversion without a profit to convert');
+  assert.equal(ui.offIndexAsUs({ ...base, cash: null }).ev, null, 'enterprise value needs both sides of the bridge');
+  assert.equal(ui.offIndexAsUs({ ...base, ebitdaTTM: null }).evEbitda, null);
 });
 
 test('an off-index name can be pinned and renders in the home watchlist', () => {
