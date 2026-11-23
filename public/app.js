@@ -12260,21 +12260,23 @@ function offIndexAsUs(c) {
   // Not on file yet for a company that listed weeks ago; the tiles print a dash until they are.
   const debt = c.debt ?? f.debt ?? null;
   const cash = c.cash ?? f.cash ?? null;
-  const ebitda = c.ebitdaTTM ?? c.ebitda ?? null;
-  const ebit = c.ebitTTM ?? c.ebit ?? null;
-  const ocf = c.operatingCashFlow ?? null;
-  const capex = c.capex ?? null;
-  const currentAssets = c.currentAssets ?? null;
-  const currentLiabilities = c.currentLiabilities ?? null;
-  const dividends = c.dividendsPaid ?? null;
-  const buybacks = c.buybacks ?? null;
+  const ebitda = c.ebitdaTTM ?? f.ebitdaTTM ?? c.ebitda ?? f.ebitda ?? null;
+  const ebit = c.ebitTTM ?? f.ebitTTM ?? c.ebit ?? f.ebit ?? null;
+  const ocf = c.operatingCashFlow ?? f.operatingCashFlow ?? null;
+  const capex = c.capex ?? f.capex ?? null;
+  const currentAssets = c.currentAssets ?? f.currentAssets ?? null;
+  const currentLiabilities = c.currentLiabilities ?? f.currentLiabilities ?? null;
+  const dividends = c.dividendsPaid ?? f.dividendsPaid ?? null;
+  const buybacks = c.buybacks ?? f.buybacks ?? null;
 
   const latest = f.latest || null;
   const ni = netIncomeTTM ?? (fy ? fy.netIncome : (latest ? latest.netIncome : null));
   const rev = revenueTTM ?? (fy ? fy.revenue : (latest ? latest.revenue : null));
   const margin = rev && ni != null ? (ni / rev) * 100 : (c.netMargin ?? null);
   const roe = equity && ni != null ? (ni / equity) * 100 : (c.roe ?? null);
-  const ev = marketCap != null && (debt != null || cash != null) ? marketCap + (debt || 0) - (cash || 0) : null;
+  // Enterprise value needs both sides of the bridge: with only one of debt or cash on file, adding
+  // the known half would present a number that is quietly wrong.
+  const ev = marketCap != null && debt != null && cash != null ? marketCap + debt - cash : null;
   const capital = equity != null ? equity + (debt || 0) - (cash || 0) : null;
   // A loss that dwarfs the equity base is arithmetically a ROE but not a meaningful one, and a
   // negative equity base flips the sign of the ratio: label both rather than print a number.
@@ -12307,10 +12309,13 @@ function offIndexAsUs(c) {
     pb: marketCap != null && equity ? marketCap / equity : null,
     ev,
     ebitdaTTM: ebitda,
-    evEbitda: ev != null && ebitda ? ev / ebitda : null,
+    // A negative EBITDA has no multiple: showing −313× reads as "cheap" when it means "losing money".
+    evEbitda: ev != null && ebitda ? (ebitda > 0 ? ev / ebitda : null) : null,
+    evEbitdaNA: ev != null && ebitda != null && ebitda <= 0 ? 'Operating income plus D&A is negative, so there is no EV / EBITDA multiple' : null,
     currentRatio: currentAssets != null && currentLiabilities ? currentAssets / currentLiabilities : null,
     debtEquity: debt != null && equity ? debt / equity : null,
-    netDebtEbitda: debt != null && ebitda ? (debt - (cash || 0)) / ebitda : null,
+    netDebtEbitda: debt != null && cash != null && ebitda ? (ebitda > 0 ? (debt - cash) / ebitda : null) : null,
+    netDebtNA: debt != null && cash != null && ebitda != null && ebitda <= 0 ? 'EBITDA is negative, so net debt cannot be measured in years of it' : null,
     revenueTTM,
     netIncomeTTM,
     revenueTTMEnd: ttm ? ttm.end : null,
@@ -12325,12 +12330,17 @@ function offIndexAsUs(c) {
     assetsEnd: f.balanceEnd || null,
     equityEnd: f.balanceEnd || null,
     assetTurnover: rev != null && assets ? rev / assets : null,
-    roic: ni != null && capital && (debt != null || cash != null) ? (ni / capital) * 100 : null,
+    // Same guard as ROE: a loss several times the capital base makes the percentage meaningless.
+    roic: ni != null && capital && capital > 0 && debt != null && cash != null && !(ni < 0 && -ni > capital) ? (ni / capital) * 100 : null,
+    roicNA: ni != null && capital != null && debt != null && cash != null && (capital <= 0 || (ni < 0 && -ni > capital))
+      ? 'the trailing loss is larger than the capital base, so the return on capital is not meaningful' : null,
     ebitYield: ebit != null && ev ? (ebit / ev) * 100 : null,
     fcf,
     fcfTTM: fcf,
     fcfYield: fcf != null && marketCap ? (fcf / marketCap) * 100 : null,
-    cashConversion: fcf != null && ni ? fcf / ni : null,
+    // Two negatives make a positive: a loss-making company that also burns cash would print a
+    // comfortable cash-conversion multiple, so the ratio only exists when there is profit to convert.
+    cashConversion: fcf != null && ni != null && ni > 0 ? fcf / ni : null,
     shareholderYield: (dividends != null || buybacks != null) && marketCap
       ? (((dividends || 0) + (buybacks || 0)) / marketCap) * 100 : null,
     operatingCashFlow: ocf,
@@ -12512,17 +12522,20 @@ function fundamentalSections(c, ctx = {}) {
     c.ttmRejected ? 'Quarterly data is inconsistent with the annual filing, so the fiscal year is used.'
       : c.peNA ? 'No trailing profit: the last four quarters are a loss, so a trailing P/E does not exist.'
         : 'Market cap ÷ trailing earnings.');
-  add('evEbitda', 'EV / EBITDA', c.evEbitda != null ? c.evEbitda.toFixed(1) : '—', 'Enterprise value ÷ operating income plus D&A');
+  add('evEbitda', 'EV / EBITDA', c.evEbitda != null ? c.evEbitda.toFixed(1) : (c.evEbitdaNA ? '<em class="co-approx">n/a</em>' : '—'), c.evEbitdaNA || 'Enterprise value ÷ operating income plus D&A');
   add(null, 'P/B', `${c.pb != null ? c.pb.toFixed(1) : '—'}${dsp('equity')}`);
   tiles.push(`</div>${peBand}<div class="co-sect">Leverage</div><div class="co-stats co-stats-12">`);
   add('ev', 'ENTERPRISE VALUE', `${val(c.ev)}${c.evApprox ? ` <em class="co-approx" title="${esc(c.evApprox)}">≈</em>` : ''}`, c.evApprox ? `Market cap ${c.evApprox === 'neither debt nor cash is tagged' ? '— this company tags neither line' : 'adjusted for what is tagged'}.` : 'Market cap + debt − cash');
   add('currentRatio', 'CURRENT RATIO', c.currentRatio != null ? c.currentRatio.toFixed(2) : '—', 'Current assets ÷ current liabilities');
   add('debtEquity', 'DEBT / EQUITY', c.debtEquity != null ? c.debtEquity.toFixed(2) : (c.debtNA ? '<em class="co-approx" title="' + esc(c.debtNA) + '">n/d</em>' : '—'), c.debtNA || 'Debt ÷ shareholders\u2019 equity');
-  add('netDebtEbitda', `NET DEBT / EBITDA${c.netDebtEbitdaBasis ? ' · ' + c.netDebtEbitdaBasis : ''}`, c.netDebtEbitda != null ? c.netDebtEbitda.toFixed(1) + '×' : (c.debtNA ? '<em class="co-approx" title="' + esc(c.debtNA) + '">n/d</em>' : '—'), c.debtNA || '(Debt − cash) ÷ (operating income + D&A) — years of EBITDA to clear net debt');
+  add('netDebtEbitda', `NET DEBT / EBITDA${c.netDebtEbitdaBasis ? ' · ' + c.netDebtEbitdaBasis : ''}`, c.netDebtEbitda != null ? c.netDebtEbitda.toFixed(1) + '×' : ((c.netDebtNA || c.debtNA) ? '<em class="co-approx" title="' + esc(c.netDebtNA || c.debtNA) + '">n/d</em>' : '—'), c.netDebtNA || c.debtNA || '(Debt − cash) ÷ (operating income + D&A) — years of EBITDA to clear net debt');
   sect('Profitability');
   add(null, `NET MARGIN · ${niTag}`, margin == null ? (c.marginNA ? 'n/a' : '—') : `${margin.toFixed(1)}%`, 'Net income ÷ revenue', margin >= 0 ? 'pos' : 'neg');
   add(null, 'RETURN ON EQUITY', roe == null ? '—' : (c.roeNA ? '<em class="co-approx" title="' + esc(c.roeNA) + '">n/m</em>' : `${roe.toFixed(1)}%`), c.roeNA || 'Net income ÷ shareholders\u2019 equity', roe == null || c.roeNA ? '' : roe >= 0 ? 'pos' : 'neg');
-  add('roic', `RETURN ON CAPITAL${c.roicBasis ? ' · ' + c.roicBasis : ''}`, c.roic != null ? c.roic.toFixed(1) + '%' : '—', 'Net income ÷ (equity + debt − cash) — approximate return on capital', c.roic == null ? '' : c.roic >= 0 ? 'pos' : 'neg');
+  add('roic', `RETURN ON CAPITAL${c.roicBasis ? ' · ' + c.roicBasis : ''}`,
+    c.roic != null ? c.roic.toFixed(1) + '%' : (c.roicNA ? '<em class="co-approx">n/m</em>' : '—'),
+    c.roicNA || 'Net income ÷ (equity + debt − cash) — approximate return on capital',
+    c.roic == null ? '' : c.roic >= 0 ? 'pos' : 'neg');
   add('ebitYield', 'EBIT YIELD', c.ebitYield != null ? c.ebitYield.toFixed(1) + '%' : '—', 'Operating income ÷ enterprise value — the cash-flow yield on the whole business', c.ebitYield == null ? '' : c.ebitYield >= 0 ? 'pos' : 'neg');
   sect('Results');
   // Revenue on the same trailing basis as the net income beside it. The fiscal-year figure is kept

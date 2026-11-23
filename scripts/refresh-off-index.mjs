@@ -399,41 +399,82 @@ function saPerShare(table, labels) {
 
 async function vendorStatements(ticker) {
   const base = `https://stockanalysis.com/stocks/${String(ticker).toLowerCase()}/financials/`;
-  const [qHtml, aHtml, bHtml] = await Promise.all([
+  const [qHtml, aHtml, bHtml, qcHtml, acHtml] = await Promise.all([
     getHTML(`${base}?p=quarterly`),
     getHTML(base),
     getHTML(`${base}balance-sheet/?p=quarterly`),
+    getHTML(`${base}cash-flow-statement/?p=quarterly`),
+    getHTML(`${base}cash-flow-statement/`),
   ]);
-  if (!qHtml && !aHtml && !bHtml) return null;
+  if (!qHtml && !aHtml && !bHtml && !qcHtml && !acHtml) return null;
   const quarterly = qHtml ? parseSaTable(qHtml) : { cols: [], rows: [] };
   const annual = aHtml ? parseSaTable(aHtml) : { cols: [], rows: [] };
   const balance = bHtml ? parseSaTable(bHtml) : { cols: [], rows: [] };
+  const qCashflow = qcHtml ? parseSaTable(qcHtml) : { cols: [], rows: [] };
+  const aCashflow = acHtml ? parseSaTable(acHtml) : { cols: [], rows: [] };
   const qScale = qHtml ? saScale(qHtml) : 1e6;
   const aScale = aHtml ? saScale(aHtml) : 1e6;
   const bScale = bHtml ? saScale(bHtml) : 1e6;
+  const qcScale = qcHtml ? saScale(qcHtml) : 1e6;
+  const acScale = acHtml ? saScale(acHtml) : 1e6;
+
+  // Capital expenditure is shown as an outflow (negative) here and as a positive payment in XBRL;
+  // store the payment so FREE CASH FLOW is operating cash flow − capex on both paths.
+  const saFlow = (table, labels, scale, abs = false) => {
+    const out = saRow(table, labels, scale);
+    if (!abs) return out;
+    return Object.fromEntries(Object.entries(out).map(([k, v]) => [k, v == null ? null : Math.abs(v)]));
+  };
+  const qOi = saRow(quarterly, ['Operating Income'], qScale);
+  const aOi = saRow(annual, ['Operating Income'], aScale);
+  const qDa = saFlow(qCashflow, ['Depreciation & Amortization'], qcScale);
+  const aDa = saFlow(aCashflow, ['Depreciation & Amortization'], acScale);
+  const qOcf = saFlow(qCashflow, ['Operating Cash Flow'], qcScale);
+  const aOcf = saFlow(aCashflow, ['Operating Cash Flow'], acScale);
+  const qCapex = saFlow(qCashflow, ['Capital Expenditures'], qcScale, true);
+  const aCapex = saFlow(aCashflow, ['Capital Expenditures'], acScale, true);
+  const flowOf = (oi, da, ocf, capex, end) => {
+    const ebit = oi[end] ?? null;
+    const d = da[end] ?? null;
+    return {
+      ebit,
+      da: d,
+      ebitda: ebit != null && d != null ? ebit + d : null,
+      ocf: ocf[end] ?? null,
+      capex: capex[end] ?? null,
+    };
+  };
 
   const qRev = saRow(quarterly, ['Revenue'], qScale);
   const qNi = saRow(quarterly, ['Net Income'], qScale);
   const qEps = saPerShare(quarterly, ['Earnings Per Share', 'EPS (Diluted)', 'EPS']);
   const quarters = saCols(quarterly)
-    .map((end) => ({ end, revenue: qRev[end] ?? null, netIncome: qNi[end] ?? null, eps: qEps[end] ?? null }))
+    .map((end) => ({ end, revenue: qRev[end] ?? null, netIncome: qNi[end] ?? null, eps: qEps[end] ?? null, ...flowOf(qOi, qDa, qOcf, qCapex, end) }))
     .filter((q) => q.revenue != null || q.netIncome != null);
 
   const aRev = saRow(annual, ['Revenue'], aScale);
   const aNi = saRow(annual, ['Net Income'], aScale);
   const aEps = saPerShare(annual, ['Earnings Per Share', 'EPS (Diluted)', 'EPS']);
   const annuals = saCols(annual)
-    .map((end) => ({ end, revenue: aRev[end] ?? null, netIncome: aNi[end] ?? null, eps: aEps[end] ?? null }))
+    .map((end) => ({ end, revenue: aRev[end] ?? null, netIncome: aNi[end] ?? null, eps: aEps[end] ?? null, ...flowOf(aOi, aDa, aOcf, aCapex, end) }))
     .filter((a) => a.revenue != null || a.netIncome != null);
 
   const bAssets = saRow(balance, ['Total Assets'], bScale);
   const bEquity = saRow(balance, ["Shareholders' Equity", 'Total Equity'], bScale);
+  const bCash = saRow(balance, ['Cash & Equivalents', 'Cash and Cash Equivalents'], bScale);
+  const bDebt = saRow(balance, ['Total Debt'], bScale);
+  const bCa = saRow(balance, ['Total Current Assets'], bScale);
+  const bCl = saRow(balance, ['Total Current Liabilities'], bScale);
   const balanceEnd = saCols(balance).find((end) => bAssets[end] != null || bEquity[end] != null) || null;
   return {
     quarters,
     annuals,
     assets: balanceEnd ? bAssets[balanceEnd] ?? null : null,
     equity: balanceEnd ? bEquity[balanceEnd] ?? null : null,
+    cash: balanceEnd ? bCash[balanceEnd] ?? null : null,
+    debt: balanceEnd ? bDebt[balanceEnd] ?? null : null,
+    currentAssets: balanceEnd ? bCa[balanceEnd] ?? null : null,
+    currentLiabilities: balanceEnd ? bCl[balanceEnd] ?? null : null,
     balanceEnd,
   };
 }
@@ -450,6 +491,23 @@ const CONCEPTS = {
   netIncome: ['NetIncomeLoss', 'ProfitLoss'],
   equity: ['StockholdersEquity', 'StockholdersEquityIncludingPortionAttributableToNoncontrollingInterest'],
   assets: ['Assets'],
+  // Balance-sheet detail behind the leverage tiles. Debt is assembled from the parts the filer tags:
+  // current + non-current when both exist, otherwise the filer's own total line. A company that tags
+  // no borrowing line leaves debt null, and the tiles stay dashes rather than showing a guess.
+  cash: ['CashAndCashEquivalentsAtCarryingValue', 'CashCashEquivalentsRestrictedCashAndRestrictedCashEquivalents'],
+  currentAssets: ['AssetsCurrent'],
+  currentLiabilities: ['LiabilitiesCurrent'],
+  debtCurrent: ['DebtCurrent', 'LongTermDebtCurrent', 'ShortTermBorrowings', 'NotesPayableCurrent', 'LinesOfCreditCurrent'],
+  debtNoncurrent: ['LongTermDebtNoncurrent', 'LongTermDebtAndCapitalLeaseObligationsNoncurrent'],
+  debtTotal: ['LongTermDebt', 'DebtAndCapitalLeaseObligations', 'DebtLongtermAndShorttermCombinedAmount'],
+  // Cash-flow and operating lines for FREE CASH FLOW, EBITDA and the yields. All are durations, so the
+  // same FY + YTD − prior YTD arithmetic that produces the revenue TTM produces these.
+  operatingIncome: ['OperatingIncomeLoss'],
+  da: ['DepreciationDepletionAndAmortization', 'DepreciationAmortizationAndAccretionNet', 'DepreciationAndAmortization', 'DepreciationAmortizationAndOther'],
+  operatingCashFlow: ['NetCashProvidedByUsedInOperatingActivities', 'NetCashProvidedByUsedInOperatingActivitiesContinuingOperations'],
+  capex: ['PaymentsToAcquirePropertyPlantAndEquipment', 'PaymentsToAcquireProductiveAssets', 'PaymentsForCapitalImprovements', 'PaymentsToAcquireMachineryAndEquipment'],
+  dividends: ['PaymentsOfDividends', 'PaymentsOfDividendsCommonStock', 'PaymentsOfDividendsMinorityInterest'],
+  buybacks: ['PaymentsForRepurchaseOfCommonStock'],
 };
 
 function conceptRows(gaap, names, instant = false) {
@@ -567,6 +625,27 @@ async function filings(cik, capUsd) {
   const assetRows = conceptRows(gaap, CONCEPTS.assets, true).sort((a, b) => (a.end < b.end ? 1 : -1));
   out.equity = equityRows[0] ? equityRows[0].val : null;
   out.assets = assetRows[0] ? assetRows[0].val : null;
+  out.balanceEnd = equityRows[0]?.end || assetRows[0]?.end || null;
+
+  // The leverage inputs, taken at the newest date the filer tagged. Every one is optional: they are
+  // what an EV, a current ratio and a debt/equity need, and a company that has not filed a balance
+  // sheet line at all gets a dash instead of a fabricated zero.
+  const instant = (names) => {
+    const rows = conceptRows(gaap, names, true).sort((a, b) => (a.end === b.end ? (a.filed < b.filed ? 1 : -1) : (a.end < b.end ? 1 : -1)));
+    return rows[0] || null;
+  };
+  const cashRow = instant(CONCEPTS.cash);
+  const curDebt = instant(CONCEPTS.debtCurrent);
+  const nonCurDebt = instant(CONCEPTS.debtNoncurrent);
+  const totDebt = instant(CONCEPTS.debtTotal);
+  out.cash = cashRow ? cashRow.val : null;
+  out.currentAssets = instant(CONCEPTS.currentAssets)?.val ?? null;
+  out.currentLiabilities = instant(CONCEPTS.currentLiabilities)?.val ?? null;
+  // Current + non-current is the cleanest reading when both are tagged; a filer's own "LongTermDebt"
+  // total already includes current maturities, so it is used whole rather than added to.
+  out.debt = nonCurDebt ? nonCurDebt.val + (curDebt?.val || 0)
+    : totDebt ? totDebt.val
+      : curDebt ? curDebt.val : null;
   if (!revAll.length || !niAll.length) return out;
 
   // The primary revenue line is the concept with the largest annual figure; mixing concepts within
@@ -590,10 +669,45 @@ async function filings(cik, capUsd) {
   const ttmNi = fyNi && ytdNi && prevNi && ytdNi.end > fyNi.end ? fyNi.val + ytdNi.val - prevNi.val : (fyNi && ytdNi && ytdNi.end <= fyNi.end ? fyNi.val : null);
 
   const epsRows = dedupePeriods(conceptRows(gaap, ['EarningsPerShareDiluted', 'EarningsPerShareBasicAndDiluted']));
+
   const rq = quarterParts(rev);
   const nq = quarterParts(niAll);
   const eq = quarterParts(epsRows);
   const pick = (parts, end) => parts.reported.get(end) || parts.derived.get(end) || null;
+
+  // Trailing-twelve-month operating and cash flows. Two routes, the same ones revenue uses: the last
+  // fiscal year plus the year to date less the same period a year earlier, or — for a filer whose
+  // facts carry only 10-Qs (SpaceX files its first 10-K next year) — four contiguous quarters from the
+  // quarter machinery above. A flow that closes neither way stays null: a dash, not a nine-month
+  // number presented as a year.
+  const ttmFlow = (names) => {
+    const all = dedupePeriods(conceptRows(gaap, names));
+    if (!all.length) return null;
+    const e = all.reduce((a, r) => (!a || r.end > a ? r.end : a), null);
+    const y = longestTo(all, e);
+    const f = fiscalYearOf(all);
+    if (f && y) {
+      if (y.end <= f.end) return f.val;
+      const p = all.find((r) => r.start === shiftYear(y.start) && r.end === shiftYear(y.end));
+      if (p) return f.val + y.val - p.val;
+    }
+    const parts = quarterParts(all);
+    const ends = [...new Set([...parts.reported.keys(), ...parts.derived.keys()])].sort();
+    if (ends.length < 4) return null;
+    const last4 = ends.slice(-4);
+    const span = (Date.parse(last4[3]) - Date.parse(last4[0])) / (864e5 * 30.44);
+    if (Math.abs(span - 9) > 2) return null;
+    const vals = last4.map((end) => pick(parts, end));
+    if (vals.some((v) => v == null)) return null;
+    return vals.reduce((acc, v) => acc + v.val, 0);
+  };
+  out.ebitTTM = ttmFlow(CONCEPTS.operatingIncome);
+  out.daTTM = ttmFlow(CONCEPTS.da);
+  out.ebitdaTTM = out.ebitTTM != null && out.daTTM != null ? out.ebitTTM + out.daTTM : null;
+  out.operatingCashFlow = ttmFlow(CONCEPTS.operatingCashFlow);
+  out.capex = ttmFlow(CONCEPTS.capex);
+  out.dividendsPaid = ttmFlow(CONCEPTS.dividends);
+  out.buybacks = ttmFlow(CONCEPTS.buybacks);
   // A derived quarter can land a day or two from the tagged one; the tagged quarter wins.
   const near = (a, b) => Math.abs((Date.parse(a) - Date.parse(b)) / 864e5) <= 6;
   const reportedEnds = [...rq.reported.keys(), ...nq.reported.keys()];
@@ -665,7 +779,13 @@ function mergeFinancials(sec, vendor, capUsd) {
   for (const a of sec.annual || []) annualByYear.set(Number(String(a.end).slice(0, 4)), { ...a, source: 'sec' });
   for (const a of vendor?.annuals || []) {
     const year = Number(String(a.end).slice(0, 4));
-    if (!annualByYear.has(year)) { annualByYear.set(year, { ...a, source: a.source || 'vendor' }); usedVendor = true; }
+    const have = annualByYear.get(year);
+    if (!have) { annualByYear.set(year, { ...a, source: a.source || 'vendor' }); usedVendor = true; continue; }
+    // A year EDGAR already has still needs the vendor's cash-flow lines when the filing did not tag
+    // them: the flows are what the leverage and free-cash-flow tiles read.
+    for (const k of ['ebit', 'da', 'ebitda', 'ocf', 'capex']) {
+      if (have[k] == null && a[k] != null) { have[k] = a[k]; usedVendor = true; }
+    }
   }
   const annuals = [...annualByYear.values()].sort((a, b) => a.end.localeCompare(b.end));
 
@@ -701,6 +821,9 @@ function mergeFinancials(sec, vendor, capUsd) {
       if (same.revenue == null && q.revenue != null) { same.revenue = q.revenue; filled = true; }
       if (same.netIncome == null && q.netIncome != null) { same.netIncome = q.netIncome; filled = true; }
       if (same.eps == null && q.eps != null) { same.eps = q.eps; filled = true; }
+      for (const k of ['ebit', 'da', 'ebitda', 'ocf', 'capex']) {
+        if (same[k] == null && q[k] != null) { same[k] = q[k]; filled = true; }
+      }
       if (filled) { same.source = 'sec+vendor'; usedVendor = true; }
       continue;
     }
@@ -750,7 +873,13 @@ function mergeFinancials(sec, vendor, capUsd) {
       d.setUTCMonth(d.getUTCMonth() - (4 - missing) * 3);
       end = d.toISOString().slice(0, 10);
     }
-    byEnd.set(end, { end, fy: year, q: missing, revenue, netIncome, eps: null, derived: true, source: 'derived' });
+    // The same subtraction gives the missing quarter its cash-flow lines when the annual statement
+    // carries them, which is what turns a three-quarter vendor feed into a trailing twelve months.
+    const derived = { end, fy: year, q: missing, revenue, netIncome, eps: null, derived: true, source: 'derived' };
+    for (const k of ['ebit', 'da', 'ebitda', 'ocf', 'capex']) {
+      if (a[k] != null && qs.every((x) => x[k] != null)) derived[k] = a[k] - qs.reduce((sum, x) => sum + x[k], 0);
+    }
+    byEnd.set(end, derived);
   }
 
   const quarters = [...byEnd.values()].map((q) => {
@@ -759,6 +888,25 @@ function mergeFinancials(sec, vendor, capUsd) {
   }).sort((a, b) => a.end.localeCompare(b.end));
   out.quarters = quarters;
   out.annual = annuals;
+
+  // A vendor income table can carry a quarter its cash-flow table does not (SpaceX's Q4 2025 is on the
+  // income page, not the cash-flow page). When the annual statement has the line and the other three
+  // quarters of that year do too, the missing quarter is the annual less the rest — the same
+  // subtraction as the Q4 derivation above, applied line by line. Nothing is filled when the year does
+  // not add up, so a TTM can only be built from numbers that reconcile.
+  for (const a of annuals) {
+    const year = Number(String(a.end).slice(0, 4));
+    const qs = quarters.filter((q) => fiscalOf(q.end).fy === year);
+    if (qs.length !== 4) continue;
+    for (const k of ['ebit', 'da', 'ebitda', 'ocf', 'capex']) {
+      if (a[k] == null) continue;
+      const missing = qs.filter((q) => q[k] == null);
+      if (missing.length !== 1) continue;
+      const rest = qs.filter((q) => q !== missing[0]);
+      if (!rest.every((q) => q[k] != null)) continue;
+      missing[0][k] = a[k] - rest.reduce((acc, q) => acc + q[k], 0);
+    }
+  }
 
   // Annual record: the last 10-K wins, otherwise the latest vendor year that ends before the quarter.
   const lastEnd = quarters[quarters.length - 1]?.end || null;
@@ -808,6 +956,10 @@ function mergeFinancials(sec, vendor, capUsd) {
   // Balance-sheet lines: EDGAR first; the vendor fills only a line EDGAR did not tag.
   if (out.assets == null && vendor?.assets != null) { out.assets = vendor.assets; usedVendor = true; }
   if (out.equity == null && vendor?.equity != null) { out.equity = vendor.equity; usedVendor = true; }
+  for (const k of ['cash', 'debt', 'currentAssets', 'currentLiabilities']) {
+    if (out[k] == null && vendor?.[k] != null) { out[k] = vendor[k]; usedVendor = true; }
+  }
+  if (out.balanceEnd == null && vendor?.balanceEnd) out.balanceEnd = vendor.balanceEnd;
 
   let ttmRev = null, ttmNi = null, ttmEnd = lastEnd;
   if (out.fy && latest && prior) {
@@ -836,6 +988,29 @@ function mergeFinancials(sec, vendor, capUsd) {
   out.ttm = ttmRev != null
     ? { end: ttmEnd, revenue: ttmRev, netIncome: ttmNi, equity: out.equity, assets: out.assets }
     : null;
+
+  // Operating and cash flows for the leverage and cash tiles. EDGAR's own TTM wins (already on `out`);
+  // otherwise the merged quarters when four contiguous ones carry the line, or the annual row that
+  // ends on the TTM date. Anything still missing stays null so the page shows a dash.
+  let vendorFlow = false;
+  if (out.ttm) {
+    const last4 = quarters.slice(-4);
+    const span = last4.length === 4 ? (Date.parse(last4[3].end) - Date.parse(last4[0].end)) / (864e5 * 30.44) : null;
+    const contiguous = span != null && Math.abs(span - 9) <= 2;
+    const annualAtTtm = annuals.find((a) => a.end === out.ttm.end) || null;
+    const flow = (key) => {
+      if (contiguous && last4.every((q) => q[key] != null)) return last4.reduce((s, q) => s + q[key], 0);
+      const v = annualAtTtm ? annualAtTtm[key] : null;
+      return v == null ? null : v;
+    };
+    for (const [field, key] of [['ebitTTM', 'ebit'], ['ebitdaTTM', 'ebitda'], ['operatingCashFlow', 'ocf'], ['capex', 'capex']]) {
+      if (out[field] == null) {
+        const v = flow(key);
+        if (v != null) { out[field] = v; vendorFlow = true; }
+      }
+    }
+  }
+  if (vendorFlow) usedVendor = true;
 
   // Growth keeps the filed three-year rate where one exists; a company with only pre-IPO vendor years
   // gets the same two-year window the other new listings use, rather than a rate over a longer history.
@@ -1083,6 +1258,11 @@ for (const entry of BASE) {
     annuals: kept.financials.annual || [],
     assets: kept.financials.assets ?? null,
     equity: kept.financials.equity ?? null,
+    cash: kept.financials.cash ?? null,
+    debt: kept.financials.debt ?? null,
+    currentAssets: kept.financials.currentAssets ?? null,
+    currentLiabilities: kept.financials.currentLiabilities ?? null,
+    balanceEnd: kept.financials.balanceEnd ?? null,
   } : null;
   const backfill = vendor ? {
     ...vendor,
@@ -1090,6 +1270,11 @@ for (const entry of BASE) {
     annuals: [...(vendor.annuals || []), ...(fallback?.annuals || [])],
     assets: vendor.assets ?? fallback?.assets ?? null,
     equity: vendor.equity ?? fallback?.equity ?? null,
+    cash: vendor.cash ?? fallback?.cash ?? null,
+    debt: vendor.debt ?? fallback?.debt ?? null,
+    currentAssets: vendor.currentAssets ?? fallback?.currentAssets ?? null,
+    currentLiabilities: vendor.currentLiabilities ?? fallback?.currentLiabilities ?? null,
+    balanceEnd: vendor.balanceEnd ?? fallback?.balanceEnd ?? null,
   } : fallback;
   const fin = mergeFinancials(secFin, backfill, row.capUsd);
   row.description = prof.description || row.description || null;
