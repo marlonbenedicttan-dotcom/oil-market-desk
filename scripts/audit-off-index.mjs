@@ -12,6 +12,7 @@
 //   node scripts/audit-off-index.mjs --fix     # rewrite the derived fields from the sources
 
 import { readFileSync, writeFileSync, renameSync } from 'node:fs';
+import { parseSaTable, rowOf, saScale, saCols, saRow } from './stockanalysis.mjs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -23,6 +24,9 @@ const UA = { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) Appl
 const SEC = { 'User-Agent': process.env.SEC_UA || 'MarlonWatchtower/1.0 (marlonbenedicttan@gmail.com)' };
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const num = (v) => Number(String(v == null ? '' : v).replace(/[$,%\s,]/g, '')) || null;
+// Ratios of small or negative numbers need an absolute floor, or a $2M difference on a near-zero equity
+// reads as a 100% error.
+const closeEnough = (a, b, pct) => a != null && b != null && Math.abs(a - b) <= Math.max(Math.abs(b) * pct, 30e6);
 
 const SECTORS = ['Technology', 'Healthcare', 'Consumer', 'Financials', 'Industrials', 'Energy', 'Materials', 'Utilities', 'Real estate', 'Telecom', 'Media', 'Other'];
 const NASDAQ_SECTOR = {
@@ -47,6 +51,37 @@ async function getText(url, headers = SEC) {
     const res = await fetch(url, { headers });
     return res.ok ? await res.text() : '';
   } catch { return ''; }
+}
+// One vendor statement page, parsed with the same reader the refresh uses. The audit calls the vendor
+// independently so a filing-sourced line is checked against something that did not produce it.
+async function saPage(ticker, path = '') {
+  const url = `https://stockanalysis.com/stocks/${String(ticker).toLowerCase()}/financials/${path}`;
+  const html = await getText(url, UA);
+  return html ? { html, table: parseSaTable(html) } : null;
+}
+
+// The filing's own facts, cached per CIK. The balance-sheet lines are re-derived here with a small,
+// separate reader rather than by calling the refresh's code: an audit that reuses the implementation
+// it is auditing only proves the implementation is self-consistent.
+const factsCache = new Map();
+async function gaapFacts(cik) {
+  const id = String(cik).padStart(10, '0');
+  if (factsCache.has(id)) return factsCache.get(id);
+  const cf = await getJSON(`https://data.sec.gov/api/xbrl/companyfacts/CIK${id}.json`, SEC);
+  const gaap = cf?.facts?.['us-gaap'] || null;
+  factsCache.set(id, gaap);
+  return gaap;
+}
+function filedInstant(gaap, names) {
+  for (const name of names) {
+    const units = gaap?.[name]?.units?.USD;
+    if (!units) continue;
+    const rows = units
+      .filter((r) => r.end && r.form && /^(10-K|10-Q)$/.test(r.form))
+      .sort((a, b) => (a.end === b.end ? String(a.filed || '').localeCompare(String(b.filed || '')) : a.end.localeCompare(b.end)));
+    if (rows.length) return rows[rows.length - 1];
+  }
+  return null;
 }
 
 const doc = JSON.parse(readFileSync(FILE, 'utf8'));
@@ -323,6 +358,179 @@ for (const c of companies) {
     // A brand-new listing has no XBRL financials at all yet; one with a 10-Q but no 10-K shows its
     // period instead of a TTM.
     if (fin.latestFiling) check(t, !!fin.latest, 'a company with a 10-Q shows its latest period');
+  }
+
+  // ---- leverage and cash lines ----------------------------------------------------------------
+  // These feed the LEVERAGE and CASH & RETURN tiles. The arithmetic is checked here, then the filing-
+  // sourced numbers are compared with the vendor's own statements: a line the refresh took from EDGAR
+  // must survive a second reading.
+  for (const k of ['debt', 'cash', 'currentAssets', 'currentLiabilities', 'ebitTTM', 'daTTM', 'ebitdaTTM', 'operatingCashFlow', 'capex', 'dividendsPaid', 'buybacks']) {
+    if (fin[k] != null) check(t, Number.isFinite(fin[k]), `${k} is a finite number`, fin[k]);
+  }
+  if (fin.debt != null) check(t, fin.debt >= 0, 'debt is not negative', fin.debt);
+  if (fin.cash != null) check(t, fin.cash >= 0, 'cash is not negative', fin.cash);
+  if (fin.capex != null) check(t, fin.capex >= 0, 'capex is stored as a payment, not an outflow', fin.capex);
+  if (fin.ebitdaTTM != null) {
+    check(t, fin.ebitTTM != null && fin.daTTM != null, 'EBITDA has EBIT and D&A behind it');
+    if (fin.ebitTTM != null && fin.daTTM != null) {
+      check(t, Math.abs(fin.ebitdaTTM - (fin.ebitTTM + fin.daTTM)) < 1e6, 'EBITDA is EBIT + D&A',
+        `${fin.ebitdaTTM} vs ${fin.ebitTTM + fin.daTTM}`);
+    }
+  }
+  if (fin.assets != null) {
+    if (fin.debt != null) check(t, fin.debt <= fin.assets * 2, 'debt is inside twice the asset base', `${fin.debt} vs assets ${fin.assets}`);
+    if (fin.cash != null) check(t, fin.cash <= fin.assets, 'cash is inside the asset base', `${fin.cash} vs ${fin.assets}`);
+    if (fin.currentAssets != null) check(t, fin.currentAssets <= fin.assets * 1.05, 'current assets are inside the asset base', `${fin.currentAssets} vs ${fin.assets}`);
+    if (fin.currentLiabilities != null) check(t, fin.currentLiabilities <= fin.assets * 2, 'current liabilities are inside twice the asset base', `${fin.currentLiabilities} vs ${fin.assets}`);
+  }
+  const hasBalanceLine = ['debt', 'cash', 'currentAssets', 'currentLiabilities'].some((k) => fin[k] != null);
+  if (hasBalanceLine) {
+    check(t, !!fin.balanceEnd, 'a balance-sheet line carries the date it was taken at');
+    if (fin.balanceEnd && fin.ttm) {
+      check(t, fin.balanceEnd <= fin.ttm.end, 'the balance sheet is not dated after the TTM', `${fin.balanceEnd} vs TTM ${fin.ttm.end}`);
+      // Ratios pair the balance sheet with the trailing year. A gap of more than a quarter means the
+      // two belong to different filings and the multiple mixes periods.
+      const gap = (Date.parse(fin.ttm.end) - Date.parse(fin.balanceEnd)) / 864e5;
+      check(t, gap < 100, 'the balance sheet is within a quarter of the TTM end', `${Math.round(gap)} days`);
+    }
+  }
+  if (fin.ttm && fin.ebitdaTTM == null && fin.ebitTTM != null) warn(t, 'EBIT is filed but D&A is not — no EBITDA multiple');
+
+  // Primary source: the filing's own balance sheet, re-read here. Debt uses the desk's convention —
+  // long-term borrowing lines first, the filer's total next, convertibles only when neither exists.
+  const gaap = preIpo ? null : await gaapFacts(c.cik);
+  // Total-equity alternatives, kept for the vendor comparison below: the page stores parent equity,
+  // the vendor publishes total equity.
+  let filingEquityTotal = null;
+  let filingResidual = null;
+  if (gaap) {
+    const eq = filedInstant(gaap, ['StockholdersEquity', 'StockholdersEquityIncludingPortionAttributableToNoncontrollingInterest', 'CommonStockholdersEquity']);
+    const eqTotal = filedInstant(gaap, ['StockholdersEquityIncludingPortionAttributableToNoncontrollingInterest']);
+    const liab = filedInstant(gaap, ['Liabilities']);
+    const assets = filedInstant(gaap, ['Assets']);
+    filingEquityTotal = eqTotal?.val ?? null;
+    filingResidual = assets && liab ? assets.val - liab.val : null;
+    const cash = filedInstant(gaap, ['CashAndCashEquivalentsAtCarryingValue', 'CashCashEquivalentsRestrictedCashAndRestrictedCashEquivalents']);
+    const ca = filedInstant(gaap, ['AssetsCurrent']);
+    const cl = filedInstant(gaap, ['LiabilitiesCurrent']);
+    const same = (row, have) => row && have != null && Math.abs(row.val - have) <= Math.max(Math.abs(row.val) * 0.001, 1e5);
+    if (assets) check(t, same(assets, fin.assets), 'assets match the filing', `${fin.assets} vs ${assets.val} @${assets.end}`);
+    const eqAligned = eq && fin.balanceEnd && Math.abs(Date.parse(eq.end) - Date.parse(fin.balanceEnd)) <= 10 * 864e5;
+    if (eq && eqAligned) {
+      check(t, same(eq, fin.equity), 'equity matches the filing', `${fin.equity} vs ${eq.val} @${eq.end}`);
+    } else if (eq && fin.equity != null) {
+      // A 10-Q that tags assets but not equity leaves the equity dated to the older 10-K; the vendor
+      // supplies the current period, and the source label has to say so.
+      check(t, /stockanalysis/.test(String(fin.source || '')), 'equity with no filing line at the balance date comes from the vendor', `source ${fin.source}`);
+    }
+    if (cash && fin.cash != null) check(t, same(cash, fin.cash), 'cash matches the filing', `${fin.cash} vs ${cash.val} @${cash.end}`);
+    if (ca && fin.currentAssets != null) check(t, same(ca, fin.currentAssets), 'current assets match the filing', `${fin.currentAssets} vs ${ca.val}`);
+    if (cl && fin.currentLiabilities != null) check(t, same(cl, fin.currentLiabilities), 'current liabilities match the filing', `${fin.currentLiabilities} vs ${cl.val}`);
+    // The debt convention, re-derived independently: the long-term line in the order the index pages
+    // read, convertibles only when neither exists, and nothing older than the balance sheet. A line
+    // the filing stopped tagging (Zscaler repaid its notes) must not reappear as current debt.
+    if (fin.balanceEnd) {
+      const recent = (row) => row && Date.parse(row.end) >= Date.parse(fin.balanceEnd) - 100 * 864e5;
+      const pick = (...names) => names.map((name) => filedInstant(gaap, [name])).find(recent) || null;
+      const want = pick('LongTermDebtNoncurrent', 'LongTermDebt', 'LongTermDebtAndCapitalLeaseObligations', 'DebtLongtermAndShorttermCombinedAmount',
+        'ConvertibleDebtNoncurrent', 'ConvertibleNotesPayable', 'SeniorNotes', 'NotesPayable');
+      const vendorFilled = /stockanalysis/.test(String(fin.source || ''));
+      if (want) {
+        check(t, fin.debt != null && Math.abs(fin.debt - want.val) <= Math.max(want.val * 0.01, 1e5),
+          'debt is the long-term line the filing tags', `file ${fin.debt} vs filing ${want.val} @${want.end}`);
+      } else if (fin.debt != null) {
+        check(t, vendorFilled, 'debt with no filing line must come from the vendor', `debt ${fin.debt} · source ${fin.source}`);
+      }
+    }
+  }
+
+  if (!preIpo) {
+    const [bs, income, cashflow] = await Promise.all([
+      saPage(t, 'balance-sheet/?p=quarterly'),
+      saPage(t, ''),
+      saPage(t, 'cash-flow-statement/'),
+    ]);
+    await sleep(250);
+    const near = (a, b, pct = 0.15) => Math.abs(a - b) <= Math.max(Math.abs(b) * pct, 30e6);
+    const ttmOf = (page, labels) => {
+      if (!page) return null;
+      const row = rowOf(page.table, labels);
+      const v = row && row.values ? row.values.TTM : null;
+      return v == null ? null : v * saScale(page.html);
+    };
+    if (bs) {
+      const scale = saScale(bs.html);
+      const cols = saCols(bs.table);
+      // Only the column that matches the file's balance date: comparing CoreWeave's 2026-09-30 debt with
+      // the vendor's 2026-03-31 column says nothing about accuracy.
+      const at = (labels) => {
+        const row = saRow(bs.table, labels, scale);
+        const end = cols.find((e) => row[e] != null
+          && (!fin.balanceEnd || Math.abs(Date.parse(e) - Date.parse(fin.balanceEnd)) <= 10 * 864e5));
+        return end ? { end, v: row[end] } : null;
+      };
+      const same = (x) => x && fin.balanceEnd && Math.abs(Date.parse(x.end) - Date.parse(fin.balanceEnd)) <= 10 * 864e5;
+      const vAssets = at(['Total Assets']);
+      const vEquity = at(["Shareholders' Equity", 'Total Equity']);
+      // The desk's debt convention is the long-term borrowing line (the index pages use the same), so
+      // that is what the vendor comparison asks for; Total Debt adds leases and reads ~2x on a hyperscaler.
+      const vLtd = at(['Long-Term Debt']);
+      const vDebt = vLtd || at(['Total Debt']);
+      const vDebtLabel = vLtd ? 'long-term debt' : 'total debt';
+      const vCash = at(['Cash & Equivalents']);
+      const vCa = at(['Total Current Assets']);
+      const vCl = at(['Total Current Liabilities']);
+      // The balance-sheet identity is date-sensitive: only compare when the column is the same period
+      // the file took its line from.
+      if (vAssets && same(vAssets)) check(t, near(fin.assets, vAssets.v, 0.02), 'assets match the vendor balance sheet', `${fin.assets} vs ${vAssets.v}`);
+      // Equity can differ by non-controlling interests or a restatement the vendor has and EDGAR's
+      // companyfacts does not (or the reverse); assets, which have no such split, stay at 2%.
+      if (vEquity && same(vEquity) && !closeEnough(fin.equity, vEquity.v, 0.02)) {
+        // The page stores equity attributable to the parent; the vendor's row is total equity. The gap
+        // is expected when non-controlling interests are material — and the balance-sheet residual
+        // (assets − liabilities) is the same total, which catches a filer that under-tags its NCI line.
+        const explained = [filingEquityTotal, filingResidual].some((x) => x != null && closeEnough(x, vEquity.v, 0.02));
+        if (!explained) warn(t, `equity ${(fin.equity / 1e9).toFixed(2)}B differs from the vendor's ${(vEquity.v / 1e9).toFixed(2)}B and no NCI/residual explains it`);
+      }
+      if (vDebt && fin.debt != null) {
+        if (!near(fin.debt, vDebt.v, 0.2)) warn(t, `debt ${(fin.debt / 1e9).toFixed(2)}B differs from the vendor's ${vDebtLabel} ${(vDebt.v / 1e9).toFixed(2)}B — a definitional gap (leases, current maturities)`);
+      } else if (vDebt && fin.debt == null) {
+        warn(t, `the vendor has ${vDebtLabel} ${(vDebt.v / 1e9).toFixed(2)}B but the file has none`);
+      }
+      if (vCash && fin.cash != null && !near(fin.cash, vCash.v, 0.25)) {
+        warn(t, `cash differs from the vendor (${(fin.cash / 1e9).toFixed(2)}B vs ${(vCash.v / 1e9).toFixed(2)}B)`);
+      }
+      for (const [label, have, v] of [
+        ['current assets', fin.currentAssets, vCa],
+        ['current liabilities', fin.currentLiabilities, vCl],
+      ]) {
+        if (!v) continue;
+        if (have == null) warn(t, `the vendor has ${label} ${(v.v / 1e9).toFixed(2)}B but the file has none`);
+        else if (!near(have, v.v, 0.25)) warn(t, `${label} differ from the vendor (${(have / 1e9).toFixed(2)}B vs ${(v.v / 1e9).toFixed(2)}B)`);
+      }
+    }
+    if (income) {
+      const vEbitda = ttmOf(income, ['EBITDA']);
+      if (vEbitda != null && fin.ebitdaTTM != null && !near(fin.ebitdaTTM, vEbitda)) {
+        warn(t, `EBITDA differs from the vendor (${(fin.ebitdaTTM / 1e9).toFixed(2)}B vs ${(vEbitda / 1e9).toFixed(2)}B)`);
+      } else if (vEbitda != null && fin.ebitdaTTM == null) {
+        warn(t, `the vendor has EBITDA ${(vEbitda / 1e9).toFixed(2)}B but the file has none`);
+      }
+    }
+    if (cashflow) {
+      const vOcf = ttmOf(cashflow, ['Operating Cash Flow']);
+      const vCapex = ttmOf(cashflow, ['Capital Expenditures']);
+      if (vOcf != null && fin.operatingCashFlow != null && !near(fin.operatingCashFlow, vOcf)) {
+        warn(t, `operating cash flow differs from the vendor (${(fin.operatingCashFlow / 1e9).toFixed(2)}B vs ${(vOcf / 1e9).toFixed(2)}B)`);
+      } else if (vOcf != null && fin.operatingCashFlow == null) {
+        warn(t, `the vendor has operating cash flow ${(vOcf / 1e9).toFixed(2)}B but the file has none`);
+      }
+      if (vCapex != null && fin.capex != null && !near(fin.capex, Math.abs(vCapex))) {
+        warn(t, `capex differs from the vendor (${(fin.capex / 1e9).toFixed(2)}B vs ${Math.abs(vCapex / 1e9).toFixed(2)}B)`);
+      } else if (vCapex != null && fin.capex == null) {
+        warn(t, `the vendor has capex ${Math.abs(vCapex / 1e9).toFixed(2)}B but the file has none`);
+      }
+    }
   }
 
   if (!preIpo && c.ipoPrice && c.price) {
