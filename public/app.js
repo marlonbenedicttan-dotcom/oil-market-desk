@@ -12169,7 +12169,7 @@ function renderUsThemes(el, all) {
     + `<div class="co-hrow jp-bank-hrow"><span>#</span><span>COMPANY</span><span>CAP</span><span>P/E</span><span>MARGIN</span><span>ROE</span><span>YIELD</span><span>YTD</span></div>`
     + rows.map((c, i) => `<button class="jp-bank-row" data-cik="${esc(c.cik)}">
         <span>${i + 1}</span>
-        <span><b>${esc(c.name)}</b><span class="co-tick">${esc(c.ticker)}</span>${offTag(c)}</span>
+        <span><b>${esc(c.name)}</b><span class="co-tickrow"><span class="co-tick">${esc(c.ticker)}</span>${offTag(c)}</span></span>
         <span>${coMoney(c.marketCap)}</span>
         <span>${c.pe != null ? c.pe.toFixed(1) : '—'}</span>
         <span>${coMargin(c) != null ? coMargin(c).toFixed(1) + '%' : '—'}</span>
