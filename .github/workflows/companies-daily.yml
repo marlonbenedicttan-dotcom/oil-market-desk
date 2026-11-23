@@ -24,7 +24,7 @@ jobs:
       # A stalled SEC/Nasdaq socket must fail a request, not hold the whole refresh open.
       NODE_OPTIONS: '--import=./scripts/fetch-timeout.mjs'
     steps:
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         env:
           # The job-level preload cannot be resolved until the repo exists; checkout itself runs
           # before that and would fail with ERR_MODULE_NOT_FOUND.
