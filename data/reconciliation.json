@@ -1,10 +1,10 @@
 {
- "generated": "2026-11-23T01:46:27.348Z",
+ "generated": "2026-11-24T05:38:53.581Z",
  "summary": {
   "usable": 1437,
   "match": 113,
-  "close": 725,
-  "diverge": 548,
+  "close": 726,
+  "diverge": 547,
   "diverge-immaterial": 31,
   "definition": 20,
   "period-mismatch": 51,
@@ -11958,8 +11958,8 @@
    "our": {
     "revenue": 12029783000,
     "netIncome": 289336000,
-    "assets": 11743702000,
-    "equity": 3264489000,
+    "assets": 12023728000,
+    "equity": 3345064000,
     "marketCap": 17992345669,
     "price": 154.58,
     "shares": 117446713
@@ -11973,17 +11973,17 @@
    "diff": {
     "revenue": 0,
     "netIncome": 0,
-    "assets": 0.04182386439982895,
-    "equity": 0.10336115042626538
+    "assets": 0.06413925863925066,
+    "equity": 0.08123006794922115
    },
    "abs": {
     "revenue": 12029783000,
     "netIncome": 289336000,
-    "assets": 491167000,
-    "equity": 376318000
+    "assets": 771193000,
+    "equity": 295743000
    },
-   "worst": 0.10336115042626538,
-   "status": "diverge"
+   "worst": 0.08123006794922115,
+   "status": "close"
   },
   {
    "ticker": "VRTX",
