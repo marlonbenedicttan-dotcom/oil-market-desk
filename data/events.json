@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-26T17:52:04.474Z",
+ "updated": "2026-11-26T20:09:57.823Z",
  "events": [
   {
    "date": "2026-10-28",
@@ -195,17 +195,6 @@
    "detail": "period ends 2026-10-31 · filed 27 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.170801,
-   "days": 0
-  },
-  {
-   "date": "2026-11-27",
-   "kind": "earnings",
-   "ticker": "ADSK",
-   "name": "Autodesk, Inc.",
-   "label": "ADSK · quarterly report expected",
-   "detail": "period ends 2026-10-30 · filed 28 days after quarter end, historically",
-   "basis": "expected",
-   "weight": 0.086574,
    "days": 0
   },
   {
@@ -9759,17 +9748,6 @@
   {
    "date": "2027-02-03",
    "kind": "earnings",
-   "ticker": "SMG",
-   "name": "SCOTTS MIRACLE-GRO CO",
-   "label": "SMG · quarterly report expected",
-   "detail": "period ends 2026-12-26 · filed 39 days after quarter end, historically",
-   "basis": "expected",
-   "weight": 0.004222,
-   "days": 68
-  },
-  {
-   "date": "2027-02-03",
-   "kind": "earnings",
    "ticker": "ACHC",
    "name": "Acadia Healthcare Company, Inc.",
    "label": "ACHC · quarterly report expected",
@@ -11651,17 +11629,6 @@
   {
    "date": "2027-02-04",
    "kind": "earnings",
-   "ticker": "CENT",
-   "name": "CENTRAL GARDEN & PET CO",
-   "label": "CENT · quarterly report expected",
-   "detail": "period ends 2026-12-26 · filed 40 days after quarter end, historically",
-   "basis": "expected",
-   "weight": 0.001014,
-   "days": 69
-  },
-  {
-   "date": "2027-02-04",
-   "kind": "earnings",
    "ticker": "FUN",
    "name": "Six Flags Entertainment Corporation/NEW",
    "label": "FUN · quarterly report expected",
@@ -12152,17 +12119,6 @@
    "detail": "period ends 2026-12-30 · filed 36 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.00678,
-   "days": 69
-  },
-  {
-   "date": "2027-02-04",
-   "kind": "earnings",
-   "ticker": "JJSF",
-   "name": "J&J SNACK FOODS CORP",
-   "label": "JJSF · quarterly report expected",
-   "detail": "period ends 2026-12-26 · filed 40 days after quarter end, historically",
-   "basis": "expected",
-   "weight": 0.002088,
    "days": 69
   },
   {
@@ -12790,17 +12746,6 @@
    "detail": "period ends 2026-12-30 · filed 36 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.000449,
-   "days": 69
-  },
-  {
-   "date": "2027-02-04",
-   "kind": "earnings",
-   "ticker": "CLSK",
-   "name": "CLEANSPARK, INC.",
-   "label": "CLSK · quarterly report expected",
-   "detail": "period ends 2026-12-29 · filed 37 days after quarter end, historically",
-   "basis": "expected",
-   "weight": 0.002355,
    "days": 69
   },
   {
@@ -14632,17 +14577,6 @@
   {
    "date": "2027-02-05",
    "kind": "earnings",
-   "ticker": "CFFN",
-   "name": "Capitol Federal Financial, Inc.",
-   "label": "CFFN · quarterly report expected",
-   "detail": "period ends 2026-12-29 · filed 38 days after quarter end, historically",
-   "basis": "expected",
-   "weight": 0.001641,
-   "days": 70
-  },
-  {
-   "date": "2027-02-05",
-   "kind": "earnings",
    "ticker": "CPT",
    "name": "CAMDEN PROPERTY TRUST",
    "label": "CPT · quarterly report expected",
@@ -16302,6 +16236,17 @@
    "days": 87
   },
   {
+   "date": "2027-02-22",
+   "kind": "earnings",
+   "ticker": "CRWD",
+   "name": "CrowdStrike Holdings, Inc.",
+   "label": "CRWD · quarterly report expected",
+   "detail": "period ends 2027-01-30 · filed 23 days after quarter end, historically",
+   "basis": "expected",
+   "weight": 0.322723,
+   "days": 87
+  },
+  {
    "date": "2027-02-23",
    "kind": "earnings",
    "ticker": "COR",
@@ -16456,6 +16401,39 @@
    "days": 88
   },
   {
+   "date": "2027-02-23",
+   "kind": "earnings",
+   "ticker": "SMG",
+   "name": "SCOTTS MIRACLE-GRO CO",
+   "label": "SMG · Q1 report expected",
+   "detail": "period ends 2026-12-30 · filed 55 days after quarter end, historically",
+   "basis": "expected",
+   "weight": 0.004222,
+   "days": 88
+  },
+  {
+   "date": "2027-02-23",
+   "kind": "earnings",
+   "ticker": "SMTC",
+   "name": "SEMTECH CORP",
+   "label": "SMTC · quarterly report expected",
+   "detail": "period ends 2027-01-24 · filed 30 days after quarter end, historically",
+   "basis": "expected",
+   "weight": 0.009402,
+   "days": 88
+  },
+  {
+   "date": "2027-02-23",
+   "kind": "earnings",
+   "ticker": "CLSK",
+   "name": "CLEANSPARK, INC.",
+   "label": "CLSK · Q1 report expected",
+   "detail": "period ends 2026-12-30 · filed 55 days after quarter end, historically",
+   "basis": "expected",
+   "weight": 0.002355,
+   "days": 88
+  },
+  {
    "date": "2027-02-24",
    "kind": "earnings",
    "ticker": "NVDA",
@@ -16464,6 +16442,17 @@
    "detail": "period ends 2027-01-24 · filed 31 days after quarter end, historically",
    "basis": "expected",
    "weight": 6.398118,
+   "days": 89
+  },
+  {
+   "date": "2027-02-24",
+   "kind": "earnings",
+   "ticker": "ADSK",
+   "name": "Autodesk, Inc.",
+   "label": "ADSK · quarterly report expected",
+   "detail": "period ends 2027-01-30 · filed 25 days after quarter end, historically",
+   "basis": "expected",
+   "weight": 0.086574,
    "days": 89
   },
   {
@@ -16480,6 +16469,28 @@
   {
    "date": "2027-02-24",
    "kind": "earnings",
+   "ticker": "CENT",
+   "name": "CENTRAL GARDEN & PET CO",
+   "label": "CENT · Q1 report expected",
+   "detail": "period ends 2026-12-26 · filed 60 days after quarter end, historically",
+   "basis": "expected",
+   "weight": 0.001014,
+   "days": 89
+  },
+  {
+   "date": "2027-02-24",
+   "kind": "earnings",
+   "ticker": "JJSF",
+   "name": "J&J SNACK FOODS CORP",
+   "label": "JJSF · Q1 report expected",
+   "detail": "period ends 2026-12-26 · filed 60 days after quarter end, historically",
+   "basis": "expected",
+   "weight": 0.002088,
+   "days": 89
+  },
+  {
+   "date": "2027-02-24",
+   "kind": "earnings",
    "ticker": "BOX",
    "name": "BOX INC",
    "label": "BOX · quarterly report expected",
@@ -16491,12 +16502,12 @@
   {
    "date": "2027-02-24",
    "kind": "earnings",
-   "ticker": "SMTC",
-   "name": "SEMTECH CORP",
-   "label": "SMTC · quarterly report expected",
-   "detail": "period ends 2027-01-24 · filed 31 days after quarter end, historically",
+   "ticker": "CFFN",
+   "name": "Capitol Federal Financial, Inc.",
+   "label": "CFFN · Q1 report expected",
+   "detail": "period ends 2026-12-30 · filed 56 days after quarter end, historically",
    "basis": "expected",
-   "weight": 0.009402,
+   "weight": 0.001641,
    "days": 89
   },
   {
@@ -16574,17 +16585,6 @@
    "detail": "period ends 2027-01-24 · filed 32 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.009734,
-   "days": 90
-  },
-  {
-   "date": "2027-02-25",
-   "kind": "earnings",
-   "ticker": "CRWD",
-   "name": "CrowdStrike Holdings, Inc.",
-   "label": "CRWD · quarterly report expected",
-   "detail": "period ends 2027-01-29 · filed 27 days after quarter end, historically",
-   "basis": "expected",
-   "weight": 0.322723,
    "days": 90
   },
   {
