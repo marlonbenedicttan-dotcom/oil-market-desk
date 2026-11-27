@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-27T17:29:39.708Z",
+ "updated": "2026-11-27T18:30:52.377Z",
  "events": [
   {
    "date": "2026-11-02",
@@ -8793,17 +8793,6 @@
   {
    "date": "2027-02-03",
    "kind": "earnings",
-   "ticker": "SNEX",
-   "name": "StoneX Group Inc.",
-   "label": "SNEX · quarterly report expected",
-   "detail": "period ends 2026-12-29 · filed 36 days after quarter end, historically",
-   "basis": "expected",
-   "weight": 0.007095,
-   "days": 67
-  },
-  {
-   "date": "2027-02-03",
-   "kind": "earnings",
    "ticker": "UPS",
    "name": "UNITED PARCEL SERVICE INC",
    "label": "UPS · quarterly report expected",
@@ -12616,17 +12605,6 @@
    "detail": "period ends 2026-12-30 · filed 36 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.005758,
-   "days": 68
-  },
-  {
-   "date": "2027-02-04",
-   "kind": "earnings",
-   "ticker": "CASH",
-   "name": "PATHWARD FINANCIAL, INC.",
-   "label": "CASH · quarterly report expected",
-   "detail": "period ends 2026-12-29 · filed 37 days after quarter end, historically",
-   "basis": "expected",
-   "weight": 0.003764,
    "days": 68
   },
   {
@@ -16559,6 +16537,17 @@
   {
    "date": "2027-02-26",
    "kind": "earnings",
+   "ticker": "SNEX",
+   "name": "StoneX Group Inc.",
+   "label": "SNEX · Q1 report expected",
+   "detail": "period ends 2026-12-30 · filed 58 days after quarter end, historically",
+   "basis": "expected",
+   "weight": 0.007095,
+   "days": 90
+  },
+  {
+   "date": "2027-02-26",
+   "kind": "earnings",
    "ticker": "TGT",
    "name": "TARGET CORP",
    "label": "TGT · quarterly report expected",
@@ -16598,6 +16587,17 @@
    "detail": "period ends 2027-01-30 · filed 27 days after quarter end, historically",
    "basis": "expected",
    "weight": 0.170801,
+   "days": 90
+  },
+  {
+   "date": "2027-02-26",
+   "kind": "earnings",
+   "ticker": "CASH",
+   "name": "PATHWARD FINANCIAL, INC.",
+   "label": "CASH · Q1 report expected",
+   "detail": "period ends 2026-12-30 · filed 58 days after quarter end, historically",
+   "basis": "expected",
+   "weight": 0.003764,
    "days": 90
   }
  ]
